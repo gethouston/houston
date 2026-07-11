@@ -363,12 +363,66 @@ Replace everywhere `SUPABASE_URL`/`SUPABASE_ANON_KEY` appear:
 > accounts are still provisioned out-of-band by the platform admin (console/Admin
 > SDK); this UI only signs existing accounts in (documented in `admin/auth.ts`).
 
-**Wave 3 — integration + i18n + tests (1 agent).**
+**Wave 3 — integration + i18n + tests (1 agent). — LANDED.**
 - Wire seams, run full `pnpm --filter houston-web typecheck`, `cd app && pnpm tsgo --noEmit` + `cargo check`, `pnpm check:fix`.
 - i18n: any new error strings under `shell`/auth namespaces in `en/es/pt`; update the `authRequiredBody` strings that name SUPABASE (`shell.json:297`) → Firebase; `pnpm check-locales`.
 - Update `release.yml` env, `.env.example`, `knowledge-base/auth.md`.
 - Playwright web e2e sign-in path; desktop manual verify.
 - *Accept:* full workspace green; `knowledge-base/auth.md` + `cloud/INTEGRATION.md` updated.
+
+> **As-built notes (Wave 3) — integration audit, docs, e2e, release wiring.**
+>
+> **(n) Seam audit: NO high defects; the four called-out seams were already
+> wired.** `setIdentityLogSink` runs via `initFrontendLogging()` in BOTH
+> entrypoints (`app/src/main.tsx`, `packages/web/src/app-tree.tsx`);
+> `cancelPendingAuthorize` fires on `SignInScreen` unmount; `onAuthError` surfaces
+> post-hand-off failures; sign-out clears refresh + Keychain + the desktop hosted
+> engine bearer (reactively via `useSession` → `HostedEngineGate`
+> `setHostedEngineSessionToken(null)`) + PostHog reset + persisted local data. Every
+> `IdentityErrorCode` maps to a real en/es/pt `errors.auth.*` string. Three LOW gaps
+> FIXED: (1) the `/admin` bundle now calls `initFrontendLogging()` (it doesn't go
+> through app-tree, so the identity log sink was unset); (2) a CSRF **foreign-state**
+> callback on the shared `auth://deep-link` channel is now IGNORED (keep waiting)
+> instead of hard-rejecting the legit attempt — `oauth-callback.ts` validates
+> `state` FIRST and exports `isCsrfStateMismatch`, `oauth-attempt.ts` consumes it
+> (a stale/forged payload can never settle/kill the pending attempt; CSRF still
+> enforced, timeout still bounds the wait); (3) Google-only `access_type=offline`
+> moved out of the shared loopback driver into `google-authorize.ts` `extraParams`.
+>
+> **(o) Docs.** `knowledge-base/auth.md` fully rewritten for GCIP (was entirely
+> Supabase-stale, incl. a fabricated `HOUSTON_APP_USER_ID`-passed-at-spawn claim —
+> no such env var exists in code). Swept the rest: `production-infra.md` (auth
+> section + env table + PostHog Firebase-uid), `knowledge-base/README.md` index row,
+> root `README.md` kind-smoke, `integrations.md`, `architecture.md`, `teams.md`
+> (profiles retired → initials), root `.env.example` (stale commented SUPABASE_*
+> → FIREBASE_*/desktop OAuth). Left intentionally: `website/` (waitlist),
+> `packages/host/src/config.ts` (`CP_SUPABASE_*` — server-side gateway
+> verification, a separate `cloud/` change per §3), accurate legacy-blob-tolerance
+> + Web-Locks-noise comments, and the `supabase` legacy alias value in
+> `engine-mode.ts`'s `VITE_HOSTED_ENGINE_AUTH` accepted list.
+>
+> **(p) e2e.** `packages/web/e2e/sign-in.spec.ts` (4 tests) drives the GCIP
+> `SignInScreen`: all three methods render; email→code advances; `otp_invalid_code`
+> + `otp_rate_limited` surface — against a MOCKED gateway (`page.route` on
+> `/v1/auth/email-otp/*`). Isolation: a SECOND vite server bakes a fake
+> `FIREBASE_API_KEY` so `isIdentityConfigured()` is true (the default server bakes
+> none, so the rest of the suite still boots to the shell); a dedicated `auth`
+> Playwright project (`AUTH_WEB_PORT = WEB_PORT + 5`) points there and the default
+> `chromium` project `testIgnore`s it. `global-setup` warms both servers. The
+> desktop loopback dance keeps its node:test-only coverage (can't run in a browser).
+>
+> **(q) Release wiring — verified consistent, no stragglers.** All three
+> `release.yml` Tauri build blocks + both vite configs + `app/src-tauri/.env.example`
+> + `packages/web/Dockerfile` agree on `FIREBASE_API_KEY/AUTH_DOMAIN/PROJECT_ID` +
+> `GOOGLE_DESKTOP_CLIENT_ID/SECRET` + `MICROSOFT_DESKTOP_CLIENT_ID`; zero SUPABASE
+> outside `website/` + the residuals noted in (o). The `authRequiredBody`
+> i18n strings already named FIREBASE (done in an earlier wave).
+>
+> **(r) Verification (all green):** `pnpm -r typecheck`; `app` tsgo + `check-locales`
+> (es/pt in sync); `app` node:test **1365/0**; `cargo check` + `cargo test`
+> **139/0** (Rust untouched); `houston-web` typecheck (shim parity OK) + vitest
+> **168/0**; e2e sign-in **4/4** + a default-project smoke; `pnpm check` (biome) 0.
+> **`cloud/INTEGRATION.md` is a `cloud/`-repo file (separate PR) — NOT updated here.**
 
 ---
 

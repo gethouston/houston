@@ -47,6 +47,8 @@ export async function authorizeGoogleDesktop(
       authorizeBase: GOOGLE_AUTHORIZE,
       clientId,
       scope: "openid email profile",
+      // Google-specific: request a refresh token on the installed-app grant.
+      extraParams: { access_type: "offline" },
     },
     opts,
   );

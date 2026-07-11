@@ -504,12 +504,14 @@ i18n-agnostic (label passed in). Alongside the agent filter, the app adds
 on the board** (roster from `distinctBoardPeople`), itself gated on
 `isMultiplayer` and a signed-in user.
 
-**Teammate names + photos** resolve client-side from Supabase `public.profiles`
-(an anon, column-scoped read of `user_id, name, avatar_url`) via `useUserProfiles`
-(`app/src/hooks/queries/use-user-profiles.ts`), enabled only when configured +
-multiplayer + at least one id, 5-minute `staleTime`. A fetch error surfaces
-through React Query `isError` (no swallow); missing avatars are cosmetic and fall
-back to initials. i18n: `dashboard:peopleFilter.*`, `board:people.label` (en/es/pt).
+**Teammate names + photos.** The Supabase `public.profiles` table + avatar storage
+that used to back these were **retired with Supabase auth** — RLS `auth.uid()` can't
+match Firebase (GCIP) uids, so the profiles source no longer resolves (see
+`knowledge-base/auth-migration.md`). `useUserProfiles`
+(`app/src/hooks/queries/use-user-profiles.ts`) is therefore **stubbed**: teammate
+names fall back to **initials** (from the stored `name` or the id slice) until a
+gateway-backed profile source lands, and avatars are absent. i18n:
+`dashboard:peopleFilter.*`, `board:people.label` (en/es/pt).
 
 ## engine-client types + methods
 

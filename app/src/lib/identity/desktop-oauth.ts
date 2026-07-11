@@ -97,7 +97,9 @@ export async function runLoopbackAuthorize(
   q.set("code_challenge", codeChallenge);
   q.set("code_challenge_method", "S256");
   q.set("state", state);
-  q.set("access_type", "offline");
+  // Provider-specific authorize params (e.g. Google's `access_type=offline`,
+  // Microsoft's `prompt=select_account`) come from the caller — nothing
+  // Google-only rides on every provider's URL.
   for (const [k, v] of Object.entries(params.extraParams ?? {})) q.set(k, v);
 
   const code = await awaitLoopbackCallback({

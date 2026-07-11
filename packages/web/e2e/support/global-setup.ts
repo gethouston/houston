@@ -17,12 +17,13 @@
  * the first assertion's clock begins.
  */
 import { chromium, type FullConfig } from "@playwright/test";
-import { WEB_URL } from "../config";
+import { AUTH_WEB_URL, WEB_URL } from "../config";
 import { seedPage } from "./seed";
 
 export default async function globalSetup(_config: FullConfig): Promise<void> {
   const browser = await chromium.launch();
   try {
+    // Warm the default (identity-off) server: reach the shell.
     const page = await browser.newPage();
     // Same boot seed the tests use, so we reach the shell instead of the Connect
     // screen and warm the real app-tree chunk the suite exercises.
@@ -32,6 +33,16 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     // timeout: this is the one place that absorbs the cold compile.
     await page
       .getByText("Your Agents")
+      .waitFor({ state: "visible", timeout: 120_000 });
+
+    // Warm the identity-on server (the `auth` project) the same way. It's a
+    // SEPARATE vite process with its own cold compile, so the sign-in spec would
+    // otherwise pay it inside its assertion budget. Here it reaches SignInScreen.
+    const authPage = await browser.newPage();
+    await seedPage(authPage);
+    await authPage.goto(AUTH_WEB_URL);
+    await authPage
+      .getByRole("button", { name: "Continue with Google" })
       .waitFor({ state: "visible", timeout: 120_000 });
   } finally {
     await browser.close();

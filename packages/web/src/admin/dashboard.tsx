@@ -1,3 +1,4 @@
+import { initFrontendLogging } from "@houston/app/lib/logger";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type BillingReport,
@@ -9,6 +10,13 @@ import { OrphansPanel, SpendPanel, StatCards, UsersTable } from "./components";
 import { AdminSignIn } from "./sign-in";
 import { btn, C, ghostBtn, page } from "./styles";
 import { useAdminAuth } from "./use-admin-auth";
+
+// The /admin entry (packages/web/src/main.tsx) renders this dashboard directly,
+// NOT through app-tree.tsx, so it must install the identity log sink + window
+// error logging itself — otherwise the admin sign-in's identity-module discards
+// (e.g. a malformed ID token) would only reach console. Idempotent + safe on web
+// (the underlying write is a no-op shim there).
+initFrontendLogging();
 
 /**
  * Houston Cloud operator dashboard (served at /admin). Self-contained, like the

@@ -12,7 +12,7 @@
 
 import { IdentityError } from "./errors.ts";
 import { identityLog } from "./log.ts";
-import { parseCallbackUrl } from "./oauth-callback.ts";
+import { isCsrfStateMismatch, parseCallbackUrl } from "./oauth-callback.ts";
 
 const LOG_CTX = "identity/desktop-oauth";
 
@@ -133,6 +133,21 @@ export function awaitLoopbackCallback(
           const code = parseCallbackUrl(payload, params.expectedState);
           finish(() => resolve(code));
         } catch (e) {
+          // A callback whose CSRF `state` doesn't match THIS attempt is a
+          // stale/foreign one (every attempt shares the single `auth://deep-link`
+          // channel, and a rebound loopback port can deliver an abandoned tab's
+          // callback here). Ignore it and KEEP WAITING — a stale/forged payload
+          // must never settle (kill) the legitimate pending attempt. CSRF is
+          // still enforced: the wrong-state code is never accepted, and the ~300s
+          // timeout still bounds the wait.
+          if (isCsrfStateMismatch(e)) {
+            identityLog(
+              "warn",
+              "ignoring a loopback callback with a mismatched CSRF state (stale/foreign attempt); still waiting",
+              LOG_CTX,
+            );
+            return;
+          }
           finish(() =>
             reject(
               e instanceof IdentityError

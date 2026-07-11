@@ -193,7 +193,32 @@ test("the timeout resolves null (benign), never a rejection", async () => {
   assert.equal(l.unlistened(), true);
 });
 
-test("a CSRF state mismatch still rejects with a typed IdentityError", async () => {
+test("a mismatched-state callback is IGNORED (keeps waiting), not fatal", async () => {
+  // A stale/foreign callback (another tab's or a rebound-port delivery) carries
+  // a different `state`. It must NOT settle the legitimate attempt: the attempt
+  // stays pending and the later correct-state callback resolves the real code.
+  const l = makeListen();
+  let settled = false;
+  const p = awaitLoopbackCallback({
+    expectedState: "expected",
+    authorizeUrl: "https://provider/a",
+    listen: l.listen,
+    openUrl: openOk,
+  }).then((v) => {
+    settled = true;
+    return v;
+  });
+  await tick();
+  l.emit("houston://auth-callback?code=stale&state=forged"); // ignored
+  await tick();
+  assert.equal(settled, false); // still pending — the foreign callback was ignored
+  assert.equal(l.unlistened(), false); // listener still live, awaiting the real one
+  l.emit("houston://auth-callback?code=real-code&state=expected");
+  assert.equal(await p, "real-code");
+  assert.equal(l.unlistened(), true);
+});
+
+test("a genuine provider error (matching state) still rejects typed", async () => {
   const l = makeListen();
   const p = awaitLoopbackCallback({
     expectedState: "expected",
@@ -202,13 +227,13 @@ test("a CSRF state mismatch still rejects with a typed IdentityError", async () 
     openUrl: openOk,
   });
   await tick();
-  l.emit("houston://auth-callback?code=c&state=forged");
+  l.emit("houston://auth-callback?error=access_denied&state=expected");
   await assert.rejects(
     p,
     (e: unknown) =>
       e instanceof IdentityError &&
       e.code === "invalid_idp_response" &&
-      e.rawCode === "state_mismatch",
+      e.rawCode === "access_denied",
   );
 });
 
