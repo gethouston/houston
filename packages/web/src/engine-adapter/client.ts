@@ -6,7 +6,7 @@ import {
   HoustonEngineClient,
   type ProviderId,
 } from "@houston/runtime-client";
-import type { BoardStatus } from "@houston/sdk";
+import type { BoardStatus, HoustonSdk } from "@houston/sdk";
 import { historyToFeed as sdkHistoryToFeed } from "@houston/sdk";
 import type {
   Activity,
@@ -71,6 +71,7 @@ import {
   writeCachedConversation,
 } from "./conversation-cache";
 import * as portable from "./portable";
+import { createEngineSdk } from "./sdk-client";
 import {
   flushQueuedSends,
   maybeQueueSend,
@@ -237,6 +238,16 @@ export class HoustonClient {
   private token: string;
   /** Non-null in cloud mode: agents + chat go through the control plane. */
   private cp: ControlPlaneConfig | null;
+  /**
+   * The single web-side {@link HoustonSdk} (migration wave 1). Built INERT
+   * (reactivity off — no `/v1/events` streams), sharing the same gateway auth
+   * fetch as `engine`, so its calls carry the live bearer + active-space header.
+   * Later waves delegate control-plane WRITES (agents/activities/providers/
+   * integrations/preferences) to its modules instead of re-implementing them
+   * here; reads stay on TanStack Query + the `subscribeServerEvents` bus. Held
+   * but unused this wave.
+   */
+  private readonly sdk: HoustonSdk;
   /** In-flight cloud device-code logins, keyed `${agentId}:${providerId}` — the poll guard. */
   private activeLogins = new Set<string>();
   /** Per-provider auth-status pollers that translate login completion into events (local mode). */
@@ -264,14 +275,23 @@ export class HoustonClient {
     // Live-token auth fetch (not a pinned `token`): hosted mode rotates the
     // Supabase bearer mid-session, and a 401 must refresh + replay instead of
     // surfacing (HOU-687). Outside hosted mode liveToken falls back to the
-    // captured static token, so local/static hosts are unchanged.
+    // captured static token, so local/static hosts are unchanged. Built ONCE
+    // and shared by `engine` and the SDK below, so `x-houston-org` has a single
+    // live source (`setActiveOrg` mutates `this.cp` in place; both re-read it).
+    const authFetch = controlPlane.gatewayAuthFetch(
+      opts.token,
+      () => this.cp?.activeOrgSlug,
+    );
     this.engine = new HoustonEngineClient({
       baseUrl: opts.baseUrl,
-      fetch: controlPlane.gatewayAuthFetch(
-        opts.token,
-        () => this.cp?.activeOrgSlug,
-      ),
+      fetch: authFetch,
     });
+    // The single web-side HoustonSdk (migration wave 1). INERT: reactivity is
+    // off, so constructing it opens NO stream and fires NO request — it only
+    // holds the SDK's write surface for later waves. It rides the SAME
+    // `authFetch`, so its bearer, 401-refresh, and active-space header match
+    // every other gateway call with no extra wiring.
+    this.sdk = createEngineSdk({ baseUrl: this.baseUrl, fetch: authFetch });
     // Mark the new TS engine as the active backend so the frontend can surface
     // new-engine-only capabilities (e.g. API-key providers like OpenCode). The
     // Rust engine uses the real `@houston-ai/engine-client`, never this adapter,
@@ -325,6 +345,18 @@ export class HoustonClient {
    */
   setActiveOrg(slug: string | null): void {
     if (this.cp) this.cp.activeOrgSlug = slug;
+  }
+
+  /**
+   * The web-side {@link HoustonSdk} (migration wave 1). Exposes the SDK's write
+   * modules — `agents`, `activities`, `providers`, `integrations`,
+   * `preferences` — so later waves delegate control-plane WRITES here (matching
+   * iOS) instead of re-implementing them in this adapter. It is INERT: no
+   * `/v1/events` stream, no request until a write is dispatched; reads stay on
+   * TanStack Query + the `subscribeServerEvents` bus. Nothing consumes this yet.
+   */
+  get engineSdk(): HoustonSdk {
+    return this.sdk;
   }
 
   private async activeOld(): Promise<{ provider: string; model: string }> {

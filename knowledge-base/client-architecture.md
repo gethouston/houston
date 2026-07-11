@@ -93,6 +93,33 @@ conversation/agent surface first; broader control-plane operations stay on their
 current paths until migrated deliberately" (`packages/sdk/README.md`, *Out of
 scope for v1*).
 
+**The wave-1 seam (adapter → `HoustonSdk`).** `HoustonClient` (`client.ts`) now
+constructs the ONE web-side `HoustonSdk` in `engine-adapter/sdk-client.ts`
+(`createEngineSdk`) and holds it (exposed via the `engineSdk` getter). This is
+the foundation for deleting the dual source of truth: web currently
+RE-implements agents/activities/providers/integrations/preferences CRUD in
+`control-plane.ts` + `client.ts` against the same routes the SDK modules already
+own (the iOS app consumes those modules via the native bridge), which violates
+"no business logic in surface code". Later waves delegate those adapter WRITE
+bodies to `client.engineSdk.<module>` so web matches iOS.
+
+- **Auth/active-space, one source of truth.** The SDK's `ports.fetch` is the
+  SAME `gatewayAuthFetch` instance `engine` uses — live bearer, 401-refresh, and
+  `x-houston-org` off the live `ControlPlaneConfig.activeOrgSlug`. `setActiveOrg`
+  mutates that config in place, so the SDK reroutes with no extra wiring.
+- **Read-path decision: WRITE-DELEGATION ONLY; reads stay on TanStack Query +
+  the `/v1/events` bus.** The SDK is built with `SdkConfig.reactivity: false`
+  (see `packages/sdk/src/ports.ts`), so its agents/activities modules do NOT open
+  their own `/v1/events` streams. Routes and `/v1/events` are untouched, and web
+  keeps its existing read model + `subscribeServerEvents` invalidation. Without
+  this flag, constructing the SDK would open duplicate SSE subscriptions and
+  refetch the agent list — a behavior change. Do NOT adopt the SDK's scope
+  snapshots as the web read model unless a write method hard-depends on an
+  observed scope (none do today).
+- **Inert until wave 2.** Construction issues zero requests; nothing consumes
+  `engineSdk` yet. Proven by `packages/web/tests/sdk-client.test.ts` and
+  `packages/sdk/src/sdk.test.ts` ("reactivity flag").
+
 ---
 
 ## THE PROCEDURES

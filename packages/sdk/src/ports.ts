@@ -86,4 +86,17 @@ export interface SdkConfig {
    * that keeps many chats hot, lower it under tight memory.
    */
   conversationCacheMax?: number;
+  /**
+   * Whether the reactive modules (agents, activities) open their own long-lived
+   * `GET /v1/events` streams at construction to keep their scope snapshots live.
+   *
+   * Default `true` — the native/desktop path, where the SDK is the single
+   * source of truth for reads. A host that owns its OWN read model and cache
+   * invalidation — the web engine-adapter keeps TanStack Query plus its existing
+   * `/v1/events` bus — sets this `false` to get a WRITE-ONLY SDK: the same
+   * command/mutation handlers, but no module-started streams, so no duplicate
+   * subscriptions or refetches. With reactivity off, `getSnapshot`/`subscribe`
+   * for those scopes stay empty (the host reads its own model instead).
+   */
+  reactivity?: boolean;
 }

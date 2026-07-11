@@ -130,17 +130,23 @@ export function createAgentsModule(ctx: ModuleContext): AgentsModule {
       }),
     );
 
-  const dispose = startAgentsEventStream({
-    baseUrl,
-    fetch: ports.fetch,
-    clock: ports.clock,
-    logger: ports.logger,
-    handlers: {
-      onConnect: () => backgroundRefresh("connect"),
-      onAgentsChanged: () => backgroundRefresh("change"),
-      onUnauthorized: emitTokenExpired,
-    },
-  });
+  // Reactivity off (`config.reactivity === false`): the host owns its own read
+  // model + invalidation (the web adapter), so we DON'T open a duplicate
+  // `/v1/events` stream — the module stays write-only and `dispose` is a no-op.
+  const dispose =
+    ctx.config.reactivity === false
+      ? () => {}
+      : startAgentsEventStream({
+          baseUrl,
+          fetch: ports.fetch,
+          clock: ports.clock,
+          logger: ports.logger,
+          handlers: {
+            onConnect: () => backgroundRefresh("connect"),
+            onAgentsChanged: () => backgroundRefresh("change"),
+            onUnauthorized: emitTokenExpired,
+          },
+        });
 
   return { refresh, create, rename, delete: del, dispose };
 }
