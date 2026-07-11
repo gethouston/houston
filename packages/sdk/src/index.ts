@@ -132,10 +132,18 @@ export {
 // a host (the web engine-adapter) can drive it with its OWN FeedOutput. The
 // typed facade is still reached through `sdk.turns`.
 export {
+  type AttachmentRef,
+  type AttachmentsOperation,
+  AttachmentTooLargeError,
+  type AttachmentUpload,
+  asAttachmentsSaveInput,
   type BoardStatus,
+  buildAttachmentText,
   type ConversationVM,
   ConversationVmOutput,
   conversationScope,
+  type DecodedAttachmentText,
+  decodeAttachmentText,
   type FeedFrame,
   type FeedItemVM,
   type FeedOutput,
@@ -158,6 +166,8 @@ export {
   type TerminalBoardStatus,
   TURN_DIED_MESSAGE,
   TURN_FAILED_MESSAGE,
+  type TurnAttachmentsSaveInput,
+  type TurnAttachmentsSaveResult,
   type TurnCancelInput,
   type TurnHistoryInput,
   type TurnObserveInput,

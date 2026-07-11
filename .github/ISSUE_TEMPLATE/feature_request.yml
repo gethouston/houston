@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a focused improvement to Houston.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: Explain the problem first so we can evaluate the best solution.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what makes it difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior or workflow you would like.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds or other approaches have you tried?
+    validations:
+      required: false
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      description: Which surface would this improve?
+      options:
+        - Desktop macOS
+        - Desktop Windows
+        - Web
+        - Self-host Docker
+        - All surfaces
+    validations:
+      required: true

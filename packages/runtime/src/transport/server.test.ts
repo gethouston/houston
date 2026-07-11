@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import { expect, test } from "vitest";
 import { config } from "../config";
+import { evict, publish } from "../session/bus";
 import { createRuntimeServer } from "./server";
 
 function listen(server: Server): Promise<string> {
@@ -38,6 +39,28 @@ test("generate-agent without a description is a 400, not a model call", async ()
       error: "missing 'description'",
     });
   } finally {
+    await close(server);
+  }
+});
+
+test("GET /busy reports aggregate in-flight turn state without auth", async () => {
+  const server = createRuntimeServer();
+  const baseUrl = await listen(server);
+  const conversationId = "server-busy-test";
+  try {
+    let res = await fetch(`${baseUrl}/busy`);
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ busy: false });
+
+    publish(conversationId, {
+      type: "user",
+      data: { content: "work", ts: 1 },
+    });
+    res = await fetch(`${baseUrl}/busy`);
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ busy: true });
+  } finally {
+    evict(conversationId);
     await close(server);
   }
 });

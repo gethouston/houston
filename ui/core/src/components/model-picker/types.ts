@@ -20,14 +20,6 @@ export interface ModelPickerModel {
   providerId: string;
   /** A subtle one-line description, shown under the name when present. */
   description?: string;
-  /**
-   * Consumer-curated (flagship) row. Search ranking uses it as a tiebreaker on
-   * match quality: within the same match tier a curated model outranks an
-   * uncurated one, so legacy catalog entries never bury the flagships. Level
-   * ordering is the caller's: rows render in input order, so pass them
-   * pre-ranked.
-   */
-  curated?: boolean;
 }
 
 /** A provider that owns one or more models in the catalog. */
@@ -51,13 +43,10 @@ export interface ModelPickerLabels {
   providersLabel: string;
   /** Accessible name for a provider's model list (level 2). */
   modelsLabel: string;
-  /** Accessible name for the flat search-results list. */
-  resultsLabel: string;
   /** Neutral loading state while provider statuses / catalog resolve. */
   loading: string;
-  /** Empty state when a search matches nothing. */
+  /** Empty state when the in-dropdown search matches nothing. */
   empty: string;
-  emptyHint: string;
   /** Empty state when no provider is connected yet. */
   noProviders: string;
 }
@@ -68,10 +57,8 @@ export const DEFAULT_MODEL_PICKER_LABELS: ModelPickerLabels = {
   back: "Back",
   providersLabel: "Providers",
   modelsLabel: "Models",
-  resultsLabel: "Results",
   loading: "Loading providers…",
   empty: "No models found.",
-  emptyHint: "Try another search term.",
   noProviders: "No providers connected yet.",
 };
 

@@ -1,66 +1,39 @@
 import { cn } from "@houston-ai/core";
-import confetti from "canvas-confetti";
 import type { LucideIcon } from "lucide-react";
-import { Bot, Check, LayoutGrid, Mail, Send, Sparkles } from "lucide-react";
+import { Check, Mail, Send, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import type { SetupSection } from "../../lib/setup-steps";
+import { fireSetupConfetti } from "../../lib/confetti";
 import { HoustonLogo } from "../shell/experience-card";
 import { SetupCard } from "./setup-card";
 
-export type Milestone = "ai" | "apps" | "agent" | "email" | "send";
+export type Milestone = "ai" | "email" | "send";
 
-const SECTION_MILESTONES: Record<SetupSection, Milestone[]> = {
-  setup: ["ai", "apps"],
-  onboarding: ["agent", "email", "send"],
-};
+// The full flat plan — first-run is a single flow, not two phases. The final
+// "send your first email" step (`send`) has no standalone celebration screen
+// (its payoff is the `finished` screen), so it never gets its own "done"
+// milestone; it simply renders unchecked as the upcoming step. Which of these
+// are actually shown is capability-driven and passed in via `items` (a
+// no-integrations deployment shows only `ai`), so this constant is just the
+// default full list.
+const MILESTONES: Milestone[] = ["ai", "email", "send"];
 
 const ICON: Record<Milestone, LucideIcon> = {
   ai: Sparkles,
-  apps: LayoutGrid,
-  agent: Bot,
   email: Mail,
   send: Send,
 };
 
-const prefersReducedMotion = () =>
-  typeof window !== "undefined" &&
-  typeof window.matchMedia === "function" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-/** A few overlapping bursts for the "confetti like crazy" payoff. */
-function fireConfetti() {
-  if (prefersReducedMotion()) return;
-  const base = { startVelocity: 45, ticks: 220, zIndex: 9999, scalar: 0.9 };
-  confetti({
-    ...base,
-    particleCount: 140,
-    spread: 80,
-    origin: { x: 0.5, y: 0.55 },
-  });
-  confetti({
-    ...base,
-    particleCount: 70,
-    spread: 60,
-    angle: 60,
-    origin: { x: 0, y: 0.7 },
-  });
-  confetti({
-    ...base,
-    particleCount: 70,
-    spread: 60,
-    angle: 120,
-    origin: { x: 1, y: 0.7 },
-  });
-}
-
 interface SetupProgressProps {
-  /** Which phase's checklist to show — Setup and Onboarding are separate views. */
-  section: SetupSection;
   title: string;
   message: string;
-  /** Milestones (within this section) completed so far, rendered checked. */
+  /** Milestones completed so far, rendered checked. */
   done: Milestone[];
+  /** The visible plan for this deployment, in order. The orchestrator computes
+   *  it from capabilities (all three normally, just `["ai"]` where integrations
+   *  aren't served) so the plan never lists steps that will never happen.
+   *  Defaults to the full list. */
+  items?: Milestone[];
   /** The milestone that just flipped to done — animates + fires confetti. Omit
    *  on the plain overview screens so they stay calm. */
   justCompleted?: Milestone;
@@ -70,16 +43,16 @@ interface SetupProgressProps {
 
 /**
  * The single screen behind the intro AND every milestone celebration. It shows
- * the Houston mark, a title + message, and the four-milestone checklist grouped
- * Setup vs Onboarding — items the user has finished animate to a check. When a
- * milestone just completed, confetti rains. One component so the journey reads
- * as continuous progress; monochrome per the design system (confetti aside).
+ * the Houston mark, a title + message, and the flat milestone checklist — items
+ * the user has finished animate to a check. When a milestone just completed,
+ * confetti rains. One component so the journey reads as continuous progress;
+ * monochrome per the design system (confetti aside).
  */
 export function SetupProgress({
-  section,
   title,
   message,
   done,
+  items = MILESTONES,
   justCompleted,
   ctaLabel,
   onContinue,
@@ -87,21 +60,18 @@ export function SetupProgress({
   const { t } = useTranslation("setup");
 
   useEffect(() => {
-    if (justCompleted) fireConfetti();
+    if (justCompleted) fireSetupConfetti();
   }, [justCompleted]);
 
   const doneSet = new Set(done);
   const label: Record<Milestone, string> = {
     ai: t("tutorial.missions.intro.steps.ai"),
-    apps: t("tutorial.missions.intro.steps.apps"),
-    agent: t("tutorial.missions.intro.steps.agent"),
     email: t("tutorial.missions.intro.steps.email"),
     send: t("tutorial.missions.intro.steps.send"),
   };
-  const items = SECTION_MILESTONES[section];
 
   return (
-    <SetupCard onNext={onContinue} nextLabel={ctaLabel}>
+    <SetupCard onSpace onNext={onContinue} nextLabel={ctaLabel}>
       <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
         <div className="flex flex-col items-center gap-4">
           <HoustonLogo size={52} />
@@ -111,24 +81,21 @@ export function SetupProgress({
           </div>
         </div>
 
-        <div className="flex w-full max-w-sm flex-col gap-2">
+        {/* A plain list, not a stack of boxed cards — these rows are pure
+            display (what's ahead / what's done), never clickable, so they
+            must not read as buttons. */}
+        <div className="flex w-full max-w-sm flex-col gap-3">
           {items.map((m) => {
             const isDone = doneSet.has(m);
             const Icon = ICON[m];
             return (
-              <div
-                key={m}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors",
-                  isDone ? "bg-secondary" : "bg-secondary/40",
-                )}
-              >
+              <div key={m} className="flex items-center gap-3 text-left">
                 <span
                   className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                    "flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors",
                     isDone
-                      ? "bg-foreground text-background"
-                      : "bg-background text-muted-foreground",
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border text-muted-foreground",
                     m === justCompleted && "success-pop",
                   )}
                 >

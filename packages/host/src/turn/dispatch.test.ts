@@ -12,6 +12,7 @@ import type { TurnDeps } from "./deps";
 import { dispatchCloudrun } from "./dispatch";
 import { TurnQuota } from "./quota";
 import { TurnRelay } from "./relay";
+import { dispatchTurn } from "./start-turn";
 
 /**
  * End-to-end cloudrun dispatch against a FAKE turn runtime speaking the real
@@ -169,6 +170,30 @@ test("a turn: refreshes the expiring credential, sends access-only, pumps frames
   } finally {
     close();
   }
+});
+
+test("a pinned routine turn sends autopilot mode to the runtime", async () => {
+  const { deps } = makeDeps();
+  turnBodies = [];
+  const done = new Promise<void>((r) => {
+    deps.relay.subscribe("agent-1/c-auto", (e) => {
+      if (e.type === "done" || e.type === "error") r();
+    });
+  });
+
+  const outcome = await dispatchTurn(
+    deps,
+    ws,
+    agent,
+    "c-auto",
+    "run unattended",
+    undefined,
+    { provider: "openai-codex", mode: "auto" },
+  );
+  expect(outcome.status).toBe("accepted");
+  await done;
+
+  expect(turnBodies[0]?.mode).toBe("auto");
 });
 
 test("conversation list + history read straight from object storage", async () => {

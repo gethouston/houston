@@ -18,10 +18,11 @@ in **`packages/design-tokens`** (`@houston/design-tokens`), authored as W3C DTCG
 JSON (primitive layer + semantic `--ht-*` alias layer, light + dark) and compiled
 by Style Dictionary to every surface. The CSS emits the light values on **both
 `:root` and `[data-theme="light"]`** (and dark on `[data-theme="dark"]`), so any
-subtree can **pin the light look regardless of the app theme** by setting
-`data-theme="light"` on a wrapper — custom properties inherit, so the scoped
+subtree can **pin either palette regardless of the app theme** by setting
+`data-theme` on a wrapper — custom properties inherit, so the scoped
 re-declaration re-resolves every `var(--ht-*)`, and thus every Tailwind
-`--color-*` utility, inside it (used by the sign-in card). The `dark` Tailwind
+`--color-*` utility, inside it (the sign-in and onboarding cards pin
+`data-theme="dark"` this way). The `dark` Tailwind
 variant (`ui/core/src/globals.css`) and every `[data-theme="dark"]` descendant
 rule (`futuristic.css`, app `globals.css`) carry a
 `:not(:where([data-theme="light"], [data-theme="light"] *))` guard so dark
@@ -41,9 +42,10 @@ for how visual, behavior, and structural changes flow across all three surfaces)
    reference). NEVER edit `dist/` and NEVER add a new hardcoded colour/spacing
    literal to app or `ui/` CSS — reference a `--ht-*` var (or a Tailwind
    `--color-*` utility).
-2. `pnpm --filter @houston/design-tokens build`.
-3. Commit source + regenerated `dist/` together (a sync test fails on stale dist).
-4. If the change is genuinely visual, update `test/legacy-resolved.json` to the
+2. `pnpm --filter @houston/design-tokens build`. `dist/` is gitignored (not
+   committed, on this repo despite older guidance to the contrary) — the build
+   step regenerates it locally/in CI, so only commit the `tokens/*.json` source.
+3. If the change is genuinely visual, update `test/legacy-resolved.json` to the
    new baseline in the same commit (the zero-diff test pins it otherwise).
 
 The colour values below are the CURRENT shipped tokens; treat the JSON as
@@ -160,7 +162,7 @@ Grid: leading (attach) | primary (text) | trailing (send).
 White bg, `border-black/5`, `rounded-xl`, hover shadow. Running state = `card-running-glow` animation border.
 
 ### RowCard (inline notice + integration cards)
-One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-secondary`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the Composio sign-in / link cards.
+One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-secondary`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the inline Composio `#houston_toolkit` link card. **Not** the interaction-card stepper's connect/signin STEPS — those draw a surface-less Mercury row + a filled CTA in the shared footer (no card-inside-a-card); see `chat-connect-interaction-card.tsx` / `chat-signin-interaction-card.tsx`.
 
 > **AI Models hub is the one deliberate exception.** The hub (Providers/Models tabs) reaches for a full-color brand mark — `BrandMark` (`app/src/components/ai-hub/brand-mark.tsx`) renders the same `ProviderGlyph` boxless (no tile or wash), full-bleed at sm/md/lg (`size-6/8/10`), colored via the sanctioned hex map in `shell/provider-brand-colors.ts` (the ONLY place raw brand hex may live; every other surface stays on tokens). This is a "candy store" recognition device scoped to the hub — chat surfaces (RowCard, provider-switch, error/reconnect cards) stay monochrome. Multi-button error cards stay on `ErrorCard` (icon-bubble) in `provider-error-cards/shared.tsx`.
 
@@ -205,16 +207,29 @@ Rules: `layout` prop on reordering items. `AnimatePresence mode="popLayout"` for
 ### Space screen backdrop
 `SpaceScreen` (`app/src/components/space/space-screen.tsx`) is the **shared
 full-screen space layout**: the `--ht-space-canvas` base, the `SpaceBackground`
-deep-space backdrop, and a `z-10` content slot on top. Both the **sign-in
-screen** (`components/auth/sign-in-screen.tsx`) and the **workspace-loading
-splash** (`components/shell/workspace-loading.tsx`) render inside it, so the whole
-boot experience reads as one continuous space. The **sign-in screen** floats a
-card pinned to the **light palette** (`data-theme="light"`) so it stays a bright,
-calm card regardless of app theme (Mercury pattern: dark backdrop, light card).
-The **workspace-loading splash has NO card** — the `OrbitLoader` + status line sit
-directly on the dark backdrop, using the space-foreground token family
-(`--ht-space-foreground` / `-foreground-muted`, same as the sign-in wordmark/footer).
-The whole space rendering cluster lives in **`app/src/components/space/`**.
+deep-space backdrop, and a `z-10` content slot on top. The **sign-in screen**
+(`components/auth/sign-in-screen.tsx`), the **workspace-loading splash**
+(`components/shell/workspace-loading.tsx`), and the **first-run onboarding flow**
+(`components/onboarding/personal-assistant-onboarding.tsx`) all render inside it,
+so the whole boot experience reads as one continuous space. The sign-in screen
+and each onboarding step float a card **pinned to the DARK palette**
+(`data-theme="dark"`) so the card reads identically in both app themes (dark
+card on the theme-invariant space backdrop). Onboarding wraps ONE `SpaceScreen`
+at the top level so the WebGL nebula never remounts across step transitions;
+`SetupCard`'s `onSpace` prop is what floats each step's card on it (drops the
+standalone `h-screen`/`bg-secondary` backdrop and pins the dark palette). The
+language and disclaimer gates (`shell/language-gate.tsx`,
+`shell/disclaimer-gate.tsx`) now render the SAME way — each wrapped in
+`SpaceScreen` with an `onSpace` `SetupCard` — so the whole pre-workspace flow is
+one continuous starfield, not the old dimmed `bg-secondary` backdrop. The
+**finished "You're all set" step** is the one deliberate colour accent: a
+celebratory `SuccessCheck` (warm space-nebula gradient fill + expanding ring,
+from the `--ht-space-*` tokens) above a single **"Start building"** CTA;
+everything else stays monochrome content. The **workspace-loading splash has NO card** — the `OrbitLoader` +
+status line sit directly on the dark backdrop, using the space-foreground token
+family (`--ht-space-foreground` / `-foreground-muted`, same as the sign-in
+wordmark/footer). The whole space rendering cluster lives in
+**`app/src/components/space/`**.
 
 **`OrbitLoader`** (`space/orbit-loader.tsx` + geometry/trail constants in
 `space/orbit-path.ts`) is the loading centrepiece that replaced the old scaled-up
@@ -323,14 +338,23 @@ second rounded card with a gutter gap.
 "glitter" over solid surfaces): gutter `#eef1f7`, screen `#fff`, cards `#f4f6fc`,
 cool blue/indigo border. Clean and futuristic by restraint, not decoration.
 
-**Modals are glass, not slabs.** All modal primitives — `DialogContent`
-(`ui/core/components/dialog.tsx`), `AlertDialogContent`, `SheetContent`, and the
-AI-Hub `ModalShell` — render on the translucent **`bg-card`** surface (frosted
-blur + top sheen from futuristic.css), NOT opaque `bg-background`, so the aurora
-canvas bleeds through in dark mode like the kanban columns (`bg-secondary`). The
-scrims are deliberately light for the same reason: Dialog overlay `bg-black/25`,
-Alert/Sheet `bg-black/35` (down from /40–/50). Change the surface centrally in
-those four primitives — no modal should hardcode its own background.
+**Modals: glass in dark, solid white in light.** All modal primitives —
+`DialogContent` (`ui/core/components/dialog.tsx`), `AlertDialogContent`,
+`SheetContent`, and the AI-Hub `ModalShell` — render on the dedicated
+**`bg-dialog`** surface token, NOT `bg-card` and NOT opaque `bg-background`. In
+**dark** the token is the same translucent glass as `card`
+(`{color.glass.neutral-50}`) with frosted blur + top sheen from futuristic.css,
+so the aurora canvas bleeds through like the kanban columns. In **light** it is
+solid `{color.base.white}` — light mode has no aurora to bleed, so a translucent
+modal just read as see-through (the bug fixed here); the futuristic `.bg-dialog`
+blur becomes a no-op on the opaque fill. The token is separate from `card` on
+purpose: `card` stays glass in both modes for non-modal surfaces, only modals
+go solid in light. Wired: light/dark `dialog` in `tokens/semantic/color.{light,
+dark}.json` → `--ht-dialog` → `@theme --color-dialog` (`ui/core/src/globals.css`)
+→ Tailwind `bg-dialog`; frosted-glass rule + dark sheen in `futuristic.css`.
+The scrims are deliberately light: Dialog overlay `bg-black/25`, Alert/Sheet
+`bg-black/35`. Change the surface centrally in those four primitives — no modal
+should hardcode its own background.
 
 **Primary button** — flat and sober (`[data-variant="default"]:is(button, a)`),
 not a glossy slab. Kanban resting cards use one token, `--ht-card-rest` (`#2c2c2b`
@@ -348,9 +372,23 @@ blur, `--ht-card-rest`, the canvas tokens). Dark mode is the loved baseline —
 when adjusting, scope changes to light (`:root`) and pin dark
 (`[data-theme="dark"]`) so it stays put.
 
+**Top-level surface shell (`app/src/components/shell/page-shell.tsx`)** — the four
+sidebar destinations (AI hub, Integrations, Organization, Settings) share two
+app-local primitives so their width and header spacing are identical.
+`PageContainer` is the canonical horizontal column (`mx-auto w-full max-w-5xl
+px-8`, the single source of the shared page width; callers add vertical rhythm —
+surfaces open at `pt-10`, close at `pb-10` — and it spreads div props so it can
+also be a tab's `role="tabpanel"`). `PageHeader` is the canonical title block: a
+28px normal-weight `h1` + optional muted subtitle + optional trailing slot. These
+are deliberately NOT in `ui/` (page chrome, not a reusable widget → no
+inventory/parity churn). The fixed-masthead surfaces (hub, org) split the
+container across a `shrink-0` masthead + a scrolling `PageContainer` below; the
+single-scroll surfaces (integrations, settings landing) use one. Settings landing
+now shares `max-w-5xl` (cards render wider than before, by design).
+
 **Settings (`app/src/components/settings/`)** — no sidebar. The landing is the
-**overview** (`settings-index.tsx`); its title uses the integrations page font
-(`text-[28px] font-normal`). Two row primitives (`settings-row.tsx`), both with a
+**overview** (`settings-index.tsx`); it uses the shared `PageContainer` +
+`PageHeader` (title `text-[28px] font-normal`). Two row primitives (`settings-row.tsx`), both with a
 **bare icon** (no tile/background): `SettingsControlRow` resolves a setting in
 place (bare icon · title · right-side control) and `SettingsRow` navigates (adds
 a value + chevron). Simple settings are inline control rows rendered straight

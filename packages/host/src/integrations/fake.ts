@@ -118,7 +118,14 @@ export class FakeIntegrationProvider implements IntegrationProvider {
           a.description.toLowerCase().includes(q) ||
           a.action.toLowerCase().includes(q),
       )
-      .map((a) => ({ ...a, connected: activeToolkits.has(a.toolkit) }));
+      .map((a) => {
+        const connected = activeToolkits.has(a.toolkit);
+        return {
+          ...a,
+          connected,
+          status: connected ? ("connected" as const) : ("connectable" as const),
+        };
+      });
   }
 
   async execute(

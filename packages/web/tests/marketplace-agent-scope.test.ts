@@ -1,7 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import {
   listSkillsFromRepo,
-  popularCommunitySkills,
   searchCommunitySkills,
 } from "../src/engine-adapter/control-plane";
 
@@ -50,16 +49,6 @@ test("community search rides the agent scope the gateway can proxy", async () =>
 
   expect(calls).toEqual([
     "https://gateway.example/agents/Houston%2FGrowth/skills/community/search",
-  ]);
-});
-
-test("community popular rides the agent scope the gateway can proxy", async () => {
-  const calls = stubFetch(json(200, []));
-
-  await popularCommunitySkills(CFG, "Houston/Growth");
-
-  expect(calls).toEqual([
-    "https://gateway.example/agents/Houston%2FGrowth/skills/community/popular",
   ]);
 });
 

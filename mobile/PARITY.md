@@ -17,15 +17,16 @@ Unknown statuses are preserved and rendered neutrally. New activities are create
 | Type | Values | Meaning |
 |---|---|---|
 | `SessionStatusValue` | `starting` \| `running` \| `completed` \| `error` | Drives spinner (`running`), settle (`completed`), failure (`error`). `starting` is legacy — TS machinery never emits it. |
-| `BoardStatus` | `running` \| `needs_you` \| `error` | Persisted board-card status once a turn settles. |
+| `BoardStatus` | `running` \| `needs_you` \| `error` \| `done` | Persisted board-card status once a turn settles. `done` = a clean turn with nothing outstanding (`TerminalBoardStatus`). iOS `BoardStatus` decodes only `running`/`needs_you`/`error` explicitly and folds `done` (+ any future terminal string) to `.unknown`, which every consumer treats as "no special status" — this keeps decoding forward-compatible without forcing a case onto the exhaustive `MissionState` switch. |
 
 ### THE critical needs_you-vs-error rule
 `packages/sdk/src/modules/turns/vm-output.ts:36-47`: a user **Stop** (and a logged-out provider)
 settles `sessionStatus === "error"` **but** `boardStatus === "needs_you"`. **Read the pair, never
 `sessionStatus` alone** — keying off sessionStatus renders a normal Stop as red.
 `boardStatus:"needs_you"` = handled / your attention; `boardStatus:"error"` = genuine failure.
-`ConversationVM` exposes `{ feed, running, sessionStatus, boardStatus, queued? }` (`queued`
-additive — see §5).
+`ConversationVM` exposes `{ feed, running, sessionStatus, boardStatus, queued?, pendingInteraction? }`
+(`queued` additive — see §5; `pendingInteraction` additive — the steps a settled turn on `needs_you`
+is waiting on the user for, rendered by the in-chat interaction card, see PARITY-CHAT §9).
 
 ### BRIDGE addressing — the conversation VM scope (agent-qualified)
 `packages/sdk/src/modules/turns/vm-output.ts:83-87` (`conversationScope`): the conversation VM is
@@ -109,6 +110,57 @@ Left-to-right order and status→column mapping (single source of truth):
   "{{count}} issue needs you" (+ plurals).
 - Busy rule: a session is busy if activity `status==="running"` OR live sessionStatus active OR
   optimistically started — externally-started sessions (routines, other surfaces) count as busy.
+
+### iOS home rows — WhatsApp chat-list anatomy (waves 2+3, founder directive 2026-07-06)
+The mobile Agents home restyles each agent as a WhatsApp chat-list cell. Native-only; the
+aggregation (`needsYouCount`/`runningCount`) and avatar rules above are unchanged — this is layout.
+- **Two-line cell** (`AgentRow.swift`) — line 1: agent name + right-aligned relative time
+  (`Typography.caption`, `mutedFg`); line 2: preview text + a trailing **filled** `NeedsYouChip`.
+- **Relative time** (`AgentRowTime.label`, from `AgentOverview.lastActivityAt` = most-recent
+  mission `updatedAt`, parsed by `ActivityTimestamp`): today → short locale time (reuses
+  `ChatBubbleTime`); yesterday → `Strings.Chat.Timeline.yesterday`; ≤6 days → weekday; older → short
+  date. `nil` when no dated mission. Injectable `now`/`calendar`/`locale`; formatters pinned to the
+  calendar's timezone.
+- **Preview line — ONE signal per state** (`AgentRowPreview.derive`): running → "Working…"
+  (`Strings.Chat.TitleBar.working`, accent-tinted) **whenever `runningCount > 0`, regardless of any
+  needs-you count** — the filled `NeedsYouChip` is the sole needs-you signal, so the preview never
+  repeats it (WhatsApp shows "typing…" even with an unread badge). No running mission → the
+  last-activity line (`Strings.Agents.lastActivity`), which renders a **bare title** for `needs_you`
+  (the badge carries the rest) and keeps **"Hit a snag on …"** for `error` (a genuine failure is
+  information and carries no badge — the fold does not count `error` into `needsYouCount`). No
+  missions → the no-missions line.
+- **Filled needs-you badge** — `NeedsYouChip` now defaults to `.filled` (`warning` fill + `warningFg`
+  text) instead of the outline capsule; the "99+" cap is unchanged (`StatusChip.swift`). `AgentRow`
+  is its only caller; Mission Control uses the native `BadgeModel`, not this chip.
+- **Pull-down search** (`AgentsView.swift`, `.searchable(placement: .navigationBarDrawer)`): a pure
+  case/diacritic-insensitive name filter (`AgentSearch.filter`; blank query → all rows in order),
+  a "No results" empty state (`EmptyStateView`), and an animated tier/recency reorder
+  (`.smooth(Motion.common)` keyed on the visible-row ids, disabled under Reduce Motion). Copy:
+  `Strings.AgentsSearch`. No pull-to-refresh.
+
+Row derivations are pure and unit-tested (`HoustonTests/Agents/AgentRowTimeTests`,
+`AgentSearchTests`, `AgentsOverviewBuilderTests`).
+
+### iOS per-agent missions screen — a sober conversation list (founder directive 2026-07-06)
+Tapping a home row pushes the agent's missions screen (`AgentMissions/AgentMissionsView.swift`),
+rebuilt from a card grid into a WhatsApp-style conversation list. Native-only; the grouping/order and
+`MissionCardData` are unchanged — this is layout.
+- **No header** — the inline `navigationTitle` already names the agent and the home row already shows
+  the helmet, so the old 40pt avatar + title block was removed. Body is just the grouped list.
+- **Slim two-line rows** (`MissionRowContent.swift`, derived by the pure `MissionRowLine.swift`):
+  line 1 = mission title + right-aligned relative time (`MissionTimestamp.relativeLabel`, hidden when
+  unparseable); line 2 = a state signal that **collapses away when empty** — accent "Working…" (reuses
+  `Strings.Chat.TitleBar.working`) while running, destructive `Strings.AgentMissions.snag`
+  ("Hit a snag", title-less — the title is already on line 1) for error, else a muted description
+  preview. Running dominates, then error, then description. **No** avatar / agent name / tags / card
+  border / fill / glow; the `List` supplies inset hairline separators; rows keep a ~44pt tap target.
+- **Grouping unchanged** — one `Section` per non-empty group in PARITY order (Needs you incl. error,
+  Running, Done) with `BoardColumn.label` headers, plus a trailing Archived row. `needs_you`/`done`
+  add no per-row chrome: the section header is the signal (sober = trust the structure).
+- **Archived list** (`AgentArchivedMissionsView.swift`) reuses the SAME `MissionRowContent`, restyled
+  to match (plain rows, inset separators) so the two screens read as one list.
+- `MissionCardView` (the card) is now used ONLY by Mission Control's board (`MissionCardRow.swift`).
+- Derivation is pure and unit-tested (`HoustonTests/AgentMissions/MissionRowLineTests`).
 
 ## 5. Mission chat feed catalog
 `FeedItem` union: `ui/chat/src/types.ts`. Fold: `ui/chat/src/feed-to-messages.ts`.

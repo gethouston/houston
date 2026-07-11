@@ -94,7 +94,10 @@ export default defineConfig(({ mode }) => {
       ],
     },
     server: {
-      port: 1430,
+      // Overridable so parallel worktrees' e2e runs never share a server
+      // (see packages/fake-host/src/config.ts for the matching fake-host
+      // override and the why).
+      port: Number(process.env.HOUSTON_E2E_WEB_PORT || 1430),
       strictPort: true,
       // We import from app/src and the @houston-ai source packages, which live
       // outside this package root — allow the whole monorepo.

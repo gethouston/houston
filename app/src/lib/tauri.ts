@@ -13,6 +13,7 @@
 
 import type {
   AgentAssignment,
+  CommunitySkillPreview,
   CustomEndpoint,
   ComposioAppEntry as EngineComposioAppEntry,
   ComposioStatus as EngineComposioStatus,
@@ -39,10 +40,12 @@ import {
   isLoopbackHostUrl,
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
+import i18n from "./i18n";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
+import { isNeedsUpgradeError } from "./team-status-model";
 import type {
   Agent,
   CommunitySkillResult,
@@ -55,7 +58,7 @@ import type {
 
 export { withAttachmentPaths } from "./attachment-message";
 
-interface EngineCallOptions {
+export interface EngineCallOptions {
   /** Show a red error toast on failure. Default true. Set false when the
    *  caller renders the failure with its own inline UI. */
   toast?: boolean;
@@ -126,6 +129,21 @@ async function surfaceError(
   if (typeof kind === "string" && options?.silenceKinds?.includes(kind)) return;
   if (options?.silence?.(err)) return;
 
+  // Expected business state, not a bug: a write into a team whose trial expired
+  // (C8 `needs_upgrade`). Surface the real reason as a plain info toast — never
+  // the red "report a bug" pair — so a member/admin learns to ask their owner
+  // instead of filing a bug. Logged above; no Sentry. The share flow silences
+  // its own `needs_upgrade` inline before reaching here, so this covers every
+  // OTHER write (member-add, agent config, etc.).
+  if (isNeedsUpgradeError(err)) {
+    const { showExpectedStateToast } = await import("./error-toast");
+    showExpectedStateToast(
+      i18n.t("teams:degrade.writeBlockedTitle"),
+      i18n.t("teams:degrade.writeBlockedBody"),
+    );
+    return;
+  }
+
   // Aborted requests are expected; `toast: false` callers render their own
   // failure UI but the error is still captured. See `engineCallSurface`.
   const { toast: shouldToast, capture: shouldCapture } = engineCallSurface(
@@ -164,19 +182,6 @@ export const tauriWorkspaces = {
   setLocale: (id: string, locale: string | null) =>
     call<Workspace>("set_workspace_locale", () =>
       getEngine().setWorkspaceLocale(id, locale),
-    ),
-  getContext: (id: string) =>
-    call<import("@houston-ai/engine-client").WorkspaceContext>(
-      "get_workspace_context",
-      () => getEngine().getWorkspaceContext(id),
-    ),
-  setContext: (
-    id: string,
-    body: import("@houston-ai/engine-client").WorkspaceContext,
-  ) =>
-    call<import("@houston-ai/engine-client").WorkspaceContext>(
-      "set_workspace_context",
-      () => getEngine().setWorkspaceContext(id, body),
     ),
 };
 
@@ -359,6 +364,13 @@ export const tauriChat = {
       suppressUserBubble?: boolean;
       /** Queue display (user's words + attachment names) if the send is held (see SessionStartRequest). */
       queuedPreview?: { text: string; attachmentNames?: string[] };
+      /**
+       * What the user's bubble renders when it must differ from `prompt` — a
+       * hidden setup-mission directive or appended attachment paths. The engine
+       * still receives `prompt`; this only changes the live + replayed bubble
+       * (see SessionStartRequest).
+       */
+      displayText?: string;
     },
   ) =>
     call<string>("send_message", async () => {
@@ -377,6 +389,7 @@ export const tauriChat = {
         mode: opts?.modeOverride,
         suppressUserBubble: opts?.suppressUserBubble,
         queuedPreview: opts?.queuedPreview,
+        displayText: opts?.displayText,
       });
       return res.sessionKey;
     }),
@@ -469,6 +482,7 @@ export const tauriSkills = {
       : call<SkillSummary[]>("list_skills", async () =>
           (await getEngine().listSkills(agentPath)).map((s) => ({
             name: s.name,
+            title: s.title ?? null,
             description: s.description,
             version: s.version,
             tags: s.tags,
@@ -569,19 +583,16 @@ export const tauriSkills = {
       undefined,
       { toast: false },
     ),
-  popularCommunity: (agentPath: string, signal?: AbortSignal) =>
-    call<CommunitySkillResult[]>(
-      "popular_community_skills",
-      async () =>
-        (await getEngine().popularCommunitySkills(agentPath, signal)).map(
-          (s) => ({
-            id: s.id,
-            skillId: s.skillId,
-            name: s.name,
-            installs: s.installs,
-            source: s.source,
-          }),
-        ),
+  previewCommunity: (
+    agentPath: string,
+    source: string,
+    skillId: string,
+    signal?: AbortSignal,
+  ) =>
+    call<CommunitySkillPreview>(
+      "preview_community_skill",
+      () =>
+        getEngine().previewCommunitySkill(agentPath, source, skillId, signal),
       undefined,
       { toast: false },
     ),
@@ -830,6 +841,12 @@ interface RawConversation {
   agent_name: string;
   agent?: string;
   routine_id?: string;
+  /** The human who created this mission (Teams attribution). Server-stamped
+   *  from the gateway acting-as identity; absent on desktop/single-player. */
+  created_by?: string;
+  /** Humans who started or collaborated on this mission (Teams attribution).
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  contributors?: { user_id: string; name?: string }[];
 }
 
 export const tauriConversations = {
@@ -869,6 +886,8 @@ function conversationToRaw(
     agent_name: c.agent_name,
     agent: c.agent,
     routine_id: c.routine_id,
+    created_by: c.created_by,
+    contributors: c.contributors,
   };
 }
 
@@ -1044,6 +1063,24 @@ export const tauriPreferences = {
     call<string | null>("get_preference", () => getEngine().getPreference(key)),
   set: (key: string, value: string) =>
     call<void>("set_preference", () => getEngine().setPreference(key, value)),
+};
+
+// ─── Sidebar layout ───────────────────────────────────────────────────
+
+export const tauriSidebar = {
+  getLayout: (workspaceId: string) =>
+    call<import("@houston-ai/engine-client").SidebarLayout>(
+      "get_sidebar_layout",
+      () => getEngine().getSidebarLayout(workspaceId),
+    ),
+  setLayout: (
+    workspaceId: string,
+    layout: import("@houston-ai/engine-client").SidebarLayout,
+  ) =>
+    call<import("@houston-ai/engine-client").SidebarLayout>(
+      "set_sidebar_layout",
+      () => getEngine().setSidebarLayout(workspaceId, layout),
+    ),
 };
 
 // ─── Providers ────────────────────────────────────────────────────────
@@ -1505,7 +1542,14 @@ export const tauriOrg = {
   addMember: (
     email: string,
     role: import("@houston-ai/engine-client").OrgRole,
-  ) => call("add_org_member", () => getEngine().addOrgMember(email, role)),
+    options?: EngineCallOptions,
+  ) =>
+    call(
+      "add_org_member",
+      () => getEngine().addOrgMember(email, role),
+      undefined,
+      options,
+    ),
   /** Revoke a pending invite by id (owner only). */
   deleteInvite: (inviteId: string) =>
     call<void>("delete_org_invite", () =>
@@ -1527,4 +1571,51 @@ export const tauriOrg = {
   /** Per-agent/user usage counters over the last `days` (owner org-wide; admin
    *  their managed agents; plain members 403). */
   usage: (days: number) => call("org_usage", () => getEngine().orgUsage(days)),
+  /** C8 spaces: the caller's spaces + pending invites. Degrades to an empty
+   *  result off-spaces (the switcher then shows only the personal workspace). */
+  listOrgs: () => call("list_orgs", () => getEngine().listOrgs()),
+  /** C8 spaces: create a team space. NOT idempotent — on a lost response the
+   *  caller reconciles via `listOrgs` and reuses the slug, never blind-retries. */
+  createOrg: (name: string) =>
+    call("create_org", () => getEngine().createOrg(name)),
+  /** C8 spaces: start an agent move into a team; poll `moveStatus` to terminal
+   *  `done` before inviting (share pipeline order is a contract rule). */
+  moveAgent: (
+    agentSlugOrId: string,
+    toSlug: string,
+    options?: EngineCallOptions,
+  ) =>
+    call(
+      "move_agent",
+      () => getEngine().moveAgent(agentSlugOrId, toSlug),
+      undefined,
+      options,
+    ),
+  /** C8 spaces: poll one agent-move's progress. */
+  moveStatus: (agentSlugOrId: string, moveId: string) =>
+    call("agent_move_status", () =>
+      getEngine().getMoveStatus(agentSlugOrId, moveId),
+    ),
+  /** C8 billing: the active team's billing summary (owner/admin, team space).
+   *  Degrades to null off-entitlement so the billing UI renders nothing. */
+  getBilling: () => call("get_billing", () => getEngine().getBilling()),
+  /** C8 billing: start a Stripe Checkout session (owner only); returns `{url}`
+   *  to open externally. A failure surfaces via `call` (red bug toast + report). */
+  createCheckout: (interval: "monthly" | "annual") =>
+    call("create_checkout", () => getEngine().createCheckout(interval)),
+  /** C8 billing: open the Stripe customer portal (owner only); returns `{url}`. */
+  createPortal: () => call("create_portal", () => getEngine().createPortal()),
+  /** Read the org-wide ceilings — apps + AI models (any member). */
+  getSettings: () =>
+    call("get_org_settings", () => getEngine().getOrgSettings()),
+  /**
+   * Replace an org-wide ceiling (owner only). Partial patch: pass
+   * `allowedToolkits` (apps) and/or `allowedModels` (AI models) to change one
+   * without touching the other.
+   */
+  setSettings: (settings: {
+    allowedToolkits?: string[] | null;
+    allowedModels?: string[] | null;
+  }) =>
+    call<void>("set_org_settings", () => getEngine().setOrgSettings(settings)),
 };

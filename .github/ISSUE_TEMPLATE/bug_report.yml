@@ -1,0 +1,60 @@
+name: Bug report
+description: Report something that is broken or not working as expected.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping us improve Houston. Please include enough detail to reproduce the problem.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect Houston to do?
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest sequence of steps that reproduces the problem.
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      description: Where did the problem happen?
+      options:
+        - Desktop macOS
+        - Desktop Windows
+        - Web
+        - Self-host Docker
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: Enter the Houston version, commit, or Docker image tag.
+      placeholder: 0.5.0
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Desktop logs live under ~/.houston/logs. Development builds use ~/.dev-houston/logs. Remove secrets and personal data before attaching logs.
+      render: shell
+    validations:
+      required: false

@@ -13,6 +13,18 @@ interface ConnectMoreAppsSectionProps {
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
   connectFlow: ConnectFlow;
+  /**
+   * The surface-owned category selection (`"all"` = no filter). The category
+   * picker sits in this block's control row, but the surface owns the value so
+   * the same choice also filters the connected / allowed lists above it.
+   */
+  category: string;
+  onCategoryChange: (next: string) => void;
+  /**
+   * The Teams effective allowlist (`null` = unrestricted). Apps outside it show
+   * as locked rows instead of being hidden, and the headline count excludes them.
+   */
+  allowlist?: string[] | null;
   /** The catalog is still fetching (show a loader, not a "no apps" message). */
   loading?: boolean;
 }
@@ -30,6 +42,9 @@ export function ConnectMoreAppsSection({
   catalog,
   connections,
   connectFlow,
+  category,
+  onCategoryChange,
+  allowlist,
   loading,
 }: ConnectMoreAppsSectionProps) {
   const { t } = useTranslation("integrations");
@@ -44,15 +59,17 @@ export function ConnectMoreAppsSection({
     [connections],
   );
   // How many apps are still connectable — shown next to the title so the ~1000+
-  // catalog reads as a headline number, not a hidden dialog.
-  const availableCount = useMemo(
-    () =>
-      catalog.reduce(
-        (n, tk) => (connectedToolkits.has(tk.slug) ? n : n + 1),
-        0,
-      ),
-    [catalog, connectedToolkits],
-  );
+  // catalog reads as a headline number, not a hidden dialog. Policy-blocked apps
+  // (outside the Teams allowlist) are NOT connectable, so they're excluded here
+  // even though they still render below as locked rows.
+  const availableCount = useMemo(() => {
+    const allowed = allowlist == null ? null : new Set(allowlist);
+    return catalog.reduce((n, tk) => {
+      if (connectedToolkits.has(tk.slug)) return n;
+      if (allowed && !allowed.has(tk.slug)) return n;
+      return n + 1;
+    }, 0);
+  }, [catalog, connectedToolkits, allowlist]);
 
   const connecting = connectFlow.state;
   const connectingName = connecting
@@ -81,9 +98,12 @@ export function ConnectMoreAppsSection({
 
       <CatalogBrowser
         catalog={catalog}
+        category={category}
+        onCategoryChange={onCategoryChange}
         connectedToolkits={connectedToolkits}
         connectingToolkit={connecting?.toolkit ?? null}
         excludeToolkits={connectedToolkits}
+        allowlist={allowlist}
         loading={loading}
         onConnect={(toolkit) => void connectFlow.connect(toolkit)}
       />

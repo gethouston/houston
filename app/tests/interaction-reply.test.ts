@@ -1,10 +1,18 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { ChatInteractionAnswer } from "@houston-ai/chat";
+// Imported from source (not the barrel) so node's --experimental-strip-types
+// runner needn't resolve the package's extensionless .tsx re-exports.
+import { decodeInteractionAnswersMessage } from "../../ui/chat/src/interaction-answers-message.ts";
 import { isAutoContinueMessage } from "../src/lib/auto-continue-message.ts";
-import { composeInteractionReply } from "../src/lib/interaction-reply.ts";
+import {
+  composeInteractionReply,
+  encodeInteractionAnswersMessage,
+} from "../src/lib/interaction-reply.ts";
 
 const connectedLine = (name: string) => `Connected ${name}.`;
+const signedInLine = "Signed in to Houston.";
+const signedInFollowup = "I've signed in. Please continue.";
 
 const answers: ChatInteractionAnswer[] = [
   { stepId: "q1", question: "To whom?", answer: "john@example.com" },
@@ -17,7 +25,10 @@ describe("composeInteractionReply", () => {
       answers,
       connectedNames: [],
       hasQuestionSteps: true,
+      signedIn: false,
       connectedLine,
+      signedInLine,
+      signedInFollowup,
     });
     strictEqual(isAutoContinueMessage(reply), false);
     strictEqual(
@@ -31,7 +42,10 @@ describe("composeInteractionReply", () => {
       answers,
       connectedNames: ["Gmail"],
       hasQuestionSteps: true,
+      signedIn: false,
       connectedLine,
+      signedInLine,
+      signedInFollowup,
     });
     strictEqual(isAutoContinueMessage(reply), false);
     strictEqual(
@@ -48,7 +62,10 @@ describe("composeInteractionReply", () => {
       answers: [],
       connectedNames: ["Gmail", "Slack"],
       hasQuestionSteps: false,
+      signedIn: false,
       connectedLine,
+      signedInLine,
+      signedInFollowup,
     });
     strictEqual(isAutoContinueMessage(reply), true);
     strictEqual(reply.split("\n").length, 4); // marker + blank + two lines
@@ -61,9 +78,139 @@ describe("composeInteractionReply", () => {
       answers: [],
       connectedNames: ["Gmail"],
       hasQuestionSteps: false,
+      signedIn: false,
       connectedLine,
+      signedInLine,
+      signedInFollowup,
     });
     strictEqual(isAutoContinueMessage(reply), true);
     strictEqual(reply.endsWith("Connected Gmail."), true);
+  });
+
+  // ── Sign-in composition ────────────────────────────────────────────────
+  // The signin line joins a VISIBLE reply BEFORE any Connected line when the
+  // sequence also asked questions (the user typed those answers).
+  it("adds the signed-in line before Connected lines in a question+signin+connect sequence", () => {
+    const reply = composeInteractionReply({
+      answers,
+      connectedNames: ["Gmail"],
+      hasQuestionSteps: true,
+      signedIn: true,
+      connectedLine,
+      signedInLine,
+      signedInFollowup,
+    });
+    strictEqual(isAutoContinueMessage(reply), false);
+    strictEqual(
+      reply,
+      "To whom?: john@example.com\nSaying what?: Running late\nSigned in to Houston.\nConnected Gmail.",
+    );
+  });
+
+  // A signin+connect sequence with no questions has nothing the user typed, so
+  // it resumes the agent hidden — the signed-in status line before the connects.
+  it("hides a signin+connect sequence and orders sign-in before connects", () => {
+    const reply = composeInteractionReply({
+      answers: [],
+      connectedNames: ["Gmail"],
+      hasQuestionSteps: false,
+      signedIn: true,
+      connectedLine,
+      signedInLine,
+      signedInFollowup,
+    });
+    strictEqual(isAutoContinueMessage(reply), true);
+    strictEqual(reply.includes("Signed in to Houston."), true);
+    strictEqual(
+      reply.indexOf("Signed in to Houston.") <
+        reply.indexOf("Connected Gmail."),
+      true,
+    );
+  });
+
+  // A signin-ONLY sequence has nothing factual to relay, so it uses the
+  // dedicated hidden followup, never a lone status line.
+  it("resumes a signin-only sequence with the hidden followup", () => {
+    const reply = composeInteractionReply({
+      answers: [],
+      connectedNames: [],
+      hasQuestionSteps: false,
+      signedIn: true,
+      connectedLine,
+      signedInLine,
+      signedInFollowup,
+    });
+    strictEqual(isAutoContinueMessage(reply), true);
+    strictEqual(reply.endsWith("I've signed in. Please continue."), true);
+    strictEqual(reply.includes("Signed in to Houston."), false);
+  });
+});
+
+describe("encodeInteractionAnswersMessage", () => {
+  it("keeps the flat model body identical to composeInteractionReply", () => {
+    const shared = {
+      answers,
+      connectedNames: ["Gmail"],
+      hasQuestionSteps: true,
+      signedIn: true,
+      connectedLine,
+      signedInLine,
+      signedInFollowup,
+    } as const;
+    const encoded = encodeInteractionAnswersMessage(shared);
+    const flat = composeInteractionReply(shared);
+    // The marker rides in front; the body after the blank line is the untouched
+    // flat reply the model reads.
+    strictEqual(encoded.endsWith(`\n\n${flat}`), true);
+    strictEqual(encoded.startsWith("<!--houston:interaction-answers "), true);
+  });
+
+  it("carries a structured payload that decodes back to the same Q&A", () => {
+    const encoded = encodeInteractionAnswersMessage({
+      answers,
+      connectedNames: ["Gmail"],
+      hasQuestionSteps: true,
+      signedIn: true,
+      connectedLine,
+      signedInLine,
+      signedInFollowup,
+    });
+    const payload = decodeInteractionAnswersMessage(encoded);
+    deepStrictEqual(payload, {
+      lines: [
+        { question: "To whom?", answer: "john@example.com" },
+        { question: "Saying what?", answer: "Running late" },
+        { answer: "Signed in to Houston." },
+        { answer: "Connected Gmail." },
+      ],
+    });
+  });
+
+  it("does NOT mark a hidden connect-only sequence (no visible bubble)", () => {
+    const encoded = encodeInteractionAnswersMessage({
+      answers: [],
+      connectedNames: ["Gmail"],
+      hasQuestionSteps: false,
+      signedIn: false,
+      connectedLine,
+      signedInLine,
+      signedInFollowup,
+    });
+    strictEqual(isAutoContinueMessage(encoded), true);
+    strictEqual(decodeInteractionAnswersMessage(encoded), null);
+  });
+
+  it("does NOT mark a hidden signin-only sequence", () => {
+    const encoded = encodeInteractionAnswersMessage({
+      answers: [],
+      connectedNames: [],
+      hasQuestionSteps: false,
+      signedIn: true,
+      connectedLine,
+      signedInLine,
+      signedInFollowup,
+    });
+    strictEqual(isAutoContinueMessage(encoded), true);
+    strictEqual(decodeInteractionAnswersMessage(encoded), null);
   });
 });

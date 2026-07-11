@@ -1,5 +1,10 @@
 {
   "title": "Integraciones",
+  "policyPage": {
+    "subtitle": "Elige qué aplicaciones pueden usar los agentes de este espacio de trabajo.",
+    "manageAccounts": "Gestiona tus aplicaciones conectadas",
+    "perAgentNote": "¿Quieres límites más estrictos para un agente? Configúralos en los ajustes de ese agente."
+  },
   "loading": {
     "title": "Cargando tus integraciones",
     "body": "Verificando tu proveedor de integraciones…"
@@ -69,6 +74,12 @@
   "connectMore": {
     "title": "Conecta más apps"
   },
+  "locked": {
+    "heading": "No habilitadas por tu administrador",
+    "askAdmin": "Pídele a tu administrador que habilite {{name}}",
+    "more_one": "{{count}} app más que tu administrador no ha habilitado",
+    "more_other": "{{count}} apps más que tu administrador no ha habilitado"
+  },
   "chips": {
     "more": "+{{count}}"
   },
@@ -81,7 +92,8 @@
     "description": "Conecta tus apps una vez y elige qué agentes pueden usar cada una.",
     "connectedTitle": "Apps conectadas",
     "usedByNone": "Aún no hay agentes",
-    "usedByAll": "Todos los agentes"
+    "usedByAll": "Todos los agentes",
+    "connectedNoneInCategory": "No hay apps conectadas en esta categoría."
   },
   "detail": {
     "activeOn": "Agentes que pueden usarla",
@@ -92,12 +104,11 @@
   },
   "agentTab": {
     "activeTitle": "Apps que este agente puede usar",
-    "accountTitle": "Otras apps conectadas a tu cuenta",
-    "deactivate": "Quitar de este agente",
-    "activate": "Activar para este agente",
     "empty": {
       "title": "Aún no hay apps",
-      "body": "Agrega una app para que este agente pueda usarla."
+      "body": "Agrega una app para que este agente pueda usarla.",
+      "categoryTitle": "No hay apps en esta categoría",
+      "categoryBody": "Ninguna app aquí coincide con esta categoría. Prueba con otra o quita el filtro."
     },
     "allApps": {
       "title": "Tus otras apps conectadas",

@@ -52,8 +52,12 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
       // execute → unchanged. The customTools list is UNCHANGED — pi gates its
       // custom tools by the `tools` name allowlist, so filtering the names here
       // drops the excluded tools from the model's reach without rebuilding the
-      // tool objects.
-      const loader = makeAgentLoader(deps.workspaceDir, opts.mode);
+      // tool objects. Workspace + user context (opts.context) rides alongside.
+      const loader = makeAgentLoader(
+        deps.workspaceDir,
+        opts.mode,
+        opts.context,
+      );
       await loader.reload();
       const { session } = await createAgentSession({
         cwd: deps.workspaceDir,

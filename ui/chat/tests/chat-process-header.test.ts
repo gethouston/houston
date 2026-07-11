@@ -138,3 +138,24 @@ describe("getCurrentActionToolName", () => {
     strictEqual(getCurrentActionToolName([]), undefined);
   });
 });
+
+// HOU-717: the pi engine's tools are lowercase (bash/read/grep/find/ls) —
+// they must resolve to the same human verbs the Claude names do, or the
+// header reads "Mission in progress: bash".
+describe("pi tool-name labels", () => {
+  it("maps pi's lowercase tool names to verbs", () => {
+    const segments = [seg([{ name: "bash" }])];
+    strictEqual(
+      buildProcessHeaderLabel({ isActive: true, segments }),
+      "Mission in progress: Running command",
+    );
+  });
+
+  it("keeps the Claude names working unchanged", () => {
+    const segments = [seg([{ name: "Bash" }])];
+    strictEqual(
+      buildProcessHeaderLabel({ isActive: true, segments }),
+      "Mission in progress: Running command",
+    );
+  });
+});

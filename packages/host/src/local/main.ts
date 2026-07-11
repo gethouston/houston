@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+import { HttpObjectStore } from "@houston/runtime-client/object-sync";
 import {
   LOCAL_CAPABILITIES,
   MANAGED_CLOUD_CAPABILITIES,
@@ -9,6 +9,7 @@ import {
 import { houstonSystemPrompt } from "../houston-prompt";
 import { installParentWatchdog } from "../parent-watchdog";
 import { buildLocalHost } from "./host";
+import { runtimeCommand } from "./runtime-command";
 
 /**
  * The local host entry point — the desktop sidecar the Tauri shell spawns. Same
@@ -31,36 +32,14 @@ import { buildLocalHost } from "./host";
  *   HOUSTON_RUNTIME_COMMAND   argv to launch a pi-runtime (space-separated);
  *                             explicit override (highest priority). Otherwise:
  *                             the compiled sidecar spawns ITSELF (in runtime
- *                             role via HOUSTON_SIDECAR_ROLE — see host.ts); the
- *                             dev fallback is `node --import tsx <repo>/packages/runtime/src/main.ts`.
+ *                             role via HOUSTON_SIDECAR_ROLE — see host.ts);
+ *                             bundled Docker spawns dist/runtime/main.mjs; dev
+ *                             falls back to `node --import tsx <repo>/packages/runtime/src/main.ts`.
  *   HOUSTON_APP_SYSTEM_PROMPT the product voice prompt (from the app)
  *   HOUSTON_MANAGED_CLOUD=1  serve managed-cloud capabilities (K8s pod)
  *   HOUSTON_PASSIVE=1        migration-source mode: no scheduler, no watcher
+ *   HOUSTON_STORE_URL         managed pod only: object-store gateway base URL
  */
-function runtimeCommand(): string[] {
-  // 1. Explicit override always wins.
-  const explicit = process.env.HOUSTON_RUNTIME_COMMAND;
-  if (explicit) return explicit.split(" ").filter(Boolean);
-  // 2. Packaged: we ARE the compiled sidecar (sidecar-entry.ts set
-  // HOUSTON_SIDECAR_BINARY to our own execPath). Spawn that same binary; the
-  // host adds HOUSTON_SIDECAR_ROLE=runtime so it dispatches into runtime mode.
-  // The packaged .app has no `bun` and no repo source, so this is the ONLY path
-  // that can launch a runtime there.
-  const selfBinary = process.env.HOUSTON_SIDECAR_BINARY;
-  if (selfBinary) return [selfBinary];
-  // 3. Dev fallback: run the runtime from source, resolved relative to this file
-  // (src/local/main.ts → ../../../runtime/src/main.ts).
-  const runtimeMain = join(
-    dirname(fileURLToPath(import.meta.url)),
-    "..",
-    "..",
-    "..",
-    "runtime",
-    "src",
-    "main.ts",
-  );
-  return [process.execPath, "--import", "tsx", runtimeMain];
-}
 
 function remoteCredentialConfig(hostTokenEnv: string | undefined) {
   const url = process.env.HOUSTON_CREDENTIALS_URL;
@@ -69,7 +48,7 @@ function remoteCredentialConfig(hostTokenEnv: string | undefined) {
   if (url && orgSlug && agentSlug && hostTokenEnv) {
     return { url, orgSlug, agentSlug, podToken: hostTokenEnv };
   }
-  if (url || orgSlug || agentSlug) {
+  if (url || (!process.env.HOUSTON_STORE_URL && (orgSlug || agentSlug))) {
     // A partial env is always a deploy bug — no profile sets only some of these.
     // Falling back to the (empty) file store would make every credential serve
     // read as an org-wide logout, and a legacy pod would even start rotating
@@ -81,6 +60,38 @@ function remoteCredentialConfig(hostTokenEnv: string | undefined) {
     process.exit(1);
   }
   return undefined;
+}
+
+function optionalPositiveNumber(name: string): number | undefined {
+  const raw = process.env[name];
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${name} must be a positive number`);
+  }
+  return value;
+}
+
+function storeSyncConfig(hostTokenEnv: string | undefined) {
+  const url = process.env.HOUSTON_STORE_URL;
+  if (!url) return undefined;
+  const orgSlug = process.env.HOUSTON_ORG_SLUG;
+  const agentSlug = process.env.HOUSTON_AGENT_SLUG;
+  if (!orgSlug || !agentSlug || !hostTokenEnv) {
+    console.error(
+      "[local-host] incomplete managed object-store env: set HOUSTON_STORE_URL, HOUSTON_ORG_SLUG, HOUSTON_AGENT_SLUG, and HOUSTON_HOST_TOKEN together.",
+    );
+    process.exit(1);
+  }
+  const baseUrl = `${url.replace(/\/+$/, "")}/v1/pod/store/${encodeURIComponent(orgSlug)}/${encodeURIComponent(agentSlug)}`;
+  const hydrateMaxMb = optionalPositiveNumber("HOUSTON_HYDRATE_MAX_MB");
+  return {
+    store: new HttpObjectStore({ baseUrl, token: hostTokenEnv }),
+    quietMs: optionalPositiveNumber("HOUSTON_STORE_SYNC_QUIET_MS"),
+    intervalMs: optionalPositiveNumber("HOUSTON_STORE_SYNC_INTERVAL_MS"),
+    maxHydrateBytes:
+      hydrateMaxMb === undefined ? undefined : hydrateMaxMb * 1024 * 1024,
+  };
 }
 
 const houstonHome = process.env.HOUSTON_HOME || join(homedir(), ".houston");
@@ -114,6 +125,9 @@ const host = buildLocalHost({
   redactBannerToken:
     !!hostTokenEnv || process.env.HOUSTON_MANAGED_CLOUD === "1",
   runtimeCommand: runtimeCommand(),
+  // Managed pods pre-spawn their agent's runtime at boot so the ~10s runtime
+  // start overlaps the pod wake instead of the user's first message.
+  eagerRuntime: process.env.HOUSTON_EAGER_RUNTIME === "1",
   // The real Tauri app hands over its own product prompt; this is the built-in
   // default so the agent knows how to create Skills/Routines/learnings.
   systemPrompt: process.env.HOUSTON_APP_SYSTEM_PROMPT || houstonSystemPrompt(),
@@ -129,6 +143,7 @@ const host = buildLocalHost({
   // Migration-source spawns (HOU-719): serve + migrate on boot, but never fire
   // routines or churn watch events while the cloud app reads the old tree.
   passive: process.env.HOUSTON_PASSIVE === "1",
+  storeSync: storeSyncConfig(hostTokenEnv),
   // Platform-mode integrations: desktops get HOUSTON_INTEGRATIONS_URL (the
   // cloud gateway holding Houston's Composio key); self-host + the managed pod
   // set their own COMPOSIO_API_KEY and go direct. Neither → integrations off.
@@ -144,6 +159,9 @@ const host = buildLocalHost({
   onRuntimeLog: (line) => process.stderr.write(line),
 });
 
+// (Integrations on/off/direct is announced by the host's own boot log —
+// formatIntegrationsModeLog in local/host.ts — so no extra warning here.)
+
 // A desktop supervisor must not die on a stray error from a child runtime, a
 // dropped SSE socket, or a transient fetch. Log loudly and stay up — the user
 // would otherwise see "NetworkError" on the next request.
@@ -154,12 +172,24 @@ process.on("unhandledRejection", (reason) => {
   console.error("[local-host] unhandledRejection (staying up):", reason);
 });
 
-await host.start();
+try {
+  await host.start();
+} catch (err) {
+  // Hydration is a boot invariant in store-backed mode. Exit non-zero so the
+  // orchestrator retries with a fresh emptyDir; never linger unready or sync it.
+  console.error("[local-host] startup failed:", err);
+  process.exit(1);
+}
 
+let shuttingDown = false;
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {
-    host.stop(); // kills every child runtime before we exit
-    process.exit(0);
+    if (shuttingDown) return process.exit(0);
+    shuttingDown = true;
+    void host
+      .stop()
+      .catch((err) => console.error("[local-host] shutdown failed:", err))
+      .finally(() => process.exit(0));
   });
 }
 
@@ -170,4 +200,4 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) {
 // (its default signal); self-host Docker, plain `tsx`, and tests leave it
 // unset and stay inert. Windows force-quit is covered by the supervisor's
 // kill-on-close Job Object.
-installParentWatchdog({ onParentExit: () => host.stop() });
+installParentWatchdog({ onParentExit: async () => await host.stop() });

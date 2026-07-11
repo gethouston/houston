@@ -2,26 +2,58 @@ import SwiftUI
 
 /// The value pushed onto a `NavigationStack` to open a mission's chat.
 ///
-/// PINNED NAV CONTRACT: Mission Control, the archived list, search results, and
-/// the New Mission flow all navigate to the same chat surface by pushing a
-/// `ChatRoute`. It carries only what the chat needs to address a session.
+/// PINNED NAV CONTRACT: Mission Control, the archived list, search results, the
+/// agent picker, and the per-agent screen all navigate to the same chat surface
+/// by pushing a `ChatRoute`. It carries only what the chat needs to address a
+/// session.
+///
+/// A route is either a real mission (a `sessionKey`) or a **draft** — an empty
+/// conversation with a known agent but no session yet. The draft's activity is
+/// created on the chat's first send (see ``ChatScreenModel``), so `sessionKey`
+/// is `nil` until then. The chat opens the same `ChatView` either way.
 ///
 /// SEAM: the **Chat** feature owns `ChatView`, whose init is
 /// `ChatView(agentId:conversationId:title:)` — the chat's `conversationId` is
-/// this route's `sessionKey` (`activity-<id>`). It is opened through the injected
-/// `chatViewBuilder` so this module stays decoupled from the Chat feature. The
-/// real builder is wired at the app root in `HoustonApp`
-/// (`.environment(\.chatViewBuilder, ...)`); the placeholder below is only the
-/// EnvironmentKey default.
+/// this route's `sessionKey` (`activity-<id>`), or `nil` for a draft. It is
+/// opened through the injected `chatViewBuilder` so this module stays decoupled
+/// from the Chat feature. The real builder is wired at the app root in
+/// `HoustonApp` (`.environment(\.chatViewBuilder, ...)`); the placeholder below
+/// is only the EnvironmentKey default.
 struct ChatRoute: Hashable, Identifiable {
-  /// The chat/session address — the activity's `sessionKey` (`activity-<id>`).
-  let sessionKey: String
+  /// The chat/session address — the activity's `sessionKey` (`activity-<id>`),
+  /// or `nil` for a draft that has not created its activity yet.
+  let sessionKey: String?
   /// The owning agent, for addressing the session's sandbox.
   let agentId: String
-  /// The mission title, for the chat's nav title before its own load.
+  /// The mission title (real) or the agent name (draft) for the chat's nav title.
   let title: String
+  /// Stable navigation identity. The `sessionKey` for a real mission; a fresh
+  /// per-push id for a draft (two drafts must not collapse to one nav entry).
+  let id: String
 
-  var id: String { sessionKey }
+  /// A real mission chat, addressed by its session key.
+  init(sessionKey: String, agentId: String, title: String) {
+    self.sessionKey = sessionKey
+    self.agentId = agentId
+    self.title = title
+    self.id = sessionKey
+  }
+
+  /// A draft chat: agent known, no session yet — the activity is created on the
+  /// chat's first send.
+  static func draft(agentId: String, title: String) -> ChatRoute {
+    ChatRoute(draftAgentId: agentId, title: title)
+  }
+
+  private init(draftAgentId: String, title: String) {
+    self.sessionKey = nil
+    self.agentId = draftAgentId
+    self.title = title
+    self.id = "draft:\(UUID().uuidString)"
+  }
+
+  /// True when this route opens an empty draft (create-on-first-send).
+  var isDraft: Bool { sessionKey == nil }
 }
 
 /// Builds the destination view for a `ChatRoute`. Injected so Mission Control /

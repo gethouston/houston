@@ -3,6 +3,183 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v14 - 2026-07-10
+
+`interaction-card` brings the signin & connect steps into the Mercury system —
+they were the last hold-outs still drawing a card-inside-a-card. Before, the
+app-supplied body floated a nested `bg-background` rounded surface (logo, name,
+truncated description, AND a filled Connect pill) INSIDE the grey interaction
+card, with the reason as loose text above it. Now the step body draws NO surface
+of its own: the reason routes through the SAME header slot as a question's title
+(anatomy `question-title` -> `step-title`, now shared by every kind; a labelled
+"Connect {app}" / sign-in fallback covers a reason-less step), the app renders a
+hairline Mercury row (app logo + name + one-line clamped description, the
+option-row grammar; new anatomy `step-app-row`), and the single filled CTA
+("Connect" / "Sign in") moves into the shared footer beside the Back node,
+exactly like a question step's Next (new anatomy `step-cta`). A connecting
+hand-off shows a spinner CTA plus a quiet muted line above the footer (new
+anatomy `waiting-note`, new state `connecting`); an already-connected app shows
+a calm check in the row (new state `connected`).
+
+CONTRACT change (additive): `renderConnect`/`renderSignin` now receive the
+shared `StepFooterApi` (`back`/`forward` nav nodes) alongside their completion
+callback, so the app composes the footer without re-implementing navigation;
+ui/chat exports `InteractionFooter` (the footer row's chrome) so the app's CTA
+sits in the exact same spacing. `StepperHeaderProps.questionText` ->
+`title`. ui/chat stays auth/Composio-unaware; the reactive connect/OAuth logic
+is shared by the inline `#houston_toolkit` card and the stepper step via one
+app-side hook, so only their presentation forks. New locale key
+`chat:interaction.connectTitle` (en/es/pt).
+
+## v13 - 2026-07-10
+
+The interaction-card family adopts the Mercury settings-modal discipline:
+one title, one quiet micro-label, one filled CTA, hairline rows.
+
+`interaction-card` restructure: the header's "current/total" pill + inline
+question row becomes a quiet "Step N of M" progress micro-label (anatomy
+`progress-pill` -> `progress-label`) above the question rendered as the card's
+real title (`question-text` -> `question-title`); a single-step sequence shows
+the bare title, so screenshot states (b)/(c) look designed, not stripped. The
+option row's right-aligned bare position number becomes a keycap-style hint (a
+small bordered rounded square, anatomy `position-number` -> `keycap-hint`) so
+it reads as the keyboard shortcut it is, never a list marker; a lone option
+hides the keycap entirely (new state `single-option`). Rows tighten to the
+hairline treatment (border-border/60, rounded-xl, roomier py-3), the free-text
+escape hatch joins the same row group and rhythm, and the footer re-weights:
+Back/Skip become ghost text buttons and Next the single filled pill (its
+corner-down-left glyph is gone). Default progress copy is now "Step {n} of
+{m}" (locales updated en/es/pt).
+
+`interaction-answers-message` becomes a receipt: pairs separated by hairline
+dividers (new anatomy `pair-divider`, new state `single-pair`), answers drop
+from bold to medium so the bubble sits quieter than the interaction card; a
+lone pair reads as a deliberate compact receipt.
+
+`plan-ready-card` + `suggest-reusable-card` inherit the same row treatment
+(hairline border, py-3, no shadow, shared focus ring) so the in-chat card
+family reads as one system. No contract changes anywhere; labels props are
+unchanged in shape.
+
+## v12 - 2026-07-10
+
+Interaction cards stop replacing the composer, and two new chat surfaces land.
+
+`interaction-card` redesign: the card now floats ABOVE the always-mounted
+composer; typing a fresh message there (or the new header dismiss X) abandons
+the whole pending sequence. The header becomes a "current/total" pill plus the
+question text; option rows show a right-aligned position number (1, 2, 3...)
+selectable by that number key when focus is outside a text field, replacing the
+check-on-selected indicator; the free-text field reads as the "something else"
+escape hatch so option lists never need an "Other" row. ALL navigation moves to
+one footer row, Back leftmost: Back / Skip (advance past a question unanswered,
+omitted from the reply) / Next (commit), with a bare Forward for revisited
+signin/connect steps. The old header back/forward chevrons and the collapse
+toggle are gone. `plan-ready-card` inherits the composer-visible behavior
+unchanged otherwise.
+
+New `suggest-reusable-card`: on a clean mission finish the agent may call
+`suggest_reusable`; a dismissible offer proposes saving the work as a Skill
+(Sparkles) or Routine (CalendarClock). Uniquely, its lone step keeps the board
+status at `done` — nothing is waiting on the user. Save sends an execute-mode
+follow-up asking the agent to write the Skill/Routine; "Not now" dismisses
+locally.
+
+New `interaction-answers-message`: a completed question sequence now sends a
+marker-encoded user message rendered as structured question/answer pairs (muted
+question, bold answer) instead of a flat text blob; the plain-text body the
+model reads is unchanged.
+
+## v11 - 2026-07-09
+
+`routine-row` grows a state icon and quick actions. The 8px status dot becomes
+a leading `status-icon` that names the state by shape, not color alone: a clock
+while the routine waits for its schedule (and while disabled, dimmed with the
+row), a pulsing filled bolt while a run is in flight, an amber pause badge
+while the in-flight run sleeps on a usage-limit window, a red alert when the
+last run errored. On the trailing edge, next to the enabled toggle, a new
+always-visible `quick-actions-menu` (three-dot trigger, same overflow idiom as
+the routine editor header) offers Rename and Delete: Rename swaps the title
+into an inline input (Enter/blur commits, Escape cancels — the board card's
+rename pattern), Delete confirms in a dialog before calling back (the board
+card's delete pattern). New states `paused` and `renaming`; anatomy `run-status`
+is renamed `status-icon` and `quick-actions-menu` added. This is a labels
+CONTRACT change: `RoutineRowLabels` gains `moreActions`, `rename`, `delete`,
+`deleteTitle` (`{name}` token), `deleteDescription`, `deleteConfirm`,
+`deleteCancel`; `RoutinesGrid` gains optional `onRename(routineId, name)` /
+`onDelete(routineId)` and `RoutineRow` optional `onRename(name)` / `onDelete`
+— all optional, so existing callers render unchanged minus the dot.
+
+## v10 - 2026-07-08
+
+Revamp `plan-ready-card`'s three options into the composer mode-menu idiom.
+The stacked pill buttons (filled "Start working", outline "Run on Autopilot",
+ghost "Keep planning") become full-width mode-menu rows: each row shows its
+icon inline with the title (Handshake / Rocket / ListTodo, matching the
+`ChatModeSelector` icons, in the title's foreground color) and a one-line
+description on its own line below, with a rounded-xl hover background and
+nothing hover-gated. Copy is now "Continue in Coworker mode", "Continue in
+Autopilot mode", and "Keep planning". Primary emphasis comes from row order +
+title weight, so there is no filled primary button anymore. The card surface
+(rounded-[28px] bg-secondary), the "PLAN READY" title, and the plan summary are
+unchanged; callbacks (`onStartWorking` / `onRunAutopilot` / `onKeepPlanning`)
+and the `disabled`-gates-all-three behavior are unchanged. This is a labels
+CONTRACT change: `ChatPlanReadyCardProps.labels` drops the flat button strings
+and instead carries `{ title, coworkerTitle, coworkerDescription,
+autopilotTitle, autopilotDescription, keepPlanningTitle, keepPlanningDescription
+}` (`DEFAULT_PLAN_READY_LABELS` + the pure model updated to match); icons are
+internal to the component. Web-only; native surfaces still defer plan mode.
+
+## v9 - 2026-07-08
+
+Add `plan-ready-card`, the composer-replacing surface shown when the agent
+finishes planning (plan mode) and calls `plan_ready`. A pending interaction
+carrying a single `plan_ready` step (its plan `summary`) reaches the frontend
+exactly like `ask_user`; the card presents the drafted plan above three
+always-visible actions: "Start working" (starts a normal execute turn
+confirming the plan), "Run on Autopilot" (starts an autopilot turn), and "Keep
+planning" (dismisses the card locally so the composer returns with the Mode pill
+still on plan; a later, different plan re-shows it). The first two flip the
+composer Mode pill to match and send a visible user message; the third sends
+nothing. `disabled` gates all three actions. New `@houston-ai/chat`
+`ChatPlanReadyCard` (props-only, i18n-agnostic with a `DEFAULT_PLAN_READY_LABELS`
+fallback), so Web ships `implemented`; native surfaces defer it (plan-mode flow
+is not in mobile v1). No change to `interaction-card`: the app defensively
+filters any `plan_ready` step out of the stepper.
+
+## v8 - 2026-07-08
+
+Rebuild `ai-model-row` from the multi-column Mercury ledger into a compact card,
+matching the allowed-models editor's idiom. The Models tab is now a `sm:grid-cols-2`
+grid of cards (lab glyph + model name + lab name + an always-visible "See more"
+cue), above a control row of a pill search box and four facet comboboxes: AI
+provider (self-hides at one lab), Good at, Cost, Memory. The whole card is one
+button that opens the model detail modal (no nested buttons, nothing hover-gated).
+The comboboxes are a shared `ai-hub/filter-combobox.tsx` (Popover + cmdk) that the
+teams allowed-models `lab-filter.tsx` also reuses; Cost/Memory are pure
+`costBucket` / `memoryBucket` helpers (cost reuses the meter's `costTier`
+thresholds plus a `$0` "Free" bucket, memory splits at 200K / 1M). The old ledger
+(`models-ledger.tsx`, `model-row.tsx`, the sticky `LedgerHeader`, and
+`model-directory-filters.tsx`) plus the dead `CostMeter` / `MemoryLabel` badges
+are deleted. `ModelsBrowser` backs both the directory and the provider modal, so
+they still read identically. Stays web `partial` (app/-locked).
+
+## v7 - 2026-07-08
+
+Add a `signin` step to `interaction-card`. The pending-interaction sequence now
+orders question steps, THEN at most one signin step, THEN connect steps. A signin
+step appears when Houston reports the user must sign in before a tool call can run
+(the runtime queues it alongside any connect steps in the same flow). Like a
+connect step it carries no answer text and advances only when the app reports the
+user signed in; ui/chat stays auth-unaware via a required `renderSignin` prop
+(mirrors `renderConnect`), and the app supplies the sign-in card driving the
+existing sign-in machinery. It counts in "N of X" and supports back/forward like
+any other step (a revisited signin step relies on the stepper's forward chevron
+since its card never re-fires once signed in). Completion contributes a
+"Signed in to Houston." line before any connected lines. No design/surface change
+to the card chrome. Web keeps `@houston-ai/chat` `ChatInteractionCard`, so it
+stays `implemented`.
+
 ## v6 - 2026-07-07
 
 Rename `question-card` to `interaction-card` and rebuild it as a one-step-at-a-time

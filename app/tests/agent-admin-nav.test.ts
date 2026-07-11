@@ -27,7 +27,7 @@ const rowsOf = (cards: AgentAdminCard[], id: string) =>
   cards.find((c) => c.id === id)?.rows ?? null;
 
 describe("agentAdminCards — card + row visibility", () => {
-  it("single-player: Configuration only, no Access (name/color/delete are inline)", () => {
+  it("single-player: Configuration only, no Access", () => {
     deepStrictEqual(cardIds(agentAdminCards(caps())), ["configuration"]);
     strictEqual(
       agentAdminCards(caps()).some((c) => c.id === "access"),

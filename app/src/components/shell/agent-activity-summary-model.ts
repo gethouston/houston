@@ -1,3 +1,5 @@
+import { isRoutineSetupMode } from "../../lib/routine-chat-setup.ts";
+
 export interface AgentActivitySummaryInput {
   id: string;
   folderPath: string;
@@ -7,6 +9,8 @@ export interface ActivityConversationSummaryInput {
   agent_path: string;
   type: "primary" | "activity";
   status?: string | null;
+  /** Agent-mode id; routine-setup chats never count toward badges. */
+  agent?: string | null;
 }
 
 export interface AgentActivitySummary {
@@ -28,6 +32,7 @@ export function buildAgentActivitySummaries(
 
   for (const conversation of conversations) {
     if (conversation.type !== "activity") continue;
+    if (isRoutineSetupMode(conversation.agent)) continue;
 
     const agentId = agentIdByPath.get(conversation.agent_path);
     if (!agentId) continue;

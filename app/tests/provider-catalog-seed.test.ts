@@ -59,7 +59,7 @@ describe("override-only seed (before the pi catalog loads)", () => {
     strictEqual(anthropic?.subtitle, "Claude Code");
     strictEqual(anthropic?.models.length, 0);
     // The curated default is seeded from the override so it is stable pre-load.
-    strictEqual(anthropic?.defaultModel, "claude-sonnet-4-6");
+    strictEqual(anthropic?.defaultModel, "claude-sonnet-5");
   });
 
   it("seeds the OpenAI card under the `openai` id (not pi's `openai-codex`)", () => {
@@ -76,11 +76,11 @@ describe("override-only seed (before the pi catalog loads)", () => {
 
   it("does not throw from any read helper while models are empty", () => {
     doesNotThrow(() => {
-      getModel("anthropic", "claude-sonnet-4-6");
+      getModel("anthropic", "claude-sonnet-5");
       getDefaultModel("anthropic");
       getProvider("groq");
     });
     // No models yet, so a model lookup is simply undefined (never a throw).
-    strictEqual(getModel("anthropic", "claude-sonnet-4-6"), undefined);
+    strictEqual(getModel("anthropic", "claude-sonnet-5"), undefined);
   });
 });

@@ -38,6 +38,7 @@ function harness(frames: WireFrame[] = doneTurn) {
     cancels: [] as string[],
     settings: [] as unknown[],
     providersListed: 0,
+    boardPersists: [] as Array<{ sessionKey: string; status: string }>,
   };
   const client = {
     async streamEvents(_id: string, o: { onEvent: (f: WireFrame) => void }) {
@@ -74,8 +75,12 @@ function harness(frames: WireFrame[] = doneTurn) {
     },
   } as unknown as HoustonEngineClient;
 
+  const logger = { debug() {}, info() {}, warn() {}, error() {} };
   const ctx: ModuleContext = {
-    config: { baseUrl: "http://x", ports: {} as SdkConfig["ports"] },
+    config: {
+      baseUrl: "http://x",
+      ports: { logger } as unknown as SdkConfig["ports"],
+    },
     store,
     // One injected engine for any agent id — this suite asserts through the
     // recorded calls, not per-agent URLs (see conversations for those).
@@ -83,7 +88,16 @@ function harness(frames: WireFrame[] = doneTurn) {
     authExpiry: createAuthExpiryNotifier(store),
     registerCommand: (type, handler) => commands.set(type, handler),
   };
-  const mod = createTurnsModule(ctx);
+  // The default board-status persister the turns module drives on every turn
+  // (backed by the activities module in the real SDK) — recorded here.
+  const persistBoardStatus = async (
+    _agentId: string,
+    sessionKey: string,
+    status: string,
+  ) => {
+    calls.boardPersists.push({ sessionKey, status });
+  };
+  const mod = createTurnsModule(ctx, persistBoardStatus);
   // Sends in this suite carry no agentId, so the VM lands on the "" agent slot.
   const vm = () =>
     store.getSnapshot(conversationScope("", "c1")) as ConversationVM;
@@ -98,9 +112,10 @@ async function waitFor(cond: () => boolean, ms = 2_000): Promise<void> {
   }
 }
 
-test("registers the turns/send, turns/cancel, turns/observe and turns/history commands", () => {
+test("registers the turns/send, turns/cancel, turns/observe, turns/history and turns/attachments/save commands", () => {
   const { commands } = harness();
   expect([...commands.keys()].sort()).toEqual([
+    "turns/attachments/save",
     "turns/cancel",
     "turns/history",
     "turns/observe",
@@ -117,8 +132,41 @@ test("turns/send drives the conversation VM to a settled reply", async () => {
   expect(vm().running).toBe(false);
   const texts = vm().feed.filter((f) => f.feed_type === "assistant_text");
   expect(texts).toEqual([
-    { id: texts[0]?.id ?? "", feed_type: "assistant_text", data: "hi there" },
+    {
+      id: texts[0]?.id ?? "",
+      feed_type: "assistant_text",
+      data: "hi there",
+      ts: expect.any(Number), // a live push is stamped at push time
+    },
   ]);
+});
+
+test("turns/send pushes the user bubble pending, then confirms it (clock -> check)", async () => {
+  const { store, commands, vm } = harness();
+  const userPending: Array<boolean | undefined> = [];
+  store.subscribe(conversationScope("", "c1"), (s) => {
+    const u = (s as ConversationVM).feed.find(
+      (f) => f.feed_type === "user_message",
+    );
+    if (u) userPending.push(u.pending);
+  });
+
+  await commands.get("turns/send")?.({ conversationId: "c1", text: "hi" });
+  await waitFor(() => vm()?.sessionStatus === "completed");
+
+  // It entered pending (a clock) and the reply's arrival confirmed it (a check).
+  expect(userPending[0]).toBe(true);
+  expect(userPending.at(-1)).toBeUndefined();
+  const finalUser = vm().feed.find((f) => f.feed_type === "user_message");
+  expect(finalUser?.pending).toBeUndefined();
+});
+
+test("an observed (resumed) conversation never shows a pending bubble", async () => {
+  const { mod, vm } = harness(runningTurn);
+  await mod.observe("c1");
+  await waitFor(() => vm()?.sessionStatus === "completed");
+  // observe pushes no optimistic bubble — nothing is unconfirmed on the surface.
+  expect(vm().feed.some((f) => f.pending)).toBe(false);
 });
 
 test("the typed facade send() is the same path as the command", async () => {
@@ -144,6 +192,18 @@ test("an attached external output sees every push, settled exactly once", async 
   // The external output got the same feed, and the sink settled ONCE.
   expect(items.some((i) => i.feed_type === "assistant_text")).toBe(true);
   expect(items.filter((i) => i.feed_type === "final_result")).toHaveLength(1);
+});
+
+test("the default board-status persister fires running at start and terminal on settle", async () => {
+  const { mod, vm, calls } = harness();
+  await mod.send({ conversationId: "c1", text: "hi" });
+  await waitFor(() => vm()?.sessionStatus === "completed");
+  // A running turn PATCHes the card to running, then to its terminal status —
+  // the write the SDK path used to drop, keyed by the chat's id. The canned
+  // reply carries no pending interaction, so the clean settle splits to `done`
+  // (a turn that ended asking the user would settle `needs_you` instead).
+  expect(calls.boardPersists.map((p) => p.status)).toEqual(["running", "done"]);
+  expect(calls.boardPersists.every((p) => p.sessionKey === "c1")).toBe(true);
 });
 
 test("a model pick rides the send as a per-turn pin paired with its owner — never a settings write", async () => {
@@ -208,6 +268,67 @@ test("the turns/observe command drives the same observe path", async () => {
   await commands.get("turns/observe")?.({ conversationId: "c1" });
   await waitFor(() => vm()?.sessionStatus === "completed");
   expect(vm().feed.some((f) => f.data === "observed reply")).toBe(true);
+});
+
+test("observe replays the running turn's thinking + tools from the sync, deduped across a resync (HOU-717)", async () => {
+  const activityTurn: WireFrame[] = [
+    {
+      type: "sync",
+      data: {
+        running: true,
+        partial: "",
+        seq: 2,
+        thinking: "planning the steps",
+        tools: [
+          { name: "bash", input: { cmd: "ls" }, isError: false, content: "ok" },
+          { name: "read", input: { path: "a.txt" } }, // still running
+        ],
+      },
+      seq: 2,
+    },
+    // Reconnect resync: same activity again (must NOT double), and the
+    // still-running tool has since ended (its result must land).
+    {
+      type: "sync",
+      data: {
+        running: true,
+        partial: "",
+        seq: 3,
+        resync: true,
+        thinking: "planning the steps",
+        tools: [
+          { name: "bash", input: { cmd: "ls" }, isError: false, content: "ok" },
+          {
+            name: "read",
+            input: { path: "a.txt" },
+            isError: false,
+            content: "the file body",
+          },
+        ],
+      },
+      seq: 3,
+    },
+    { type: "text", data: "observed reply", seq: 4 },
+    { type: "done", data: null, seq: 5 },
+  ];
+  const { mod, vm } = harness(activityTurn);
+  await mod.observe("c1");
+  await waitFor(() => vm()?.sessionStatus === "completed");
+  const feed = vm().feed;
+  const thinking = feed.filter((f) => f.feed_type === "thinking");
+  expect(thinking).toHaveLength(1);
+  expect(thinking[0].data).toBe("planning the steps");
+  const calls = feed.filter((f) => f.feed_type === "tool_call");
+  expect(calls.map((f) => f.data)).toEqual([
+    { name: "bash", input: { cmd: "ls" } },
+    { name: "read", input: { path: "a.txt" } },
+  ]);
+  // Both results landed exactly once, carrying their output previews.
+  const results = feed.filter((f) => f.feed_type === "tool_result");
+  expect(results.map((f) => f.data)).toEqual([
+    { content: "ok", is_error: false },
+    { content: "the file body", is_error: false },
+  ]);
 });
 
 test("turns/cancel aborts the conversation's turn", async () => {

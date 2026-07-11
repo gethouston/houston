@@ -15,6 +15,9 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+// `getModel`/`registerFauxProvider` are pi-ai's legacy global-registry API,
+// preserved on `/compat`; the other symbols move with them so everything
+// reads/writes the one registry instance.
 import {
   type FauxResponseStep,
   fauxAssistantMessage,
@@ -22,7 +25,7 @@ import {
   getModel,
   type OAuthDeviceCodeInfo,
   registerFauxProvider,
-} from "@earendil-works/pi-ai";
+} from "@earendil-works/pi-ai/compat";
 import {
   type AgentSessionEvent,
   AuthStorage,

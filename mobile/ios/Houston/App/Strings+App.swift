@@ -10,7 +10,6 @@ import Foundation
 extension Strings {
     enum Tabs {
         static let agents = "Agents"
-        static let newMission = "New Mission"
         static let missionControl = "Mission Control"
         static let settings = "Settings"
     }

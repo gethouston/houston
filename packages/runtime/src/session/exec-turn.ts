@@ -8,6 +8,7 @@ import type {
   WireEvent,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import { classifyProviderError } from "../ai/provider-error";
 import { activeEffort, resolveModel } from "../ai/providers";
 import { config } from "../config";
 import {
@@ -37,15 +38,15 @@ import { newInteractionHolder, runWithInteractionCapture } from "./interaction";
 import { switchNeedsCompaction } from "./provider-switch";
 import { createStallWatchdog } from "./stall-watchdog";
 
-/** A routine's pinned provider/model/effort for this turn. Absent = keep the session's current. */
+/** A turn's pinned provider/model/effort/mode. Absent = keep current/default. */
 export interface TurnPin {
   provider?: string | null;
   model?: string | null;
   effort?: string | null;
   /**
-   * The turn's execution mode ("plan" = read-only + planning overlay). Rides the
-   * per-turn pin ONLY — never `Settings` — so an unpinned turn is always
-   * "execute". A flip from the live session's mode rebuilds the session.
+   * The turn's execution mode ("plan" = read-only + planning overlay, "auto" =
+   * Autopilot). Rides the per-turn pin ONLY — never `Settings` — so an unpinned
+   * turn is always "execute". A flip from the live session's mode rebuilds it.
    */
   mode?: TurnMode | null;
 }
@@ -83,6 +84,7 @@ export function recordUserTurn(
   text: string,
   nonce?: string,
   acting?: ActingContext,
+  displayText?: string,
 ): RecordedUserTurn {
   // Stamp the executing turn's id up front so a cancel/stop settles this turn.
   conv.turnId = turnId;
@@ -101,7 +103,9 @@ export function recordUserTurn(
         .map((m) => m.author)
     : [];
 
-  appendUserMessage(id, text, { author, turnId });
+  // `text` is what the model receives; `displayText` (when given) is only what
+  // the bubble renders on a history reload — the two are stored side by side.
+  appendUserMessage(id, text, { author, turnId, displayText });
   publish(id, {
     type: "user",
     data: { content: text, ts: Date.now(), nonce, author },
@@ -129,6 +133,9 @@ export async function execTurn(
   const { author, priorAuthors } = recorded;
 
   let assistantText = "";
+  // The turn's reasoning, accumulated for persistence so a history reload can
+  // replay it in the mission log (HOU-717) — same lifecycle as assistantText.
+  let thinkingText = "";
   let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
   // A typed provider failure for this turn. pi resolves the turn rather than
@@ -162,11 +169,17 @@ export async function execTurn(
   const subscribeSession = () => {
     unsub = conv.session.subscribe((wire: WireEvent) => {
       if (wire.type === "text") assistantText += wire.data;
+      else if (wire.type === "thinking") thinkingText += wire.data;
       else if (wire.type === "usage") usage = wire.data;
-      else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
+      else if (wire.type === "tool_start")
+        tools.push({ name: wire.data.name, input: wire.data.args });
       else if (wire.type === "tool_end") {
         const t = tools[tools.length - 1];
-        if (t) t.isError = wire.data.isError;
+        if (t) {
+          t.isError = wire.data.isError;
+          // Already clipped at the backend — persist for reload replay.
+          if (wire.data.content) t.result = wire.data.content;
+        }
       } else if (wire.type === "provider_error") providerError = wire.data;
       // Every event proves the provider is alive → reset the stall clock (the
       // watchdog suspends itself while a tool runs and re-arms when it ends).
@@ -191,7 +204,7 @@ export async function execTurn(
     // A bad model id throws here → surfaces as the turn's error event.
     const model = resolveModel(pin?.model, pin?.provider);
     // The turn's execution mode: the pin's, else execute. Never inherited from
-    // Settings — an unpinned turn (incl. every routine + cloud turn) is execute.
+    // Settings. Routine fire paths pin auto; an actually unpinned turn is execute.
     const mode = pin?.mode ?? DEFAULT_TURN_MODE;
     const providerChanged = model.provider !== conv.provider;
     const modelChanged = model.id !== conv.model;
@@ -392,6 +405,7 @@ export async function execTurn(
     // (pi resolves the turn, it does not throw) with empty text, not in the catch.
     appendAssistantMessage(id, assistantText, {
       tools,
+      thinking: thinkingText || undefined,
       usage,
       providerSwitch,
       compaction,
@@ -428,19 +442,55 @@ export async function execTurn(
     // provider_error frame does — an unattended reader (a routine's reconcile)
     // reads the real reason off this message instead of timing the run out
     // with a vague error 15 minutes later.
+    //
+    // Classify the throw before falling back to `unknown`: pi RAISES a
+    // missing/expired credential at prompt time ("No API key found for
+    // <provider>. Use /login …"), before any stream exists, so this catch is
+    // the only place it can become the typed reconnect card (HOU-718). A
+    // recognized kind is published as a provider_error frame — the turn's
+    // terminal surface, same as the streamed path — so the live chat renders
+    // the card (and auto-continues after reconnect) instead of raw error
+    // text. An unrecognized throw keeps the generic error frame.
+    const thrown =
+      providerError ??
+      classifyProviderError({
+        provider: pin?.provider ?? conv.provider,
+        model: pin?.model ?? null,
+        message: errMessage(err),
+      });
+    // An auth throw with NOTHING streamed = pi's prompt-time credential guard,
+    // which raises BEFORE recording the user message in pi's session store —
+    // neither the live context nor a rebuild will ever see it. Carry the text
+    // on the card so the reconnect retry re-delivers it to the model.
+    if (
+      thrown.kind === "unauthenticated" &&
+      !providerError &&
+      !assistantText &&
+      tools.length === 0
+    )
+      thrown.undelivered_prompt = text;
+    const typed = thrown.kind !== "unknown" ? thrown : undefined;
     appendAssistantMessage(id, assistantText, {
       tools,
+      thinking: thinkingText || undefined,
       usage,
       providerSwitch,
       compaction,
-      providerError: providerError ?? {
+      providerError: typed ?? {
         kind: "unknown",
         provider: pin?.provider ?? conv.provider,
         raw_excerpt: errMessage(err),
       },
       turnId,
     });
-    publish(id, { type: "error", data: { message: errMessage(err) }, turnId });
+    if (typed && !providerError)
+      publish(id, { type: "provider_error", data: typed, turnId });
+    else if (!typed)
+      publish(id, {
+        type: "error",
+        data: { message: errMessage(err) },
+        turnId,
+      });
   } finally {
     conv.turnId = undefined;
     // Never leak the stall timer past the turn (no-op if it threw before arming).

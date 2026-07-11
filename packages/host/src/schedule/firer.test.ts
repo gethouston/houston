@@ -31,7 +31,6 @@ function job(over: Partial<FiringJob> = {}): FiringJob {
     routine: {
       id: "r1",
       name: "R",
-      description: "",
       prompt: "Write the daily report",
       schedule: "0 9 * * *",
       enabled: true,
@@ -77,6 +76,12 @@ function recordingChannel(): RuntimeChannel & {
     async cancelTurn() {
       return false;
     },
+    async busy() {
+      return false;
+    },
+    async runtimeStatus() {
+      return "running" as const;
+    },
     async teardown() {},
     async captureCredential() {
       return { ok: true, provider: "openai-codex" };
@@ -98,7 +103,7 @@ test("ChannelRoutineFirer routes the prompt to the workspace's channel", async (
     {
       cid: "routine-r1",
       text: "Write the daily report",
-      pin: { provider: null, model: null, effort: undefined },
+      pin: { provider: null, model: null, effort: undefined, mode: "auto" },
       actingUser: undefined,
     },
   ]);
@@ -118,7 +123,7 @@ test("ChannelRoutineFirer threads the routine creator as the turn's acting user 
   expect(cloudrun.calls[0]?.actingUser).toBe("sub-alice");
 });
 
-test("ChannelRoutineFirer carries the routine's provider/model/effort pins", async () => {
+test("ChannelRoutineFirer carries provider/model/effort plus autopilot mode", async () => {
   const cloudrun = recordingChannel();
   const firer = new ChannelRoutineFirer({ cloudrun });
   await firer.fire(
@@ -139,6 +144,7 @@ test("ChannelRoutineFirer carries the routine's provider/model/effort pins", asy
     provider: "anthropic",
     model: "claude-opus-4-8",
     effort: "max",
+    mode: "auto",
   });
 });
 
@@ -221,7 +227,7 @@ test("ProxyChannel.fireTurn posts the prompt to the runtime's conversation endpo
   }
 });
 
-test("ProxyChannel.fireTurn includes the routine's model/effort pins in the message body", async () => {
+test("ProxyChannel.fireTurn includes the routine's model/effort/mode pins in the message body", async () => {
   let body: unknown = null;
   const runtime = await startTestFetchServer(async (req) => {
     body = await req.json();
@@ -252,6 +258,7 @@ test("ProxyChannel.fireTurn includes the routine's model/effort pins in the mess
         provider: "openai-codex",
         model: "gpt-5.5",
         effort: "high",
+        mode: "auto",
       },
     );
     expect(body).toEqual({
@@ -259,6 +266,7 @@ test("ProxyChannel.fireTurn includes the routine's model/effort pins in the mess
       provider: "openai-codex",
       model: "gpt-5.5",
       effort: "high",
+      mode: "auto",
     });
   } finally {
     await runtime.stop();

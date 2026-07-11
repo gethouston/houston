@@ -3,8 +3,8 @@
 /* Semantic colour tokens: --ht-* on :root (light) and [data-theme="dark"].
    SINGLE SOURCE OF TRUTH is @houston/design-tokens (tokens/*.json compiled to
    this CSS). Never edit token values here — edit the JSON and rebuild
-   (`pnpm --filter @houston/design-tokens build`). The @theme block below
-   re-exports these to Tailwind's --color-* utilities. */
+   (`pnpm --filter @houston/design-tokens build`). The `@theme inline` block
+   below re-exports these to Tailwind's --color-* utilities. */
 @import "@houston/design-tokens/css";
 
 /* The app toggles dark mode via data-theme="dark" on <html> (see
@@ -28,13 +28,32 @@
   color-scheme: light;
 }
 
-/* @theme references the intermediate vars — Tailwind generates utilities from these */
-@theme {
+/* Corner radius. Kept as a PLAIN :root var (not a @theme token) so the four
+   direct `var(--radius)` consumers (input-group.tsx, sonner.tsx) keep resolving:
+   `@theme inline` below inlines every var it owns into the utilities and emits
+   NOTHING to :root, so a radius living inside it would vanish from the cascade. */
+:root {
+  --radius: 0.5rem;
+}
+
+/* `@theme inline` (NOT plain `@theme`) is load-bearing for subtree theme pinning.
+   With plain `@theme`, Tailwind emits `--color-*: var(--ht-*)` on :root and each
+   utility reads `var(--color-*)`; per the css-variables spec the inner var()
+   substitutes at the DECLARING element (:root), so every colour resolves ONCE
+   from the root's --ht-* and merely inherits down — a mid-tree [data-theme] pin
+   redeclares --ht-* but no utility re-reads it, so the pin is inert (the bug the
+   sign-in card hit). `inline` makes Tailwind emit the utility as
+   `background-color: var(--ht-background)` directly — resolved at the CONSUMING
+   element — so a pinned subtree re-resolves every colour. Trade-off: `inline`
+   drops the :root --color-* emission entirely, so nothing may read
+   `var(--color-*)` directly; all direct consumers reference `var(--ht-*)`. */
+@theme inline {
   --color-background: var(--ht-background);
   --color-foreground: var(--ht-foreground);
   --color-card: var(--ht-card);
   --color-card-hover: var(--ht-card-hover);
   --color-card-foreground: var(--ht-card-fg);
+  --color-dialog: var(--ht-dialog);
   --color-popover: var(--ht-popover);
   --color-popover-foreground: var(--ht-popover-fg);
   --color-primary: var(--ht-primary);
@@ -50,7 +69,6 @@
   --color-border: var(--ht-border);
   --color-input: var(--ht-input);
   --color-ring: var(--ht-ring);
-  --radius: 0.5rem;
   --color-sidebar: var(--ht-sidebar);
   --color-sidebar-foreground: var(--ht-sidebar-fg);
   --color-sidebar-border: var(--ht-sidebar-border);
@@ -66,7 +84,7 @@
 
 @layer base {
   * {
-    border-color: var(--color-border);
+    border-color: var(--ht-border);
   }
 }
 
@@ -106,8 +124,8 @@ body.kanban-dragging.kanban-dragging-forbidden * {
 }
 
 body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
+  background-color: var(--ht-background);
+  color: var(--ht-foreground);
   font-family:
     ui-sans-serif, -apple-system, "system-ui", "Segoe UI", Helvetica,
     "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
@@ -132,7 +150,7 @@ body {
 
 .card-running-glow {
   --glow-angle: 0deg;
-  --glow-bg: var(--color-background, #ffffff);
+  --glow-bg: var(--ht-background, #ffffff);
   position: relative;
   background:
     linear-gradient(var(--glow-bg), var(--glow-bg)) padding-box,
@@ -189,6 +207,47 @@ body {
 }
 
 
+/* Indeterminate progress line — the same comet palette as
+ * .card-running-glow, flattened into a thin bar for sections that wait on
+ * one finite operation (e.g. the export wizard's anonymize pass). Give the
+ * element a track color yourself (e.g. `bg-foreground/5`); the comet sweeps
+ * left to right on the glow's 2.5s clock. */
+@keyframes glow-line-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    /* -100% start + 250% (track/self width) travel + 100% exit */
+    transform: translateX(350%);
+  }
+}
+
+.running-glow-line {
+  position: relative;
+  height: 2px;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.running-glow-line::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.15),
+    #3b82f6,
+    #818cf8,
+    #f97316,
+    #fbbf24,
+    transparent
+  );
+  animation: glow-line-sweep 2.5s linear infinite;
+}
+
 /* Typing dots — WhatsApp-style "•••" bouncing while an agent is
  * working. Apply `.typing-dot` to three sibling elements; the
  * `nth-child` rules stagger them so the bounce travels across. */
@@ -215,6 +274,19 @@ body {
   animation: tool-pulse 1s ease-in-out infinite;
 }
 
+/* One-shot confirmation flash when an agent is dropped into a sidebar group —
+   the only signal when the folder is collapsed. */
+@keyframes sidebar-group-dropped {
+  0% { background-color: var(--ht-accent); }
+  100% { background-color: transparent; }
+}
+.sidebar-group-dropped {
+  animation: sidebar-group-dropped 0.6s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-group-dropped { animation: none; }
+}
+
 /* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
@@ -226,10 +298,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--color-foreground) 15%, transparent);
+  background: color-mix(in srgb, var(--ht-foreground) 15%, transparent);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--color-foreground) 30%, transparent);
+  background: color-mix(in srgb, var(--ht-foreground) 30%, transparent);
 }

@@ -10,15 +10,58 @@
  * the typecheck here instead of silently drifting the mock.
  */
 
+import { DEFAULT_SIDEBAR_LAYOUT } from "@houston/host/src/routes/sidebar-layout";
+import type { SidebarLayout } from "@houston/protocol";
 import type {
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
 } from "@houston/runtime-client";
-import { type IntegrationsMode, state } from "./state-store";
+import { emitDomain, type IntegrationsMode, state } from "./state-store";
 
-/** A small, stable A-Z toolkit catalog — enough for catalog + connect flows. */
+/**
+ * A stable, well-known A-Z toolkit catalog. Kept small but large enough (15
+ * apps) that a restrictive Teams allowlist over it blocks more than the locked
+ * browse section's preview cap (8), so the "+N more" overflow line is
+ * exercisable end to end (integrations-locked.spec.ts). Real app names so the
+ * rows read like production, never machine slugs.
+ */
 export const SEED_TOOLKITS: IntegrationToolkit[] = [
+  {
+    slug: "airtable",
+    name: "Airtable",
+    description: "Spreadsheet-database hybrid",
+    logoUrl: "https://logos.test/airtable.png",
+    categories: ["productivity"],
+  },
+  {
+    slug: "asana",
+    name: "Asana",
+    description: "Tasks and projects",
+    logoUrl: "https://logos.test/asana.png",
+    categories: ["productivity"],
+  },
+  {
+    slug: "calendly",
+    name: "Calendly",
+    description: "Scheduling and bookings",
+    logoUrl: "https://logos.test/calendly.png",
+    categories: ["productivity"],
+  },
+  {
+    slug: "discord",
+    name: "Discord",
+    description: "Community chat",
+    logoUrl: "https://logos.test/discord.png",
+    categories: ["communication"],
+  },
+  {
+    slug: "dropbox",
+    name: "Dropbox",
+    description: "File storage and sharing",
+    logoUrl: "https://logos.test/dropbox.png",
+    categories: ["productivity"],
+  },
   {
     slug: "github",
     name: "GitHub",
@@ -34,13 +77,65 @@ export const SEED_TOOLKITS: IntegrationToolkit[] = [
     categories: ["productivity"],
   },
   {
+    slug: "hubspot",
+    name: "HubSpot",
+    description: "CRM and marketing",
+    logoUrl: "https://logos.test/hubspot.png",
+    categories: ["sales"],
+  },
+  {
+    slug: "jira",
+    name: "Jira",
+    description: "Issue and sprint tracking",
+    logoUrl: "https://logos.test/jira.png",
+    categories: ["developer-tools"],
+  },
+  {
+    slug: "linear",
+    name: "Linear",
+    description: "Issue tracking for software teams",
+    logoUrl: "https://logos.test/linear.png",
+    categories: ["developer-tools"],
+  },
+  {
+    slug: "notion",
+    name: "Notion",
+    description: "Docs and wikis",
+    logoUrl: "https://logos.test/notion.png",
+    categories: ["productivity"],
+  },
+  {
+    slug: "salesforce",
+    name: "Salesforce",
+    description: "Enterprise CRM",
+    logoUrl: "https://logos.test/salesforce.png",
+    categories: ["sales"],
+  },
+  {
     slug: "slack",
     name: "Slack",
     description: "Team messaging",
     logoUrl: "https://logos.test/slack.png",
     categories: ["communication"],
   },
+  {
+    slug: "trello",
+    name: "Trello",
+    description: "Kanban boards",
+    logoUrl: "https://logos.test/trello.png",
+    categories: ["productivity"],
+  },
+  {
+    slug: "zoom",
+    name: "Zoom",
+    description: "Video meetings",
+    logoUrl: "https://logos.test/zoom.png",
+    categories: ["communication"],
+  },
 ];
+
+/** Every seeded toolkit slug, A-Z — handy for specs arming allowlists. */
+export const SEED_TOOLKIT_SLUGS: string[] = SEED_TOOLKITS.map((t) => t.slug);
 
 export function integrationsMode(): IntegrationsMode {
   return state.integrationsMode;
@@ -116,4 +211,18 @@ export function getPreference(key: string): string | null {
 export function setPreference(key: string, value: string | null): void {
   if (value === null) state.preferences.delete(key);
   else state.preferences.set(key, value);
+}
+
+/** A workspace's stored sidebar layout, or the default when unset (GET). */
+export function getSidebarLayout(workspaceId: string): SidebarLayout {
+  return state.sidebarLayouts.get(workspaceId) ?? DEFAULT_SIDEBAR_LAYOUT;
+}
+
+/** Persist a validated layout and fan out `SidebarLayoutChanged` (PUT). */
+export function setSidebarLayout(
+  workspaceId: string,
+  layout: SidebarLayout,
+): void {
+  state.sidebarLayouts.set(workspaceId, layout);
+  emitDomain("SidebarLayoutChanged");
 }

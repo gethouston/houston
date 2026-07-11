@@ -44,6 +44,12 @@ export interface PortableAnonymizeRequest {
   skillSlugs: string[];
   routineIds: string[];
   learningIds: string[];
+  /**
+   * Run the AI pass on top of the pattern + secret scrub (the wizard's
+   * "Let my AI help" toggle). Absent means true; false is a deliberate
+   * user choice, so the response carries no `aiError`.
+   */
+  useAi?: boolean;
 }
 
 /** A redacted text with the diff the wizard renders side-by-side. */
@@ -61,7 +67,6 @@ export interface AnonymizedItem extends AnonymizedText {
 
 export interface RoutineFieldOverride {
   name?: string | null;
-  description?: string | null;
   prompt?: string | null;
 }
 
@@ -82,6 +87,10 @@ export interface PortableAnonymizeResponse {
   skills: AnonymizedItem[];
   routines: AnonymizedRoutine[];
   learnings: AnonymizedItem[];
+  /** Which redactor produced the diffs: the AI pass, or the regex patterns fallback. */
+  mode: "ai" | "patterns";
+  /** Why the AI pass didn't run (set only when `mode` is "patterns"). */
+  aiError?: string;
 }
 
 /** Accepted anonymize diffs, applied at export-pack time. */

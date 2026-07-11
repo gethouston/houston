@@ -11,6 +11,7 @@ import {
   ConversationAutoScroll,
   ConversationContent,
   ConversationScrollButton,
+  ConversationTopFade,
 } from "./ai-elements/conversation";
 import type { RenderLinkProps } from "./ai-elements/message";
 import {
@@ -39,13 +40,11 @@ export { authorLabelFor } from "./author-label";
 export interface ChatMessagesProps {
   messages: ChatMessage[];
   status: "ready" | "streaming" | "submitted";
+  /** Shown while a turn is `"submitted"` and no active mission-log header is
+   *  on screen yet — the pre-first-output loading gap. Once the agent is
+   *  actually working, the active process block's "Mission in progress:
+   *  <action>" line is the only indicator (HOU-724). */
   thinkingIndicator: ReactNode;
-  /** Rendered below the last item for the WHOLE in-flight turn (status
-   *  `"submitted"`), even while an active mission-log header is surfacing
-   *  "Mission in progress: <action>" and the standalone `thinkingIndicator`
-   *  is therefore suppressed (HOU-655: the loading helmet must not vanish
-   *  when a tool label takes over the status line). */
-  loadingIndicator?: ReactNode;
   transformContent?: (content: string) => {
     content: string;
     extra?: ReactNode;
@@ -91,7 +90,6 @@ export function ChatMessages({
   messages,
   status,
   thinkingIndicator,
-  loadingIndicator,
   transformContent,
   toolLabels,
   isSpecialTool,
@@ -133,6 +131,7 @@ export function ChatMessages({
   return (
     <Conversation className="flex-1 min-h-0">
       <ConversationAutoScroll status={status} />
+      <ConversationTopFade />
       <ConversationContent className="max-w-3xl mx-auto">
         {displayItems.map((item) => {
           if (item.kind === "process") {
@@ -216,13 +215,11 @@ export function ChatMessages({
             </Message>
           );
         })}
-        {status === "submitted" &&
-        (showThinkingIndicator || loadingIndicator) ? (
+        {showThinkingIndicator ? (
           <Message from="assistant">
             <MessageContent>
               <div className="flex flex-col items-start gap-4 py-1">
-                {showThinkingIndicator ? thinkingIndicator : null}
-                {loadingIndicator}
+                {thinkingIndicator}
               </div>
             </MessageContent>
           </Message>

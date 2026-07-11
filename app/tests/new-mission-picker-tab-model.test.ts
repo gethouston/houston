@@ -8,6 +8,8 @@ import {
   shouldShowSkillPickerTabs,
 } from "../src/components/new-mission-picker-tab-model.ts";
 
+const verbatim = (category: string) => category;
+
 describe("new mission picker tab model", () => {
   it("omits Featured when no skills are featured", () => {
     const tabs = buildSkillPickerTabs({
@@ -16,6 +18,7 @@ describe("new mission picker tab model", () => {
       hasOther: true,
       featuredLabel: "Featured",
       otherLabel: "Other",
+      categoryLabel: verbatim,
     });
 
     deepStrictEqual(tabs, [
@@ -31,12 +34,26 @@ describe("new mission picker tab model", () => {
       hasOther: false,
       featuredLabel: "Featured",
       otherLabel: "Other",
+      categoryLabel: verbatim,
     });
 
     deepStrictEqual(tabs, [
       { id: FEATURED_SKILLS_TAB_ID, label: "Featured" },
       { id: "Research", label: "Research" },
     ]);
+  });
+
+  it("localizes the category label but keeps the raw category as the id", () => {
+    const tabs = buildSkillPickerTabs({
+      categoryNames: ["Bookkeeping"],
+      hasFeatured: false,
+      hasOther: false,
+      featuredLabel: "Featured",
+      otherLabel: "Other",
+      categoryLabel: () => "Contabilidad",
+    });
+
+    deepStrictEqual(tabs, [{ id: "Bookkeeping", label: "Contabilidad" }]);
   });
 
   it("hides the tab bar when only one skill tab exists", () => {
@@ -46,6 +63,7 @@ describe("new mission picker tab model", () => {
       hasOther: false,
       featuredLabel: "Featured",
       otherLabel: "Other",
+      categoryLabel: verbatim,
     });
 
     strictEqual(shouldShowSkillPickerTabs(tabs), false);
@@ -58,6 +76,7 @@ describe("new mission picker tab model", () => {
       hasOther: true,
       featuredLabel: "Featured",
       otherLabel: "Other",
+      categoryLabel: verbatim,
     });
 
     strictEqual(shouldShowSkillPickerTabs(tabs), true);

@@ -6,6 +6,7 @@
     "card": { "$value": "{color.glass.neutral-50}" },
     "card-hover": { "$value": "{color.glass.neutral-58}" },
     "card-fg": { "$value": "{color.neutral.150}" },
+    "dialog": { "$value": "{color.glass.neutral-50}" },
     "popover": { "$value": "{color.glass.neutral-85}" },
     "popover-fg": { "$value": "{color.neutral.150}" },
     "primary": { "$value": "{color.neutral.150}" },
@@ -46,6 +47,9 @@
     "space-haze": { "$value": "{color.space.haze}" },
     "space-foreground": { "$value": "{color.space.foreground}" },
     "space-foreground-muted": { "$value": "{color.space.foreground-muted}" },
+    "space-card-secondary": { "$value": "{color.alpha.white-a16}" },
+    "space-card-secondary-fg": { "$value": "{color.neutral.150}" },
+    "space-card-accent": { "$value": "{color.alpha.white-a24}" },
     "agent": {
       "charcoal": { "$value": "{color.agent.charcoal-bright}" },
       "forest": { "$value": "{color.agent.forest-bright}" },

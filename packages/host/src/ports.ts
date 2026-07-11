@@ -1,5 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { ClaudeOAuthCredential, CustomEndpoint } from "@houston/protocol";
+import type {
+  ClaudeOAuthCredential,
+  CustomEndpoint,
+  TurnMode,
+} from "@houston/protocol";
 import type {
   Agent,
   AgentId,
@@ -15,6 +19,17 @@ import type {
  * implementation (Postgres / GKE / Supabase) behind the same shape. The core logic
  * never imports a concrete adapter — only these.
  */
+
+/**
+ * Renaming (or creating) an agent onto a name the workspace already has. Stores
+ * throw it instead of leaking the backend's raw failure (ENOTEMPTY from a
+ * directory rename) so routes can answer a clean 409.
+ */
+export class AgentNameConflictError extends Error {
+  constructor(readonly agentName: string) {
+    super(`an agent named "${agentName}" already exists in this workspace`);
+  }
+}
 
 /** Persistence for workspaces + agents. Impls: MemoryWorkspaceStore, PgWorkspaceStore. */
 export interface WorkspaceStore {
@@ -115,15 +130,16 @@ export interface ChannelCtx {
 }
 
 /**
- * A routine's pinned provider/model/effort, carried into the turn it fires.
- * Absent fields mean "inherit the agent default", resolved by the runtime.
- * The pin is per-turn only — it never touches the agent's saved settings, so
- * a pinned routine and the chats around it can't clobber each other.
+ * A routine's pinned provider/model/effort/mode, carried into the turn it fires.
+ * Absent provider/model/effort fields mean "inherit the agent default", resolved
+ * by the runtime. The pin is per-turn only — it never touches the agent's saved
+ * settings, so a pinned routine and the chats around it can't clobber each other.
  */
 export interface TurnPin {
   provider?: string | null;
   model?: string | null;
   effort?: string | null;
+  mode?: TurnMode | null;
 }
 
 export type CaptureResult =
@@ -152,7 +168,7 @@ export interface RuntimeChannel {
    * turn is ACCEPTED; throws when it can't be started (busy / quota / transport)
    * so the caller records an errored run instead of a silent miss.
    *
-   * `pin` carries the routine's model/effort overrides (absent = inherit).
+   * `pin` carries the routine's provider/model/effort/mode overrides.
    * `actingUser` (C2) is the routine creator's Supabase `sub` — forwarded to the
    * runtime as `x-houston-acting-user` so its integration calls act as that user.
    * Absent for legacy routines (no creator recorded) → the runtime acts as owner.
@@ -172,6 +188,25 @@ export interface RuntimeChannel {
    * but never resurrects the run.
    */
   cancelTurn(ctx: ChannelCtx, conversationId: string): Promise<boolean>;
+  /**
+   * Whether this agent has any in-flight turn in the runtime/channel layer.
+   * Unknown transport state must be treated as busy by implementations that
+   * can otherwise sleep live work.
+   */
+  busy(ctx: ChannelCtx): Promise<boolean>;
+  /** Cheap runtime/channel state for diagnostics and idle-sleep callers. */
+  runtimeStatus?(ctx: ChannelCtx): Promise<RuntimeState | "unknown">;
+  /**
+   * AI-redact the given texts in the agent's runtime — the export wizard's
+   * anonymize pass runs the LLM where the provider credentials live. Optional:
+   * channels with no standing runtime omit it and the caller falls back to
+   * the regex redactor (visibly — the response says why). Throws with the
+   * runtime's real reason (no provider connected, unparseable model reply).
+   */
+  anonymizeTexts?(
+    ctx: ChannelCtx,
+    items: { id: string; text: string }[],
+  ): Promise<{ id: string; text: string; summary: string }[]>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
   /**

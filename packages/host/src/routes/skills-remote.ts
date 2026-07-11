@@ -10,6 +10,7 @@ import type { Vfs } from "../vfs";
 import { json, readJson } from "./http";
 import {
   communityPopularAction,
+  communityPreviewAction,
   communitySearchAction,
   failSkill,
   repoListAction,
@@ -54,6 +55,10 @@ export async function handleSkillsRemote(
   }
   if (family === "community" && action === "popular") {
     await communityPopularAction(res);
+    return true;
+  }
+  if (family === "community" && action === "preview") {
+    await communityPreviewAction(req, res, fetchImpl);
     return true;
   }
   if (family === "repo" && action === "list") {

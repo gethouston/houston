@@ -2,6 +2,7 @@
 @import "@houston-ai/core/src/globals.css";
 @import "@houston-ai/core/src/styles.css";
 @import "@houston-ai/chat/src/styles.css";
+@import "@houston-ai/routines/src/styles.css";
 /* Futuristic aurora + glass layer — imported LAST so its token
    overrides win at use-time. Delete this line to fully revert. */
 @import "./futuristic.css";
@@ -17,6 +18,11 @@
 @source "../../node_modules/@houston-ai/routines/src";
 @source "../../node_modules/@houston-ai/skills/src";
 @source "../../node_modules/@houston-ai/agent/src";
+/* Streamdown (chat markdown renderer) emits Tailwind utilities of its own
+   (list-inside, list-disc, …). It lives under ui/chat's node_modules, so scan
+   it through the workspace symlink or its classes never get generated and
+   markdown lists render without bullets/numbers (#451). */
+@source "../../node_modules/@houston-ai/chat/node_modules/streamdown/dist";
 
 body {
   margin: 0;
@@ -49,8 +55,8 @@ body {
   height: 28px;
   padding: 0 12px;
   border-radius: 9999px;
-  background: var(--color-primary);
-  color: var(--color-primary-foreground);
+  background: var(--ht-primary);
+  color: var(--ht-primary-fg);
   font-size: 12px;
   font-weight: 500;
   text-decoration: none;
@@ -101,27 +107,6 @@ body {
   }
 }
 
-@keyframes welcome-greeting-in {
-  0% {
-    opacity: 0;
-    filter: blur(14px);
-    transform: translateY(14px) scale(0.96);
-  }
-  100% {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0) scale(1);
-  }
-}
-.welcome-greeting-in {
-  animation: welcome-greeting-in 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@media (prefers-reduced-motion: reduce) {
-  .welcome-greeting-in {
-    animation: none;
-  }
-}
-
 /* Celebration beat for the success screens (setup ready, all set): the check
    pops in with a slight overshoot while a ring expands and fades behind it.
    Monochrome — the "reward" is in the motion + scale, not a decorative color. */
@@ -155,27 +140,9 @@ body {
   animation: success-ring 1s ease-out 0.1s both;
 }
 
-/* A looping "click me" pulse — an expanding ring that fades out, repeated.
-   Used on the send button in the first-email step so it's obvious to tap. */
-@keyframes attention-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.28);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
-  }
-}
-.attention-pulse {
-  animation: attention-pulse 1.8s ease-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .success-pop,
-  .success-ring,
-  .attention-pulse {
+  .success-ring {
     animation: none;
   }
 }

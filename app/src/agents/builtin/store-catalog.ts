@@ -8,7 +8,7 @@ import type { AgentConfig } from "../../lib/types";
 export const storeCatalogConfigs: AgentConfig[] = [
   {
     id: "bookkeeping",
-    name: "Bookkeeping",
+    name: "Bookkeeper",
     description:
       "Categorize transactions, reconcile accounts, close the books every month, and generate investor-ready financials. Connects to QuickBooks, Xero, Stripe, and your bank feeds. Drafts journal entries and statements - never posts to your ledger or moves money.",
     version: "0.1.8",
@@ -45,7 +45,7 @@ export const storeCatalogConfigs: AgentConfig[] = [
   },
   {
     id: "legal",
-    name: "Legal",
+    name: "General Counsel",
     description:
       "Review contracts, audit privacy compliance, prep Delaware filings, run trademark searches, and answer legal questions on the spot. Drafts NDAs, policies, and escalation briefs - never files, signs, or sends anything on your behalf.",
     version: "0.2.4",
@@ -78,7 +78,7 @@ export const storeCatalogConfigs: AgentConfig[] = [
   },
   {
     id: "marketing",
-    name: "Marketing",
+    name: "Growth Lead",
     description:
       "Build positioning, plan campaigns, write blog posts and landing pages, audit SEO and AI-search visibility, and draft email sequences. Strategy through execution across content, paid, social, and conversion copy - all drafts, never published.",
     version: "0.1.8",
@@ -123,7 +123,7 @@ export const storeCatalogConfigs: AgentConfig[] = [
   },
   {
     id: "operations",
-    name: "Operations",
+    name: "Chief of Staff",
     description:
       "Triage your inbox, prep meetings, track goals, manage vendor renewals, audit SaaS spend, and run data queries. Covers planning, scheduling, finance hygiene, and reporting - drafts only, never sends or commits.",
     version: "0.1.10",
@@ -162,7 +162,7 @@ export const storeCatalogConfigs: AgentConfig[] = [
   },
   {
     id: "outbound",
-    name: "Outbound",
+    name: "Growth Hacker",
     description:
       "Turn a single LinkedIn post into a paused cold email campaign in Instantly. I scrape the commenters or reactors, store them in Airtable, find verified emails through Apollo, co-write a 3-email sequence with you, then load it all into Instantly. The campaign always stays paused for your review - I never auto-launch.",
     version: "0.1.2",
@@ -193,7 +193,7 @@ export const storeCatalogConfigs: AgentConfig[] = [
   },
   {
     id: "people",
-    name: "People",
+    name: "Head of Talent",
     description:
       "Source and evaluate candidates, coordinate interview loops, draft offer letters, run review cycles, and track compliance deadlines. Covers hiring through retention - drafts only, never sends or modifies your HR systems.",
     version: "0.1.9",
@@ -231,7 +231,7 @@ export const storeCatalogConfigs: AgentConfig[] = [
   },
   {
     id: "sales",
-    name: "Sales",
+    name: "Chief Revenue Officer",
     description:
       "Find leads, research accounts, prep calls, draft outreach, manage your CRM, and forecast pipeline. Covers prospecting through expansion - drafts only, never sends or changes deal stages without your approval.",
     version: "0.1.9",
@@ -271,7 +271,7 @@ export const storeCatalogConfigs: AgentConfig[] = [
   },
   {
     id: "support",
-    name: "Support",
+    name: "Head of Customer Success",
     description:
       "Triage tickets, draft replies, write help-center articles, score customer health, and build churn-save playbooks. Covers inbox through customer success - drafts only, never sends.",
     version: "0.2.2",

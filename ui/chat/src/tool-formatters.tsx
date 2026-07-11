@@ -10,6 +10,7 @@ import {
   DownloadIcon,
   FilePlusIcon,
   FileTextIcon,
+  FolderIcon,
   FolderSearchIcon,
   GlobeIcon,
   PencilIcon,
@@ -27,6 +28,8 @@ export { ToolContent } from "./tool-content";
 
 type LucideIcon = ComponentType<{ className?: string }>;
 
+// Claude tool names (PascalCase) AND pi coding-agent names (lowercase) — both
+// dialects reach this map, so both get real icons instead of the wrench.
 const TOOL_ICONS: Record<string, LucideIcon> = {
   Bash: TerminalIcon,
   Read: FileTextIcon,
@@ -36,6 +39,13 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   Glob: FolderSearchIcon,
   WebSearch: GlobeIcon,
   WebFetch: DownloadIcon,
+  bash: TerminalIcon,
+  read: FileTextIcon,
+  edit: PencilIcon,
+  write: FilePlusIcon,
+  grep: SearchIcon,
+  find: FolderSearchIcon,
+  ls: FolderIcon,
 };
 
 export function getToolIcon(name: string): LucideIcon {
@@ -53,18 +63,27 @@ export function getToolDetail(name: string, input: unknown): string | null {
   const short = name.includes("__") ? (name.split("__").pop() ?? name) : name;
 
   switch (short) {
-    case "Bash": {
+    case "Bash":
+    case "bash": {
       const cmd = inp.command as string | undefined;
       if (!cmd) return null;
       return cmd.length > 80 ? `${cmd.slice(0, 77)}...` : cmd;
     }
+    // Claude's file tools carry `file_path`; pi's carry `path`.
     case "Read":
     case "Write":
     case "Edit":
-      return shortPath(inp.file_path as string | undefined);
+    case "read":
+    case "write":
+    case "edit":
+      return shortPath((inp.file_path ?? inp.path) as string | undefined);
     case "Grep":
     case "Glob":
+    case "grep":
+    case "find":
       return (inp.pattern as string | undefined) ?? null;
+    case "ls":
+      return shortPath(inp.path as string | undefined);
     case "WebSearch":
       return (inp.query as string | undefined) ?? null;
     case "WebFetch":

@@ -113,6 +113,9 @@ export async function dispatchCloudrun(
         body.text,
         typeof body.nonce === "string" ? body.nonce : undefined,
         res,
+        // Presentation-only bubble text; forwarded to the runtime, which
+        // persists it beside the user message. The model still runs on `text`.
+        typeof body.displayText === "string" ? body.displayText : undefined,
       );
     }
   }

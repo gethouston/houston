@@ -11,6 +11,7 @@ import { osShowSessionNotification } from "../lib/os-bridge";
 import { isMac } from "../lib/platform";
 import { queryClient } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
+import { isRoutineSetupMode } from "../lib/routine-chat-setup";
 import { tauriActivity } from "../lib/tauri";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
@@ -29,16 +30,19 @@ export function describePendingNotificationNav() {
  * time; `fetchQuery` re-reads through the same key the board uses, so it both
  * resolves the routine chat and warms the cache for the agent we switch to.
  */
-async function resolveActivityId(
+async function resolveActivityTarget(
   agentPath: string,
   sessionKey: string,
-): Promise<string | null> {
+): Promise<{ activityId: string; routineSetup: boolean } | null> {
   try {
     const activities = await queryClient.fetchQuery({
       queryKey: queryKeys.activity(agentPath),
       queryFn: () => tauriActivity.list(agentPath),
     });
-    return activityIdForSessionKey(activities, sessionKey);
+    const activityId = activityIdForSessionKey(activities, sessionKey);
+    if (!activityId) return null;
+    const activity = activities.find((a) => a.id === activityId);
+    return { activityId, routineSetup: isRoutineSetupMode(activity?.agent) };
   } catch (e) {
     // Log-only (no toast): nav is best-effort and this same path fires on a
     // bare macOS refocus, where a toast would be noise. A standard mission key
@@ -46,7 +50,8 @@ async function resolveActivityId(
     logger.error(
       `[notification] failed to list activities for nav (${sessionKey}): ${e}`,
     );
-    return activityIdForSessionKey([], sessionKey);
+    const activityId = activityIdForSessionKey([], sessionKey);
+    return activityId ? { activityId, routineSetup: false } : null;
   }
 }
 
@@ -69,8 +74,8 @@ export async function consumePendingNav() {
     return;
   }
 
-  const activityId = await resolveActivityId(agent.folderPath, sessionKey);
-  if (!activityId) {
+  const target = await resolveActivityTarget(agent.folderPath, sessionKey);
+  if (!target) {
     logger.debug(
       `[notification] no activity matches sessionKey=${sessionKey}, cannot navigate`,
     );
@@ -78,11 +83,20 @@ export async function consumePendingNav() {
   }
 
   logger.debug(
-    `[notification] navigating to agent=${agent.name} activity=${activityId} (sessionKey=${sessionKey})`,
+    `[notification] navigating to agent=${agent.name} activity=${target.activityId} (sessionKey=${sessionKey})`,
   );
-  useUIStore.getState().setViewMode("activity");
   useAgentStore.getState().setCurrent(agent);
-  useUIStore.getState().setActivityPanelId(activityId, { forceOpen: true });
+  if (target.routineSetup) {
+    // A routine chat has no board card: its home is the Routines tab, which
+    // resolves the activity id to its routine and opens that chat.
+    useUIStore.getState().setViewMode("routines");
+    useUIStore.getState().setPendingRoutineActivityId(target.activityId);
+    return;
+  }
+  useUIStore.getState().setViewMode("activity");
+  useUIStore.getState().setActivityPanelId(target.activityId, {
+    forceOpen: true,
+  });
 }
 
 export async function sendSessionNotification(

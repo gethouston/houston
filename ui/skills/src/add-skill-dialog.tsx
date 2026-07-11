@@ -1,9 +1,8 @@
 /**
- * AddSkillDialog — Marketplace modal with two tabs (Skills.sh / GitHub).
- *
- * Layout rules:
- * - DialogContent is a fixed-size flex column. Switching tabs never resizes.
- * - Header + pill row are fixed. Body is the only scrollable region.
+ * AddSkillDialog — modal to add a skill from a GitHub repo or from scratch.
+ * DialogContent is a fixed-size flex column so switching views never resizes;
+ * each view owns its own scroll region. (The community marketplace now lives
+ * inline as a page section, see SkillMarketplaceSection.)
  */
 
 import {
@@ -19,24 +18,11 @@ import type { RepoViewLabels } from "./add-skill-dialog-repo-labels";
 import { RepoView } from "./add-skill-dialog-repo-view";
 import type { ScratchViewLabels } from "./add-skill-dialog-scratch-view";
 import { ScratchView } from "./add-skill-dialog-scratch-view";
-import type { StoreViewLabels } from "./add-skill-dialog-store-labels";
-import { StoreView } from "./add-skill-dialog-store-view";
-import type { CommunitySkill, RepoSkill } from "./types";
+import type { RepoSkill } from "./types";
 
 export interface AddSkillDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Community marketplace search. Omit to hide the marketplace tab
-   *  entirely — the dialog then offers only the create-from-scratch
-   *  (and, when wired, the GitHub repo) views. */
-  onSearch?: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>;
-  /** Optional dedicated "popular skills" fetcher for the dialog empty state. */
-  onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>;
-  /** Install a marketplace skill. Required to surface the marketplace tab. */
-  onInstallCommunity?: (
-    skill: CommunitySkill,
-    signal?: AbortSignal,
-  ) => Promise<string>;
   onListFromRepo?: (source: string) => Promise<RepoSkill[]>;
   onInstallFromRepo?: (
     source: string,
@@ -58,32 +44,25 @@ export interface AddSkillDialogProps {
 export interface AddSkillDialogLabels {
   title?: string;
   description?: string;
-  storeTab?: string;
   repoTab?: string;
   scratchTab?: string;
-  store?: StoreViewLabels;
   repo?: RepoViewLabels;
   scratch?: ScratchViewLabels;
 }
 
-type View = "store" | "repo" | "scratch";
+type View = "repo" | "scratch";
 
-const DEFAULT_LABELS: Required<
-  Omit<AddSkillDialogLabels, "store" | "repo" | "scratch">
-> = {
-  title: "Add actions",
-  description: "Install reusable procedures for your agent.",
-  storeTab: "Skills.sh",
-  repoTab: "GitHub",
-  scratchTab: "From scratch",
-};
+const DEFAULT_LABELS: Required<Omit<AddSkillDialogLabels, "repo" | "scratch">> =
+  {
+    title: "Add actions",
+    description: "Install reusable procedures for your agent.",
+    repoTab: "GitHub",
+    scratchTab: "From scratch",
+  };
 
 export function AddSkillDialog({
   open,
   onOpenChange,
-  onSearch,
-  onPopular,
-  onInstallCommunity,
   onListFromRepo,
   onInstallFromRepo,
   onCreateFromScratch,
@@ -94,10 +73,6 @@ export function AddSkillDialog({
 
   // Narrowed capability objects — TypeScript can guarantee the callbacks
   // are defined inside each truthy branch without non-null assertions.
-  const storeCapability =
-    onSearch && onInstallCommunity
-      ? { onSearch, onInstallCommunity }
-      : undefined;
   const repoCapability =
     onListFromRepo && onInstallFromRepo
       ? { onListFromRepo, onInstallFromRepo }
@@ -106,11 +81,9 @@ export function AddSkillDialog({
     ? { onCreateFromScratch }
     : undefined;
 
-  const canBrowseStore = !!storeCapability;
   const canInstallFromRepo = !!repoCapability;
   const canCreateFromScratch = !!scratchCapability;
   const tabs: View[] = [];
-  if (canBrowseStore) tabs.push("store");
   if (canInstallFromRepo) tabs.push("repo");
   if (canCreateFromScratch) tabs.push("scratch");
   const showTabs = tabs.length > 1;
@@ -128,7 +101,7 @@ export function AddSkillDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg !gap-0 p-0 h-[600px] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-3xl !gap-0 p-0 h-[80vh] max-h-[720px] flex flex-col overflow-hidden">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-3">
           <DialogTitle>{l.title}</DialogTitle>
           <DialogDescription>{l.description}</DialogDescription>
@@ -148,26 +121,12 @@ export function AddSkillDialog({
                     : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
               >
-                {tab === "store"
-                  ? l.storeTab
-                  : tab === "repo"
-                    ? l.repoTab
-                    : l.scratchTab}
+                {tab === "repo" ? l.repoTab : l.scratchTab}
               </button>
             ))}
           </div>
         )}
 
-        {view === "store" && storeCapability && (
-          <StoreView
-            open={open}
-            onSearch={storeCapability.onSearch}
-            onPopular={onPopular}
-            onInstall={storeCapability.onInstallCommunity}
-            installedSkillNames={installedSkillNames}
-            labels={labels?.store}
-          />
-        )}
         {view === "repo" && repoCapability && (
           <RepoView
             onList={repoCapability.onListFromRepo}

@@ -1,12 +1,19 @@
 import { cn } from "@houston-ai/core";
 import type { OrgInfo, OrgRole } from "@houston-ai/engine-client";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
+import { useCapabilities } from "../../hooks/use-capabilities";
+import { canSeeBillingTab } from "../../lib/org-roles";
+import { isTeamWorkspace } from "../../lib/space-id";
+import { useWorkspaceStore } from "../../stores/workspaces";
+import { PageContainer, PageHeader } from "../shell/page-shell";
 import ActivityTab from "./activity-tab";
 import AgentsTab from "./agents-tab";
+import BillingTab from "./billing-tab";
 import MembersTab from "./members-tab";
-import { ORG_TAB_IDS, type OrgTabId } from "./org-view-model";
+import { useOrgNav } from "./org-nav-store";
+import { type OrgTabId, orgTabIds } from "./org-view-model";
 import UsageTab from "./usage-tab";
 
 /**
@@ -32,6 +39,7 @@ const TAB_COMPONENTS: Record<OrgTabId, (props: OrgTabProps) => ReactNode> = {
   agents: AgentsTab,
   activity: ActivityTab,
   usage: UsageTab,
+  billing: BillingTab,
 };
 
 /**
@@ -47,7 +55,34 @@ const TAB_COMPONENTS: Record<OrgTabId, (props: OrgTabProps) => ReactNode> = {
 export function OrganizationView() {
   const { t } = useTranslation("teams");
   const { data: org, isLoading } = useOrg(true);
+  const { capabilities } = useCapabilities();
+  const current = useWorkspaceStore((s) => s.current);
+  const requestedTab = useOrgNav((s) => s.requestedTab);
+  const clearRequestedTab = useOrgNav((s) => s.clearRequestedTab);
+
+  // The Billing tab exists only for owner/admin on a team space (C8). Compute
+  // the visible tab set so a personal space / non-billing host never shows it.
+  const showBilling = canSeeBillingTab(
+    capabilities,
+    current ? isTeamWorkspace(current.id) : false,
+  );
+  const tabIds = orgTabIds(showBilling);
+
   const [tab, setTab] = useState<OrgTabId>("people");
+
+  // Honor a deep link into a tab (the C8 team-status banner/pill routes here),
+  // then clear it so a later plain nav to the dashboard opens the default tab.
+  useEffect(() => {
+    if (requestedTab === null) return;
+    if (tabIds.includes(requestedTab)) setTab(requestedTab);
+    clearRequestedTab();
+  }, [requestedTab, tabIds, clearRequestedTab]);
+
+  // If the visible set drops the active tab (e.g. switching out of a team space
+  // hides Billing), fall back to the first tab rather than a blank panel.
+  useEffect(() => {
+    if (!tabIds.includes(tab)) setTab(tabIds[0]);
+  }, [tabIds, tab]);
 
   const ActiveTab = TAB_COMPONENTS[tab];
   const ctx: OrgViewContext | null = org
@@ -57,21 +92,14 @@ export function OrganizationView() {
   return (
     <div className="flex h-full flex-col">
       <div className="shrink-0">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-8 pt-10 pb-2">
-          <div>
-            <h1 className="text-[28px] font-normal text-foreground">
-              {t("org.title")}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("org.subtitle")}
-            </p>
-          </div>
+        <PageContainer className="flex flex-col gap-4 pt-10 pb-2">
+          <PageHeader title={t("org.title")} subtitle={t("org.subtitle")} />
           <div
             role="tablist"
             aria-label={t("org.tablistLabel")}
             className="flex items-center gap-5"
           >
-            {ORG_TAB_IDS.map((id) => {
+            {tabIds.map((id) => {
               const isActive = tab === id;
               return (
                 <button
@@ -98,15 +126,15 @@ export function OrganizationView() {
               );
             })}
           </div>
-        </div>
+        </PageContainer>
       </div>
 
       <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-        <div
+        <PageContainer
           role="tabpanel"
           id="org-tabpanel"
           aria-labelledby={`org-tab-${tab}`}
-          className="mx-auto w-full max-w-5xl px-8 pb-10"
+          className="pb-10"
         >
           {ctx ? (
             <ActiveTab ctx={ctx} />
@@ -115,7 +143,7 @@ export function OrganizationView() {
               {isLoading ? t("org.loading") : t("org.unavailable")}
             </p>
           )}
-        </div>
+        </PageContainer>
       </div>
     </div>
   );

@@ -4,6 +4,13 @@
 
 import type { PendingInteraction } from "./interaction";
 
+/** A human who started or collaborated on a mission. Server-stamped from the
+ *  gateway-injected acting-as identity (hosted Teams); never sent by the agent. */
+export interface ActivityContributor {
+  user_id: string;
+  name?: string;
+}
+
 export interface Activity {
   id: string;
   title: string;
@@ -21,6 +28,11 @@ export interface Activity {
   /** The one thing this mission is waiting on the user for, if any. Present
    *  drives the `needs_you` card; absent means the mission needs nothing. */
   pending_interaction?: PendingInteraction;
+  /** The human who created this mission (Teams attribution). Server-stamped. */
+  created_by?: string;
+  /** Humans who started or collaborated on this mission (Teams attribution).
+   *  Server-stamped from acting-as identity; absent on desktop/single-player. */
+  contributors?: ActivityContributor[];
 }
 
 export interface ActivityUpdate {

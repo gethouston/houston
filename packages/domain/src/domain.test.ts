@@ -259,6 +259,55 @@ test("routines: schema defaults applied on create and on read of sparse entries"
   expect(items[0]?.chat_mode).toBe("shared");
 });
 
+test("routine setup chat link: setup_activity_id round-trips create and update (HOU-725)", () => {
+  // Without a chat the key is simply absent (legacy shape, no "" noise)…
+  const plain = createRoutine(
+    { name: "N", prompt: "p", schedule: "0 9 * * *" },
+    "r",
+    NOW,
+  );
+  expect("setup_activity_id" in plain).toBe(false);
+  // …with one, create writes it and a later stamp (a modify chat claiming a
+  // form-era routine) lands through the ordinary update path.
+  const linked = createRoutine(
+    {
+      name: "N",
+      prompt: "p",
+      schedule: "0 9 * * *",
+      setup_activity_id: "act-9",
+    },
+    "r2",
+    NOW,
+  );
+  expect(linked.setup_activity_id).toBe("act-9");
+  expect(
+    applyRoutineUpdate(plain, { setup_activity_id: "act-3" }, NOW)
+      .setup_activity_id,
+  ).toBe("act-3");
+});
+
+test("a stray on-disk routine description is dropped on read (HOU-725)", async () => {
+  // The display-only description field was removed; routines written by
+  // older builds still carry it. Same idempotent read-side cleanup as the
+  // legacy timezone key.
+  const store = memStore();
+  await store.writeText(
+    docKey(ROOT, "routines"),
+    JSON.stringify([
+      {
+        id: "legacy-desc",
+        name: "Old",
+        description: "Summarize overnight email",
+        prompt: "p",
+        schedule: "0 9 * * *",
+      },
+    ]),
+  );
+  const { items } = await loadRoutines(store, ROOT);
+  expect(items).toHaveLength(1);
+  expect("description" in (items[0] ?? {})).toBe(false);
+});
+
 test("routine update: defined fields overwrite, undefined leaves untouched", () => {
   const r = createRoutine(
     { name: "N", prompt: "p", schedule: "0 9 * * *" },

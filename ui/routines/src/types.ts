@@ -10,7 +10,6 @@ export type RoutineChatMode = "shared" | "per_run";
 export interface Routine {
   id: string;
   name: string;
-  description: string;
   /** The prompt sent to Claude when this routine fires. */
   prompt: string;
   /** Cron expression (e.g. "0 9 * * 1-5"). */
@@ -28,6 +27,8 @@ export interface Routine {
   model?: string | null;
   /** Reasoning-effort override; absent means inherit the agent's effort. */
   effort?: string | null;
+  /** Id of the setup-chat activity attached to this routine, if any. */
+  setup_activity_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +56,29 @@ export interface RoutineRun {
    *  provider CLI is sleeping on a plan-window usage limit. Only meaningful
    *  while `status === "running"`. */
   paused_until?: string;
+}
+
+/**
+ * Form shape used by the "new agent" onboarding wizard's AI-suggested starter
+ * routine (`AiRoutineStep`). The Routines tab itself no longer uses this
+ * shape — editing an existing routine there patches `name`/`schedule`/`prompt`
+ * directly (see `RoutineRow`'s inline edit panel).
+ */
+export interface RoutineFormData {
+  name: string;
+  prompt: string;
+  schedule: string;
+  suppress_when_silent: boolean;
+  /** Whether each run reuses one chat (`"shared"`) or starts a fresh one. */
+  chat_mode: RoutineChatMode;
+  /** Composio toolkit slugs this routine uses. */
+  integrations: string[];
+  /** Provider id override. `null`/absent means inherit the agent's provider. */
+  provider?: string | null;
+  /** Model override. `null`/absent means inherit the agent's model. */
+  model?: string | null;
+  /** Reasoning-effort override. `null`/absent means inherit the agent's effort. */
+  effort?: string | null;
 }
 
 export type SchedulePreset =

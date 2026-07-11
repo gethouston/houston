@@ -118,7 +118,25 @@ export function handleAgents(
       return noContent(); // create/update/delete/run — accepted no-ops
     }
 
-    case "routines":
+    case "routines": {
+      if (rest.length === 2) {
+        if (method === "GET") return json({ items: state.listRoutines(id) });
+        if (method === "POST")
+          return json(state.createRoutine(id, body ?? {}), 201);
+        return noContent(405);
+      }
+      const rid = rest[2];
+      if (rest.length === 3 && method === "PATCH") {
+        const updated = state.updateRoutine(id, rid, body ?? {});
+        return updated ? json(updated) : json({ error: {} }, 404);
+      }
+      if (rest.length === 3 && method === "DELETE") {
+        state.deleteRoutine(id, rid);
+        return noContent();
+      }
+      return noContent(); // run-now / scheduler-sync — accepted no-ops
+    }
+
     case "routine_runs":
       if (method === "GET") return json({ items: [] });
       return noContent(); // create/update/delete/run — accepted no-ops
@@ -213,9 +231,25 @@ export function handleAgents(
       // The Files tab's workspace surface (list/upload/move/…): routes-files.ts.
       return handleWorkspaceFiles(method, id, rest, req, body);
 
-    case "attachments":
-      if (method === "POST") return json({ paths: [] });
-      return noContent();
+    case "attachments": {
+      // Composer attachments — faithful to the real host's `turn/attachments.ts`:
+      // a 100MB request cap (413), `scopeId` accepted+ignored, and files stored
+      // in the agent's visible, durable `uploads/` folder (HOU-706) with
+      // colliding names disambiguated. Returns the RELATIVE `uploads/<name>`
+      // paths the agent's Read tool opens.
+      if (method !== "POST") return noContent(405);
+      const files = (Array.isArray(body?.files) ? body.files : []) as {
+        name: string;
+        contentBase64: string;
+      }[];
+      // base64 is ~4/3 the byte size; estimate to reject oversized uploads.
+      let total = 0;
+      for (const f of files)
+        total += Math.floor((f.contentBase64.length * 3) / 4);
+      if (total > 100 * 1024 * 1024)
+        return json({ error: "attachments exceed the upload size limit" }, 413);
+      return json({ paths: state.importWorkspaceFiles(id, "uploads", files) });
+    }
 
     case "portable":
       // Share-with-a-friend export inventory. An empty (but well-shaped)

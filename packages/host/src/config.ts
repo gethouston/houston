@@ -29,9 +29,6 @@ export const config = {
   sandboxTokenSecret:
     process.env.CP_SANDBOX_TOKEN_SECRET || "dev-insecure-sandbox-secret",
 
-  /** Minutes of inactivity before an agent's sandbox is slept (scale to zero). */
-  idleSleepMinutes: Number(process.env.CP_IDLE_SLEEP_MINUTES || 10),
-
   /** In-cluster URL sandboxes call to serve their workspace's central credential (connect-once). */
   controlPlaneInternalUrl: process.env.CP_INTERNAL_URL || "",
 

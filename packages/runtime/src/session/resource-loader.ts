@@ -5,6 +5,11 @@ import type { TurnMode } from "@houston/protocol";
 import { config } from "../config";
 import { makeCompactionGuard } from "./compaction-guard";
 import { withModeOverlay } from "./mode-overlays";
+import {
+  buildGroupContextSection,
+  buildWorkspaceContextSection,
+  type ProvidedContext,
+} from "./workspace-context";
 
 export const SYSTEM_PROMPT = [
   "You are Houston, a friendly AI assistant for a non-technical user.",
@@ -71,13 +76,26 @@ export function buildAgentLoader(opts: {
  * <workspace>/.agents/skills (Agent Skills standard — Houston's existing
  * on-disk layout loads as-is) unless HOUSTON_SKILLS_DIR overrides.
  */
-export function makeAgentLoader(cwd: string, mode?: TurnMode) {
+export function makeAgentLoader(
+  cwd: string,
+  mode?: TurnMode,
+  provided?: ProvidedContext,
+) {
+  // Overlays compose onto Houston's base prompt, in the SAME order as the claude
+  // backend (system-prompt.ts): first the workspace + user CONTEXT section
+  // (HOU-711 — `provided` is the gateway's Supabase copy in cloud, else the two
+  // files at cwd), then the GROUP context section (local-only `GROUP.md` the host
+  // mirrors into each grouped agent's cwd; null when ungrouped), then the turn
+  // MODE overlay LAST so the plan/auto mandate is the final word. CLAUDE.md/
+  // AGENTS.md still load via agentsFilesOverride below.
+  const section = buildWorkspaceContextSection(cwd, provided);
+  const base = config.systemPrompt || SYSTEM_PROMPT;
+  const withContext = section ? `${base}\n\n${section}` : base;
+  const group = buildGroupContextSection(cwd);
+  const withGroup = group ? `${withContext}\n\n${group}` : withContext;
   return buildAgentLoader({
     cwd,
     skillsDir: config.skillsDirOverride || join(cwd, ".agents", "skills"),
-    // Plan mode appends the planning overlay to the agent's system prompt; auto
-    // mode appends the Autopilot overlay; an execute (or absent) mode passes it
-    // through unchanged.
-    systemPrompt: withModeOverlay(config.systemPrompt || SYSTEM_PROMPT, mode),
+    systemPrompt: withModeOverlay(withGroup, mode),
   });
 }

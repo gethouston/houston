@@ -38,14 +38,13 @@ This used to be configurable per agent via a `tabs: AgentTab[]` field in `housto
 
 The per-agent `Integrations` tab is a thin wrapper around the same `IntegrationsView` that the sidebar `Connections` entry renders, so the per-agent and workspace-wide surfaces are intentionally identical. The two entry points are kept because users reach for them at different moments (focused on one agent vs. setting up Houston as a whole).
 
-**Managed-agent read-only gating (Teams v2).** For a plain member of a shared
-agent (`!isAgentManager`), the configure surfaces render **read-only** instead
-of hiding. Agent Settings (`job-description-tab.tsx`) shows a
-`teams:managedAgent.banner` note (`managed-agent-banner.tsx`), driven by
-`job-description-access.ts` off `canEditAgentConfig`; the model + effort pickers
-disable with a `teams:model.lockedTooltip`; the Integrations tab gates its edits
-on `isAgentManager` / `canEditAgentGrants`. The gateway 403s any configure-scope
-write regardless — these gates only avoid showing a dead control. The **Share**
+**Manager-only configure gating (Teams v2).** Agent Settings
+(`job-description-tab.tsx`) is **hidden** from a plain member of a shared agent:
+`standard-tabs.ts` only adds the `job-description` tab for single-player or
+`isAgentManager` callers, so it is a manager-only two-column admin page with no
+read-only variant. The Integrations tab gates its edits on `isAgentManager` /
+`canEditAgentGrants`. The gateway 403s any configure-scope write regardless —
+these gates only avoid showing a dead control. The **Share**
 dialog (`agent-share-dialog.tsx`) — a Drive-style people-with-access sheet
 backed by `setAgentAssignments` v2 — is gated on `canManageAssignments`. See
 `knowledge-base/teams.md`.
@@ -118,72 +117,157 @@ Seeds agent CLAUDE.md from manifest `claudeMd` field or manifest's `CLAUDE.md` f
 other; the manager configures instructions/skills/model/allowlist afterward. See
 `knowledge-base/teams.md`.)
 
-## Default Personal assistant + tutorial
+## Agent activation (every new agent: a self-setup mission, no extra screens)
+
+After ANY agent is created (create dialog: from-scratch, AI-assisted,
+library/store template) or imported (friend-import wizard), Houston
+**auto-starts a real first mission in the normal shell** where the agent helps
+the user set *itself* up. No full-screen onboarding, no separate screens: the
+agent introduces itself, proposes 2-3 concrete example missions, then
+interviews the user about how it should work and **persists each thing the user
+says the moment they say it** through its normal abilities — lasting
+preferences/facts go into its instructions, repeatable procedures become Skills,
+anything on a schedule becomes a Routine (ask for the time, confirm first).
+"The agent creates itself." This replaced the earlier full-screen
+Meet → Connect → Conversation → Ready flow, which replaced the hardcoded
+"Meet {name}" welcome mission (HOU-713).
+
+- **Kickoff bubble vs hidden directive.** `lib/agent-setup-mission.ts`
+  `startAgentSetupMission(agent, { provider, model }, source)` calls the shared
+  `createMission` with the *visible* user bubble
+  (`agentOnboarding:setupMission.kickoff` = "Help me get set up") as the text and
+  the full instructions carried through `buildPrompt` →
+  `buildSetupMissionPrompt(agentName)`. The `buildPrompt` string reaches the
+  engine as system context, never rendering as a user chat line — so there is
+  **no CLAUDE.md mutation and none of the old strip/sweep/pending machinery**.
+  Effort is pinned `medium`; it opens the chat via
+  `useUIStore.setActivityPanelId(conversationId, { forceOpen: true })` (same move
+  the old welcome used). On a warming (hosted) agent `createMission` queues the
+  send and returns without throwing (surfacing its own toast on real failure);
+  on the local path a throw is caught and shown via `showErrorToast`
+  (`setupMission.startFailed`). Never silent. Analytics:
+  `agent_onboarding_started` carrying `source` ("created" | "imported") — the
+  only surviving `agent_onboarding_*` event.
+- **The prompt** keeps the reply-in-the-user's-language idiom (detect the
+  language, Latin-American neutral `tú` / Brazilian `você`; every English line a
+  template to translate) and the non-technical voice (never mention files,
+  folders, configs, or internals). It tells the agent to capture each preference/
+  Skill/Routine as the user speaks and briefly confirm what it saved, never batch
+  for later.
+- **In-dialog connect step (declared integrations only).** For a template whose
+  definition declares `integrations` (non-empty after trimming) AND the
+  deployment serves the integrations provider (`integrationsAvailable(capabilities)`),
+  the create dialog does NOT close after create — it advances to a `"connect"`
+  step **inside `DialogContent`** (`components/shell/connect-apps-step.tsx`): one
+  tile per declared toolkit (`connect-step-tile.tsx`, moved here from the deleted
+  onboarding dir) with the real `AppLogo` + name and a per-tile Connect running
+  the app's own OAuth via `useConnectFlow({ agentId, autoGrant })` (auto-grant
+  gated by `canManageAgentGrants` + `useIntegrationStatus` readiness/`attempted`,
+  mirroring `connect-email.tsx`). Footer is a single primary "Done"
+  (`connect.done`) → `handleClose()`; no Back (the agent already exists), and
+  Escape/outside-close just close (the mission already started, nothing lost).
+  The setup mission is fired **before** this branch, so it runs regardless.
+  Import wizard has no connect step.
+- i18n namespace: `agentOnboarding` (en/es/pt) — now just `setupMission.*`
+  (title/kickoff/startFailed) and `connect.*` (title/body/connect/connected/
+  waiting/cancel/done).
+- `WELCOME_SESSION_PREFIX` / `isWelcomeSessionKey` survive in
+  `lib/agent-welcome.ts` ONLY so boards from older builds still render their
+  derived greeting.
+- The Personal Assistant first-run onboarding below is a separate flow (the
+  connect-first setup); the assistant it seeds does NOT run the self-setup
+  mission today.
+
+## Default Personal assistant + first-run onboarding
 
 Every newly-created workspace gets a `Personal assistant` instance from the
 built-in `personal-assistant` config. Users do not create it manually.
-First-run onboarding is a seven-mission guided setup driven by
-`app/src/components/onboarding/personal-assistant-onboarding.tsx` and the
-`TUTORIAL_STEPS` machine in `tutorial-copy.ts`:
 
-1. Welcome screen offers start vs. skip.
-2. **Meet** — name + color the assistant.
-3. **Connect** — connect your AI in a single `connect` step
-   (`missions/connect-ai.tsx`) that embeds the shared `<ProviderBrowser>` (the
-   same ai-hub marketplace surface, via `useProviderBrowserData`), so onboarding
-   lists this deployment's full runnable catalog with search + quick-filter and
-   connects through every auth type (OAuth, API key, OpenAI-compatible endpoint,
-   Copilot enterprise). Replaces the old bespoke `brain` (OpenAI/Anthropic pick) +
-   `providerLogin` pair; it fires the `ai_provider_connected` funnel event
-   (ref-guarded, once per install) and auto-advances to the `aiConnected` success
-   screen the instant a provider connects. The workspace + assistant are
-   provisioned by the create-agent step, not here.
-4. **Tools** — sign into Composio so the agent has hands.
-5. **Try** — one real mission (`Plan my next working day`). The agent reads
-   inbox + calendar in parallel, cross-references them, posts a structured
-   plan with bold sections, and saves three draft replies. Ends with the
-   literal `[TUTORIAL_COMPLETE]` token. CLAUDE.md is augmented with the
-   tutorial directive while this step is mounted, stripped on unmount.
-6. **Skill** — same chat, one chip. The user clicks "Save this as a Skill"
-   and the agent writes `.agents/skills/plan-my-working-day/SKILL.md`
-   (frontmatter + procedure body) in a single shot. Ends with
-   `[SKILL_COMPLETE]`. Detection prefers the on-disk `useSkills()` lookup
-   (skill `name === ONBOARDING_SKILL_SLUG`) over the token. The done
-   screen is a full-page `MissionDoneScreen` showing the resulting
-   `SkillCard` — same component the user sees in the chat empty state.
-7. **Routine** — same chat, one chip. The user clicks "Make it a routine"
-   and the agent asks for one thing (the time), confirms, then appends a
-   new entry to `.houston/routines/routines.json` whose `prompt` simply
-   says `Run the \`plan-my-working-day\` skill.` (the procedure lives in
-   the Skill from M5, the routine just schedules it). Ends with
-   `[ROUTINE_COMPLETE]`. Done screen is a full-page `MissionDoneScreen`
-   showing the routine name, "Every weekday at HH:MM", and which Skill
-   it runs.
-8. **Summary** — final celebratory screen with the assistant's avatar /
-   name and the two cards (Skill + Routine) read live from
-   `useSkills` + `useRoutines`. The "Enter Houston" CTA fires
-   `finishOnboarding`, which arms the UI tour and clears
-   `tutorialActive` so the workspace shell takes over.
+First-run onboarding is a short, connect-first flow driven by
+`app/src/components/onboarding/personal-assistant-onboarding.tsx`. There is **no
+naming/color step and no Try/Skill/Routine missions** — the old seven-mission
+tutorial (Welcome screen, Meet step, Tools/Try/Skill/Routine missions,
+`[TUTORIAL_COMPLETE]`/`[SKILL_COMPLETE]`/`[ROUTINE_COMPLETE]` tokens, summary
+cards) is gone. Houston ships ONE great default assistant (fixed name/color from
+`tutorial.defaults`), and the payoff is the seeded routine + skill it comes with
+(below), demoed by the UI tour rather than hand-built during setup.
 
-**Always-on Skip.** Missions 4-7 each render a small "Skip tutorial" link
-wired to `finishOnboarding` directly (not through the per-step
-`onContinue`). If the model wedges or the user changes their mind, one
-click stops any in-flight session and lands them in the workspace shell
-with the default Personal assistant still created in M3. The Skip is
-deliberately separate from `onContinue` because the latter advances
-mission-by-mission.
+The screen state machine (`OnboardingStep` in `tutorial-copy.ts`):
 
-**CLAUDE.md augmentation pattern.** Try, Skill, and Routine each append a
-uniquely-marked section to the agent's `CLAUDE.md` on mount and strip it
-on unmount via `tutorial-system-prompt.ts`, `skill-system-prompt.ts`,
-`routine-system-prompt.ts`. Each mount-time write also strips any prior
-sibling sections, and each unmount-time strip is a no-op when nothing
-matches, so concurrent unmount-of-prev / mount-of-next writes converge
-cleanly no matter which write lands last.
+1. **intro** — a `SetupProgress` plan of the visible milestones, start CTA.
+2. **connect** — connect your AI (`missions/connect-ai.tsx`) via the shared
+   `<ProviderBrowser>` (same ai-hub surface, `useProviderBrowserData`), with
+   `curated` set so onboarding shows only `FEATURED_PROVIDER_IDS` split into
+   Subscription / API-key sections, plus a "see all providers" chip that expands
+   to the deployment's full runnable pi-ai catalog; a search query bypasses
+   curation. Connects through every auth type (OAuth, API key, OpenAI-compatible
+   endpoint, Copilot enterprise). On connect it fires `ai_provider_connected`
+   (ref-guarded, once per install), kicks off **silent** workspace + assistant
+   provisioning in the background (`useCreateAssistant`, no user-triggered
+   button), and advances to `aiConnected`.
+3. **aiConnected** — a `SetupProgress` success beat; continue advances to
+   `connectEmail` when integrations are available, else straight to `finished`
+   (`stepAfterAgentCreated`).
+4. **connectEmail** — connect an email toolkit (`missions/connect-email.tsx`) so
+   the assistant can send on the user's behalf. Three one-click brand action rows
+   (Gmail → Google logo, Outlook → Microsoft logo, "Another provider" → a `Mail`
+   icon that expands an inline input); tapping a brand row kicks off its OAuth
+   immediately (no select-then-Connect two-step), the row's chevron becomes a
+   spinner while in flight (the other rows disable) and the in-flight row itself
+   turns into a CANCEL control — flipping to an X + "Cancel" on hover, mirroring
+   the AI step's Connect pill (`useConnectFlow().cancel`) — and it auto-advances
+   the moment the tapped toolkit lands active. If the background create hasn't
+   landed yet this step shows a light "preparing" spinner and auto-advances when
+   the agent record arrives; if the create **failed or hung** (a 20s timeout) it
+   renders a recoverable error card (Try again re-fires the stored provider/model
+   create; Back returns to the AI picker) instead of an infinite spinner. A soft
+   "skip email" lands on `finished`.
+5. **emailConnected** — success beat, fires `integration_connected`.
+6. **emailChat** (`missions/email.tsx`) — the assistant sends one real email to
+   the user so they watch it act. Completing marks `emailSent`.
+7. **finished** (`missions/finished.tsx`) — the single celebratory payoff screen
+   with a `SuccessCheck` and exactly ONE **"Start building"** CTA (no secondary
+   escape). Copy is honest via `variant`: `"sent"` only on the path that actually
+   sent an email, `"ready"` when the email steps were skipped or the deployment
+   has no integrations. The CTA arms the UI tour and clears `tutorialActive`; the
+   tour's completion/skip callback lands the user on the assistant's **Routines**
+   tab so the freshly-seeded Morning briefing is immediately visible (tour wiring
+   in `workspace-shell.tsx`).
 
-Skipping onboarding at the welcome screen still creates the default Personal
-assistant, but skips every tutorial artifact: no Try mission, no Skill,
-no Routine, no Summary, no UI tour.
+**Capability-aware step math.** On a no-integrations deployment the email steps
+never render, so they vanish from both the "Step N of M" counter and the
+intro/celebration plan. `integrationsAvailable(capabilities)` drives the visible
+milestones and `stepPosition(screen, { emailSteps })` (`app/src/lib/setup-steps.ts`)
+computes the counter so the sole connect step never lies "Step 1 of 3".
+
+**Durable resume.** Because the assistant is created silently the instant the AI
+connects, the agent-count first-run signal (`App.tsx`) flips `false` forever
+after that point, so a mid-flow quit would permanently skip the rest of setup.
+The `onboarding_pending` engine preference (`app/src/hooks/use-onboarding-pending.ts`)
+is the resume contract: set on mount, cleared in every terminal path
+(`finishOnboarding` and the stuck-escape `skipOnboarding`); `App.tsx` re-enters
+onboarding while it is set.
+
+**The default assistant ships seeded.** Creation writes real capability into the
+new agent's tree via `personal-assistant-seeds.ts` (`buildPersonalAssistantSeeds`
+→ `create(..., seeds)`), so first-run users get working content, not an empty
+shell:
+
+- A **Morning-briefing routine** (`.houston/routines/routines.json`, schedule
+  `0 7 * * 1-5`, `suppress_when_silent: true`) — reads whatever calendar/inbox is
+  connected and stays silent (`ROUTINE_OK`) when nothing is, so a
+  nothing-connected morning is never spam.
+- A **meeting-prep skill** (`.agents/skills/meeting-prep/SKILL.md`).
+
+Both are **locale-aware**: the short user-facing bits (routine name, skill
+title/description) flow through `t()` and mirror across en/es/pt, while the
+long-form model instructions stay English but carry an explicit "write your
+OUTPUT in <language>" line built from the active locale. The agent's `CLAUDE.md`
+(`buildAssistantInstructions`) tells it these two ship ready-made. A seed-write
+failure **rolls back the whole agent creation** in the host
+(`packages/host/src/routes/agents.ts`), so an agent never lands half-seeded. The
+timezone preference is seeded during creation too, via the shared helper in
+`app/src/hooks/use-timezone-preference.ts`, so the cron fires in the user's zone.
 
 ## Workspace templates
 
@@ -225,12 +309,77 @@ Engine route: `POST /v1/store/workspaces/install-from-github`. Rust impl: `houst
 | > Connections               |  workspace-wide integrations
 | > Organization              |  Teams v2 dashboard (owner/admin + multiplayer only)
 |-----------------------------|
-| Your AI Agents              |
-|   > Research Agent    [2]   |  sorted by lastOpenedAt
-|   > Project Manager         |
+| Your AI Agents          [+] |  section label + a people (Users) icon "New group" button
+|   ▾ Work                 [2]|  a named, collapsible group (drag its title to move it)
+|     > Research Agent    [2] |
+|     > Project Manager       |
+|   > Trip Planner            |  ungrouped agents (default section)
 |   + New Agent               |  row-style action, opens Store picker
 +-----------------------------+
 ```
+
+**Reorder + grouping (per-workspace).** Ordering is **always manual** — there
+is NO sort mode. Agents are always drag-and-droppable to reorder or to drop into
+a group; a folder-plus button to the right of the "Your agents" label creates a
+group (which appears already in inline-rename, focused). Arrangement persists per
+workspace as the `sidebar_layout` **preference** (same `ws/<id>/preferences.json`
+doc as `locale`; reuses `getPreference`/`setPreference`), shape `SidebarLayout {
+groups: SidebarGroup[]; ungroupedOrder: string[] }`
+(`packages/protocol/src/domain/workspace.ts`; a brand-new agent appears at the
+end of the default section). Absent/corrupt reads as `{ [], [] }`.
+
+- **Host:** `GET`/`PUT /v1/workspaces/:id/sidebar-layout` in
+  `routes/account.ts` (validator/reader extracted to `routes/sidebar-layout.ts`);
+  PUT emits `HoustonEvent SidebarLayoutChanged { workspaceId }`.
+- **Client (TWO places — this is the trap):** the app never uses
+  `ui/engine-client` at runtime. `app/vite.config.ts` AND
+  `packages/web/vite.config.ts` both alias `@houston-ai/engine-client` →
+  **`packages/web/src/engine-adapter/`** (the v3 host adapter), and its
+  `HoustonClient` wraps unknown methods in a **Proxy stub that returns `[]`**.
+  So a new client method MUST be added to the adapter (`engine-adapter/client.ts`
+  + `control-plane.ts` cpFetch helper) or the app silently gets `[]` (which then
+  broke `layout.groups.map` until the client normalized it). `getSidebarLayout`/
+  `setSidebarLayout` live in BOTH `ui/engine-client` (types + client, tests) and
+  the adapter (host-backed via cpFetch when `this.cp` set, else localStorage).
+- **Generic UI:** `AppSidebar` (`ui/layout`) gained optional `sectionAction`
+  (rendered by the section label — the app passes the folder button), `groups:
+  SidebarGroupView[]`, group callbacks, `renamingGroupId` (opens a just-created
+  group into inline-rename), and **@dnd-kit** drag (always on when `groups` is
+  passed). Real sortable: a `DragOverlay` lifted row follows the cursor, siblings
+  animate, agents move within/across groups + the default section, group headers
+  reorder whole groups; pointer/touch/keyboard sensors, `MeasuringStrategy.Always`
+  for smooth reflow. Orchestrator `sidebar-grouped-list.tsx` keeps a working copy
+  that `onDragOver` live-reorders (both same- and cross-container via
+  `placeItem`'s direction-aware `arrayMove`) and `onDragEnd` simply commits — do
+  NOT recompute from `over` at drop, it can be the dragged item itself. Pure
+  helpers `sidebar-dnd.ts`. Absent `groups` → the old flat list; the collapsed
+  rail always renders flat. Verified end-to-end by
+  `packages/web/e2e/sidebar-dnd.spec.ts` (Chromium + WebKit; drags re-read the
+  reflowing target's live position — fixed pre-drag coords miss).
+- **App wiring:** `hooks/use-sidebar-layout.ts` (TanStack Query + optimistic
+  mutation + non-React `getCurrentSidebarLayout` accessor; `createGroup` returns
+  the new id so the sidebar can focus its rename), pure reducers in
+  `lib/sidebar-layout-ops.ts` (+ `normalizeSidebarLayout` guarding every read),
+  ordering in `lib/agent-order.ts` (`resolveSidebarSections` / `flatSidebarOrder`
+  — the SAME order feeds ⌘[ / ⌘] cycling + the command palette). Group labels
+  live under `shell:sidebar.groups.*` (en/es/pt).
+- **Group shared context.** `SidebarGroup.context?: string` — one note shared
+  by every agent in that group (a group-scoped `WORKSPACE.md`). Edited from the
+  group header's "..." menu → "Edit shared context"
+  (`app/src/components/shell/group-context-dialog.tsx`), saved via
+  `sidebar.setGroupContext` → `setGroupContextOp` → the same `PUT
+  sidebar-layout` write. On every PUT, `routes/account.ts` diffs the previous
+  vs. new per-agent resolved context (`routes/group-context-sync.ts`:
+  `resolveGroupContextByAgent` / `diffGroupContext`) and mirrors it to a
+  `GROUP.md` file at each affected member agent's root (same location as
+  `WORKSPACE.md`; written/deleted via `paths.agentRoot(ws, agent)`, best-effort
+  — never fails the primary layout write), firing `ContextChanged` per agent.
+  Runtime read side: `buildGroupContextSection` in
+  `packages/runtime/src/session/workspace-context.ts`, injected after the
+  workspace/user context section and before the mode overlay — present only
+  for grouped agents (no empty-marker stub, unlike WORKSPACE.md/USER.md, since
+  group membership is optional). Local/self-host only; no cloud "provided"
+  variant yet (would need gateway wiring in the closed `cloud` repo).
 
 Agent rows show a count chip for `needs_you` activity items. If any
 activity item is `running`, the row avatar uses the same comet glow as
@@ -340,30 +489,37 @@ Notes:
   One card + one slot means no per-card status disambiguation. Full design:
   `convergence/README.md`.
 
-### The chat model picker (minimal two-level menu)
+### The chat model picker (two-level menu, shared dropdown idiom)
 
-The composer's model picker is a **minimal two-level command menu**
-(`@houston-ai/core` `ModelPicker`, built on cmdk). **Level 1** lists ONLY the
-connected providers (brand glyph + name, a check on the currently-selected
-model's provider) plus a quiet **"Connect more providers…"** footer. Clicking a
-provider drills into **level 2**: a back affordance + that provider's model rows
-(name, a subtle one-line description, a check on the selected model). An
-always-visible **search field** at the top bypasses the levels with a flat
-ranked list across all connected providers; clearing it returns to the current
-level. Keyboard: cmdk roving (↑↓/Enter), Escape clears an active query then steps
-back from level 2, Backspace-on-empty-query steps back. Sizes to content
-(`max-h-[360px]` scroll). The library component is props-only and i18n-agnostic
+The composer's model picker is a **two-level command menu in the app's shared
+dropdown idiom** (`@houston-ai/core` `ModelPicker`, built on the shared
+`Command*` primitives — the same Popover + cmdk chrome and row vocabulary as
+`FilterCombobox`). **Level 1** lists ONLY the connected providers (colorful
+`BrandMark` + name, a check on the currently-selected model's provider, a
+trailing drill-in chevron) plus a quiet **"Connect more providers…"** footer.
+Clicking a provider drills into **level 2**: an always-visible back header
+(chevron + provider name) + that provider's model rows (name, a subtle one-line
+description, a check on the selected model). On level 2 an in-dropdown
+`CommandInput` **search** appears once the provider's list runs long (> 8 rows,
+the `FilterCombobox` heuristic) and filters that list via cmdk's built-in
+scorer; short lists omit it. The old always-visible global search (flat ranked
+cross-provider results, `searchModels`/`matchRange`) was **removed** in the
+idiom restyle. Keyboard: cmdk roving (↑↓/Enter), Escape clears an active query
+then steps back from level 2, Backspace-on-empty-query steps back; the Command
+is keyed per screen (fresh cmdk state) and the picker focuses the input or the
+cmdk root itself per screen (the app popover prevents both auto-focus
+directions). Sizes to content (`max-h-[360px]` scroll); the popover supplies
+the border/shadow/radius. The library component is props-only and i18n-agnostic
 (`labels?`); all app wiring lives in `app/src/components/chat-model-selector.tsx`.
 
 - **Disconnected providers never appear.** The picker filters to
-  `connection === "connected"` for both the level-1 list and search; the ONLY
-  path to a disconnected provider is the "Connect more providers…" footer, which
-  navigates to the AI Hub (`setViewMode("ai-hub")`). The old per-row Connect
-  buttons, provider rail, favorites/recents groups, FilterPopover, SortMenu,
-  result-count row, and model detail panel were all **deleted** in the minimal
-  redesign. Pure selectors + the nav reducer live in
-  `ui/core/src/components/model-picker/{catalog,nav}.ts` (unit-tested in
-  `ui/core/tests/`).
+  `connection === "connected"` on both levels; the ONLY path to a disconnected
+  provider is the "Connect more providers…" footer, which navigates to the AI
+  Hub (`setViewMode("ai-hub")`). The old per-row Connect buttons, provider rail,
+  favorites/recents groups, FilterPopover, SortMenu, result-count row, and model
+  detail panel were all **deleted** in the minimal redesign. Pure selectors +
+  the nav reducer live in `ui/core/src/components/model-picker/{catalog,nav}.ts`
+  (unit-tested in `ui/core/tests/`).
 - **#342 flicker guard.** While provider statuses (or the catalog) are still
   resolving and nothing is connected yet, level 1 shows a neutral loading state,
   never "no providers" — `providerListLoading()` in `catalog.ts`,
@@ -372,11 +528,10 @@ back from level 2, Backspace-on-empty-query steps back. Sizes to content
 - **Curated-first ranking.** The pi catalog's raw order is often oldest-first,
   so `chat-model-picker-map.ts` re-ranks each provider's rows via
   `rankCuratedFirst`: models with a `PROVIDER_OVERRIDES[provider].models` entry
-  lead, in override key (curation) order, then the rest in catalog order; curated
-  rows carry `curated: true`. Search (`searchModels` in ui/core `catalog.ts`)
-  ranks by match tier (name match beats other-field), then the `curated` flag,
-  then match position, then input order — so "opus" surfaces Opus 4.8/4.7 above
-  Claude Opus 3.
+  lead, in override key (curation) order, then the rest in catalog order — so a
+  provider's level-2 list opens with Opus 4.8/4.7 above Claude Opus 3. The
+  picker renders rows in this input order; the old `curated` row flag (a search
+  tiebreaker) left with the global search.
 
 - **Reused in the import-agent wizard too.** `ChatModelSelector` is the ONE model
   selector: the chat composer AND the import flow (`portable/import-wizard.tsx`)
@@ -533,7 +688,7 @@ the real vendored pi-ai registry, not a test fixture).
 
 A separate per-turn "Mode" pill sits next to the model + effort controls in
 the composer footer, with three labels — **Planner** (`plan`, read-only
-investigation), **Doer** (`execute`), and **Autopilot** (`auto`,
+investigation), **Coworker** (`execute`), and **Autopilot** (`auto`,
 fire-and-forget: no blocking tools). Unlike
 effort it is NOT synced through `Settings` — full mechanics, the runtime
 enforcement (tool clamp + overlay), and the "forgotten `modeOverride`
@@ -552,14 +707,43 @@ marketplace, not a settings pane. Entry: `app/src/components/ai-hub/ai-hub-view.
   (`components/provider-browser/provider-browser.tsx`, rows in
   `provider-browser/provider-row.tsx`, grouped by
   `provider-browser/provider-grouping.ts`): brand-colored cards in Connected /
-  Available sections, featured pinned first, with the search + quick-filter bar.
-  The SAME component renders onboarding's connect step, the migration reconnect
-  screen, and workspace setup (they pass `onSelect`/`selectOnMount`; the hub
-  passes `onOpen` + `renderDialogs={false}`). Coming-soon tiles are gone.
+  Available sections, featured pinned first, with a search box + two
+  Subscription/Pay-as-you-go toggle buttons (`provider-filters.tsx`,
+  single-select — click the active one to clear back to "all"). The filter is
+  driven by BILLING (`providerBilling()` in `provider-grouping.ts`), not by
+  how the provider authenticates: it defaults from `auth` (oauth ->
+  subscription, apiKey -> payg) but `PROVIDER_OVERRIDES[id].billing` overrides
+  it where the two diverge — OpenCode Go is a flat $10/month subscription
+  unlocked with a pasted key. The merged OpenCode connect card (Zen + Go share
+  one key) spans both billing kinds and matches whichever filter is active
+  rather than being forced into one. No per-card auth badge/icon — how a
+  provider is paid for lives in the filter and the existing cost prose (e.g.
+  "Your Claude subscription"), not a separate visual element on every card
+  (an inline badge/icon was tried and dropped as too heavy / not worth the
+  clutter). The SAME `ProviderBrowser` component renders onboarding's connect
+  step, the migration reconnect screen, and workspace setup (they pass
+  `onSelect`/`selectOnMount`; the hub passes `onOpen` + `renderDialogs={false}`).
+  Onboarding alone also passes `curated`, which swaps the Connected/Available
+  grouping (and the billing filter bar) for a featured-only Subscription/API-key
+  split (`provider-browser-sections.tsx`'s `CuratedProviderSections`, grouping via
+  `groupByAuthType`/`filterToFeatured`) behind a "see all providers" expansion —
+  every other `curated`-omitting consumer keeps the full billing-filtered grid.
+  Coming-soon tiles are gone.
 - **Provider detail** (`provider-modal.tsx`): connect / sign-out plus that
   provider's model list.
-- **Model directory** (`model-directory.tsx` / `model-row.tsx`): the
-  cross-provider catalog (~378 unique models), searchable (`ai-hub/search.ts`).
+- **Model directory** (`model-directory.tsx` → `models-browser.tsx` /
+  `model-card-row.tsx`): the cross-provider catalog (~378 unique models) as a
+  single-column list (BrandMark + name + lab + a visible "See more" cue),
+  above a control row of a pill search box + four facet comboboxes — AI provider
+  (self-hides at one lab), Good at, Cost, Memory. The comboboxes are the shared
+  `ai-hub/filter-combobox.tsx` (Popover + cmdk, optional in-dropdown search),
+  which the teams allowed-models editor's `agent-admin/lab-filter.tsx` also
+  reuses. Cost/Memory buckets are the pure `costBucket` / `memoryBucket` in
+  `ai-hub/format.ts` (cost reuses the `costTier` thresholds, plus a `$0` "Free"
+  bucket; memory splits at 200K / 1M). Searchable via `ai-hub/search.ts`. The
+  old Mercury ledger (`models-ledger.tsx` / `model-row.tsx` / the sticky
+  `LedgerHeader` + `DirectoryFilters`) was removed. `ModelsBrowser` also backs
+  the provider modal, so both surfaces read identically.
 - **Model detail** (`model-modal.tsx` + `model-offer-row.tsx`): one model's
   per-provider offers ("Get it through" + pricing / subscription).
 
@@ -571,27 +755,36 @@ three reusable content components are in `design/inventory` (see below).
 ### The catalog
 
 Data lives in `app/src/lib/ai-hub/**`. The directory is built at runtime by
-`loadHubCatalog(visibleProviderIds)` (`catalog.ts`) from **two** sources:
+`loadHubCatalog(catalog, opts)` (`catalog.ts`) from **two** sources:
 
-1. **A checked-in models.dev snapshot** — `app/src/lib/ai-hub/model-catalog.json`,
+1. **pi-ai's live `/v1/catalog`** (the `ProviderCatalog` wire shape, the SAME
+   runnable set the chat model picker hydrates from) — mapped to merge
+   candidates by `piCatalogToCandidates` (`catalog-pi.ts`). This is the
+   AUTHORITATIVE base: every hub model exists because pi-ai can run it, with
+   pi's own pricing/context/reasoning/vision.
+2. **A checked-in models.dev snapshot** — `app/src/lib/ai-hub/model-catalog.json`,
    generated by `node scripts/generate-model-catalog.mjs` (re-run to refresh; set
-   `MODELS_DEV_JSON` to a local `api.json` for an offline/pinned run). It keeps
-   only the providers Houston routes to and only the fields the hub renders. Every
+   `MODELS_DEV_JSON` to a local `api.json` for an offline/pinned run) — folded in
+   SECOND as optional enrichment (`foldEnrichment`): it fills metadata pi lacks
+   (description / toolCall / imageGen / knowledge / releaseDate) on a model that
+   also exists in pi-ai; a snapshot-only model is dropped, never added. Every
    model gets a normalized cross-provider `key` (via `normalizeKey`) so the same
    model across Anthropic / Bedrock / Copilot / OpenCode / OpenRouter folds into
-   one directory entry. The timestamp is a content hash, not wall-clock, so a
-   re-run on unchanged source is byte-identical (clean diffs). `opencode-go`'s
-   models are folded into the `opencode` bucket at generation time.
-2. **The curated `PROVIDERS` catalog** (`app/src/lib/providers.ts`), merged in at
-   runtime with the snapshot specs.
+   one directory entry.
 
-**The OAuth-curated vs gateway-full-list rule** (`catalog.ts`):
+**The OAuth-curated vs gateway-full-list rule** (`piCatalogToCandidates` in
+`catalog-pi.ts`):
 - **API-key gateways** (`opencode`, `openrouter`, `deepseek`, `google`,
-  `amazon-bedrock`, `minimax`) contribute their **full** snapshot model lists —
-  any model the gateway serves is an offer.
+  `amazon-bedrock`, `minimax`, and any provider with no Houston override) offer
+  their **full** pi-ai model list — any model the gateway serves is an offer.
 - **Subscription / OAuth providers** (`openai`, `anthropic`, `github-copilot`)
-  contribute **only their curated `PROVIDERS.models`** (enriched with snapshot
-  specs), because the plan can only run that curated set — never the full list.
+  are filtered down to **only their curated `PROVIDER_OVERRIDES[id].models`**
+  ids, because the plan can only run that curated set, never pi's full
+  historical list (pi ships every model id it can still talk to — ~24 for
+  Anthropic alone, including old ids like `claude-3-opus`). Without this filter
+  the AI Hub / provider modal showed the full uncurated catalog instead of the
+  ~4-model curated set (HOU curation-gate fix); `hub-catalog.test.ts` +
+  `catalog-pi.test.ts` assert the gate.
 
 Which providers are visible is gated by `getVisibleProviders` /
 `getConnectProviders` (`providers.ts`): new-engine + desktop + host `capabilities`
@@ -670,12 +863,13 @@ Built in `engine/houston-engine-core/src/agents/prompt.rs::build_agent_context`:
 2. Mode file `.houston/prompts/modes/<mode>.md` (optional, user-editable).
 3. Learnings snapshot — `.houston/learnings/learnings.json`, text fields only, rendered as bounded background context. IDs/timestamps stay storage/UI-only.
 4. **Workspace context block** — assembled from `<workspace>/WORKSPACE.md` + `<workspace>/USER.md` (the agent's parent dir) by `workspace_context::build_prompt_section`. Always included for any agent whose parent dir has a `.houston/`. Files are NOT seeded — they only exist once the user or an agent writes them; until then the section renders an "(empty so far, ask the user when relevant)" marker so the agent knows the slot exists. Section explicitly authorizes the agent to read/write these two files (carve-out from the working-directory rule) and tells it that edits take effect on the **next** chat.
+4a. **Group context block** (current TS host only, no Rust-era equivalent) — `<agent-root>/GROUP.md`, present only when the agent belongs to a sidebar group with shared context set; see "Group shared context" under the sidebar section above. Unlike the workspace block there is no empty-marker stub: an ungrouped agent gets nothing appended.
 5. Skills index — `.agents/skills/` via `houston_skills::build_skills_index`.
 6. Integrations block — based on `.houston/integrations.json` if present.
 
 `CLAUDE.md` is read by the CLI (claude/codex) itself at startup, not injected by the engine.
 
-Users cannot edit the product prompt — it's compiled into the app binary. Per-agent surfaces that ARE user-editable: `CLAUDE.md` (job description), `.agents/skills/` (skills), `.houston/learnings/learnings.json` (learnings), `.houston/prompts/modes/*.md` (mode overrides). Per-workspace surfaces (shared by every agent in the workspace): `WORKSPACE.md` (about the company/project), `USER.md` (about the human running it). Both edited from Settings → Workspace → Shared context, or directly by agents when the user shares new info.
+Users cannot edit the product prompt — it's compiled into the app binary. Per-agent surfaces that ARE user-editable: `CLAUDE.md` (job description), `.agents/skills/` (skills), `.houston/learnings/learnings.json` (learnings), `.houston/prompts/modes/*.md` (mode overrides). Per-workspace surfaces (shared by every agent in the workspace): `WORKSPACE.md` (about the company/project), `USER.md` (about the human running it). Both edited from Settings → Workspace → Shared context, or directly by agents when the user shares new info. Per-group surfaces (shared by every agent in one sidebar group only): `GROUP.md`, edited from the group's "..." menu → Edit shared context, mirrored to member agents by the host on every sidebar-layout write.
 
 ## Board / Activity tab
 `@houston-ai/board::AIBoard` = `KanbanBoard` + `KanbanDetailPanel` + `ChatPanel`. Generic, props-only. Each card = activity from `.houston/activity/activity.json`. Click → opens chat w/ conversation history.

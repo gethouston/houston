@@ -58,10 +58,7 @@ export function CreateWorkspaceDialog({
               });
               await createPersonalAssistantForWorkspace(ws.id, {
                 name: setup.assistantName,
-                instructions: buildAssistantInstructions(
-                  setup,
-                  t("setup:tutorial.defaults.firstWorkflow"),
-                ),
+                instructions: buildAssistantInstructions(setup),
                 provider,
                 model,
               });

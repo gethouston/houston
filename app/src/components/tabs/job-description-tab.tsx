@@ -1,23 +1,24 @@
 import { useEffect, useState } from "react";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
-import { AgentAdminLanding } from "./agent-admin/agent-admin-landing";
 import {
   type AgentAdminScreen,
   targetToScreen,
 } from "./agent-admin/agent-admin-nav.ts";
 import { AgentAdminScreenView } from "./agent-admin/agent-admin-screen";
+import { AgentAdminSidebar } from "./agent-admin/agent-admin-sidebar";
 
 /**
- * The manager-only Agent Settings tab, rebuilt as a Settings-style admin page: a
- * landing of grouped cards ({@link AgentAdminLanding}) whose rows drill into a
- * full-pane screen with a back bar. Only agent-managers / owners (or the
- * single-player sole user) ever reach this tab, so every screen is editable —
- * the old read-only "managed agent" plumbing is gone. A turn-summary file link
- * deep-links straight into the matching screen via the UI store target.
+ * The manager-only Agent Settings tab, a two-column master-detail admin page: a
+ * slim settings nav rail ({@link AgentAdminSidebar}) on the left, the selected
+ * section on the right. One section is always selected, so there is no back
+ * navigation. Only agent-managers / owners (or the single-player sole user) ever
+ * reach this tab, so every section is editable — the old read-only "managed
+ * agent" plumbing is gone. A turn-summary file link deep-links straight into the
+ * matching section via the UI store target.
  */
 export default function JobDescriptionTab({ agent }: TabProps) {
-  const [screen, setScreen] = useState<AgentAdminScreen | null>(null);
+  const [screen, setScreen] = useState<AgentAdminScreen>("instructions");
   const target = useUIStore((s) => s.jobDescriptionTarget);
   const setTarget = useUIStore((s) => s.setJobDescriptionTarget);
 
@@ -27,19 +28,12 @@ export default function JobDescriptionTab({ agent }: TabProps) {
     setTarget(null);
   }, [target, setTarget]);
 
-  if (screen === null) {
-    return (
-      <div className="flex-1 overflow-y-auto">
-        <AgentAdminLanding agent={agent} onSelect={setScreen} />
-      </div>
-    );
-  }
-
   return (
-    <AgentAdminScreenView
-      agent={agent}
-      screen={screen}
-      onBack={() => setScreen(null)}
-    />
+    <div className="flex flex-1 min-h-0">
+      <AgentAdminSidebar agent={agent} selected={screen} onSelect={setScreen} />
+      <div className="flex flex-1 min-w-0 flex-col overflow-y-auto">
+        <AgentAdminScreenView agent={agent} screen={screen} />
+      </div>
+    </div>
   );
 }

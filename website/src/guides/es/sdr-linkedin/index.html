@@ -1,0 +1,1203 @@
+---
+lang: es
+---
+{% extends "base.njk" %}
+{% block title %}Guía paso a paso · Crea tu Agente SDR de LinkedIn con Houston{% endblock %}
+{% block meta %}
+<meta name="description" content="Guia oficial de Houston: instala la app, conecta Apify, Apollo, Hunter e Instantly, e instala el agente que encuentra leads en LinkedIn, verifica sus correos y arma una campana de outreach lista para enviar.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://gethouston.ai/guides/es/sdr-linkedin/">
+<meta property="og:title" content="Crea tu Agente SDR de LinkedIn con Houston">
+<meta property="og:description" content="Sigue la guia del workshop a tu ritmo: un agente que prospecta en LinkedIn y llena tu pipeline de outreach.">
+<meta property="og:site_name" content="Houston">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" hreflang="en" href="https://gethouston.ai/guides/sdr-linkedin/">
+<link rel="alternate" hreflang="es" href="https://gethouston.ai/guides/es/sdr-linkedin/">
+<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/guides/sdr-linkedin/">
+{% endblock %}
+{% block stylesheets %}
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+{% endblock %}
+{% block inlineStyles %}
+<style>
+  :root{
+    --ink:#0d0d0d; --muted:#5d5d5d; --gray6:#676767; --gray7:#424242;
+    --bg:#ffffff; --border:#e5e5e5; --soft:#f6f7f9;
+    --blue:#3b82f6; --indigo:#818cf8; --orange:#f97316; --gold:#eab308; --green:#00a240;
+    --grad:linear-gradient(100deg,#3b82f6 0%,#818cf8 42%,#f97316 100%);
+    --font:'General Sans', ui-sans-serif, -apple-system, system-ui, sans-serif;
+    --maxw:820px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; font-family:var(--font); color:var(--ink); background:var(--bg);
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wash{
+    position:fixed; inset:0; z-index:-1; background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,130,246,0.10), transparent),
+      radial-gradient(ellipse 60% 40% at 85% 25%, rgba(249,115,22,0.06), transparent),
+      radial-gradient(ellipse 60% 40% at 15% 70%, rgba(129,140,248,0.06), transparent);
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
+
+  /* top bar */
+  .topbar{
+    position:sticky; top:0; z-index:20; backdrop-filter:saturate(180%) blur(10px);
+    background:rgba(255,255,255,0.82); border-bottom:1px solid var(--border);
+  }
+  .topbar .wrap{display:flex; align-items:center; justify-content:space-between; height:58px}
+  .lockup{display:flex; align-items:center; gap:9px; text-decoration:none; color:var(--ink)}
+  .mark{width:22px; height:24px}
+  .wordmark{font-weight:600; letter-spacing:-0.02em; font-size:19px}
+  .topbar .tag{font-size:12.5px; color:var(--muted); font-weight:500}
+
+  /* hero */
+  .hero{padding:64px 0 34px}
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600;
+    letter-spacing:.02em; color:var(--gray7); background:#fff; border:1px solid var(--border);
+    border-radius:999px; padding:7px 14px; text-transform:uppercase;
+  }
+  .eyebrow .dot{width:7px; height:7px; border-radius:50%; background:var(--grad)}
+  h1{
+    font-weight:700; letter-spacing:-0.035em; line-height:1.05; font-size:52px;
+    margin:20px 0 0;
+  }
+  h1 .accent{
+    background:var(--grad); -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent; color:transparent;
+  }
+  .lede{font-size:19px; color:var(--muted); font-weight:400; margin:18px 0 0; max-width:660px}
+  .meta{display:flex; flex-wrap:wrap; gap:10px; margin-top:26px}
+  .chip{
+    display:inline-flex; align-items:center; gap:9px; background:#fff; border:1px solid var(--border);
+    border-radius:12px; padding:11px 15px; font-size:14px;
+  }
+  .chip svg{width:17px; height:17px; flex:none}
+  .chip b{font-weight:600}
+  .chip span{color:var(--muted)}
+
+  /* section */
+  section{padding:30px 0; border-top:1px solid var(--border)}
+  .kicker{font-size:12.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--blue)}
+  h2{font-weight:600; letter-spacing:-0.025em; font-size:30px; margin:8px 0 6px}
+  h2 .accent{background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent}
+  .sub{color:var(--muted); margin:0 0 8px; font-size:16.5px}
+  p{margin:12px 0}
+
+  /* roadmap */
+  .road{display:grid; gap:10px; margin-top:14px}
+  .road a{
+    display:flex; gap:14px; align-items:center; text-decoration:none; color:var(--ink);
+    background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px 16px;
+    transition:.15s border-color, .15s transform;
+  }
+  .road a:hover{border-color:#cfd4dc; transform:translateY(-1px)}
+  .road .n{
+    flex:none; width:30px; height:30px; border-radius:9px; font-weight:600; font-size:14px;
+    display:grid; place-items:center; color:#fff; background:var(--ink);
+  }
+  .road .t{font-weight:600}
+  .road .d{color:var(--muted); font-size:14px}
+  .road .time{margin-left:auto; color:var(--gray6); font-size:13px; font-weight:500; white-space:nowrap}
+
+  /* step block */
+  .step{scroll-margin-top:72px}
+  .step-head{display:flex; align-items:flex-start; gap:16px; margin-bottom:6px}
+  .badge{
+    flex:none; width:46px; height:46px; border-radius:13px; display:grid; place-items:center;
+    background:var(--ink); color:#fff; font-weight:700; font-size:19px; letter-spacing:-0.02em;
+  }
+  .step-head .est{color:var(--gray6); font-size:13px; font-weight:500; margin-top:3px}
+
+  ol.steps{counter-reset:s; list-style:none; padding:0; margin:18px 0 0}
+  ol.steps>li{
+    counter-increment:s; position:relative; padding:2px 0 20px 44px; margin:0;
+  }
+  ol.steps>li::before{
+    content:counter(s); position:absolute; left:0; top:0;
+    width:28px; height:28px; border-radius:50%; background:var(--soft); border:1px solid var(--border);
+    color:var(--gray7); font-weight:600; font-size:14px; display:grid; place-items:center;
+  }
+  ol.steps>li:not(:last-child)::after{
+    content:""; position:absolute; left:13.5px; top:30px; bottom:2px; width:1px; background:var(--border);
+  }
+  ol.steps>li b{font-weight:600}
+  code.ui{
+    background:#f0f2f5; border:1px solid var(--border); border-radius:6px; padding:1px 7px;
+    font-family:var(--font); font-weight:600; font-size:.92em; white-space:nowrap;
+  }
+
+  /* checkpoint */
+  .check{
+    display:flex; gap:11px; align-items:flex-start; margin:14px 0 4px; padding:12px 15px;
+    background:rgba(0,162,64,0.06); border:1px solid rgba(0,162,64,0.25); border-radius:12px;
+  }
+  .check svg{width:20px; height:20px; flex:none; margin-top:1px}
+  .check .lbl{font-weight:700; color:var(--green); font-size:12.5px; letter-spacing:.04em; text-transform:uppercase; display:block; margin-bottom:1px}
+  .check p{margin:0; font-size:15px}
+
+  /* callouts */
+  .call{display:flex; gap:12px; align-items:flex-start; border-radius:12px; padding:13px 16px; margin:14px 0; font-size:15px}
+  .call svg{width:19px; height:19px; flex:none; margin-top:2px}
+  .call .lbl{font-weight:700; font-size:12px; letter-spacing:.05em; text-transform:uppercase; display:block; margin-bottom:2px}
+  .call p{margin:0}
+  .tip{background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.25)}
+  .tip .lbl{color:var(--blue)}
+  .warn{background:rgba(249,115,22,0.07); border:1px solid rgba(249,115,22,0.3)}
+  .warn .lbl{color:#c2560c}
+  .note{background:var(--soft); border:1px solid var(--border)}
+  .note .lbl{color:var(--gray7)}
+
+  /* prompt block */
+  .prompt{
+    position:relative; background:#0f1115; color:#e8eaed; border-radius:12px; padding:15px 16px;
+    font-size:14.5px; line-height:1.5; margin:12px 0; border:1px solid #1c1f26;
+  }
+  .prompt .pl{display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#8b93a1; font-weight:600; margin-bottom:7px}
+  .prompt .txt{font-family:var(--font)}
+  .prompt .txt::before{content:"“"} .prompt .txt::after{content:"”"}
+  .prompt.noq .txt::before{content:""} .prompt.noq .txt::after{content:""}
+
+  /* screenshot placeholder */
+  .shot{
+    display:flex; gap:14px; align-items:center; margin:16px 0; padding:14px 16px;
+    background:#fff; border:1.5px dashed #c3c9d4; border-radius:14px;
+  }
+  .shot .cam{
+    flex:none; width:40px; height:40px; border-radius:10px; display:grid; place-items:center;
+    background:var(--soft); color:var(--gray6); border:1px solid var(--border);
+  }
+  .shot .cam svg{width:20px; height:20px}
+  .shot .num{font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue)}
+  figure.shot-real{margin:16px 0}
+  .shot-real img{width:100%; display:block; border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 24px rgba(13,13,13,0.07)}
+  .shot-real figcaption{font-size:13px; color:var(--gray6); margin-top:8px}
+  .shot-real figcaption .num{font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue); margin-right:8px}
+  .shot-real.narrow img{max-width:360px; margin:0 auto}
+  .shot-real.narrow figcaption{text-align:center}
+  .shot .desc{font-size:14.5px; margin:1px 0 2px}
+  .shot .ref{font-size:12.5px; color:var(--gray6); font-weight:500}
+
+  /* generic list */
+  ul.plain{padding-left:20px; margin:12px 0}
+  ul.plain li{margin:7px 0}
+
+  /* troubleshooting */
+  details.ts{border:1px solid var(--border); border-radius:12px; padding:0 16px; margin:10px 0; background:#fff}
+  details.ts+details.ts{margin-top:8px}
+  details.ts summary{
+    cursor:pointer; list-style:none; padding:15px 0; font-weight:600; font-size:16px;
+    display:flex; gap:11px; align-items:flex-start;
+  }
+  details.ts summary::-webkit-details-marker{display:none}
+  details.ts summary .q{flex:none; width:22px; height:22px; border-radius:6px; background:rgba(249,115,22,0.12); color:#c2560c; font-weight:700; font-size:13px; display:grid; place-items:center; margin-top:1px}
+  details.ts[open] summary{border-bottom:1px solid var(--border)}
+  details.ts .ans{padding:4px 0 16px 33px; color:var(--gray7); font-size:15px}
+  details.ts .ans code.ui{white-space:normal}
+
+  /* success checklist */
+  .final{background:#fff; border:1px solid var(--border); border-radius:16px; padding:8px 22px 18px}
+  .final ul{list-style:none; padding:0; margin:0}
+  .final li{display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); font-size:15.5px}
+  .final li:last-child{border-bottom:none}
+  .final .box{flex:none; width:22px; height:22px; border-radius:6px; border:2px solid #cfd4dc}
+
+  /* footer */
+  footer{border-top:1px solid var(--border); padding:40px 0 60px; margin-top:20px}
+  .foot-card{background:var(--ink); color:#fff; border-radius:18px; padding:30px 32px}
+  .foot-card h3{margin:0 0 6px; font-size:22px; font-weight:600; letter-spacing:-0.02em}
+  .foot-card p{margin:0; color:#c7c9cf; font-size:15px}
+  .foot-card .fl{display:flex; align-items:center; gap:9px; margin-top:18px; color:#fff}
+  .foot-card .mark use{fill:#fff}
+  .foot-meta{display:flex; justify-content:space-between; align-items:center; margin-top:22px; color:var(--gray6); font-size:13px}
+
+  a.inline{color:var(--blue); text-decoration:none; font-weight:500; word-break:break-all}
+  a.inline:hover{text-decoration:underline}
+  .ph{background:rgba(234,179,8,0.16); border:1px solid rgba(234,179,8,0.5); border-radius:6px; padding:1px 7px; font-weight:600; font-size:.92em; color:#7a5c00; white-space:nowrap}
+
+  .stepno{font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--blue); margin:2px 0 2px}
+  .subh{font-weight:600; font-size:18px; margin:22px 0 0}
+  .btnlink{display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#fff; border-radius:999px; padding:11px 22px; font-weight:500; font-size:14.5px; text-decoration:none; letter-spacing:-0.01em; margin:8px 0 0}
+  .btnlink:hover{opacity:.88}
+  .urlnote{display:block; font-size:12.5px; color:var(--gray6); margin-top:7px; word-break:break-all}
+  .prompt .copybtn{position:absolute; top:10px; right:10px; background:#fff; color:var(--ink); border:none; border-radius:999px; padding:6px 15px; font-family:var(--font); font-weight:600; font-size:12.5px; cursor:pointer}
+  .prompt .copybtn.ok{background:var(--green); color:#fff}
+  .prompt .pl{padding-right:78px}
+  details.ts summary{position:relative; padding-right:32px}
+  details.ts summary::after{content:""; position:absolute; right:6px; top:21px; width:8px; height:8px; border-right:2px solid var(--gray6); border-bottom:2px solid var(--gray6); transform:rotate(45deg); transition:.18s transform}
+  details.ts[open] summary::after{transform:rotate(-135deg); top:25px}
+  .final label{display:flex; gap:12px; align-items:center; cursor:pointer; width:100%}
+  .final input[type=checkbox]{appearance:none; -webkit-appearance:none; flex:none; width:22px; height:22px; border-radius:6px; border:2px solid #cfd4dc; cursor:pointer; margin:0; display:grid; place-items:center; background:#fff; transition:.12s}
+  .final input[type=checkbox]:checked{background:var(--green); border-color:var(--green)}
+  .final input[type=checkbox]:checked::after{content:""; width:10px; height:5px; border-left:2.5px solid #fff; border-bottom:2.5px solid #fff; transform:rotate(-45deg) translate(0,-1px)}
+  .final input[type=checkbox]:checked~span{color:var(--gray6)}
+  .foot-card .mark{filter:brightness(0) invert(1)}
+
+  /* ---------- inline product mockups (stand-ins for screenshots) ---------- */
+  figure.mock{margin:16px 0}
+  figure.mock figcaption{font-size:13px; color:var(--gray6); margin-top:8px}
+  figure.mock figcaption .num{font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue); margin-right:8px}
+  .mk{border:1px solid var(--border); border-radius:14px; overflow:hidden; background:#fff; box-shadow:0 6px 24px rgba(13,13,13,0.07)}
+  .mk-bar{display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); background:#fbfbfc}
+  .mk-dots{display:flex; gap:6px}
+  .mk-dots i{width:11px; height:11px; border-radius:50%; display:block}
+  .mk-dots i:nth-child(1){background:#ff5f57} .mk-dots i:nth-child(2){background:#febc2e} .mk-dots i:nth-child(3){background:#28c840}
+  .mk-app{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:var(--gray7)}
+  .mk-app .badge-app{width:18px; height:18px; border-radius:5px; display:grid; place-items:center; color:#fff; font-size:11px; font-weight:800}
+  .mk-url{margin-left:auto; font-size:11.5px; color:var(--gray6); background:#fff; border:1px solid var(--border); border-radius:999px; padding:3px 12px; max-width:52%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  /* sheet */
+  .sheet{width:100%; border-collapse:collapse; font-size:11.5px; table-layout:fixed}
+  .sheet th,.sheet td{border:1px solid #e8eaed; padding:7px 9px; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .sheet thead th{background:#0a7a43; color:#fff; font-weight:600; letter-spacing:.01em}
+  .sheet tbody tr:nth-child(even){background:#f6faf7}
+  .sheet td.rownum{width:26px; text-align:center; color:var(--gray6); background:#f6f7f9; font-size:10.5px}
+  .sheet a.li{color:var(--blue); text-decoration:none}
+  .sheet .em-ok{color:#0a7a43; font-weight:600}
+  .sheet .em-miss{display:inline-block; color:#b98900; background:#fff6e0; border:1px solid #f2dfa0; border-radius:5px; padding:0 6px; font-size:10px; font-weight:600}
+  .sheet .em-search{display:inline-block; color:var(--gray6); background:#f0f2f5; border:1px solid var(--border); border-radius:5px; padding:0 6px; font-size:10px}
+  .mk-tabs{display:flex; align-items:center; gap:0; border-top:1px solid var(--border); background:#fbfbfc; padding:0 6px}
+  .mk-tabs .tab{font-size:11px; padding:7px 12px; color:var(--gray6); border-right:1px solid var(--border)}
+  .mk-tabs .tab.on{color:#0a7a43; font-weight:700; border-bottom:2px solid #0a7a43; background:#fff}
+  /* instantly campaign */
+  .camp{padding:16px 18px}
+  .camp-top{display:flex; align-items:center; gap:12px; margin-bottom:14px}
+  .camp-top .cname{font-size:15.5px; font-weight:700; letter-spacing:-0.01em}
+  .pill-paused{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:.03em; color:#b45309; background:#fff6e0; border:1px solid #f2dfa0; border-radius:999px; padding:4px 11px; text-transform:uppercase}
+  .pill-paused .pd{display:flex; gap:2px} .pill-paused .pd b{width:2.5px; height:9px; background:#b45309; display:block; border-radius:1px}
+  .camp-stats{display:flex; gap:0; border:1px solid var(--border); border-radius:11px; overflow:hidden; margin-bottom:16px}
+  .camp-stats .st{flex:1; padding:10px 14px; border-right:1px solid var(--border)}
+  .camp-stats .st:last-child{border-right:none}
+  .camp-stats .st .v{font-size:19px; font-weight:700; letter-spacing:-0.02em}
+  .camp-stats .st .k{font-size:11px; color:var(--gray6); margin-top:1px}
+  .seq{display:flex; flex-direction:column; gap:9px}
+  .seq .stepe{display:flex; gap:12px; align-items:flex-start; border:1px solid var(--border); border-radius:11px; padding:11px 13px; background:#fff}
+  .seq .stepe .day{flex:none; width:58px; font-size:10.5px; font-weight:700; color:var(--indigo); text-transform:uppercase; letter-spacing:.03em; padding-top:2px}
+  .seq .stepe .body{min-width:0}
+  .seq .stepe .subj{font-size:13px; font-weight:600; letter-spacing:-0.01em}
+  .seq .stepe .prev{font-size:12px; color:var(--gray6); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  @media (max-width:640px){ .sheet .hide-s{display:none} .camp-stats{flex-wrap:wrap} }
+
+  /* ---------- requirement cards (Paso 0) ---------- */
+  .reqgrid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0 4px}
+  .rq{display:flex; gap:13px; align-items:flex-start; background:#fff; border:1px solid var(--border); border-radius:14px; padding:15px 16px}
+  .rq .ic{flex:none; width:40px; height:40px; border-radius:11px; display:grid; place-items:center; background:var(--soft); border:1px solid var(--border)}
+  .rq .ic svg{width:21px; height:21px; display:block}
+  .rq .ic.brand{background:#fff}
+  .rq h4{margin:0; font-size:15px; font-weight:600; letter-spacing:-0.01em}
+  .rq p{margin:3px 0 0; font-size:13px; color:var(--gray6); line-height:1.45}
+  .rq .prov{display:flex; gap:8px; margin-top:9px; flex-wrap:wrap}
+  .rq .prov a{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--ink); background:#fff; border:1px solid var(--border); border-radius:999px; padding:5px 11px 5px 8px; text-decoration:none; transition:.15s border-color}
+  .rq .prov a:hover{border-color:#cfd4dc}
+  .rq .prov a .lg{width:16px; height:16px; border-radius:4px; display:grid; place-items:center; flex:none}
+  /* have-handy band (links + codes) */
+  .haves{display:grid; gap:9px; margin:16px 0 4px}
+  .have{display:flex; align-items:center; gap:13px; background:var(--soft); border:1px solid var(--border); border-radius:12px; padding:12px 15px}
+  .have .hic{flex:none; width:32px; height:32px; border-radius:9px; display:grid; place-items:center; background:#fff; border:1px solid var(--border)}
+  .have .hic svg{width:18px; height:18px; display:block}
+  .have .htxt{font-size:14px; min-width:0}
+  .have .htxt b{font-weight:600}
+  .have .htxt a{color:var(--blue); text-decoration:none; font-weight:600}
+  .have .htxt a:hover{text-decoration:underline}
+  .have .code{margin-left:auto; flex:none; font-family:var(--font); font-weight:700; font-size:12.5px; background:#fff; border:1px solid var(--border); border-radius:7px; padding:4px 10px; letter-spacing:.01em; white-space:nowrap}
+  @media (max-width:640px){ .reqgrid{grid-template-columns:1fr} .have{flex-wrap:wrap} .have .code{margin-left:46px} }
+
+  /* ---------- branded showcase (Houston homepage / Mission Control look) ---------- */
+  @property --hbd{syntax:'<angle>'; initial-value:0deg; inherits:false}
+  @keyframes hbdspin{to{--hbd:360deg}}
+  .showcase{position:relative; border:1px solid var(--border); border-radius:22px; overflow:hidden; margin:18px 0 6px; background:#fff}
+  .showcase .sc-bg{position:absolute; inset:0; pointer-events:none; background:
+    radial-gradient(ellipse 80% 60% at 50% -12%, rgba(59,130,246,0.10), transparent),
+    radial-gradient(ellipse 55% 45% at 90% 25%, rgba(249,115,22,0.07), transparent),
+    radial-gradient(ellipse 55% 50% at 8% 92%, rgba(129,140,248,0.07), transparent)}
+  .sc-inner{position:relative; display:grid; grid-template-columns:0.92fr 1.08fr; gap:26px; padding:24px 26px}
+  .sc-lead{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--gray6); margin:0 0 13px}
+  .pipe{display:flex; flex-direction:column; gap:11px}
+  .pipe .pstep{display:flex; gap:13px; align-items:flex-start}
+  .pipe .pn{flex:none; width:30px; height:30px; border-radius:50%; background:#fff; border:1px solid var(--border); color:var(--gray7); font-weight:600; font-size:13px; display:grid; place-items:center}
+  .pipe .pstep.last .pn{background:var(--ink); color:#fff; border-color:var(--ink)}
+  .pipe .pt{font-size:14.5px; font-weight:600; letter-spacing:-0.01em}
+  .pipe .pd{font-size:12.5px; color:var(--gray6); line-height:1.4; margin-top:1px}
+  .mc{position:relative; border-radius:18px; background:#fff; box-shadow:0 10px 30px -12px rgba(13,13,13,0.18); animation:hbdspin 7s linear infinite}
+  .mc::before{content:""; position:absolute; inset:0; border-radius:inherit; padding:1.5px;
+    background:conic-gradient(from var(--hbd), #e7e9ee 0deg,#fb923c 46deg,#f97316 92deg,#e7e9ee 146deg,#e7e9ee 212deg,#3b82f6 270deg,#818cf8 318deg,#e7e9ee 360deg);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none}
+  .mc-head{display:flex; align-items:center; gap:11px; padding:13px 15px; border-bottom:1px solid var(--border)}
+  .mc-head .hm{width:26px; height:26px; flex:none}
+  .mc-head .nm{font-size:14px; font-weight:600; letter-spacing:-0.01em; color:var(--ink)}
+  .mc-head .ms{font-size:11.5px; color:var(--gray6); margin-top:1px}
+  .mc-head .live{margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:var(--green)}
+  .mc-head .live .ld{width:7px; height:7px; border-radius:50%; background:var(--green)}
+  .mc-body{padding:13px 15px 15px; display:flex; flex-direction:column; gap:10px}
+  .act{display:flex; gap:11px; align-items:flex-start}
+  .act .ai{flex:none; width:18px; height:18px; border-radius:50%; display:grid; place-items:center; margin-top:1px; background:rgba(0,162,64,0.10)}
+  .act .ai svg{width:11px; height:11px}
+  .act .tx{font-size:13px; color:var(--gray7); line-height:1.45}
+  .act .tx b{color:var(--ink); font-weight:600}
+  .act.pause{background:var(--soft); border:1px solid var(--border); border-radius:11px; padding:10px 12px; margin-top:2px}
+  .act.pause .ai{background:#fff6e0; border:1px solid #f2dfa0}
+  .act.pause .ai .pd2{display:flex; gap:2px} .act.pause .ai .pd2 b{width:2px; height:7px; background:#b45309; display:block; border-radius:1px}
+  .act.pause .tx b{color:#b45309}
+  @media (max-width:720px){ .sc-inner{grid-template-columns:1fr; gap:20px} }
+  @media print{ .mc{animation:none; border:1px solid var(--border); box-shadow:none} .mc::before{display:none !important} }
+
+  /* ---------- tool cards (Paso 3) ---------- */
+  .toolgrid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0 6px}
+  .toolcard{display:flex; flex-direction:column; background:#fff; border:1px solid var(--border); border-radius:16px; padding:17px 18px 16px}
+  .toolcard .th{display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:28px}
+  .toolcard .th .brand{display:flex; align-items:center; gap:8px}
+  .toolcard .th .brand img.wm{height:23px; width:auto; max-width:135px; object-fit:contain; display:block}
+  .toolcard .th .brand img.ic{height:22px; width:22px; object-fit:contain; display:block}
+  .toolcard .th .brand .bn{font-size:16px; font-weight:600; letter-spacing:-0.01em}
+  .toolcard .tag{flex:none; font-size:10.5px; font-weight:700; letter-spacing:.02em; padding:3px 10px; border-radius:999px; white-space:nowrap}
+  .tag-gift{background:rgba(249,115,22,.12); color:#c2560c}
+  .tag-free{background:rgba(0,162,64,.11); color:#0a7a43}
+  .tag-opt{background:var(--soft); color:var(--gray7); border:1px solid var(--border)}
+  .toolcard .desc{font-size:14px; color:var(--gray7); margin:13px 0 0; line-height:1.5}
+  .toolcard .hint{font-size:12px; color:var(--gray6); margin:7px 0 0; line-height:1.45}
+  .toolcard .act{margin-top:auto; padding-top:14px}
+  .toolcard .act a{display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:#fff; background:var(--ink); border-radius:999px; padding:8px 16px; text-decoration:none}
+  .toolcard .act a:hover{opacity:.9}
+  .toolcard .act a svg{width:14px; height:14px}
+  @media (max-width:640px){ .toolgrid{grid-template-columns:1fr} }
+
+  /* ---------- connection cards (Paso 4) ---------- */
+  .conngrid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0 6px}
+  .conn{display:flex; flex-direction:column; background:#fff; border:1px solid var(--border); border-radius:16px; padding:16px 17px}
+  .conn .ch{display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:24px; margin-bottom:13px}
+  .conn .ch .brand{display:flex; align-items:center; gap:8px}
+  .conn .ch .brand img.wm{height:21px; width:auto; max-width:120px; object-fit:contain; display:block}
+  .conn .ch .brand img.ic{height:20px; width:20px; object-fit:contain; display:block}
+  .conn .ch .brand .bn{font-size:15px; font-weight:600; letter-spacing:-0.01em}
+  .conn .method{flex:none; font-size:10px; font-weight:700; letter-spacing:.03em; padding:3px 10px; border-radius:999px; white-space:nowrap}
+  .method-click{background:rgba(59,130,246,.10); color:#1d4ed8}
+  .method-key{background:rgba(129,140,248,.16); color:#4f46e5}
+  .path{display:flex; flex-wrap:wrap; align-items:center; gap:6px 6px}
+  .path+.path{margin-top:10px}
+  .path .lbl2{font-size:10px; font-weight:700; color:var(--gray6); text-transform:uppercase; letter-spacing:.04em; width:100%; margin-bottom:-1px}
+  .path .st{background:#f0f2f5; border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; color:var(--ink); white-space:nowrap}
+  .path .ar{color:var(--gray6); font-size:12px}
+  .conn .hint{font-size:12px; color:var(--gray6); margin:12px 0 0; line-height:1.45}
+  .conn .hint b{color:#c2560c; font-weight:600}
+  @media (max-width:640px){ .conngrid{grid-template-columns:1fr} }
+
+  /* flow strip (what you build) */
+  .flow{display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin:18px 0 6px}
+  .flow .f{
+    background:#fff; border:1px solid var(--border); border-radius:12px; padding:12px 12px 13px;
+    display:flex; flex-direction:column; gap:5px;
+  }
+  .flow .f .fn{width:24px; height:24px; border-radius:7px; background:var(--ink); color:#fff; font-weight:700; font-size:12.5px; display:grid; place-items:center}
+  .flow .f .ft{font-weight:600; font-size:13.5px; letter-spacing:-0.01em; line-height:1.25}
+  .flow .f .fd{color:var(--muted); font-size:11.5px; line-height:1.4}
+  .flow .f.dark{background:var(--ink); border-color:var(--ink)}
+  .flow .f.dark .ft{color:#fff}
+  .flow .f.dark .fd{color:#c7c9cf}
+  .flow .f.dark .fn{background:#fff; color:var(--ink)}
+
+  @media (max-width:640px){
+    h1{font-size:36px} h2{font-size:24px} .hero{padding:44px 0 24px}
+    .road .time{display:none}
+    .flow{grid-template-columns:1fr 1fr}
+  }
+  @page{margin:12mm 11mm 14mm}
+  @media print{
+    h1{font-size:42px}
+    h1 .accent, h2 .accent{
+      background:none !important;
+      -webkit-background-clip:initial !important; background-clip:initial !important;
+      -webkit-text-fill-color:#3b82f6 !important; color:#3b82f6 !important;
+    }
+    .wash,.copybtn,figure.shot{display:none} body{background:#fff}
+    .topbar{position:static; background:#fff; backdrop-filter:none}
+    .hero{padding-top:34px}
+    *{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+    .step{break-inside:auto} .step-head{break-after:avoid}
+    ol.steps>li,.shot-real,.call,.check,.prompt,.final,details.ts,.road a,.shot{break-inside:avoid}
+    .rq,.have,.toolcard,.conn,.showcase,.flow .f{break-inside:avoid}
+    .toolgrid,.conngrid,.reqgrid{break-inside:auto}
+    h2,h3{break-after:avoid}
+    a.inline{color:var(--ink); text-decoration:underline}
+    .foot-card{background:var(--ink) !important; color:#fff}
+    .foot-card a{border:1px solid var(--border) !important}
+    details.ts summary::after{display:none}
+  }
+
+  /* ---------- step mode (focus view) ---------- */
+  .glayout{max-width:1150px; margin:0 auto; padding:0 24px; display:grid; grid-template-columns:255px minmax(0,1fr); gap:44px; align-items:start}
+  .gmain{max-width:var(--maxw); min-width:0}
+  .gside{position:sticky; top:84px; padding:18px 0 24px}
+  .gside .gs-head{font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--gray6); margin:0 0 10px 2px}
+  .gside ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px}
+  .gside li.gs-div{border-top:1px solid var(--border); margin:8px 2px}
+  .gside button.gs-item{display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:none; border:none; border-radius:10px; padding:8px 10px; cursor:pointer; font-family:var(--font); color:var(--gray7)}
+  .gside button.gs-item:hover{background:var(--soft)}
+  .gside .gs-num{flex:none; width:24px; height:24px; border-radius:50%; border:1px solid var(--border); background:#fff; color:var(--gray7); font-weight:600; font-size:12px; display:grid; place-items:center; transition:.15s}
+  .gside .gs-t{font-size:13.5px; font-weight:500; line-height:1.25}
+  .gside .gs-m{display:block; font-size:11.5px; color:var(--gray6); font-weight:400}
+  .gside .gs-item.on{background:#fff; box-shadow:inset 0 0 0 1px var(--border)}
+  .gside .gs-item.on .gs-t{font-weight:600; color:var(--ink)}
+  .gside .gs-item.on .gs-num{border-color:transparent; background:var(--grad); color:#fff}
+  .gside .gs-item.done .gs-num{border-color:rgba(0,162,64,0.4); background:rgba(0,162,64,0.08); color:var(--green)}
+  .gside .gs-item.done .gs-num::before{content:"✓"; font-size:12px}
+  .gside .gs-item.done .gs-num span{display:none}
+  .gside .gs-foot{margin-top:14px; padding:0 2px}
+  .gside .gs-toggle{background:none; border:none; padding:0; font-family:var(--font); font-size:12.5px; font-weight:600; color:var(--gray6); cursor:pointer; text-decoration:underline; text-underline-offset:3px}
+  .gside .gs-toggle:hover{color:var(--ink)}
+  .gprog{position:fixed; top:64px; left:0; height:2.5px; background:var(--grad); z-index:99; transition:width .25s; width:0}
+  /* hide all panes except active in step mode */
+  body.stepper [data-pane]{display:none}
+  body.stepper [data-pane].on{display:block}
+  body.stepper [data-pane].on + section[data-pane].on{border-top:none; padding-top:0}
+  body.stepper #ruta{display:none}
+  body.stepper section[data-pane]{border-top:none}
+  /* step nav buttons */
+  .gnav{display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 0 70px}
+  .gnav .gprev{background:none; border:1px solid var(--border); color:var(--gray7); border-radius:999px; padding:11px 20px; font-family:var(--font); font-weight:500; font-size:14px; cursor:pointer}
+  .gnav .gprev:hover{border-color:#cfd4dc; color:var(--ink)}
+  .gnav .gnext{margin-left:auto; display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#fff; border:none; border-radius:999px; padding:13px 26px; font-family:var(--font); font-weight:600; font-size:14.5px; cursor:pointer; letter-spacing:-0.01em}
+  .gnav .gnext:hover{opacity:.88}
+  .gnav .gdone-msg{margin-left:auto; font-weight:600; color:var(--green); font-size:15px}
+  /* full view: everything visible, no step chrome */
+  body.fullview [data-pane]{display:block !important}
+  body.fullview #ruta{display:block !important}
+  body.fullview .gnav{display:none}
+  body.fullview .gprog{display:none}
+  body.fullview section[data-pane]{border-top:1px solid var(--border)}
+  @media (max-width:920px){
+    .glayout{display:block}
+    .gside{position:sticky; top:64px; z-index:40; background:rgba(255,255,255,0.92); backdrop-filter:blur(10px); margin:0 -24px; padding:10px 24px; border-bottom:1px solid var(--border)}
+    .gside .gs-head, .gside .gs-m, .gside .gs-foot{display:none}
+    .gside ul{flex-direction:row; overflow-x:auto; gap:6px; scrollbar-width:none}
+    .gside ul::-webkit-scrollbar{display:none}
+    .gside li.gs-div{display:none}
+    .gside button.gs-item{width:auto; padding:4px; border-radius:999px}
+    .gside .gs-item .gs-t{display:none}
+    .gside .gs-item.on .gs-t{display:block; white-space:nowrap; padding-right:6px}
+    .gside .gs-item.on{box-shadow:none; background:var(--soft)}
+  }
+  @media print{
+    .gside, .gnav, .gprog{display:none !important}
+    [data-pane]{display:block !important}
+    #ruta{display:block !important}
+    section[data-pane]{border-top:1px solid var(--border)}
+  }
+
+  /* site navigation (mirrors gethouston.ai nav, as in published guides) */
+  body{padding-top:64px}
+  nav.site{position:fixed; top:0; left:0; right:0; z-index:100; height:64px; padding:0 40px;
+    display:flex; align-items:center; justify-content:space-between;
+    background:rgba(255,255,255,0.85); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    border-bottom:1px solid rgba(13,13,13,0.08)}
+  nav.site .nav-logo{display:flex; align-items:center; gap:9px; text-decoration:none; color:#0d0d0d;
+    font-weight:600; letter-spacing:-0.02em; font-size:19px}
+  nav.site .nav-logo svg{width:22px; height:24px}
+  nav.site .nav-center{position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:28px; align-items:center}
+  nav.site .nav-center a{font-size:14px; color:#424242; text-decoration:none}
+  nav.site .nav-center a:hover{color:#0d0d0d}
+  nav.site .nav-center a.active{color:#0d0d0d; font-weight:600}
+  nav.site .nav-right{display:flex; align-items:center; gap:12px}
+  nav.site .pdfbtn2{display:inline-flex; align-items:center; gap:7px; background:#0d0d0d; color:#fff;
+    border-radius:999px; padding:8px 16px; font-weight:600; font-size:13px; text-decoration:none}
+  nav.site .pdfbtn2:hover{opacity:.88}
+  nav.site .pdfbtn2 svg{width:14px; height:14px}
+  /* language picker (shows current language) */
+  nav.site .langdd{position:relative}
+  nav.site .langdd summary{list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+    font-size:12.5px; font-weight:700; color:#424242; border:1px solid #e5e5e5; border-radius:999px;
+    padding:6px 12px; letter-spacing:.02em}
+  nav.site .langdd summary::-webkit-details-marker{display:none}
+  nav.site .langdd summary:hover{border-color:#cfd4dc; color:#0d0d0d}
+  nav.site .langdd summary svg{width:18px; height:13px; display:block}
+  nav.site .langdd summary .chev{width:7px; height:7px; border-right:1.5px solid #676767; border-bottom:1.5px solid #676767; transform:rotate(45deg); margin-top:-3px}
+  nav.site .langdd[open] summary .chev{transform:rotate(-135deg); margin-top:3px}
+  nav.site .langdd .menu{position:absolute; right:0; top:calc(100% + 8px); background:#fff; border:1px solid #e5e5e5;
+    border-radius:12px; box-shadow:0 8px 24px rgba(13,13,13,0.08); padding:6px; min-width:160px; z-index:200}
+  nav.site .langdd .menu a{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px;
+    font-size:13.5px; color:#424242; text-decoration:none; font-weight:500}
+  nav.site .langdd .menu a svg{width:18px; height:13px; display:block}
+  nav.site .langdd .menu a:hover{background:#f6f7f9; color:#0d0d0d}
+  nav.site .langdd .menu a.on{color:#0d0d0d; font-weight:600}
+  nav.site .langdd .menu a.on::after{content:"✓"; margin-left:auto; font-size:12px; color:#00a240}
+  @media (max-width:940px){ nav.site .nav-center{display:none} }
+  @media (max-width:640px){ nav.site{padding:0 20px} }
+  @media print{
+    nav.site{position:static; background:#fff; backdrop-filter:none; border-bottom:1px solid #e5e5e5}
+    nav.site .nav-center, nav.site .langdd, nav.site .pdfbtn2{display:none !important}
+    body{padding-top:0}
+  }
+</style>
+{% endblock %}
+{% block body %}
+<div class="wash"></div>
+
+<!-- inline logo symbol -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="hlogo" viewBox="0 0 412.248 448.898">
+<path d="M54.438,370.05a372.979,372.979,0,0,0,36.546,16.539c42.934,16.457,81.036,26.955,127.045,32.718,38.952,4.879,98.013,6.119,133.934-9.694l.22-28.709,10.9-4.2.1,7.633c.131,9.532,10.175,10.024,10.111,16.564l-.19,19.454a10.892,10.892,0,0,1-5.271,8.79A125.921,125.921,0,0,1,333.1,442.267c-27.35,5.945-54.827,7.61-83.009,6.115A501.786,501.786,0,0,1,135.308,429.09C98.277,418.317,63.295,404.2,30.364,384.378c-1.82-1.1-4.62-4.1-4.586-5.833l.486-25.225,11.07-8.41c1.485-34.5-.533-22.947-14.764-49.9-27.447-52-29.2-106.518-8.847-163.015,9.56,20.2,21.153,38.25,37.42,52.877C37.675,162.726,27.2,139.979,22.078,114.644,58.63,40.233,137.3-5.66,220.15.562c51,3.831,94.258,25.571,130.394,61.982-11.956-3.184-22.192-5.554-33.74-6.752C275.709,24.666,227.275,10.9,176.055,19.538c-20.923,3.528-34,6.957-50.682,16.877L139.5,33.929l15.86-2.793c8.528-1.5,24.632-1.04,33.836-.192,22.661,2.088,53.554,13.706,71.674,28.987-12.6,3.789-24.839,7.031-37.177,12.526C168.9,96.859,123.836,137.377,92.651,188.4c-7.872-2.92-15.5-4.417-23.465-2.461,29.782,6.032,38.956,41.129,31.8,67.976-2.394,8.985-7.428,16.16-14.663,22.377a346.506,346.506,0,0,0,147.25,97.184l12.006,21.237c1.847,3.267.35,10.053.346,14.518C191.213,405.71,137.381,395,88.063,371.576L54.751,355.753a55.521,55.521,0,0,0-.313,14.3m15.8-103.638c8.757-2.088,12.715-9.164,15.688-16.5,3.95-12.971,2.434-27.431-5.321-38.706-5.394-7.843-14.789-12.194-23.84-9.339A20.8,20.8,0,0,0,43.4,214.587c8.355-7.946,19.246-8.317,27.089-.185,12.642,13.106,13.272,37.962-.251,52.01M56.2,335.674c19.3,9.688,37.093,17.6,57.609,25.556l.46-40.938c.063-5.627-7.1-8.159-10.894-7.39-13.274,2.69-5.888,17.088-7.963,29.218L55.617,322.693c-1,4.557-1.287,9.423.582,12.981m139.579,48.288c1.144-4.393,1.22-8.69-.783-11.451a512.739,512.739,0,0,1-66.018-17.972,16.313,16.313,0,0,0-.129,12.157c8.276,2.7,16.239,5.339,24.7,7.329Z" fill="#161615"/>
+<path d="M325.964,373.522c-78.683,7.33-171.286-41.71-224.763-98.653,20.982-21.383,19.582-56.385,1.375-79.483,14.126-22.058,29.682-42,48.543-59.74C194.08,95.233,252.771,65.207,312.936,67.539c31.512,1.812,71.082,11.318,70.475,49.792a215.176,215.176,0,0,1,7.448,201.107c3.547,38.249-33.525,51.774-64.9,55.084m-156.623-69.56c44.588,29.3,106.347,54.129,159.883,46.515,8.458-1.2,16.5-3.934,24.588-6.324,5-1.476,7.137-5.17,9.631-9.01,48.185-74.159,42.9-170.662-13.764-238.39C301.111,78.61,245.166,94.247,202.936,121.54c-16.981,10.974-32.909,23.164-46.245,38.481-14.795,16.993-20.759,39.234-21.865,61.356-1.175,23.493,5.307,45.09,17.461,64.8a53.6,53.6,0,0,0,17.054,17.788" fill="#161615"/>
+<path d="M298.533,409.094c-4.467.414-7.883-1.707-9.4-5.237a12.287,12.287,0,0,1,1.075-10.992c1.473-2.484,5.351-4.9,8.887-5.18l31.941-2.488a8.616,8.616,0,0,1,9.262,6.052c.913,3.365.494,9.3-3.5,10.617-12.359,4.06-24.719,5.973-38.264,7.228" fill="#161615"/>
+<rect width="15.334" height="16.211" transform="translate(258.6 409.939) rotate(-89.717)" fill="#161615"/>
+<path d="M370.408,283.292c-6.086,17.577-13.539,33.4-26.392,47.208,26.021-57.679,30.288-124.219,4.132-182.266-6.661-14.783-15.007-27.347-24.809-41.076,5.144.8,12.975.86,16.972,4.164,7.836,6.477,12.518,15.527,17.384,24.5,24.5,45.2,29.763,98.227,12.713,147.465" fill="#161615"/>
+</symbol></svg>
+
+<nav class="site">
+  <a class="nav-logo" href="/"><svg class="mark"><use href="#hlogo"/></svg><span>houston</span></a>
+  <div class="nav-center">
+    <a href="/#agents">Agents</a>
+    <a href="/#features">Features</a>
+    <a class="active" href="/guides/es/">Guides</a>
+    <a href="/changelog/">Changelog</a>
+    <a href="/startups/">For Startups</a>
+  </div>
+  <div class="nav-right">
+    <details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>ES<span class="chev"></span></summary><div class="menu"><a href="/guides/sdr-linkedin/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a class="on" href="/guides/es/sdr-linkedin/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details>
+    <a class="pdfbtn2" href="/guides/downloads/houston-sdr-linkedin-guide-es.pdf" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>Descargar PDF</a>
+  </div>
+</nav>
+
+<div class="gprog" id="gprog"></div>
+<div class="glayout" id="top">
+<aside class="gside" aria-label="Pasos de la guía">
+  <p class="gs-head">Pasos de la guía</p>
+  <ul>
+    <li><button type="button" class="gs-item" data-hash="intro"><span class="gs-num"><span>•</span></span><span class="gs-t">Bienvenida<span class="gs-m">Lo que vas a construir</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="requisitos"><span class="gs-num"><span>0</span></span><span class="gs-t">Antes de empezar<span class="gs-m">~5 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="paso1"><span class="gs-num"><span>1</span></span><span class="gs-t">Instala Houston<span class="gs-m">~15 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="paso2"><span class="gs-num"><span>2</span></span><span class="gs-t">Importa el agente SDR<span class="gs-m">~5 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="paso3"><span class="gs-num"><span>3</span></span><span class="gs-t">Crea las cuentas de tus herramientas<span class="gs-m">~15 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="paso4"><span class="gs-num"><span>4</span></span><span class="gs-t">Conecta las integraciones<span class="gs-m">~15 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="paso5"><span class="gs-num"><span>5</span></span><span class="gs-t">Corre tu primera campaña<span class="gs-m">15–40 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="hazlo-tuyo"><span class="gs-num"><span>+</span></span><span class="gs-t">Hazlo tuyo<span class="gs-m">Extra</span></span></button></li>
+    <li class="gs-div" role="separator"></li>
+    <li><button type="button" class="gs-item" data-hash="problemas"><span class="gs-num"><span>?</span></span><span class="gs-t">Solución de problemas<span class="gs-m">Cuando algo falle</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="checklist"><span class="gs-num"><span>✓</span></span><span class="gs-t">Checklist de éxito<span class="gs-m">Cierre</span></span></button></li>
+  </ul>
+  <div class="gs-foot"><button type="button" class="gs-toggle" id="gs-toggle">Ver la guía completa</button></div>
+</aside>
+<div class="gmain">
+
+  <!-- HERO -->
+  <header class="hero" id="intro" data-pane="0">
+    <span class="eyebrow"><span class="dot"></span>Guía paso a paso</span>
+    <h1>Convierte un post de LinkedIn en <span class="accent">leads infinitos</span></h1>
+    <p class="lede">Sigue esta guía a tu ritmo: crea tu agente SDR en Houston, instala el agente o skills y convierte los comentarios de cualquier publicación de LinkedIn en una campaña de outbound lista para tu aprobación.</p>
+    <div class="meta">
+      <span class="chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+        <span><b>60–90 min</b> de configuración</span>
+      </span>
+      <span class="chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z" stroke-linejoin="round"/></svg>
+        <span>Para <b>fundadores y equipos de ventas</b></span>
+      </span>
+      <span class="chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4" stroke-linecap="round"/></svg>
+        <span>Necesitas un <b>computador</b> Mac o Windows</span>
+      </span>
+      <span class="chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Sin conocimientos técnicos</span>
+      </span>
+    </div>
+  </header>
+
+  <!-- WHAT YOU WILL BUILD -->
+  <section id="que-vas-a-construir" data-pane="0">
+    <span class="kicker">Lo que vas a construir</span>
+    <h2>Un agente SDR que <span class="accent">prospecta por ti</span></h2>
+    <p class="sub">Le das una sola cosa: el enlace de un post de LinkedIn. Él te devuelve una campaña completa esperando tu aprobación.</p>
+    <div class="showcase">
+      <div class="sc-bg"></div>
+      <div class="sc-inner">
+        <div>
+          <p class="sc-lead">El proceso, de principio a fin</p>
+          <div class="pipe">
+            <div class="pstep"><span class="pn">1</span><div><div class="pt">Encuentra</div><div class="pd">Saca a todos los que comentaron: nombre, rol, empresa y perfil.</div></div></div>
+            <div class="pstep"><span class="pn">2</span><div><div class="pt">Guarda</div><div class="pd">Los pasa ordenados a un Google Sheet nuevo.</div></div></div>
+            <div class="pstep"><span class="pn">3</span><div><div class="pt">Enriquece</div><div class="pd">Correos de trabajo verificados con Apollo y Hunter.</div></div></div>
+            <div class="pstep"><span class="pn">4</span><div><div class="pt">Escribe</div><div class="pd">Una secuencia de 3 correos en tu voz.</div></div></div>
+            <div class="pstep last"><span class="pn">5</span><div><div class="pt">Lanza en pausa</div><div class="pd">Carga la campaña en Instantly y espera tu luz verde.</div></div></div>
+          </div>
+        </div>
+        <div>
+          <p class="sc-lead">El agente en acción</p>
+          <div class="mc">
+            <div class="mc-head">
+              <svg class="hm" viewBox="0 0 412.248 448.898" aria-hidden="true"><use href="#hlogo"/></svg>
+              <div><div class="nm">SDR</div><div class="ms">LinkedIn Comment to Outreach</div></div>
+              <span class="live"><span class="ld"></span>Trabajando</span>
+            </div>
+            <div class="mc-body">
+              <div class="act"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx">Encontró <b>1.000 comentaristas</b> con Apify</span></div>
+              <div class="act"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx">Cargó los leads a <b>Google Sheets</b></span></div>
+              <div class="act"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx">Enriqueció <b>620 correos</b> con Apollo y Hunter</span></div>
+              <div class="act"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx">Escribió la <b>secuencia de 3 correos</b> en tu voz</span></div>
+              <div class="act pause"><span class="ai"><span class="pd2"><b></b><b></b></span></span><span class="tx"><b>Campaña en pausa</b> en Instantly · espera tu OK para enviar</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p>Piensa en escala: un post con <b>1.000 comentarios</b> se vuelve una base de <b>1.000 prospectos</b>, con correo de trabajo verificado para más de la mitad y una secuencia de 3 correos ya redactada y cargada en Instantly, esperando tu aprobación. Todo desde un solo enlace, en minutos en lugar de días. Y la jugada maestra: no tiene que ser tu post. Corre la misma receta sobre la <b>publicación de otra persona</b> (el lead magnet de un referente de tu industria, un competidor, un evento) y su audiencia se vuelve tu lista. Por eso el nombre: leads infinitos.</p>
+    <figure class="mock">
+      <div class="mk">
+        <div class="mk-bar">
+          <div class="mk-dots"><i></i><i></i><i></i></div>
+          <div class="mk-app"><span class="badge-app" style="background:#0a7a43">≡</span>Leads · LinkedIn Comment to Outreach</div>
+          <div class="mk-url">docs.google.com/spreadsheets</div>
+        </div>
+        <table class="sheet">
+          <thead>
+            <tr><th class="rownum">#</th><th style="width:17%">Nombre</th><th style="width:22%">Rol</th><th style="width:16%">Empresa</th><th class="hide-s" style="width:20%">Comentario</th><th style="width:8%">Perfil</th><th style="width:19%">Correo verificado</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="rownum">1</td><td>Ana M.</td><td>Head of Growth</td><td>Nubetech</td><td class="hide-s">"Me interesa 🙌"</td><td><a class="li" href="#">in/ana-m</a></td><td class="em-ok">ana@nubetech.com</td></tr>
+            <tr><td class="rownum">2</td><td>Carlos R.</td><td>Founder & CEO</td><td>Veloro</td><td class="hide-s">"Quiero probarlo"</td><td><a class="li" href="#">in/carlos-r</a></td><td class="em-ok">carlos@veloro.io</td></tr>
+            <tr><td class="rownum">3</td><td>Diana P.</td><td>VP Sales</td><td>Aurora Labs</td><td class="hide-s">"+1, mándamelo"</td><td><a class="li" href="#">in/diana-p</a></td><td class="em-ok">diana@auroralabs.co</td></tr>
+            <tr><td class="rownum">4</td><td>Javier T.</td><td>Product Lead</td><td>Kantto</td><td class="hide-s">"Justo lo que buscaba"</td><td><a class="li" href="#">in/javier-t</a></td><td><span class="em-miss">no encontrado</span></td></tr>
+            <tr><td class="rownum">5</td><td>Mariana B.</td><td>Marketing Director</td><td>Origen</td><td class="hide-s">"Interesada 👀"</td><td><a class="li" href="#">in/mariana-b</a></td><td class="em-ok">mariana@origen.mx</td></tr>
+            <tr><td class="rownum">6</td><td>Sergio D.</td><td>COO</td><td>Brío</td><td class="hide-s">"Me apunto"</td><td><a class="li" href="#">in/sergio-d</a></td><td><span class="em-search">enriqueciendo…</span></td></tr>
+          </tbody>
+        </table>
+        <div class="mk-tabs"><span class="tab on">Leads</span><span class="tab">Enriquecidos</span><span class="tab">Secuencia</span></div>
+      </div>
+      <figcaption><span class="num">Ejemplo</span>El Google Sheet que arma el agente: cada persona que comentó, con rol, empresa, comentario, perfil y correo de trabajo verificado. Una celda vacía es normal (nadie encuentra el 100%).</figcaption>
+    </figure>
+    <div class="call warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <div><span class="lbl">Úsalo con responsabilidad</span><p>Es un gran poder. El agente <b>nunca envía nada solo</b>: la campaña siempre queda en pausa esperando tu aprobación. Mantén esa barrera y prospecta con criterio.</p></div>
+    </div>
+  </section>
+
+  <!-- PREREQUISITES · STEP 0 -->
+  <section id="requisitos" class="step" data-pane="1">
+    <div class="step-head">
+      <div class="badge">0</div>
+      <div><div class="stepno">Paso 0 · Antes de empezar</div><h2 style="margin-top:2px">Lo que necesitas a la mano</h2><div class="est">~5 minutos</div></div>
+    </div>
+    <p class="sub">Cuatro cosas que necesitas y un par de enlaces a la mano. Todo se crea gratis en minutos.</p>
+    <div class="reqgrid">
+      <div class="rq">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4" stroke-linecap="round"/></svg></div>
+        <div><h4>Un computador</h4><p>Mac o Windows. Houston no corre en celular ni tablet.</p></div>
+      </div>
+      <div class="rq">
+        <div class="ic brand"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="5" fill="#0A66C2"/><path fill="#fff" d="M7.2 9.4H4.6V19h2.6V9.4zM5.9 5.2a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM19.4 19v-5.3c0-2.6-1.4-3.8-3.3-3.8-1.5 0-2.2.8-2.6 1.4V9.4H10.9V19h2.6v-5.1c0-1.1.8-1.6 1.5-1.6.7 0 1.3.4 1.3 1.6V19h2.6z"/></svg></div>
+        <div><h4>Cuenta de LinkedIn</h4><p>Y un post con comentarios para probar, tuyo o de alguien más.</p></div>
+      </div>
+      <div class="rq">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><path d="M12 3l1.7 4.6L18 9l-4.3 1.4L12 15l-1.7-4.6L6 9l4.3-1.4z" stroke-linejoin="round"/><path d="M18.5 15l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" stroke-linejoin="round"/></svg></div>
+        <div><h4>Un proveedor de IA</h4><p>Crea una cuenta gratis en cualquiera de los dos:</p>
+          <div class="prov">
+            <a href="https://claude.ai" target="_blank" rel="noopener"><span class="lg" style="background:#d97757;color:#fff;font-weight:800;font-size:10px">✳</span>Anthropic</a>
+            <a href="https://openai.com" target="_blank" rel="noopener"><span class="lg" style="background:#000;color:#fff;font-weight:800;font-size:9px">◉</span>OpenAI</a>
+          </div>
+        </div>
+      </div>
+      <div class="rq">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#0a7a43" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18" stroke-linecap="round"/></svg></div>
+        <div><h4>Cuenta de Google</h4><p>Para que el agente guarde los leads en Google Sheets.</p></div>
+      </div>
+    </div>
+
+    <div class="haves">
+      <div class="have">
+        <div class="hic"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#hlogo"/></svg></div>
+        <div class="htxt"><b>Houston</b> · descárgalo en <a href="https://gethouston.ai" target="_blank" rel="noopener">gethouston.ai</a> con el código <span class="code">getsh*tdone</span></div>
+      </div>
+      <div class="have">
+        <div class="hic"><svg viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="htxt"><b>Descarga el agente</b> · <a href="/guides/downloads/SDR.houstonagent" download>SDR.houstonagent</a>, listo para importar en Houston</div>
+      </div>
+      <div class="have">
+        <div class="hic"><svg viewBox="0 0 24 24" fill="none" stroke="#676767" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" stroke-linecap="round"/></svg></div>
+        <div class="htxt"><b>Las herramientas del agente</b> · <a href="https://console.apify.com/sign-up?couponId=HOUSTON_ROCKET" target="_blank" rel="noopener">Apify</a>, <a href="https://www.apollo.io" target="_blank" rel="noopener">Apollo</a>, <a href="https://hunter.io" target="_blank" rel="noopener">Hunter</a> (opcional) e <a href="https://instantly.ai" target="_blank" rel="noopener">Instantly</a>. Las cuentas las creamos juntos en el Paso 3.</div>
+      </div>
+    </div>
+    <div class="call note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">¿Estás listo?</span><p>Tienes tu computador a mano, puedes abrir tu correo y tienes un rato tranquilo por delante. La configuración completa toma 60–90 min y tu primera campaña, otros 15–40 min. No necesitas hacerlo todo de una sentada: cada paso queda guardado.</p></div>
+    </div>
+  </section>
+
+  <!-- ROADMAP -->
+  <section id="ruta">
+    <span class="kicker">La ruta completa</span>
+    <h2>Del paso 0 al 5, en orden</h2>
+    <p class="sub">Hazlos de arriba hacia abajo. Cada paso construye sobre el anterior.</p>
+    <div class="road">
+      <a href="#requisitos"><span class="n">0</span><span><span class="t">Reúne lo que necesitas</span><br><span class="d">Computador, cuentas, enlaces y códigos</span></span><span class="time">~5 min</span></a>
+      <a href="#paso1"><span class="n">1</span><span><span class="t">Instala Houston y configúralo</span><br><span class="d">Descarga, código de invitación, proveedor de IA</span></span><span class="time">~15 min</span></a>
+      <a href="#paso2"><span class="n">2</span><span><span class="t">Importa el agente SDR</span><br><span class="d">"De un amigo" → SDR.houstonagent</span></span><span class="time">~5 min</span></a>
+      <a href="#paso3"><span class="n">3</span><span><span class="t">Crea las cuentas de tus herramientas</span><br><span class="d">Apify, Apollo, Hunter e Instantly</span></span><span class="time">~15 min</span></a>
+      <a href="#paso4"><span class="n">4</span><span><span class="t">Conecta las integraciones en Houston</span><br><span class="d">Apify MCP, Apollo, Google Sheets e Instantly</span></span><span class="time">~15 min</span></a>
+      <a href="#paso5"><span class="n">5</span><span><span class="t">Corre tu primera campaña</span><br><span class="d">De un post de LinkedIn a Instantly en pausa</span></span><span class="time">15–40 min</span></a>
+    </div>
+  </section>
+
+  <!-- STEP 1 -->
+  <section id="paso1" class="step" data-pane="2">
+    <div class="step-head">
+      <div class="badge">1</div>
+      <div><div class="stepno">Paso 1 de 5</div><h2 style="margin-top:2px">Instala Houston y configúralo</h2><div class="est">~15 minutos</div></div>
+    </div>
+    <p>Si ya tienes Houston instalado y configurado, salta al <a class="inline" href="#paso2">Paso 2</a>.</p>
+    <ol class="steps">
+      <li>Entra a <a class="inline" href="https://www.gethouston.ai" target="_blank" rel="noopener">www.gethouston.ai</a> y haz clic en el botón de descarga.</li>
+      <li>Ingresa el <b>código de invitación</b>: <code class="ui">getsh*tdone</code> (todo en minúscula, con asterisco) y descarga la versión <b>correcta para tu sistema</b>: Mac o Windows.
+        <figure class="shot-real">
+          <img src="/guides/assets/sdr-linkedin/es/captura-04-modal-codigo.png" alt="Ventana del código de invitación en gethouston.ai: campo para pegar el código y botón de descarga" loading="lazy">
+          <figcaption><span class="num">Captura 1</span>La ventana del código de invitación en gethouston.ai. Pega el código y haz clic en descargar.</figcaption>
+        </figure>
+      </li>
+      <li>Abre el instalador y sigue <code class="ui">Siguiente</code> → <code class="ui">Siguiente</code> → <code class="ui">Instalar</code>. Abre Houston.</li>
+      <li>Elige el <b>idioma</b> (Español) y lee la pantalla de bienvenida.</li>
+      <li><b>Conecta tu proveedor de IA:</b> Anthropic (Claude) u OpenAI (tu cuenta de ChatGPT). Inicia sesión en el navegador y vuelve a Houston cuando diga que puedes cerrar la página.</li>
+      <li><b>Conecta tu proveedor de integraciones (Composio):</b> haz clic en <code class="ui">Iniciar Sesión</code>, entra con Google o Microsoft, autoriza y vuelve a Houston.</li>
+    </ol>
+    <div class="call warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <div><span class="lbl">Si usas Windows</span><p>Windows puede mostrar <b>"Windows protegió su PC"</b>. Es normal: Houston está en beta para Windows. Haz clic en <code class="ui">Más información</code> y luego en <code class="ui">Ejecutar de todas formas</code>.</p></div>
+    </div>
+    <figure class="shot-real narrow">
+      <img src="/guides/assets/sdr-linkedin/es/captura-05-windows-protegio.png" alt="Aviso de Windows: Windows protegió su PC, con el botón Ejecutar de todas formas" loading="lazy">
+      <figcaption><span class="num">Captura 2</span>El aviso de Windows. Haz clic en "Más información" y aparece "Ejecutar de todas formas". Solo Windows.</figcaption>
+    </figure>
+    <figure class="shot-real">
+      <img src="/guides/assets/sdr-linkedin/es/captura-sdr-04-board.png" alt="Pantalla principal de Houston desbloqueada: agentes en la columna izquierda y el tablero del agente SDR con misiones en curso, para atención y listas" loading="lazy">
+      <figcaption><span class="num">Captura 3</span>La pantalla principal de Houston ya desbloqueada: tus agentes en la columna de la izquierda y el tablero de misiones (en curso, necesita tu atención, listo) al centro.</figcaption>
+    </figure>
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Deberías ver</span><p>La pantalla principal de Houston desbloqueada, con la columna de agentes a la izquierda, y tu proveedor de IA y Composio conectados.</p></div>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section id="paso2" class="step" data-pane="3">
+    <div class="step-head">
+      <div class="badge">2</div>
+      <div><div class="stepno">Paso 2 de 5</div><h2 style="margin-top:2px">Importa el agente SDR</h2><div class="est">~5 minutos</div></div>
+    </div>
+    <p>La forma más rápida es traer el agente ya armado. Llega con su identidad, sus <b>8 habilidades</b> y sus <b>14 aprendizajes</b>, listo para trabajar. No tienes que configurar nada a mano.</p>
+    <ol class="steps">
+      <li><b>Descarga el archivo del agente</b> (si aún no lo hiciste en el Paso 0).
+        <div><a class="btnlink" href="/guides/downloads/SDR.houstonagent" download><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>Descargar SDR.houstonagent</a><span class="urlnote">Guárdalo tal cual, sin descomprimir.</span></div>
+      </li>
+      <li>En Houston, en la barra izquierda, haz clic en <code class="ui">Nuevo agente</code>.</li>
+      <li>Arriba del todo, elige <code class="ui">De un amigo</code>.
+        <figure class="shot-real">
+          <img src="/guides/assets/sdr-linkedin/es/captura-sdr-01-nuevo-agente.png" alt="Ventana Nuevo agente de Houston con la opción De un amigo destacada arriba" loading="lazy">
+          <figcaption><span class="num">Captura 4</span>La ventana "Nuevo agente". La opción "De un amigo" está arriba: ahí subes el archivo del agente.</figcaption>
+        </figure>
+      </li>
+      <li>Haz clic en <code class="ui">Elegir archivo</code>, selecciona el <b>SDR.houstonagent</b> que descargaste y luego <code class="ui">Continuar</code>.
+        <figure class="shot-real">
+          <img src="/guides/assets/sdr-linkedin/es/captura-sdr-02-subir-archivo.png" alt="Diálogo Sube el archivo que te envió tu amigo, con el botón Elegir archivo" loading="lazy">
+          <figcaption><span class="num">Captura 5</span>Sube el archivo. Houston lo lee en tu máquina; no se sube nada a internet.</figcaption>
+        </figure>
+      </li>
+      <li>Houston te muestra qué trae el agente (<b>8 habilidades, 14 aprendizajes</b>) y pregunta <i>"¿Quieres que Houston eche un vistazo?"</i>. Elige <code class="ui">Sí, que lo revise</code>: hace una revisión de seguridad rápida antes de instalar algo de un tercero. Espera a que confirme.
+        <figure class="shot-real">
+          <img src="/guides/assets/sdr-linkedin/es/captura-sdr-03-revision.png" alt="Pantalla de revisión del agente SDR: 8 habilidades, 14 aprendizajes, con las opciones Sí que lo revise y No confío" loading="lazy">
+          <figcaption><span class="num">Captura 6</span>Houston resume lo que trae el agente y ofrece revisarlo. Elige "Sí, que lo revise".</figcaption>
+        </figure>
+      </li>
+      <li>Ponle nombre (por ejemplo, <i>SDR</i>) y un color, y trae el agente a tu espacio.</li>
+    </ol>
+    <div class="call warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <div><span class="lbl">No descomprimas el archivo</span><p>Sube <b>SDR.houstonagent</b> tal cual, como un solo archivo. Si tu computador lo descomprime en varias partes, la importación falla. Guárdalo todo junto.</p></div>
+    </div>
+    <div class="call note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">¿Prefieres armarlo tú?</span><p>También puedes construirlo a mano: crea un agente desde la plantilla <code class="ui">Sales</code> y luego instala el pack de skills desde GitHub (<code class="ui">Descripción del rol</code> → <code class="ui">Skills</code> → <code class="ui">Añadir skill</code> → <code class="ui">Desde GitHub</code> → <a class="inline" href="https://github.com/felipesalinasr/fsr-stack" target="_blank" rel="noopener">github.com/felipesalinasr/fsr-stack</a> → instalar todos). Toma un poco más de tiempo; el resultado es el mismo.</p></div>
+    </div>
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Deberías ver</span><p>Tu nuevo agente <b>SDR</b> en la columna izquierda, con sus 8 habilidades y sus aprendizajes ya cargados.</p></div>
+    </div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section id="paso3" class="step" data-pane="4">
+    <div class="step-head">
+      <div class="badge">3</div>
+      <div><div class="stepno">Paso 3 de 5</div><h2 style="margin-top:2px">Crea las cuentas de tus herramientas</h2><div class="est">~15 minutos · solo creamos cuentas, conectamos en el Paso 4</div></div>
+    </div>
+    <p class="sub">Cuatro herramientas le dan manos a tu agente. Crea la cuenta en cada una (todas gratis para empezar); las conectamos en el Paso 4. Créala antes de conectarla.</p>
+    <div class="toolgrid">
+
+      <div class="toolcard">
+        <div class="th"><span class="brand"><img class="wm" src="/guides/assets/sdr-linkedin/es/apify-logo.svg" alt="Apify"></span><span class="tag tag-gift">Créditos de regalo</span></div>
+        <p class="desc">Saca a todos los que comentaron el post.</p>
+        <p class="hint">¿Falla el registro con correo? Entra con Google.</p>
+        <div class="act"><a href="https://console.apify.com/sign-up?couponId=HOUSTON_ROCKET" target="_blank" rel="noopener">Crear cuenta<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
+      </div>
+
+      <div class="toolcard">
+        <div class="th"><span class="brand"><img class="wm" src="/guides/assets/sdr-linkedin/es/apollo-logo.webp" alt="Apollo"></span><span class="tag tag-free">Gratis · ~100/mes</span></div>
+        <p class="desc">Encuentra correos de trabajo verificados.</p>
+        <p class="hint">¿Apollo corporativo? Crea una cuenta personal: las API keys piden ser admin.</p>
+        <div class="act"><a href="https://www.apollo.io" target="_blank" rel="noopener">Crear cuenta<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
+      </div>
+
+      <div class="toolcard">
+        <div class="th"><span class="brand"><img class="ic" src="/guides/assets/sdr-linkedin/es/hunter-logo.png" alt=""><span class="bn">Hunter</span></span><span class="tag tag-opt">Opcional</span></div>
+        <p class="desc">Respaldo para los correos que Apollo no encuentra.</p>
+        <p class="hint">Si no la creas, dile al agente que use solo Apollo.</p>
+        <div class="act"><a href="https://hunter.io" target="_blank" rel="noopener">Crear cuenta<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
+      </div>
+
+      <div class="toolcard">
+        <div class="th"><span class="brand"><img class="wm" src="/guides/assets/sdr-linkedin/es/instantly-logo.webp" alt="Instantly"></span><span class="tag tag-free">Gratis</span></div>
+        <p class="desc">Envía la campaña sin quemar tu dominio.</p>
+        <p class="hint">Para volumen, usa dominios alternativos calentados con Warm Up.</p>
+        <div class="act"><a href="https://instantly.ai" target="_blank" rel="noopener">Crear cuenta<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
+      </div>
+
+    </div>
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Deberías tener</span><p>Cuatro cuentas creadas: Apify, Apollo, Instantly y (opcional) Hunter.</p></div>
+    </div>
+  </section>
+
+  <!-- STEP 5 -->
+  <section id="paso4" class="step" data-pane="5">
+    <div class="step-head">
+      <div class="badge">4</div>
+      <div><div class="stepno">Paso 4 de 5</div><h2 style="margin-top:2px">Conecta las integraciones en Houston</h2><div class="est">~15 minutos</div></div>
+    </div>
+    <p class="sub">En Houston, abre la pestaña <code class="ui">Integraciones</code> de tu agente. Hay dos formas de conectar: <b>un clic</b> (inicias sesión) o con una <b>API key</b> (la copias de la herramienta y la pegas en Houston).</p>
+    <div class="conngrid">
+
+      <div class="conn">
+        <div class="ch"><span class="brand"><img class="wm" src="/guides/assets/sdr-linkedin/es/apify-logo.svg" alt="Apify"></span><span class="method method-click">Un clic</span></div>
+        <div class="path"><span class="lbl2">En Houston</span><span class="st">Integraciones</span><span class="ar">→</span><span class="st">Apify MCP</span><span class="ar">→</span><span class="st">Conectar</span><span class="ar">→</span><span class="st">Autorizar</span></div>
+        <p class="hint">Elige <b>Apify MCP</b>, no la "Apify" a secas: esa pide un token y confunde a todos.</p>
+      </div>
+
+      <div class="conn">
+        <div class="ch"><span class="brand"><img class="ic" src="/guides/assets/sdr-linkedin/es/google-sheets-logo.png" alt=""><span class="bn">Google Sheets</span></span><span class="method method-click">Un clic</span></div>
+        <div class="path"><span class="lbl2">En Houston</span><span class="st">Integraciones</span><span class="ar">→</span><span class="st">Google Sheets</span><span class="ar">→</span><span class="st">Conectar</span><span class="ar">→</span><span class="st">Entra con Google</span></div>
+        <p class="hint">Selecciona el "Google Sheets" exacto en la lista.</p>
+      </div>
+
+      <div class="conn">
+        <div class="ch"><span class="brand"><img class="wm" src="/guides/assets/sdr-linkedin/es/apollo-logo.webp" alt="Apollo"></span><span class="method method-key">API key</span></div>
+        <div class="path"><span class="lbl2">En Apollo</span><span class="st">Settings</span><span class="ar">→</span><span class="st">Integraciones</span><span class="ar">→</span><span class="st">API Keys</span><span class="ar">→</span><span class="st">Crear</span><span class="ar">→</span><span class="st">Copiar</span></div>
+        <div class="path"><span class="lbl2">En Houston</span><span class="st">Integraciones</span><span class="ar">→</span><span class="st">Apollo</span><span class="ar">→</span><span class="st">Conectar</span><span class="ar">→</span><span class="st">Pegar</span></div>
+        <p class="hint">Apollo muestra la clave <b>una sola vez</b>: cópiala apenas la crees.</p>
+      </div>
+
+      <div class="conn">
+        <div class="ch"><span class="brand"><img class="wm" src="/guides/assets/sdr-linkedin/es/instantly-logo.webp" alt="Instantly"></span><span class="method method-key">API key</span></div>
+        <div class="path"><span class="lbl2">En Instantly</span><span class="st">Tu inicial</span><span class="ar">→</span><span class="st">Settings</span><span class="ar">→</span><span class="st">Integrations</span><span class="ar">→</span><span class="st">API keys</span><span class="ar">→</span><span class="st">Copiar</span></div>
+        <div class="path"><span class="lbl2">En Houston</span><span class="st">Integraciones</span><span class="ar">→</span><span class="st">Instantly</span><span class="ar">→</span><span class="st">Conectar</span><span class="ar">→</span><span class="st">Pegar</span></div>
+      </div>
+
+    </div>
+    <figure class="shot-real">
+      <img src="/guides/assets/sdr-linkedin/es/captura-10-apify-mcp.png" alt="Sección Integraciones de Houston mostrando Apify y Apify MCP lado a lado, con Apify MCP como la opción correcta" loading="lazy">
+      <figcaption><span class="num">Captura 7</span>Los dos resultados de Apify en Integraciones. Conecta el de la derecha: <b>Apify MCP</b> (recuadro rojo).</figcaption>
+    </figure>
+    <div class="call note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Con las API keys</span><p>Pégalas en <b>Integraciones</b>, no en el chat (ahí quedan expuestas en el historial), y no compartas pantalla mientras las copias. ¿Te pierdes buscando una key? Pídele ayuda al agente: <i>"ayúdame paso por paso a encontrar la API key de esta herramienta."</i></p></div>
+    </div>
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Deberías tener</span><p>Cuatro integraciones en verde: <b>Apify MCP</b>, <b>Apollo</b>, <b>Google Sheets</b> e <b>Instantly</b>. (Hunter se conecta igual, o lo dejas para después.)</p></div>
+    </div>
+  </section>
+
+  <!-- STEP 6 -->
+  <section id="paso5" class="step" data-pane="6">
+    <div class="step-head">
+      <div class="badge">5</div>
+      <div><div class="stepno">Paso 5 de 5</div><h2 style="margin-top:2px">Corre tu primera campaña</h2><div class="est">15–40 minutos · el agente trabaja por fases y te va consultando</div></div>
+    </div>
+    <ol class="steps">
+      <li>Ve a LinkedIn y <b>copia el enlace de un post con comentarios</b>: uno tuyo, o uno de otra persona cuyo público te sirva (un lead magnet de tu industria, por ejemplo).</li>
+      <li>En tu agente, abre <code class="ui">Actividad</code> y en la columna <code class="ui">En curso</code> haz clic en el <b>+</b> para crear una <code class="ui">nueva misión</code>.</li>
+      <li>En el selector de skills de la misión, busca <b>LinkedIn Comment to Outreach G-Sheets</b>. Si no lo ves de inmediato, baja: aparece en <code class="ui">Destacados</code>.</li>
+      <li>Pega el enlace y escribe:
+        <div class="prompt"><span class="pl">Copia y pega, con tu enlace</span><span class="txt">Corre este skill con esta publicación de LinkedIn: [pega aquí el enlace del post]</span></div>
+      </li>
+      <li><b>Déjalo trabajar por fases.</b> Primero scrapea los comentarios con Apify y crea el Google Sheet; luego te pide luz verde para enriquecer con Apollo; luego escribe la secuencia de 3 correos contigo; y al final carga todo a Instantly. Es a propósito: revisas en cada fase y no quemas créditos si algo salió mal.
+        <figure class="shot-real">
+          <img src="/guides/assets/sdr-linkedin/es/captura-sdr-05-mission.png" alt="El agente SDR corriendo el skill LinkedIn Comment to Outreach: el chat de la misión con el enlace del post y el agente arrancando el pipeline hacia una campaña en pausa en Instantly" loading="lazy">
+          <figcaption><span class="num">Captura 8</span>El agente arranca la misión: lee el skill, toma el enlace del post y anuncia que va a correr el pipeline completo hasta dejar la campaña en pausa en Instantly, guardando los leads en un Google Sheet.</figcaption>
+        </figure>
+      </li>
+      <li>Cuando termine, abre la campaña en Instantly: está <b>en pausa</b>, con tus leads y la secuencia de 3 correos (apertura día 0, recordatorio día 3, cierre día 6-7). Revisa, ajusta lo que quieras y solo entonces decide si se envía.</li>
+    </ol>
+    <div class="call note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Qué esperar</span><p>Apollo y Hunter encuentran correo verificado para el <b>50–70%</b> de los leads: es una base de datos, no magia. En la masterclass, de 42 comentaristas salieron 24 correos (57%). Una celda vacía es normal, no una falla. Y cada correo encontrado consume un crédito de Apollo.</p></div>
+    </div>
+    <div class="call warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <div><span class="lbl">Antes de enviar de verdad</span><p>Cargar la campaña es seguro: queda en pausa. Pero <b>no la actives</b> hasta tener correos de envío configurados en Instantly (idealmente dominios alternativos calentados con Warm Up). Si aún no los tienes, dile al agente: <i>"quiero probar el skill sin Instantly por ahora."</i></p></div>
+    </div>
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Lo lograste cuando</span><p>Tienes un Google Sheet con todos los comentaristas del post, correos verificados para la mayoría alcanzable, y una campaña de 3 correos esperando tu aprobación en Instantly. De un solo enlace.</p></div>
+    </div>
+  </section>
+
+  <!-- MAKE IT YOURS -->
+  <section id="hazlo-tuyo" data-pane="7">
+    <span class="kicker">Extra</span>
+    <h2>Hazlo tuyo</h2>
+    <p class="sub">Todo se edita hablándole en español, sin código. Trátalo como a un nuevo integrante del equipo al que le enseñas tu manera de trabajar.</p>
+    <ul class="plain">
+      <li><b>Califica contra tu ICP antes de gastar créditos:</b>
+        <div class="prompt"><span class="pl">Copia y pega, adjuntando tus criterios</span><span class="txt">Modifica el skill: crea una columna que diga calificación y califica siempre contra estos criterios de mi cliente ideal. Si un lead no está calificado, ni siquiera traigas el correo.</span></div>
+      </li>
+      <li><b>Enséñale a usar el skill siempre:</b>
+        <div class="prompt"><span class="pl">Copia y pega en el chat</span><span class="txt">Almacena en tu memoria que cada vez que te pase un enlace de un post de LinkedIn, uses el skill LinkedIn Comment to Outreach G-Sheets.</span></div>
+      </li>
+      <li><b>Evita duplicados entre corridas:</b>
+        <div class="prompt"><span class="pl">Copia y pega en el chat</span><span class="txt">Siempre que estemos prospectando, verifica en Apollo que no estemos enriqueciendo data duplicada.</span></div>
+      </li>
+      <li><b>¿Usas otro secuenciador o un CRM?</b> Houston se conecta a cualquier herramienta con API o MCP. En la masterclass conectamos Smartlead en vivo, una herramienta que nunca habíamos usado:
+        <div class="prompt"><span class="pl">Copia y pega, con tu herramienta</span><span class="txt">Quiero conectarme a [tu herramienta], ayúdame por favor. Aquí está el enlace de su documentación: [pega el enlace]</span></div>
+      </li>
+      <li><b>Prospecta también a los que reaccionan:</b> el pack incluye <b>LinkedIn Reaction to Outreach</b>, la misma jugada pero con los likes de un post en lugar de los comentarios.</li>
+    </ul>
+  </section>
+
+  <!-- TROUBLESHOOTING -->
+  <section id="problemas" data-pane="8">
+    <span class="kicker">Si algo sale mal</span>
+    <h2>Solución de problemas</h2>
+    <p class="sub">Los tropiezos reales de la masterclass y cómo los resolvimos en vivo.</p>
+
+    <details class="ts"><summary><span class="q">?</span>No logro conectar mi proveedor de IA (Claude no responde o falla el login)</summary>
+      <div class="ans">Nos pasó el día de la masterclass: Anthropic estuvo inestable. Cambia de proveedor: en Houston, <code class="ui">Configuración</code> → <code class="ui">Proveedor de IA</code> → conecta <b>OpenAI</b> con tu cuenta de ChatGPT. El resultado es el mismo.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Windows dice "Windows protegió su PC" y no me deja instalar</summary>
+      <div class="ans">Haz clic en <code class="ui">Más información</code> y luego en <code class="ui">Ejecutar de todas formas</code>. Es porque Houston está en beta para Windows; es seguro.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Apify me pide un "token"</summary>
+      <div class="ans">Conectaste la "Apify" equivocada. Usa <b>Apify MCP</b>, que solo pide iniciar sesión y autorizar, sin token.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>No encuentro la API key de Apollo</summary>
+      <div class="ans">En Apollo: <code class="ui">Settings</code> (abajo a la izquierda, el último ítem) → menú izquierdo <code class="ui">Integraciones</code> → <code class="ui">API Keys</code> → crear nueva clave. La regla sirve para casi todas las herramientas: Settings → Integraciones → API Keys.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Copié mal la API key de Apollo y ya no la veo</summary>
+      <div class="ans">Apollo muestra la clave <b>una sola vez</b> por seguridad. No la busques: crea una clave nueva y pégala en Houston.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Apollo dice que solo un admin puede crear la API key</summary>
+      <div class="ans">Estás en la cuenta corporativa y otra persona es el admin. Para avanzar hoy: crea una cuenta personal de Apollo con tu correo personal. Si las sesiones se te mezclaron, cierra sesión por completo y regístrate de nuevo. El acceso corporativo lo resuelves después con tu equipo.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Cambié de cuenta de Apollo pero Houston sigue usando la vieja</summary>
+      <div class="ans">La conexión vieja quedó guardada en tu proveedor de integraciones. Entra a <a class="inline" href="https://composio.dev" target="_blank" rel="noopener">composio.dev</a> con el mismo correo con el que conectaste tus apps, busca Apollo en tus apps conectadas, <code class="ui">Elimina</code> la conexión vieja y vuelve a conectar con la clave nueva desde Houston.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>La página de Composio se queda cargando cuando conecto el proveedor de integraciones</summary>
+      <div class="ans">Ve directo a <a class="inline" href="https://composio.dev" target="_blank" rel="noopener">composio.dev</a> → <code class="ui">get started for free</code> → entra con tu Gmail. Si arriba a la izquierda hay un selector, cámbialo a <code class="ui">for you</code>. Luego vuelve a Houston y reintenta.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>En Instantly no me aparece el menú de Settings o Integrations</summary>
+      <div class="ans">Tres causas comunes: aún no tienes ningún correo configurado en Instantly, o la ventana del navegador está muy pequeña (agrándala y aparece el menú), o tu plan no lo incluye. Si sigues perdido, pregúntale a Houston.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>A mitad de corrida dice que Google Sheets no está conectado</summary>
+      <div class="ans">Ve a <code class="ui">Integraciones</code> → busca <b>Google Sheets</b> (selecciona el exacto) → conéctalo con tu cuenta de Google. Vuelve a la misión y dile: <i>"ya tengo conectado a Google Sheets, continúa."</i></div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>El agente me pide Hunter.io y yo no quiero otra cuenta</summary>
+      <div class="ans">Dile: <i>"no voy a conectar Hunter.io, quiero utilizar el skill solo con Apollo por ahora."</i> Funciona igual; solo encontrará algunos correos menos.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Dice que "LinkedIn está bloqueando a Apify" o algo similar</summary>
+      <div class="ans">Primero, no le creas de una: a veces los agentes se equivocan de diagnóstico. Dile: <i>"por favor, verifica esto que me estás diciendo, o si estás teniendo otro problema."</i> En la masterclass, la causa real era una <b>versión vieja de los skills</b>: reinstala el pack (<code class="ui">Añadir skill</code> → <code class="ui">Desde GitHub</code> → el repo → instalar todos) y lanza una <b>misión nueva</b>.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>No encuentro el skill en el selector de la nueva misión</summary>
+      <div class="ans">Baja en la lista: aparece en la sección <code class="ui">Destacados</code>. Y confirma en <code class="ui">Descripción del rol</code> → <code class="ui">Skills</code> que el pack quedó instalado.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Encontró muy pocos correos</summary>
+      <div class="ans">Es lo esperado en posts pequeños o públicos muy variados: la cobertura normal es <b>50–70%</b>. Son bases de datos y la gente cambia de trabajo. También ten presente que cada búsqueda consume créditos de Apollo: no re-busques a los faltantes sin necesidad.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Voy a actualizar Houston y me da miedo perder todo</summary>
+      <div class="ans">Tranquilo: tu contenido no vive dentro de la aplicación, vive en archivos de tu computador. Puedes borrar y reinstalar Houston y el nuevo agarra toda tu información.</div>
+    </details>
+  </section>
+
+  <!-- FINAL CHECKLIST -->
+  <section id="checklist" data-pane="9">
+    <span class="kicker">Antes de cerrar</span>
+    <h2>Tu checklist de <span class="accent">éxito</span></h2>
+    <p class="sub">Si puedes marcar todo esto, terminaste.</p>
+    <div class="showcase">
+      <div class="sc-bg"></div>
+      <div class="sc-inner" style="grid-template-columns:1fr; gap:0; padding:22px 24px">
+        <div class="mc" style="box-shadow:0 12px 34px -14px rgba(13,13,13,0.22)">
+          <div class="mc-head">
+            <svg class="hm" viewBox="0 0 412.248 448.898" aria-hidden="true"><use href="#hlogo"/></svg>
+            <div><div class="nm">SDR</div><div class="ms">LinkedIn Comment to Outreach</div></div>
+            <span class="live"><span class="ld"></span>Listo</span>
+          </div>
+          <div class="final" style="border:none; border-radius:0; padding:6px 16px 12px">
+            <ul>
+              <li><label><input type="checkbox"><span>Houston instalado, con proveedor de IA y Composio conectados</span></label></li>
+              <li><label><input type="checkbox"><span>Agente de ventas creado desde la plantilla Sales</span></label></li>
+              <li><label><input type="checkbox"><span>Pack de skills instalado desde github.com/felipesalinasr/fsr-stack</span></label></li>
+              <li><label><input type="checkbox"><span>Cuentas creadas: Apify, Apollo, Instantly (y Hunter, opcional)</span></label></li>
+              <li><label><input type="checkbox"><span>Integraciones conectadas: Apify MCP, Apollo, Google Sheets, Instantly</span></label></li>
+              <li><label><input type="checkbox"><span>Primera misión corrida con un post real</span></label></li>
+              <li><label><input type="checkbox"><span>Google Sheet con los comentaristas y sus correos verificados</span></label></li>
+              <li><label><input type="checkbox"><span>Campaña de 3 correos en pausa en Instantly, esperando tu aprobación</span></label></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:22px">
+      <p style="margin:0 0 4px; font-weight:600; font-size:17px">¿Marcaste todo? Tu agente SDR ya trabaja para ti.</p>
+      <p class="sub" style="margin:0 0 6px">Cuéntanos cómo te fue con tu primera campaña y qué quieres automatizar ahora.</p>
+      <a class="btnlink" href="https://chat.whatsapp.com/LDytsBEAL3OBTpoGn2X061?s=cl&amp;p=i&amp;mlu=4" target="_blank" rel="noopener">Compartir mi resultado en la comunidad</a>
+    </div>
+  </section>
+<div class="gnav" id="gnav"></div>
+</div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-card">
+      <h3>¿Te atascaste en algún paso?</h3>
+      <p>Escríbenos en la comunidad de WhatsApp de Houston LATAM y lo resolvemos contigo. Nadie se queda sin su agente SDR andando.</p>
+      <div style="margin-top:16px">
+        <a href="https://chat.whatsapp.com/LDytsBEAL3OBTpoGn2X061?s=cl&amp;p=i&amp;mlu=4" style="display:inline-flex; align-items:center; gap:8px; background:#fff; color:#0d0d0d; border-radius:999px; padding:11px 22px; font-weight:600; font-size:14.5px; text-decoration:none" target="_blank" rel="noopener">Unirme a la comunidad Houston LATAM</a>
+      </div>
+      <div class="fl"><svg class="mark"><use href="#hlogo"/></svg><span class="wordmark">houston</span></div>
+    </div>
+    <div class="foot-meta">
+      <span>Guía de la masterclass · Agente SDR de LinkedIn</span>
+      <span>gethouston.ai</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // Open all troubleshooting accordions for print/PDF
+  function openAll(){ document.querySelectorAll('details.ts').forEach(function(d){ d.open = true; }); }
+  window.addEventListener('beforeprint', openAll);
+  if (new URLSearchParams(location.search).has('print')) openAll();
+  document.querySelectorAll('.prompt').forEach(function(p){
+    var t = p.querySelector('.txt');
+    if(!t) return;
+    var b = document.createElement('button');
+    b.className = 'copybtn'; b.type = 'button'; b.textContent = 'Copiar';
+    b.addEventListener('click', function(){
+      var text = t.textContent.trim();
+      function done(){ b.textContent = 'Copiado'; b.classList.add('ok');
+        setTimeout(function(){ b.textContent = 'Copiar'; b.classList.remove('ok'); }, 1600); }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){ fallback(); });
+      } else { fallback(); }
+      function fallback(){
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try{ document.execCommand('copy'); done(); }catch(e){}
+        document.body.removeChild(ta);
+      }
+    });
+    p.appendChild(b);
+  });
+})();
+</script>
+
+<script>
+(function(){
+  var body = document.body;
+  var KEY = 'houston-guide-sdr-linkedin-es';
+  var L = {"next": "Siguiente paso", "prev": "Anterior", "finish": "Terminé la guía", "finished": "¡Listo! Guía completada.", "full": "Ver la guía completa", "step": "Ver paso a paso"};
+  var GUIDE = 'LinkedIn SDR Agent';
+  var lang = document.documentElement.lang || 'es';
+  var items = Array.prototype.slice.call(document.querySelectorAll('.gside .gs-item'));
+  var N = items.length;
+  var gnav = document.getElementById('gnav');
+  var prog = document.getElementById('gprog');
+  var toggle = document.getElementById('gs-toggle');
+  var hashMap = {"intro": 0, "que-vas-a-construir": 0, "requisitos": 1, "paso1": 2, "paso2": 3, "paso3": 4, "paso4": 5, "paso5": 6, "hazlo-tuyo": 7, "problemas": 8, "checklist": 9};
+  var cur = 0, finished = false;
+
+  function track(name, props) {
+    var payload = props || {};
+    if (window.posthog && window.posthog.capture) { try { window.posthog.capture(name, payload); } catch (e) {} }
+    if (typeof window.gtag === 'function') { try { window.gtag('event', name, payload); } catch (e) {} }
+  }
+  function panes(i){ return document.querySelectorAll('[data-pane="' + i + '"]'); }
+  function renderNav(i){
+    gnav.innerHTML = '';
+    if (i > 0) {
+      var p = document.createElement('button'); p.className = 'gprev'; p.type = 'button';
+      p.textContent = '← ' + L.prev;
+      p.addEventListener('click', function(){ show(cur - 1, true); });
+      gnav.appendChild(p);
+    }
+    if (i < N - 1) {
+      var n = document.createElement('button'); n.className = 'gnext'; n.type = 'button';
+      n.innerHTML = L.next + ' <span aria-hidden="true">→</span>';
+      n.addEventListener('click', function(){ show(cur + 1, true); });
+      gnav.appendChild(n);
+    } else if (!finished) {
+      var f = document.createElement('button'); f.className = 'gnext'; f.type = 'button';
+      f.textContent = L.finish;
+      f.addEventListener('click', function(){
+        finished = true;
+        track('guide_completed', { guide: GUIDE, lang: lang });
+        var m = document.createElement('span'); m.className = 'gdone-msg'; m.textContent = L.finished;
+        f.replaceWith(m);
+      });
+      gnav.appendChild(f);
+    }
+  }
+  function show(i, user){
+    i = Math.max(0, Math.min(N - 1, i));
+    cur = i;
+    document.querySelectorAll('[data-pane]').forEach(function(e){ e.classList.remove('on'); });
+    panes(i).forEach(function(e){ e.classList.add('on'); });
+    items.forEach(function(it, j){
+      it.classList.toggle('on', j === i);
+      it.classList.toggle('done', j < i);
+    });
+    renderNav(i);
+    if (prog) prog.style.width = ((i) / (N - 1) * 100) + '%';
+    var id = items[i].getAttribute('data-hash');
+    if (user) {
+      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+      try { localStorage.setItem(KEY, String(i)); } catch (e) {}
+      window.scrollTo({ top: 0 });
+      track('guide_step_viewed', { guide: GUIDE, step: id, step_index: i, lang: lang });
+    }
+  }
+  items.forEach(function(it, j){ it.addEventListener('click', function(){ show(j, true); }); });
+  function applyFull(on){
+    body.classList.toggle('fullview', on);
+    body.classList.toggle('stepper', !on);
+    if (toggle) toggle.textContent = on ? L.step : L.full;
+  }
+  if (toggle) toggle.addEventListener('click', function(){ applyFull(!body.classList.contains('fullview')); });
+  window.addEventListener('hashchange', function(){
+    var id = location.hash.replace('#', '');
+    if (hashMap.hasOwnProperty(id)) show(hashMap[id], true);
+  });
+  // print / ?print → full view
+  if (new URLSearchParams(location.search).has('print')) { applyFull(true); }
+  else {
+    body.classList.add('stepper');
+    var start = 0;
+    var id = location.hash.replace('#', '');
+    if (hashMap.hasOwnProperty(id)) start = hashMap[id];
+    else { try { start = parseInt(localStorage.getItem(KEY) || '0', 10) || 0; } catch (e) {} }
+    show(start, false);
+  }
+  window.addEventListener('beforeprint', function(){ applyFull(true); });
+})();
+</script>
+{% endblock %}

@@ -1,10 +1,13 @@
 import SwiftUI
 
-/// The per-agent missions screen (pushed from a contact row): an agent header,
-/// missions grouped in PARITY order (Needs you incl. error, Running, Done) with
-/// explicit per-mission actions, an Archived entry, and a bottom composer that
-/// opens the new-mission flow PRE-SCOPED to this agent. Tapping a mission opens
-/// its chat.
+/// The per-agent missions screen (pushed from a contact row): a sober,
+/// WhatsApp-style conversation list — no header, no avatar (the inline nav title
+/// already names the agent, the helmet already lives on the home row). Missions
+/// are grouped in PARITY order (Needs you incl. error, Running, Done) with
+/// explicit per-mission actions, and an Archived entry. A new mission starts from
+/// the SAME top `square.and.pencil` compose button used on the Agents tab and
+/// Mission Control — here PRE-SCOPED to this agent (no picker: it opens a draft
+/// chat directly). Tapping an existing mission opens its chat.
 ///
 /// Data comes from the shared `\.agentsOverview` seam — this agent's activities
 /// are already streaming (the Agents tab subscribed every agent's
@@ -21,13 +24,8 @@ struct AgentMissionsView: View {
     let agent: AgentListItem
     let onOpenChat: (ChatRoute) -> Void
     let onOpenArchived: () -> Void
-    /// Per-agent AI Models + Integrations, opened from the toolbar menu (both
-    /// surfaces are per-agent — provider credentials per-pod, grants per-agent).
-    let onOpenAIModels: () -> Void
-    let onOpenIntegrations: () -> Void
 
     @State private var retention: ScopeRetention?
-    @State private var presentingComposer = false
 
     // Action UI state.
     @State private var renameTarget: MissionCardData?
@@ -46,64 +44,34 @@ struct AgentMissionsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            content
-        }
-        .background(theme.background)
-        .navigationTitle(agent.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { agentMenu } }
-        .safeAreaInset(edge: .bottom) { composer }
-        .sheet(isPresented: $presentingComposer) { NewMissionSheet(preselectedAgent: agent) }
-        .missionActionDialogs(
-            renameTarget: $renameTarget, renameText: $renameText,
-            archiveTarget: $archiveTarget, actionError: $actionError,
-            onCommitRename: commitRename, onCommitArchive: commitArchive
-        )
-        .confirmationDialog(
-            Strings.AgentMissions.deleteConfirmTitle,
-            isPresented: deletePresented, titleVisibility: .visible, presenting: deleteTarget
-        ) { card in
-            Button(Strings.Board.delete, role: .destructive) { commitDelete(card) }
-            Button(Strings.MissionControl.cancel, role: .cancel) {}
-        } message: { _ in
-            Text(Strings.AgentMissions.deleteConfirmBody)
-        }
-        .onAppear { if retention == nil { retention = overview.retain() } }
-        .onDisappear { retention?.cancel(); retention = nil }
+        content
+            .background(theme.background)
+            .navigationTitle(agent.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                NewMissionToolbarButton {
+                    onOpenChat(.draft(agentId: agent.id, title: agent.name))
+                }
+            }
+            .missionActionDialogs(
+                renameTarget: $renameTarget, renameText: $renameText,
+                archiveTarget: $archiveTarget, actionError: $actionError,
+                onCommitRename: commitRename, onCommitArchive: commitArchive
+            )
+            .confirmationDialog(
+                Strings.AgentMissions.deleteConfirmTitle,
+                isPresented: deletePresented, titleVisibility: .visible, presenting: deleteTarget
+            ) { card in
+                Button(Strings.Board.delete, role: .destructive) { commitDelete(card) }
+                Button(Strings.MissionControl.cancel, role: .cancel) {}
+            } message: { _ in
+                Text(Strings.AgentMissions.deleteConfirmBody)
+            }
+            .onAppear { if retention == nil { retention = overview.retain() } }
+            .onDisappear { retention?.cancel(); retention = nil }
     }
 
     // MARK: Pieces
-
-    /// Toolbar overflow: this agent's AI Models + Integrations. Kept subtle (a
-    /// single ellipsis menu) so the missions screen stays focused on the work.
-    private var agentMenu: some View {
-        Menu {
-            Button { onOpenAIModels() } label: {
-                Label(Strings.AIModels.title, systemImage: "cpu")
-            }
-            Button { onOpenIntegrations() } label: {
-                Label(Strings.Integrations.title, systemImage: "puzzlepiece.extension")
-            }
-        } label: {
-            Image(systemName: "ellipsis.circle")
-                .foregroundStyle(theme.foreground)
-        }
-        .accessibilityLabel(Strings.AgentMissions.moreMenu)
-    }
-
-    private var header: some View {
-        HStack(spacing: Spacing.space12) {
-            HoustonAvatar(agentColorHex: nil, diameter: 40, running: grouping.hasRunning)
-            Text(agent.name)
-                .font(Typography.title)
-                .foregroundStyle(theme.foreground)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, Spacing.space16)
-        .padding(.vertical, Spacing.space12)
-    }
 
     @ViewBuilder private var content: some View {
         if grouping.isEmpty && grouping.archivedCount == 0 {
@@ -120,24 +88,9 @@ struct AgentMissionsView: View {
             AgentMissionsSectionList(
                 grouping: grouping,
                 onOpen: onOpenChat, onOpenArchived: onOpenArchived,
-                onApprove: approve, onRename: startRename,
-                onArchive: startArchive, onDelete: startDelete
+                onRename: startRename, onArchive: startArchive, onDelete: startDelete
             )
         }
-    }
-
-    private var composer: some View {
-        Button { presentingComposer = true } label: {
-            Label(Strings.Board.newMission, systemImage: "plus")
-                .font(Typography.label)
-                .foregroundStyle(theme.primaryFg)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, Spacing.space12)
-                .background(theme.primary, in: Capsule())
-        }
-        .padding(.horizontal, Spacing.space16)
-        .padding(.vertical, Spacing.space8)
-        .background(.ultraThinMaterial)
     }
 
     // MARK: Actions
@@ -145,8 +98,6 @@ struct AgentMissionsView: View {
     private var deletePresented: Binding<Bool> {
         Binding(get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } })
     }
-
-    private func approve(_ card: MissionCardData) { run { try await actions.approve(card) } }
 
     private func startRename(_ card: MissionCardData) {
         renameTarget = card

@@ -91,7 +91,7 @@ export function HoustonAvatar({
       style={{
         width: innerDiameter,
         height: innerDiameter,
-        backgroundColor: `color-mix(in srgb, var(--color-secondary, #f5f5f5) 82%, ${bg} 18%)`,
+        backgroundColor: `color-mix(in srgb, var(--ht-secondary, #f5f5f5) 82%, ${bg} 18%)`,
       }}
     >
       <HoustonHelmet color={bg} size={Math.round(innerDiameter * 0.65)} />

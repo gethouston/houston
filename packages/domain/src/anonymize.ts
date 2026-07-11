@@ -12,11 +12,16 @@ import type { PortableContent } from "./portable";
  * Heuristic anonymizer for portable agent payloads — the TS port of the
  * Rust engine's `portable/anonymize.rs`, behavior-preserving.
  *
- * V1 uses regex patterns: emails, phone numbers, absolute paths that leak
- * `/Users/<name>` / `/home/<name>`, handles, URLs. An LLM-driven version
- * (better, slower, costs tokens) is the intended v2 upgrade — when it
- * lands, swap the implementation behind this same API and the wizard does
- * not change.
+ * The regex pass covers emails, phone numbers, absolute paths that leak
+ * `/Users/<name>` / `/home/<name>`, handles, URLs. It is BOTH the pre-pass
+ * for the LLM redactor (`anonymize-ai.ts` — the host sends pre-redacted
+ * texts to the agent's runtime) AND the visible fallback when the AI pass
+ * can't run (no provider connected, runtime unreachable).
+ *
+ * Credentials ride the same pre-pass through an injected `SecretRedactor`
+ * (the host's secretlint-backed implementation — node-only, so it must not
+ * live in this browser-shared package). Keys are scrubbed to `<secret>`
+ * BEFORE the model ever sees a text, and in the patterns fallback too.
  *
  * Pure: the caller (host route) gathers the selected content off the vfs.
  */
@@ -61,7 +66,8 @@ function countMatches(re: RegExp, s: string): number {
   return (s.match(re) ?? []).length;
 }
 
-function summarize(before: string, after: string): string {
+/** "1 email, 2 url" — what the patterns matched in a text; "" when nothing. */
+export function redactionCounts(before: string): string {
   const kinds: [string, number][] = [
     ["email", countMatches(EMAIL, before)],
     [
@@ -75,21 +81,86 @@ function summarize(before: string, after: string): string {
     ["handle", countMatches(HANDLE, before)],
     ["url", countMatches(URL_RE, before)],
   ];
-  const parts = kinds.filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`);
-  if (parts.length === 0) return "no obvious personal info detected";
-  if (before === after) return `matched but unchanged (${parts.join(", ")})`;
-  return `redacted ${parts.join(", ")}`;
+  return kinds
+    .filter(([, n]) => n > 0)
+    .map(([k, n]) => `${n} ${k}`)
+    .join(", ");
+}
+
+export const NO_PERSONAL_INFO = "no obvious personal info detected";
+
+/** What a secret pass did to one text. */
+export interface SecretRedaction {
+  text: string;
+  count: number;
+}
+
+/**
+ * Credential scrubbing seam: replaces API keys / tokens / private keys with
+ * `<secret>` and says how many it found. Injected by the host (secretlint);
+ * absent in environments without one — the regex pass still runs.
+ */
+export type SecretRedactor = (text: string) => Promise<SecretRedaction>;
+
+/**
+ * The full pre-pass. The secret redactor runs FIRST, on the pristine text:
+ * the looser patterns would otherwise mangle a credential's shape (the phone
+ * rule eats the digit run in `ghp_0123456789…`) and hide it from the
+ * high-precision secret rules. The regex pass never touches `<secret>`
+ * tokens (no digits, no `@`).
+ */
+export interface PrePassResult {
+  after: string;
+  secretCount: number;
+  /** "1 email, 2 secret" — everything the pre-pass matched; "" when nothing. */
+  counts: string;
+}
+
+export async function redactWithSecrets(
+  body: string,
+  redactSecrets?: SecretRedactor,
+): Promise<PrePassResult> {
+  const s = redactSecrets
+    ? await redactSecrets(body)
+    : { text: body, count: 0 };
+  // Pattern counts come off the secret-scrubbed text: a credential's digit
+  // run must not double-count as a phone number it never was.
+  const counts = [
+    redactionCounts(s.text),
+    s.count > 0 ? `${s.count} secret` : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return { after: redactText(s.text), secretCount: s.count, counts };
+}
+
+function summarize(before: string, after: string, counts: string): string {
+  if (!counts) return NO_PERSONAL_INFO;
+  if (before === after) return `matched but unchanged (${counts})`;
+  return `redacted ${counts}`;
+}
+
+/**
+ * Nothing meaningful left once the placeholder tokens are stripped. The UI
+ * uses this to nudge "exclude this item instead?" — a placeholder-only
+ * learning is worse than no learning.
+ */
+export function becameEmptyAfter(after: string): boolean {
+  return !/[\p{L}\p{N}]/u.test(after.replace(PLACEHOLDER, ""));
 }
 
 /** Redact one text and describe the change for the side-by-side diff. */
-export function redactString(body: string): AnonymizedText {
-  const after = redactText(body);
-  // "Became empty" = nothing meaningful left once the placeholder tokens
-  // are stripped. The UI uses this to nudge "exclude this item instead?" —
-  // a placeholder-only learning is worse than no learning.
-  const stripped = after.replace(PLACEHOLDER, "");
-  const becameEmpty = !/[\p{L}\p{N}]/u.test(stripped);
-  return { before: body, after, summary: summarize(body, after), becameEmpty };
+export async function redactString(
+  body: string,
+  redactSecrets?: SecretRedactor,
+): Promise<AnonymizedText> {
+  const { after, counts } = await redactWithSecrets(body, redactSecrets);
+  return {
+    before: body,
+    after,
+    summary: summarize(body, after, counts),
+    becameEmpty: becameEmptyAfter(after),
+  };
 }
 
 /**
@@ -98,40 +169,49 @@ export function redactString(body: string): AnonymizedText {
  * always present for each input routine; `fieldDiffs` is empty when nothing
  * in it needed redaction (the wizard skips those cards).
  */
-export function anonymizeContent(
+export async function anonymizeContent(
   content: PortableContent,
-): PortableAnonymizeResponse {
-  const skills: AnonymizedItem[] = content.skills.map((s) => ({
-    id: s.slug,
-    ...redactString(s.body),
-  }));
+  redactSecrets?: SecretRedactor,
+): Promise<PortableAnonymizeResponse> {
+  const skills: AnonymizedItem[] = await Promise.all(
+    content.skills.map(async (s) => ({
+      id: s.slug,
+      ...(await redactString(s.body, redactSecrets)),
+    })),
+  );
 
-  const routines: AnonymizedRoutine[] = content.routines.map((routine) => {
-    const fieldDiffs: RoutineFieldDiff[] = [];
-    const overridePayload: RoutineFieldOverride = {};
-    const fields = [
-      ["name", routine.name],
-      ["description", routine.description],
-      ["prompt", routine.prompt],
-    ] as const;
-    for (const [field, original] of fields) {
-      const after = redactText(original);
-      if (after !== original) {
-        fieldDiffs.push({ field, before: original, after });
-        overridePayload[field] = after;
+  const routines: AnonymizedRoutine[] = await Promise.all(
+    content.routines.map(async (routine) => {
+      const fieldDiffs: RoutineFieldDiff[] = [];
+      const overridePayload: RoutineFieldOverride = {};
+      const fields = [
+        ["name", routine.name],
+        ["prompt", routine.prompt],
+      ] as const;
+      for (const [field, original] of fields) {
+        const { after } = await redactWithSecrets(original, redactSecrets);
+        if (after !== original) {
+          fieldDiffs.push({ field, before: original, after });
+          overridePayload[field] = after;
+        }
       }
-    }
-    return { id: routine.id, fieldDiffs, overridePayload };
-  });
+      return { id: routine.id, fieldDiffs, overridePayload };
+    }),
+  );
 
   return {
     claudeMd:
-      content.claudeMd !== undefined ? redactString(content.claudeMd) : null,
+      content.claudeMd !== undefined
+        ? await redactString(content.claudeMd, redactSecrets)
+        : null,
     skills,
     routines,
-    learnings: content.learnings.map((l) => ({
-      id: l.id,
-      ...redactString(l.text),
-    })),
+    learnings: await Promise.all(
+      content.learnings.map(async (l) => ({
+        id: l.id,
+        ...(await redactString(l.text, redactSecrets)),
+      })),
+    ),
+    mode: "patterns",
   };
 }

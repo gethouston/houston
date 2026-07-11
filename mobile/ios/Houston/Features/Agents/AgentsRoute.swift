@@ -17,22 +17,12 @@ enum AgentsNavRoute: Hashable {
     case chat(ChatRoute)
     /// An agent's archived missions list (PARITY §2), pushed from its bottom row.
     case archived(AgentListItem)
-    /// This agent's AI Models grid (PARITY-SETTINGS §2), pushed from its menu.
-    case aiModels(AgentListItem)
-    /// This agent's Integrations tab (PARITY-SETTINGS §3), pushed from its menu.
-    case integrations(AgentListItem)
-    /// The global, user-scoped Integrations surface (the per-agent tab's
-    /// "Manage all integrations" hand-off).
-    case globalIntegrations
 
     private var key: String {
         switch self {
         case let .missions(agent): return "missions:\(agent.id)"
-        case let .chat(route): return "chat:\(route.sessionKey)"
+        case let .chat(route): return "chat:\(route.id)"
         case let .archived(agent): return "archived:\(agent.id)"
-        case let .aiModels(agent): return "aiModels:\(agent.id)"
-        case let .integrations(agent): return "integrations:\(agent.id)"
-        case .globalIntegrations: return "globalIntegrations"
         }
     }
 

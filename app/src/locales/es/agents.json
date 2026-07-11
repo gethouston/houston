@@ -9,35 +9,35 @@
       "description": "Un agente en blanco, sin acciones, instrucciones ni aprendizajes preconfigurados. Constrúyelo a tu manera."
     },
     "bookkeeping": {
-      "name": "Contabilidad",
+      "name": "Contador",
       "description": "Categoriza transacciones, concilia cuentas, cierra los libros cada mes y genera estados financieros listos para inversionistas. Se conecta con QuickBooks, Xero, Stripe y tus conexiones bancarias. Redacta asientos contables y estados, pero nunca registra en tu libro mayor ni mueve dinero."
     },
     "legal": {
-      "name": "Legal",
+      "name": "Director Jurídico",
       "description": "Revisa contratos, audita el cumplimiento de privacidad, prepara presentaciones ante Delaware, hace búsquedas de marcas registradas y responde dudas legales al instante. Redacta acuerdos de confidencialidad, políticas y resúmenes de escalamiento, pero nunca presenta, firma ni envía nada en tu nombre."
     },
     "marketing": {
-      "name": "Marketing",
+      "name": "Líder de Crecimiento",
       "description": "Define el posicionamiento, planifica campañas, escribe artículos de blog y páginas de aterrizaje, audita el SEO y la visibilidad en búsquedas con IA, y redacta secuencias de correo. De la estrategia a la ejecución en contenido, medios pagados, redes sociales y textos de conversión, todo en borradores, nunca publicado."
     },
     "operations": {
-      "name": "Operaciones",
+      "name": "Jefe de Gabinete",
       "description": "Prioriza tu bandeja de entrada, prepara reuniones, da seguimiento a objetivos, gestiona renovaciones con proveedores, audita el gasto en SaaS y ejecuta consultas de datos. Abarca planificación, agenda, orden financiero y reportes, solo borradores, nunca envía ni confirma nada."
     },
     "people": {
-      "name": "Personas",
+      "name": "Jefe de Talento",
       "description": "Busca y evalúa candidatos, coordina rondas de entrevistas, redacta cartas de oferta, gestiona ciclos de evaluación y da seguimiento a plazos de cumplimiento. Abarca desde la contratación hasta la retención, solo borradores, nunca envía ni modifica tus sistemas de recursos humanos."
     },
     "sales": {
-      "name": "Ventas",
+      "name": "Chief Revenue Officer",
       "description": "Encuentra prospectos, investiga cuentas, prepara llamadas, redacta mensajes de contacto, gestiona tu CRM y proyecta el pipeline. Abarca desde la prospección hasta la expansión, solo borradores, nunca envía ni cambia la etapa de un trato sin tu aprobación."
     },
     "support": {
-      "name": "Soporte",
+      "name": "Jefe de Éxito del Cliente",
       "description": "Prioriza tickets, redacta respuestas, escribe artículos del centro de ayuda, evalúa la salud de los clientes y crea planes para evitar cancelaciones. Abarca desde la bandeja de entrada hasta el éxito del cliente, solo borradores, nunca envía."
     },
     "outbound": {
-      "name": "Prospección",
+      "name": "Growth Hacker",
       "description": "Convierte una sola publicación de LinkedIn en una campaña de correo en frío pausada en Instantly. Extraigo a quienes comentan o reaccionan, los guardo en Airtable, busco correos verificados con Apollo, escribo contigo una secuencia de 3 correos y luego cargo todo en Instantly. La campaña siempre queda en pausa para que la revises, nunca la lanzo sola."
     }
   },
@@ -78,14 +78,6 @@
     "instructions": "Instrucciones",
     "skills": "Skills",
     "learnings": "Aprendizajes"
-  },
-  "agentSettings": {
-    "nameTitle": "Nombre",
-    "namePlaceholder": "Nombra a tu agente",
-    "colorTitle": "Color",
-    "colorHelper": "Elige un color para el avatar de tu agente.",
-    "dangerTitle": "Eliminar agente",
-    "dangerHelper": "Elimina este agente y todo lo que ha hecho de forma permanente. Esto no se puede deshacer."
   },
   "tabLabels": {
     "activity": "Actividad",

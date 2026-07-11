@@ -73,6 +73,10 @@ function adoptReply(s: TurnState, reply: ChatMessage): void {
     return;
   }
   s.text = reply.content;
+  // Adopt the persisted reasoning only when nothing streamed live — a settle
+  // from history must not clobber (or double) what the watcher already saw
+  // (finishOk flushes `s.thinking` into the feed).
+  if (reply.thinking && !s.thinking) s.thinking = reply.thinking;
   if (reply.usage) s.usage = reply.usage;
   // A turn that ended asking the user for something persisted its interaction
   // (runtime, clean path only). Adopt it BEFORE finishOk so a settle from

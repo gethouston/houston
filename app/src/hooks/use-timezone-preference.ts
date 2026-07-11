@@ -13,6 +13,30 @@ export function detectTimezone(): string {
   return "UTC";
 }
 
+/**
+ * Read the account timezone preference; if the user has never set one, persist
+ * the browser-detected zone. Returns the effective IANA zone. Never overwrites
+ * an existing value.
+ *
+ * Shared by the Routines-tab hook (below) and the onboarding create path
+ * (`use-create-assistant`). The hook only mounts on the Routines tab, so a user
+ * who never opens it would otherwise never have a zone seeded — and the cloud
+ * scheduler would fire their routines in the pod's UTC instead of their local
+ * time. Both callers seed through this one guard.
+ *
+ * A persist failure propagates (the tauri wrapper already surfaced a toast). The
+ * detected value is attached so a caller that wants an in-memory fallback (the
+ * hook) can still render; the onboarding caller just logs and moves on.
+ */
+export async function seedTimezoneIfUnset(): Promise<string> {
+  const stored = await tauriPreferences.get(TIMEZONE_KEY);
+  const existing = stored?.trim() ? stored : null;
+  if (existing) return existing;
+  const detected = detectTimezone();
+  await tauriPreferences.set(TIMEZONE_KEY, detected);
+  return detected;
+}
+
 interface CachedState {
   value: string | null;
   loaded: boolean;
@@ -31,24 +55,21 @@ async function fetchOnce(): Promise<string | null> {
   if (inflight) return inflight;
   inflight = (async () => {
     try {
-      const stored = await tauriPreferences.get(TIMEZONE_KEY);
-      let value = stored?.trim() ? stored : null;
-
-      // Auto-seed: if the user has never set a timezone, save their
-      // browser-detected one silently. Previously we showed a full-page
-      // "What's your timezone?" gate that blocked the Routines tab. The
-      // detected zone is almost always correct; users who need to change
-      // it later do so from the timezone picker in the Routines editor.
-      if (!value) {
-        const detected = detectTimezone();
-        try {
-          await tauriPreferences.set(TIMEZONE_KEY, detected);
-          value = detected;
-        } catch {
-          // If persisting fails, fall back to the detected value in memory
-          // so the UI still has something to render a cron schedule against.
-          value = detected;
-        }
+      // Auto-seed via the shared guard: if the user has never set a timezone,
+      // it saves their browser-detected one silently. Previously we showed a
+      // full-page "What's your timezone?" gate that blocked the Routines tab.
+      // The detected zone is almost always correct; users who need to change it
+      // later do so from the timezone picker in the Routines editor.
+      let value: string | null;
+      try {
+        value = await seedTimezoneIfUnset();
+      } catch (err) {
+        // Persist failed (the engine-call wrapper already toasted it). Keep the
+        // detected value in memory so the UI can still render a cron schedule —
+        // but the engine never learned the zone, so routines fire in the HOST's
+        // zone until a save succeeds (retried next launch).
+        console.error("[timezone] failed to persist detected zone:", err);
+        value = detectTimezone();
       }
 
       cache = { value, loaded: true };

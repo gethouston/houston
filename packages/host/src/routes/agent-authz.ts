@@ -45,6 +45,18 @@ export interface AgentRouteDeps {
    * of this host's single local user id.
    */
   gatewayFronted?: boolean;
+  /**
+   * How many /agents/* requests this server currently holds open, the asking
+   * /activity probe included (server.ts counts them; the reader subtracts
+   * itself). Long-lived per-agent SSE streams — a turn reply, a conversation
+   * events subscription — stay counted for their whole life, which is the
+   * point: an open stream means someone is watching, and the gateway's idle
+   * sweep must not sleep the pod under them. Deliberately scoped to /agents/*:
+   * the top-level /v1/events is held by the gateway's reactivity fan-in for
+   * EVERY awake pod whenever the app is open anywhere, and counting it would
+   * defeat idle-sleep wholesale.
+   */
+  agentRequestCount?: () => number;
 }
 
 export const DEFAULT_PATHS = new CloudPaths();

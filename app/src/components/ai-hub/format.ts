@@ -84,31 +84,6 @@ export function fewModels(count: number): boolean {
 }
 
 /**
- * The budget->premium tier of a per-1M input price, as the `CostMeter` dot
- * count: cheap (`< $1`) is one dot, mid (`< $4`) two, premium three. A missing
- * price (subscription-only, unknown) lands in the middle so it never over- or
- * under-claims. Keeps the meter and the "Budget" filter reading identically.
- */
-export function costTier(costInput?: number): 1 | 2 | 3 {
-  if (costInput == null || !Number.isFinite(costInput)) return 2;
-  if (costInput < 1) return 1;
-  if (costInput < 4) return 2;
-  return 3;
-}
-
-/**
- * A context window as a plain-language memory bucket: up to 128K is "standard",
- * up to 256K "long", anything larger "huge". Absent context reads as standard.
- * The word pairs with a muted mono token value in `MemoryLabel`.
- */
-export function memoryKey(context?: number): "standard" | "long" | "huge" {
-  if (context == null || !Number.isFinite(context)) return "standard";
-  if (context <= 128_000) return "standard";
-  if (context <= 262_144) return "long";
-  return "huge";
-}
-
-/**
  * A model's friendly "good at" capabilities, in display order: reasoning first,
  * then image input. Only capabilities present in the data appear (no "fast" —
  * the snapshot carries no speed signal), so the row never claims what it can't.
@@ -120,22 +95,6 @@ export function capabilityKeys(
   if (model.reasoning) keys.push("reasoning");
   if (model.inputModalities.includes("image")) keys.push("images");
   return keys;
-}
-
-/**
- * The lowest per-1M input price across a model's offers (dollars), or
- * `undefined` when no offer carries a price (subscription-only or unknown).
- * Feeds the "from $X" cost text and the budget tier/filter.
- */
-export function cheapestInput(
-  offers: readonly CatalogOffer[],
-): number | undefined {
-  let min: number | undefined;
-  for (const offer of offers) {
-    if (offer.costInput == null || !Number.isFinite(offer.costInput)) continue;
-    if (min == null || offer.costInput < min) min = offer.costInput;
-  }
-  return min;
 }
 
 /** The lab that makes a model, as a brand proper noun (never translated). */
@@ -151,21 +110,6 @@ export function labName(lab: LabId): string {
 export function modelMarkId(model: CatalogModel): string {
   if (hasProviderBrandMark(model.lab)) return model.lab;
   return model.offers[0]?.providerId ?? model.lab;
-}
-
-/**
- * Every lab present in the catalog, most models first (ties break on the lab's
- * proper-noun order for stability). Feeds the "AI provider" filter dropdown, so
- * the options mirror exactly the labs the visible providers actually offer.
- */
-export function labsInCatalog(models: readonly CatalogModel[]): LabId[] {
-  const counts = new Map<LabId, number>();
-  for (const model of models) {
-    counts.set(model.lab, (counts.get(model.lab) ?? 0) + 1);
-  }
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([lab]) => lab);
 }
 
 const LAB_NAMES: Record<LabId, string> = {

@@ -9,6 +9,7 @@ import {
   isFirstRun,
   isToolkitConnected,
   shouldOfferConnectSkip,
+  shouldOfferTeamInvite,
   stepAfterAgentCreated,
 } from "../src/components/onboarding/missions/onboarding-flow.ts";
 
@@ -30,6 +31,19 @@ const conn = (
   toolkit: string,
   status: IntegrationConnection["status"],
 ): IntegrationConnection => ({ toolkit, connectionId: "ca_1", status });
+
+describe("shouldOfferTeamInvite (finish-screen growth card)", () => {
+  it("only on a spaces host", () => {
+    strictEqual(shouldOfferTeamInvite({ ...caps([]), spaces: true }), true);
+    strictEqual(shouldOfferTeamInvite({ ...caps([]), spaces: false }), false);
+  });
+
+  it("hidden when spaces is absent (legacy / desktop / self-host)", () => {
+    strictEqual(shouldOfferTeamInvite(caps([])), false);
+    strictEqual(shouldOfferTeamInvite(null), false);
+    strictEqual(shouldOfferTeamInvite(undefined), false);
+  });
+});
 
 describe("isFirstRun (per-wire first-run signal)", () => {
   it("legacy Rust wire: zero workspaces = first run, agents irrelevant", () => {
@@ -90,41 +104,12 @@ describe("stepAfterAgentCreated", () => {
 });
 
 describe("shouldOfferConnectSkip (dead-end escape hatch)", () => {
-  const base = {
-    statusKnown: true,
-    ready: true,
-    attempted: false,
-    connecting: false,
-  };
-
-  it("hidden on the happy path (gateway ready, nothing attempted)", () => {
-    strictEqual(shouldOfferConnectSkip(base), false);
-  });
-
-  it("hidden while the provider status is still loading", () => {
-    strictEqual(
-      shouldOfferConnectSkip({ ...base, statusKnown: false, ready: false }),
-      false,
-    );
-  });
-
-  it("offered when the gateway resolved as not ready (no session)", () => {
-    strictEqual(shouldOfferConnectSkip({ ...base, ready: false }), true);
-  });
-
-  it("offered after a connect attempt ended without the toolkit landing", () => {
-    strictEqual(shouldOfferConnectSkip({ ...base, attempted: true }), true);
+  it("offered on the happy path (gateway ready, nothing attempted) — the confirm dialog is the friction", () => {
+    strictEqual(shouldOfferConnectSkip({ connecting: false }), true);
   });
 
   it("never offered while a connect flow is in flight", () => {
-    strictEqual(
-      shouldOfferConnectSkip({ ...base, attempted: true, connecting: true }),
-      false,
-    );
-    strictEqual(
-      shouldOfferConnectSkip({ ...base, ready: false, connecting: true }),
-      false,
-    );
+    strictEqual(shouldOfferConnectSkip({ connecting: true }), false);
   });
 });
 

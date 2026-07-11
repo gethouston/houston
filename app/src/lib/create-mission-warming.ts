@@ -16,7 +16,7 @@
  *     survives a relaunch via the entry's persisted mirror.
  *
  * The caller gets the id/sessionKey back right away, so the panel opens on
- * the new conversation with the message (and the provisioning card) visible.
+ * the new conversation with the message (and the in-flight indicator) visible.
  */
 
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
@@ -29,7 +29,7 @@ import type {
 import { getEngine } from "./engine";
 import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
-import { fallbackMissionTitle } from "./mission-title";
+import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
 import { tauriActivity, tauriChat } from "./tauri";
 
 export function createMissionWhileWarming(
@@ -39,15 +39,17 @@ export function createMissionWhileWarming(
 ): CreateMissionResult {
   const titleText = opts.titleText ?? text;
   const title = opts.title ?? fallbackMissionTitle(titleText);
+  const description = text;
   const conversationId = crypto.randomUUID();
   const sessionKey = `activity-${conversationId}`;
 
-  // The board row rides the queued send and is written at FLUSH time (engine
+  // The board row rides the queued send and is WRITTEN at flush time (engine
   // awake, id-upsert idempotent) — a write fired now would be a held request
   // that dies with a reload, silently losing the mission from the board. The
-  // board can't render the row during the warm-up anyway: its own list read
-  // is held just the same. No AI title refresh either — the fallback title is
-  // on the row (cosmetic).
+  // board still shows the card immediately: it overlays the queued row as a
+  // running mission (`lib/warming-board-rows.ts`, HOU-713). The AI title pass
+  // can't run against a warming engine either, so `titleText` rides the send
+  // and the flush fires it once the row lands.
   const queued = useAgentProvisioningStore
     .getState()
     .queueWarmingSend(agent.id, {
@@ -60,7 +62,7 @@ export function createMissionWhileWarming(
       row: {
         id: conversationId,
         title,
-        description: text,
+        description,
         agent: opts.agentMode,
         provider: opts.providerOverride,
         model: opts.modelOverride,
@@ -70,6 +72,7 @@ export function createMissionWhileWarming(
       model: opts.modelOverride,
       effort: opts.effortOverride,
       mode: opts.modeOverride,
+      titleText: opts.title ? undefined : titleText,
     });
   if (!queued) {
     // The agent turned ready between the caller's provisioning check and the
@@ -79,7 +82,7 @@ export function createMissionWhileWarming(
         const created = await tauriActivity.createWithId(agent.folderPath, {
           id: conversationId,
           title,
-          description: text,
+          description,
           agent: opts.agentMode,
           provider: opts.providerOverride,
           model: opts.modelOverride,
@@ -109,6 +112,17 @@ export function createMissionWhileWarming(
         effortOverride: opts.effortOverride,
         modeOverride: opts.modeOverride,
       });
+      // The engine answers now, so the AI title pass runs like the normal
+      // path's (createMission fires it right after the first send).
+      if (!opts.title) {
+        void refreshMissionTitle({
+          agentPath: agent.folderPath,
+          activityId: conversationId,
+          text: titleText,
+          provider: opts.providerOverride,
+          model: opts.modelOverride,
+        });
+      }
     })().catch(() => {
       // tauriChat.send toasted the real reason already.
     });
@@ -122,7 +136,7 @@ export function createMissionWhileWarming(
     conversation: {
       id: conversationId,
       title,
-      description: text,
+      description,
       agentName: agent.name,
       agentColor: agent.color,
       status: "running",

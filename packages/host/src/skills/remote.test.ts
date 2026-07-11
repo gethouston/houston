@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { MemoryVfs } from "../vfs";
 import { CommunityDirectory } from "./community";
-import { listSkillsFromRepo } from "./github";
+import { fetchSkillMdAtPath, listSkillsFromRepo } from "./github";
 import {
   normalizeSource,
   parseRemoteSkillMd,
@@ -192,6 +192,32 @@ test("popular uses its own cache slot and truncates to 20", async () => {
   expect(calls).toBe(1);
 });
 
+// ── fetchSkillMdAtPath ─────────────────────────────────────────────
+
+test("fetchSkillMdAtPath fetches the HEAD ref (default branch)", async () => {
+  let fetchedUrl = "";
+  const md = await fetchSkillMdAtPath(
+    fakeFetch((url) => {
+      fetchedUrl = url;
+      return new Response("body");
+    }),
+    "owner/repo",
+    "skills/x/SKILL.md",
+  );
+  expect(md).toBe("body");
+  expect(fetchedUrl).toContain("/HEAD/");
+});
+
+test("fetchSkillMdAtPath types a total miss as offline", async () => {
+  const err = await fetchSkillMdAtPath(
+    fakeFetch(() => new Response("", { status: 404 })),
+    "owner/repo",
+    "missing/SKILL.md",
+  ).catch((e) => e);
+  expect(err).toBeInstanceOf(SkillRemoteError);
+  expect((err as SkillRemoteError).kind).toBe("offline");
+});
+
 // ── listSkillsFromRepo ─────────────────────────────────────────────
 
 const TREE = {
@@ -209,7 +235,7 @@ const repoRoutes: Route[] = [
     url === "https://api.github.com/repos/owner/repo" ? jsonRes({}) : null,
   (url) => (url.includes("/git/trees/HEAD") ? jsonRes(TREE) : null),
   (url) =>
-    url.includes("raw.githubusercontent.com/owner/repo/main/research/SKILL.md")
+    url.includes("raw.githubusercontent.com/owner/repo/HEAD/research/SKILL.md")
       ? new Response(RESEARCH_MD)
       : null,
 ];
@@ -318,7 +344,7 @@ test("installCommunitySkill finds the skill under common paths and uses the fron
   const vfs = new MemoryVfs();
   const slug = await installCommunitySkill(
     fakeFetch((url) =>
-      url.includes("owner/repo/main/skills/writing/SKILL.md")
+      url.includes("owner/repo/HEAD/skills/writing/SKILL.md")
         ? new Response(
             "---\nname: writing-plans\ndescription: d\n---\n\n# Writing\n\nBody.",
           )

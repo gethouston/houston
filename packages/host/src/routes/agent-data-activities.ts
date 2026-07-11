@@ -8,7 +8,11 @@ import {
   type TextStore,
   upsertById,
 } from "@houston/domain";
-import type { HoustonEvent, NewActivity } from "@houston/protocol";
+import type {
+  ActivityContributor,
+  HoustonEvent,
+  NewActivity,
+} from "@houston/protocol";
 import { json, readJson } from "./http";
 
 export async function handleActivitiesData(
@@ -20,6 +24,11 @@ export async function handleActivitiesData(
   req: IncomingMessage,
   res: ServerResponse,
   emit?: (event: HoustonEvent) => void,
+  // The verified acting human (C2), server-stamped onto the mission as
+  // `created_by` + a contributor entry on create, and upserted as a contributor
+  // on PATCH. Null/absent on desktop/self-host (non-gateway-fronted), so a
+  // single-player activity.json stays byte-identical (no attribution keys).
+  author?: ActivityContributor,
 ): Promise<void> {
   const fireChange = () =>
     emit?.({ type: "ActivityChanged", agentPath: agentId });
@@ -52,6 +61,7 @@ export async function handleActivitiesData(
       body as unknown as NewActivity,
       (body.id as string | undefined) ?? crypto.randomUUID(),
       nowIso,
+      author ?? undefined,
     );
     await saveActivities(store, root, upsertById(items, activity));
     fireChange();
@@ -66,7 +76,12 @@ export async function handleActivitiesData(
       json(res, 404, { error: "activity not found" });
       return;
     }
-    const next = applyActivityUpdate(current, await readJson(req), nowIso);
+    const next = applyActivityUpdate(
+      current,
+      await readJson(req),
+      nowIso,
+      author ?? undefined,
+    );
     await saveActivities(store, root, upsertById(items, next));
     fireChange();
     json(res, 200, next);

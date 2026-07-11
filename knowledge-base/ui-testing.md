@@ -60,6 +60,17 @@ Playwright auto-starts two servers: vite `:1430` (`VITE_NEW_ENGINE=1` → adapte
   `/agents/:id/agentfile/*` (NOT just `/activities`). Fake host backs it with a
   real store, unified with `/activities` (same data, as in the real host),
   so a turn's status flip shows on the board.
+- **Teams mode is armable.** Single-player alone can't reach the Teams-shaped
+  state (multiplayer + an integration allowlist ceiling) that the agent
+  Integrations tab's locked browse rows need. Two fake-host controls arm it:
+  `POST /__test__/capabilities` (merge a `Partial<Capabilities>` into
+  `/v1/capabilities` — e.g. `{ integrations:["composio"], multiplayer:true,
+  teams:true, role:"owner" }`) and `POST /__test__/agent-settings`
+  (`{ allowedToolkits?, orgAllowedToolkits? }`, the ceilings served at
+  `/v1/agents/:slug/settings` + `/v1/org/settings`). The effective allowlist
+  (agent ∩ org) splits the browse catalog into connectable vs locked rows
+  (`integrations-locked.spec.ts`). `SEED_TOOLKIT_SLUGS` (15 A-Z apps) is exported
+  for specs arming allowlists over the catalog.
 
 ## CI
 

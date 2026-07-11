@@ -1,17 +1,35 @@
 import SwiftUI
+import UIKit
 
-/// The two conversational bubbles (PARITY §5): the user's message on the right,
-/// the assistant's on the left. The assistant bubble updates in place while
-/// streaming — its row identity is stable (the SDK feed id), so a growing reply
-/// mutates only this row's text; a smooth height animation keyed on the text
-/// keeps it from snapping.
+/// The two conversational messages.
+///
+/// User (you): a right-aligned bubble on a solid `theme.primary` fill — the
+/// "sent" bubble, clearly visible (continuous corner). When a `timestamp` is
+/// known it renders bottom-right INSIDE the bubble (WhatsApp convention); a
+/// long-press lifts the bubble for a native Copy menu.
+/// Assistant (the agent): full-width markdown prose, no bubble — the AI-chat
+/// pattern (ChatGPT/Claude) that reads cleanly for long replies with lists/code.
 
-/// A user message bubble, right-aligned, on the primary fill.
+/// A user message bubble, right-aligned.
 struct UserBubble: View {
   @Environment(\.theme) private var theme
   let text: String
-  /// Author label, shown only in multiplayer conversations (PARITY §5).
+  /// Author label, shown only in multiplayer conversations.
   var author: String?
+  /// The message's wall-clock time, shown bottom-right in the bubble. Optional:
+  /// absent (older data) renders the bubble exactly as before, with no time.
+  var timestamp: Date?
+  /// Delivery state (`FeedItemVM.pending`): `true` shows a clock (unconfirmed),
+  /// `false`/default a single check. Rendered only alongside `timestamp` — a
+  /// bubble with no time cluster shows no tick.
+  var pending: Bool = false
+  /// Failed delivery (`FeedItemVM.failed`): `true` shows an error tick instead of
+  /// a check — the send provably never reached the agent. Mutually exclusive with
+  /// `pending`; rendered only alongside `timestamp`.
+  var failed: Bool = false
+
+  /// The resolved WhatsApp-style delivery state for the tick + its VoiceOver label.
+  private var delivery: ChatDelivery { ChatDelivery(pending: pending, failed: failed) }
 
   var body: some View {
     HStack {
@@ -22,91 +40,115 @@ struct UserBubble: View {
             .font(Typography.caption)
             .foregroundStyle(theme.mutedFg)
         }
-        Text(text)
-          .font(Typography.body)
-          .foregroundStyle(theme.primaryFg)
-          .padding(.horizontal, Spacing.space12)
-          .padding(.vertical, Spacing.space8)
-          .background(theme.primary, in: BubbleShape(tail: .trailing))
-          .textSelection(.enabled)
+        bubble
       }
     }
   }
-}
 
-/// An assistant message bubble, left-aligned, on the card fill. Streaming updates
-/// animate the height smoothly.
-struct AssistantBubble: View {
-  @Environment(\.theme) private var theme
-  let text: String
-  let streaming: Bool
+  @ViewBuilder private var bubble: some View {
+    content
+      .padding(.horizontal, Spacing.space16)
+      .padding(.vertical, Spacing.space10)
+      .background(
+        theme.primary,
+        in: RoundedRectangle(cornerRadius: ChatMetrics.bubbleRadius, style: .continuous))
+      .contextMenu {
+        Button {
+          // Copy the CLEAN typed text the bubble shows, never the raw body — an
+          // attachment message hides a marker + a model-facing path block that
+          // must not leak onto the pasteboard. Plain messages decode to nil and
+          // copy verbatim.
+          UIPasteboard.general.string = AttachmentMessage.decode(text)?.displayText ?? text
+        } label: {
+          Label(Strings.Chat.copy, systemImage: "doc.on.doc")
+        }
+      }
+  }
 
-  var body: some View {
-    HStack {
-      Text(text)
-        .font(Typography.body)
-        .foregroundStyle(theme.cardFg)
-        .padding(.horizontal, Spacing.space12)
-        .padding(.vertical, Spacing.space8)
-        .background(theme.card, in: BubbleShape(tail: .leading))
-        .overlay(BubbleShape(tail: .leading).strokeBorder(theme.border, lineWidth: 1))
-        .textSelection(.enabled)
-        .animation(.smooth(duration: Motion.fast), value: text)
-      Spacer(minLength: Spacing.space40)
+  @ViewBuilder private var content: some View {
+    // A message the user sent WITH attachments decodes to the clean typed text
+    // (marker `message`) + the file names, rendered as chips under the text —
+    // the raw path block never leaks into the bubble. Plain messages are
+    // unaffected (decode returns nil).
+    if let decoded = AttachmentMessage.decode(text) {
+      attachmentContent(displayText: decoded.displayText, names: decoded.names)
+    } else if let timestamp {
+      // Exactly two subviews for `TimedBubbleLayout`: the text, then the time
+      // cluster (time + delivery tick as ONE trailing unit).
+      TimedBubbleLayout {
+        messageText(text)
+        timeCluster(timestamp)
+      }
+    } else {
+      messageText(text)
     }
   }
-}
 
-/// A chat bubble shape: rounded on all corners, with the tail corner squared off
-/// toward the speaker's side (WhatsApp idiom).
-struct BubbleShape: InsettableShape {
-  enum Tail { case leading, trailing }
-  let tail: Tail
-  var inset: CGFloat = 0
-
-  func inset(by amount: CGFloat) -> BubbleShape {
-    BubbleShape(tail: tail, inset: inset + amount)
+  /// An attachment bubble: the typed text (if any), a compact file-chips row
+  /// under it, then the time cluster. Not the inline `TimedBubbleLayout` — the
+  /// chips take their own line, so the time sits below-trailing.
+  @ViewBuilder private func attachmentContent(displayText: String, names: [String]) -> some View {
+    VStack(alignment: .leading, spacing: Spacing.space6) {
+      if !displayText.isEmpty {
+        messageText(displayText)
+      }
+      BubbleAttachmentChips(names: names)
+      if let timestamp {
+        timeCluster(timestamp)
+          .frame(maxWidth: .infinity, alignment: .trailing)
+      }
+    }
   }
 
-  func path(in rect: CGRect) -> Path {
-    let r = rect.insetBy(dx: inset, dy: inset)
-    let radius = Radius.xxl
-    let tailRadius = Radius.sm
-    // Top corners always fully rounded; the bottom corner on the speaker's side
-    // squares off into the tail.
-    return Path(
-      roundedCornersPath: r,
-      topLeft: radius, topRight: radius,
-      bottomLeft: tail == .leading ? tailRadius : radius,
-      bottomRight: tail == .trailing ? tailRadius : radius)
+  /// The bottom-right metadata: the wall-clock time followed by the WhatsApp
+  /// delivery tick. The clock→check swap animates in place via a symbol replace
+  /// (same treatment as the composer's send-button morph); both read as quiet
+  /// metadata at 60% of the bubble's `primaryFg`.
+  private func timeCluster(_ timestamp: Date) -> some View {
+    HStack(spacing: Spacing.space2) {
+      Text(ChatBubbleTime.label(for: timestamp))
+        .font(Typography.caption)
+      Image(systemName: ChatBubbleTick.symbolName(for: delivery))
+        .font(Typography.caption)
+        .imageScale(.small)
+        .contentTransition(.symbolEffect(.replace))
+        // A failed send drops the muted treatment so the error tick reads as an
+        // alert, not quiet metadata; sending/sent stay quiet like the time.
+        .foregroundStyle(
+          delivery == .failed
+            ? theme.primaryFg : theme.primaryFg.opacity(ChatMetrics.bubbleTimeOpacity)
+        )
+        .animation(.snappy(duration: Motion.fast), value: delivery)
+        .accessibilityLabel(deliveryLabel)
+    }
+    .foregroundStyle(theme.primaryFg.opacity(ChatMetrics.bubbleTimeOpacity))
+  }
+
+  /// VoiceOver label for the delivery tick, matching the resolved ``delivery``.
+  private var deliveryLabel: String {
+    switch delivery {
+    case .sending: return Strings.Chat.deliveryPending
+    case .sent: return Strings.Chat.deliverySent
+    case .failed: return Strings.Chat.deliveryFailed
+    }
+  }
+
+  private func messageText(_ value: String) -> some View {
+    Text(value)
+      .font(Typography.body)
+      .foregroundStyle(theme.primaryFg)
   }
 }
 
-extension Path {
-  /// A rounded rectangle with independent corner radii.
-  init(
-    roundedCornersPath rect: CGRect,
-    topLeft: CGFloat, topRight: CGFloat,
-    bottomLeft: CGFloat, bottomRight: CGFloat
-  ) {
-    self.init()
-    move(to: CGPoint(x: rect.minX + topLeft, y: rect.minY))
-    addLine(to: CGPoint(x: rect.maxX - topRight, y: rect.minY))
-    addArc(
-      center: CGPoint(x: rect.maxX - topRight, y: rect.minY + topRight),
-      radius: topRight, startAngle: .degrees(-90), endAngle: .degrees(0), clockwise: false)
-    addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - bottomRight))
-    addArc(
-      center: CGPoint(x: rect.maxX - bottomRight, y: rect.maxY - bottomRight),
-      radius: bottomRight, startAngle: .degrees(0), endAngle: .degrees(90), clockwise: false)
-    addLine(to: CGPoint(x: rect.minX + bottomLeft, y: rect.maxY))
-    addArc(
-      center: CGPoint(x: rect.minX + bottomLeft, y: rect.maxY - bottomLeft),
-      radius: bottomLeft, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
-    addLine(to: CGPoint(x: rect.minX, y: rect.minY + topLeft))
-    addArc(
-      center: CGPoint(x: rect.minX + topLeft, y: rect.minY + topLeft),
-      radius: topLeft, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
-    closeSubpath()
+/// A full-width assistant message: markdown prose, no bubble. The stable row id
+/// keeps a streaming reply mutating this row in place; the text animation keeps
+/// the growth smooth.
+struct AssistantMessage: View {
+  let text: String
+
+  var body: some View {
+    MarkdownText(text: text)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .animation(.smooth(duration: Motion.fast), value: text)
   }
 }

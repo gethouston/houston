@@ -25,7 +25,25 @@
     "runningCount_other": "{{count}} asuntos en curso",
     "collapse": "Contraer barra lateral",
     "expand": "Expandir barra lateral",
-    "createOrganization": "Crear organización"
+    "createWorkspace": "Crear espacio de trabajo",
+    "groups": {
+      "new": "Nuevo grupo",
+      "newDefault": "Nuevo grupo",
+      "rename": "Renombrar grupo",
+      "delete": "Eliminar grupo",
+      "menu": "Opciones de grupo",
+      "namePlaceholder": "Nombre del grupo",
+      "emptyHint": "Arrastra agentes aquí",
+      "ungrouped": "Sin grupo",
+      "editContext": "Editar contexto compartido",
+      "contextDialog": {
+        "title": "Contexto compartido de {{name}}",
+        "description": "Esta nota se agrega a cada agente de este grupo, así todos comparten el mismo trasfondo.",
+        "placeholder": "ej. Somos un estudio de diseño. Mantén las respuestas cortas y nunca compartas nombres de clientes.",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      }
+    }
   },
   "tabActions": {
     "newMission": "Nueva misión",
@@ -57,6 +75,10 @@
     "skip": "Saltar tour",
     "done": "Entendido",
     "steps": {
+      "spaces": {
+        "title": "Espacios",
+        "body": "Tus agentes personales, y los equipos que compartes con otros. Cambia de espacio cuando quieras desde aquí."
+      },
       "assistant": {
         "title": "Tus agentes",
         "body": "Todos los agentes de este espacio viven aquí. Cambia entre ellos con un clic."
@@ -75,11 +97,19 @@
       },
       "tabRoutines": {
         "title": "Rutinas",
-        "body": "Programa trabajo para que corra en segundo plano. Útil para resúmenes diarios y tareas recurrentes."
+        "body": "Tu asistente ya viene con rutinas listas, como el Resumen matutino. Programa aquí cualquier otra cosa para que corra en segundo plano."
+      },
+      "tabIntegrations": {
+        "title": "Integraciones",
+        "body": "Herramientas que tus agentes pueden usar, como Gmail y Calendar. Las conexiones viven aquí, compartidas entre todos tus agentes."
       },
       "tabFiles": {
         "title": "Archivos",
         "body": "Documentos que tu asistente puede leer o compartir contigo. Arrastra lo que quieras para dar contexto."
+      },
+      "tabArchived": {
+        "title": "Completadas",
+        "body": "Misiones que este agente ya terminó. Envía un mensaje para reabrir una y vuelve directo al tablero activo."
       },
       "tabJobDescription": {
         "title": "Configuración del agente",
@@ -89,9 +119,21 @@
         "title": "Centro de Misión",
         "body": "Cuando agregues más agentes, esto se vuelve el tablero único de todos. Un solo lugar para verlo todo."
       },
-      "integrations": {
-        "title": "Integraciones",
-        "body": "Herramientas que tus agentes pueden usar, como Gmail y Calendar. Las conexiones viven aquí, compartidas entre todos tus agentes."
+      "navIntegrations": {
+        "title": "Conecta tus apps",
+        "body": "Vincula Gmail, Calendar y cientos más aquí. Cada agente puede usar lo que conectes."
+      },
+      "aiHub": {
+        "title": "Modelos de IA",
+        "body": "Agrega proveedores como Claude y OpenAI. Gestiona tus suscripciones y llaves de API aquí."
+      },
+      "organization": {
+        "title": "Organización",
+        "body": "Invita a tu equipo, asigna roles y gestiona el acceso aquí."
+      },
+      "settings": {
+        "title": "Configuración",
+        "body": "Tu cuenta, espacio de trabajo y preferencias de la app viven aquí."
       },
       "appTour": {
         "title": "Repite el tour",
@@ -134,10 +176,10 @@
   },
   "agentProvisioning": {
     "title": "Estamos creando tu agente",
-    "body": "Esto puede tardar un momento.",
-    "chatBody": "Responderá a tu mensaje en cuanto esté listo.",
-    "failed": "No pudimos terminar de crear tu agente. Inténtalo de nuevo en un momento.",
-    "blockedBody": "Ya casi está listo. Esta acción estará disponible en un momento, en cuanto tu agente termine de configurarse."
+    "stillStarting": "Tu agente está tardando más de lo normal en iniciar. Seguimos intentándolo, un momento.",
+    "blockedBody": "Ya casi está listo. Esta acción estará disponible en un momento, en cuanto tu agente termine de configurarse.",
+    "stalledTitle": "Seguimos en eso",
+    "stalledBody": "Esto está tardando más de lo normal. No nos hemos rendido, tu chat y tus mensajes están a salvo y continuarán en cuanto tu agente responda."
   },
   "toolRuntimeError": {
     "title": "Algo se atascó",
@@ -293,8 +335,8 @@
       "reconnectedTitle": "Reconectado a {{provider}}",
       "reconnectedBody": "Ya iniciaste sesión de nuevo. Continúa donde quedaste.",
       "reconnectedResending": "Ya iniciaste sesión de nuevo. Houston está respondiendo tu mensaje ahora.",
+      "reconnectedResuming": "Ya iniciaste sesión de nuevo. Houston está continuando donde quedaste.",
       "signedIn": "Sesión iniciada",
-      "sendAgain": "Enviar mi mensaje",
       "failedBody": "El inicio de sesión de {{provider}} no se completó. Inicia sesión de nuevo. {{detail}}"
     },
     "networkUnreachable": {

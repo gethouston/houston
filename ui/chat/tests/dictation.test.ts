@@ -7,6 +7,7 @@ import type {
 import {
   DEFAULT_DICTATION_LABELS,
   formatElapsed,
+  isDictationActive,
   isDictationBusy,
   isDictationCapturing,
   resolveDictationView,
@@ -33,10 +34,9 @@ describe("resolveDictationView", () => {
     deepEqual(resolveDictationView(control("idle")), { kind: "idle" });
   });
 
-  it("shows the recording view while requesting, with no start time yet", () => {
+  it("shows a distinct requesting view (empty track, no bars yet)", () => {
     deepEqual(resolveDictationView(control("requesting")), {
-      kind: "recording",
-      startedAt: undefined,
+      kind: "requesting",
     });
   });
 
@@ -51,6 +51,19 @@ describe("resolveDictationView", () => {
     deepEqual(resolveDictationView(control("transcribing")), {
       kind: "transcribing",
     });
+  });
+});
+
+describe("isDictationActive (composer takeover)", () => {
+  it("is false when absent or idle", () => {
+    equal(isDictationActive(undefined), false);
+    equal(isDictationActive(control("idle")), false);
+  });
+
+  it("is true for requesting, recording, and transcribing", () => {
+    equal(isDictationActive(control("requesting")), true);
+    equal(isDictationActive(control("recording")), true);
+    equal(isDictationActive(control("transcribing")), true);
   });
 });
 
@@ -80,8 +93,22 @@ describe("isDictationCapturing (Escape cancels)", () => {
   });
 });
 
+// Mirrors chat-input's document key listener while capturing: Escape discards,
+// Enter (no shift) accepts. During transcribing the listener is inactive.
+function dispatchCaptureKey(
+  c: DictationControl,
+  key: string,
+  shiftKey = false,
+): void {
+  if (!isDictationCapturing(c)) return;
+  if (key === "Escape") {
+    c.onCancel();
+    return;
+  }
+  if (key === "Enter" && !shiftKey) c.onStop();
+}
+
 describe("Escape while recording fires onCancel and nothing else", () => {
-  // Mirrors chat-input handleKeyDown: capture states route Escape to onCancel.
   it("calls onCancel exactly once, never onStop", () => {
     let cancels = 0;
     let stops = 0;
@@ -94,9 +121,61 @@ describe("Escape while recording fires onCancel and nothing else", () => {
         stops += 1;
       },
     };
-    if (isDictationCapturing(c)) c.onCancel();
+    dispatchCaptureKey(c, "Escape");
     equal(cancels, 1);
     equal(stops, 0);
+  });
+});
+
+describe("Enter while capturing accepts the recording", () => {
+  const spyControl = (state: DictationState) => {
+    let cancels = 0;
+    let stops = 0;
+    const c: DictationControl = {
+      ...control(state, Date.now()),
+      onCancel: () => {
+        cancels += 1;
+      },
+      onStop: () => {
+        stops += 1;
+      },
+    };
+    return {
+      c,
+      get cancels() {
+        return cancels;
+      },
+      get stops() {
+        return stops;
+      },
+    };
+  };
+
+  it("fires onStop exactly once while recording, never onCancel", () => {
+    const s = spyControl("recording");
+    dispatchCaptureKey(s.c, "Enter");
+    equal(s.stops, 1);
+    equal(s.cancels, 0);
+  });
+
+  it("fires onStop while requesting too", () => {
+    const s = spyControl("requesting");
+    dispatchCaptureKey(s.c, "Enter");
+    equal(s.stops, 1);
+  });
+
+  it("does nothing for shift+Enter (newline, not accept)", () => {
+    const s = spyControl("recording");
+    dispatchCaptureKey(s.c, "Enter", true);
+    equal(s.stops, 0);
+    equal(s.cancels, 0);
+  });
+
+  it("does nothing while transcribing (not a capturing state)", () => {
+    const s = spyControl("transcribing");
+    dispatchCaptureKey(s.c, "Enter");
+    equal(s.stops, 0);
+    equal(s.cancels, 0);
   });
 });
 

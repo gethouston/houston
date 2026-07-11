@@ -25,7 +25,25 @@
     "runningCount_other": "{{count}} issues running",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
-    "createOrganization": "Create organization"
+    "createWorkspace": "Create workspace",
+    "groups": {
+      "new": "New group",
+      "newDefault": "New group",
+      "rename": "Rename group",
+      "delete": "Delete group",
+      "menu": "Group options",
+      "namePlaceholder": "Group name",
+      "emptyHint": "Drag agents here",
+      "ungrouped": "Ungrouped",
+      "editContext": "Edit shared context",
+      "contextDialog": {
+        "title": "Shared context for {{name}}",
+        "description": "This note is added to every agent in this group, so they all share the same background.",
+        "placeholder": "e.g. We are a design studio. Keep replies short and never share client names.",
+        "save": "Save",
+        "cancel": "Cancel"
+      }
+    }
   },
   "tabActions": {
     "newMission": "New mission",
@@ -57,6 +75,10 @@
     "skip": "Skip tour",
     "done": "Got it",
     "steps": {
+      "spaces": {
+        "title": "Spaces",
+        "body": "Your personal agents, and teams you share with others. Switch spaces anytime from here."
+      },
       "assistant": {
         "title": "Your agents",
         "body": "Every agent in this workspace lives here. Switch between them with one click."
@@ -75,11 +97,19 @@
       },
       "tabRoutines": {
         "title": "Routines",
-        "body": "Schedule work to run in the background. Useful for daily briefs and recurring tasks."
+        "body": "Your assistant already comes with ready-made routines, like the Morning briefing. Schedule anything else to run in the background here."
+      },
+      "tabIntegrations": {
+        "title": "Integrations",
+        "body": "Tools your agents can use, like Gmail and Calendar. Connections live here, shared across all your agents."
       },
       "tabFiles": {
         "title": "Files",
         "body": "Docs your assistant can read or share with you. Drop anything here for context."
+      },
+      "tabArchived": {
+        "title": "Completed",
+        "body": "Missions this agent has wrapped up. Send a message to reopen one and it comes right back to the active board."
       },
       "tabJobDescription": {
         "title": "Agent Settings",
@@ -89,9 +119,21 @@
         "title": "Mission Control",
         "body": "When you add more agents, this becomes the single board across all of them. One place to see everything."
       },
-      "integrations": {
-        "title": "Integrations",
-        "body": "Tools your agents can use, like Gmail and Calendar. Connections live here, shared across all your agents."
+      "navIntegrations": {
+        "title": "Connect your apps",
+        "body": "Link Gmail, Calendar, and hundreds more here. Every agent can use what you connect."
+      },
+      "aiHub": {
+        "title": "AI Models",
+        "body": "Add providers like Claude and OpenAI. Manage your subscriptions and API keys here."
+      },
+      "organization": {
+        "title": "Organization",
+        "body": "Invite teammates, assign roles, and manage access here."
+      },
+      "settings": {
+        "title": "Settings",
+        "body": "Your account, workspace, and app preferences live here."
       },
       "appTour": {
         "title": "Replay the tour",
@@ -134,10 +176,10 @@
   },
   "agentProvisioning": {
     "title": "We are creating your agent",
-    "body": "This may take a moment.",
-    "chatBody": "It will reply to your message as soon as it is ready.",
-    "failed": "We could not finish creating your agent. Please try again in a moment.",
-    "blockedBody": "It is almost ready. This action will be available in a moment, as soon as your agent finishes setting up."
+    "stillStarting": "Your agent is taking longer than usual to start. We are still trying, hang tight.",
+    "blockedBody": "It is almost ready. This action will be available in a moment, as soon as your agent finishes setting up.",
+    "stalledTitle": "Still working on it",
+    "stalledBody": "This is taking longer than a normal start. We have not given up, your chat and messages are safe and will pick up the moment your agent answers."
   },
   "toolRuntimeError": {
     "title": "Something got stuck",
@@ -293,8 +335,8 @@
       "reconnectedTitle": "Reconnected to {{provider}}",
       "reconnectedBody": "You are signed in again. Pick up where you left off.",
       "reconnectedResending": "You are signed in again. Houston is answering your message now.",
+      "reconnectedResuming": "You are signed in again. Houston is continuing where you left off.",
       "signedIn": "Signed in",
-      "sendAgain": "Send my message",
       "failedBody": "The {{provider}} sign-in did not finish. Sign in again. {{detail}}"
     },
     "networkUnreachable": {

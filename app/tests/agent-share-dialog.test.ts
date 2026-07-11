@@ -1,15 +1,17 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { OrgMember } from "@houston-ai/engine-client";
+import type { Capabilities, OrgMember } from "@houston-ai/engine-client";
 import {
   addableMembers,
   addPerson,
+  agentShareSurface,
   applyShareAction,
   buildSharePeople,
   currentAssignments,
   isSharedWithOthers,
   needsSelfLockoutConfirm,
   type SharePerson,
+  withViewer,
 } from "../src/components/tabs/agent-access-model.ts";
 
 const OWNER: OrgMember = { userId: "own", email: "owner@x.co", role: "owner" };
@@ -17,6 +19,124 @@ const ADMIN: OrgMember = { userId: "adm", email: "admin@x.co", role: "admin" };
 const MEMBER: OrgMember = { userId: "mem", email: "member@x.co", role: "user" };
 const OTHER: OrgMember = { userId: "oth", email: "other@x.co", role: "user" };
 const ROSTER = [OWNER, ADMIN, MEMBER, OTHER];
+
+describe("agentShareSurface", () => {
+  const caps = (over: Partial<Capabilities>): Capabilities =>
+    ({ ...over }) as Capabilities;
+
+  it("is 'manage' for a manager in a team space", () => {
+    // Owner manages any org agent; a team space is not a personal space.
+    strictEqual(
+      agentShareSurface(caps({ multiplayer: true, role: "owner" }), {}, false),
+      "manage",
+    );
+    strictEqual(
+      agentShareSurface(
+        caps({ multiplayer: true, role: "admin" }),
+        { access: "manager" },
+        false,
+      ),
+      "manage",
+    );
+  });
+
+  it("is 'view' for a plain member of a team space (read-only, never dead)", () => {
+    // A member can see the agent but not manage it; Google Docs parity opens a
+    // read-only who-has-access list rather than nothing.
+    strictEqual(
+      agentShareSurface(
+        caps({ multiplayer: true, role: "user" }),
+        { access: "user" },
+        false,
+      ),
+      "view",
+    );
+  });
+
+  it("is 'view' for an admin who only uses an agent (not its manager)", () => {
+    strictEqual(
+      agentShareSurface(
+        caps({ multiplayer: true, role: "admin" }),
+        { access: "user" },
+        false,
+      ),
+      "view",
+    );
+  });
+
+  it("is 'inviteTeam' in a personal space on a spaces-capable host", () => {
+    strictEqual(
+      agentShareSurface(caps({ spaces: true }), {}, true),
+      "inviteTeam",
+    );
+  });
+
+  it("prefers 'inviteTeam' over 'manage' in a personal space (never the team dialog)", () => {
+    // Even if the host still reports multiplayer/owner, a personal space is
+    // non-invitable: the team dialog's addOrgMember would 403 personal_space.
+    strictEqual(
+      agentShareSurface(
+        caps({ spaces: true, multiplayer: true, role: "owner" }),
+        {},
+        true,
+      ),
+      "inviteTeam",
+    );
+  });
+
+  it("is 'none' on desktop/self-host (no spaces, no multiplayer)", () => {
+    strictEqual(agentShareSurface(caps({}), {}, true), "none");
+    strictEqual(agentShareSurface(null, {}, true), "none");
+  });
+
+  it("is 'none' in a personal space when the host lacks the spaces surface", () => {
+    // A non-spaces, single-player host never offers any share affordance.
+    strictEqual(
+      agentShareSurface(caps({ multiplayer: false }), {}, true),
+      "none",
+    );
+  });
+});
+
+describe("withViewer", () => {
+  const self = (over: Partial<SharePerson>): SharePerson => ({
+    userId: "mem",
+    email: "member@x.co",
+    orgRole: "user",
+    access: "user",
+    isSelf: true,
+    isOwner: false,
+    canBeManager: false,
+    ...over,
+  });
+
+  it("appends the viewer when the withheld roster omits them", () => {
+    // A member's list may resolve only the owner; the viewer still has access.
+    const owner = self({ userId: "own", email: "owner@x.co", isSelf: false });
+    const result = withViewer([owner], { userId: "mem", email: "member@x.co" });
+    deepStrictEqual(
+      result.map((p) => p.userId),
+      ["own", "mem"],
+    );
+    const added = result.find((p) => p.userId === "mem");
+    strictEqual(added?.isSelf, true);
+    strictEqual(added?.email, "member@x.co");
+  });
+
+  it("is a no-op when the viewer already resolved (isSelf row present)", () => {
+    const rows = [self({})];
+    deepStrictEqual(withViewer(rows, { userId: "mem" }), rows);
+  });
+
+  it("is a no-op when a row already matches the viewer id", () => {
+    const rows = [self({ isSelf: false })];
+    strictEqual(withViewer(rows, { userId: "mem" }).length, 1);
+  });
+
+  it("is a no-op when there is no signed-in viewer id", () => {
+    deepStrictEqual(withViewer([], { userId: null }), []);
+  });
+});
 
 describe("currentAssignments", () => {
   it("prefers the rich v2 assignments", () => {

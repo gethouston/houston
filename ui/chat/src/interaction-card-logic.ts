@@ -20,7 +20,6 @@ export {
   hasSelectableOptions,
   normalizeAnswer,
   optionLabel,
-  QUESTION_TEXT_CLASS,
 } from "./interaction-card-model.ts";
 
 /** A committed answer for one question step: the resolved text plus, when the
@@ -62,9 +61,9 @@ export function isLastStep(index: number, total: number): boolean {
   return index >= total - 1;
 }
 
-/** Default progress copy, e.g. "1 of 3". */
+/** Default progress copy, e.g. "Step 1 of 3". */
 export function defaultProgress(current: number, total: number): string {
-  return `${current} of ${total}`;
+  return `Step ${current} of ${total}`;
 }
 
 /** The committed option id for the current step (pre-selects a row on revisit). */
@@ -197,8 +196,31 @@ export function answerWithText(
   });
 }
 
+/** Advance past the current QUESTION step WITHOUT recording an answer. Mirrors
+ *  `advance`'s frontier-advancing mechanics but commits nothing, so
+ *  `toCompletedAnswers` simply omits the skipped step (its `if (committed)`
+ *  guard). A no-op on a non-question step, since Skip is only ever offered for
+ *  question steps. When the skipped question is the last step, completion still
+ *  fires exactly like every other terminal transition, with the prior answers. */
+export function skipQuestion(
+  state: StepperState,
+  steps: ChatInteractionStep[],
+): Transition {
+  const step = steps[state.current];
+  if (step?.kind !== "question") return { state };
+  return advance(state, steps);
+}
+
 /** Advance past a connect step once the app reports it connected. */
 export function advanceConnect(
+  state: StepperState,
+  steps: ChatInteractionStep[],
+): Transition {
+  return advance(state, steps);
+}
+
+/** Advance past a signin step once the app reports the user signed in. */
+export function advanceSignin(
   state: StepperState,
   steps: ChatInteractionStep[],
 ): Transition {

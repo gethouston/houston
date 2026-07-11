@@ -17,6 +17,7 @@ import {
 } from "./conversation-cache";
 import { execTurn, recordUserTurn, type TurnPin } from "./exec-turn";
 import { withWorkdirLock } from "./workdir-lock";
+import type { ProvidedContext } from "./workspace-context";
 
 /**
  * The runtime's public turn API: start (queued per conversation), cancel,
@@ -72,6 +73,8 @@ export async function runTurn(
   nonce?: string,
   pin?: TurnPin,
   acting?: ActingContext,
+  context?: ProvidedContext,
+  displayText?: string,
 ): Promise<void> {
   // Mint the turn's wire identity up front so even a turn that fails before
   // executing (the guards below) terminates under one id.
@@ -94,14 +97,14 @@ export async function runTurn(
 
   let conv: Conversation;
   try {
-    conv = await getConversation(id, pin);
+    conv = await getConversation(id, pin, context);
   } catch (err) {
     // e.g. no provider connected, or a pin naming an unknown provider —
     // surface it on the conversation's stream AND persist it (user prompt +
     // an empty assistant message carrying the typed reason), so an unattended
     // reader (a routine's reconcile) errors its run with the real message
     // instead of finding no reply and timing out vague.
-    appendUserMessage(id, text, { turnId });
+    appendUserMessage(id, text, { turnId, displayText });
     appendAssistantMessage(id, "", {
       providerError: {
         kind: "unknown",
@@ -120,6 +123,11 @@ export async function runTurn(
   // mutating the same files concurrently (the Rust engine's workdir_locks
   // behavior). The conv.queue link resolves before the lock is requested, so
   // the two layers can't deadlock.
+  // Pin the session against idle/LRU eviction for this turn's whole queued-and-
+  // running lifetime — decremented in `finally` when it settles. Without this a
+  // turn parked in the queue behind the workdir lock (turnId not yet set) could
+  // have its session disposed by a concurrent conversation's eviction sweep.
+  conv.pending++;
   const run = conv.queue.then(() => {
     // Persist + announce the user message BEFORE taking the workdir lock, so a
     // brand-new conversation's message is durable and visible (GET /messages)
@@ -127,7 +135,15 @@ export async function runTurn(
     // the lock in a stalled provider call. The transcript write is a
     // per-conversation file already ordered by conv.queue; only the turn's
     // file-mutating body needs the workspace-wide lock.
-    const recorded = recordUserTurn(conv, id, turnId, text, nonce, acting);
+    const recorded = recordUserTurn(
+      conv,
+      id,
+      turnId,
+      text,
+      nonce,
+      acting,
+      displayText,
+    );
     return withWorkdirLock(config.workspaceDir, () =>
       execTurn(conv, id, turnId, text, recorded, pin, acting),
     );
@@ -135,7 +151,11 @@ export async function runTurn(
   // Keep the queue chain alive past a turn. execTurn already surfaces its own
   // failure as an `error` event, so this guard never swallows a user-visible one.
   conv.queue = run.catch(() => {});
-  await run;
+  try {
+    await run;
+  } finally {
+    conv.pending--;
+  }
 }
 
 /**

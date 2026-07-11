@@ -12,10 +12,11 @@ import {
   type ReactNode,
   useState,
 } from "react";
-import { sidebarClasses } from "./sidebar-classes";
-import { SidebarCollapsedItem } from "./sidebar-collapsed-item";
+import { SidebarFlatList } from "./sidebar-flat-list";
+import type { SidebarBaseRowContext } from "./sidebar-group-section";
+import { SidebarGroupedList } from "./sidebar-grouped-list";
+import type { SidebarGroupView } from "./sidebar-groups";
 import type { SidebarItemRowLabels } from "./sidebar-item-row";
-import { SidebarItemRow } from "./sidebar-item-row";
 import { SidebarNavItem } from "./sidebar-nav";
 import { shouldExpandFromRailClick } from "./sidebar-rail-expand";
 
@@ -58,6 +59,30 @@ export interface SidebarProps {
   onDelete?: (id: string) => void;
   onRename?: (id: string, newName: string) => void;
   sectionLabel?: string;
+  /** Inline action rendered at the right edge of the section label row,
+   *  expanded mode only (e.g. a "new group" icon button). */
+  sectionAction?: ReactNode;
+  /**
+   * Named groups in display order. When provided (even []), the grouped
+   * drag-and-drop layout renders; items whose id is in no group render in a
+   * trailing default section. When undefined → current flat list, unchanged.
+   * Agents are always drag-reorderable in grouped mode.
+   */
+  groups?: SidebarGroupView[];
+  onToggleGroupCollapsed?: (groupId: string) => void;
+  onEditGroupContext?: (groupId: string) => void;
+  onRenameGroup?: (groupId: string, newName: string) => void;
+  onDeleteGroup?: (groupId: string) => void;
+  /** A group id to open directly in inline-rename (e.g. a just-created group). */
+  renamingGroupId?: string | null;
+  onRenamingGroupIdHandled?: () => void;
+  /** Move item into group `groupId` (null = default section), before `beforeItemId` (null = append to end of that section). */
+  onMoveItem?: (
+    itemId: string,
+    dest: { groupId: string | null; beforeItemId: string | null },
+  ) => void;
+  /** Reorder group before `beforeGroupId` (null = move to end). */
+  onMoveGroup?: (groupId: string, beforeGroupId: string | null) => void;
   /** Footer area rendered at the very bottom of the sidebar */
   footer?: ReactNode;
   labels?: SidebarLabels;
@@ -71,6 +96,18 @@ export interface SidebarProps {
 export interface SidebarLabels extends SidebarItemRowLabels {
   addItem?: string;
   collapseSidebar?: string;
+  createGroup?: string;
+  renameGroup?: string;
+  deleteGroup?: string;
+  /** Menu item that opens the group's shared-context editor. */
+  editGroupContext?: string;
+  /** aria label for the group "..." menu trigger. */
+  groupMenu?: string;
+  newGroupPlaceholder?: string;
+  /** Faint hint shown inside an empty group. */
+  emptyGroupHint?: string;
+  /** Label for the default section holding agents in no group. */
+  ungroupedLabel?: string;
 }
 
 const DEFAULT_LABELS: Required<SidebarLabels> = {
@@ -79,6 +116,14 @@ const DEFAULT_LABELS: Required<SidebarLabels> = {
   renameItem: "Rename",
   deleteItem: "Delete",
   collapseSidebar: "Collapse sidebar",
+  createGroup: "New group",
+  renameGroup: "Rename group",
+  deleteGroup: "Delete group",
+  editGroupContext: "Edit shared context",
+  groupMenu: "Group options",
+  newGroupPlaceholder: "Group name",
+  emptyGroupHint: "Drag agents here",
+  ungroupedLabel: "Ungrouped",
 };
 
 export function AppSidebar({
@@ -94,6 +139,16 @@ export function AppSidebar({
   onDelete,
   onRename,
   sectionLabel,
+  sectionAction,
+  groups,
+  onToggleGroupCollapsed,
+  onEditGroupContext,
+  onRenameGroup,
+  onDeleteGroup,
+  renamingGroupId,
+  onRenamingGroupIdHandled,
+  onMoveItem,
+  onMoveGroup,
   footer,
   labels,
   collapsed = false,
@@ -124,6 +179,22 @@ export function AppSidebar({
       e.preventDefault();
       onDelete(id);
     }
+  };
+
+  // Shared item editing state/handlers, consumed by both list modes.
+  const baseRowCtx: SidebarBaseRowContext = {
+    selectedId,
+    editingId,
+    editValue,
+    hasDefaultMenu,
+    onSelect,
+    onItemKeyDown: handleKeyDown,
+    onEditChange: setEditValue,
+    onCommitRename: commitRename,
+    onCancelEdit: () => setEditingId(null),
+    onStartRename: onRename ? startRename : undefined,
+    onDeleteItem: onDelete,
+    labels: l,
   };
 
   const showLogo = logo && !header;
@@ -225,12 +296,29 @@ export function AppSidebar({
             can spotlight just this region. `flex-1 min-h-0` preserves the
             existing scroll behavior for the items list. */}
         <div data-tour-target="agents" className="flex min-h-0 flex-1 flex-col">
-          {/* Section label (expanded only) */}
+          {/* Section label + inline action (expanded only) */}
           {sectionLabel && !collapsed && (
-            <div className="px-3 pt-3 pb-1">
-              <div className="text-xs font-medium text-muted-foreground">
+            <div className="flex items-center gap-1 px-3 pt-3 pb-1">
+              <div className="min-w-0 flex-1 text-xs font-medium text-muted-foreground">
                 {sectionLabel}
               </div>
+              {sectionAction}
+              {onAdd && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={l.addItem}
+                      onClick={onAdd}
+                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      {...(addItemDataAttrs ?? {})}
+                    >
+                      <Plus className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{l.addItem}</TooltipContent>
+                </Tooltip>
+              )}
             </div>
           )}
 
@@ -238,84 +326,29 @@ export function AppSidebar({
           <ScrollArea
             className={cn("flex-1", collapsed ? "px-2 pt-2" : "px-2")}
           >
-            <div
-              className={cn(
-                collapsed
-                  ? "flex flex-col items-center gap-1 pb-2"
-                  : sidebarClasses.itemsList,
-              )}
-            >
-              {items.map((item) =>
-                collapsed ? (
-                  <SidebarCollapsedItem
-                    key={item.id}
-                    item={item}
-                    isActive={item.id === selectedId}
-                    isEditing={editingId === item.id}
-                    editValue={editValue}
-                    hasMenu={hasDefaultMenu || !!item.menuContent}
-                    onSelect={onSelect}
-                    onKeyDown={handleKeyDown}
-                    onEditChange={setEditValue}
-                    onCommitRename={commitRename}
-                    onCancelEdit={() => setEditingId(null)}
-                    onStartRename={onRename ? startRename : undefined}
-                    onDelete={onDelete}
-                    labels={l}
-                  />
-                ) : (
-                  <SidebarItemRow
-                    key={item.id}
-                    item={item}
-                    isActive={item.id === selectedId}
-                    isEditing={editingId === item.id}
-                    editValue={editValue}
-                    hasMenu={hasDefaultMenu || !!item.menuContent}
-                    onSelect={onSelect}
-                    onKeyDown={handleKeyDown}
-                    onEditChange={setEditValue}
-                    onCommitRename={commitRename}
-                    onCancelEdit={() => setEditingId(null)}
-                    onStartRename={onRename ? startRename : undefined}
-                    onDelete={onDelete}
-                    labels={l}
-                  />
-                ),
-              )}
-              {onAdd &&
-                (collapsed ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={l.addItem}
-                        onClick={onAdd}
-                        className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        {...(addItemDataAttrs ?? {})}
-                      >
-                        <Plus className="size-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={8}>
-                      {l.addItem}
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <button
-                    aria-label={l.addItem}
-                    onClick={onAdd}
-                    className={sidebarClasses.addButton}
-                    {...(addItemDataAttrs ?? {})}
-                  >
-                    <span className={sidebarClasses.addButtonInner}>
-                      <Plus className={sidebarClasses.addButtonIcon} />
-                      <span className={sidebarClasses.addButtonLabel}>
-                        {l.addItem}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-            </div>
+            {!collapsed && groups !== undefined ? (
+              <SidebarGroupedList
+                items={items}
+                groups={groups}
+                onToggleGroupCollapsed={onToggleGroupCollapsed}
+                onEditGroupContext={onEditGroupContext}
+                onRenameGroup={onRenameGroup}
+                onDeleteGroup={onDeleteGroup}
+                renamingGroupId={renamingGroupId}
+                onRenamingGroupIdHandled={onRenamingGroupIdHandled}
+                onMoveItem={onMoveItem}
+                onMoveGroup={onMoveGroup}
+                rowCtx={baseRowCtx}
+              />
+            ) : (
+              <SidebarFlatList
+                items={items}
+                collapsed={collapsed}
+                ctx={baseRowCtx}
+                onAdd={onAdd}
+                addItemDataAttrs={addItemDataAttrs}
+              />
+            )}
           </ScrollArea>
         </div>
 

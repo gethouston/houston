@@ -10,6 +10,7 @@ import type {
   WireFrame,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import { classifyProviderError } from "../ai/provider-error";
 import { createPiBackend } from "../backends/pi/backend";
 import { config } from "../config";
 import {
@@ -25,6 +26,7 @@ import { buildToolSelection } from "../session/tool-selection";
 import { makeAskUserTool } from "../session/tools/ask-user";
 import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
+import { makePlanReadyTool } from "../session/tools/plan-ready";
 import { makeRunCodeTool } from "../session/tools/run-code";
 import {
   appendAssistantMessageAt,
@@ -82,20 +84,38 @@ export interface PiTurnRequest {
    * emitted frame and persisted on both stored messages.
    */
   turnId: string;
+  /**
+   * Presentation-only bubble text, when it must differ from `text` (the real
+   * prompt the model runs on). Persisted alongside the user message so a
+   * history reload renders `displayText ?? content`. Absent when they match.
+   */
+  displayText?: string;
 }
 
 export async function runPiTurn(
   root: string,
   turn: PiTurnRequest,
 ): Promise<TurnOutcome> {
-  const { conversationId, text, provider, signal, nonce, pin, mode, turnId } =
-    turn;
+  const {
+    conversationId,
+    text,
+    provider,
+    signal,
+    nonce,
+    pin,
+    mode,
+    turnId,
+    displayText,
+  } = turn;
   const emit = (e: WireFrame) => turn.emit({ ...e, turnId });
   const workspaceDir = join(root, "workspace");
   const dataDir = join(root, "data");
   const conversationsDir = join(dataDir, "conversations");
 
-  appendUserMessageAt(conversationsDir, conversationId, text, { turnId });
+  appendUserMessageAt(conversationsDir, conversationId, text, {
+    turnId,
+    displayText,
+  });
   emit({ type: "user", data: { content: text, ts: Date.now(), nonce } });
 
   let assistantText = "";
@@ -166,6 +186,10 @@ export async function runPiTurn(
         // already in toolSelection.toolNames. request_connection is NOT — it is
         // gated with the integration tools, which are off in cloud turn mode.
         makeAskUserTool(),
+        // plan_ready is registered always but name-gated to Plan mode by
+        // toolNamesForMode (harmless in execute/auto — pi exposes it only when
+        // its name is in the mode's allowlist).
+        makePlanReadyTool(),
         ...(sandbox ? [sandbox] : []),
       ],
     });
@@ -259,6 +283,41 @@ export async function runPiTurn(
     // provider error (mirrors exec-turn: only the clean `done` carries it).
     return providerError ? {} : { pendingInteraction: interaction.pending };
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // Classify the throw before reporting a generic outcome error: pi RAISES
+    // a missing/expired credential at prompt time ("No API key found for
+    // <provider>. Use /login …"), before any stream exists, so this catch is
+    // the only place it can become the typed reconnect card (HOU-718 —
+    // mirrors exec-turn). The typed error is emitted as a provider_error
+    // frame (the terminal the client settles on) and persisted so the card
+    // survives a reload; returning `{}` keeps the per-turn server from
+    // stacking a second, generic error frame on top of it.
+    if (!providerError) {
+      const thrown = classifyProviderError({
+        provider,
+        model: pin?.model ?? null,
+        message,
+      });
+      // Prompt-time credential guard: pi raised BEFORE recording the user
+      // message in its session store, so the reconnect retry must re-deliver
+      // the text (mirrors exec-turn).
+      if (
+        thrown.kind === "unauthenticated" &&
+        !assistantText &&
+        tools.length === 0
+      )
+        thrown.undelivered_prompt = text;
+      if (thrown.kind !== "unknown") {
+        appendAssistantMessageAt(
+          conversationsDir,
+          conversationId,
+          assistantText,
+          { tools, usage, providerError: thrown, turnId },
+        );
+        emit({ type: "provider_error", data: thrown });
+        return {};
+      }
+    }
     if (assistantText || providerError)
       appendAssistantMessageAt(
         conversationsDir,
@@ -266,6 +325,6 @@ export async function runPiTurn(
         assistantText,
         { tools, usage, providerError, turnId },
       );
-    return { error: err instanceof Error ? err.message : String(err) };
+    return { error: message };
   }
 }

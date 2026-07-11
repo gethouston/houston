@@ -289,6 +289,11 @@ function buildSeed(): ProviderInfo[] {
  */
 export const PROVIDERS: ProviderInfo[] = buildSeed();
 
+/** Display name for a provider id, falling back to the id itself. */
+export function providerName(id: string): string {
+  return PROVIDERS.find((p) => p.id === id)?.name ?? id;
+}
+
 /**
  * Replace `PROVIDERS` in place with the catalog built from the host's pi-ai
  * catalog (`useProviderCatalog` calls this on fetch). Mutates the existing array

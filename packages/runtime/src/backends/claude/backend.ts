@@ -7,6 +7,7 @@ import type {
   HarnessSession,
 } from "../types";
 import { resolveClaudeExecutable } from "./binary-path";
+import { buildClaudeEnv } from "./claude-env";
 import { buildHoustonMcpServer, HOUSTON_MCP_SERVER_NAME } from "./custom-tools";
 import { toSdkModel } from "./model";
 import { claudeLoginConfigDir } from "./paths";
@@ -60,8 +61,9 @@ export class ClaudeBackendUnavailableError extends Error {
  * `claude auth login` caches into, so the SDK reads that cached credential and
  * self-refreshes it) and no filesystem settings (`settingSources: []`), so
  * nothing else on the host machine leaks in. `options.env` REPLACES the
- * subprocess environment, so `process.env` is spread to keep PATH/HOME while
- * pinning the config dir + any degraded-fallback token.
+ * subprocess environment, so `buildClaudeEnv` builds it from an ALLOWLIST — the
+ * few operational vars the SDK needs plus the config dir and the one connected
+ * credential — never spreading `process.env` (see `./claude-env`).
  */
 export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
   return {
@@ -117,6 +119,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
           deps.workspaceDir,
           deps.systemPrompt,
           opts.mode,
+          opts.context,
         ),
         includePartialMessages: true,
         permissionMode: "default",
@@ -134,51 +137,8 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
   };
 }
 
-/**
- * Every env var the Claude Agent SDK reads to authenticate. The SDK honors all
- * three (verified in the installed `sdk.mjs`): a setup/OAuth token via
- * `CLAUDE_CODE_OAUTH_TOKEN`, and an API key via either `ANTHROPIC_API_KEY` or
- * the `ANTHROPIC_AUTH_TOKEN` alias. We clear ALL of them before setting the one
- * for the connected credential, so exactly one survives.
- */
-const CREDENTIAL_ENV_VARS = [
-  "CLAUDE_CODE_OAUTH_TOKEN",
-  "ANTHROPIC_API_KEY",
-  "ANTHROPIC_AUTH_TOKEN",
-] as const;
-
-/**
- * The single Anthropic auth env var for a credential (empty when none is
- * connected): a setup/OAuth token via `CLAUDE_CODE_OAUTH_TOKEN`, an API key via
- * `ANTHROPIC_API_KEY`.
- */
-function tokenEnv(token: ClaudeToken | undefined): Record<string, string> {
-  if (token?.kind === "oauth-token")
-    return { CLAUDE_CODE_OAUTH_TOKEN: token.value };
-  if (token?.kind === "api-key") return { ANTHROPIC_API_KEY: token.value };
-  return {};
-}
-
-/**
- * Build the SDK subprocess env carrying EXACTLY the connected credential.
- *
- * `options.env` REPLACES the subprocess environment, so we spread `process.env`
- * to keep PATH/HOME, pin the ISOLATED config dir, then make the credential vars
- * deterministic: DELETE all three first, then set the one for the connected
- * token. A stale/ambient `ANTHROPIC_API_KEY` on the host must never survive
- * alongside a user's OAuth token — otherwise a subscription turn could silently
- * bill the machine's (or Houston's) API key. Shared by the turn backend and the
- * one-shot title path (`./title`) so both scrub identically.
- */
-export function buildClaudeEnv(
-  configDir: string,
-  token: ClaudeToken | undefined,
-): Record<string, string> {
-  const env: Record<string, string> = {
-    ...process.env,
-    CLAUDE_CONFIG_DIR: configDir,
-  };
-  for (const key of CREDENTIAL_ENV_VARS) delete env[key];
-  Object.assign(env, tokenEnv(token));
-  return env;
-}
+// The SDK subprocess env is built from an allowlist (not a `process.env` spread)
+// so no host secret reaches a subprocess that runs model-directed Bash. Kept in
+// `./claude-env` and re-exported here so `./title` and `./credential-status`
+// keep their `from "./backend"` import.
+export { buildClaudeEnv } from "./claude-env";

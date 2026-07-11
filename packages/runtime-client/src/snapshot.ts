@@ -18,11 +18,29 @@ import type { WireFrame } from "./types";
  * WHICH turn is running, and it is what the relay's dead-pump reaper stamps on
  * the terminal frame it synthesizes.
  */
+/** One of the running turn's tool calls, as the snapshot tracks it. `isError`
+ *  present = the tool ENDED (with that flag); absent = still running.
+ *  `content` is an ended tool's output preview (already clipped at the
+ *  emitting backend). */
+export type SnapshotTool = {
+  name: string;
+  input?: unknown;
+  isError?: boolean;
+  content?: string;
+};
+
 export type ConversationSnapshot = {
   running: boolean;
   partial: string;
   seq: number;
   turnId?: string;
+  /** The running turn's reasoning so far (cumulative, like `partial`). Omitted
+   *  when idle or when the turn produced none — a late subscriber replays it
+   *  so the mission log shows what streamed before it connected (HOU-717). */
+  thinking?: string;
+  /** The running turn's tool calls so far, in stream order. Same omission
+   *  semantics as `thinking`. */
+  tools?: SnapshotTool[];
 };
 
 export const EMPTY_SNAPSHOT: ConversationSnapshot = {
@@ -32,15 +50,15 @@ export const EMPTY_SNAPSHOT: ConversationSnapshot = {
 };
 
 /**
- * Fold a wire frame into the running snapshot. Pure. `partial` tracks only
- * assistant *text* (enough to redraw the in-flight bubble); tool/thinking
- * frames keep the turn marked running without touching it. `seq` advances to
- * the frame's seq (kept as-is for an unsequenced event) — including on the
- * terminal frames, so the watermark outlives the turn. `turnId` is adopted
- * from the frames (a `user` frame starts a new turn, so its id — possibly
- * absent on a legacy frame — REPLACES the previous one) and dropped with the
- * terminal frame; `undefined` fields are omitted so the snapshot serializes
- * without noise.
+ * Fold a wire frame into the running snapshot. Pure. `partial` tracks the
+ * assistant *text*; `thinking`/`tools` track the turn's reasoning and tool
+ * activity (HOU-717 — a late subscriber replays them so the mission log is
+ * complete, not just the text bubble). `seq` advances to the frame's seq
+ * (kept as-is for an unsequenced event) — including on the terminal frames,
+ * so the watermark outlives the turn. `turnId` is adopted from the frames (a
+ * `user` frame starts a new turn, so its id — possibly absent on a legacy
+ * frame — REPLACES the previous one) and dropped with the terminal frame;
+ * `undefined` fields are omitted so the snapshot serializes without noise.
  */
 export function reduceSnapshot(
   prev: ConversationSnapshot,
@@ -48,8 +66,15 @@ export function reduceSnapshot(
 ): ConversationSnapshot {
   const seq = event.seq ?? prev.seq;
   const turnOf = (id: string | undefined) => (id ? { turnId: id } : {});
+  // The running turn's accumulated activity, carried through non-terminal
+  // frames (omitted keys stay omitted so the snapshot serializes lean).
+  const activity = () => ({
+    ...(prev.thinking !== undefined ? { thinking: prev.thinking } : {}),
+    ...(prev.tools !== undefined ? { tools: prev.tools } : {}),
+  });
   switch (event.type) {
     case "user":
+      // A new turn: reset text AND the previous turn's thinking/tools.
       return { running: true, partial: "", seq, ...turnOf(event.turnId) };
     case "text":
       return {
@@ -57,10 +82,53 @@ export function reduceSnapshot(
         partial: prev.partial + event.data,
         seq,
         ...turnOf(event.turnId ?? prev.turnId),
+        ...activity(),
       };
     case "thinking":
+      return {
+        running: true,
+        partial: prev.partial,
+        seq,
+        ...turnOf(event.turnId ?? prev.turnId),
+        ...activity(),
+        thinking: (prev.thinking ?? "") + event.data,
+      };
     case "tool_start":
-    case "tool_end":
+      return {
+        running: true,
+        partial: prev.partial,
+        seq,
+        ...turnOf(event.turnId ?? prev.turnId),
+        ...activity(),
+        tools: [
+          ...(prev.tools ?? []),
+          { name: event.data.name, input: event.data.args },
+        ],
+      };
+    case "tool_end": {
+      // Mark the last still-running tool as ended. Tools run one at a time
+      // within a turn, so that is the tool this frame closes.
+      const tools = [...(prev.tools ?? [])];
+      for (let i = tools.length - 1; i >= 0; i--) {
+        const t = tools[i];
+        if (t && t.isError === undefined) {
+          tools[i] = {
+            ...t,
+            isError: event.data.isError,
+            ...(event.data.content ? { content: event.data.content } : {}),
+          };
+          break;
+        }
+      }
+      return {
+        running: true,
+        partial: prev.partial,
+        seq,
+        ...turnOf(event.turnId ?? prev.turnId),
+        ...activity(),
+        ...(tools.length ? { tools } : {}),
+      };
+    }
     case "usage":
     case "file_changes":
       return {
@@ -68,6 +136,7 @@ export function reduceSnapshot(
         partial: prev.partial,
         seq,
         ...turnOf(event.turnId ?? prev.turnId),
+        ...activity(),
       };
     case "done":
     case "error":
@@ -87,6 +156,7 @@ export function reduceSnapshot(
         partial: prev.partial,
         seq,
         ...turnOf(event.turnId ?? prev.turnId),
+        ...activity(),
       };
     case "sync":
       return prev; // sync is a read-out, never published back in

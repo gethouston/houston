@@ -1,9 +1,10 @@
 /**
  * Pure two-level navigation reducer for the model picker. Level 1 is the
  * connected-provider list; level 2 is one provider's models. The `query` lives
- * alongside the level: while it is non-empty the component shows a flat search
- * that bypasses the levels, and clearing it returns to whatever level the nav is
- * still parked on. Kept React-free so it can be unit-tested directly.
+ * alongside the level and drives cmdk's built-in filter over the CURRENT level's
+ * rows (it never crosses levels); entering a provider or stepping back clears it
+ * so each screen opens unfiltered. Kept React-free so it can be unit-tested
+ * directly.
  */
 
 export type ModelPickerLevel =

@@ -32,6 +32,12 @@ class SpyChannel implements RuntimeChannel {
     this.cancelled.push(conversationId);
     return true;
   }
+  async busy() {
+    return false;
+  }
+  async runtimeStatus() {
+    return "running" as const;
+  }
   async teardown() {}
   async captureCredential() {
     return { ok: true as const, provider: "openai-codex" };

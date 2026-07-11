@@ -44,10 +44,6 @@ export interface AIBoardProps {
   feedItems?: Record<string, FeedItem[]>;
   /** Whether a message is currently being processed, keyed by session key. */
   isLoading?: Record<string, boolean>;
-  /** The consumer narrates pending sends itself (inline card): a trailing
-   *  user message with no running turn must not light the in-flight
-   *  indicator. Forwarded to the open chat panel. */
-  suppressPendingIndicator?: boolean;
   /** Custom empty state when the board has no items. */
   emptyState?: ReactNode;
   /** Maps an activity ID to its session key. Defaults to `activity-${id}`. */
@@ -75,14 +71,16 @@ export interface AIBoardProps {
   chatEmptyState?: ReactNode;
   /** Custom thinking indicator for the chat panel. */
   thinkingIndicator?: ReactNode;
-  /** Loader shown for the whole in-flight turn (see ChatPanel). */
-  loadingIndicator?: ReactNode;
   /** Avatar element shown on every kanban card (e.g. small agent icon). */
   cardAvatar?: ReactNode;
   /** Avatar element shown in the detail panel header. */
   panelAvatar?: ReactNode;
+  /** Rendered before the avatar (e.g. a Back button for a full-page panel). */
+  panelLeading?: ReactNode;
   /** Name shown next to the avatar in the panel header (e.g. "Houston"). */
   panelAgentName?: string;
+  /** Replaces the panel header's auto "Mission: {title}" line verbatim. */
+  panelMissionLabel?: string;
   /** Called when the detail panel opens or closes. */
   onPanelOpenChange?: (open: boolean) => void;
   /** Called when the user clicks Stop in the chat panel. Receives the active session key. */
@@ -172,6 +170,30 @@ export interface AIBoardProps {
    */
   panelContainer?: HTMLElement | null;
   /**
+   * Keep the detail panel open on clicks outside the board/panel. For a
+   * board whose panel is a transient overlay, outside clicks dismiss it
+   * (the default); a panel that is a persistent companion of its host view
+   * (e.g. the routine setup chat living beside the routine form) sets this
+   * so only an explicit close (the X, tab switch, unmount) dismisses it —
+   * otherwise any click on app chrome (sidebar, titlebar) silently drops it.
+   */
+  disableOutsideClose?: boolean;
+  /**
+   * Skip the automatic composer focus when a selection hydrates. The board
+   * bumps the composer focus token so keyboard users can type immediately —
+   * but when the panel is a side companion of a form (the routine editor's
+   * chat), that late bump steals focus MID-TYPING from the form's inputs
+   * (the user's keystrokes suddenly land in the chat composer). Explicit
+   * focus requests (openNewPanel with focusComposer) still work.
+   */
+  disableComposerAutoFocus?: boolean;
+  /**
+   * Hide the detail panel's close button. For a panel that is a permanent
+   * part of its host view (the routine editor's chat), there is nothing for
+   * an X to mean — combine with `disableOutsideClose`.
+   */
+  hidePanelClose?: boolean;
+  /**
    * Draft text keyed by session key. Used to persist composer text across
    * navigation so users don't lose what they've typed. The key
    * "new-conversation" is used for the new-mission panel.
@@ -256,7 +278,6 @@ export function AIBoard({
   onSendMessage,
   feedItems = {},
   isLoading = {},
-  suppressPendingIndicator,
   emptyState,
   sessionKeyFor = defaultSessionKey,
   runningStatuses = ["running"],
@@ -268,10 +289,11 @@ export function AIBoard({
   onPanelCloserReady,
   chatEmptyState,
   thinkingIndicator,
-  loadingIndicator,
   cardAvatar,
   panelAvatar,
+  panelLeading,
   panelAgentName,
+  panelMissionLabel,
   onPanelOpenChange,
   onStopSession,
   queuedMessages,
@@ -281,6 +303,9 @@ export function AIBoard({
   actions,
   panelActions,
   panelContainer,
+  disableOutsideClose,
+  disableComposerAutoFocus,
+  hidePanelClose,
   drafts,
   onDraftChange,
   isSpecialTool,
@@ -350,7 +375,16 @@ export function AIBoard({
       hydratedKeys.current.add(sk);
       onLoadHistory(sk)
         .then((h) => {
-          if (h.length > 0) onHistoryLoaded?.(sk, h);
+          if (h.length > 0) {
+            onHistoryLoaded?.(sk, h);
+          } else {
+            // An empty load is not proof the chat is empty: the loader
+            // resolves [] while the agent's engine is still warming, or when
+            // the server hasn't restored the conversation yet. Un-mark so the
+            // next selection retries instead of pinning the chat empty until
+            // remount; a genuinely empty chat just re-runs a cheap read.
+            hydratedKeys.current.delete(sk);
+          }
         })
         .catch((err) => {
           // Un-mark the session so re-selecting the conversation retries the
@@ -401,8 +435,10 @@ export function AIBoard({
     } else {
       setNewPanelOpen(false);
     }
-    setComposerFocusToken((prev) => (prev ?? 0) + 1);
-  }, [selectedId, hydrateSession]);
+    if (!disableComposerAutoFocus) {
+      setComposerFocusToken((prev) => (prev ?? 0) + 1);
+    }
+  }, [selectedId, hydrateSession, disableComposerAutoFocus]);
 
   const selectedItem = items.find((i) => i.id === selectedId) ?? null;
 
@@ -573,7 +609,7 @@ export function AIBoard({
   //     after the popper opens). At that moment the popper is still
   //     open with `data-state="open"`, so we can detect it reliably.
   useEffect(() => {
-    if (!showPanel) return;
+    if (!showPanel || disableOutsideClose) return;
     const handler = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (!target) return;
@@ -616,7 +652,7 @@ export function AIBoard({
     };
     document.addEventListener("pointerdown", handler, true);
     return () => document.removeEventListener("pointerdown", handler, true);
-  }, [showPanel, closePanel]);
+  }, [showPanel, disableOutsideClose, closePanel]);
 
   const showBulkBar = selectable && bulkActions && (selectedIds?.size ?? 0) > 0;
 
@@ -677,9 +713,14 @@ export function AIBoard({
     <KanbanDetailPanel
       ref={panelRef}
       title={panelTitle}
-      onClose={closePanel}
+      onClose={hidePanelClose ? undefined : closePanel}
+      leading={panelLeading}
       avatar={panelAvatar}
       agentName={panelAgentName ?? selectedItem?.group}
+      missionLabelOverride={panelMissionLabel}
+      people={selectedItem?.people}
+      peopleLabel={cardLabels?.people}
+      peopleExpandLabel={cardLabels?.peopleExpand}
       actions={selectedItem ? panelActions?.(selectedItem) : undefined}
     >
       <div className="flex-1 min-h-0 flex flex-col">
@@ -687,7 +728,6 @@ export function AIBoard({
           sessionKey={activeSessionKey ?? "new-conversation"}
           feedItems={activeFeed}
           isLoading={activeLoading}
-          suppressPendingIndicator={suppressPendingIndicator}
           onSend={handleSend}
           onStop={
             activeSessionKey && onStopSession
@@ -708,7 +748,6 @@ export function AIBoard({
           }
           emptyState={activeFeed.length === 0 ? chatEmptyState : undefined}
           thinkingIndicator={thinkingIndicator}
-          loadingIndicator={loadingIndicator}
           value={drafts ? (drafts[activeDraftKey] ?? "") : undefined}
           onValueChange={
             onDraftChange

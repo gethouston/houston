@@ -10,6 +10,7 @@ import type {
   RuntimeLauncher,
   TurnPin,
 } from "../ports";
+import { MAX_JSON_BYTES, readBody } from "../routes/read-body";
 
 /**
  * Forwards one authorized request to a standing runtime and streams the reply
@@ -64,11 +65,15 @@ export class ProxyChannel implements RuntimeChannel {
     // Collect the raw body for non-GET so arbitrary payloads ({text}, {code},
     // {activeProvider}) pass through untouched. Strip the caller's `token` auth
     // param so the user's JWT is never leaked downstream to the runtime.
+    //
+    // Bounded by MAX_JSON_BYTES: file uploads and attachments are intercepted
+    // host-side (handleFiles / handleAttachments) BEFORE this forward, so the
+    // only bodies that reach a standing pod are control-plane JSON (messages,
+    // settings, provider login) — a few MB is generous, and the cap stops an
+    // oversized body from OOM-ing the (memory-capped) engine pod.
     let body: Buffer | undefined;
     if (method !== "GET" && method !== "HEAD") {
-      const chunks: Buffer[] = [];
-      for await (const c of req) chunks.push(c as Buffer);
-      body = Buffer.concat(chunks);
+      body = await readBody(req, MAX_JSON_BYTES);
     }
     const params = new URLSearchParams(url.search);
     params.delete("token");
@@ -118,9 +123,9 @@ export class ProxyChannel implements RuntimeChannel {
     // Wake the standing runtime and POST the routine's prompt as a normal
     // message — the runtime starts the turn (202) and persists the reply into
     // the conversation, exactly as a user message would. The routine's
-    // provider/model/effort pins ride alongside (omitted when absent → the
-    // session's current). A non-2xx throws so the scheduler records an
-    // errored run.
+    // provider/model/effort/mode pins ride alongside (omitted when absent →
+    // the session's current/default). A non-2xx throws so the scheduler records
+    // an errored run.
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     const res = await fetch(
       `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/messages`,
@@ -139,6 +144,7 @@ export class ProxyChannel implements RuntimeChannel {
           ...(pin?.provider ? { provider: pin.provider } : {}),
           ...(pin?.model ? { model: pin.model } : {}),
           ...(pin?.effort ? { effort: pin.effort } : {}),
+          ...(pin?.mode ? { mode: pin.mode } : {}),
         }),
       },
     );
@@ -147,6 +153,39 @@ export class ProxyChannel implements RuntimeChannel {
         `runtime ${res.status}: ${await res.text().catch(() => "")}`,
       );
     }
+  }
+
+  /**
+   * The export wizard's AI anonymize pass: wake the standing runtime and run
+   * the texts through its `POST /portable/anonymize` one-shot (the runtime is
+   * where the provider credential lives). A non-2xx throws with the runtime's
+   * own reason — the host route falls back to the regex redactor and tells
+   * the user why.
+   */
+  async anonymizeTexts(
+    ctx: ChannelCtx,
+    items: { id: string; text: string }[],
+  ): Promise<{ id: string; text: string; summary: string }[]> {
+    const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
+    const res = await fetch(`${endpoint.baseUrl}/portable/anonymize`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: `Bearer ${endpoint.token}`,
+      },
+      body: JSON.stringify({ items }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      items?: { id: string; text: string; summary: string }[];
+      error?: string;
+    };
+    if (!res.ok) {
+      throw new Error(body.error ?? `runtime ${res.status}`);
+    }
+    if (!Array.isArray(body.items)) {
+      throw new Error("runtime anonymize: malformed response body");
+    }
+    return body.items;
   }
 
   async cancelTurn(ctx: ChannelCtx, conversationId: string): Promise<boolean> {
@@ -179,6 +218,28 @@ export class ProxyChannel implements RuntimeChannel {
       );
     })) as { cancelled?: boolean };
     return body.cancelled === true;
+  }
+
+  async busy(ctx: ChannelCtx): Promise<boolean> {
+    // An asleep/absent runtime cannot be running a turn (turns live inside the
+    // runtime process; sleep kills it) — answer false without waking it.
+    if ((await this.opts.launcher.status(ctx.agent.id)) !== "running")
+      return false;
+    try {
+      const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
+      const res = await fetch(`${endpoint.baseUrl}/busy`, {
+        headers: { Authorization: `Bearer ${endpoint.token}` },
+      });
+      if (!res.ok) return true;
+      const body = (await res.json()) as { busy?: unknown };
+      return typeof body.busy === "boolean" ? body.busy : true;
+    } catch {
+      return true;
+    }
+  }
+
+  async runtimeStatus(ctx: ChannelCtx) {
+    return this.opts.launcher.status(ctx.agent.id);
   }
 
   async teardown(ctx: ChannelCtx): Promise<void> {

@@ -12,19 +12,13 @@ final class MissionActionsTests: XCTestCase {
     )
   }
 
-  func testApproveMovesToDone() async throws {
-    let stub = MissionCommandRunnerStub()
-    try await MissionActions(runner: stub).approve(card())
-    let payload = try XCTUnwrap(stub.lastPayload(for: "activities/setStatus"))
-    XCTAssertEqual(payload["status"]?.stringValue, "done")
-    XCTAssertEqual(payload["id"]?.stringValue, "m1")
-    XCTAssertEqual(payload["agentId"]?.stringValue, "a")
-  }
-
   func testArchiveSetsArchivedStatus() async throws {
     let stub = MissionCommandRunnerStub()
     try await MissionActions(runner: stub).archive(card())
-    XCTAssertEqual(stub.lastPayload(for: "activities/setStatus")?["status"]?.stringValue, "archived")
+    let payload = try XCTUnwrap(stub.lastPayload(for: "activities/setStatus"))
+    XCTAssertEqual(payload["status"]?.stringValue, "archived")
+    XCTAssertEqual(payload["id"]?.stringValue, "m1")
+    XCTAssertEqual(payload["agentId"]?.stringValue, "a")
   }
 
   func testRenameTrimsAndDispatches() async throws {
@@ -49,7 +43,7 @@ final class MissionActionsTests: XCTestCase {
     let stub = MissionCommandRunnerStub()
     stub.failures["activities/setStatus"] = StubError()
     do {
-      try await MissionActions(runner: stub).approve(card())
+      try await MissionActions(runner: stub).archive(card())
       XCTFail("expected failure")
     } catch {
       XCTAssertNotNil(error as? StubError)

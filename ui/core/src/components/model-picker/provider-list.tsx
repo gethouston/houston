@@ -1,15 +1,16 @@
-import { Command as CommandPrimitive } from "cmdk";
 import { Check, ChevronRight, Loader2 } from "lucide-react";
 import type * as React from "react";
-import { cn } from "../../utils";
+import { CommandItem } from "../command";
 import { ProviderIcon } from "./provider-icon";
 import type { ModelPickerLabels, ModelPickerProvider } from "./types";
 
 /**
- * Level 1: the connected providers. Each row is a cmdk item so ↑↓/Enter roving
- * works; Enter (or click) drills into that provider's models. A neutral loading
- * state stands in for an empty list while statuses resolve (#342 guard); a truly
- * empty connected set shows the "no providers" hint instead.
+ * Level 1: the connected providers, in the shared dropdown idiom. Each row is a
+ * `CommandItem` so ↑↓/Enter roving works; Enter (or click) drills into that
+ * provider's models. A neutral loading state stands in for an empty list while
+ * statuses resolve (#342 guard); a truly empty connected set shows the "no
+ * providers" hint instead. A check marks the current provider; a trailing chevron
+ * signals the drill-in to its models.
  */
 export function ProviderList({
   providers,
@@ -45,33 +46,29 @@ export function ProviderList({
     );
   }
   return (
-    <CommandPrimitive.Group aria-label={labels.providersLabel}>
+    <>
       {providers.map((provider) => (
-        <CommandPrimitive.Item
+        <CommandItem
           key={provider.id}
-          value={`provider:${provider.id}`}
-          keywords={[provider.name]}
+          value={provider.name}
+          keywords={[provider.id]}
           onSelect={() => onEnter(provider.id)}
-          className={cn(
-            "flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 outline-none",
-            "data-[selected=true]:bg-accent",
-          )}
         >
           <ProviderIcon
             providerId={provider.id}
             name={provider.name}
             render={renderProviderIcon}
-            className="size-5 shrink-0"
+            className="size-4"
           />
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+          <span className="min-w-0 flex-1 truncate text-foreground">
             {provider.name}
           </span>
           {provider.id === selectedProviderId && (
             <Check className="size-4 shrink-0 text-foreground" />
           )}
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-        </CommandPrimitive.Item>
+          <ChevronRight className="size-4 shrink-0" />
+        </CommandItem>
       ))}
-    </CommandPrimitive.Group>
+    </>
   );
 }

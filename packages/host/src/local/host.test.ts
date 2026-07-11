@@ -1,9 +1,13 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer as createHttpServer } from "node:http";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Capabilities, Workspace } from "@houston/protocol";
+import {
+  LocalDirStore,
+  type ObjectStore,
+} from "@houston/runtime-client/object-sync";
 import { expect, test } from "vitest";
 import { MANAGED_CLOUD_CAPABILITIES } from "../capabilities";
 import { EnvCredentialVault } from "../credentials/vault";
@@ -11,6 +15,7 @@ import type { Agent } from "../domain/types";
 import type { RuntimeSpawner } from "../launcher/process";
 import {
   buildLocalHost,
+  formatIntegrationsModeLog,
   LOCAL_CAPABILITIES,
   type LocalHostOptions,
 } from "./host";
@@ -45,16 +50,17 @@ async function setup(opts?: {
   gatewayFronted?: boolean;
   credentials?: LocalHostOptions["credentials"];
   spawner?: RuntimeSpawner;
+  eagerRuntime?: boolean;
+  storeSync?: LocalHostOptions["storeSync"];
+  waitForStart?: boolean;
 }) {
-  const workspacesRoot = mkdtempSync(join(tmpdir(), "houston-localhost-"));
+  const houstonHome = mkdtempSync(join(tmpdir(), "houston-localhost-"));
+  const workspacesRoot = join(houstonHome, "workspaces");
   mkdirSync(join(workspacesRoot, "Work", "Sales"), { recursive: true });
   const port = await freePort();
   const host = buildLocalHost({
     workspacesRoot,
-    credentialsPath: join(
-      mkdtempSync(join(tmpdir(), "houston-cred-")),
-      "credentials.json",
-    ),
+    credentialsPath: join(houstonHome, "credentials.json"),
     port,
     token: "boot-secret",
     runtimeCommand: ["true"],
@@ -64,15 +70,91 @@ async function setup(opts?: {
     integrations: opts?.integrations,
     gatewayFronted: opts?.gatewayFronted,
     credentials: opts?.credentials,
+    eagerRuntime: opts?.eagerRuntime,
+    storeSync: opts?.storeSync,
   });
-  await host.start();
-  return { host, base: `http://127.0.0.1:${port}`, workspacesRoot };
+  const startPromise = host.start();
+  if (opts?.waitForStart !== false) await startPromise;
+  return {
+    host,
+    base: `http://127.0.0.1:${port}`,
+    houstonHome,
+    startPromise,
+    workspacesRoot,
+  };
 }
 
 const auth = {
   Authorization: "Bearer boot-secret",
   "Content-Type": "application/json",
 };
+
+test("integration mode log identifies gateway mode and its upstream", () => {
+  expect(
+    formatIntegrationsModeLog({
+      gatewayUrl: "https://cloud.test",
+      composioApiKey: "must-not-appear",
+    }),
+  ).toBe("[local-host] integrations: gateway https://cloud.test");
+});
+
+test("integration mode log identifies direct mode without exposing the key", () => {
+  const key = "must-not-appear";
+  const line = formatIntegrationsModeLog({ composioApiKey: key });
+  expect(line).toBe("[local-host] integrations: direct (own Composio key)");
+  expect(line).not.toContain(key);
+});
+
+test("integration mode log explains how to enable integrations when off", () => {
+  expect(formatIntegrationsModeLog(undefined)).toBe(
+    "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL or COMPOSIO_API_KEY to enable",
+  );
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+test("does not listen until store hydration has completed", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "host-sync-remote-"));
+  const delegate = new LocalDirStore(remoteRoot);
+  const listGate = deferred<string[]>();
+  const gatedStore: ObjectStore = {
+    list: () => listGate.promise,
+    download: (key, dest) => delegate.download(key, dest),
+    upload: (source, key) => delegate.upload(source, key),
+    delete: (key) => delegate.delete(key),
+  };
+  const { base, host, startPromise } = await setup({
+    storeSync: { store: gatedStore },
+    waitForStart: false,
+  });
+  await expect(fetch(`${base}/health`)).rejects.toThrow();
+  listGate.resolve([]);
+  await startPromise;
+  expect((await fetch(`${base}/health`)).status).toBe(200);
+  await host.stop();
+});
+
+test("stop uploads local changes before closing the host", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "host-sync-remote-"));
+  const remote = new LocalDirStore(remoteRoot);
+  const { host, workspacesRoot } = await setup({
+    storeSync: { store: remote, quietMs: 60_000, intervalMs: 60_000 },
+  });
+  writeFileSync(join(workspacesRoot, "Work", "Sales", "final.txt"), "durable");
+  await host.stop();
+  expect(
+    readFileSync(
+      join(remoteRoot, "workspaces", "Work", "Sales", "final.txt"),
+      "utf8",
+    ),
+  ).toBe("durable");
+});
 
 test("capabilities report the local profile", async () => {
   const { host, base } = await setup();
@@ -368,5 +450,51 @@ test("preferences persist via the vfs under the workspace", async () => {
     expect(((await got.json()) as { value: string }).value).toBe("es");
   } finally {
     host.stop();
+  }
+});
+
+test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise", async () => {
+  // A real /health endpoint the launcher's poll can succeed against — the
+  // fake spawner hands out its port so ensureAwake completes.
+  const health = createHttpServer((_req, res) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end('{"status":"ok"}');
+  });
+  await new Promise<void>((r) => {
+    health.listen(0, "127.0.0.1", () => r());
+  });
+  const healthAddr = health.address();
+  const healthPort =
+    typeof healthAddr === "object" && healthAddr ? healthAddr.port : 0;
+  const spawned: string[] = [];
+  const recordingSpawner: RuntimeSpawner = {
+    spawn: (spec) => {
+      spawned.push(spec.workspaceDir);
+      return { port: healthPort, kill: () => {} };
+    },
+  };
+
+  const eager = await setup({ spawner: recordingSpawner, eagerRuntime: true });
+  try {
+    // Fire-and-forget after listen: poll until the spawn landed.
+    const deadline = Date.now() + 5_000;
+    while (spawned.length === 0 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    expect(spawned).toHaveLength(1);
+    expect(spawned[0]).toContain(join("Work", "Sales"));
+  } finally {
+    eager.host.stop();
+  }
+
+  // Control: without the flag nothing spawns until a dispatch asks.
+  spawned.length = 0;
+  const lazy = await setup({ spawner: recordingSpawner });
+  try {
+    await new Promise((r) => setTimeout(r, 200));
+    expect(spawned).toHaveLength(0);
+  } finally {
+    lazy.host.stop();
+    await new Promise<void>((r) => health.close(() => r()));
   }
 });

@@ -1,5 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
+// The single, byte-capped body reader — shared so the cap can't drift between
+// the many routes that import `readJson` from here.
+export { readBody, readJson } from "./read-body";
+
 export function json(
   res: ServerResponse,
   status: number,
@@ -12,15 +16,6 @@ export function json(
     ...headers,
   });
   res.end(buf);
-}
-
-export async function readJson(
-  req: IncomingMessage,
-): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const c of req) chunks.push(c as Buffer);
-  const raw = Buffer.concat(chunks).toString("utf8");
-  return raw ? JSON.parse(raw) : {};
 }
 
 /** The caller's bearer, from the Authorization header or a ?token= fallback (SSE). */

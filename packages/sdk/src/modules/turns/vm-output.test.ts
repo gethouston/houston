@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { ScopeStore } from "../../store";
 import {
   type ConversationVM,
@@ -162,6 +162,192 @@ test("a clean settle with no interaction lands boardStatus done and no interacti
   await vm.persistBoardStatus("a", "c1", "done", null);
   expect(snap().boardStatus).toBe("done");
   expect(snap().pendingInteraction).toBe(null);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+test("a live push without ts is stamped Date.now() at push time", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1_700_000_000_000);
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", { feed_type: "system_message", data: "hi" });
+  expect(snap().feed[0]?.ts).toBe(1_700_000_000_000);
+});
+
+test("a live push carrying a ts keeps it (not re-stamped)", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1_700_000_000_000);
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "system_message",
+    data: "hi",
+    ts: 42,
+  });
+  expect(snap().feed[0]?.ts).toBe(42); // the supplied ts wins over the clock
+});
+
+test("a streaming update keeps the entry's original ts through finalization", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1000);
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text_streaming",
+    data: "He",
+  });
+  const openedTs = snap().feed[0]?.ts;
+  expect(openedTs).toBe(1000); // stamped when the stream opened
+
+  // Later deltas (and the final flush) arrive with the wall clock advanced —
+  // the entry keeps the ts it opened with, never re-stamps per delta.
+  vi.setSystemTime(9999);
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text_streaming",
+    data: "Hello",
+  });
+  expect(snap().feed[0]?.ts).toBe(openedTs);
+
+  vm.pushFeedItem("a", "c1", { feed_type: "assistant_text", data: "Hello!" });
+  expect(snap().feed).toHaveLength(1);
+  expect(snap().feed[0]?.feed_type).toBe("assistant_text");
+  expect(snap().feed[0]?.ts).toBe(openedTs); // finalization preserves it
+});
+
+test("seedHistory carries a frame's ts through and stamps nothing when absent", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(5_000_000);
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [
+    { feed_type: "user_message", data: "hi", ts: 111 },
+    { feed_type: "assistant_text", data: "yo" }, // pre-ts transcript: no ts
+  ]);
+  expect(snap().feed[0]?.ts).toBe(111); // historical ts preserved
+  expect(snap().feed[1]?.ts).toBeUndefined(); // NOT stamped with the wall clock
+});
+
+// ── Optimistic pending flag (WhatsApp clock -> check) ────────────────────────
+
+test("an optimistic push carries pending; the first later push clears it (same id)", () => {
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "user_message",
+    data: "hi",
+    pending: true,
+  });
+  const bubbleId = snap().feed[0]?.id;
+  expect(snap().feed[0]?.pending).toBe(true); // unconfirmed until server evidence
+
+  // The FIRST subsequent push is that evidence: the bubble is confirmed in place.
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text_streaming",
+    data: "y",
+  });
+  expect(snap().feed[0]?.id).toBe(bubbleId); // same entry, stripped in place
+  expect("pending" in (snap().feed[0] ?? {})).toBe(false); // flag gone, not undefined
+});
+
+test("a settle (completed/error) clears pending with no intervening feed push", () => {
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "user_message",
+    data: "hi",
+    pending: true,
+  });
+  vm.sessionStatus("a", "c1", "completed");
+  expect(snap().feed[0]?.pending).toBeUndefined();
+
+  // Same for the error settle (a rejected/lost send).
+  const { vm: vm2, snap: snap2 } = harness();
+  vm2.pushFeedItem("a", "c1", {
+    feed_type: "user_message",
+    data: "hi",
+    pending: true,
+  });
+  vm2.sessionStatus("a", "c1", "error");
+  expect(snap2().feed[0]?.pending).toBeUndefined();
+});
+
+test("a running status does NOT clear pending (only a terminal status does)", () => {
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "user_message",
+    data: "hi",
+    pending: true,
+  });
+  vm.sessionStatus("a", "c1", "running");
+  expect(snap().feed[0]?.pending).toBe(true); // still unconfirmed
+});
+
+test("a second optimistic push keeps its sibling pending; server evidence clears ALL", () => {
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "user_message",
+    data: "one",
+    pending: true,
+  });
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "user_message",
+    data: "two",
+    pending: true,
+  });
+  // Both queued prompts keep their clock — an optimistic push is not evidence.
+  expect(snap().feed.map((f) => f.pending)).toEqual([true, true]);
+
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text_streaming",
+    data: "y",
+  });
+  expect(snap().feed.filter((f) => f.pending)).toHaveLength(0); // all confirmed at once
+});
+
+test("seedHistory frames never carry pending (a resumed/observed chat shows no clock)", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [
+    { feed_type: "user_message", data: "hi", ts: 1 },
+    { feed_type: "assistant_text", data: "yo", ts: 2 },
+  ]);
+  expect(snap().feed.some((f) => f.pending)).toBe(false);
+});
+
+// ── Failed delivery (a send that never landed must NOT read "Sent") ──────────
+
+test("a fails_pending push marks a still-pending bubble failed, never confirmed", () => {
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "user_message",
+    data: "hi",
+    pending: true,
+  });
+  const bubbleId = snap().feed[0]?.id;
+  // A client-generated send-failure notice (lost/rejected send): it is NOT
+  // server evidence, so it must fail the clock, not flip it to a "Sent" check.
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "system_message",
+    data: "lost",
+    fails_pending: true,
+  });
+  expect(snap().feed[0]?.id).toBe(bubbleId); // same entry, updated in place
+  expect(snap().feed[0]?.pending).toBeUndefined(); // no longer in flight
+  expect(snap().feed[0]?.failed).toBe(true); // undelivered → an error tick
+  // The control flag never leaks onto the stored notice entry.
+  expect("fails_pending" in (snap().feed[1] ?? {})).toBe(false);
+  expect(snap().feed[1]?.failed).toBeUndefined();
+});
+
+test("a normal server push confirms pending (check) and never sets failed", () => {
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "user_message",
+    data: "hi",
+    pending: true,
+  });
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text_streaming",
+    data: "y",
+  });
+  expect(snap().feed[0]?.pending).toBeUndefined();
+  expect(snap().feed[0]?.failed).toBeUndefined();
 });
 
 test("distinct conversations get distinct scopes", () => {

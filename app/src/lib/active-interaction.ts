@@ -50,20 +50,28 @@ export function interactionQuestionCount(
 }
 
 /**
- * Which completion-notification body an ended turn takes. A sequence with ANY
- * question steps reads as the (pluralized) question body; a connect-only
- * sequence reads as the connect body; everything else (a clean finish, a user
- * stop, a provider error) reads as the plain "finished" body. Pure so the copy
- * mapping is unit-tested without the event plumbing.
+ * Which completion-notification body an ended turn takes, by FIRST unmet need
+ * (steps are ordered questions → sign-in → connections). A sequence with ANY
+ * question steps reads as the (pluralized) question body; else a sign-in step
+ * reads as the sign-in body; else a connect step reads as the connect body;
+ * everything else (a clean finish, a user stop, a provider error) reads as the
+ * plain "finished" body. Pure so the copy mapping is unit-tested without the
+ * event plumbing.
  */
 export function interactionNotificationBodyKey(
   interaction: PendingInteraction | null | undefined,
 ):
   | "sessionComplete.body"
   | "sessionComplete.question"
+  | "sessionComplete.signin"
   | "sessionComplete.connect" {
   if (interactionQuestionCount(interaction) > 0)
     return "sessionComplete.question";
+  if (
+    isPendingInteraction(interaction) &&
+    interaction.steps.some((step) => step.kind === "signin")
+  )
+    return "sessionComplete.signin";
   if (
     isPendingInteraction(interaction) &&
     interaction.steps.some((step) => step.kind === "connect")

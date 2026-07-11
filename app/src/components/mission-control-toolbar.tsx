@@ -1,3 +1,4 @@
+import type { KanbanItem } from "@houston-ai/board";
 import {
   Button,
   cn,
@@ -13,16 +14,24 @@ import { Archive, ArrowLeft, ChevronDown, ListFilter } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { shortcutLabel } from "../lib/shortcuts";
 import type { Agent } from "../lib/types";
+import { MissionPersonFilter } from "./mission-person-filter";
 import { MissionSearchInput } from "./mission-search-input";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
 import { HoustonLogo } from "./shell/experience-card";
 
 interface MissionControlToolbarProps {
   agents: Agent[];
+  /** Visible board items (post agent-filter) — feeds the person-filter roster.
+   *  Omitted by the Archived toolbar, which has no attribution filter. */
+  items?: KanbanItem[];
   filterPath: string;
+  /** Selected person for the attribution filter, or `null` for Everyone. */
+  filterUserId?: string | null;
   search: string;
   isSearchingText: boolean;
   onFilterPathChange: (path: string) => void;
+  /** When set, renders the filter-by-person control (active board only). */
+  onFilterUserIdChange?: (userId: string | null) => void;
   onSearchChange: (value: string) => void;
   /** Whether the Archived view is currently showing (highlights the toggle). */
   archivedActive: boolean;
@@ -41,10 +50,13 @@ interface MissionControlToolbarProps {
 
 export function MissionControlToolbar({
   agents,
+  items,
   filterPath,
+  filterUserId,
   search,
   isSearchingText,
   onFilterPathChange,
+  onFilterUserIdChange,
   onSearchChange,
   archivedActive,
   onToggleArchived,
@@ -129,6 +141,14 @@ export function MissionControlToolbar({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            {onFilterUserIdChange && (
+              <MissionPersonFilter
+                items={items ?? []}
+                filterUserId={filterUserId ?? null}
+                onFilterUserIdChange={onFilterUserIdChange}
+                collapsed={collapsed}
+              />
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

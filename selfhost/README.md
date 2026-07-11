@@ -20,7 +20,7 @@ and exposes only Caddy on ports `80` and `443`.
 
 ## Local Usage
 
-Run these from the repo root, for example `~/dev/houston-web`.
+Run these from the repo root, for example `~/dev/houston`.
 
 ```sh
 docker build -f selfhost/Dockerfile -t houston/self-host:local .
@@ -41,8 +41,9 @@ curl -H "Authorization: Bearer test" http://127.0.0.1:4318/v1/capabilities
 
 ## Managed Engine Pod Target
 
-Houston's managed cloud runs this same open host/runtime stack as Kubernetes
-engine pods, without Caddy and with local process code execution disabled:
+Houston's managed deployment runs this same open host/runtime stack as
+Kubernetes engine pods, without Caddy. Local process code execution runs inside
+each single-user container:
 
 ```sh
 docker build \
@@ -68,14 +69,14 @@ curl http://127.0.0.1:4318/health
 curl -H "Authorization: Bearer test" http://127.0.0.1:4318/v1/capabilities
 ```
 
-Expected capabilities include `"codeExecution":"disabled"` and
+Expected capabilities include `"codeExecution":"local-bash"` and
 `"amazon-bedrock"` in `providers`. `integrations` reflects what you configured:
 it lists `"composio"` only when the container has a `COMPOSIO_API_KEY`
 (platform-mode Composio — create a free project at composio.dev and pass
 `-e COMPOSIO_API_KEY=...`; the single-user pod acts as one Composio `user_id`).
-Without the key, integrations are simply off (`"integrations":[]`). The
-private gateway supplies `HOUSTON_HOST_TOKEN`, mounts `/data` on the user's PVC,
-and fronts the pod with Supabase-authenticated proxying.
+Without the key, integrations are simply off (`"integrations":[]`). A managed
+deployment supplies `HOUSTON_HOST_TOKEN`, mounts `/data` on the user's persistent
+volume, and fronts the pod with authenticated proxying.
 
 ### Published GHCR Image
 
@@ -192,7 +193,7 @@ Run these on the VPS:
 
 ```sh
 git clone https://github.com/gethouston/houston
-cd houston-web/selfhost
+cd houston/selfhost
 cp .env.example .env
 ```
 
@@ -212,16 +213,16 @@ Start the engine and Caddy:
 docker compose up -d --build
 ```
 
-Watch live engine logs from `houston-web/selfhost`:
+Watch live engine logs from `houston/selfhost`:
 
 ```sh
 docker compose logs -f --tail=200 host
 ```
 
-If you are not in `houston-web/selfhost`, pass the compose file:
+If you are not in `houston/selfhost`, pass the compose file:
 
 ```sh
-docker compose -f /path/to/houston-web/selfhost/docker-compose.yml logs -f --tail=200 host
+docker compose -f /path/to/houston/selfhost/docker-compose.yml logs -f --tail=200 host
 ```
 
 Verify from any machine:
@@ -249,7 +250,7 @@ pnpm start
 
 ### Remote Web Client, Served From The VPS
 
-Run on the VPS from repo root `houston-web/`:
+Run on the VPS from repo root `houston/`:
 
 ```sh
 pnpm install
@@ -283,7 +284,7 @@ Open the Vite URL it prints.
 
 ## Operations
 
-Run compose commands from `houston-web/selfhost` on the VPS.
+Run compose commands from `houston/selfhost` on the VPS.
 
 | Task | Command |
 |---|---|
@@ -295,8 +296,15 @@ Run compose commands from `houston-web/selfhost` on the VPS.
 All state lives in the Docker volume mounted at `/data`: workspaces, agents,
 skills, routines, and provider credentials.
 
-Security: token gates every route except `/engine/health`; treat it like a
+Security: the token gates every route that reads or changes user data. Public
+metadata routes include `/engine/health`, `/engine/v1/version`,
+`/engine/v1/capabilities`, and `/engine/v1/catalog`. Treat the token like a
 password. On a VPS, expose Caddy only, never port `4318` directly. Because you
 supply `HOUSTON_HOST_TOKEN` via env, the host redacts it in its
 `HOUSTON_HOST_LISTENING` boot banner (you see `token_fp=…` + `token_len=…`, not
 the value) so the credential never lands in `docker compose logs`.
+
+## Other Deployment Targets
+
+- [Deploy on Railway](deploy-railway.md)
+- [Deploy on a Hostinger VPS](deploy-hostinger.md)

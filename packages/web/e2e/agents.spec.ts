@@ -1,9 +1,12 @@
+import { createAgent } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
 
 /**
- * Agent lifecycle through the UI. Creating an agent goes New agent → Start from
- * scratch → name + create, which POSTs to the fake host's `/agents` and lands
- * the new agent in the sidebar (via the AgentsChanged reactivity event).
+ * Agent lifecycle through the UI. Creating an agent goes New agent → From
+ * scratch → name + create, which POSTs to the fake host's `/agents`, fires the
+ * agent's self-setup mission, and auto-opens its chat panel (dismissed by the
+ * shared `createAgent` helper), landing the new agent in the sidebar (via the
+ * AgentsChanged reactivity event).
  */
 test("creates an agent and shows it in the sidebar", async ({ page }) => {
   await page.goto("/");
@@ -11,16 +14,11 @@ test("creates an agent and shows it in the sidebar", async ({ page }) => {
   // Sidebar starts with the one seeded agent.
   await expect(page.getByText("Your Agents")).toBeVisible();
 
-  await page.getByRole("button", { name: "New agent" }).click();
-  await page.getByText("From scratch").click();
+  await createAgent(page, "Marketing Bot");
 
-  await page
-    .getByPlaceholder("e.g. Product manager, Sales, Jerry")
-    .fill("Marketing Bot");
-  await page.getByRole("button", { name: "Create Agent" }).click();
-
-  // The new agent shows up (sidebar list + selected header both carry the name).
-  await expect(page.getByText("Marketing Bot").first()).toBeVisible();
+  // Back in the shell, the new agent shows up in the sidebar.
+  const sidebar = page.locator("[data-tour-target='agents']");
+  await expect(sidebar.getByText("Marketing Bot").first()).toBeVisible();
 });
 
 /**
@@ -34,14 +32,7 @@ test("switches between two agents", async ({ page }) => {
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
 
   // Create a second agent; it becomes selected, with an empty board of its own.
-  await page.getByRole("button", { name: "New agent" }).click();
-  await page.getByText("From scratch").click();
-  await page
-    .getByPlaceholder("e.g. Product manager, Sales, Jerry")
-    .fill("Research Bot");
-  await page.getByRole("button", { name: "Create Agent" }).click();
-
-  await expect(page.getByText("Research Bot").first()).toBeVisible();
+  await createAgent(page, "Research Bot");
   await expect(page.getByText("Plan a trip to Tokyo")).toHaveCount(0);
 
   // Switch back to the seeded agent → its mission returns.
@@ -54,7 +45,7 @@ test("switches between two agents", async ({ page }) => {
 
 /**
  * Renaming via the (hover-gated) agent kebab → Rename. The menu items are
- * Rename / Change color / Share with a friend / Delete; Rename focuses an inline
+ * Rename / Change color / Export a copy / Delete; Rename focuses an inline
  * field, which we replace and submit.
  */
 test("renames an agent", async ({ page }) => {

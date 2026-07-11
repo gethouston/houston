@@ -87,6 +87,24 @@ assistant reply at turn END (both turn-stamped) — the identity contract
   DIFFERENT turnId and the client must settle its turn from history by turnId
   (the turn-boundary spec).
 
+**Teams / integrations arming.** Single-player alone can't reach the Teams-shaped
+state the locked browse rows (and, later, the admin policy pages) need. Two
+controls arm it (documented in the `@houston/fake-host` README):
+
+- `POST /__test__/capabilities` (`Partial<Capabilities>`) — merge a partial into
+  `/v1/capabilities`. `{ integrations:["composio"], multiplayer:true,
+  teams:true, role:"owner" }` puts the agent Integrations tab into Teams mode;
+  `{ integrations:["composio"] }` alone is single-player-with-apps.
+- `POST /__test__/agent-settings` (`{ allowedToolkits?, orgAllowedToolkits?,
+  allowedModels?, access? }`) — the Teams v2 ceilings the fake host serves at
+  `/v1/agents/:slug/settings` + `/v1/org/settings`. The effective allowlist
+  (agent ∩ org) splits the browse catalog into connectable vs locked rows
+  (`integrations-locked.spec.ts`). `null` = unrestricted, `[]` = none.
+
+The seeded catalog (`SEED_TOOLKIT_SLUGS`, exported for specs) holds 15 A-Z apps,
+enough that a tight allowlist blocks past the locked preview cap (8) so the
+"+N more" overflow is exercisable.
+
 **Board.** The mission board is files-first: it reads/writes
 `.houston/activity/activity.json` through `/agents/:id/agentfile/*`. The fake host
 backs that with a real in-memory store, seeded with two missions, and unified with

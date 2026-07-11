@@ -27,6 +27,12 @@ export function AgentWarmingDialog() {
   const anyWarming = useAgentProvisioningStore(
     (s) => Object.keys(s.provisioning).length > 0,
   );
+  // Any entry past its normal TTL (HOU-693 regression: this used to clear
+  // silently instead of surfacing here). Still warming, just slower than
+  // usual — the copy below says so instead of implying failure.
+  const anyStalled = useAgentProvisioningStore((s) =>
+    Object.values(s.provisioning).some((entry) => entry.timedOut),
+  );
 
   // The agent finished while the notice was up: the blocked action is
   // available again, so the notice has nothing left to say.
@@ -40,9 +46,19 @@ export function AgentWarmingDialog() {
         <div className="flex flex-col items-center gap-5 py-4 text-center">
           <HoustonAvatar diameter={72} running />
           <div className="flex flex-col gap-2">
-            <DialogTitle>{t("shell:agentProvisioning.title")}</DialogTitle>
+            <DialogTitle>
+              {t(
+                anyStalled
+                  ? "shell:agentProvisioning.stalledTitle"
+                  : "shell:agentProvisioning.title",
+              )}
+            </DialogTitle>
             <DialogDescription>
-              {t("shell:agentProvisioning.blockedBody")}
+              {t(
+                anyStalled
+                  ? "shell:agentProvisioning.stalledBody"
+                  : "shell:agentProvisioning.blockedBody",
+              )}
             </DialogDescription>
           </div>
           <Button className="min-w-28" onClick={() => setOpen(false)}>

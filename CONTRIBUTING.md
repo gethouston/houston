@@ -19,16 +19,18 @@ If you're unsure whether something fits, open an issue and ask. Cheaper than a c
 
 ```bash
 git clone https://github.com/gethouston/houston.git
-cd houston-web
+cd houston
 pnpm install
 cargo check --workspace
 ```
+
+Before changing architecture or shared behavior, read [`CLAUDE.md`](CLAUDE.md) and the relevant notes in [`knowledge-base/`](knowledge-base/). They describe the current host/runtime design, package boundaries, and repository conventions.
 
 ## Development
 
 ```bash
 # Run the Houston app
-cd app && pnpm tauri dev
+cd app && pnpm start
 
 # Run the TypeScript host local profile (the engine)
 cd packages/host && pnpm dev
@@ -49,7 +51,6 @@ cargo test --workspace
 - `ui/` — React packages (@houston-ai/*)
 - `packages/` — the single TypeScript engine: `runtime` (pi, the agent loop), `host`, `domain`, `protocol`, plus `web`
 - `app/` — Houston App: `app/src` React frontend + `app/src-tauri` Rust shell (spawns the host sidecar)
-- `cloud/` — Houston Cloud docs and operations
 
 ## Pull Requests
 

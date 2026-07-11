@@ -22,10 +22,70 @@ test("seq follows the folded frames' seq, including through the terminal frame",
     data: { name: "ls", args: {} },
     seq: 4,
   });
-  expect(s).toEqual({ running: true, partial: "Hello", seq: 4 });
+  expect(s).toEqual({
+    running: true,
+    partial: "Hello",
+    seq: 4,
+    tools: [{ name: "ls", input: {} }],
+  });
   s = reduceSnapshot(s, { type: "done", data: null, seq: 5 });
   // Turn over, watermark kept — the counter outlives the turn.
   expect(s).toEqual({ running: false, partial: "", seq: 5 });
+});
+
+test("thinking + tools accumulate for the running turn and reset on the next (HOU-717)", () => {
+  let s = reduceSnapshot(EMPTY_SNAPSHOT, {
+    type: "user",
+    data: { content: "go", ts: 1 },
+    seq: 1,
+  });
+  s = reduceSnapshot(s, { type: "thinking", data: "plan ", seq: 2 });
+  s = reduceSnapshot(s, { type: "thinking", data: "steps", seq: 3 });
+  s = reduceSnapshot(s, {
+    type: "tool_start",
+    data: { name: "bash", args: { cmd: "ls" } },
+    seq: 4,
+  });
+  // The started tool is tracked WITHOUT isError — it is still running.
+  expect(s).toEqual({
+    running: true,
+    partial: "",
+    seq: 4,
+    thinking: "plan steps",
+    tools: [{ name: "bash", input: { cmd: "ls" } }],
+  });
+  s = reduceSnapshot(s, {
+    type: "tool_end",
+    data: { name: "bash", isError: false, content: "file-a\nfile-b" },
+    seq: 5,
+  });
+  s = reduceSnapshot(s, { type: "text", data: "done", seq: 6 });
+  // text carries the activity through; tool_end stamps the ended flag and
+  // the output preview.
+  expect(s).toEqual({
+    running: true,
+    partial: "done",
+    seq: 6,
+    thinking: "plan steps",
+    tools: [
+      {
+        name: "bash",
+        input: { cmd: "ls" },
+        isError: false,
+        content: "file-a\nfile-b",
+      },
+    ],
+  });
+  // A NEW turn starts clean: no inherited thinking/tools (and the omitted
+  // fields must not serialize).
+  s = reduceSnapshot(s, {
+    type: "user",
+    data: { content: "next", ts: 2 },
+    seq: 7,
+  });
+  expect(s).toEqual({ running: true, partial: "", seq: 7 });
+  expect("thinking" in s).toBe(false);
+  expect("tools" in s).toBe(false);
 });
 
 test("an unsequenced event keeps the previous watermark", () => {

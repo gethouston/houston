@@ -18,28 +18,30 @@ import { SkillRemoteError } from "./remote-error";
 
 const GH_HEADERS = { "User-Agent": "houston-skills/1.0" };
 
-/** Fetch a SKILL.md's raw content, trying the `main` then `master` branch. */
+/**
+ * Fetch a SKILL.md's raw content from the repo's default branch. A single
+ * request to the `HEAD` ref on raw.githubusercontent.com resolves whatever the
+ * default branch is (main, master, or anything else), so this covers every
+ * repo in one round-trip. The previous concurrent `main`+`master` double-probe
+ * both cost an extra request on every call AND silently 404'd on repos whose
+ * default branch was neither (a latent bug). raw.githubusercontent.com is
+ * CDN-served and effectively not rate-limited, unlike api.github.com.
+ */
 export async function fetchSkillMdAtPath(
   fetchImpl: typeof fetch,
   source: string,
   path: string,
 ): Promise<string> {
-  for (const branch of ["main", "master"]) {
-    try {
-      const res = await fetchImpl(
-        `https://raw.githubusercontent.com/${source}/${branch}/${path}`,
-        { headers: GH_HEADERS },
-      );
-      if (res.ok) return await res.text();
-    } catch {
-      // Network failure on one branch — try the next; the caller surfaces
-      // a typed error when both miss.
-    }
-  }
-  throw new SkillRemoteError(
-    "offline",
-    `Could not fetch '${path}' from ${source}`,
+  const res = await fetchImpl(
+    `https://raw.githubusercontent.com/${source}/HEAD/${path}`,
+    { headers: GH_HEADERS },
   );
+  if (!res.ok)
+    throw new SkillRemoteError(
+      "offline",
+      `Could not fetch '${path}' from ${source}`,
+    );
+  return res.text();
 }
 
 /**

@@ -1,4 +1,7 @@
 {
+  "welcome": {
+    "greeting": "Olá! Eu sou {{name}}, seu novo agente. Me conte com o que você gostaria de ajuda: você pode descrever uma tarefa com as suas palavras, compartilhar alguns detalhes sobre como gosta que as coisas sejam feitas ou anexar arquivos que me deem contexto. Quanto mais você me contar, melhor o meu trabalho vai se encaixar no que você precisa. Com o que você gostaria de começar?"
+  },
   "composer": {
     "placeholder": "Pergunte qualquer coisa...",
     "fileAlreadyInChat": "Arquivo já está no chat",
@@ -38,14 +41,42 @@
     "description": "Digite uma mensagem para falar com seu assistente."
   },
   "questionCard": {
-    "placeholder": "Digite sua resposta...",
-    "send": "Enviar",
+    "placeholder": "Digite outra coisa...",
+    "send": "Avançar",
     "back": "Voltar",
     "forward": "Avançar",
-    "progress": "{{current}} de {{total}}"
+    "skip": "Pular",
+    "dismiss": "Descartar",
+    "progress": "Etapa {{current}} de {{total}}"
   },
   "interaction": {
-    "connectedLine": "Conectou {{name}}."
+    "connectedLine": "Conectou {{name}}.",
+    "signedInLine": "Sessão iniciada no Houston.",
+    "signedInFollowup": "Já entrei. Pode continuar.",
+    "signinReason": "Entre no Houston para continuar.",
+    "signinTitle": "Entre no Houston",
+    "signinDescription": "Suas contas continuam sendo suas; o agente age em seu nome.",
+    "signin": "Entrar",
+    "connectTitle": "Conectar {{app}}"
+  },
+  "planReady": {
+    "title": "Plano pronto",
+    "coworkerTitle": "Continuar no modo Colega",
+    "coworkerDescription": "Trabalha com você e pergunta quando tem dúvidas.",
+    "autopilotTitle": "Continuar no modo Piloto automático",
+    "autopilotDescription": "Termina sozinho. Sem perguntas.",
+    "keepPlanningTitle": "Continuar planejando",
+    "keepPlanningDescription": "Fique aqui e ajuste o plano.",
+    "startWorkingMessage": "Pode seguir com o plano.",
+    "runAutopilotMessage": "Pode terminar por conta própria."
+  },
+  "suggestReusable": {
+    "title": "Salve isto para a próxima vez",
+    "skillTitle": "Salvar como Habilidade",
+    "routineTitle": "Salvar como Rotina",
+    "notNow": "Agora não",
+    "saveSkillMessage": "Salve o que acabei de fazer como uma Habilidade chamada \"{{title}}\".",
+    "saveRoutineMessage": "Configure isto como uma Rotina recorrente chamada \"{{title}}\"."
   },
   "errors": {
     "sessionStart": "Não foi possível iniciar a sessão: {{error}}",
@@ -55,6 +86,9 @@
   },
   "toolRuntimeError": {
     "retryPrompt": "Tente de novo."
+  },
+  "providerError": {
+    "reconnectedContinue": "Entrei de novo. Por favor, continue de onde parou. Se ainda não respondeu minha última mensagem, responda agora."
   },
   "attachmentIssues": {
     "title": "Alguns arquivos não foram anexados",
@@ -88,8 +122,8 @@
   "modeSelector": {
     "mode": "Modo",
     "modeValue": "Modo: {{mode}}",
-    "doer": "Executor",
-    "doerDescription": "Faz as coisas e pergunta a você quando tem dúvidas.",
+    "coworker": "Colega",
+    "coworkerDescription": "Trabalha com você: faz as coisas e pergunta quando tem dúvidas.",
     "planner": "Planejador",
     "plannerDescription": "Primeiro escreve um plano para você aprovar. Não faz alterações.",
     "autopilot": "Piloto automático",
@@ -120,10 +154,8 @@
       "back": "Voltar",
       "providersLabel": "Provedores",
       "modelsLabel": "Modelos",
-      "resultsLabel": "Resultados",
       "loading": "Carregando provedores…",
       "empty": "Nenhum modelo encontrado.",
-      "emptyHint": "Tente outro termo de busca.",
       "noProviders": "Nenhum provedor conectado ainda."
     },
     "modelDescriptions": {

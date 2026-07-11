@@ -9,6 +9,10 @@
  * locale (matching how the in-pane tool rows have always rendered).
  */
 
+// Two dialects share these maps: the Claude tool names (PascalCase) and the
+// pi coding-agent tool names (lowercase: bash/read/write/edit/grep/find/ls).
+// Both run through the same engine, so both must resolve to the same verbs —
+// an unmapped name leaks a raw "bash" row into the mission log (HOU-717).
 const ACTIVE_LABELS: Record<string, string> = {
   Read: "Reading file",
   Write: "Writing file",
@@ -20,6 +24,13 @@ const ACTIVE_LABELS: Record<string, string> = {
   WebFetch: "Fetching page",
   ToolSearch: "Looking up tools",
   Agent: "Delegating task",
+  read: "Reading file",
+  write: "Writing file",
+  edit: "Editing file",
+  bash: "Running command",
+  find: "Searching files",
+  grep: "Searching code",
+  ls: "Listing files",
 };
 
 const DONE_LABELS: Record<string, string> = {
@@ -33,6 +44,13 @@ const DONE_LABELS: Record<string, string> = {
   WebFetch: "Fetched page",
   ToolSearch: "Looked up tools",
   Agent: "Delegated task",
+  read: "Read file",
+  write: "Wrote file",
+  edit: "Edited file",
+  bash: "Ran command",
+  find: "Searched files",
+  grep: "Searched code",
+  ls: "Listed files",
 };
 
 /** The bare tool name with any MCP `server__tool` prefix stripped. */

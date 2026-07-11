@@ -90,6 +90,14 @@ export class TurnChannel implements RuntimeChannel {
     );
   }
 
+  async busy(ctx: ChannelCtx): Promise<boolean> {
+    return this.deps.relay.busy(ctx.agent.id);
+  }
+
+  async runtimeStatus(ctx: ChannelCtx) {
+    return (await this.busy(ctx)) ? "running" : "asleep";
+  }
+
   async teardown(ctx: ChannelCtx): Promise<void> {
     await this.deps.vfs.deletePrefix(prefixFor(ctx.workspace, ctx.agent));
   }

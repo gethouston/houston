@@ -1,6 +1,8 @@
 export interface Skill {
   id: string;
   name: string;
+  /** Display title (accents/casing the slug can't carry); null → humanize name. */
+  title?: string | null;
   description: string;
   instructions: string;
   file_path: string;
@@ -12,6 +14,15 @@ export interface CommunitySkill {
   name: string;
   installs: number;
   source: string;
+}
+
+/** Full detail fetched on-demand for a community skill, read from its real SKILL.md. */
+export interface CommunitySkillPreview {
+  title: string | null;
+  description: string;
+  image: string | null;
+  category: string | null;
+  tags: string[];
 }
 
 /** A skill discovered in a GitHub repo */

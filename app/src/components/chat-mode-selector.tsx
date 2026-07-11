@@ -6,7 +6,7 @@ import {
 } from "@houston-ai/core";
 import type { Agent } from "@houston-ai/engine-client";
 import type { LucideIcon } from "lucide-react";
-import { Check, ChevronDown, NotebookPen, Rocket, Zap } from "lucide-react";
+import { Check, ChevronDown, Handshake, ListTodo, Rocket } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { modelSelectorDecision } from "../lib/model-selector-lock";
@@ -27,24 +27,24 @@ interface ChatModeSelectorProps {
   agent?: Pick<Agent, "access"> | null;
 }
 
-/** Doer = execute (acts on the world), Planner = plan (read-only, writes a
- *  plan), Autopilot = auto (fire-and-forget, no blocking tools). Wire values
- *  stay `execute`/`plan`/`auto`; only the persona labels change. */
+/** Coworker = execute (works with you, asks when unsure), Planner = plan
+ *  (read-only, writes a plan), Autopilot = auto (fire-and-forget, no blocking
+ *  tools). Wire values stay `execute`/`plan`/`auto`; only the labels change. */
 const MODE_ICONS: Record<TurnMode, LucideIcon> = {
-  execute: Zap,
-  plan: NotebookPen,
+  execute: Handshake,
+  plan: ListTodo,
   auto: Rocket,
 };
 
-// Top→bottom as an autonomy dial: Planner (looks, doesn't touch) → Doer (acts,
-// asks when unsure) → Autopilot (acts and never stops to ask).
+// Top→bottom as an autonomy dial: Planner (looks, doesn't touch) → Coworker
+// (acts, asks when unsure) → Autopilot (acts and never stops to ask).
 const MODE_ORDER: readonly TurnMode[] = ["plan", "execute", "auto"];
 
 /**
  * "Mode" picker, rendered beside {@link ChatModelSelector} in the composer.
- * Three personas — Planner (read-only planning), Doer (execute), and Autopilot
- * (auto, fire-and-forget) — each with an icon in a soft tile, a name, and a
- * one-line description. The trigger is the
+ * Three modes — Planner (read-only planning), Coworker (execute), and
+ * Autopilot (auto, fire-and-forget) — each with an icon in a soft tile, a
+ * name, and a one-line description. The trigger is the
  * same h-7 muted pill as the model + effort selectors; the menu matches the
  * model picker's card (rounded-2xl, bordered, shadowed, roomy rows). Hidden only
  * for a member on a pre-Teams multiplayer host (mirrors the other selectors);
@@ -60,12 +60,12 @@ export function ChatModeSelector({
   if (!modelSelectorDecision(capabilities, agent).show) return null;
 
   const labels: Record<TurnMode, string> = {
-    execute: t("modeSelector.doer"),
+    execute: t("modeSelector.coworker"),
     plan: t("modeSelector.planner"),
     auto: t("modeSelector.autopilot"),
   };
   const descriptions: Record<TurnMode, string> = {
-    execute: t("modeSelector.doerDescription"),
+    execute: t("modeSelector.coworkerDescription"),
     plan: t("modeSelector.plannerDescription"),
     auto: t("modeSelector.autopilotDescription"),
   };
@@ -87,7 +87,7 @@ export function ChatModeSelector({
             type="button"
             aria-label={t("modeSelector.modeValue", { mode: labels[mode] })}
             title={descriptions[mode]}
-            className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground whitespace-nowrap hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <ActiveIcon className="size-3.5" />
             <span>{labels[mode]}</span>
@@ -109,13 +109,11 @@ export function ChatModeSelector({
               <DropdownMenuItem
                 key={m}
                 onSelect={() => onSelect(m)}
-                className="items-start gap-3 rounded-xl px-2.5 py-2.5"
+                className="items-center gap-3 rounded-xl px-2.5 py-2.5"
               >
-                <span className="mt-px flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-foreground">
-                  <Icon className="size-4 text-foreground" />
-                </span>
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="text-sm font-medium text-foreground">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Icon className="size-4 shrink-0 text-foreground" />
                     {labels[m]}
                   </span>
                   <span className="line-clamp-2 text-xs text-muted-foreground">
@@ -123,7 +121,7 @@ export function ChatModeSelector({
                   </span>
                 </div>
                 {active && (
-                  <Check className="mt-1 size-4 shrink-0 text-foreground" />
+                  <Check className="size-4 shrink-0 text-foreground" />
                 )}
               </DropdownMenuItem>
             );

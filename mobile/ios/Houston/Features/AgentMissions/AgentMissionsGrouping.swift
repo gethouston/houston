@@ -17,8 +17,6 @@ struct AgentMissionsGrouping: Equatable, Sendable {
     /// True when there are no active missions in any section (drives the
     /// board-empty state; the archived count is considered separately).
     var isEmpty: Bool { sections.isEmpty }
-    /// True when any mission is running — feeds the header avatar's running glow.
-    var hasRunning: Bool { sections.contains { $0.column == .running } }
 }
 
 /// Pure grouping for the per-agent missions screen — no SwiftUI, so it unit-tests

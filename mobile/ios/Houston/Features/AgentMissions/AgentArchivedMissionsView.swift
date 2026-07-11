@@ -7,7 +7,8 @@ import SwiftUI
 ///
 /// Reads the agent's activities from the shared `\.agentsOverview` seam (already
 /// retained by the missions screen underneath), filters to `archived`, and shows
-/// them most-recent first. The visual reuses ``MissionCardView``.
+/// them most-recent first. The visual reuses the same slim ``MissionRowContent``
+/// as the active list, so the two screens read as one sober conversation list.
 struct AgentArchivedMissionsView: View {
     @Environment(\.theme) private var theme
     @Environment(\.agentsOverview) private var overview
@@ -35,13 +36,11 @@ struct AgentArchivedMissionsView: View {
                 List {
                     ForEach(cards) { card in
                         Button { onOpen(card.chatRoute) } label: {
-                            MissionCardView(card: card)
+                            MissionRowContent(line: MissionRowLine.derive(card))
                         }
                         .buttonStyle(.plain)
-                        .listRowInsets(EdgeInsets(top: Spacing.space6, leading: Spacing.space16,
-                                                  bottom: Spacing.space6, trailing: Spacing.space16))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: Spacing.space10, leading: Spacing.space16,
+                                                  bottom: Spacing.space10, trailing: Spacing.space16))
                     }
                 }
                 .listStyle(.plain)

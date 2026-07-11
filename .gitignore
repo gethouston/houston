@@ -9,6 +9,8 @@ target/
 .agents/
 !/store/agents/*/.agents/
 !/store/agents/*/.agents/**
+!/store/agents-i18n/*/*/.agents/
+!/store/agents-i18n/*/*/.agents/**
 .claude/skills/
 .windsurf/
 .codex/

@@ -4,14 +4,8 @@ import {
   buildAssistantInstructions,
   defaultAssistantSetup,
 } from "./personal-assistant-artifacts.ts";
-import { TUTORIAL_MISSION } from "./personal-assistant-missions.ts";
 
-test("tutorial mission is the single Plan-my-next-working-day skill", () => {
-  assert.equal(TUTORIAL_MISSION.id, "plan-next-workday");
-  assert.equal(TUTORIAL_MISSION.skillName, "plan-my-next-working-day");
-});
-
-test("assistant instructions interpolate the mission title", () => {
+test("assistant instructions interpolate the assistant name + focus", () => {
   const setup = defaultAssistantSetup({
     workspaceName: "Personal",
     assistantName: "Personal assistant",
@@ -19,11 +13,26 @@ test("assistant instructions interpolate the mission title", () => {
     approvalRule: "Ask first.",
   });
 
-  const instructions = buildAssistantInstructions(
-    setup,
-    "Plan my next working day",
-  );
+  const instructions = buildAssistantInstructions(setup);
 
   assert.match(instructions, /# Personal assistant/);
-  assert.match(instructions, /Plan my next working day/);
+  assert.match(instructions, /Help me plan\./);
+  assert.match(instructions, /Ask first\./);
+});
+
+test("assistant instructions carry no stale 'First workflow' section", () => {
+  const setup = defaultAssistantSetup({
+    workspaceName: "Personal",
+    assistantName: "Personal assistant",
+    focus: "Help me plan.",
+    approvalRule: "Ask first.",
+  });
+
+  const instructions = buildAssistantInstructions(setup);
+
+  // The mission/firstWorkflow story is gone — the seeded routine + skill are the
+  // day-one workflows now, so the instructions point at those instead.
+  assert.doesNotMatch(instructions, /First workflow/i);
+  assert.match(instructions, /morning-briefing routine/);
+  assert.match(instructions, /meeting-prep skill/);
 });
