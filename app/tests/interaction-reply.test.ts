@@ -6,8 +6,10 @@ import type { ChatInteractionAnswer } from "@houston-ai/chat";
 import { decodeInteractionAnswersMessage } from "../../ui/chat/src/interaction-answers-message.ts";
 import { isAutoContinueMessage } from "../src/lib/auto-continue-message.ts";
 import {
+  type ConnectOutcome,
   composeInteractionReply,
   encodeInteractionAnswersMessage,
+  finalConnectNames,
 } from "../src/lib/interaction-reply.ts";
 
 const answers: ChatInteractionAnswer[] = [
@@ -175,6 +177,60 @@ describe("composeInteractionReply", () => {
     strictEqual(reply.includes("Signed in to Houston."), true);
     strictEqual(reply.includes("Skipped connecting Gmail."), true);
     strictEqual(reply.includes("I've signed in. Please continue."), false);
+  });
+});
+
+describe("finalConnectNames", () => {
+  const outcomes = (
+    entries: [string, ConnectOutcome][],
+  ): Map<string, ConnectOutcome> => new Map(entries);
+
+  it("splits final outcomes into connected + skipped, in step order", () => {
+    const { connectedNames, skippedConnectNames } = finalConnectNames(
+      ["c1", "c2", "c3"],
+      outcomes([
+        ["c1", { name: "Gmail", connected: true }],
+        ["c2", { name: "Slack", connected: false }],
+        ["c3", { name: "GitHub", connected: true }],
+      ]),
+    );
+    deepStrictEqual(connectedNames, ["Gmail", "GitHub"]);
+    deepStrictEqual(skippedConnectNames, ["Slack"]);
+  });
+
+  // The reconsider fix: a step skipped then connected records connected LAST, so
+  // it names "Connected", never a stale "Skipped connecting". One line per step.
+  it("reports Connected for a step skipped then reconsidered (last write wins)", () => {
+    const map = outcomes([["c1", { name: "Slack", connected: false }]]);
+    // The user walked Back and connected after all — the panel overwrites.
+    map.set("c1", { name: "Slack", connected: true });
+    const { connectedNames, skippedConnectNames } = finalConnectNames(
+      ["c1"],
+      map,
+    );
+    deepStrictEqual(connectedNames, ["Slack"]);
+    deepStrictEqual(skippedConnectNames, []);
+  });
+
+  // Skip -> Back -> skip again: the key overwrite keeps exactly ONE skip line.
+  it("keeps a single skip line when a step is skipped more than once", () => {
+    const map = outcomes([["c1", { name: "Gmail", connected: false }]]);
+    map.set("c1", { name: "Gmail", connected: false });
+    const { connectedNames, skippedConnectNames } = finalConnectNames(
+      ["c1"],
+      map,
+    );
+    deepStrictEqual(skippedConnectNames, ["Gmail"]);
+    deepStrictEqual(connectedNames, []);
+  });
+
+  it("omits a step that was never reached (no recorded outcome)", () => {
+    const { connectedNames, skippedConnectNames } = finalConnectNames(
+      ["c1", "c2"],
+      outcomes([["c1", { name: "Gmail", connected: true }]]),
+    );
+    deepStrictEqual(connectedNames, ["Gmail"]);
+    deepStrictEqual(skippedConnectNames, []);
   });
 });
 

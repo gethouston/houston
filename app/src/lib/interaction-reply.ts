@@ -76,6 +76,38 @@ export function composeInteractionReply(args: {
   return args.hasQuestionSteps ? body : encodeAutoContinueMessage(body);
 }
 
+/** One connect step's FINAL outcome in a walked sequence: the app's display
+ *  name and whether it ended connected (true) or skipped (false). A step skipped
+ *  then reconsidered records `connected: true` — the LAST outcome for a step id
+ *  wins, so the composed reply never carries a stale "Skipped ..." line. */
+export interface ConnectOutcome {
+  name: string;
+  connected: boolean;
+}
+
+/**
+ * Split the connect steps' FINAL outcomes into the connected + skipped name
+ * lists the reply names, in step order. Keyed by step id, so recording a
+ * connect over an earlier skip for the SAME step (a reconsider) — or a repeated
+ * skip — yields exactly one entry per step, in the connected OR the skipped
+ * list, never both. Steps with no recorded outcome (never reached) are omitted.
+ */
+export function finalConnectNames(
+  connectStepIds: string[],
+  outcomes: Map<string, ConnectOutcome>,
+): { connectedNames: string[]; skippedConnectNames: string[] } {
+  const connectedNames: string[] = [];
+  const skippedConnectNames: string[] = [];
+  for (const id of connectStepIds) {
+    const outcome = outcomes.get(id);
+    if (!outcome) continue;
+    (outcome.connected ? connectedNames : skippedConnectNames).push(
+      outcome.name,
+    );
+  }
+  return { connectedNames, skippedConnectNames };
+}
+
 const MARKER_PREFIX = "<!--houston:interaction-answers ";
 const MARKER_SUFFIX = "-->";
 

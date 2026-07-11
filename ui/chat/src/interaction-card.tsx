@@ -52,19 +52,20 @@ export interface ChatInteractionCardProps {
   onComplete: (answers: ChatInteractionAnswer[]) => void;
   /** Renders a connect step's body AND footer; call `api.onConnected` to advance.
    *  ui/chat stays Composio-unaware, so the app supplies the reactive connect
-   *  content. It owns the row + primary CTA (a filled pill in {@link
-   *  InteractionFooter}); the card supplies the shared step-nav via `api`
-   *  (`back`/`forward` nodes, plus `onSkip` for the app's ghost Skip button) so
-   *  the app never re-implements navigation, and routes the step's title
-   *  through the shared header. See {@link StepFooterApi}. */
+   *  content. It owns the centered identity hero + primary CTA (a filled pill in
+   *  {@link InteractionFooter}); the card supplies the shared step-nav via `api`
+   *  (the `back` node plus the `onForward`/`onSkip` callbacks) so the app never
+   *  re-implements navigation, and routes the step's title through the shared
+   *  header. See {@link StepFooterApi}. */
   renderConnect: (
     step: ConnectStep,
     api: StepFooterApi & { onConnected: () => void },
   ) => ReactNode;
   /** Renders a signin step's body AND footer; call `api.onSignedIn` to advance.
    *  ui/chat stays auth-unaware, so the app supplies the reactive sign-in
-   *  content (row + filled CTA), placing the card's `api.back`/`api.forward`
-   *  nodes in the shared footer. See {@link StepFooterApi}. */
+   *  content (centered hero + filled CTA), placing the card's `api.back` node
+   *  and `api.onForward` callback in the shared footer. See {@link
+   *  StepFooterApi}. */
   renderSignin: (
     step: SigninStep,
     api: StepFooterApi & { onSignedIn: () => void },
@@ -78,7 +79,6 @@ export interface ChatInteractionCardProps {
     /** Visible label + aria-label of the commit-and-advance button ("Next"). */
     send?: string;
     back?: string;
-    forward?: string;
     skip?: string;
     dismiss?: string;
     progress?: (current: number, total: number) => string;
@@ -91,17 +91,23 @@ export interface ChatInteractionCardProps {
 }
 
 /** The shared step-navigation the card hands a signin/connect body so it can
- *  compose the ONE footer row without owning navigation state. `back` and
- *  `forward` are ready-styled nodes (or null): place `back` leftmost, then
- *  render `forward` INSTEAD of the primary CTA when present (a revisited,
- *  already-completed step can't re-fire its own completion, so Forward is its
- *  only way onward). `onSkip` advances past the step WITHOUT completing it —
- *  the body renders its own ghost Skip button (only on the live frontier, i.e.
- *  when `forward` is null) and records the skip so the composed reply can tell
- *  the agent the user declined. */
+ *  compose the ONE footer row without owning navigation state. `back` is a
+ *  ready-styled node (or null on step one); place it leftmost. `onForward` and
+ *  `onSkip` are transition callbacks the body wires to its OWN buttons (so it
+ *  can pick each button's treatment from the connection/auth state only it
+ *  knows — the card is Composio/auth-unaware):
+ *  - `onSkip` (live frontier only, `onForward` null): advance past the step
+ *    WITHOUT completing it, recording the skip so the composed reply tells the
+ *    agent the user declined. Rendered as a ghost Skip beside the filled CTA.
+ *  - `onForward` (non-null only for a REVISITED, already-reached step): advance
+ *    toward the frontier without re-committing. A revisited COMPLETED step
+ *    (its card can't re-fire its own completion) renders it as the filled
+ *    primary — the only way onward; a revisited SKIPPED step (still actionable)
+ *    renders it as a ghost "keep it skipped" beside a fresh filled CTA, so the
+ *    user can reconsider and complete it after all. */
 export interface StepFooterApi {
   back: ReactNode | null;
-  forward: ReactNode | null;
+  onForward: (() => void) | null;
   onSkip: () => void;
 }
 
@@ -140,7 +146,6 @@ export function ChatInteractionCard({
   const placeholder = labels?.placeholder ?? "Type something else...";
   const nextLabel = labels?.send ?? "Next";
   const backLabel = labels?.back ?? "Back";
-  const forwardLabel = labels?.forward ?? "Next";
   const skipLabel = labels?.skip ?? "Skip";
   const progress = labels?.progress ?? defaultProgress;
 
@@ -232,10 +237,13 @@ export function ChatInteractionCard({
         : (step.reason ??
           labels?.connectTitle?.(prettifyToolkit(step.toolkit)));
 
-  // The shared step-nav nodes handed to a signin/connect body so it composes the
-  // footer without owning navigation state (styled exactly like the question
-  // footer's Back / Forward). Back walks to the previous reached step; Forward
-  // only appears for a revisited already-completed step.
+  // The shared step-nav handed to a signin/connect body so it composes the
+  // footer without owning navigation state. `back` is a ready-styled node
+  // (styled exactly like the question footer's Back); `onForward` is a bare
+  // transition callback (non-null only for a revisited, already-reached step)
+  // that the body wires to its OWN forward button so it can pick the treatment
+  // — filled when the step is already completed (the only way onward), ghost
+  // "keep it skipped" when it was skipped and is being reconsidered.
   const backNode =
     current > 0 ? (
       <Button
@@ -248,19 +256,11 @@ export function ChatInteractionCard({
         {backLabel}
       </Button>
     ) : null;
-  const forwardNode = canGoForward(state) ? (
-    <Button
-      disabled={disabled}
-      onClick={() => setState(goForward)}
-      size="sm"
-      type="button"
-    >
-      {forwardLabel}
-    </Button>
-  ) : null;
+  const onForward =
+    !disabled && canGoForward(state) ? () => setState(goForward) : null;
   const footerApi: StepFooterApi = {
     back: backNode,
-    forward: forwardNode,
+    onForward,
     onSkip,
   };
 
@@ -337,9 +337,9 @@ export function ChatInteractionCard({
             Next is the single filled pill that commits. A signin/connect step
             renders its OWN footer inside its body (the app owns that reactive
             content), placing the same `InteractionFooter` with the card-supplied
-            `back`/`forward` nodes and its own ghost Skip (wired to the api's
-            `onSkip`) beside its filled CTA — so the chrome matches without the
-            card knowing anything about Composio/auth. */}
+            `back` node and its own buttons wired to the api's `onForward` /
+            `onSkip` callbacks beside its filled CTA — so the chrome matches
+            without the card knowing anything about Composio/auth. */}
         {isQuestion && (
           <InteractionFooter>
             {backNode}

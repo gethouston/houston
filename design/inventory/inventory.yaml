@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 15
+version: 16
 
 components:
   - id: agent-avatar
@@ -230,8 +230,8 @@ components:
   - id: interaction-card
     title: Interaction card
     purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections), floating ABOVE the always-mounted composer.
-    anatomy: [stepper-header, progress-label, step-title, dismiss-action, option-row, keycap-hint, free-text-input, footer-nav, back-action, skip-action, next-action, signin-step, connect-step, step-app-row, step-cta, waiting-note]
-    states: [single-step, multi-step, with-options, single-option, free-text-only, signin-step, connect-step, connecting, connected, skipped, revisited, abandoned, disabled]
+    anatomy: [stepper-header, progress-label, step-title, dismiss-action, option-row, keycap-hint, free-text-input, footer-nav, back-action, skip-action, forward-action, next-action, signin-step, connect-step, step-identity-hero, connected-check, step-cta, waiting-note]
+    states: [single-step, multi-step, with-options, single-option, free-text-only, signin-step, connect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled]
     variants: [choice, open-ended, signin, connect, mixed-sequence]
     behavior: >-
       Rendered from the turn's pending interaction (steps[]: 1-3 question steps,
@@ -254,31 +254,40 @@ components:
       composed reply, while a skipped signin/connect is a recorded fact the
       reply states, "Skipped connecting {app}." / "Skipped signing in.", so
       the agent hears the decline instead of re-requesting) and Next is the
-      single filled pill that commits the answer; a revisited signin/connect
-      step shows a bare filled Forward instead (its own card cannot re-fire
-      completion, and Skip only shows on the live frontier). Signin/connect
-      steps draw NO surface and NO borders of their own (no card-inside-a-card,
-      no boxed thumbnail): their reason is routed through the SAME header slot
-      as a question's title (a labelled "Connect {app}" / sign-in fallback when
-      the agent gave no reason), and the app renders the brand logo BARE on the
-      card surface (size-10, rounded — its own art carries the brand; the
-      sign-in step seats the Houston helmet in the same slot) leading the
-      identity stack (name + one-line clamped description), plus a ghost Skip
-      and a single filled CTA ("Connect" / "Sign in") in the SAME footer beside
-      the shared Back node — the app owns the reactive body + CTA while ui/chat
-      (auth/Composio-unaware) owns the header, the surface, and the
-      Back/Forward/Skip navigation (nav nodes plus the StepFooterApi onSkip
-      callback), composed via the exported InteractionFooter. While an OAuth
-      hand-off is in flight the CTA shows a connecting spinner and a
-      quiet muted line above the footer reminds the user their browser is
-      waiting; an already-connected app shows a calm check beside the identity
-      stack and self-reports to advance. Revisiting a question pre-selects its prior answer
-      (accent border + subtle tint); re-answering replaces it. A single
-      question-with-options step keeps the one-tap feel (click = answer =
-      complete). After the last step, emits each answered question in step
-      order; the consumer encodes the structured interaction-answers message,
-      appending the signed-in/connected status lines and the skipped-step
-      facts. Disabled while another turn is active.
+      single filled pill that commits the answer. Signin/connect steps draw NO
+      surface and NO borders of their own (no card-inside-a-card, no boxed
+      thumbnail): their reason is routed through the SAME header slot as a
+      question's title (a labelled "Connect {app}" / sign-in fallback when the
+      agent gave no reason, left-aligned), and the step BODY is a CENTERED
+      identity hero — the brand logo sits BARE and large ON TOP (size-14,
+      rounded, its own art carries the brand; the sign-in step seats the Houston
+      helmet in the same slot), the app name centered beneath it, and one muted
+      one-line description centered under that (a composed vertical lockup, not a
+      flat left row). The ONE footer stays the shared right-aligned nav row: the
+      shared Back node plus a ghost Skip and a single filled CTA ("Connect" /
+      "Sign in") on the live frontier. The app owns the reactive body + CTA while
+      ui/chat (auth/Composio-unaware) owns the header, the surface, and the
+      Back/Forward/Skip navigation (the Back node plus the StepFooterApi
+      onForward/onSkip callbacks), composed via the exported InteractionFooter.
+      While an OAuth hand-off is in flight the CTA shows a connecting spinner and
+      a quiet muted line reminds the user their browser is waiting; an
+      already-connected app swaps its description for a calm check + "Connected"
+      line under the name and self-reports to advance (live frontier only).
+      Revisiting an already-reached signin/connect step splits by its FINAL
+      state: a COMPLETED (connected / signed-in) step shows only a bare filled
+      Forward (its own card cannot re-fire completion, so that is the only way
+      onward); a SKIPPED step is still actionable, so the full state returns — a
+      ghost Forward ("keep it skipped") beside a fresh filled CTA — letting the
+      user RECONSIDER and connect / sign in after all. Revisiting a question
+      pre-selects its prior answer (accent border + subtle tint); re-answering
+      replaces it. A single question-with-options step keeps the one-tap feel
+      (click = answer = complete). After the last step, emits each answered
+      question in step order; the consumer encodes the structured
+      interaction-answers message, appending the signed-in/connected status
+      lines and the skipped-step facts derived from each step's FINAL outcome —
+      a step skipped then reconsidered reports "Connected {app}." (never a stale
+      "Skipped connecting {app}."), and no step is named twice. Disabled while
+      another turn is active.
     a11y: one step announced at a time, its question read as the card title; option rows are role=radio in a radiogroup, keyboard-selectable by the keycap-hinted position number and visible at rest (no hover gate); free-text input always present on question steps; Back/Skip/Next are labeled buttons in one predictable footer with Next the lone filled action; dismiss X labeled; the progress micro-label carries the full localized "Step N of M" copy as visible text.
     since: 4
 

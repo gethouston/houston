@@ -368,6 +368,63 @@ describe("forward navigation past a completed step", () => {
   });
 });
 
+describe("reconsider a skipped step", () => {
+  const CONNECT_B: ChatInteractionStep = {
+    kind: "connect",
+    id: "c2",
+    toolkit: "slack",
+  };
+  // [question, connect A, connect B]. Skipping a NON-terminal connect advances
+  // the frontier; walking Back onto it must leave it revisitable AND still
+  // advanceable — the state machine cannot strand a skipped step, so the user
+  // can reconsider and connect after all (the "was skipped" vs "now connected"
+  // distinction is app-level accounting; the machine just moves the cursor).
+  const steps = [Q2, CONNECT, CONNECT_B];
+
+  it("skip a connect then Back leaves it revisitable and re-connectable", () => {
+    let s = setDraft(initialStepperState(), "q2", "Running late");
+    s = answerWithText(s, steps).state; // -> connect A (index 1, frontier)
+    s = skipStep(s, steps).state; // skip A -> connect B (index 2), reached 2
+    assert.equal(s.current, 2);
+    assert.equal(s.reached, 2);
+
+    s = goBack(s); // Back onto the skipped connect A (index 1)
+    assert.equal(s.current, 1);
+    // Still revisitable: Forward ("keep it skipped") is available...
+    assert.equal(canGoForward(s), true);
+    // ...and the step is NOT stranded — a reconsider-connect advances it.
+    s = advanceConnect(s, steps).state; // reconsider: connect A -> connect B
+    assert.equal(s.current, 2);
+
+    const done = advanceConnect(s, steps); // connect B -> complete
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "Running late" },
+    ]);
+  });
+
+  it("skip a connect, Back, then skip again stays idempotent (still index-stable)", () => {
+    let s = setDraft(initialStepperState(), "q2", "hi");
+    s = answerWithText(s, steps).state; // -> connect A (index 1)
+    s = skipStep(s, steps).state; // -> connect B (index 2)
+    s = goBack(s); // Back onto A (index 1)
+    s = goForward(s); // "keep it skipped": Forward back to B (index 2)
+    assert.equal(s.current, 2);
+    assert.equal(s.reached, 2);
+  });
+
+  it("skip a signin then Back leaves it revisitable and re-signinable", () => {
+    // [signin, connect]: skip the signin, Back onto it, and it can still sign in.
+    const flow = [SIGNIN, CONNECT];
+    let s = skipStep(initialStepperState(), flow).state; // skip signin -> connect
+    assert.equal(s.current, 1);
+    s = goBack(s); // Back onto the skipped signin (index 0)
+    assert.equal(s.current, 0);
+    assert.equal(canGoForward(s), true);
+    s = advanceSignin(s, flow).state; // reconsider: sign in -> connect
+    assert.equal(s.current, 1);
+  });
+});
+
 describe("drafts", () => {
   it("restores a typed draft on revisit and clears it on option pick", () => {
     let s = setDraft(initialStepperState(), "q1", "typed");

@@ -129,9 +129,10 @@ export function StepperHeader({
 
 /** The one footer row for a step: quiet nav on the left, a single filled pill on
  *  the right. Question steps fill it with Back / Skip / Next; signin & connect
- *  steps (whose reactive body the app owns) fill it with the ui-supplied Back /
- *  Forward nodes plus their own filled CTA. Exported so the app composes the
- *  EXACT same footer chrome — one place owns the row's spacing and alignment. */
+ *  steps (whose reactive body the app owns) fill it with the ui-supplied Back
+ *  node plus their own Forward / Skip / CTA buttons (wired to the api's
+ *  `onForward` / `onSkip`). Exported so the app composes the EXACT same footer
+ *  chrome — one place owns the row's spacing and alignment. */
 export function InteractionFooter({ children }: { children: ReactNode }) {
   return (
     <div className="mt-4 flex items-center justify-end gap-1.5">{children}</div>

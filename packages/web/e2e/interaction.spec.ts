@@ -660,6 +660,112 @@ test("skipping the connect step of a mixed sequence keeps the answers and record
 });
 
 /**
+ * Reconsider a skipped connect step (the revisit-reconnect fix): skipping a
+ * connect advances the sequence, but walking Back onto the skipped step must
+ * offer its Connect button AGAIN — a skipped step is still actionable, unlike a
+ * completed one whose only affordance is Forward. Connecting it there COMMITS
+ * (the earlier skip is undone), so the composed reply reports "Connected {app}."
+ * for the reconsidered app, never a stale "Skipped connecting {app}." — while a
+ * genuinely-declined app still reports skipped. Integrations are armed so the
+ * fake host can LAND the OAuth (a control flips the pending connection active),
+ * proving the reconsider all the way through to the composed reply.
+ */
+test("reconsiders a skipped connect step: Back offers Connect again and reports Connected", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
+    data: { integrations: ["composio"] },
+  });
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "slack",
+            reason: "I need Slack access to post the trip summary.",
+          },
+          {
+            kind: "connect",
+            id: "c2",
+            toolkit: "github",
+            reason: "I need GitHub access to open the tracking issue.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "post the trip summary");
+
+  // Step 1 of 2: the Slack connect step (unconnected). Skip it -> step 2 (GitHub).
+  await expect(
+    page.getByText("I need Slack access to post the trip summary."),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Step 1 of 2")).toBeVisible();
+  await page.getByRole("button", { name: "Skip" }).click();
+
+  await expect(page.getByText("Step 2 of 2")).toBeVisible();
+  await expect(
+    page.getByText("I need GitHub access to open the tracking issue."),
+  ).toBeVisible();
+
+  // Back onto the SKIPPED Slack step: its Connect button is offered AGAIN (the
+  // fix — before, a revisited step only showed Forward, stranding a skip).
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByText("Step 1 of 2")).toBeVisible();
+  await expect(
+    page.getByText("I need Slack access to post the trip summary."),
+  ).toBeVisible();
+  const connect = page.getByRole("button", { name: "Connect" });
+  await expect(connect).toBeVisible();
+
+  // Connect it. The fake host mints a PENDING connection on connect; flip it
+  // active (models the OAuth completing) so the card self-reports and advances.
+  await connect.click();
+  await expect
+    .poll(
+      async () => {
+        const res = await request.get(
+          `${FAKE_HOST_URL}/v1/integrations/composio/connections`,
+        );
+        const { items } = (await res.json()) as {
+          items: { toolkit: string; connectionId: string; status: string }[];
+        };
+        const pending = items.find(
+          (c) => c.toolkit === "slack" && c.status === "pending",
+        );
+        if (!pending) return false;
+        await request.post(`${FAKE_HOST_URL}/__test__/integrations-activate`, {
+          data: { connectionId: pending.connectionId },
+        });
+        return true;
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+
+  // The connection lands -> Slack advances to the GitHub step (2 of 2). Decline
+  // GitHub genuinely (Skip) to finish the sequence.
+  await expect(page.getByText("Step 2 of 2")).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByText("I need GitHub access to open the tracking issue."),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Skip" }).click();
+
+  // The composed reply reports the RECONSIDERED Slack as connected (never a
+  // stale skip line) and the genuinely-declined GitHub as skipped. The fake
+  // host echoes the hidden auto-continue message it received.
+  await expect(page.getByText(/Connected Slack\./)).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByText(/Skipped connecting GitHub\./)).toBeVisible();
+  await expect(page.getByText(/Skipped connecting Slack\./)).toHaveCount(0);
+});
+
+/**
  * Skipping a lone signin step: the ghost Skip advances past the sign-in without
  * SSO (which can't run in the harness anyway), the card retires, and the hidden
  * resume tells the agent the user declined to sign in.

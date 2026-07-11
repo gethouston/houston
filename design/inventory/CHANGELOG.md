@@ -3,6 +3,38 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v16 - 2026-07-10
+
+`interaction-card` signin & connect steps: the step body becomes a CENTERED
+identity hero, and a skipped step is reconsiderable.
+
+Design: the app-supplied body was a flat left row (bare logo leading name +
+description). It is now a composed vertical lockup — the brand logo sits BARE
+and large ON TOP (size-14, up from the size-10 leading slot; new `xl` AppLogo
+size), the app name centered beneath it, one muted one-line description centered
+under that. The sign-in step gives the Houston helmet the same centered slot.
+The connected state integrates into the lockup: the description swaps for a calm
+check + "Connected" line under the name. The family chrome is unchanged — the
+eyebrow + reason-title header stays left, the Back/Skip/CTA footer stays the
+shared right-aligned row — so the centered hero reads as the step BODY between
+them. New anatomy `step-identity-hero` / `connected-check` (replacing
+`step-app-row`); tokens only.
+
+Bug fix (reconsider a skipped step): a revisited signin/connect step used to
+show only Forward, which is right for a COMPLETED step (its card can't re-fire
+completion) but stranded a SKIPPED one — no way to change your mind and connect.
+Now a revisited step splits by its FINAL state: completed → bare filled Forward
+(the only way on); skipped → the full actionable state returns, a ghost Forward
+("keep it skipped") beside a fresh filled Connect / Sign in, never two filled
+pills. Connecting / signing in there COMMITS (the earlier skip is undone), and
+the completion reply derives from each step's FINAL outcome — a step skipped
+then reconsidered reports "Connected {app}." (never a stale "Skipped connecting
+{app}."), and no step is named twice. New state `reconsider`; ui/chat's
+`StepFooterApi` replaces the pre-styled `forward` node with an `onForward`
+callback (the body owns the forward button so it can pick filled vs ghost from
+the connection/auth state only it knows). Auto-continue stays gated to the live
+frontier, so the revisit-bounce fix does not regress.
+
 ## v15 - 2026-07-10
 
 `interaction-card` signin & connect steps: the icon integrates into the card and

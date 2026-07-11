@@ -79,7 +79,11 @@ import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
 import { genericErrorDescription } from "../lib/error-toast";
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
-import { encodeInteractionAnswersMessage } from "../lib/interaction-reply";
+import {
+  type ConnectOutcome,
+  encodeInteractionAnswersMessage,
+  finalConnectNames,
+} from "../lib/interaction-reply";
 import {
   modelSelectorDecision,
   resolvePersonalModelPin,
@@ -995,7 +999,6 @@ export function useAgentChatPanel({
       placeholder: t("chat:questionCard.placeholder"),
       send: t("chat:questionCard.send"),
       back: t("chat:questionCard.back"),
-      forward: t("chat:questionCard.forward"),
       skip: t("chat:questionCard.skip"),
       dismiss: t("chat:questionCard.dismiss"),
       progress: (current: number, total: number) =>
@@ -1216,16 +1219,18 @@ export function useAgentChatPanel({
     }
     const steps = override.steps;
     const hasQuestionSteps = steps.some((step) => step.kind === "question");
-    const hasSigninStep = steps.some((step) => step.kind === "signin");
     // A completed sequence has walked EVERY step, but a signin/connect step may
-    // have been walked past by SKIP — a fact the agent must hear (or it re-asks
-    // forever). The accumulators live in the memo body (not refs) because
-    // `deriveActiveInteraction` returns a STABLE reference for a given pending
-    // interaction, so the memo doesn't recompute — and the accumulators don't
-    // reset — while the user walks the steps; a fresh interaction starts clean.
-    const connectedNames: string[] = [];
-    const skippedConnectNames: string[] = [];
-    const signinSkip = { skipped: false };
+    // have been SKIPPED — a fact the agent must hear (or it re-asks forever) —
+    // OR skipped then RECONSIDERED (walked Back and connected/signed in after
+    // all). The reply must reflect FINAL state, never a stale skip line. So the
+    // accounting derives from a per-step outcome recorded IN PLACE as the user
+    // acts: a later connect overwrites an earlier skip for the same step. These
+    // live in the memo body (not refs) because `deriveActiveInteraction`
+    // returns a STABLE reference for a given pending interaction, so the memo
+    // doesn't recompute — and the outcomes don't reset — while the user walks
+    // the steps; a fresh interaction starts clean.
+    const connectOutcomes = new Map<string, ConnectOutcome>();
+    let signinOutcome: "pending" | "signedIn" | "skipped" = "pending";
     return (
       <ChatInteractionCard
         steps={steps}
@@ -1237,14 +1242,22 @@ export function useAgentChatPanel({
           // the agent with a hidden auto-continue message (no fake user bubble).
           // The visible reply also carries a structured marker so the transcript
           // renders the answers as a Q&A card, not an undifferentiated bubble.
+          //
+          // Derive the connected/skipped lines from each step's FINAL outcome,
+          // in step order — a step skipped then reconsidered reports "Connected"
+          // (never a stale "Skipped ..."), and no step is ever named twice.
+          const { connectedNames, skippedConnectNames } = finalConnectNames(
+            steps.filter((s) => s.kind === "connect").map((s) => s.id),
+            connectOutcomes,
+          );
           sendInteractionMessage(
             encodeInteractionAnswersMessage({
               answers,
               connectedNames,
               skippedConnectNames,
               hasQuestionSteps,
-              signedIn: hasSigninStep && !signinSkip.skipped,
-              signinSkipped: signinSkip.skipped,
+              signedIn: signinOutcome === "signedIn",
+              signinSkipped: signinOutcome === "skipped",
               connectedLine: (name) =>
                 t("chat:interaction.connectedLine", { name }),
               skippedConnectLine: (name) =>
@@ -1258,12 +1271,17 @@ export function useAgentChatPanel({
         renderSignin={(_step, api) => (
           <ChatSigninInteractionCard
             back={api.back}
-            forward={api.forward}
-            onSignedIn={api.onSignedIn}
+            onForward={api.onForward}
+            onSignedIn={() => {
+              // Record the FINAL state (signed in wins over any earlier skip)
+              // and advance ONLY — the composed reply fires at completion.
+              signinOutcome = "signedIn";
+              api.onSignedIn();
+            }}
             onSkip={() => {
               // Record the decline and advance ONLY (same one-send rule as
               // connects: the composed reply fires at completion).
-              signinSkip.skipped = true;
+              signinOutcome = "skipped";
               api.onSkip();
             }}
           />
@@ -1273,18 +1291,19 @@ export function useAgentChatPanel({
             agentId={agent.id}
             autoGrant={canManageAgentGrants(capabilities, agent)}
             back={api.back}
-            forward={api.forward}
+            onForward={api.onForward}
             onConnected={(_toolkit, appName) => {
-              // Record the app and advance ONLY. The composed `onComplete`
-              // reply resumes the agent once EVERY step is done; starting a
-              // turn here would tear the card down before later connect steps
-              // could complete.
-              connectedNames.push(appName);
+              // Record the app's FINAL outcome (connected wins over any earlier
+              // skip for this step) and advance ONLY. The composed `onComplete`
+              // reply resumes the agent once EVERY step is done; starting a turn
+              // here would tear the card down before later connect steps could
+              // complete.
+              connectOutcomes.set(step.id, { name: appName, connected: true });
               api.onConnected();
             }}
             onSkip={(_toolkit, appName) => {
               // Record the decline and advance ONLY (one send at completion).
-              skippedConnectNames.push(appName);
+              connectOutcomes.set(step.id, { name: appName, connected: false });
               api.onSkip();
             }}
             toolkit={step.toolkit}

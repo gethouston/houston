@@ -6,6 +6,16 @@ const SIZES = {
   sm: "size-6",
   md: "size-8",
   lg: "size-10",
+  xl: "size-14",
+} as const;
+
+// The initial-letter fallback scales with the box so the hero-size (xl) plate
+// never shows a tiny letter lost in the middle; the smaller rows keep text-xs.
+const LETTER_SIZE = {
+  sm: "text-xs",
+  md: "text-xs",
+  lg: "text-xs",
+  xl: "text-lg",
 } as const;
 
 /**
@@ -33,7 +43,7 @@ export function AppLogo({
   className,
 }: {
   display: AppDisplay;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
@@ -44,7 +54,12 @@ export function AppLogo({
       <span
         className={cn(box, "flex items-center justify-center bg-background")}
       >
-        <span className="text-xs font-semibold text-muted-foreground">
+        <span
+          className={cn(
+            "font-semibold text-muted-foreground",
+            LETTER_SIZE[size],
+          )}
+        >
           {display.name.charAt(0).toUpperCase()}
         </span>
       </span>
