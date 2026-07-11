@@ -73,7 +73,7 @@
     });
 
     // Cards: a gentle lift on hover. Cards are not pressable, so no press state.
-    document.querySelectorAll(".agent-card, .final-cta-card").forEach((c) => {
+    document.querySelectorAll(".agent-card, .pricing-col").forEach((c) => {
       c.addEventListener("pointerenter", () => {
         to(c, "translateY(-4px)", settleSpring);
       });

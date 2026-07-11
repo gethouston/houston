@@ -27,6 +27,12 @@ visionPath: "vision/index.html"
 </script>
 {% endblock %}
 {% block stylesheets %}
+<!-- Vendored devices.css MUST load before hero-demo.css: its `.device *`
+     reset (box-sizing + `display: block`) ties in specificity with the
+     mockup's own `.mc-*`/`.mockup-*` flex rules, and CSS resolves same-
+     specificity ties by source order — hero-demo.css needs to come after
+     so its flex layouts win. -->
+<link rel="stylesheet" href="/assets/vendor/devices-macbook.css">
 <link rel="stylesheet" href="/assets/space.css">
 <link rel="stylesheet" href="/assets/hero-demo.css">
 {% endblock %}
@@ -549,62 +555,99 @@ visionPath: "vision/index.html"
   }
 
   /* ═══════════════════════════════════════════
-     MACBOOK FRAME — CSS-drawn display around the hero mockup
-     ═══════════════════════════════════════════ */
+     MACBOOK FRAME — devices.css (picturepan2/devices.css, MIT), vendored at
+     assets/vendor/devices-macbook.css: the shell (aluminum ring, rounded
+     screen corners, bottom chin) is the library's `.device-macbook-pro-2018`
+     + `.device-spacegray` color mod, trimmed to just that one device. See
+     the vendor file's header comment for the extraction notes and the
+     vendored-vs-original byte counts.
 
-  /* ── Pure-CSS MacBook display, same craft level as the iPhone frame below:
-     a thin dark-aluminum bezel with rounded display corners, a hairline rim
-     between metal and glass, a hint of the camera and the lower deck. The
-     glass/light chrome (top catch-light, ambient shadow, faint reflection)
-     lives on the FRAME, not the screen — the screen itself (.app-mockup)
-     is flat and matches the real app's window background exactly, with no
-     translucency or space-photo bleed-through. No image assets. */
-  .macbook-frame {
+     devices.css ships fixed-px devices sized against one intrinsic
+     reference box — no fluid units. Rather than hardcode our own
+     900px/600px transform:scale() steps, `.mac-frame-wrap` declares a CSS
+     container and the device scales continuously against it (`cqi`), so it
+     stays exactly as fluid as the rest of this page with zero JS and zero
+     breakpoint math (the 900px/600px rules below still apply, same as the
+     rest of the page, for margin/sidebar-visibility adjustments).
+
+     Geometry (width/height/padding/screen size) is overridden from
+     devices.css's stock 2018 MacBook Pro: the shipped variant has a
+     noticeably chunkier bezel and a baked-in "MacBook Pro" wordmark on the
+     chin, styled for a machine thicker than what Houston actually ships
+     on. The override below thins the bezel and drops the wordmark (the
+     rule for it isn't even in the vendored file) while keeping devices.css's
+     ring/chin/corner treatment as-is. */
+  .mac-frame-wrap {
     position: relative;
-    border-radius: 22px;
-    padding: 14px 14px 28px;
-    background: linear-gradient(155deg, #4b4c50 0%, #2c2d30 22%, #17181a 58%, #0b0c0d 100%);
+    container-type: inline-size;
+    aspect-ratio: 1200 / 786;
+    width: 100%;
+  }
+
+  .mac-frame-wrap .device-macbook-pro-2018 {
+    position: absolute;
+    top: 0;
+    left: 0;
+    /* Dividing by 1200px (not bare 1200) matters: cqi resolves to a length,
+       and length ÷ length is what yields the unitless ratio scale()
+       requires — length ÷ number is invalid and silently drops the whole
+       declaration (computed transform stays `none`). */
+    transform: scale(calc(100cqi / 1200px));
+    transform-origin: top left;
+  }
+
+  .device-macbook-pro-2018 {
+    width: 1200px;
+    height: 786px;
+  }
+  .device-macbook-pro-2018 .device-frame {
+    width: 1200px;
+    height: 786px;
+    padding: 16px 16px 40px;
+    border-radius: 24px;
+  }
+  /* Ambient depth as box-shadow, not `filter: drop-shadow()` on the scaled
+     wrapper: a filter forces the whole animated subtree (typing caret,
+     the running card's rotating conic-gradient ring) into one rasterized
+     compositing pass on every frame, which was measured to throttle
+     WebKit's requestAnimationFrame rate ~20x — the scripted demo's typing
+     crawled to a visible crawl. box-shadow on the (already spacegray-ringed)
+     frame gives the same resting-shadow depth for free, cheaply. */
+  .device-macbook-pro-2018.device-spacegray .device-frame {
     box-shadow:
-      0 1px 0 rgba(255,255,255,0.22) inset,
-      0 0 0 1px rgba(0,0,0,0.55),
+      inset 0 0 0 2px #767a7d,
       0 70px 130px -40px rgba(0,0,0,0.75),
       0 24px 55px -24px rgba(0,0,0,0.6);
   }
-
-  /* Hairline rim between the aluminum bezel and the screen glass (mirrors
-     the iPhone's ::before dark rim). */
-  .macbook-frame::before {
-    content: "";
-    position: absolute;
-    inset: 11px 11px 25px;
-    border-radius: 13px;
-    background: #000;
-    z-index: 0;
+  .device-macbook-pro-2018 .device-frame::after {
+    width: 1196px;
+    height: 34px;
+    border-radius: 0 0 24px 24px;
+  }
+  /* The screen slot: our own flat, opaque .app-mockup fills it exactly, so
+     the upstream 2px screen border (meant to frame a photo/video) reads as
+     an unwanted seam here — dropped in favor of letting .app-mockup meet
+     the bezel directly, same as the previous hand-drawn frame did. */
+  .device-macbook-pro-2018 .device-screen {
+    width: 1168px;
+    height: 730px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: none;
   }
 
-  /* A single minimal groove near the bottom edge of the bezel — the only
-     nod to the laptop's lower deck / hinge line. No keyboard, no trackpad. */
-  .macbook-frame .macbook-hinge {
-    position: absolute;
-    left: 30%;
-    right: 30%;
-    bottom: 11px;
-    height: 3px;
-    border-radius: 2px;
-    background: rgba(0,0,0,0.5);
-    box-shadow: 0 1px 0 rgba(255,255,255,0.07);
-    z-index: 1;
-  }
-
-  /* Camera hint, centered at the screen's top edge — tiny and quiet. */
-  .macbook-frame::after {
+  /* Camera hint at the top-center of the screen — quiet, matching the
+     iPhone frame's camera dot below. (`.device-frame::before` is unused by
+     the vendored MacBook rules once the wordmark declaration was dropped,
+     so it's free to repurpose here.) */
+  .device-macbook-pro-2018 .device-frame::before {
     content: "";
     position: absolute;
-    top: 6px;
+    top: 7px;
     left: 50%;
     transform: translateX(-50%);
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, #4c4f58 0%, #050506 75%);
     box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
@@ -641,11 +684,17 @@ visionPath: "vision/index.html"
 
     position: relative;
     z-index: 1;
-    border-radius: 12px;
+    width: 100%;
+    height: 100%;
+    /* No radius of its own: it fills the device-screen slot exactly, which
+       already clips to the bezel's rounded corner (10px) — a second radius
+       here would double up and read as a hairline seam just inside the
+       glass. */
+    border-radius: 0;
     overflow: hidden;
     color: var(--m-ink);
     /* Flat, opaque — matches the real app's window background exactly, no
-       photo bleed-through. The glass chrome lives on .macbook-frame. */
+       photo bleed-through. The glass chrome lives on the MacBook frame. */
     background: var(--m-canvas);
   }
 
@@ -666,11 +715,15 @@ visionPath: "vision/index.html"
   .tl-green { background: #28c840; }
 
   /* The gutter: a darker canvas strip with a fixed gap that separates the
-     floating panels (sidebar / board / chat), exactly like the real app. */
+     floating panels (sidebar / board / chat), exactly like the real app.
+     Fills the full screen height (set by .device-screen above) rather than
+     a fixed min-height, so the taller MacBook screen shows real column
+     height instead of empty gutter below a short, fixed-height board. */
   .mockup-body {
     display: flex;
     gap: 8px;
-    min-height: 528px;
+    height: 100%;
+    min-height: 0;
     background: var(--m-canvas);
     padding: 8px;
   }
@@ -1589,59 +1642,23 @@ visionPath: "vision/index.html"
 
 
   /* ═══════════════════════════════════════════
-     FINAL CTA DUAL
-     ═══════════════════════════════════════════ */
-
-  .final-cta-dual {
-    max-width: 880px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    border-radius: 20px;
-    border: 1px solid var(--border-light);
-    overflow: hidden;
-    background: white;
-    text-align: left;
-  }
-
-  .final-cta-card {
-    padding: 48px 40px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 20px;
-  }
-
-  .final-cta-card + .final-cta-card {
-    border-left: 1px solid var(--border-light);
-    background: var(--gray-50);
-  }
-
-  .final-cta-card h3 {
-    font-size: 24px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-bottom: 10px;
-    color: var(--gray-950);
-  }
-
-  .final-cta-card p {
-    font-size: 15px;
-    color: var(--muted-foreground);
-    line-height: 1.55;
-    margin-bottom: 24px;
-    max-width: 100%;
-  }
-
-  /* ═══════════════════════════════════════════
-     PRICING (folded in from the former /pricing/ page)
-     ═══════════════════════════════════════════ */
-
+     PRICING — Mercury's structure (name → price → two-line description →
+     full-width CTA pill → bold list intro → checkmark list), on Houston's
+     existing dark-glass look: one glass container, three columns divided
+     only by hairline white-alpha rules, uniform quiet glass throughout.
+     No badge, no gradient ring, no per-column background difference — the
+     ONLY featured emphasis is that the Team column's CTA pill is filled
+     instead of quiet. Every row (name/price/description/CTA/list-intro)
+     lines up across all three columns via CSS subgrid: `.pricing-grid`
+     declares 6 row tracks, each `.pricing-col` subgrids into them, so a
+     short column (e.g. Personal's plain price vs. Team's price + billing
+     sub-note) still starts its next row at the same Y as its neighbors. */
   .pricing-grid {
     max-width: 960px;
     margin: 48px auto 0;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(6, auto);
     border-radius: 20px;
     border: 1px solid var(--glass-border);
     overflow: hidden;
@@ -1651,75 +1668,67 @@ visionPath: "vision/index.html"
     text-align: left;
   }
 
-  .pricing-grid .final-cta-card { margin-bottom: 0; }
-  .pricing-grid .final-cta-card p { margin-bottom: 20px; }
-
-  /* The "Most popular" plan reads as featured through the same quiet,
-     monochrome language as the rest of the glass system: a brighter
-     white-alpha ring (fading top to bottom, same "ring" construction as
-     before, just recoloured) and a slightly more opaque panel — contrast
-     and weight, not a saturated gradient. */
-  .final-cta-card.featured {
-    background: rgba(255,255,255,0.07);
+  .pricing-col {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: 1 / span 6;
+    row-gap: 14px;
+    padding: 40px 32px;
+    align-items: start;
   }
 
-  /* Fading white-alpha ring, drawn ONLY in the 1px border via mask-composite.
-     The naive padding-box/border-box two-layer trick bleeds the ring gradient
-     through a translucent panel (it only works over opaque fills), which
-     washed out the whole card over the photo background. */
-  .final-cta-card.featured::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    padding: 1px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0.12));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    pointer-events: none;
+  /* Hairline divider only — no background swap between columns, so the
+     glass reads as one uniform quiet surface, per the approved look. */
+  .pricing-col + .pricing-col {
+    border-left: 1px solid var(--glass-border);
   }
 
-  /* White pill / dark text — the same "active" idiom already used by
-     .hiw-tab.active, so the badge reads as emphasis without introducing a
-     new colour. */
-  .pricing-badge {
-    position: relative;
-    align-self: center;
-    order: -1;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: #111318;
-    background: #fff;
-    border-radius: 9999px;
-    padding: 5px 14px;
-    white-space: nowrap;
-    margin-bottom: 4px;
+  .pricing-name {
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--gray-950);
   }
 
-  .pricing-price {
-    display: flex;
-    align-items: baseline;
-    gap: 3px;
+  .pricing-price-block { display: flex; flex-direction: column; gap: 4px; }
+  .pricing-price { display: flex; align-items: baseline; gap: 3px; }
+  .pricing-price .amount { font-size: 26px; font-weight: 500; letter-spacing: -0.02em; line-height: 1; color: var(--gray-950); }
+  .pricing-price .per { font-size: 15px; font-weight: 400; color: var(--gray-500); margin-left: 1px; }
+  .pricing-price-note { font-size: 13px; color: var(--gray-500); line-height: 1.4; }
+
+  .pricing-desc {
+    font-size: 14px;
+    color: var(--muted-foreground);
+    line-height: 1.55;
+    max-width: 100%;
   }
-  .pricing-price .currency { font-size: 20px; font-weight: 600; color: var(--gray-950); }
-  .pricing-price .amount { font-size: 38px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--gray-950); }
-  .pricing-price .per { font-size: 13px; font-weight: 500; color: var(--gray-500); margin-left: 2px; }
+
+  /* CTA: full-width pill. Quiet translucent by default (reuses the site's
+     .btn-secondary glass button); the Team column overrides to .btn-primary
+     (solid white) — the single featured signal, no badge, no card tint. */
+  .pricing-cta { display: flex; flex-direction: column; gap: 8px; }
+  .pricing-cta .btn { width: 100%; }
+
+  .pricing-list-intro {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-950);
+  }
 
   .pricing-feats {
     list-style: none;
     padding: 0;
-    margin: 4px 0 auto;
+    margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 16px;
     font-size: 14px;
     color: var(--gray-700);
   }
-  .pricing-feats li { display: flex; align-items: flex-start; gap: 8px; line-height: 1.4; }
+  .pricing-feats li { display: flex; align-items: flex-start; gap: 10px; line-height: 1.4; }
   .pricing-feats li svg { flex-shrink: 0; margin-top: 3px; }
+  .pricing-feat-note { font-size: 12px; color: var(--gray-500); font-weight: 400; line-height: 1.4; margin-top: 2px; }
 
   /* ── FAQ ── */
   .faq-item {
@@ -1819,14 +1828,12 @@ visionPath: "vision/index.html"
     .nav-right a:not(.btn) { display: none !important; }
     .nav-right .btn .btn-full-text { display: none; }
     .nav-right .btn .btn-short-text { display: inline; }
-    .final-cta-dual { grid-template-columns: 1fr; }
-    .final-cta-card + .final-cta-card { border-left: none !important; border-top: 1px solid var(--border-light); }
-    .final-cta-card { padding: 36px 28px; }
+    /* Stacked mobile columns: each column reverts to its own natural rows
+       (subgrid row-alignment only makes sense side by side) and the
+       divider flips from a left rule to a top rule between stacked cards. */
     .pricing-grid { grid-template-columns: 1fr; }
-    .pricing-grid .final-cta-card + .final-cta-card:not(.featured) { border-left: none !important; border-top: 1px solid var(--border-light); }
-    .mockup-body { min-height: auto; }
-    .macbook-frame { max-width: 100% !important; padding: 10px 10px 22px; }
-    .macbook-frame::before { inset: 8px 8px 19px; }
+    .pricing-col { grid-template-rows: auto; grid-row: auto; padding: 32px 28px; }
+    .pricing-col + .pricing-col { border-left: none; border-top: 1px solid var(--glass-border); }
   }
 
   @media (max-width: 600px) {
@@ -1846,11 +1853,8 @@ visionPath: "vision/index.html"
     footer { padding: 32px 24px; }
     footer > div:first-child { grid-template-columns: 1fr !important; gap: 32px !important; }
     .nav-right .btn { font-size: 12px; padding: 0 12px; height: 32px; }
-    .macbook-frame { max-width: 100% !important; margin-top: 40px !important; padding: 8px 8px 18px; }
-    .macbook-frame::before { inset: 6px 6px 15px; }
-    .macbook-frame .macbook-hinge { bottom: 7px; }
+    .mac-frame-wrap { margin-top: 40px !important; }
     .app-mockup .mockup-sidebar { display: none !important; }
-    .app-mockup .mockup-body { min-height: auto !important; }
     .iphone { width: 290px; }
   }
 
@@ -2068,12 +2072,14 @@ visionPath: "vision/index.html"
 
   <div class="hero-actions">
     <button class="btn btn-primary btn-lg" data-dl-trigger data-dl-source="hero"><svg viewBox="0 0 384 512" fill="currentColor" width="16" height="16"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Download for Mac</button>
-    <button class="btn btn-secondary btn-lg" data-dl-windows-trigger data-dl-source="hero-windows"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Download for Windows</button>
+    <button class="btn btn-primary btn-lg" data-dl-windows-trigger data-dl-source="hero-windows"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Download for Windows</button>
   </div>
 
-  <div class="macbook-frame" style="max-width: 1152px; width: 100%; margin-top: 64px; animation: float-up 0.6s ease 0.25s both;">
-    <span class="macbook-hinge"></span>
-    <div class="app-mockup" data-hero-demo>
+  <div class="mac-frame-wrap" style="max-width: 1152px; width: 100%; margin-top: 64px; animation: float-up 0.6s ease 0.25s both;">
+   <div class="device device-macbook-pro-2018 device-spacegray">
+    <div class="device-frame">
+     <div class="device-screen">
+      <div class="app-mockup" data-hero-demo>
       <div class="traffic-lights">
         <span class="tl-red"></span>
         <span class="tl-yellow"></span>
@@ -2234,7 +2240,10 @@ visionPath: "vision/index.html"
         </div>
       </div>
     </div>
+      </div>
+     </div>
     </div>
+   </div>
   </div>
 </div>
 
@@ -2528,54 +2537,74 @@ visionPath: "vision/index.html"
     <h2>Ready to stop doing the work yourself?</h2>
     <p>The app is free. Forever. Add your team when you are ready and only pay for the people who actually join.</p>
     <div class="pricing-grid">
-      <!-- Personal — free forever, no limits -->
-      <div class="final-cta-card" style="display: flex; flex-direction: column;">
-        <div style="font-size: 12px; font-weight: 500; color: var(--gray-400); margin-bottom: 8px;">Personal</div>
-        <h3>Free forever</h3>
-        <div class="pricing-price"><span class="amount">Free</span></div>
-        <p>Runs on your Mac. Bring your own GPT subscription.</p>
+      <!-- Personal — free forever, no limits. Row order matches the other
+           two columns exactly: name, price, description, CTA, list intro,
+           feature list — subgrid aligns each across all three columns. -->
+      <div class="pricing-col">
+        <div class="pricing-name">Personal</div>
+        <div class="pricing-price-block">
+          <div class="pricing-price"><span class="amount">Free</span></div>
+        </div>
+        <p class="pricing-desc">Runs on your Mac. Bring your own GPT subscription.</p>
+        <div class="pricing-cta">
+          <button class="btn btn-secondary btn-lg" data-dl-trigger data-dl-source="pricing"><svg viewBox="0 0 384 512" fill="currentColor" width="16" height="16"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Download for Mac</button>
+          <button class="btn btn-secondary btn-lg" data-dl-windows-trigger data-dl-source="pricing-windows"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Download for Windows</button>
+        </div>
+        <div class="pricing-list-intro">Everything you need:</div>
         <ul class="pricing-feats">
           <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Unlimited agents, every feature included</li>
           <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Desktop app + phone companion app</li>
           <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> 1000+ integrations</li>
           <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> No credit card, ever</li>
         </ul>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          <button class="btn btn-primary btn-lg" data-dl-trigger data-dl-source="pricing"><svg viewBox="0 0 384 512" fill="currentColor" width="16" height="16"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Download for Mac</button>
-          <button class="btn btn-secondary btn-lg" data-dl-windows-trigger data-dl-source="pricing-windows"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Download for Windows</button>
-        </div>
       </div>
 
       <!-- Team — $15/seat/mo, the paid plan that ships always-on hosted agents
-           + multiplayer Spaces (knowledge-base/teams.md). -->
-      <div class="final-cta-card featured" style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
-        <span class="pricing-badge">Most popular</span>
-        <div style="font-size: 12px; font-weight: 500; color: var(--gray-400); margin-bottom: 8px; position: relative;">Team</div>
-        <h3 style="position: relative;">Always on</h3>
-        <div class="pricing-price" style="position: relative;"><span class="currency">{{ pricing.currency }}</span><span class="amount">{{ pricing.teamMonthly }}</span><span class="per">/ seat / mo</span></div>
-        <p style="position: relative;">{{ pricing.currency }}{{ pricing.teamAnnual }} per seat billed annually. Your agents run around the clock, even when your laptop is closed.</p>
-        <ul class="pricing-feats" style="position: relative;">
-          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Everything in Personal</li>
-          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Agents run 24/7, scheduled tasks fire on time</li>
-          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Shared agents across your team, web app access</li>
+           + multiplayer Spaces (knowledge-base/teams.md). Featured plan: the
+           ONLY emphasis is the filled (btn-primary) CTA pill below — no
+           badge, no card tint, no gradient ring. -->
+      <div class="pricing-col">
+        <div class="pricing-name">Team</div>
+        <div class="pricing-price-block">
+          <div class="pricing-price"><span class="amount">{{ pricing.currency }}{{ pricing.teamMonthly }}</span><span class="per">/seat/mo</span></div>
+          <div class="pricing-price-note">{{ pricing.currency }}{{ pricing.teamAnnual }}/seat/mo billed annually</div>
+        </div>
+        <p class="pricing-desc">Your agents run around the clock, even when your laptop is closed.</p>
+        <div class="pricing-cta">
+          <button class="btn btn-primary btn-lg" data-dl-trigger data-dl-source="pricing-team">Start free trial</button>
+        </div>
+        <div class="pricing-list-intro">Everything in Personal, plus:</div>
+        <ul class="pricing-feats">
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> 24/7 agents, scheduled tasks fire on time</li>
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Shared agents, web app access</li>
           <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Roles and access control</li>
-          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> {{ pricing.trialDays }}-day free trial when your second member accepts, no card to start</li>
+          <li>
+            <svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg>
+            <div>
+              {{ pricing.trialDays }}-day free trial, no card to start
+              <div class="pricing-feat-note">Starts when your second member accepts</div>
+            </div>
+          </li>
         </ul>
-        <button class="btn btn-primary btn-lg" style="position: relative;" data-dl-trigger data-dl-source="pricing-team">Start free trial</button>
       </div>
 
-      <!-- Enterprise — security and scale for bigger teams. -->
-      <div class="final-cta-card" style="background: rgba(255,255,255,0.05); color: var(--foreground); display: flex; flex-direction: column;">
-        <div style="font-size: 12px; font-weight: 500; color: var(--gray-500); margin-bottom: 8px;">Enterprise</div>
-        <h3 style="color: #fff;">Contact sales</h3>
-        <p style="color: rgba(255,255,255,0.65);">Security and scale for bigger teams, with custom agents for your business.</p>
+      <!-- Enterprise — security and scale for bigger teams. Price slot holds
+           "Custom" instead of an amount so the row still aligns. -->
+      <div class="pricing-col">
+        <div class="pricing-name">Enterprise</div>
+        <div class="pricing-price-block">
+          <div class="pricing-price"><span class="amount">Custom</span></div>
+        </div>
+        <p class="pricing-desc">Security and scale for bigger teams, with custom agents for your business.</p>
+        <div class="pricing-cta">
+          <a href="mailto:{{ pricing.salesEmail }}?subject=Houston%20Enterprise" class="btn btn-secondary btn-lg">Talk to us</a>
+        </div>
+        <div class="pricing-list-intro">Everything in Team, plus:</div>
         <ul class="pricing-feats">
-          <li><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Everything in Team</li>
-          <li><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Single sign-on (SSO), uptime SLA</li>
-          <li><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Priority support in English and Spanish</li>
-          <li><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Private deployment, onboarding included</li>
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Single sign-on (SSO), uptime SLA</li>
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Priority support in English and Spanish</li>
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Private deployment, onboarding included</li>
         </ul>
-        <a href="mailto:{{ pricing.salesEmail }}?subject=Houston%20Enterprise" class="btn btn-lg" style="background: #fff; color: #0d0d0d;">Talk to us</a>
       </div>
     </div>
   </div>
@@ -2981,10 +3010,18 @@ visionPath: "vision/index.html"
   // restyled - `display: none`, so it takes no space and isn't a second
   // visible control). Default to Mac when the OS can't be told (Linux /
   // unknown / no JS), matching the rest of the page's Mac-first copy.
+  //
+  // `keep()` only un-hides - it never rewrites the winning button's class.
+  // Each spot authors both buttons with whatever visual weight it wants
+  // (the hero's Mac/Windows pair are both `btn-primary`, so whichever OS
+  // wins still reads as the page's one strong CTA there; the pricing
+  // Personal column authors both as the quiet `btn-secondary`, since that
+  // plan is deliberately never the featured/filled one). Forcing every
+  // winner to `btn-primary` here used to blow past that per-spot styling.
   (function () {
     var os = detectOs();
     function keep(btn) {
-      btn.className = 'btn btn-primary btn-lg';
+      btn.style.display = '';
     }
     function remove(btn) {
       btn.style.display = 'none';
