@@ -54,6 +54,23 @@ export class ScopeStore {
     return this.snapshots.get(scope);
   }
 
+  /** Whether any listener is currently subscribed to `scope`. */
+  hasSubscribers(scope: string): boolean {
+    return (this.subscribers.get(scope)?.size ?? 0) > 0;
+  }
+
+  /**
+   * Drop the retained snapshot for `scope`, freeing the memory it held. Used
+   * when a scope's owner evicts/forgets its state (a bounded cache dropping an
+   * idle conversation): the snapshot is a full copy of that state, so evicting
+   * the source without clearing here would leak the larger half. Notifies
+   * nobody — callers only clear a scope with no live subscribers, and the next
+   * `publish` (a re-seed from authoritative history) restores it.
+   */
+  clear(scope: string): void {
+    this.snapshots.delete(scope);
+  }
+
   /**
    * Store `snapshot` as the latest value for `scope` and synchronously notify
    * every current subscriber of that scope.

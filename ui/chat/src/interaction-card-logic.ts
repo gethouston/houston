@@ -61,7 +61,7 @@ export function isLastStep(index: number, total: number): boolean {
   return index >= total - 1;
 }
 
-/** Default progress copy, e.g. "1 of 3". */
+/** Default pager copy, e.g. "1 of 3". */
 export function defaultProgress(current: number, total: number): string {
   return `${current} of ${total}`;
 }
@@ -196,18 +196,18 @@ export function answerWithText(
   });
 }
 
-/** Advance past the current QUESTION step WITHOUT recording an answer. Mirrors
- *  `advance`'s frontier-advancing mechanics but commits nothing, so
- *  `toCompletedAnswers` simply omits the skipped step (its `if (committed)`
- *  guard). A no-op on a non-question step, since Skip is only ever offered for
- *  question steps. When the skipped question is the last step, completion still
- *  fires exactly like every other terminal transition, with the prior answers. */
-export function skipQuestion(
+/** Advance past the current step WITHOUT completing it — the Skip transition,
+ *  offered on EVERY step kind. Mirrors `advance`'s frontier-advancing mechanics
+ *  but commits nothing: a skipped question is simply omitted from
+ *  `toCompletedAnswers` (its `if (committed)` guard), and a skipped signin or
+ *  connect step is the APP's to report (it records the skip so the composed
+ *  reply can tell the agent the user declined). When the skipped step is the
+ *  last one, completion still fires exactly like every other terminal
+ *  transition, with whatever was committed before it. */
+export function skipStep(
   state: StepperState,
   steps: ChatInteractionStep[],
 ): Transition {
-  const step = steps[state.current];
-  if (step?.kind !== "question") return { state };
   return advance(state, steps);
 }
 

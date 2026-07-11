@@ -2,6 +2,7 @@ import "./styles/globals.css";
 import type { Toast } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { SignInScreen } from "./components/auth/sign-in-screen";
+import { CloudMigrationGate } from "./components/onboarding/cloud-migration/cloud-migration-gate";
 import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
 import { isFirstRun } from "./components/onboarding/missions/onboarding-flow";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
@@ -16,6 +17,7 @@ import { useHoustonInit } from "./hooks/use-houston-init";
 import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync";
 import { useLocalBridgeAutoReconnect } from "./hooks/use-local-bridge-autoreconnect";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
+import { useOnboardingPending } from "./hooks/use-onboarding-pending";
 import { useProviderCatalog } from "./hooks/use-provider-catalog";
 import { useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
@@ -170,6 +172,15 @@ export default function App() {
   // dismissed) — never on a fresh install, never once a provider is connected.
   const migrationReconnect = useMigrationReconnect();
 
+  // Interrupted-onboarding resume: a durable flag set while first-run is
+  // mid-flight and cleared on finish/skip. Because the assistant is created
+  // silently at AI-connect, `isFirstRun` (agent count) stops firing after that
+  // point, so this flag is what re-enters onboarding for a user who quit
+  // mid-flow. Read it before the first-run gate; join its load to the splash so
+  // a returning, fully-onboarded user never flashes into onboarding.
+  const { isPending: onboardingPending, isLoading: onboardingPendingLoading } =
+    useOnboardingPending();
+
   const mappedToasts: Toast[] = toasts.map((t) => ({
     id: t.id,
     message: t.description ? `${t.title} ${t.description}` : t.title,
@@ -219,6 +230,7 @@ export default function App() {
     agentLoading ||
     wsLoading ||
     capabilitiesLoading ||
+    onboardingPendingLoading ||
     (newEngineActive() && !agentsLoaded)
   ) {
     return <WorkspaceLoading />;
@@ -234,38 +246,43 @@ export default function App() {
     workspaceCount: workspaces.length,
     agentCount: agents.length,
   });
-  if (firstRun && canCreateAgents && !capabilitiesError) {
-    return (
-      <PersonalAssistantOnboarding
-        toasts={mappedToasts}
-        onDismissToast={dismissToast}
-      />
-    );
-  }
 
-  // Migrated user with workspaces but no connected provider: welcome them back
-  // and walk them through reconnecting once, before the shell (which is unusable
-  // without a provider anyway). Falls through the instant a provider connects or
-  // the user dismisses — see useMigrationReconnect for the full trigger.
-  if (migrationReconnect.show) {
-    return (
-      <>
-        <ProviderLoginFallback />
-        <ClaudeBrowserLogin />
-        <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />
-      </>
-    );
-  }
-
-  // The fallback rides alongside the shell so a sign-in launched from a
+  // The cloud-migration gate (HOU-719) wraps everything below the auth gates:
+  // on the hosted desktop build it offers to move this machine's OLD local
+  // data into the user's cloud agents. It must sit ABOVE the firstRun branch —
+  // a migrating user has zero cloud agents and would otherwise be captured by
+  // the create-your-assistant onboarding. It renders its children untouched
+  // whenever the trigger says no (non-hosted builds, web, no legacy data,
+  // already done/declined).
+  //
+  // The login fallback rides alongside the shell so a sign-in launched from a
   // surface without its own login handler (the in-chat reconnect card) still
   // opens the browser / dialog. Onboarding + tutorial mount their own handler
-  // (the login mission), so they don't need it.
+  // (the login mission), so they don't need it. The migration-reconnect branch
+  // is the CO-LOCATED upgrade moment (workspaces migrated in place, no
+  // provider connected) — see useMigrationReconnect for its trigger.
   return (
-    <>
-      <ProviderLoginFallback />
-      <ClaudeBrowserLogin />
-      <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />
-    </>
+    <CloudMigrationGate>
+      {(firstRun || onboardingPending) &&
+      canCreateAgents &&
+      !capabilitiesError ? (
+        <PersonalAssistantOnboarding
+          toasts={mappedToasts}
+          onDismissToast={dismissToast}
+        />
+      ) : migrationReconnect.show ? (
+        <>
+          <ProviderLoginFallback />
+          <ClaudeBrowserLogin />
+          <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />
+        </>
+      ) : (
+        <>
+          <ProviderLoginFallback />
+          <ClaudeBrowserLogin />
+          <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />
+        </>
+      )}
+    </CloudMigrationGate>
   );
 }

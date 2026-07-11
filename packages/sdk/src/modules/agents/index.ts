@@ -21,13 +21,21 @@ import { startAgentsEventStream } from "./events-stream";
 import { createAgentsHttp } from "./http";
 import {
   AGENTS_SCOPE,
+  type AgentCreateInput,
   AgentsCommand,
   type AgentsViewModel,
+  type AgentsWrites,
   type WireAgent,
 } from "./types";
 
 export { AgentsHttpError } from "./http";
-export type { AgentListItem, AgentsViewModel, WireAgent } from "./types";
+export type {
+  AgentCreateInput,
+  AgentListItem,
+  AgentsViewModel,
+  AgentsWrites,
+  WireAgent,
+} from "./types";
 export {
   AGENTS_CHANGED_EVENT,
   AGENTS_SCOPE,
@@ -45,6 +53,12 @@ export interface AgentsModule {
   rename(id: string, name: string): Promise<void>;
   /** Delete agent `id`, then refetch. */
   delete(id: string): Promise<void>;
+  /**
+   * No-refetch write variants for a host that owns its own reads (web under
+   * `reactivity:false`): same wire writes, no post-write `refresh()`, and they
+   * return the wire entity. iOS keeps using the refetching methods above.
+   */
+  writes: AgentsWrites;
   /** Stop the reactivity stream. Module-local; the kernel has no dispose seam. */
   dispose(): void;
 }
@@ -87,7 +101,7 @@ export function createAgentsModule(ctx: ModuleContext): AgentsModule {
   }
 
   async function create(name: string): Promise<void> {
-    await http.create(name);
+    await http.create({ name });
     await refresh();
   }
   async function rename(id: string, name: string): Promise<void> {
@@ -98,6 +112,14 @@ export function createAgentsModule(ctx: ModuleContext): AgentsModule {
     await http.remove(id);
     await refresh();
   }
+
+  // No-refetch writes: the underlying http op verbatim (returns the wire
+  // entity), WITHOUT the post-write refresh. For a host that owns its reads.
+  const writes: AgentsWrites = {
+    create: (input: AgentCreateInput) => http.create(input),
+    rename: (id, name) => http.rename(id, name),
+    delete: (id) => http.remove(id),
+  };
 
   ctx.registerCommand(AgentsCommand.Refresh, () => refresh());
   ctx.registerCommand(AgentsCommand.Create, (p) =>
@@ -130,17 +152,23 @@ export function createAgentsModule(ctx: ModuleContext): AgentsModule {
       }),
     );
 
-  const dispose = startAgentsEventStream({
-    baseUrl,
-    fetch: ports.fetch,
-    clock: ports.clock,
-    logger: ports.logger,
-    handlers: {
-      onConnect: () => backgroundRefresh("connect"),
-      onAgentsChanged: () => backgroundRefresh("change"),
-      onUnauthorized: emitTokenExpired,
-    },
-  });
+  // Reactivity off (`config.reactivity === false`): the host owns its own read
+  // model + invalidation (the web adapter), so we DON'T open a duplicate
+  // `/v1/events` stream — the module stays write-only and `dispose` is a no-op.
+  const dispose =
+    ctx.config.reactivity === false
+      ? () => {}
+      : startAgentsEventStream({
+          baseUrl,
+          fetch: ports.fetch,
+          clock: ports.clock,
+          logger: ports.logger,
+          handlers: {
+            onConnect: () => backgroundRefresh("connect"),
+            onAgentsChanged: () => backgroundRefresh("change"),
+            onUnauthorized: emitTokenExpired,
+          },
+        });
 
-  return { refresh, create, rename, delete: del, dispose };
+  return { refresh, create, rename, delete: del, writes, dispose };
 }

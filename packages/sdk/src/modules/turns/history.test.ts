@@ -29,6 +29,33 @@ describe("historyToFeed", () => {
     ]);
   });
 
+  it("renders displayText as the user bubble when the stored prompt carried hidden text", () => {
+    const feed = historyToFeed([
+      {
+        role: "user",
+        content: "HIDDEN directive + /abs/path/to/file.pdf",
+        displayText: "Summarize my file",
+        ts: 1,
+      },
+    ]);
+    expect(feed[0]).toEqual({
+      feed_type: "user_message",
+      data: "Summarize my file",
+      author: undefined,
+      ts: 1,
+    });
+  });
+
+  it("falls back to content for a plain user message with no displayText", () => {
+    const feed = historyToFeed([{ role: "user", content: "hi", ts: 1 }]);
+    expect(feed[0]).toEqual({
+      feed_type: "user_message",
+      data: "hi",
+      author: undefined,
+      ts: 1,
+    });
+  });
+
   it("carries the pi provider id through unchanged by default (identity map)", () => {
     const feed = historyToFeed([
       {

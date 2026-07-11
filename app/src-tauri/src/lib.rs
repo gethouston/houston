@@ -270,6 +270,10 @@ pub fn run() {
             // work in both remote-host and bundled-sidecar modes.
             app.manage(claude_login::ClaudeLoginState::default());
 
+            // One-click migration source host (HOU-719) — managed even in
+            // remote-host/cloud mode; that's exactly where the wizard runs.
+            app.manage(commands::migration::MigrationSourceState::default());
+
             let houston = houston_dir();
 
             // One-time migration: earlier versions stored workspaces under
@@ -354,6 +358,12 @@ pub fn run() {
             commands::terminal::open_terminal,
             commands::portable::save_portable_agent,
             commands::portable::open_portable_agent,
+            // One-click desktop→cloud migration (HOU-719): detect legacy data
+            // and run the bundled host briefly as a passive read-only source.
+            commands::migration::detect_legacy_houston,
+            commands::migration::backup_houston_data,
+            commands::migration::start_migration_source_host,
+            commands::migration::stop_migration_source_host,
             // Native "Save as…" for Files-tab downloads — the webview ignores
             // anchor-download clicks, so the shell writes the bytes itself.
             commands::save_file::save_download,

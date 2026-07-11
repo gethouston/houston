@@ -520,6 +520,10 @@ export interface UpdateAgent {
 export interface InteractionOption {
   id: string;
   label: string;
+  /** One muted line of consequence or benefit shown after the label. */
+  description?: string;
+  /** Mark AT MOST one option as the suggested default. */
+  recommended?: boolean;
 }
 
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
@@ -1032,6 +1036,15 @@ export interface RunShellRequest {
 export interface SessionStartRequest {
   sessionKey: string;
   prompt: string;
+  /**
+   * What renders as the user's chat bubble, when it must differ from `prompt`.
+   * The engine still receives `prompt` (the real text the model runs on);
+   * `displayText` is presentation-only — the optimistic live bubble and the
+   * replayed history bubble both render `displayText ?? prompt`. Set it when the
+   * prompt carries text the user should never see: a hidden setup-mission
+   * directive, or absolute attachment paths appended to the message.
+   */
+  displayText?: string;
   systemPrompt?: string;
   source?: string;
   workingDir?: string;

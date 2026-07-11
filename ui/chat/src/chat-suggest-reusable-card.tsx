@@ -70,9 +70,9 @@ export function ChatSuggestReusableCard({
         <p className="mt-1 text-muted-foreground text-sm leading-relaxed">
           {rationale}
         </p>
-        <div className="mt-3 flex flex-col gap-1.5">
+        <div className="mt-4 flex flex-col gap-2">
           <button
-            className="flex w-full items-center rounded-xl border border-border bg-background px-3 py-2.5 text-left shadow-xs transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="flex w-full items-center rounded-xl border border-border/60 bg-background px-3.5 py-3 text-left outline-none transition-colors hover:border-border hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
             disabled={disabled}
             onClick={onSave}
             type="button"
@@ -83,7 +83,7 @@ export function ChatSuggestReusableCard({
             </span>
           </button>
           <button
-            className="flex w-full items-center rounded-xl border border-border bg-background px-3 py-2.5 text-left shadow-xs transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="flex w-full items-center rounded-xl border border-border/60 bg-background px-3.5 py-3 text-left outline-none transition-colors hover:border-border hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
             disabled={disabled}
             onClick={onDismiss}
             type="button"

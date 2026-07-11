@@ -21,6 +21,10 @@
 export interface InteractionOption {
   id: string;
   label: string;
+  /** One muted line of consequence or benefit shown after the label. */
+  description?: string;
+  /** Mark AT MOST one option as the suggested default. */
+  recommended?: boolean;
 }
 
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for

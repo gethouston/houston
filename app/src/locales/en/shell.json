@@ -97,7 +97,7 @@
       },
       "tabRoutines": {
         "title": "Routines",
-        "body": "Schedule work to run in the background. Useful for daily briefs and recurring tasks."
+        "body": "Your assistant already comes with ready-made routines, like the Morning briefing. Schedule anything else to run in the background here."
       },
       "tabIntegrations": {
         "title": "Integrations",
@@ -180,11 +180,6 @@
     "blockedBody": "It is almost ready. This action will be available in a moment, as soon as your agent finishes setting up.",
     "stalledTitle": "Still working on it",
     "stalledBody": "This is taking longer than a normal start. We have not given up, your chat and messages are safe and will pick up the moment your agent answers."
-  },
-  "agentWelcome": {
-    "missionTitle": "Meet {{name}}",
-    "missionDescription": "Your new agent introduces itself",
-    "failed": "We could not start your new agent's first chat. You can still send it a message yourself."
   },
   "toolRuntimeError": {
     "title": "Something got stuck",

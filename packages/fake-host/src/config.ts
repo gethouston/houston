@@ -7,8 +7,14 @@
  * glue and live with the harness, not here.
  */
 
-/** The in-memory fake host the app talks to instead of a real host. */
-export const FAKE_HOST_PORT = 4399;
+/** The in-memory fake host the app talks to instead of a real host.
+ *  Overridable via HOUSTON_E2E_FAKE_HOST_PORT: parallel worktrees running e2e
+ *  at once would otherwise silently reuse EACH OTHER'S servers (Playwright's
+ *  reuseExistingServer sees a live port and assumes it's ours), producing
+ *  bogus results against foreign code. Set a distinct port per worktree. */
+export const FAKE_HOST_PORT = Number(
+  process.env.HOUSTON_E2E_FAKE_HOST_PORT || 4399,
+);
 
 export const FAKE_HOST_URL = `http://localhost:${FAKE_HOST_PORT}`;
 

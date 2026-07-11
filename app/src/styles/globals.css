@@ -107,27 +107,6 @@ body {
   }
 }
 
-@keyframes welcome-greeting-in {
-  0% {
-    opacity: 0;
-    filter: blur(14px);
-    transform: translateY(14px) scale(0.96);
-  }
-  100% {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0) scale(1);
-  }
-}
-.welcome-greeting-in {
-  animation: welcome-greeting-in 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@media (prefers-reduced-motion: reduce) {
-  .welcome-greeting-in {
-    animation: none;
-  }
-}
-
 /* Celebration beat for the success screens (setup ready, all set): the check
    pops in with a slight overshoot while a ring expands and fades behind it.
    Monochrome — the "reward" is in the motion + scale, not a decorative color. */
@@ -161,27 +140,9 @@ body {
   animation: success-ring 1s ease-out 0.1s both;
 }
 
-/* A looping "click me" pulse — an expanding ring that fades out, repeated.
-   Used on the send button in the first-email step so it's obvious to tap. */
-@keyframes attention-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.28);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
-  }
-}
-.attention-pulse {
-  animation: attention-pulse 1.8s ease-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .success-pop,
-  .success-ring,
-  .attention-pulse {
+  .success-ring {
     animation: none;
   }
 }

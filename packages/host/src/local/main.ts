@@ -38,6 +38,7 @@ import { runtimeCommand } from "./runtime-command";
  *                             falls back to `node --import tsx <repo>/packages/runtime/src/main.ts`.
  *   HOUSTON_APP_SYSTEM_PROMPT the product voice prompt (from the app)
  *   HOUSTON_MANAGED_CLOUD=1  serve managed-cloud capabilities (K8s pod)
+ *   HOUSTON_PASSIVE=1        migration-source mode: no scheduler, no watcher
  *   HOUSTON_STORE_URL         managed pod only: object-store gateway base URL
  */
 
@@ -156,6 +157,9 @@ const host = buildLocalHost({
   // calls act as the driving user. Desktop/self-host stay direct → false.
   gatewayFronted: process.env.HOUSTON_MANAGED_CLOUD === "1",
   credentials: remoteCredentialConfig(hostTokenEnv),
+  // Migration-source spawns (HOU-719): serve + migrate on boot, but never fire
+  // routines or churn watch events while the cloud app reads the old tree.
+  passive: process.env.HOUSTON_PASSIVE === "1",
   storeSync: storeSyncConfig(hostTokenEnv),
   // Platform-mode integrations: desktops get HOUSTON_INTEGRATIONS_URL (the
   // cloud gateway holding Houston's Composio key); self-host + the managed pod
@@ -172,6 +176,9 @@ const host = buildLocalHost({
   },
   onRuntimeLog: (line) => process.stderr.write(line),
 });
+
+// (Integrations on/off/direct is announced by the host's own boot log —
+// formatIntegrationsModeLog in local/host.ts — so no extra warning here.)
 
 // A desktop supervisor must not die on a stray error from a child runtime, a
 // dropped SSE socket, or a transient fetch. Log loudly and stay up — the user

@@ -7,7 +7,7 @@ import { expect, test } from "./support/fixtures";
  * `PendingInteraction { steps }`; the SDK settles the board to `needs_you` and
  * the app shows ONE `ChatInteractionCard` ABOVE the composer (which stays
  * mounted and usable throughout) that walks the user through the steps ONE AT
- * A TIME with a "current/total" pill. Typing a fresh message directly into the
+ * A TIME with a compact "N of M" pager (its chevrons are Back/Forward). Typing a fresh message directly into the
  * composer while the card shows abandons the whole sequence and sends the
  * typed text as a normal message instead of an answer. These specs arm the
  * fake host's `/__test__/chat-interaction` control with the `{ steps }`
@@ -41,7 +41,7 @@ async function startMission(
 
 /**
  * The three-question stepper: only ONE step shows at a time with a
- * "current/total" pill. Answer step 1 by option, step 2 by free text, step 3
+ * compact "N of M" pager. Answer step 1 by option, step 2 by free text, step 3
  * by option; the completion composes ONE structured user message carrying all
  * three answers, and the normal follow-up composer (which was visible the
  * whole time) is all that's left.
@@ -84,43 +84,47 @@ test("walks three questions one at a time and composes a single structured reply
 
   await startMission(page, "plan my trip");
 
-  // Step 1 of 3 only: the first question, its options, the always-visible input.
+  // 1 of 3 only: the first question, its options, the always-visible input.
   await expect(page.getByText("Which city are you flying to?")).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByText("1/3")).toBeVisible();
+  await expect(page.getByText("1 of 3")).toBeVisible();
   // The other questions are NOT on screen yet (one step at a time).
   await expect(
     page.getByText("Anything special I should know about the trip?"),
   ).toHaveCount(0);
   await expect(page.getByText("Morning or evening flight?")).toHaveCount(0);
 
-  // Exactly this step's two options, plus the escape-hatch free-text field, and
+  // Exactly this step's two options, plus the free-text ESCAPE row (which, when
+  // options are present, carries the "None of these..." escape placeholder), and
   // the real composer stays visible and usable alongside the card.
   await expect(page.getByRole("radio")).toHaveCount(2);
-  const freeText = page.getByPlaceholder("Type something else...");
-  await expect(freeText).toBeVisible();
+  await expect(
+    page.getByPlaceholder("None of these. Tell the agent what to do instead."),
+  ).toBeVisible();
   const composer = page.getByPlaceholder("Send a follow-up...");
   await expect(composer).toBeVisible();
   await expect(composer).toBeEditable();
 
-  // Answer step 1 by option -> advances to step 2 of 3 (a free-text-only
-  // question). On a multi-step sequence the click advances, it does not send.
+  // Answer step 1 by option -> advances to 2 of 3 (a free-text-only question).
+  // On a multi-step sequence the click advances, it does not send.
   await page.getByRole("radio", { name: "Paris" }).click();
   await expect(
     page.getByText("Anything special I should know about the trip?"),
   ).toBeVisible();
-  await expect(page.getByText("2/3")).toBeVisible();
+  await expect(page.getByText("2 of 3")).toBeVisible();
   await expect(page.getByText("Which city are you flying to?")).toHaveCount(0);
   await expect(page.getByRole("radio")).toHaveCount(0);
   await expect(composer).toBeVisible();
 
-  // Answer step 2 by free text -> advances to step 3 of 3. The footer's "Next"
-  // button commits the draft (no per-field submit icon anymore).
+  // Answer step 2 by free text -> advances to 3 of 3. A free-text-only question
+  // has no options, so its escape row shows the neutral placeholder; Enter in
+  // the field commits the draft (there is no footer Next button anymore).
+  const freeText = page.getByPlaceholder("Type something else...");
   await freeText.fill("Window seat please");
-  await page.getByRole("button", { name: "Next" }).click();
+  await freeText.press("Enter");
   await expect(page.getByText("Morning or evening flight?")).toBeVisible();
-  await expect(page.getByText("3/3")).toBeVisible();
+  await expect(page.getByText("3 of 3")).toBeVisible();
 
   // Answer the LAST step by option -> completes and sends ONE composed message.
   await page.getByRole("radio", { name: "Evening flight" }).click();
@@ -143,7 +147,7 @@ test("walks three questions one at a time and composes a single structured reply
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByText("1/3")).toHaveCount(0);
+  await expect(page.getByText("1 of 3")).toHaveCount(0);
 });
 
 /**
@@ -187,27 +191,24 @@ test("back chevron returns to the previous answered step, pre-selected", async (
   await expect(page.getByText("Which city are you flying to?")).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByText("1/2")).toBeVisible();
+  await expect(page.getByText("1 of 2")).toBeVisible();
   await page.getByRole("radio", { name: "Paris" }).click();
   await expect(page.getByText("Morning or evening flight?")).toBeVisible();
-  await expect(page.getByText("2/2")).toBeVisible();
+  await expect(page.getByText("2 of 2")).toBeVisible();
 
-  // Back -> step 1 again, with Paris pre-selected (the committed answer).
+  // The pager's back chevron -> step 1 again, Paris pre-selected (committed).
   await page.getByRole("button", { name: "Back" }).click();
   await expect(page.getByText("Which city are you flying to?")).toBeVisible();
-  await expect(page.getByText("1/2")).toBeVisible();
+  await expect(page.getByText("1 of 2")).toBeVisible();
   await expect(page.getByRole("radio", { name: "Paris" })).toHaveAttribute(
     "aria-checked",
     "true",
   );
 
   // Re-answer with the other option -> replaces the answer and advances again.
-  // (Clicking an option advances directly; no ambiguity with the header's
-  // forward chevron, which also carries the "Next" accessible name here since
-  // this step was already reached.)
   await page.getByRole("radio", { name: "Tokyo" }).click();
   await expect(page.getByText("Morning or evening flight?")).toBeVisible();
-  await expect(page.getByText("2/2")).toBeVisible();
+  await expect(page.getByText("2 of 2")).toBeVisible();
 
   // Finish; the composed message carries the REPLACED answer (Tokyo, not Paris).
   await page.getByRole("radio", { name: "Evening flight" }).click();
@@ -314,7 +315,7 @@ test("pressing a number key selects the matching option", async ({
 
 /**
  * A mixed sequence (question THEN connect): answering the question advances the
- * SAME card to the connect step as the final step, with "2/2" progress and
+ * SAME card to the connect step as the final step, with "Step 2 of 2" progress and
  * the rich integration connect card. (The connect can't complete real OAuth in
  * the harness, so this asserts the render, not the landing.) The composer stays
  * visible throughout, even mid-sequence.
@@ -345,24 +346,24 @@ test("advances from a question to a connect step in one sequence", async ({
 
   await startMission(page, "email me the itinerary");
 
-  // Step 1 of 2: the question, free-text only (no options), no connect card yet.
+  // 1 of 2: the question, free-text only (no options), no connect card yet.
   await expect(
     page.getByText("Who should I send the itinerary to?"),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("1/2")).toBeVisible();
+  await expect(page.getByText("1 of 2")).toBeVisible();
   await expect(
     page.getByText("I need access to your Gmail to send the trip itinerary."),
   ).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Connect" })).toHaveCount(0);
 
-  // Answer the question -> advance to the connect step (2 of 2). The reason and
-  // the rich IntegrationConnectCard (its Connect action is the proof it rendered)
-  // now own the card body; the question text is gone.
+  // Answer the question (Enter commits the free-text draft) -> advance to the
+  // connect step (2 of 2). The reason (now the connect card's bold title) and the
+  // Connect CTA own the card body; the question text is gone.
   const freeText = page.getByPlaceholder("Type something else...");
   await freeText.fill("john@example.com");
-  await page.getByRole("button", { name: "Next" }).click();
+  await freeText.press("Enter");
 
-  await expect(page.getByText("2/2")).toBeVisible();
+  await expect(page.getByText("2 of 2")).toBeVisible();
   await expect(
     page.getByText("I need access to your Gmail to send the trip itinerary."),
   ).toBeVisible();
@@ -413,24 +414,24 @@ test("advances from a question to a signin step in a three-step sequence", async
 
   await startMission(page, "email me the itinerary");
 
-  // Step 1 of 3: the question, free-text only. No signin/connect surface yet.
+  // 1 of 3: the question, free-text only. No signin/connect surface yet.
   await expect(
     page.getByText("Who should I send the itinerary to?"),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("1/3")).toBeVisible();
+  await expect(page.getByText("1 of 3")).toBeVisible();
   await expect(
     page.getByText("Sign in to Houston so I can send email on your behalf."),
   ).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Sign in" })).toHaveCount(0);
 
-  // Answer the question -> advance to the SIGNIN step (2 of 3). Its reason, the
-  // "Sign in to Houston" card and the Sign in button now own the card body; the
-  // question text is gone and the connect step (3 of 3) is still queued behind it.
+  // Answer the question (Enter commits) -> advance to the SIGNIN step (2 of 3).
+  // Its reason (now the sign-in card's bold title) and the Sign in button own the
+  // card body; the question text is gone and the connect step (3 of 3) is queued.
   const freeText = page.getByPlaceholder("Type something else...");
   await freeText.fill("john@example.com");
-  await page.getByRole("button", { name: "Next" }).click();
+  await freeText.press("Enter");
 
-  await expect(page.getByText("2/3")).toBeVisible();
+  await expect(page.getByText("2 of 3")).toBeVisible();
   await expect(
     page.getByText("Sign in to Houston so I can send email on your behalf."),
   ).toBeVisible();
@@ -512,6 +513,296 @@ test("shows a lone connect step for a connect-only sequence", async ({
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
   await expect(page.getByText(/ of /)).toHaveCount(0);
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+});
+
+/**
+ * The connect step renders the app's REAL brand logo once the toolkits catalog
+ * resolves (integrations armed): the fake host seeds slack with an inline
+ * data-URI PNG, mirroring the Composio `meta.logo` production serves. This pins
+ * the production regression where the card's pre-catalog favicon guess errored
+ * and a sticky latch permanently shadowed the real logo (the icon never showed).
+ * (slack, not gmail: the seed already holds an ACTIVE gmail connection, whose
+ * connect step would self-report and retire the card before any assertion.)
+ */
+test("renders the app's real logo on the connect step once the catalog resolves", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
+    data: { integrations: ["composio"] },
+  });
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "slack",
+            reason: "I need Slack access to post the trip summary.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "post the trip summary");
+
+  await expect(
+    page.getByText("I need Slack access to post the trip summary."),
+  ).toBeVisible({ timeout: 15_000 });
+  // Scope to the interaction card: with integrations armed, other surfaces on
+  // the page (the agent's integrations tab rows) list the same app.
+  const card = page
+    .locator("div.overflow-clip")
+    .filter({ hasText: "I need Slack access to post the trip summary." });
+  // The catalog identity joins the row: real name, one-line description, and
+  // the brand image itself (the seeded data URI), never the letter fallback.
+  await expect(card.getByText("Team messaging")).toBeVisible();
+  const logo = card.getByRole("img", { name: "Slack" });
+  await expect(logo).toBeVisible();
+  expect(await logo.getAttribute("src")).toMatch(/^data:image\/png/);
+});
+
+/**
+ * Skipping a lone connect step: the quiet "Not now" (Esc) beside the Connect
+ * pill advances past the step without connecting, the card retires, and the
+ * sequence still resumes the agent — the hidden auto-continue reply carries the
+ * skip fact ("Skipped connecting Gmail.") so the agent hears the decline and
+ * does not re-request the same app.
+ */
+test("skips a lone connect step and tells the agent the user declined", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "gmail",
+            reason: "I need access to your Gmail to send the trip itinerary.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "email me the itinerary");
+
+  await expect(
+    page.getByText("I need access to your Gmail to send the trip itinerary."),
+  ).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: /Not now/ }).click();
+
+  // The card retires (no soft-lock) and the hidden resume tells the agent the
+  // user declined — the fake host echoes the message it received.
+  await expect(page.getByText(/Skipped connecting Gmail\./)).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(
+    page.getByText("I need access to your Gmail to send the trip itinerary."),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Connect" })).toHaveCount(0);
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+});
+
+/**
+ * Skipping the connect step of a mixed (question then connect) sequence: the
+ * answered question still composes the ONE visible structured reply, and the
+ * skip line rides it so the transcript (and the agent) carry the decline.
+ */
+test("skipping the connect step of a mixed sequence keeps the answers and records the decline", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "question",
+            id: "q1",
+            question: "Who should I send the itinerary to?",
+          },
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "gmail",
+            reason: "I need access to your Gmail to send the trip itinerary.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "email me the itinerary");
+
+  await expect(
+    page.getByText("Who should I send the itinerary to?"),
+  ).toBeVisible({ timeout: 15_000 });
+  const freeText = page.getByPlaceholder("Type something else...");
+  await freeText.fill("john@example.com");
+  await freeText.press("Enter");
+
+  await expect(page.getByText("2 of 2")).toBeVisible();
+  await page.getByRole("button", { name: /Not now/ }).click();
+
+  // ONE composed visible message: the typed answer plus the skip status line.
+  const composed = page
+    .locator(".is-user")
+    .filter({ hasText: "john@example.com" });
+  await expect(composed).toHaveCount(1, { timeout: 15_000 });
+  await expect(composed).toContainText("Skipped connecting Gmail.");
+  await expect(page.getByRole("button", { name: "Connect" })).toHaveCount(0);
+});
+
+/**
+ * Reconsider a skipped connect step (the revisit-reconnect fix): skipping a
+ * connect advances the sequence, but walking Back onto the skipped step must
+ * offer its Connect button AGAIN — a skipped step is still actionable, unlike a
+ * completed one whose only affordance is Forward. Connecting it there COMMITS
+ * (the earlier skip is undone), so the composed reply reports "Connected {app}."
+ * for the reconsidered app, never a stale "Skipped connecting {app}." — while a
+ * genuinely-declined app still reports skipped. Integrations are armed so the
+ * fake host can LAND the OAuth (a control flips the pending connection active),
+ * proving the reconsider all the way through to the composed reply.
+ */
+test("reconsiders a skipped connect step: Back offers Connect again and reports Connected", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
+    data: { integrations: ["composio"] },
+  });
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "slack",
+            reason: "I need Slack access to post the trip summary.",
+          },
+          {
+            kind: "connect",
+            id: "c2",
+            toolkit: "github",
+            reason: "I need GitHub access to open the tracking issue.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "post the trip summary");
+
+  // 1 of 2: the Slack connect step (unconnected). Not now -> step 2 (GitHub).
+  await expect(
+    page.getByText("I need Slack access to post the trip summary."),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("1 of 2")).toBeVisible();
+  await page.getByRole("button", { name: /Not now/ }).click();
+
+  await expect(page.getByText("2 of 2")).toBeVisible();
+  await expect(
+    page.getByText("I need GitHub access to open the tracking issue."),
+  ).toBeVisible();
+
+  // The pager's back chevron onto the SKIPPED Slack step: its Connect button is
+  // offered AGAIN (the fix — a revisited skipped step stays actionable, and the
+  // pager's forward chevron is the "keep it skipped" path).
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByText("1 of 2")).toBeVisible();
+  await expect(
+    page.getByText("I need Slack access to post the trip summary."),
+  ).toBeVisible();
+  const connect = page.getByRole("button", { name: "Connect" });
+  await expect(connect).toBeVisible();
+
+  // Connect it. The fake host mints a PENDING connection on connect; flip it
+  // active (models the OAuth completing) so the card self-reports and advances.
+  await connect.click();
+  await expect
+    .poll(
+      async () => {
+        const res = await request.get(
+          `${FAKE_HOST_URL}/v1/integrations/composio/connections`,
+        );
+        const { items } = (await res.json()) as {
+          items: { toolkit: string; connectionId: string; status: string }[];
+        };
+        const pending = items.find(
+          (c) => c.toolkit === "slack" && c.status === "pending",
+        );
+        if (!pending) return false;
+        await request.post(`${FAKE_HOST_URL}/__test__/integrations-activate`, {
+          data: { connectionId: pending.connectionId },
+        });
+        return true;
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+
+  // The connection lands -> Slack advances to the GitHub step (2 of 2). Decline
+  // GitHub genuinely ("Not now") to finish the sequence.
+  await expect(page.getByText("2 of 2")).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByText("I need GitHub access to open the tracking issue."),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /Not now/ }).click();
+
+  // The composed reply reports the RECONSIDERED Slack as connected (never a
+  // stale skip line) and the genuinely-declined GitHub as skipped. The fake
+  // host echoes the hidden auto-continue message it received.
+  await expect(page.getByText(/Connected Slack\./)).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByText(/Skipped connecting GitHub\./)).toBeVisible();
+  await expect(page.getByText(/Skipped connecting Slack\./)).toHaveCount(0);
+});
+
+/**
+ * Skipping a lone signin step: the quiet "Not now" advances past the sign-in
+ * without SSO (which can't run in the harness anyway), the card retires, and the
+ * hidden resume tells the agent the user declined to sign in.
+ */
+test("skips a lone signin step and tells the agent the user declined", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "signin",
+            id: "s1",
+            reason: "Sign in to Houston to use your connected apps.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "check my email");
+
+  await expect(
+    page.getByText("Sign in to Houston to use your connected apps."),
+  ).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: /Not now/ }).click();
+
+  await expect(page.getByText(/Skipped signing in\./)).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(
+    page.getByText("Sign in to Houston to use your connected apps."),
+  ).toHaveCount(0);
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
 
@@ -601,4 +892,174 @@ test("the dismiss X button abandons the pending interaction", async ({
 
   await expect(page.getByText("Which city are you flying to?")).toHaveCount(0);
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+});
+
+/**
+ * Option descriptions + the Recommended chip (the additive protocol fields):
+ * each option row carries a muted inline description, and the single option
+ * marked `recommended` shows a soft "Recommended" chip. Older options without
+ * the fields still render as before (no chip, no description). A single-question
+ * fast path, so clicking the recommended option completes and sends immediately.
+ */
+test("renders option descriptions and the Recommended chip", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "question",
+            id: "q1",
+            question: "Which sample automation should we design?",
+            options: [
+              {
+                id: "tasks",
+                label: "Task tracker",
+                description: "Owners, due dates, statuses, and overdue work.",
+                recommended: true,
+              },
+              {
+                id: "sales",
+                label: "Sales pipeline",
+                description: "Leads, stages, follow-ups, and estimated value.",
+              },
+            ],
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "build a spreadsheet");
+
+  await expect(
+    page.getByText("Which sample automation should we design?"),
+  ).toBeVisible({ timeout: 15_000 });
+
+  // Both option descriptions render inline, muted, beside their labels.
+  await expect(
+    page.getByText("Owners, due dates, statuses, and overdue work."),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Leads, stages, follow-ups, and estimated value."),
+  ).toBeVisible();
+  // Exactly one option is marked recommended -> exactly one Recommended chip.
+  await expect(page.getByText("Recommended")).toHaveCount(1);
+
+  // Fast path: clicking the recommended option completes and sends its label.
+  await page.getByRole("radio", { name: /Task tracker/ }).click();
+  await expect(
+    page.locator(".is-user").filter({ hasText: "Task tracker" }),
+  ).toHaveCount(1);
+});
+
+/**
+ * Esc declines a connect step: with focus off the composer, pressing Escape
+ * fires the "Not now" path (mirroring the footer's Esc hint), so the card
+ * retires and the hidden resume tells the agent the user declined — exactly like
+ * clicking "Not now".
+ */
+test("pressing Esc declines a lone connect step", async ({ page, request }) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "gmail",
+            reason: "I need access to your Gmail to send the trip itinerary.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "email me the itinerary");
+
+  const reason = page.getByText(
+    "I need access to your Gmail to send the trip itinerary.",
+  );
+  await expect(reason).toBeVisible({ timeout: 15_000 });
+  // Move focus off the real composer (the Esc/Enter shortcuts are ignored while
+  // a text field has focus), then press Escape to decline.
+  await reason.click();
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByText(/Skipped connecting Gmail\./)).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(reason).toHaveCount(0);
+});
+
+/**
+ * Enter connects a connect step: with focus off the composer, pressing Enter
+ * fires the Connect flow (mirroring the pill's return-key glyph). Integrations
+ * are armed so the fake host mints a pending connection on connect; activating
+ * it (models the OAuth completing) lets the card self-report and resume the
+ * agent with "Connected Slack.".
+ */
+test("pressing Enter connects a lone connect step", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
+    data: { integrations: ["composio"] },
+  });
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "slack",
+            reason: "I need Slack access to post the trip summary.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "post the trip summary");
+
+  const reason = page.getByText(
+    "I need Slack access to post the trip summary.",
+  );
+  await expect(reason).toBeVisible({ timeout: 15_000 });
+  // Blur the composer, then press Enter to connect (instead of clicking Connect).
+  await reason.click();
+  await page.keyboard.press("Enter");
+
+  // Enter fired startConnect: the fake host mints a PENDING slack connection.
+  // Flip it active (models the OAuth completing) so the card self-reports.
+  await expect
+    .poll(
+      async () => {
+        const res = await request.get(
+          `${FAKE_HOST_URL}/v1/integrations/composio/connections`,
+        );
+        const { items } = (await res.json()) as {
+          items: { toolkit: string; connectionId: string; status: string }[];
+        };
+        const pending = items.find(
+          (c) => c.toolkit === "slack" && c.status === "pending",
+        );
+        if (!pending) return false;
+        await request.post(`${FAKE_HOST_URL}/__test__/integrations-activate`, {
+          data: { connectionId: pending.connectionId },
+        });
+        return true;
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+
+  // The connection lands -> the card self-reports and resumes the agent (the
+  // composed "Connected Slack." resume plus its echo can appear more than once).
+  await expect(page.getByText(/Connected Slack\./).first()).toBeVisible({
+    timeout: 15_000,
+  });
 });

@@ -46,6 +46,45 @@ export function orderFeaturedFirst(
 }
 
 /**
+ * Narrow a provider list to just the "most popular" set — the ones pinned in
+ * `FEATURED_PROVIDER_IDS` — returned in that pinned order (reusing
+ * `orderFeaturedFirst` so the front order is defined once). Used by the curated
+ * onboarding view for its collapsed default, before the user hits "see all".
+ * Tolerant of a featured id being absent from `providers` (e.g. the
+ * capability-gated local provider) — it is simply not included.
+ */
+export function filterToFeatured(
+  providers: readonly ProviderInfo[],
+): ProviderInfo[] {
+  const featured = new Set<string>(FEATURED_PROVIDER_IDS);
+  return orderFeaturedFirst(providers).filter((p) => featured.has(p.id));
+}
+
+/**
+ * The provider set the curated onboarding view actually RENDERS, plus whether a
+ * "see all providers" chip is still warranted. Collapsed (the default) it shows
+ * only the featured subset; an ACTIVE search or quick-filter, or the "see all"
+ * expansion, reveals the full `filtered` set instead. Searching / filtering is
+ * explicit "find this specific provider" intent, so it must bypass the featured
+ * narrowing — otherwise a non-featured match (e.g. DeepSeek) would filter to a
+ * non-empty `filtered` yet render nothing, leaving only a dangling chip. The chip
+ * shows ONLY while collapsed AND providers remain hidden (never while searching).
+ * In the uncurated hub every provider always shows and there is never a chip.
+ * Pure, so it unit-tests with `node --test`.
+ */
+export function curatedDisplay(
+  filtered: readonly ProviderInfo[],
+  curated: boolean,
+  expanded: boolean,
+  searching: boolean,
+): { displayed: ProviderInfo[]; hasMore: boolean } {
+  if (!curated || expanded || searching)
+    return { displayed: [...filtered], hasMore: false };
+  const featured = filterToFeatured(filtered);
+  return { displayed: featured, hasMore: filtered.length > featured.length };
+}
+
+/**
  * Case-insensitive provider search over name, id, and subtitle. An empty (or
  * whitespace) query returns every provider. Preserves incoming order.
  */

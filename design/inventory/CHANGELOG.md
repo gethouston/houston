@@ -3,6 +3,153 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v17 - 2026-07-11
+
+`interaction-card`: the whole family adopts the reference "Coworker card" look
+and feel (compact, left-aligned, white-card-on-page).
+
+Chrome: the grey `bg-secondary` surface (with raised white chips) becomes a
+white `bg-background` card set apart by a hairline border + soft shadow; radius
+tightens to `rounded-2xl`. The header drops the "Step N of M" eyebrow: the title
+goes bold and left, and a compact "N of M" pager sits top-right whose chevrons
+ARE the Back/Forward navigation (replacing the footer nav), beside the dismiss X.
+
+Question step: the right-edge keycaps move to a LEFT circular number badge (the
+digit still the keyboard shortcut); options gain a soft "Recommended" chip and a
+muted INLINE description (new additive protocol fields `InteractionOption.
+description` / `recommended`, tolerant/additive). The free-text row becomes the
+escape row — a pencil badge + muted placeholder + inline Skip pill — and the
+separate footer (Back / Skip / Next) is gone: actions live in the rows and the
+pager, Enter submits the free text.
+
+Signin/connect step: REVERSES the v16 centered identity hero. The body is now a
+COMPACT left-aligned lockup — brand logo (size-6) inline with a bold title (the
+reason, else "Connect {app}?" / "Sign in to Houston"), one muted benefit line —
+with a footer of a quiet "Not now" + Esc hint beside a filled CTA carrying a
+return-key glyph. Enter fires the CTA, Esc declines (capture-phase, pre-empts the
+global Escape-closes-panel shortcut). Navigation is the header pager for every
+kind, so `StepFooterApi` simplifies to `{ revisited, onSkip }` (Back node +
+onForward removed); a revisited completed step shows the connected state with no
+footer (pager forward is onward), a revisited skipped step keeps its CTA
+(reconsider survives). Anatomy swaps `progress-label`/`keycap-hint`/`footer-nav`/
+`step-identity-hero` for `pager`/`number-badge`/`recommended-chip`/
+`option-description`/`free-text-escape-row`/`step-identity-lockup`/
+`not-now-esc-hint`; tokens only.
+
+## v16 - 2026-07-10
+
+`interaction-card` signin & connect steps: the step body becomes a CENTERED
+identity hero, and a skipped step is reconsiderable.
+
+Design: the app-supplied body was a flat left row (bare logo leading name +
+description). It is now a composed vertical lockup — the brand logo sits BARE
+and large ON TOP (size-14, up from the size-10 leading slot; new `xl` AppLogo
+size), the app name centered beneath it, one muted one-line description centered
+under that. The sign-in step gives the Houston helmet the same centered slot.
+The connected state integrates into the lockup: the description swaps for a calm
+check + "Connected" line under the name. The family chrome is unchanged — the
+eyebrow + reason-title header stays left, the Back/Skip/CTA footer stays the
+shared right-aligned row — so the centered hero reads as the step BODY between
+them. New anatomy `step-identity-hero` / `connected-check` (replacing
+`step-app-row`); tokens only.
+
+Bug fix (reconsider a skipped step): a revisited signin/connect step used to
+show only Forward, which is right for a COMPLETED step (its card can't re-fire
+completion) but stranded a SKIPPED one — no way to change your mind and connect.
+Now a revisited step splits by its FINAL state: completed → bare filled Forward
+(the only way on); skipped → the full actionable state returns, a ghost Forward
+("keep it skipped") beside a fresh filled Connect / Sign in, never two filled
+pills. Connecting / signing in there COMMITS (the earlier skip is undone), and
+the completion reply derives from each step's FINAL outcome — a step skipped
+then reconsidered reports "Connected {app}." (never a stale "Skipped connecting
+{app}."), and no step is named twice. New state `reconsider`; ui/chat's
+`StepFooterApi` replaces the pre-styled `forward` node with an `onForward`
+callback (the body owns the forward button so it can pick filled vs ghost from
+the connection/auth state only it knows). Auto-continue stays gated to the live
+frontier, so the revisit-bounce fix does not regress.
+
+## v15 - 2026-07-10
+
+`interaction-card` signin & connect steps: the icon integrates into the card and
+every step becomes skippable. The step's app row dropped its hairline border and
+its boxed thumbnail — the brand logo now sits BARE on the card surface (size-10,
+rounded; its own art carries the brand), leading the identity stack (name +
+one-line description), so the step reads as a purpose-built connect card rather
+than a chip inside a card; the sign-in step gives the bare Houston helmet the
+same size-10 slot. The calm connected check keeps its trailing position beside
+the identity stack. Skip generalizes from questions to ALL step kinds: a
+signin/connect step renders a ghost Skip between Back and its filled CTA (live
+frontier only — a revisited completed step still shows Forward), and a skipped
+signin/connect is a recorded FACT in the completed reply ("Skipped connecting
+{app}." / "Skipped signing in.", visible in the structured answers bubble when
+the sequence had questions, hidden auto-continue otherwise) so the agent hears
+the decline instead of re-requesting forever. New state `skipped`; ui/chat's
+`StepFooterApi` gains `onSkip` (the generalized `skipStep` transition replaces
+`skipQuestion`).
+
+Also fixes the production connect-step logo regression: the shared `AppLogo`
+now keys its failure latch to the failing URL (the pre-catalog favicon guess
+404'd and permanently shadowed the real Composio logo) and the in-chat connect
+surfaces hold the favicon-guess fallback until the toolkits catalog settles.
+
+## v14 - 2026-07-10
+
+`interaction-card` brings the signin & connect steps into the Mercury system —
+they were the last hold-outs still drawing a card-inside-a-card. Before, the
+app-supplied body floated a nested `bg-background` rounded surface (logo, name,
+truncated description, AND a filled Connect pill) INSIDE the grey interaction
+card, with the reason as loose text above it. Now the step body draws NO surface
+of its own: the reason routes through the SAME header slot as a question's title
+(anatomy `question-title` -> `step-title`, now shared by every kind; a labelled
+"Connect {app}" / sign-in fallback covers a reason-less step), the app renders a
+hairline Mercury row (app logo + name + one-line clamped description, the
+option-row grammar; new anatomy `step-app-row`), and the single filled CTA
+("Connect" / "Sign in") moves into the shared footer beside the Back node,
+exactly like a question step's Next (new anatomy `step-cta`). A connecting
+hand-off shows a spinner CTA plus a quiet muted line above the footer (new
+anatomy `waiting-note`, new state `connecting`); an already-connected app shows
+a calm check in the row (new state `connected`).
+
+CONTRACT change (additive): `renderConnect`/`renderSignin` now receive the
+shared `StepFooterApi` (`back`/`forward` nav nodes) alongside their completion
+callback, so the app composes the footer without re-implementing navigation;
+ui/chat exports `InteractionFooter` (the footer row's chrome) so the app's CTA
+sits in the exact same spacing. `StepperHeaderProps.questionText` ->
+`title`. ui/chat stays auth/Composio-unaware; the reactive connect/OAuth logic
+is shared by the inline `#houston_toolkit` card and the stepper step via one
+app-side hook, so only their presentation forks. New locale key
+`chat:interaction.connectTitle` (en/es/pt).
+
+## v13 - 2026-07-10
+
+The interaction-card family adopts the Mercury settings-modal discipline:
+one title, one quiet micro-label, one filled CTA, hairline rows.
+
+`interaction-card` restructure: the header's "current/total" pill + inline
+question row becomes a quiet "Step N of M" progress micro-label (anatomy
+`progress-pill` -> `progress-label`) above the question rendered as the card's
+real title (`question-text` -> `question-title`); a single-step sequence shows
+the bare title, so screenshot states (b)/(c) look designed, not stripped. The
+option row's right-aligned bare position number becomes a keycap-style hint (a
+small bordered rounded square, anatomy `position-number` -> `keycap-hint`) so
+it reads as the keyboard shortcut it is, never a list marker; a lone option
+hides the keycap entirely (new state `single-option`). Rows tighten to the
+hairline treatment (border-border/60, rounded-xl, roomier py-3), the free-text
+escape hatch joins the same row group and rhythm, and the footer re-weights:
+Back/Skip become ghost text buttons and Next the single filled pill (its
+corner-down-left glyph is gone). Default progress copy is now "Step {n} of
+{m}" (locales updated en/es/pt).
+
+`interaction-answers-message` becomes a receipt: pairs separated by hairline
+dividers (new anatomy `pair-divider`, new state `single-pair`), answers drop
+from bold to medium so the bubble sits quieter than the interaction card; a
+lone pair reads as a deliberate compact receipt.
+
+`plan-ready-card` + `suggest-reusable-card` inherit the same row treatment
+(hairline border, py-3, no shadow, shared focus ring) so the in-chat card
+family reads as one system. No contract changes anywhere; labels props are
+unchanged in shape.
+
 ## v12 - 2026-07-10
 
 Interaction cards stop replacing the composer, and two new chat surfaces land.

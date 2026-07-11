@@ -1,4 +1,5 @@
 import type { PendingInteraction } from "@houston/runtime-client";
+import { LruCache } from "../../lru";
 import type { ScopeStore } from "../../store";
 import type {
   BoardStatus,
@@ -117,6 +118,27 @@ const FINAL_OF: Record<string, string> = {
 };
 
 /**
+ * How many conversations' folded transcripts are retained in memory at once.
+ * Each {@link ConvState} holds a conversation's ENTIRE feed, so an unbounded map
+ * would grow with total message volume across a multi-hour session. The
+ * least-recently-published IDLE conversation is evicted past this bound and
+ * re-hydrated from authoritative history on next {@link ConversationVmOutput.observe}.
+ * Overridable via the SDK config; the default keeps a generous working window.
+ */
+export const DEFAULT_CONVERSATION_CACHE_MAX = 50;
+
+/**
+ * A conversation that must NOT be evicted: a running turn, an open stream, a
+ * queued message, or an unconfirmed optimistic send. Dropping any of these would
+ * lose in-flight state that history cannot yet re-hydrate (it is not settled).
+ */
+const isConvLive = (s: ConvState): boolean =>
+  s.sessionStatus === "running" ||
+  s.streaming.size > 0 ||
+  s.queued.length > 0 ||
+  s.feed.some((f) => f.pending === true);
+
+/**
  * The scope a conversation's VM is published on. Agent-qualified: session keys
  * are unique only within one agent — the same identity `streamKey` uses — so
  * the scope carries BOTH, and the encoding stays in here so no caller ever
@@ -129,9 +151,27 @@ export const conversationScope = (
   `conversation/${encodeURIComponent(agentPath)}/${encodeURIComponent(sessionKey)}`;
 
 export class ConversationVmOutput implements FeedOutput {
-  private readonly convs = new Map<string, ConvState>();
+  /**
+   * Folded conversations, LRU-bounded so a long-lived client's memory tracks its
+   * ACTIVE window, not total message volume. A live conversation (running /
+   * streaming / queued / optimistic) is pinned, as is one a surface is actively
+   * subscribed to — only settled, un-viewed conversations are evicted, and each
+   * re-hydrates from history on next {@link observe}. Eviction also clears the
+   * scope's retained snapshot (a full copy of the feed) so the whole conversation
+   * is released, not just half.
+   */
+  private readonly convs: LruCache<string, ConvState>;
 
-  constructor(private readonly store: ScopeStore) {}
+  constructor(
+    private readonly store: ScopeStore,
+    opts?: { cacheMax?: number },
+  ) {
+    this.convs = new LruCache<string, ConvState>({
+      capacity: opts?.cacheMax ?? DEFAULT_CONVERSATION_CACHE_MAX,
+      isPinned: (key, s) => isConvLive(s) || this.store.hasSubscribers(key),
+      onEvict: (key) => this.store.clear(key),
+    });
+  }
 
   private state(agentPath: string, sessionKey: string): ConvState {
     const key = conversationScope(agentPath, sessionKey);
@@ -149,6 +189,19 @@ export class ConversationVmOutput implements FeedOutput {
       this.convs.set(key, s);
     }
     return s;
+  }
+
+  /**
+   * Explicitly drop a conversation's folded state and its retained snapshot —
+   * the eviction seam a surface calls when it closes/deletes a conversation, so
+   * its transcript is released immediately rather than waiting for the LRU to
+   * age it out. Unlike automatic eviction this is unconditional: the caller owns
+   * the decision. A later {@link observe} re-hydrates it from history.
+   */
+  forget(agentPath: string, sessionKey: string): void {
+    const key = conversationScope(agentPath, sessionKey);
+    this.convs.delete(key);
+    this.store.clear(key);
   }
 
   /**
@@ -333,6 +386,10 @@ export class ConversationVmOutput implements FeedOutput {
       pendingInteraction: s.pendingInteraction,
       ...(s.queued.length ? { queued: s.queued.map((q) => ({ ...q })) } : {}),
     };
-    this.store.publish(conversationScope(agentPath, sessionKey), snapshot);
+    const scope = conversationScope(agentPath, sessionKey);
+    this.store.publish(scope, snapshot);
+    // Every publish makes this the most-recently-published conversation, so the
+    // LRU evicts by real activity — the chats a client is working in stay hot.
+    this.convs.touch(scope);
   }
 }

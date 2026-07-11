@@ -364,6 +364,13 @@ export const tauriChat = {
       suppressUserBubble?: boolean;
       /** Queue display (user's words + attachment names) if the send is held (see SessionStartRequest). */
       queuedPreview?: { text: string; attachmentNames?: string[] };
+      /**
+       * What the user's bubble renders when it must differ from `prompt` — a
+       * hidden setup-mission directive or appended attachment paths. The engine
+       * still receives `prompt`; this only changes the live + replayed bubble
+       * (see SessionStartRequest).
+       */
+      displayText?: string;
     },
   ) =>
     call<string>("send_message", async () => {
@@ -382,6 +389,7 @@ export const tauriChat = {
         mode: opts?.modeOverride,
         suppressUserBubble: opts?.suppressUserBubble,
         queuedPreview: opts?.queuedPreview,
+        displayText: opts?.displayText,
       });
       return res.sessionKey;
     }),

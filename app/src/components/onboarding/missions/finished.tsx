@@ -1,75 +1,123 @@
-import { ChevronRight, Compass, LayoutGrid, Users } from "lucide-react";
-import { useState } from "react";
+import { Button } from "@houston-ai/core";
+import confetti from "canvas-confetti";
+import { Rocket } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useCapabilities } from "../../../hooks/use-capabilities";
 import { CreateTeamDialog } from "../../shell/create-team-dialog";
-import { OptionCard, SetupCard } from "../setup-card";
+import { SetupCard } from "../setup-card";
 import { SuccessCheck } from "../success-check";
 import { shouldOfferTeamInvite } from "./onboarding-flow";
 
-// These are actions, not a single-select — a chevron reads as "go", where the
-// default radio dot would read as a checkbox/option.
-const goChevron = <ChevronRight className="size-4 text-muted-foreground" />;
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** A few overlapping bursts for the "your assistant just acted for you" payoff. */
+function fireConfetti() {
+  if (prefersReducedMotion()) return;
+  const base = { startVelocity: 45, ticks: 220, zIndex: 9999, scalar: 0.9 };
+  confetti({
+    ...base,
+    particleCount: 140,
+    spread: 80,
+    origin: { x: 0.5, y: 0.55 },
+  });
+  confetti({
+    ...base,
+    particleCount: 70,
+    spread: 60,
+    angle: 60,
+    origin: { x: 0, y: 0.7 },
+  });
+  confetti({
+    ...base,
+    particleCount: 70,
+    spread: 60,
+    angle: 120,
+    origin: { x: 1, y: 0.7 },
+  });
+}
 
 interface FinishedMissionProps {
-  /** Enter the app with the guided tour armed. */
-  onTour: () => void;
-  /** Enter the app heading for the integrations browser. */
-  onConnectMore: () => void;
+  /** Which finish this is:
+   *  - "sent": the assistant actually sent a real email (the full email path).
+   *  - "ready": the email steps were skipped or the deployment has no
+   *    integrations, so no email was sent — the copy must not claim one.
+   *  The orchestrator reaches this screen three ways and only one of them
+   *  genuinely sent an email, so the payoff copy is variant-driven to stay
+   *  honest. */
+  variant: "sent" | "ready";
+  /** The one action on this screen: arm the guided tour and jump into the
+   *  assistant's Routines surface so the freshly-seeded content is immediately
+   *  visible. */
+  onStart: () => void;
 }
 
 /**
- * Onboarding finished: a quick celebration, then a fork — take the tour of
- * Houston, connect more integrations, or (on a spaces host) invite your team.
- * Either way the user lands in the app.
+ * The single onboarding payoff screen. Reached three ways — after the assistant
+ * sent a real email ("sent"), or after the email detour was skipped / is
+ * unavailable ("ready"). It celebrates and offers exactly ONE primary action, no
+ * secondary escape hatch (design principle: one obvious action per screen) — an
+ * inspiring send-off, not a decision. The `variant` keeps the copy truthful: it
+ * only claims a real email was sent on the path that actually sent one.
+ *
+ * On a deployment that serves C8 Spaces (self-serve teams) a single quiet text
+ * link sits under the CTA to create a team — main's growth affordance, kept
+ * subordinate to the one obvious action so the screen stays focused.
  */
-export function FinishedMission({
-  onTour,
-  onConnectMore,
-}: FinishedMissionProps) {
+export function FinishedMission({ variant, onStart }: FinishedMissionProps) {
   const { t } = useTranslation("setup");
   const { capabilities } = useCapabilities();
   const [inviteOpen, setInviteOpen] = useState(false);
   const offerInvite = shouldOfferTeamInvite(capabilities);
+
+  useEffect(() => {
+    fireConfetti();
+  }, []);
+
+  const titleKey =
+    variant === "sent"
+      ? "tutorial.missions.finished.title"
+      : "tutorial.missions.finished.readyTitle";
+  const bodyKey =
+    variant === "sent"
+      ? "tutorial.missions.finished.body"
+      : "tutorial.missions.finished.readyBody";
+
   return (
-    <SetupCard>
+    <SetupCard onSpace>
       <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
-        <SuccessCheck size="lg" ring />
+        <SuccessCheck />
         <div className="flex flex-col items-center gap-2">
           <h1 className="text-2xl font-semibold tracking-tight">
-            {t("tutorial.missions.finished.title")}
+            {t(titleKey)}
           </h1>
           <p className="max-w-md text-sm text-muted-foreground">
-            {t("tutorial.missions.finished.body")}
+            {t(bodyKey)}
+            <br />
+            {t("tutorial.missions.finished.tagline")}
           </p>
         </div>
-        <div className="flex w-full max-w-sm flex-col gap-2">
-          <OptionCard
-            leading={<Compass className="size-4" />}
-            label={t("tutorial.missions.finished.tour")}
-            description={t("tutorial.missions.finished.tourBody")}
-            selected={false}
-            trailing={goChevron}
-            onSelect={onTour}
-          />
-          <OptionCard
-            leading={<LayoutGrid className="size-4" />}
-            label={t("tutorial.missions.finished.connectMore")}
-            description={t("tutorial.missions.finished.connectMoreBody")}
-            selected={false}
-            trailing={goChevron}
-            onSelect={onConnectMore}
-          />
+        <div className="flex flex-col items-center gap-3">
+          <Button
+            type="button"
+            className="h-11 rounded-full px-5"
+            onClick={onStart}
+          >
+            <Rocket className="size-4" />
+            {t("tutorial.missions.finished.cta")}
+          </Button>
           {offerInvite && (
-            <OptionCard
-              leading={<Users className="size-4" />}
-              label={t("tutorial.missions.finished.inviteTeam")}
-              description={t("tutorial.missions.finished.inviteTeamBody")}
-              selected={false}
-              trailing={goChevron}
-              onSelect={() => setInviteOpen(true)}
-            />
+            <button
+              type="button"
+              onClick={() => setInviteOpen(true)}
+              className="text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            >
+              {t("tutorial.missions.finished.inviteTeam")}
+            </button>
           )}
         </div>
       </div>

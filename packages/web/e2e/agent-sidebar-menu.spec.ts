@@ -1,3 +1,4 @@
+import { createAgent } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
 
 /**
@@ -51,13 +52,7 @@ test("deletes an agent from the sidebar menu", async ({ page }) => {
   await page.goto("/");
 
   // Create a second agent to delete (never delete the only one).
-  await page.getByRole("button", { name: "New agent" }).click();
-  await page.getByText("From scratch").click();
-  await page
-    .getByPlaceholder("e.g. Product manager, Sales, Jerry")
-    .fill("Doomed Bot");
-  await page.getByRole("button", { name: "Create Agent" }).click();
-  await expect(page.getByText("Doomed Bot").first()).toBeVisible();
+  await createAgent(page, "Doomed Bot");
 
   const doomed = page
     .getByRole("button", { name: "Doomed Bot", exact: true })

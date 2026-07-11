@@ -18,10 +18,11 @@ in **`packages/design-tokens`** (`@houston/design-tokens`), authored as W3C DTCG
 JSON (primitive layer + semantic `--ht-*` alias layer, light + dark) and compiled
 by Style Dictionary to every surface. The CSS emits the light values on **both
 `:root` and `[data-theme="light"]`** (and dark on `[data-theme="dark"]`), so any
-subtree can **pin the light look regardless of the app theme** by setting
-`data-theme="light"` on a wrapper — custom properties inherit, so the scoped
+subtree can **pin either palette regardless of the app theme** by setting
+`data-theme` on a wrapper — custom properties inherit, so the scoped
 re-declaration re-resolves every `var(--ht-*)`, and thus every Tailwind
-`--color-*` utility, inside it (used by the sign-in card). The `dark` Tailwind
+`--color-*` utility, inside it (the sign-in and onboarding cards pin
+`data-theme="dark"` this way). The `dark` Tailwind
 variant (`ui/core/src/globals.css`) and every `[data-theme="dark"]` descendant
 rule (`futuristic.css`, app `globals.css`) carry a
 `:not(:where([data-theme="light"], [data-theme="light"] *))` guard so dark
@@ -41,9 +42,10 @@ for how visual, behavior, and structural changes flow across all three surfaces)
    reference). NEVER edit `dist/` and NEVER add a new hardcoded colour/spacing
    literal to app or `ui/` CSS — reference a `--ht-*` var (or a Tailwind
    `--color-*` utility).
-2. `pnpm --filter @houston/design-tokens build`.
-3. Commit source + regenerated `dist/` together (a sync test fails on stale dist).
-4. If the change is genuinely visual, update `test/legacy-resolved.json` to the
+2. `pnpm --filter @houston/design-tokens build`. `dist/` is gitignored (not
+   committed, on this repo despite older guidance to the contrary) — the build
+   step regenerates it locally/in CI, so only commit the `tokens/*.json` source.
+3. If the change is genuinely visual, update `test/legacy-resolved.json` to the
    new baseline in the same commit (the zero-diff test pins it otherwise).
 
 The colour values below are the CURRENT shipped tokens; treat the JSON as
@@ -160,7 +162,7 @@ Grid: leading (attach) | primary (text) | trailing (send).
 White bg, `border-black/5`, `rounded-xl`, hover shadow. Running state = `card-running-glow` animation border.
 
 ### RowCard (inline notice + integration cards)
-One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-secondary`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the Composio sign-in / link cards.
+One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-secondary`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the inline Composio `#houston_toolkit` link card. **Not** the interaction-card stepper's connect/signin STEPS — those draw a surface-less COMPACT left-aligned lockup (brand logo `sm` inline with a bold title, one muted benefit line) + a footer of a quiet "Not now" + Esc hint beside a filled CTA with a return-key glyph (reference "Coworker card" look, inventory v17; no card-inside-a-card); see `chat-connect-interaction-card.tsx` / `chat-signin-interaction-card.tsx`.
 
 > **AI Models hub is the one deliberate exception.** The hub (Providers/Models tabs) reaches for a full-color brand mark — `BrandMark` (`app/src/components/ai-hub/brand-mark.tsx`) renders the same `ProviderGlyph` boxless (no tile or wash), full-bleed at sm/md/lg (`size-6/8/10`), colored via the sanctioned hex map in `shell/provider-brand-colors.ts` (the ONLY place raw brand hex may live; every other surface stays on tokens). This is a "candy store" recognition device scoped to the hub — chat surfaces (RowCard, provider-switch, error/reconnect cards) stay monochrome. Multi-button error cards stay on `ErrorCard` (icon-bubble) in `provider-error-cards/shared.tsx`.
 
@@ -205,16 +207,29 @@ Rules: `layout` prop on reordering items. `AnimatePresence mode="popLayout"` for
 ### Space screen backdrop
 `SpaceScreen` (`app/src/components/space/space-screen.tsx`) is the **shared
 full-screen space layout**: the `--ht-space-canvas` base, the `SpaceBackground`
-deep-space backdrop, and a `z-10` content slot on top. Both the **sign-in
-screen** (`components/auth/sign-in-screen.tsx`) and the **workspace-loading
-splash** (`components/shell/workspace-loading.tsx`) render inside it, so the whole
-boot experience reads as one continuous space. The **sign-in screen** floats a
-card pinned to the **light palette** (`data-theme="light"`) so it stays a bright,
-calm card regardless of app theme (Mercury pattern: dark backdrop, light card).
-The **workspace-loading splash has NO card** — the `OrbitLoader` + status line sit
-directly on the dark backdrop, using the space-foreground token family
-(`--ht-space-foreground` / `-foreground-muted`, same as the sign-in wordmark/footer).
-The whole space rendering cluster lives in **`app/src/components/space/`**.
+deep-space backdrop, and a `z-10` content slot on top. The **sign-in screen**
+(`components/auth/sign-in-screen.tsx`), the **workspace-loading splash**
+(`components/shell/workspace-loading.tsx`), and the **first-run onboarding flow**
+(`components/onboarding/personal-assistant-onboarding.tsx`) all render inside it,
+so the whole boot experience reads as one continuous space. The sign-in screen
+and each onboarding step float a card **pinned to the DARK palette**
+(`data-theme="dark"`) so the card reads identically in both app themes (dark
+card on the theme-invariant space backdrop). Onboarding wraps ONE `SpaceScreen`
+at the top level so the WebGL nebula never remounts across step transitions;
+`SetupCard`'s `onSpace` prop is what floats each step's card on it (drops the
+standalone `h-screen`/`bg-secondary` backdrop and pins the dark palette). The
+language and disclaimer gates (`shell/language-gate.tsx`,
+`shell/disclaimer-gate.tsx`) now render the SAME way — each wrapped in
+`SpaceScreen` with an `onSpace` `SetupCard` — so the whole pre-workspace flow is
+one continuous starfield, not the old dimmed `bg-secondary` backdrop. The
+**finished "You're all set" step** is the one deliberate colour accent: a
+celebratory `SuccessCheck` (warm space-nebula gradient fill + expanding ring,
+from the `--ht-space-*` tokens) above a single **"Start building"** CTA;
+everything else stays monochrome content. The **workspace-loading splash has NO card** — the `OrbitLoader` +
+status line sit directly on the dark backdrop, using the space-foreground token
+family (`--ht-space-foreground` / `-foreground-muted`, same as the sign-in
+wordmark/footer). The whole space rendering cluster lives in
+**`app/src/components/space/`**.
 
 **`OrbitLoader`** (`space/orbit-loader.tsx` + geometry/trail constants in
 `space/orbit-path.ts`) is the loading centrepiece that replaced the old scaled-up

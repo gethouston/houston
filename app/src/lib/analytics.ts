@@ -36,16 +36,24 @@ export type AnalyticsEventName =
   | "onboarding_completed"
   // One-time "reconnect your AI" moment after upgrading from the legacy build.
   | "migration_reconnect_completed"
+  // First-run cloud-migration wizard (HOU-719): the cloud desktop build offers
+  // to move the machine's OLD local data into the user's cloud agents.
+  | "cloud_migration_offered"
+  | "cloud_migration_backup_done"
+  | "cloud_migration_started"
+  | "cloud_migration_agent_done"
+  | "cloud_migration_agent_failed"
+  | "cloud_migration_completed"
+  | "cloud_migration_skipped"
+  | "cloud_migration_deferred"
   // Onboarding funnel (acquisition→activation) — one event per step the user
   // actually clears, so a single PostHog funnel can show where first-run drops
   // off (broken down by `app_os` for Mac vs Windows). Action-first: where a
   // real action exists (provider/apps connected, message/email sent) we fire on
   // the action, not the Continue click. Each fires exactly ONCE per install
   // (ref/flag-guarded at the call site).
-  | "onboarding_welcome_continued"
   | "onboarding_language_selected"
   | "onboarding_agreement_accepted"
-  | "onboarding_assistant_named"
   | "ai_provider_connected"
   | "tools_provider_connected"
   | "first_message_sent"
@@ -65,6 +73,9 @@ export type AnalyticsEventName =
   | "agent_installed_from_store"
   | "agent_shared"
   | "agent_imported"
+  // Fired when an agent's self-setup mission auto-starts after it is
+  // created/imported. Carries `source` (created vs imported).
+  | "agent_onboarding_started"
   | "chat_message_sent"
   | "chat_message_received"
   | "mission_created"
@@ -110,7 +121,9 @@ type AnalyticsProperty =
   | "to_version"
   // Onboarding funnel
   | "locale"
-  | "step";
+  | "step"
+  // Cloud migration (payload sizes, where already known)
+  | "bytes";
 
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserIdentity = {
@@ -141,6 +154,7 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "to_version",
   "locale",
   "step",
+  "bytes",
 ]);
 
 // Bootstrap PostHog at module load so a configured build can capture errors

@@ -13,6 +13,7 @@ import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAccountAvailable } from "./sections/account";
 import { ConnectedAccountsSection } from "./sections/connected-accounts";
 import { MembersSection } from "./sections/members";
+import { MigrationSection, useMigrationAvailable } from "./sections/migration";
 import { ReportBugSection } from "./sections/report-bug";
 import { ShortcutsSection } from "./sections/shortcuts";
 import {
@@ -25,6 +26,7 @@ export function SettingsView() {
   const { t } = useTranslation(["settings", "common", "org"]);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const accountAvailable = useAccountAvailable();
+  const migrationAvailable = useMigrationAvailable();
   const { capabilities } = useCapabilities();
   const showMembers = canSeeMembers(capabilities);
   const setSettingsSection = useUIStore((s) => s.setSettingsSection);
@@ -54,6 +56,7 @@ export function SettingsView() {
         <SettingsIndex
           accountAvailable={accountAvailable}
           showMembers={showMembers}
+          migrationAvailable={migrationAvailable}
           onSelect={setActive}
         />
       </div>
@@ -83,6 +86,7 @@ export function SettingsView() {
             {active === "connectedAccounts" && <ConnectedAccountsSection />}
             {active === "shortcuts" && <ShortcutsSection />}
             {active === "reportBug" && <ReportBugSection />}
+            {active === "migration" && <MigrationSection />}
           </div>
         )}
       </div>

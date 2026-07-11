@@ -131,6 +131,7 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     mode,
     workspaceContext,
     userContext,
+    displayText,
   } = await readJson(ctx.req);
   if (!text || typeof text !== "string") {
     json(ctx.res, 400, { error: "missing 'text'" });
@@ -179,6 +180,9 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     },
     acting,
     context,
+    // Presentation-only bubble text (never trusted into the model input): the
+    // model runs on `text`; this only changes what a history reload renders.
+    typeof displayText === "string" ? displayText : undefined,
   );
   json(ctx.res, 202, { ok: true, id });
 }

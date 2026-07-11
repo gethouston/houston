@@ -18,6 +18,11 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/houston-icon.png");
   eleventyConfig.addPassthroughCopy("src/og-image.jpg");
   eleventyConfig.addPassthroughCopy("src/icons");
+  // Landing-page enhancement assets: the ESO Milky Way space background +
+  // scroll parallax, vendored Motion One and devices.css, the scripted hero
+  // demo, and spring micro-interactions. Served verbatim from /assets/** —
+  // no bundler, no runtime CDN dependency.
+  eleventyConfig.addPassthroughCopy("src/assets");
   eleventyConfig.addPassthroughCopy("src/learn/style.css");
   // Workshop guides: screenshots + downloadable PDFs and agent file
   eleventyConfig.addPassthroughCopy("src/guides/assets");

@@ -16,6 +16,7 @@
 
 import type { Activity, ActivityUpdate, NewActivity } from "@houston/protocol";
 import type { SdkPorts } from "../../ports";
+import type { ActivitiesWrites } from "./types";
 
 /** A failed `/activities` request. `status` is the upstream HTTP status. */
 export class ActivitiesHttpError extends Error {
@@ -89,5 +90,20 @@ export function createActivitiesHttp(
         method: "DELETE",
       });
     },
+  };
+}
+
+/**
+ * The no-refetch {@link ActivitiesWrites}: the underlying http ops surfaced
+ * directly (returning the wire entity), with no post-write refresh. `setStatus`
+ * and `rename` are the `update` PATCH with a `{ status }` / `{ title }` body —
+ * the same wire writes the refetching facade issues, minus the refetch.
+ */
+export function createActivitiesWrites(http: ActivitiesHttp): ActivitiesWrites {
+  return {
+    create: (agentId, input) => http.create(agentId, input),
+    setStatus: (agentId, id, status) => http.update(agentId, id, { status }),
+    rename: (agentId, id, title) => http.update(agentId, id, { title }),
+    delete: (agentId, id) => http.remove(agentId, id),
   };
 }

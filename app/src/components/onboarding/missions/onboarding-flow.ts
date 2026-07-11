@@ -54,8 +54,9 @@ export function integrationsAvailable(
 }
 
 /**
- * Where "Continue" on the agent-created screen goes: into the email detour when
- * integrations are available, straight to the finish line otherwise.
+ * Where "Continue" on the AI-connected screen goes (the assistant is already
+ * provisioned silently by then): into the email detour when integrations are
+ * available, straight to the finish line otherwise.
  */
 export function stepAfterAgentCreated(
   capabilities: Capabilities | null | undefined,

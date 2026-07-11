@@ -12,7 +12,7 @@
       <div style="display: flex; flex-direction: column; gap: 8px;">
         <a href="#agents" style="font-size: 13px;">Agent Store</a>
         <a href="#features" style="font-size: 13px;">Features</a>
-        <a href="/pricing/" style="font-size: 13px;">Pricing</a>
+        <a href="/#pricing" style="font-size: 13px;">Pricing</a>
         <a href="mailto:hello@gethouston.ai" style="font-size: 13px;">Always-on hosting</a>
       </div>
     </div>
@@ -38,7 +38,13 @@
     </div>
   </div>
   <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
-    <span style="font-size: 12px; color: var(--gray-400);">Houston. Free and open source.</span>
+    <span style="font-size: 12px; color: var(--gray-400); display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+      Houston. Free and open source.
+      {%- if page.url == "/" %}
+      <span>&middot;</span>
+      <span>Milky Way image: <a href="https://www.eso.org/public/images/eso0932a/" target="_blank" rel="noopener noreferrer" style="color: var(--gray-500);">ESO/S. Brunier</a> (CC BY 4.0)</span>
+      {%- endif %}
+    </span>
     <span style="font-size: 12px; color: var(--gray-400); display: flex; gap: 16px;">
       <a href="/privacy/" style="color: var(--gray-500);">Privacy Policy</a>
       <a href="/terms/" style="color: var(--gray-500);">Terms of Service</a>

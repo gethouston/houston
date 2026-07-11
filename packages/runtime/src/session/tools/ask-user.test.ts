@@ -72,6 +72,55 @@ test("batches up to three questions, assigning q1..qN ids and keeping options", 
   });
 });
 
+test("passes through per-option description and recommended onto the question step", async () => {
+  const holder = newInteractionHolder();
+  const out = await runWithInteractionCapture(holder, () =>
+    run({
+      questions: [
+        {
+          question: "Which plan?",
+          options: [
+            {
+              id: "pro",
+              label: "Pro",
+              description: "Unlocks everything.",
+              recommended: true,
+            },
+            { id: "free", label: "Free" },
+          ],
+        },
+      ],
+    }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "question",
+        id: "q1",
+        question: "Which plan?",
+        options: [
+          {
+            id: "pro",
+            label: "Pro",
+            description: "Unlocks everything.",
+            recommended: true,
+          },
+          { id: "free", label: "Free" },
+        ],
+      },
+    ],
+  });
+  const details = out.details as {
+    questions: {
+      options?: { description?: string; recommended?: boolean }[];
+    }[];
+  };
+  expect(details.questions[0].options?.[0]).toMatchObject({
+    description: "Unlocks everything.",
+    recommended: true,
+  });
+});
+
 test("an empty options array on a question is dropped (recorded as open)", async () => {
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, () =>

@@ -5,6 +5,12 @@
 export interface ChatInteractionOption {
   id: string;
   label: string;
+  /** One short line of consequence/benefit, shown muted INLINE after the label
+   *  (single line, truncated). Optional: older steps without it render as before. */
+  description?: string;
+  /** Marks this as the suggested default (at most one per question), shown as a
+   *  soft "Recommended" chip beside the label. Optional and additive. */
+  recommended?: boolean;
 }
 
 export type ChatInteractionStep =
@@ -43,6 +49,19 @@ export function hasSelectableOptions(
 export function normalizeAnswer(text: string): string | null {
   const trimmed = text.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+/** A readable app name from a toolkit slug, for the connect step's fallback
+ *  title when the agent gave no reason ("google-sheets" -> "Google Sheets").
+ *  A best-effort human label from the slug alone — the app's catalog name (when
+ *  it resolves) still drives the row below; this only fills the header slot. */
+export function prettifyToolkit(toolkit: string): string {
+  return toolkit
+    .trim()
+    .split(/[\s_-]+/)
+    .filter((w) => w.length > 0)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 /** The option label for a question step, or null when the id is unknown. */

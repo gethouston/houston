@@ -103,6 +103,11 @@
       "errorTitle": "Couldn't send report"
     }
   },
+  "migration": {
+    "title": "Cloud migration",
+    "description": "If your move to the cloud didn't finish, you can run it again.",
+    "button": "Continue migration"
+  },
   "version": "Version {{version}}",
   "toasts": {
     "workspaceRenamed": "Workspace renamed",
@@ -122,7 +127,8 @@
       "workspaceContext": "What every agent knows about this workspace",
       "userContext": "What every agent knows about you",
       "shortcuts": "Run Houston without the mouse",
-      "reportBug": "Something broke? Tell us"
+      "reportBug": "Something broke? Tell us",
+      "migration": "Pick up your move to the cloud"
     },
     "values": {
       "set": "Set",

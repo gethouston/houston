@@ -97,7 +97,7 @@
       },
       "tabRoutines": {
         "title": "Rutinas",
-        "body": "Programa trabajo para que corra en segundo plano. Útil para resúmenes diarios y tareas recurrentes."
+        "body": "Tu asistente ya viene con rutinas listas, como el Resumen matutino. Programa aquí cualquier otra cosa para que corra en segundo plano."
       },
       "tabIntegrations": {
         "title": "Integraciones",
@@ -180,11 +180,6 @@
     "blockedBody": "Ya casi está listo. Esta acción estará disponible en un momento, en cuanto tu agente termine de configurarse.",
     "stalledTitle": "Seguimos en eso",
     "stalledBody": "Esto está tardando más de lo normal. No nos hemos rendido, tu chat y tus mensajes están a salvo y continuarán en cuanto tu agente responda."
-  },
-  "agentWelcome": {
-    "missionTitle": "Conoce a {{name}}",
-    "missionDescription": "Tu nuevo agente se presenta",
-    "failed": "No pudimos iniciar el primer chat de tu nuevo agente. Igual puedes enviarle un mensaje tú mismo."
   },
   "toolRuntimeError": {
     "title": "Algo se atascó",

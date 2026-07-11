@@ -41,6 +41,50 @@ export function groupProviders(
   return { connected, available };
 }
 
+/** The `card.*` i18n key describing how a provider connects. */
+export type AuthChipKey = "subscription" | "apiKey" | "gateway" | "local";
+
+/**
+ * Which auth chip a provider shows. OAuth / Copilot plans read as
+ * "Subscription"; the local server as "Runs on your computer"; multi-lab
+ * key gateways (OpenRouter, the merged OpenCode account) as "Multi-model
+ * gateway"; every other pasted key as "Your API key".
+ */
+export function authChipKey(provider: ProviderInfo): AuthChipKey {
+  if (provider.auth === "openaiCompatible") return "local";
+  if (provider.auth !== "apiKey") return "subscription";
+  if (provider.gatewayIds || provider.id === "openrouter") return "gateway";
+  return "apiKey";
+}
+
+/** Providers split by how they connect: subscription vs. your own API key. */
+export interface AuthTypeGroups {
+  subscription: ProviderInfo[];
+  apiKey: ProviderInfo[];
+}
+
+/**
+ * Partition providers into the BINARY connect-type split the curated onboarding
+ * view uses (unlike the hub's richer subscription/free/payg/local facets): the
+ * "subscription" auth chip (OAuth / plan providers) goes to `subscription`;
+ * everything else — a pasted "apiKey", a multi-lab "gateway", and the "local"
+ * OpenAI-compatible server — goes to `apiKey`, since all three are "you
+ * configure a key or endpoint" rather than "you log into a plan". Preserves the
+ * incoming order within each bucket. Pure, so it unit-tests with `node --test`.
+ */
+export function groupByAuthType(
+  providers: readonly ProviderInfo[],
+  authType: (p: ProviderInfo) => AuthChipKey = authChipKey,
+): AuthTypeGroups {
+  const subscription: ProviderInfo[] = [];
+  const apiKey: ProviderInfo[] = [];
+  for (const provider of providers)
+    (authType(provider) === "subscription" ? subscription : apiKey).push(
+      provider,
+    );
+  return { subscription, apiKey };
+}
+
 /**
  * The unique models a card offers, unioned across its gateway ids (the merged
  * OpenCode account maps to `opencode` + `opencode-go`) and de-duplicated by the

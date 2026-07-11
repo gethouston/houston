@@ -1,9 +1,4 @@
 {
-  "welcome": {
-    "title": "Bem-vindo ao Houston",
-    "tagline": "Realize o impossível.",
-    "getStarted": "Começar"
-  },
   "name": {
     "title": "Dê um nome ao seu espaço de trabalho",
     "description": "Espaços de trabalho mantêm seus agentes organizados: um pessoal, um do trabalho, etc.",
@@ -27,30 +22,11 @@
       "back": "Voltar",
       "continue": "Continuar"
     },
-    "counter": "Missão {{current}} de {{total}}",
-    "eyebrow": "Passo {{number}}",
-    "missionLabel": "Configuração: {{title}}",
-    "upNext": "A seguir",
     "errors": {
       "setupFailed": "Não conseguimos terminar de configurar seu espaço de trabalho. Tente novamente.",
-      "noProviderModel": "Conecte um provedor de IA antes de criar seu assistente."
-    },
-    "welcome": {
-      "title": "Bem-vindo ao Houston",
-      "tagline": "O Houston é onde você cria agentes que funcionam com os mesmos apps que você já usa.",
-      "stepsTitle": "Uma configuração rápida para deixar seu agente trabalhando:",
-      "steps": {
-        "meet": "Conheça seu agente",
-        "brain": "Conecte um provedor de IA para ele pensar",
-        "tools": "Conecte seus apps",
-        "email": "Envie seu primeiro e-mail real com ele",
-        "try": "Teste uma missão real com seu assistente",
-        "skill": "Salve como uma Habilidade reutilizável",
-        "routine": "Agende como uma Rotina recorrente",
-        "summary": "Conheça seu assistente pronto para trabalhar"
-      },
-      "start": "Começar",
-      "skip": "Configuro isso mais tarde"
+      "title": "A configuração não foi concluída",
+      "body": "Algo deu errado ao criar seu assistente. Tente novamente ou volte e escolha outra IA.",
+      "retry": "Tentar novamente"
     },
     "toolkits": {
       "gmail": "Gmail",
@@ -60,10 +36,18 @@
     },
     "defaults": {
       "workspaceName": "Pessoal",
-      "assistantName": "Agente pessoal",
+      "assistantName": "Assistente pessoal",
       "focus": "Me ajude a ficar organizado, preparar meu dia, redigir mensagens, proteger tempo de foco e acompanhar pendências.",
-      "approvalRule": "Pergunte antes de enviar mensagens, criar eventos de calendário ou mudar algo nos apps conectados.",
-      "firstWorkflow": "Configure meu primeiro fluxo útil do dia"
+      "approvalRule": "Pergunte antes de enviar mensagens, criar eventos de calendário ou mudar algo nos apps conectados."
+    },
+    "seeds": {
+      "dailyBriefing": {
+        "name": "Resumo da manhã"
+      },
+      "meetingPrep": {
+        "name": "Preparação de reuniões",
+        "description": "Reúne tudo o que você precisa antes da próxima reunião: quem participa, o que vocês discutiram por último e qualquer coisa urgente, a partir da sua caixa de entrada e de uma busca rápida na web, e entrega para você antes de começar."
+      }
     },
     "missions": {
       "intro": {
@@ -72,21 +56,13 @@
         "cta": "Começar configuração",
         "steps": {
           "ai": "Conecte sua IA",
-          "apps": "Conecte seus apps",
-          "agent": "Crie seu agente",
           "email": "Conecte seu e-mail",
-          "send": "Envie seu primeiro e-mail"
+          "send": "Teste seu assistente"
         }
       },
       "connect": {
         "title": "Conecte sua IA",
         "body": "Escolha a IA que você já paga e entre. Você usa sua própria assinatura, então o Houston nunca vê sua senha nem sua fatura."
-      },
-      "meet": {
-        "title": "Crie seu primeiro agente",
-        "body": "Dê um nome e uma cor ao seu agente. Você pode mudar quando quiser.",
-        "begin": "Criar agente",
-        "creating": "Criando..."
       },
       "email": {
         "title": "Veja seu agente em ação",
@@ -111,113 +87,31 @@
         "otherPlaceholder": "Qual provedor de e-mail?",
         "connect": "Conectar",
         "connecting": "Conectando...",
+        "cancel": "Cancelar",
         "skipHint": "Não consegue conectar agora? Você pode fazer isso quando quiser em Integrações.",
         "skip": "Pular por enquanto",
+        "preparing": "Preparando seu assistente...",
         "skipConfirmTitle": "Pular a conexão do seu e-mail?",
         "skipConfirmBody": "Você pode conectar quando quiser em Integrações. Seu agente não vai poder enviar nem ler e-mails até você fazer isso.",
         "skipConfirmAction": "Pular por enquanto",
         "skipConfirmCancel": "Continuar conectando"
-      },
-      "agentCreated": {
-        "title": "Agente criado!",
-        "body": "Conheça seu novo agente. Mais dois passos rápidos e ele estará trabalhando para você.",
-        "cta": "Continuar"
       },
       "emailConnected": {
         "title": "E-mail conectado!",
         "body": "É assim de fácil conectar um app, e seu agente pode acessar mais de 1000 assim.",
         "cta": "Continuar"
       },
-      "emailSent": {
-        "title": "E-mail enviado!",
-        "body": "Confira sua caixa de entrada, seu agente acabou de te enviar um e-mail de verdade.",
-        "cta": "Continuar"
-      },
       "finished": {
         "title": "Tudo pronto!",
-        "body": "Seu agente está pronto. O que você quer fazer agora?",
-        "tour": "Fazer um tour pelo Houston",
-        "tourBody": "Uma passada rápida pelo básico.",
-        "connectMore": "Conectar mais apps",
-        "connectMoreBody": "Dê ao seu agente acesso a mais ferramentas.",
+        "body": "Seu assistente pessoal acabou de provar que pode agir por você, de verdade.",
+        "readyTitle": "Tudo pronto!",
+        "readyBody": "Seu assistente pessoal está pronto para trabalhar por você.",
+        "tagline": "Agora vá e realize o impossível.",
+        "cta": "Comece a construir",
         "inviteTeam": "Convide seu time",
         "inviteTeamBody": "Veja quem está trabalhando em cada missão. Crie um time e compartilhe seus agentes."
-      },
-      "onboardingIntro": {
-        "title": "Agora vamos colocá-lo para trabalhar",
-        "body": "Três passos rápidos para ver seu agente fazer algo de verdade.",
-        "cta": "Vamos"
-      },
-      "try": {
-        "title": "Teste uma missão real",
-        "intro": {
-          "title": "Trabalhe com seu primeiro agente",
-          "body": "No Houston, seus agentes se conectam às suas ferramentas reais para fazer o trabalho por você.",
-          "cta": "Vamos testar"
-        },
-        "doneTitle": "Você conseguiu. Primeira missão concluída.",
-        "placeholder": "Responda ao seu assistente...",
-        "skill": {
-          "title": "Planeja meu próximo dia de trabalho",
-          "description": "Lê sua agenda e caixa de entrada em paralelo, cruza para achar coisas que você ia perder e posta um plano estruturado com o que é urgente, sua agenda e quem responder."
-        },
-        "chip": "Planeja meu próximo dia de trabalho",
-        "continueChip": "Salve isto como uma Habilidade",
-        "skip": "Pular tutorial"
-      },
-      "skill": {
-        "title": "Salve isto como uma Habilidade",
-        "intro": {
-          "title": "Salve como uma Habilidade",
-          "body": "Se você quiser executar este mesmo fluxo depois, salve como uma Habilidade. Seu assistente pode repetir com um clique ou sempre que você pedir.",
-          "cta": "Entendi"
-        },
-        "chip": "Salve isto como uma Habilidade",
-        "continueChip": "Transforme em uma Rotina",
-        "skip": "Pular tutorial",
-        "placeholder": "Responda ao seu assistente...",
-        "savedDescription": "Planeja o próximo dia útil cruzando e-mail e agenda, com um rascunho de resposta para o e-mail mais importante.",
-        "savedMessage": "Salva como Habilidade chamada **{{slug}}**. Você pode executar quando quiser, com um clique ou me pedindo.",
-        "done": {
-          "title": "Salva como Habilidade",
-          "subtitle": "Agora você pode executar quando quiser, com um clique ou pedindo.",
-          "integrationsLabel": "Usa",
-          "savedLabel": "Habilidade"
-        }
-      },
-      "routine": {
-        "title": "Transforme em uma Rotina",
-        "intro": {
-          "title": "Transforme em uma Rotina",
-          "body": "Se você quiser que isso rode automaticamente num horário, salve como uma Rotina. Seu assistente executa em segundo plano e mostra o resultado.",
-          "cta": "Entendi"
-        },
-        "chip": "Transforme em uma Rotina",
-        "continueChip": "Conheça seu assistente",
-        "skip": "Pular tutorial",
-        "placeholder": "Responda ao seu assistente...",
-        "done": {
-          "title": "Sua Rotina está pronta",
-          "subtitle": "O Houston vai executar isso automaticamente no horário que você escolheu.",
-          "everyWeekdayAt": "Todo dia útil às {{time}}",
-          "runsSkill": "Executa sua Habilidade {{skill}}",
-          "manualHint": "Você também pode criar rotinas pela aba Rotinas ou pedindo a qualquer agente."
-        }
-      },
-      "summary": {
-        "title": "Seu assistente está pronto",
-        "body": "Isto é tudo que você acabou de configurar. Você pode mudar qualquer coisa depois pela aba Habilidades ou Rotinas, ou apenas pedindo ao seu assistente.",
-        "skillCardTitle": "Habilidade",
-        "routineCardTitle": "Rotina",
-        "noSkill": "Nenhuma Habilidade salva",
-        "noRoutine": "Nenhuma Rotina salva",
-        "continueChip": "Entre no Houston"
       }
     },
-    "sectionCounter": "{{section}} · {{current}} de {{total}}",
-    "sections": {
-      "setup": "Configuração",
-      "onboarding": "Primeiros passos"
-    }
+    "stepCounter": "Passo {{current}} de {{total}}"
   }
 }

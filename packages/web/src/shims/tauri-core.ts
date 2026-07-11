@@ -189,6 +189,16 @@ export async function invoke<T = unknown>(
       // the tunnel-vs-direct pill rule correct: a connected openai-compatible
       // endpoint on web reads as normally connected, not as a bridge.
       return null as T;
+    case "detect_legacy_houston":
+      // A browser tab has no local `~/.houston` tree to migrate — "nothing
+      // found" is the honest answer and keeps the cloud-migration wizard
+      // (HOU-719) permanently closed on web.
+      return {
+        hasWorkspaces: false,
+        hasChatDb: false,
+        workspaceDirs: [],
+        agentDirCount: 0,
+      } as T;
 
     // ── Desktop-only: surface a clear error if a user triggers them ─────
     case "start_oauth_loopback": // desktop uses a native loopback listener; web uses the redirect flow
@@ -214,6 +224,15 @@ export async function invoke<T = unknown>(
     case "transcribe_audio":
     case "dictation_model_status":
     case "download_dictation_model":
+    // The cloud-migration wizard's source host is a native subprocess spawned
+    // against the old local install — meaningless in a browser, and the
+    // detect shim above guarantees the wizard never asks for it on web.
+    case "start_migration_source_host":
+    case "stop_migration_source_host":
+    // Backing up the local `~/.houston` tree needs native filesystem access; a
+    // browser tab has no such folder (detect_legacy_houston returns empty, so
+    // the wizard never reaches the backup step on web).
+    case "backup_houston_data":
     case "pick_directory":
     case "reveal_file":
     case "reveal_agent":
