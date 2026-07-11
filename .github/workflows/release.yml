@@ -467,6 +467,15 @@ jobs:
             "@anthropic-ai/claude-agent-sdk-darwin-arm64@$SDK_VER" \
             "@anthropic-ai/claude-agent-sdk-darwin-x64@$SDK_VER" \
             --force
+          # `pnpm add -w` rewrites the root package.json + pnpm-lock.yaml, both
+          # of which are host-sidecar freshness-guard inputs (build.rs
+          # SIDECAR_INPUT_PATHS). The edit only needs to land the two platform
+          # packages in node_modules/.pnpm so build-host-sidecar.sh can cp the
+          # per-arch `claude` binary out of the store; it reads the store
+          # directly and never re-installs, so restoring the manifests here
+          # leaves the packages in place while giving the release-build
+          # staleness guard the clean tree it requires.
+          git checkout HEAD -- package.json pnpm-lock.yaml
 
       # Compile the Houston HOST sidecar (the TS engine) for BOTH macOS arches
       # and stage the SDK's native `claude` binary alongside each, then lipo both
