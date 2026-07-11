@@ -1,11 +1,14 @@
 procs:
   host:
     # Source repo-root .env.local (gitignored) first so local dev secrets —
-    # e.g. COMPOSIO_API_KEY / HOUSTON_INTEGRATIONS_URL — reach the host
-    # without living in a committed file or your shell profile.
+    # e.g. COMPOSIO_API_KEY / HOUSTON_INTEGRATIONS_URL / HOUSTON_MCP_INTEGRATIONS
+    # — reach the host without living in a committed file or your shell profile.
     shell: "set -a; [ -f .env.local ] && . ./.env.local; set +a; pnpm dev:host"
   app:
-    shell: pnpm dev:app
+    # Also sourced here so a per-worktree port override (HOUSTON_HOST_PORT +
+    # VITE_NEW_ENGINE_URL in .env.local) reaches both panes — parallel worktree
+    # dev loops must not fight over one hardcoded port.
+    shell: "set -a; [ -f .env.local ] && . ./.env.local; set +a; pnpm dev:app"
   # The `gateway:` pane (a local stand-in for the cloud integrations path,
   # backed by the retired @houston/host-cloud) is gone. To exercise the
   # production integrations path, run the private gateway locally or point

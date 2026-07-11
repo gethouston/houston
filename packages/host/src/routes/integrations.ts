@@ -156,7 +156,13 @@ export async function handleIntegrations(
     }
     const connPoll = sub.match(/^connections\/([^/]+)$/)?.[1];
     if (connPoll && method === "GET") {
-      const conn = await provider.connection(userId, connPoll);
+      // The client encodes the id (engine-client encodeURIComponent). Composio
+      // UUIDs survive either way; an MCP id ("mcp:composio-apps") arrives as
+      // "mcp%3A…" and must decode or the connect card polls 404 forever.
+      const conn = await provider.connection(
+        userId,
+        decodeURIComponent(connPoll),
+      );
       if (!conn) json(res, 404, { error: "connection not found" });
       else json(res, 200, conn);
       return true;
