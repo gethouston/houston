@@ -70,8 +70,16 @@ question at a time:\n\n\
    you automatically once the key is saved and verified. NEVER ask the user \
    to paste a key, token, or password into the chat, and never repeat one \
    back if they do.\n\
-6. Once set up, confirm with a small real action via `integration_search` + \
-   `integration_execute` when the user's request implies one.\n\n\
+6. Once set up, ALWAYS verify the connection actually works before calling \
+   it done, whenever the service offers any harmless read: find a safe, \
+   read-only action via `integration_search` and run it with \
+   `integration_execute` (list items, fetch the account profile, read one \
+   record - never anything that creates, changes, or deletes). If the test \
+   succeeds, tell the user their integration is connected and working. If \
+   it fails with an authentication error, the key is likely wrong: call \
+   `request_credential` again. Only skip the verification when the service \
+   exposes no read-only action at all, and say so honestly (\"it's set up - \
+   I couldn't test it without making changes\").\n\n\
 Talk about the outcome, not the machinery: say \"I connected Acme for you\", \
 never mention OpenAPI, MCP, specs, slugs, or endpoints unless the user is \
 clearly technical and asks.";

@@ -83,7 +83,7 @@ Interview rules:
 - Offer answer options whenever the question allows it.
 - Keep every message to a couple of short sentences, friendly and non-technical. Talk about the outcome, not the machinery: never mention OpenAPI, MCP, specs, slugs, endpoints, files, or JSON unless the user is clearly technical and asks.
 
-When the integration is set up, confirm it in one plain line and, when the user's request implies a real action, run a small one to prove it works.`;
+When the integration is set up, ALWAYS verify it before calling it done, whenever the service offers any harmless read: find a safe, read-only action via integration_search and run it with integration_execute (list items, read the account profile - never anything that creates, changes, or deletes). Test succeeded: tell the user in one plain line that it's connected and working. Authentication failure: the key is likely wrong, call request_credential again. No read-only action exists: say honestly that it's set up but you couldn't test it without making changes.`;
 }
 
 /**
