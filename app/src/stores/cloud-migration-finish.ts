@@ -9,7 +9,6 @@ import { analytics } from "../lib/analytics";
 import type { MigrationTask } from "../lib/cloud-migration";
 import type { AgentMigrationProgress } from "../lib/cloud-migration-progress";
 import { reportError } from "../lib/error-toast";
-import { writeMigrationStatus } from "../lib/migration-status";
 import { osStopMigrationSourceHost } from "../lib/os-bridge";
 import { useAgentStore } from "./agents";
 import { useWorkspaceStore } from "./workspaces";
@@ -43,9 +42,9 @@ export async function finishRun(
       .length,
     workspace_count: new Set(tasks.map((t) => t.workspace)).size,
   });
-  // The single completion point of a run (all agents done or continue-anyway):
-  // stamp the AUTHORITATIVE cross-machine "migrated" flag so the wizard is
-  // never offered again on any of the user's machines. Best-effort.
-  await writeMigrationStatus("completed");
+  // The done screen persists the per-machine "done" outcome via `persistOutcome`
+  // (use-cloud-migration.ts), which is the flag the wizard gate reads — identity
+  // (Firebase) has no client-writable user metadata for a cross-machine record.
+  // Cross-machine RESUME still holds via the gateway's per-agent import markers.
   setScreenDone();
 }
