@@ -95,6 +95,9 @@ export function CustomIntegrationsSection() {
           <Button variant="ghost" onClick={chatSetup.discard}>
             {t("custom.setupChat.discard")}
           </Button>
+          <Button variant="outline" onClick={chatSetup.finish}>
+            {t("custom.setupChat.done")}
+          </Button>
           <Button onClick={() => chatSetup.openPanel(activeAgent.id)}>
             {t("custom.setupChat.continue")}
           </Button>
@@ -109,6 +112,7 @@ export function CustomIntegrationsSection() {
           agentDef={chatSetup.activeAgentDef}
           activity={chatSetup.draftActivity}
           onClose={chatSetup.closePanel}
+          onDone={chatSetup.finish}
         />
       )}
 

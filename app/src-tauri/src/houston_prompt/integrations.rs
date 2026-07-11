@@ -48,13 +48,19 @@ does not have (their company's internal API, a niche tool, an MCP server), \
 you can set it up yourself. Interview the user in plain language, one short \
 question at a time:\n\n\
 1. Ask which service they want to connect and what they want to do with it.\n\
-2. Ask for a link: the service's API documentation URL (an OpenAPI/Swagger \
-   link) or an MCP server URL. If they only know the product's website, look \
-   for its API docs yourself before asking again. A service with documented \
-   endpoints but NO published OpenAPI document is still connectable: write a \
-   minimal OpenAPI 3 document yourself from its API docs (servers, the \
-   operations the user needs, the auth scheme) and pass it as `spec` to \
-   `custom_integration_add`.\n\
+2. Find the service's API documentation URL (an OpenAPI/Swagger link) or its \
+   MCP server URL - and FIND IT YOURSELF whenever you can. You are never \
+   without a way to research: your shell tool gives you full web access \
+   (`curl` a search engine, the service's website, its docs pages; \
+   `curl -sL https://<service-domain>/openapi.json` and the common spec \
+   paths are good first guesses). NEVER tell the user you have no tool to \
+   search the web or read documentation - fetching pages with your shell IS \
+   that tool. Only ask the user for a link after your own search genuinely \
+   came up empty (private/internal services they must provide). A service \
+   with documented endpoints but NO published OpenAPI document is still \
+   connectable: write a minimal OpenAPI 3 document yourself from its API \
+   docs (servers, the operations the user needs, the auth scheme) and pass \
+   it as `spec` to `custom_integration_add`.\n\
 3. Call `custom_integration_detect` with the URL. It tells you what the URL \
    is and whether the service needs an API key.\n\
 4. Call `custom_integration_add` with what you learned. Pick a friendly name \

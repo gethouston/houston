@@ -157,3 +157,46 @@ test("the interview surface renders: an ask_user question card replaces the comp
   await expect(page.getByRole("radio")).toHaveCount(2);
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
+
+test("Done retires the chat: no banner, and the next Add starts a FRESH chat", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["composio", "custom"] });
+  await armIntegrationsMode(request, "ready");
+  await armCustomIntegrations(request, []);
+  await openIntegrationsPage(page);
+
+  await startSetupChat(page);
+  await expect(page.getByText(/Roger that\./)).toBeVisible({ timeout: 15_000 });
+
+  // The user says the integration works: Done retires the draft on the spot.
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(
+    page.getByText("Mission: Set up a custom integration"),
+  ).not.toBeVisible();
+  await expect(
+    page.getByText("You are setting up a custom integration in chat"),
+  ).not.toBeVisible();
+
+  // A finished setup never resumes: the next Add opens a brand-new chat. The
+  // fake host answers every kickoff with the same canned reply, so freshness
+  // is asserted on the HOST's state: two distinct setup missions now exist,
+  // and only the first is archived.
+  await startSetupChat(page);
+  await expect(
+    page.getByText("Mission: Set up a custom integration"),
+  ).toBeVisible({ timeout: 10_000 });
+  const agents = (await (await fetch(`${FAKE_HOST_URL}/agents`)).json()) as {
+    id: string;
+  }[];
+  const activities = (await (
+    await fetch(`${FAKE_HOST_URL}/agents/${agents[0].id}/activities`)
+  ).json()) as { items: { id: string; agent?: string; status: string }[] };
+  const setups = activities.items.filter(
+    (a) => a.agent === "houston:integration-setup",
+  );
+  expect(setups).toHaveLength(2);
+  expect(setups.filter((a) => a.status === "archived")).toHaveLength(1);
+  expect(setups[0].id).not.toBe(setups[1].id);
+});

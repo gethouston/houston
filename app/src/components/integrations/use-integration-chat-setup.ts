@@ -161,25 +161,49 @@ export function useIntegrationChatSetup() {
     [convos, pending, openPanel, queryClient, t, toastStartError],
   );
 
-  /** Archive the draft chat and close the panel (the banner's Discard). */
-  const discard = useCallback(() => {
-    if (!draftActivity || !activeAgent) return;
-    setOpenAgentId(null);
-    tauriActivity
-      .update(activeAgent.folderPath, draftActivity.id, { status: "archived" })
-      .then(() =>
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.activity(activeAgent.folderPath),
-        }),
-      )
-      .catch((err) => {
-        addToast({
-          title: t("custom.setupChat.startError"),
-          description: genericErrorDescription("custom_integration_chat", err),
-          variant: "error",
+  /**
+   * Archive the draft chat and close the panel. `done` and `discard` are the
+   * SAME mechanics with different meaning: both retire the draft so the next
+   * "Add custom integration" starts a FRESH chat (start() only resumes live
+   * drafts); `done` is the user saying the integration works (success toast),
+   * `discard` is abandoning the attempt (silent).
+   */
+  const archiveDraft = useCallback(
+    (outcome: "done" | "discard") => {
+      if (!draftActivity || !activeAgent) return;
+      setOpenAgentId(null);
+      tauriActivity
+        .update(activeAgent.folderPath, draftActivity.id, {
+          status: "archived",
+        })
+        .then(() => {
+          if (outcome === "done") {
+            addToast({
+              title: t("custom.setupChat.doneToast"),
+              variant: "success",
+            });
+          }
+          return queryClient.invalidateQueries({
+            queryKey: queryKeys.activity(activeAgent.folderPath),
+          });
+        })
+        .catch((err) => {
+          addToast({
+            title: t("custom.setupChat.startError"),
+            description: genericErrorDescription(
+              "custom_integration_chat",
+              err,
+            ),
+            variant: "error",
+          });
         });
-      });
-  }, [draftActivity, activeAgent, setOpenAgentId, queryClient, addToast, t]);
+    },
+    [draftActivity, activeAgent, setOpenAgentId, queryClient, addToast, t],
+  );
+
+  const discard = useCallback(() => archiveDraft("discard"), [archiveDraft]);
+  /** The user says the integration is set up and working: retire the chat. */
+  const finish = useCallback(() => archiveDraft("done"), [archiveDraft]);
 
   return {
     activeAgent,
@@ -192,6 +216,7 @@ export function useIntegrationChatSetup() {
     openPanel,
     closePanel,
     discard,
+    finish,
     pending,
   };
 }

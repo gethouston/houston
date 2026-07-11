@@ -39,6 +39,9 @@ interface Props extends TabProps {
    *  custom-integration setup chat reuses this board and IS a mission, so it
    *  wants that default. */
   missionLabel?: string;
+  /** Header actions on the panel's right side (the integration setup chat
+   *  puts its "Done" button here). Omit for none (routines). */
+  panelActions?: ReactNode;
 }
 
 export function RoutineSetupChatBoard({
@@ -49,6 +52,7 @@ export function RoutineSetupChatBoard({
   panelContainer,
   panelLeading,
   missionLabel,
+  panelActions,
 }: Props) {
   const path = agent.folderPath;
   const queuedLabels = useQueuedMessageLabels();
@@ -157,6 +161,7 @@ export function RoutineSetupChatBoard({
         onAttachmentRejections={attachmentValidation.onAttachmentRejections}
         thinkingIndicator={panel.thinkingIndicator}
         panelLeading={panelLeading}
+        panelActions={panelActions ? () => panelActions : undefined}
         panelAgentName={agent.name}
         panelMissionLabel={missionLabel}
         panelAvatar={<AgentPanelAvatar color={agent.color} running={running} />}

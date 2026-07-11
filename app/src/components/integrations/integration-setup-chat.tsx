@@ -15,8 +15,12 @@ interface Props {
    * created (renders a calm loading state — never a dead screen).
    */
   activity: Activity | null;
-  /** Return to the Custom-integrations section (closes the inline chat). */
+  /** Return to the Custom-integrations section (closes the inline chat; the
+   *  draft stays live, so the Continue-setup banner brings it back). */
   onClose: () => void;
+  /** The user says the integration is set up and working: retire the chat so
+   *  the next "Add custom integration" starts fresh. */
+  onDone: () => void;
 }
 
 /**
@@ -37,6 +41,7 @@ export function IntegrationSetupChat({
   agentDef,
   activity,
   onClose,
+  onDone,
 }: Props) {
   const { t } = useTranslation("integrations");
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
@@ -81,6 +86,14 @@ export function IntegrationSetupChat({
 
   const sessionKey = activity.session_key ?? `activity-${activity.id}`;
 
+  // The user's "the integration works" exit: retires the chat (the next Add
+  // starts fresh) — always visible in the header, never behind a menu.
+  const doneButton = (
+    <Button variant="outline" size="sm" onClick={onDone}>
+      {t("custom.setupChat.done")}
+    </Button>
+  );
+
   return (
     <div className="mb-4 flex h-[36rem] min-h-0 flex-col overflow-hidden rounded-2xl border border-border">
       <div ref={setContainer} className="min-h-0 flex-1" />
@@ -92,6 +105,7 @@ export function IntegrationSetupChat({
           sessionKey={sessionKey}
           panelContainer={container}
           panelLeading={backButton}
+          panelActions={doneButton}
         />
       </div>
     </div>

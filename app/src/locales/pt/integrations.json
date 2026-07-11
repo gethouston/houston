@@ -159,7 +159,9 @@
       "bannerDescription": "Continue de onde parou ou descarte o chat em andamento.",
       "continue": "Continuar",
       "discard": "Descartar",
-      "startError": "Não foi possível iniciar o chat de configuração"
+      "startError": "Não foi possível iniciar o chat de configuração",
+      "done": "Concluir",
+      "doneToast": "Perfeito! Sua integração personalizada está pronta para usar."
     },
     "catalogUnavailable": "O catálogo de aplicativos não está disponível nesta configuração, mas você ainda pode adicionar integrações personalizadas."
   }

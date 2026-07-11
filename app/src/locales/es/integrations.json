@@ -159,7 +159,9 @@
       "bannerDescription": "Retoma donde quedaste o descarta el chat en curso.",
       "continue": "Continuar",
       "discard": "Descartar",
-      "startError": "No se pudo iniciar el chat de configuración"
+      "startError": "No se pudo iniciar el chat de configuración",
+      "done": "Listo",
+      "doneToast": "¡Perfecto! Tu integración personalizada está lista para usar."
     },
     "catalogUnavailable": "El catálogo de aplicaciones no está disponible en esta configuración, pero aún puedes agregar integraciones personalizadas."
   }

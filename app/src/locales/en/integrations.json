@@ -159,7 +159,9 @@
       "bannerDescription": "Pick up where you left off, or discard the draft chat.",
       "continue": "Continue",
       "discard": "Discard",
-      "startError": "Couldn't start the setup chat"
+      "startError": "Couldn't start the setup chat",
+      "done": "Done",
+      "doneToast": "Nice! Your custom integration is ready to use."
     },
     "catalogUnavailable": "The app catalog isn't available in this setup, but you can still add custom integrations."
   }
