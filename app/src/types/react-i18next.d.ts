@@ -19,6 +19,7 @@ import type errors from "../locales/en/errors.json";
 import type events from "../locales/en/events.json";
 import type integrations from "../locales/en/integrations.json";
 import type legal from "../locales/en/legal.json";
+import type migration from "../locales/en/migration.json";
 import type org from "../locales/en/org.json";
 import type portable from "../locales/en/portable.json";
 import type providers from "../locales/en/providers.json";
@@ -49,6 +50,7 @@ declare module "react-i18next" {
       errors: typeof errors;
       events: typeof events;
       integrations: typeof integrations;
+      migration: typeof migration;
       portable: typeof portable;
       context: typeof context;
       org: typeof org;
