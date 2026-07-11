@@ -480,25 +480,36 @@ test("Escape returns from a routine chat to the grid", async ({ page }) => {
   await expect(page.getByText("Routine: Escapable")).toBeVisible({
     timeout: 15_000,
   });
-  // Wait for the turn to settle first: the board's one-shot composer autofocus
-  // fires on selection, so a premature Escape pair can both land as blurs.
   await expect(page.getByText(/Roger that\./)).toBeVisible({
     timeout: 15_000,
   });
 
-  // A focused composer eats the FIRST Escape (blur, app convention); the
-  // SECOND backs out to the grid. Press them back-to-back and assert only
-  // the user-visible outcome — asserting the intermediate blur is racy on
-  // CI because chat activity (a settling reply, the focus token) can
-  // legitimately re-focus the composer an instant later.
+  // Escape backs out of the chat to the grid. A FOCUSED composer absorbs
+  // Escape rather than backing out (it blurs once the turn is idle, or stops an
+  // in-flight turn while one is running) — so it never leaves the chat on its
+  // own. From a BLURRED composer, Escape reaches the tab's document handler and
+  // returns to the grid.
+  //
+  // The back-out is driven from an explicitly blurred composer instead of a
+  // second keypress on purpose: a routine chat's kickoff turn can still be
+  // settling client-side, and while the composer believes a turn is running it
+  // routes Escape to "stop the turn" (preventDefault) instead of blur — a
+  // turn-settle race unrelated to the back-out. Blurring first makes the single
+  // Escape that navigates deterministic. The composer's autofocus is one-shot
+  // (fires once on open, not on every re-render), so nothing re-grabs focus
+  // after the blur.
   const composer = page.getByPlaceholder("Send a follow-up...");
   await composer.click();
   await expect(composer).toBeFocused();
   await page.keyboard.press("Escape");
+  await expect(page.getByText("Routine: Escapable")).toBeVisible();
+  await composer.blur();
+  await expect(composer).not.toBeFocused();
   await page.keyboard.press("Escape");
   await expect(
     page.getByRole("button", { name: "New routine" }).first(),
   ).toBeVisible();
+  await expect(page.getByText("Routine: Escapable")).toBeHidden();
 
   // The chat still opens fine afterwards (Escape never wedged the view).
   await editRoutineWithAi(page, "Escapable");
