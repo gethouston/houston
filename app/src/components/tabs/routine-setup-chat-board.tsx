@@ -94,6 +94,15 @@ export function RoutineSetupChatBoard({
     [path],
   );
 
+  // Stable identity: AIBoard folds `sessionKeyFor` into its `hydrateSession`
+  // callback, and its composer-autofocus effect is keyed on that callback. An
+  // inline arrow gave it a fresh identity every render, re-firing the effect
+  // and re-focusing the composer on EVERY chat re-render (a streaming/settling
+  // reply, an activity refetch) instead of once on open — the composer would
+  // yank focus back from wherever the user clicked. useCallback makes the
+  // autofocus one-shot, matching every other AIBoard consumer.
+  const keyForSession = useCallback(() => sessionKey ?? "", [sessionKey]);
+
   const items: KanbanItem[] = useMemo(
     () => [
       {
@@ -126,7 +135,7 @@ export function RoutineSetupChatBoard({
         hidePanelClose
         feedItems={feedItems}
         isLoading={send.effectiveLoading}
-        sessionKeyFor={() => sessionKey ?? ""}
+        sessionKeyFor={keyForSession}
         onSendMessage={sendQueue.handleSendMessage}
         onComposerSubmit={panel.onComposerSubmit}
         queuedMessages={sendQueue.queuedMessages}
