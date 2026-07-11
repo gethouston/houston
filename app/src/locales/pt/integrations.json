@@ -115,5 +115,14 @@
       "subtitle": "Apps que você conectou e que este agente ainda não pode usar."
     },
     "manageAll": "Gerenciar todas as integrações"
+  },
+  "hubs": {
+    "title": "Centrais de aplicativos",
+    "subtitle": "Um único login que traz muitos aplicativos de uma vez.",
+    "description": "Uma central de aplicativos conectados",
+    "connect": "Conectar",
+    "connected": "Conectado",
+    "connecting": "Conectando...",
+    "disconnect": "Desconectar"
   }
 }

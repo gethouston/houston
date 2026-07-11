@@ -22,6 +22,7 @@ export {
 } from "./connection-status-badge";
 export { DisconnectAppDialog } from "./disconnect-app-dialog";
 export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
+export { McpHubsSection, useMcpHubProviders } from "./mcp-hubs-section";
 export {
   BROWSE_PAGE_SIZE,
   type BrowseCatalogView,

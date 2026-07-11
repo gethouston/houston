@@ -115,5 +115,14 @@
       "subtitle": "Apps you connected that this agent can't use yet."
     },
     "manageAll": "Manage all integrations"
+  },
+  "hubs": {
+    "title": "App hubs",
+    "subtitle": "One sign-in that brings many apps at once.",
+    "description": "A hub of connected apps",
+    "connect": "Connect",
+    "connected": "Connected",
+    "connecting": "Connecting...",
+    "disconnect": "Disconnect"
   }
 }

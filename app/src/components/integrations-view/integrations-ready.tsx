@@ -9,6 +9,7 @@ import {
   categoryListView,
   DisconnectAppDialog,
   INTEGRATION_PROVIDER,
+  McpHubsSection,
   ReconnectBanner,
   toolkitsInCategory,
   useConnectedApps,
@@ -123,6 +124,8 @@ export function IntegrationsReady({
           onCategoryChange={setCategory}
           loading={apps.catalogLoading}
         />
+
+        <McpHubsSection />
       </div>
 
       {selectedConn && selectedApp && (

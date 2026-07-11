@@ -2,9 +2,11 @@ import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import {
   LoadingState,
+  McpHubsSection,
   SigninState,
   UnavailableState,
   useIntegrationsGate,
+  useMcpHubProviders,
 } from "../integrations";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import { IntegrationsPolicy } from "./integrations-policy";
@@ -22,6 +24,9 @@ export function IntegrationsView() {
   const { t } = useTranslation("integrations");
   const { capabilities } = useCapabilities();
   const gate = useIntegrationsGate();
+  // App hubs (MCP providers) sign in per hub, not through the platform
+  // gate — a hub-only engine must render its hubs, never "unavailable".
+  const hubs = useMcpHubProviders();
 
   return (
     <div className="h-full overflow-auto">
@@ -48,7 +53,15 @@ export function IntegrationsView() {
             {gate.kind === "loading" ? (
               <LoadingState />
             ) : gate.kind === "signin" ? (
-              <SigninState onSignIn={gate.signIn} signingIn={gate.signingIn} />
+              <div className="flex flex-col gap-8">
+                <SigninState
+                  onSignIn={gate.signIn}
+                  signingIn={gate.signingIn}
+                />
+                <McpHubsSection />
+              </div>
+            ) : hubs.length > 0 ? (
+              <McpHubsSection />
             ) : (
               <UnavailableState />
             )}
