@@ -123,6 +123,11 @@ export async function runTurn(
   // mutating the same files concurrently (the Rust engine's workdir_locks
   // behavior). The conv.queue link resolves before the lock is requested, so
   // the two layers can't deadlock.
+  // Pin the session against idle/LRU eviction for this turn's whole queued-and-
+  // running lifetime — decremented in `finally` when it settles. Without this a
+  // turn parked in the queue behind the workdir lock (turnId not yet set) could
+  // have its session disposed by a concurrent conversation's eviction sweep.
+  conv.pending++;
   const run = conv.queue.then(() => {
     // Persist + announce the user message BEFORE taking the workdir lock, so a
     // brand-new conversation's message is durable and visible (GET /messages)
@@ -146,7 +151,11 @@ export async function runTurn(
   // Keep the queue chain alive past a turn. execTurn already surfaces its own
   // failure as an `error` event, so this guard never swallows a user-visible one.
   conv.queue = run.catch(() => {});
-  await run;
+  try {
+    await run;
+  } finally {
+    conv.pending--;
+  }
 }
 
 /**

@@ -222,6 +222,16 @@ same rebuild rails carry all three modes. Both backends honor it: the pi backend
 swaps its tool allowlist; the Claude-SDK backend keeps its SDK `permissionMode`
 default and simply gets the clamped tool set, so plan/auto still hold.
 
+**Session cache is bounded.** The live-session map in `conversation-cache.ts` is
+an `LruCache` (`packages/runtime/src/lru.ts`), not a raw `Map`: past
+`config.sessionCacheMax` (`HOUSTON_SESSION_CACHE_MAX`, default 40) or after
+`config.sessionCacheIdleMs` idle (`HOUSTON_SESSION_CACHE_IDLE_MS`, default 30 min,
+`0` disables) the least-recently-used SETTLED session is disposed and
+transparently re-hydrated from its on-disk transcript on next `getConversation`.
+A session with a queued/running turn is pinned (`isConvBusy` — `conv.pending > 0`
+maintained by `chat.ts:runTurn`, or `conv.turnId` set) and NEVER evicted, so no
+turn is disposed from under it.
+
 App side: a Mode pill in the composer footer
 (`app/src/components/chat-mode-selector.tsx`) — persona labels **Planner**
 (`plan`), **Coworker** (`execute`), and **Autopilot** (`auto`), ordered top→bottom

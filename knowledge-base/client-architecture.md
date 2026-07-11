@@ -75,6 +75,15 @@ mode), letting the whole desktop UI run on the host unchanged. Convergence says
   output decides where it lands.
 - **The global-events reactivity loop** — both the SDK's agents module and the
   web adapter consume the ONE `streamGlobalEvents` in `@houston/runtime-client`.
+- **The conversation VM cache is bounded** — `ConversationVmOutput` keeps folded
+  transcripts in an `LruCache` (`packages/sdk/src/lru.ts`), not an unbounded map,
+  so a multi-hour client's memory tracks its ACTIVE window, not total volume.
+  Past `SdkConfig.conversationCacheMax` (default `DEFAULT_CONVERSATION_CACHE_MAX`
+  = 50) the least-recently-published IDLE conversation is evicted and its retained
+  store snapshot cleared; it re-hydrates from history on the next `observe`. A
+  live conversation (running/streaming/queued/optimistic) or one with active
+  subscribers is pinned and never dropped. `turns.forget(conversationId)` is the
+  explicit drop for a closed/deleted conversation.
 
 **Still adapter-side (not yet SDK):** the control-plane surface
 (agents/activities/routines/skills/board/config CRUD — `client.ts`,
