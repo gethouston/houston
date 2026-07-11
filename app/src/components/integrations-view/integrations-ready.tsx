@@ -21,6 +21,9 @@ import { PageHeader } from "../shell/page-shell";
 interface IntegrationsReadyProps {
   reconnectNotice: boolean;
   dismissReconnect: () => Promise<void>;
+  /** Which registry provider this page manages. Default: the platform
+   *  provider; an MCP app hub renders the SAME page for its own catalog. */
+  provider?: string;
 }
 
 /**
@@ -37,11 +40,12 @@ interface IntegrationsReadyProps {
 export function IntegrationsReady({
   reconnectNotice,
   dismissReconnect,
+  provider = INTEGRATION_PROVIDER,
 }: IntegrationsReadyProps) {
   const { t } = useTranslation("integrations");
-  const apps = useConnectedApps();
-  const connectFlow = useConnectFlow({ autoGrant: false });
-  const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
+  const apps = useConnectedApps(provider);
+  const connectFlow = useConnectFlow({ autoGrant: false, provider });
+  const disconnect = useDisconnectIntegration(provider);
   const {
     selectedConn,
     selectedApp,

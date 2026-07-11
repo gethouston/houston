@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import {
   auth,
   type OAuthClientProvider,
@@ -53,5 +54,37 @@ export class PendingAuthorizationClaimer {
     } finally {
       release();
     }
+  }
+}
+
+/**
+ * Start the server's OWN OAuth: mint + persist the single-use state nonce, run
+ * the SDK flow far enough to produce the authorization URL (registering the
+ * client on first use), and roll the pending record back if it fails so an
+ * aborted start never wedges the next one.
+ */
+export async function startOwnAuthorization(args: {
+  store: McpAuthStore;
+  id: string;
+  oauth: OAuthClientProvider;
+  serverUrl: string;
+  takeAuthorizationUrl: () => string | undefined;
+}): Promise<string> {
+  const state = await args.store.read(args.id);
+  state.pending = {
+    state: randomBytes(32).toString("base64url"),
+    startedAtMs: Date.now(),
+  };
+  await args.store.write(args.id, state);
+  try {
+    await auth(args.oauth, { serverUrl: args.serverUrl });
+    const url = args.takeAuthorizationUrl();
+    if (!url) throw new Error("MCP OAuth returned no authorization URL");
+    return url;
+  } catch (error) {
+    const failed = await args.store.read(args.id);
+    delete failed.pending;
+    await args.store.write(args.id, failed);
+    throw error;
   }
 }

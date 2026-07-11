@@ -1,4 +1,4 @@
-import type { ActionResult } from "../types";
+import type { ActionResult, ToolMatch } from "../types";
 import type { McpCallResult } from "./client";
 
 type Tools = Awaited<
@@ -54,4 +54,20 @@ export function mapMcpResult(result: McpCallResult): ActionResult {
     ...(data !== "" ? { data } : {}),
     ...(result.isError ? { error: text } : {}),
   };
+}
+
+/** A plain (non-hub) server's search results: its tools, ranked, one toolkit. */
+export function plainSearchMatches(
+  tools: Tools,
+  query: string,
+  toolkit: string,
+): ToolMatch[] {
+  return rankTools(tools, query).map(({ tool }) => ({
+    action: tool.name,
+    toolkit,
+    description: tool.description ?? "",
+    inputParams: tool.inputSchema,
+    connected: true,
+    status: "connected" as const,
+  }));
 }

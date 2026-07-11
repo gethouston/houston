@@ -1,5 +1,3 @@
-import { randomBytes } from "node:crypto";
-import { auth } from "@modelcontextprotocol/sdk/client/auth.js";
 import type { ActingContext, IntegrationProvider } from "../provider";
 import type {
   ActionResult,
@@ -15,10 +13,13 @@ import {
   type McpAuthorizationExchanger,
   type McpServerConfig,
   PendingAuthorizationClaimer,
+  startOwnAuthorization,
 } from "./authorization";
 import { McpAuthRequiredError, McpClientSession } from "./client";
+import { ComposioHubAdapter } from "./hub";
 import { StoredMcpOAuthProvider } from "./oauth";
-import { mapMcpResult, rankTools } from "./tool-mapping";
+import { OwnConnection } from "./own-connection";
+import { mapMcpResult, plainSearchMatches } from "./tool-mapping";
 
 export interface McpIntegrationProviderOptions extends McpServerConfig {
   store: McpAuthStore;
@@ -29,18 +30,23 @@ export type { McpServerConfig } from "./authorization";
 
 export class McpIntegrationProvider implements IntegrationProvider {
   readonly id: string;
-  private readonly description: string;
-  private readonly connectionId: string;
+  private readonly own: OwnConnection;
   private readonly oauth: StoredMcpOAuthProvider;
   private readonly client: McpClientSession;
   private readonly exchangeAuthorization: McpAuthorizationExchanger;
   private readonly pendingClaimer: PendingAuthorizationClaimer;
+  private readonly hubAdapter: ComposioHubAdapter;
+  private hubDetected?: boolean;
   private authorizationUrl?: string;
 
   constructor(private readonly options: McpIntegrationProviderOptions) {
     this.id = options.id;
-    this.connectionId = `mcp:${this.id}`;
-    this.description = `Remote MCP server (${new URL(options.url).hostname})`;
+    this.own = new OwnConnection(
+      options.store,
+      this.id,
+      options.name ?? this.id,
+      `Remote MCP server (${new URL(options.url).hostname})`,
+    );
     this.oauth = new StoredMcpOAuthProvider(
       this.id,
       options.store,
@@ -50,6 +56,7 @@ export class McpIntegrationProvider implements IntegrationProvider {
       },
     );
     this.client = new McpClientSession(options.url, this.oauth);
+    this.hubAdapter = new ComposioHubAdapter(this.client);
     this.exchangeAuthorization =
       options.exchangeAuthorization ?? defaultMcpAuthorizationExchange;
     this.pendingClaimer = new PendingAuthorizationClaimer(
@@ -58,69 +65,72 @@ export class McpIntegrationProvider implements IntegrationProvider {
     );
   }
 
+  /** The hub personality, or null: plain servers and signed-out states. */
+  private async hub(): Promise<ComposioHubAdapter | null> {
+    if (!(await this.own.signedIn())) return null;
+    if (this.hubDetected === undefined) {
+      this.hubDetected = await this.hubAdapter.detect();
+    }
+    return this.hubDetected ? this.hubAdapter : null;
+  }
+
   async readiness(): Promise<ProviderReadiness> {
     return { ready: true };
   }
 
   async listToolkits(): Promise<Toolkit[]> {
-    return [
-      {
-        slug: this.id,
-        name: this.options.name ?? this.id,
-        description: this.description,
-      },
-    ];
+    const hub = await this.hub().catch(() => null);
+    // The server itself is always the first "app": connecting it runs the MCP
+    // OAuth, and on a hub that unlocks the per-app catalog behind it.
+    return [this.own.toolkit(), ...(hub ? hub.catalog() : [])];
   }
 
   async listConnections(_userId: string): Promise<Connection[]> {
-    const state = await this.options.store.read(this.id);
-    if (state.tokens) return [this.makeConnection("active")];
-    if (state.pending) return [this.makeConnection("pending")];
-    return [];
+    const current = await this.own.current();
+    if (current?.status !== "active") return current ? [current] : [];
+    const hub = await this.hub().catch(() => null);
+    const apps = hub ? await hub.connections().catch(() => []) : [];
+    return [current, ...apps];
   }
 
   async connect(_userId: string, toolkit: string): Promise<ConnectStart> {
-    if (toolkit !== this.id)
-      throw new Error(`unknown MCP toolkit '${toolkit}'`);
-    const state = await this.options.store.read(this.id);
-    state.pending = {
-      state: randomBytes(32).toString("base64url"),
-      startedAtMs: Date.now(),
-    };
-    await this.options.store.write(this.id, state);
-    this.authorizationUrl = undefined;
-    try {
-      await auth(this.oauth, { serverUrl: this.options.url });
-      if (!this.authorizationUrl)
-        throw new Error("MCP OAuth returned no authorization URL");
-      return {
-        redirectUrl: this.authorizationUrl,
-        connectionId: this.connectionId,
-      };
-    } catch (error) {
-      const failed = await this.options.store.read(this.id);
-      delete failed.pending;
-      await this.options.store.write(this.id, failed);
-      throw error;
+    if (toolkit !== this.id) {
+      const hub = await this.hub();
+      if (!hub) throw new Error(`unknown MCP toolkit '${toolkit}'`);
+      return hub.connectApp(toolkit);
     }
+    this.authorizationUrl = undefined;
+    const redirectUrl = await startOwnAuthorization({
+      store: this.options.store,
+      id: this.id,
+      oauth: this.oauth,
+      serverUrl: this.options.url,
+      takeAuthorizationUrl: () => this.authorizationUrl,
+    });
+    return { redirectUrl, connectionId: this.own.connectionId };
   }
 
   async connection(
     _userId: string,
     connectionId: string,
   ): Promise<Connection | null> {
-    if (connectionId !== this.connectionId) return null;
-    return (await this.listConnections(_userId))[0] ?? null;
+    if (connectionId.startsWith("app:")) {
+      const hub = await this.hub();
+      return hub ? hub.appConnection(connectionId) : null;
+    }
+    if (connectionId !== this.own.connectionId) return null;
+    return this.own.current();
   }
 
   async disconnect(_userId: string, toolkit: string): Promise<void> {
-    if (toolkit !== this.id)
-      throw new Error(`unknown MCP toolkit '${toolkit}'`);
-    const state = await this.options.store.read(this.id);
-    delete state.tokens;
-    delete state.pending;
-    delete state.codeVerifier;
-    await this.options.store.write(this.id, state);
+    if (toolkit !== this.id) {
+      const hub = await this.hub();
+      if (!hub) throw new Error(`unknown MCP toolkit '${toolkit}'`);
+      await hub.disconnectApp(toolkit);
+      return;
+    }
+    await this.own.clear();
+    this.hubDetected = undefined;
     await this.client.close();
   }
 
@@ -141,21 +151,14 @@ export class McpIntegrationProvider implements IntegrationProvider {
     query: string,
     _acting?: ActingContext,
   ): Promise<ToolMatch[]> {
-    if (!(await this.options.store.read(this.id)).tokens)
-      return [this.connectable()];
+    if (!(await this.own.signedIn())) return [this.own.connectable()];
     try {
-      return rankTools(await this.client.listTools(), query).map(
-        ({ tool }) => ({
-          action: tool.name,
-          toolkit: this.id,
-          description: tool.description ?? "",
-          inputParams: tool.inputSchema,
-          connected: true,
-          status: "connected",
-        }),
-      );
+      const hub = await this.hub();
+      if (hub) return await hub.search(query);
+      return plainSearchMatches(await this.client.listTools(), query, this.id);
     } catch (error) {
-      if (error instanceof McpAuthRequiredError) return [this.connectable()];
+      if (error instanceof McpAuthRequiredError)
+        return [this.own.connectable()];
       throw error;
     }
   }
@@ -167,6 +170,8 @@ export class McpIntegrationProvider implements IntegrationProvider {
     _acting?: ActingContext,
   ): Promise<ActionResult> {
     try {
+      const hub = await this.hub();
+      if (hub) return await hub.execute(action, params);
       return mapMcpResult(await this.client.callTool(action, params));
     } catch (error) {
       if (error instanceof McpAuthRequiredError) {
@@ -177,19 +182,5 @@ export class McpIntegrationProvider implements IntegrationProvider {
       }
       throw error;
     }
-  }
-
-  private makeConnection(status: Connection["status"]): Connection {
-    return { toolkit: this.id, connectionId: this.connectionId, status };
-  }
-
-  private connectable(): ToolMatch {
-    return {
-      action: "",
-      toolkit: this.id,
-      description: this.description,
-      connected: false,
-      status: "connectable",
-    };
   }
 }
