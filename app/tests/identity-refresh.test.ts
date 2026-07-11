@@ -114,6 +114,21 @@ test("refreshNow clears the session and returns null on an invalid refresh token
   assert.equal(await loadSession(), null);
 });
 
+test("refreshNow signs out on a disabled account (USER_DISABLED is terminal)", async () => {
+  await seedSession();
+  const { refreshNow } = await import("../src/lib/identity/refresh.ts");
+  const { loadSession } = await import("../src/lib/identity/session-store.ts");
+
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ error: { message: "USER_DISABLED" } }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    })) as typeof fetch;
+
+  assert.equal(await refreshNow(), null);
+  assert.equal(await loadSession(), null);
+});
+
 test("refreshNow returns null when there is no stored session", async () => {
   const { refreshNow } = await import("../src/lib/identity/refresh.ts");
   let calls = 0;
@@ -123,6 +138,32 @@ test("refreshNow returns null when there is no stored session", async () => {
   }) as typeof fetch;
   assert.equal(await refreshNow(), null);
   assert.equal(calls, 0);
+});
+
+test("proactive refresh backs off on a transient failure near expiry (no hot loop)", async () => {
+  // A session already inside the skew window: the expiry-based delay is 0, so
+  // without backoff a failing refresh would reschedule at 0 and hammer the
+  // network. With backoff it must fire at most once in a short window.
+  const { saveSession } = await import("../src/lib/identity/session-store.ts");
+  await saveSession({ ...SESSION, expiresAt: Date.now() }); // past the skew
+
+  const { startProactiveRefresh, stopProactiveRefresh } = await import(
+    "../src/lib/identity/refresh.ts"
+  );
+
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    throw new TypeError("network down"); // transient → IdentityError("network")
+  }) as typeof fetch;
+
+  startProactiveRefresh();
+  // Let the immediate (delay-0) first fire run and its backoff arm the next.
+  await new Promise((r) => setTimeout(r, 80));
+  stopProactiveRefresh();
+
+  // Exactly one attempt in the window — the 30s backoff prevents a hot loop.
+  assert.ok(calls <= 1, `expected <=1 refresh attempt, got ${calls}`);
 });
 
 test("refreshNow abandons the save when clearSession fired mid-flight (sign-out race)", async () => {
