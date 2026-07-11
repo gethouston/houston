@@ -4,7 +4,7 @@ import type { LegacyDetection } from "../lib/cloud-migration";
 import { DEMO_DETECTION, isMigrationDemo } from "../lib/cloud-migration-demo";
 import { isHostedGatewayEngine } from "../lib/engine";
 import { reportError } from "../lib/error-toast";
-import { readMigrationStatus } from "../lib/migration-status";
+import { readMigrated } from "../lib/migration-status";
 import { osDetectLegacyHouston, osIsTauri } from "../lib/os-bridge";
 import { queryKeys } from "../lib/query-keys";
 import {
@@ -58,7 +58,9 @@ export interface CloudMigrationTrigger {
 export function useCloudMigration(): CloudMigrationTrigger {
   const { data: session } = useSession();
   const userId = session?.user?.id ?? null;
-  const migrationCompleted = readMigrationStatus(session) === "completed";
+  // The authoritative gate: only an explicit `migrated:false` is ever a wizard
+  // candidate (`true` = done, absent = brand-new user → onboarding).
+  const migrated = readMigrated(session);
   const remoteGateway = isHostedGatewayEngine();
   const isTauri = osIsTauri();
 
@@ -71,7 +73,7 @@ export function useCloudMigration(): CloudMigrationTrigger {
     isTauri &&
     Boolean(userId) &&
     !outcome &&
-    !migrationCompleted;
+    migrated === false;
   const detectQuery = useQuery({
     queryKey: queryKeys.cloudMigrationDetect(),
     // Read-only filesystem scan; stable for the app's lifetime. An automatic
@@ -130,7 +132,7 @@ export function useCloudMigration(): CloudMigrationTrigger {
     signedIn: Boolean(userId),
     hasLegacyWorkspaces: detectQuery.data?.hasWorkspaces ?? false,
     outcome,
-    migrationCompleted,
+    migrated,
     loading: gatesOpen && detectQuery.isLoading,
   });
 

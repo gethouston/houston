@@ -30,11 +30,13 @@ export interface CloudMigrationInputs {
   /** This user already finished or declined the wizard on this machine. */
   outcome: CloudMigrationOutcome | null;
   /**
-   * The AUTHORITATIVE, cross-machine flag from the user's Supabase metadata:
-   * `true` once `migration_status === "completed"`. Wins over everything else —
-   * a user who migrated on any machine is never offered the wizard again.
+   * The AUTHORITATIVE, cross-machine gate from the user's Supabase metadata
+   * (`readMigrated`): `true` = done (migrated, or a new user past onboarding),
+   * `false` = an existing user marked for migration, `null` = a brand-new cloud
+   * user. Only an explicit `false` is ever a wizard candidate; `true` and
+   * absent both fall straight through to the app / onboarding.
    */
-  migrationCompleted: boolean;
+  migrated: boolean | null;
   /** The detection probe is still in flight. */
   loading: boolean;
 }
@@ -53,10 +55,15 @@ export function cloudMigrationGateState(
   if (!i.remoteGateway) return "pass";
   if (!i.isTauri) return "pass";
   if (!i.signedIn) return "pass";
-  // Cross-machine authority first: a completed account never sees the wizard,
-  // even on a new machine that still has a leftover `.houston` folder.
-  if (i.migrationCompleted) return "pass";
+  // Authoritative cross-machine metadata gate. `true` (migrated, or a new user
+  // past onboarding) and `null` (a brand-new cloud user → normal onboarding)
+  // both pass; ONLY an explicit `false` marks a migration candidate. This is
+  // what lets "absent = new": the whole existing base is backfilled to `false`.
+  if (i.migrated !== false) return "pass";
   if (i.outcome) return "pass";
   if (i.loading) return "loading";
+  // Marked for migration, but the data is machine-local: only surface the
+  // wizard where a `~/.houston` actually exists. A marked user on a fresh
+  // machine keeps `migrated:false` and migrates on the device that holds it.
   return i.hasLegacyWorkspaces ? "show" : "pass";
 }

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useSession } from "../../../hooks/use-session";
 import { isHostedGatewayEngine } from "../../../lib/engine";
 import { reportError } from "../../../lib/error-toast";
-import { readMigrationStatus } from "../../../lib/migration-status";
+import { readMigrated } from "../../../lib/migration-status";
 import { osDetectLegacyHouston, osIsTauri } from "../../../lib/os-bridge";
 import { queryKeys } from "../../../lib/query-keys";
 
@@ -21,9 +21,7 @@ const STORAGE_PREFIX = "houston.cloudMigration.";
 export function useMigrationAvailable(): boolean {
   const { data: session } = useSession();
   const gates =
-    isHostedGatewayEngine() &&
-    osIsTauri() &&
-    readMigrationStatus(session) !== "completed";
+    isHostedGatewayEngine() && osIsTauri() && readMigrated(session) !== true;
   const detect = useQuery({
     queryKey: queryKeys.cloudMigrationDetect(),
     queryFn: async () => {

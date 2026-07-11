@@ -63,3 +63,45 @@ export async function writeMigrationStatus(
     );
   }
 }
+
+/**
+ * The single top-level cloud-migration GATE on the user's Supabase metadata
+ * (HOU-719), a plain boolean that decides which first-run surface a signed-in
+ * desktop user sees:
+ *
+ *   - `true`  — done: migrated (or a brand-new user who finished onboarding).
+ *               Never show onboarding OR the migration wizard again.
+ *   - `false` — an existing local-app user marked for migration. The wizard is
+ *               offered on whichever machine still holds their `~/.houston`.
+ *   - absent  — a brand-new user who only ever downloaded the cloud app; they
+ *               go through normal onboarding.
+ *
+ * The whole existing user base is backfilled to `false` at cutover, so "absent"
+ * can reliably mean "new". `migration_status` above stays the finer-grained
+ * resume/retry detail; `migrated` is the authoritative on/off switch the gate
+ * reads.
+ */
+export function readMigrated(
+  session: Session | null | undefined,
+): boolean | null {
+  const raw = session?.user?.user_metadata?.migrated;
+  return typeof raw === "boolean" ? raw : null;
+}
+
+/** Write the `migrated` gate flag to the signed-in user's metadata.
+ *  Best-effort, mirroring `writeMigrationStatus` — a failure is reported, never
+ *  silent, and the next successful write reconciles the account. */
+export async function writeMigrated(value: boolean): Promise<void> {
+  try {
+    const { error } = await supabase.auth.updateUser({
+      data: { migrated: value },
+    });
+    if (error) throw error;
+  } catch (e) {
+    reportError(
+      "cloud_migration_migrated_write",
+      e instanceof Error ? e.message : String(e),
+      e,
+    );
+  }
+}

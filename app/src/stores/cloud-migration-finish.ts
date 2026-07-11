@@ -9,7 +9,7 @@ import { analytics } from "../lib/analytics";
 import type { MigrationTask } from "../lib/cloud-migration";
 import type { AgentMigrationProgress } from "../lib/cloud-migration-progress";
 import { reportError } from "../lib/error-toast";
-import { writeMigrationStatus } from "../lib/migration-status";
+import { writeMigrated, writeMigrationStatus } from "../lib/migration-status";
 import { osStopMigrationSourceHost } from "../lib/os-bridge";
 import { useAgentStore } from "./agents";
 import { useWorkspaceStore } from "./workspaces";
@@ -44,8 +44,10 @@ export async function finishRun(
     workspace_count: new Set(tasks.map((t) => t.workspace)).size,
   });
   // The single completion point of a run (all agents done or continue-anyway):
-  // stamp the AUTHORITATIVE cross-machine "migrated" flag so the wizard is
-  // never offered again on any of the user's machines. Best-effort.
+  // flip the AUTHORITATIVE cross-machine gate to `migrated:true` so neither the
+  // wizard nor onboarding is offered again on any of the user's machines, and
+  // keep the finer-grained status at "completed" for detail. Both best-effort.
+  await writeMigrated(true);
   await writeMigrationStatus("completed");
   setScreenDone();
 }

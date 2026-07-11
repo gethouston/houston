@@ -2,27 +2,31 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { cloudMigrationGateState } from "../src/hooks/cloud-migration-trigger.ts";
 
-// The "show" case: a signed-in user on the remote-gateway desktop build, with
-// legacy data on disk, no persisted outcome, every signal resolved.
+// The "show" case: a signed-in user on the remote-gateway desktop build,
+// explicitly marked `migrated:false`, with legacy data on disk, no persisted
+// outcome, every signal resolved.
 const SHOW = {
   remoteGateway: true,
   isTauri: true,
   signedIn: true,
   hasLegacyWorkspaces: true,
   outcome: null,
-  migrationCompleted: false,
+  migrated: false,
   loading: false,
 } as const;
 
-test("shows for a signed-in gateway desktop with legacy data", () => {
+test("shows for a signed-in gateway desktop marked migrated:false with legacy data", () => {
   assert.equal(cloudMigrationGateState(SHOW), "show");
 });
 
-test("never shows once the account has migrated (cross-machine), even with leftover legacy data", () => {
-  assert.equal(
-    cloudMigrationGateState({ ...SHOW, migrationCompleted: true }),
-    "pass",
-  );
+test("never shows once the account is migrated (cross-machine), even with leftover legacy data", () => {
+  assert.equal(cloudMigrationGateState({ ...SHOW, migrated: true }), "pass");
+});
+
+test("never shows for a brand-new cloud user (absent metadata) even with local data — they onboard", () => {
+  // A truly new user has no `migrated` field; absent must route to onboarding,
+  // never the wizard, regardless of what happens to be on disk.
+  assert.equal(cloudMigrationGateState({ ...SHOW, migrated: null }), "pass");
 });
 
 test("never shows outside remote gateway mode (local sidecar / dev host)", () => {
