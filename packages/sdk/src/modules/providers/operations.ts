@@ -11,13 +11,13 @@
  */
 
 import type { ModuleContext } from "../../module-context";
-import { resolveModelSettings } from "../turns/model-settings";
 import { mergeProviders, overlayStatus } from "./merge";
 import {
   type LoginInfo,
   type LoginOptions,
   type ProviderId,
   type ProvidersViewModel,
+  type ProvidersWrites,
   providersScope,
   type SetModelOptions,
 } from "./types";
@@ -41,7 +41,10 @@ export interface ProviderOps {
   setModel(agentId: string, opts: SetModelOptions): Promise<void>;
 }
 
-export function createProviderOps(ctx: ModuleContext): ProviderOps {
+export function createProviderOps(
+  ctx: ModuleContext,
+  writes: ProvidersWrites,
+): ProviderOps {
   const { store } = ctx;
 
   // Monotonic per-agent request sequence: a slow full refresh that resolves
@@ -117,17 +120,19 @@ export function createProviderOps(ctx: ModuleContext): ProviderOps {
     await refresh(agentId);
   }
 
+  // Credential writes delegate to the no-refetch primitives (`writes.ts`) and
+  // then refresh — one implementation of each underlying call, no drift.
   async function setApiKey(
     agentId: string,
     provider: ProviderId,
     key: string,
   ): Promise<void> {
-    await ctx.clientFor(agentId).setApiKey(provider, key);
+    await writes.setApiKey(agentId, provider, key);
     await refresh(agentId);
   }
 
   async function logout(agentId: string, provider: ProviderId): Promise<void> {
-    await ctx.clientFor(agentId).logout(provider);
+    await writes.logout(agentId, provider);
     await refresh(agentId);
   }
 
@@ -135,19 +140,7 @@ export function createProviderOps(ctx: ModuleContext): ProviderOps {
     agentId: string,
     opts: SetModelOptions,
   ): Promise<void> {
-    const client = ctx.clientFor(agentId);
-    // Reuse the shared resolver: it pairs a model with its owning provider (the
-    // runtime hard-fails a model that belongs to a different active provider).
-    // `mode` is a per-turn pin only — never an agent-wide setting (HOU-695) —
-    // so a settings write always resolves it as undefined.
-    const settings = await resolveModelSettings(
-      client,
-      opts.model,
-      opts.effort,
-      undefined,
-    );
-    if (opts.provider !== undefined) settings.activeProvider = opts.provider;
-    await client.setSettings(settings);
+    await writes.setModel(agentId, opts);
     await refresh(agentId);
   }
 

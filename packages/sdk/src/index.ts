@@ -52,6 +52,7 @@ export {
   ActivitiesHttpError,
   type ActivitiesModule,
   type ActivitiesViewModel,
+  type ActivitiesWrites,
   type ActivityItem,
   activitiesScope,
   type CreatedActivity,
@@ -60,12 +61,14 @@ export {
 export {
   AGENTS_CHANGED_EVENT,
   AGENTS_SCOPE,
+  type AgentCreateInput,
   type AgentListItem,
   AgentsCommand,
   type AgentsCommandType,
   AgentsHttpError,
   type AgentsModule,
   type AgentsViewModel,
+  type AgentsWrites,
   type WireAgent,
 } from "./modules/agents";
 // ===== Conversations module contract ===================================
@@ -84,6 +87,7 @@ export {
   type IntegrationsModule,
   type IntegrationsUnavailableReason,
   type IntegrationsViewModel,
+  type IntegrationsWrites,
   type IntegrationToolkit,
 } from "./modules/integrations";
 // ===== Mission-search module contract ==================================
@@ -100,6 +104,8 @@ export {
 } from "./modules/preferences";
 // ===== Providers module contract =======================================
 export {
+  type AuthStatus,
+  type CustomEndpoint,
   type LoginInfo,
   type LoginOptions,
   type LoginState,
@@ -110,6 +116,7 @@ export {
   type ProvidersCommandType,
   type ProvidersModule,
   type ProvidersViewModel,
+  type ProvidersWrites,
   type ProviderVM,
   providersScope,
   type SetModelOptions,

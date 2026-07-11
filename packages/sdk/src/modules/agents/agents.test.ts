@@ -77,6 +77,8 @@ interface Harness {
     agents: WireAgent[];
     listCalls: number;
     posted: unknown[];
+    /** Every non-GET `/agents` call (POST/PATCH/DELETE): method + path + body. */
+    mutations: { method: string; path: string; body?: unknown }[];
     eventsResponder: () => Response | Promise<Response>;
   };
 }
@@ -86,6 +88,9 @@ function makeHarness(
     agents?: WireAgent[];
     agentsStatus?: number;
     eventsResponder?: () => Response | Promise<Response>;
+    /** `false` opens NO `/v1/events` stream (write-only host), so no background
+     *  refetch can confound a "does not refetch" assertion. Default: on. */
+    reactivity?: boolean;
   } = {},
 ): Harness {
   const clock = makeClock();
@@ -93,8 +98,12 @@ function makeHarness(
     agents: overrides.agents ?? [],
     listCalls: 0,
     posted: [],
+    mutations: [],
     eventsResponder: overrides.eventsResponder ?? closedSse,
   };
+  const path = (url: string) => new URL(url).pathname;
+  const parseBody = (init?: RequestInit) =>
+    init?.body === undefined ? undefined : JSON.parse(String(init.body));
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), {
       status,
@@ -114,8 +123,9 @@ function makeHarness(
         return json(state.agents);
       }
       if (url.endsWith("/agents") && method === "POST") {
-        const body = JSON.parse(String(init?.body)) as { name: string };
+        const body = parseBody(init) as { name: string };
         state.posted.push(body);
+        state.mutations.push({ method, path: path(url), body });
         const agent: WireAgent = {
           id: `id-${state.agents.length + 1}`,
           workspaceId: "w1",
@@ -128,7 +138,8 @@ function makeHarness(
       const single = url.match(/\/agents\/([^/]+)$/);
       if (single && method === "PATCH") {
         const id = decodeURIComponent(single[1]);
-        const body = JSON.parse(String(init?.body)) as { name: string };
+        const body = parseBody(init) as { name: string };
+        state.mutations.push({ method, path: path(url), body });
         state.agents = state.agents.map((a) =>
           a.id === id ? { ...a, name: body.name } : a,
         );
@@ -136,6 +147,7 @@ function makeHarness(
       }
       if (single && method === "DELETE") {
         const id = decodeURIComponent(single[1]);
+        state.mutations.push({ method, path: path(url) });
         state.agents = state.agents.filter((a) => a.id !== id);
         return json({ ok: true });
       }
@@ -158,7 +170,13 @@ function makeHarness(
     clock: clock.clock,
     logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   };
-  const config: SdkConfig = { baseUrl: BASE, ports };
+  const config: SdkConfig = {
+    baseUrl: BASE,
+    ports,
+    ...(overrides.reactivity !== undefined
+      ? { reactivity: overrides.reactivity }
+      : {}),
+  };
   const sdk = new HoustonSdk(config);
   const events: SdkEvent[] = [];
   sdk.on((e) => events.push(e));
@@ -310,6 +328,60 @@ describe("agents module — reactivity", () => {
     await vi.waitFor(() => expect(h.state.listCalls).toBe(2));
     // The ActivityChanged frame did not add its own refetch.
     expect(h.state.listCalls).toBe(2);
+  });
+});
+
+describe("agents module — no-refetch writes", () => {
+  // reactivity:false → no /v1/events stream, so `listCalls` (GET /agents) counts
+  // ONLY a facade refresh(). A write variant must leave it at 0.
+  it("writes.create posts the full body, returns the agent, and does NOT refetch", async () => {
+    const h = makeHarness({ agents: [], reactivity: false });
+    disposeCurrent = h.sdk.agents.dispose;
+    const created = await h.sdk.agents.writes.create({
+      name: "Newton",
+      claudeMd: "# hi",
+      seeds: { "a.txt": "x" },
+    });
+    expect(h.state.mutations).toEqual([
+      {
+        method: "POST",
+        path: "/agents",
+        body: { name: "Newton", claudeMd: "# hi", seeds: { "a.txt": "x" } },
+      },
+    ]);
+    expect(created).toMatchObject({ id: "id-1", name: "Newton" });
+    expect(h.state.listCalls).toBe(0); // no refresh() GET
+    // The write publishes NOTHING itself: any snapshot is only the module's
+    // async loading seed, never the created agent.
+    expect(snapshot(h.sdk)?.items ?? []).toEqual([]);
+  });
+
+  it("writes.create with only a name posts exactly {name} (iOS-identical body)", async () => {
+    const h = makeHarness({ agents: [], reactivity: false });
+    disposeCurrent = h.sdk.agents.dispose;
+    await h.sdk.agents.writes.create({ name: "Solo" });
+    expect(h.state.mutations[0]?.body).toEqual({ name: "Solo" });
+  });
+
+  it("writes.rename PATCHes and returns the updated agent, no refetch", async () => {
+    const h = makeHarness({ agents: [A("a1", "Old")], reactivity: false });
+    disposeCurrent = h.sdk.agents.dispose;
+    const renamed = await h.sdk.agents.writes.rename("a1", "New");
+    expect(h.state.mutations).toEqual([
+      { method: "PATCH", path: "/agents/a1", body: { name: "New" } },
+    ]);
+    expect(renamed).toMatchObject({ id: "a1", name: "New" });
+    expect(h.state.listCalls).toBe(0);
+  });
+
+  it("writes.delete DELETEs and does NOT refetch", async () => {
+    const h = makeHarness({ agents: [A("a1", "Gone")], reactivity: false });
+    disposeCurrent = h.sdk.agents.dispose;
+    await h.sdk.agents.writes.delete("a1");
+    expect(h.state.mutations).toEqual([
+      { method: "DELETE", path: "/agents/a1" },
+    ]);
+    expect(h.state.listCalls).toBe(0);
   });
 });
 

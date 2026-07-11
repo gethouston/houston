@@ -15,7 +15,7 @@
  */
 
 import type { SdkPorts } from "../../ports";
-import type { WireAgent } from "./types";
+import type { AgentCreateInput, WireAgent } from "./types";
 
 /** A failed `/agents` request. `status` is the upstream HTTP status. */
 export class AgentsHttpError extends Error {
@@ -31,7 +31,7 @@ export class AgentsHttpError extends Error {
 /** The four agent-list operations the module needs. */
 export interface AgentsHttp {
   list(): Promise<WireAgent[]>;
-  create(name: string): Promise<WireAgent>;
+  create(input: AgentCreateInput): Promise<WireAgent>;
   rename(id: string, name: string): Promise<WireAgent>;
   remove(id: string): Promise<void>;
 }
@@ -63,10 +63,12 @@ export function createAgentsHttp(
     async list() {
       return (await (await req("/agents")).json()) as WireAgent[];
     },
-    async create(name) {
+    async create(input) {
+      // `JSON.stringify` drops undefined optionals, so a `{ name }` input posts
+      // exactly `{ "name": … }` — byte-identical to the legacy body iOS sends.
       const res = await req("/agents", {
         method: "POST",
-        body: JSON.stringify({ name }),
+        body: JSON.stringify(input),
       });
       return (await res.json()) as WireAgent;
     },
