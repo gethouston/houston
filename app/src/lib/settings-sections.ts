@@ -8,6 +8,7 @@
 export const SETTINGS_SECTION_IDS = [
   "members",
   "connectedAccounts",
+  "apiKeys",
   "workspaceContext",
   "userContext",
   "shortcuts",

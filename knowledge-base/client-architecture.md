@@ -106,6 +106,23 @@ end-state is that it dissolves into direct SDK consumption
   legacy desktop/Rust methods throw explicitly (`client/legacy-unsupported-mixin.ts`);
   there is no catch-all Proxy returning silent `[]`.
 
+**Hosted, capability-gated surfaces (worked example: C9 personal API keys).** A
+gateway-only feature adds ONE method across the four fetch layers in signature
+lockstep — miss one and the web typecheck fails: `ui/engine-client`
+(`client.ts` `request()` + a wire type in `types.ts`), the web adapter
+(`cp/<feature>.ts` `cpFetch` fns re-exported by `control-plane.ts` + a
+`client/<feature>-mixin.ts` with the `if (!this.ctx.cp)` off-cloud throw, composed
+in `client.ts`), and the app facade (`lib/tauri.ts` `call()` wrapper). Feature-
+detect with an optional `Capabilities` flag (C9 = `apiKeys?: boolean`), absent on
+desktop/self-host/older gateways — `capabilities()` returns the raw `/v1/capabilities`
+JSON, so a new optional flag needs NO adapter mapping. Gate the whole UI on it
+(the settings row + the query's `enabled`), keep pure logic (gate/validation/error
+classifier) in a `lib/*-model.ts` unit-tested under bare Node, and route an
+EXPECTED business 400 (e.g. `key_limit`, read off the gateway's flat top-level
+`body.code`) through `call()`'s `silence` predicate so it renders inline instead
+of the red bug toast. Files: `app/src/{lib/api-keys-model,hooks/queries/use-api-keys}.ts`
++ `components/settings/sections/api-keys*.tsx`.
+
 **Strict-additive / iOS-safe rule.** `@houston/sdk` is consumed by BOTH web AND
 the native iOS app (via the JavaScriptCore bridge, `bridge/entry.ts`). iOS reaches
 the SDK ONLY through dispatched bridge COMMANDS and subscribed SCOPES — never

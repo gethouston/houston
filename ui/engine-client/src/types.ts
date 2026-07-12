@@ -107,6 +107,14 @@ export interface Capabilities {
    * flag only — the gateway/host is the sole enforcer.
    */
   triggers?: boolean;
+  /**
+   * Whether this deployment serves the C9 public API, so the user can mint and
+   * revoke personal API keys (`GET/POST/DELETE /v1/keys`) to drive their agents
+   * from their own tools. A feature-detect flag the frontend reads to show the
+   * API-keys settings section; absent/false on desktop/self-host and on gateways
+   * that predate the public API. The gateway is the sole enforcer.
+   */
+  apiKeys?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------
@@ -213,6 +221,33 @@ export interface BillingSummary {
  */
 export interface BillingCheckout {
   url: string;
+}
+
+/**
+ * One active personal API key (C9 §Credential), from `GET /v1/keys` and (minus
+ * the secret) the mint response. `prefix` is the display-safe head of the key
+ * (`hst_` + first 8 hex) shown so the user can tell keys apart; the full secret
+ * is NEVER carried here. `lastUsedAt` is absent until the key first authenticates
+ * a request.
+ */
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  /** ISO-8601 creation instant. */
+  createdAt: string;
+  /** ISO-8601 instant the key last authenticated a request; absent if never used. */
+  lastUsedAt?: string;
+}
+
+/**
+ * The mint response of `POST /v1/keys` (C9): a fresh key plus its FULL secret.
+ * `key` (`hst_` + 64 hex) appears ONLY in this response and can never be
+ * retrieved again, so the UI holds it in local state for the one-time reveal and
+ * MUST keep it out of any query cache.
+ */
+export interface ApiKeyCreated extends ApiKey {
+  key: string;
 }
 
 /**

@@ -49,6 +49,14 @@ export const queryKeys = {
   capabilities: () => ["capabilities"] as const,
 
   /**
+   * C9 personal API keys (`GET /v1/keys`). App-scoped (one set per user, not
+   * agent-scoped) and hosted-gateway only — the create/revoke mutations
+   * self-invalidate this key. The full secret from a mint is NEVER cached here;
+   * it lives only in the create dialog's local state for its one-time reveal.
+   */
+  apiKeys: () => ["api-keys"] as const,
+
+  /**
    * Per-workspace sidebar arrangement (sort mode + named groups + drag order).
    * Optimistically updated by the layout mutation; also invalidated on the
    * `SidebarLayoutChanged` event for best-effort cross-surface/tab sync.
