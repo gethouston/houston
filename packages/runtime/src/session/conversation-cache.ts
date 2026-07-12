@@ -196,6 +196,15 @@ export type Conversation = {
    */
   turnId?: string;
   /**
+   * The wire id of a turn the user STOPPED (set by `cancelTurn` when it aborts a
+   * live turn; read + cleared by `execTurn` after `prompt()` resolves). pi routes
+   * an aborted turn down the normal usage path — `prompt()` resolves clean with
+   * no provider_error — so this marker is the only trace that the resolution was
+   * a stop. execTurn uses it to stamp `stopped: true` on the persisted assistant
+   * message (so the stop survives a reload) and to skip the clean `done`.
+   */
+  stoppedTurnId?: string;
+  /**
    * Turns queued-or-running for this conversation (incremented for a turn's
    * whole lifetime by chat.ts `runTurn`, decremented when it settles). `> 0`
    * pins the session against idle/LRU eviction so a session is NEVER disposed

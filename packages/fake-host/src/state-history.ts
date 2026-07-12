@@ -31,6 +31,22 @@ export function appendUserMessage(
 }
 
 /**
+ * Append the durable "stopped by user" marker the dismiss/abandon path writes:
+ * an empty assistant message flagged `stopped`, mirroring the real runtime's
+ * dismiss-interaction passthrough. A reloaded transcript then shows the stop
+ * line and the board settles to `needs_you` instead of a false `done`.
+ */
+export function appendStoppedMessage(
+  agentId: string,
+  conversationId: string,
+): void {
+  const key = `${agentId}:${conversationId}`;
+  const list = state.histories.get(key) ?? [];
+  list.push({ role: "assistant", content: "", ts: EPOCH, stopped: true });
+  state.histories.set(key, list);
+}
+
+/**
  * Persist the assistant reply at turn END, stamped with the same turn id.
  * A turn that ended asking the user persists its interaction ON the reply,
  * matching the real runtime (`exec-turn.ts` clean path) — so a client that

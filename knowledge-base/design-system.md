@@ -162,7 +162,7 @@ Grid: leading (attach) | primary (text) | trailing (send).
 White bg, `border-black/5`, `rounded-xl`, hover shadow. Running state = `card-running-glow` animation border.
 
 ### RowCard (inline notice + integration cards)
-One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-secondary`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the inline Composio `#houston_toolkit` link card. **Not** the interaction-card stepper's connect/signin STEPS — those draw a surface-less COMPACT left-aligned lockup (brand logo `sm` inline with a bold title, one muted benefit line) + a footer of a quiet "Not now" + Esc hint beside a filled CTA with a return-key glyph (reference "Coworker card" look, inventory v17; no card-inside-a-card); see `chat-connect-interaction-card.tsx` / `chat-signin-interaction-card.tsx`.
+One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-secondary`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the inline Composio `#houston_toolkit` link card. **Not** the interaction-card stepper's connect/signin STEPS — those compose the shared `InteractionModal` shell (`ui/chat`, reference "Coworker card" look, inventory v19): the `(icon) name` identity lockup (brand logo `sm` beside the integration NAME at REGULAR weight, via `InteractionModalTitle`) is the modal HEADER title, on the same row as the pager + dismiss X; the body is TWO fields (the agent's reason in foreground tone, then the app description / sign-in explainer muted); the FOOTER is the unified "Not now" + Esc hint beside a filled CTA with a return-key glyph. Weight is restrained: color tone carries the hierarchy, so the title and labels are regular — `font-medium` survives only on the Recommended chip, the number badge, and the CTA label; no competing bolds. "Not now" travels WITH the CTA (present wherever the CTA is, including a reconsidered skip). The signin/connect body renders its OWN `InteractionModal` wired with the stepper's `StepChrome` (pager + dismiss), so ui/chat stays auth/Composio-unaware. See `chat-connect-interaction-card.tsx` / `chat-signin-interaction-card.tsx`.
 
 > **AI Models hub is the one deliberate exception.** The hub (Providers/Models tabs) reaches for a full-color brand mark — `BrandMark` (`app/src/components/ai-hub/brand-mark.tsx`) renders the same `ProviderGlyph` boxless (no tile or wash), full-bleed at sm/md/lg (`size-6/8/10`), colored via the sanctioned hex map in `shell/provider-brand-colors.ts` (the ONLY place raw brand hex may live; every other surface stays on tokens). This is a "candy store" recognition device scoped to the hub — chat surfaces (RowCard, provider-switch, error/reconnect cards) stay monochrome. Multi-button error cards stay on `ErrorCard` (icon-bubble) in `provider-error-cards/shared.tsx`.
 
@@ -329,14 +329,47 @@ transparent and melts into the gutter. Tokens: `--ht-canvas-gutter` (window bg)
 and `--ht-canvas-screen` (the floating screen). The mission panel opens as a
 second rounded card with a gutter gap.
 
+**The canvas is the standard main surface — a light gray, not white (light
+mode).** `--ht-canvas-screen` is the tone every content pane (board, chat,
+routines, integrations, files, settings, AI hub, agent settings…) sits on. In
+**light** it is `#fbfbfb` — the flattened equivalent of the chat panel's former
+`bg-muted/50` over white, promoted to the ONE standard so white cards, the
+composer, inputs, and popovers **float** on a calm gray rather than vanishing
+into white-on-white. In **dark** it is unchanged (`{color.glass.screen-55}`
+frosted glass); the light change never moves dark. It is exposed to Tailwind as
+**`bg-canvas`** (`--color-canvas → --ht-canvas-screen`, `ui/core/src/globals.css`
+`@theme`) so any surface that lives ON the canvas can reference the SAME tone as
+one source of truth — e.g. the chat panel (`ui/chat/chat-panel.tsx`) is
+`bg-canvas dark:bg-transparent` (transparent in dark to let the pane's glass
+through). The two shell panes (`shell/workspace-shell.tsx`) get it via the
+`.canvas-screen` class, which ALSO carries the dark frosted-glass blur — so they
+keep the class (never swap it for a bare `bg-canvas`, which would drop the dark
+glass); the light-gray flip is purely the token value change.
+
+**canvas vs background vs card (light mode):**
+- **`bg-canvas`** (`#fbfbfb`) — the main pane / standard surface things float
+  ON. Use for a content-area background that should read as the calm base.
+- **`bg-card`** (`white-68` glass ≈ near-white over canvas) — a card/panel that
+  should **float above** the canvas (mission cards, settings group cards). White
+  + border + sheen is what makes it lift off the gray.
+- **`bg-background`** (`#fff`) — the opaque-white fallback / floating inputs &
+  the composer (white pills that float on the canvas). NOT for pane backgrounds
+  in the futuristic layout (a pane painted `bg-background` becomes a white slab
+  on the gray canvas — the `.canvas-screen` panes keep `bg-background` only as
+  the theme-off fallback, overridden by the class).
+- **`bg-secondary` / `bg-muted`** (`ink-a035`, subtle darker-than-canvas) —
+  recessed panels that sit BELOW the card tier (board columns, provider rows).
+
 **Dark mode** — the signature look: a multi-radial **aurora glow** on
 `body::before` (blue/indigo/orange, slow 32s drift, disabled under
 `prefers-reduced-motion`) + translucent **glass** surfaces (`.bg-card`,
 `.bg-popover`, sidebar) with `backdrop-filter` blur.
 
 **Light mode** — the cool, solid **"Aurora" palette** (no glow mesh — it read as
-"glitter" over solid surfaces): gutter `#eef1f7`, screen `#fff`, cards `#f4f6fc`,
-cool blue/indigo border. Clean and futuristic by restraint, not decoration.
+"glitter" over solid surfaces): gutter `#eef1f7`, screen `#fbfbfb` (the standard
+light-gray canvas — see "The canvas is the standard main surface" above), cards
+`#f4f6fc`, cool blue/indigo border. Clean and futuristic by restraint, not
+decoration.
 
 **Modals: glass in dark, solid white in light.** All modal primitives —
 `DialogContent` (`ui/core/components/dialog.tsx`), `AlertDialogContent`,

@@ -1,12 +1,6 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-} from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
 import type { AgentId } from "../domain/types";
+import { agentDotHoustonFile, atomicWriteJson } from "./agent-file";
 
 /**
  * Per-agent integration grants (LOCAL / self-host only). A grant record answers
@@ -56,14 +50,9 @@ export class FileIntegrationGrantStore implements IntegrationGrantStore {
 
   /** `<root>/<Workspace>/<Agent>/.houston/integration-grants.json`, or null on a bad id. */
   private fileFor(agentId: AgentId): string | null {
-    if (agentId.includes("..")) return null;
-    const parts = agentId.split("/");
-    if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
-    return join(
+    return agentDotHoustonFile(
       this.workspacesRoot,
-      parts[0],
-      parts[1],
-      ".houston",
+      agentId,
       "integration-grants.json",
     );
   }
@@ -91,9 +80,6 @@ export class FileIntegrationGrantStore implements IntegrationGrantStore {
     const path = this.fileFor(agentId);
     if (!path)
       throw new Error(`integration grants: invalid agent id '${agentId}'`);
-    mkdirSync(dirname(path), { recursive: true });
-    const tmp = `${path}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ toolkits }, null, 2));
-    renameSync(tmp, path); // atomic swap
+    atomicWriteJson(path, { toolkits });
   }
 }

@@ -3,6 +3,9 @@ import type { Capabilities } from "@houston/protocol";
 import { expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import { EnvCredentialVault } from "../credentials/vault";
+import { MemoryActionApprovalStore } from "../integrations/action-approval-store";
+import { LocalActionApprovals } from "../integrations/action-approvals";
+import { hashActionParams } from "../integrations/approvals";
 import { FakeIntegrationProvider } from "../integrations/fake";
 import { MemoryIntegrationGrantStore } from "../integrations/grant-store";
 import { LocalIntegrationGrants } from "../integrations/grants";
@@ -30,7 +33,9 @@ const CAPS: Capabilities = {
   integrations: ["composio"],
 };
 
-async function setup(opts: { withGrants?: boolean } = {}) {
+async function setup(
+  opts: { withGrants?: boolean; withApprovals?: boolean } = {},
+) {
   const withGrants = opts.withGrants ?? true;
   const verifier: TokenVerifier = {
     async verify(b) {
@@ -42,6 +47,8 @@ async function setup(opts: { withGrants?: boolean } = {}) {
   const fake = new FakeIntegrationProvider({ id: "composio" });
   const registry = new IntegrationRegistry([fake]);
   const grantStore = new MemoryIntegrationGrantStore();
+  const approvalStore = new MemoryActionApprovalStore();
+  const approvals = new LocalActionApprovals({ store: approvalStore });
   const deps: ControlPlaneDeps = {
     verifier,
     store,
@@ -53,6 +60,7 @@ async function setup(opts: { withGrants?: boolean } = {}) {
     integrationGrants: withGrants
       ? new LocalIntegrationGrants({ store: grantStore, registry })
       : undefined,
+    actionApprovals: opts.withApprovals ? approvals : undefined,
     corsOrigin: "*",
   };
   const server: Server = createControlPlaneServer(deps);
@@ -71,6 +79,8 @@ async function setup(opts: { withGrants?: boolean } = {}) {
     vault,
     fake,
     grantStore,
+    approvalStore,
+    approvals,
     stop: () => server.close(),
   };
 }
@@ -263,6 +273,170 @@ test("no stored record → sandbox execute/search pass through unfiltered", asyn
     });
     expect(exec.status).toBe(200); // no record → not filtered
     expect((await exec.json()).successful).toBe(true);
+  } finally {
+    stop();
+  }
+});
+
+// ── Action-approval gate (integrations-sandbox.ts) ──────────────────────────
+
+/** POST an execute over the sandbox HMAC token, optionally in Autopilot. */
+function execCall(
+  base: string,
+  sb: string,
+  body: Record<string, unknown>,
+  auto = false,
+) {
+  return fetch(`${base}/sandbox/integrations/execute`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${sb}`,
+      "Content-Type": "application/json",
+      ...(auto ? { "x-houston-turn-mode": "auto" } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+test("no approvals dep → execute runs untouched (existing installs unchanged)", async () => {
+  const { base, ws, agent, vault, stop } = await setup(); // withApprovals off
+  try {
+    const sb = vault.sandboxToken(ws.id, agent.id);
+    const res = await execCall(base, sb, {
+      action: "GMAIL_SEND_EMAIL",
+      params: { to: "x" },
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).successful).toBe(true);
+  } finally {
+    stop();
+  }
+});
+
+test("Autopilot turn (x-houston-turn-mode:auto) bypasses the gate", async () => {
+  const { base, ws, agent, vault, stop } = await setup({ withApprovals: true });
+  try {
+    const sb = vault.sandboxToken(ws.id, agent.id);
+    const res = await execCall(
+      base,
+      sb,
+      { action: "GMAIL_SEND_EMAIL", params: { to: "x" } },
+      true,
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).successful).toBe(true);
+  } finally {
+    stop();
+  }
+});
+
+test("an always-allow record lets the action run", async () => {
+  const { base, ws, agent, vault, approvals, stop } = await setup({
+    withApprovals: true,
+  });
+  try {
+    await approvals.allowAlways(agent.id, "GMAIL_SEND_EMAIL");
+    const sb = vault.sandboxToken(ws.id, agent.id);
+    const res = await execCall(base, sb, {
+      action: "GMAIL_SEND_EMAIL",
+      params: { to: "x" },
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).successful).toBe(true);
+  } finally {
+    stop();
+  }
+});
+
+test("no ticket → 409 approval_required with the display payload + granted toolkit", async () => {
+  const { base, ws, agent, vault, grantStore, stop } = await setup({
+    withApprovals: true,
+  });
+  try {
+    // A granted multi-word slug: toolkit resolution must pick the LONGEST match
+    // (google_maps), not the segment before the first underscore (google).
+    await grantStore.put(agent.id, ["google", "google_maps"]);
+    const sb = vault.sandboxToken(ws.id, agent.id);
+    const params = { origin: "A", destination: "B" };
+    const res = await execCall(base, sb, {
+      action: "GOOGLE_MAPS_GET_ROUTE",
+      params,
+    });
+    expect(res.status).toBe(409);
+    const payload = await res.json();
+    expect(payload.code).toBe("approval_required");
+    expect(payload.approval).toEqual({
+      toolkit: "google_maps",
+      action: "GOOGLE_MAPS_GET_ROUTE",
+      params: { Origin: "A", Destination: "B" },
+      paramsHash: hashActionParams("GOOGLE_MAPS_GET_ROUTE", params),
+    });
+  } finally {
+    stop();
+  }
+});
+
+test("no grant record → 409 resolves the multi-word toolkit from the user's connections", async () => {
+  const { base, ws, agent, vault, fake, stop } = await setup({
+    withApprovals: true,
+    withGrants: false, // granted is null — the backward-compat path
+  });
+  try {
+    // The user has a google_maps connection; the segment fallback would mislabel
+    // GOOGLE_MAPS_GET_ROUTE as "google", so resolution must consult connections.
+    const { connectionId } = await fake.connect(USER, "google_maps");
+    fake.completeConnection(USER, connectionId);
+    const sb = vault.sandboxToken(ws.id, agent.id);
+    const res = await execCall(base, sb, {
+      action: "GOOGLE_MAPS_GET_ROUTE",
+      params: { origin: "A" },
+    });
+    expect(res.status).toBe(409);
+    const payload = await res.json();
+    expect(payload.approval.toolkit).toBe("google_maps");
+  } finally {
+    stop();
+  }
+});
+
+test("a ticket runs once; an immediate identical re-execute 409s again", async () => {
+  const { base, ws, agent, vault, approvals, stop } = await setup({
+    withApprovals: true,
+  });
+  try {
+    const params = { to: "x", subject: "hi" };
+    const hash = hashActionParams("GMAIL_SEND_EMAIL", params);
+    await approvals.addTicket(agent.id, hash);
+    const sb = vault.sandboxToken(ws.id, agent.id);
+
+    const first = await execCall(base, sb, {
+      action: "GMAIL_SEND_EMAIL",
+      params,
+    });
+    expect(first.status).toBe(200); // ticket consumed
+    const second = await execCall(base, sb, {
+      action: "GMAIL_SEND_EMAIL",
+      params,
+    });
+    expect(second.status).toBe(409); // single use — re-ask
+  } finally {
+    stop();
+  }
+});
+
+test("params drift → 409 despite a ticket for the old params", async () => {
+  const { base, ws, agent, vault, approvals, stop } = await setup({
+    withApprovals: true,
+  });
+  try {
+    const hash = hashActionParams("GMAIL_SEND_EMAIL", { to: "x" });
+    await approvals.addTicket(agent.id, hash);
+    const sb = vault.sandboxToken(ws.id, agent.id);
+    const res = await execCall(base, sb, {
+      action: "GMAIL_SEND_EMAIL",
+      params: { to: "y" }, // different params → different hash → no match
+    });
+    expect(res.status).toBe(409);
   } finally {
     stop();
   }

@@ -85,11 +85,20 @@ export function isNotConnectedError(message: string): boolean {
 }
 
 /**
+ * The verbatim line the runtime (and the control plane's relay) emit when the
+ * user presses Stop — and the copy the reload paths re-derive from a persisted
+ * `stopped` reply so the transcript reads identically after a refresh. The ONE
+ * source of that string: {@link isStoppedByUser} matches it, the live stop
+ * settle pushes it, and the history fold replays it.
+ */
+export const STOPPED_BY_USER = "Stopped by user";
+
+/**
  * Whether a turn's terminal error is the user pressing Stop — the verbatim
  * message the runtime (and the control plane's relay) emit on a cancel. This is
  * an intentional, handled stop, not a turn failure, so the UI shows the message
  * but settles the card back to the user (needs_you), never the red error state.
  */
 export function isStoppedByUser(message: string): boolean {
-  return message.includes("Stopped by user");
+  return message.includes(STOPPED_BY_USER);
 }

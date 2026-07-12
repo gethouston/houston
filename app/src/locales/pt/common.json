@@ -47,6 +47,7 @@
       "question_other": "Seu agente tem perguntas para você.",
       "signin": "Seu agente precisa que você entre.",
       "connect": "Seu agente precisa que você conecte um aplicativo.",
+      "approval": "Aguardando sua aprovação para continuar.",
       "credential": "Seu agente precisa de uma chave de API para terminar."
     }
   }

@@ -10,6 +10,8 @@ import { FileCredentialStore } from "../credentials/file-store";
 import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { BusEventHub } from "../events/hub";
+import { FileActionApprovalStore } from "../integrations/action-approval-store";
+import { LocalActionApprovals } from "../integrations/action-approvals";
 import { ComposioProvider } from "../integrations/composio";
 import { CustomExecutorHost } from "../integrations/custom/executor-host";
 import { CustomIntegrationManager } from "../integrations/custom/manager";
@@ -368,6 +370,18 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   // the pod's only trigger surface is the delivery route (trigger-events), wired
   // below via `triggerLock`. Self-host and desktop simply don't get triggers.
 
+  // Per-agent action approvals: the execute-time gate the runtime turns into an
+  // approval step on the interaction card. UNLIKE grants this is NOT gated on
+  // gatewayFronted — v1 keeps the approval store pod-side per agent even on
+  // managed cloud pods (the gateway does not own action approvals yet). The
+  // record lives inside the agent dir, so agent deletion removes it for free.
+  // Known follow-up: per-user approval scoping for Teams lives cloud-side later.
+  const actionApprovals = registry
+    ? new LocalActionApprovals({
+        store: new FileActionApprovalStore(opts.workspacesRoot),
+      })
+    : undefined;
+
   // The installed agent-config library. FsVfs keys must be non-empty, so root
   // the vfs at the library's PARENT and address it by its basename — this vfs
   // instance is only ever handed to the agent-configs route, which stays under
@@ -401,6 +415,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     chatHistoryMigrated,
     integrations,
     integrationGrants,
+    actionApprovals,
     customIntegrations,
     // Every local host has a turn bus, so the internal pod trigger-events route is
     // always available — on managed cloud the Go control plane POSTs delivered

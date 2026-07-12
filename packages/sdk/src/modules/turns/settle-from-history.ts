@@ -1,5 +1,6 @@
 import { isPendingInteraction } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
+import { STOPPED_BY_USER } from "./turn-errors";
 import {
   finishErr,
   finishOk,
@@ -70,6 +71,17 @@ export function settleFromHistory(
 function adoptReply(s: TurnState, reply: ChatMessage): void {
   if (reply.providerError) {
     settleProviderErrorCard(s, reply.providerError);
+    return;
+  }
+  // A turn the user interrupted persisted `stopped`. The runtime never publishes
+  // a clean `done` for it, so adopting it as a plain reply would collapse to a
+  // false `done`. Route it through the SAME body the live Stop uses — `finishErr`
+  // with the verbatim `STOPPED_BY_USER`: it pushes the "Stopped by user" system
+  // line, an invisible final, an `error` status with no text, and settles
+  // `needs_you`. `stopped` wins over any (illegal) `pendingInteraction` — a
+  // stopped turn must never render a card — so this precedes the adopt below.
+  if (reply.stopped) {
+    finishErr(s, STOPPED_BY_USER);
     return;
   }
   s.text = reply.content;

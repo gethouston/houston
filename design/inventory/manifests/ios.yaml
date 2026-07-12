@@ -242,6 +242,9 @@ components:
       replace it), free-text answers are a raw composer send (no in-card
       textarea), and a question answer is terminal (protocol orders questions
       first). Answer-text ported from desktop composeInteractionReply.
+  interaction-approval-card:
+    status: not-started
+    notes: Action-approval step (Allow/Always/Deny) for a host-gated integration execute inside the interaction stepper; not in mobile v1.
   plan-ready-card:
     status: partial
     ref: mobile/ios/Houston/Features/Chat/InteractionActionSteps.swift

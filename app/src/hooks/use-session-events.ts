@@ -155,13 +155,17 @@ export function useSessionEvents() {
                         ? handlersRef.current.t(
                             "common:notifications.sessionComplete.connect",
                           )
-                        : bodyKey === "sessionComplete.credential"
+                        : bodyKey === "sessionComplete.approval"
                           ? handlersRef.current.t(
-                              "common:notifications.sessionComplete.credential",
+                              "common:notifications.sessionComplete.approval",
                             )
-                          : handlersRef.current.t(
-                              "common:notifications.sessionComplete.body",
-                            );
+                          : bodyKey === "sessionComplete.credential"
+                            ? handlersRef.current.t(
+                                "common:notifications.sessionComplete.credential",
+                              )
+                            : handlersRef.current.t(
+                                "common:notifications.sessionComplete.body",
+                              );
                 sendSessionNotification(title, body, nav);
               },
             );

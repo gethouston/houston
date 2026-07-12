@@ -321,6 +321,59 @@ test("an absent pin defaults the turn to execute mode", async () => {
   expect(vi.mocked(switchModeIfNeeded).mock.calls[0][3]).toBe("execute");
 });
 
+/** The meta persisted on `id`'s assistant message, or undefined. */
+function persistedMeta(id: string) {
+  const call = vi
+    .mocked(appendAssistantMessage)
+    .mock.calls.find((c) => c[0] === id);
+  return call?.[2] as
+    | { stopped?: true; pendingInteraction?: unknown }
+    | undefined;
+}
+
+test("a user stop mid-prompt persists stopped:true, drops the pending interaction, and emits no done", async () => {
+  const id = "exec-stopped";
+  const { events, unsub } = collect(id);
+  // `conv` is referenced inside the prompt script, which only runs once execTurn
+  // calls prompt() — by then conv is assigned, so a const closure is safe.
+  const conv: Conv = fakeConv((emit) => {
+    emit({ type: "text", data: "partial answer" });
+    // The model queued a question, but the user hit Stop mid-turn.
+    recordQuestions([{ kind: "question", id: "q1", question: "still there?" }]);
+    // cancelTurn stamps this on the conversation before aborting; pi resolves
+    // the aborted prompt() clean, so this marker is the only trace of the stop.
+    (conv as { stoppedTurnId?: string }).stoppedTurnId = "turn-stop";
+  });
+
+  await execTurn(conv, id, "turn-stop", "do it", {
+    author: undefined,
+    priorAuthors: [],
+  });
+  unsub();
+
+  // No clean done — cancelTurn's live "Stopped by user" frame is the terminal
+  // surface; a done on top would race the client's settle.
+  expect(events.some((e) => e.type === "done")).toBe(false);
+  const meta = persistedMeta(id);
+  // The durable stop marker survives so a reload renders the standard line...
+  expect(meta?.stopped).toBe(true);
+  // ...and a stopped turn never carries a pending interaction (the user walked
+  // away mid-ask; nothing should re-render a card).
+  expect(meta?.pendingInteraction).toBeUndefined();
+  // The marker is cleared so it never bleeds into the next turn.
+  expect((conv as { stoppedTurnId?: string }).stoppedTurnId).toBeUndefined();
+});
+
+test("a completed turn (no stop) leaves stopped absent", async () => {
+  const id = "exec-not-stopped";
+  const conv = fakeConv((emit) => emit({ type: "text", data: "all done" }));
+  await execTurn(conv, id, "turn-1", "do it", {
+    author: undefined,
+    priorAuthors: [],
+  });
+  expect(persistedMeta(id)?.stopped).toBeUndefined();
+});
+
 test("a thrown turn emits an error frame and no done", async () => {
   const id = "exec-pending-thrown";
   const { events, unsub } = collect(id);

@@ -1,20 +1,27 @@
-import { InteractionFooter } from "@houston-ai/chat";
+import {
+  InteractionModal,
+  InteractionModalTitle,
+  type StepChrome,
+} from "@houston-ai/chat";
 import { Button, Kbd } from "@houston-ai/core";
 import { Check, CornerDownLeft, Loader2 } from "lucide-react";
-import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { AppLogo } from "./integrations";
 import { useIntegrationConnect } from "./use-integration-connect";
+import { useInteractionStepKeys } from "./use-interaction-step-keys";
 
-interface ChatConnectInteractionCardProps {
+interface ChatConnectInteractionCardProps extends StepChrome {
+  /** The connect step's stable id — fades the modal body on a step swap. */
+  stepId: string;
   /** The `#houston_toolkit=<slug>` app the agent asked the user to connect. */
   toolkit: string;
   /** The agent whose chat hosts the card (multiplayer grant attribution). */
   agentId: string;
   /** Multiplayer: auto-grant the fresh connection to this agent (C4). */
   autoGrant: boolean;
-  /** The reason the agent gave for needing this app, routed into the card's bold
-   *  title. When absent, the title falls back to "Connect {app}?". */
+  /** The reason the agent gave for needing this app, rendered as the body's
+   *  foreground "why" line beneath the identity row. When absent, it falls back
+   *  to a generic "Connect {app} to continue." line. */
   reason?: string;
   /** Fired once when the connection the user drove from here lands — the panel
    *  nudges the agent to resume (reuses the auto-continue path). */
@@ -31,20 +38,26 @@ interface ChatConnectInteractionCardProps {
 }
 
 /**
- * The connect-step content for a `request_connection` interaction, rendered
- * INSIDE the shared `ChatInteractionCard` sequence (via its `renderConnect`
- * prop). Following the reference "Coworker card" language, this is a COMPACT
- * left-aligned lockup: the app's real brand logo sits inline with a bold title
- * (the agent's reason, or "Connect {app}?"), one muted line of benefit
- * underneath, and a right-aligned footer of a quiet "Not now" + Esc hint beside
- * the single filled "Connect" pill (with a return-key glyph). This REVERSES the
- * earlier centered identity hero — the references are compact and left-aligned.
+ * The connect-step content for a `request_connection` interaction, rendered as
+ * its OWN `InteractionModal` inside the shared `ChatInteractionCard` sequence
+ * (via its `renderConnect` prop, wired with the `StepChrome` the stepper hands
+ * it — the header pager + dismiss X). Following the reference "Coworker card"
+ * language, the modal TITLE is the identity lockup — the app's real brand logo
+ * beside the integration NAME ("Google Sheets") at regular weight — and the body
+ * is a two-field block: the agent's REASON ("To create the spreadsheet in your
+ * Drive.") in foreground tone (the prominent-but-not-bold "why"), then the app
+ * description muted on one truncated line. A right-aligned footer carries the
+ * unified quiet "Not now" + Esc hint beside the single filled "Connect" pill
+ * (with a return-key glyph).
  *
  * Enter connects, Esc declines (matching the footer hints), both ignored while
  * focus sits in a text field so the real composer is unaffected. The header
  * pager owns Back/Forward, so a REVISITED step needs no navigation button of its
  * own: already connected -> the calm "Connected" state and no footer; skipped ->
- * the Connect CTA returns so the user can reconsider and connect after all.
+ * the Connect CTA (and its paired "Not now") return so the user can reconsider
+ * and connect after all. "Not now" travels WITH the Connect CTA so the decline
+ * affordance is present wherever connecting is offered — never a dead-end step
+ * with only a Connect button.
  *
  * While the OAuth hand-off is in flight the pill shows the connecting state and
  * a quiet line reminds the user the browser is waiting. On the live frontier an
@@ -59,6 +72,11 @@ export function ChatConnectInteractionCard({
   onConnected,
   onSkip,
   revisited,
+  stepId,
+  pager,
+  onDismiss,
+  dismissLabel,
+  disabled,
 }: ChatConnectInteractionCardProps) {
   const { t } = useTranslation("chat");
   // Auto-continue only on the LIVE frontier: a revisited completed step mounts a
@@ -73,48 +91,27 @@ export function ChatConnectInteractionCard({
     autoContinueWhenConnected: !revisited,
   });
 
-  const title = reason ?? t("interaction.connectTitle", { app: app.name });
+  // The identity line is the app NAME; the agent's reason becomes the body's
+  // foreground "why" line (falling back to a generic connect line).
+  const reasonLine =
+    reason ?? t("interaction.connectReasonFallback", { app: app.name });
 
   // The CTA shows whenever the app isn't connected (frontier OR a reconsidered
-  // skip); "Not now" only on the live frontier (a revisited skip keeps itself
-  // skipped via the pager's forward chevron, so it needs no decline button).
+  // skip). "Not now" travels WITH the CTA: the decline affordance is present
+  // wherever connecting is offered, so a revisited/reconsidered step is never a
+  // dead end with only a Connect button.
   const showConnect = !isConnected;
-  const showNotNow = !revisited && !isConnected;
+  const showNotNow = showConnect;
 
-  // Enter connects, Esc declines — mirroring the footer's return glyph + Esc
-  // hint. Ignored while typing in a field so the real composer keeps its keys.
-  // Runs in the CAPTURE phase and stops the event dead when it acts, so Esc
-  // decides "not now" here instead of falling through to the global
-  // Escape-closes-the-panel shortcut (use-keyboard-shortcuts.ts).
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const isEditable =
-        target?.tagName === "TEXTAREA" ||
-        target?.tagName === "INPUT" ||
-        target?.isContentEditable;
-      if (isEditable || connecting) return;
-      if (e.key === "Enter" && showConnect) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        void startConnect();
-      } else if (e.key === "Escape" && showNotNow) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        onSkip(toolkit, app.name);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [
-    connecting,
-    showConnect,
-    showNotNow,
-    startConnect,
-    onSkip,
-    toolkit,
-    app.name,
-  ]);
+  // Enter connects (only when the CTA is offered), Esc declines (only when "Not
+  // now" is offered) — mirroring the footer hints. Inert while a connect is in
+  // flight; the shared hook owns the editable-target guard + capture-phase
+  // pre-emption of the global Escape-closes-the-panel shortcut.
+  useInteractionStepKeys({
+    enabled: !connecting,
+    onEnter: showConnect ? () => void startConnect() : undefined,
+    onEscape: showNotNow ? () => onSkip(toolkit, app.name) : undefined,
+  });
 
   const connectButton = (
     <Button
@@ -139,49 +136,68 @@ export function ChatConnectInteractionCard({
   );
 
   return (
-    <div className="mt-4 flex flex-col">
-      {/* Compact left-aligned identity lockup: logo inline with the bold title,
-          one muted benefit line beneath. */}
-      <div className="flex items-center gap-3">
-        <AppLogo className="shrink-0" display={app} size="sm" />
-        <span className="min-w-0 flex-1 text-balance font-semibold text-base text-foreground leading-snug">
-          {title}
-        </span>
-      </div>
-      {isConnected ? (
-        <span className="mt-1.5 inline-flex items-center gap-1 font-medium text-emerald-600 text-sm dark:text-emerald-400">
-          <Check className="size-3.5" />
-          {t("composio.connected")}
-        </span>
-      ) : (
-        <p className="mt-1.5 truncate text-muted-foreground text-sm">
-          {app.description || t("composio.integration")}
-        </p>
-      )}
-      {connecting && (
-        <p className="mt-1 text-muted-foreground text-xs">
-          {t("composio.waitingToConnect")}
-        </p>
-      )}
-
-      {showConnect && (
-        <InteractionFooter>
-          {showNotNow && (
-            <Button
-              className="gap-1.5 text-muted-foreground"
-              disabled={connecting}
-              onClick={() => onSkip(toolkit, app.name)}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              {t("interaction.notNow")}
-              <Kbd>{t("interaction.esc")}</Kbd>
-            </Button>
+    <InteractionModal
+      contentKey={stepId}
+      disabled={disabled}
+      dismissLabel={dismissLabel}
+      onDismiss={onDismiss}
+      pager={pager}
+      // Title: the app icon beside the integration NAME (regular weight), the
+      // card's identity line.
+      title={
+        <InteractionModalTitle
+          className="flex-1 truncate"
+          icon={<AppLogo className="shrink-0" display={app} size="sm" />}
+        >
+          {app.name}
+        </InteractionModalTitle>
+      }
+      body={
+        <>
+          {isConnected ? (
+            <span className="inline-flex items-center gap-1 font-medium text-emerald-600 text-sm dark:text-emerald-400">
+              <Check className="size-3.5" />
+              {t("composio.connected")}
+            </span>
+          ) : (
+            // Two-field body: the agent's REASON (foreground "why") over the app
+            // description (muted, one truncated line).
+            <div className="flex flex-col gap-1">
+              <p className="text-balance text-foreground text-sm leading-snug">
+                {reasonLine}
+              </p>
+              <p className="truncate text-muted-foreground text-sm">
+                {app.description || t("composio.integration")}
+              </p>
+            </div>
           )}
-          {connectButton}
-        </InteractionFooter>
-      )}
-    </div>
+          {connecting && (
+            <p className="mt-1.5 text-muted-foreground text-xs">
+              {t("composio.waitingToConnect")}
+            </p>
+          )}
+        </>
+      }
+      footer={
+        showConnect ? (
+          <>
+            {showNotNow && (
+              <Button
+                className="gap-1.5 text-muted-foreground"
+                disabled={connecting}
+                onClick={() => onSkip(toolkit, app.name)}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                {t("interaction.skip")}
+                <Kbd>{t("interaction.esc")}</Kbd>
+              </Button>
+            )}
+            {connectButton}
+          </>
+        ) : undefined
+      }
+    />
   );
 }

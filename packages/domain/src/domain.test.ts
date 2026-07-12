@@ -158,6 +158,37 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
   expect(diagnostics[0]?.message).toContain("pending_interaction");
 });
 
+test("normalize: an activity carrying an approval step survives", () => {
+  const pending = {
+    steps: [
+      { kind: "connect", id: "c1", toolkit: "gmail" },
+      {
+        kind: "approval",
+        id: "a1",
+        toolkit: "gmail",
+        action: "GMAIL_SEND_DRAFT",
+        params: { to: "alex@acme.com", subject: "Q3 report" },
+        paramsHash: "h7f3a1",
+      },
+    ],
+  };
+  const { items, diagnostics } = normalizeActivities(
+    [
+      {
+        id: "a",
+        title: "Approve send",
+        status: "needs_you",
+        description: "",
+        pending_interaction: pending,
+      },
+    ],
+    "k",
+  );
+
+  expect(items[0]?.pending_interaction).toEqual(pending);
+  expect(diagnostics).toHaveLength(0);
+});
+
 test("activity update: pending_interaction set / clear / untouched", () => {
   const withInteraction = applyActivityUpdate(
     createActivity({ title: "T" }, "a1", NOW),

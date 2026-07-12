@@ -80,6 +80,11 @@ export function anyTurnRunning(): boolean {
   return false;
 }
 
+/** Whether THIS conversation currently has an in-flight turn. */
+export function isTurnRunning(id: string): boolean {
+  return channels.get(id)?.snapshot.running ?? false;
+}
+
 /**
  * The frames a resuming subscriber that saw everything up to `after` still
  * needs, in publish order. Null = the cursor cannot be served (older than the

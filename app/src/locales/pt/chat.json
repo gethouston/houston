@@ -41,11 +41,11 @@
     "description": "Digite uma mensagem para falar com seu assistente."
   },
   "questionCard": {
-    "placeholder": "Digite outra coisa...",
-    "escapePlaceholder": "Nenhuma delas. Diga ao agente o que fazer.",
+    "placeholder": "Digite outra opção...",
+    "escapePlaceholder": "Digite outra opção...",
+    "send": "Enviar",
     "back": "Voltar",
     "forward": "Avançar",
-    "skip": "Pular",
     "dismiss": "Descartar",
     "progress": "{{current}} de {{total}}"
   },
@@ -55,11 +55,25 @@
     "signedInFollowup": "Já entrei. Pode continuar.",
     "skippedConnectLine": "Pulou a conexão com {{name}}.",
     "skippedSigninLine": "Pulou o login.",
+    "approvedLine": "Aprovado: pode seguir com {{action}}. Use exatamente os mesmos parâmetros de antes.",
+    "deniedLine": "Escolhi não permitir {{action}}. Não tente de novo; continue sem isso.",
+    "approvedLineDisplay": "Você permitiu que o {{app}} fizesse {{action}}.",
+    "deniedLineDisplay": "Você não permitiu que o {{app}} fizesse {{action}}.",
+    "approvalMoreParams_one": "E mais {{count}} configuração",
+    "approvalMoreParams_other": "E mais {{count}} configurações",
+    "signinAppName": "Houston",
     "signinTitle": "Entre no Houston",
     "signinDescription": "Suas contas continuam sendo suas; o agente age em seu nome.",
     "signin": "Entrar",
-    "connectTitle": "Conectar {{app}}?",
+    "connectReasonFallback": "Conecte o {{app}} para continuar.",
+    "approvalTitle": "Permitir que o {{app}} faça isto: {{action}}?",
+    "alwaysAllow": "Permitir sempre",
+    "deny": "Negar",
+    "allowOnce": "Permitir uma vez",
+    "approvalAllowed": "Permitido",
+    "approvalDenied": "Negado",
     "recommended": "Recomendado",
+    "skip": "Pular",
     "notNow": "Agora não",
     "esc": "Esc"
   },
@@ -78,7 +92,6 @@
     "title": "Salve isto para a próxima vez",
     "skillTitle": "Salvar como Habilidade",
     "routineTitle": "Salvar como Rotina",
-    "notNow": "Agora não",
     "saveSkillMessage": "Salve o que acabei de fazer como uma Habilidade chamada \"{{title}}\".",
     "saveRoutineMessage": "Configure isto como uma Rotina recorrente chamada \"{{title}}\"."
   },
@@ -86,7 +99,8 @@
     "sessionStart": "Não foi possível iniciar a sessão: {{error}}",
     "stopSession": "Não foi possível parar a missão: {{error}}",
     "modelPersistFailed": "Não foi possível salvar a preferência de modelo",
-    "missionRowFailed": "Não conseguimos salvar esta missão no seu quadro. Sua mensagem foi enviada."
+    "missionRowFailed": "Não conseguimos salvar esta missão no seu quadro. Sua mensagem foi enviada.",
+    "interactionDismissFailed": "Não foi possível descartar a solicitação."
   },
   "toolRuntimeError": {
     "retryPrompt": "Tente de novo."
@@ -210,8 +224,10 @@
     "subtitle": "Cole abaixo. Ela é armazenada com segurança e nunca aparece no chat.",
     "save": "Salvar chave",
     "saving": "Salvando...",
+    "saved": "Chave salva",
     "savedToast": "{{name}} está pronto para usar",
     "savedLine": "Adicionei a chave de {{name}}.",
+    "skippedLine": "Pulei adicionar a chave de {{name}}.",
     "savedFollowup": "Adicionei a chave de {{name}}. Continue, por favor.",
     "savedUnverifiedToast": "Chave salva para {{name}}. O serviço ainda não a confirmou, vou avisar se as chamadas falharem."
   }

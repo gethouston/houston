@@ -112,7 +112,8 @@ export function EmailMission({
       escapePlaceholder: t("chat:questionCard.escapePlaceholder"),
       back: t("chat:questionCard.back"),
       forward: t("chat:questionCard.forward"),
-      skip: t("chat:questionCard.skip"),
+      skip: t("chat:interaction.skip"),
+      esc: t("chat:interaction.esc"),
       dismiss: t("chat:questionCard.dismiss"),
       recommended: t("chat:interaction.recommended"),
       progress: (current: number, total: number) =>
@@ -209,13 +210,14 @@ export function EmailMission({
                   // the exit; the card must not offer an ambiguous X that
                   // abandons onboarding.
                   //
-                  // renderConnect/renderSignin/renderCredential are never
-                  // reached — this is a question-only sequence (one option
-                  // step), so the stepper never advances to a connect, signin,
-                  // or credential step. They exist only to satisfy the card's
-                  // required props.
+                  // renderConnect/renderSignin/renderApproval/renderCredential
+                  // are never reached — this is a question-only sequence (one
+                  // option step), so the stepper never advances to a connect,
+                  // signin, approval, or credential step. They exist only to
+                  // satisfy the card's required props.
                   renderConnect={() => null}
                   renderSignin={() => null}
+                  renderApproval={() => null}
                   renderCredential={() => null}
                 />
               )

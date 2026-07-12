@@ -46,6 +46,29 @@ const questionSignin: PendingInteraction = {
     { kind: "signin", id: "s1" },
   ],
 };
+const approval: PendingInteraction = {
+  steps: [
+    {
+      kind: "approval",
+      id: "a1",
+      toolkit: "gmail",
+      action: "GMAIL_SEND_EMAIL",
+      paramsHash: "0123456789abcdef",
+    },
+  ],
+};
+const connectApproval: PendingInteraction = {
+  steps: [
+    { kind: "connect", id: "c1", toolkit: "gmail" },
+    {
+      kind: "approval",
+      id: "a1",
+      toolkit: "gmail",
+      action: "GMAIL_SEND_EMAIL",
+      paramsHash: "0123456789abcdef",
+    },
+  ],
+};
 
 describe("deriveActiveInteraction", () => {
   it("hides the override while a turn is running", () => {
@@ -196,6 +219,22 @@ describe("interactionNotificationBodyKey", () => {
     strictEqual(
       interactionNotificationBodyKey(mixed),
       "sessionComplete.question",
+    );
+  });
+
+  it("maps an approval-only sequence to the approval body", () => {
+    strictEqual(
+      interactionNotificationBodyKey(approval),
+      "sessionComplete.approval",
+    );
+  });
+
+  // Steps are ordered connections -> approvals, so a connect+approval sequence's
+  // FIRST unmet need is the connect.
+  it("maps a connect+approval sequence to the connect body (connect first)", () => {
+    strictEqual(
+      interactionNotificationBodyKey(connectApproval),
+      "sessionComplete.connect",
     );
   });
 

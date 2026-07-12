@@ -1,14 +1,22 @@
-import { InteractionFooter } from "@houston-ai/chat";
+import {
+  InteractionModal,
+  InteractionModalTitle,
+  type StepChrome,
+} from "@houston-ai/chat";
 import { Button, Kbd } from "@houston-ai/core";
 import { CornerDownLeft, Loader2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useIntegrationsGate } from "./integrations/use-integrations-gate";
 import { HoustonLogo } from "./shell/agent-avatar";
+import { useInteractionStepKeys } from "./use-interaction-step-keys";
 
-interface ChatSigninInteractionCardProps {
-  /** The reason the agent gave for needing sign-in, routed into the card's bold
-   *  title. When absent, the title falls back to "Sign in to Houston". */
+interface ChatSigninInteractionCardProps extends StepChrome {
+  /** The signin step's stable id — fades the modal body on a step swap. */
+  stepId: string;
+  /** The reason the agent gave for needing sign-in, rendered as the body's
+   *  foreground "why" line beneath the identity row. When absent, it falls back
+   *  to "Sign in to Houston". */
   reason?: string;
   /** Fired once the gate resolves `ready` (the Houston session landed) so the
    *  interaction sequence advances past this step. */
@@ -31,16 +39,20 @@ interface ChatSigninInteractionCardProps {
  * SAME Google SSO the Integrations tab uses (via {@link useIntegrationsGate}),
  * and the sequence advances the instant the gate reports `ready`.
  *
- * Following the reference "Coworker card" language, this is a COMPACT
- * left-aligned lockup: the Houston helmet inline with a bold title (the reason,
- * or "Sign in to Houston"), one muted line beneath, and a right-aligned footer
- * of a quiet "Not now" + Esc hint beside the single filled "Sign in" pill (with
- * a return-key glyph). This REVERSES the earlier centered identity hero. Enter
- * signs in, Esc declines, both ignored while focus sits in a text field.
+ * Following the reference "Coworker card" language, it renders as its OWN
+ * `InteractionModal` (wired with the `StepChrome` the stepper hands it): the
+ * TITLE is the identity lockup — the Houston helmet beside the "Houston" name at
+ * regular weight — over a two-field body: the agent's REASON (or "Sign in to
+ * Houston") in foreground tone, then the muted explainer line. A right-aligned
+ * footer carries the unified quiet "Not now" + Esc hint beside the single filled
+ * "Sign in" pill (with a return-key glyph). Enter signs in, Esc declines, both
+ * ignored while focus sits in a text field.
  *
  * The header pager owns Back/Forward, so a REVISITED step needs no navigation
  * button of its own: already signed in -> no footer; skipped -> the Sign in CTA
- * returns so the user can reconsider.
+ * (and its paired "Not now") return so the user can reconsider. "Not now"
+ * travels WITH the Sign in CTA so the decline affordance is present wherever
+ * signing in is offered.
  *
  * Auto-advance also covers the STALE step: the user may have signed in elsewhere
  * (the Integrations tab) between the turn ending and this card rendering, so the
@@ -52,6 +64,11 @@ export function ChatSigninInteractionCard({
   onSignedIn,
   onSkip,
   revisited,
+  stepId,
+  pager,
+  onDismiss,
+  dismissLabel,
+  disabled,
 }: ChatSigninInteractionCardProps) {
   const { t } = useTranslation("chat");
   const gate = useIntegrationsGate();
@@ -81,12 +98,15 @@ export function ChatSigninInteractionCard({
   // hold the pending look so the button never invites a second click.
   const pending = signingIn || gate.kind === "loading" || gate.kind === "ready";
 
-  const title = reason ?? t("interaction.signinTitle");
+  // The identity line is the "Houston" name; the agent's reason becomes the
+  // body's foreground "why" line (falling back to "Sign in to Houston").
+  const reasonLine = reason ?? t("interaction.signinTitle");
 
   // The CTA shows whenever the user isn't signed in (frontier OR a reconsidered
-  // skip); "Not now" only on the live frontier.
+  // skip). "Not now" travels WITH the CTA so the decline affordance is present
+  // wherever signing in is offered.
   const showSignin = !signedIn;
-  const showNotNow = !revisited && !signedIn;
+  const showNotNow = showSignin;
 
   const doSignIn = () => {
     if (gate.kind === "signin") {
@@ -95,30 +115,14 @@ export function ChatSigninInteractionCard({
     }
   };
 
-  // Enter signs in, Esc declines. Ignored while typing in a field. Runs in the
-  // CAPTURE phase and stops the event dead when it acts, so Esc decides "not
-  // now" here instead of falling through to the global Escape-closes-the-panel
-  // shortcut (use-keyboard-shortcuts.ts).
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const isEditable =
-        target?.tagName === "TEXTAREA" ||
-        target?.tagName === "INPUT" ||
-        target?.isContentEditable;
-      if (isEditable || pending) return;
-      if (e.key === "Enter" && showSignin && gate.kind === "signin") {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        doSignIn();
-      } else if (e.key === "Escape" && showNotNow) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        onSkip();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  // Enter signs in (only when the CTA is live), Esc declines (only when "Not
+  // now" is offered). Inert while the sign-in / resync is pending; the shared
+  // hook owns the editable-target guard + capture-phase pre-emption of the
+  // global Escape-closes-the-panel shortcut.
+  useInteractionStepKeys({
+    enabled: !pending,
+    onEnter: showSignin && gate.kind === "signin" ? doSignIn : undefined,
+    onEscape: showNotNow ? onSkip : undefined,
   });
 
   const signInButton = (
@@ -136,39 +140,57 @@ export function ChatSigninInteractionCard({
   );
 
   return (
-    <div className="mt-4 flex flex-col">
-      {/* Compact left-aligned lockup: the Houston helmet inline with the bold
-          title, one muted line beneath. */}
-      <div className="flex items-center gap-3">
-        <span className="flex size-6 shrink-0 items-center justify-center text-foreground">
-          <HoustonLogo size={22} />
-        </span>
-        <span className="min-w-0 flex-1 text-balance font-semibold text-base text-foreground leading-snug">
-          {title}
-        </span>
-      </div>
-      <p className="mt-1.5 text-muted-foreground text-sm">
-        {t("interaction.signinDescription")}
-      </p>
-
-      {showSignin && (
-        <InteractionFooter>
-          {showNotNow && (
-            <Button
-              className="gap-1.5 text-muted-foreground"
-              disabled={pending}
-              onClick={onSkip}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              {t("interaction.notNow")}
-              <Kbd>{t("interaction.esc")}</Kbd>
-            </Button>
-          )}
-          {signInButton}
-        </InteractionFooter>
-      )}
-    </div>
+    <InteractionModal
+      contentKey={stepId}
+      disabled={disabled}
+      dismissLabel={dismissLabel}
+      onDismiss={onDismiss}
+      pager={pager}
+      // Title: the Houston helmet beside the "Houston" name (regular weight).
+      title={
+        <InteractionModalTitle
+          className="flex-1 truncate"
+          icon={
+            <span className="flex size-6 shrink-0 items-center justify-center text-foreground">
+              <HoustonLogo size={22} />
+            </span>
+          }
+        >
+          {t("interaction.signinAppName")}
+        </InteractionModalTitle>
+      }
+      // Two-field body: the agent's REASON (foreground "why") over the muted
+      // explainer line.
+      body={
+        <div className="flex flex-col gap-1">
+          <p className="text-balance text-foreground text-sm leading-snug">
+            {reasonLine}
+          </p>
+          <p className="text-muted-foreground text-sm">
+            {t("interaction.signinDescription")}
+          </p>
+        </div>
+      }
+      footer={
+        showSignin ? (
+          <>
+            {showNotNow && (
+              <Button
+                className="gap-1.5 text-muted-foreground"
+                disabled={pending}
+                onClick={onSkip}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                {t("interaction.skip")}
+                <Kbd>{t("interaction.esc")}</Kbd>
+              </Button>
+            )}
+            {signInButton}
+          </>
+        ) : undefined
+      }
+    />
   );
 }

@@ -5,6 +5,7 @@ import {
   newInteractionHolder,
   runWithInteractionCapture,
 } from "../interaction";
+import { runWithTurnMode } from "../turn-mode-context";
 import { makeIntegrationTools } from "./integrations";
 
 /**
@@ -357,6 +358,83 @@ test("a RELAYED upstream 409 (transient conflict) queues NO signin card", async 
   await expect(failure).rejects.not.toThrow(/signed out of Houston/i);
   await expect(failure).rejects.not.toThrow(/end your turn/i);
   expect(holder.pending).toBeUndefined();
+});
+
+test("a 409 (approval_required) queues an approval step and returns a NORMAL instruction", async () => {
+  mockFetch(() => ({
+    status: 409,
+    body: {
+      error: "approval required",
+      code: "approval_required",
+      approval: {
+        toolkit: "gmail",
+        action: "GMAIL_SEND_EMAIL",
+        params: { to: "a@b.com", subject: "Hi" },
+        paramsHash: "h7f3a1",
+      },
+    },
+  }));
+  const holder = newInteractionHolder();
+  const out = await runWithInteractionCapture(holder, () =>
+    run(execute, { action: "GMAIL_SEND_EMAIL", params: { to: "a@b.com" } }),
+  );
+  // It RETURNS (does not throw) — being gated is a normal, expected state.
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toBe(
+    'This action needs the user\'s permission. Houston queued an approval card for "GMAIL_SEND_EMAIL" that the user will see when you end your turn. Do not run this action again now and do not ask for permission in text. Queue anything else the task needs (ask_user questions, request_connection) in this same turn, then end your turn. Houston sends you a message automatically once the user decides.',
+  );
+  expect(out.details).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    queuedApproval: true,
+  });
+  // The approval step is queued in this turn's interaction flow, id "a1".
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "approval",
+        id: "a1",
+        toolkit: "gmail",
+        action: "GMAIL_SEND_EMAIL",
+        params: { to: "a@b.com", subject: "Hi" },
+        paramsHash: "h7f3a1",
+      },
+    ],
+  });
+});
+
+test("a malformed approval payload falls through to the generic error throw", async () => {
+  // The code is present but the payload is broken (no paramsHash) → NOT a valid
+  // approval signal, so it must surface as the generic error, queueing nothing.
+  mockFetch(() => ({
+    status: 409,
+    body: {
+      code: "approval_required",
+      approval: { toolkit: "gmail", action: "GMAIL_SEND_EMAIL" },
+    },
+  }));
+  const holder = newInteractionHolder();
+  const failure = runWithInteractionCapture(holder, () =>
+    run(execute, { action: "GMAIL_SEND_EMAIL" }),
+  );
+  await expect(failure).rejects.toThrow(/integrations execute failed \(409\)/);
+  expect(holder.pending).toBeUndefined();
+});
+
+test("the turn-mode header is sent iff the turn is Autopilot", async () => {
+  // Inside an "auto" turn, the host is told to run the action un-gated.
+  const auto = mockFetch(() => ({ body: { successful: true } }));
+  await runWithTurnMode("auto", () => run(execute, { action: "X" }));
+  expect(auto[0]?.headers["x-houston-turn-mode"]).toBe("auto");
+
+  // A normal "execute" turn omits the header (the host gates un-approved actions).
+  const exec = mockFetch(() => ({ body: { successful: true } }));
+  await runWithTurnMode("execute", () => run(execute, { action: "X" }));
+  expect(exec[0]?.headers["x-houston-turn-mode"]).toBeUndefined();
+
+  // Outside any turn the header is absent too.
+  const bare = mockFetch(() => ({ body: { successful: true } }));
+  await run(execute, { action: "X" });
+  expect(bare[0]?.headers["x-houston-turn-mode"]).toBeUndefined();
 });
 
 test("C2: attaches the turn's acting-as header inside a turn, and nothing outside one", async () => {

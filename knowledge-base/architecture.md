@@ -145,13 +145,21 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   (`packages/runtime/src/session/interaction.ts`, mirrors acting-context). The
   holder MERGES the two tools into ONE step sequence: `ask_user` supplies the
   question steps (1–3 per call, a second call replaces them), each
-  `request_connection` appends a connect step (deduped by toolkit), and a 409
+  `request_connection` appends a connect step (deduped by toolkit), a 409
   `signin_required` from the integrations proxy queues AT MOST ONE `signin`
-  step (`recordSignin`, id `s1`); order is questions → signin → connects. The
+  step (`recordSignin`, id `s1`), and a 409 `approval_required` from a
+  host-gated `integration_execute` records an `approval` step
+  (`recordApproval`, deduped by `paramsHash`, ids `a1..aN`) — NOT a new tool,
+  the existing `integration_execute` classifies the 409 and returns non-error
+  queued-pending text so the turn ends clean. Order is questions → signin →
+  connects → approvals (approvals LAST — approving an action follows connecting
+  its toolkit). The
   runtime classifies integration failures by the host error body code, not
   bare HTTP status: signed-out queues the signin step, not-configured gets
-  honest "not set up in this install" guidance, and transient upstream errors
-  stay transient. The prompt tells the model to batch everything
+  honest "not set up in this install" guidance, transient upstream errors
+  stay transient, and `approval_required` queues the approval step. An
+  Autopilot (`auto`) turn AUTO-APPROVES the gate host-side (the runtime forwards
+  `x-houston-turn-mode: auto`), so a fire-and-forget turn never waits on it. The prompt tells the model to batch everything
   blocking into one turn — e.g. "send an email to john" becomes two question
   steps (recipient, content) plus a connect step (email app). A fresh holder per
   turn IS the reset; recording outside a turn is a no-op. The Claude-SDK
@@ -164,8 +172,9 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   `done` frame's optional `pendingInteraction` (`PendingInteraction` =
   `{ steps: InteractionStep[] }`, each step
   `{kind:"question", id, question, options?}` | `{kind:"connect", id, toolkit,
-  reason?}`, `packages/protocol`, wire v3). Only the clean path carries it; an
-  error frame never does.
+  reason?}` | `{kind:"approval", id, toolkit, action, params?, paramsHash}` (+
+  `signin` / `plan_ready` / `suggest_reusable`), `packages/protocol`, wire v3).
+  Only the clean path carries it; an error frame never does.
 - **Done frame → settle split.** The SDK folds the frame
   (`packages/sdk/src/modules/turns/turn-settle.ts`): a clean turn WITH an
   interaction settles `boardStatus: needs_you` and carries the interaction; a
@@ -177,22 +186,52 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   `ChatMessage` persists `pendingInteraction`, so a `needs_you` card survives
   reload.
 - **Settle → composer card → answer-as-new-turn.** A pending interaction REPLACES
-  the composer with `ChatInteractionCard` (`@houston-ai/chat`, inventory v17):
-  a one-step-at-a-time stepper in the reference "Coworker card" look — a white
-  card, bold left title, top-right "N of M" pager whose chevrons are Back/Forward
-  (hidden for a lone step) + dismiss X. Question steps show option rows with a
-  LEFT number badge (the digit is the keyboard shortcut), an optional
-  "Recommended" chip and a muted inline description, plus a free-text ESCAPE row
-  (pencil badge + inline Skip pill); Enter submits, there is no separate footer.
-  Connect steps render through the `renderConnect` prop (the app injects
+  the composer with `ChatInteractionCard` (`@houston-ai/chat`, inventory v19):
+  a one-step-at-a-time stepper composed in the shared `InteractionModal` shell,
+  reference "Coworker card" look — a white card, REGULAR-weight left title,
+  top-right "N of M" pager whose chevrons are Back/Forward (hidden for a lone
+  step) + dismiss X. Question steps show option rows with a LEFT number badge
+  (the digit is the keyboard shortcut) and an optional "Recommended" chip (the
+  wire `description` is tolerated but NOT rendered), plus a free-text ESCAPE row
+  (pencil adornment, no embedded control); Enter submits. The card-wide decline
+  is the unified "Not now" + Esc, in the FOOTER for every kind (alone on a
+  question; beside the CTA on signin/connect). Connect steps render through the
+  `renderConnect` prop (the app injects
   `IntegrationConnectCard`; already-connected toolkits auto-advance); signin
   steps through `renderSignin` (the app injects a card on the
   `use-integrations-gate` Google-SSO machinery; already-signed-in auto-advances).
+  Approval steps render through `renderApproval` (the app injects
+  `ChatApprovalInteractionCard`): "Allow {app} to {action}?" over a param block,
+  with THREE footer decisions — Always allow / Deny (Esc) / Allow once (Enter).
+  Unlike a connect/signin "Not now" (which merely defers), Deny is a real decision
+  the model HEARS: the resolution writes the host store (allow-once → a one-shot
+  ticket, always-allow → the always list) and the composed reply names the RAW
+  action slug ("Approved: go ahead with {ACTION}." / "I chose not to allow
+  {ACTION}. ..."), so the model can re-issue the EXACT call. Autopilot never shows
+  it (the gate auto-approves).
   Answers are held until the sequence completes, then sent as ONE composed user
-  message (`question: answer` lines, plus `Signed in to Houston.` and
-  `Connected <app>.` lines); connect-ONLY and signin-ONLY sequences keep the
-  hidden auto-continue, fired once on sequence completion — nothing special on
-  the wire.
+  message (`question: answer` lines, plus `Signed in to Houston.`,
+  `Connected <app>.`, and the approval go-ahead/refusal lines); connect-ONLY,
+  signin-ONLY, and approval-ONLY sequences keep the hidden auto-continue, fired
+  once on sequence completion — nothing special on the wire.
+
+**Dismissal & stops.** Dismissing an interaction card (its X) is a user
+INTERRUPTION, not an answer. The stepper's X calls the runtime
+`POST /conversations/:id/dismiss-interaction`, which appends a durable `stopped`
+marker (`stopped?: true` on the persisted assistant `ChatMessage`) exactly as a
+real Stop does — and 409s if a turn is running (the user must Stop that turn
+instead of writing a marker behind it). The app also clears the activity's
+`pending_interaction` (its data layer deletes the key on null) and invalidates
+queries, so the card retires. A user Stop persists the SAME marker: `cancelTurn`
+stamps `conv.stoppedTurnId`, and exec-turn writes `stopped: true` (skipping any
+`pendingInteraction` — a stopped turn never carries a card). The SDK renders it as
+the verbatim "Stopped by user" line, and settle-from-history routes a stopped
+reply through the SAME `finishErr` stop settle → `needs_you`, so live and reload
+agree (fixing the old divergence where a reloaded stopped turn re-derived as
+`done`). Type-to-abandon (sending a fresh message while a card is up) already
+null-clears the interaction at the next turn's start — unchanged. `suggest_reusable`
+"Not now" also clears the persisted interaction (no stop marker); `plan_ready`
+"Keep planning" stays local-only.
 
 The old `#houston_toolkit=` markdown-link connect hack is GONE from the prompt and
 tool guidance; the app's legacy link-card renderer survives only to render old

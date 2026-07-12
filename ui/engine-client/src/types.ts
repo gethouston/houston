@@ -537,7 +537,7 @@ export interface InteractionOption {
 
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
  *  question steps, `s1` for the single signin step, `c1`..`cN` for connect
- *  steps) so each step's outcome is addressable. */
+ *  steps, `a1`..`aN` for approval steps) so each step's outcome is addressable. */
 export type InteractionStep =
   | {
       kind: "question";
@@ -564,6 +564,27 @@ export type InteractionStep =
       reusableKind: "skill" | "routine";
       title: string;
       rationale: string;
+    }
+  /** An integration action awaiting the user's permission. Blocking, like the
+   *  question/signin/connect kinds: present → `needs_you`. Approvals land LAST in
+   *  the sequence (approving happens after the toolkit is connected). Mirrors
+   *  `packages/protocol/src/domain/interaction.ts`. */
+  | {
+      kind: "approval";
+      /** Tool-assigned id: `a1`..`aN`, in first-seen order. */
+      id: string;
+      /** Lowercase toolkit slug, e.g. "gmail". */
+      toolkit: string;
+      /** The action slug, e.g. "GMAIL_SEND_DRAFT". */
+      action: string;
+      /** Display-ready key/values for the card's param rows (values already truncated host-side). */
+      params?: Record<string, string>;
+      /** How many params were dropped past the card's row cap (present only when
+       *  > 0). The card surfaces it so the user knows the hash covers settings
+       *  the rows don't show. */
+      paramsOmitted?: number;
+      /** Stable short digest of (action, raw params), minted host-side; the one-shot allow ticket is keyed by it. */
+      paramsHash: string;
     };
 
 /**
@@ -572,7 +593,8 @@ export type InteractionStep =
  * (request_connection). Present drives the `needs_you` board card and the
  * composer-replacing card, which walks the user through the steps one at a time;
  * absent means the mission needs nothing. Question steps come first (at most 3),
- * then at most one signin step, then connect steps.
+ * then at most one signin step, then connect steps, then approval steps (last —
+ * approving happens after connecting).
  */
 export interface PendingInteraction {
   steps: InteractionStep[];

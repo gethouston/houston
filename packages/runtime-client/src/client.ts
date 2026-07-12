@@ -237,6 +237,17 @@ export class HoustonEngineClient {
       { method: "POST" },
     );
   }
+  /**
+   * Append the durable stop marker to retire a pending interaction (the stepper
+   * X / abandon). Answers 409 if a turn is running — the card is never shown
+   * mid-turn, so a race means the user should Stop instead.
+   */
+  dismissInteraction(id: string) {
+    return this.json<{ ok: boolean }>(
+      `/conversations/${encodeURIComponent(id)}/dismiss-interaction`,
+      { method: "POST" },
+    );
+  }
   renameConversation(id: string, title: string) {
     return this.json<{ ok: boolean }>(
       `/conversations/${encodeURIComponent(id)}`,

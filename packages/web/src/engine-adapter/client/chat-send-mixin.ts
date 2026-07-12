@@ -98,6 +98,19 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
       return { cancelled: cancelled === true };
     }
 
+    async dismissInteraction(
+      agentPath: string,
+      conversationId: string,
+    ): Promise<void> {
+      const engine = this.ctx.cp
+        ? controlPlane.runtimeClientFor(this.ctx.cp, agentPath)
+        : this.ctx.engine;
+      // The stepper X / abandon appends the durable stop marker on the runtime,
+      // retiring the pending interaction. This matches a real Stop — the model
+      // learns nothing from it.
+      await engine.dismissInteraction(conversationId);
+    }
+
     async startOnboarding(
       _agentPath: string,
       sessionKey: string,

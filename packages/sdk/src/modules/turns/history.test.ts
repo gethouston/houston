@@ -191,6 +191,30 @@ describe("historyToFeed", () => {
     });
   });
 
+  it("replays the standard stop line for a persisted stopped turn, after the text", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "do it", ts: 1 },
+      { role: "assistant", content: "working on it", ts: 2, stopped: true },
+    ]);
+    const textIdx = feed.findIndex((f) => f.feed_type === "assistant_text");
+    const stopIdx = feed.findIndex((f) => f.feed_type === "system_message");
+    // Same copy + position the live stop settle produces (after the text/tools).
+    expect(stopIdx).toBeGreaterThan(textIdx);
+    expect(feed[stopIdx]).toEqual({
+      feed_type: "system_message",
+      data: "Stopped by user",
+      ts: 2,
+    });
+  });
+
+  it("omits the stop line for a turn that ran to completion (no regression)", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "do it", ts: 1 },
+      { role: "assistant", content: "all done", ts: 2 },
+    ]);
+    expect(feed.some((f) => f.feed_type === "system_message")).toBe(false);
+  });
+
   it("stamps every frame with its source ChatMessage.ts (epoch ms)", () => {
     const feed = historyToFeed([
       { role: "user", content: "go", ts: 1000 },

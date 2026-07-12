@@ -1575,6 +1575,67 @@ export class HoustonClient {
     );
   }
 
+  // ---------- action approvals ----------
+
+  /**
+   * The actions this agent may run without asking again (the "always allow"
+   * set). A host that does not serve the action-approval gate answers 404,
+   * which degrades to `{ always: [] }`: the approval card only shows on hosts
+   * that DO serve it, so an empty set is the correct "nothing pre-approved"
+   * reading rather than a hard failure (mirrors {@link agentIntegrationGrants}).
+   * Every other error still throws.
+   */
+  async agentActionApprovals(
+    agentSlugOrId: string,
+  ): Promise<{ always: string[] }> {
+    try {
+      return await this.request<{ always: string[] }>(
+        "GET",
+        `/agents/${this.seg(agentSlugOrId)}/action-approvals`,
+      );
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404)
+        return { always: [] };
+      throw err;
+    }
+  }
+  /** Add an action to this agent's "always allow" set; returns the new set. */
+  async allowActionAlways(
+    agentSlugOrId: string,
+    action: string,
+  ): Promise<{ always: string[] }> {
+    return this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/action-approvals/always`,
+      { action },
+    );
+  }
+  /** Approve one pending action once, by its `hash` (a single-use ticket). */
+  async addActionApprovalTicket(
+    agentSlugOrId: string,
+    hash: string,
+  ): Promise<void> {
+    await this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/action-approvals/tickets`,
+      { hash },
+    );
+  }
+  /**
+   * Retire a conversation's pending interaction by appending a durable stop
+   * marker (the stepper X / abandon). A runtime passthrough — like a real Stop,
+   * the model learns nothing from it.
+   */
+  async dismissInteraction(
+    agentSlugOrId: string,
+    conversationId: string,
+  ): Promise<void> {
+    await this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/conversations/${this.seg(conversationId)}/dismiss-interaction`,
+    );
+  }
+
   // ---------- store ----------
 
   storeCatalog(): Promise<StoreListing[]> {

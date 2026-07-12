@@ -8,6 +8,7 @@
     },
     "neutral": {
       "$type": "color",
+      "50": { "$value": "#fcfcfc" },
       "150": { "$value": "#e5e5e5" },
       "200": { "$value": "#e3e3e3" },
       "250": { "$value": "#d4d4d4" },
