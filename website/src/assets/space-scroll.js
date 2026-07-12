@@ -1,39 +1,40 @@
 /*
- * Space background motion controller.
+ * Space background scroll controller.
  *
- * Two jobs:
- *   1. Pause the ambient CSS motion (photo drift + star twinkle, see space.css)
- *      while the tab is hidden, by toggling `.space-idle` on <html>. Runs on
- *      EVERY engine — the ambient animations are plain time-based CSS.
- *   2. Drive the scroll-driven pan as a rAF fallback where CSS scroll-driven
- *      animations (animation-timeline: scroll(), the primary path in space.css)
- *      are unsupported (older/most WebKit), setting the exact same transforms
- *      the CSS @keyframes would. transform-only, so it stays on the compositor
- *      with no layout or paint.
+ * The background pans only while scrolling (no continuous/ambient motion — see
+ * space.css). This file has two jobs, both progressive enhancement:
  *
- * No-ops entirely under prefers-reduced-motion (static background, per the
- * design — nothing to pause, nothing to pan).
+ *   1. Opt Gecko (Firefox/Zen) out of the pan entirely. Gecko composites the
+ *      full-viewport fixed layers too slowly to transform them every frame
+ *      (measured ~35fps scroll vs ~118fps static, on BOTH the CSS scroll-timeline
+ *      and rAF paths), and that was the landing's "scrolling is slow" bug. The
+ *      `.space-no-parallax` class (space.css) cancels the pan so the background
+ *      stays static there — still the full photo + stars, just not moving.
+ *
+ *   2. Drive the pan as a rAF fallback on engines that lack CSS scroll-driven
+ *      animations (older WebKit), setting the exact transforms the @keyframes
+ *      would. transform-only, so it stays on the compositor (no layout/paint).
+ *
+ * No-ops under prefers-reduced-motion (static background, per the design).
  */
 (() => {
   var reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   if (reduce?.matches) return;
 
-  // (1) Pause ambient drift/twinkle when the tab is backgrounded — no wasted
-  // compositor work, and motion resumes cleanly on return. Always attached.
   var root = document.documentElement;
-  function syncVisibility() {
-    root.classList.toggle("space-idle", document.hidden);
+  var supports = window.CSS && typeof CSS.supports === "function";
+
+  // (1) Gecko → static background. `-moz-appearance` is Firefox-only among
+  // current engines, so it cleanly identifies Gecko (incl. Zen).
+  if (supports && CSS.supports("-moz-appearance", "none")) {
+    root.classList.add("space-no-parallax");
+    return;
   }
-  document.addEventListener("visibilitychange", syncVisibility);
-  syncVisibility();
 
   // Native scroll timeline available → CSS drives the pan, so we're done.
-  var hasScrollTimeline =
-    window.CSS &&
-    typeof CSS.supports === "function" &&
-    CSS.supports("animation-timeline", "scroll()");
-  if (hasScrollTimeline) return;
+  if (supports && CSS.supports("animation-timeline", "scroll()")) return;
 
+  // (2) rAF fallback (older WebKit): drive the same transforms inline.
   var img = document.querySelector(".space-bg img");
   var stars = document.querySelector(".space-stars");
   if (!img && !stars) return;
