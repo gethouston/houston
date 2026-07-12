@@ -39,9 +39,7 @@ export function useChatDisplayLabels(): Pick<
   // on its left, and that line is the ONLY indicator — ChatMessages suppresses
   // this standalone one.
   const thinkingIndicator = useMemo(
-    () => (
-      <HoustonLogo size={20} className="animate-pulse text-muted-foreground" />
-    ),
+    () => <HoustonLogo size={20} className="animate-pulse text-ink-muted" />,
     [],
   );
 

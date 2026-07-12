@@ -32,8 +32,8 @@ function NumberStepper({
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-lg border bg-background transition-opacity",
-        invalid ? "border-red-500/50" : "border-border/20",
+        "inline-flex items-center rounded-lg border bg-input transition-opacity",
+        invalid ? "border-red-500/50" : "border-line/20",
       )}
     >
       <button
@@ -41,7 +41,7 @@ function NumberStepper({
         aria-label={decreaseLabel}
         onClick={() => onChange(String(Math.max(1, n - 1)))}
         disabled={n <= 1}
-        className="grid size-9 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-30"
+        className="grid size-9 place-items-center text-ink-muted hover:text-ink disabled:opacity-30"
       >
         <Minus className="size-4" />
       </button>
@@ -59,7 +59,7 @@ function NumberStepper({
         type="button"
         aria-label={increaseLabel}
         onClick={() => onChange(String(n + 1))}
-        className="grid size-9 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-30"
+        className="grid size-9 place-items-center text-ink-muted hover:text-ink disabled:opacity-30"
       >
         <Plus className="size-4" />
       </button>
@@ -115,8 +115,8 @@ export function IntervalPicker({
               className={cn(
                 "h-9 rounded-full px-3 text-xs font-medium transition-colors",
                 unit === u
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
+                  ? "bg-action text-action-text"
+                  : "bg-input border border-line/20 text-ink-muted hover:text-ink",
               )}
             >
               {plural ? units[u] : unitsSingular[u]}

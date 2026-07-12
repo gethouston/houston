@@ -269,7 +269,7 @@ export function ImportAgentWizard() {
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="sm:max-w-[680px] h-[78vh] flex flex-col p-0 gap-0 overflow-hidden">
         <header className="shrink-0 px-8 pt-6 pb-2 flex items-center gap-4">
-          <p className="text-xs text-muted-foreground">{t("import.eyebrow")}</p>
+          <p className="text-xs text-ink-muted">{t("import.eyebrow")}</p>
           <ProgressDots index={stepIndex} total={steps.length} />
         </header>
 
@@ -364,7 +364,7 @@ export function ImportAgentWizard() {
             onClick={() =>
               stepIndex > 0 ? setStepIndex(stepIndex - 1) : handleClose()
             }
-            className="text-sm text-muted-foreground hover:text-foreground"
+            className="text-sm text-ink-muted hover:text-ink"
           >
             {stepIndex > 0
               ? t("import.actions.back")
@@ -419,7 +419,7 @@ function UploadStep({
         <h1 className="text-[28px] font-normal leading-tight">
           {t("import.step1.title")}
         </h1>
-        <p className="mt-3 text-base text-muted-foreground">
+        <p className="mt-3 text-base text-ink-muted">
           {t("import.step1.body")}
         </p>
       </header>
@@ -432,13 +432,13 @@ function UploadStep({
         </div>
       ) : (
         <section className="space-y-2 text-sm">
-          <p className="text-foreground">{uploaded.manifest.agentName}</p>
-          <p className="text-muted-foreground">
+          <p className="text-ink">{uploaded.manifest.agentName}</p>
+          <p className="text-ink-muted">
             {t("import.step1.uploadedFrom", {
               name: uploaded.manifest.exporter ?? t("import.step1.anonymous"),
             })}
           </p>
-          <p className="text-muted-foreground tabular-nums">
+          <p className="text-ink-muted tabular-nums">
             {t("import.step1.counts", {
               skills: uploaded.preview.skills.length,
               routines: uploaded.preview.routines.length,
@@ -446,9 +446,7 @@ function UploadStep({
             })}
           </p>
           {uploaded.manifest.anonymized && (
-            <p className="text-muted-foreground">
-              {t("import.step1.anonymizedFlag")}
-            </p>
+            <p className="text-ink-muted">{t("import.step1.anonymizedFlag")}</p>
           )}
         </section>
       )}
@@ -473,20 +471,18 @@ function UploadStep({
             />
           </div>
           {scanning && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-ink-muted">
               {t("import.step1.scanning")}
             </p>
           )}
           {!scanning && scan && wantScan && (
-            <div className="rounded-xl bg-secondary p-4 text-sm">
-              <p className="text-foreground">
+            <div className="rounded-xl bg-chip p-4 text-sm">
+              <p className="text-ink">
                 {scan.items.length === 0
                   ? t("import.step1.scanClean")
                   : t("import.step1.scanFlagged", { count: scan.items.length })}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {scan.disclaimer}
-              </p>
+              <p className="mt-1 text-xs text-ink-muted">{scan.disclaimer}</p>
             </div>
           )}
         </section>
@@ -526,7 +522,7 @@ function NameStep({
           <p className="text-lg font-semibold">
             {name.trim() || t("import.step2.placeholderName")}
           </p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-ink-muted mt-1">
             {t("import.step2.tagline")}
           </p>
         </div>
@@ -545,7 +541,7 @@ function NameStep({
               className={cn(
                 "h-7 w-7 rounded-full flex items-center justify-center transition-all duration-150",
                 isSelected
-                  ? "ring-2 ring-offset-2 ring-foreground/30"
+                  ? "ring-2 ring-offset-2 ring-ink/30"
                   : "hover:scale-110",
               )}
               style={{ backgroundColor: swatch }}
@@ -612,22 +608,22 @@ function PickListStep<T>({
     <div className="space-y-10">
       <header>
         <h1 className="text-[28px] font-normal leading-tight">{title}</h1>
-        <p className="mt-3 text-base text-muted-foreground">{body}</p>
+        <p className="mt-3 text-base text-ink-muted">{body}</p>
       </header>
 
       <div>
-        <div className="flex justify-end gap-4 mb-2 text-xs text-muted-foreground">
+        <div className="flex justify-end gap-4 mb-2 text-xs text-ink-muted">
           <button
             type="button"
             onClick={() => setSelected(new Set(items.map(getId)))}
-            className="hover:text-foreground"
+            className="hover:text-ink"
           >
             {t("import.actions.selectAll")}
           </button>
           <button
             type="button"
             onClick={() => setSelected(new Set())}
-            className="hover:text-foreground"
+            className="hover:text-ink"
           >
             {t("import.actions.clearAll")}
           </button>
@@ -669,9 +665,9 @@ function ProgressDots({ index, total }: { index: number; total: number }) {
           key={i}
           className={cn(
             "size-2 rounded-full transition-colors",
-            i < index && "bg-foreground/60",
-            i === index && "bg-foreground",
-            i > index && "bg-foreground/15",
+            i < index && "bg-ink/60",
+            i === index && "bg-ink",
+            i > index && "bg-ink/15",
           )}
         />
       ))}
@@ -695,13 +691,13 @@ function ChoiceCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-xl border bg-background p-4 text-left transition-all",
-        "border-foreground/5 hover:border-foreground/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
-        selected && "border-foreground shadow-[0_1px_0_rgba(0,0,0,0.05)]",
+        "rounded-xl border bg-input p-4 text-left transition-all",
+        "border-ink/5 hover:border-ink/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
+        selected && "border-ink shadow-[0_1px_0_rgba(0,0,0,0.05)]",
       )}
     >
-      <p className="text-sm font-medium text-foreground">{title}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+      <p className="text-sm font-medium text-ink">{title}</p>
+      <p className="mt-1 text-xs text-ink-muted">{body}</p>
     </button>
   );
 }
@@ -724,14 +720,14 @@ function SwitchRow({
   return (
     <div className="flex items-start gap-4 px-1 py-3">
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-foreground">{title}</p>
+        <p className="text-sm text-ink">{title}</p>
         {subtitle && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+          <p className="text-xs text-ink-muted line-clamp-2 mt-0.5">
             {subtitle}
           </p>
         )}
         {flaggedNote && (
-          <p className="text-xs text-muted-foreground mt-1">{flaggedNote}</p>
+          <p className="text-xs text-ink-muted mt-1">{flaggedNote}</p>
         )}
       </div>
       {trailing && <div className="shrink-0 mt-0.5">{trailing}</div>}

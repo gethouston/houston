@@ -118,7 +118,7 @@ export function RoutineTriggerEditor({
   // "connect an app first" empty state while the connections are still loading.
   if (appsLoading && apps.length === 0) {
     return (
-      <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 py-2 text-sm text-ink-muted">
         <Spinner className="size-4" />
       </div>
     );

@@ -19,8 +19,7 @@ export interface HighlightedTextProps {
 }
 
 /** Theme-aware match highlight (see `--color-highlight` in globals.css). */
-const MARK_CLASS =
-  "rounded-[3px] bg-highlight px-0.5 text-highlight-foreground";
+const MARK_CLASS = "rounded-[3px] bg-highlight px-0.5 text-highlight-text";
 
 /**
  * Renders `text`, wrapping the given character `ranges` in a `<mark>` so search

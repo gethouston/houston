@@ -37,7 +37,7 @@ export function AccountSection() {
             referrerPolicy="no-referrer"
           />
         ) : (
-          <span className="flex size-6 items-center justify-center rounded-full bg-secondary text-[10px] font-semibold text-muted-foreground">
+          <span className="flex size-6 items-center justify-center rounded-full bg-chip text-[10px] font-semibold text-ink-muted">
             {initialsOf(displayName)}
           </span>
         )

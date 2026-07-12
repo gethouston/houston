@@ -21,7 +21,7 @@ export function DictationActions({ control }: { control: DictationControl }) {
       <button
         type="button"
         onClick={control.onCancel}
-        className={`${ICON_BUTTON} text-muted-foreground hover:bg-accent`}
+        className={`${ICON_BUTTON} text-ink-muted hover:bg-hover`}
         aria-label={labels.cancel}
       >
         <XIcon className="size-5" />
@@ -29,7 +29,7 @@ export function DictationActions({ control }: { control: DictationControl }) {
       <button
         type="button"
         onClick={control.onStop}
-        className={`${ICON_BUTTON} bg-primary text-primary-foreground hover:bg-primary/90`}
+        className={`${ICON_BUTTON} bg-action text-action-text hover:bg-action/90`}
         aria-label={labels.stop}
       >
         <CheckIcon className="size-5" />
@@ -42,7 +42,7 @@ export function DictationActions({ control }: { control: DictationControl }) {
 export function DictationTranscribing({ label }: { label: string }) {
   return (
     <div className={ICON_BUTTON} aria-label={label} role="status">
-      <Loader2Icon className="size-5 animate-spin text-muted-foreground" />
+      <Loader2Icon className="size-5 animate-spin text-ink-muted" />
     </div>
   );
 }

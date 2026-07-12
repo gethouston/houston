@@ -27,10 +27,10 @@ export function InstructionsPanel({
     return (
       <div className="flex-1 flex flex-col items-center pt-[20vh] gap-4 px-8">
         <div className="space-y-2 text-center max-w-md">
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">
+          <h1 className="text-2xl font-semibold text-ink tracking-tight">
             {emptyTitle}
           </h1>
-          <p className="text-sm text-muted-foreground">{emptyDescription}</p>
+          <p className="text-sm text-ink-muted">{emptyDescription}</p>
         </div>
       </div>
     );
@@ -81,13 +81,11 @@ function InstructionField({
     <div className="space-y-1.5">
       <label
         htmlFor={fieldId}
-        className="text-xs font-medium text-muted-foreground/50 px-1 flex items-center gap-2"
+        className="text-xs font-medium text-ink-muted/50 px-1 flex items-center gap-2"
       >
         {file.label}
         {saving && (
-          <span className="text-[10px] text-muted-foreground/30">
-            Saving...
-          </span>
+          <span className="text-[10px] text-ink-muted/30">Saving...</span>
         )}
       </label>
       <textarea
@@ -97,7 +95,7 @@ function InstructionField({
         onBlur={handleBlur}
         placeholder="Write instructions for your agent here..."
         rows={Math.max(4, value.split("\n").length + 1)}
-        className="w-full text-sm text-foreground leading-relaxed bg-secondary outline-none rounded-xl px-4 py-3 border border-foreground/[0.04] hover:border-foreground/10 focus:border-foreground/15 focus:bg-background transition-all duration-200 resize-none placeholder:text-muted-foreground/30"
+        className="w-full text-sm text-ink leading-relaxed bg-chip outline-none rounded-xl px-4 py-3 border border-ink/[0.04] hover:border-ink/10 focus:border-ink/15 focus:bg-input transition-all duration-200 resize-none placeholder:text-ink-muted/30"
       />
     </div>
   );

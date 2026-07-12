@@ -78,10 +78,10 @@ export function ConnectMoreAppsSection({
 
   return (
     <section>
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-ink">
         {t("connectMore.title")}
         {availableCount > 0 && (
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-normal tabular-nums text-muted-foreground">
+          <span className="rounded-full bg-chip px-2 py-0.5 text-xs font-normal tabular-nums text-ink-muted">
             {availableCount.toLocaleString()}
           </span>
         )}

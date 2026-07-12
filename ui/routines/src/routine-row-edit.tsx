@@ -121,8 +121,8 @@ export function RoutineRowEdit({
   };
 
   const fieldClass = cn(
-    "w-full px-3 py-2 text-sm text-foreground",
-    "bg-background border border-foreground/[0.08] rounded-lg",
+    "w-full px-3 py-2 text-sm text-ink",
+    "bg-input border border-ink/[0.08] rounded-lg",
     "outline-none transition-shadow duration-200",
     "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
   );
@@ -130,7 +130,7 @@ export function RoutineRowEdit({
   return (
     <div className="px-5 pb-4 space-y-3">
       <div>
-        <p className="text-xs font-medium text-muted-foreground mb-1.5">
+        <p className="text-xs font-medium text-ink-muted mb-1.5">
           {labels.nameLabel}
         </p>
         <input
@@ -145,7 +145,7 @@ export function RoutineRowEdit({
       </div>
 
       <div>
-        <p className="text-xs font-medium text-muted-foreground mb-1.5">
+        <p className="text-xs font-medium text-ink-muted mb-1.5">
           {labels.instructionLabel}
         </p>
         <textarea

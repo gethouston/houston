@@ -74,9 +74,9 @@ export function IntegrationSetupChat({
   // loading state rather than flashing an empty box.
   if (!activity) {
     return (
-      <div className="mb-4 flex h-[36rem] min-h-0 flex-col overflow-hidden rounded-2xl border border-border">
-        <div className="border-border border-b px-4 py-3">{backButton}</div>
-        <div className="flex min-h-0 flex-1 items-center justify-center gap-2 text-muted-foreground">
+      <div className="mb-4 flex h-[36rem] min-h-0 flex-col overflow-hidden rounded-2xl border border-line">
+        <div className="border-line border-b px-4 py-3">{backButton}</div>
+        <div className="flex min-h-0 flex-1 items-center justify-center gap-2 text-ink-muted">
           <Loader2 className="size-4 animate-spin" />
           <span className="text-sm">{t("custom.setupChat.opening")}</span>
         </div>
@@ -95,7 +95,7 @@ export function IntegrationSetupChat({
   );
 
   return (
-    <div className="mb-4 flex h-[36rem] min-h-0 flex-col overflow-hidden rounded-2xl border border-border">
+    <div className="mb-4 flex h-[36rem] min-h-0 flex-col overflow-hidden rounded-2xl border border-line">
       <div ref={setContainer} className="min-h-0 flex-1" />
       <div className="hidden">
         <RoutineSetupChatBoard

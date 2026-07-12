@@ -154,7 +154,7 @@ export function SidebarGroupHeader({
             {onDeleteGroup && (
               <DropdownMenuItem
                 onSelect={() => onDeleteGroup(group.id)}
-                className="text-destructive focus:text-destructive"
+                className="text-danger focus:text-danger"
               >
                 {labels.deleteGroup}
               </DropdownMenuItem>

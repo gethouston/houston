@@ -61,9 +61,7 @@ export function RoutineListTab({
   if (!isReaction && (!h.tz.loaded || !h.tz.timezone)) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-sm text-muted-foreground animate-pulse">
-          {t("loading")}
-        </p>
+        <p className="text-sm text-ink-muted animate-pulse">{t("loading")}</p>
       </div>
     );
   }

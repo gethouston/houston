@@ -65,7 +65,7 @@ export function NamingStep({
       <button
         type="button"
         onClick={onBack}
-        className="absolute top-5 left-5 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+        className="absolute top-5 left-5 rounded-lg p-1.5 text-ink-muted hover:bg-hover hover:text-ink transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
       </button>
@@ -78,9 +78,7 @@ export function NamingStep({
 
         <div className="text-center">
           <p className="text-lg font-semibold">{selectedName}</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t("naming.tagline")}
-          </p>
+          <p className="text-sm text-ink-muted mt-1">{t("naming.tagline")}</p>
         </div>
       </div>
 
@@ -98,7 +96,7 @@ export function NamingStep({
               className={cn(
                 "h-7 w-7 rounded-full flex items-center justify-center transition-all duration-150",
                 isSelected
-                  ? "ring-2 ring-offset-2 ring-foreground/30"
+                  ? "ring-2 ring-offset-2 ring-ink/30"
                   : "hover:scale-110",
               )}
               style={{ backgroundColor: swatch }}
@@ -122,7 +120,7 @@ export function NamingStep({
         {showLinkProject && (
           <div className="flex flex-col items-center gap-1.5">
             {existingPath ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary rounded-full px-3 py-1.5">
+              <div className="flex items-center gap-2 text-xs text-ink-muted bg-chip rounded-full px-3 py-1.5">
                 <FolderOpen className="size-3" />
                 <span className="truncate max-w-[200px]">
                   {existingPath.split("/").pop()}
@@ -130,7 +128,7 @@ export function NamingStep({
                 <button
                   type="button"
                   onClick={() => onExistingPathChange(null)}
-                  className="text-muted-foreground hover:text-foreground ml-1"
+                  className="text-ink-muted hover:text-ink ml-1"
                 >
                   &times;
                 </button>
@@ -150,7 +148,7 @@ export function NamingStep({
                     }
                   }
                 }}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+                className="text-xs text-ink-muted hover:text-ink transition-colors flex items-center gap-1.5"
               >
                 <FolderOpen className="size-3" />
                 {t("naming.linkExistingProject")}
@@ -159,9 +157,7 @@ export function NamingStep({
           </div>
         )}
 
-        {error && (
-          <p className="text-xs text-destructive text-center">{error}</p>
-        )}
+        {error && <p className="text-xs text-danger text-center">{error}</p>}
         <Button
           type="submit"
           disabled={!name.trim() || creating}

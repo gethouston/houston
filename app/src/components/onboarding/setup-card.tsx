@@ -2,7 +2,7 @@ import { Button, cn } from "@houston-ai/core";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 
-// On the space backdrop the card is a FLAT near-black surface (`bg-background`
+// On the space backdrop the card is a FLAT near-black surface (`bg-input`
 // dark ≈ rgb(30,30,30)), not the futuristic aurora glass the dark tokens are
 // tuned for — so `secondary` (5% white) and `accent` (8%) read as nearly
 // invisible fills on it. We re-point the underlying `--ht-*` custom properties
@@ -13,9 +13,9 @@ import type { CSSProperties, ReactNode } from "react";
 // through FILL contrast alone (secondary/accent) — no border is boosted: the
 // card itself and every button inside it are deliberately borderless.
 const SPACE_CARD_VARS: CSSProperties = {
-  "--ht-secondary": "var(--ht-space-card-secondary)",
-  "--ht-secondary-fg": "var(--ht-space-card-secondary-fg)",
-  "--ht-accent": "var(--ht-space-card-accent)",
+  "--ht-chip": "var(--ht-space-card-secondary)",
+  "--ht-chip-text": "var(--ht-space-card-secondary-fg)",
+  "--ht-hover": "var(--ht-space-card-accent)",
 } as CSSProperties;
 
 // Re-exported so onboarding call sites keep a single import surface
@@ -30,7 +30,7 @@ export { OptionCard } from "./option-card";
  * a Back / helper / Next footer.
  *
  * `onSpace` floats the card inside the shared `SpaceScreen` starfield used by
- * onboarding: it drops the standalone `h-screen`/`bg-secondary` backdrop (the
+ * onboarding: it drops the standalone `h-screen`/`bg-chip` backdrop (the
  * SpaceScreen supplies both) and pins the card to the dark palette so it reads
  * identically in both app themes, exactly like the sign-in card. Left false for
  * the standalone gates (language, disclaimer), which keep the dimmed backdrop.
@@ -79,7 +79,7 @@ export function SetupCard({
     <div
       className={cn(
         "relative flex flex-col items-center justify-center overflow-hidden px-6",
-        onSpace ? "flex-1" : "h-screen bg-secondary/60 text-foreground",
+        onSpace ? "flex-1" : "h-screen bg-chip/60 text-ink",
       )}
     >
       {/* Fixed min height + flex-1 content so the card stays the SAME size
@@ -94,24 +94,22 @@ export function SetupCard({
         data-theme={onSpace ? "dark" : undefined}
         style={onSpace ? SPACE_CARD_VARS : undefined}
         className={cn(
-          "setup-step-in relative z-10 flex h-[680px] max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl bg-background p-8",
+          "setup-step-in relative z-10 flex h-[680px] max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl bg-input p-8",
           onSpace
-            ? "text-foreground shadow-2xl"
+            ? "text-ink shadow-2xl"
             : "shadow-[0_4px_24px_rgba(0,0,0,0.06)]",
         )}
       >
         {icon && <div className="mb-4">{icon}</div>}
         {eyebrow && (
-          <p className="text-xs font-medium text-muted-foreground">{eyebrow}</p>
+          <p className="text-xs font-medium text-ink-muted">{eyebrow}</p>
         )}
         {title && (
           <h1 className="mt-1 text-[22px] font-semibold leading-tight">
             {title}
           </h1>
         )}
-        {subtitle && (
-          <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
-        )}
+        {subtitle && <p className="mt-2 text-sm text-ink-muted">{subtitle}</p>}
 
         <div className="mt-6 flex min-h-0 flex-1 flex-col">{children}</div>
 
@@ -131,7 +129,7 @@ export function SetupCard({
               )}
             </div>
             {helper && (
-              <p className="flex-1 text-right text-xs text-muted-foreground">
+              <p className="flex-1 text-right text-xs text-ink-muted">
                 {helper}
               </p>
             )}

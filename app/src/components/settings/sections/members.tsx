@@ -26,12 +26,10 @@ export function MembersSection() {
   return (
     <section>
       <h2 className="text-lg font-semibold mb-1">{t("members.title")}</h2>
-      <p className="text-sm text-muted-foreground mb-4">
-        {t("members.description")}
-      </p>
+      <p className="text-sm text-ink-muted mb-4">{t("members.description")}</p>
 
       {!canManage && (
-        <p className="text-xs text-muted-foreground mb-4">
+        <p className="text-xs text-ink-muted mb-4">
           {t("members.adminNotice")}
         </p>
       )}
@@ -43,9 +41,7 @@ export function MembersSection() {
           <Spinner className="h-5 w-5" />
         </div>
       ) : members.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {t("members.roster.empty")}
-        </p>
+        <p className="text-sm text-ink-muted">{t("members.roster.empty")}</p>
       ) : (
         <MemberRoster members={members} selfId={selfId} canManage={canManage} />
       )}

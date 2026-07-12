@@ -70,7 +70,7 @@ export function ChatProcessBlock({
 
   return (
     <Collapsible className="not-prose" open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger className="inline-flex max-w-full items-center gap-1.5 text-muted-foreground/65 transition-colors hover:text-muted-foreground">
+      <CollapsibleTrigger className="inline-flex max-w-full items-center gap-1.5 text-ink-muted/65 transition-colors hover:text-ink-muted">
         <ChatStatusLine label={headerLabel} active={isActive} />
         <ChevronDownIcon
           className={cn(
@@ -81,7 +81,7 @@ export function ChatProcessBlock({
       </CollapsibleTrigger>
       <CollapsibleContent
         className={cn(
-          "mt-3 text-sm text-muted-foreground outline-none",
+          "mt-3 text-sm text-ink-muted outline-none",
           "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2",
           "data-[state=open]:slide-in-from-top-2",
           "data-[state=closed]:animate-out data-[state=open]:animate-in",

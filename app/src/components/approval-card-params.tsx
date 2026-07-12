@@ -25,14 +25,14 @@ export function ApprovalCardParams({
         <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
           {rows.map(([key, value]) => (
             <Fragment key={key}>
-              <dt className="text-muted-foreground">{key}</dt>
-              <dd className="min-w-0 break-words text-foreground">{value}</dd>
+              <dt className="text-ink-muted">{key}</dt>
+              <dd className="min-w-0 break-words text-ink">{value}</dd>
             </Fragment>
           ))}
         </dl>
       )}
       {omitted > 0 && (
-        <p className="mt-2 text-muted-foreground text-sm">
+        <p className="mt-2 text-ink-muted text-sm">
           {t("interaction.approvalMoreParams", { count: omitted })}
         </p>
       )}

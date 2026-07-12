@@ -58,17 +58,17 @@ export function ProviderRow({
   const { t } = useTranslation("aiHub");
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 text-left">
+    <div className="flex items-center gap-3 rounded-xl bg-chip px-3 py-2.5 text-left">
       <BrandMark providerId={provider.id} size="md" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium text-foreground">
+        <span className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium text-ink">
           <span className="min-w-0 truncate">{provider.name}</span>
           {connected && <LiveStatus label={t("card.connected")} />}
         </span>
-        <span className="truncate text-[11px] text-muted-foreground">
+        <span className="truncate text-[11px] text-ink-muted">
           {modelCount > 0 && (
             <>
-              <span className="font-medium text-foreground">
+              <span className="font-medium text-ink">
                 {t("card.models", { count: modelCount })}
               </span>
               {" · "}
@@ -87,7 +87,7 @@ export function ProviderRow({
           <Button
             size="sm"
             variant="ghost"
-            className="text-muted-foreground"
+            className="text-ink-muted"
             disabled={signingOut}
             onClick={() => onSignOut(provider)}
           >
@@ -144,7 +144,7 @@ export function ProviderRow({
           <Button
             size="icon-sm"
             variant="ghost"
-            className="text-muted-foreground"
+            className="text-ink-muted"
             aria-label={t("card.details", { name: provider.name })}
             title={t("card.details", { name: provider.name })}
             onClick={() => onOpen(provider)}

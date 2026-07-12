@@ -112,7 +112,7 @@ export function SidebarGroupSection({
           "flex flex-col rounded-lg transition-colors duration-150",
           // Subtle fill on the section (group OR ungrouped) while it is the
           // active drop target — a quiet "drop here" for both, no ring.
-          highlight && "bg-accent/60 pb-1",
+          highlight && "bg-hover/60 pb-1",
           // One-shot confirmation flash after an agent lands in this group.
           pulse && "sidebar-group-dropped",
         )}
@@ -149,10 +149,10 @@ export function SidebarGroupSection({
           >
             {showDefaultHeader && (
               <div className="flex items-center gap-1.5 px-2 pb-0.5 pt-0.5">
-                <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-muted-foreground/70">
+                <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink-muted/70">
                   {ctx.labels.ungroupedLabel}
                 </span>
-                <span className="shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground/40">
+                <span className="shrink-0 text-[10px] font-medium tabular-nums text-ink-muted/40">
                   {items.length}
                 </span>
               </div>
@@ -171,7 +171,7 @@ export function SidebarGroupSection({
               ))}
             </SortableContext>
             {group && items.length === 0 && (
-              <div className="px-3 py-1.5 text-[11px] text-muted-foreground/40">
+              <div className="px-3 py-1.5 text-[11px] text-ink-muted/40">
                 {ctx.labels.emptyGroupHint}
               </div>
             )}

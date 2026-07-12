@@ -79,7 +79,7 @@ export function FilterCombobox({
           type="button"
           aria-label={ariaLabel}
           className={cn(
-            "inline-flex h-9 items-center gap-2 rounded-full border border-border bg-secondary px-4 text-[13px] font-medium text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
+            "inline-flex h-9 items-center gap-2 rounded-full border border-line bg-chip px-4 text-[13px] font-medium text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-focus/20",
             className,
           )}
         >
@@ -87,7 +87,7 @@ export function FilterCombobox({
           <span className="truncate">
             {selected ? selected.label : allLabel}
           </span>
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+          <ChevronDown className="size-4 shrink-0 text-ink-muted" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 p-0">
@@ -122,7 +122,7 @@ export function FilterCombobox({
 /**
  * A provider/lab's colorful mark, sized to the row/trigger. `text-current!`
  * re-inherits the mark's brand color, which the Command item's default `svg`
- * rule (`text-muted-foreground`) would otherwise flatten to gray.
+ * rule (`text-ink-muted`) would otherwise flatten to gray.
  */
 function OptionMark({ providerId }: { providerId: string }) {
   return (

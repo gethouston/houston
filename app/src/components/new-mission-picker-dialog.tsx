@@ -152,7 +152,7 @@ export function NewMissionPickerDialog({
               id="nmp-agent"
               value={pickedAgentPath}
               onChange={(e) => setPickedAgentPath(e.target.value)}
-              className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="h-9 w-full rounded-md border border-line bg-input px-3 text-sm outline-none focus:ring-2 focus:ring-focus"
             >
               <option value="">{t("skillPicker.agentPlaceholder")}</option>
               {agents.map((a) => (

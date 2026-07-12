@@ -98,13 +98,13 @@ export function TimezonePicker({
   };
 
   return (
-    <section className={cn("rounded-xl bg-secondary px-5 py-4", className)}>
+    <section className={cn("rounded-xl bg-chip px-5 py-4", className)}>
       {/* Title + hint share one row so the card stays short. */}
       <div className="flex items-center justify-between gap-3 mb-1.5">
-        <span className="text-xs font-medium text-muted-foreground shrink-0">
+        <span className="text-xs font-medium text-ink-muted shrink-0">
           {label}
         </span>
-        <span className="text-xs text-muted-foreground/70 truncate min-w-0">
+        <span className="text-xs text-ink-muted/70 truncate min-w-0">
           {hint}
         </span>
       </div>
@@ -115,13 +115,13 @@ export function TimezonePicker({
             type="button"
             aria-label={`${label}: ${currentName}`}
             className={cn(
-              "w-full flex items-center gap-2 rounded-lg border border-border/20 bg-background px-3 py-2",
-              "text-sm text-foreground cursor-pointer transition-shadow duration-200",
-              "hover:border-border/40 focus:outline-none focus:shadow-sm",
+              "w-full flex items-center gap-2 rounded-lg border border-line/20 bg-input px-3 py-2",
+              "text-sm text-ink cursor-pointer transition-shadow duration-200",
+              "hover:border-line/40 focus:outline-none focus:shadow-sm",
             )}
           >
             <Globe
-              className="size-3.5 text-muted-foreground shrink-0"
+              className="size-3.5 text-ink-muted shrink-0"
               strokeWidth={1.75}
               aria-hidden
             />
@@ -129,12 +129,12 @@ export function TimezonePicker({
               {current?.display ?? accountTimezone}
             </span>
             {current?.offset && (
-              <span className="text-xs text-muted-foreground shrink-0">
+              <span className="text-xs text-ink-muted shrink-0">
                 {current.offset}
               </span>
             )}
             <ChevronDown
-              className="size-3.5 text-muted-foreground shrink-0"
+              className="size-3.5 text-ink-muted shrink-0"
               aria-hidden
             />
           </button>
@@ -158,7 +158,7 @@ export function TimezonePicker({
                     {zone.display}
                   </span>
                   {zone.offset && (
-                    <span className="text-xs text-muted-foreground shrink-0">
+                    <span className="text-xs text-ink-muted shrink-0">
                       {zone.offset}
                     </span>
                   )}

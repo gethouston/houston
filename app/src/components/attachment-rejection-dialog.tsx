@@ -65,18 +65,16 @@ export function useAttachmentRejectionDialog(): AttachmentValidationDialogApi {
               </div>
             </div>
           </DialogHeader>
-          <div className="max-h-64 overflow-y-auto rounded-md border bg-muted/25">
+          <div className="max-h-64 overflow-y-auto rounded-md border bg-chip-subtle/25">
             {rejections.map((rejection) => (
               <div
                 key={`${rejection.file.name}-${rejection.file.size}`}
                 className="border-b px-3 py-2 last:border-b-0"
               >
-                <div className="truncate text-sm font-medium text-foreground">
+                <div className="truncate text-sm font-medium text-ink">
                   {rejection.file.name}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {rejection.reason}
-                </div>
+                <div className="text-xs text-ink-muted">{rejection.reason}</div>
               </div>
             ))}
           </div>

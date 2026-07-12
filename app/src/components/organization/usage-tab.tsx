@@ -42,9 +42,7 @@ export default function UsageTab({ ctx }: OrgTabProps) {
 
   if (isError) {
     return (
-      <p className="py-10 text-sm text-muted-foreground">
-        {t("usageTab.error")}
-      </p>
+      <p className="py-10 text-sm text-ink-muted">{t("usageTab.error")}</p>
     );
   }
 
@@ -59,7 +57,7 @@ export default function UsageTab({ ctx }: OrgTabProps) {
 
   return (
     <div className="mt-2">
-      <p className="mb-2 text-sm text-muted-foreground">
+      <p className="mb-2 text-sm text-ink-muted">
         {t("usageTab.summary", { count: total })}
       </p>
       <ul className="flex flex-col">

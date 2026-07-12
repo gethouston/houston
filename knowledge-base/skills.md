@@ -110,7 +110,7 @@ The section composes `SkillMarketplaceGrid` + `SkillMarketplaceRow` +
 `SkillPreviewModal` (all in `ui/skills/`): compact **rows** in the Integrations
 `AppRow` idiom (owner avatar left, `kebabToTitle` name + `by <owner> · <installs>`
 subtitle, and TWO always-visible trailing actions in `[Add pill] [info icon]`
-order — a labeled **Add** pill (Integrations connect-pill idiom: `bg-primary`,
+order — a labeled **Add** pill (Integrations connect-pill idiom: `bg-action`,
 `Adding...` spinner, muted `Added` check once installed) followed by an **info**
 button), laid out as a two-column `gap-2` grid; publisher-derived filter chips
 (skills.sh has no real categories, so `topPublishers` derives them from the
@@ -135,8 +135,8 @@ URL via `resolveSkillImageUrl` in `app/src/lib/skill-image.ts`, shared with
 `SkillIcon`), the display title + one-line description, and TWO icon-only trailing
 actions in `[pen] [trash]` order — a **pen** (left) that opens the edit modal and a
 **trash** (right) that opens the delete confirm. Both are `size-7 rounded-lg
-text-muted-foreground hover:bg-foreground/[0.05]`; the pen hovers to
-`hover:text-foreground`, the trash to the destructive `hover:text-destructive`; both
+text-ink-muted hover:bg-ink/[0.05]`; the pen hovers to
+`hover:text-ink`, the trash to the danger `hover:text-danger`; both
 `stopPropagation`. A row-body click also opens the edit modal (mirroring the
 marketplace rows' row-click-opens-modal pattern). Delete opens the existing
 `ConfirmDialog` (reusing `detail.deleteTitle`/`deleteDescription` copy). Row aria

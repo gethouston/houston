@@ -95,7 +95,7 @@ export const ToolBlock = memo(
         open={isOpen}
         onOpenChange={handleOpenChange}
       >
-        <CollapsibleTrigger className="flex w-full items-start gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground">
+        <CollapsibleTrigger className="flex w-full items-start gap-2 text-ink-muted text-sm transition-colors hover:text-ink">
           <Icon className="size-4 mt-0.5 shrink-0" />
           {isActive ? (
             <Shimmer duration={1}>
@@ -104,9 +104,7 @@ export const ToolBlock = memo(
           ) : (
             <p className="min-w-0 truncate">
               {getToolActionLabel(tool.name, isDone, toolLabels)}
-              {detail && (
-                <span className="text-muted-foreground/50"> — {detail}</span>
-              )}
+              {detail && <span className="text-ink-muted/50"> — {detail}</span>}
             </p>
           )}
           <ChevronDownIcon
@@ -121,7 +119,7 @@ export const ToolBlock = memo(
             "mt-4 text-sm",
             "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2",
             "data-[state=open]:slide-in-from-top-2",
-            "text-muted-foreground outline-none",
+            "text-ink-muted outline-none",
             "data-[state=closed]:animate-out data-[state=open]:animate-in",
           )}
         >

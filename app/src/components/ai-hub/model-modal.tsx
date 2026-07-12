@@ -68,18 +68,16 @@ export function ModelModal({
     <div className="flex items-start gap-3 px-5 pt-5 pb-4">
       <BrandMark providerId={modelMarkId(model)} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-lg font-semibold text-foreground tracking-[-0.01em]">
+        <span className="text-lg font-semibold text-ink tracking-[-0.01em]">
           {model.name}
         </span>
-        <span className="text-[13px] text-muted-foreground">
-          {labName(model.lab)}
-        </span>
+        <span className="text-[13px] text-ink-muted">{labName(model.lab)}</span>
       </div>
       <button
         type="button"
         onClick={onClose}
         aria-label={t("card.cancel")}
-        className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-card-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="grid size-8 shrink-0 place-items-center rounded-full text-ink-muted transition-colors hover:bg-card-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <X className="size-4" aria-hidden="true" />
       </button>
@@ -104,10 +102,10 @@ export function ModelModal({
         )}
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-0.5">
-            <h3 className="text-[13px] font-medium text-foreground">
+            <h3 className="text-[13px] font-medium text-ink">
               {t("model.offers.title")}
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-ink-muted">
               {t("model.offers.subtitle", { model: model.name })}
             </p>
           </div>
@@ -137,7 +135,7 @@ function SpecValueChip({ label, value }: { label: string; value: string }) {
   return (
     <SpecChip>
       <span>{label}</span>
-      <span className="font-mono text-foreground tabular-nums">{value}</span>
+      <span className="font-mono text-ink tabular-nums">{value}</span>
     </SpecChip>
   );
 }

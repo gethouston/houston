@@ -902,7 +902,7 @@ export const PromptInput = ({
         {/* biome-ignore lint/a11y/noStaticElementInteractions: focus-delegation surface; the real interactive widget is the <textarea> inside — role="presentation" is correct, no standalone widget role applies */}
         <div
           data-composer-surface="true"
-          className="group/composer cursor-text overflow-clip rounded-[28px] border border-border bg-background p-2.5 dark:bg-card/95 shadow-[0_1px_2px_rgba(0,0,0,0.02),0_1px_4px_rgba(0,0,0,0.03)] focus-within:shadow-[0_1px_2px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.25)] transition-shadow grid grid-cols-[auto_1fr_auto] [grid-template-areas:'header_header_header'_'leading_primary_trailing'_'._footer_.'] data-[expanded]:[grid-template-areas:'header_header_header'_'primary_primary_primary'_'leading_footer_trailing']"
+          className="group/composer cursor-text overflow-clip rounded-[28px] border border-line bg-input p-2.5 dark:bg-card/95 shadow-[0_1px_2px_rgba(0,0,0,0.02),0_1px_4px_rgba(0,0,0,0.03)] focus-within:shadow-[0_1px_2px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.25)] transition-shadow grid grid-cols-[auto_1fr_auto] [grid-template-areas:'header_header_header'_'leading_primary_trailing'_'._footer_.'] data-[expanded]:[grid-template-areas:'header_header_header'_'primary_primary_primary'_'leading_footer_trailing']"
           role="presentation"
           onClick={(e) => {
             if (!(e.target as HTMLElement).closest("button")) {
@@ -1100,7 +1100,7 @@ export const PromptInputTextarea = ({
     <textarea
       ref={localRef}
       className={cn(
-        "max-h-52 flex-1 resize-none border-none bg-transparent text-base leading-[1.2] py-0.5 text-foreground outline-none transition-[height] duration-100 ease-out placeholder:text-muted-foreground/50",
+        "max-h-52 flex-1 resize-none border-none bg-transparent text-base leading-[1.2] py-0.5 text-ink outline-none transition-[height] duration-100 ease-out placeholder:text-ink-muted/50",
         className,
       )}
       name="message"
@@ -1207,9 +1207,7 @@ export const PromptInputButton = ({
       <TooltipTrigger asChild>{button}</TooltipTrigger>
       <TooltipContent side={side}>
         {tooltipContent}
-        {shortcut && (
-          <span className="ml-2 text-muted-foreground">{shortcut}</span>
-        )}
+        {shortcut && <span className="ml-2 text-ink-muted">{shortcut}</span>}
       </TooltipContent>
     </Tooltip>
   );
@@ -1302,7 +1300,7 @@ export const PromptInputSubmit = ({
     <button
       aria-label={isGenerating ? "Stop" : "Submit"}
       className={cn(
-        "flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-colors",
+        "flex size-9 items-center justify-center rounded-full bg-action text-action-text hover:bg-action/90 disabled:opacity-30 transition-colors",
         className,
       )}
       onClick={handleClick}
@@ -1330,8 +1328,8 @@ export const PromptInputSelectTrigger = ({
 }: PromptInputSelectTriggerProps) => (
   <SelectTrigger
     className={cn(
-      "border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors",
-      "hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground",
+      "border-none bg-transparent font-medium text-ink-muted shadow-none transition-colors",
+      "hover:bg-hover hover:text-ink aria-expanded:bg-hover aria-expanded:text-ink",
       className,
     )}
     {...props}
@@ -1417,10 +1415,7 @@ export const PromptInputTabLabel = ({
   ...props
 }: PromptInputTabLabelProps) => (
   <h3
-    className={cn(
-      "mb-2 px-3 font-medium text-muted-foreground text-xs",
-      className,
-    )}
+    className={cn("mb-2 px-3 font-medium text-ink-muted text-xs", className)}
     {...props}
   />
 );
@@ -1442,7 +1437,7 @@ export const PromptInputTabItem = ({
 }: PromptInputTabItemProps) => (
   <div
     className={cn(
-      "flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent",
+      "flex items-center gap-2 px-3 py-2 text-xs hover:bg-hover",
       className,
     )}
     {...props}

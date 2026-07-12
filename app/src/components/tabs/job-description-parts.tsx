@@ -90,15 +90,11 @@ export function InstructionsContent({
   return (
     <div className="max-w-3xl mx-auto w-full px-6 pb-12 pt-2">
       <div className="flex items-baseline justify-between gap-4 mb-4">
-        <p className="text-xs text-muted-foreground max-w-md">
-          {resolved.helper}
-        </p>
+        <p className="text-xs text-ink-muted max-w-md">{resolved.helper}</p>
         <span
           className={cn(
             "text-[11px] tabular-nums transition-opacity duration-200",
-            state === "idle"
-              ? "opacity-0"
-              : "opacity-100 text-muted-foreground",
+            state === "idle" ? "opacity-0" : "opacity-100 text-ink-muted",
           )}
           aria-live="polite"
         >
@@ -109,7 +105,7 @@ export function InstructionsContent({
               : ""}
         </span>
       </div>
-      <section className="rounded-xl bg-secondary p-3">
+      <section className="rounded-xl bg-chip p-3">
         <textarea
           ref={textareaRef}
           value={value}
@@ -119,12 +115,12 @@ export function InstructionsContent({
           placeholder={resolved.placeholder}
           rows={Math.max(12, value.split("\n").length + 2)}
           className={cn(
-            "w-full px-4 py-3 text-sm text-foreground leading-relaxed",
-            "placeholder:text-muted-foreground/60",
-            "bg-background border border-foreground/[0.04] rounded-lg",
+            "w-full px-4 py-3 text-sm text-ink leading-relaxed",
+            "placeholder:text-ink-muted/60",
+            "bg-input border border-ink/[0.04] rounded-lg",
             "outline-none resize-none transition-shadow duration-200",
             "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
-            readOnly && "cursor-default text-muted-foreground",
+            readOnly && "cursor-default text-ink-muted",
           )}
         />
       </section>

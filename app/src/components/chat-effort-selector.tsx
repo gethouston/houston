@@ -101,7 +101,7 @@ export function ChatEffortSelector({
         e.stopPropagation();
         if (nextLevel) onSelect(nextLevel);
       }}
-      className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-ink-muted hover:text-ink hover:bg-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus"
     >
       {/* Always render the full effort spectrum (filled to the active level)
           so the gauge looks identical across models — a 2-level model no longer

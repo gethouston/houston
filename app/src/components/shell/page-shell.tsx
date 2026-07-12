@@ -53,9 +53,9 @@ export function PageHeader({
   return (
     <header className={cn("flex items-start justify-between gap-4", className)}>
       <div className="min-w-0">
-        <h1 className="text-[28px] font-normal text-foreground">{title}</h1>
+        <h1 className="text-[28px] font-normal text-ink">{title}</h1>
         {subtitle ? (
-          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+          <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>
         ) : null}
       </div>
       {trailing ? <div className="shrink-0">{trailing}</div> : null}

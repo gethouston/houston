@@ -74,21 +74,21 @@ export function ReviewDetail({
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 px-4 py-3 border-b border-border">
+      <div className="shrink-0 px-4 py-3 border-b border-line">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200"
+            className="flex items-center justify-center size-8 rounded-lg text-ink-muted hover:text-ink hover:bg-hover transition-colors duration-200"
             aria-label="Back to Review"
           >
             <ArrowLeft className="size-4" />
           </button>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">
+            <p className="text-sm font-medium text-ink truncate">
               {parentLabel}
             </p>
-            <p className="text-xs text-muted-foreground">{projectName}</p>
+            <p className="text-xs text-ink-muted">{projectName}</p>
           </div>
         </div>
       </div>
@@ -103,13 +103,13 @@ export function ReviewDetail({
               <UserFeedback key={entry.id} content={entry.content} />
             ) : (
               <div key={entry.id} className="space-y-4">
-                <p className="text-sm text-foreground">{entry.content}</p>
+                <p className="text-sm text-ink">{entry.content}</p>
               </div>
             ),
           )}
 
           {isRevising && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-sm text-ink-muted">
               <Loader2 className="size-3.5 animate-spin" />
               Revising...
             </div>
@@ -118,7 +118,7 @@ export function ReviewDetail({
       </div>
 
       {/* Footer -- input + approve button */}
-      <div className="shrink-0 px-4 py-3 border-t border-border">
+      <div className="shrink-0 px-4 py-3 border-t border-line">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <Input
             value={feedbackText}
@@ -126,11 +126,11 @@ export function ReviewDetail({
             onKeyDown={handleKeyDown}
             placeholder="Type feedback..."
             disabled={isRevising}
-            className="flex-1 h-10 rounded-full pl-4 border-border"
+            className="flex-1 h-10 rounded-full pl-4 border-line"
           />
           <Button
             onClick={handleApprove}
-            className="h-10 px-5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+            className="h-10 px-5 rounded-full bg-action text-action-text hover:bg-action/90"
           >
             Approve
           </Button>

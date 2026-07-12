@@ -359,11 +359,9 @@ export function ExportAgentWizard() {
 
         <div className="flex-1 min-h-0 overflow-y-auto px-8 pt-2 pb-6">
           {loading ? (
-            <p className="text-sm text-muted-foreground">
-              {t("export.loading")}
-            </p>
+            <p className="text-sm text-ink-muted">{t("export.loading")}</p>
           ) : !preview ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-ink-muted">
               {t("export.errors.noPreview")}
             </p>
           ) : currentStep === "pick" ? (
@@ -403,7 +401,7 @@ export function ExportAgentWizard() {
             onClick={() =>
               stepIndex > 0 ? setStepIndex(stepIndex - 1) : handleClose()
             }
-            className="text-sm text-muted-foreground hover:text-foreground"
+            className="text-sm text-ink-muted hover:text-ink"
           >
             {stepIndex > 0
               ? t("export.actions.back")
@@ -466,7 +464,7 @@ function PickStep({
         <h1 className="text-[28px] font-normal leading-tight">
           {t("export.step1.title")}
         </h1>
-        <p className="mt-3 text-base text-muted-foreground">
+        <p className="mt-3 text-base text-ink-muted">
           {t("export.step1.body")}
         </p>
       </header>
@@ -566,7 +564,7 @@ function AnonymizeStep({
         <h1 className="text-[28px] font-normal leading-tight">
           {t("export.step2.title")}
         </h1>
-        <p className="mt-3 text-base text-muted-foreground">
+        <p className="mt-3 text-base text-ink-muted">
           {t("export.step2.body")}
         </p>
       </header>
@@ -589,7 +587,7 @@ function AnonymizeStep({
       {wantAnonymize && (
         <section className="space-y-3">
           <div className="flex items-center gap-2 px-1 py-1">
-            <p className="text-sm text-foreground">
+            <p className="text-sm text-ink">
               {t("export.step2.aiToggleTitle")}
             </p>
             <Tooltip>
@@ -597,7 +595,7 @@ function AnonymizeStep({
                 <button
                   type="button"
                   aria-label={t("export.step2.aiToggleHint")}
-                  className="text-muted-foreground hover:text-foreground"
+                  className="text-ink-muted hover:text-ink"
                 >
                   <Info className="size-3.5" />
                 </button>
@@ -634,7 +632,7 @@ function AnonymizeStep({
           )}
           {anonymizing && (
             <div className="space-y-3">
-              <div className="running-glow-line bg-foreground/5" aria-hidden />
+              <div className="running-glow-line bg-ink/5" aria-hidden />
               <Subtle>
                 {progress && progress.total > 1
                   ? t("export.step2.workingProgress", {
@@ -644,8 +642,8 @@ function AnonymizeStep({
                   : t("export.step2.working")}
               </Subtle>
               {slow && !stopped && (
-                <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary p-3">
-                  <p className="text-xs text-muted-foreground">
+                <div className="flex items-center justify-between gap-3 rounded-lg bg-chip p-3">
+                  <p className="text-xs text-ink-muted">
                     {t("export.step2.slowNotice")}
                   </p>
                   <Button
@@ -662,7 +660,7 @@ function AnonymizeStep({
             </div>
           )}
           {!anonymizing && anonymized?.aiError && (
-            <p className="text-xs text-muted-foreground rounded-lg bg-secondary p-3">
+            <p className="text-xs text-ink-muted rounded-lg bg-chip p-3">
               {t("export.step2.aiFallback", { reason: anonymized.aiError })}
             </p>
           )}
@@ -764,7 +762,7 @@ function SaveStep({
         <h1 className="text-[28px] font-normal leading-tight">
           {t("export.step3.title")}
         </h1>
-        <p className="mt-3 text-base text-muted-foreground">
+        <p className="mt-3 text-base text-ink-muted">
           {t("export.step3.body", { name: agentName })}
         </p>
       </header>
@@ -806,7 +804,7 @@ export function WizardHeader({
   // close button (`top-4 right-4`) keeps its own column.
   return (
     <header className="shrink-0 px-8 pt-6 pb-2 flex items-center gap-4">
-      <p className="text-xs text-muted-foreground">{eyebrow}</p>
+      <p className="text-xs text-ink-muted">{eyebrow}</p>
       <ProgressDots index={index} total={total} />
     </header>
   );
@@ -821,9 +819,9 @@ function ProgressDots({ index, total }: { index: number; total: number }) {
           key={`dot-${i}`}
           className={cn(
             "size-2 rounded-full transition-colors",
-            i < index && "bg-foreground/60",
-            i === index && "bg-foreground",
-            i > index && "bg-foreground/15",
+            i < index && "bg-ink/60",
+            i === index && "bg-ink",
+            i > index && "bg-ink/15",
           )}
         />
       ))}
@@ -847,7 +845,7 @@ function Section({
 }
 
 function Subtle({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-muted-foreground">{children}</p>;
+  return <p className="text-sm text-ink-muted">{children}</p>;
 }
 
 export function SwitchRow({
@@ -866,9 +864,9 @@ export function SwitchRow({
   return (
     <div className="flex items-start gap-4 px-1 py-3">
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-foreground">{title}</p>
+        <p className="text-sm text-ink">{title}</p>
         {subtitle && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+          <p className="text-xs text-ink-muted line-clamp-2 mt-0.5">
             {subtitle}
           </p>
         )}
@@ -899,13 +897,13 @@ function ChoiceCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-xl border bg-background p-4 text-left transition-all",
-        "border-foreground/5 hover:border-foreground/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
-        selected && "border-foreground shadow-[0_1px_0_rgba(0,0,0,0.05)]",
+        "rounded-xl border bg-input p-4 text-left transition-all",
+        "border-ink/5 hover:border-ink/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
+        selected && "border-ink shadow-[0_1px_0_rgba(0,0,0,0.05)]",
       )}
     >
-      <p className="text-sm font-medium text-foreground">{title}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+      <p className="text-sm font-medium text-ink">{title}</p>
+      <p className="mt-1 text-xs text-ink-muted">{body}</p>
     </button>
   );
 }
@@ -929,13 +927,13 @@ function DiffCard({
 }) {
   const { t } = useTranslation("portable");
   return (
-    <article className="rounded-xl border border-foreground/5 bg-background p-4">
+    <article className="rounded-xl border border-ink/5 bg-input p-4">
       <header className="flex items-center justify-between gap-3 mb-3">
         <p className="text-sm font-medium">{title}</p>
         <button
           type="button"
           onClick={onToggle}
-          className="text-xs text-muted-foreground hover:text-foreground"
+          className="text-xs text-ink-muted hover:text-ink"
         >
           {accepted ? t("export.step2.keep") : t("export.step2.skip")}
         </button>
@@ -948,9 +946,9 @@ function DiffCard({
         />
         <Pane label={t("export.step2.after")} body={after} dimmed={!accepted} />
       </div>
-      <p className="text-xs text-muted-foreground mt-3">{summary}</p>
+      <p className="text-xs text-ink-muted mt-3">{summary}</p>
       {becameEmpty && (
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-ink-muted mt-1">
           {t("export.step2.becameEmpty")}
         </p>
       )}
@@ -971,7 +969,7 @@ function RoutineDiffCard({
 }) {
   const { t } = useTranslation("portable");
   return (
-    <article className="rounded-xl border border-foreground/5 bg-background p-4">
+    <article className="rounded-xl border border-ink/5 bg-input p-4">
       <header className="flex items-center justify-between gap-3 mb-3">
         <p className="text-sm font-medium">
           {t("export.step2.routineTitle", { id: routineId })}
@@ -979,7 +977,7 @@ function RoutineDiffCard({
         <button
           type="button"
           onClick={onToggle}
-          className="text-xs text-muted-foreground hover:text-foreground"
+          className="text-xs text-ink-muted hover:text-ink"
         >
           {accepted ? t("export.step2.keep") : t("export.step2.skip")}
         </button>
@@ -1014,8 +1012,8 @@ function Pane({
   dimmed: boolean;
 }) {
   return (
-    <div className={cn("rounded-lg bg-secondary p-3", dimmed && "opacity-40")}>
-      <p className="text-[11px] text-muted-foreground mb-1.5">{label}</p>
+    <div className={cn("rounded-lg bg-chip p-3", dimmed && "opacity-40")}>
+      <p className="text-[11px] text-ink-muted mb-1.5">{label}</p>
       <pre className="text-xs whitespace-pre-wrap break-words font-sans line-clamp-6">
         {body}
       </pre>
@@ -1032,8 +1030,8 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="tabular-nums text-foreground">{value}</dd>
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className="tabular-nums text-ink">{value}</dd>
     </div>
   );
 }

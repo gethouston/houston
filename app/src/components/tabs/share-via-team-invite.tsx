@@ -45,7 +45,7 @@ export function InviteStep({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-ink-muted">
         {t("shareViaTeam.invite.subtitle", {
           agent: agentName,
           team: team.name,
@@ -73,7 +73,7 @@ export function InviteStep({
           {invites.map((invite) => (
             <li
               key={invite.email}
-              className="flex items-center justify-between gap-2 rounded-lg bg-secondary px-3 py-2 text-sm"
+              className="flex items-center justify-between gap-2 rounded-lg bg-chip px-3 py-2 text-sm"
             >
               <span className="truncate">{invite.email}</span>
               <InviteBadge invite={invite} />
@@ -112,14 +112,14 @@ function InviteBadge({ invite }: { invite: EmailInvite }) {
         ? "shareViaTeam.invite.error.already_member"
         : "shareViaTeam.invite.error.generic";
     return (
-      <span className="flex items-center gap-1 text-xs text-destructive">
+      <span className="flex items-center gap-1 text-xs text-danger">
         <X className="size-3.5" />
         {t(key)}
       </span>
     );
   }
   return (
-    <span className="text-xs text-muted-foreground">
+    <span className="text-xs text-ink-muted">
       {t(`shareViaTeam.invite.status.${invite.status}`)}
     </span>
   );

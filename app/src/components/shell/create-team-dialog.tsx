@@ -105,7 +105,7 @@ export function CreateTeamDialog({ open, onOpenChange }: Props) {
               disabled={submitting}
             />
             {showTooLong ? (
-              <p className="mt-2 text-sm text-destructive">
+              <p className="mt-2 text-sm text-danger">
                 {t("teams:createTeam.tooLong", { max: MAX_TEAM_NAME_LENGTH })}
               </p>
             ) : null}

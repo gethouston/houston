@@ -79,8 +79,8 @@ export function ScheduleBuilder({
             className={cn(
               "h-8 px-3 rounded-full text-xs font-medium transition-colors",
               activePreset === preset
-                ? "bg-primary text-primary-foreground"
-                : "bg-background border border-foreground/[0.04] text-muted-foreground hover:text-foreground",
+                ? "bg-action text-action-text"
+                : "bg-input border border-ink/[0.04] text-ink-muted hover:text-ink",
             )}
           >
             {labels.presets[preset]}
@@ -89,7 +89,7 @@ export function ScheduleBuilder({
       </div>
 
       {/* Summary */}
-      <p className="text-sm text-foreground">{summary}</p>
+      <p className="text-sm text-ink">{summary}</p>
 
       {/* Preset-specific fields — animated so the card never snaps */}
       <div className="space-y-3">

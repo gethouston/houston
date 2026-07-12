@@ -93,13 +93,13 @@ export function IntegrationsReady({
       <div className="space-y-8">
         {(apps.isLoading || hasConnections) && (
           <section>
-            <h3 className="mb-3 text-sm font-medium text-foreground">
+            <h3 className="mb-3 text-sm font-medium text-ink">
               {t("home.connectedTitle")}
             </h3>
             {apps.isLoading ? (
               <ConnectedAppsListSkeleton />
             ) : connectedView === "empty-category" ? (
-              <p className="rounded-xl bg-secondary px-6 py-10 text-center text-sm text-muted-foreground">
+              <p className="rounded-xl bg-chip px-6 py-10 text-center text-sm text-ink-muted">
                 {t("home.connectedNoneInCategory")}
               </p>
             ) : (

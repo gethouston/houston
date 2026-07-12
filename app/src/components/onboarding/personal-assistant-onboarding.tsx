@@ -300,7 +300,7 @@ export function PersonalAssistantOnboarding({
             nextLoading={creating}
           >
             <div className="flex flex-1 flex-col items-center justify-center text-center">
-              <AlertTriangle className="size-8 text-muted-foreground" />
+              <AlertTriangle className="size-8 text-ink-muted" />
             </div>
           </SetupCard>
         ) : (
@@ -310,8 +310,8 @@ export function PersonalAssistantOnboarding({
           // eyebrow so "Step 2 of 3" doesn't vanish during the wait.
           <SetupCard onSpace eyebrow={stepEyebrow("connectEmail")}>
             <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-              <Loader2 className="size-6 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
+              <Loader2 className="size-6 animate-spin text-ink-muted" />
+              <p className="text-sm text-ink-muted">
                 {t("setup:tutorial.missions.connectEmail.preparing")}
               </p>
             </div>

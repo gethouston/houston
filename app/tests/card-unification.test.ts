@@ -141,10 +141,7 @@ describe("HOU-467 / HOU-529 card unification", () => {
 
   it("RowCard renders the shared grey slab with a media/title/action layout", () => {
     const src = read("../src/components/cards/row-card.tsx");
-    ok(
-      src.includes("bg-secondary"),
-      "grey slab, not a white hand-rolled shell",
-    );
+    ok(src.includes("bg-chip"), "grey slab, not a white hand-rolled shell");
     ok(
       src.includes("media") && src.includes("title") && src.includes("action"),
       "left media + title + right action slots",

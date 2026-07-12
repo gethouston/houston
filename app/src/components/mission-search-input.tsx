@@ -71,7 +71,7 @@ export function MissionSearchInput({
 
   return (
     <div ref={wrapperRef} className={className ?? "relative"}>
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
       <Input
         type="text"
         role="searchbox"
@@ -80,11 +80,11 @@ export function MissionSearchInput({
         placeholder={placeholder}
         aria-label={full}
         autoComplete="off"
-        className="rounded-full border-border bg-transparent pl-9 pr-16 text-sm focus:bg-transparent"
+        className="rounded-full border-line bg-transparent pl-9 pr-16 text-sm focus:bg-transparent"
       />
       {isSearchingText && (
         <Loader2
-          className="pointer-events-none absolute right-9 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground"
+          className="pointer-events-none absolute right-9 top-1/2 size-4 -translate-y-1/2 animate-spin text-ink-muted"
           aria-label={labels.searchingText}
         />
       )}
@@ -92,7 +92,7 @@ export function MissionSearchInput({
         <button
           type="button"
           onClick={() => onChange("")}
-          className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-hover hover:text-ink"
           aria-label={labels.clear}
         >
           <X className="size-3.5" />

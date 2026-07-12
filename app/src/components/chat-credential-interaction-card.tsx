@@ -136,7 +136,7 @@ export function ChatCredentialInteractionCard({
       title={
         <InteractionModalTitle
           className="flex-1 truncate"
-          icon={<KeyRound className="size-4 shrink-0 text-muted-foreground" />}
+          icon={<KeyRound className="size-4 shrink-0 text-ink-muted" />}
         >
           {name}
         </InteractionModalTitle>
@@ -149,12 +149,10 @@ export function ChatCredentialInteractionCard({
           </span>
         ) : (
           <div className="flex flex-col gap-1.5">
-            <p className="text-balance text-foreground text-sm leading-snug">
+            <p className="text-balance text-ink text-sm leading-snug">
               {reasonLine}
             </p>
-            <p className="text-muted-foreground text-sm">
-              {t("credential.subtitle")}
-            </p>
+            <p className="text-ink-muted text-sm">{t("credential.subtitle")}</p>
             <div className="mt-1.5">
               <CustomCredentialForm
                 authMethod={authMethod}
@@ -175,7 +173,7 @@ export function ChatCredentialInteractionCard({
         isSaved ? undefined : (
           <>
             <Button
-              className="gap-1.5 text-muted-foreground"
+              className="gap-1.5 text-ink-muted"
               disabled={submit.isPending}
               onClick={() => onSkip(name)}
               size="sm"

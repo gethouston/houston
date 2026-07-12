@@ -52,7 +52,7 @@ export function WorkspaceSetupFlow({ mode, onComplete }: Props) {
               <h2 className="text-lg font-semibold mb-1">
                 {t("setup:name.title")}
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-ink-muted">
                 {t("setup:name.description")}
               </p>
             </div>
@@ -89,7 +89,7 @@ export function WorkspaceSetupFlow({ mode, onComplete }: Props) {
           <button
             type="button"
             onClick={() => setStep(1)}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
+            className="flex items-center gap-1 text-sm text-ink-muted hover:text-ink transition-colors mb-3"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             {t("common:actions.back")}
@@ -103,12 +103,12 @@ export function WorkspaceSetupFlow({ mode, onComplete }: Props) {
           >
             {t("setup:provider.title")}
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-ink-muted">
             <Trans
               i18nKey="setup:provider.description"
               defaults="Houston uses <emph>your own</emph> subscription. We never see your credentials."
               components={{
-                emph: <strong className="text-foreground font-medium" />,
+                emph: <strong className="text-ink font-medium" />,
               }}
             />
           </p>

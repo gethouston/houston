@@ -76,7 +76,7 @@ export function AgentSharePeopleDialog({
             </ul>
           )}
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-ink-muted">
             {t("share.conversationNote")}
           </p>
         </div>

@@ -50,7 +50,7 @@ export function AgentAdminIntegrations({ agent }: AgentAdminScreenProps) {
           <Spinner className="size-5" />
         </div>
       ) : (
-        <p className="py-10 text-center text-sm text-muted-foreground">
+        <p className="py-10 text-center text-sm text-ink-muted">
           {t("agentAdmin.integrations.unavailable")}
         </p>
       )}

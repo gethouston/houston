@@ -95,11 +95,11 @@ export function EmailSignIn() {
             maxLength={6}
             placeholder="123456"
             autoFocus
-            className="h-10 flex-1 rounded-full border-foreground/40 px-4 text-center tracking-[0.3em]"
+            className="h-10 flex-1 rounded-full border-ink/40 px-4 text-center tracking-[0.3em]"
           />
           <SendButton disabled={pending || code.trim().length === 0} />
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-ink-muted">
           We sent a 6-digit code to {email}.
         </p>
         <div className="flex items-center gap-4">
@@ -107,7 +107,7 @@ export function EmailSignIn() {
             type="button"
             disabled={pending}
             onClick={() => void sendCode()}
-            className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+            className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-50"
           >
             Resend code
           </button>
@@ -118,12 +118,12 @@ export function EmailSignIn() {
               setCode("");
               setError(null);
             }}
-            className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline"
           >
             Use a different email
           </button>
         </div>
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
       </form>
     );
   }
@@ -137,11 +137,11 @@ export function EmailSignIn() {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           placeholder="you@example.com"
-          className="h-10 flex-1 rounded-full border-foreground/40 px-4"
+          className="h-10 flex-1 rounded-full border-ink/40 px-4"
         />
         <SendButton disabled={pending || email.trim().length === 0} />
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </form>
   );
 }

@@ -95,7 +95,7 @@ function LanguagePicker({
             disabled={pending !== null && pending !== loc}
             trailing={
               pending === loc ? (
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                <Loader2 className="size-5 animate-spin text-ink-muted" />
               ) : undefined
             }
             onSelect={() => void handlePick(loc)}
@@ -103,7 +103,7 @@ function LanguagePicker({
         ))}
       </div>
       {failed && (
-        <p className="mt-4 text-xs text-destructive" role="alert">
+        <p className="mt-4 text-xs text-danger" role="alert">
           Something went wrong. Please try again.
         </p>
       )}

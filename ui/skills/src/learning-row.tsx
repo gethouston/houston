@@ -24,22 +24,20 @@ export function LearningRow({
   });
 
   return (
-    <div className="rounded-xl border border-border p-4 group">
+    <div className="rounded-xl border border-line p-4 group">
       <div className="flex items-start gap-3">
-        <p className="text-sm text-foreground flex-1 leading-relaxed">
-          {content}
-        </p>
+        <p className="text-sm text-ink flex-1 leading-relaxed">{content}</p>
         <button
           type="button"
           onClick={onDelete}
-          className="shrink-0 size-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          className="shrink-0 size-7 flex items-center justify-center rounded-lg text-ink-muted hover:text-danger hover:bg-danger/10 transition-colors"
           aria-label="Delete learning"
         >
           <Trash2 className="size-3.5" />
         </button>
       </div>
-      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-        <span className="px-1.5 py-0.5 rounded-md bg-accent/50 text-muted-foreground">
+      <div className="flex items-center gap-2 mt-2 text-xs text-ink-muted">
+        <span className="px-1.5 py-0.5 rounded-md bg-hover/50 text-ink-muted">
           {label}
         </span>
         {sourceTitle && (

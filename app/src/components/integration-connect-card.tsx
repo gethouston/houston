@@ -84,7 +84,7 @@ function ConnectStatusSlot({
   }
   if (view === "connecting") {
     return (
-      <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-secondary px-2.5 font-medium text-muted-foreground text-xs">
+      <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-chip px-2.5 font-medium text-ink-muted text-xs">
         <Loader2 className="size-3 animate-spin" />
         {t("composio.connecting")}
       </span>

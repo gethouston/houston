@@ -182,8 +182,8 @@ export function SkillMarketplaceSection({
     <div>
       {l.heading && (
         <div className="mb-3">
-          <p className="text-sm font-medium text-foreground">{l.heading}</p>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+          <p className="text-sm font-medium text-ink">{l.heading}</p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
             {l.subheading && <span>{l.subheading}</span>}
             <PoweredByVercelBadge label={l.poweredByVercel} />
           </div>

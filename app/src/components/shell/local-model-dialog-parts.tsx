@@ -26,10 +26,10 @@ export function BusyScreen({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 px-2 py-10 text-center">
-      <Spinner className="size-6 text-muted-foreground" />
-      <p className="text-[14px] font-medium text-foreground">{title}</p>
+      <Spinner className="size-6 text-ink-muted" />
+      <p className="text-[14px] font-medium text-ink">{title}</p>
       {body && (
-        <p className="max-w-xs text-[12px] leading-relaxed text-muted-foreground">
+        <p className="max-w-xs text-[12px] leading-relaxed text-ink-muted">
           {body}
         </p>
       )}
@@ -53,33 +53,33 @@ export function EmptyScreen({
   const { t } = useTranslation("providers");
   return (
     <div className="flex flex-col gap-4 py-2">
-      <p className="text-[13px] leading-relaxed text-muted-foreground">
+      <p className="text-[13px] leading-relaxed text-ink-muted">
         {t("localModel.empty.body")}
       </p>
       <ul className="flex flex-col gap-2">
         {APP_LINKS.map(({ kind, url }) => (
           <li
             key={kind}
-            className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5"
+            className="flex items-center gap-3 rounded-xl bg-chip px-3 py-2.5"
           >
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-card text-muted-foreground">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-card text-ink-muted">
               <Laptop className="size-4" aria-hidden="true" />
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-[13px] font-medium text-foreground">
+              <span className="text-[13px] font-medium text-ink">
                 {appDisplayName(kind)}
               </span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[11px] text-ink-muted">
                 {t(`localModel.empty.apps.${kind}`)}
               </span>
-              <span className="mt-0.5 text-[11px] font-medium text-foreground/75">
+              <span className="mt-0.5 text-[11px] font-medium text-ink/75">
                 {t(`localModel.empty.hint.${kind}`)}
               </span>
             </span>
             <button
               type="button"
               onClick={() => void osOpenUrl(url)}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[12px] font-medium text-foreground hover:bg-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[12px] font-medium text-ink hover:bg-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               {t("localModel.empty.get")}
               <ExternalLink className="size-3" aria-hidden="true" />
@@ -87,7 +87,7 @@ export function EmptyScreen({
           </li>
         ))}
       </ul>
-      <p className="text-[12px] leading-relaxed text-muted-foreground">
+      <p className="text-[12px] leading-relaxed text-ink-muted">
         {t("localModel.empty.reassure")}
       </p>
       <div className="flex items-center justify-between gap-2 pt-1">
@@ -109,7 +109,7 @@ export function ErrorScreen({
   const { t } = useTranslation("providers");
   return (
     <div className="flex flex-col gap-4 py-2">
-      <p className="text-[13px] leading-relaxed text-muted-foreground">
+      <p className="text-[13px] leading-relaxed text-ink-muted">
         {t("localModel.error.body")}
       </p>
       <div className="flex items-center justify-between gap-2">
@@ -139,15 +139,15 @@ export function ReasoningToggle({
 }) {
   const { t } = useTranslation("providers");
   return (
-    <div className="flex items-start justify-between gap-3 rounded-xl border border-border bg-secondary px-3 py-2.5">
+    <div className="flex items-start justify-between gap-3 rounded-xl border border-line bg-chip px-3 py-2.5">
       <label
         htmlFor={id}
         className="flex min-w-0 flex-1 cursor-pointer flex-col"
       >
-        <span className="text-[13px] font-medium text-foreground">
+        <span className="text-[13px] font-medium text-ink">
           {t("localModel.reasoning.label")}
         </span>
-        <span className="text-[11px] leading-relaxed text-muted-foreground">
+        <span className="text-[11px] leading-relaxed text-ink-muted">
           {t("localModel.reasoning.help")}
         </span>
       </label>
@@ -169,7 +169,7 @@ export function ManualLink({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="text-[12px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+      className="text-[12px] font-medium text-ink-muted underline-offset-2 hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded"
     >
       {t("localModel.manual.link")}
     </button>

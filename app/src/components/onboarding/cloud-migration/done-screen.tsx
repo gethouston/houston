@@ -66,7 +66,7 @@ export function DoneScreen({
             <button
               type="button"
               onClick={() => setStep("apps")}
-              className="rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              className="rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
             >
               {t("offer.startFresh")}
             </button>
@@ -94,7 +94,7 @@ export function DoneScreen({
           <button
             type="button"
             onClick={() => setStep("ai")}
-            className="rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
           >
             {t("done.back")}
           </button>
@@ -136,13 +136,10 @@ function LeftoverList({
   return (
     <section>
       <h2 className="text-sm font-semibold">{title}</h2>
-      {body && <p className="mt-1 text-xs text-muted-foreground">{body}</p>}
-      <ul className="mt-2 max-h-32 overflow-y-auto rounded-xl bg-secondary px-4 py-2.5">
+      {body && <p className="mt-1 text-xs text-ink-muted">{body}</p>}
+      <ul className="mt-2 max-h-32 overflow-y-auto rounded-xl bg-chip px-4 py-2.5">
         {items.map((item) => (
-          <li
-            key={item}
-            className="truncate py-0.5 text-xs text-muted-foreground"
-          >
+          <li key={item} className="truncate py-0.5 text-xs text-ink-muted">
             {item}
           </li>
         ))}

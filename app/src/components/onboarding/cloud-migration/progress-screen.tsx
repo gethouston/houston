@@ -52,24 +52,21 @@ function AgentRow({
   const { t } = useTranslation("migration");
   const running = RUNNING.has(progress.step);
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-secondary px-4 py-3">
+    <div className="flex items-center gap-3 rounded-xl bg-chip px-4 py-3">
       <span className="shrink-0">
         {progress.step === "done" ? (
-          <Check className="size-4 text-foreground" />
+          <Check className="size-4 text-ink" />
         ) : progress.step === "error" ? (
-          <CircleAlert className="size-4 text-destructive" />
+          <CircleAlert className="size-4 text-danger" />
         ) : (
           <Loader2
-            className={cn(
-              "size-4 text-muted-foreground",
-              running && "animate-spin",
-            )}
+            className={cn("size-4 text-ink-muted", running && "animate-spin")}
           />
         )}
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{task.targetName}</p>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="truncate text-xs text-ink-muted">
           {progress.step === "error" && progress.errorMessage
             ? progress.errorMessage
             : stepLabel(t, progress)}
@@ -140,7 +137,7 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
           <button
             type="button"
             onClick={onDefer}
-            className="rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
           >
             {t("progress.migrateLater")}
           </button>
@@ -149,11 +146,9 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
     >
       <div className="flex flex-col items-center gap-3 text-center">
         {startError ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl bg-secondary p-6">
-            <p className="text-sm text-foreground">
-              {t("progress.startFailed")}
-            </p>
-            <p className="text-xs text-muted-foreground">{startError}</p>
+          <div className="flex flex-col items-center gap-3 rounded-xl bg-chip p-6">
+            <p className="text-sm text-ink">{t("progress.startFailed")}</p>
+            <p className="text-xs text-ink-muted">{startError}</p>
             <AsyncButton className="rounded-full" onClick={() => start()}>
               {t("progress.retry")}
             </AsyncButton>
@@ -161,20 +156,16 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
         ) : backingUp ? (
           <>
             <MigrationLoader />
-            <p className="text-sm text-muted-foreground">
-              {t("progress.backingUp")}
-            </p>
+            <p className="text-sm text-ink-muted">{t("progress.backingUp")}</p>
           </>
         ) : preparing ? (
           <>
             <MigrationLoader />
-            <p className="text-sm text-muted-foreground">
-              {t("progress.preparing")}
-            </p>
+            <p className="text-sm text-ink-muted">{t("progress.preparing")}</p>
           </>
         ) : anyError ? (
           <div className="flex w-full flex-col gap-2">
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-center text-xs text-ink-muted">
               {t("progress.overall", {
                 done: done.length,
                 total: tasks.length,
@@ -192,11 +183,9 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
         ) : (
           <>
             <MigrationLoader />
-            <p className="text-base text-muted-foreground">
-              {t("progress.body")}
-            </p>
+            <p className="text-base text-ink-muted">{t("progress.body")}</p>
             <MigrationStatusCycle phrases={phrases} />
-            <p className="text-xs text-muted-foreground/80">
+            <p className="text-xs text-ink-muted/80">
               {t("progress.keepOpen")}
             </p>
           </>

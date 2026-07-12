@@ -87,8 +87,8 @@ export const MessageContent = ({
       <div
         className={cn(
           "flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-base leading-6",
-          "group-[.is-user]:ml-auto group-[.is-user]:rounded-[22px] group-[.is-user]:bg-foreground group-[.is-user]:px-4 group-[.is-user]:py-2.5 group-[.is-user]:text-background dark:group-[.is-user]:bg-muted dark:group-[.is-user]:text-foreground",
-          "group-[.is-assistant]:text-foreground",
+          "group-[.is-user]:ml-auto group-[.is-user]:rounded-[22px] group-[.is-user]:bg-ink group-[.is-user]:px-4 group-[.is-user]:py-2.5 group-[.is-user]:text-input dark:group-[.is-user]:bg-chip-subtle dark:group-[.is-user]:text-ink",
+          "group-[.is-assistant]:text-ink",
           className,
         )}
         {...props}
@@ -348,7 +348,7 @@ export const MessageBranchPage = ({
   return (
     <ButtonGroupText
       className={cn(
-        "border-none bg-transparent text-muted-foreground shadow-none",
+        "border-none bg-transparent text-ink-muted shadow-none",
         className,
       )}
       {...props}
@@ -435,7 +435,7 @@ export const MessageResponse = memo(
                   e.preventDefault();
                   onOpen();
                 }}
-                className="text-primary underline-offset-4 hover:underline [overflow-wrap:anywhere]"
+                className="text-action underline-offset-4 hover:underline [overflow-wrap:anywhere]"
               >
                 {children}
               </a>

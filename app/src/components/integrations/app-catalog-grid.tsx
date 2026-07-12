@@ -103,13 +103,13 @@ export function AppCatalogGrid({
     <div>
       <div className="mb-3 flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("picker.searchPlaceholder")}
-            className="h-9 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
+            className="h-9 w-full rounded-full border border-line bg-input pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
           />
         </div>
         {categoryOptions.length > 0 && (
@@ -128,12 +128,12 @@ export function AppCatalogGrid({
 
       {connectable.length === 0 && locked.length === 0 ? (
         loading ? (
-          <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+          <div className="flex items-center justify-center gap-2 py-6 text-sm text-ink-muted">
             <Spinner className="size-4" />
             {t("picker.loading")}
           </div>
         ) : (
-          <p className="py-4 text-center text-sm text-muted-foreground">
+          <p className="py-4 text-center text-sm text-ink-muted">
             {t("picker.noResults")}
           </p>
         )
@@ -161,7 +161,7 @@ export function AppCatalogGrid({
                   <button
                     type="button"
                     onClick={() => setVisible((v) => v + BROWSE_PAGE_SIZE)}
-                    className="inline-flex h-8 items-center gap-1 rounded-full border border-border bg-background px-4 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                    className="inline-flex h-8 items-center gap-1 rounded-full border border-line bg-input px-4 text-xs font-medium text-ink transition-colors hover:bg-chip"
                   >
                     {t("browse.loadMoreWithRemaining", {
                       count: connectable.length - visible,

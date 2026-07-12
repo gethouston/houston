@@ -26,20 +26,16 @@ export function SkillDescription({
 
   return (
     <div className="space-y-3">
-      {intro && (
-        <p className="text-sm leading-relaxed text-foreground">{intro}</p>
-      )}
+      {intro && <p className="text-sm leading-relaxed text-ink">{intro}</p>}
       {items.length > 0 && (
-        <ol className="list-inside list-decimal space-y-1.5 text-sm leading-relaxed text-foreground">
+        <ol className="list-inside list-decimal space-y-1.5 text-sm leading-relaxed text-ink">
           {items.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ol>
       )}
       {keywords && (
-        <p className="text-xs text-muted-foreground">
-          {l.alsoMatches(keywords)}
-        </p>
+        <p className="text-xs text-ink-muted">{l.alsoMatches(keywords)}</p>
       )}
     </div>
   );

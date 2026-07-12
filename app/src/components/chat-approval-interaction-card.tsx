@@ -121,7 +121,7 @@ export function ChatApprovalInteractionCard({
       body={
         <div className="flex flex-col">
           {/* The permission question, the prominent regular-weight line. */}
-          <p className="text-balance text-foreground text-sm leading-snug">
+          <p className="text-balance text-ink text-sm leading-snug">
             {t("interaction.approvalTitle", {
               app: app.name,
               action: humanizeActionSlug(action, toolkit),
@@ -131,7 +131,7 @@ export function ChatApprovalInteractionCard({
           {decided &&
             (outcome === "denied" ? (
               // Denied: a muted line, no check, no red — a calm decision record.
-              <span className="mt-3 text-muted-foreground text-sm">
+              <span className="mt-3 text-ink-muted text-sm">
                 {t("interaction.approvalDenied")}
               </span>
             ) : (

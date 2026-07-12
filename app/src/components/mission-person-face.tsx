@@ -73,7 +73,7 @@ export function FilterTrigger({
     >
       {icon}
       {text}
-      <ChevronDown className="size-3.5 text-muted-foreground" />
+      <ChevronDown className="size-3.5 text-ink-muted" />
     </Button>
   );
 }

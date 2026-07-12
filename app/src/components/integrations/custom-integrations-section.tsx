@@ -60,10 +60,8 @@ export function CustomIntegrationsSection() {
     <section>
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-medium text-foreground">
-            {t("custom.title")}
-          </h3>
-          <p className="text-[13px] text-muted-foreground">
+          <h3 className="text-sm font-medium text-ink">{t("custom.title")}</h3>
+          <p className="text-[13px] text-ink-muted">
             {t("custom.description")}
           </p>
         </div>
@@ -83,12 +81,12 @@ export function CustomIntegrationsSection() {
           user back into it (or let them discard it). Always-visible buttons,
           never a hover-only affordance. */}
       {chatSetup.hasDraft && !chatSetup.open && activeAgent && (
-        <div className="mb-4 flex items-center gap-3 rounded-2xl bg-secondary px-4 py-3">
+        <div className="mb-4 flex items-center gap-3 rounded-2xl bg-chip px-4 py-3">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground">
+            <p className="text-sm font-medium text-ink">
               {t("custom.setupChat.bannerTitle")}
             </p>
-            <p className="text-xs text-foreground/70">
+            <p className="text-xs text-ink/70">
               {t("custom.setupChat.bannerDescription")}
             </p>
           </div>
@@ -117,7 +115,7 @@ export function CustomIntegrationsSection() {
       )}
 
       {items.length === 0 ? (
-        <p className="rounded-xl bg-secondary px-6 py-8 text-center text-sm text-muted-foreground">
+        <p className="rounded-xl bg-chip px-6 py-8 text-center text-sm text-ink-muted">
           {t("custom.empty")}
         </p>
       ) : (

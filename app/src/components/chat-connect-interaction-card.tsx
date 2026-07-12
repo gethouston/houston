@@ -163,16 +163,16 @@ export function ChatConnectInteractionCard({
             // Two-field body: the agent's REASON (foreground "why") over the app
             // description (muted, one truncated line).
             <div className="flex flex-col gap-1">
-              <p className="text-balance text-foreground text-sm leading-snug">
+              <p className="text-balance text-ink text-sm leading-snug">
                 {reasonLine}
               </p>
-              <p className="truncate text-muted-foreground text-sm">
+              <p className="truncate text-ink-muted text-sm">
                 {app.description || t("composio.integration")}
               </p>
             </div>
           )}
           {connecting && (
-            <p className="mt-1.5 text-muted-foreground text-xs">
+            <p className="mt-1.5 text-ink-muted text-xs">
               {t("composio.waitingToConnect")}
             </p>
           )}
@@ -183,7 +183,7 @@ export function ChatConnectInteractionCard({
           <>
             {showNotNow && (
               <Button
-                className="gap-1.5 text-muted-foreground"
+                className="gap-1.5 text-ink-muted"
                 disabled={connecting}
                 onClick={() => onSkip(toolkit, app.name)}
                 size="sm"

@@ -20,10 +20,10 @@ import { MessageResponse } from "@houston-ai/chat";
 // is guarded by the `selectUpdateNotes` / `normalizeUpdateNotes` tests in
 // update-details.test.ts.
 const COMPACT = [
-  "text-xs leading-relaxed text-muted-foreground",
+  "text-xs leading-relaxed text-ink-muted",
   "[&_:is(h1,h2,h3,h4,h5,h6)]:mb-1 [&_:is(h1,h2,h3,h4,h5,h6)]:mt-2",
   "[&_:is(h1,h2,h3,h4,h5,h6)]:text-xs [&_:is(h1,h2,h3,h4,h5,h6)]:font-semibold",
-  "[&_:is(h1,h2,h3,h4,h5,h6)]:text-foreground",
+  "[&_:is(h1,h2,h3,h4,h5,h6)]:text-ink",
   "[&_p]:my-1",
   // Streamdown renders ul/ol with `list-inside list-disc|list-decimal`, but
   // those utilities aren't generated for the app build (the package isn't in
@@ -35,8 +35,8 @@ const COMPACT = [
   // element utilities (0,1,0), so this holds even if the package is scanned later.
   "[&_:is(ul,ol)]:my-1 [&_:is(ul,ol)]:pl-5 [&_:is(ul,ol)]:list-outside",
   "[&_ul]:list-disc [&_ol]:list-decimal",
-  "[&_li]:my-0.5 [&_li]:marker:text-muted-foreground",
-  "[&_a]:font-medium [&_a]:text-foreground",
+  "[&_li]:my-0.5 [&_li]:marker:text-ink-muted",
+  "[&_a]:font-medium [&_a]:text-ink",
 ].join(" ");
 
 export function UpdateNotes({ notes }: { notes: string }) {

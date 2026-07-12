@@ -55,8 +55,8 @@ body {
   height: 28px;
   padding: 0 12px;
   border-radius: 9999px;
-  background: var(--ht-primary);
-  color: var(--ht-primary-fg);
+  background: var(--ht-action);
+  color: var(--ht-action-text);
   font-size: 12px;
   font-weight: 500;
   text-decoration: none;

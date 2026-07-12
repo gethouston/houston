@@ -198,7 +198,7 @@ export function WorkspaceShell({
           // Transparent so the window background reads up through the content.
           // Column layout: a seamless overlay title-bar strip on top, then the
           // sidebar + content row below it.
-          "flex h-screen flex-col bg-transparent text-foreground",
+          "flex h-screen flex-col bg-transparent text-ink",
           uiTourActive && "pointer-events-none [&_*]:select-none",
         )}
       >
@@ -401,7 +401,7 @@ export function WorkspaceShell({
                     </div>
                   ) : (
                     <div className="flex flex-1 flex-col items-center justify-center">
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-ink-muted text-sm">
                         {t("shell:engineGate.starting")}
                       </p>
                     </div>

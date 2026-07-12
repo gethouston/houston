@@ -96,12 +96,12 @@ export function RoutineSetupChat({
   if (!activity) {
     return (
       <div className="flex h-full min-h-0 flex-col">
-        <div className="px-4 py-3 border-b border-border">
+        <div className="px-4 py-3 border-b border-line">
           <div className="max-w-3xl mx-auto w-full flex items-center gap-3">
             {backButton}
           </div>
         </div>
-        <div className="min-h-0 flex-1 flex items-center justify-center gap-2 text-muted-foreground">
+        <div className="min-h-0 flex-1 flex items-center justify-center gap-2 text-ink-muted">
           <Loader2 className="size-4 animate-spin" />
           <span className="text-sm">{t("chat.opening")}</span>
         </div>

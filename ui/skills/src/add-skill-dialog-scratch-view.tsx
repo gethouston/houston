@@ -154,7 +154,7 @@ export function ScratchView({
               <span
                 className={cn(
                   "text-xs tabular-nums",
-                  slugTaken ? "text-red-600" : "text-muted-foreground",
+                  slugTaken ? "text-red-600" : "text-ink-muted",
                 )}
               >
                 {l.slugPreviewPrefix} <code>{slug}</code>
@@ -198,7 +198,7 @@ export function ScratchView({
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
 
-      <footer className="shrink-0 border-t border-border/30 px-6 py-3 flex justify-end">
+      <footer className="shrink-0 border-t border-line/30 px-6 py-3 flex justify-end">
         <Button type="submit" size="sm" disabled={!canSubmit}>
           {submitting ? (
             <>
@@ -215,8 +215,8 @@ export function ScratchView({
 }
 
 const inputClass = cn(
-  "w-full rounded-lg border border-border/20 bg-background px-3 py-2 text-sm",
-  "text-foreground placeholder:text-muted-foreground/60",
+  "w-full rounded-lg border border-line/20 bg-input px-3 py-2 text-sm",
+  "text-ink placeholder:text-ink-muted/60",
   "outline-none focus:shadow-sm transition-shadow",
 );
 
@@ -235,18 +235,13 @@ function Field({
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3 mb-1.5">
-        <label
-          htmlFor={id}
-          className="text-xs font-medium text-muted-foreground"
-        >
+        <label htmlFor={id} className="text-xs font-medium text-ink-muted">
           {label}
         </label>
         {suffix}
       </div>
       {cloneElement(children, { id })}
-      {hint && (
-        <p className="text-[11px] text-muted-foreground/70 mt-1">{hint}</p>
-      )}
+      {hint && <p className="text-[11px] text-ink-muted/70 mt-1">{hint}</p>}
     </div>
   );
 }

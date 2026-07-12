@@ -39,7 +39,7 @@ const WARN_PERCENT = 90;
  * Context gauge: a ring whose arc fills clockwise from 12
  * o'clock in proportion to `percent` (0-100), over a faint full-circle track.
  * The arc follows `currentColor`, so the caller turns it red by setting
- * `text-destructive`. A `null` percent (unknown window or no usage yet) shows
+ * `text-danger`. A `null` percent (unknown window or no usage yet) shows
  * the bare track.
  */
 function ContextRing({ percent }: { percent: number | null }) {
@@ -54,7 +54,7 @@ function ContextRing({ percent }: { percent: number | null }) {
         r={radius}
         fill="none"
         strokeWidth="5"
-        className="stroke-muted-foreground/25"
+        className="stroke-ink-muted/25"
       />
       {pct > 0 && (
         <circle
@@ -102,10 +102,8 @@ export function ContextIndicator({
         <button
           type="button"
           aria-label={t("button.aria")}
-          className={`inline-flex items-center justify-center size-7 rounded-full transition-colors hover:bg-accent ${
-            warn
-              ? "text-destructive"
-              : "text-muted-foreground hover:text-foreground"
+          className={`inline-flex items-center justify-center size-7 rounded-full transition-colors hover:bg-hover ${
+            warn ? "text-danger" : "text-ink-muted hover:text-ink"
           }`}
         >
           <ContextRing percent={percent} />
@@ -118,18 +116,18 @@ export function ContextIndicator({
         <p className="text-sm font-medium leading-none">{t("card.title")}</p>
 
         {!usage ? (
-          <p className="text-sm text-muted-foreground">{t("card.empty")}</p>
+          <p className="text-sm text-ink-muted">{t("card.empty")}</p>
         ) : windowTokens != null ? (
           <>
             <div className="flex items-baseline justify-between gap-3">
               <span
                 className={`text-2xl font-semibold tabular-nums ${
-                  warn ? "text-destructive" : ""
+                  warn ? "text-danger" : ""
                 }`}
               >
                 {t("card.percent", { percent: percent ?? 0 })}
               </span>
-              <span className="text-xs text-muted-foreground tabular-nums">
+              <span className="text-xs text-ink-muted tabular-nums">
                 {t("card.usedOfTotal", {
                   used: fmt(usage.context_tokens),
                   total: fmt(windowTokens),
@@ -143,9 +141,7 @@ export function ContextIndicator({
             <span className="text-lg font-semibold tabular-nums">
               {t("card.tokensUsed", { used: fmt(usage.context_tokens) })}
             </span>
-            <p className="text-xs text-muted-foreground">
-              {t("card.unknownWindow")}
-            </p>
+            <p className="text-xs text-ink-muted">{t("card.unknownWindow")}</p>
           </>
         )}
       </HoverCardContent>

@@ -65,9 +65,9 @@ body::before {
 /* ── 2. Translucent glass surface tokens ───────────────────────
    The futuristic surface palette — the translucent glass fills, the
    transparent sidebar, the cool "Aurora" light tints and the Arc canvas
-   colours (--ht-card, --ht-popover, --ht-secondary, --ht-muted, --ht-border,
-   --ht-sidebar, --ht-sidebar-border, --ht-foreground, --ht-card-rest,
-   --ht-canvas-gutter, --ht-canvas-screen) — now lives in the single token
+   colours (--ht-card, --ht-popover, --ht-chip, --ht-chip-subtle, --ht-line,
+   --ht-sidebar, --ht-sidebar-line, --ht-ink, --ht-card-solid,
+   --ht-base, --ht-background) — now lives in the single token
    source: @houston/design-tokens (tokens/semantic/color.*.json), compiled to
    the --ht-* CSS imported by @houston-ai/core. These are the CURRENT shipped
    values; to retune a surface, edit the token JSON and rebuild. The glass
@@ -143,10 +143,10 @@ body::before {
    (the top-right "New mission" button was the casualty). `data-variant`
    survives the merge, and only Button renders a `<button>`/`<a>` with
    it (badges/menus/tabs-list carry data-variant on non-button
-   elements), so this stays precise. It still avoids `.bg-primary`,
+   elements), so this stays precise. It still avoids `.bg-action`,
    which also paints progress bars, tab underlines, switches and
    status dots. Unlayered, so it outranks the Tailwind utilities
-   (`bg-primary`, `text-primary-foreground`, `hover:bg-primary/70`)
+   (`bg-action`, `text-action-text`, `hover:bg-action/70`)
    regardless of import order. The label + the currentColor HoustonLogo
    take `color` from these rules: white in both modes (the base sets
    `#fff`; the reference uses white text in dark too).
@@ -188,8 +188,8 @@ body::before {
 }
 
 /* ── 5. Glass active tab (segmented control) ───────────────────
-   The default-variant TabsList is a faint `bg-muted` track whose
-   ACTIVE segment lifted itself with a solid `bg-background` pill
+   The default-variant TabsList is a faint `bg-chip-subtle` track whose
+   ACTIVE segment lifted itself with a solid `bg-input` pill
    (opaque white in light) — a hard slab that sealed the aurora and
    clashed with the glass chrome. Make the active segment a glass
    pane instead: translucent + blur + sheen, so it still reads as
@@ -198,7 +198,7 @@ body::before {
    Scoped to the DEFAULT list variant on purpose — the `line`
    variant keeps its transparent-with-underline look untouched.
    Descendant of [data-variant="default"] list outranks the
-   Tailwind `data-[state=active]:bg-background` utility. */
+   Tailwind `data-[state=active]:bg-input` utility. */
 [data-slot="tabs-list"][data-variant="default"]
   [data-slot="tabs-trigger"][data-state="active"] {
   background: rgba(255, 255, 255, 0.6);
@@ -220,7 +220,7 @@ body::before {
 /* ── 6. Arc-style canvas (floating "screen" + integrated sidebar) ──
    Arc/Zen/Canva layout: the right-hand content floats as a rounded
    "screen" (workspace-shell.tsx gives it rounded corners + border +
-   bg-background + a small gutter), and the sidebar melts into the
+   bg-input + a small gutter), and the sidebar melts into the
    window background (its token is transparent, section 2).
 
    For the screen to read as RAISED, the window background sits one
@@ -232,7 +232,7 @@ body::before {
    Knob: these two colours vs --ht-background — widen the gap for more
    separation, narrow it for a subtler float. */
 body {
-  background-color: var(--ht-canvas-gutter);
+  background-color: var(--ht-base);
 }
 
 /* The screen itself: translucent + frosted so the window background and
@@ -242,7 +242,7 @@ body {
    this override (unlayered) wins while futuristic.css is loaded.
    Knob: the alphas — lower = more see-through, higher = more solid. */
 .canvas-screen {
-  background-color: var(--ht-canvas-screen);
+  background-color: var(--ht-background);
 }
 
 [data-theme="dark"]
@@ -253,37 +253,37 @@ body {
 }
 
 /* ── 7. Kanban card resting fill ────────────────────────────────
-   The resting (non-selected) card uses a palette token, --ht-card-rest:
+   The resting (non-selected) card uses a palette token, --ht-card-solid:
    #2C2C2B in dark (sampled from the running card), white in light.
    Solid, not translucent. Running cards use the SAME fill for their
    center (--glow-bg) so every non-selected card reads uniformly — only
    the running card's animated border marks it. Selected/highlighted
-   cards use bg-accent (and selected-running keeps its inline accent
+   cards use bg-hover (and selected-running keeps its inline accent
    tint), so they're untouched.
-   Knob: the --ht-card-rest values in the palette (section 2). */
-.kanban-card.bg-background:not(.card-running-glow) {
-  background-color: var(--ht-card-rest);
+   Knob: the --ht-card-solid values in the palette (section 2). */
+.kanban-card.bg-input:not(.card-running-glow) {
+  background-color: var(--ht-card-solid);
 }
 
 .kanban-card.card-running-glow {
-  --glow-bg: var(--ht-card-rest);
+  --glow-bg: var(--ht-card-solid);
 }
 
 /* ── 8. AI Hub material primitives (Linear-anchored) ───────────────
    Shared depth vocabulary for the AI Hub redesign. Depth comes from a
-   surface ladder (--ht-canvas-screen -> bg-card -> bg-card-hover ->
+   surface ladder (--ht-background -> bg-card -> bg-card-hover ->
    bg-popover) plus HAIRLINE INSET RINGS, not opaque borders or drop
    shadows. Real shadow is reserved for floating chrome (modals/popovers).
    The accent glow is reserved for the CONNECTED provider (the signature).
    Component agents apply these classes so no component hardcodes a hex. */
 
-/* Hairline = a 1px inset ring in the --ht-border colour, drawn as an
+/* Hairline = a 1px inset ring in the --ht-line colour, drawn as an
    `outline` (not box-shadow) so it composes with the glass sheen AND with
    Tailwind ring/shadow utilities on the same element. outline-offset pulls
    it inside; modern engines clip it to border-radius. Use on cards/rows
    instead of `border` for the Linear hairline look. */
 .ht-hairline {
-  outline: 1px solid var(--ht-border);
+  outline: 1px solid var(--ht-line);
   outline-offset: -1px;
 }
 
@@ -292,11 +292,11 @@ body {
    blur). Dark needs a darker, deeper ambient to float over the near-black
    canvas. The ambient rgba are effect values (the sanctioned effects layer,
    like the glass sheen + active-tab shadow above); the ring references the
-   --ht-border token. */
+   --ht-line token. */
 .ht-shadow-modal {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 0 0 1px var(--ht-border),
+    inset 0 0 0 1px var(--ht-line),
     0 4px 12px rgba(13, 13, 13, 0.08),
     0 16px 48px rgba(13, 13, 13, 0.16);
 }
@@ -305,7 +305,7 @@ body {
   .ht-shadow-modal:not(:where([data-theme="light"], [data-theme="light"] *)) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    inset 0 0 0 1px var(--ht-border),
+    inset 0 0 0 1px var(--ht-line),
     0 4px 12px rgba(0, 0, 0, 0.36),
     0 24px 64px rgba(0, 0, 0, 0.5);
 }

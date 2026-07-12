@@ -51,9 +51,9 @@ function Stepper({
                   "mt-3 h-px flex-1",
                   prevState === "done" || prevState === "active"
                     ? state === "pending"
-                      ? "border-t border-dashed border-border"
-                      : "bg-primary"
-                    : "bg-border",
+                      ? "border-t border-dashed border-line"
+                      : "bg-action"
+                    : "bg-line",
                 )}
               />
             )}
@@ -71,11 +71,11 @@ function Stepper({
               <div
                 className={cn(
                   "flex size-6 shrink-0 items-center justify-center rounded-full text-xs transition-colors",
-                  state === "done" && "bg-primary text-primary-foreground",
+                  state === "done" && "bg-action text-action-text",
                   state === "active" &&
-                    "bg-primary text-primary-foreground animate-pulse",
+                    "bg-action text-action-text animate-pulse",
                   state === "pending" &&
-                    "border-2 border-border bg-background text-muted-foreground",
+                    "border-2 border-line bg-input text-ink-muted",
                 )}
               >
                 {state === "done" ? <Check className="size-3.5" /> : null}
@@ -83,9 +83,9 @@ function Stepper({
               <span
                 className={cn(
                   "text-xs whitespace-nowrap",
-                  state === "active" && "font-medium text-foreground",
-                  state === "done" && "text-foreground",
-                  state === "pending" && "text-muted-foreground",
+                  state === "active" && "font-medium text-ink",
+                  state === "done" && "text-ink",
+                  state === "pending" && "text-ink-muted",
                 )}
               >
                 {step.label}

@@ -48,7 +48,7 @@ const ROW_TITLES = {
  * item surfaces its current state inline: skill / note / people counts as
  * bare-number badges, the model + integration ceilings as muted text, so a
  * manager reads it without opening the section. The selected item is styled
- * like the app sidebar nav (`bg-accent`, aria-current) with no hover-only
+ * like the app sidebar nav (`bg-hover`, aria-current) with no hover-only
  * affordance.
  */
 export function AgentAdminSidebar({
@@ -111,7 +111,7 @@ export function AgentAdminSidebar({
   return (
     <nav
       aria-label={t("agentAdmin.title")}
-      className="w-56 shrink-0 overflow-y-auto border-r border-border px-3 py-4"
+      className="w-56 shrink-0 overflow-y-auto border-r border-line px-3 py-4"
     >
       <div className="space-y-0.5">
         {rows.map((s) => {
@@ -128,26 +128,24 @@ export function AgentAdminSidebar({
               className={cn(
                 "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors",
                 active
-                  ? "bg-accent font-medium text-foreground"
-                  : "text-foreground hover:bg-accent",
+                  ? "bg-hover font-medium text-ink"
+                  : "text-ink hover:bg-hover",
               )}
             >
-              <Icon className="size-4 shrink-0 text-muted-foreground" />
+              <Icon className="size-4 shrink-0 text-ink-muted" />
               <span className="min-w-0 flex-1 truncate">
                 {t(ROW_TITLES[s])}
               </span>
               {count !== undefined && (
                 <Badge
                   variant="secondary"
-                  className="min-w-5 px-1.5 font-normal tabular-nums text-muted-foreground"
+                  className="min-w-5 px-1.5 font-normal tabular-nums text-ink-muted"
                 >
                   {count}
                 </Badge>
               )}
               {text && (
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {text}
-                </span>
+                <span className="shrink-0 text-xs text-ink-muted">{text}</span>
               )}
             </button>
           );
