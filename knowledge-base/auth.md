@@ -9,11 +9,11 @@ avoid repeated macOS Keychain prompts. Sign-in identifies the user in PostHog an
 mints the bearer the cloud gateway verifies.
 
 > **How we got here.** This platform replaced Supabase Auth in the client-auth
-> migration. The full contract, wave-by-wave as-built record, and the human
-> follow-ups (OAuth client provenance, Azure app registration, GCIP email/password
-> enablement) live in **`knowledge-base/auth-migration.md`** — read it for the
-> rationale behind every decision summarized here. `app/src/lib/supabase.ts` was
-> deleted; auth now lives in `app/src/lib/identity/` + `app/src/lib/auth.ts`.
+> migration. The migration record — what changed, the deliberate Supabase
+> exceptions, and the open human follow-ups (OAuth client provenance, Azure app
+> registration, GCIP email/password enablement) — lives in
+> **`knowledge-base/auth-migration.md`**. `app/src/lib/supabase.ts` was deleted;
+> auth now lives in `app/src/lib/identity/` + `app/src/lib/auth.ts`.
 >
 > **The website waitlist still uses Supabase** (`website/`, anon `POST
 > /rest/v1/waitlist`) — that is a pure data write with no auth session and is
@@ -298,7 +298,7 @@ OAuth buttons are prod-only there — HOU-642.)
 
 > The uid switched from the Supabase id to the Firebase uid — a fresh platform, so
 > historical Supabase-id joins break. Acceptable, intentional discontinuity
-> (`auth-migration.md` §6.7).
+> (`auth-migration.md`, "Intentional discontinuities").
 
 ## Config / secrets matrix
 
@@ -329,8 +329,8 @@ baked into the bundle at build time exactly as the Supabase anon key was.
 
 ## One-time GCP / Firebase setup (human)
 
-See `knowledge-base/auth-migration.md` §3 + §6 for the full checklist and open
-human tasks. In brief:
+See `knowledge-base/auth-migration.md` ("Open human / cross-repo follow-ups") for
+the full checklist and open human tasks. In brief:
 
 1. **Web/admin Google provider** — enable Google in the GCIP console; the web
    popup uses the GCIP handler redirect `https://gethouston.firebaseapp.com/__/auth/handler`.
