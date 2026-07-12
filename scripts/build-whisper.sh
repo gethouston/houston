@@ -45,15 +45,48 @@ OUT_DIR="$REPO_ROOT/target/whisper"
 # macOS deployment target — kept in sync with tauri.conf.json minimumSystemVersion.
 MACOS_DEPLOYMENT_TARGET="10.15"
 
-# Derive the Rust target triple for the current host (matches the suffix
-# tauri-cli appends to `externalBin` names).
-host_triple() {
-  local arch os
+# Rust-arch token ("aarch64"/"x86_64") of the current host, for the
+# same-OS/same-arch guard on Linux and Windows.
+#
+# On Windows, Git Bash / MSYS2 is an x86_64 build that runs under the Windows-on-
+# ARM x64 emulator on ARM64 runners, so `uname -m` reports "x86_64" even when the
+# CPU is ARM64 — which falsely tripped the native-arch guard on the
+# `windows-11-arm` runner (every other tool here — rustc, bun — detects aarch64
+# correctly). Resolve the REAL CPU arch from signals that survive the emulation,
+# in order of authority:
+#   1. RUNNER_ARCH — set by GitHub Actions to the runner's true arch (ARM64/X64),
+#      guaranteed present + correct in CI (where this guard misfired).
+#   2. PROCESSOR_ARCHITEW6432 — set by Windows only inside an emulated/WOW
+#      process, where it holds the native host arch (ARM64 for x64-on-ARM).
+#   3. PROCESSOR_ARCHITECTURE — the process-visible arch (AMD64 on a native x64
+#      host, or under emulation when #2 is absent).
+# Fall through to `uname -m` for non-Windows hosts and local shells that set none.
+host_arch() {
+  case "${RUNNER_ARCH:-}" in
+    ARM64 | arm64 | aarch64) echo "aarch64"; return ;;
+    X64 | x64 | AMD64 | amd64 | x86_64) echo "x86_64"; return ;;
+  esac
+  case "$(uname -s)" in
+    MINGW* | MSYS* | CYGWIN*)
+      case "${PROCESSOR_ARCHITEW6432:-${PROCESSOR_ARCHITECTURE:-}}" in
+        ARM64 | arm64 | aarch64) echo "aarch64"; return ;;
+        AMD64 | amd64 | x86_64) echo "x86_64"; return ;;
+      esac
+      ;;
+  esac
   case "$(uname -m)" in
-    arm64 | aarch64) arch="aarch64" ;;
-    x86_64 | amd64) arch="x86_64" ;;
+    arm64 | aarch64) echo "aarch64" ;;
+    x86_64 | amd64) echo "x86_64" ;;
     *) echo "ERROR: unsupported host arch $(uname -m)" >&2; exit 1 ;;
   esac
+}
+
+# Derive the Rust target triple for the current host (matches the suffix
+# tauri-cli appends to `externalBin` names). Reuses host_arch() so the Windows-on-
+# ARM detection fix applies to a no-arg local invocation too.
+host_triple() {
+  local arch os
+  arch="$(host_arch)"
   case "$(uname -s)" in
     Darwin) os="apple-darwin" ;;
     Linux) os="unknown-linux-gnu" ;;
@@ -61,16 +94,6 @@ host_triple() {
     *) echo "ERROR: unsupported host OS $(uname -s)" >&2; exit 1 ;;
   esac
   echo "${arch}-${os}"
-}
-
-# Rust-arch token ("aarch64"/"x86_64") of the current host, for the
-# same-OS/same-arch guard on Linux and Windows.
-host_arch() {
-  case "$(uname -m)" in
-    arm64 | aarch64) echo "aarch64" ;;
-    x86_64 | amd64) echo "x86_64" ;;
-    *) echo "ERROR: unsupported host arch $(uname -m)" >&2; exit 1 ;;
-  esac
 }
 
 TRIPLE="${1:-$(host_triple)}"
