@@ -255,6 +255,19 @@ The browser web client (`packages/web`) is served from **Firebase Hosting** in G
 
 **Required GitHub secrets** are all pre-existing (reused from the desktop jobs): `HOSTED_ENGINE_URL` (must equal the managed gateway URL), `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `POSTHOG_KEY`, `POSTHOG_HOST`, `SENTRY_DSN`, `SENTRY_AUTH_TOKEN`. No NEW secrets. The one prerequisite is the GCP-side WIF binding for `github-deploy-web@` (Firebase Hosting Admin) — infra, not a repo secret.
 
+## Marketing site hosting (Firebase Hosting; Cloudflare dual-deploy during the DNS flip)
+
+Distinct from the web CLIENT above: this is the **marketing site** (`website/`, Eleventy → gethouston.ai). It is **mid-cutover from Cloudflare Pages to Firebase Hosting** — both receive every deploy until the DNS flip, and the live apex still resolves to Cloudflare.
+
+**Deploy** — `.github/workflows/website-deploy.yml`, on every push to `main` under `website/**` (or manual `workflow_dispatch`):
+1. Build the Eleventy site (`npx @11ty/eleventy`, output `_site`). The waitlist `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `WAITLIST_SHEET_ENDPOINT` are injected at build — the **waitlist deliberately stays on Supabase** (`knowledge-base/auth.md`, `auth-migration.md`).
+2. Deploy to **Firebase Hosting** site **`gethouston-site`** (project `gethouston`) → https://gethouston-site.web.app. Auth is keyless **Workload Identity Federation** (SA `github-deploy-web@gethouston.iam.gserviceaccount.com`, provider `…/workloadIdentityPools/github/providers/houston`) — the same WIF path the web-client and engine-pod-image workflows use; no `FIREBASE_TOKEN`.
+3. **Dual-deploy** to **Cloudflare Pages** (project `houston-site`, `wrangler pages deploy _site`, secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`). This step is **temporary** and is explicitly marked to be **deleted once the DNS flip lands**.
+
+**DNS state (in progress).** The apex / www records for `gethouston.ai` still point at **Cloudflare Pages**; Firebase serves only `gethouston-site.web.app` so far. Human cutover: verify the Firebase deploy on `gethouston-site.web.app` (redirects, headers, URL shape) → add the custom domain in Firebase Hosting → flip apex/www DNS to Firebase → retire the Cloudflare Pages project AND delete the dual-deploy step.
+
+**Config** is `website/firebase.json` + `website/.firebaserc` (project `gethouston`, single site `gethouston-site`, public `_site`, `cleanUrls`). It is the **source of truth** for redirects (`/pricing/` → `/#pricing`) and headers (HSTS, `X-Frame-Options: SAMEORIGIN`, `nosniff`, `Referrer-Policy`, `X-Robots-Tag: noindex` on `/early-access|auth|slack`, `max-age=60` HTML/CSS cache). The legacy Cloudflare `website/src/_headers` + `website/src/_redirects` still exist but are **ignored on Firebase** (`firebase.json` `ignore` list); they stay in the repo, harmless, until the Cloudflare retirement.
+
 ## macOS Universal (arm64 + Intel)
 
 Houston ships ONE DMG that runs natively on Apple Silicon AND Intel. Same app, same download, same update channel.
