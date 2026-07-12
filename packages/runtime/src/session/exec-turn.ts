@@ -8,6 +8,10 @@ import type {
   WireEvent,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import {
+  learnCustomContextWindow,
+  OPENAI_COMPATIBLE,
+} from "../ai/openai-compatible";
 import { classifyProviderError } from "../ai/provider-error";
 import { activeEffort, resolveModel } from "../ai/providers";
 import { config } from "../config";
@@ -397,6 +401,16 @@ export async function execTurn(
       };
       publish(id, { type: "provider_error", data: providerError, turnId });
     }
+    // A context-overflow rejection names the model's REAL window (llama.cpp's
+    // `n_ctx`). For a custom endpoint — whose window Houston can only assume —
+    // persist it, so the next turn's autocompact divides by the truth and the
+    // conversation compacts instead of overflowing again.
+    if (
+      providerError?.kind === "context_overflow" &&
+      model.provider === OPENAI_COMPATIBLE &&
+      providerError.context_window_tokens
+    )
+      learnCustomContextWindow(providerError.context_window_tokens);
     // Diff what this turn created/modified. Skipped on a failed turn — a
     // provider error means the model never finished, so attributing partial
     // writes would be noise (mirrors the Rust engine's error gate).
