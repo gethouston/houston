@@ -37,7 +37,7 @@ export function PersonalAssistantOnboarding({
   const setTutorialActive = useUIStore((s) => s.setTutorialActive);
   const setUiTourActive = useUIStore((s) => s.setUiTourActive);
   const addToast = useUIStore((s) => s.addToast);
-  const [step, setStep] = useState<OnboardingStep>("intro");
+  const [step, setStep] = useState<OnboardingStep>("connect");
   const [provider, setProvider] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
   // Background assistant provisioning failed (create() threw). Flips the stuck
@@ -70,7 +70,7 @@ export function PersonalAssistantOnboarding({
 
   // Capability-aware step math: on a no-integrations deployment the email steps
   // never render, so they must vanish from BOTH the "Step N of M" counter and
-  // the intro/celebration plan (else the sole connect step lies "Step 1 of 3").
+  // the celebration plan (else the sole connect step lies "Step 1 of 3").
   const emailSteps = integrationsAvailable(capabilities);
   const visibleMilestones: Milestone[] = emailSteps
     ? ["ai", "email", "send"]
@@ -234,21 +234,9 @@ export function PersonalAssistantOnboarding({
   // sign-in and the workspace-loading splash.
   return (
     <SpaceScreen>
-      {step === "intro" && (
-        <SetupProgress
-          title={t("setup:tutorial.missions.intro.title")}
-          message={t("setup:tutorial.missions.intro.body")}
-          done={[]}
-          items={visibleMilestones}
-          ctaLabel={t("setup:tutorial.missions.intro.cta")}
-          onContinue={() => setStep("connect")}
-        />
-      )}
-
       {step === "connect" && (
         <ConnectAiMission
           eyebrow={stepEyebrow("connect")}
-          onBack={() => setStep("intro")}
           onConnected={(p, m) => {
             // Once-per-install onboarding funnel step (production-infra.md).
             // Ref-guarded so a Back → reconnect can't double-fire it.

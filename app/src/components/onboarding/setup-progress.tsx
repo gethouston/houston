@@ -42,7 +42,7 @@ interface SetupProgressProps {
 }
 
 /**
- * The single screen behind the intro AND every milestone celebration. It shows
+ * The single screen behind every milestone celebration. It shows
  * the Houston mark, a title + message, and the flat milestone checklist — items
  * the user has finished animate to a check. When a milestone just completed,
  * confetti rains. One component so the journey reads as continuous progress;
@@ -65,9 +65,9 @@ export function SetupProgress({
 
   const doneSet = new Set(done);
   const label: Record<Milestone, string> = {
-    ai: t("tutorial.missions.intro.steps.ai"),
-    email: t("tutorial.missions.intro.steps.email"),
-    send: t("tutorial.missions.intro.steps.send"),
+    ai: t("tutorial.milestones.ai"),
+    email: t("tutorial.milestones.email"),
+    send: t("tutorial.milestones.send"),
   };
 
   return (

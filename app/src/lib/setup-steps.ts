@@ -11,8 +11,8 @@
  * reads "Step 1 of 3" and promises two steps that never come.
  *
  * The language + agreement gates are pre-setup and carry NO step counter, and the
- * framing/celebration screens (intro, the success screens, the finished payoff)
- * sit outside this list too.
+ * framing/celebration screens (the success screens, the finished payoff) sit
+ * outside this list too.
  */
 const FLOW_STEPS: readonly { screens: readonly string[]; email: boolean }[] = [
   { screens: ["connect"], email: false }, // Step 1 — Connect your AI
