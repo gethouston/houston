@@ -98,6 +98,8 @@ import type {
   StoreListing,
   SummarizeOptions,
   SummarizeResult,
+  TriggerStatusItem,
+  TriggerType,
   TunnelCredentials,
   TunnelStatus,
   UpdateAgent,
@@ -1211,6 +1213,49 @@ export class HoustonClient {
       `/integrations/custom/definitions/${this.seg(slug)}/credential`,
       { values },
     );
+  }
+
+  // ---------- triggers (C9 event-driven routines) ----------
+  //
+  // The catalog the routine editor's trigger picker reads, plus the per-routine
+  // provisioning status it renders as a badge. Gated on `caps.triggers`; served
+  // by the TS host (self-host) and by the cloud edge (managed). Off on desktop.
+
+  /**
+   * The trigger catalog for one toolkit (C9) — the events a routine can wake on.
+   * Read-only GET, so it replays safely on a transient transport blip.
+   */
+  async triggerTypes(toolkit: string): Promise<TriggerType[]> {
+    return (
+      await this.request<{ items: TriggerType[] }>(
+        "GET",
+        "/integrations/composio/trigger-types",
+        undefined,
+        { toolkit },
+      )
+    ).items;
+  }
+  /**
+   * One agent's per-routine trigger status (C9), or `null` when the host does
+   * not serve triggers (404) — a deployment without event-driven routines (e.g.
+   * desktop). Callers treat `null` as "triggers unsupported here" and hide the
+   * badge; every other error still throws. Mirrors how `agentIntegrationGrants`
+   * degrades on a 404.
+   */
+  async agentTriggerStatus(
+    agentId: string,
+  ): Promise<TriggerStatusItem[] | null> {
+    try {
+      return (
+        await this.request<{ items: TriggerStatusItem[] }>(
+          "GET",
+          `/agents/${this.seg(agentId)}/trigger-status`,
+        )
+      ).items;
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
   }
 
   // ---------- org / roles (multiplayer) — v3 host only ----------

@@ -12,12 +12,12 @@ import {
 import type { useRoutineChatSetup } from "./use-routine-chat-setup";
 
 /**
- * The Routines tab's view state machine: which surface is showing (grid, a
- * routine's chat, or a still-creating draft chat) and the local "Manually"
- * editor flag, plus the effects that move between them. Extracted from
- * `routines-tab.tsx` so both files stay under the size cap. Pure transition
- * logic lives in `routines-tab-model.ts` (node:test-safe); this hook owns only
- * the React state, effects, and the navigation handlers wired to them.
+ * The view state machine shared by the Routines and Reactions tabs (both render
+ * through `routine-list-tab.tsx`): which surface is showing (grid, an item's
+ * chat, or a still-creating draft chat) and the local "Manually" editor flag,
+ * plus the effects that move between them. Pure transition logic lives in
+ * `routines-tab-model.ts` (node:test-safe); this hook owns only the React state,
+ * effects, and the navigation handlers wired to them.
  */
 export function useRoutinesTabView(
   agent: Agent,

@@ -52,6 +52,8 @@ import { handlePortableAccount } from "./routes/portable";
 import { BodyTooLargeError } from "./routes/read-body";
 import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSkillsDirectory } from "./routes/skills-directory";
+import { handleTriggerEvents } from "./routes/trigger-events";
+import type { TriggerEventLock } from "./triggers/fire";
 import type { Vfs } from "./vfs";
 
 export type { RuntimeProxy } from "./channel/proxy";
@@ -160,6 +162,13 @@ export interface ControlPlaneDeps {
    * scoped to the per-agent surface only).
    */
   agentRequestCount?: () => number;
+  /**
+   * Cross-replica dedup lock for the pod trigger-events route (C9): the Go
+   * control plane delivers external events to a managed pod; the lock stops a
+   * redelivery double-firing. Absent → that route 503s. Present on every host
+   * with a turn bus.
+   */
+  triggerLock?: TriggerEventLock;
   corsOrigin?: string;
 }
 
@@ -292,6 +301,11 @@ async function handle(
   // runs the OAuth so the user can connect their AI before any agent exists.
   if (await handleSetupRuntime(deps, userId, method, path, url, req, res))
     return;
+
+  // Pod trigger delivery (C9) — matched before the generic per-agent dispatch
+  // (the runtime has no trigger routes). The Go control plane POSTs external
+  // events here for a managed pod; the pod fires the matching routine.
+  if (await handleTriggerEvents(deps, userId, method, path, req, res)) return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;
 

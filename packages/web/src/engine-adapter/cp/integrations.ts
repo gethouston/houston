@@ -3,6 +3,7 @@ import type {
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
+  TriggerType,
 } from "../../../../../ui/engine-client/src/types";
 import { HoustonEngineError } from "../client/errors";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
@@ -47,6 +48,23 @@ export async function integrationConnections(
 ): Promise<IntegrationConnection[]> {
   const res = await cpFetch(cfg, `${integrationPath(provider)}/connections`);
   return ((await res.json()) as { items: IntegrationConnection[] }).items;
+}
+
+// ---- triggers (C9 event-driven routines) ----
+// The trigger catalog the routine editor's picker reads — the events a routine
+// can wake on for one toolkit. Read-only, served by the cloud edge; the
+// per-routine provisioning status lives beside the per-agent grants read
+// (`agentTriggerStatus` in cp/agent-teams.ts).
+
+export async function triggerTypes(
+  cfg: ControlPlaneConfig,
+  toolkit: string,
+): Promise<TriggerType[]> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/integrations/composio/trigger-types?toolkit=${encodeURIComponent(toolkit)}`,
+  );
+  return ((await res.json()) as { items: TriggerType[] }).items;
 }
 
 // ---- custom integrations (HOU-550): user-defined API / MCP servers ----

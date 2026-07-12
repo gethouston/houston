@@ -15,6 +15,7 @@ import {
   applyRoutineUpdate,
   createRoutine,
   loadRoutines,
+  normalizeRoutines,
   saveRoutines,
 } from "./routines";
 import type { TextStore } from "./store";
@@ -257,6 +258,148 @@ test("routines: schema defaults applied on create and on read of sparse entries"
   expect(items[0]?.enabled).toBe(true);
   expect(items[0]?.suppress_when_silent).toBe(false);
   expect(items[0]?.chat_mode).toBe("shared");
+});
+
+const TRIGGER = {
+  toolkit: "gmail",
+  trigger_slug: "GMAIL_NEW_GMAIL_MESSAGE",
+  trigger_config: { labelIds: ["INBOX"] },
+};
+
+test("normalizeRoutines: a trigger-only routine (no schedule) is kept — forward-compat", () => {
+  const { items, diagnostics } = normalizeRoutines(
+    [{ id: "t1", name: "Inbox", prompt: "p", trigger: TRIGGER }],
+    "k",
+  );
+  expect(diagnostics).toEqual([]);
+  expect(items).toHaveLength(1);
+  expect(items[0]?.id).toBe("t1");
+  expect("schedule" in (items[0] ?? {})).toBe(false);
+  expect(items[0]?.trigger).toEqual(TRIGGER);
+  // Schema defaults still fill in.
+  expect(items[0]?.enabled).toBe(true);
+  expect(items[0]?.chat_mode).toBe("shared");
+});
+
+test("normalizeRoutines: a legacy schedule-only routine is untouched", () => {
+  const { items, diagnostics } = normalizeRoutines(
+    [{ id: "s1", name: "Daily", prompt: "p", schedule: "0 9 * * *" }],
+    "k",
+  );
+  expect(diagnostics).toEqual([]);
+  expect(items[0]?.schedule).toBe("0 9 * * *");
+  expect("trigger" in (items[0] ?? {})).toBe(false);
+});
+
+test("normalizeRoutines: entries with BOTH schedule and trigger are dropped + diagnosed", () => {
+  const { items, diagnostics } = normalizeRoutines(
+    [
+      {
+        id: "both",
+        name: "Ambiguous",
+        prompt: "p",
+        schedule: "0 9 * * *",
+        trigger: TRIGGER,
+      },
+    ],
+    "k",
+  );
+  expect(items).toEqual([]);
+  expect(diagnostics).toHaveLength(1);
+  expect(diagnostics[0]?.message).toContain("exactly one of schedule/trigger");
+});
+
+test("normalizeRoutines: entries with NEITHER schedule nor trigger are dropped + diagnosed", () => {
+  const { items, diagnostics } = normalizeRoutines(
+    [{ id: "none", name: "Orphan", prompt: "p" }],
+    "k",
+  );
+  expect(items).toEqual([]);
+  expect(diagnostics).toHaveLength(1);
+  expect(diagnostics[0]?.message).toContain("exactly one of schedule/trigger");
+});
+
+test("normalizeRoutines: a malformed trigger object is dropped + diagnosed", () => {
+  const { items, diagnostics } = normalizeRoutines(
+    [
+      // missing trigger_slug
+      { id: "m1", name: "A", prompt: "p", trigger: { toolkit: "gmail" } },
+      // trigger_config not an object
+      {
+        id: "m2",
+        name: "B",
+        prompt: "p",
+        trigger: {
+          toolkit: "gmail",
+          trigger_slug: "X",
+          trigger_config: "nope",
+        },
+      },
+    ],
+    "k",
+  );
+  expect(items).toEqual([]);
+  expect(diagnostics).toHaveLength(2);
+  expect(diagnostics[0]?.message).toContain("malformed trigger");
+  expect(diagnostics[1]?.message).toContain("malformed trigger");
+});
+
+test("trigger routine round-trips through save → load preserving the trigger field", async () => {
+  const store = memStore();
+  const { items } = normalizeRoutines(
+    [
+      {
+        id: "t1",
+        name: "Inbox",
+        prompt: "p",
+        trigger: { ...TRIGGER, connected_account_id: "acct-9" },
+        enabled: true,
+        suppress_when_silent: false,
+        chat_mode: "shared",
+        integrations: [],
+        created_at: NOW,
+        updated_at: NOW,
+      },
+    ],
+    "k",
+  );
+  await saveRoutines(store, ROOT, items);
+  const reloaded = await loadRoutines(store, ROOT);
+  expect(reloaded.diagnostics).toEqual([]);
+  expect(reloaded.items[0]?.trigger).toEqual({
+    ...TRIGGER,
+    connected_account_id: "acct-9",
+  });
+  expect("schedule" in (reloaded.items[0] ?? {})).toBe(false);
+});
+
+test("createRoutine materializes a trigger routine with no schedule", () => {
+  const r = createRoutine(
+    { name: "Inbox", prompt: "p", trigger: TRIGGER },
+    "t1",
+    NOW,
+  );
+  expect(r.trigger).toEqual(TRIGGER);
+  expect("schedule" in r).toBe(false);
+});
+
+test("applyRoutineUpdate: switching to a trigger clears the schedule (and vice versa)", () => {
+  const cron = createRoutine(
+    { name: "N", prompt: "p", schedule: "0 9 * * *" },
+    "r",
+    NOW,
+  );
+  const toTrigger = applyRoutineUpdate(cron, { trigger: TRIGGER }, NOW);
+  expect(toTrigger.trigger).toEqual(TRIGGER);
+  expect("schedule" in toTrigger).toBe(false);
+
+  const backToCron = applyRoutineUpdate(
+    toTrigger,
+    { schedule: "*/5 * * * *" },
+    NOW,
+  );
+  expect(backToCron.schedule).toBe("*/5 * * * *");
+  expect("trigger" in backToCron).toBe(false);
 });
 
 test("routine setup chat link: setup_activity_id round-trips create and update (HOU-725)", () => {

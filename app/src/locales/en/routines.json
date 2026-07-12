@@ -145,6 +145,74 @@
     "soon": "soon",
     "at": "{day} at {time}"
   },
+  "trigger": {
+    "wakeEvent": "When something happens",
+    "chooseApp": "Which app should wake it?",
+    "chooseEvent": "What should wake it?",
+    "changeApp": "Change app",
+    "noApps": "Connect an app first to have a routine wake on events.",
+    "loadingEvents": "Loading events…",
+    "noEvents": "This app has no events to wake on yet.",
+    "pollHint": "Checks every few minutes",
+    "accountLabel": "Account",
+    "detailsTitle": "Details",
+    "rawJsonLabel": "Advanced settings",
+    "rawJsonHint": "Enter this event's settings as JSON.",
+    "rawJsonInvalid": "This needs to be valid JSON.",
+    "status": {
+      "active": "Active",
+      "pending": "Setting up…",
+      "paused_disconnected": "Reconnect needed",
+      "paused_revoked": "Access turned off",
+      "error": "Needs attention"
+    },
+    "reconnect": "Reconnect",
+    "statusDisconnectedHint": "The connected account was disconnected.",
+    "statusRevokedHint": "This app was turned off for this agent.",
+    "rowSummary": "Wakes on an event in {{app}}",
+    "loadFailed": "Couldn't load event triggers"
+  },
+  "reactions": {
+    "grid": {
+      "loading": "Loading…",
+      "emptyTitle": "React the moment it happens",
+      "emptyDescription": "Your agent reacts the moment something happens in your connected apps, like a new email, a message, or a code change.",
+      "emptyStepsTitle": "How it works",
+      "emptySteps": [
+        {
+          "title": "Pick what wakes it",
+          "description": "Choose an app and the event to react to, like a new email or a new message."
+        },
+        {
+          "title": "Say what to do",
+          "description": "Describe the task in plain language, like you would to a person."
+        },
+        {
+          "title": "It runs on its own",
+          "description": "No need to watch for it, your agent reacts the moment it happens."
+        }
+      ],
+      "newRoutine": "New reaction",
+      "newRoutineWithAi": "With AI",
+      "newRoutineManually": "Manually",
+      "createRoutine": "Create reaction",
+      "draftTitle": "Reaction being created in chat",
+      "draftResume": "Resume",
+      "draftDiscard": "Discard",
+      "descriptionShort": "Automations that fire the moment something happens in one of your connected apps.",
+      "timezoneLabel": "Timezone",
+      "timezoneHint": "All your routines run in this timezone.",
+      "timezoneSearchPlaceholder": "Search timezones…",
+      "timezoneNoResults": "No timezones found"
+    },
+    "setupChat": {
+      "missionTitle": "Set up a new reaction"
+    },
+    "chat": {
+      "newTitle": "New reaction",
+      "itemLabel": "Reaction: {{name}}"
+    }
+  },
   "toasts": {
     "timezoneSet": "Timezone set to {{zone}}",
     "timezoneError": "Couldn't update the timezone",

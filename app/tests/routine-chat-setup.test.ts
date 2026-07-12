@@ -7,15 +7,24 @@ import {
 } from "../src/lib/auto-continue-message.ts";
 import { selectActive, selectArchived } from "../src/lib/mission-selection.ts";
 import {
+  encodeReactionModifyMessage,
+  encodeReactionSetupMessage,
+  reactionModifyPrompt,
+  reactionSetupPrompt,
+} from "../src/lib/reaction-chat-prompts.ts";
+import {
   encodeRoutineModifyMessage,
   encodeRoutineSetupMessage,
+  routineModifyPrompt,
+  routineSetupPrompt,
+} from "../src/lib/routine-chat-prompts.ts";
+import {
   findDraftSetupActivities,
   findRoutineChatActivity,
   findRoutineChatHeal,
   isRoutineSetupMode,
+  REACTION_SETUP_AGENT_MODE,
   ROUTINE_SETUP_AGENT_MODE,
-  routineModifyPrompt,
-  routineSetupPrompt,
 } from "../src/lib/routine-chat-setup.ts";
 
 // The "Create it in chat" kickoff is Houston-sent, not user-typed: it must
@@ -66,6 +75,7 @@ describe("routine chat setup message", () => {
     const normal = { id: "n1", status: "needs_you", agent: "researcher" };
     const archivedNormal = { id: "n2", status: "archived" };
     ok(isRoutineSetupMode(ROUTINE_SETUP_AGENT_MODE));
+    ok(isRoutineSetupMode(REACTION_SETUP_AGENT_MODE));
     ok(!isRoutineSetupMode("researcher"));
     ok(!isRoutineSetupMode(null));
     // Active board: only the normal mission survives.
@@ -194,6 +204,7 @@ describe("routine chat setup message", () => {
       findDraftSetupActivities(
         [draftA, claimedForward, claimedReverse, archived, normal, draftB],
         routines,
+        ROUTINE_SETUP_AGENT_MODE,
       ),
       [draftA, draftB],
     );
@@ -215,18 +226,50 @@ describe("routine chat setup message", () => {
           { id: "c", agent: "researcher", status: "running" },
         ],
         routines,
+        ROUTINE_SETUP_AGENT_MODE,
       ),
       [],
     );
   });
 
+  it("scopes drafts to the requested kind: a reaction draft never leaks into Routines", () => {
+    // Both kinds share the one activities list; the mode filter is what keeps a
+    // routine draft out of the Reactions tab and vice versa.
+    const routineDraft = {
+      id: "d1",
+      agent: ROUTINE_SETUP_AGENT_MODE,
+      status: "running",
+    };
+    const reactionDraft = {
+      id: "d2",
+      agent: REACTION_SETUP_AGENT_MODE,
+      status: "running",
+    };
+    const all = [routineDraft, reactionDraft];
+    deepStrictEqual(
+      findDraftSetupActivities(all, [], ROUTINE_SETUP_AGENT_MODE),
+      [routineDraft],
+    );
+    deepStrictEqual(
+      findDraftSetupActivities(all, [], REACTION_SETUP_AGENT_MODE),
+      [reactionDraft],
+    );
+  });
+
   it("returns [] for empty or undefined inputs", () => {
-    deepStrictEqual(findDraftSetupActivities([], []), []);
-    deepStrictEqual(findDraftSetupActivities(undefined, undefined), []);
+    deepStrictEqual(
+      findDraftSetupActivities([], [], ROUTINE_SETUP_AGENT_MODE),
+      [],
+    );
+    deepStrictEqual(
+      findDraftSetupActivities(undefined, undefined, ROUTINE_SETUP_AGENT_MODE),
+      [],
+    );
     deepStrictEqual(
       findDraftSetupActivities(
         [{ id: "d1", agent: ROUTINE_SETUP_AGENT_MODE, status: "running" }],
         undefined,
+        ROUTINE_SETUP_AGENT_MODE,
       ),
       [{ id: "d1", agent: ROUTINE_SETUP_AGENT_MODE, status: "running" }],
     );
@@ -313,6 +356,60 @@ describe("routine chat setup message", () => {
       "approval",
     ]) {
       ok(prompt.includes(needle), `prompt must mention: ${needle}`);
+    }
+  });
+});
+
+describe("reaction (event-driven) chat setup", () => {
+  it("rides the auto-continue marker and carries the reaction kickoff body", () => {
+    ok(isAutoContinueMessage(encodeReactionSetupMessage("act-9", null)));
+    ok(
+      encodeReactionSetupMessage("act-9", null).endsWith(
+        reactionSetupPrompt("act-9", null),
+      ),
+    );
+    const reaction = { id: "x1", name: "Inbox watcher" };
+    ok(
+      encodeReactionModifyMessage(reaction, null).endsWith(
+        reactionModifyPrompt(reaction, null),
+      ),
+    );
+  });
+
+  it("steers the agent to an EVENT trigger, never a schedule", () => {
+    const prompt = reactionSetupPrompt("act-9", [
+      { id: "anthropic", name: "Claude" },
+    ]);
+    for (const needle of [
+      "New reaction",
+      "wakes on an EVENT",
+      "NOT on a clock",
+      "must NOT have a schedule",
+      "connected app",
+      "give it NO schedule",
+      '"setup_activity_id" field to exactly "act-9"',
+      "Never invent provider or model names",
+    ]) {
+      ok(prompt.includes(needle), `reaction prompt must mention: ${needle}`);
+    }
+  });
+
+  it("modify kickoff keeps the reaction event-driven and pins its id", () => {
+    const prompt = reactionModifyPrompt(
+      { id: "x-3", name: "Inbox watcher" },
+      null,
+    );
+    for (const needle of [
+      'reaction "Inbox watcher"',
+      "exactly one short, friendly line",
+      'routine whose id is "x-3"',
+      "never swap it for a schedule",
+      "Never create a second",
+    ]) {
+      ok(
+        prompt.includes(needle),
+        `reaction modify prompt must mention: ${needle}`,
+      );
     }
   });
 });

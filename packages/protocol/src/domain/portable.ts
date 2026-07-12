@@ -19,7 +19,14 @@ export interface PortableManifest {
 export interface PortableInventory {
   hasClaudeMd: boolean;
   skills: { slug: string; description: string }[];
-  routines: { id: string; name: string; schedule: string }[];
+  routines: {
+    id: string;
+    name: string;
+    /** Cron wake; absent on trigger routines (exactly one of schedule/trigger). */
+    schedule?: string;
+    /** Event wake; absent on cron routines. */
+    trigger?: { toolkit: string; trigger_slug: string };
+  }[];
   learnings: { id: string; text: string }[];
 }
 

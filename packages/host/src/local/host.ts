@@ -1,6 +1,7 @@
 import { existsSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { basename, dirname, join } from "node:path";
+import type { Capabilities } from "@houston/protocol";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
@@ -269,6 +270,13 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     dirname(opts.credentialsPath),
     "integrations.json",
   );
+  // The DIRECT Composio adapter (self-host / dev with an own key). Only when NOT
+  // in gateway mode (gatewayUrl wins), where the desktop forwards to Houston's
+  // cloud host with the user's Supabase session instead.
+  const directProvider =
+    opts.integrations?.composioApiKey && !opts.integrations?.gatewayUrl
+      ? new ComposioProvider({ apiKey: opts.integrations.composioApiKey })
+      : undefined;
   const composioProvider = opts.integrations?.gatewayUrl
     ? new RemoteIntegrationProvider({
         id: "composio",
@@ -278,9 +286,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         // the creator; the desktop leaves this undefined.
         podToken: opts.integrations.podToken,
       })
-    : opts.integrations?.composioApiKey
-      ? new ComposioProvider({ apiKey: opts.integrations.composioApiKey })
-      : null;
+    : (directProvider ?? null);
 
   // Custom integrations (HOU-550): user-added API/MCP sources compiled to
   // agent tools by the embedded executor engine. Key-free and session-free —
@@ -355,6 +361,13 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       })
     : undefined;
 
+  // C9 event-driven routines are served ONLY where the Go cloud gateway fronts
+  // the deployment (managed cloud): the Go control plane owns trigger
+  // reconciliation and the ingress, and the gateway's edge advertises the
+  // `triggers` capability. This TS host carries no self-host trigger backend —
+  // the pod's only trigger surface is the delivery route (trigger-events), wired
+  // below via `triggerLock`. Self-host and desktop simply don't get triggers.
+
   // The installed agent-config library. FsVfs keys must be non-empty, so root
   // the vfs at the library's PARENT and address it by its basename — this vfs
   // instance is only ever handed to the agent-configs route, which stays under
@@ -366,6 +379,15 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       }
     : undefined;
 
+  const capabilities: Capabilities = {
+    ...(opts.capabilities ?? LOCAL_CAPABILITIES),
+    // Served capabilities advertise the integrations actually wired, not the
+    // profile's nominal list — an unconfigured deployment says [] honestly.
+    integrations: registry.ids(),
+    // `triggers` is never advertised here: this host has no trigger backend. On
+    // managed cloud the Go edge advertises the capability; a pod/self-host/desktop
+    // stays byte-identical to the nominal profile (absent = off, protocol #core).
+  };
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
@@ -375,16 +397,15 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     paths,
     events,
     channels: { local: channel },
-    // Served capabilities advertise the integrations actually wired, not the
-    // profile's nominal list — an unconfigured deployment says [] honestly.
-    capabilities: {
-      ...(opts.capabilities ?? LOCAL_CAPABILITIES),
-      integrations: registry.ids(),
-    },
+    capabilities,
     chatHistoryMigrated,
     integrations,
     integrationGrants,
     customIntegrations,
+    // Every local host has a turn bus, so the internal pod trigger-events route is
+    // always available — on managed cloud the Go control plane POSTs delivered
+    // events to it. The lock dedupes redeliveries.
+    triggerLock: bus,
     agentConfigs,
     // Managed pods record the gateway-minted acting identity as a routine's
     // `created_by` (C2 — the sub the gateway re-authorizes at fire time);

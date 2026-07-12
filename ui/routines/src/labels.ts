@@ -180,6 +180,49 @@ export interface RoutineRowLabels {
   cancel: string;
 }
 
+/** Human copy for each live trigger status (C9). Never technical. */
+export interface TriggerStatusLabels {
+  active: string;
+  pending: string;
+  paused_disconnected: string;
+  paused_revoked: string;
+  error: string;
+}
+
+/**
+ * Everything the event-trigger surface says: the wake-mechanism choice, the app
+ * + event picker, the generated config form's chrome (incl. the JSON fallback),
+ * and the status badge. All human, never "webhook"/"schema"/"instance".
+ */
+export interface TriggerLabels {
+  /** Generic "wakes on an event" fallback, shown when a reaction routine has no
+   *  humanized event summary yet. */
+  wakeEvent: string;
+  /** App + event picker. */
+  chooseApp: string;
+  chooseEvent: string;
+  changeApp: string;
+  /** Shown when the agent has no connected apps to build a trigger on. */
+  noApps: string;
+  loadingEvents: string;
+  noEvents: string;
+  /** Subtle latency hint under a poll-type event ("checks every few minutes"). */
+  pollHint: string;
+  /** Account select label, shown only when a toolkit has more than one account. */
+  accountLabel: string;
+  /** Generated config form. */
+  detailsTitle: string;
+  /** Fallback: a labeled JSON textarea when the schema is not modelable. */
+  rawJsonLabel: string;
+  rawJsonHint: string;
+  rawJsonInvalid: string;
+  /** Status badge + its one-click recovery. */
+  status: TriggerStatusLabels;
+  reconnect: string;
+  statusDisconnectedHint: string;
+  statusRevokedHint: string;
+}
+
 // English default values, co-located in a sibling file to keep this one small.
 export {
   DEFAULT_GRID_LABELS,
@@ -187,4 +230,5 @@ export {
   DEFAULT_ROW_LABELS,
   DEFAULT_SCHEDULE_LABELS,
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
+  DEFAULT_TRIGGER_LABELS,
 } from "./labels-default.ts";

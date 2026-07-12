@@ -5,7 +5,7 @@
  */
 
 export interface CallOpts {
-  method?: "GET" | "POST" | "DELETE";
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
   query?: Record<string, string | undefined>;
   body?: unknown;
   /** Treat these statuses as "no" rather than an error (e.g. 404 → null). */

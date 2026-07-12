@@ -53,9 +53,13 @@ export function RoutineRowMeta({
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
   locale = "en-US",
 }: RoutineRowMetaProps) {
-  const next = routine.enabled
-    ? nextFire(routine.schedule, accountTimezone, now)
-    : null;
+  // Event-driven routines have no cron "next fire" — the meta column shows only
+  // the last-run recency (and the waiting note) for them.
+  const isTrigger = !!routine.trigger;
+  const next =
+    routine.enabled && routine.schedule
+      ? nextFire(routine.schedule, accountTimezone, now)
+      : null;
   const nextDescr = next
     ? describeNextFire(next, accountTimezone, now, nextFireLabels, locale)
     : null;
@@ -72,7 +76,7 @@ export function RoutineRowMeta({
             {nextDescr.absolute}
           </p>
         </>
-      ) : routine.enabled ? (
+      ) : isTrigger ? null : routine.enabled ? (
         <p className="text-xs text-muted-foreground">{labels.noNextRun}</p>
       ) : (
         <p className="text-xs text-muted-foreground">{labels.paused}</p>

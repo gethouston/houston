@@ -16,11 +16,19 @@ import type {
   RoutineRowLabels,
   ScheduleLabels,
   ScheduleSummaryLabels,
+  TriggerLabels,
 } from "./labels";
 import { DEFAULT_GRID_LABELS, type RoutinesGridLabels } from "./labels";
 import { RoutinesGridEmpty } from "./routines-grid-empty";
 import { RoutinesGridList } from "./routines-grid-list";
-import type { Routine, RoutineRun } from "./types";
+import type {
+  RenderTriggerEditor,
+  Routine,
+  RoutineEditPatch,
+  RoutineRun,
+  RoutineWakeMode,
+  TriggerStatusItem,
+} from "./types";
 
 /** Minimal shape for a "routine in construction" chat — ui/ stays app-agnostic. */
 export interface RoutineDraft {
@@ -30,11 +38,7 @@ export interface RoutineDraft {
 /** A local, uncommitted new-routine editor rendered as the list's first card.
  *  Nothing is written to disk until `onSave` resolves true. */
 export interface RoutinesGridNewDraft {
-  onSave: (patch: {
-    name: string;
-    schedule: string;
-    prompt: string;
-  }) => Promise<boolean>;
+  onSave: (patch: RoutineEditPatch) => Promise<boolean>;
   onCancel: () => void;
 }
 
@@ -58,11 +62,11 @@ export interface RoutinesGridProps {
   onCreateWithAi?: () => void;
   onCreateManually?: () => void;
   onToggle?: (routineId: string, enabled: boolean) => void;
-  /** Save a row's inline-edited name/schedule/instruction. Resolves true on
-   *  success (the panel closes) or false (it stays open). */
+  /** Save a row's inline edit (name/instruction + wake mechanism). Resolves true
+   *  on success (the panel closes) or false (it stays open). */
   onSaveRoutine?: (
     routineId: string,
-    patch: { name: string; schedule: string; prompt: string },
+    patch: RoutineEditPatch,
   ) => Promise<boolean>;
   /** Open a routine's chat to change it by asking instead. */
   onEditWithAi?: (routineId: string) => void;
@@ -88,6 +92,19 @@ export interface RoutinesGridProps {
   nextFireLabels?: NextFireLabels;
   /** Full schedule-builder labels, for each row's inline edit panel. */
   scheduleLabels?: ScheduleLabels;
+  /** Trigger (event-driven) copy for the picker and status badge. */
+  triggerLabels?: TriggerLabels;
+  /** Wake mechanism the LOCAL new-routine draft authors: "schedule" (default,
+   *  the Routines surface) or "event" (the Reactions surface). */
+  newDraftVariant?: RoutineWakeMode;
+  /** App-wired trigger editor, injected into every row's + the new-draft editor. */
+  renderTriggerEditor?: RenderTriggerEditor;
+  /** Live provisioning status per event-driven routine, keyed by routine id. */
+  triggerStatuses?: Record<string, TriggerStatusItem>;
+  /** Human event summary per trigger routine (shown instead of the cron line). */
+  triggerSummaries?: Record<string, string>;
+  /** Reconnect the disconnected account behind a routine's paused trigger. */
+  onReconnectTrigger?: (routineId: string) => void;
   /** BCP-47 locale for day names + time formatting in row summaries. */
   locale?: string;
 }
