@@ -2,9 +2,9 @@
  * AgentIR 2.0.0 as a public JSON Schema (Draft 2020-12).
  *
  * This is the STABLE, machine-readable contract any AI agent fetches at
- * GET /api/schema/agent to learn how to build an AgentIR and POST it to
- * /api/agents. It is HAND-MAINTAINED (NOT a runtime zod->json-schema conversion)
- * so the wire contract never shifts under a zod-internals upgrade.
+ * GET /v1/agentstore/schema/agent to learn how to build an AgentIR and POST it
+ * to /v1/agentstore/agents. It is HAND-MAINTAINED (NOT a runtime zod->json-schema
+ * conversion) so the wire contract never shifts under a zod-internals upgrade.
  *
  * DRIFT WARNING: if you change `ir.ts` (the zod schema-of-record) you MUST update
  * this file in the SAME change. `json-schema.test.ts` fails on the common drifts
@@ -51,13 +51,13 @@ const urlIcon = {
 
 export const agentIrJsonSchema = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: "https://store.gethouston.ai/api/schema/agent",
+  $id: "https://gateway.gethouston.ai/v1/agentstore/schema/agent",
   title: "AgentIR",
   description:
     "Houston Agent Store's framework-agnostic agent representation (v2.0.0). " +
     "Build one from your agent's CLAUDE.md, its SKILL.md files, learnings and " +
-    "integrations, then POST it to /api/agents to publish (you get back a manage " +
-    "token and a claim link).",
+    "integrations, then POST it to /v1/agentstore/agents to publish (you get back " +
+    "a claimCode and a claimUrl to claim it).",
   type: "object",
   additionalProperties: false,
   required: ["irVersion", "identity", "instructions", "provenance"],

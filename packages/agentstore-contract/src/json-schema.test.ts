@@ -66,8 +66,17 @@ describe("AgentIR JSON Schema", () => {
     expect(creatorUrl.pattern).toBe("^https://");
   });
 
-  it("advertises an absolute https $id at /api/schema/agent", () => {
+  it("advertises an absolute https $id at the gateway schema path", () => {
     expect(agentIrJsonSchema.$id).toMatch(/^https:\/\//);
-    expect(agentIrJsonSchema.$id).toMatch(/\/api\/schema\/agent$/);
+    expect(agentIrJsonSchema.$id).toMatch(/\/v1\/agentstore\/schema\/agent$/);
+  });
+
+  it("directs publishers to the gateway publish route and claim-code response", () => {
+    // The prose is the agent-facing contract; it must not point at the removed
+    // /api/agents path or promise a removed "manage token".
+    expect(agentIrJsonSchema.description).toContain("/v1/agentstore/agents");
+    expect(agentIrJsonSchema.description).toContain("claimCode");
+    expect(agentIrJsonSchema.description).not.toContain("/api/agents");
+    expect(agentIrJsonSchema.description).not.toContain("manage token");
   });
 });

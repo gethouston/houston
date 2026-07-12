@@ -18,3 +18,13 @@ export const siteConfig = {
 } as const;
 
 export type SiteConfig = typeof siteConfig;
+
+/** `siteConfig.url` with any trailing slashes trimmed, for `new URL(...)` bases. */
+export function siteBase(): string {
+  return siteConfig.url.replace(/\/+$/, "");
+}
+
+/** The public share URL for a published agent slug. */
+export function shareUrlForSlug(slug: string): string {
+  return `${siteBase()}/a/${encodeURIComponent(slug)}`;
+}

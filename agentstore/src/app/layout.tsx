@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { ThemeScript } from "@/components/theme-script";
+import { SessionProvider } from "@/lib/auth/session";
 import { siteConfig } from "@/lib/site-config";
 import "./globals.css";
 
@@ -24,6 +28,9 @@ export const metadata: Metadata = {
     template: `%s · ${siteConfig.name}`,
   },
   description: siteConfig.description,
+  // No og:image in v1 by design: agents have no branded share art yet, and a
+  // generic placeholder card reads worse than a clean text preview. Revisit when
+  // per-agent OG images ship.
   openGraph: {
     title: siteConfig.name,
     description: siteConfig.description,
@@ -32,7 +39,7 @@ export const metadata: Metadata = {
     type: "website",
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: siteConfig.name,
     description: siteConfig.description,
   },
@@ -47,7 +54,14 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${inter.variable} ${spaceGrotesk.variable}`}
     >
-      <body className="min-h-screen">{children}</body>
+      <body className="flex min-h-screen flex-col">
+        <ThemeScript />
+        <SessionProvider>
+          <SiteHeader />
+          <div className="flex-1">{children}</div>
+          <SiteFooter />
+        </SessionProvider>
+      </body>
     </html>
   );
 }

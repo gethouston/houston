@@ -1,0 +1,14 @@
+# Ignore file for `docker build -f agentstore/Dockerfile .` (repo-root context).
+# BuildKit reads <dockerfile>.dockerignore in preference to the root
+# .dockerignore, so this owns the store image's context without touching the
+# shared root file. Keep dev + build artifacts out; source trees for the pnpm
+# workspace deps stay in.
+**/node_modules
+.git
+**/target
+**/.next
+**/.open-next
+**/dist
+**/*.log
+**/.DS_Store
+.context

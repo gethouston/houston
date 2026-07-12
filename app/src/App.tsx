@@ -2,7 +2,6 @@ import "./styles/globals.css";
 import type { Toast } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { SignInScreen } from "./components/auth/sign-in-screen";
-import { CloudMigrationGate } from "./components/onboarding/cloud-migration/cloud-migration-gate";
 import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
 import { isFirstRun } from "./components/onboarding/missions/onboarding-flow";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
@@ -22,13 +21,15 @@ import { useProviderCatalog } from "./hooks/use-provider-catalog";
 import { useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
 import { analytics } from "./lib/analytics";
+import { installDeepLinkListener } from "./lib/auth";
+import { useStoreGatewaySession } from "./lib/auth-gateway";
 import { shouldAllowNativeContextMenu } from "./lib/context-menu";
 import { newEngineActive } from "./lib/engine";
-import { isIdentityConfigured } from "./lib/identity";
 import {
   clearUser as clearSentryUser,
   setUser as setSentryUser,
 } from "./lib/sentry";
+import { isAuthConfigured } from "./lib/supabase";
 import { tauriSystem } from "./lib/tauri";
 import { useAgentStore } from "./stores/agents";
 import { useUIStore } from "./stores/ui";
@@ -40,6 +41,9 @@ export default function App() {
   useAgentInvalidation();
   useAnalyticsSubscriber();
   useIntegrationSessionSync();
+  // Keep the Agent Store adapter pointed at the gateway with the user's session
+  // token in local-sidecar mode (account-based publish; no manage tokens).
+  useStoreGatewaySession();
   // Fetch the host's pi-ai catalog once and hydrate the PROVIDERS cache app-wide,
   // so every provider/model surface renders the real runnable set from load.
   useProviderCatalog();
@@ -76,6 +80,13 @@ export default function App() {
     };
   }, []);
 
+  // Supabase auth (PR 2): listen for Google OAuth deep-link callbacks.
+  // No-op when auth isn't configured (SUPABASE_URL empty in local dev).
+  useEffect(() => {
+    if (!isAuthConfigured()) return;
+    return installDeepLinkListener();
+  }, []);
+
   const { data: session, isLoading: sessionLoading } = useSession();
 
   // Desktop boot: if this machine owns a local-model tunnel whose cloud endpoint
@@ -85,17 +96,17 @@ export default function App() {
 
   // Tag the user in PostHog AND Sentry on sign-in; reset on sign-out. The
   // install_id stays PostHog's distinct_id (the website UTM bridge + onboarding
-  // funnel depend on it); `identifyUser` aliases the Firebase uid onto that person
+  // funnel depend on it); `identifyUser` aliases the Supabase id onto that person
   // (merging the same human across devices/reinstalls) AND attaches
-  // firebase_uid / email as person properties, so every authenticated person is
-  // both one PostHog person and joinable to a Firebase account. Sentry gets the
-  // same identity so crashes are attributable to a user when triaging. The
-  // identity Session carries no created_at, so signupDate is null.
+  // supabase_user_id / email / signup date as person properties, so every
+  // authenticated person is both one PostHog person and joinable to a Supabase
+  // account. Sentry gets the same identity so crashes are attributable to a user
+  // when triaging.
   const prevUserIdRef = useRef<string | null>(null);
   useEffect(() => {
-    const userId = session?.uid ?? null;
-    const userEmail = session?.email ?? null;
-    const signupDate = null;
+    const userId = session?.user?.id ?? null;
+    const userEmail = session?.user?.email ?? null;
+    const signupDate = session?.user?.created_at?.slice(0, 10) ?? null;
     if (userId && userId !== prevUserIdRef.current) {
       analytics.identifyUser(userId, { email: userEmail, signupDate });
       setSentryUser({ id: userId, email: userEmail });
@@ -180,14 +191,14 @@ export default function App() {
     action: t.action,
   }));
 
-  // Auth gate: identity configured + session not yet resolved → splash.
-  // Already resolved to null → sign-in screen. `null` session on a transient
-  // blip is unlikely because the desktop session reads locally (Keychain), and
-  // the web SDK holds `isLoading` until it resolves persistence.
-  if (isIdentityConfigured() && sessionLoading) {
+  // Auth gate: Supabase configured + session not yet resolved → splash.
+  // Already resolved to null → sign-in screen. `null` session on a
+  // transient Supabase blip (access token still valid in Keychain)
+  // is unlikely because getSession() reads locally, not remotely.
+  if (isAuthConfigured() && sessionLoading) {
     return <WorkspaceLoading />;
   }
-  if (isIdentityConfigured() && !session) {
+  if (isAuthConfigured() && !session) {
     // Local account login. Dev builds sign in with the passwordless email code
     // (the `houston://` OAuth callback opens the installed prod app, so Google
     // sign-in is prod-only there).
@@ -238,43 +249,45 @@ export default function App() {
     workspaceCount: workspaces.length,
     agentCount: agents.length,
   });
+  // `onboardingPending` re-enters an interrupted flow even once the silent
+  // early agent create makes `firstRun` false. Absent flag = existing users,
+  // unchanged.
+  if (
+    (firstRun || onboardingPending) &&
+    canCreateAgents &&
+    !capabilitiesError
+  ) {
+    return (
+      <PersonalAssistantOnboarding
+        toasts={mappedToasts}
+        onDismissToast={dismissToast}
+      />
+    );
+  }
 
-  // The cloud-migration gate (HOU-719) wraps everything below the auth gates:
-  // on the hosted desktop build it offers to move this machine's OLD local
-  // data into the user's cloud agents. It must sit ABOVE the firstRun branch —
-  // a migrating user has zero cloud agents and would otherwise be captured by
-  // the create-your-assistant onboarding. It renders its children untouched
-  // whenever the trigger says no (non-hosted builds, web, no legacy data,
-  // already done/declined).
-  //
-  // The login fallback rides alongside the shell so a sign-in launched from a
+  // Migrated user with workspaces but no connected provider: welcome them back
+  // and walk them through reconnecting once, before the shell (which is unusable
+  // without a provider anyway). Falls through the instant a provider connects or
+  // the user dismisses — see useMigrationReconnect for the full trigger.
+  if (migrationReconnect.show) {
+    return (
+      <>
+        <ProviderLoginFallback />
+        <ClaudeBrowserLogin />
+        <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />
+      </>
+    );
+  }
+
+  // The fallback rides alongside the shell so a sign-in launched from a
   // surface without its own login handler (the in-chat reconnect card) still
   // opens the browser / dialog. Onboarding + tutorial mount their own handler
-  // (the login mission), so they don't need it. The migration-reconnect branch
-  // is the CO-LOCATED upgrade moment (workspaces migrated in place, no
-  // provider connected) — see useMigrationReconnect for its trigger.
+  // (the login mission), so they don't need it.
   return (
-    <CloudMigrationGate>
-      {(firstRun || onboardingPending) &&
-      canCreateAgents &&
-      !capabilitiesError ? (
-        <PersonalAssistantOnboarding
-          toasts={mappedToasts}
-          onDismissToast={dismissToast}
-        />
-      ) : migrationReconnect.show ? (
-        <>
-          <ProviderLoginFallback />
-          <ClaudeBrowserLogin />
-          <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />
-        </>
-      ) : (
-        <>
-          <ProviderLoginFallback />
-          <ClaudeBrowserLogin />
-          <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />
-        </>
-      )}
-    </CloudMigrationGate>
+    <>
+      <ProviderLoginFallback />
+      <ClaudeBrowserLogin />
+      <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />
+    </>
   );
 }

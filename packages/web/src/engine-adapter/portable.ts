@@ -13,6 +13,7 @@
 
 import {
   filterPackage,
+  type PortableContent,
   type PortablePackage,
   packageSeed,
   scanContent,
@@ -28,43 +29,12 @@ import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
 } from "../../../../ui/engine-client/src/types";
-import { HoustonEngineError } from "./client/errors";
-import {
-  type ControlPlaneConfig,
-  createAgent,
-  gatewayAuthFetch,
-} from "./control-plane";
+import { type ControlPlaneConfig, createAgent } from "./control-plane";
+import { hostFetch } from "./host-fetch";
 import { packagePreview, toWireSelection } from "./portable-map";
 
 /** Unpacked uploads awaiting install, keyed by the packageId handed to the wizard. */
 const uploads = new Map<string, PortablePackage>();
-
-async function hostFetch(
-  cfg: ControlPlaneConfig,
-  path: string,
-  init?: RequestInit,
-): Promise<Response> {
-  // gatewayAuthFetch: live bearer per attempt + 401 refresh/replay (HOU-687).
-  // Carry the active-space selector (C8) so a team-space agent's portable
-  // routes resolve in the team namespace, not the caller's personal org.
-  const res = await gatewayAuthFetch(cfg.token, () => cfg.activeOrgSlug)(
-    `${cfg.baseUrl}${path}`,
-    {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...init?.headers,
-      },
-    },
-  );
-  if (!res.ok) {
-    throw new HoustonEngineError(
-      res.status,
-      await res.json().catch(() => ({})),
-    );
-  }
-  return res;
-}
 
 /** The agent's exportable content, for the "Export a copy" pick screen. */
 export async function exportPreview(
@@ -123,6 +93,30 @@ export function previewUpload(
 ): PortableUploadPreviewResponse {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   const pkg = unpackAgent(u8);
+  const packageId = crypto.randomUUID();
+  uploads.set(packageId, pkg);
+  return { packageId, ...packagePreview(pkg) };
+}
+
+/**
+ * Install from an Agent Store share link. The host fetches the published agent's
+ * IR (SSRF-guarded) and returns it as portable content; here we rebuild the
+ * package and park it in the SAME registry a file upload uses, so the wizard's
+ * scan/name/install steps downstream are byte-for-byte the file-upload flow.
+ */
+export async function importFromStoreLink(
+  cfg: ControlPlaneConfig,
+  url: string,
+): Promise<PortableUploadPreviewResponse> {
+  const res = await hostFetch(cfg, "/v1/portable/fetch-from-store", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+  const { manifest, content } = (await res.json()) as {
+    manifest: PortablePackage["manifest"];
+    content: PortableContent;
+  };
+  const pkg: PortablePackage = { manifest, ...content };
   const packageId = crypto.randomUUID();
   uploads.set(packageId, pkg);
   return { packageId, ...packagePreview(pkg) };

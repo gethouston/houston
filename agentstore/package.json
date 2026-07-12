@@ -3,17 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Houston Agent Store — a Next.js 15 catalog for publishing and installing Houston agents. Deploys to Cloudflare Workers via OpenNext.",
+  "description": "Houston Agent Store — a Next.js 15 SSR frontend for the Houston gateway's Agent Store API. Deploys as a standalone container on GKE.",
   "scripts": {
     "dev": "next dev --port 3300",
     "build": "next build",
+    "start": "next start --port 3300",
     "typecheck": "tsgo --noEmit -p tsconfig.json",
-    "test": "vitest run",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:seed": "node --experimental-strip-types src/db/seed.ts",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+    "test": "vitest run"
   },
   "dependencies": {
     "@houston-ai/core": "workspace:*",
@@ -21,26 +17,22 @@
     "@houston/design-tokens": "workspace:*",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
-    "drizzle-orm": "0.44.6",
+    "firebase": "11.0.1",
     "jszip": "3.10.1",
     "lucide-react": "0.577.0",
     "next": "15.5.4",
-    "postgres": "3.4.7",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "tailwind-merge": "3.6.0"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "1.10.0",
     "@tailwindcss/postcss": "4.3.2",
     "@types/node": "22.20.0",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
-    "drizzle-kit": "0.31.5",
     "tailwindcss": "4.3.2",
     "typescript": "6.0.3",
-    "vitest": "3.2.6",
-    "wrangler": "4.42.2"
+    "vitest": "3.2.6"
   }
 }

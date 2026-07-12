@@ -1564,6 +1564,82 @@ export interface PortableInstalledAgent {
   agent: Agent;
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Agent Store publication ("Publish to the Agent Store")
+//
+// Account-based, no manage tokens. The host gathers the same portable content
+// the export flow produces and returns it as an AgentIR (no network); the APP
+// POSTs that IR to the gateway `/v1/agentstore` API with the user's own bearer,
+// then records a token-free pointer (store agent id + slug + share url) on the
+// host so the manage view can look up the live listing and re-publish the SAME
+// store agent instead of duplicating it.
+// ────────────────────────────────────────────────────────────────────────
+
+/** The listing metadata the publish wizard collects. */
+export interface StorePublishIdentity {
+  name: string;
+  description: string;
+  tagline?: string;
+  /** A seeded store category slug (see the store's category vocabulary). */
+  category: string;
+  tags?: string[];
+}
+
+/** Who is credited on the store listing. */
+export interface StorePublishCreator {
+  displayName: string;
+  url?: string;
+}
+
+/**
+ * A publish (or update). The selection/overrides are the SAME portable
+ * pick + anonymize outputs the export flow produces; the host re-gathers the
+ * content from them, so a publish carries no packaged bytes.
+ */
+export interface StorePublishRequest {
+  selection: PortableExportSelection;
+  overrides?: PortableExportOverrides;
+  identity: StorePublishIdentity;
+  creator: StorePublishCreator;
+  /** True when the pick ran through the anonymize pass (stamped on provenance). */
+  anonymized?: boolean;
+}
+
+export interface StorePublishResponse {
+  shareUrl: string;
+  slug: string;
+  storeAgentId: string;
+}
+
+export interface StoreUpdateResponse {
+  shareUrl: string;
+  slug: string;
+}
+
+export interface StoreUnpublishResponse {
+  ok: boolean;
+}
+
+/**
+ * Whether this agent is linked to an Agent Store listing, and its live state.
+ * Account-based, so it carries no secret of any kind.
+ */
+export interface StorePublicationStatus {
+  /** The store agent's live state is `published` (visible via its share URL). */
+  published: boolean;
+  /** A machine-local pointer exists (this agent was published at least once). */
+  linked: boolean;
+  shareUrl?: string;
+  slug?: string;
+  /** The store agent's id (uuid), for update/unpublish against the gateway. */
+  storeAgentId?: string;
+  publishedAt?: string;
+  /** The public store site URL, for "browse the store". */
+  storeUrl: string;
+  /** The live listing fields, so the manage view can prefill the update form. */
+  identity?: StorePublishIdentity;
+}
+
 // ── integrations (Composio, platform mode) ───────────────────────────────────
 // User-level: no provider account — the user only connects apps (Gmail, Slack…)
 // via OAuth; Houston's platform key lives server-side, keyed by the user's id.

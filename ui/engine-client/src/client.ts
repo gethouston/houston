@@ -98,6 +98,11 @@ import type {
   SkillDetail,
   SkillSummary,
   StoreListing,
+  StorePublicationStatus,
+  StorePublishRequest,
+  StorePublishResponse,
+  StoreUnpublishResponse,
+  StoreUpdateResponse,
   SummarizeOptions,
   SummarizeResult,
   TriggerStatusItem,
@@ -183,6 +188,29 @@ export interface HoustonClientOptions {
   retry?: Partial<RetryConfig>;
   /** Injectable `fetch` for tests / non-browser hosts. Defaults to global `fetch`. */
   fetchImpl?: typeof fetch;
+}
+
+/** The public store site (not API) base, for "browse the store" links. */
+const STORE_SITE_URL = "https://store.gethouston.ai";
+
+/** The machine-local pointer the host keeps for a published agent (no secrets). */
+interface StorePointer {
+  storeAgentId: string;
+  slug: string;
+  shareUrl: string;
+  publishedAt: string;
+}
+
+/** The subset of a `me/agents` item the manage view needs (wire contract). */
+interface StoreMeAgentSummary {
+  id: string;
+  slug: string | null;
+  name: string;
+  tagline?: string | null;
+  description?: string | null;
+  category?: string | null;
+  tags?: string[];
+  state: string;
 }
 
 export class HoustonClient {
@@ -2074,8 +2102,189 @@ export class HoustonClient {
   importScan(packageId: string): Promise<PortableScanResponse> {
     return this.request("POST", "/store/imports/scan", { packageId });
   }
+  /**
+   * Fetch a published agent from an Agent Store share link (or bare slug) and
+   * park it for install, returning the SAME preview a file upload would. The
+   * host resolves the link, validates the IR, and maps it to portable content
+   * (SSRF-guarded); the parked package then flows through scan/install unchanged.
+   */
+  importFromStoreLink(url: string): Promise<PortableUploadPreviewResponse> {
+    return this.request("POST", "/store/imports/from-link", { url });
+  }
   importInstall(req: PortableInstallRequest): Promise<PortableInstalledAgent> {
     return this.request("POST", "/store/imports/install", req);
+  }
+
+  // ---------- Agent Store publication (account-based, no manage tokens) ----------
+  //
+  // The host gathers the IR (`portable/store-ir`) and records a token-free
+  // pointer (`portable/store-publication`); the listing itself is created on the
+  // gateway `/agentstore` API with the caller's own bearer. On a gateway-fronted
+  // deployment the host and the store API share this `baseUrl`.
+
+  private storeIrPath(agentPath: string): string {
+    return `/agents/${encodeURIComponent(agentPath)}/portable/store-ir`;
+  }
+  private storePointerPath(agentPath: string): string {
+    return `/agents/${encodeURIComponent(agentPath)}/portable/store-publication`;
+  }
+  private gatherStoreIr(
+    agentPath: string,
+    req: StorePublishRequest,
+  ): Promise<{ ir: unknown }> {
+    return this.request(
+      "POST",
+      this.storeIrPath(agentPath),
+      req,
+      undefined,
+      undefined,
+      false,
+    );
+  }
+
+  /** Publish this agent to the Agent Store; returns the public share URL. A kept
+   *  pointer re-publishes the SAME store agent so a re-publish never duplicates. */
+  async publishAgentToStore(
+    agentPath: string,
+    req: StorePublishRequest,
+  ): Promise<StorePublishResponse> {
+    const { ir } = await this.gatherStoreIr(agentPath, req);
+    const { pointer } = await this.request<{ pointer: StorePointer | null }>(
+      "GET",
+      this.storePointerPath(agentPath),
+    );
+    if (pointer) {
+      await this.request(
+        "PATCH",
+        `/agentstore/agents/${encodeURIComponent(pointer.storeAgentId)}`,
+        { ir, publish: true },
+        undefined,
+        undefined,
+        false,
+      );
+      await this.request(
+        "POST",
+        this.storePointerPath(agentPath),
+        pointer,
+        undefined,
+        undefined,
+        false,
+      );
+      return {
+        shareUrl: pointer.shareUrl,
+        slug: pointer.slug,
+        storeAgentId: pointer.storeAgentId,
+      };
+    }
+    const created = await this.request<{
+      agentId: string;
+      slug: string;
+      shareUrl: string;
+    }>(
+      "POST",
+      "/agentstore/agents",
+      { ir, publish: true },
+      undefined,
+      undefined,
+      false,
+    );
+    const next: StorePointer = {
+      storeAgentId: created.agentId,
+      slug: created.slug,
+      shareUrl: created.shareUrl,
+      publishedAt: new Date().toISOString(),
+    };
+    await this.request(
+      "POST",
+      this.storePointerPath(agentPath),
+      next,
+      undefined,
+      undefined,
+      false,
+    );
+    return {
+      shareUrl: created.shareUrl,
+      slug: created.slug,
+      storeAgentId: created.agentId,
+    };
+  }
+
+  /** Re-publish an already-listed agent with a freshly gathered selection. */
+  async updateStorePublication(
+    agentPath: string,
+    req: StorePublishRequest,
+  ): Promise<StoreUpdateResponse> {
+    const { pointer } = await this.request<{ pointer: StorePointer | null }>(
+      "GET",
+      this.storePointerPath(agentPath),
+    );
+    if (!pointer) throw new Error("This agent is not published.");
+    const { ir } = await this.gatherStoreIr(agentPath, req);
+    await this.request(
+      "PATCH",
+      `/agentstore/agents/${encodeURIComponent(pointer.storeAgentId)}`,
+      { ir, identity: req.identity },
+      undefined,
+      undefined,
+      false,
+    );
+    return { shareUrl: pointer.shareUrl, slug: pointer.slug };
+  }
+
+  /** Take the listing down; the pointer is kept so a re-publish reuses the agent. */
+  async unpublishFromStore(agentPath: string): Promise<StoreUnpublishResponse> {
+    const { pointer } = await this.request<{ pointer: StorePointer | null }>(
+      "GET",
+      this.storePointerPath(agentPath),
+    );
+    if (!pointer) return { ok: true };
+    await this.request(
+      "PATCH",
+      `/agentstore/agents/${encodeURIComponent(pointer.storeAgentId)}`,
+      { unpublish: true },
+      undefined,
+      undefined,
+      false,
+    );
+    return { ok: true };
+  }
+
+  /** Whether this agent is linked to a listing, and its live state. */
+  async getStorePublication(
+    agentPath: string,
+  ): Promise<StorePublicationStatus> {
+    const { pointer } = await this.request<{ pointer: StorePointer | null }>(
+      "GET",
+      this.storePointerPath(agentPath),
+    );
+    if (!pointer) {
+      return { published: false, linked: false, storeUrl: STORE_SITE_URL };
+    }
+    const { items } = await this.request<{ items: StoreMeAgentSummary[] }>(
+      "GET",
+      "/agentstore/me/agents",
+    );
+    const item = items.find((a) => a.id === pointer.storeAgentId);
+    if (!item) {
+      await this.request("DELETE", this.storePointerPath(agentPath));
+      return { published: false, linked: false, storeUrl: STORE_SITE_URL };
+    }
+    return {
+      published: item.state === "published",
+      linked: true,
+      storeAgentId: pointer.storeAgentId,
+      slug: item.slug ?? pointer.slug,
+      shareUrl: pointer.shareUrl,
+      publishedAt: pointer.publishedAt,
+      storeUrl: STORE_SITE_URL,
+      identity: {
+        name: item.name,
+        description: item.description ?? "",
+        ...(item.tagline ? { tagline: item.tagline } : {}),
+        category: item.category ?? "",
+        tags: item.tags ?? [],
+      },
+    };
   }
 
   // ---------- WebSocket access (see ws.ts) ----------

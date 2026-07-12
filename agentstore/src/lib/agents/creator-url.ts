@@ -37,22 +37,3 @@ export function normalizeCreatorUrl(raw: string): CreatorUrlResult {
   }
   return { ok: true, url: result.data };
 }
-
-/** Friendly message for a PATCH publish failure, keyed on the response error code. */
-export function publishErrorMessage(
-  code: string | undefined,
-  status: number,
-): string {
-  switch (code) {
-    case "rate_limited":
-      return "Too many attempts. Please wait a minute and try again.";
-    case "unauthorized":
-      return "Your claim link is no longer valid. Open the original link again.";
-    case "not_found":
-      return "We could not find this agent. Open your claim link again.";
-    case "slug_exhausted":
-      return "We could not create a public link for this name. Try a different creator name.";
-    default:
-      return `Publishing failed (${status}). Please try again.`;
-  }
-}

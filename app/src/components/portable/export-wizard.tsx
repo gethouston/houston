@@ -1,75 +1,72 @@
 /**
- * Export a portable copy of an agent — 3 calm screens. This packages a
- * file the recipient imports; it is not live collaboration (that is Share).
+ * The share hub for an agent. Two first-class outcomes off the same pick +
+ * anonymize pipeline: save a portable `.houstonagent` file, or publish a
+ * listing to the Agent Store. When the agent is already published the wizard
+ * opens straight into the manage view (update / remove).
  *
- *   1. Pick what to export. CLAUDE.md is implicit; skills, routines,
- *      learnings get per-item switches.
- *   2. Optionally let Houston anonymize. Side-by-side diffs.
- *   3. Save the file.
+ * Steps (dots follow the active path):
+ *   pick → anonymize → review → { Save file | Publish → listing → share }
+ * and, for an already-listed agent, a manage view instead of `pick`.
  *
- * Visual language follows `knowledge-base/design-system.md` — near-black
- * text on white, no decorative icons, sentence-case sections, big calm
- * h1, progress dots beside the eyebrow (close button owns the right
- * corner). Switches match the routine editor.
+ * Visual language follows `knowledge-base/design-system.md`. Step bodies live
+ * in sibling files; this file is the orchestrator + footer.
  */
 
-import {
-  Button,
-  cn,
-  Dialog,
-  DialogContent,
-  Switch,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@houston-ai/core";
+import { Button, Dialog, DialogContent } from "@houston-ai/core";
 import type {
-  PortableAnonymizeRequest,
-  PortableAnonymizeResponse,
   PortableInventoryPreview,
+  StorePublishIdentity,
 } from "@houston-ai/engine-client";
 import { invoke } from "@tauri-apps/api/core";
-import { Info } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSession } from "../../hooks/use-session";
 import { analytics } from "../../lib/analytics";
+import { signInWithGoogle } from "../../lib/auth";
 import { getEngine } from "../../lib/engine";
 import { genericErrorDescription } from "../../lib/error-toast";
 import { osRevealPath } from "../../lib/os-bridge";
+import {
+  buildAnonymizeOverrides,
+  buildStorePublishRequest,
+  droppedLearningIds,
+  isListingComplete,
+  type ListingForm,
+  toExportSelection,
+  type WizardSelection,
+} from "../../lib/portable-share";
+import { isAuthConfigured } from "../../lib/supabase";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import { AnonymizeStep } from "./anonymize-step";
+import { ListingStep } from "./listing-step";
+import { ManagePublication } from "./manage-publication";
+import { PickStep } from "./pick-step";
+import { ReviewStep, ShareStep } from "./review-step";
+import { useAnonymize } from "./use-anonymize";
+import { useStorePublication } from "./use-store-publication";
+import { WizardHeader } from "./wizard-parts";
 
-type StepId = "pick" | "anonymize" | "save";
+type Step = "pick" | "anonymize" | "review" | "listing" | "share";
+type Origin = "new" | "update";
 
-const steps: StepId[] = ["pick", "anonymize", "save"];
+const EMPTY_LISTING: ListingForm = {
+  description: "",
+  tagline: "",
+  category: "",
+  tags: [],
+  creatorName: "",
+  creatorUrl: "",
+};
 
-interface Selection {
-  claudeMd: boolean;
-  skillSlugs: Set<string>;
-  routineIds: Set<string>;
-  learningIds: Set<string>;
-}
-
-interface AnonymizeAccept {
-  claudeMd: boolean;
-  skills: Record<string, boolean>;
-  routines: Record<string, boolean>;
-  learnings: Record<string, boolean>;
-}
-
-/** Show the "use what's ready" escape hatch once the AI pass runs this long. */
-const SLOW_AFTER_MS = 15_000;
-
-function acceptFor(result: PortableAnonymizeResponse): AnonymizeAccept {
+function listingFromIdentity(id?: StorePublishIdentity | null): ListingForm {
   return {
-    claudeMd: !(result.claudeMd?.becameEmpty ?? false),
-    skills: Object.fromEntries(
-      result.skills.map((s) => [s.id, !s.becameEmpty]),
-    ),
-    routines: Object.fromEntries(result.routines.map((r) => [r.id, true])),
-    learnings: Object.fromEntries(
-      result.learnings.map((l) => [l.id, !l.becameEmpty]),
-    ),
+    description: id?.description ?? "",
+    tagline: id?.tagline ?? "",
+    category: id?.category ?? "",
+    tags: id?.tags ?? [],
+    creatorName: "",
+    creatorUrl: "",
   };
 }
 
@@ -81,44 +78,46 @@ export function ExportAgentWizard() {
   const agents = useAgentStore((s) => s.agents);
   const agent = agents.find((a) => a.id === agentId);
   const open = Boolean(agentId);
+  const pub = useStorePublication(agent?.folderPath ?? null);
+  const { data: session } = useSession();
+  // Publishing to the Agent Store needs the user's own account (the app POSTs
+  // with their gateway bearer). Signed-out users get a sign-in CTA, never a
+  // dead button; a build with no auth baked can't publish, so hide the option.
+  const canPublish = isAuthConfigured();
+  const signedIn = Boolean(session);
+  const [signingIn, setSigningIn] = useState(false);
 
-  const [stepIndex, setStepIndex] = useState(0);
-  const currentStep = steps[stepIndex] ?? "pick";
+  const [step, setStep] = useState<Step>("pick");
+  const [intent, setIntent] = useState<"save" | "publish">("save");
+  const [origin, setOrigin] = useState<Origin>("new");
+  const [managing, setManaging] = useState(true);
   const [preview, setPreview] = useState<PortableInventoryPreview | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selection, setSelection] = useState<Selection>({
+  const [selection, setSelection] = useState<WizardSelection>({
     claudeMd: true,
     skillSlugs: new Set(),
     routineIds: new Set(),
     learningIds: new Set(),
   });
-  const [wantAnonymize, setWantAnonymize] = useState<boolean | null>(null);
-  const [useAi, setUseAi] = useState(true);
-  const [anonymizing, setAnonymizing] = useState(false);
-  const [progress, setProgress] = useState<{
-    done: number;
-    total: number;
-  } | null>(null);
-  const [slow, setSlow] = useState(false);
-  const [stopped, setStopped] = useState(false);
-  // The loop reads this between items; state alone would be a stale closure.
-  const stopRef = useRef(false);
-  const [anonymized, setAnonymized] =
-    useState<PortableAnonymizeResponse | null>(null);
-  const [accept, setAccept] = useState<AnonymizeAccept>({
-    claudeMd: true,
-    skills: {},
-    routines: {},
-    learnings: {},
+  const anon = useAnonymize({
+    agentPath: agent?.folderPath ?? null,
+    preview,
+    selection,
   });
+  const [listing, setListing] = useState<ListingForm>(EMPTY_LISTING);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!agentId) {
-      setStepIndex(0);
+      setStep("pick");
+      setIntent("save");
+      setOrigin("new");
+      setManaging(true);
       setPreview(null);
-      setWantAnonymize(null);
-      setAnonymized(null);
+      anon.reset();
+      setListing(EMPTY_LISTING);
+      setShareUrl(null);
       return;
     }
     setLoading(true);
@@ -128,9 +127,9 @@ export function ExportAgentWizard() {
         setPreview(p);
         setSelection({
           claudeMd: Boolean(p.claudeMd),
-          skillSlugs: new Set(p.skills.map((s: { slug: string }) => s.slug)),
-          routineIds: new Set(p.routines.map((r: { id: string }) => r.id)),
-          learningIds: new Set(p.learnings.map((l: { id: string }) => l.id)),
+          skillSlugs: new Set(p.skills.map((s) => s.slug)),
+          routineIds: new Set(p.routines.map((r) => r.id)),
+          learningIds: new Set(p.learnings.map((l) => l.id)),
         });
       } catch (err) {
         addToast({
@@ -143,7 +142,7 @@ export function ExportAgentWizard() {
         setLoading(false);
       }
     })();
-  }, [agentId, agent?.folderPath, addToast, setAgentId, t]);
+  }, [agentId, agent?.folderPath, addToast, setAgentId, anon.reset, t]);
 
   const counts = useMemo(
     () => ({
@@ -156,144 +155,33 @@ export function ExportAgentWizard() {
 
   const handleClose = useCallback(() => setAgentId(null), [setAgentId]);
 
-  /**
-   * Anonymize ITEM BY ITEM (the route takes any selection) so the pass is
-   * resumable: each finished piece lands in the review list right away, and
-   * "use what's ready" flips the remaining items to the instant non-AI
-   * scrub — whatever the AI already did is kept.
-   */
-  const runAnonymize = async (withAi: boolean = useAi) => {
-    if (!agent || !preview) return;
-    setAnonymizing(true);
-    setAnonymized(null);
-    setStopped(false);
-    stopRef.current = false;
-    const slowTimer = setTimeout(() => setSlow(true), SLOW_AFTER_MS);
-
-    const none = {
-      claudeMd: false,
-      skillSlugs: [],
-      routineIds: [],
-      learningIds: [],
-    };
-    const units: PortableAnonymizeRequest[] = [
-      ...(selection.claudeMd ? [{ ...none, claudeMd: true }] : []),
-      ...Array.from(selection.skillSlugs, (s) => ({
-        ...none,
-        skillSlugs: [s],
-      })),
-      ...Array.from(selection.routineIds, (r) => ({
-        ...none,
-        routineIds: [r],
-      })),
-      ...Array.from(selection.learningIds, (l) => ({
-        ...none,
-        learningIds: [l],
-      })),
-    ];
-    const acc: PortableAnonymizeResponse = {
-      claudeMd: null,
-      skills: [],
-      routines: [],
-      learnings: [],
-      mode: withAi ? "ai" : "patterns",
-    };
-
-    try {
-      setProgress({ done: 0, total: units.length });
-      let aiFailed = false;
-      for (const [i, unit] of units.entries()) {
-        const part = await getEngine().portableAnonymize(agent.folderPath, {
-          ...unit,
-          useAi: withAi && !aiFailed && !stopRef.current,
-        });
-        acc.claudeMd = part.claudeMd ?? acc.claudeMd;
-        acc.skills.push(...part.skills);
-        acc.routines.push(...part.routines);
-        acc.learnings.push(...part.learnings);
-        if (part.aiError && !acc.aiError) {
-          // Once the AI pass fails (no provider, bad reply) the rest of the
-          // run stays on the instant scrub — one visible reason, not N slow
-          // repeats of the same failure.
-          acc.aiError = part.aiError;
-          aiFailed = true;
-        }
-        setProgress({ done: i + 1, total: units.length });
-        setAnonymized({
-          ...acc,
-          skills: [...acc.skills],
-          routines: [...acc.routines],
-          learnings: [...acc.learnings],
-        });
-        setAccept(acceptFor(acc));
-      }
-    } catch (err) {
-      addToast({
-        variant: "error",
-        title: t("export.errors.anonymizeFailed"),
-        description: genericErrorDescription("export_anonymize", err),
-      });
-    } finally {
-      clearTimeout(slowTimer);
-      setSlow(false);
-      setProgress(null);
-      setAnonymizing(false);
-    }
-  };
-
-  const stopWaiting = () => {
-    stopRef.current = true;
-    setStopped(true);
-  };
-
-  const buildOverrides = () => {
-    if (!wantAnonymize || !anonymized) return undefined;
-    const ov: Record<string, unknown> = {};
-    if (accept.claudeMd && anonymized.claudeMd) {
-      ov.claudeMd = anonymized.claudeMd.after;
-    }
-    const skillBodies: Record<string, string> = {};
-    for (const s of anonymized.skills) {
-      if (accept.skills[s.id]) skillBodies[s.id] = s.after;
-    }
-    if (Object.keys(skillBodies).length) ov.skillBodies = skillBodies;
-    const routineFields: Record<string, unknown> = {};
-    for (const r of anonymized.routines) {
-      if (accept.routines[r.id]) routineFields[r.id] = r.overridePayload;
-    }
-    if (Object.keys(routineFields).length) ov.routineFields = routineFields;
-    const learningTexts: Record<string, string> = {};
-    for (const l of anonymized.learnings) {
-      if (accept.learnings[l.id]) learningTexts[l.id] = l.after;
-    }
-    if (Object.keys(learningTexts).length) ov.learningTexts = learningTexts;
-    return ov;
-  };
+  const gatheredSelection = () =>
+    toExportSelection(
+      selection,
+      droppedLearningIds(
+        anon.wantAnonymize ?? false,
+        anon.anonymized,
+        anon.accept,
+      ),
+    );
+  const gatheredOverrides = () =>
+    buildAnonymizeOverrides(
+      anon.wantAnonymize ?? false,
+      anon.anonymized,
+      anon.accept,
+    );
 
   const handleSave = async () => {
     if (!agent || !preview) return;
     setSaving(true);
     try {
-      const dropLearnings = new Set<string>();
-      if (wantAnonymize && anonymized) {
-        for (const l of anonymized.learnings) {
-          if (l.becameEmpty && !accept.learnings[l.id]) dropLearnings.add(l.id);
-        }
-      }
       const bytes = await getEngine().portablePackage(agent.folderPath, {
-        selection: {
-          includeClaudeMd: selection.claudeMd,
-          includeSkillSlugs: Array.from(selection.skillSlugs),
-          includeRoutineIds: Array.from(selection.routineIds),
-          includeLearningIds: Array.from(selection.learningIds).filter(
-            (id) => !dropLearnings.has(id),
-          ),
-        },
-        overrides: buildOverrides() as never,
+        selection: gatheredSelection(),
+        overrides: gatheredOverrides(),
         meta: {
           agentId: agent.configId ?? agent.id,
           agentName: agent.name,
-          anonymized: wantAnonymize ?? false,
+          anonymized: anon.wantAnonymize ?? false,
         },
       });
       const filename = `${agent.name.replace(/[^a-z0-9._-]+/gi, "-")}.houstonagent`;
@@ -334,711 +222,244 @@ export function ExportAgentWizard() {
     }
   };
 
+  const handlePublish = async () => {
+    if (!agent) return;
+    const req = buildStorePublishRequest({
+      name: agent.name,
+      form: listing,
+      selection: gatheredSelection(),
+      overrides: gatheredOverrides(),
+      anonymized: anon.wantAnonymize ?? false,
+    });
+    const res =
+      origin === "update" ? await pub.update(req) : await pub.publish(req);
+    if (!res) return;
+    if (origin === "new")
+      analytics.track("agent_published", { agent_slug: res.slug });
+    setShareUrl(res.shareUrl);
+    setStep("share");
+  };
+
+  const startSignIn = async () => {
+    setSigningIn(true);
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      setSigningIn(false);
+      addToast({
+        variant: "error",
+        title: t("publish.errors.signInFailed"),
+        description: genericErrorDescription("store_sign_in", err),
+      });
+    }
+  };
+
+  const goToListing = () => {
+    setIntent("publish");
+    setOrigin("new");
+    setStep("listing");
+  };
+
+  const startUpdate = () => {
+    setOrigin("update");
+    setIntent("publish");
+    setManaging(false);
+    setListing(listingFromIdentity(pub.status?.identity));
+    setStep("pick");
+  };
+
+  const handleRemove = async () => {
+    if (await pub.unpublish()) {
+      addToast({
+        variant: "success",
+        title: t("publish.toasts.removedTitle"),
+        description: t("publish.toasts.removedBody", {
+          name: agent?.name ?? "",
+        }),
+      });
+      handleClose();
+    }
+  };
+
   if (!open) return null;
 
-  // On the anonymize step, choosing "help me" is not enough — a run must
-  // have completed, else the export would stamp anonymized: true with zero
-  // redactions actually applied.
+  const showManage = managing && pub.status?.published === true;
+  const sequence: Step[] =
+    origin === "update"
+      ? ["pick", "anonymize", "listing", "share"]
+      : intent === "publish"
+        ? ["pick", "anonymize", "review", "listing", "share"]
+        : ["pick", "anonymize", "review"];
+  const stepIndex = Math.max(0, sequence.indexOf(step));
+
+  // "help me anonymize" alone isn't enough: a run must have completed, else we
+  // would stamp anonymized: true with zero redactions applied.
   const canAdvance =
-    currentStep === "pick"
+    step === "pick"
       ? !loading && !!preview
-      : currentStep === "anonymize"
-        ? wantAnonymize !== null &&
-          !anonymizing &&
-          (!wantAnonymize || anonymized !== null)
+      : step === "anonymize"
+        ? anon.wantAnonymize !== null &&
+          !anon.anonymizing &&
+          (!anon.wantAnonymize || anon.anonymized !== null)
         : true;
+
+  const goNext = () => {
+    if (step === "pick") setStep("anonymize");
+    else if (step === "anonymize")
+      setStep(origin === "update" ? "listing" : "review");
+  };
+  const goBack = () => {
+    if (step === "anonymize") setStep("pick");
+    else if (step === "review") setStep("anonymize");
+    else if (step === "listing")
+      setStep(origin === "update" ? "anonymize" : "review");
+    else handleClose();
+  };
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="sm:max-w-[680px] h-[78vh] flex flex-col p-0 gap-0 overflow-hidden">
         <WizardHeader
           eyebrow={t("export.eyebrow", { name: agent?.name ?? "" })}
-          index={stepIndex}
-          total={steps.length}
+          index={showManage ? 0 : stepIndex}
+          total={showManage ? 1 : sequence.length}
         />
 
         <div className="flex-1 min-h-0 overflow-y-auto px-8 pt-2 pb-6">
-          {loading ? (
-            <p className="text-sm text-ink-muted">{t("export.loading")}</p>
+          {pub.loading ? (
+            <p className="text-sm text-muted-foreground">
+              {t("export.loading")}
+            </p>
+          ) : showManage ? (
+            <ManagePublication
+              agentName={agent?.name ?? ""}
+              shareUrl={pub.status?.shareUrl ?? ""}
+              busy={pub.busy}
+              onUpdate={startUpdate}
+              onRemove={handleRemove}
+            />
+          ) : loading ? (
+            <p className="text-sm text-muted-foreground">
+              {t("export.loading")}
+            </p>
           ) : !preview ? (
-            <p className="text-sm text-ink-muted">
+            <p className="text-sm text-muted-foreground">
               {t("export.errors.noPreview")}
             </p>
-          ) : currentStep === "pick" ? (
+          ) : step === "pick" ? (
             <PickStep
               preview={preview}
               selection={selection}
               setSelection={setSelection}
             />
-          ) : currentStep === "anonymize" ? (
+          ) : step === "anonymize" ? (
             <AnonymizeStep
-              wantAnonymize={wantAnonymize}
-              onChoose={setWantAnonymize}
-              useAi={useAi}
-              onToggleAi={setUseAi}
-              onStart={() => void runAnonymize()}
-              anonymizing={anonymizing}
-              progress={progress}
-              slow={slow}
-              stopped={stopped}
-              onStop={stopWaiting}
-              anonymized={anonymized}
-              accept={accept}
-              setAccept={setAccept}
+              wantAnonymize={anon.wantAnonymize}
+              onChoose={anon.setWantAnonymize}
+              useAi={anon.useAi}
+              onToggleAi={anon.setUseAi}
+              onStart={() => void anon.run()}
+              anonymizing={anon.anonymizing}
+              progress={anon.progress}
+              slow={anon.slow}
+              stopped={anon.stopped}
+              onStop={anon.stopWaiting}
+              anonymized={anon.anonymized}
+              accept={anon.accept}
+              setAccept={anon.setAccept}
             />
-          ) : (
-            <SaveStep
+          ) : step === "review" ? (
+            <ReviewStep
               agentName={agent?.name ?? ""}
               counts={counts}
-              anonymized={wantAnonymize ?? false}
+              anonymized={anon.wantAnonymize ?? false}
+            />
+          ) : step === "listing" ? (
+            <ListingStep
+              agentName={agent?.name ?? ""}
+              value={listing}
+              onChange={setListing}
+            />
+          ) : (
+            <ShareStep
+              agentName={agent?.name ?? ""}
+              shareUrl={shareUrl ?? ""}
             />
           )}
         </div>
 
-        <footer className="shrink-0 px-8 py-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() =>
-              stepIndex > 0 ? setStepIndex(stepIndex - 1) : handleClose()
-            }
-            className="text-sm text-ink-muted hover:text-ink"
-          >
-            {stepIndex > 0
-              ? t("export.actions.back")
-              : t("export.actions.cancel")}
-          </button>
-          {stepIndex < steps.length - 1 ? (
-            <Button
-              className="rounded-full"
-              onClick={() => setStepIndex(stepIndex + 1)}
-              disabled={!canAdvance}
-            >
-              {t("export.actions.next")}
-            </Button>
-          ) : (
-            <Button
-              className="rounded-full"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? t("export.actions.saving") : t("export.actions.save")}
-            </Button>
-          )}
-        </footer>
+        {!showManage && !pub.loading && (
+          <footer className="shrink-0 px-8 py-4 flex items-center justify-between gap-3">
+            {step === "share" ? (
+              <span />
+            ) : (
+              <button
+                type="button"
+                onClick={goBack}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                {step === "pick"
+                  ? t("export.actions.cancel")
+                  : t("export.actions.back")}
+              </button>
+            )}
+            {step === "review" ? (
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving
+                    ? t("export.actions.saving")
+                    : t("export.actions.save")}
+                </Button>
+                {canPublish &&
+                  (signedIn ? (
+                    <Button className="rounded-full" onClick={goToListing}>
+                      {t("publish.actions.publish")}
+                    </Button>
+                  ) : (
+                    <Button
+                      className="rounded-full"
+                      onClick={() => void startSignIn()}
+                      disabled={signingIn}
+                    >
+                      {signingIn
+                        ? t("publish.actions.signingIn")
+                        : t("publish.actions.signInToPublish")}
+                    </Button>
+                  ))}
+              </div>
+            ) : step === "listing" ? (
+              <Button
+                className="rounded-full"
+                onClick={() => void handlePublish()}
+                disabled={pub.busy || !isListingComplete(listing)}
+              >
+                {pub.busy
+                  ? t("publish.actions.publishing")
+                  : origin === "update"
+                    ? t("publish.actions.saveUpdate")
+                    : t("publish.actions.publishNow")}
+              </Button>
+            ) : step === "share" ? (
+              <Button className="rounded-full" onClick={handleClose}>
+                {t("publish.actions.done")}
+              </Button>
+            ) : (
+              <Button
+                className="rounded-full"
+                onClick={goNext}
+                disabled={!canAdvance}
+              >
+                {t("export.actions.next")}
+              </Button>
+            )}
+          </footer>
+        )}
       </DialogContent>
     </Dialog>
   );
-}
-
-// ─── Steps ─────────────────────────────────────────────────────────────
-
-function PickStep({
-  preview,
-  selection,
-  setSelection,
-}: {
-  preview: PortableInventoryPreview;
-  selection: Selection;
-  setSelection: (s: Selection) => void;
-}) {
-  const { t } = useTranslation("portable");
-  const toggleSkill = (slug: string) => {
-    const next = new Set(selection.skillSlugs);
-    next.has(slug) ? next.delete(slug) : next.add(slug);
-    setSelection({ ...selection, skillSlugs: next });
-  };
-  const toggleRoutine = (id: string) => {
-    const next = new Set(selection.routineIds);
-    next.has(id) ? next.delete(id) : next.add(id);
-    setSelection({ ...selection, routineIds: next });
-  };
-  const toggleLearning = (id: string) => {
-    const next = new Set(selection.learningIds);
-    next.has(id) ? next.delete(id) : next.add(id);
-    setSelection({ ...selection, learningIds: next });
-  };
-
-  return (
-    <div className="space-y-10">
-      <header>
-        <h1 className="text-[28px] font-normal leading-tight">
-          {t("export.step1.title")}
-        </h1>
-        <p className="mt-3 text-base text-ink-muted">
-          {t("export.step1.body")}
-        </p>
-      </header>
-
-      <Section title={t("export.step1.instructionsLabel")}>
-        {preview.claudeMd ? (
-          <SwitchRow
-            checked={selection.claudeMd}
-            onChange={() =>
-              setSelection({ ...selection, claudeMd: !selection.claudeMd })
-            }
-            title={t("export.step1.instructionsRow")}
-            subtitle={preview.claudeMd.excerpt}
-          />
-        ) : (
-          <Subtle>{t("export.step1.noInstructions")}</Subtle>
-        )}
-      </Section>
-
-      {preview.skills.length > 0 && (
-        <Section title={t("export.step1.skillsLabel")}>
-          {preview.skills.map((s) => (
-            <SwitchRow
-              key={s.slug}
-              checked={selection.skillSlugs.has(s.slug)}
-              onChange={() => toggleSkill(s.slug)}
-              title={humanize(s.slug)}
-              subtitle={s.description}
-            />
-          ))}
-        </Section>
-      )}
-
-      {preview.routines.length > 0 && (
-        <Section title={t("export.step1.routinesLabel")}>
-          {preview.routines.map((r) => (
-            <SwitchRow
-              key={r.id}
-              checked={selection.routineIds.has(r.id)}
-              onChange={() => toggleRoutine(r.id)}
-              title={r.name}
-              subtitle={r.promptExcerpt}
-            />
-          ))}
-        </Section>
-      )}
-
-      {preview.learnings.length > 0 && (
-        <Section title={t("export.step1.learningsLabel")}>
-          {preview.learnings.map((l) => (
-            <SwitchRow
-              key={l.id}
-              checked={selection.learningIds.has(l.id)}
-              onChange={() => toggleLearning(l.id)}
-              title={l.text}
-            />
-          ))}
-        </Section>
-      )}
-    </div>
-  );
-}
-
-function AnonymizeStep({
-  wantAnonymize,
-  onChoose,
-  useAi,
-  onToggleAi,
-  onStart,
-  anonymizing,
-  progress,
-  slow,
-  stopped,
-  onStop,
-  anonymized,
-  accept,
-  setAccept,
-}: {
-  wantAnonymize: boolean | null;
-  onChoose: (v: boolean) => void;
-  useAi: boolean;
-  onToggleAi: (v: boolean) => void;
-  onStart: () => void;
-  anonymizing: boolean;
-  progress: { done: number; total: number } | null;
-  slow: boolean;
-  stopped: boolean;
-  onStop: () => void;
-  anonymized: PortableAnonymizeResponse | null;
-  accept: AnonymizeAccept;
-  setAccept: (a: AnonymizeAccept) => void;
-}) {
-  const { t } = useTranslation("portable");
-  return (
-    <div className="space-y-10">
-      <header>
-        <h1 className="text-[28px] font-normal leading-tight">
-          {t("export.step2.title")}
-        </h1>
-        <p className="mt-3 text-base text-ink-muted">
-          {t("export.step2.body")}
-        </p>
-      </header>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <ChoiceCard
-          selected={wantAnonymize === false}
-          onClick={() => onChoose(false)}
-          title={t("export.step2.asIsTitle")}
-          body={t("export.step2.asIsBody")}
-        />
-        <ChoiceCard
-          selected={wantAnonymize === true}
-          onClick={() => onChoose(true)}
-          title={t("export.step2.anonymizeTitle")}
-          body={t("export.step2.anonymizeBody")}
-        />
-      </div>
-
-      {wantAnonymize && (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2 px-1 py-1">
-            <p className="text-sm text-ink">
-              {t("export.step2.aiToggleTitle")}
-            </p>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={t("export.step2.aiToggleHint")}
-                  className="text-ink-muted hover:text-ink"
-                >
-                  <Info className="size-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[280px]">
-                {t("export.step2.aiToggleHint")}
-              </TooltipContent>
-            </Tooltip>
-            <Switch
-              checked={useAi}
-              onCheckedChange={onToggleAi}
-              disabled={anonymizing}
-              className="ml-auto shrink-0"
-            />
-          </div>
-
-          {!anonymizing && (
-            <Button
-              size="sm"
-              variant={anonymized ? "outline" : "default"}
-              className="rounded-full"
-              onClick={onStart}
-            >
-              {anonymized
-                ? t("export.step2.checkAgain")
-                : t("export.step2.startReview")}
-            </Button>
-          )}
-
-          {(anonymizing || anonymized) && (
-            <h2 className="text-sm font-medium">
-              {t("export.step2.reviewLabel")}
-            </h2>
-          )}
-          {anonymizing && (
-            <div className="space-y-3">
-              <div className="running-glow-line bg-ink/5" aria-hidden />
-              <Subtle>
-                {progress && progress.total > 1
-                  ? t("export.step2.workingProgress", {
-                      done: progress.done,
-                      total: progress.total,
-                    })
-                  : t("export.step2.working")}
-              </Subtle>
-              {slow && !stopped && (
-                <div className="flex items-center justify-between gap-3 rounded-lg bg-chip p-3">
-                  <p className="text-xs text-ink-muted">
-                    {t("export.step2.slowNotice")}
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 rounded-full"
-                    onClick={onStop}
-                  >
-                    {t("export.step2.stopWait")}
-                  </Button>
-                </div>
-              )}
-              {stopped && <Subtle>{t("export.step2.stopping")}</Subtle>}
-            </div>
-          )}
-          {!anonymizing && anonymized?.aiError && (
-            <p className="text-xs text-ink-muted rounded-lg bg-chip p-3">
-              {t("export.step2.aiFallback", { reason: anonymized.aiError })}
-            </p>
-          )}
-          {anonymized && (
-            <div className="space-y-3">
-              {anonymized.claudeMd && (
-                <DiffCard
-                  title={t("export.step2.diffInstructions")}
-                  before={anonymized.claudeMd.before}
-                  after={anonymized.claudeMd.after}
-                  summary={anonymized.claudeMd.summary}
-                  becameEmpty={anonymized.claudeMd.becameEmpty}
-                  accepted={accept.claudeMd}
-                  onToggle={() =>
-                    setAccept({ ...accept, claudeMd: !accept.claudeMd })
-                  }
-                />
-              )}
-              {anonymized.skills.map((s) => (
-                <DiffCard
-                  key={s.id}
-                  title={humanize(s.id)}
-                  before={s.before}
-                  after={s.after}
-                  summary={s.summary}
-                  becameEmpty={s.becameEmpty}
-                  accepted={accept.skills[s.id] ?? true}
-                  onToggle={() =>
-                    setAccept({
-                      ...accept,
-                      skills: {
-                        ...accept.skills,
-                        [s.id]: !accept.skills[s.id],
-                      },
-                    })
-                  }
-                />
-              ))}
-              {anonymized.routines.map((r) =>
-                r.fieldDiffs.length > 0 ? (
-                  <RoutineDiffCard
-                    key={r.id}
-                    routineId={r.id}
-                    fieldDiffs={r.fieldDiffs}
-                    accepted={accept.routines[r.id] ?? true}
-                    onToggle={() =>
-                      setAccept({
-                        ...accept,
-                        routines: {
-                          ...accept.routines,
-                          [r.id]: !accept.routines[r.id],
-                        },
-                      })
-                    }
-                  />
-                ) : null,
-              )}
-              {anonymized.learnings.map((l) => (
-                <DiffCard
-                  key={l.id}
-                  title={t("export.step2.learningTitle")}
-                  before={l.before}
-                  after={l.after}
-                  summary={l.summary}
-                  becameEmpty={l.becameEmpty}
-                  accepted={accept.learnings[l.id] ?? true}
-                  onToggle={() =>
-                    setAccept({
-                      ...accept,
-                      learnings: {
-                        ...accept.learnings,
-                        [l.id]: !accept.learnings[l.id],
-                      },
-                    })
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-    </div>
-  );
-}
-
-function SaveStep({
-  agentName,
-  counts,
-  anonymized,
-}: {
-  agentName: string;
-  counts: { skills: number; routines: number; learnings: number };
-  anonymized: boolean;
-}) {
-  const { t } = useTranslation("portable");
-  return (
-    <div className="space-y-10">
-      <header>
-        <h1 className="text-[28px] font-normal leading-tight">
-          {t("export.step3.title")}
-        </h1>
-        <p className="mt-3 text-base text-ink-muted">
-          {t("export.step3.body", { name: agentName })}
-        </p>
-      </header>
-
-      <dl className="space-y-2 text-sm">
-        <SummaryRow
-          label={t("export.step3.skillsLabel")}
-          value={counts.skills}
-        />
-        <SummaryRow
-          label={t("export.step3.routinesLabel")}
-          value={counts.routines}
-        />
-        <SummaryRow
-          label={t("export.step3.learningsLabel")}
-          value={counts.learnings}
-        />
-        <SummaryRow
-          label={t("export.step3.anonymizedLabel")}
-          value={anonymized ? t("export.step3.yes") : t("export.step3.no")}
-        />
-      </dl>
-    </div>
-  );
-}
-
-// ─── Building blocks ──────────────────────────────────────────────────
-
-export function WizardHeader({
-  eyebrow,
-  index,
-  total,
-}: {
-  eyebrow: string;
-  index: number;
-  total: number;
-}) {
-  // Eyebrow + dots both pinned to the LEFT so radix's absolute-positioned
-  // close button (`top-4 right-4`) keeps its own column.
-  return (
-    <header className="shrink-0 px-8 pt-6 pb-2 flex items-center gap-4">
-      <p className="text-xs text-ink-muted">{eyebrow}</p>
-      <ProgressDots index={index} total={total} />
-    </header>
-  );
-}
-
-function ProgressDots({ index, total }: { index: number; total: number }) {
-  return (
-    <div className="flex items-center gap-1.5" aria-hidden>
-      {Array.from({ length: total }, (_, i) => (
-        <span
-          // biome-ignore lint/suspicious/noArrayIndexKey: dots are positional counters — no identity field exists; order is invariant
-          key={`dot-${i}`}
-          className={cn(
-            "size-2 rounded-full transition-colors",
-            i < index && "bg-ink/60",
-            i === index && "bg-ink",
-            i > index && "bg-ink/15",
-          )}
-        />
-      ))}
-    </div>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <h2 className="text-sm font-medium mb-3">{title}</h2>
-      <div className="space-y-1">{children}</div>
-    </section>
-  );
-}
-
-function Subtle({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-ink-muted">{children}</p>;
-}
-
-export function SwitchRow({
-  checked,
-  onChange,
-  title,
-  subtitle,
-  trailing,
-}: {
-  checked: boolean;
-  onChange: () => void;
-  title: string;
-  subtitle?: string;
-  trailing?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start gap-4 px-1 py-3">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-ink">{title}</p>
-        {subtitle && (
-          <p className="text-xs text-ink-muted line-clamp-2 mt-0.5">
-            {subtitle}
-          </p>
-        )}
-      </div>
-      {trailing && <div className="shrink-0 mt-0.5">{trailing}</div>}
-      <Switch
-        checked={checked}
-        onCheckedChange={onChange}
-        className="mt-0.5 shrink-0"
-      />
-    </div>
-  );
-}
-
-function ChoiceCard({
-  selected,
-  onClick,
-  title,
-  body,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  title: string;
-  body: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-xl border bg-input p-4 text-left transition-all",
-        "border-ink/5 hover:border-ink/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
-        selected && "border-ink shadow-[0_1px_0_rgba(0,0,0,0.05)]",
-      )}
-    >
-      <p className="text-sm font-medium text-ink">{title}</p>
-      <p className="mt-1 text-xs text-ink-muted">{body}</p>
-    </button>
-  );
-}
-
-function DiffCard({
-  title,
-  before,
-  after,
-  summary,
-  becameEmpty,
-  accepted,
-  onToggle,
-}: {
-  title: string;
-  before: string;
-  after: string;
-  summary: string;
-  becameEmpty: boolean;
-  accepted: boolean;
-  onToggle: () => void;
-}) {
-  const { t } = useTranslation("portable");
-  return (
-    <article className="rounded-xl border border-ink/5 bg-input p-4">
-      <header className="flex items-center justify-between gap-3 mb-3">
-        <p className="text-sm font-medium">{title}</p>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="text-xs text-ink-muted hover:text-ink"
-        >
-          {accepted ? t("export.step2.keep") : t("export.step2.skip")}
-        </button>
-      </header>
-      <div className="grid grid-cols-2 gap-3">
-        <Pane
-          label={t("export.step2.before")}
-          body={before}
-          dimmed={accepted}
-        />
-        <Pane label={t("export.step2.after")} body={after} dimmed={!accepted} />
-      </div>
-      <p className="text-xs text-ink-muted mt-3">{summary}</p>
-      {becameEmpty && (
-        <p className="text-xs text-ink-muted mt-1">
-          {t("export.step2.becameEmpty")}
-        </p>
-      )}
-    </article>
-  );
-}
-
-function RoutineDiffCard({
-  routineId,
-  fieldDiffs,
-  accepted,
-  onToggle,
-}: {
-  routineId: string;
-  fieldDiffs: { field: string; before: string; after: string }[];
-  accepted: boolean;
-  onToggle: () => void;
-}) {
-  const { t } = useTranslation("portable");
-  return (
-    <article className="rounded-xl border border-ink/5 bg-input p-4">
-      <header className="flex items-center justify-between gap-3 mb-3">
-        <p className="text-sm font-medium">
-          {t("export.step2.routineTitle", { id: routineId })}
-        </p>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="text-xs text-ink-muted hover:text-ink"
-        >
-          {accepted ? t("export.step2.keep") : t("export.step2.skip")}
-        </button>
-      </header>
-      <div className="space-y-3">
-        {fieldDiffs.map((d) => (
-          <div key={d.field} className="grid grid-cols-2 gap-3">
-            <Pane
-              label={`${d.field} · ${t("export.step2.before")}`}
-              body={d.before}
-              dimmed={accepted}
-            />
-            <Pane
-              label={`${d.field} · ${t("export.step2.after")}`}
-              body={d.after}
-              dimmed={!accepted}
-            />
-          </div>
-        ))}
-      </div>
-    </article>
-  );
-}
-
-function Pane({
-  label,
-  body,
-  dimmed,
-}: {
-  label: string;
-  body: string;
-  dimmed: boolean;
-}) {
-  return (
-    <div className={cn("rounded-lg bg-chip p-3", dimmed && "opacity-40")}>
-      <p className="text-[11px] text-ink-muted mb-1.5">{label}</p>
-      <pre className="text-xs whitespace-pre-wrap break-words font-sans line-clamp-6">
-        {body}
-      </pre>
-    </div>
-  );
-}
-
-function SummaryRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: number | string;
-}) {
-  return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-ink-muted">{label}</dt>
-      <dd className="tabular-nums text-ink">{value}</dd>
-    </div>
-  );
-}
-
-function humanize(slug: string): string {
-  return slug
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim();
 }

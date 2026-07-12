@@ -1,6 +1,6 @@
 import { creatorSchema } from "@houston/agentstore-contract";
 import { describe, expect, it } from "vitest";
-import { normalizeCreatorUrl, publishErrorMessage } from "./creator-url";
+import { normalizeCreatorUrl } from "./creator-url";
 
 describe("normalizeCreatorUrl", () => {
   it("treats empty / whitespace input as an absent (optional) link", () => {
@@ -37,19 +37,5 @@ describe("normalizeCreatorUrl", () => {
 
   it("rejects a value that cannot become a valid URL", () => {
     expect(normalizeCreatorUrl("not a url at all").ok).toBe(false);
-  });
-});
-
-describe("publishErrorMessage", () => {
-  it("maps known error codes to friendly copy", () => {
-    expect(publishErrorMessage("rate_limited", 429)).toMatch(/wait a minute/i);
-    expect(publishErrorMessage("unauthorized", 401)).toMatch(/claim link/i);
-    expect(publishErrorMessage("slug_exhausted", 409)).toMatch(/creator name/i);
-  });
-
-  it("falls back to a status-tagged message for unknown codes", () => {
-    expect(publishErrorMessage(undefined, 500)).toBe(
-      "Publishing failed (500). Please try again.",
-    );
   });
 });

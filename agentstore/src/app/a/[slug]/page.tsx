@@ -9,12 +9,13 @@ import { IntegrationChips } from "@/components/integration-chips";
 import { Markdown } from "@/components/markdown";
 import { SkillList } from "@/components/skill-list";
 import { resolveIntegrationLabels } from "@/lib/agents/integrations";
-import { getPublishedAgentBySlug } from "@/lib/agents/resolve";
 import { taglineOrDescription } from "@/lib/export/shared";
 import { buildInstallInstructions } from "@/lib/install/instructions";
 import { siteConfig } from "@/lib/site-config";
+import { getAgentBySlug } from "@/lib/store-api";
 
-export const runtime = "nodejs";
+// Rendered dynamically so `next build` never calls the gateway; the per-fetch
+// `revalidate` (60s) still caches agent reads across requests at runtime.
 export const dynamic = "force-dynamic";
 
 interface PageParams {
@@ -36,7 +37,7 @@ export async function generateMetadata({
   params,
 }: PageParams): Promise<Metadata> {
   const { slug } = await params;
-  const data = await getPublishedAgentBySlug(slug);
+  const data = await getAgentBySlug(slug);
   if (!data) return { title: "Agent not found" };
 
   const { ir } = data;
@@ -66,13 +67,13 @@ export async function generateMetadata({
 
 export default async function AgentDetailPage({ params }: PageParams) {
   const { slug } = await params;
-  const data = await getPublishedAgentBySlug(slug);
+  const data = await getAgentBySlug(slug);
   if (!data) notFound();
 
   const { ir } = data;
   const { identity } = ir;
   const urls = agentUrls(slug);
-  const integrations = await resolveIntegrationLabels(ir.integrations);
+  const integrations = resolveIntegrationLabels(ir.integrations);
   const instructions = buildInstallInstructions(ir, {
     irUrl: urls.irUrl,
     bundleUrl: urls.skillZipUrl,
