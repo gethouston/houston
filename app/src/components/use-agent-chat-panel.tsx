@@ -1432,6 +1432,7 @@ export function useAgentChatPanel({
             onDismiss={api.onDismiss}
             dismissLabel={api.dismissLabel}
             disabled={api.disabled}
+            provider={step.provider}
             agentId={agent.id}
             autoGrant={canManageAgentGrants(capabilities, agent)}
             reason={step.reason}

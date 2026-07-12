@@ -9,7 +9,7 @@ import {
   useSetAgentSettings,
 } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
-import { INTEGRATION_PROVIDER } from "../../integrations";
+import { useActiveIntegration } from "../../integrations";
 import { AgentAllowlistSection } from "../agent-integrations/agent-allowlist-section";
 import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
 
@@ -25,8 +25,9 @@ export function AgentAdminIntegrations({ agent }: AgentAdminScreenProps) {
   const { capabilities } = useCapabilities();
   const teams = capabilities?.teams === true;
 
-  const connections = useIntegrationConnections(INTEGRATION_PROVIDER, teams);
-  const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, teams);
+  const { providerId } = useActiveIntegration();
+  const connections = useIntegrationConnections(providerId, teams);
+  const catalog = useIntegrationToolkits(providerId, teams);
   const settingsQuery = useAgentSettings(agent.id, teams);
   const settingsMutation = useSetAgentSettings(agent.id);
   const settings = settingsQuery.data;

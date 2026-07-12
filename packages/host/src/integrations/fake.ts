@@ -75,7 +75,9 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   }
 
   async connect(userId: string, toolkit: string): Promise<ConnectStart> {
-    const connectionId = `conn-${++this.seq}`;
+    // The colon mirrors real MCP connection ids ("mcp:<server>") so route
+    // tests exercise the URL-encoding round-trip, not just benign UUIDs.
+    const connectionId = `conn:${++this.seq}`;
     const list = this.connections.get(userId) ?? [];
     list.push({ toolkit, connectionId, status: "pending" });
     this.connections.set(userId, list);

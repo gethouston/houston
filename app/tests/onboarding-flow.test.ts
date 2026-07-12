@@ -76,8 +76,8 @@ describe("integrationsAvailable (HOU-653 engine gating)", () => {
     strictEqual(integrationsAvailable(caps(["composio"])), true);
   });
 
-  it("false when integrations are advertised but not composio", () => {
-    strictEqual(integrationsAvailable(caps(["other"])), false);
+  it("true for a non-platform provider too (an MCP app hub connects email)", () => {
+    strictEqual(integrationsAvailable(caps(["composio-apps"])), true);
   });
 
   it("false when no integrations are advertised", () => {

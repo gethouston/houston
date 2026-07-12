@@ -48,6 +48,10 @@ import {
   handleIntegrations,
   type IntegrationDeps,
 } from "./routes/integrations";
+import {
+  handleMcpOAuthCallback,
+  type McpCallbackDeps,
+} from "./routes/integrations-mcp-callback";
 import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
 import { handleMigrationSource } from "./routes/migration-source";
 import { handlePortableAccount } from "./routes/portable";
@@ -127,6 +131,8 @@ export interface ControlPlaneDeps {
   feedback?: FeedbackSender;
   /** Third-party integrations (Composio, platform mode); absent → integration routes 503. */
   integrations?: IntegrationDeps;
+  /** Configured MCP OAuth callbacks, mounted publicly for authorization servers. */
+  mcpOAuth?: McpCallbackDeps;
   /**
    * Custom integrations (HOU-550): user-added API/MCP sources compiled to agent
    * tools by the embedded executor engine. Absent → the definition routes 404
@@ -242,6 +248,12 @@ async function handle(
   if (method === "GET" && path === "/v1/capabilities") {
     return json(res, 200, deps.capabilities);
   }
+  // OAuth authorization servers cannot present Houston's bearer token. This
+  // exact callback is public because its only authority is a single-use,
+  // high-entropy state nonce with a ten-minute TTL, and it can only complete a
+  // flow this host already persisted.
+  if (await handleMcpOAuthCallback(deps.mcpOAuth, method, path, url, res))
+    return;
   // pi-ai's full static model catalog (every runnable provider + model), the
   // SAME on every deployment. Static + not user-scoped, so it rides the public
   // meta surface next to capabilities — the picker/AI-Models tab read it to

@@ -28,6 +28,7 @@
     "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.29.0",
     "@secretlint/core": "13.0.2",
     "@secretlint/secretlint-rule-preset-recommend": "13.0.2",
     "effect": "4.0.0-beta.59",

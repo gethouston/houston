@@ -16,10 +16,8 @@ import { genericErrorDescription } from "../../lib/error-toast";
 import type { SettingsSectionId } from "../../lib/settings-sections";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import {
-  INTEGRATION_PROVIDER,
-  integrationsSupported,
-} from "../integrations/model";
+import { useActiveIntegration } from "../integrations";
+import { integrationsSupported } from "../integrations/model";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import { AccountSection } from "./sections/account";
 import { AppearanceSection } from "./sections/appearance";
@@ -55,8 +53,9 @@ export function SettingsIndex({
   const addToast = useUIStore((s) => s.addToast);
   const { capabilities } = useCapabilities();
   const integrationsAvailable = integrationsSupported(capabilities);
+  const { providerId } = useActiveIntegration();
   const connections = useIntegrationConnections(
-    INTEGRATION_PROVIDER,
+    providerId,
     integrationsAvailable,
   );
   // Only the active connections count as "connected apps"; a pending/errored

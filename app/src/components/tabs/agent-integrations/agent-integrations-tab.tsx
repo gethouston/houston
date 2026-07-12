@@ -15,11 +15,11 @@ import { canSeeIntegrationsPage } from "../../../lib/org-roles";
 import type { TabProps } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
 import {
-  INTEGRATION_PROVIDER,
   LoadingState,
   ReconnectBanner,
   SigninState,
   UnavailableState,
+  useActiveIntegration,
   useConnectFlow,
   useIntegrationsGate,
 } from "../../integrations";
@@ -49,8 +49,9 @@ export default function IntegrationsTab({ agent }: TabProps) {
   const { capabilities } = useCapabilities();
   const teamsEnabled = capabilities?.teams === true;
 
-  const connections = useIntegrationConnections(INTEGRATION_PROVIDER, ready);
-  const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
+  const { providerId } = useActiveIntegration();
+  const connections = useIntegrationConnections(providerId, ready);
+  const catalog = useIntegrationToolkits(providerId, ready);
   const grantsQuery = useAgentGrants(agent.id, ready);
   const settingsQuery = useAgentSettings(agent.id, ready && teamsEnabled);
 
@@ -65,10 +66,11 @@ export default function IntegrationsTab({ agent }: TabProps) {
     () => (settings ? effectiveAllowlist(settings) : null),
     [settings],
   );
-  const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
+  const disconnect = useDisconnectIntegration(providerId);
   const connectFlow = useConnectFlow({
     agentId: agent.id,
     autoGrant: grantsSupported && canEdit,
+    provider: providerId,
   });
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setSettingsSection = useUIStore((s) => s.setSettingsSection);

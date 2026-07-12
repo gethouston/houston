@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useIntegrationStatus, useIntegrationToolkits } from "../hooks/queries";
-import { appDisplay, INTEGRATION_PROVIDER } from "./integrations";
+import { useIntegrationToolkits } from "../hooks/queries";
+import { appDisplay, useActiveIntegration } from "./integrations";
 
 interface Props {
   /** Composio toolkit slugs the agent is designed to work with. */
@@ -22,10 +22,8 @@ interface Props {
  * with no integration provider wired — `appDisplay` falls back to the guess.
  */
 export function AgentIntegrationChips({ slugs, max = 6 }: Props) {
-  const status = useIntegrationStatus();
-  const ready = !!status.data?.find((p) => p.provider === INTEGRATION_PROVIDER)
-    ?.ready;
-  const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
+  const { providerId, ready } = useActiveIntegration();
+  const catalog = useIntegrationToolkits(providerId, ready);
   const bySlug = useMemo(
     () => new Map((catalog.data ?? []).map((tk) => [tk.slug, tk])),
     [catalog.data],

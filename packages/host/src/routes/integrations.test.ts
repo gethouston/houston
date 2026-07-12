@@ -265,11 +265,13 @@ test("toolkits/connect/poll/disconnect — the full OAuth hand-off, no provider 
     ).json();
     expect(conn.status).toBe("pending");
 
-    // …then the poll sees it active.
+    // …then the poll sees it active. The id rides URL-ENCODED, exactly as
+    // engine-client sends it — an MCP-style id ("mcp:x" → "mcp%3Ax") must
+    // decode server-side or the connect card polls 404 forever.
     fake.completeConnection(USER, connect.connectionId);
     conn = await (
       await fetch(
-        `${base}/v1/integrations/composio/connections/${connect.connectionId}`,
+        `${base}/v1/integrations/composio/connections/${encodeURIComponent(connect.connectionId)}`,
         { headers: auth },
       )
     ).json();

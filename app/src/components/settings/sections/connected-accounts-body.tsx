@@ -9,8 +9,8 @@ import {
   AppDetailSheet,
   ConnectedAppsList,
   DisconnectAppDialog,
-  INTEGRATION_PROVIDER,
   ReconnectBanner,
+  useActiveIntegration,
   useConnectedApps,
   useConnectFlow,
   useConnectionSelection,
@@ -37,9 +37,13 @@ export function ConnectedAccountsBody({
 }: ConnectedAccountsBodyProps) {
   const { t } = useTranslation("settings");
   const { capabilities } = useCapabilities();
-  const apps = useConnectedApps();
-  const connectFlow = useConnectFlow({ autoGrant: false });
-  const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
+  const { providerId } = useActiveIntegration();
+  const apps = useConnectedApps(providerId);
+  const connectFlow = useConnectFlow({
+    autoGrant: false,
+    provider: providerId,
+  });
+  const disconnect = useDisconnectIntegration(providerId);
   const toggle = useAgentGrantToggle();
   const setViewMode = useUIStore((s) => s.setViewMode);
   const {

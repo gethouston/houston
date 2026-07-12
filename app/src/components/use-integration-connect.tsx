@@ -19,7 +19,7 @@ import {
 import {
   type AppDisplay,
   appDisplay,
-  INTEGRATION_PROVIDER,
+  useActiveIntegration,
   useConnectFlow,
 } from "./integrations";
 
@@ -52,6 +52,7 @@ export function useIntegrationConnect({
   autoGrant,
   onConnected,
   autoContinueWhenConnected = false,
+  provider,
 }: {
   toolkit: string;
   agentId: string;
@@ -71,6 +72,9 @@ export function useIntegrationConnect({
    * markdown-link card leaves this off and stays a passive badge.
    */
   autoContinueWhenConnected?: boolean;
+  /** Registry provider owning the toolkit (a connect step carries it; absent =
+   *  the deployment's ACTIVE provider, so hub-only locals work unchanged). */
+  provider?: string;
 }): {
   app: AppDisplay;
   isConnected: boolean;
@@ -81,11 +85,12 @@ export function useIntegrationConnect({
   const { t } = useTranslation("chat");
   const addToast = useUIStore((s) => s.addToast);
 
+  const active = useActiveIntegration();
+  const providerId = provider ?? active.providerId;
   const status = useIntegrationStatus();
-  const ready = !!status.data?.find((p) => p.provider === INTEGRATION_PROVIDER)
-    ?.ready;
-  const connections = useIntegrationConnections(INTEGRATION_PROVIDER, ready);
-  const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
+  const ready = !!status.data?.find((p) => p.provider === providerId)?.ready;
+  const connections = useIntegrationConnections(providerId, ready);
+  const catalog = useIntegrationToolkits(providerId, ready);
 
   const slug = normalizeToolkitSlug(toolkit);
   const isConnected = isToolkitConnected(connections.data, toolkit);
@@ -104,6 +109,7 @@ export function useIntegrationConnect({
   const { state: connectState, connect } = useConnectFlow({
     agentId,
     autoGrant,
+    provider: providerId,
   });
   // The nudge fires at most once per surface, and only for a connection the
   // user drove from HERE — a connection landing via the Integrations tab or

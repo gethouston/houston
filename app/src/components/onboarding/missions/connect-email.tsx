@@ -11,7 +11,7 @@ import { useCapabilities } from "../../../hooks/use-capabilities";
 import { canManageAgentGrants } from "../../../lib/agent-access";
 import type { Agent } from "../../../lib/types";
 import { GoogleIcon, MicrosoftIcon } from "../../auth/provider-brand-icons";
-import { INTEGRATION_PROVIDER, useConnectFlow } from "../../integrations";
+import { useActiveIntegration, useConnectFlow } from "../../integrations";
 import { SetupCard } from "../setup-card";
 import { EmailActionRow } from "./email-action-row";
 import { isToolkitConnected, shouldOfferConnectSkip } from "./onboarding-flow";
@@ -69,12 +69,9 @@ export function ConnectEmailMission({
   // sync pushes it). Gate the connection poll on it so we never fire a failing
   // call while the provider is still warming up (before any connect attempt).
   const status = useIntegrationStatus();
-  const ready = !!status.data?.find((p) => p.provider === INTEGRATION_PROVIDER)
-    ?.ready;
-  const connections = useIntegrationConnections(
-    INTEGRATION_PROVIDER,
-    ready || attempted,
-  );
+  const { providerId } = useActiveIntegration();
+  const ready = !!status.data?.find((p) => p.provider === providerId)?.ready;
+  const connections = useIntegrationConnections(providerId, ready || attempted);
 
   // Multiplayer: a connection made from this agent's flow is auto-granted to it
   // (mirrors the integrations tab). Single-player has no grants — this is false.
@@ -84,6 +81,7 @@ export function ConnectEmailMission({
     connect,
     cancel,
   } = useConnectFlow({
+    provider: providerId,
     agentId: agent.id,
     autoGrant,
   });

@@ -56,11 +56,13 @@ export interface ConnectedApps {
  * active / recovering rows (each active row carrying the agents that use it).
  * Kept out of the view so the JSX stays a thin render of these values.
  */
-export function useConnectedApps(): ConnectedApps {
+export function useConnectedApps(
+  provider: string = INTEGRATION_PROVIDER,
+): ConnectedApps {
   const agents = useAgentStore((s) => s.agents);
   const { capabilities } = useCapabilities();
-  const connections = useIntegrationConnections(INTEGRATION_PROVIDER, true);
-  const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
+  const connections = useIntegrationConnections(provider, true);
+  const catalog = useIntegrationToolkits(provider, true);
 
   const agentChips = useMemo(() => agents.map(toAgentChip), [agents]);
   const agentIds = useMemo(() => agents.map((a) => a.id), [agents]);

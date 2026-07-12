@@ -143,9 +143,15 @@ export async function handleSandboxIntegrations(
       // would render the wrong speech act ("no such app" instead of the
       // sign-in card).
       const settled = await Promise.allSettled(
-        providerIds.map((id) =>
-          registry.get(id).search(ws.ownerUserId, query, acting),
-        ),
+        providerIds.map(async (id) => {
+          const found = await registry
+            .get(id)
+            .search(ws.ownerUserId, query, acting);
+          // Stamp the source provider so the runtime can echo it back on
+          // execute — exact routing even when two providers overlap (e.g.
+          // Composio platform + a Composio MCP hub both serving "gmail").
+          return found.map((item) => ({ ...item, provider: id }));
+        }),
       );
       const items = settled.flatMap((s) =>
         s.status === "fulfilled" ? s.value : [],
@@ -171,14 +177,20 @@ export async function handleSandboxIntegrations(
       json(res, 400, { error: "missing 'action'" });
       return true;
     }
+    const providerId = explicit ?? providerForAction(registry, action);
     // Grant check before the upstream call — an ungranted toolkit never runs.
-    if (granted && !isActionGranted(action, granted)) {
+    // Slug attribution fits Composio naming; an MCP server's tools carry
+    // arbitrary names, so a grant of the provider's OWN id (its single
+    // pseudo-toolkit) also authorizes it.
+    if (
+      granted &&
+      !isActionGranted(action, granted) &&
+      !granted.includes(providerId)
+    ) {
       json(res, 403, { error: "toolkit_not_granted" });
       return true;
     }
-    const provider = registry.get(
-      explicit ?? providerForAction(registry, action),
-    );
+    const provider = registry.get(providerId);
     const params =
       body.params && typeof body.params === "object"
         ? (body.params as Record<string, unknown>)

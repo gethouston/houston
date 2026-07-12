@@ -3,8 +3,10 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import {
   CustomIntegrationsSection,
   LoadingState,
+  McpHubsSection,
   SigninState,
   UnavailableState,
+  useActiveIntegration,
   useIntegrationsGate,
 } from "../integrations";
 import { PageContainer, PageHeader } from "../shell/page-shell";
@@ -29,6 +31,7 @@ export function IntegrationsView() {
   const { t } = useTranslation("integrations");
   const { capabilities } = useCapabilities();
   const gate = useIntegrationsGate();
+  const active = useActiveIntegration();
 
   return (
     <div className="h-full overflow-auto">
@@ -43,6 +46,7 @@ export function IntegrationsView() {
             <IntegrationsReady
               reconnectNotice={gate.reconnectNotice}
               dismissReconnect={gate.dismissReconnect}
+              provider={active.providerId}
             />
           )
         ) : (
@@ -69,7 +73,13 @@ export function IntegrationsView() {
                 )}
               </div>
             ) : gate.kind === "signin" ? (
-              <SigninState onSignIn={gate.signIn} signingIn={gate.signingIn} />
+              <div className="flex flex-col gap-8">
+                <SigninState
+                  onSignIn={gate.signIn}
+                  signingIn={gate.signingIn}
+                />
+                <McpHubsSection />
+              </div>
             ) : (
               <UnavailableState />
             )}

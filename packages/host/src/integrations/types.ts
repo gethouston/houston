@@ -108,6 +108,13 @@ export interface ToolMatch {
    * `connected`.
    */
   status?: IntegrationAppStatus;
+  /**
+   * Which registry provider produced this match. Stamped by the sandbox
+   * search fan-out (never by adapters) so the runtime can route the follow-up
+   * execute/connect to the right provider. Absent on single-provider hosts —
+   * the runtime then omits it and the host falls back to its default.
+   */
+  provider?: string;
 }
 
 /** The outcome of running an action. */

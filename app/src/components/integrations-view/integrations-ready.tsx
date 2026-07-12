@@ -9,6 +9,7 @@ import {
   categoryLabel,
   DisconnectAppDialog,
   INTEGRATION_PROVIDER,
+  McpHubsSection,
   ReconnectBanner,
   SectionHeader,
   UNCATEGORIZED,
@@ -23,6 +24,9 @@ import { InstalledStrip } from "./installed-strip";
 import { RecoveryRow } from "./recovery-row";
 
 interface IntegrationsReadyProps {
+  /** Which registry provider this page manages. Default: the platform
+   *  provider; an MCP app hub renders the SAME page for its own catalog. */
+  provider?: string;
   reconnectNotice: boolean;
   dismissReconnect: () => Promise<void>;
 }
@@ -48,13 +52,14 @@ interface IntegrationsReadyProps {
  * closing any of them never kills an in-flight OAuth poll.
  */
 export function IntegrationsReady({
+  provider = INTEGRATION_PROVIDER,
   reconnectNotice,
   dismissReconnect,
 }: IntegrationsReadyProps) {
   const { t } = useTranslation("integrations");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
-  const apps = useConnectedApps();
+  const apps = useConnectedApps(provider);
   // The category dropdown's options: "all" first, then the catalog's primary
   // categories in section order, the uncategorized bucket labeled "Other".
   const categoryOptions = useMemo(() => {
@@ -72,8 +77,8 @@ export function IntegrationsReady({
       ),
     ];
   }, [apps.catalogData, apps.connData, t]);
-  const connectFlow = useConnectFlow({ autoGrant: false });
-  const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
+  const connectFlow = useConnectFlow({ autoGrant: false, provider });
+  const disconnect = useDisconnectIntegration(provider);
   const {
     selectedConn,
     selectedApp,
@@ -141,6 +146,8 @@ export function IntegrationsReady({
             </section>
           )
         )}
+
+        <McpHubsSection exclude={provider} />
 
         <CustomIntegrationsSection />
 

@@ -38,6 +38,7 @@ export {
 export { CustomIntegrationsSection } from "./custom-integrations-section";
 export { DisconnectAppDialog } from "./disconnect-app-dialog";
 export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
+export { McpHubsSection, useMcpHubProviders } from "./mcp-hubs-section";
 export {
   INTEGRATION_PROVIDER,
   POLL_INTERVAL_MS,
@@ -54,6 +55,7 @@ export {
   SigninState,
   UnavailableState,
 } from "./states";
+export { useActiveIntegration } from "./use-active-integration";
 export {
   type ConnectFlow,
   type ConnectState,

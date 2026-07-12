@@ -15,6 +15,9 @@ interface ChatConnectInteractionCardProps extends StepChrome {
   stepId: string;
   /** The `#houston_toolkit=<slug>` app the agent asked the user to connect. */
   toolkit: string;
+  /** Registry provider owning the toolkit (from the connect step; absent on
+   *  older interactions = the deployment's active provider). */
+  provider?: string;
   /** The agent whose chat hosts the card (multiplayer grant attribution). */
   agentId: string;
   /** Multiplayer: auto-grant the fresh connection to this agent (C4). */
@@ -66,6 +69,7 @@ interface ChatConnectInteractionCardProps extends StepChrome {
  */
 export function ChatConnectInteractionCard({
   toolkit,
+  provider,
   agentId,
   autoGrant,
   reason,
@@ -84,6 +88,7 @@ export function ChatConnectInteractionCard({
   // bouncing the user off the step they walked Back to. On a revisit the pager's
   // forward chevron is the way onward.
   const { app, isConnected, connecting, startConnect } = useIntegrationConnect({
+    provider,
     toolkit,
     agentId,
     autoGrant,

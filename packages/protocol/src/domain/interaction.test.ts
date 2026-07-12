@@ -1,5 +1,9 @@
 import { expect, expectTypeOf, test } from "vitest";
-import { isPendingInteraction, type PendingInteraction } from "../index";
+import {
+  isInteractionStep,
+  isPendingInteraction,
+  type PendingInteraction,
+} from "../index";
 
 test("isPendingInteraction accepts the step-sequence shape and rejects legacy shapes", () => {
   expect(
@@ -317,4 +321,11 @@ test("the protocol index re-exports PendingInteraction", () => {
   // @ts-expect-error — a step's `kind` is the discriminant; other values are not assignable
   const bad: PendingInteraction = { steps: [{ kind: "unknown" }] };
   void bad;
+});
+
+test("a connect step's optional provider must be a string when present", () => {
+  const base = { kind: "connect", id: "c1", toolkit: "composio-apps" };
+  expect(isInteractionStep(base)).toBe(true);
+  expect(isInteractionStep({ ...base, provider: "composio-apps" })).toBe(true);
+  expect(isInteractionStep({ ...base, provider: 7 })).toBe(false);
 });

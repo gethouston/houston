@@ -169,5 +169,14 @@
       "doneToast": "Perfeito! Sua integração personalizada está pronta para usar."
     },
     "catalogUnavailable": "O catálogo de aplicativos não está disponível nesta configuração, mas você ainda pode adicionar integrações personalizadas."
+  },
+  "hubs": {
+    "title": "Centrais de aplicativos",
+    "subtitle": "Um único login que traz muitos aplicativos de uma vez.",
+    "description": "Uma central de aplicativos conectados",
+    "connect": "Conectar",
+    "connected": "Conectado",
+    "connecting": "Conectando...",
+    "disconnect": "Desconectar"
   }
 }

@@ -22,7 +22,15 @@ export type ChatInteractionStep =
       options?: ChatInteractionOption[];
     }
   | { kind: "signin"; id: string; reason?: string }
-  | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  | {
+      kind: "connect";
+      id: string;
+      toolkit: string;
+      /** Which integration provider owns the toolkit; absent = the consumer's
+       *  default provider (older interactions carry no provider). */
+      provider?: string;
+      reason?: string;
+    }
   | {
       kind: "approval";
       id: string;

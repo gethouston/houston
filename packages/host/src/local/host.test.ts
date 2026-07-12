@@ -46,7 +46,7 @@ const fakeSpawner: RuntimeSpawner = {
 async function setup(opts?: {
   chatHistoryDbPath?: string;
   capabilities?: Capabilities;
-  integrations?: { gatewayUrl?: string; composioApiKey?: string };
+  integrations?: LocalHostOptions["integrations"];
   gatewayFronted?: boolean;
   credentials?: LocalHostOptions["credentials"];
   spawner?: RuntimeSpawner;
@@ -98,6 +98,54 @@ test("integration mode log identifies gateway mode and its upstream", () => {
   ).toBe("[local-host] integrations: gateway https://cloud.test");
 });
 
+test("integration mode log appends MCP servers after the primary provider", () => {
+  const mcpServers = [
+    {
+      id: "composio-apps",
+      url: "https://connect.composio.dev/mcp",
+      redirectUrl: "http://localhost/callback",
+    },
+  ];
+  expect(
+    formatIntegrationsModeLog({
+      gatewayUrl: "https://cloud.test",
+      mcpServers,
+    }),
+  ).toBe(
+    "[local-host] integrations: gateway https://cloud.test + mcp composio-apps (https://connect.composio.dev/mcp)",
+  );
+  expect(formatIntegrationsModeLog({ mcpServers })).toBe(
+    "[local-host] integrations: mcp composio-apps (https://connect.composio.dev/mcp)",
+  );
+});
+
+test("registry order: composio first, MCP hubs before the custom provider", async () => {
+  // Order is load-bearing twice: providerForAction picks the first NON-custom
+  // provider for slug-style actions, and the UI's activeIntegration picker
+  // takes the first non-custom provider when composio is absent.
+  const { host, base } = await setup({
+    integrations: {
+      gatewayUrl: "https://cloud.test",
+      hubCatalogUrl: "",
+      mcpServers: [
+        {
+          id: "composio-apps",
+          url: "https://connect.composio.dev/mcp",
+          redirectUrl: "http://localhost/callback",
+        },
+      ],
+    },
+  });
+  try {
+    const caps = (await (await fetch(`${base}/v1/capabilities`)).json()) as {
+      integrations: string[];
+    };
+    expect(caps.integrations).toEqual(["composio", "composio-apps", "custom"]);
+  } finally {
+    await host.stop();
+  }
+});
+
 test("integration mode log identifies direct mode without exposing the key", () => {
   const key = "must-not-appear";
   const line = formatIntegrationsModeLog({ composioApiKey: key });
@@ -107,7 +155,7 @@ test("integration mode log identifies direct mode without exposing the key", () 
 
 test("integration mode log explains how to enable integrations when off", () => {
   expect(formatIntegrationsModeLog(undefined)).toBe(
-    "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL or COMPOSIO_API_KEY to enable",
+    "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL, COMPOSIO_API_KEY, or HOUSTON_MCP_INTEGRATIONS to enable",
   );
 });
 

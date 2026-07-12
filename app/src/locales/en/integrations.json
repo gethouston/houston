@@ -169,5 +169,14 @@
       "doneToast": "Nice! Your custom integration is ready to use."
     },
     "catalogUnavailable": "The app catalog isn't available in this setup, but you can still add custom integrations."
+  },
+  "hubs": {
+    "title": "App hubs",
+    "subtitle": "One sign-in that brings many apps at once.",
+    "description": "A hub of connected apps",
+    "connect": "Connect",
+    "connected": "Connected",
+    "connecting": "Connecting...",
+    "disconnect": "Disconnect"
   }
 }

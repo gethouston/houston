@@ -185,6 +185,10 @@ interface ToolMatch {
   connected?: boolean;
   /** Host-reported app status; absent only from an older host (derive it). */
   status?: AppStatus;
+  /** Which host-side provider produced this match (the sandbox search fan-out
+   *  stamps it). Echoed back on execute/connect so the host routes exactly,
+   *  even when two providers overlap on a toolkit. */
+  provider?: string;
 }
 
 /** Prefer the explicit status; fall back to the legacy connected boolean. */
@@ -231,6 +235,21 @@ interface ActionResult {
 /** Both integration tools, or `[]` when the host can't be reached (no creds). */
 export function makeIntegrationTools(opts: IntegrationToolOptions) {
   const base = opts.baseUrl.replace(/\/$/, "");
+
+  // The provider stamp of every match seen this session, keyed by action slug
+  // and by toolkit slug. Written on each search, read back on execute (route
+  // the call) and request_connection (route the connect card) — the MODEL
+  // never sees or carries provider ids. Missing entry ⇒ omit ⇒ the host
+  // resolves the owner itself (providerForAction), the pre-stamp behavior.
+  const providerByAction = new Map<string, string>();
+  const providerByToolkit = new Map<string, string>();
+  const rememberProviders = (items: ToolMatch[]) => {
+    for (const m of items) {
+      if (!m.provider) continue;
+      if (m.action) providerByAction.set(m.action, m.provider);
+      providerByToolkit.set(normalizeToolkitSlug(m.toolkit), m.provider);
+    }
+  };
 
   async function post<T>(
     path: "search" | "execute",
@@ -325,6 +344,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         { query: params.query },
         signal,
       );
+      rememberProviders(items);
       if (items.length === 0) {
         // Genuinely empty: not a policy block, not "unavailable" - no such app
         // or action was found. The prompt tells the model to say so plainly.
@@ -390,9 +410,14 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     ) {
       let result: ActionResult;
       try {
+        const provider = providerByAction.get(params.action);
         result = await post<ActionResult>(
           "execute",
-          { action: params.action, params: params.params ?? {} },
+          {
+            action: params.action,
+            params: params.params ?? {},
+            ...(provider ? { provider } : {}),
+          },
           signal,
         );
       } catch (err) {
@@ -453,7 +478,12 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       if (!toolkit)
         throw new Error("request_connection needs a non-empty toolkit slug.");
       const reason = params.reason?.trim();
-      recordConnection({ toolkit, ...(reason ? { reason } : {}) });
+      const provider = providerByToolkit.get(toolkit);
+      recordConnection({
+        toolkit,
+        ...(provider ? { provider } : {}),
+        ...(reason ? { reason } : {}),
+      });
       return {
         content: [
           {

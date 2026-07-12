@@ -20,6 +20,12 @@ import { FileCustomSecretStore } from "../integrations/custom/secrets";
 import { FileCustomIntegrationStore } from "../integrations/custom/store";
 import { FileIntegrationGrantStore } from "../integrations/grant-store";
 import { LocalIntegrationGrants } from "../integrations/grants";
+import { FileMcpAuthStore } from "../integrations/mcp/auth-store";
+import { HubCatalogSource } from "../integrations/mcp/hub-catalog-source";
+import {
+  McpIntegrationProvider,
+  type McpServerConfig,
+} from "../integrations/mcp/provider";
 import { IntegrationRegistry } from "../integrations/registry";
 import { RemoteIntegrationProvider } from "../integrations/remote";
 import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
@@ -135,6 +141,10 @@ export interface LocalHostOptions {
     gatewayUrl?: string;
     composioApiKey?: string;
     podToken?: string;
+    /** OAuth-2.1 remote MCP servers (HOUSTON_MCP_INTEGRATIONS). */
+    mcpServers?: McpServerConfig[];
+    /** Override / disable ("" = offline) the hub-catalog refresh URL. */
+    hubCatalogUrl?: string;
   };
   /**
    * Passive mode (env `HOUSTON_PASSIVE=1`): boot migrations + serve, but keep
@@ -171,13 +181,23 @@ export interface LocalHost {
 export function formatIntegrationsModeLog(
   integrations: LocalHostOptions["integrations"],
 ): string {
+  const mcp = (integrations?.mcpServers ?? []).map(
+    ({ id, url }) => `mcp ${id} (${url})`,
+  );
   if (integrations?.gatewayUrl) {
-    return `[local-host] integrations: gateway ${integrations.gatewayUrl}`;
+    return `[local-host] integrations: ${[
+      `gateway ${integrations.gatewayUrl}`,
+      ...mcp,
+    ].join(" + ")}`;
   }
   if (integrations?.composioApiKey) {
-    return "[local-host] integrations: direct (own Composio key)";
+    return `[local-host] integrations: ${[
+      "direct (own Composio key)",
+      ...mcp,
+    ].join(" + ")}`;
   }
-  return "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL or COMPOSIO_API_KEY to enable";
+  if (mcp.length > 0) return `[local-host] integrations: ${mcp.join(" + ")}`;
+  return "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL, COMPOSIO_API_KEY, or HOUSTON_MCP_INTEGRATIONS to enable";
 }
 
 /**
@@ -315,8 +335,28 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     () => events.emit(LOCAL_USER, { type: "CustomIntegrationsChanged" }),
   );
 
+  // MCP integrations (HOUSTON_MCP_INTEGRATIONS): OAuth-2.1 remote servers,
+  // e.g. Composio's hosted MCP. Ordered AFTER the platform provider (composio
+  // stays the preferred owner when wired) and BEFORE custom (the always-on
+  // key-free provider must not become a hub-only install's primary — the UI's
+  // activeIntegration picker skips "custom" and takes the first hub).
+  const mcpAuthStore = new FileMcpAuthStore(dirname(opts.credentialsPath));
+  const hubCatalog = new HubCatalogSource({
+    cachePath: join(dirname(opts.credentialsPath), "mcp-hub-catalog.json"),
+    url: opts.integrations?.hubCatalogUrl,
+  });
+  const mcpProviders = (opts.integrations?.mcpServers ?? []).map(
+    (config) =>
+      new McpIntegrationProvider({
+        ...config,
+        store: mcpAuthStore,
+        catalog: hubCatalog,
+      }),
+  );
+
   const registry = new IntegrationRegistry([
     ...(composioProvider ? [composioProvider] : []),
+    ...mcpProviders,
     customProvider,
   ]);
   const integrations = {
@@ -414,6 +454,8 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     capabilities,
     chatHistoryMigrated,
     integrations,
+    // MCP OAuth callbacks: public route, mounted only when servers exist.
+    mcpOAuth: mcpProviders.length > 0 ? { providers: mcpProviders } : undefined,
     integrationGrants,
     actionApprovals,
     customIntegrations,

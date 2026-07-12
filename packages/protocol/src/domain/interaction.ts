@@ -49,7 +49,17 @@ export type InteractionStep =
       options?: InteractionOption[];
     }
   | { kind: "signin"; id: string; reason?: string }
-  | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  | {
+      kind: "connect";
+      id: string;
+      toolkit: string;
+      /** Which integration provider owns the toolkit (an id from the host's
+       *  registry, e.g. "composio" or an MCP server id like "composio-apps").
+       *  Absent = "composio", the only provider before MCP integrations
+       *  existed, so interactions persisted by older builds stay valid. */
+      provider?: string;
+      reason?: string;
+    }
   | { kind: "credential"; id: string; toolkit: string; reason?: string }
   | { kind: "plan_ready"; id: string; summary: string }
   | {
@@ -93,7 +103,11 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
   if (v.kind === "question") return typeof v.question === "string";
   if (v.kind === "signin")
     return v.reason === undefined || typeof v.reason === "string";
-  if (v.kind === "connect") return typeof v.toolkit === "string";
+  if (v.kind === "connect")
+    return (
+      typeof v.toolkit === "string" &&
+      (v.provider === undefined || typeof v.provider === "string")
+    );
   if (v.kind === "credential") return typeof v.toolkit === "string";
   if (v.kind === "plan_ready") return typeof v.summary === "string";
   if (v.kind === "suggest_reusable")
