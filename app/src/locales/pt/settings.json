@@ -2,6 +2,7 @@
   "title": "Configurações",
   "nav": {
     "connectedAccounts": "Contas conectadas",
+    "apiKeys": "Chaves de API",
     "workspaceContext": "Contexto do espaço",
     "userContext": "Seu contexto",
     "language": "Idioma",
@@ -124,6 +125,7 @@
     "rows": {
       "members": "Pessoas que podem usar seus agentes",
       "connectedAccounts": "Aplicativos que você conectou ao Houston",
+      "apiKeys": "Chaves para usar seus agentes a partir das suas próprias ferramentas",
       "workspaceContext": "O que todo agente sabe sobre este espaço",
       "userContext": "O que todo agente sabe sobre você",
       "shortcuts": "Use o Houston sem o mouse",
@@ -145,5 +147,48 @@
     "empty": "Você ainda não conectou nenhum aplicativo.",
     "connectMore": "Conectar mais aplicativos",
     "connectHint": "Conecte novos aplicativos pela aba Integrações de qualquer agente."
+  },
+  "apiKeys": {
+    "title": "Chaves de API",
+    "intro": "Use chaves de API para iniciar missões a partir das suas próprias ferramentas e scripts. <docs>Leia a documentação para desenvolvedores</docs>.",
+    "dialogClose": "Fechar",
+    "createButton": "Criar chave",
+    "empty": {
+      "title": "Você ainda não tem chaves de API",
+      "description": "Uma chave de API permite que suas próprias ferramentas e scripts iniciem missões com seus agentes. Crie uma para começar."
+    },
+    "error": {
+      "title": "Não foi possível carregar suas chaves",
+      "description": "Algo deu errado ao conectar com o servidor. Verifique sua conexão e tente novamente.",
+      "retry": "Tentar de novo"
+    },
+    "row": {
+      "created": "Criada em {{date}}",
+      "lastUsed": "Último uso {{when}}",
+      "neverUsed": "Nunca usada",
+      "revoke": "Revogar"
+    },
+    "create": {
+      "title": "Criar chave de API",
+      "subtitle": "Dê um nome a esta chave para reconhecê-la depois.",
+      "nameLabel": "Nome da chave",
+      "namePlaceholder": "ex. Meu script de automação",
+      "limitReached": "Você atingiu o máximo de 20 chaves. Revogue uma que não usa mais para criar uma nova.",
+      "cancel": "Cancelar",
+      "submit": "Criar chave",
+      "revealTitle": "Copie sua chave de API",
+      "revealSubtitle": "\"{{name}}\" está pronta. Copie agora e guarde em um lugar seguro.",
+      "copy": "Copiar",
+      "copied": "Copiada",
+      "copyFailed": "Não foi possível copiar a chave",
+      "warning": "Esta é a única vez que você verá esta chave. Você não poderá vê-la novamente depois de fechar.",
+      "done": "Concluído"
+    },
+    "revoke": {
+      "title": "Revogar esta chave?",
+      "description": "\"{{name}}\" vai parar de funcionar imediatamente. Qualquer ferramenta que a use perderá o acesso. Isso não pode ser desfeito.",
+      "confirm": "Revogar",
+      "cancel": "Cancelar"
+    }
   }
 }

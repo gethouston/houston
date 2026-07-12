@@ -1,0 +1,27 @@
+{# Developers sidebar navigation. Set `activeDoc` in front matter to highlight the current page.
+   Values: "overview", "missions", "a2a", "mcp" #}
+<aside class="sidebar">
+  <div class="sidebar-label">Developers</div>
+  <ul class="sidebar-nav">
+    <li>
+      <a href="/developers/"{% if activeDoc == "overview" %} class="active"{% endif %}>
+        <span class="num">—</span>Overview
+      </a>
+    </li>
+    <li>
+      <a href="/developers/missions/"{% if activeDoc == "missions" %} class="active"{% endif %}>
+        <span class="num">01</span>Missions (REST)
+      </a>
+    </li>
+    <li>
+      <a href="/developers/a2a/"{% if activeDoc == "a2a" %} class="active"{% endif %}>
+        <span class="num">02</span>Agent2Agent
+      </a>
+    </li>
+    <li>
+      <a href="/developers/mcp/"{% if activeDoc == "mcp" %} class="active"{% endif %}>
+        <span class="num">03</span>MCP
+      </a>
+    </li>
+  </ul>
+</aside>

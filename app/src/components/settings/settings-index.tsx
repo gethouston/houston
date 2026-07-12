@@ -4,6 +4,7 @@ import {
   CloudUpload,
   FileText,
   Keyboard,
+  KeyRound,
   User,
   Users,
 } from "lucide-react";
@@ -29,6 +30,7 @@ import { SettingsCard, SettingsRow } from "./settings-row";
 interface SettingsIndexProps {
   accountAvailable: boolean;
   showMembers: boolean;
+  apiKeysAvailable: boolean;
   migrationAvailable: boolean;
   onSelect: (id: SettingsSectionId) => void;
 }
@@ -42,6 +44,7 @@ interface SettingsIndexProps {
 export function SettingsIndex({
   accountAvailable,
   showMembers,
+  apiKeysAvailable,
   migrationAvailable,
   onSelect,
 }: SettingsIndexProps) {
@@ -117,6 +120,14 @@ export function SettingsIndex({
                 count: memberCount,
               })}
               onClick={() => onSelect("members")}
+            />
+          )}
+          {apiKeysAvailable && (
+            <SettingsRow
+              icon={KeyRound}
+              title={t("settings:nav.apiKeys")}
+              description={t("settings:index.rows.apiKeys")}
+              onClick={() => onSelect("apiKeys")}
             />
           )}
         </SettingsCard>

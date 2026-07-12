@@ -22,6 +22,8 @@ import type {
   AgentMoveStart,
   AgentMoveStatus,
   AgentSettings,
+  ApiKey,
+  ApiKeyCreated,
   AttachmentManifest,
   AttachmentUploadResult,
   AuditEntry,
@@ -1401,6 +1403,41 @@ export class HoustonClient {
    */
   createPortal(): Promise<BillingCheckout> {
     return this.request("POST", "/org/billing/portal", {});
+  }
+
+  // ---------- personal API keys (C9) — hosted gateway only ----------
+  //
+  // The user's programmatic credential for the public API. `listApiKeys` reads
+  // the active keys (no secrets); `createApiKey` mints one and returns the FULL
+  // secret exactly once; `revokeApiKey` soft-revokes by id. The frontend gates
+  // the whole surface on `capabilities.apiKeys`, so off-gateway hosts never call
+  // these.
+
+  /**
+   * The caller's active API keys, newest first (C9 §Routes). No secrets — each
+   * entry carries only its display `prefix`. A GET, so it replays safely on a
+   * transient transport blip.
+   */
+  listApiKeys(): Promise<ApiKey[]> {
+    return this.request<{ keys: ApiKey[] }>("GET", "/keys").then((r) => r.keys);
+  }
+  /**
+   * Mint a personal API key (C9). Returns the FULL secret in `key`, exposed ONLY
+   * here and never retrievable again, so the caller reveals it once and keeps it
+   * out of any cache. `name` is trimmed 1..100 server-side; ≥20 active keys →
+   * `400 {code:"key_limit"}`, which the UI renders inline (revoke to free a
+   * slot). A POST, so `send` never auto-replays it.
+   */
+  createApiKey(name: string): Promise<ApiKeyCreated> {
+    return this.request("POST", "/keys", { name });
+  }
+  /**
+   * Soft-revoke a key by id (C9). Idempotent from the user's view: an unknown,
+   * foreign, or already-revoked id answers `404` (no existence leak). Returns
+   * nothing on success (`204`).
+   */
+  revokeApiKey(id: string): Promise<void> {
+    return this.request("DELETE", `/keys/${this.seg(id)}`);
   }
 
   // ---------- per-agent assignments + integration grants (multiplayer) ----------

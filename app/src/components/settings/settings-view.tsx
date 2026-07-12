@@ -3,6 +3,7 @@ import { ChevronLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { apiKeysSupported } from "../../lib/api-keys-model";
 import { canSeeMembers } from "../../lib/org-roles";
 import {
   parseSettingsSection,
@@ -11,6 +12,7 @@ import {
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAccountAvailable } from "./sections/account";
+import { ApiKeysSection } from "./sections/api-keys";
 import { ConnectedAccountsSection } from "./sections/connected-accounts";
 import { MembersSection } from "./sections/members";
 import { MigrationSection, useMigrationAvailable } from "./sections/migration";
@@ -29,6 +31,7 @@ export function SettingsView() {
   const migrationAvailable = useMigrationAvailable();
   const { capabilities } = useCapabilities();
   const showMembers = canSeeMembers(capabilities);
+  const apiKeysAvailable = apiKeysSupported(capabilities);
   const setSettingsSection = useUIStore((s) => s.setSettingsSection);
   // Consume the one-shot deep-link the moment this view mounts: another surface
   // may have pinned a section (e.g. "connectedAccounts") right before switching
@@ -56,6 +59,7 @@ export function SettingsView() {
         <SettingsIndex
           accountAvailable={accountAvailable}
           showMembers={showMembers}
+          apiKeysAvailable={apiKeysAvailable}
           migrationAvailable={migrationAvailable}
           onSelect={setActive}
         />
@@ -84,6 +88,7 @@ export function SettingsView() {
           <div className="mx-auto max-w-xl px-8 pb-10">
             {active === "members" && <MembersSection />}
             {active === "connectedAccounts" && <ConnectedAccountsSection />}
+            {active === "apiKeys" && <ApiKeysSection />}
             {active === "shortcuts" && <ShortcutsSection />}
             {active === "reportBug" && <ReportBugSection />}
             {active === "migration" && <MigrationSection />}
