@@ -88,10 +88,14 @@ export const ConversationEmptyState = ({
 );
 
 /**
- * Top scroll fade: a background-colored gradient pinned under the panel
- * header, visible ONLY while content is scrolled — a streaming line then
- * dissolves as it leaves the viewport instead of hard-clipping mid-glyph
- * against the header's border. At rest (nothing scrolled out) it is fully
+ * Top scroll fade: a canvas-colored gradient pinned under the panel header,
+ * visible ONLY while content is scrolled — a streaming line then dissolves as
+ * it leaves the viewport instead of hard-clipping mid-glyph against the
+ * header's border. In light it fades from `canvas`, the EXACT tone the chat
+ * panel and its header wear, so header, fade, and body read as one color (the
+ * old `background` white showed as a pale seam on the gray canvas); dark keeps
+ * fading from `background` — the dark canvas token is translucent glass, which
+ * cannot anchor an opaque fade. At rest (nothing scrolled out) it is fully
  * transparent, so the first message never renders washed out. Mount inside
  * a <Conversation>.
  */
@@ -115,7 +119,7 @@ export const ConversationTopFade = () => {
       aria-hidden
       className={cn(
         "pointer-events-none absolute inset-x-0 top-0 z-10 h-8",
-        "bg-gradient-to-b from-background to-transparent",
+        "bg-gradient-to-b from-canvas to-transparent dark:from-background",
         "transition-opacity duration-150",
         scrolled ? "opacity-100" : "opacity-0",
       )}

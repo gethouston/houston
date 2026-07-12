@@ -77,9 +77,10 @@ export const KanbanDetailPanel = forwardRef<
           engages below max-w-3xl, so a normal 45%-width mission panel looks
           exactly as before. */}
       {/* Borderless header on the chat canvas tone: it reads as part of the
-          chat surface rather than a separate bar (the light-gray canvas /
-          dark transparent matches ChatPanel's own background). */}
-      <div className="shrink-0 bg-muted/50 px-4 py-3 dark:bg-transparent">
+          chat surface rather than a separate bar (`bg-canvas` is the SAME
+          token ChatPanel and the panes wear, so header, chat, and pane are
+          one color — no seam on the light canvas / dark transparent). */}
+      <div className="shrink-0 bg-canvas px-4 py-3 dark:bg-transparent">
         <div className="flex items-center gap-3 max-w-3xl mx-auto w-full">
           {leading}
           {avatar}

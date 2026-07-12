@@ -1051,6 +1051,188 @@ test("pressing Esc declines a lone connect step", async ({ page, request }) => {
 });
 
 /**
+ * The credential step (HOU-550, PR #825): a `request_credential` interaction the
+ * agent raises when a custom integration still needs its API key. It renders as a
+ * first-class citizen of the shared `InteractionModal` shell — a KeyRound glyph
+ * beside the integration NAME (resolved from the custom-integrations list by
+ * `slug === step.toolkit`), the agent's reason over a muted "stored securely"
+ * subtitle, the secure key form (one password input per auth field), and the
+ * unified "Skip" (Esc) + "Save key" (Enter) footer. Saving POSTs the secret to
+ * `/v1/integrations/custom/definitions/:slug/credential` and resumes the agent
+ * with a hidden auto-continue ("I've added the {name} key. Please continue.");
+ * skipping resumes it with "Skipped adding the {name} key." — a decline the agent
+ * MUST hear, or it waits on a key that never comes. These arm the SAME
+ * `/__test__/chat-interaction` control with a `credential` step, plus the
+ * `/__test__/custom-integrations` seed so the slug resolves to a real NAME.
+ */
+
+/** The absolute path for the light-theme reference shot of the credential card. */
+const CREDENTIAL_SHOT =
+  "/private/tmp/claude-501/-Users-ja-dev-houston/89dcedf6-5c2a-4e86-852c-1b2c0f455072/scratchpad/credential-card-light.png";
+
+/** A pending custom integration whose slug the credential step names. Its auth
+ *  method's field label ("API key (X-Api-Key)") is the key input's <label>. */
+const ACME_PENDING = {
+  slug: "acme_crm",
+  name: "Acme CRM",
+  kind: "openapi",
+  displayUrl: "https://api.acme.test/openapi.json",
+  addedAtMs: 0,
+  state: {
+    status: "pending",
+    authMethods: [
+      {
+        template: "apikey-0",
+        label: "API key (X-Api-Key)",
+        fields: [{ variable: "token", label: "API key (X-Api-Key)" }],
+      },
+    ],
+  },
+  authMethods: [
+    {
+      template: "apikey-0",
+      label: "API key (X-Api-Key)",
+      fields: [{ variable: "token", label: "API key (X-Api-Key)" }],
+    },
+  ],
+} as const;
+
+/** Arm the custom provider + a pending integration so the credential step's slug
+ *  resolves to a real NAME (and the credential POST has a definition to flip). */
+async function armCustomIntegration(
+  request: import("@playwright/test").APIRequestContext,
+) {
+  await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
+    data: { integrations: ["custom"] },
+  });
+  await request.post(`${FAKE_HOST_URL}/__test__/custom-integrations`, {
+    data: { items: [ACME_PENDING] },
+  });
+}
+
+/** The credential card container (the shared InteractionModal surface), scoped by
+ *  the reason line so the assertions never collide with the Integrations tab. */
+function credentialCard(page: import("@playwright/test").Page) {
+  return page
+    .locator("div.overflow-clip")
+    .filter({ hasText: "I need your API key to sync your records." });
+}
+
+const credentialStep = {
+  kind: "credential",
+  id: "k1",
+  toolkit: "acme_crm",
+  reason: "I need your API key to sync your records.",
+} as const;
+
+/**
+ * The lone credential step renders the full shell lockup — the integration NAME
+ * in the header (resolved from the slug), the agent's reason, the "stored
+ * securely" subtitle, the labeled key input, and the "Save key" + "Skip" footer.
+ * Filling the key + Save stores the secret and resumes the agent with the hidden
+ * auto-continue the fake host echoes back. Also captures the light-theme shot.
+ */
+test("renders the credential card, saves the key, and resumes the agent", async ({
+  page,
+  request,
+}) => {
+  await armCustomIntegration(request);
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: { interaction: { steps: [credentialStep] } },
+  });
+
+  await startMission(page, "connect the CRM");
+
+  // The reason line anchors the card; a single step shows no progress chrome.
+  await expect(
+    page.getByText("I need your API key to sync your records."),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/ of /)).toHaveCount(0);
+  const card = credentialCard(page);
+
+  // Header identity: the integration NAME (its own node, resolved from the slug),
+  // never the bare "acme_crm" slug fallback.
+  await expect(card.getByText("Acme CRM", { exact: true })).toBeVisible();
+  await expect(card.getByText("acme_crm")).toHaveCount(0);
+  // The muted "stored securely" reassurance subtitle.
+  await expect(
+    card.getByText(
+      "Paste it below. It is stored securely and never shown in chat.",
+    ),
+  ).toBeVisible();
+
+  // The secure key field: a labeled password input with the "Paste your key"
+  // placeholder — the secret crosses HTTPS only, never the transcript.
+  const keyField = page.getByLabel("API key (X-Api-Key)");
+  await expect(keyField).toBeVisible();
+  await expect(keyField).toHaveAttribute("type", "password");
+  await expect(keyField).toHaveAttribute("placeholder", "Paste your key");
+
+  // The footer: Skip (always available) and Save key (gated until the field is
+  // filled — a submit button, so Enter in the field also saves).
+  const skip = page.getByRole("button", { name: /Skip/ });
+  const save = page.getByRole("button", { name: "Save key" });
+  await expect(skip).toBeVisible();
+  await expect(save).toBeVisible();
+  await expect(save).toBeDisabled();
+
+  // Light-theme reference shot of the card element (not the full page).
+  await card.screenshot({ path: CREDENTIAL_SHOT });
+
+  // Fill the key -> Save enables. Store it -> the sequence completes and resumes
+  // the agent with the hidden auto-continue; the fake host echoes it back.
+  await keyField.fill("sk_live_acme_42");
+  await expect(save).toBeEnabled();
+  await save.click();
+
+  await expect(
+    page.getByText(/I've added the Acme CRM key\. Please continue\./),
+  ).toBeVisible({ timeout: 15_000 });
+  // The card retires and the composer stands alone again.
+  await expect(
+    page.getByText("I need your API key to sync your records."),
+  ).toHaveCount(0);
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+});
+
+/**
+ * Skipping the credential step: the quiet "Skip" (Esc) beside "Save key" advances
+ * past the step without a secret, the card retires, and the sequence still
+ * resumes the agent — the hidden auto-continue carries the decline fact
+ * ("Skipped adding the Acme CRM key.") so the agent stops waiting on a key that
+ * never comes.
+ */
+test("skips the credential step and tells the agent the key was declined", async ({
+  page,
+  request,
+}) => {
+  await armCustomIntegration(request);
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: { interaction: { steps: [credentialStep] } },
+  });
+
+  await startMission(page, "connect the CRM");
+
+  const card = credentialCard(page);
+  await expect(
+    page.getByText("I need your API key to sync your records."),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(card.getByText("Acme CRM", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: /Skip/ }).click();
+
+  // The decline rides the hidden resume the fake host echoes back verbatim.
+  await expect(page.getByText(/Skipped adding the Acme CRM key\./)).toBeVisible(
+    { timeout: 15_000 },
+  );
+  await expect(
+    page.getByText("I need your API key to sync your records."),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save key" })).toHaveCount(0);
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+});
+
+/**
  * Enter connects a connect step: with focus off the composer, pressing Enter
  * fires the Connect flow (mirroring the pill's return-key glyph). Integrations
  * are armed so the fake host mints a pending connection on connect; activating

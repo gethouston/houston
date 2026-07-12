@@ -44,13 +44,22 @@ async function startMission(page: Page, text: string) {
   });
 }
 
-/** The canonical lone Gmail approval step from the reference "Coworker card". */
+/**
+ * The canonical lone Gmail approval step from the reference "Coworker card".
+ *
+ * `params` carry the DISPLAY-READY keys the host emits: the sandbox route runs
+ * `displayParams`/`humanizeParamKey` before it puts the approval on the wire
+ * ("draft_id" -> "Draft id", "to" -> "To"), and the card renders those keys
+ * verbatim (its `params` prop is documented "display-ready"). The step is injected
+ * straight as a `pendingInteraction` here (bypassing the sandbox route), so it
+ * must already be in that humanized display form to mirror production faithfully.
+ */
 const gmailApprovalStep = {
   kind: "approval",
   id: "a1",
   toolkit: "gmail",
   action: "GMAIL_SEND_DRAFT",
-  params: { draft_id: "r-3003489618794597896", to: "john@acme.com" },
+  params: { "Draft id": "r-3003489618794597896", To: "john@acme.com" },
   paramsHash: "0123456789abcdef",
 } as const;
 
@@ -98,10 +107,11 @@ test("renders the approval card with its params and three footer buttons", async
   // inside the permission question).
   await expect(card.getByText("Gmail", { exact: true })).toBeVisible();
 
-  // Both param rows: muted key AND foreground value are on screen.
+  // Both param rows: the muted humanized key AND the foreground value are on
+  // screen (the host humanizes the key before the wire; the card renders it as-is).
   await expect(card.getByText("Draft id")).toBeVisible();
   await expect(card.getByText("r-3003489618794597896")).toBeVisible();
-  await expect(card.getByText("to", { exact: true })).toBeVisible();
+  await expect(card.getByText("To", { exact: true })).toBeVisible();
   await expect(card.getByText("john@acme.com")).toBeVisible();
 
   // The three footer decisions, correct copy.

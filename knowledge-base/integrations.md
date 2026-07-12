@@ -593,9 +593,16 @@ events.ts) → query invalidation.
 **UI**: a "Custom integrations" section on the global Integrations page (between
 Connected apps and the catalog) listing defs with kind badge/status/delete plus
 an "Add custom integration" button that opens a NEW CHAT seeded with the
-interview prompt; the in-chat credential card mirrors the connect card
-(auto-continue on save). Hidden when the host 404s the definitions route
-(engine-client returns `null`, same convention as grants).
+interview prompt; the in-chat credential card
+(`app/src/components/chat-credential-interaction-card.tsx`) is a first-class
+citizen of the `InteractionModal` shell, mirroring the connect card: a key-glyph
++ integration-name header, the reason line over the shared `CustomCredentialForm`
+(externalized submit via `formId`/`hideSubmit`/`onReadyChange`), and a footer
+with a "Save key" CTA beside the unified "Skip" (Esc). A saved key auto-continues;
+a SKIPPED key is a recorded fact the reply states ("Skipped adding the {name}
+key.", `chat:credential.skippedLine`; `finalCredentialNames` mirrors
+`finalConnectNames`) so the agent stops waiting. Hidden when the host 404s the
+definitions route (engine-client returns `null`, same convention as grants).
 
 **Cloud caveat**: pods store definitions on their own disk; the gateway only
 proxies agent-scoped routes, so the cloud web client cannot reach
