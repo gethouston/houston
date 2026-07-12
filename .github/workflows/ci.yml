@@ -23,6 +23,30 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ios: ${{ steps.filter.outputs.ios }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            ios:
+              - 'mobile/ios/**'
+              - 'packages/sdk/**'
+              - 'packages/design-tokens/**'
+              - 'packages/runtime-client/**'
+              - 'packages/protocol/**'
+              - 'pnpm-lock.yaml'
+              - '.github/workflows/ci.yml'
+
   checks:
     name: TS checks (lint · typecheck · contract tests)
     runs-on: ubuntu-latest
@@ -129,3 +153,81 @@ jobs:
 
       - name: Unit tests (app)
         run: pnpm --filter houston-app test
+
+  ios:
+    name: iOS (xcodegen + xcodebuild test)
+    needs: changes
+    if: ${{ needs.changes.outputs.ios == 'true' }}
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build SDK bridge
+        run: pnpm --filter @houston/sdk build:bridge
+
+      - name: Build design tokens
+        run: pnpm --filter @houston/design-tokens build
+
+      - name: Select latest Xcode
+        # The image default (Xcode 16.4 / Swift 6.1) crashes in SILGen on the
+        # IsolatedDefaultValues pattern the app uses; the app targets the
+        # Xcode 26 toolchain it is developed against.
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "Selecting $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+        working-directory: mobile/ios
+
+      - name: Run tests (xcodebuild)
+        working-directory: mobile/ios
+        run: |
+          set -o pipefail
+          xcodebuild -version
+          # Pick an available iPhone simulator dynamically; device names vary by
+          # Xcode image, so hardcoding one would break on image bumps.
+          DEVICE=$(xcrun simctl list devices available \
+            | grep -E "iPhone" \
+            | head -1 \
+            | sed -E 's/^ *//; s/ \(.*//')
+          if [ -z "$DEVICE" ]; then
+            echo "error: no available iPhone simulator found." >&2
+            exit 1
+          fi
+          echo "Using simulator: $DEVICE"
+          # Plain xcodebuild output on purpose: xcpretty swallows the compiler
+          # error lines, which makes a red run undiagnosable from the log.
+          xcodebuild test \
+            -project Houston.xcodeproj \
+            -scheme Houston \
+            -destination "platform=iOS Simulator,name=$DEVICE" \
+            -resultBundlePath "$RUNNER_TEMP/HoustonTests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload xcresult bundle
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-xcresult
+          path: ${{ runner.temp }}/HoustonTests.xcresult
+          retention-days: 14

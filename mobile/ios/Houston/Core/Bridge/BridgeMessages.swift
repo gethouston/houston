@@ -4,11 +4,12 @@ import Foundation
 /// — the machine-readable form of `packages/sdk/BRIDGE.md`.
 ///
 /// Two halves: ``BridgeInbound`` (host → SDK, what we *produce*) and
-/// ``BridgeOutbound`` (SDK → host, what we *consume*). Only the SDK-level members
-/// are modeled here. The native-port members (`fetch/*`, `storage/*`, `log`) are
-/// the ports agent's; ``SdkClient`` peeks their `kind` and routes the raw string
-/// through ``SdkPortRouter`` without decoding them, so this transport layer stays
-/// agnostic to how the host backs fetch and storage.
+/// ``BridgeOutbound`` (SDK → host, what we *consume*). The SDK-level members plus
+/// the one-way `log` diagnostic (§9.3) are modeled here. The native-port members
+/// (`fetch/*`, `storage/*`) are the ports agent's; ``SdkClient`` peeks their
+/// `kind` and routes the raw string through ``SdkPortRouter`` without decoding
+/// them, so this transport layer stays agnostic to how the host backs fetch and
+/// storage.
 ///
 /// Versioning is additive (BRIDGE.md §4): an unknown outbound `kind` decodes to
 /// ``BridgeOutbound/unknown(kind:)`` and is treated as inert, never a crash.
@@ -96,9 +97,9 @@ enum BridgeCodecError: Error { case notUTF8 }
 
 // MARK: - Outbound (SDK → host)
 
-/// SDK → host messages the host consumes. The SDK-level members only; port
-/// members are routed by `kind` before this decodes. An unrecognized `kind`
-/// (a future member, or a port message with no router) is inert `.unknown`.
+/// SDK → host messages the host consumes: the SDK-level members plus the `log`
+/// diagnostic (§9.3). The `fetch/*`/`storage/*` port members are routed by `kind`
+/// before this decodes; an unrecognized `kind` is inert `.unknown`.
 enum BridgeOutbound: Equatable {
   case ready(v: Int)
   case result(CommandResult)
@@ -107,12 +108,14 @@ enum BridgeOutbound: Equatable {
   case event(SdkEventPayload)
   case fatal(reason: String, message: String)
   case error(message: String, detail: JSONValue?)
+  case log(SdkLogPayload)
   case unknown(kind: String)
 }
 
 extension BridgeOutbound: Codable {
   private enum CodingKeys: String, CodingKey {
     case kind, v, result, sub, scope, snapshot, event, reason, message, detail
+    case level, fields
   }
 
   func encode(to encoder: Encoder) throws {
@@ -145,6 +148,10 @@ extension BridgeOutbound: Codable {
       try c.encode("error", forKey: .kind)
       try c.encode(message, forKey: .message)
       try c.encodeIfPresent(detail, forKey: .detail)
+    case let .log(payload):
+      try c.encode("log", forKey: .kind)
+      // Level/message/fields are flat siblings of `kind` on the frame (§9.3).
+      try payload.encode(to: encoder)
     case let .unknown(kind):
       try c.encode(kind, forKey: .kind)
     }
@@ -178,6 +185,10 @@ extension BridgeOutbound: Codable {
       self = .error(
         message: try container.decode(String.self, forKey: .message),
         detail: try container.decodeIfPresent(JSONValue.self, forKey: .detail))
+    case "log":
+      // Flat frame (§9.3): payload reads level/message/fields off this decoder,
+      // so a `log` line is dispatched, never dropped into inert `.unknown`.
+      self = .log(try SdkLogPayload(from: decoder))
     default:
       self = .unknown(kind: kind)
     }
@@ -185,5 +196,5 @@ extension BridgeOutbound: Codable {
 }
 
 /// Cheap first-pass parse: read only `kind` so ``SdkClient`` can route port
-/// messages (`fetch/*`, `storage/*`, `log`) without decoding their bodies.
+/// messages (`fetch/*`, `storage/*`) without decoding their bodies.
 struct BridgeKindPeek: Decodable { let kind: String }
