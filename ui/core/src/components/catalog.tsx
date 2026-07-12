@@ -133,7 +133,10 @@ export function CatalogTile({
     <button
       type="button"
       className={cn(
-        "group flex w-14 flex-col items-center gap-1 outline-none",
+        // pb reserves the label line; the label itself is absolutely positioned
+        // and centered so a long name shows IN FULL, overflowing the tile's
+        // width without truncation and without shifting neighboring tiles.
+        "group relative flex w-14 flex-col items-center pb-5 outline-none",
         className,
       )}
       {...rest}
@@ -148,7 +151,7 @@ export function CatalogTile({
       </span>
       <span
         className={cn(
-          "h-4 max-w-full truncate text-[12px] text-ink-muted leading-4 opacity-0 transition-opacity",
+          "-translate-x-1/2 absolute top-[52px] left-1/2 whitespace-nowrap text-[12px] text-ink-muted leading-4 opacity-0 transition-opacity",
           "group-hover:opacity-100 group-focus-visible:opacity-100",
         )}
       >
