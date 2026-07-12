@@ -60,6 +60,12 @@ export interface UserMessageMeta {
   author?: ChatMessage["author"];
   /** The turn's wire id (`WireFrame.turnId`) — same on the assistant reply. */
   turnId?: string;
+  /**
+   * The bubble text to render when it must differ from `content` (the real
+   * prompt the model ran on). Presentation-only; persisted so a history reload
+   * renders `displayText ?? content`. Omitted when the two are the same string.
+   */
+  displayText?: string;
 }
 
 /** Optional fields of a persisted assistant message. */
@@ -80,6 +86,12 @@ export interface AssistantMessageMeta {
    * instead of a false `done`.
    */
   pendingInteraction?: ChatMessage["pendingInteraction"];
+  /**
+   * Set when the user STOPPED this turn — persisted so the standard "Stopped by
+   * user" line survives a history reload and the reload derivation settles the
+   * turn to `needs_you` instead of a false `done`. Absent on completed turns.
+   */
+  stopped?: true;
   /** The turn's wire id (`WireFrame.turnId`) — same as the user message's. */
   turnId?: string;
 }
@@ -108,6 +120,8 @@ export function appendUserMessageAt(
     ts: now,
     author: meta.author,
     turnId: meta.turnId,
+    // Presentation-only: kept out of `content` so the model input is unchanged.
+    displayText: meta.displayText,
   });
   conv.updatedAt = now;
   save(dir, conv);
@@ -133,6 +147,7 @@ export function appendAssistantMessageAt(
     providerError: meta.providerError,
     fileChanges: meta.fileChanges,
     pendingInteraction: meta.pendingInteraction,
+    stopped: meta.stopped,
     turnId: meta.turnId,
   });
   conv.updatedAt = Date.now();

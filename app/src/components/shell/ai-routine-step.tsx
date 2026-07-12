@@ -40,7 +40,7 @@ export function AiRoutineStep({
             <h2 className="text-base font-semibold">
               {t("aiRoutine.stepTitle")}
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-ink-muted">
               {t("aiRoutine.stepDescription")}
             </p>
           </div>
@@ -74,8 +74,8 @@ export function AiRoutineStep({
               }
               rows={3}
               className={cn(
-                "w-full px-4 py-3 text-sm text-foreground leading-relaxed",
-                "bg-secondary border border-foreground/[0.04] rounded-xl",
+                "w-full px-4 py-3 text-sm text-ink leading-relaxed",
+                "bg-chip border border-ink/[0.04] rounded-xl",
                 "outline-none resize-none transition-shadow duration-200",
                 "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
               )}
@@ -86,7 +86,7 @@ export function AiRoutineStep({
             <p className="block text-sm font-medium">
               {t("aiRoutine.scheduleLabel")}
             </p>
-            <div className="rounded-xl bg-secondary p-4">
+            <div className="rounded-xl bg-chip p-4">
               <ScheduleBuilder
                 value={routine.schedule}
                 onChange={(schedule) =>
@@ -102,23 +102,23 @@ export function AiRoutineStep({
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 space-y-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm font-medium text-ink">
                 {t("aiRoutine.consentTitle")}
               </p>
             </div>
-            <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-5">
+            <ul className="text-xs text-ink-muted space-y-1 list-disc pl-5">
               <li>{t("aiRoutine.consentScheduled")}</li>
               <li>{t("aiRoutine.consentUsage")}</li>
               <li>{t("aiRoutine.consentNeedsApp")}</li>
             </ul>
           </div>
 
-          <p className="text-xs text-muted-foreground px-1">
+          <p className="text-xs text-ink-muted px-1">
             {t("aiRoutine.laterNote")}
           </p>
 
-          <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary px-4 py-3 cursor-pointer">
-            <span className="text-sm font-medium text-foreground">
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-chip px-4 py-3 cursor-pointer">
+            <span className="text-sm font-medium text-ink">
               {t("aiRoutine.enableLabel")}
             </span>
             <Switch checked={accepted} onCheckedChange={onAcceptedChange} />

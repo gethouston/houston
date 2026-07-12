@@ -88,7 +88,7 @@ export function LearningsContent({
       }
     >
       <div className="flex items-center justify-between gap-4 mb-4">
-        <p className="text-xs text-muted-foreground max-w-md">
+        <p className="text-xs text-ink-muted max-w-md">
           {t("learnings.helper")}
         </p>
         {!readOnly && (

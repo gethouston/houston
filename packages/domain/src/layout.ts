@@ -35,6 +35,17 @@ export const schemaKey = (root: string, family: HoustonFamily) =>
 /** Skills live beside `.houston`, in the Agent Skills standard layout. */
 export const skillsDirKey = (root: string) => `${root}/.agents/skills`;
 
+/**
+ * The Agent Store publication record for this agent — the storeAgentId, share
+ * slug/url, saved manage token, and last-published identity. It follows the
+ * `.houston/<name>/<name>.json` shape of the typed families but is DELIBERATELY
+ * not one of them: it is not in `FAMILIES` (no seeded schema), it is machine-local
+ * (it holds the manage-token secret), and it is never part of the four portable
+ * export surfaces, so it never leaves the machine in a `.houstonagent`.
+ */
+export const storePublicationKey = (root: string) =>
+  `${root}/.houston/store-publication/store-publication.json`;
+
 const SCHEMAS: Record<HoustonFamily, unknown> = {
   activity: activitySchema,
   routines: routinesSchema,

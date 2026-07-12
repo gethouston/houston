@@ -45,7 +45,7 @@ export function PeopleRoster({
 
   return (
     <section>
-      <h2 className="mb-2 text-sm font-medium text-foreground">
+      <h2 className="mb-2 text-sm font-medium text-ink">
         {t("people.roster.title")}
       </h2>
       <ul className="space-y-2">
@@ -60,7 +60,7 @@ export function PeopleRoster({
           return (
             <li
               key={member.userId}
-              className="flex items-center gap-3 rounded-xl border border-foreground/5 bg-card px-4 py-3"
+              className="flex items-center gap-3 rounded-xl border border-ink/5 bg-card px-4 py-3"
             >
               <Avatar>
                 {avatarUrl && (
@@ -75,10 +75,10 @@ export function PeopleRoster({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-foreground">
+                <div className="truncate text-sm font-medium text-ink">
                   {memberLabel(member)}
                   {isSelf && (
-                    <span className="ml-2 text-xs text-muted-foreground">
+                    <span className="ml-2 text-xs text-ink-muted">
                       {t("people.roster.you")}
                     </span>
                   )}
@@ -112,14 +112,14 @@ export function PeopleRoster({
                   </SelectContent>
                 </Select>
               ) : (
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
+                <span className="rounded-full bg-chip px-3 py-1 text-xs text-ink-muted">
                   {roleLabel(member.role)}
                 </span>
               )}
               {editable && (
                 <Button
                   variant="ghost"
-                  className="rounded-full text-destructive hover:text-destructive"
+                  className="rounded-full text-danger hover:text-danger"
                   disabled={removeMember.isPending}
                   aria-label={t("people.roster.removeLabel", {
                     name: memberLabel(member),

@@ -1,13 +1,34 @@
 name: Website Deploy
 
-# Builds the Eleventy site in website/ and deploys it to Cloudflare Pages
-# (project: houston-site). Runs automatically when website/ changes land on
-# main; can also be triggered manually from the Actions tab.
+# Builds the Eleventy site in website/ and deploys it to Firebase Hosting
+# (project: gethouston, site: gethouston-site). Runs automatically when
+# website/ changes land on main; can also be triggered manually.
 #
-# Required repo secrets:
-#   CLOUDFLARE_API_TOKEN  - token with "Cloudflare Pages: Edit" permission
-#   CLOUDFLARE_ACCOUNT_ID - account id from the Cloudflare dashboard
-#   SUPABASE_ANON_KEY     - public (RLS-protected) Supabase anon key for the /waitlist form
+# ── Cutover choreography (Cloudflare Pages -> Firebase Hosting) ────────────────
+# This job deploys to the gethouston-site.web.app Firebase site ONLY. It does
+# NOT touch DNS and does NOT decommission Cloudflare. The apex/www DNS records
+# for gethouston.ai still point at Cloudflare Pages until the human flip. Order:
+#   1. Orchestrator creates the Firebase site once (see PR body):
+#        firebase hosting:sites:create gethouston-site --project gethouston
+#      (equivalently the Hosting REST API `sites.create` with siteId=gethouston-site).
+#   2. This workflow runs on the next website/ push (or manual dispatch) and
+#      publishes the build to https://gethouston-site.web.app.
+#   3. Verify the deploy on https://gethouston-site.web.app (redirects, headers,
+#      URL shape) while gethouston.ai still serves from Cloudflare.
+#   4. Human adds the custom domain in Firebase Hosting and flips the apex/www
+#      DNS records to Firebase, then retires the Cloudflare Pages project. The
+#      src/_headers and src/_redirects files stay in the repo (harmless, unused
+#      on Firebase — firebase.json is the source of truth) until that cleanup.
+#
+# ── GCP auth: Workload Identity Federation ────────────────────────────────────
+#   SA: github-deploy-web@gethouston.iam.gserviceaccount.com — Firebase Hosting
+#   deploy only. The WIF provider condition restricts this binding to
+#   attribute.repository=='gethouston/houston'. firebase-tools authenticates via
+#   the Application Default Credentials exported by google-github-actions/auth.
+#
+# ── Required repo secrets ─────────────────────────────────────────────────────
+#   SUPABASE_ANON_KEY   - public (RLS-protected) Supabase anon key for the
+#                         /waitlist form. Still Supabase, intentionally unchanged.
 # Optional (committed defaults exist):
 #   SUPABASE_URL, WAITLIST_SHEET_ENDPOINT
 
@@ -25,10 +46,11 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build & deploy to Cloudflare Pages
+    name: Build & deploy to Firebase Hosting
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write # Workload Identity Federation
     steps:
       - uses: actions/checkout@v6
 
@@ -50,7 +72,26 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           WAITLIST_SHEET_ENDPOINT: ${{ secrets.WAITLIST_SHEET_ENDPOINT }}
 
-      - name: Deploy to Cloudflare Pages
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy-web@gethouston.iam.gserviceaccount.com
+
+      - name: Deploy to Firebase Hosting
+        working-directory: website
+        run: >-
+          npx --yes firebase-tools@15 deploy
+          --only hosting:gethouston-site
+          --project gethouston
+          --non-interactive
+          --message "${{ github.sha }}"
+
+      # TEMPORARY dual-deploy: gethouston.ai's apex/www DNS still points at
+      # Cloudflare Pages, so until the DNS flip (cutover step 4 in the header)
+      # Cloudflare must keep receiving deploys or the live site goes stale.
+      # DELETE this step when the DNS flip lands.
+      - name: Deploy to Cloudflare Pages (until DNS flip)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

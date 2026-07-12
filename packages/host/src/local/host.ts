@@ -1,6 +1,7 @@
 import { existsSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { basename, dirname, join } from "node:path";
+import type { Capabilities } from "@houston/protocol";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
@@ -9,7 +10,14 @@ import { FileCredentialStore } from "../credentials/file-store";
 import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { BusEventHub } from "../events/hub";
+import { FileActionApprovalStore } from "../integrations/action-approval-store";
+import { LocalActionApprovals } from "../integrations/action-approvals";
 import { ComposioProvider } from "../integrations/composio";
+import { CustomExecutorHost } from "../integrations/custom/executor-host";
+import { CustomIntegrationManager } from "../integrations/custom/manager";
+import { CustomIntegrationProvider } from "../integrations/custom/provider";
+import { FileCustomSecretStore } from "../integrations/custom/secrets";
+import { FileCustomIntegrationStore } from "../integrations/custom/store";
 import { FileIntegrationGrantStore } from "../integrations/grant-store";
 import { LocalIntegrationGrants } from "../integrations/grants";
 import { IntegrationRegistry } from "../integrations/registry";
@@ -128,6 +136,14 @@ export interface LocalHostOptions {
     composioApiKey?: string;
     podToken?: string;
   };
+  /**
+   * Passive mode (env `HOUSTON_PASSIVE=1`): boot migrations + serve, but keep
+   * the scheduler and the FS watcher OFF. The one-click migration (HOU-719)
+   * spawns this host briefly against the old `~/.houston` purely to convert
+   * and read data — a read-only source must never fire routines (spawning
+   * credential-less runtimes) or churn watch events while the cloud app copies.
+   */
+  passive?: boolean;
   /**
    * True only when a trusted gateway fronts EVERY request to this host (the
    * managed cloud pod: the gateway enforces the pod token and mints/strips
@@ -256,42 +272,71 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     dirname(opts.credentialsPath),
     "integrations.json",
   );
-  const registry = opts.integrations?.gatewayUrl
-    ? new IntegrationRegistry([
-        new RemoteIntegrationProvider({
-          id: "composio",
-          upstreamUrl: opts.integrations.gatewayUrl,
-          token: () => sessionToken.current,
-          // Managed pods pass their host token so routine turns authenticate as
-          // the creator; the desktop leaves this undefined.
-          podToken: opts.integrations.podToken,
-        }),
-      ])
-    : opts.integrations?.composioApiKey
-      ? new IntegrationRegistry([
-          new ComposioProvider({ apiKey: opts.integrations.composioApiKey }),
-        ])
-      : null;
-  const integrations = registry
-    ? {
-        registry,
-        ...(opts.integrations?.gatewayUrl
-          ? {
-              session: {
-                set: (token: string | null) => {
-                  sessionToken.current = token;
-                },
-              },
-            }
-          : {}),
-        reconnectNotice: {
-          active: () => existsSync(legacyIntegrationsPath),
-          // force: already-gone is success (idempotent dismiss); a real
-          // failure (EACCES…) throws and surfaces as the route's error.
-          dismiss: () => rmSync(legacyIntegrationsPath, { force: true }),
-        },
-      }
-    : undefined;
+  // The DIRECT Composio adapter (self-host / dev with an own key). Only when NOT
+  // in gateway mode (gatewayUrl wins), where the desktop forwards to Houston's
+  // cloud host with the user's Supabase session instead.
+  const directProvider =
+    opts.integrations?.composioApiKey && !opts.integrations?.gatewayUrl
+      ? new ComposioProvider({ apiKey: opts.integrations.composioApiKey })
+      : undefined;
+  const composioProvider = opts.integrations?.gatewayUrl
+    ? new RemoteIntegrationProvider({
+        id: "composio",
+        upstreamUrl: opts.integrations.gatewayUrl,
+        token: () => sessionToken.current,
+        // Managed pods pass their host token so routine turns authenticate as
+        // the creator; the desktop leaves this undefined.
+        podToken: opts.integrations.podToken,
+      })
+    : (directProvider ?? null);
+
+  // Custom integrations (HOU-550): user-added API/MCP sources compiled to
+  // agent tools by the embedded executor engine. Key-free and session-free —
+  // definitions + secrets live on THIS host's disk — so the provider is wired
+  // unconditionally: an install with no Composio at all can still add its own.
+  const customDir = dirname(opts.credentialsPath);
+  const customStore = new FileCustomIntegrationStore(
+    join(customDir, "custom-integrations.json"),
+  );
+  const customSecrets = new FileCustomSecretStore(
+    join(customDir, "custom-integration-secrets.json"),
+  );
+  const customExecutor = new CustomExecutorHost(customSecrets, () =>
+    customStore.list(),
+  );
+  const customProvider = new CustomIntegrationProvider(
+    customStore,
+    customExecutor,
+  );
+  const customIntegrations = new CustomIntegrationManager(
+    customStore,
+    customSecrets,
+    customExecutor,
+    () => events.emit(LOCAL_USER, { type: "CustomIntegrationsChanged" }),
+  );
+
+  const registry = new IntegrationRegistry([
+    ...(composioProvider ? [composioProvider] : []),
+    customProvider,
+  ]);
+  const integrations = {
+    registry,
+    ...(opts.integrations?.gatewayUrl
+      ? {
+          session: {
+            set: (token: string | null) => {
+              sessionToken.current = token;
+            },
+          },
+        }
+      : {}),
+    reconnectNotice: {
+      active: () => existsSync(legacyIntegrationsPath),
+      // force: already-gone is success (idempotent dismiss); a real
+      // failure (EACCES…) throws and surfaces as the route's error.
+      dismiss: () => rmSync(legacyIntegrationsPath, { force: true }),
+    },
+  };
 
   // Did this install carry over a Rust-desktop chat-history db? Its mere
   // presence means the user is migrating from the legacy desktop build — their
@@ -311,13 +356,31 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   // so the gateway in front stays the single owner of grant policy, and the pod
   // never shadows it (the grant routes 404, the sandbox proxy enforces nothing).
   // The record lives inside each agent's own dir, so agent deletion removes it.
-  const integrationGrants =
-    registry && !opts.gatewayFronted
-      ? new LocalIntegrationGrants({
-          store: new FileIntegrationGrantStore(opts.workspacesRoot),
-          registry,
-        })
-      : undefined;
+  const integrationGrants = !opts.gatewayFronted
+    ? new LocalIntegrationGrants({
+        store: new FileIntegrationGrantStore(opts.workspacesRoot),
+        registry,
+      })
+    : undefined;
+
+  // C9 event-driven routines are served ONLY where the Go cloud gateway fronts
+  // the deployment (managed cloud): the Go control plane owns trigger
+  // reconciliation and the ingress, and the gateway's edge advertises the
+  // `triggers` capability. This TS host carries no self-host trigger backend —
+  // the pod's only trigger surface is the delivery route (trigger-events), wired
+  // below via `triggerLock`. Self-host and desktop simply don't get triggers.
+
+  // Per-agent action approvals: the execute-time gate the runtime turns into an
+  // approval step on the interaction card. UNLIKE grants this is NOT gated on
+  // gatewayFronted — v1 keeps the approval store pod-side per agent even on
+  // managed cloud pods (the gateway does not own action approvals yet). The
+  // record lives inside the agent dir, so agent deletion removes it for free.
+  // Known follow-up: per-user approval scoping for Teams lives cloud-side later.
+  const actionApprovals = registry
+    ? new LocalActionApprovals({
+        store: new FileActionApprovalStore(opts.workspacesRoot),
+      })
+    : undefined;
 
   // The installed agent-config library. FsVfs keys must be non-empty, so root
   // the vfs at the library's PARENT and address it by its basename — this vfs
@@ -330,6 +393,15 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       }
     : undefined;
 
+  const capabilities: Capabilities = {
+    ...(opts.capabilities ?? LOCAL_CAPABILITIES),
+    // Served capabilities advertise the integrations actually wired, not the
+    // profile's nominal list — an unconfigured deployment says [] honestly.
+    integrations: registry.ids(),
+    // `triggers` is never advertised here: this host has no trigger backend. On
+    // managed cloud the Go edge advertises the capability; a pod/self-host/desktop
+    // stays byte-identical to the nominal profile (absent = off, protocol #core).
+  };
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
@@ -339,15 +411,16 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     paths,
     events,
     channels: { local: channel },
-    // Served capabilities advertise the integrations actually wired, not the
-    // profile's nominal list — an unconfigured deployment says [] honestly.
-    capabilities: {
-      ...(opts.capabilities ?? LOCAL_CAPABILITIES),
-      integrations: registry?.ids() ?? [],
-    },
+    capabilities,
     chatHistoryMigrated,
     integrations,
     integrationGrants,
+    actionApprovals,
+    customIntegrations,
+    // Every local host has a turn bus, so the internal pod trigger-events route is
+    // always available — on managed cloud the Go control plane POSTs delivered
+    // events to it. The lock dedupes redeliveries.
+    triggerLock: bus,
     agentConfigs,
     // Managed pods record the gateway-minted acting identity as a routine's
     // `created_by` (C2 — the sub the gateway re-authorizes at fire time);
@@ -427,9 +500,13 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       await new Promise<void>((resolve) =>
         server.listen(opts.port, bind, () => resolve()),
       );
-      watcher.start();
-      syncDaemon?.start();
-      scheduler.start();
+      // Passive migration-source mode runs no background daemons (a read-only
+      // source must not fire routines, sync, or churn watch events).
+      if (!opts.passive) {
+        watcher.start();
+        syncDaemon?.start();
+        scheduler.start();
+      }
       console.log(formatIntegrationsModeLog(opts.integrations));
       // The banner the Tauri supervisor parses (mirrors the runtime's contract).
       // The full token rides ONLY for the desktop sidecar; a pod/self-host token

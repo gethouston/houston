@@ -6,16 +6,27 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSession } from "../../hooks/use-session";
 import { signInWithGoogle } from "../../lib/auth";
 import { showErrorToast } from "../../lib/error-toast";
+import { isIdentityConfigured } from "../../lib/identity";
 import { queryKeys } from "../../lib/query-keys";
-import { isAuthConfigured } from "../../lib/supabase";
 import { tauriIntegrations } from "../../lib/tauri";
 import { INTEGRATION_PROVIDER } from "./model";
 
-/** The boot/auth gate both integrations surfaces render behind. */
+/**
+ * The boot/auth gate both integrations surfaces render behind. The non-ready
+ * kinds describe the COMPOSIO catalog only; `customAvailable` says whether the
+ * key-free custom provider (HOU-550) is served regardless — an install with no
+ * Composio key, or a signed-out desktop, can still add and use custom
+ * integrations, so the global page must not go dark on those states.
+ */
 export type IntegrationsGate =
   | { kind: "loading" }
-  | { kind: "unavailable" }
-  | { kind: "signin"; signIn: () => void; signingIn: boolean }
+  | { kind: "unavailable"; customAvailable: boolean }
+  | {
+      kind: "signin";
+      signIn: () => void;
+      signingIn: boolean;
+      customAvailable: boolean;
+    }
   | {
       kind: "ready";
       reconnectNotice: boolean;
@@ -48,7 +59,7 @@ export function useIntegrationsGate(): IntegrationsGate {
   const ready = !!composio?.ready;
 
   const [signingIn, setSigningIn] = useState(false);
-  const token = session?.access_token ?? null;
+  const token = session?.idToken ?? null;
   const [resynced, setResynced] = useState(false);
 
   useEffect(() => {
@@ -97,14 +108,25 @@ export function useIntegrationsGate(): IntegrationsGate {
     }
   }, [qc]);
 
+  // The key-free custom provider is served independently of Composio: its
+  // presence keeps the custom section alive through every degraded state.
+  const customAvailable = !!status.data?.find(
+    (p) => p.provider === "custom" && p.ready,
+  );
+
   if (status.isLoading || capabilitiesLoading || sessionSyncPending)
     return { kind: "loading" };
-  if (!composio) return { kind: "unavailable" };
+  if (!composio) return { kind: "unavailable", customAvailable };
   if (!composio.ready) {
-    if (isAuthConfigured()) {
-      return { kind: "signin", signIn: () => void signIn(), signingIn };
+    if (isIdentityConfigured()) {
+      return {
+        kind: "signin",
+        signIn: () => void signIn(),
+        signingIn,
+        customAvailable,
+      };
     }
-    return { kind: "unavailable" };
+    return { kind: "unavailable", customAvailable };
   }
   return {
     kind: "ready",

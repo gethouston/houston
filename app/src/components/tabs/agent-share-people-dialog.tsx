@@ -40,11 +40,11 @@ export function AgentSharePeopleDialog({
   const { data: session } = useSession();
   const org = useOrg(isMultiplayer(capabilities) && open);
 
-  const selfId = session?.user?.id ?? null;
+  const selfId = session?.uid ?? null;
   const members = org.data?.members ?? [];
   const people = withViewer(buildSharePeople({ agent, members, selfId }), {
     userId: selfId,
-    email: session?.user?.email,
+    email: session?.email,
   });
   const { profiles } = useUserProfiles(people.map((p) => p.userId));
 
@@ -76,7 +76,7 @@ export function AgentSharePeopleDialog({
             </ul>
           )}
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-ink-muted">
             {t("share.conversationNote")}
           </p>
         </div>

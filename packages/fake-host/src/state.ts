@@ -19,6 +19,7 @@
  * `state-activities.ts` (board), and `state-history.ts` (chat history).
  */
 
+export * from "./state-action-approvals";
 export * from "./state-activities";
 export * from "./state-agents";
 export * from "./state-history";

@@ -88,7 +88,7 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
         {stage.kind !== "done" && (
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-ink-muted" />
               <input
                 ref={inputRef}
                 type="text"
@@ -111,8 +111,8 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
                 }}
                 placeholder={l.sourcePlaceholder}
                 disabled={isLoading || isInstalling}
-                className="w-full h-9 pl-9 pr-3 rounded-full border border-border bg-background text-sm
-                           placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring transition-colors
+                className="w-full h-9 pl-9 pr-3 rounded-full border border-line bg-input text-sm
+                           placeholder:text-ink-muted/60 focus:outline-none focus:ring-1 focus:ring-focus transition-colors
                            disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
@@ -149,7 +149,7 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
         )}
 
         {error && (
-          <p className="flex items-start gap-1.5 text-xs text-destructive">
+          <p className="flex items-start gap-1.5 text-xs text-danger">
             <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
             {error}
           </p>
@@ -173,21 +173,21 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
 
       <div className="flex-1 min-h-0 overflow-y-auto pb-6">
         {stage.kind === "input" && !error && (
-          <p className="text-sm text-muted-foreground px-6 py-4 text-center">
+          <p className="text-sm text-ink-muted px-6 py-4 text-center">
             {l.inputHint}
           </p>
         )}
 
         {stage.kind === "loading" && (
           <div className="flex justify-center py-8">
-            <Spinner className="size-5 text-muted-foreground" />
+            <Spinner className="size-5 text-ink-muted" />
           </div>
         )}
 
         {showList && listSkills.length > 0 && (
           <div
             className={cn(
-              "divide-y divide-border border-y border-border",
+              "divide-y divide-line border-y border-line",
               isInstalling && "opacity-60 pointer-events-none",
             )}
           >

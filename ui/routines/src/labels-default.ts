@@ -12,6 +12,7 @@ import type {
   RoutinesGridLabels,
   ScheduleLabels,
   ScheduleSummaryLabels,
+  TriggerLabels,
 } from "./labels";
 import { SCHEDULE_PRESET_LABELS } from "./types.ts";
 
@@ -112,6 +113,32 @@ export const DEFAULT_GRID_LABELS: RoutinesGridLabels = {
   timezoneHint: "All your routines run in this timezone.",
   timezoneSearchPlaceholder: "Search timezones…",
   timezoneNoResults: "No timezones found",
+};
+
+export const DEFAULT_TRIGGER_LABELS: TriggerLabels = {
+  wakeEvent: "When something happens",
+  chooseApp: "Which app should wake it?",
+  chooseEvent: "What should wake it?",
+  changeApp: "Change app",
+  noApps: "Connect an app first to have a routine wake on events.",
+  loadingEvents: "Loading events…",
+  noEvents: "This app has no events to wake on yet.",
+  pollHint: "Checks every few minutes",
+  accountLabel: "Account",
+  detailsTitle: "Details",
+  rawJsonLabel: "Advanced settings",
+  rawJsonHint: "Enter this event's settings as JSON.",
+  rawJsonInvalid: "This needs to be valid JSON.",
+  status: {
+    active: "Active",
+    pending: "Setting up…",
+    paused_disconnected: "Reconnect needed",
+    paused_revoked: "Access turned off",
+    error: "Needs attention",
+  },
+  reconnect: "Reconnect",
+  statusDisconnectedHint: "The connected account was disconnected.",
+  statusRevokedHint: "This app was turned off for this agent.",
 };
 
 export const DEFAULT_ROW_LABELS: RoutineRowLabels = {

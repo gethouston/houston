@@ -32,7 +32,7 @@ export function ProviderList({
 }) {
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+      <div className="flex items-center justify-center gap-2 py-10 text-sm text-ink-muted">
         <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
         {labels.loading}
       </div>
@@ -40,7 +40,7 @@ export function ProviderList({
   }
   if (providers.length === 0) {
     return (
-      <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+      <div className="px-4 py-10 text-center text-sm text-ink-muted">
         {labels.noProviders}
       </div>
     );
@@ -60,11 +60,11 @@ export function ProviderList({
             render={renderProviderIcon}
             className="size-4"
           />
-          <span className="min-w-0 flex-1 truncate text-foreground">
+          <span className="min-w-0 flex-1 truncate text-ink">
             {provider.name}
           </span>
           {provider.id === selectedProviderId && (
-            <Check className="size-4 shrink-0 text-foreground" />
+            <Check className="size-4 shrink-0 text-ink" />
           )}
           <ChevronRight className="size-4 shrink-0" />
         </CommandItem>

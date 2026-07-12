@@ -2,6 +2,7 @@
   "title": "Configuración",
   "nav": {
     "connectedAccounts": "Cuentas conectadas",
+    "apiKeys": "Claves de API",
     "workspaceContext": "Contexto del espacio",
     "userContext": "Tu contexto",
     "language": "Idioma",
@@ -103,6 +104,11 @@
       "errorTitle": "No se pudo enviar el reporte"
     }
   },
+  "migration": {
+    "title": "Migración a la nube",
+    "description": "Si tu mudanza a la nube no terminó, puedes volver a intentarla.",
+    "button": "Continuar migración"
+  },
   "version": "Versión {{version}}",
   "toasts": {
     "workspaceRenamed": "Espacio de trabajo renombrado",
@@ -119,10 +125,12 @@
     "rows": {
       "members": "Personas que pueden usar tus agentes",
       "connectedAccounts": "Aplicaciones que conectaste a Houston",
+      "apiKeys": "Claves para usar tus agentes desde tus propias herramientas",
       "workspaceContext": "Lo que cada agente sabe sobre este espacio",
       "userContext": "Lo que cada agente sabe sobre ti",
       "shortcuts": "Usa Houston sin el mouse",
-      "reportBug": "¿Algo falló? Cuéntanos"
+      "reportBug": "¿Algo falló? Cuéntanos",
+      "migration": "Retoma tu mudanza a la nube"
     },
     "values": {
       "set": "Definido",
@@ -139,5 +147,48 @@
     "empty": "Aún no conectaste ninguna aplicación.",
     "connectMore": "Conectar más aplicaciones",
     "connectHint": "Conecta nuevas aplicaciones desde la pestaña Integraciones de cualquier agente."
+  },
+  "apiKeys": {
+    "title": "Claves de API",
+    "intro": "Usa claves de API para iniciar misiones desde tus propias herramientas y scripts. <docs>Lee la documentación para desarrolladores</docs>.",
+    "dialogClose": "Cerrar",
+    "createButton": "Crear clave",
+    "empty": {
+      "title": "Aún no tienes claves de API",
+      "description": "Una clave de API permite que tus propias herramientas y scripts inicien misiones con tus agentes. Crea una para empezar."
+    },
+    "error": {
+      "title": "No se pudieron cargar tus claves",
+      "description": "Algo salió mal al conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.",
+      "retry": "Reintentar"
+    },
+    "row": {
+      "created": "Creada el {{date}}",
+      "lastUsed": "Último uso {{when}}",
+      "neverUsed": "Nunca usada",
+      "revoke": "Revocar"
+    },
+    "create": {
+      "title": "Crear clave de API",
+      "subtitle": "Ponle un nombre a esta clave para reconocerla más tarde.",
+      "nameLabel": "Nombre de la clave",
+      "namePlaceholder": "ej. Mi script de automatización",
+      "limitReached": "Llegaste al máximo de 20 claves. Revoca una que ya no uses para crear una nueva.",
+      "cancel": "Cancelar",
+      "submit": "Crear clave",
+      "revealTitle": "Copia tu clave de API",
+      "revealSubtitle": "\"{{name}}\" está lista. Cópiala ahora y guárdala en un lugar seguro.",
+      "copy": "Copiar",
+      "copied": "Copiada",
+      "copyFailed": "No se pudo copiar la clave",
+      "warning": "Esta es la única vez que verás esta clave. No podrás volver a verla después de cerrar.",
+      "done": "Listo"
+    },
+    "revoke": {
+      "title": "¿Revocar esta clave?",
+      "description": "\"{{name}}\" dejará de funcionar de inmediato. Cualquier herramienta que la use perderá el acceso. Esto no se puede deshacer.",
+      "confirm": "Revocar",
+      "cancel": "Cancelar"
+    }
   }
 }

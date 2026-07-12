@@ -1,4 +1,13 @@
-import { Blocks, Bug, FileText, Keyboard, User, Users } from "lucide-react";
+import {
+  Blocks,
+  Bug,
+  CloudUpload,
+  FileText,
+  Keyboard,
+  KeyRound,
+  User,
+  Users,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useIntegrationConnections, useOrg } from "../../hooks/queries";
 import { useWorkspaceContext } from "../../hooks/queries/use-workspace-context";
@@ -21,6 +30,8 @@ import { SettingsCard, SettingsRow } from "./settings-row";
 interface SettingsIndexProps {
   accountAvailable: boolean;
   showMembers: boolean;
+  apiKeysAvailable: boolean;
+  migrationAvailable: boolean;
   onSelect: (id: SettingsSectionId) => void;
 }
 
@@ -33,6 +44,8 @@ interface SettingsIndexProps {
 export function SettingsIndex({
   accountAvailable,
   showMembers,
+  apiKeysAvailable,
+  migrationAvailable,
   onSelect,
 }: SettingsIndexProps) {
   const { t } = useTranslation(["settings", "org"]);
@@ -109,6 +122,14 @@ export function SettingsIndex({
               onClick={() => onSelect("members")}
             />
           )}
+          {apiKeysAvailable && (
+            <SettingsRow
+              icon={KeyRound}
+              title={t("settings:nav.apiKeys")}
+              description={t("settings:index.rows.apiKeys")}
+              onClick={() => onSelect("apiKeys")}
+            />
+          )}
         </SettingsCard>
 
         <SettingsCard title={t("settings:index.groups.context")}>
@@ -141,6 +162,14 @@ export function SettingsIndex({
             description={t("settings:index.rows.reportBug")}
             onClick={() => onSelect("reportBug")}
           />
+          {migrationAvailable && (
+            <SettingsRow
+              icon={CloudUpload}
+              title={t("settings:migration.title")}
+              description={t("settings:index.rows.migration")}
+              onClick={() => onSelect("migration")}
+            />
+          )}
         </SettingsCard>
 
         <SettingsCard>
@@ -152,7 +181,7 @@ export function SettingsIndex({
         <button
           type="button"
           onClick={() => void handleVersionClick()}
-          className="cursor-pointer text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className="cursor-pointer text-xs text-ink-muted transition-colors hover:text-ink"
         >
           {t("settings:version", { version: __APP_VERSION__ })}
         </button>

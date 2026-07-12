@@ -6,10 +6,10 @@ import Foundation
 extension Strings.Chat {
   /// VoiceOver label for the clock tick — the message is not yet confirmed by the
   /// engine (WhatsApp-style optimistic send).
-  static let deliveryPending = "Sending"
+  static let deliveryPending = String(localized: "chat.deliveryPending", defaultValue: "Sending")
   /// VoiceOver label for the check tick — the engine has confirmed the message.
-  static let deliverySent = "Sent"
+  static let deliverySent = String(localized: "chat.deliverySent", defaultValue: "Sent")
   /// VoiceOver label for the error tick — the send provably never reached the
   /// agent (a lost / rejected / refused send); the message must be sent again.
-  static let deliveryFailed = "Not delivered"
+  static let deliveryFailed = String(localized: "chat.deliveryFailed", defaultValue: "Not delivered")
 }

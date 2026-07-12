@@ -12,6 +12,7 @@ import type { TSchema } from "typebox";
 import { z } from "zod";
 import { toolNamesForMode } from "../../session/tool-selection";
 import { makeAskUserTool } from "../../session/tools/ask-user";
+import { makeCustomIntegrationTools } from "../../session/tools/custom-integrations";
 import {
   type IntegrationToolOptions,
   makeIntegrationTools,
@@ -136,6 +137,9 @@ export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
     // out of plan by `toolNamesForMode`.
     makeSuggestReusableTool(),
     ...(input.integrations ? makeIntegrationTools(input.integrations) : []),
+    ...(input.integrations
+      ? makeCustomIntegrationTools(input.integrations)
+      : []),
   ] as unknown as BridgedPiTool[];
   const allowed = new Set(
     toolNamesForMode(

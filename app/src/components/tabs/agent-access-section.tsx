@@ -47,7 +47,7 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
         <h2 className="mb-1 text-lg font-semibold">
           {t("share.sectionTitle")}
         </h2>
-        <p className="mb-4 text-sm text-muted-foreground">
+        <p className="mb-4 text-sm text-ink-muted">
           {t("shareViaTeam.sectionHelper")}
         </p>
 
@@ -70,7 +70,7 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
     );
   }
 
-  const selfId = session?.user?.id ?? null;
+  const selfId = session?.uid ?? null;
   const members = org.data?.members ?? [];
   const people = buildSharePeople({ agent, members, selfId });
   const shown = people.slice(0, MAX_AVATARS);
@@ -79,9 +79,7 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
   return (
     <section>
       <h2 className="mb-1 text-lg font-semibold">{t("share.sectionTitle")}</h2>
-      <p className="mb-4 text-sm text-muted-foreground">
-        {t("share.sectionHelper")}
-      </p>
+      <p className="mb-4 text-sm text-ink-muted">{t("share.sectionHelper")}</p>
 
       <div className="flex items-center gap-3">
         <Button
@@ -100,7 +98,7 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
                 <Avatar
                   key={person.userId}
                   size="sm"
-                  className="ring-2 ring-background"
+                  className="ring-2 ring-input"
                 >
                   <AvatarFallback>
                     {(person.email ?? person.userId).charAt(0).toUpperCase()}
@@ -108,14 +106,14 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
                 </Avatar>
               ))}
               {overflow > 0 && (
-                <Avatar size="sm" className="ring-2 ring-background">
+                <Avatar size="sm" className="ring-2 ring-input">
                   <AvatarFallback className="text-xs">
                     {t("share.overflow", { count: overflow })}
                   </AvatarFallback>
                 </Avatar>
               )}
             </div>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-ink-muted">
               {t("share.peopleCount", { count: people.length })}
             </span>
           </div>

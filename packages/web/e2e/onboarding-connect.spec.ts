@@ -58,8 +58,8 @@ test("onboarding connect step shows the curated view, searches, expands, and ope
 
   await page.goto("/");
 
-  // Intro → the connect step.
-  await page.getByRole("button", { name: "Start setup" }).click();
+  // First-run opens directly on the connect step (the welcome/intro screen was
+  // removed).
   await expect(
     page.getByRole("heading", { name: "Connect your AI" }),
   ).toBeVisible();

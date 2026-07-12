@@ -15,7 +15,7 @@ struct ColumnSegmentedControl: View {
       }
     }
     .padding(Spacing.space4)
-    .background(theme.muted, in: Capsule())
+    .background(theme.chipSubtle, in: Capsule())
     .accessibilityElement(children: .contain)
     .accessibilityLabel(Strings.MissionControl.statusPagerLabel)
   }
@@ -27,12 +27,12 @@ struct ColumnSegmentedControl: View {
     } label: {
       Text(column.label)
         .font(Typography.label)
-        .foregroundStyle(selected ? theme.foreground : theme.mutedFg)
+        .foregroundStyle(selected ? theme.ink : theme.inkMuted)
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.space8)
         .background {
           if selected {
-            Capsule().fill(theme.background)
+            Capsule().fill(theme.input)
           }
         }
     }

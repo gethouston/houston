@@ -36,6 +36,9 @@
     "label": "Idioma de la interfaz",
     "toastChanged": "Idioma cambiado"
   },
+  "env": {
+    "preview": "Vista previa"
+  },
   "notifications": {
     "sessionComplete": {
       "title": "{{workspace}} · {{agent}}",
@@ -43,7 +46,9 @@
       "question_one": "Tu agente tiene una pregunta para ti.",
       "question_other": "Tu agente tiene preguntas para ti.",
       "signin": "Tu agente necesita que inicies sesión.",
-      "connect": "Tu agente necesita que conectes una aplicación."
+      "connect": "Tu agente necesita que conectes una aplicación.",
+      "approval": "Esperando tu aprobación para continuar.",
+      "credential": "Tu agente necesita una clave de API para terminar."
     }
   }
 }

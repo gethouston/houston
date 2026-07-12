@@ -22,6 +22,7 @@
 import type { ProviderError } from "@houston-ai/chat";
 import { UnauthenticatedCard } from "./provider-error-cards/auth";
 import {
+  ContextOverflowCard,
   ModelUnavailableCard,
   QuotaExhaustedCard,
 } from "./provider-error-cards/quota";
@@ -71,6 +72,10 @@ export function ProviderErrorCard({
       return <UsageLimitPausedCard error={error} />;
     case "quota_exhausted":
       return <QuotaExhaustedCard error={error} onSwitchModel={onSwitchModel} />;
+    case "context_overflow":
+      return (
+        <ContextOverflowCard error={error} onSwitchModel={onSwitchModel} />
+      );
     case "model_unavailable":
       return (
         <ModelUnavailableCard

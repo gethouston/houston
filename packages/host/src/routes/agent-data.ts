@@ -4,6 +4,7 @@ import {
   canonicalProviderId,
   createRoutine,
   getPreference,
+  isValidTriggerBinding,
   loadConfig,
   loadLearnings,
   loadRoutineRuns,
@@ -46,6 +47,24 @@ const pinError = (body: Record<string, unknown>): string | null => {
   return canonical && hostProvider(canonical)
     ? null
     : `unknown provider: ${body.provider}`;
+};
+
+/**
+ * A routine has EXACTLY ONE wake mechanism: a cron `schedule` or an event
+ * `trigger`. Reject "both" or "neither" (normalizeRoutines drops such an entry
+ * on the next read, which would silently lose the write) and a malformed trigger
+ * binding, so the caller learns immediately. Returns the reason, else null.
+ */
+const wakeMechanismError = (body: Record<string, unknown>): string | null => {
+  const hasSchedule = typeof body.schedule === "string" && body.schedule !== "";
+  const hasTrigger = body.trigger != null;
+  if (hasSchedule === hasTrigger) {
+    return "a routine needs exactly one of 'schedule' or 'trigger'";
+  }
+  if (hasTrigger && !isValidTriggerBinding(body.trigger)) {
+    return "invalid 'trigger' binding";
+  }
+  return null;
 };
 
 /** Each typed family's reactivity event — emitted after a successful mutation. */
@@ -132,23 +151,37 @@ export async function handleAgentData(
     }
     if (method === "POST" && !itemId) {
       const body = await readJson(req);
-      for (const field of ["name", "prompt", "schedule"]) {
+      for (const field of ["name", "prompt"]) {
         if (!body[field] || typeof body[field] !== "string") {
           json(res, 400, { error: `missing '${field}'` });
           return true;
         }
       }
-      // The loop above proved name/prompt/schedule are non-empty strings.
-      const input = body as unknown as NewRoutine;
-      // Reject a bad cron NOW — otherwise the routine saves and silently never
-      // fires (the scheduler would skip it forever, with no signal to the user).
-      // Validate against the single account-wide zone (HOU-470): there is no
-      // per-routine timezone, so a stray body.timezone is not honored.
-      const accountTz = await getPreference(vfs, ctx.workspace.id, "timezone");
-      const scheduleErr = validateSchedule(input.schedule, accountTz);
-      if (scheduleErr) {
-        json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
+      // Exactly one wake mechanism (a cron schedule OR an event trigger).
+      const wakeErr = wakeMechanismError(body);
+      if (wakeErr) {
+        json(res, 400, { error: wakeErr });
         return true;
+      }
+      // The checks above proved name/prompt are non-empty strings and exactly
+      // one wake mechanism is present.
+      const input = body as unknown as NewRoutine;
+      // Reject a bad cron NOW (schedule routines only) — otherwise the routine
+      // saves and silently never fires (the scheduler would skip it forever,
+      // with no signal to the user). Validate against the single account-wide
+      // zone (HOU-470): there is no per-routine timezone, so a stray
+      // body.timezone is not honored. Trigger routines have no cron to check.
+      if (typeof input.schedule === "string") {
+        const accountTz = await getPreference(
+          vfs,
+          ctx.workspace.id,
+          "timezone",
+        );
+        const scheduleErr = validateSchedule(input.schedule, accountTz);
+        if (scheduleErr) {
+          json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
+          return true;
+        }
       }
       const providerErr = pinError(body);
       if (providerErr) {
@@ -176,18 +209,27 @@ export async function handleAgentData(
       }
       if (method === "PATCH") {
         const update = await readJson(req);
+        // A PATCH may switch a routine to an event trigger; reject a malformed
+        // binding before it is persisted (normalizeRoutines would drop it).
+        if (update.trigger != null && !isValidTriggerBinding(update.trigger)) {
+          json(res, 400, { error: "invalid 'trigger' binding" });
+          return true;
+        }
         const next = applyRoutineUpdate(current, update, nowIso, createdBy);
         // A PATCH may change the schedule; validate it against the account-wide
-        // zone (HOU-470: no per-routine timezone).
-        const accountTz = await getPreference(
-          vfs,
-          ctx.workspace.id,
-          "timezone",
-        );
-        const scheduleErr = validateSchedule(next.schedule, accountTz);
-        if (scheduleErr) {
-          json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
-          return true;
+        // zone (HOU-470: no per-routine timezone). A trigger routine (or a PATCH
+        // that switched to a trigger) has no cron to validate.
+        if (typeof next.schedule === "string") {
+          const accountTz = await getPreference(
+            vfs,
+            ctx.workspace.id,
+            "timezone",
+          );
+          const scheduleErr = validateSchedule(next.schedule, accountTz);
+          if (scheduleErr) {
+            json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
+            return true;
+          }
         }
         const providerErr = pinError(update);
         if (providerErr) {

@@ -1,5 +1,5 @@
-//! Keychain-backed storage for Supabase auth sessions + deep-link callback
-//! handling for Google OAuth.
+//! Keychain-backed storage for the identity session + the `auth://deep-link`
+//! event bridge used by the desktop OAuth loopback.
 //!
 //! Storage layout per OS:
 //! - **macOS**: `keyring` crate writes to the user's Keychain under
@@ -8,38 +8,33 @@
 //! - **Windows**: per-user **DPAPI-encrypted file** under
 //!   `%LOCALAPPDATA%\com.houston.app\auth\<key>.dpapi`. We do NOT use
 //!   Credential Manager here because its `CredentialBlob` field caps at
-//!   ~2560 bytes, and a Supabase session — a JWT access_token plus
-//!   user metadata plus refresh_token plus provider_token — is
-//!   reliably 3-4 KB. The earlier keyring-based path silently dropped
-//!   every session on disk (the `set_password` Err was swallowed by
-//!   the JS storage adapter) so every Windows user was forced to
+//!   ~2560 bytes, and a stored session — a JWT ID token plus refresh
+//!   token plus user metadata — can exceed that. The earlier keyring-based
+//!   path silently dropped every session on disk (the `set_password` Err was
+//!   swallowed by the JS storage adapter) so every Windows user was forced to
 //!   re-sign-in on every app open. DPAPI's `CryptProtectData` has no
 //!   such limit and still binds the ciphertext to the Windows user.
 //! - **Other Unix**: `keyring` falls through to whatever backend the
 //!   user has (libsecret, KWallet, etc.). Not officially supported.
 //!
-//! Deep-link flow:
-//!   1. Frontend calls `supabase.auth.signInWithOAuth({ provider: "google",
-//!      options: { redirectTo: "houston://auth-callback" } })`.
-//!   2. User completes consent in their system browser.
-//!   3. Supabase redirects to `houston://auth-callback?code=...` (PKCE) or
-//!      `houston://auth-callback/#access_token=...` (implicit).
-//!   4. macOS hands the URL to the running app via tauri-plugin-deep-link;
-//!      Windows hands it via tauri-plugin-single-instance argv forwarding
-//!      into the same plugin (see `lib.rs`).
-//!   5. This module emits `auth://deep-link` with the URL to the frontend.
-//!   6. Frontend calls `supabase.auth.exchangeCodeForSession(code)` for
-//!      PKCE or `setSession({access_token, refresh_token})` for implicit
-//!      — and writes the result directly into the TanStack Query cache so
-//!      the auth gate flips without relying on supabase's listener.
+//! The storage is identity-provider-agnostic: `auth_get_item` /
+//! `auth_set_item` / `auth_remove_item` round-trip an opaque session JSON blob
+//! for the TS session store (`app/src/lib/identity/session-store.ts`).
+//!
+//! Deep-link bridge: `emit_deep_link` emits the `auth://deep-link` event
+//! carrying the loopback callback URL. The JS identity layer parses `code` /
+//! `state` off it and runs the PKCE exchange + GCIP (Firebase) sign-in
+//! (`app/src/lib/identity/oauth-callback.ts`); the PKCE verifier stays in memory
+//! and the resulting session (ID token + refresh token) is written to the
+//! Keychain-backed store here.
 
 use tauri::{AppHandle, Emitter};
 
 #[cfg(not(target_os = "windows"))]
 const SERVICE: &str = "com.houston.app.auth";
 
-/// Reject keys that try to escape the storage directory. Supabase only
-/// ever passes its own well-formed storage keys, but the API surface is
+/// Reject keys that try to escape the storage directory. The TS session store
+/// only ever passes its own well-formed storage keys, but the API surface is
 /// reachable from the webview so we still sanitize.
 fn validate_key(key: &str) -> Result<(), String> {
     if key.is_empty() {

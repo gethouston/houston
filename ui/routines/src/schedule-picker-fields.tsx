@@ -11,13 +11,12 @@ import { cn } from "@houston-ai/core";
 import { longWeekdayNames, narrowWeekdayNames } from "./schedule-format.ts";
 
 const inputClass = cn(
-  "px-3 py-2 rounded-lg border border-border/20 bg-background",
-  "text-sm text-foreground",
+  "px-3 py-2 rounded-lg border border-line/20 bg-input",
+  "text-sm text-ink",
   "focus:outline-none focus:shadow-sm transition-shadow",
 );
 
-export const labelClass =
-  "text-xs font-medium text-muted-foreground mb-1.5 block";
+export const labelClass = "text-xs font-medium text-ink-muted mb-1.5 block";
 
 export function DayOfMonthPicker({
   label,
@@ -100,8 +99,8 @@ export function WeekdaysPicker({
               className={cn(
                 "size-9 rounded-full text-xs font-medium transition-colors",
                 on
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
+                  ? "bg-action text-action-text"
+                  : "bg-input border border-line/20 text-ink-muted hover:text-ink",
               )}
             >
               {glyph}
@@ -115,7 +114,7 @@ export function WeekdaysPicker({
             key={s.key}
             type="button"
             onClick={() => onChange(s.days)}
-            className="h-7 rounded-full border border-border/20 bg-background px-3 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="h-7 rounded-full border border-line/20 bg-input px-3 text-xs text-ink-muted transition-colors hover:text-ink"
           >
             {shortcuts[s.key]}
           </button>

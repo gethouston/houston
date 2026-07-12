@@ -3,7 +3,7 @@ import { Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { appDisplay } from "./app-display";
 import { AppRow } from "./app-row";
-import { LOCKED_PREVIEW_CAP } from "./model";
+import { LOCKED_PREVIEW_CAP } from "./browse-model";
 
 interface CatalogLockedSectionProps {
   /** Policy-blocked apps (already filtered + A-Z), rendered read-only. */
@@ -28,7 +28,7 @@ export function CatalogLockedSection({ locked }: CatalogLockedSectionProps) {
 
   return (
     <section className="mt-6">
-      <h4 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+      <h4 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
         <Lock className="size-3.5" />
         {t("locked.heading")}
       </h4>
@@ -40,13 +40,13 @@ export function CatalogLockedSection({ locked }: CatalogLockedSectionProps) {
               key={tk.slug}
               display={display}
               description={t("locked.askAdmin", { name: display.name })}
-              trailing={<Lock className="size-3.5 text-muted-foreground/70" />}
+              trailing={<Lock className="size-3.5 text-ink-muted/70" />}
             />
           );
         })}
       </div>
       {overflow > 0 && (
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-xs text-ink-muted">
           {t("locked.more", { count: overflow })}
         </p>
       )}

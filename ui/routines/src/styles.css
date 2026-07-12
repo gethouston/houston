@@ -21,7 +21,7 @@
   pointer-events: none;
   background: var(--routine-flash);
   box-shadow: 0 0 0 2px
-    color-mix(in srgb, var(--ht-ring, currentColor) 55%, transparent);
+    color-mix(in srgb, var(--ht-focus, currentColor) 55%, transparent);
   animation: routine-section-flash 1.1s ease-out forwards;
 }
 

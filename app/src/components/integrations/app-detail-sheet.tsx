@@ -61,7 +61,7 @@ export function AppDetailSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col gap-0 sm:max-w-md">
-        <SheetHeader className="border-b border-border">
+        <SheetHeader className="border-b border-line">
           <div className="flex items-center gap-3">
             <AppLogo display={display} size="lg" />
             <div className="min-w-0 flex-1">
@@ -72,7 +72,7 @@ export function AppDetailSheet({
             </div>
           </div>
           {(description || display.description) && (
-            <p className="mt-3 text-sm text-muted-foreground">
+            <p className="mt-3 text-sm text-ink-muted">
               {description || display.description}
             </p>
           )}
@@ -80,15 +80,15 @@ export function AppDetailSheet({
 
         {onToggleAgent && (
           <div className="flex-1 overflow-auto px-4 py-4">
-            <h3 className="mb-2 text-sm font-medium text-foreground">
+            <h3 className="mb-2 text-sm font-medium text-ink">
               {t("detail.activeOn")}
             </h3>
             {!grantsSupported ? (
-              <p className="rounded-xl bg-secondary px-3 py-3 text-xs text-muted-foreground">
+              <p className="rounded-xl bg-chip px-3 py-3 text-xs text-ink-muted">
                 {t("detail.allAgentsNote")}
               </p>
             ) : (agents ?? []).length === 0 ? (
-              <p className="rounded-xl bg-secondary px-3 py-3 text-xs text-muted-foreground">
+              <p className="rounded-xl bg-chip px-3 py-3 text-xs text-ink-muted">
                 {t("detail.noAgents")}
               </p>
             ) : (
@@ -102,7 +102,7 @@ export function AppDetailSheet({
                       color={resolveAgentColor(agent.color)}
                       diameter={24}
                     />
-                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink">
                       {agent.name}
                     </span>
                     <Switch
@@ -120,11 +120,11 @@ export function AppDetailSheet({
           </div>
         )}
 
-        <div className="flex gap-2 border-t border-border px-4 py-3">
+        <div className="flex gap-2 border-t border-line px-4 py-3">
           <button
             type="button"
             onClick={onReconnect}
-            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-line bg-input px-3 text-sm font-medium text-ink transition-colors hover:bg-chip"
           >
             <RotateCw className="size-4" />
             {t("detail.reconnect")}
@@ -132,7 +132,7 @@ export function AppDetailSheet({
           <button
             type="button"
             onClick={onDisconnect}
-            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
           >
             <Unplug className="size-4" />
             {t("detail.disconnect")}

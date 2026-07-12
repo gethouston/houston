@@ -28,6 +28,7 @@ import {
   isAgentPathWarming,
   type WarmingWriteOptions,
 } from "./agent-warming-guard";
+import { isKeyGoneError, isKeyLimitError } from "./api-keys-model";
 import {
   beginClaudeBrowserLogin,
   cancelClaudeBrowserLogin,
@@ -364,6 +365,13 @@ export const tauriChat = {
       suppressUserBubble?: boolean;
       /** Queue display (user's words + attachment names) if the send is held (see SessionStartRequest). */
       queuedPreview?: { text: string; attachmentNames?: string[] };
+      /**
+       * What the user's bubble renders when it must differ from `prompt` — a
+       * hidden setup-mission directive or appended attachment paths. The engine
+       * still receives `prompt`; this only changes the live + replayed bubble
+       * (see SessionStartRequest).
+       */
+      displayText?: string;
     },
   ) =>
     call<string>("send_message", async () => {
@@ -382,6 +390,7 @@ export const tauriChat = {
         mode: opts?.modeOverride,
         suppressUserBubble: opts?.suppressUserBubble,
         queuedPreview: opts?.queuedPreview,
+        displayText: opts?.displayText,
       });
       return res.sessionKey;
     }),
@@ -396,6 +405,12 @@ export const tauriChat = {
     call<void>("stop_session", async () => {
       await getEngine().cancelSession(agentPath, sessionKey);
     }),
+  /** Retire a conversation's pending interaction (stepper X / abandon): appends
+   *  a durable stop marker, like a real Stop — the model learns nothing. */
+  dismissInteraction: (agentPath: string, conversationId: string) =>
+    call<void>("dismiss_interaction", () =>
+      getEngine().dismissInteraction(agentPath, conversationId),
+    ),
   loadHistory: (
     agentPath: string,
     sessionKey: string,
@@ -1521,6 +1536,32 @@ export const tauriIntegrations = {
     call("set_agent_integration_grants", () =>
       getEngine().setAgentIntegrationGrants(agentSlugOrId, toolkits),
     ),
+  /** The actions this agent may run without asking again ("always allow"). */
+  actionApprovals: (agentId: string) =>
+    call("action_approvals", () => getEngine().agentActionApprovals(agentId)),
+  /** Add an action to the agent's "always allow" set; returns the new set. */
+  allowActionAlways: (agentId: string, action: string) =>
+    call("allow_action_always", () =>
+      getEngine().allowActionAlways(agentId, action),
+    ),
+  /** Approve one pending action once, by its hash (a single-use ticket). */
+  addApprovalTicket: (agentId: string, hash: string) =>
+    call("add_approval_ticket", () =>
+      getEngine().addActionApprovalTicket(agentId, hash),
+    ),
+  // ── custom integrations (HOU-550) ──────────────────────────────────────────
+  // The list is a plain read (a React Query hook owns its error surface and
+  // `null` = unsupported host); the two mutations go through `call()` so a
+  // failure toasts + reports exactly once.
+  customList: () => getEngine().customIntegrations(),
+  customRemove: (slug: string) =>
+    call("custom_integration_remove", () =>
+      getEngine().removeCustomIntegration(slug),
+    ),
+  customCredential: (slug: string, values: Record<string, string>) =>
+    call("custom_integration_credential", () =>
+      getEngine().submitCustomIntegrationCredential(slug, values),
+    ),
 };
 
 /**
@@ -1610,4 +1651,39 @@ export const tauriOrg = {
     allowedModels?: string[] | null;
   }) =>
     call<void>("set_org_settings", () => getEngine().setOrgSettings(settings)),
+};
+
+/**
+ * Personal API keys (C9). Hosted-gateway only: `getEngine()` throws off-cloud, so
+ * callers gate the UI on the `apiKeys` capability. Every call routes through
+ * `call()` so a failure toasts + reports exactly once (the no-silent-failures
+ * path) — the section then reflects the query's error state instead of a
+ * misleading empty list. Two expected states are silenced from the red bug toast:
+ * `create` silences the `key_limit` 400 (surfaced inline), and `revoke` silences
+ * the `404` of an already-gone key (stale 30s list / double revoke) and resolves
+ * it as success so the row still disappears.
+ */
+export const tauriApiKeys = {
+  list: () => call("list_api_keys", () => getEngine().listApiKeys()),
+  create: (name: string) =>
+    call("create_api_key", () => getEngine().createApiKey(name), undefined, {
+      silence: isKeyLimitError,
+    }),
+  revoke: (id: string) =>
+    call<void>(
+      "revoke_api_key",
+      () => getEngine().revokeApiKey(id),
+      undefined,
+      {
+        silence: isKeyGoneError,
+      },
+    ).catch((err) => {
+      // A 404 means the key was already revoked (the list is 30s-stale, or a
+      // second revoke landed in the same window). That is idempotent success,
+      // not a failure: swallow it so the mutation resolves and its onSuccess
+      // still invalidates the list, dropping the row. `call()` already silenced
+      // the toast + Sentry report above; every other error rethrows and surfaces.
+      if (isKeyGoneError(err)) return;
+      throw err;
+    }),
 };

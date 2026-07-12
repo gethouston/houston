@@ -16,7 +16,13 @@ interface Props extends TabProps {
   /** The routine's own name, for the "Routine: {name}" header. Unused when
    *  `kind` is "draft". */
   routineName?: string;
-  /** Return to the routines list. */
+  /** Header label for a still-unclaimed draft chat. Defaults to the routine
+   *  wording ("New routine"); the Reactions tab passes its own copy. */
+  newLabel?: string;
+  /** Header label for a claimed item's chat, already interpolated with its name
+   *  ("Routine: X"). Defaults to the routine wording; Reactions passes its own. */
+  itemLabel?: string;
+  /** Return to the list. */
   onBack: () => void;
 }
 
@@ -45,6 +51,8 @@ export function RoutineSetupChat({
   activity,
   kind,
   routineName,
+  newLabel,
+  itemLabel,
   onBack,
 }: Props) {
   const { t } = useTranslation("routines");
@@ -88,12 +96,12 @@ export function RoutineSetupChat({
   if (!activity) {
     return (
       <div className="flex h-full min-h-0 flex-col">
-        <div className="px-4 py-3 border-b border-border">
+        <div className="px-4 py-3 border-b border-line">
           <div className="max-w-3xl mx-auto w-full flex items-center gap-3">
             {backButton}
           </div>
         </div>
-        <div className="min-h-0 flex-1 flex items-center justify-center gap-2 text-muted-foreground">
+        <div className="min-h-0 flex-1 flex items-center justify-center gap-2 text-ink-muted">
           <Loader2 className="size-4 animate-spin" />
           <span className="text-sm">{t("chat.opening")}</span>
         </div>
@@ -104,8 +112,8 @@ export function RoutineSetupChat({
   const sessionKey = activity.session_key ?? `activity-${activity.id}`;
   const missionLabel =
     kind === "draft"
-      ? t("chat.newRoutineTitle")
-      : t("chat.routineLabel", { name: routineName ?? "" });
+      ? (newLabel ?? t("chat.newRoutineTitle"))
+      : (itemLabel ?? t("chat.routineLabel", { name: routineName ?? "" }));
 
   return (
     <div className="flex h-full min-h-0 flex-col">

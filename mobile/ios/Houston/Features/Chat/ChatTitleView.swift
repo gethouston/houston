@@ -22,7 +22,7 @@ struct ChatTitleView: View {
       VStack(alignment: .leading, spacing: Spacing.space2) {
         Text(name)
           .font(Typography.bodyMedium)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
           .lineLimit(1)
         statusLine
       }
@@ -38,7 +38,7 @@ struct ChatTitleView: View {
     case .working:
       Text(Strings.Chat.TitleBar.working)
         .font(Typography.caption)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
         .lineLimit(1)
         .shimmer(active: true)
     case .needsAttention:

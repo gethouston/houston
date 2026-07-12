@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Base hook for subscribing to houston-tauri backend events.
  *

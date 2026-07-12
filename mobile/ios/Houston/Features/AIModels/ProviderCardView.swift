@@ -17,13 +17,13 @@ struct ProviderCardView: View {
           ProviderGlyph(providerId: card.glyphId, size: 22)
           Text(card.name)
             .font(Typography.bodyMedium)
-            .foregroundStyle(theme.foreground)
+            .foregroundStyle(theme.ink)
             .lineLimit(1)
         }
         if let description = Strings.AIModels.providerDescription(card.descriptionKey) {
           Text(description)
             .font(Typography.caption)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
             .lineLimit(2)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -33,10 +33,10 @@ struct ProviderCardView: View {
       }
       .padding(Spacing.space16)
       .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
-      .background(theme.secondary, in: RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
+      .background(theme.chip, in: RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
       .overlay(
         RoundedRectangle(cornerRadius: Radius.xl, style: .continuous)
-          .strokeBorder(theme.border, lineWidth: 1))
+          .strokeBorder(theme.line, lineWidth: 1))
       .contentShape(RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
     }
     .buttonStyle(.plain)
@@ -53,10 +53,10 @@ struct ProviderCardView: View {
     } else {
       Text(Strings.AIModels.Card.connect)
         .font(Typography.label)
-        .foregroundStyle(theme.primaryFg)
+        .foregroundStyle(theme.actionText)
         .padding(.horizontal, Spacing.space12)
         .padding(.vertical, Spacing.space6)
-        .background(theme.primary, in: Capsule())
+        .background(theme.action, in: Capsule())
     }
   }
 
@@ -68,7 +68,7 @@ struct ProviderCardView: View {
       if let dot { Circle().fill(dot).frame(width: 6, height: 6) }
       Text(text)
         .font(Typography.label)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
     }
   }
 }
@@ -84,29 +84,29 @@ struct ComingSoonCardView: View {
       HStack(spacing: Spacing.space8) {
         Text(provider.mark)
           .font(Typography.captionStrong)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
           .frame(width: 22, height: 22)
-          .background(theme.muted, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+          .background(theme.chipSubtle, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
         Text(provider.name)
           .font(Typography.bodyMedium)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
           .lineLimit(1)
       }
       Text(provider.subtitle)
         .font(Typography.caption)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
         .lineLimit(2)
       Spacer(minLength: Spacing.space4)
       Text(Strings.AIModels.Card.comingSoon)
         .font(Typography.label)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
     }
     .padding(Spacing.space16)
     .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
-    .background(theme.secondary, in: RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
+    .background(theme.chip, in: RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
     .overlay(
       RoundedRectangle(cornerRadius: Radius.xl, style: .continuous)
-        .strokeBorder(theme.border, lineWidth: 1))
+        .strokeBorder(theme.line, lineWidth: 1))
     .opacity(0.7)
   }
 }

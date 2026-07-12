@@ -49,8 +49,8 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
           title={collapsed ? displayName : undefined}
           className={
             collapsed
-              ? "flex size-9 items-center justify-center rounded-lg hover:bg-accent transition-colors"
-              : "w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-accent transition-colors"
+              ? "flex size-9 items-center justify-center rounded-lg hover:bg-hover transition-colors"
+              : "w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-hover transition-colors"
           }
         >
           {avatar ? (
@@ -61,8 +61,8 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
               referrerPolicy="no-referrer"
             />
           ) : (
-            <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center">
-              <User className="h-3.5 w-3.5 text-muted-foreground" />
+            <div className="h-6 w-6 rounded-full bg-chip-subtle flex items-center justify-center">
+              <User className="h-3.5 w-3.5 text-ink-muted" />
             </div>
           )}
           {!collapsed && (
@@ -82,8 +82,8 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
             <div
               className={
                 collapsed
-                  ? "absolute bottom-full left-0 mb-1 w-56 rounded-lg border border-border bg-popover shadow-md z-20 overflow-hidden"
-                  : "absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-border bg-popover shadow-md z-20 overflow-hidden"
+                  ? "absolute bottom-full left-0 mb-1 w-56 rounded-lg border border-line bg-popover shadow-md z-20 overflow-hidden"
+                  : "absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-line bg-popover shadow-md z-20 overflow-hidden"
               }
             >
               <button
@@ -92,7 +92,7 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
                   setOpen(false);
                   setViewMode("settings");
                 }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center gap-2"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-hover transition-colors flex items-center gap-2"
               >
                 <User className="h-3.5 w-3.5" />
                 Account settings
@@ -103,7 +103,7 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
                   setOpen(false);
                   setFeedbackOpen(true);
                 }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center gap-2"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-hover transition-colors flex items-center gap-2"
               >
                 <MessageSquare className="h-3.5 w-3.5" />
                 {t("userMenu.sendFeedback")}
@@ -111,7 +111,7 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center gap-2 text-destructive"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-hover transition-colors flex items-center gap-2 text-danger"
               >
                 <LogOut className="h-3.5 w-3.5" />
                 Sign out

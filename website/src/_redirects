@@ -15,3 +15,12 @@
 # /paris-meetup-jan   /?utm_source=qr_code&utm_medium=event&utm_campaign=paris_meetup_jan_2026&utm_content=qr_main   302
 #
 # Live campaigns: (add rules below this line)
+
+# /pricing/ was folded into the landing page's pricing section (#pricing).
+# No Spanish landing page exists yet, so /pricing/es/ also falls back to the
+# English landing's pricing section.
+/pricing/      /#pricing      301
+/pricing/es/   /#pricing      301
+
+# Agent store bridge. 302 until the store.gethouston.ai domain is proven, then flip to 301.
+/agent-store   https://store.gethouston.ai   302

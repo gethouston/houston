@@ -41,7 +41,13 @@ export const ConversationContent = ({
     // marker class is the stable selector the keyboard-shortcut layer
     // uses to step-scroll the log with arrow keys.
     scrollClassName="conversation-scroll-pane"
-    className={cn("flex flex-col gap-8 p-4", className)}
+    // Top clearance matches the ConversationTopFade height (h-8): a
+    // conversation that overflows by only a few pixels gets pinned to the
+    // bottom by stick-to-bottom, and without this headroom the FIRST row
+    // (usually the collapsed "Mission log" line) sat half-dissolved under
+    // the fade at rest — reading as clipped by the panel header. Small
+    // overflows now scroll padding out of view, never the first message.
+    className={cn("flex flex-col gap-8 px-4 pb-4 pt-8", className)}
     {...props}
   />
 );
@@ -69,11 +75,11 @@ export const ConversationEmptyState = ({
   >
     {children ?? (
       <>
-        {icon && <div className="text-muted-foreground">{icon}</div>}
+        {icon && <div className="text-ink-muted">{icon}</div>}
         <div className="space-y-1">
           <h3 className="font-medium text-sm">{title}</h3>
           {description && (
-            <p className="text-muted-foreground text-sm">{description}</p>
+            <p className="text-ink-muted text-sm">{description}</p>
           )}
         </div>
       </>
@@ -82,10 +88,14 @@ export const ConversationEmptyState = ({
 );
 
 /**
- * Top scroll fade: a background-colored gradient pinned under the panel
- * header, visible ONLY while content is scrolled — a streaming line then
- * dissolves as it leaves the viewport instead of hard-clipping mid-glyph
- * against the header's border. At rest (nothing scrolled out) it is fully
+ * Top scroll fade: a canvas-colored gradient pinned under the panel header,
+ * visible ONLY while content is scrolled — a streaming line then dissolves as
+ * it leaves the viewport instead of hard-clipping mid-glyph against the
+ * header's border. In light it fades from `canvas`, the EXACT tone the chat
+ * panel and its header wear, so header, fade, and body read as one color (the
+ * old `background` white showed as a pale seam on the gray canvas); dark keeps
+ * fading from `background` — the dark canvas token is translucent glass, which
+ * cannot anchor an opaque fade. At rest (nothing scrolled out) it is fully
  * transparent, so the first message never renders washed out. Mount inside
  * a <Conversation>.
  */
@@ -109,7 +119,7 @@ export const ConversationTopFade = () => {
       aria-hidden
       className={cn(
         "pointer-events-none absolute inset-x-0 top-0 z-10 h-8",
-        "bg-gradient-to-b from-background to-transparent",
+        "bg-gradient-to-b from-background to-transparent dark:from-input",
         "transition-opacity duration-150",
         scrolled ? "opacity-100" : "opacity-0",
       )}
@@ -133,7 +143,7 @@ export const ConversationScrollButton = ({
     !isAtBottom && (
       <Button
         className={cn(
-          "absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full dark:bg-background dark:hover:bg-muted",
+          "absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full dark:bg-input dark:hover:bg-chip-subtle",
           className,
         )}
         onClick={handleScrollToBottom}
@@ -224,7 +234,7 @@ export const ConversationDownload = ({
   return (
     <Button
       className={cn(
-        "absolute top-4 right-4 rounded-full dark:bg-background dark:hover:bg-muted",
+        "absolute top-4 right-4 rounded-full dark:bg-input dark:hover:bg-chip-subtle",
         className,
       )}
       onClick={handleDownload}

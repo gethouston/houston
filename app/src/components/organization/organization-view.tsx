@@ -112,15 +112,15 @@ export function OrganizationView() {
                   onClick={() => setTab(id)}
                   className={cn(
                     "relative rounded-sm pb-2.5 text-sm transition-colors duration-200",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
                     isActive
-                      ? "font-medium text-foreground"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "font-medium text-ink"
+                      : "text-ink-muted hover:text-ink",
                   )}
                 >
                   {t(`org.tabs.${id}`)}
                   {isActive && (
-                    <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-primary" />
+                    <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-action" />
                   )}
                 </button>
               );
@@ -139,7 +139,7 @@ export function OrganizationView() {
           {ctx ? (
             <ActiveTab ctx={ctx} />
           ) : (
-            <p className="py-10 text-sm text-muted-foreground">
+            <p className="py-10 text-sm text-ink-muted">
               {isLoading ? t("org.loading") : t("org.unavailable")}
             </p>
           )}

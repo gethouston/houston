@@ -19,11 +19,11 @@ struct ConnectWaitingSheet: View {
       VStack(spacing: Spacing.space8) {
         Text(Strings.Integrations.waitingTitle(app: session.appName))
           .font(Typography.title)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
           .multilineTextAlignment(.center)
         Text(Strings.Integrations.waitingBody(app: session.appName))
           .font(Typography.callout)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
           .multilineTextAlignment(.center)
       }
       VStack(spacing: Spacing.space8) {
@@ -32,28 +32,28 @@ struct ConnectWaitingSheet: View {
         } label: {
           Text(Strings.Integrations.waitingCheck)
             .font(Typography.label)
-            .foregroundStyle(theme.primaryFg)
+            .foregroundStyle(theme.actionText)
             .frame(maxWidth: .infinity)
             .padding(.vertical, Spacing.space12)
-            .background(theme.primary, in: Capsule())
+            .background(theme.action, in: Capsule())
         }
         Button {
           showSafari = true
         } label: {
           Text(Strings.Integrations.waitingReopen)
             .font(Typography.label)
-            .foregroundStyle(theme.foreground)
+            .foregroundStyle(theme.ink)
             .frame(maxWidth: .infinity)
             .padding(.vertical, Spacing.space12)
-            .background(theme.muted, in: Capsule())
-            .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
+            .background(theme.chipSubtle, in: Capsule())
+            .overlay(Capsule().strokeBorder(theme.line, lineWidth: 1))
         }
         Button {
           flow.cancel()
         } label: {
           Text(Strings.Integrations.cancel)
             .font(Typography.label)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
             .frame(maxWidth: .infinity)
             .padding(.vertical, Spacing.space12)
         }
@@ -61,7 +61,7 @@ struct ConnectWaitingSheet: View {
     }
     .padding(Spacing.space24)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-    .background(theme.background)
+    .background(theme.input)
     .presentationDetents([.medium])
     .onAppear { showSafari = true }
     .fullScreenCover(isPresented: $showSafari) {

@@ -32,6 +32,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY selfhost/bundle.mjs /app/selfhost/bundle.mjs
 COPY ui/agent-schemas/ /app/ui/agent-schemas/
+COPY packages/agentstore-contract/ /app/packages/agentstore-contract/
 COPY packages/protocol/ /app/packages/protocol/
 COPY packages/runtime-client/ /app/packages/runtime-client/
 COPY packages/domain/ /app/packages/domain/
@@ -61,6 +62,7 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY ui/agent-schemas/ /app/ui/agent-schemas/
+COPY packages/agentstore-contract/ /app/packages/agentstore-contract/
 COPY packages/protocol/ /app/packages/protocol/
 COPY packages/runtime-client/ /app/packages/runtime-client/
 COPY packages/domain/ /app/packages/domain/

@@ -145,6 +145,74 @@
     "soon": "em breve",
     "at": "{day} às {time}"
   },
+  "trigger": {
+    "wakeEvent": "Quando algo acontece",
+    "chooseApp": "Qual app deve acionar?",
+    "chooseEvent": "O que deve acionar?",
+    "changeApp": "Trocar app",
+    "noApps": "Conecte um app primeiro para uma rotina ser acionada por eventos.",
+    "loadingEvents": "Carregando eventos…",
+    "noEvents": "Este app ainda não tem eventos para acionar.",
+    "pollHint": "Verifica a cada poucos minutos",
+    "accountLabel": "Conta",
+    "detailsTitle": "Detalhes",
+    "rawJsonLabel": "Configurações avançadas",
+    "rawJsonHint": "Digite as configurações deste evento como JSON.",
+    "rawJsonInvalid": "Isto precisa ser um JSON válido.",
+    "status": {
+      "active": "Ativa",
+      "pending": "Configurando…",
+      "paused_disconnected": "Precisa reconectar",
+      "paused_revoked": "Acesso desativado",
+      "error": "Precisa de atenção"
+    },
+    "reconnect": "Reconectar",
+    "statusDisconnectedHint": "A conta conectada foi desconectada.",
+    "statusRevokedHint": "Este app foi desativado para este agente.",
+    "rowSummary": "Aciona por um evento em {{app}}",
+    "loadFailed": "Não foi possível carregar os acionadores de eventos"
+  },
+  "reactions": {
+    "grid": {
+      "loading": "Carregando…",
+      "emptyTitle": "Reaja assim que acontece",
+      "emptyDescription": "Seu agente reage assim que algo acontece nos seus apps conectados, como um e-mail novo, uma mensagem ou uma mudança no código.",
+      "emptyStepsTitle": "Como funciona",
+      "emptySteps": [
+        {
+          "title": "Escolha o que aciona",
+          "description": "Escolha um app e o evento para reagir, como um e-mail novo ou uma mensagem nova."
+        },
+        {
+          "title": "Diga o que fazer",
+          "description": "Descreva a tarefa em linguagem simples, como você diria para uma pessoa."
+        },
+        {
+          "title": "Roda sozinha",
+          "description": "Não precisa ficar de olho, seu agente reage assim que acontece."
+        }
+      ],
+      "newRoutine": "Nova reação",
+      "newRoutineWithAi": "Com IA",
+      "newRoutineManually": "Manualmente",
+      "createRoutine": "Criar reação",
+      "draftTitle": "Reação sendo criada no chat",
+      "draftResume": "Continuar",
+      "draftDiscard": "Descartar",
+      "descriptionShort": "Automações que rodam assim que algo acontece em um dos seus apps conectados.",
+      "timezoneLabel": "Fuso horário",
+      "timezoneHint": "Todas as suas rotinas rodam neste fuso horário.",
+      "timezoneSearchPlaceholder": "Buscar fusos horários…",
+      "timezoneNoResults": "Nenhum fuso horário encontrado"
+    },
+    "setupChat": {
+      "missionTitle": "Configurar uma nova reação"
+    },
+    "chat": {
+      "newTitle": "Nova reação",
+      "itemLabel": "Reação: {{name}}"
+    }
+  },
   "toasts": {
     "timezoneSet": "Fuso horário definido como {{zone}}",
     "timezoneError": "Não foi possível atualizar o fuso horário",

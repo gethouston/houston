@@ -22,6 +22,8 @@ import type {
   AgentMoveStart,
   AgentMoveStatus,
   AgentSettings,
+  ApiKey,
+  ApiKeyCreated,
   AttachmentManifest,
   AttachmentUploadResult,
   AuditEntry,
@@ -45,6 +47,7 @@ import type {
   CreateWorkspace,
   CreateWorktreeRequest,
   CustomEndpoint,
+  CustomIntegrationView,
   ErrorBody,
   GenerateInstructionsResult,
   HealthResponse,
@@ -95,8 +98,15 @@ import type {
   SkillDetail,
   SkillSummary,
   StoreListing,
+  StorePublicationStatus,
+  StorePublishRequest,
+  StorePublishResponse,
+  StoreUnpublishResponse,
+  StoreUpdateResponse,
   SummarizeOptions,
   SummarizeResult,
+  TriggerStatusItem,
+  TriggerType,
   TunnelCredentials,
   TunnelStatus,
   UpdateAgent,
@@ -178,6 +188,29 @@ export interface HoustonClientOptions {
   retry?: Partial<RetryConfig>;
   /** Injectable `fetch` for tests / non-browser hosts. Defaults to global `fetch`. */
   fetchImpl?: typeof fetch;
+}
+
+/** The public store site (not API) base, for "browse the store" links. */
+const STORE_SITE_URL = "https://store.gethouston.ai";
+
+/** The machine-local pointer the host keeps for a published agent (no secrets). */
+interface StorePointer {
+  storeAgentId: string;
+  slug: string;
+  shareUrl: string;
+  publishedAt: string;
+}
+
+/** The subset of a `me/agents` item the manage view needs (wire contract). */
+interface StoreMeAgentSummary {
+  id: string;
+  slug: string | null;
+  name: string;
+  tagline?: string | null;
+  description?: string | null;
+  category?: string | null;
+  tags?: string[];
+  state: string;
 }
 
 export class HoustonClient {
@@ -1167,6 +1200,94 @@ export class HoustonClient {
     await this.request("POST", "/integrations/reconnect-notice/dismiss");
   }
 
+  // ---------- custom integrations (HOU-550) — v3 host only ----------
+  //
+  // User-added API / MCP servers not in the Composio catalog. The host owns
+  // persistence; the frontend lists, removes, and provides a secret. The list
+  // returns `null` when the host predates the feature (404) so all custom UI
+  // hides, mirroring `agentIntegrationGrants`; every other error throws.
+
+  /** All custom integrations, or `null` when the host does not support the
+   *  feature (404 — old build / gateway-fronted pod). */
+  async customIntegrations(): Promise<CustomIntegrationView[] | null> {
+    try {
+      return (
+        await this.request<{ items: CustomIntegrationView[] }>(
+          "GET",
+          "/integrations/custom/definitions",
+        )
+      ).items;
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
+  }
+  /** Remove a custom integration entirely (executor + secret + definition). */
+  async removeCustomIntegration(slug: string): Promise<void> {
+    await this.request(
+      "DELETE",
+      `/integrations/custom/definitions/${this.seg(slug)}`,
+    );
+  }
+  /**
+   * Provide the secret for a `pending` custom integration. The host validates,
+   * stores the secret out-of-band, connects, and returns the refreshed view.
+   * The secret VALUE crosses only here (HTTPS body), never the chat transcript.
+   */
+  submitCustomIntegrationCredential(
+    slug: string,
+    values: Record<string, string>,
+  ): Promise<CustomIntegrationView> {
+    return this.request(
+      "POST",
+      `/integrations/custom/definitions/${this.seg(slug)}/credential`,
+      { values },
+    );
+  }
+
+  // ---------- triggers (C9 event-driven routines) ----------
+  //
+  // The catalog the routine editor's trigger picker reads, plus the per-routine
+  // provisioning status it renders as a badge. Gated on `caps.triggers`; served
+  // by the TS host (self-host) and by the cloud edge (managed). Off on desktop.
+
+  /**
+   * The trigger catalog for one toolkit (C9) — the events a routine can wake on.
+   * Read-only GET, so it replays safely on a transient transport blip.
+   */
+  async triggerTypes(toolkit: string): Promise<TriggerType[]> {
+    return (
+      await this.request<{ items: TriggerType[] }>(
+        "GET",
+        "/integrations/composio/trigger-types",
+        undefined,
+        { toolkit },
+      )
+    ).items;
+  }
+  /**
+   * One agent's per-routine trigger status (C9), or `null` when the host does
+   * not serve triggers (404) — a deployment without event-driven routines (e.g.
+   * desktop). Callers treat `null` as "triggers unsupported here" and hide the
+   * badge; every other error still throws. Mirrors how `agentIntegrationGrants`
+   * degrades on a 404.
+   */
+  async agentTriggerStatus(
+    agentId: string,
+  ): Promise<TriggerStatusItem[] | null> {
+    try {
+      return (
+        await this.request<{ items: TriggerStatusItem[] }>(
+          "GET",
+          `/agents/${this.seg(agentId)}/trigger-status`,
+        )
+      ).items;
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
+  }
+
   // ---------- org / roles (multiplayer) — v3 host only ----------
   //
   // The Rust engine has no /v1/org routes; multiplayer is a hosted-gateway
@@ -1310,6 +1431,41 @@ export class HoustonClient {
    */
   createPortal(): Promise<BillingCheckout> {
     return this.request("POST", "/org/billing/portal", {});
+  }
+
+  // ---------- personal API keys (C9) — hosted gateway only ----------
+  //
+  // The user's programmatic credential for the public API. `listApiKeys` reads
+  // the active keys (no secrets); `createApiKey` mints one and returns the FULL
+  // secret exactly once; `revokeApiKey` soft-revokes by id. The frontend gates
+  // the whole surface on `capabilities.apiKeys`, so off-gateway hosts never call
+  // these.
+
+  /**
+   * The caller's active API keys, newest first (C9 §Routes). No secrets — each
+   * entry carries only its display `prefix`. A GET, so it replays safely on a
+   * transient transport blip.
+   */
+  listApiKeys(): Promise<ApiKey[]> {
+    return this.request<{ keys: ApiKey[] }>("GET", "/keys").then((r) => r.keys);
+  }
+  /**
+   * Mint a personal API key (C9). Returns the FULL secret in `key`, exposed ONLY
+   * here and never retrievable again, so the caller reveals it once and keeps it
+   * out of any cache. `name` is trimmed 1..100 server-side; ≥20 active keys →
+   * `400 {code:"key_limit"}`, which the UI renders inline (revoke to free a
+   * slot). A POST, so `send` never auto-replays it.
+   */
+  createApiKey(name: string): Promise<ApiKeyCreated> {
+    return this.request("POST", "/keys", { name });
+  }
+  /**
+   * Soft-revoke a key by id (C9). Idempotent from the user's view: an unknown,
+   * foreign, or already-revoked id answers `404` (no existence leak). Returns
+   * nothing on success (`204`).
+   */
+  revokeApiKey(id: string): Promise<void> {
+    return this.request("DELETE", `/keys/${this.seg(id)}`);
   }
 
   // ---------- per-agent assignments + integration grants (multiplayer) ----------
@@ -1481,6 +1637,67 @@ export class HoustonClient {
       "PUT",
       `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
       { toolkits },
+    );
+  }
+
+  // ---------- action approvals ----------
+
+  /**
+   * The actions this agent may run without asking again (the "always allow"
+   * set). A host that does not serve the action-approval gate answers 404,
+   * which degrades to `{ always: [] }`: the approval card only shows on hosts
+   * that DO serve it, so an empty set is the correct "nothing pre-approved"
+   * reading rather than a hard failure (mirrors {@link agentIntegrationGrants}).
+   * Every other error still throws.
+   */
+  async agentActionApprovals(
+    agentSlugOrId: string,
+  ): Promise<{ always: string[] }> {
+    try {
+      return await this.request<{ always: string[] }>(
+        "GET",
+        `/agents/${this.seg(agentSlugOrId)}/action-approvals`,
+      );
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404)
+        return { always: [] };
+      throw err;
+    }
+  }
+  /** Add an action to this agent's "always allow" set; returns the new set. */
+  async allowActionAlways(
+    agentSlugOrId: string,
+    action: string,
+  ): Promise<{ always: string[] }> {
+    return this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/action-approvals/always`,
+      { action },
+    );
+  }
+  /** Approve one pending action once, by its `hash` (a single-use ticket). */
+  async addActionApprovalTicket(
+    agentSlugOrId: string,
+    hash: string,
+  ): Promise<void> {
+    await this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/action-approvals/tickets`,
+      { hash },
+    );
+  }
+  /**
+   * Retire a conversation's pending interaction by appending a durable stop
+   * marker (the stepper X / abandon). A runtime passthrough — like a real Stop,
+   * the model learns nothing from it.
+   */
+  async dismissInteraction(
+    agentSlugOrId: string,
+    conversationId: string,
+  ): Promise<void> {
+    await this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/conversations/${this.seg(conversationId)}/dismiss-interaction`,
     );
   }
 
@@ -1885,8 +2102,189 @@ export class HoustonClient {
   importScan(packageId: string): Promise<PortableScanResponse> {
     return this.request("POST", "/store/imports/scan", { packageId });
   }
+  /**
+   * Fetch a published agent from an Agent Store share link (or bare slug) and
+   * park it for install, returning the SAME preview a file upload would. The
+   * host resolves the link, validates the IR, and maps it to portable content
+   * (SSRF-guarded); the parked package then flows through scan/install unchanged.
+   */
+  importFromStoreLink(url: string): Promise<PortableUploadPreviewResponse> {
+    return this.request("POST", "/store/imports/from-link", { url });
+  }
   importInstall(req: PortableInstallRequest): Promise<PortableInstalledAgent> {
     return this.request("POST", "/store/imports/install", req);
+  }
+
+  // ---------- Agent Store publication (account-based, no manage tokens) ----------
+  //
+  // The host gathers the IR (`portable/store-ir`) and records a token-free
+  // pointer (`portable/store-publication`); the listing itself is created on the
+  // gateway `/agentstore` API with the caller's own bearer. On a gateway-fronted
+  // deployment the host and the store API share this `baseUrl`.
+
+  private storeIrPath(agentPath: string): string {
+    return `/agents/${encodeURIComponent(agentPath)}/portable/store-ir`;
+  }
+  private storePointerPath(agentPath: string): string {
+    return `/agents/${encodeURIComponent(agentPath)}/portable/store-publication`;
+  }
+  private gatherStoreIr(
+    agentPath: string,
+    req: StorePublishRequest,
+  ): Promise<{ ir: unknown }> {
+    return this.request(
+      "POST",
+      this.storeIrPath(agentPath),
+      req,
+      undefined,
+      undefined,
+      false,
+    );
+  }
+
+  /** Publish this agent to the Agent Store; returns the public share URL. A kept
+   *  pointer re-publishes the SAME store agent so a re-publish never duplicates. */
+  async publishAgentToStore(
+    agentPath: string,
+    req: StorePublishRequest,
+  ): Promise<StorePublishResponse> {
+    const { ir } = await this.gatherStoreIr(agentPath, req);
+    const { pointer } = await this.request<{ pointer: StorePointer | null }>(
+      "GET",
+      this.storePointerPath(agentPath),
+    );
+    if (pointer) {
+      await this.request(
+        "PATCH",
+        `/agentstore/agents/${encodeURIComponent(pointer.storeAgentId)}`,
+        { ir, publish: true },
+        undefined,
+        undefined,
+        false,
+      );
+      await this.request(
+        "POST",
+        this.storePointerPath(agentPath),
+        pointer,
+        undefined,
+        undefined,
+        false,
+      );
+      return {
+        shareUrl: pointer.shareUrl,
+        slug: pointer.slug,
+        storeAgentId: pointer.storeAgentId,
+      };
+    }
+    const created = await this.request<{
+      agentId: string;
+      slug: string;
+      shareUrl: string;
+    }>(
+      "POST",
+      "/agentstore/agents",
+      { ir, publish: true },
+      undefined,
+      undefined,
+      false,
+    );
+    const next: StorePointer = {
+      storeAgentId: created.agentId,
+      slug: created.slug,
+      shareUrl: created.shareUrl,
+      publishedAt: new Date().toISOString(),
+    };
+    await this.request(
+      "POST",
+      this.storePointerPath(agentPath),
+      next,
+      undefined,
+      undefined,
+      false,
+    );
+    return {
+      shareUrl: created.shareUrl,
+      slug: created.slug,
+      storeAgentId: created.agentId,
+    };
+  }
+
+  /** Re-publish an already-listed agent with a freshly gathered selection. */
+  async updateStorePublication(
+    agentPath: string,
+    req: StorePublishRequest,
+  ): Promise<StoreUpdateResponse> {
+    const { pointer } = await this.request<{ pointer: StorePointer | null }>(
+      "GET",
+      this.storePointerPath(agentPath),
+    );
+    if (!pointer) throw new Error("This agent is not published.");
+    const { ir } = await this.gatherStoreIr(agentPath, req);
+    await this.request(
+      "PATCH",
+      `/agentstore/agents/${encodeURIComponent(pointer.storeAgentId)}`,
+      { ir, identity: req.identity },
+      undefined,
+      undefined,
+      false,
+    );
+    return { shareUrl: pointer.shareUrl, slug: pointer.slug };
+  }
+
+  /** Take the listing down; the pointer is kept so a re-publish reuses the agent. */
+  async unpublishFromStore(agentPath: string): Promise<StoreUnpublishResponse> {
+    const { pointer } = await this.request<{ pointer: StorePointer | null }>(
+      "GET",
+      this.storePointerPath(agentPath),
+    );
+    if (!pointer) return { ok: true };
+    await this.request(
+      "PATCH",
+      `/agentstore/agents/${encodeURIComponent(pointer.storeAgentId)}`,
+      { unpublish: true },
+      undefined,
+      undefined,
+      false,
+    );
+    return { ok: true };
+  }
+
+  /** Whether this agent is linked to a listing, and its live state. */
+  async getStorePublication(
+    agentPath: string,
+  ): Promise<StorePublicationStatus> {
+    const { pointer } = await this.request<{ pointer: StorePointer | null }>(
+      "GET",
+      this.storePointerPath(agentPath),
+    );
+    if (!pointer) {
+      return { published: false, linked: false, storeUrl: STORE_SITE_URL };
+    }
+    const { items } = await this.request<{ items: StoreMeAgentSummary[] }>(
+      "GET",
+      "/agentstore/me/agents",
+    );
+    const item = items.find((a) => a.id === pointer.storeAgentId);
+    if (!item) {
+      await this.request("DELETE", this.storePointerPath(agentPath));
+      return { published: false, linked: false, storeUrl: STORE_SITE_URL };
+    }
+    return {
+      published: item.state === "published",
+      linked: true,
+      storeAgentId: pointer.storeAgentId,
+      slug: item.slug ?? pointer.slug,
+      shareUrl: pointer.shareUrl,
+      publishedAt: pointer.publishedAt,
+      storeUrl: STORE_SITE_URL,
+      identity: {
+        name: item.name,
+        description: item.description ?? "",
+        ...(item.tagline ? { tagline: item.tagline } : {}),
+        category: item.category ?? "",
+        tags: item.tags ?? [],
+      },
+    };
   }
 
   // ---------- WebSocket access (see ws.ts) ----------

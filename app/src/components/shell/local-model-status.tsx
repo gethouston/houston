@@ -6,8 +6,8 @@ import type { BridgeStatusKind } from "../../lib/local-model";
 const DOT_CLASS: Record<BridgeStatusKind, string> = {
   online: "bg-success",
   connecting: "bg-warning animate-pulse",
-  offline: "bg-muted-foreground",
-  error: "bg-destructive",
+  offline: "bg-ink-muted",
+  error: "bg-danger",
 };
 
 /**
@@ -36,7 +36,7 @@ export function LocalModelStatusPill({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-chip px-2 py-0.5 text-[11px] font-medium text-ink-muted">
         <span
           className={`size-1.5 rounded-full ${DOT_CLASS[status]}`}
           aria-hidden="true"
@@ -45,7 +45,7 @@ export function LocalModelStatusPill({
       </span>
       {down && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[12px] leading-relaxed text-muted-foreground">
+          <p className="text-[12px] leading-relaxed text-ink-muted">
             {t("localModel.status.offlineHint", {
               app: appName || t("localModel.status.yourApp"),
             })}

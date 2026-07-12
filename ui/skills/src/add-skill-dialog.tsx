@@ -117,8 +117,8 @@ export function AddSkillDialog({
                 className={cn(
                   "px-3 py-1.5 text-sm rounded-full transition-colors",
                   view === tab
-                    ? "bg-accent text-foreground font-medium"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    ? "bg-hover text-ink font-medium"
+                    : "text-ink-muted hover:bg-hover hover:text-ink",
                 )}
               >
                 {tab === "repo" ? l.repoTab : l.scratchTab}

@@ -7,6 +7,7 @@ import { json, readJson } from "./deps";
 import { archiveWorkspace } from "./files-archive";
 import {
   importWorkspaceFiles,
+  MAX_UPLOAD_BODY_BYTES,
   moveWorkspaceEntry,
   parseImportBody,
 } from "./files-import";
@@ -167,7 +168,9 @@ export async function handleFiles(
       return true;
     }
     if (method === "POST" && rest === "files/import") {
-      const { dir, files } = parseImportBody(await readJson(req));
+      const { dir, files } = parseImportBody(
+        await readJson(req, MAX_UPLOAD_BODY_BYTES),
+      );
       const saved = await importWorkspaceFiles(vfs, root, dir, files);
       changed();
       await json(res, 200, { paths: saved });

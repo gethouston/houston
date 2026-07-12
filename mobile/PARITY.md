@@ -5,6 +5,9 @@
 > as desktop. This file is the enforceable contract for the iOS surfaces; update it via the
 > normal inventory/procedures flow (knowledge-base/client-architecture.md) when desktop changes.
 > Locale strings come from app/src/locales/en/*.json; es/pt mirror the same keys.
+> iOS ships en/es/pt natively: copy lives in `Strings*.swift` backed by
+> `Houston/Localizable.xcstrings`; en mirrors desktop en/*.json exactly, and es/pt reuse the
+> desktop translations verbatim wherever a desktop key exists (see knowledge-base/i18n.md, iOS section).
 
 ## 1. Status vocabulary
 
@@ -55,9 +58,9 @@ Left-to-right order and status→column mapping (single source of truth):
 
 ### Card color/glow semantics — `ui/board/src/kanban-card.tsx`
 - `running` → `card-running-glow` animated conic border + blue shadow `rgba(59,130,246,0.12)`.
-- `error` → `border-destructive/60`.
+- `error` → `border-danger/60`.
 - `needs_you` → renders the Approve check button ("Move to done").
-- selected/highlighted → `bg-accent`.
+- selected/highlighted → `bg-hover`.
 
 ## 2. Archive semantics
 - Archiving = the activity `status` field set to `"archived"` (`ARCHIVED_STATUS`, `app/src/lib/mission-selection.ts:9`). No separate flag.
@@ -79,7 +82,7 @@ Left-to-right order and status→column mapping (single source of truth):
 |---|---|---|
 | title | activity title | AI-generated async after create; fallback = truncated first message. Rename via pencil. `line-clamp-2`. |
 | description | `messagePreviewText(description)` | User's first message; `<!--houston:...-->` markers decoded. `line-clamp-2`. |
-| group (above title) | `agent_name` | muted |
+| group (above title) | `agent_name` | ink-muted |
 | icon | `AgentCardAvatar{color}` | colored Houston helmet |
 | tags | `missionCardTags(...)` | e.g. "Routine" (`board.json:tags.routine`), agent-mode pill |
 | updatedAt | `updated_at` | |
@@ -100,7 +103,7 @@ Left-to-right order and status→column mapping (single source of truth):
 
 ## 4. Agent presentation
 - Avatar = `HoustonAvatar` (`ui/core/src/components/houston-avatar.tsx`): colored circle
-  (`color-mix secondary 82% + agentColor 18%`) with the Houston helmet SVG glyph (~65% size).
+  (`color-mix chip 82% + agentColor 18%`) with the Houston helmet SVG glyph (~65% size).
   **No initials, no photos** — always the helmet tinted by `agent.color` (fallback `#9b9b9b`).
   `running` → comet-glow halo wrap.
 - Per-agent status aggregation (`app/src/components/shell/agent-activity-summary-model.ts`):
@@ -115,21 +118,21 @@ Left-to-right order and status→column mapping (single source of truth):
 The mobile Agents home restyles each agent as a WhatsApp chat-list cell. Native-only; the
 aggregation (`needsYouCount`/`runningCount`) and avatar rules above are unchanged — this is layout.
 - **Two-line cell** (`AgentRow.swift`) — line 1: agent name + right-aligned relative time
-  (`Typography.caption`, `mutedFg`); line 2: preview text + a trailing **filled** `NeedsYouChip`.
+  (`Typography.caption`, `inkMuted`); line 2: preview text + a trailing **filled** `NeedsYouChip`.
 - **Relative time** (`AgentRowTime.label`, from `AgentOverview.lastActivityAt` = most-recent
   mission `updatedAt`, parsed by `ActivityTimestamp`): today → short locale time (reuses
   `ChatBubbleTime`); yesterday → `Strings.Chat.Timeline.yesterday`; ≤6 days → weekday; older → short
   date. `nil` when no dated mission. Injectable `now`/`calendar`/`locale`; formatters pinned to the
   calendar's timezone.
 - **Preview line — ONE signal per state** (`AgentRowPreview.derive`): running → "Working…"
-  (`Strings.Chat.TitleBar.working`, accent-tinted) **whenever `runningCount > 0`, regardless of any
+  (`Strings.Chat.TitleBar.working`, inkMuted like the chat title bar) **whenever `runningCount > 0`, regardless of any
   needs-you count** — the filled `NeedsYouChip` is the sole needs-you signal, so the preview never
   repeats it (WhatsApp shows "typing…" even with an unread badge). No running mission → the
   last-activity line (`Strings.Agents.lastActivity`), which renders a **bare title** for `needs_you`
   (the badge carries the rest) and keeps **"Hit a snag on …"** for `error` (a genuine failure is
   information and carries no badge — the fold does not count `error` into `needsYouCount`). No
   missions → the no-missions line.
-- **Filled needs-you badge** — `NeedsYouChip` now defaults to `.filled` (`warning` fill + `warningFg`
+- **Filled needs-you badge** — `NeedsYouChip` now defaults to `.filled` (`warning` fill + `warningText`
   text) instead of the outline capsule; the "99+" cap is unchanged (`StatusChip.swift`). `AgentRow`
   is its only caller; Mission Control uses the native `BadgeModel`, not this chip.
 - **Pull-down search** (`AgentsView.swift`, `.searchable(placement: .navigationBarDrawer)`): a pure
@@ -149,9 +152,9 @@ rebuilt from a card grid into a WhatsApp-style conversation list. Native-only; t
   the helmet, so the old 40pt avatar + title block was removed. Body is just the grouped list.
 - **Slim two-line rows** (`MissionRowContent.swift`, derived by the pure `MissionRowLine.swift`):
   line 1 = mission title + right-aligned relative time (`MissionTimestamp.relativeLabel`, hidden when
-  unparseable); line 2 = a state signal that **collapses away when empty** — accent "Working…" (reuses
-  `Strings.Chat.TitleBar.working`) while running, destructive `Strings.AgentMissions.snag`
-  ("Hit a snag", title-less — the title is already on line 1) for error, else a muted description
+  unparseable); line 2 = a state signal that **collapses away when empty** — inkMuted "Working…" (reuses
+  `Strings.Chat.TitleBar.working`) while running, danger `Strings.AgentMissions.snag`
+  ("Hit a snag", title-less — the title is already on line 1) for error, else an ink-muted description
   preview. Running dominates, then error, then description. **No** avatar / agent name / tags / card
   border / fill / glow; the `List` supplies inset hairline separators; rows keep a ~44pt tap target.
 - **Grouping unchanged** — one `Section` per non-empty group in PARITY order (Needs you incl. error,

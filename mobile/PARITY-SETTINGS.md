@@ -17,6 +17,11 @@
 
 ## 1. Settings surface (desktop: SettingsView/SettingsIndex)
 
+> **SUPERSEDED for iOS by PARITY-CHAT §7 (founder directive 2026-07-06):** the iOS Settings
+> surface is pared to **Account + Appearance only**. The ✅ marks below describe the pre-cut
+> port and stay as the reference for the desktop rows; every other row (workspace name,
+> language, contexts, report bug, danger zone, version footer) is NOT shipped on iOS today.
+
 Header "Settings" (`settings:title`); subtitle "Manage your workspace and account."
 Rows/groups in desktop order (iOS ports all marked ✅):
 

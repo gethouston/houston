@@ -1,3 +1,4 @@
+import { getOverflowPatterns } from "@earendil-works/pi-ai";
 import type { AuthFailureCause, ProviderError } from "@houston/runtime-client";
 
 /**
@@ -151,6 +152,26 @@ export function classifyProviderError(
       message,
     };
   }
+  // Context overflow: the conversation no longer fits the model's window —
+  // never a credential/quota/server fault; the fix is a bigger-window model or
+  // a fresh chat. Detected with pi-ai's per-provider pattern list (llama.cpp's
+  // "exceeds the available context size", Anthropic's "prompt is too long",
+  // OpenAI's context_length_exceeded, …). Checked AFTER rate-limit on purpose:
+  // that ordering is pi's own non-overflow exclusion — a throttling body like
+  // Bedrock's "Too many tokens, please wait" must stay a rate limit even
+  // though it matches the generic /too many tokens/ overflow pattern. Carries
+  // the provider's own numbers so the card can name them and the runtime can
+  // learn a custom endpoint's real window (`learnCustomContextWindow`).
+  if (isContextOverflow(message)) {
+    return {
+      kind: "context_overflow",
+      provider,
+      model,
+      context_window_tokens: extractContextWindowTokens(message),
+      prompt_tokens: extractPromptTokens(message),
+      message,
+    };
+  }
   if (isServerError(lower, status)) {
     return {
       kind: "provider_internal",
@@ -236,6 +257,10 @@ function isRateLimited(lower: string, status: number | null): boolean {
     lower.includes("rate_limit") ||
     lower.includes("ratelimit") ||
     lower.includes("too many requests") ||
+    // Bedrock prefixes throttling as "Throttling error: Too many tokens, …" —
+    // semantically a rate limit, and matching it here is what keeps it out of
+    // the context-overflow branch below (pi's own non-overflow exclusion).
+    lower.includes("throttl") ||
     lower.includes("usage limit") ||
     lower.includes("usage_limit") ||
     lower.includes("quota")
@@ -270,6 +295,43 @@ function isNetwork(lower: string): boolean {
 
 function isModelUnavailable(lower: string): boolean {
   return MODEL_UNAVAILABLE_PATTERNS.some((p) => lower.includes(p));
+}
+
+function isContextOverflow(message: string): boolean {
+  return getOverflowPatterns().some((p) => p.test(message));
+}
+
+/**
+ * The model's REAL context window from an overflow rejection, when the provider
+ * named it: llama.cpp's structured `"n_ctx":8192` / prose "context size (8192
+ * tokens)", OpenAI's "maximum context length is 128000 tokens", Anthropic's
+ * "N tokens > 200000 maximum". Null when no plausible number is present.
+ */
+export function extractContextWindowTokens(message: string): number | null {
+  const m =
+    message.match(/"n_ctx"\s*:\s*(\d+)/) ??
+    message.match(/context size \((\d+)\s*tokens?\)/i) ??
+    message.match(/maximum context length is (\d+)/i) ??
+    message.match(/>\s*(\d+)\s*maximum/i);
+  return m ? positiveInt(m[1]) : null;
+}
+
+/**
+ * The rejected request's prompt size from an overflow rejection, when the
+ * provider named it: llama.cpp's `"n_prompt_tokens":15246` / prose "request
+ * (15246 tokens)", Anthropic's "prompt is too long: N tokens".
+ */
+export function extractPromptTokens(message: string): number | null {
+  const m =
+    message.match(/"n_prompt_tokens"\s*:\s*(\d+)/) ??
+    message.match(/request \((\d+)\s*tokens?\)/i) ??
+    message.match(/too long:?\s*(\d+)\s*tokens?/i);
+  return m ? positiveInt(m[1]) : null;
+}
+
+function positiveInt(raw: string): number | null {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
 }
 
 function isInsufficientBalance(lower: string): boolean {

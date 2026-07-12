@@ -43,7 +43,7 @@ export function NeedsYouChip({ count, label }: NeedsYouChipProps) {
       variant="outline"
       aria-label={label}
       title={label}
-      className="h-5 min-w-7 bg-background/90 px-2 text-[11px] font-semibold leading-none text-foreground/80"
+      className="h-5 min-w-7 bg-input/90 px-2 text-[11px] font-semibold leading-none text-ink/80"
     >
       {count > 99 ? "99+" : count}
     </Badge>

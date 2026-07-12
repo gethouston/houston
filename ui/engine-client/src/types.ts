@@ -98,6 +98,23 @@ export interface Capabilities {
    * stays "create a local workspace"). The gateway is the sole enforcer.
    */
   spaces?: boolean;
+  /**
+   * Whether this deployment can wake routines on external Composio events (C9
+   * event-driven routines). Requires a Composio project key AND a public webhook
+   * URL, so it is on for managed cloud + self-host and OFF on desktop (no public
+   * URL to deliver to). The UI reads it to show/hide the routine's "wake on an
+   * event" option; absent/false on hosts that predate triggers. Feature-detect
+   * flag only — the gateway/host is the sole enforcer.
+   */
+  triggers?: boolean;
+  /**
+   * Whether this deployment serves the C9 public API, so the user can mint and
+   * revoke personal API keys (`GET/POST/DELETE /v1/keys`) to drive their agents
+   * from their own tools. A feature-detect flag the frontend reads to show the
+   * API-keys settings section; absent/false on desktop/self-host and on gateways
+   * that predate the public API. The gateway is the sole enforcer.
+   */
+  apiKeys?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------
@@ -204,6 +221,33 @@ export interface BillingSummary {
  */
 export interface BillingCheckout {
   url: string;
+}
+
+/**
+ * One active personal API key (C9 §Credential), from `GET /v1/keys` and (minus
+ * the secret) the mint response. `prefix` is the display-safe head of the key
+ * (`hst_` + first 8 hex) shown so the user can tell keys apart; the full secret
+ * is NEVER carried here. `lastUsedAt` is absent until the key first authenticates
+ * a request.
+ */
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  /** ISO-8601 creation instant. */
+  createdAt: string;
+  /** ISO-8601 instant the key last authenticated a request; absent if never used. */
+  lastUsedAt?: string;
+}
+
+/**
+ * The mint response of `POST /v1/keys` (C9): a fresh key plus its FULL secret.
+ * `key` (`hst_` + 64 hex) appears ONLY in this response and can never be
+ * retrieved again, so the UI holds it in local state for the one-time reveal and
+ * MUST keep it out of any query cache.
+ */
+export interface ApiKeyCreated extends ApiKey {
+  key: string;
 }
 
 /**
@@ -520,11 +564,15 @@ export interface UpdateAgent {
 export interface InteractionOption {
   id: string;
   label: string;
+  /** One muted line of consequence or benefit shown after the label. */
+  description?: string;
+  /** Mark AT MOST one option as the suggested default. */
+  recommended?: boolean;
 }
 
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
  *  question steps, `s1` for the single signin step, `c1`..`cN` for connect
- *  steps) so each step's outcome is addressable. */
+ *  steps, `a1`..`aN` for approval steps) so each step's outcome is addressable. */
 export type InteractionStep =
   | {
       kind: "question";
@@ -534,20 +582,44 @@ export type InteractionStep =
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  /** The user must enter a custom integration's API key in a secure field (never
+   *  into the chat). `toolkit` is the custom integration's slug (HOU-550). */
+  | { kind: "credential"; id: string; toolkit: string; reason?: string }
   /** The model finished planning: a short plan summary the user approves by
    *  choosing a mode (start working / Autopilot) or dismisses to keep planning. */
   | { kind: "plan_ready"; id: string; summary: string }
   /** The model finished cleanly and offers to save the just-completed work as a
-   *  reusable Skill or a scheduled Routine. Optional and dismissible: unlike the
-   *  other kinds, a lone `suggest_reusable` step does NOT flip the board to
-   *  `needs_you` (the mission genuinely finished). Mirrors
+   *  reusable Skill, a scheduled Routine, or a Learning to remember. Optional and
+   *  dismissible: unlike the other kinds, a lone `suggest_reusable` step does NOT
+   *  flip the board to `needs_you` (the mission genuinely finished). Mirrors
    *  `packages/protocol/src/domain/interaction.ts`. */
   | {
       kind: "suggest_reusable";
       id: string;
-      reusableKind: "skill" | "routine";
+      reusableKind: "skill" | "routine" | "learning";
       title: string;
       rationale: string;
+    }
+  /** An integration action awaiting the user's permission. Blocking, like the
+   *  question/signin/connect kinds: present → `needs_you`. Approvals land LAST in
+   *  the sequence (approving happens after the toolkit is connected). Mirrors
+   *  `packages/protocol/src/domain/interaction.ts`. */
+  | {
+      kind: "approval";
+      /** Tool-assigned id: `a1`..`aN`, in first-seen order. */
+      id: string;
+      /** Lowercase toolkit slug, e.g. "gmail". */
+      toolkit: string;
+      /** The action slug, e.g. "GMAIL_SEND_DRAFT". */
+      action: string;
+      /** Display-ready key/values for the card's param rows (values already truncated host-side). */
+      params?: Record<string, string>;
+      /** How many params were dropped past the card's row cap (present only when
+       *  > 0). The card surfaces it so the user knows the hash covers settings
+       *  the rows don't show. */
+      paramsOmitted?: number;
+      /** Stable short digest of (action, raw params), minted host-side; the one-shot allow ticket is keyed by it. */
+      paramsHash: string;
     };
 
 /**
@@ -556,7 +628,8 @@ export type InteractionStep =
  * (request_connection). Present drives the `needs_you` board card and the
  * composer-replacing card, which walks the user through the steps one at a time;
  * absent means the mission needs nothing. Question steps come first (at most 3),
- * then at most one signin step, then connect steps.
+ * then at most one signin step, then connect steps, then approval steps (last —
+ * approving happens after connecting).
  */
 export interface PendingInteraction {
   steps: InteractionStep[];
@@ -621,11 +694,38 @@ export interface NewActivity {
  */
 export type RoutineChatMode = "shared" | "per_run";
 
+/**
+ * An event binding that wakes a routine on an external Composio trigger instead
+ * of a cron `schedule` (C9 event-driven routines). `toolkit` + `trigger_slug`
+ * name the trigger type (e.g. `gmail` / `GMAIL_NEW_GMAIL_MESSAGE`);
+ * `trigger_config` is the instance filter object, validated server-side against
+ * the trigger type's config JSON-schema. `connected_account_id` is pinned only
+ * when the user has more than one connected account for the toolkit; absent, the
+ * reconciler resolves the single active one. Exactly one of `schedule` /
+ * `trigger` is set on a routine (enforced server-side).
+ */
+export interface RoutineTriggerBinding {
+  toolkit: string;
+  trigger_slug: string;
+  trigger_config: Record<string, unknown>;
+  connected_account_id?: string;
+}
+
 export interface Routine {
   id: string;
   name: string;
   prompt: string;
-  schedule: string;
+  /**
+   * Cron expression the scheduler wakes this routine on. Absent when the routine
+   * is event-driven (`trigger` set instead) — exactly one of `schedule`/`trigger`
+   * is present.
+   */
+  schedule?: string;
+  /**
+   * Event binding that wakes this routine on an external Composio event (C9),
+   * instead of `schedule`. Exactly one of the two is set.
+   */
+  trigger?: RoutineTriggerBinding;
   enabled: boolean;
   suppress_when_silent: boolean;
   /** Whether each run reuses one chat or starts a fresh one. */
@@ -655,7 +755,12 @@ export interface Routine {
 export interface NewRoutine {
   name: string;
   prompt: string;
-  schedule: string;
+  /** Cron expression to wake on; omit when creating an event-driven routine
+   *  (pass `trigger` instead). Exactly one of `schedule`/`trigger` is set. */
+  schedule?: string;
+  /** Event binding to wake on instead of a cron schedule (C9). Exactly one of
+   *  `schedule`/`trigger` is set. */
+  trigger?: RoutineTriggerBinding;
   enabled?: boolean;
   suppress_when_silent?: boolean;
   /** Defaults to `"shared"` (one chat per routine) when omitted. */
@@ -675,7 +780,12 @@ export interface NewRoutine {
 export interface RoutineUpdate {
   name?: string;
   prompt?: string;
+  /** Switch to (or keep) a cron wake; pair with `trigger: null` to move a
+   *  routine off an event binding. Exactly one of `schedule`/`trigger` ends set. */
   schedule?: string;
+  /** Switch to (or keep) an event wake; pass `null` to move the routine back to a
+   *  cron `schedule`. Omit to leave the current wake mechanism unchanged. */
+  trigger?: RoutineTriggerBinding | null;
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
@@ -1032,6 +1142,15 @@ export interface RunShellRequest {
 export interface SessionStartRequest {
   sessionKey: string;
   prompt: string;
+  /**
+   * What renders as the user's chat bubble, when it must differ from `prompt`.
+   * The engine still receives `prompt` (the real text the model runs on);
+   * `displayText` is presentation-only — the optimistic live bubble and the
+   * replayed history bubble both render `displayText ?? prompt`. Set it when the
+   * prompt carries text the user should never see: a hidden setup-mission
+   * directive, or absolute attachment paths appended to the message.
+   */
+  displayText?: string;
   systemPrompt?: string;
   source?: string;
   workingDir?: string;
@@ -1268,7 +1387,8 @@ export interface PortableRoutinePreview {
   id: string;
   name: string;
   promptExcerpt: string;
-  schedule: string;
+  /** Cron expression; absent for an event-driven (trigger) routine (C9). */
+  schedule?: string;
   enabled: boolean;
   integrations: string[];
 }
@@ -1444,6 +1564,82 @@ export interface PortableInstalledAgent {
   agent: Agent;
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Agent Store publication ("Publish to the Agent Store")
+//
+// Account-based, no manage tokens. The host gathers the same portable content
+// the export flow produces and returns it as an AgentIR (no network); the APP
+// POSTs that IR to the gateway `/v1/agentstore` API with the user's own bearer,
+// then records a token-free pointer (store agent id + slug + share url) on the
+// host so the manage view can look up the live listing and re-publish the SAME
+// store agent instead of duplicating it.
+// ────────────────────────────────────────────────────────────────────────
+
+/** The listing metadata the publish wizard collects. */
+export interface StorePublishIdentity {
+  name: string;
+  description: string;
+  tagline?: string;
+  /** A seeded store category slug (see the store's category vocabulary). */
+  category: string;
+  tags?: string[];
+}
+
+/** Who is credited on the store listing. */
+export interface StorePublishCreator {
+  displayName: string;
+  url?: string;
+}
+
+/**
+ * A publish (or update). The selection/overrides are the SAME portable
+ * pick + anonymize outputs the export flow produces; the host re-gathers the
+ * content from them, so a publish carries no packaged bytes.
+ */
+export interface StorePublishRequest {
+  selection: PortableExportSelection;
+  overrides?: PortableExportOverrides;
+  identity: StorePublishIdentity;
+  creator: StorePublishCreator;
+  /** True when the pick ran through the anonymize pass (stamped on provenance). */
+  anonymized?: boolean;
+}
+
+export interface StorePublishResponse {
+  shareUrl: string;
+  slug: string;
+  storeAgentId: string;
+}
+
+export interface StoreUpdateResponse {
+  shareUrl: string;
+  slug: string;
+}
+
+export interface StoreUnpublishResponse {
+  ok: boolean;
+}
+
+/**
+ * Whether this agent is linked to an Agent Store listing, and its live state.
+ * Account-based, so it carries no secret of any kind.
+ */
+export interface StorePublicationStatus {
+  /** The store agent's live state is `published` (visible via its share URL). */
+  published: boolean;
+  /** A machine-local pointer exists (this agent was published at least once). */
+  linked: boolean;
+  shareUrl?: string;
+  slug?: string;
+  /** The store agent's id (uuid), for update/unpublish against the gateway. */
+  storeAgentId?: string;
+  publishedAt?: string;
+  /** The public store site URL, for "browse the store". */
+  storeUrl: string;
+  /** The live listing fields, so the manage view can prefill the update form. */
+  identity?: StorePublishIdentity;
+}
+
 // ── integrations (Composio, platform mode) ───────────────────────────────────
 // User-level: no provider account — the user only connects apps (Gmail, Slack…)
 // via OAuth; Houston's platform key lives server-side, keyed by the user's id.
@@ -1471,6 +1667,93 @@ export interface IntegrationConnection {
   toolkit: string;
   connectionId: string;
   status: "active" | "pending" | "error";
+}
+
+// ── Custom integrations (HOU-550) ────────────────────────────────────────────
+// User-added API / MCP servers that Composio does not offer. The host owns
+// persistence and compiles them to agent tools; the frontend only lists them,
+// removes them, and provides a secret for the ones waiting on a credential. The
+// secret crosses ONLY on the credential POST body, never the chat transcript.
+
+/** One credential input to collect, keyed by `variable` in the submit body. */
+export interface CustomAuthField {
+  variable: string;
+  label: string;
+}
+
+/** An auth method the integration declares; one password field per `fields`. */
+export interface CustomAuthMethod {
+  template: string;
+  label: string;
+  fields: CustomAuthField[];
+}
+
+/** Live status of a custom integration inside the running host. */
+export type CustomIntegrationState =
+  | { status: "active"; toolCount: number }
+  | { status: "pending"; authMethods: CustomAuthMethod[] }
+  | { status: "error"; message: string };
+
+/** What the host lists: the definition plus its live compiled state. */
+export interface CustomIntegrationView {
+  slug: string;
+  name: string;
+  kind: "openapi" | "mcp";
+  /** The service URL shown to the user (spec url / MCP endpoint). */
+  displayUrl?: string;
+  addedAtMs: number;
+  state: CustomIntegrationState;
+  /** Present when a credential can be (re)provided — the fields to collect. */
+  authMethods?: CustomAuthMethod[];
+  /** Only on the credential POST's response: the advisory health-check verdict
+   *  for the just-saved key (true = confirmed, false = probe rejected but the
+   *  key SAVED, absent = the service declares no probe). */
+  verified?: boolean;
+}
+
+// ── Triggers (C9 event-driven routines) ──────────────────────────────────────
+// The event-wake surface: the catalog the routine editor's trigger picker reads,
+// and the per-routine provisioning status the editor renders as a badge. Mirrors
+// the host `IntegrationProvider` port types (`packages/host/src/integrations/`).
+
+/**
+ * One entry in a toolkit's trigger catalog (C9), from
+ * `GET /v1/integrations/composio/trigger-types?toolkit=<slug>`: an event a
+ * routine can wake on. `type` splits latency classes — `webhook` is
+ * near-realtime, `poll` carries minutes of inherent delay (surfaced in UI copy).
+ * `config` is the JSON schema for the instance filters the user fills in (e.g.
+ * GitHub's owner/repo); `payload` (when present) is the JSON schema of the event
+ * body Composio delivers. Both are opaque schemas the client never interprets.
+ */
+export interface TriggerType {
+  slug: string;
+  name: string;
+  description?: string;
+  type: "poll" | "webhook";
+  config: Record<string, unknown>;
+  payload?: Record<string, unknown>;
+}
+
+/**
+ * A trigger routine's live provisioning status (C9). `active` = the Composio
+ * instance is provisioned and delivering; `pending` = reconcile in flight;
+ * `paused_disconnected` = the connected account was disconnected;
+ * `paused_revoked` = the toolkit fell outside the agent's grant/allowlist;
+ * `error` = Composio rejected creation or delivery is failing. A `paused_*` or
+ * `error` badge carries a human-readable `detail`.
+ */
+export type TriggerStatusState =
+  | "active"
+  | "pending"
+  | "paused_disconnected"
+  | "paused_revoked"
+  | "error";
+
+/** One routine's trigger status, from `GET /v1/agents/:slug/trigger-status`. */
+export interface TriggerStatusItem {
+  routine_id: string;
+  status: TriggerStatusState;
+  detail?: string;
 }
 
 // ── OpenAI-compatible (local) provider ───────────────────────────────────────

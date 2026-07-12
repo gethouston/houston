@@ -1,6 +1,6 @@
 import type { PendingInteraction, WireFrame } from "@houston/runtime-client";
 import type { TerminalBoardStatus } from "./feed-output";
-import { reloadAndSettle } from "./settle-from-history";
+import { presettleFromHistory, reloadAndSettle } from "./settle-from-history";
 import { applyTurnFrame } from "./turn-frames";
 import { classifyFrame, classifyRunningSync } from "./turn-identity";
 import { finishErr, newTurnState, push, type TurnState } from "./turn-settle";
@@ -41,6 +41,10 @@ export class TurnSink {
   private settling = false;
   /** Turn mode: the send was accepted — gates resync turn-id adoption. */
   private accepted = false;
+  /** Turn mode: a FRESH idle sync was seen — half the pre-settled poll trigger. */
+  private sawFreshIdleSync = false;
+  /** The pre-settled poll timer, live only while armed (see `maybeArmPresettlePoll`). */
+  private presettleTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private readonly o: TurnSinkOptions) {
     this.s = newTurnState(o.agentPath, o.sessionKey, o.output, {
@@ -69,6 +73,9 @@ export class TurnSink {
     // The engine acknowledged the send — the message reached it, so the
     // optimistic bubble is delivered even if the turn later errors.
     this.s.delivered = true;
+    // The send landed while the stream already showed a fresh idle sync: the
+    // turn may have completed before we attached — arm the pre-settled poll.
+    this.maybeArmPresettlePoll();
   }
   /**
    * Turn mode: the send failed at the TRANSPORT level, so the engine may have
@@ -78,6 +85,10 @@ export class TurnSink {
    */
   sendMaybeAccepted(): void {
     this.accepted = true;
+    // If the engine did accept it and the turn already finished, the pre-settled
+    // poll can settle it conclusively — faster than the ambiguous-send verdict
+    // window failing it as lost.
+    this.maybeArmPresettlePoll();
   }
   /** The send failed / stream broke before a terminal frame: settle as error. */
   fail(msg: string): void {
@@ -118,6 +129,7 @@ export class TurnSink {
     if (ev.type !== "done" && ev.type !== "error") {
       this.sawRunning = true;
       this.s.delivered = true; // a real frame proves the turn started
+      this.cancelPresettlePoll(); // stream evidence: the poll's job is done
     }
     applyTurnFrame(this.s, ev, this.o.stop);
   }
@@ -131,6 +143,7 @@ export class TurnSink {
       this.accepted = true;
       this.sawRunning = true;
       this.s.delivered = true; // the engine echoed our send — it landed
+      this.cancelPresettlePoll(); // the turn is demonstrably live on the stream
       return;
     }
     if (classifyFrame(this.turnId, ev.turnId) === "boundary") {
@@ -158,8 +171,17 @@ export class TurnSink {
     }
     if (!reconnect) {
       // Fresh-connect sync of an idle conversation: a turn we're about to
-      // trigger (turn mode — ignore) or nothing to watch (observer — close).
-      if (this.o.mode === "observer") this.o.stop();
+      // trigger (turn mode — ignore for an immediate settle) or nothing to
+      // watch (observer — close). In turn mode this same shape ALSO covers a
+      // turn that finished before we attached (frames never replayed): remember
+      // we saw it and arm the pre-settled poll, which settles conclusively from
+      // history if no stream evidence follows.
+      if (this.o.mode === "observer") {
+        this.o.stop();
+      } else {
+        this.sawFreshIdleSync = true;
+        this.maybeArmPresettlePoll();
+      }
     } else if (this.o.mode === "turn" || this.sawRunning) {
       // The turn ended while we were disconnected; persisted history is
       // complete once a turn ends — settle from it, not from partial text.
@@ -263,10 +285,12 @@ export class TurnSink {
     }
     this.sawRunning = true;
     this.s.delivered = true; // a running sync proves the turn is live on the engine
+    this.cancelPresettlePoll(); // a running turn on the stream: the poll is moot
   }
 
   private settleFromHistorySoon(): void {
     if (this.settling || this.s.settled) return;
+    this.cancelPresettlePoll(); // a confirmed-lost-terminal settle supersedes the poll
     this.settling = true;
     void reloadAndSettle(
       this.s,
@@ -275,5 +299,62 @@ export class TurnSink {
       this.o.historyGuard,
       this.o.stop,
     );
+  }
+
+  /**
+   * Arm the pre-settled poll when BOTH triggers hold — a fresh idle sync was
+   * seen AND the send is accepted — and no evidence/settle already closed the
+   * question. Idempotent: a second call while armed is a no-op. Absent
+   * `presettledPollMs` (observer mode) disables the poll entirely.
+   */
+  private maybeArmPresettlePoll(): void {
+    if (this.o.presettledPollMs === undefined) return;
+    if (!this.accepted || !this.sawFreshIdleSync) return;
+    if (this.sawRunning || this.settling || this.s.settled) return;
+    if (this.presettleTimer !== undefined) return;
+    this.presettleTimer = setTimeout(() => {
+      this.presettleTimer = undefined;
+      void this.pollForPresettled();
+    }, this.o.presettledPollMs);
+  }
+
+  private cancelPresettlePoll(): void {
+    if (this.presettleTimer !== undefined) {
+      clearTimeout(this.presettleTimer);
+      this.presettleTimer = undefined;
+    }
+  }
+
+  /**
+   * Reload history and settle ONLY on conclusive proof the turn finished (a
+   * reply for our turnId, or a legacy trailing reply the guard accepts). This
+   * is the sole caller of the CONCLUSIVE-ONLY {@link presettleFromHistory} —
+   * never the fall-through `settleFromHistory`, whose no-reply branch would
+   * WRONGLY error a healthy slow turn (its history ends on our trailing user
+   * message). Inconclusive re-arms the poll; any stream evidence in the interim
+   * cancels it, and the reconnect budget still owns a genuinely lost stream.
+   */
+  private async pollForPresettled(): Promise<void> {
+    if (this.settling || this.s.settled || this.sawRunning) return;
+    const settled = await presettleFromHistory(
+      this.s,
+      this.o.reloadHistory,
+      this.turnId,
+      this.o.historyGuard,
+      () => this.sawRunning,
+    );
+    if (settled) {
+      this.settling = true;
+      this.o.stop();
+      return;
+    }
+    // Inconclusive: the turn hasn't proven it finished. Re-arm and keep the
+    // stream as the authority (frames cancel the poll; the budget owns loss).
+    this.maybeArmPresettlePoll();
+  }
+
+  /** Teardown: clear the poll timer so an aborted stream leaves nothing pending. */
+  dispose(): void {
+    this.cancelPresettlePoll();
   }
 }

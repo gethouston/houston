@@ -67,7 +67,7 @@ export function AgentPickerStep({
           ways to make a NEW agent, always one click away (search below only
           narrows the library). */}
       <div className="shrink-0 px-6 pb-5">
-        <h3 className="text-sm font-medium text-foreground mb-3">
+        <h3 className="text-sm font-medium text-ink mb-3">
           {t("newAgent.createSection")}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -100,18 +100,18 @@ export function AgentPickerStep({
 
       {/* From library — its own header carries the search box; only the grid
           below it scrolls, so the section title + search stay pinned. */}
-      <div className="flex-1 min-h-0 flex flex-col border-t border-border/50 px-6 pt-4 pb-6">
+      <div className="flex-1 min-h-0 flex flex-col border-t border-line/50 px-6 pt-4 pb-6">
         <div className="shrink-0 flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-sm font-medium text-foreground">
+          <h3 className="text-sm font-medium text-ink">
             {t("newAgent.librarySection")}
           </h3>
           <div className="relative sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted pointer-events-none" />
             <Input
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder={t("store.searchPlaceholder")}
-              className="pl-9 rounded-full bg-secondary border-border"
+              className="pl-9 rounded-full bg-chip border-line"
             />
           </div>
         </div>
@@ -137,9 +137,7 @@ export function AgentPickerStep({
             </div>
           ) : (
             <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-muted-foreground">
-                {t("store.noResults")}
-              </p>
+              <p className="text-sm text-ink-muted">{t("store.noResults")}</p>
             </div>
           )}
         </div>

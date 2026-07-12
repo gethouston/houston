@@ -20,10 +20,10 @@ struct CopilotConnectView: View {
         VStack(alignment: .leading, spacing: Spacing.space8) {
           Text(Strings.AIModels.Copilot.title)
             .font(Typography.title)
-            .foregroundStyle(theme.foreground)
+            .foregroundStyle(theme.ink)
           Text(Strings.AIModels.Copilot.description)
             .font(Typography.callout)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
         }
 
         option(
@@ -37,26 +37,26 @@ struct CopilotConnectView: View {
           VStack(alignment: .leading, spacing: Spacing.space6) {
             Text(Strings.AIModels.Copilot.domainLabel)
               .font(Typography.caption)
-              .foregroundStyle(theme.mutedFg)
+              .foregroundStyle(theme.inkMuted)
             TextField(Strings.AIModels.Copilot.domainPlaceholder, text: $domain)
               .textInputAutocapitalization(.never)
               .autocorrectionDisabled()
               .keyboardType(.URL)
               .padding(Spacing.space12)
-              .background(theme.input, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+              .background(theme.lineInput, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
             Text(Strings.AIModels.Copilot.domainHint)
               .font(Typography.caption)
-              .foregroundStyle(theme.mutedFg)
+              .foregroundStyle(theme.inkMuted)
           }
         }
 
         Button(action: submit) {
           Text(Strings.AIModels.Copilot.cont)
             .font(Typography.label)
-            .foregroundStyle(theme.primaryFg)
+            .foregroundStyle(theme.actionText)
             .frame(maxWidth: .infinity)
             .padding(.vertical, Spacing.space12)
-            .background(theme.primary, in: Capsule())
+            .background(theme.action, in: Capsule())
         }
         .buttonStyle(.plain)
         .disabled(plan == .company && domain.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -69,19 +69,19 @@ struct CopilotConnectView: View {
     Button { plan = value } label: {
       HStack(spacing: Spacing.space12) {
         Image(systemName: plan == value ? "largecircle.fill.circle" : "circle")
-          .foregroundStyle(plan == value ? theme.primary : theme.mutedFg)
+          .foregroundStyle(plan == value ? theme.action : theme.inkMuted)
         VStack(alignment: .leading, spacing: Spacing.space2) {
-          Text(title).font(Typography.bodyMedium).foregroundStyle(theme.foreground)
-          Text(desc).font(Typography.caption).foregroundStyle(theme.mutedFg)
+          Text(title).font(Typography.bodyMedium).foregroundStyle(theme.ink)
+          Text(desc).font(Typography.caption).foregroundStyle(theme.inkMuted)
         }
         Spacer(minLength: 0)
       }
       .padding(Spacing.space12)
       .background(
-        theme.secondary, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+        theme.chip, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
       .overlay(
         RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-          .strokeBorder(plan == value ? theme.primary : theme.border, lineWidth: 1))
+          .strokeBorder(plan == value ? theme.action : theme.line, lineWidth: 1))
       .contentShape(RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
     }
     .buttonStyle(.plain)

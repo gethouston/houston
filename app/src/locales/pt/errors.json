@@ -1,4 +1,16 @@
 {
   "generic": "Algo deu errado.",
-  "unknown": "Erro desconhecido"
+  "unknown": "Erro desconhecido",
+  "auth": {
+    "invalidCredentials": "Esse login não funcionou. Confira seus dados e tente novamente.",
+    "credentialMismatch": "Este e-mail já está vinculado a outro método de login. Use a opção com que você se cadastrou.",
+    "providerDisabled": "Esta opção de login ainda não está disponível. Tente outra.",
+    "otpInvalid": "Esse código está incorreto ou expirou. Solicite um novo e tente novamente.",
+    "otpRateLimited": "Muitas tentativas. Espere um minuto e tente novamente.",
+    "network": "Não foi possível conectar ao serviço de login. Verifique sua conexão e tente novamente.",
+    "tooManyAttempts": "Muitas tentativas. Espere alguns minutos e tente novamente.",
+    "userDisabled": "Esta conta foi desativada. Entre em contato com o suporte.",
+    "configError": "O login não está configurado corretamente. Entre em contato com o suporte.",
+    "generic": "O login falhou. Tente novamente."
+  }
 }

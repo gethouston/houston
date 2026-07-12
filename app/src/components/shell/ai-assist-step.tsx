@@ -85,7 +85,7 @@ export function AiAssistStep({
             <h2 className="text-base font-semibold">
               {t("aiAssist.stepTitle")}
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-ink-muted">
               {t("aiAssist.stepDescription")}
             </p>
           </div>
@@ -97,14 +97,14 @@ export function AiAssistStep({
           />
 
           {error && !generating && (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 space-y-1">
-              <p className="text-sm font-medium text-destructive">
+            <div className="rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 space-y-1">
+              <p className="text-sm font-medium text-danger">
                 {t("aiAssist.errorTitle")}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-ink-muted">
                 {t("aiAssist.errorDescription")}
               </p>
-              <p className="text-xs font-mono text-muted-foreground/80 break-words whitespace-pre-wrap">
+              <p className="text-xs font-mono text-ink-muted/80 break-words whitespace-pre-wrap">
                 {error}
               </p>
             </div>

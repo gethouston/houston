@@ -44,9 +44,7 @@ export function AgentIntegrationChips({ slugs, max = 6 }: Props) {
         />
       ))}
       {extra > 0 && (
-        <span className="text-[10px] font-medium text-muted-foreground">
-          +{extra}
-        </span>
+        <span className="text-[10px] font-medium text-ink-muted">+{extra}</span>
       )}
     </div>
   );
@@ -61,7 +59,7 @@ function IntegrationPip({ slug, logoUrl }: { slug: string; logoUrl: string }) {
     return (
       <span
         title={slug}
-        className="flex size-4 items-center justify-center rounded-[4px] bg-background text-[9px] font-semibold text-muted-foreground"
+        className="flex size-4 items-center justify-center rounded-[4px] bg-input text-[9px] font-semibold text-ink-muted"
       >
         {slug.charAt(0).toUpperCase()}
       </span>
@@ -72,7 +70,7 @@ function IntegrationPip({ slug, logoUrl }: { slug: string; logoUrl: string }) {
       src={logoUrl}
       alt={slug}
       title={slug}
-      className="size-4 rounded-[4px] bg-background object-contain"
+      className="size-4 rounded-[4px] bg-input object-contain"
       onError={() => setBrokenUrl(logoUrl)}
     />
   );

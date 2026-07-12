@@ -47,13 +47,13 @@ export function ProviderFilters({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative min-w-[200px] flex-1">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("providers.search")}
-          className="h-9 w-full rounded-full border border-border bg-secondary pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring/20"
+          className="h-9 w-full rounded-full border border-line bg-chip pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:bg-input focus:outline-none focus:ring-2 focus:ring-focus/20"
         />
       </div>
 
@@ -72,10 +72,10 @@ export function ProviderFilters({
                 aria-pressed={active}
                 onClick={() => setFilter(active ? "all" : key)}
                 className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
+                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/20",
                   active
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-secondary text-foreground hover:bg-card-hover",
+                    ? "border-ink bg-ink text-input"
+                    : "border-line bg-chip text-ink hover:bg-card-hover",
                 )}
               >
                 <Icon className="size-3.5" aria-hidden="true" />

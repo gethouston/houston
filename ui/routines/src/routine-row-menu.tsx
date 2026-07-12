@@ -67,7 +67,7 @@ export function RoutineRowMenu({
           <Button
             variant="ghost"
             size="icon-sm"
-            className="text-muted-foreground/60 hover:text-foreground"
+            className="text-ink-muted/60 hover:text-ink"
             aria-label={labels.moreActions}
           >
             <MoreHorizontal className="size-4" />

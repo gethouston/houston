@@ -18,11 +18,11 @@ struct InteractionSigninView: View {
     VStack(alignment: .leading, spacing: Spacing.space8) {
       Text(reason ?? Strings.Interaction.signinReason)
         .font(Typography.body)
-        .foregroundStyle(theme.foreground)
+        .foregroundStyle(theme.ink)
         .fixedSize(horizontal: false, vertical: true)
       Text(Strings.Interaction.signinDescription)
         .font(Typography.callout)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
         .fixedSize(horizontal: false, vertical: true)
       InteractionPrimaryButton(
         title: Strings.Interaction.signin, isSending: isSending, action: onSignin)
@@ -51,11 +51,11 @@ struct InteractionConnectView: View {
     VStack(alignment: .leading, spacing: Spacing.space8) {
       Text(toolkit)
         .font(Typography.bodyMedium)
-        .foregroundStyle(theme.foreground)
+        .foregroundStyle(theme.ink)
       if let reason {
         Text(reason)
           .font(Typography.callout)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
           .fixedSize(horizontal: false, vertical: true)
       }
       InteractionPrimaryButton(
@@ -82,21 +82,21 @@ struct InteractionPlanReadyView: View {
     VStack(alignment: .leading, spacing: Spacing.space10) {
       Text(Strings.Interaction.planTitle)
         .font(Typography.captionStrong)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
       MarkdownText(text: summary)
       Button(action: onApprove) {
         VStack(alignment: .leading, spacing: Spacing.space2) {
           Text(Strings.Interaction.planApproveTitle)
             .font(Typography.label)
-            .foregroundStyle(theme.foreground)
+            .foregroundStyle(theme.ink)
           Text(Strings.Interaction.planApproveDescription)
             .font(Typography.caption)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Spacing.space12)
         .padding(.vertical, Spacing.space10)
-        .background(theme.secondary, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+        .background(theme.chip, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
       }
       .buttonStyle(.plain)
@@ -120,10 +120,10 @@ struct InteractionPrimaryButton: View {
     Button(action: action) {
       Text(title)
         .font(Typography.label)
-        .foregroundStyle(theme.primaryFg)
+        .foregroundStyle(theme.actionText)
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.space10)
-        .background(theme.primary, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+        .background(theme.action, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
     }
     .buttonStyle(.plain)
     .disabled(isSending)
@@ -144,7 +144,7 @@ struct InteractionContinueButton: View {
     Button(action: action) {
       Text(Strings.Interaction.continueStep)
         .font(Typography.label)
-        .foregroundStyle(theme.primary)
+        .foregroundStyle(theme.action)
     }
     .buttonStyle(.plain)
     .disabled(isSending)

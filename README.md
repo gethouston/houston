@@ -94,7 +94,7 @@ The loop above runs the **local** engine. To test the managed hosted product —
 pnpm dev:cloud
 ```
 
-It stands up a [kind](https://kind.sigs.k8s.io/) cluster with the private gateway (built from the sibling `cloud/` checkout) and one engine pod per agent (built from **this** checkout), then runs the web app at `http://localhost:1430` signed in via real Supabase — the same JWT the gateway verifies. Requires Docker Desktop, `kind`, `kubectl`, `jq`, and `SUPABASE_URL`/`SUPABASE_ANON_KEY` in `.env.local` (same project the gateway checks). On success it prints the full C8 test walkthrough (sign in as two users, share an agent into a team, invite + accept, chat, mission board, org dashboard).
+It stands up a [kind](https://kind.sigs.k8s.io/) cluster with the private gateway (built from the sibling `cloud/` checkout) and one engine pod per agent (built from **this** checkout), then runs the web app at `http://localhost:1430` signed in via a real Firebase / GCP Identity Platform ID token — the same JWT the gateway verifies. Requires Docker Desktop, `kind`, `kubectl`, `jq`, and `FIREBASE_API_KEY`/`FIREBASE_AUTH_DOMAIN`/`FIREBASE_PROJECT_ID` in `.env.local` (same project the gateway checks). On success it prints the full C8 test walkthrough (sign in as two users, share an agent into a team, invite + accept, chat, mission board, org dashboard).
 
 ```bash
 pnpm dev:cloud --check     # preflight only — checks tooling/env, prints the plan

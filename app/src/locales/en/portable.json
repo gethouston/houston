@@ -2,7 +2,7 @@
   "exportMenu": "Export a copy",
   "newAgent": {
     "fromFriendCard": "From a friend",
-    "fromFriendDescription": "Drop a file someone shared with you and bring their agent into your workspace."
+    "fromFriendDescription": "Bring in an agent someone shared with you, from a file or a link."
   },
   "flagged": "Houston flagged this one for a closer look.",
   "export": {
@@ -55,6 +55,10 @@
       "yes": "Yes",
       "no": "No"
     },
+    "review": {
+      "title": "Ready to share",
+      "body": "Send {{name}} as a file, or publish it to the Agent Store for anyone to install."
+    },
     "actions": {
       "back": "Back",
       "cancel": "Cancel",
@@ -79,9 +83,10 @@
     "eyebrow": "From a friend",
     "flagged": "Houston flagged this one for a closer look.",
     "step1": {
-      "title": "Drop the file your friend sent",
-      "body": "Houston reads it on your machine. Nothing is uploaded.",
+      "title": "Bring in an agent someone shared",
+      "body": "Open a file they sent, or paste a share link. Houston reads it and shows you what is inside before anything is installed.",
       "pickFile": "Choose a file",
+      "or": "or",
       "uploadedFrom": "Shared by {{name}}",
       "anonymous": "your friend",
       "counts": "{{skills}} skills, {{routines}} routines, {{learnings}} learnings",
@@ -127,6 +132,21 @@
       "needsConnection": "Connect later",
       "connectLater": "Routines that need a missing app wait until you connect it."
     },
+    "link": {
+      "label": "Install from a link",
+      "placeholder": "Paste a share link, like https://store.gethouston.ai/a/agent",
+      "fetch": "Fetch",
+      "fetching": "Fetching",
+      "hint": "Paste the link someone gave you. Houston fetches the agent so you can review it before installing.",
+      "errors": {
+        "empty": "Paste a share link first.",
+        "invalid": "That does not look like a valid agent link.",
+        "notFound": "We could not find a published agent at that link.",
+        "unreadable": "That agent could not be read. Ask the person who shared it to publish it again.",
+        "network": "We could not reach the Agent Store. Check your connection and try again.",
+        "generic": "Something went wrong fetching that agent. Please try again."
+      }
+    },
     "actions": {
       "back": "Back",
       "cancel": "Cancel",
@@ -144,6 +164,95 @@
     "toasts": {
       "installedTitle": "Agent ready",
       "installedDescription": "{{name}} is in your workspace."
+    }
+  },
+  "publish": {
+    "actions": {
+      "publish": "Publish to the Agent Store",
+      "publishNow": "Publish now",
+      "publishing": "Publishing.",
+      "saveUpdate": "Save changes",
+      "done": "Done",
+      "signInToPublish": "Sign in to publish",
+      "signingIn": "Signing in."
+    },
+    "listing": {
+      "title": "List {{name}} on the Agent Store",
+      "body": "Tell people what this agent does. You can change any of this later from the manage page.",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "What does this agent do, and who is it for?",
+      "taglineLabel": "Tagline",
+      "taglinePlaceholder": "One short line that sums it up",
+      "categoryLabel": "Category",
+      "categoryPlaceholder": "Pick a category",
+      "tagsLabel": "Tags",
+      "tagsHint": "Up to {{max}}",
+      "tagsPlaceholder": "Add a tag and press Enter",
+      "tagsFull": "That's the most tags you can add",
+      "removeTag": "Remove {{tag}}",
+      "creatorNameLabel": "Your name",
+      "creatorNamePlaceholder": "How you want to be credited",
+      "creatorUrlLabel": "Link",
+      "creatorUrlPlaceholder": "https://your-site.com",
+      "requiredMark": "(required)"
+    },
+    "categories": {
+      "writing": "Writing & Content",
+      "productivity": "Productivity",
+      "research": "Research & Analysis",
+      "marketing": "Marketing & Social",
+      "sales": "Sales & CRM",
+      "coding": "Coding & Dev",
+      "design": "Design & Creative",
+      "data": "Data & Spreadsheets",
+      "education": "Education & Learning",
+      "finance": "Finance & Money",
+      "customer-support": "Customer Support",
+      "personal": "Personal & Lifestyle",
+      "fun": "Fun & Games",
+      "other": "Other"
+    },
+    "share": {
+      "title": "{{name}} is on the Agent Store",
+      "body": "Share this link so anyone can install your agent.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "viewListing": "View listing",
+      "unlistedNote": "Your listing is unlisted for now, so only people with the link can find it. Ask for a public spot anytime from the manage page."
+    },
+    "manage": {
+      "title": "{{name}} is published",
+      "body": "Your agent is live on the Agent Store. Share the link, update the listing, or take it down.",
+      "update": "Update listing",
+      "updateHint": "Updating re-runs the same pick and anonymize steps, so you choose exactly what goes out.",
+      "remove": "Remove from store",
+      "removeConfirmTitle": "Remove from the store?",
+      "removeConfirmBody": "{{name}} will no longer be installable from its link. You can publish it again later.",
+      "removeConfirm": "Remove",
+      "removeCancel": "Keep it up"
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "statusFailed": "Could not check the listing.",
+      "publishFailed": "Could not publish the agent.",
+      "updateFailed": "Could not update the listing.",
+      "unpublishFailed": "Could not remove the listing.",
+      "copyFailed": "Could not copy the link.",
+      "openFailed": "Could not open the listing.",
+      "codes": {
+        "cannotPublishArchived": "This listing was archived, so it can't be published again. Create a new listing to share this agent.",
+        "invalidCreator": "Add your name before publishing so people know who made this agent.",
+        "conflictingOps": "Another change is still saving. Wait a moment, then try again.",
+        "slugExhausted": "We couldn't find an available link for this name. Try a different name.",
+        "rateLimited": "You're doing that a little too fast. Wait a moment, then try again.",
+        "secretsDetected": "This agent looks like it still has a password or key inside. Remove it, then try again.",
+        "notFound": "This listing couldn't be found. It may have already been removed."
+      },
+      "signInFailed": "Could not sign in."
+    },
+    "toasts": {
+      "removedTitle": "Removed from the store",
+      "removedBody": "{{name}} is no longer listed."
     }
   }
 }

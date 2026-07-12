@@ -120,15 +120,11 @@ export function ModelsAllowlistEditor({
 
   return (
     <div>
-      <h2 className="mb-1 text-lg font-medium text-foreground">
-        {copy.question}
-      </h2>
-      <p className="mb-4 text-sm text-muted-foreground">{copy.policyHelper}</p>
+      <h2 className="mb-1 text-lg font-medium text-ink">{copy.question}</h2>
+      <p className="mb-4 text-sm text-ink-muted">{copy.policyHelper}</p>
 
       {readOnly && copy.readOnlyNote && (
-        <p className="mb-4 text-sm text-muted-foreground">
-          {copy.readOnlyNote}
-        </p>
+        <p className="mb-4 text-sm text-ink-muted">{copy.readOnlyNote}</p>
       )}
 
       <AccessChoice
@@ -149,7 +145,7 @@ export function ModelsAllowlistEditor({
       {allowedModels !== null && (
         <div className="mt-6">
           <section className="mb-8">
-            <h3 className="mb-2 text-sm font-medium text-foreground">
+            <h3 className="mb-2 text-sm font-medium text-ink">
               {copy.allowedHeading}
             </h3>
             {allowedView === "list" ? (
@@ -157,7 +153,7 @@ export function ModelsAllowlistEditor({
                 {allowedList.map(renderModel)}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-ink-muted">
                 {allowedView === "empty-lab"
                   ? copy.allowedEmptyLab
                   : copy.allowedEmpty}
@@ -167,24 +163,24 @@ export function ModelsAllowlistEditor({
 
           {!readOnly && (
             <section>
-              <h3 className="mb-3 text-sm font-medium text-foreground">
+              <h3 className="mb-3 text-sm font-medium text-ink">
                 {copy.addHeading}
               </h3>
               <div className="mb-3 flex items-center gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
                   <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder={copy.searchModels}
-                    className="h-9 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
+                    className="h-9 w-full rounded-full border border-line bg-input pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
                   />
                 </div>
                 <LabFilter models={models} value={lab} onChange={setLab} />
               </div>
               {results.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
+                <p className="py-4 text-center text-sm text-ink-muted">
                   {copy.noModels}
                 </p>
               ) : (

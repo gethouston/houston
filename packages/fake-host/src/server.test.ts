@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SEED_AGENT_ID, SEED_WORKSPACE_ID } from "./config";
 import { type FakeHost, startFakeHost } from "./server";
+import { addTicket, consumeTicket } from "./state";
 
 /**
  * Covers the package's new lifecycle surface — `startFakeHost` / `FakeHost.stop`
@@ -112,6 +113,153 @@ describe("startFakeHost", () => {
   it("404s a sidebar layout for an unknown workspace", async () => {
     const res = await fetch(`${host.url}/v1/workspaces/ghost/sidebar-layout`);
     expect(res.status).toBe(404);
+  });
+
+  it("round-trips the per-agent action-approval routes", async () => {
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+    const base = `${host.url}/v1/agents/${SEED_AGENT_ID}/action-approvals`;
+    const jsonHeaders = { "content-type": "application/json" };
+
+    // Unset → nothing pre-approved.
+    expect(await (await fetch(base)).json()).toEqual({ always: [] });
+
+    // "Always allow" appends the slug and echoes the updated list.
+    const allow = await fetch(`${base}/always`, {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({ action: "GMAIL_SEND_DRAFT" }),
+    });
+    expect(allow.status).toBe(200);
+    expect(await allow.json()).toEqual({ always: ["GMAIL_SEND_DRAFT"] });
+    // A re-add dedupes; GET reflects the stored list.
+    await fetch(`${base}/always`, {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({ action: "gmail_send_draft" }),
+    });
+    expect(await (await fetch(base)).json()).toEqual({
+      always: ["GMAIL_SEND_DRAFT"],
+    });
+
+    // An invalid action slug is a clean 400, never a swallowed accept.
+    const badAction = await fetch(`${base}/always`, {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({ action: "bad slug!" }),
+    });
+    expect(badAction.status).toBe(400);
+
+    // "Allow once" writes a one-shot ticket for a 16-hex-char fingerprint.
+    const ticket = await fetch(`${base}/tickets`, {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({ hash: "0123456789abcdef" }),
+    });
+    expect(ticket.status).toBe(200);
+    expect(await ticket.json()).toEqual({ ok: true });
+
+    // A malformed hash 400s.
+    const badHash = await fetch(`${base}/tickets`, {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({ hash: "nope" }),
+    });
+    expect(badHash.status).toBe(400);
+
+    // The stored ticket is consume-once: first read succeeds, the second misses.
+    expect(consumeTicket(SEED_AGENT_ID, "0123456789abcdef")).toBe(true);
+    expect(consumeTicket(SEED_AGENT_ID, "0123456789abcdef")).toBe(false);
+    addTicket(SEED_AGENT_ID, "fedcba9876543210");
+    expect(consumeTicket(SEED_AGENT_ID, "fedcba9876543210")).toBe(true);
+  });
+
+  it("dismiss-interaction stops the transcript and clears the activity", async () => {
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+    const agentBase = `${host.url}/agents/${SEED_AGENT_ID}`;
+    const jsonHeaders = { "content-type": "application/json" };
+    const approval = {
+      steps: [
+        {
+          kind: "approval",
+          id: "a1",
+          toolkit: "gmail",
+          action: "GMAIL_SEND_DRAFT",
+          params: { to: "a@b.com" },
+          paramsHash: "0123456789abcdef",
+        },
+      ],
+    };
+
+    // Bind a conversation to the seeded activity and persist the approval
+    // interaction VERBATIM (covers the kind-agnostic PATCH set path).
+    const patched = await fetch(`${agentBase}/activities/act-1`, {
+      method: "PATCH",
+      headers: jsonHeaders,
+      body: JSON.stringify({
+        session_key: "conv-1",
+        pending_interaction: approval,
+      }),
+    });
+    const patchedBody = (await patched.json()) as {
+      pending_interaction?: unknown;
+    };
+    expect(patchedBody.pending_interaction).toEqual(approval);
+
+    // Dismiss: append the stop marker + retire the pending interaction.
+    const dismissed = await fetch(
+      `${agentBase}/conversations/conv-1/dismiss-interaction`,
+      { method: "POST" },
+    );
+    expect(dismissed.status).toBe(200);
+    expect(await dismissed.json()).toEqual({ ok: true });
+
+    // The transcript ends on a stopped, empty assistant message.
+    const messages = (await (
+      await fetch(`${agentBase}/conversations/conv-1/messages`)
+    ).json()) as { messages: Array<{ role: string; stopped?: boolean }> };
+    const last = messages.messages.at(-1);
+    expect(last?.role).toBe("assistant");
+    expect(last?.stopped).toBe(true);
+
+    // The board card no longer waits on the user (pending_interaction cleared).
+    const activities = (await (
+      await fetch(`${agentBase}/activities`)
+    ).json()) as {
+      items: Array<{ id: string; pending_interaction?: unknown }>;
+    };
+    const card = activities.items.find((a) => a.id === "act-1");
+    expect(card?.pending_interaction).toBeUndefined();
+  });
+
+  it("deletes pending_interaction when an activity PATCH sends null", async () => {
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+    const url = `${host.url}/agents/${SEED_AGENT_ID}/activities/act-1`;
+    const jsonHeaders = { "content-type": "application/json" };
+    const approval = {
+      steps: [
+        {
+          kind: "approval",
+          id: "a1",
+          toolkit: "gmail",
+          action: "X",
+          paramsHash: "0123456789abcdef",
+        },
+      ],
+    };
+
+    await fetch(url, {
+      method: "PATCH",
+      headers: jsonHeaders,
+      body: JSON.stringify({ pending_interaction: approval }),
+    });
+    // Explicit null clears it — the key is DELETED, not stored as null.
+    const cleared = await fetch(url, {
+      method: "PATCH",
+      headers: jsonHeaders,
+      body: JSON.stringify({ pending_interaction: null }),
+    });
+    const activity = (await cleared.json()) as Record<string, unknown>;
+    expect("pending_interaction" in activity).toBe(false);
   });
 
   it("stops cleanly so the port stops accepting connections", async () => {

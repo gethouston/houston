@@ -185,6 +185,16 @@ export interface TokenUsage {
 export interface ChatMessage {
   role: ChatRole;
   content: string;
+  /**
+   * What renders as the user's chat bubble, when it must differ from `content`
+   * (the text the model received). Presentation-only metadata: set on
+   * `role: "user"` turns whose real prompt carries text the user should never
+   * see — a hidden setup-mission directive, or absolute attachment paths
+   * appended to the prompt. A client replaying history renders
+   * `displayText ?? content`; the model always ran on `content`. Absent on every
+   * turn where the bubble and the prompt are the same string.
+   */
+  displayText?: string;
   /** epoch ms */
   ts: number;
   /**
@@ -258,6 +268,14 @@ export interface ChatMessage {
    * false `done`. Absent when the turn ended with nothing outstanding.
    */
   pendingInteraction?: PendingInteraction;
+  /**
+   * Set on the assistant message when the user interrupted this turn — the Stop
+   * button, or dismissing the composer-replacing interaction card. Persisted so
+   * the standard "Stopped by user" line survives a history reload, and so the
+   * board-status derivation on reload settles the turn to `needs_you` instead of
+   * a false `done`. Absent on turns that ran to completion.
+   */
+  stopped?: true;
 }
 
 export interface ConversationSummary {

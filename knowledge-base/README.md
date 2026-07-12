@@ -13,7 +13,7 @@ Load on demand.
 | [skills.md](skills.md) | Skills on disk + UI — frontmatter schema, picker rendering, invocation marker |
 | [agent-manifest.md](agent-manifest.md) | Three tiers, manifest shape, workspace templates, sidebar |
 | [teams.md](teams.md) | Multiplayer orgs (client surface) — roles/access, role matrix v2, org dashboard, share dialog, templates, allowlists; gateway is sole enforcer |
-| [auth.md](auth.md) | Supabase auth, Google SSO, Keychain |
+| [auth.md](auth.md) | GCIP / Firebase auth, Google/Microsoft SSO + email OTP, Keychain |
 | [i18n.md](i18n.md) | Translating UI strings — namespaces, `labels` prop pattern, `t()` rules |
 | [ui-testing.md](ui-testing.md) | Automated UI / e2e tests — Playwright, web build, fake host, TS engine |
 | [portable-agents.md](portable-agents.md) | Package an agent into one file, import into another workspace |
@@ -30,3 +30,13 @@ Load on demand.
 How-to stuff (deploy, build, debug) → skills. See `/release`, `/build-app-local`, `/debug`.
 
 **Protocol note** — the agent session protocol (phases, Rule 0, git workflow) lives at the workspace level: `~/dev-houston/CLAUDE.md`. Phase 10 requires updating this KB after changes that introduce a pattern, decision, or gotcha.
+
+---
+
+## KB hygiene — condense, don't append (hard rule)
+
+A KB doc is a **current-state reference, not a changelog**. When Phase 10 sends you here, REPLACE — don't pile on.
+
+- **Target ≤200 lines per doc**, and this index one line per entry. A dense reference (step-by-step procedures, wire tables) may run longer *only* if every line earns its place — never by keeping superseded content. If a doc pushes past ~250, it's usually two topics: split it into two focused files.
+- **Rewrite the affected section to describe how it works NOW, and delete what the change supersedes.** Never leave "first we did X, then wave 2 also…" layers accumulating — that history is what git is for. If a decision's past genuinely matters, one sentence ("replaced the Rust engine, 2026") is the whole of it.
+- This is the repo's `NEVER compress to fit` rule pointed at prose: don't cram, but don't hoard either. The test: a new agent reading the doc cold learns the current system fast, with nothing to mentally discard.

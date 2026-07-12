@@ -8,10 +8,12 @@
 export const SETTINGS_SECTION_IDS = [
   "members",
   "connectedAccounts",
+  "apiKeys",
   "workspaceContext",
   "userContext",
   "shortcuts",
   "reportBug",
+  "migration",
 ] as const;
 
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];

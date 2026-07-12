@@ -36,14 +36,12 @@ export function AppRow({
     <>
       <AppLogo display={display} />
       <div className="min-w-0 flex-1">
-        <p className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-foreground">
+        <p className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-ink">
           <span className="min-w-0 truncate">{display.name}</span>
           {status && <ConnectionStatusBadge status={status} />}
         </p>
         {description && (
-          <p className="truncate text-[11px] text-muted-foreground">
-            {description}
-          </p>
+          <p className="truncate text-[11px] text-ink-muted">{description}</p>
         )}
         {children}
       </div>
@@ -52,7 +50,7 @@ export function AppRow({
   );
 
   const base =
-    "flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 text-left";
+    "flex items-center gap-3 rounded-xl bg-chip px-3 py-2.5 text-left";
 
   if (onClick) {
     return (
@@ -61,7 +59,7 @@ export function AppRow({
         onClick={onClick}
         className={cn(
           base,
-          "w-full transition-colors hover:bg-foreground/[0.05] focus-visible:bg-foreground/[0.05] focus-visible:outline-none",
+          "w-full transition-colors hover:bg-ink/[0.05] focus-visible:bg-ink/[0.05] focus-visible:outline-none",
         )}
       >
         {body}

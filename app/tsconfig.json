@@ -15,7 +15,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "paths": {
+      "@houston/web-identity": ["./src/lib/identity/firebase-popup-stub.ts"]
+    }
   },
   "include": ["src"]
 }

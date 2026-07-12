@@ -74,10 +74,22 @@ Near-black `#0d0d0d`, NEVER pure black. **Both light and dark ship** now (the
 ### Tokens
 The semantic `--ht-*` set (re-exported to Tailwind `--color-*`) is generated from
 `@houston/design-tokens` — see `tokens/semantic/color.{light,dark}.json` for the
-live values. Historic light-mode reference: `--background #fff` · `--foreground
-#0d0d0d` · `--secondary #f9f9f9` · `--muted-foreground #5d5d5d` · `--border
-#e5e5e5` · `--ring #0d0d0d` · `--accent #f5f5f5` (the futuristic layer now shifts
-several of these — the JSON is authoritative).
+live values (each token carries its own light AND dark value; dark glass keeps
+its transparency inside the value).
+
+The owner vocabulary (say these words to direct changes):
+- **Grounds**: `base` (the app frame the sidebar sits on) → `background` (the
+  main pane, light `#fcfcfc`) → `input` (the white `#fff` surface — fields,
+  composer, floating cards).
+- **Elevated glass**: `card` / `card-hover` / `card-solid` (solid board card) /
+  `popover` / `dialog`.
+- **Text**: `ink`, `ink-muted` (+ per-surface `card-text`, `popover-text`).
+- **Interactive**: `action`/`action-text` (filled CTA), `hover` (row/menu hover
+  fill, light `#efefef`), `chip`/`chip-text` + `chip-subtle` (soft fills).
+- **Lines & focus**: `line` (hairlines), `line-input` (field borders), `focus`.
+- **Status**: `danger`, `success`, `warning`, `highlight` (each with `-text`).
+- Untouched families: `space-*` (sign-in backdrop), `agent.*` (avatar palette),
+  `sidebar*` (with `-text`/`-hover`/`-line` suffixes).
 
 ### `--ht-space-*` (sign-in backdrop)
 A deliberately **theme-invariant** group — both `color.light.json` and
@@ -120,7 +132,7 @@ semantic ids with `resolveAgentColor` from `@houston-ai/core`, not app-local
 helpers, so desktop and mobile render same palette.
 
 ## Brand theming
-Override `--color-primary` via globals.css. NEVER hardcode hex — always semantic token.
+Override `--color-action` via globals.css. NEVER hardcode hex — always semantic token.
 
 ## Typography
 System font stack. No webfonts.
@@ -162,7 +174,7 @@ Grid: leading (attach) | primary (text) | trailing (send).
 White bg, `border-black/5`, `rounded-xl`, hover shadow. Running state = `card-running-glow` animation border.
 
 ### RowCard (inline notice + integration cards)
-One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-secondary`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the Composio sign-in / link cards.
+One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-chip`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the inline Composio `#houston_toolkit` link card. **Not** the interaction-card stepper's connect/signin STEPS — those compose the shared `InteractionModal` shell (`ui/chat`, reference "Coworker card" look, inventory v19): the `(icon) name` identity lockup (brand logo `sm` beside the integration NAME at REGULAR weight, via `InteractionModalTitle`) is the modal HEADER title, on the same row as the pager + dismiss X; the body is TWO fields (the agent's reason in foreground tone, then the app description / sign-in explainer muted); the FOOTER is the unified "Not now" + Esc hint beside a filled CTA with a return-key glyph. Weight is restrained: color tone carries the hierarchy, so the title and labels are regular — `font-medium` survives only on the Recommended chip, the number badge, and the CTA label; no competing bolds. "Not now" travels WITH the CTA (present wherever the CTA is, including a reconsidered skip). The signin/connect body renders its OWN `InteractionModal` wired with the stepper's `StepChrome` (pager + dismiss), so ui/chat stays auth/Composio-unaware. See `chat-connect-interaction-card.tsx` / `chat-signin-interaction-card.tsx`.
 
 > **AI Models hub is the one deliberate exception.** The hub (Providers/Models tabs) reaches for a full-color brand mark — `BrandMark` (`app/src/components/ai-hub/brand-mark.tsx`) renders the same `ProviderGlyph` boxless (no tile or wash), full-bleed at sm/md/lg (`size-6/8/10`), colored via the sanctioned hex map in `shell/provider-brand-colors.ts` (the ONLY place raw brand hex may live; every other surface stays on tokens). This is a "candy store" recognition device scoped to the hub — chat surfaces (RowCard, provider-switch, error/reconnect cards) stay monochrome. Multi-button error cards stay on `ErrorCard` (icon-bubble) in `provider-error-cards/shared.tsx`.
 
@@ -217,11 +229,11 @@ and each onboarding step float a card **pinned to the DARK palette**
 card on the theme-invariant space backdrop). Onboarding wraps ONE `SpaceScreen`
 at the top level so the WebGL nebula never remounts across step transitions;
 `SetupCard`'s `onSpace` prop is what floats each step's card on it (drops the
-standalone `h-screen`/`bg-secondary` backdrop and pins the dark palette). The
+standalone `h-screen`/`bg-chip` backdrop and pins the dark palette). The
 language and disclaimer gates (`shell/language-gate.tsx`,
 `shell/disclaimer-gate.tsx`) now render the SAME way — each wrapped in
 `SpaceScreen` with an `onSpace` `SetupCard` — so the whole pre-workspace flow is
-one continuous starfield, not the old dimmed `bg-secondary` backdrop. The
+one continuous starfield, not the old dimmed `bg-chip` backdrop. The
 **finished "You're all set" step** is the one deliberate colour accent: a
 celebratory `SuccessCheck` (warm space-nebula gradient fill + expanding ring,
 from the `--ht-space-*` tokens) above a single **"Start building"** CTA;
@@ -324,10 +336,41 @@ tokens, re-exported to Tailwind as `--color-*`, so the theme is mostly token
 overrides — not a 20-component rewrite.
 
 **Arc / Zen "canvas" layout.** The main content floats as a rounded "screen"
-card (`canvas-screen`) on a recessed **window gutter**; the sidebar is
-transparent and melts into the gutter. Tokens: `--ht-canvas-gutter` (window bg)
-and `--ht-canvas-screen` (the floating screen). The mission panel opens as a
+card (the `background` token; the `.canvas-screen` CSS class) on a recessed **window gutter** (`base`); the sidebar is
+transparent and melts into the gutter. Tokens: `--ht-layer-0` (window bg)
+and `--ht-layer-1` (the floating screen). The mission panel opens as a
 second rounded card with a gutter gap.
+
+**The canvas is the standard main surface — a light gray, not white (light
+mode).** `--ht-layer-1` is the tone every content pane (board, chat,
+routines, integrations, files, settings, AI hub, agent settings…) sits on. In
+**light** it is `#fbfbfb` — the flattened equivalent of the chat panel's former
+`bg-chip-subtle/50` over white, promoted to the ONE standard so white cards, the
+composer, inputs, and popovers **float** on a calm gray rather than vanishing
+into white-on-white. In **dark** it is unchanged (`{color.glass.screen-55}`
+frosted glass); the light change never moves dark. It is exposed to Tailwind as
+**`bg-layer-1`** (`--color-layer-1 → --ht-layer-1`, `ui/core/src/globals.css`
+`@theme`) so any surface that lives ON the canvas can reference the SAME tone as
+one source of truth — e.g. the chat panel (`ui/chat/chat-panel.tsx`) is
+`bg-layer-1 dark:bg-transparent` (transparent in dark to let the pane's glass
+through). The two shell panes (`shell/workspace-shell.tsx`) get it via the
+`.canvas-screen` class, which ALSO carries the dark frosted-glass blur — so they
+keep the class (never swap it for a bare `bg-layer-1`, which would drop the dark
+glass); the light-gray flip is purely the token value change.
+
+**the surface ladder (light mode):**
+- **`bg-layer-1`** (`#fbfbfb`) — the main pane / standard surface things float
+  ON. Use for a content-area background that should read as the calm base.
+- **`bg-card`** (`white-68` glass ≈ near-white over canvas) — a card/panel that
+  should **float above** the canvas (mission cards, settings group cards). White
+  + border + sheen is what makes it lift off the gray.
+- **`bg-layer-2`** (`#fff`) — the opaque-white fallback / floating inputs &
+  the composer (white pills that float on the canvas). NOT for pane backgrounds
+  in the futuristic layout (a pane painted `bg-layer-2` becomes a white slab
+  on the gray canvas — the `.canvas-screen` panes keep `bg-background` only as
+  the theme-off fallback, overridden by the class).
+- **`bg-chip` / `bg-chip-subtle`** (`ink-a035`, subtle darker-than-canvas) —
+  recessed panels that sit BELOW the card tier (board columns, provider rows).
 
 **Dark mode** — the signature look: a multi-radial **aurora glow** on
 `body::before` (blue/indigo/orange, slow 32s drift, disabled under
@@ -335,13 +378,15 @@ second rounded card with a gutter gap.
 `.bg-popover`, sidebar) with `backdrop-filter` blur.
 
 **Light mode** — the cool, solid **"Aurora" palette** (no glow mesh — it read as
-"glitter" over solid surfaces): gutter `#eef1f7`, screen `#fff`, cards `#f4f6fc`,
-cool blue/indigo border. Clean and futuristic by restraint, not decoration.
+"glitter" over solid surfaces): gutter `#eef1f7`, screen `#fbfbfb` (the standard
+light-gray canvas — see "The canvas is the standard main surface" above), cards
+`#f4f6fc`, cool blue/indigo border. Clean and futuristic by restraint, not
+decoration.
 
 **Modals: glass in dark, solid white in light.** All modal primitives —
 `DialogContent` (`ui/core/components/dialog.tsx`), `AlertDialogContent`,
 `SheetContent`, and the AI-Hub `ModalShell` — render on the dedicated
-**`bg-dialog`** surface token, NOT `bg-card` and NOT opaque `bg-background`. In
+**`bg-dialog`** surface token, NOT `bg-card` and NOT opaque `bg-layer-2`. In
 **dark** the token is the same translucent glass as `card`
 (`{color.glass.neutral-50}`) with frosted blur + top sheen from futuristic.css,
 so the aurora canvas bleeds through like the kanban columns. In **light** it is
@@ -357,7 +402,7 @@ The scrims are deliberately light: Dialog overlay `bg-black/25`, Alert/Sheet
 should hardcode its own background.
 
 **Primary button** — flat and sober (`[data-variant="default"]:is(button, a)`),
-not a glossy slab. Kanban resting cards use one token, `--ht-card-rest` (`#2c2c2b`
+not a glossy slab. Kanban resting cards use one token, `--ht-card-solid` (`#2c2c2b`
 dark / white light), unified across resting + running + needs-you.
 
 **Seamless title bar (macOS desktop only)** — `titleBarStyle: "Overlay"` +
@@ -368,7 +413,7 @@ gated to `osIsTauri() && isMac`). `applyTheme` also calls
 Capabilities: `core:window:allow-set-theme` + `…allow-start-dragging`.
 
 **Tuning knobs** live as comments in `futuristic.css` (aurora alphas, glass
-blur, `--ht-card-rest`, the canvas tokens). Dark mode is the loved baseline —
+blur, `--ht-card-solid`, the canvas tokens). Dark mode is the loved baseline —
 when adjusting, scope changes to light (`:root`) and pin dark
 (`[data-theme="dark"]`) so it stays put.
 
@@ -385,6 +430,24 @@ inventory/parity churn). The fixed-masthead surfaces (hub, org) split the
 container across a `shrink-0` masthead + a scrolling `PageContainer` below; the
 single-scroll surfaces (integrations, settings landing) use one. Settings landing
 now shares `max-w-5xl` (cards render wider than before, by design).
+
+**Flat "plane" page language (rolling out page by page; first: Integrations).**
+The owner is refactoring top-level pages against flat reference designs (the
+Integrations page's reference is ChatGPT's Plugins page). The vocabulary, all
+tokens: the page sits directly on `background`; list rows are TRANSPARENT at
+rest and paint the `hover` fill (`bg-hover`, light `#efefef`) on hover/focus,
+never a bordered card around every row; section headers are sentence-case
+`text-sm font-medium` with a small trailing `ChevronRight` in `ink-muted`
+(`SectionHeader`, `components/integrations/section-header.tsx`, a
+non-interactive visual motif, not navigation); rows are a large `rounded-xl`
+icon (~56px) + `text-sm font-medium` name over one truncated `text-[13px]`
+`ink-muted` description line + ONE quiet trailing glyph (`Plus`, lock, ...) at
+the row edge; the page hero is the shared `PageHeader` with a rounded
+`bg-input` search field (`border-line-input`, magnifier glyph) in its
+`trailing` slot. Two-column row grids collapse to one under `lg`. First shipped
+surface: the Integrations personal page (`integrations-view/`, see
+`knowledge-base/integrations.md` §3); apply this language when refactoring
+further pages instead of inventing new row chrome.
 
 **Settings (`app/src/components/settings/`)** — no sidebar. The landing is the
 **overview** (`settings-index.tsx`); it uses the shared `PageContainer` +

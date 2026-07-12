@@ -1,9 +1,9 @@
 import { cn } from "@houston-ai/core";
-import confetti from "canvas-confetti";
 import type { LucideIcon } from "lucide-react";
 import { Check, Mail, Send, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { fireSetupConfetti } from "../../lib/confetti";
 import { HoustonLogo } from "../shell/experience-card";
 import { SetupCard } from "./setup-card";
 
@@ -24,37 +24,6 @@ const ICON: Record<Milestone, LucideIcon> = {
   send: Send,
 };
 
-const prefersReducedMotion = () =>
-  typeof window !== "undefined" &&
-  typeof window.matchMedia === "function" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-/** A few overlapping bursts for the "confetti like crazy" payoff. */
-function fireConfetti() {
-  if (prefersReducedMotion()) return;
-  const base = { startVelocity: 45, ticks: 220, zIndex: 9999, scalar: 0.9 };
-  confetti({
-    ...base,
-    particleCount: 140,
-    spread: 80,
-    origin: { x: 0.5, y: 0.55 },
-  });
-  confetti({
-    ...base,
-    particleCount: 70,
-    spread: 60,
-    angle: 60,
-    origin: { x: 0, y: 0.7 },
-  });
-  confetti({
-    ...base,
-    particleCount: 70,
-    spread: 60,
-    angle: 120,
-    origin: { x: 1, y: 0.7 },
-  });
-}
-
 interface SetupProgressProps {
   title: string;
   message: string;
@@ -73,7 +42,7 @@ interface SetupProgressProps {
 }
 
 /**
- * The single screen behind the intro AND every milestone celebration. It shows
+ * The single screen behind every milestone celebration. It shows
  * the Houston mark, a title + message, and the flat milestone checklist — items
  * the user has finished animate to a check. When a milestone just completed,
  * confetti rains. One component so the journey reads as continuous progress;
@@ -91,14 +60,14 @@ export function SetupProgress({
   const { t } = useTranslation("setup");
 
   useEffect(() => {
-    if (justCompleted) fireConfetti();
+    if (justCompleted) fireSetupConfetti();
   }, [justCompleted]);
 
   const doneSet = new Set(done);
   const label: Record<Milestone, string> = {
-    ai: t("tutorial.missions.intro.steps.ai"),
-    email: t("tutorial.missions.intro.steps.email"),
-    send: t("tutorial.missions.intro.steps.send"),
+    ai: t("tutorial.milestones.ai"),
+    email: t("tutorial.milestones.email"),
+    send: t("tutorial.milestones.send"),
   };
 
   return (
@@ -108,7 +77,7 @@ export function SetupProgress({
           <HoustonLogo size={52} />
           <div className="flex flex-col items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-            <p className="max-w-md text-sm text-muted-foreground">{message}</p>
+            <p className="max-w-md text-sm text-ink-muted">{message}</p>
           </div>
         </div>
 
@@ -125,8 +94,8 @@ export function SetupProgress({
                   className={cn(
                     "flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors",
                     isDone
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border text-muted-foreground",
+                      ? "border-ink bg-ink text-input"
+                      : "border-line text-ink-muted",
                     m === justCompleted && "success-pop",
                   )}
                 >
@@ -139,7 +108,7 @@ export function SetupProgress({
                 <span
                   className={cn(
                     "flex-1 text-sm font-medium",
-                    isDone ? "text-foreground" : "text-muted-foreground",
+                    isDone ? "text-ink" : "text-ink-muted",
                   )}
                 >
                   {label[m]}

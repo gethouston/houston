@@ -16,7 +16,8 @@
       "!.houston",
       "!packages/design-tokens/dist",
       "!app/src/agents/builtin/store-templates",
-      "!app/src/lib/ai-hub/model-catalog.json"
+      "!app/src/lib/ai-hub/model-catalog.json",
+      "!website/src/assets/vendor"
     ]
   },
   "formatter": {

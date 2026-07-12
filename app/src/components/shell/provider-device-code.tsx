@@ -116,7 +116,7 @@ export function ProviderDeviceCode({
         </span>
         <code
           aria-live="polite"
-          className={`block rounded-md border bg-background px-3 py-2 text-center font-mono ${
+          className={`block rounded-md border bg-input px-3 py-2 text-center font-mono ${
             copied
               ? "text-[14px] font-medium text-emerald-600 dark:text-emerald-400"
               : "text-[20px] tracking-[0.3em]"
@@ -128,13 +128,13 @@ export function ProviderDeviceCode({
           {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
           {copied ? t("providerLogin.codeCopied") : t("providerLogin.copyCode")}
         </Button>
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-[12px] text-ink-muted">
           {t("providerLogin.deviceCodeHint", { name: providerName })}
         </p>
       </div>
 
       {settingsUrl && (
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-[12px] text-ink-muted">
           <Trans
             t={t}
             i18nKey="providerLogin.deviceSettingsHint"
@@ -143,7 +143,7 @@ export function ProviderDeviceCode({
                 <button
                   type="button"
                   onClick={openSettings}
-                  className="font-medium text-foreground underline underline-offset-2"
+                  className="font-medium text-ink underline underline-offset-2"
                 />
               ),
             }}
@@ -151,7 +151,7 @@ export function ProviderDeviceCode({
         </p>
       )}
 
-      <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+      <div className="flex items-center gap-2 text-[12px] text-ink-muted">
         <Spinner className="size-3.5" />
         {t("providerLogin.deviceWaiting")}
       </div>

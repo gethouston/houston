@@ -23,7 +23,7 @@ export function AiStepFooter({
   const { t } = useTranslation("common");
 
   return (
-    <footer className="shrink-0 border-t border-foreground/[0.06] px-6 py-4">
+    <footer className="shrink-0 border-t border-ink/[0.06] px-6 py-4">
       <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
         <Button
           type="button"

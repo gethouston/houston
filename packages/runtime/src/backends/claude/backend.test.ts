@@ -60,9 +60,43 @@ test("no connected token clears every ambient credential var", () => {
   expect(env.ANTHROPIC_AUTH_TOKEN).toBeUndefined();
 });
 
-test("non-credential ambient env (PATH) is preserved", () => {
+test("operational ambient env (PATH) is preserved", () => {
   const env = buildClaudeEnv("/cfg", oauth);
   expect(env.PATH).toBe(process.env.PATH);
+});
+
+test("Houston host secrets never reach the subprocess env", () => {
+  // The core of the finding: the SDK subprocess runs model-directed Bash, so any
+  // host secret in its env is one `printenv` away from exfiltration. These are the
+  // control-plane credentials config.ts reads from process.env — none may survive.
+  const secrets = {
+    HOUSTON_SANDBOX_TOKEN: "sbx-tok",
+    HOUSTON_CODE_SANDBOX_TOKEN: "code-sbx-tok",
+    HOUSTON_TURN_TOKEN: "turn-tok",
+    HOUSTON_RUNTIME_TOKEN: "runtime-tok",
+    COMPOSIO_API_KEY: "composio-key",
+    GOOGLE_APPLICATION_CREDENTIALS: "/var/gcp/key.json",
+    SOME_ARBITRARY_HOST_SECRET: "leak-me",
+  } as const;
+  const prev = Object.fromEntries(
+    Object.keys(secrets).map((k) => [k, process.env[k]]),
+  );
+  Object.assign(process.env, secrets);
+  try {
+    const env = buildClaudeEnv("/cfg", oauth);
+    for (const key of Object.keys(secrets)) {
+      expect(env[key]).toBeUndefined();
+    }
+    // The allowlisted essentials still survive so the SDK works.
+    expect(env.PATH).toBe(process.env.PATH);
+    expect(env.CLAUDE_CONFIG_DIR).toBe("/cfg");
+    expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBe("sk-ant-oat01-x");
+  } finally {
+    for (const [k, v] of Object.entries(prev)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
 });
 
 test("browser-login path: shared config dir, NO token env (SDK reads the cached cred)", () => {

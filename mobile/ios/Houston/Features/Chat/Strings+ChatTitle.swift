@@ -7,8 +7,8 @@ import Foundation
 extension Strings.Chat {
   enum TitleBar {
     /// The running status line under the agent name (shimmered).
-    static let working = "Working…"
+    static let working = String(localized: "chat.titleBar.working", defaultValue: "Working…")
     /// The settled needs-you status line under the agent name (warning-tinted).
-    static let needsAttention = "Needs your attention"
+    static let needsAttention = String(localized: "chat.titleBar.needsAttention", defaultValue: "Needs your attention")
   }
 }

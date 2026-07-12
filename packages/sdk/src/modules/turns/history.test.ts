@@ -29,6 +29,33 @@ describe("historyToFeed", () => {
     ]);
   });
 
+  it("renders displayText as the user bubble when the stored prompt carried hidden text", () => {
+    const feed = historyToFeed([
+      {
+        role: "user",
+        content: "HIDDEN directive + /abs/path/to/file.pdf",
+        displayText: "Summarize my file",
+        ts: 1,
+      },
+    ]);
+    expect(feed[0]).toEqual({
+      feed_type: "user_message",
+      data: "Summarize my file",
+      author: undefined,
+      ts: 1,
+    });
+  });
+
+  it("falls back to content for a plain user message with no displayText", () => {
+    const feed = historyToFeed([{ role: "user", content: "hi", ts: 1 }]);
+    expect(feed[0]).toEqual({
+      feed_type: "user_message",
+      data: "hi",
+      author: undefined,
+      ts: 1,
+    });
+  });
+
   it("carries the pi provider id through unchanged by default (identity map)", () => {
     const feed = historyToFeed([
       {
@@ -162,6 +189,30 @@ describe("historyToFeed", () => {
       created: ["report.pdf"],
       modified: ["notes.md"],
     });
+  });
+
+  it("replays the standard stop line for a persisted stopped turn, after the text", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "do it", ts: 1 },
+      { role: "assistant", content: "working on it", ts: 2, stopped: true },
+    ]);
+    const textIdx = feed.findIndex((f) => f.feed_type === "assistant_text");
+    const stopIdx = feed.findIndex((f) => f.feed_type === "system_message");
+    // Same copy + position the live stop settle produces (after the text/tools).
+    expect(stopIdx).toBeGreaterThan(textIdx);
+    expect(feed[stopIdx]).toEqual({
+      feed_type: "system_message",
+      data: "Stopped by user",
+      ts: 2,
+    });
+  });
+
+  it("omits the stop line for a turn that ran to completion (no regression)", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "do it", ts: 1 },
+      { role: "assistant", content: "all done", ts: 2 },
+    ]);
+    expect(feed.some((f) => f.feed_type === "system_message")).toBe(false);
   });
 
   it("stamps every frame with its source ChatMessage.ts (epoch ms)", () => {

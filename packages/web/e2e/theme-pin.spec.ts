@@ -2,7 +2,7 @@ import { expect, test } from "./support/fixtures";
 
 /**
  * Regression: subtree theme pinning via data-theme must re-resolve Tailwind
- * colour utilities (bg-background / text-foreground) INSIDE the pinned subtree,
+ * colour utilities (bg-input / text-ink) INSIDE the pinned subtree,
  * independent of the app theme on <html>.
  *
  * This is the guarantee the sign-in card relies on (it pins data-theme="dark"
@@ -17,10 +17,10 @@ import { expect, test } from "./support/fixtures";
  */
 
 // Token values from packages/design-tokens/dist/css/tokens.css, as computed rgb.
-const LIGHT_BG = "rgb(255, 255, 255)"; // --ht-background #ffffff
-const LIGHT_FG = "rgb(20, 22, 29)"; //    --ht-foreground #14161d
-const DARK_BG = "rgb(30, 30, 30)"; //     --ht-background #1e1e1e
-const DARK_FG = "rgb(229, 229, 229)"; //  --ht-foreground #e5e5e5
+const LIGHT_BG = "rgb(255, 255, 255)"; // --ht-input #ffffff
+const LIGHT_FG = "rgb(20, 22, 29)"; //    --ht-ink #14161d
+const DARK_BG = "rgb(30, 30, 30)"; //     --ht-input #1e1e1e
+const DARK_FG = "rgb(229, 229, 229)"; //  --ht-ink #e5e5e5
 
 interface Probe {
   bg: string;
@@ -28,8 +28,8 @@ interface Probe {
 }
 
 /**
- * Inject a wrapper (optionally data-theme-pinned) with a `bg-background
- * text-foreground` child, read the child's computed colours, then clean up.
+ * Inject a wrapper (optionally data-theme-pinned) with a `bg-input
+ * text-ink` child, read the child's computed colours, then clean up.
  * `htmlTheme` sets/removes data-theme on <html> exactly as app/src/lib/theme.ts
  * does, so the probe runs under a real app-theme baseline.
  */
@@ -47,7 +47,7 @@ async function probe(
       const wrapper = document.createElement("div");
       if (pin) wrapper.setAttribute("data-theme", pin);
       const child = document.createElement("div");
-      child.className = "bg-background text-foreground";
+      child.className = "bg-input text-ink";
       wrapper.appendChild(child);
       document.body.appendChild(wrapper);
 

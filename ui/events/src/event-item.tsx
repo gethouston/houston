@@ -31,25 +31,23 @@ function statusIndicator(status: EventEntry["status"]) {
   switch (status) {
     case "pending":
       return (
-        <span className="flex size-2 shrink-0 rounded-full bg-muted-foreground/40" />
+        <span className="flex size-2 shrink-0 rounded-full bg-ink-muted/40" />
       );
     case "processing":
       return (
-        <span className="flex size-2 shrink-0 rounded-full bg-primary tool-active-dot" />
+        <span className="flex size-2 shrink-0 rounded-full bg-action tool-active-dot" />
       );
     case "completed":
       return <Check className="size-3 shrink-0 text-green-600" />;
     case "suppressed":
       return (
-        <span className="flex size-2 shrink-0 rounded-full bg-muted-foreground/30" />
+        <span className="flex size-2 shrink-0 rounded-full bg-ink-muted/30" />
       );
     case "error":
-      return (
-        <span className="flex size-2 shrink-0 rounded-full bg-destructive" />
-      );
+      return <span className="flex size-2 shrink-0 rounded-full bg-danger" />;
     default:
       return (
-        <span className="flex size-2 shrink-0 rounded-full bg-muted-foreground/30" />
+        <span className="flex size-2 shrink-0 rounded-full bg-ink-muted/30" />
       );
   }
 }
@@ -76,26 +74,26 @@ export function EventItem({ event, onClick }: EventItemProps) {
       onClick={() => onClick?.(event)}
       className={cn(
         "w-full text-left flex items-center gap-3 px-3 py-2 transition-colors duration-150",
-        "hover:bg-accent/50",
+        "hover:bg-hover/50",
         isSuppressedHeartbeat && "opacity-50",
       )}
     >
       {/* Type icon */}
       <div className="flex items-center justify-center w-4 shrink-0">
-        <Icon className="size-4 text-muted-foreground" />
+        <Icon className="size-4 text-ink-muted" />
       </div>
 
       {/* Summary + source */}
       <div className="flex-1 min-w-0">
         <p
           className={cn(
-            "text-sm truncate text-foreground",
-            isSuppressed && "line-through text-muted-foreground",
+            "text-sm truncate text-ink",
+            isSuppressed && "line-through text-ink-muted",
           )}
         >
           {event.summary}
         </p>
-        <p className="text-[11px] text-muted-foreground truncate">
+        <p className="text-[11px] text-ink-muted truncate">
           {event.source.channel}
           {event.source.identifier && ` ${event.source.identifier}`}
         </p>
@@ -103,7 +101,7 @@ export function EventItem({ event, onClick }: EventItemProps) {
 
       {/* Timestamp + status */}
       <div className="flex items-center gap-2 shrink-0">
-        <span className="text-[11px] text-muted-foreground/60">
+        <span className="text-[11px] text-ink-muted/60">
           {relativeTime(event.createdAt)}
         </span>
         {statusIndicator(event.status)}

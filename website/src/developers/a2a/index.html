@@ -1,0 +1,220 @@
+---
+activeDoc: a2a
+lang: en
+---
+{% extends "base.njk" %}
+{% block title %}Agent2Agent (A2A) — Houston API{% endblock %}
+{% block meta %}
+<meta name="description" content="Connect any A2A-capable agent to Houston. Fetch the agent card, send messages over JSON-RPC, stream results, and manage tasks with message/send, message/stream, tasks/get, and tasks/cancel.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://gethouston.ai/developers/a2a/">
+<meta property="og:title" content="Agent2Agent (A2A) — Houston API">
+<meta property="og:description" content="Point any A2A-capable agent (LangGraph, CrewAI, ADK) at your Houston agent.">
+<meta property="og:site_name" content="Houston">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" hreflang="en" href="https://gethouston.ai/developers/a2a/">
+<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/developers/a2a/">
+{% endblock %}
+{% block stylesheets %}
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/developers/style.css">
+{% endblock %}
+{% block body %}
+    {% include "nav-docs.njk" %}
+
+    <div class="layout">
+      {% include "sidebar-developers.njk" %}
+
+      <main class="content">
+        <div class="content-label">Developers · A2A</div>
+        <h1>Agent2Agent.</h1>
+        <p class="lead">
+          Houston agents speak the Agent2Agent (A2A) protocol, so you can
+          point any A2A-capable agent, such as LangGraph, CrewAI, or Google's
+          ADK, straight at a Houston agent and delegate work to it. A2A is
+          JSON-RPC 2.0 over HTTP, authenticated with your
+          <code>hst_...</code> API key.
+        </p>
+
+        <div class="toc">
+          <div class="toc-label">On this page</div>
+          <ol>
+            <li><a href="#card">The agent card</a></li>
+            <li><a href="#endpoint">The JSON-RPC endpoint</a></li>
+            <li><a href="#send">message/send</a></li>
+            <li><a href="#stream">message/stream</a></li>
+            <li><a href="#multiturn">Multi-turn with taskId</a></li>
+            <li><a href="#tasks">tasks/get &amp; tasks/cancel</a></li>
+            <li><a href="#states">Task states</a></li>
+            <li><a href="#errors">Error codes</a></li>
+          </ol>
+        </div>
+
+        <h2 id="card">The agent card</h2>
+        <p>
+          Every Houston agent publishes an A2A agent card describing its name,
+          capabilities, and endpoint. Fetch it (authenticated) at:
+        </p>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <span class="path">/a2a/<b>:org</b>/<b>:agent</b>/.well-known/agent-card.json</span>
+        </div>
+        <div class="codeblock"><pre><code>{% raw %}curl https://poc-gateway.gethouston.ai/a2a/acme/revenue-manager/.well-known/agent-card.json \
+  -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
+        <p>
+          Feed that card URL to your A2A client. <code>:org</code> is your
+          organization slug and <code>:agent</code> is the agent slug (the
+          same one the REST API uses).
+        </p>
+
+        <h2 id="endpoint">The JSON-RPC endpoint</h2>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <span class="path">/a2a/<b>:org</b>/<b>:agent</b></span>
+        </div>
+        <p>
+          All A2A methods are JSON-RPC 2.0 calls to this one endpoint. Houston
+          supports <code>message/send</code>, <code>message/stream</code>,
+          <code>tasks/get</code>, and <code>tasks/cancel</code>.
+        </p>
+
+        <h2 id="send">message/send</h2>
+        <p>
+          Send a message to the agent and open a task. The response contains
+          the task, whose <code>status.state</code> you then poll or stream.
+        </p>
+        <div class="codeblock"><pre><code>{% raw %}curl -X POST https://poc-gateway.gethouston.ai/a2a/acme/revenue-manager \
+  -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": "1",
+    "method": "message/send",
+    "params": {
+      "message": {
+        "role": "user",
+        "parts": [
+          { "kind": "text", "text": "Run a market pulse for Lisbon next weekend." }
+        ]
+      }
+    }
+  }'{% endraw %}</code></pre></div>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "jsonrpc": "2.0",
+  "id": "1",
+  "result": {
+    "kind": "task",
+    "id": "task_5f2c1a7b4e",
+    "contextId": "ctx_8d0364f1a2",
+    "status": { "state": "working" }
+  }
+}{% endraw %}</code></pre></div>
+
+        <h2 id="stream">message/stream</h2>
+        <p>
+          Same call, but the response is a Server-Sent Events stream of task
+          and status updates that ends when the task reaches a terminal state.
+          Use this for live progress.
+        </p>
+        <div class="codeblock"><pre><code>{% raw %}curl -N -X POST https://poc-gateway.gethouston.ai/a2a/acme/revenue-manager \
+  -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": "1",
+    "method": "message/stream",
+    "params": {
+      "message": {
+        "role": "user",
+        "parts": [ { "kind": "text", "text": "Summarize this week for Lisbon." } ]
+      }
+    }
+  }'{% endraw %}</code></pre></div>
+
+        <h2 id="multiturn">Multi-turn with taskId</h2>
+        <p>
+          To continue an existing task, for example to answer a follow-up
+          question the agent asked, send another message with the same
+          <code>taskId</code>. Houston routes it to the same running mission
+          instead of starting a new one.
+        </p>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "jsonrpc": "2.0",
+  "id": "2",
+  "method": "message/send",
+  "params": {
+    "taskId": "task_5f2c1a7b4e",
+    "message": {
+      "role": "user",
+      "parts": [ { "kind": "text", "text": "Yes, include Porto too." } ]
+    }
+  }
+}{% endraw %}</code></pre></div>
+
+        <h2 id="tasks">tasks/get &amp; tasks/cancel</h2>
+        <p>Fetch a task's current state:</p>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "jsonrpc": "2.0",
+  "id": "3",
+  "method": "tasks/get",
+  "params": { "id": "task_5f2c1a7b4e" }
+}{% endraw %}</code></pre></div>
+        <p>Cancel a running task:</p>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "jsonrpc": "2.0",
+  "id": "4",
+  "method": "tasks/cancel",
+  "params": { "id": "task_5f2c1a7b4e" }
+}{% endraw %}</code></pre></div>
+
+        <h2 id="states">Task states</h2>
+        <p>
+          A2A task states map directly onto Houston mission status:
+        </p>
+        <div class="table-scroll">
+        <table class="fields-table">
+          <thead><tr><th>A2A task state</th><th>Houston mission</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>working</code></td><td>running</td><td>The agent is actively working.</td></tr>
+            <tr><td><code>completed</code></td><td>completed</td><td>Terminal. The result is attached to the task.</td></tr>
+            <tr><td><code>failed</code></td><td>failed</td><td>Terminal. The mission errored.</td></tr>
+            <tr><td><code>canceled</code></td><td>canceled</td><td>Terminal. The task was canceled.</td></tr>
+          </tbody>
+        </table>
+        </div>
+
+        <h2 id="errors">Error codes</h2>
+        <p>
+          Alongside the standard JSON-RPC errors, Houston returns the A2A
+          task errors:
+        </p>
+        <div class="table-scroll">
+        <table class="fields-table">
+          <thead><tr><th>Code</th><th>Name</th><th>When</th></tr></thead>
+          <tbody>
+            <tr><td><code>-32001</code></td><td>TaskNotFound</td><td>No task exists for the given <code>id</code>.</td></tr>
+            <tr><td><code>-32002</code></td><td>TaskNotCancelable</td><td>The task already reached a terminal state and cannot be canceled.</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "jsonrpc": "2.0",
+  "id": "4",
+  "error": { "code": -32002, "message": "Task cannot be canceled" }
+}{% endraw %}</code></pre></div>
+
+        <div class="pager">
+          <a href="/developers/missions/">
+            <div class="pager-label">← Previous</div>
+            <div class="pager-title">Missions (REST)</div>
+          </a>
+          <a href="/developers/mcp/" class="next">
+            <div class="pager-label">Next →</div>
+            <div class="pager-title">MCP</div>
+          </a>
+        </div>
+      </main>
+    </div>
+
+    {% include "footer-developers.njk" %}
+  {% endblock %}

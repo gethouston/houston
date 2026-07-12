@@ -1,0 +1,163 @@
+# Agent Store Image — build + push to Artifact Registry
+#
+# The Agent Store frontend (agentstore/) is a Next.js app that talks to the Go
+# gateway's /v1/agentstore API. This repo is its single source of truth. This
+# workflow ONLY builds and publishes the container image; it never touches the
+# GKE cluster. This repo is public, so a compromised third-party Action or
+# dependency here must not be able to reach production. The actual roll (update
+# the agentstore Deployment to the new digest + restart) happens in the private
+# gethouston/cloud repo (.github/workflows/roll-agentstore.yml there), triggered
+# by the repository_dispatch fired below. That handoff is the trust boundary and
+# mirrors engine-pod-image.yml → cloud/roll-engine.yml.
+#
+# Publishes two tags per build:
+#   agentstore:<git-sha>  — immutable, by-digest reference used for the roll.
+#   agentstore:latest     — moving pointer to the newest build (convenience).
+#
+# ── GCP auth: Workload Identity Federation ────────────────────────────────────
+#   SA: github-deploy-engine@gethouston.iam.gserviceaccount.com — Artifact
+#   Registry Writer ONLY (no cluster role), restricted by the WIF provider
+#   condition to attribute.repository=='gethouston/houston'. The same SA + WIF
+#   provider + registry the engine-pod-image.yml build uses; do NOT reuse the
+#   broader github-deploy@ SA (that one also carries Kubernetes Engine Developer).
+#
+# ── Required GitHub secret ─────────────────────────────────────────────────────
+#   CLOUD_DISPATCH_TOKEN — fine-grained PAT scoped ONLY to gethouston/cloud, with
+#   the minimum permission GitHub requires for the repository_dispatch endpoint.
+#   Used solely to notify cloud that a new image is ready; carries no GCP access.
+
+name: Agent Store Image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "agentstore/**"
+      - "packages/agentstore-contract/**"
+      - ".github/workflows/agentstore-image.yml"
+  workflow_dispatch:
+
+# One build at a time. cancel-in-progress is false so an in-flight build + push +
+# dispatch is never interrupted mid-way — newer runs queue behind it.
+concurrency:
+  group: agentstore-image
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT: gethouston
+  REGION: us-east1
+  REGISTRY: us-east1-docker.pkg.dev/gethouston/houston
+
+jobs:
+  build:
+    name: Build & push agentstore
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (contract)
+        run: pnpm --filter @houston/agentstore-contract typecheck
+
+      - name: Test (contract)
+        run: pnpm --filter @houston/agentstore-contract test
+
+      - name: Typecheck (agentstore)
+        run: pnpm --filter houston-agentstore typecheck
+
+      - name: Test (agentstore)
+        run: pnpm --filter houston-agentstore test
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy-engine@gethouston.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build & push agentstore
+        id: build
+        env:
+          # The Firebase web config, inlined into the client bundle at build time
+          # (NEXT_PUBLIC_*). Public web identifiers, so they live as repo
+          # Variables (not Secrets) — a project change is one edit in repo
+          # settings. store.gethouston.ai signs users in against this project.
+          FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+        run: |
+          # Fail loudly rather than ship a bundle with a dead sign-in surface:
+          # a missing NEXT_PUBLIC_FIREBASE_* value inlines as undefined and
+          # silently kills publish/claim/me/admin in production.
+          for var in FIREBASE_API_KEY FIREBASE_AUTH_DOMAIN FIREBASE_PROJECT_ID; do
+            if [ -z "${!var}" ]; then
+              echo "::error::$var is empty — set the NEXT_PUBLIC_FIREBASE_* repository variables" >&2
+              exit 1
+            fi
+          done
+          SHA_TAG="${{ env.REGISTRY }}/agentstore:${{ github.sha }}"
+          LATEST_TAG="${{ env.REGISTRY }}/agentstore:latest"
+          # Repo-root build context so the pnpm workspace (pnpm-lock.yaml +
+          # sibling workspace:* packages: @houston/agentstore-contract,
+          # @houston-ai/core, @houston/design-tokens) is reachable; the Dockerfile
+          # lives in agentstore/. Mirrors engine-pod-image.yml (-f selfhost/… .).
+          docker build \
+            --platform linux/amd64 \
+            --build-arg NEXT_PUBLIC_FIREBASE_API_KEY="$FIREBASE_API_KEY" \
+            --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="$FIREBASE_AUTH_DOMAIN" \
+            --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
+            -f agentstore/Dockerfile \
+            -t "$SHA_TAG" -t "$LATEST_TAG" \
+            .
+          docker push "$SHA_TAG"
+          docker push "$LATEST_TAG"
+          # Resolve the immutable digest of the pushed image for the roll below.
+          DIGEST=$(gcloud artifacts docker images describe "$SHA_TAG" \
+            --format='value(image_summary.digest)')
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Published tags
+        run: |
+          echo "Published:"
+          echo "  ${{ env.REGISTRY }}/agentstore:${{ github.sha }}"
+          echo "  ${{ env.REGISTRY }}/agentstore:latest"
+          echo "  digest ${{ steps.build.outputs.digest }}"
+
+      # Notify cloud that a new agentstore image is ready — cloud owns the cluster
+      # credentials and performs the actual roll. Payload shape matches
+      # cloud/roll-engine.yml's client_payload (image, digest, sha, run_number),
+      # which roll-agentstore.yml consumes there. Only on main: a
+      # workflow_dispatch on a debug branch just publishes the image.
+      - name: Notify cloud repo
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.CLOUD_DISPATCH_TOKEN }}
+        run: |
+          IMAGE="${{ env.REGISTRY }}/agentstore@${{ steps.build.outputs.digest }}"
+          gh api repos/gethouston/cloud/dispatches \
+            -f event_type='roll-agentstore' \
+            -F "client_payload[digest]=${{ steps.build.outputs.digest }}" \
+            -F "client_payload[image]=$IMAGE" \
+            -F "client_payload[sha]=${{ github.sha }}" \
+            -F "client_payload[run_number]=${{ github.run_number }}"

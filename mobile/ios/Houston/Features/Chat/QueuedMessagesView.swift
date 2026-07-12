@@ -35,18 +35,18 @@ private struct QueuedBubble: View {
       Spacer(minLength: Spacing.space40)
       Image(systemName: "clock")
         .font(Typography.caption)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
       VStack(alignment: .trailing, spacing: Spacing.space2) {
         Text(message.text)
           .font(Typography.body)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
           .padding(.horizontal, Spacing.space16)
           .padding(.vertical, Spacing.space10)
-          .background(theme.muted, in: RoundedRectangle(cornerRadius: ChatMetrics.bubbleRadius))
+          .background(theme.chipSubtle, in: RoundedRectangle(cornerRadius: ChatMetrics.bubbleRadius))
         if let names = message.attachmentNames, !names.isEmpty {
           Text(names.joined(separator: ", "))
             .font(Typography.caption)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
             .lineLimit(1)
         }
       }

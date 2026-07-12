@@ -12,6 +12,7 @@ import {
   DEFAULT_ROW_LABELS,
   DEFAULT_SCHEDULE_LABELS,
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
+  DEFAULT_TRIGGER_LABELS,
 } from "./labels";
 import { NewRoutineMenu } from "./new-routine-menu";
 import { RoutineDraftRow } from "./routine-draft-row";
@@ -44,6 +45,12 @@ export function RoutinesGridList({
   scheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
   scheduleLabels = DEFAULT_SCHEDULE_LABELS,
+  triggerLabels = DEFAULT_TRIGGER_LABELS,
+  newDraftVariant = "schedule",
+  renderTriggerEditor,
+  triggerStatuses = {},
+  triggerSummaries = {},
+  onReconnectTrigger,
   locale = "en-US",
 }: RoutinesGridProps & { sorted: Routine[] }) {
   const l = labels;
@@ -54,7 +61,7 @@ export function RoutinesGridList({
       <div className="max-w-3xl mx-auto px-6 py-7">
         {/* Description + CTA. No page title — tab handles it. */}
         <div className="flex items-center justify-between gap-4 mb-4">
-          <p className="text-xs text-muted-foreground max-w-md">
+          <p className="text-xs text-ink-muted max-w-md">
             {l.descriptionShort}
           </p>
           {hasCreate && (
@@ -85,21 +92,28 @@ export function RoutinesGridList({
             leads, then draft chats, then real routines. */}
         <div
           className={cn(
-            "rounded-xl bg-secondary overflow-hidden",
-            "divide-y divide-border/60",
+            "rounded-xl bg-chip overflow-hidden",
+            "divide-y divide-line/60",
           )}
         >
           {newDraft && (
             <div className="px-5 py-4">
               <RoutineRowEdit
-                initial={{ name: "", prompt: "", schedule: "0 9 * * *" }}
+                initial={
+                  newDraftVariant === "event"
+                    ? { name: "", prompt: "" }
+                    : { name: "", prompt: "", schedule: "0 9 * * *" }
+                }
                 requireContent
                 saveLabel={l.createRoutine}
                 autoFocusName
+                variant={newDraftVariant}
                 onSave={newDraft.onSave}
                 onCancel={newDraft.onCancel}
+                renderTriggerEditor={renderTriggerEditor}
                 labels={rowLabels}
                 scheduleLabels={scheduleLabels}
+                triggerLabels={triggerLabels}
                 locale={locale}
               />
             </div>
@@ -145,10 +159,19 @@ export function RoutinesGridList({
                     ? () => onStopRun(routine.id, lastRun.id)
                     : undefined
                 }
+                renderTriggerEditor={renderTriggerEditor}
+                triggerStatus={triggerStatuses[routine.id]}
+                triggerSummary={triggerSummaries[routine.id]}
+                onReconnectTrigger={
+                  onReconnectTrigger
+                    ? () => onReconnectTrigger(routine.id)
+                    : undefined
+                }
                 labels={rowLabels}
                 scheduleSummaryLabels={scheduleSummaryLabels}
                 nextFireLabels={nextFireLabels}
                 scheduleLabels={scheduleLabels}
+                triggerLabels={triggerLabels}
                 locale={locale}
               />
             );

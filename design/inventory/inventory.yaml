@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 13
+version: 23
 
 components:
   - id: agent-avatar
@@ -129,7 +129,7 @@ components:
     title: Provider error card
     purpose: Actionable card for a provider failure in the feed (auth, quota, rate-limit).
     anatomy: [icon-bubble, title, reason, primary-action, secondary-action]
-    states: [unauthenticated, quota-exhausted, rate-limited, model-unavailable, transient]
+    states: [unauthenticated, quota-exhausted, rate-limited, model-unavailable, context-overflow, transient]
     variants: [single-action-row-card, multi-action-error-card]
     behavior: >-
       provider_error feed items carry a typed ProviderError (cause/scope). The
@@ -229,40 +229,136 @@ components:
 
   - id: interaction-card
     title: Interaction card
-    purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections), floating ABOVE the always-mounted composer.
-    anatomy: [stepper-header, progress-label, question-title, dismiss-action, option-row, keycap-hint, free-text-input, footer-nav, back-action, skip-action, next-action, signin-step, connect-step]
-    states: [single-step, multi-step, with-options, single-option, free-text-only, signin-step, connect-step, revisited, abandoned, disabled]
+    purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections, then action approvals), floating ABOVE the always-mounted composer.
+    anatomy: [modal-shell, modal-header, step-title, step-title-icon, pager, dismiss-action, option-row, number-badge, recommended-chip, selected-arrow, free-text-escape-field, pencil-adornment, footer-row, unified-decline, decline-esc-hint, step-cta, return-key-glyph, app-logo, integration-name, reason-line, app-description, connected-check, waiting-note]
+    states: [single-step, multi-step, with-options, single-option, recommended-option, free-text-only, signin-step, connect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled]
     variants: [choice, open-ended, signin, connect, mixed-sequence]
     behavior: >-
       Rendered from the turn's pending interaction (steps[]: 1-3 question steps,
-      then at most one signin step, then connect steps). Shows ONE step at a
-      time. Header: a quiet "Step N of M" progress micro-label (only when total
-      > 1) above the question rendered as the card's title, plus a dismiss X
-      top-right that abandons the WHOLE sequence; a single-step sequence shows
-      the bare title with no progress chrome. The card never replaces the
-      composer: the real composer stays mounted below it, and sending a fresh
-      message there abandons the sequence exactly like the X. Question step:
-      single-select option rows (role=radio), each a raised hairline-bordered
-      row whose 1-based position shows as a right-aligned keycap-style keyboard
-      hint (hidden when the step has only one option); pressing that number key
-      selects the row whenever focus is not in a text field; a free-text input
-      styled as the list's last row is the "something else" escape hatch (so
-      option lists never need an "Other" row). ALL step navigation lives in one
-      footer row, Back leftmost: Back and Skip are quiet ghost buttons (Back
-      revisits the previous already-reached step; Skip advances past the
-      current question without answering, omitted from the composed reply) and
-      Next is the single filled pill that commits the answer; a revisited
-      signin/connect step shows a bare filled Forward instead (its own card
-      cannot re-fire completion). Signin/connect steps render app-supplied
-      cards (ui/chat stays auth/Composio-unaware) and advance on their
-      completion callbacks. Revisiting a question pre-selects its prior answer
-      (accent border + subtle tint); re-answering replaces it. A single
-      question-with-options step keeps the one-tap feel (click = answer =
-      complete). After the last step, emits each answered question in step
-      order; the consumer encodes the structured interaction-answers message.
-      Disabled while another turn is active.
-    a11y: one step announced at a time, its question read as the card title; option rows are role=radio in a radiogroup, keyboard-selectable by the keycap-hinted position number and visible at rest (no hover gate); free-text input always present on question steps; Back/Skip/Next are labeled buttons in one predictable footer with Next the lone filled action; dismiss X labeled; the progress micro-label carries the full localized "Step N of M" copy as visible text.
+      then at most one signin step, then connect steps, then approval steps —
+      approvals land LAST, since approving an action happens after its toolkit is
+      connected; the approval step's body is its own component,
+      interaction-approval-card, injected via a `renderApproval` prop the way
+      signin/connect bodies are). Every step is composed in
+      ONE shared modal shell (InteractionModal) that owns the chrome — a white
+      card with a hairline border and roomy padding (the reference "Coworker card"
+      look; a card-surface same colour as the page, set apart by border + soft
+      shadow, theme-aware tokens keep dark mode sane), a HEADER row, a body that
+      fades on step swap, and a right-aligned FOOTER row — so the question
+      stepper, the sign-in step, and the connect step are structurally identical
+      and differ only in the title / body / footer nodes they hand in. Shows ONE
+      step at a time. Weight is restrained across the whole family: color tone
+      (foreground vs muted) carries the hierarchy — the modal title and the option
+      / identity labels are REGULAR weight, never bold; the only font-medium left
+      is the Recommended chip, the number badge digit, and the filled CTA label.
+      Header: the step TITLE left (a question's text, or a signin/connect step's
+      '(icon) NAME' identity lockup — the real brand logo beside the integration
+      NAME, "Google Sheets" / "Houston") with, top-RIGHT on the same row, a
+      compact "N of M" pager whose chevrons ARE the Back/Forward navigation
+      (hidden for a single-step sequence) plus a dismiss X that abandons the WHOLE
+      sequence. This '(icon) NAME' header title is the family convention for ANY
+      card carrying an app/brand icon (the action-approval card adopts it too;
+      suggest-reusable and plan-ready have no app icon and keep their own
+      headers). The card never replaces the composer: the real composer stays
+      mounted below it, and sending a fresh message there abandons the sequence
+      exactly like the X. Dismissing (the X, or typing a fresh message) is a user
+      INTERRUPTION, not an answer: it persists a durable `stopped` marker on the
+      turn AND clears the pending interaction, so the sequence retires and the
+      MODEL LEARNS NOTHING from the abandonment (a reload renders the standard
+      "Stopped by user" line, never the card again — live and reload settle
+      identically); the mid-turn race is refused (409). Question step: single-select option rows (role=radio)
+      each carry a LEFT circular number badge (the digit is the keyboard shortcut
+      — pressing it selects the row whenever focus is not in a text field), a
+      regular-weight label, and an optional soft "Recommended" chip (at most one
+      option). The option's wire `description` is TOLERATED but NOT rendered — the
+      label + chip say enough. The row surface is transparent until hover/selected,
+      when it fills a soft grey and reveals a trailing arrow; clicking answers and
+      advances. Below the option rows is the free-text ESCAPE FIELD — an honest
+      input: a hairline field border (the design system's border-input/bg-transparent
+      vocabulary, shared with the composer and every Input), a text cursor over its
+      whole surface, and a border-ring focus state, so its resting look promises
+      the text input it becomes. A pencil adornment sits at left and a placeholder
+      ("None of these..." when options are present, else a neutral answer prompt);
+      clicking anywhere in the field focuses it, typing expands it and Enter
+      submits. The card-wide decline is NOT in this field — it lives in the
+      FOOTER. Every step kind shares ONE unified decline word ("Not now") + Esc
+      keycap hint in the footer: a question's footer is that decline ALONE (no
+      primary CTA — clicking an option is the advance), while a signin/connect
+      footer places it beside the single filled CTA pill ("Connect" / "Sign in",
+      with a return-key glyph). Skip/decline advances past ANY step kind without
+      completing it — a skipped question is omitted from the composed reply, while
+      a skipped signin/connect is a recorded fact the reply states ("Skipped
+      connecting {app}." / "Skipped signing in.") so the agent hears the decline
+      instead of re-requesting. Esc declines on every kind (Enter also fires the
+      CTA on signin/connect); a capture-phase handler pre-empts the global
+      Escape-closes-the-panel shortcut when it acts, and yields to the composer
+      while a field has focus. Navigation is the header pager for every kind, so
+      the body carries no nav button: ui/chat (auth/Composio-unaware) owns the
+      shell, the pager, and the callbacks (StepFooterApi { revisited, onSkip } +
+      StepChrome { pager, onDismiss, dismissLabel, disabled }); the app owns the
+      reactive signin/connect body + CTA, rendering its own InteractionModal wired
+      with that chrome. While an OAuth hand-off is in flight the CTA shows a
+      connecting spinner and a quiet muted line reminds the user their browser is
+      waiting; an already-connected app swaps its two-field body for a calm check
+      + "Connected" and self-reports to advance (live frontier only). "Not now"
+      travels WITH the CTA: the decline affordance is present wherever the CTA is
+      (frontier AND a reconsidered skip), so no step is ever a dead end with only
+      a Connect/Sign in button. Revisiting an already-reached signin/connect step
+      (walked back via the pager) splits by its FINAL state: a COMPLETED step
+      shows the calm connected/signed-in state with NO footer (the pager's forward
+      chevron is the only way onward, since its card cannot re-fire completion); a
+      SKIPPED step is still actionable, so its CTA (and its paired "Not now")
+      return — letting the user RECONSIDER and connect / sign in after all, or
+      decline again (the pager forward "keeps it skipped"). Revisiting a question
+      pre-selects its prior answer (soft-grey fill); re-answering replaces it. A
+      single question-with-options step keeps the one-tap feel (click = answer =
+      complete). After the last step, emits each answered question in step order;
+      the consumer encodes the structured interaction-answers message, appending
+      the signed-in/connected status lines and the skipped-step facts derived
+      from each step's FINAL outcome — a step skipped then reconsidered reports
+      "Connected {app}." (never a stale "Skipped connecting {app}."), and no step
+      is named twice. Disabled while another turn is active.
+    a11y: one step announced at a time, its question read as the modal title; option rows are role=radio in a radiogroup, keyboard-selectable by the left number badge's position digit and visible at rest (no hover gate), showing label + optional Recommended chip only (no description); the free-text escape field (a bordered text input with a leading pencil adornment, no embedded control) is always present on question steps; the pager's Back/Forward chevrons and the dismiss X are labeled icon buttons; the footer's unified decline is a labeled button with an Esc keycap hint on every kind, and signin/connect add a labeled filled CTA (Enter fires it, Esc declines); the "N of M" pager copy is visible text.
     since: 4
+
+  - id: interaction-approval-card
+    title: Interaction approval card
+    purpose: The approval STEP inside the interaction stepper, shown when an integration action needs the user's go-ahead before it runs; asks "Allow {app} to {action}?" and records allow-once / always-allow / deny.
+    anatomy: [app-logo, integration-name, permission-question, param-rows, decided-state, footer-row, always-allow, deny, allow-once, return-key-glyph, decline-esc-hint]
+    states: [frontier, with-params, no-params, decided-allowed, decided-denied, revisited, disabled]
+    variants: [approval]
+    behavior: >-
+      An `approval` step (protocol `InteractionStep` kind=approval: `{toolkit,
+      action, params, paramsHash}`) rides the SAME shared InteractionModal shell
+      as the signin/connect steps (member of the interaction-card family,
+      inventory v20). The host mints it: the sandbox execute route gates an
+      integration `execute` and answers 409 `approval_required` with a
+      display-ready payload; the runtime records the step on the turn holder
+      (`recordApproval`, deduped by paramsHash, ids a1..aN, approvals LAST) and
+      returns queued-pending text rather than an error. The app supplies the body
+      via ui/chat's `renderApproval` prop (ui/chat stays Composio-unaware, exactly
+      like renderConnect/renderSignin). The modal TITLE is the '(icon) NAME'
+      identity lockup (real brand logo beside the integration name, REGULAR
+      weight); the body leads with the permission question in foreground tone, then
+      the tool's params as a two-column dt/dd block (muted key, foreground value —
+      omitted when there are none). THREE decisions from the FOOTER: Always allow
+      (outline, pushed LEFT), Deny (outline, Esc), Allow once (filled, Enter,
+      return-key glyph). Unlike a connect/signin "Not now" (which merely defers),
+      Deny is a real decision the model is TOLD about: resolution writes the store
+      (allow-once → a one-shot ticket POST keyed by paramsHash; always-allow →
+      the always-allow POST) then advances, and the composed reply names the RAW
+      action slug ("Approved: go ahead with {ACTION}." / "I chose not to allow
+      {ACTION}. Do not retry it; continue without it.") so the model can re-issue
+      the EXACT call. Enter=allow-once / Esc=deny run capture-phase and are inert
+      while a text field has focus (the real composer keeps its keys) and once the
+      step is decided or disabled. The header X is NOT a Deny — it interrupts the
+      WHOLE sequence (see interaction-card's dismiss semantics). A REVISITED
+      already-decided step shows the calm decided state (check + "Allowed", or a
+      muted "Denied") with NO footer; the pager's forward chevron is onward.
+      Autopilot AUTO-APPROVES the gate (the runtime forwards `x-houston-turn-mode:
+      auto`), so this card never appears on an auto turn.
+    a11y: the permission question reads as the prominent line under the app-identity title; param rows are a dt/dd description list (muted key, foreground value); the three decisions are labeled footer buttons (Deny carries an Esc keycap hint, Allow once a return-key glyph); a revisited decided step exposes its outcome as text (no color-only), no footer.
+    since: 21
 
   - id: plan-ready-card
     title: Plan-ready card
@@ -289,10 +385,10 @@ components:
 
   - id: suggest-reusable-card
     title: Suggest-reusable card
-    purpose: In-chat offer shown when the agent finishes a mission cleanly and calls suggest_reusable; proposes saving the just-completed work as a reusable Skill or a scheduled Routine, floating above the always-mounted composer.
+    purpose: In-chat offer shown when the agent finishes a mission cleanly and, in its end-of-task reflection step, calls suggest_reusable; proposes saving the just-completed work as a reusable Skill, a scheduled Routine, or a Learning to remember, floating above the always-mounted composer.
     anatomy: [eyebrow, proposed-title, rationale, save-row, not-now-row]
     states: [default, disabled]
-    variants: [skill, routine]
+    variants: [skill, routine, learning]
     behavior: >-
       Rendered from a pending interaction carrying a single suggest_reusable
       step (reusableKind, title, rationale) on the terminal done frame. Unlike
@@ -301,12 +397,12 @@ components:
       waiting). Shows the eyebrow, the model-proposed name prominently, and the
       model's one-line rationale, then two full-width rows in the plan-ready
       card's idiom: Save (Sparkles icon for a Skill, CalendarClock for a
-      Routine; label names the kind) sends a follow-up message asking the agent
-      to actually write the Skill/Routine, always as an execute turn regardless
-      of the composer's pinned mode, dismissing the offer locally first; "Not
-      now" dismisses locally. Typing in the composer instead abandons it like
-      any interaction card. Dismissal is per-offer (step id) and per
-      conversation.
+      Routine, Lightbulb for a Learning; label names the kind) sends a
+      follow-up message asking the agent to actually write the
+      Skill/Routine/Learning, always as an execute turn regardless of the
+      composer's pinned mode, dismissing the offer locally first; "Not now"
+      dismisses locally. Typing in the composer instead abandons it like any
+      interaction card. Dismissal is per-offer (step id) and per conversation.
     a11y: eyebrow then title then rationale read in order; two labeled row buttons visible at rest (no hover gate), keyboard-reachable; disabled marks the surface aria-disabled and gates both rows.
     since: 12
 
@@ -381,28 +477,45 @@ components:
 
   - id: routine-row
     title: Routine row
-    purpose: A scheduled routine in the routines list -- schedule summary + next run.
+    purpose: >-
+      A routine in the routines list -- schedule summary + next run (cron), or
+      event summary + trigger status (event-driven).
     anatomy:
       [
         status-icon,
         name,
-        schedule-summary,
+        schedule-or-event-summary,
+        trigger-status-badge,
         next-fire,
         enabled-toggle,
         quick-actions-menu,
       ]
-    states: [enabled, disabled, running, paused, last-run-failed, renaming]
-    variants: [list-row, grid-card]
+    states:
+      [
+        enabled,
+        disabled,
+        running,
+        paused,
+        last-run-failed,
+        renaming,
+        trigger-active,
+        trigger-pending,
+        trigger-paused,
+        trigger-error,
+      ]
+    variants: [list-row, grid-card, schedule-driven, event-driven]
     behavior: >-
-      Shows a humanized schedule summary and the next fire time; the toggle
-      enables/disables the routine. The leading status icon reflects the live
-      run state (waiting / running / usage-limit paused / last-run-failed).
-      The quick-actions menu renames inline and deletes behind a confirm
-      dialog. Authoring the schedule is a separate surface.
+      Shows a humanized schedule summary + next fire time (cron routine) or a
+      humanized event summary + live provisioning status badge (event-driven:
+      active / pending / paused-disconnected / paused-revoked / error, with a
+      one-click reconnect on a disconnected account). The toggle enables/disables
+      the routine; the leading status icon reflects the live run state. The
+      quick-actions menu renames inline and deletes behind a confirm dialog.
+      Authoring the schedule or event trigger is a separate surface.
     a11y: >-
-      listitem role; toggle labeled with the routine name; next-run as text;
-      status never color-alone (icon shape + row text carry it); menu trigger
-      always visible with an accessible label.
+      listitem role; toggle labeled with the routine name; next-run/status as
+      text; status never color-alone (icon shape + row text carry it); menu
+      trigger always visible with an accessible label.
     since: 1
 
   - id: skill-row

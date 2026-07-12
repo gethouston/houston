@@ -148,8 +148,25 @@ export function useLocalePreference(): LocalePreferenceState {
 
   const mutation = useMutation({
     mutationFn: async (locale: SupportedLocale) => {
-      await tauriPreferences.set(LOCALE_PREF_KEY, locale);
+      // Apply the language locally FIRST — the i18n swap + boot cache is the
+      // authoritative, always-available result of the pick, so the picker can
+      // advance on it. A failure here is genuinely unexpected (in-memory i18next
+      // swap) and rejects, so the picker surfaces it instead of stranding.
       await changeLocale(locale);
+      // Persist the account preference best-effort. On the FIRST-RUN language
+      // gate this write runs before the user is fully signed in, so a hosted
+      // gateway can reject it (no bearer yet); the choice is already applied and
+      // cached locally and re-syncs once authed, so a persist failure must NOT
+      // block the pick (that dead-ended "Continue does nothing"). Log it — never
+      // silently swallow — matching this file's apply-effect policy.
+      try {
+        await tauriPreferences.set(LOCALE_PREF_KEY, locale);
+      } catch (err) {
+        logger.error(
+          "[locale] persisting the language choice failed; applied locally, will re-sync once signed in",
+          err instanceof Error ? err.message : String(err),
+        );
+      }
       return locale;
     },
     onSuccess: (locale) => {

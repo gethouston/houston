@@ -2,72 +2,180 @@
   "color": {
     "base": {
       "$type": "color",
-      "white": { "$value": "#ffffff" },
-      "black": { "$value": "#000000" },
-      "transparent": { "$value": "transparent" }
+      "white": {
+        "$value": "#ffffff"
+      },
+      "black": {
+        "$value": "#000000"
+      },
+      "transparent": {
+        "$value": "transparent"
+      }
     },
     "neutral": {
       "$type": "color",
-      "150": { "$value": "#e5e5e5" },
-      "200": { "$value": "#e3e3e3" },
-      "250": { "$value": "#d4d4d4" },
-      "500": { "$value": "#8e8e8e" },
-      "450": { "$value": "#9a9a9a" },
-      "650": { "$value": "#424242" },
-      "700": { "$value": "#383838" },
-      "750": { "$value": "#2c2c2b" },
-      "800": { "$value": "#1e1e1e" },
-      "900": { "$value": "#141414" },
-      "950": { "$value": "#0d0d0d" }
+      "50": {
+        "$value": "#fcfcfc"
+      },
+      "100": {
+        "$value": "#efefef"
+      },
+      "150": {
+        "$value": "#e5e5e5"
+      },
+      "200": {
+        "$value": "#e3e3e3"
+      },
+      "250": {
+        "$value": "#d4d4d4"
+      },
+      "500": {
+        "$value": "#8e8e8e"
+      },
+      "450": {
+        "$value": "#9a9a9a"
+      },
+      "650": {
+        "$value": "#424242"
+      },
+      "700": {
+        "$value": "#383838"
+      },
+      "750": {
+        "$value": "#2c2c2b"
+      },
+      "800": {
+        "$value": "#1e1e1e"
+      },
+      "900": {
+        "$value": "#141414"
+      },
+      "950": {
+        "$value": "#0d0d0d"
+      }
     },
     "cool": {
       "$type": "color",
-      "ink": { "$value": "#14161d" },
-      "gutter": { "$value": "#eef1f7" },
-      "gutter-dark": { "$value": "#141416" },
-      "surface": { "$value": "#f4f6fc" }
+      "ink": {
+        "$value": "#14161d"
+      },
+      "gutter": {
+        "$value": "#eef1f7"
+      },
+      "gutter-dark": {
+        "$value": "#141416"
+      },
+      "surface": {
+        "$value": "#f4f6fc"
+      }
     },
     "space": {
       "$type": "color",
-      "canvas": { "$value": "#07080f" },
-      "canvas-glow": { "$value": "#101430" },
-      "nebula-1": { "$value": "#38346b" },
-      "nebula-2": { "$value": "#14384c" },
-      "nebula-core": { "$value": "#b8b2e8" },
-      "nebula-dust": { "$value": "#04050c" },
-      "star": { "$value": "#dce2f7" },
-      "star-warm": { "$value": "#f6e7cd" },
-      "haze": { "$value": "#8f9bc9" },
-      "foreground": { "$value": "#ffffff" },
-      "foreground-muted": { "$value": "#8e96b8" }
+      "canvas": {
+        "$value": "#07080f"
+      },
+      "canvas-glow": {
+        "$value": "#101430"
+      },
+      "nebula-1": {
+        "$value": "#38346b"
+      },
+      "nebula-2": {
+        "$value": "#14384c"
+      },
+      "nebula-core": {
+        "$value": "#b8b2e8"
+      },
+      "nebula-dust": {
+        "$value": "#04050c"
+      },
+      "star": {
+        "$value": "#dce2f7"
+      },
+      "star-warm": {
+        "$value": "#f6e7cd"
+      },
+      "haze": {
+        "$value": "#8f9bc9"
+      },
+      "foreground": {
+        "$value": "#ffffff"
+      },
+      "foreground-muted": {
+        "$value": "#8e96b8"
+      }
     },
     "status": {
       "$type": "color",
-      "success": { "$value": "#00a240" },
-      "success-bright": { "$value": "#22c55e" },
-      "warning": { "$value": "#e0ac00" },
-      "warning-bright": { "$value": "#eab308" },
-      "danger": { "$value": "#e02e2a" },
-      "danger-bright": { "$value": "#ef4444" },
-      "highlight-ink-light": { "$value": "#3f2d00" },
-      "highlight-ink-dark": { "$value": "#fde68a" }
+      "success": {
+        "$value": "#00a240"
+      },
+      "success-bright": {
+        "$value": "#22c55e"
+      },
+      "warning": {
+        "$value": "#e0ac00"
+      },
+      "warning-bright": {
+        "$value": "#eab308"
+      },
+      "danger": {
+        "$value": "#e02e2a"
+      },
+      "danger-bright": {
+        "$value": "#ef4444"
+      },
+      "highlight-ink-light": {
+        "$value": "#3f2d00"
+      },
+      "highlight-ink-dark": {
+        "$value": "#fde68a"
+      }
     },
     "agent": {
       "$type": "color",
-      "charcoal": { "$value": "#1a1a1a" },
-      "charcoal-bright": { "$value": "#d4d4d4" },
-      "forest": { "$value": "#1b6b3a" },
-      "forest-bright": { "$value": "#4ade80" },
-      "navy": { "$value": "#1e4d8c" },
-      "navy-bright": { "$value": "#60a5fa" },
-      "purple": { "$value": "#5b21b6" },
-      "purple-bright": { "$value": "#a78bfa" },
-      "crimson": { "$value": "#a3261a" },
-      "crimson-bright": { "$value": "#f87171" },
-      "orange": { "$value": "#b45309" },
-      "orange-bright": { "$value": "#fb923c" },
-      "golden": { "$value": "#a16207" },
-      "golden-bright": { "$value": "#fbbf24" }
+      "charcoal": {
+        "$value": "#1a1a1a"
+      },
+      "charcoal-bright": {
+        "$value": "#d4d4d4"
+      },
+      "forest": {
+        "$value": "#1b6b3a"
+      },
+      "forest-bright": {
+        "$value": "#4ade80"
+      },
+      "navy": {
+        "$value": "#1e4d8c"
+      },
+      "navy-bright": {
+        "$value": "#60a5fa"
+      },
+      "purple": {
+        "$value": "#5b21b6"
+      },
+      "purple-bright": {
+        "$value": "#a78bfa"
+      },
+      "crimson": {
+        "$value": "#a3261a"
+      },
+      "crimson-bright": {
+        "$value": "#f87171"
+      },
+      "orange": {
+        "$value": "#b45309"
+      },
+      "orange-bright": {
+        "$value": "#fb923c"
+      },
+      "golden": {
+        "$value": "#a16207"
+      },
+      "golden-bright": {
+        "$value": "#fbbf24"
+      }
     }
   }
 }

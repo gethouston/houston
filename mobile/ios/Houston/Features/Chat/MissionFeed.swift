@@ -190,10 +190,10 @@ struct MissionFeed: View {
     Button(action: action) {
       Image(systemName: "chevron.down")
         .font(Typography.label)
-        .foregroundStyle(theme.foreground)
+        .foregroundStyle(theme.ink)
         .padding(Spacing.space10)
         .background(theme.card, in: Circle())
-        .overlay(Circle().strokeBorder(theme.border, lineWidth: 1))
+        .overlay(Circle().strokeBorder(theme.line, lineWidth: 1))
         .floatingChromeShadow()
     }
     .overlay(alignment: .topTrailing) {

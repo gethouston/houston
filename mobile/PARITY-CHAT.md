@@ -17,7 +17,7 @@ red/green-diff tool-result treatments, rich file-changes summary. Keep clean min
 Desktop: `app/src/components/use-chat-display-labels.tsx:53-58` — the Houston helmet glyph
 (`HoustonLogo`, `app/src/components/shell/agent-avatar.tsx:117-147`; same path as
 `HoustonHelmet` in ui/core/src/components/houston-avatar.tsx) at **size 20**, color
-**muted-foreground**, Tailwind **`animate-pulse`** = opacity 1→.5→1 over **2s cubic-bezier(.4,0,.6,1) infinite**, NO translation.
+**ink-muted**, Tailwind **`animate-pulse`** = opacity 1→.5→1 over **2s cubic-bezier(.4,0,.6,1) infinite**, NO translation.
 Placement (`ui/chat/src/chat-messages.tsx:219-229`): while a turn is in flight and NOT yet
 streaming text, the pending assistant slot shows a left-aligned column: the shimmer status
 label ("Mission in progress...") stacked ABOVE the pulsing helmet. Helmet stays up through
@@ -29,15 +29,15 @@ The helmet is also the process-block header glyph at size 13 (see §5).
 ## 2. Composer (input)  — desktop: ui/chat/src/chat-input.tsx + ai-elements/prompt-input.tsx
 - NOT fixed; it is the last shrink-0 block under the scrolling feed. `max-w-3xl` (768) centered.
   iOS adds keyboard-avoidance + safe-area itself.
-- Surface: `bg-card` glass, `border-border/50` 1px, **rounded-[28px]**, `p-2.5` (10),
+- Surface: `bg-card` glass, `border-line/50` 1px, **rounded-[28px]**, `p-2.5` (10),
   rest shadow `0 1px 6px rgba(0,0,0,.06)`, focus-within deepens shadow only (no ring).
-- Textarea: `text-base`(16) `leading-[1.2]`, placeholder `muted-foreground/50`. Auto-grows to
+- Textarea: `text-base`(16) `leading-[1.2]`, placeholder `ink-muted/50`. Auto-grows to
   **max 208px** then scrolls; height animates 100ms ease-out. Enter sends, Shift+Enter newline.
   NOT disabled while a turn runs. Placeholder copy: new "What should the agent work on?",
   follow-up "Send a follow-up..." (desktop literals, ai-board.tsx:700-703).
-- Send button: `ArrowUpIcon` size-4 in a **36px circle** (`size-9 rounded-full`) `bg-primary
-  text-primary-foreground`; disabled = opacity-30 when ready && no content. Same spot always.
-- Stop (while running): the SAME 36px `bg-primary` circle morphs to a solid `SquareIcon`
+- Send button: `ArrowUpIcon` size-4 in a **36px circle** (`size-9 rounded-full`) `bg-action
+  text-action-text`; disabled = opacity-30 when ready && no content. Same spot always.
+- Stop (while running): the SAME 36px `bg-action` circle morphs to a solid `SquareIcon`
   size-3.5 fill, aria "Stop", calls onStop. No confirm. (Escape also stops on desktop.)
 - OMIT for v1: the leading + attach button, the Dictate mic, and the whole footer row
   (Skills pill / model selector / effort selector / context gauge). Deferred.
@@ -46,11 +46,11 @@ The helmet is also the process-block header glyph at size 13 (see §5).
   Dictate mic, Skills pill, and context gauge stay deferred.
 
 ## 3. Messages — desktop: ui/chat/src/ai-elements/message.tsx
-- User bubble: right, `ml-auto max-w-[70%]`, `rounded-[22px] bg-muted px-4 py-2.5
-  text-foreground text-base leading-6`. **NO tail, no avatar.**
+- User bubble: right, `ml-auto max-w-[70%]`, `rounded-[22px] bg-chip-subtle px-4 py-2.5
+  text-ink text-base leading-6`. **NO tail, no avatar.**
   (iOS today: near-black primary bubble + WhatsApp tail — recolor to muted, drop the tail, r=22.)
   **iOS SUPERSEDED (§8): the user bubble now carries an in-bubble bottom-right timestamp.**
-- Assistant: **full-width, NO bubble/background/border/tail/avatar**, `text-foreground
+- Assistant: **full-width, NO bubble/background/border/tail/avatar**, `text-ink
   text-base leading-6`. (iOS today: card bubble — remove the bubble entirely.)
 - Markdown: desktop renders full markdown. iOS: build a native SwiftUI markdown view using
   `AttributedString(markdown:options:.init(interpretedSyntax:.full))` and render by walking
@@ -67,7 +67,7 @@ The helmet is also the process-block header glyph at size 13 (see §5).
 - thinking/_streaming + tool_call/tool_result → folded into ONE collapsible process block (§5).
   Copy: "Thinking..." (shimmer) / "Thought for {n} seconds" / "Thought for a few seconds".
 - provider_error → the typed ProviderErrorCard (keep iOS's; kind "cancelled" renders nothing).
-- system_message → centered `text-xs muted-foreground/60 italic`.
+- system_message → centered `text-xs ink-muted/60 italic`.
 - context_compacted → centered divider, "Earlier conversation summarized so the chat can keep going".
 - provider_switched → same divider, "Continued with {{provider}}"[", summarized to fit"].
 - file_changes → simple per-turn summary (keep iOS's minimal version; rich TurnFileSummary deferred).
@@ -79,7 +79,7 @@ The helmet is also the process-block header glyph at size 13 (see §5).
 Reasoning + tools collapse into one block, **collapsed by default** (auto-opens reasoning while
 streaming, closes ~1s after). Header = `ChatStatusLine` = HoustonHelmet size 13 + shimmer label:
 active pre-tool "Mission in progress...", active with a tool "Mission in progress: {action}"
-(present-tense tool verb), settled/collapsed "Mission log". `muted-foreground/65`, text-xs.
+(present-tense tool verb), settled/collapsed "Mission log". `ink-muted/65`, text-xs.
 Renders INLINE in the stream (no above-composer bar). "Mission log" is ONLY this settled header
 label — never a block that repeats the reply.
 Per-tool rows inside: lucide-equivalent icon by tool (Bash/Read/Edit/Write/Grep/Wrench) + tense
@@ -111,7 +111,7 @@ See `packages/sdk/BRIDGE.md` §7. `ts` is OPTIONAL: older data has none, so ever
 degrades gracefully (a flat, separator-less feed; no crash).
 
 - **In-bubble user timestamp** — bottom-right inside the user bubble (WhatsApp convention),
-  `Typography.caption`, `primaryFg` @ opacity `0.6` (`ChatMetrics.bubbleTimeOpacity`),
+  `Typography.caption`, `actionText` @ opacity `0.6` (`ChatMetrics.bubbleTimeOpacity`),
   `Date.FormatStyle(time: .shortened)` (locale clock: 3:45 PM / 15:45), rendered in the
   device's local time zone. A custom `TimedBubbleLayout` (`Layout`) places it inline on the
   last line, or drops it to its own bottom-right line when the block is full — never overlaps.
@@ -137,7 +137,7 @@ degrades gracefully (a flat, separator-less feed; no crash).
   returning to the bottom clears it. State: `UnreadCounter` (`ChatTimelineScroll.swift`).
 - **Title bar (principal)** — a WhatsApp-style bar: agent avatar (`HoustonAvatar`, 26pt) + the
   agent name (line 1, `bodyMedium`) + a status line (line 2, `caption`): "Working…" (shimmer,
-  `mutedFg`) while running, "Needs your attention" (`warning`) when settled needs-you, else
+  `inkMuted`) while running, "Needs your attention" (`warning`) when settled needs-you, else
   hidden. Derivation: `ChatTitleStatus.derive(running:boardStatus:)`. Files: `ChatTitleView.swift`,
   `ChatTitleStatus.swift`, `Strings.Chat.TitleBar`. The name is threaded via
   `ChatView(agentId:conversationId:title:agentName:)` (optional; Mission Control opens a chat by
@@ -157,7 +157,7 @@ pending. Optional: absent → confirmed, so every consumer degrades to a plain c
 
 - **Delivery ticks (clock → check)** — the in-bubble user timestamp gains a trailing tick glyph:
   `clock` (SF Symbol) while `pending`, `checkmark` once confirmed — WhatsApp's sending/sent cue.
-  Same `Typography.caption` + `primaryFg` @ `0.6` as the time, `.imageScale(.small)`, morphing via
+  Same `Typography.caption` + `actionText` @ `0.6` as the time, `.imageScale(.small)`, morphing via
   `.contentTransition(.symbolEffect(.replace))` + `.animation(.snappy(Motion.fast), value: pending)`.
   The tick renders only inside the time cluster (no `ts` → no tick). Pure selector:
   `ChatBubbleTick.symbolName(pending:)`. VoiceOver: `Strings.Chat.deliveryPending` / `.deliverySent`.

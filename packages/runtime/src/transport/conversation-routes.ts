@@ -1,6 +1,6 @@
 import { normalizeTurnMode } from "@houston/protocol";
 import type { ActingContext } from "../session/acting-context";
-import { evict } from "../session/bus";
+import { evict, isTurnRunning } from "../session/bus";
 import {
   cancelTurn,
   disposeConversation,
@@ -12,6 +12,7 @@ import {
   deleteConversation,
   getHistory,
   listConversations,
+  markConversationStopped,
   renameConversation,
 } from "../store/conversations";
 import { handleConversationEvents } from "./events-route";
@@ -38,7 +39,7 @@ export async function handleConversationRoute(
   }
 
   const convMatch = path.match(
-    /^\/conversations\/([^/]+)\/(messages|events|cancel|title)$/,
+    /^\/conversations\/([^/]+)\/(messages|events|cancel|dismiss-interaction|title)$/,
   );
   if (!convMatch) return false;
 
@@ -59,6 +60,20 @@ export async function handleConversationRoute(
   if (method === "POST" && action === "cancel") {
     const cancelled = await cancelTurn(id);
     json(res, 200, { ok: true, cancelled });
+    return true;
+  }
+  if (method === "POST" && action === "dismiss-interaction") {
+    // The card that triggers this is never shown mid-turn, so a running turn
+    // here means the user raced a live turn — answer 409 and let them Stop
+    // (which retires the turn AND stamps the durable stop) instead of writing a
+    // second marker behind the executing turn. Idle: append the stop marker,
+    // retiring the pending interaction exactly as a real Stop does.
+    if (isTurnRunning(id)) {
+      json(res, 409, { error: "turn running" });
+      return true;
+    }
+    markConversationStopped(id);
+    json(res, 200, { ok: true });
     return true;
   }
   if (method === "POST" && action === "title") {
@@ -131,6 +146,7 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     mode,
     workspaceContext,
     userContext,
+    displayText,
   } = await readJson(ctx.req);
   if (!text || typeof text !== "string") {
     json(ctx.res, 400, { error: "missing 'text'" });
@@ -179,6 +195,9 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     },
     acting,
     context,
+    // Presentation-only bubble text (never trusted into the model input): the
+    // model runs on `text`; this only changes what a history reload renders.
+    typeof displayText === "string" ? displayText : undefined,
   );
   json(ctx.res, 202, { ok: true, id });
 }

@@ -90,7 +90,7 @@ export function EventFeed({
     <div className="flex flex-col flex-1" style={{ maxHeight }}>
       {/* Filter bar */}
       {onFilterChange && (
-        <div className="shrink-0 border-b border-border">
+        <div className="shrink-0 border-b border-line">
           <EventFilter
             value={filter}
             onChange={onFilterChange}
@@ -110,7 +110,7 @@ export function EventFeed({
             description={emptyMessage ?? l.emptyDescription}
           />
         ) : (
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-line">
             <AnimatePresence initial={false}>
               {filteredEvents.map((event) => (
                 <motion.div
@@ -132,7 +132,7 @@ export function EventFeed({
 
         {loading && (
           <div className="flex items-center justify-center py-4">
-            <span className="text-xs text-muted-foreground">{l.loading}</span>
+            <span className="text-xs text-ink-muted">{l.loading}</span>
           </div>
         )}
       </div>

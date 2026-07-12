@@ -37,7 +37,7 @@ export function WorkspaceSection() {
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
         }}
-        className="w-52 rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none transition-all focus:ring-1 focus:ring-ring"
+        className="w-52 rounded-lg border border-line bg-input px-3 py-1.5 text-sm outline-none transition-all focus:ring-1 focus:ring-focus"
       />
     </SettingsControlRow>
   );

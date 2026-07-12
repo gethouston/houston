@@ -103,13 +103,11 @@ export function IntegrationsPolicy({
       )}
 
       <div className="mt-8 flex flex-col items-center gap-2">
-        <p className="text-xs text-muted-foreground">
-          {t("policyPage.perAgentNote")}
-        </p>
+        <p className="text-xs text-ink-muted">{t("policyPage.perAgentNote")}</p>
         <button
           type="button"
           onClick={openConnectedAccounts}
-          className="text-xs text-muted-foreground underline underline-offset-4 decoration-dotted transition-colors hover:text-foreground"
+          className="text-xs text-ink-muted underline underline-offset-4 decoration-dotted transition-colors hover:text-ink"
         >
           {t("policyPage.manageAccounts")}
         </button>

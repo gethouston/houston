@@ -1,21 +1,26 @@
+import { CatalogFilterSelect } from "@houston-ai/core";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDisconnectIntegration } from "../../hooks/queries";
 import {
   AppDetailSheet,
-  ConnectedAppsList,
-  ConnectedAppsListSkeleton,
-  ConnectMoreAppsSection,
-  categoryListView,
+  CustomIntegrationsSection,
+  catalogCategorySlugs,
+  categoryLabel,
   DisconnectAppDialog,
   INTEGRATION_PROVIDER,
   ReconnectBanner,
-  toolkitsInCategory,
+  SectionHeader,
+  UNCATEGORIZED,
   useConnectedApps,
   useConnectFlow,
   useConnectionSelection,
 } from "../integrations";
 import { PageHeader } from "../shell/page-shell";
+import { CatalogSearchField } from "./catalog-search-field";
+import { CategoryCatalog } from "./category-catalog";
+import { InstalledStrip } from "./installed-strip";
+import { RecoveryRow } from "./recovery-row";
 
 interface IntegrationsReadyProps {
   reconnectNotice: boolean;
@@ -23,22 +28,50 @@ interface IntegrationsReadyProps {
 }
 
 /**
- * The ready state of the global Integrations page (personal mode). Two
- * always-present sections: the apps the user has connected (a two-column grid of
- * cards, each opening the detail sheet, with pending / errored connections shown
- * full-width for recovery), then the full "Connect more apps" catalog so a
- * brand-new user immediately sees the 1000+ connectable apps. Per-agent access
- * now lives in Settings > Connected accounts, so the detail sheet here is
- * view + reconnect + disconnect only. ONE connect flow lives here (connect-only,
- * no auto-grant) and is handed to the catalog, the recovery callouts, and the
- * detail sheet so closing any of them never kills an in-flight OAuth poll.
+ * The ready state of the global Integrations page (personal mode) as the flat,
+ * airy "plane": a hero title + muted subtitle with the rounded catalog search in
+ * the header's trailing slot, then a calm vertical stack —
+ *
+ *  1. any interrupted-OAuth connections as quiet recovery rows (finish / remove),
+ *  2. an "Installed" strip of the apps already connected (icon tiles that open
+ *     the detail sheet), shown only when there is at least one,
+ *  3. the Custom integrations section, and
+ *  4. the full connectable catalog grouped into flat category sections.
+ *
+ * Connected apps never repeat in the catalog — {@link CategoryCatalog} excludes
+ * every connected toolkit, so the Installed strip is the single home for them.
+ * The page-level search threads only into the category catalog; the Installed
+ * strip stays unfiltered (it is identity, not discovery). Per-agent access lives
+ * in Settings > Connected accounts, so the detail sheet here is view + reconnect
+ * + disconnect only. ONE connect flow lives here (connect-only, no auto-grant)
+ * and is handed to the catalog, the recovery rows, and the detail sheet so
+ * closing any of them never kills an in-flight OAuth poll.
  */
 export function IntegrationsReady({
   reconnectNotice,
   dismissReconnect,
 }: IntegrationsReadyProps) {
   const { t } = useTranslation("integrations");
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("all");
   const apps = useConnectedApps();
+  // The category dropdown's options: "all" first, then the catalog's primary
+  // categories in section order, the uncategorized bucket labeled "Other".
+  const categoryOptions = useMemo(() => {
+    const connected = new Set(apps.connData.map((c) => c.toolkit));
+    return [
+      { value: "all", label: t("home.allCategories") },
+      ...catalogCategorySlugs({ catalog: apps.catalogData, connected }).map(
+        (slug) => ({
+          value: slug,
+          label:
+            slug === UNCATEGORIZED
+              ? t("home.otherCategory")
+              : categoryLabel(slug),
+        }),
+      ),
+    ];
+  }, [apps.catalogData, apps.connData, t]);
   const connectFlow = useConnectFlow({ autoGrant: false });
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const {
@@ -51,36 +84,28 @@ export function IntegrationsReady({
     closeDisconnect,
   } = useConnectionSelection(apps);
 
-  // View-only category filter (composes with the catalog's own search). One
-  // selection filters BOTH the connected grid and the "Connect more" catalog.
-  const [category, setCategory] = useState("all");
-
-  const hasConnections = apps.connData.length > 0;
-
-  // Narrow the connected rows to the picked category the same way the catalog
-  // narrows below, so one control filters the whole page.
-  const inCat = useMemo(
-    () => toolkitsInCategory(apps.catalogData, category),
-    [apps.catalogData, category],
-  );
-  const activeInCat = inCat
-    ? apps.activeRows.filter((r) => inCat.has(r.connection.toolkit))
-    : apps.activeRows;
-  const recoveringInCat = inCat
-    ? apps.recoveringRows.filter((r) => inCat.has(r.connection.toolkit))
-    : apps.recoveringRows;
-  const connectedView = categoryListView({
-    visibleCount: activeInCat.length + recoveringInCat.length,
-    hasAny: hasConnections,
-    categoryFiltered: category !== "all",
-  });
-
   return (
     <>
       <PageHeader
         title={t("home.title")}
         subtitle={t("home.description")}
-        className="mb-6"
+        trailing={
+          <div className="flex items-center gap-2">
+            <CatalogSearchField
+              value={query}
+              onChange={setQuery}
+              label={t("home.searchPlaceholder")}
+              className="w-52 sm:w-60"
+            />
+            <CatalogFilterSelect
+              value={category}
+              onChange={setCategory}
+              label={t("home.categoryFilter")}
+              options={categoryOptions}
+            />
+          </div>
+        }
+        className="mb-7"
       />
 
       {reconnectNotice && (
@@ -89,40 +114,45 @@ export function IntegrationsReady({
         </div>
       )}
 
+      {apps.recoveringRows.length > 0 && (
+        <div className="mb-8 space-y-2">
+          {apps.recoveringRows.map((row) => (
+            <RecoveryRow
+              key={row.connection.connectionId}
+              row={row}
+              connectFlow={connectFlow}
+              onRemove={() => disconnect.mutate(row.connection.toolkit)}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="space-y-8">
-        {(apps.isLoading || hasConnections) && (
-          <section>
-            <h3 className="mb-3 text-sm font-medium text-foreground">
-              {t("home.connectedTitle")}
-            </h3>
-            {apps.isLoading ? (
-              <ConnectedAppsListSkeleton />
-            ) : connectedView === "empty-category" ? (
-              <p className="rounded-xl bg-secondary px-6 py-10 text-center text-sm text-muted-foreground">
-                {t("home.connectedNoneInCategory")}
-              </p>
-            ) : (
-              <ConnectedAppsList
-                active={activeInCat}
-                recovering={recoveringInCat}
-                grantsSupported={apps.grantsSupported}
-                connectFlow={connectFlow}
-                columns={2}
-                onOpen={openConn}
-                onRemove={(toolkit) => disconnect.mutate(toolkit)}
+        {apps.isLoading ? (
+          <IntegrationsSkeleton />
+        ) : (
+          apps.activeRows.length > 0 && (
+            <section>
+              <SectionHeader
+                title={t("home.installedTitle")}
+                className="mb-4"
               />
-            )}
-          </section>
+              <InstalledStrip active={apps.activeRows} onOpen={openConn} />
+            </section>
+          )
         )}
 
-        <ConnectMoreAppsSection
-          catalog={apps.catalogData}
-          connections={apps.connData}
-          connectFlow={connectFlow}
-          category={category}
-          onCategoryChange={setCategory}
-          loading={apps.catalogLoading}
-        />
+        <CustomIntegrationsSection />
+
+        {!apps.isLoading && (
+          <CategoryCatalog
+            catalog={apps.catalogData}
+            connections={apps.connData}
+            connectFlow={connectFlow}
+            query={query}
+            category={category}
+          />
+        )}
       </div>
 
       {selectedConn && selectedApp && (
@@ -152,5 +182,27 @@ export function IntegrationsReady({
         }}
       />
     </>
+  );
+}
+
+/**
+ * A light placeholder standing in for the Installed strip and the category
+ * catalog while the connections + toolkit catalog settle: a row of tile
+ * placeholders over a few text bars. Decorative only, so it is `aria-hidden`.
+ */
+function IntegrationsSkeleton() {
+  return (
+    <div aria-hidden className="space-y-8">
+      <div className="flex gap-3">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="size-12 animate-pulse rounded-xl bg-chip" />
+        ))}
+      </div>
+      <div className="space-y-3">
+        <div className="h-4 w-32 animate-pulse rounded bg-chip" />
+        <div className="h-4 w-full max-w-md animate-pulse rounded bg-chip" />
+        <div className="h-4 w-full max-w-sm animate-pulse rounded bg-chip" />
+      </div>
+    </div>
   );
 }

@@ -70,7 +70,7 @@ export function AiHubPolicy() {
             }}
           />
 
-          <p className="mt-8 text-center text-xs text-muted-foreground">
+          <p className="mt-8 text-center text-xs text-ink-muted">
             {t("models.orgAllowlist.perAgentNote")}
           </p>
         </>

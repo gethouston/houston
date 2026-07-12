@@ -31,6 +31,9 @@ const mixed: PendingInteraction = {
 const signin: PendingInteraction = {
   steps: [{ kind: "signin", id: "s1", reason: "Sign in to keep going." }],
 };
+const credential: PendingInteraction = {
+  steps: [{ kind: "credential", id: "k1", toolkit: "acme" }],
+};
 const signinConnect: PendingInteraction = {
   steps: [
     { kind: "signin", id: "s1" },
@@ -41,6 +44,29 @@ const questionSignin: PendingInteraction = {
   steps: [
     { kind: "question", id: "q1", question: "Which account?" },
     { kind: "signin", id: "s1" },
+  ],
+};
+const approval: PendingInteraction = {
+  steps: [
+    {
+      kind: "approval",
+      id: "a1",
+      toolkit: "gmail",
+      action: "GMAIL_SEND_EMAIL",
+      paramsHash: "0123456789abcdef",
+    },
+  ],
+};
+const connectApproval: PendingInteraction = {
+  steps: [
+    { kind: "connect", id: "c1", toolkit: "gmail" },
+    {
+      kind: "approval",
+      id: "a1",
+      toolkit: "gmail",
+      action: "GMAIL_SEND_EMAIL",
+      paramsHash: "0123456789abcdef",
+    },
   ],
 };
 
@@ -164,6 +190,13 @@ describe("interactionNotificationBodyKey", () => {
     );
   });
 
+  it("maps a credential-only sequence to the credential body", () => {
+    strictEqual(
+      interactionNotificationBodyKey(credential),
+      "sessionComplete.credential",
+    );
+  });
+
   // Steps are ordered questions -> sign-in -> connections, so a signin+connect
   // sequence's FIRST unmet need is the sign-in.
   it("maps a signin+connect sequence to the signin body (sign-in first)", () => {
@@ -186,6 +219,22 @@ describe("interactionNotificationBodyKey", () => {
     strictEqual(
       interactionNotificationBodyKey(mixed),
       "sessionComplete.question",
+    );
+  });
+
+  it("maps an approval-only sequence to the approval body", () => {
+    strictEqual(
+      interactionNotificationBodyKey(approval),
+      "sessionComplete.approval",
+    );
+  });
+
+  // Steps are ordered connections -> approvals, so a connect+approval sequence's
+  // FIRST unmet need is the connect.
+  it("maps a connect+approval sequence to the connect body (connect first)", () => {
+    strictEqual(
+      interactionNotificationBodyKey(connectApproval),
+      "sessionComplete.connect",
     );
   });
 

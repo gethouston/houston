@@ -1,5 +1,9 @@
-import type { NewRoutine, Routine } from "@houston-ai/engine-client";
-import type { RoutineRun } from "@houston-ai/routines";
+import type {
+  NewRoutine,
+  Routine,
+  RoutineUpdate,
+} from "@houston-ai/engine-client";
+import type { RoutineEditPatch, RoutineRun } from "@houston-ai/routines";
 
 /**
  * Routines-tab view state: the list, an existing routine's full-page chat,
@@ -12,25 +16,35 @@ export type View =
   /** activityId null = the draft chat is still being created (show loading). */
   | { type: "chat-draft"; activityId: string | null };
 
-/** The three fields the inline editor collects, before defaults are applied. */
-export interface NewRoutinePatch {
-  name: string;
-  schedule: string;
-  prompt: string;
-}
-
 /**
  * Fill an inline-editor patch out to a full `NewRoutine`: a manually-created
  * routine is silent-by-default (only pings on attention), shares one ongoing
- * chat, and starts with no integrations.
+ * chat, and starts with no integrations. Its wake mechanism is exactly one of a
+ * cron `schedule` or an event `trigger` (C9), discriminated by the patch's wake.
  */
-export function newRoutineInput(patch: NewRoutinePatch): NewRoutine {
-  return {
-    ...patch,
+export function newRoutineInput(patch: RoutineEditPatch): NewRoutine {
+  const base = {
+    name: patch.name,
+    prompt: patch.prompt,
     suppress_when_silent: true,
-    chat_mode: "shared",
+    chat_mode: "shared" as const,
     integrations: [],
   };
+  return patch.wake.mode === "event"
+    ? { ...base, trigger: patch.wake.trigger }
+    : { ...base, schedule: patch.wake.schedule };
+}
+
+/**
+ * Map an editor patch to a `RoutineUpdate`. Switching to an event wake sends the
+ * `trigger`; switching to (or keeping) a schedule sends the cron AND clears any
+ * `trigger` (`null`) so the server's exactly-one invariant holds either way.
+ */
+export function routineUpdateFromPatch(patch: RoutineEditPatch): RoutineUpdate {
+  const base = { name: patch.name, prompt: patch.prompt };
+  return patch.wake.mode === "event"
+    ? { ...base, trigger: patch.wake.trigger }
+    : { ...base, schedule: patch.wake.schedule, trigger: null };
 }
 
 /**
@@ -100,6 +114,21 @@ export function resolvePendingActivity(
   }
   const loaded = routines !== undefined && chatSetup.activitiesLoaded;
   return loaded ? { action: "clear" } : { action: "wait" };
+}
+
+/**
+ * The routines list is ONE file holding both kinds (exactly one of
+ * `schedule`/`trigger` per routine, C9); the Routines and Reactions tabs are
+ * filtered views of it. Schedule-driven routines have no `trigger`; event-driven
+ * reactions have one.
+ */
+export function scheduleRoutines(routines: Routine[] | undefined): Routine[] {
+  return (routines ?? []).filter((r) => !r.trigger);
+}
+
+/** Event-driven reactions: the routines that wake on a `trigger`. */
+export function reactionRoutines(routines: Routine[] | undefined): Routine[] {
+  return (routines ?? []).filter((r) => !!r.trigger);
 }
 
 /** Most recent run per routine id, keyed by `routine_id`. */

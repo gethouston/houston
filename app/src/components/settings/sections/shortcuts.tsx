@@ -64,7 +64,7 @@ function Section({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">
         {title}
       </div>
       <div className="flex flex-col">
@@ -73,7 +73,7 @@ function Section({
             key={r.labelKey}
             className="flex items-center justify-between rounded-md py-2"
           >
-            <span className="text-sm text-foreground">{t(r.labelKey)}</span>
+            <span className="text-sm text-ink">{t(r.labelKey)}</span>
             <RowKbd row={r} />
           </div>
         ))}
@@ -89,7 +89,7 @@ export function ShortcutsSection() {
       <h2 className="text-lg font-semibold mb-1">
         {t("settings:shortcuts.title")}
       </h2>
-      <p className="text-sm text-muted-foreground mb-6">
+      <p className="text-sm text-ink-muted mb-6">
         {t("settings:shortcuts.description")}
       </p>
       <div className="flex flex-col gap-6">

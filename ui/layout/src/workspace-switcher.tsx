@@ -78,7 +78,7 @@ export function WorkspaceSwitcher({
               type="button"
               aria-label={expandLabel}
               onClick={onExpand}
-              className="group flex size-9 items-center justify-center rounded-lg bg-accent text-sm font-semibold text-foreground transition-colors hover:bg-accent/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="group flex size-9 items-center justify-center rounded-lg bg-hover text-sm font-semibold text-ink transition-colors hover:bg-hover/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
             >
               <span className="group-hover:hidden group-focus-visible:hidden">
                 {workspaceMonogram(currentName)}
@@ -106,7 +106,7 @@ export function WorkspaceSwitcher({
               type="button"
               aria-label={currentName}
               title={currentName}
-              className="flex size-9 items-center justify-center rounded-lg bg-accent text-sm font-semibold text-foreground transition-colors hover:bg-accent/80"
+              className="flex size-9 items-center justify-center rounded-lg bg-hover text-sm font-semibold text-ink transition-colors hover:bg-hover/80"
             >
               {workspaceMonogram(currentName)}
             </button>
@@ -126,10 +126,10 @@ export function WorkspaceSwitcher({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex items-center gap-1 text-sm font-medium text-foreground hover:bg-accent rounded-lg py-1.5 px-2.5 transition-colors flex-1 min-w-0"
+            className="flex items-center gap-1 text-sm font-medium text-ink hover:bg-hover rounded-lg py-1.5 px-2.5 transition-colors flex-1 min-w-0"
           >
             <span className="truncate">{currentName}</span>
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <ChevronDown className="h-3.5 w-3.5 text-ink-muted flex-shrink-0" />
           </button>
         </DropdownMenuTrigger>
         {menu}

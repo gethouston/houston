@@ -22,7 +22,7 @@ export function ProviderIcon({
     <span
       aria-hidden
       className={cn(
-        "flex items-center justify-center rounded-md bg-muted text-[0.7rem] font-bold text-muted-foreground",
+        "flex items-center justify-center rounded-md bg-chip-subtle text-[0.7rem] font-bold text-ink-muted",
         className,
       )}
     >

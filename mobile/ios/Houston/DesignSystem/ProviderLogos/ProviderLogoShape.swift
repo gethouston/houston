@@ -42,7 +42,7 @@ struct FilledProviderLogo: View {
 
     var body: some View {
         ProviderLogoShape(viewBox: viewBox, paths: paths)
-            .fill(color ?? theme.foreground, style: FillStyle(eoFill: eoFill))
+            .fill(color ?? theme.ink, style: FillStyle(eoFill: eoFill))
             .frame(width: size, height: size)
             .accessibilityHidden(true)
     }
@@ -69,12 +69,12 @@ struct StrokedProviderLogo: View {
             ZStack {
                 ProviderLogoShape(viewBox: viewBox, paths: paths, roundedRects: roundedRects)
                     .stroke(
-                        theme.foreground,
+                        theme.ink,
                         style: StrokeStyle(lineWidth: strokeWidth * scale, lineCap: .round, lineJoin: .round)
                     )
                 if !filledEllipses.isEmpty {
                     ProviderLogoShape(viewBox: viewBox, ellipses: filledEllipses)
-                        .fill(theme.foreground)
+                        .fill(theme.ink)
                 }
             }
         }

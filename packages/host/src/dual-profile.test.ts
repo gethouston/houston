@@ -455,10 +455,11 @@ test("the documented profile asymmetries are exactly the intended ones", async (
     ).json()) as Capabilities;
 
     // Each serves its own real profile constant (the single source of truth).
-    // Integration availability is CONFIG-driven, not a profile asymmetry: the
-    // local boot here wires no gateway/key, so it honestly serves [] (the
-    // cloud fixture passes the nominal constant straight through).
-    expect(lc).toEqual({ ...LOCAL_CAPABILITIES, integrations: [] });
+    // Composio availability is CONFIG-driven, not a profile asymmetry: the
+    // local boot here wires no gateway/key, so only the always-on key-free
+    // custom provider (HOU-550) is served (the cloud fixture passes the
+    // nominal constant straight through).
+    expect(lc).toEqual({ ...LOCAL_CAPABILITIES, integrations: ["custom"] });
     expect(cc).toEqual(CLOUD_CAPABILITIES);
     expect(CLOUD_CAPABILITIES.integrations).toEqual(
       LOCAL_CAPABILITIES.integrations,

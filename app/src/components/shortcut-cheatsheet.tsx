@@ -69,7 +69,7 @@ function Section({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">
         {title}
       </div>
       <div className="flex flex-col">
@@ -78,8 +78,8 @@ function Section({
             key={r.labelKey}
             className="flex items-center justify-between rounded-md py-2"
           >
-            <span className="text-sm text-foreground">{t(r.labelKey)}</span>
-            <kbd className="rounded-md border border-border bg-secondary px-2 py-0.5 font-mono text-xs text-foreground">
+            <span className="text-sm text-ink">{t(r.labelKey)}</span>
+            <kbd className="rounded-md border border-line bg-chip px-2 py-0.5 font-mono text-xs text-ink">
               {r.glyphs}
             </kbd>
           </div>

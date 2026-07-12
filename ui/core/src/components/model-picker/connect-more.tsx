@@ -15,7 +15,7 @@ export function ConnectMore({
       value="__connect_more__"
       keywords={[label]}
       onSelect={onSelect}
-      className="mt-1 border-t border-border/60 text-muted-foreground data-[selected=true]:text-foreground"
+      className="mt-1 border-t border-line/60 text-ink-muted data-[selected=true]:text-ink"
     >
       <Plus className="size-4 shrink-0" />
       {label}

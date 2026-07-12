@@ -150,6 +150,7 @@ export function streamTurn(
   tuning?: StreamTuning,
   suppressUserBubble?: boolean,
   pin?: TurnWirePin,
+  displayText?: string,
 ): Promise<void> {
   return sdkStreamTurn(
     engine,
@@ -163,6 +164,7 @@ export function streamTurn(
       tuning,
       suppressUserBubble,
       pin,
+      displayText,
     },
   );
 }

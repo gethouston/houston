@@ -12,34 +12,33 @@ export type { MyProfile } from "./queries/user-profiles-map";
  * The signed-in caller's ONE resolved identity — the single source every
  * self-face reads (sidebar user menu, account row, the agent header person
  * scope, Mission Control's person filter). Merges the caller's `profiles` row
- * over their session `user_metadata` via {@link resolveMyProfile}: an UPLOADED
- * avatar beats the provider (Google) photo, so replacing your picture updates it
- * everywhere at once.
+ * over their identity-session metadata (display name + provider photo) via
+ * {@link resolveMyProfile}. The Supabase `profiles` store retired with Supabase
+ * auth, so {@link useUserProfiles} is a stub returning an empty map today (the
+ * gateway profile store is a follow-up — see knowledge-base/auth-migration.md);
+ * the merge collapses to the session's displayName/photoUrl, and the seam is
+ * kept so a future row transparently wins once the gateway store lands.
  *
  * Reuses the batched {@link useUserProfiles} for the caller's own id (with
- * `alwaysEnabled`, since every signed-in user can upload an avatar), so it
- * shares ONE cache entry (`["user-profiles", myId]`) across all self-face
- * consumers AND is invalidated by the avatar-upload mutation the moment a new
- * picture lands — no remount, no refetch fan-out. The own-profile fetch runs
- * whenever there IS a session, INDEPENDENT of multiplayer, so an uploaded photo
- * shows up on desktop / personal-space hosts too (teammate face stacks stay
- * multiplayer-gated). Signed out, `useUserProfiles` stays disabled and this
- * returns `null`; when the profile row hasn't loaded yet it collapses to pure
- * metadata via {@link resolveMyProfile}.
+ * `alwaysEnabled`), so it shares ONE cache entry (`["user-profiles", myId]`)
+ * across all self-face consumers. Signed out, this returns `null`.
  */
 export function useMyProfile(): MyProfile | null {
   const { data: session } = useSession();
-  const user = session?.user ?? null;
-  const { profiles } = useUserProfiles(user ? [user.id] : [], {
+  const { profiles } = useUserProfiles(session ? [session.uid] : [], {
     alwaysEnabled: true,
   });
 
-  if (!user) return null;
+  if (!session) return null;
 
+  const metadata: SessionUserMeta = {
+    name: session.displayName ?? undefined,
+    avatar_url: session.photoUrl ?? undefined,
+  };
   return resolveMyProfile({
-    userId: user.id,
-    email: user.email,
-    metadata: (user.user_metadata ?? {}) as SessionUserMeta,
-    profile: profiles.get(user.id) ?? null,
+    userId: session.uid,
+    email: session.email,
+    metadata,
+    profile: profiles.get(session.uid) ?? null,
   });
 }

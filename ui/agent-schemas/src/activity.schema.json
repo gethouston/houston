@@ -42,7 +42,7 @@
       },
       "pending_interaction": {
         "type": "object",
-        "description": "The ordered steps this mission is waiting on the user for, walked one at a time: question steps first (at most 3), then at most one signin step, then connect steps.",
+        "description": "The ordered steps this mission is waiting on the user for, walked one at a time: question steps first (at most 3), then at most one signin step, then connect steps, then approval steps (last, since approving happens after connecting).",
         "required": ["steps"],
         "properties": {
           "steps": {
@@ -59,7 +59,8 @@
                     "signin",
                     "connect",
                     "plan_ready",
-                    "suggest_reusable"
+                    "suggest_reusable",
+                    "approval"
                   ]
                 },
                 "id": { "type": "string" },
@@ -71,7 +72,9 @@
                     "required": ["id", "label"],
                     "properties": {
                       "id": { "type": "string" },
-                      "label": { "type": "string" }
+                      "label": { "type": "string" },
+                      "description": { "type": "string" },
+                      "recommended": { "type": "boolean" }
                     }
                   }
                 },
@@ -83,7 +86,14 @@
                   "enum": ["skill", "routine"]
                 },
                 "title": { "type": "string" },
-                "rationale": { "type": "string" }
+                "rationale": { "type": "string" },
+                "action": { "type": "string" },
+                "params": {
+                  "type": "object",
+                  "additionalProperties": { "type": "string" }
+                },
+                "paramsOmitted": { "type": "number" },
+                "paramsHash": { "type": "string" }
               },
               "oneOf": [
                 {
@@ -104,6 +114,10 @@
                 {
                   "properties": { "kind": { "const": "suggest_reusable" } },
                   "required": ["reusableKind", "title", "rationale"]
+                },
+                {
+                  "properties": { "kind": { "const": "approval" } },
+                  "required": ["toolkit", "action", "paramsHash"]
                 }
               ]
             }

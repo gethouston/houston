@@ -117,14 +117,14 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
                 placeholder={t("apiKey.placeholder")}
-                className="w-full rounded-md border bg-background px-3 py-2 pr-10 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full rounded-md border bg-input px-3 py-2 pr-10 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-focus"
                 disabled={submitting}
               />
               <button
                 type="button"
                 onClick={() => setShow((v) => !v)}
                 aria-label={show ? t("apiKey.hide") : t("apiKey.show")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded"
               >
                 {show ? (
                   <EyeOff className="size-4" />
@@ -136,7 +136,7 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
           </div>
 
           {error && (
-            <p className="text-[12px] text-destructive" role="alert">
+            <p className="text-[12px] text-danger" role="alert">
               {error}
             </p>
           )}

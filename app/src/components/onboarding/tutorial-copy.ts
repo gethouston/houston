@@ -6,7 +6,6 @@
  * (their 1-based position) live in `lib/setup-steps.ts`; the rest are unnumbered
  * framing/celebration screens.
  *
- *  intro (overview of the steps)
  *  connect → aiConnected ✓        — Step 1: connect your AI (agent is created
  *                                    silently the instant the AI connects)
  *  connectEmail → emailConnected ✓ — Step 2: give it access to your email
@@ -22,7 +21,6 @@
  * emailChat.
  */
 export type OnboardingStep =
-  | "intro"
   | "connect"
   | "aiConnected"
   | "connectEmail"

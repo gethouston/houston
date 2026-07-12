@@ -17,7 +17,7 @@ struct IntegrationsView: View {
     content
       .navigationTitle(Strings.Integrations.title)
       .navigationBarTitleDisplayMode(.inline)
-      .background(theme.background)
+      .background(theme.input)
       .onAppear {
         if retention == nil { retention = model.retain() }
         if flow == nil {

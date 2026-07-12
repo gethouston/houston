@@ -13,13 +13,11 @@ export function RepoSelectionSummary({
 }) {
   return (
     <div className="flex items-center justify-between pt-1">
-      <p className="text-xs text-muted-foreground">
-        {labels.skillsFound(skillCount)}
-      </p>
+      <p className="text-xs text-ink-muted">{labels.skillsFound(skillCount)}</p>
       <button
         type="button"
         onClick={onToggleAll}
-        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        className="text-xs text-ink-muted hover:text-ink transition-colors"
       >
         {selectedCount === skillCount ? labels.deselectAll : labels.selectAll}
       </button>

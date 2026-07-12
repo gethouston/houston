@@ -9,7 +9,7 @@ import {
 import { AppCatalogGrid } from "./app-catalog-grid";
 import { appDisplay } from "./app-display";
 import { AppRow } from "./app-row";
-import { categoryListView, toolkitsInCategory } from "./model";
+import { categoryListView, toolkitsInCategory } from "./browse-model";
 
 /** i18n copy for {@link AllowlistEditor}; the consumer passes translated strings. */
 export interface AllowlistEditorCopy {
@@ -105,15 +105,11 @@ export function AllowlistEditor({
 
   return (
     <div>
-      <h2 className="mb-1 text-lg font-medium text-foreground">
-        {copy.question}
-      </h2>
-      <p className="mb-4 text-sm text-muted-foreground">{copy.policyHelper}</p>
+      <h2 className="mb-1 text-lg font-medium text-ink">{copy.question}</h2>
+      <p className="mb-4 text-sm text-ink-muted">{copy.policyHelper}</p>
 
       {readOnly && copy.readOnlyNote && (
-        <p className="mb-4 text-sm text-muted-foreground">
-          {copy.readOnlyNote}
-        </p>
+        <p className="mb-4 text-sm text-ink-muted">{copy.readOnlyNote}</p>
       )}
       <AccessChoice
         question={copy.question}
@@ -137,11 +133,11 @@ export function AllowlistEditor({
       {allowedToolkits !== null && (
         <div className="mt-6">
           <section className="mb-8">
-            <h3 className="mb-2 text-sm font-medium text-foreground">
+            <h3 className="mb-2 text-sm font-medium text-ink">
               {copy.allowedHeading}
             </h3>
             {allowedView !== "list" ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-ink-muted">
                 {allowedView === "empty-category"
                   ? copy.allowedEmptyCategory
                   : copy.allowedEmpty}
@@ -172,7 +168,7 @@ export function AllowlistEditor({
 
           {!readOnly && (
             <section>
-              <h3 className="mb-3 text-sm font-medium text-foreground">
+              <h3 className="mb-3 text-sm font-medium text-ink">
                 {copy.addHeading}
               </h3>
               <AppCatalogGrid

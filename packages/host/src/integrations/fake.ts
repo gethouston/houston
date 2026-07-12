@@ -32,7 +32,11 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   private seq = 0;
 
   constructor(
-    opts: { id?: string; toolkits?: Toolkit[]; actions?: ToolMatch[] } = {},
+    opts: {
+      id?: string;
+      toolkits?: Toolkit[];
+      actions?: ToolMatch[];
+    } = {},
   ) {
     this.id = opts.id ?? "fake";
     this.toolkits = opts.toolkits ?? [{ slug: "gmail", name: "Gmail" }];

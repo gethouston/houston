@@ -36,6 +36,16 @@ export type AnalyticsEventName =
   | "onboarding_completed"
   // One-time "reconnect your AI" moment after upgrading from the legacy build.
   | "migration_reconnect_completed"
+  // First-run cloud-migration wizard (HOU-719): the cloud desktop build offers
+  // to move the machine's OLD local data into the user's cloud agents.
+  | "cloud_migration_offered"
+  | "cloud_migration_backup_done"
+  | "cloud_migration_started"
+  | "cloud_migration_agent_done"
+  | "cloud_migration_agent_failed"
+  | "cloud_migration_completed"
+  | "cloud_migration_skipped"
+  | "cloud_migration_deferred"
   // Onboarding funnel (acquisition→activation) — one event per step the user
   // actually clears, so a single PostHog funnel can show where first-run drops
   // off (broken down by `app_os` for Mac vs Windows). Action-first: where a
@@ -62,13 +72,18 @@ export type AnalyticsEventName =
   | "agent_created"
   | "agent_installed_from_store"
   | "agent_shared"
+  | "agent_published"
   | "agent_imported"
+  // Fired when an agent's self-setup mission auto-starts after it is
+  // created/imported. Carries `source` (created vs imported).
+  | "agent_onboarding_started"
   | "chat_message_sent"
   | "chat_message_received"
   | "mission_created"
   // Feature adoption
   | "integration_connected"
   | "integration_disconnected"
+  | "custom_integration_started"
   | "skill_used"
   | "routine_scheduled"
   | "routine_executed"
@@ -108,12 +123,18 @@ type AnalyticsProperty =
   | "to_version"
   // Onboarding funnel
   | "locale"
-  | "step";
+  | "step"
+  // Cloud migration (payload sizes, where already known)
+  | "bytes";
 
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserIdentity = {
   email?: string | null;
-  /** ISO date (YYYY-MM-DD) from auth.users.created_at — acquisition cohort. */
+  /**
+   * ISO date (YYYY-MM-DD) acquisition cohort. The GCP Identity Platform
+   * session carries no created_at, so post-migration callers pass `null`
+   * and the signup_date person property is simply not stamped (harmless).
+   */
   signupDate?: string | null;
 };
 
@@ -139,6 +160,7 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "to_version",
   "locale",
   "step",
+  "bytes",
 ]);
 
 // Bootstrap PostHog at module load so a configured build can capture errors
@@ -150,12 +172,20 @@ function rawNavigatorPlatform() {
 }
 
 function baseSuperProps() {
+  // The web entry injects the runtime deploy environment on
+  // `window.__HOUSTON_DEPLOY_ENV__` (production / preview / development, derived
+  // from the hostname of the ONE promoted bundle). Attach it as a super property
+  // so preview traffic is filterable out of product metrics. Unset on the
+  // desktop, where `is_debug` already separates dev from release.
+  const deployEnv =
+    typeof window !== "undefined" ? window.__HOUSTON_DEPLOY_ENV__ : undefined;
   return {
     app_version: APP_VERSION,
     app_os: currentPlatformOs,
     os: rawNavigatorPlatform(),
     is_debug: import.meta.env.DEV,
     session_id: SESSION_ID,
+    ...(deployEnv ? { environment: deployEnv } : {}),
   };
 }
 
@@ -339,23 +369,26 @@ export const analytics = {
   },
 
   /**
-   * Tie the signed-in user's Supabase identity to their PostHog person.
+   * Tie the signed-in user's Firebase identity to their PostHog person.
    * Call on sign-in. Does two complementary things:
    *
-   * 1. `alias(userId)` — adds the Supabase user id as an alias of the current
+   * 1. `alias(userId)` — adds the Firebase UID as an alias of the current
    *    install_id person. The distinct_id STAYS install_id (so the website
    *    `/welcome` UTM bridge and the sequential onboarding funnel are untouched),
-   *    but because every device/reinstall aliases the SAME supabase id, PostHog
+   *    but because every device/reinstall aliases the SAME Firebase UID, PostHog
    *    stitches a human's separate per-device persons into ONE. alias is the call
    *    that merges; a second `identify()` with a new distinct_id is ignored once
    *    a person is identified, so identify is NOT a substitute here.
-   * 2. `setPersonProperties` — also stamps `supabase_user_id` (plus email `$set`,
-   *    signup_date `$set_once`) so the id is a queryable join key to Supabase,
-   *    not only an internal alias. Email is a person property for
+   * 2. `setPersonProperties` — also stamps `firebase_uid` (plus email `$set`,
+   *    signup_date `$set_once`) so the id is a queryable join key to the identity
+   *    platform, not only an internal alias. Email is a person property for
    *    lookup/filtering, never an event prop.
    *
-   * Finally flips the `auth_status` super property so every event going forward
-   * is tagged authenticated.
+   * Finally flips `auth_status` → "authenticated" and stamps `auth_platform`:
+   * "gcp" as super properties so every event going forward is tagged with the
+   * signed-in platform. Identity-platform discontinuity is ACCEPTED: the UID is
+   * a fresh Firebase UID (not the old Supabase id), so historical Supabase-id
+   * joins do not carry over — this is a fresh platform, by design.
    */
   identifyUser: (userId: string, identity?: UserIdentity) => {
     if (!KEY) return;
@@ -364,12 +397,16 @@ export const analytics = {
       posthog.alias(userId);
       posthog.setPersonProperties(
         {
-          supabase_user_id: userId,
+          firebase_uid: userId,
           ...(email ? { email } : {}),
         },
         identity?.signupDate ? { signup_date: identity.signupDate } : undefined,
       );
-      posthog.register({ ...baseSuperProps(), auth_status: "authenticated" });
+      posthog.register({
+        ...baseSuperProps(),
+        auth_status: "authenticated",
+        auth_platform: "gcp",
+      });
     } catch {
       // Analytics unavailable
     }
@@ -386,7 +423,15 @@ export const analytics = {
     }
   },
 
-  /** Reset to a fresh anonymous distinct_id. Call on sign-out. */
+  /**
+   * Reset to a fresh anonymous distinct_id. Call on sign-out.
+   *
+   * `posthog.reset()` clears all previously registered super properties, and we
+   * re-register only `baseSuperProps()` + `auth_status: "anonymous"`. Because
+   * `baseSuperProps()` intentionally omits `auth_platform` (the platform is only
+   * known post-sign-in), that property drops naturally here and never leaks
+   * across a sign-out — no explicit unset needed.
+   */
   reset: () => {
     if (!KEY) return;
     try {

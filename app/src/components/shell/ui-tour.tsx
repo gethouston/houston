@@ -261,7 +261,7 @@ export function UiTour({ steps, onDismiss }: UiTourProps) {
       ) : (
         <div
           aria-hidden
-          className="pointer-events-auto fixed inset-0 z-[60] bg-foreground/45"
+          className="pointer-events-auto fixed inset-0 z-[60] bg-ink/45"
         />
       )}
 
@@ -284,7 +284,7 @@ export function UiTour({ steps, onDismiss }: UiTourProps) {
           is no target. */}
       <div
         className={cn(
-          "fixed z-[60] rounded-2xl border border-foreground/5 bg-background p-5 shadow-[0_10px_40px_rgba(0,0,0,0.18)]",
+          "fixed z-[60] rounded-2xl border border-ink/5 bg-input p-5 shadow-[0_10px_40px_rgba(0,0,0,0.18)]",
         )}
         style={{
           top: tooltip.top,
@@ -294,7 +294,7 @@ export function UiTour({ steps, onDismiss }: UiTourProps) {
         role="dialog"
         aria-modal="true"
       >
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-ink-muted">
           {t("uiTour.counter", {
             current: index + 1,
             total: steps.length,
@@ -303,7 +303,7 @@ export function UiTour({ steps, onDismiss }: UiTourProps) {
         <h2 className="mt-2 text-[22px] font-normal leading-snug">
           {step.title}
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">{step.body}</p>
+        <p className="mt-2 text-sm text-ink-muted">{step.body}</p>
         <div className="mt-5 flex items-center justify-between gap-2">
           {!isLast ? (
             <Button

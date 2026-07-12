@@ -10,6 +10,8 @@
  *  - `AbortController` / `AbortSignal` — the resume/turn/observe/global-events
  *    loops abort streams with these.
  *  - `TextEncoder` / `TextDecoder` — SSE parsing decodes UTF-8 stream chunks.
+ *  - `URLSearchParams`: `runtime-client`'s `startLogin` builds the
+ *    `providers/login` query string with it (see `url-search-params.ts`).
  *
  * NOT shimmed (must come from the host — see BRIDGE.md "Host polyfills"):
  *  - `setTimeout` / `clearTimeout` / `setInterval` / `clearInterval` — timers
@@ -17,6 +19,8 @@
  *  - `crypto.getRandomValues` (optional; nonce falls back to `Math.random`) and
  *    `console` (optional diagnostics).
  */
+
+import { URLSearchParamsShim } from "./url-search-params";
 
 interface GlobalWithShims {
   [key: string]: unknown;
@@ -186,4 +190,6 @@ export function installGlobalShims(): void {
   if (typeof g.AbortSignal === "undefined") g.AbortSignal = AbortSignalShim;
   if (typeof g.TextDecoder === "undefined") g.TextDecoder = TextDecoderShim;
   if (typeof g.TextEncoder === "undefined") g.TextEncoder = TextEncoderShim;
+  if (typeof g.URLSearchParams === "undefined")
+    g.URLSearchParams = URLSearchParamsShim;
 }

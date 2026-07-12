@@ -39,6 +39,6 @@ struct MissionControlPager: View {
     }
     .listStyle(.plain)
     .scrollContentBackground(.hidden)
-    .background(theme.background)
+    .background(theme.input)
   }
 }

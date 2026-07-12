@@ -109,9 +109,9 @@ export function ProviderCopilotConnectDialog({
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 placeholder={t("copilot.domainPlaceholder")}
-                className="w-full rounded-md border bg-background px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full rounded-md border bg-input px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-focus"
               />
-              <p className="text-[12px] text-muted-foreground">
+              <p className="text-[12px] text-ink-muted">
                 {t("copilot.domainHint")}
               </p>
             </div>
@@ -147,9 +147,7 @@ function PlanOption({
   return (
     <label
       className={`flex items-start gap-2.5 rounded-lg border p-3 cursor-pointer transition-colors ${
-        selected
-          ? "border-ring bg-secondary"
-          : "border-input hover:bg-secondary/50"
+        selected ? "border-focus bg-chip" : "border-line-input hover:bg-chip/50"
       }`}
     >
       <input
@@ -157,15 +155,11 @@ function PlanOption({
         name="copilot-plan"
         checked={selected}
         onChange={() => onSelect(plan)}
-        className="mt-0.5 size-4 shrink-0 accent-foreground"
+        className="mt-0.5 size-4 shrink-0 hover-text"
       />
       <span className="min-w-0">
-        <span className="block text-[13px] font-medium text-foreground">
-          {title}
-        </span>
-        <span className="block text-[12px] text-muted-foreground">
-          {description}
-        </span>
+        <span className="block text-[13px] font-medium text-ink">{title}</span>
+        <span className="block text-[12px] text-ink-muted">{description}</span>
       </span>
     </label>
   );

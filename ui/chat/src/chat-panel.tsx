@@ -112,7 +112,7 @@ export function ChatPanel({
   return (
     <div
       ref={panelRef}
-      className="relative flex flex-1 flex-col min-h-0 overflow-hidden"
+      className="relative flex flex-1 flex-col min-h-0 overflow-hidden bg-background dark:bg-transparent"
       {...dropProps}
     >
       <ChatDropOverlay
@@ -125,7 +125,7 @@ export function ChatPanel({
           <button
             type="button"
             onClick={onBack}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+            className="text-sm text-ink-muted hover:text-ink transition-colors flex items-center gap-1"
           >
             <span>←</span> Back to chats
           </button>

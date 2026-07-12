@@ -26,12 +26,12 @@ export function MarkdownCodeBlock({
   const code = childrenToText(children);
   const language = parseLanguage(className);
   return (
-    <div className="my-4 flex w-full flex-col overflow-hidden rounded-xl border border-border bg-sidebar p-2">
-      <div className="flex h-8 items-center gap-1.5 text-muted-foreground text-xs">
+    <div className="my-4 flex w-full flex-col overflow-hidden rounded-xl border border-line bg-sidebar p-2">
+      <div className="flex h-8 items-center gap-1.5 text-ink-muted text-xs">
         <span className="ml-1 font-mono lowercase">{language}</span>
         <CodeBlockActions code={code} />
       </div>
-      <pre className="select-text overflow-x-auto rounded-md border border-border bg-background p-4 text-sm">
+      <pre className="select-text overflow-x-auto rounded-md border border-line bg-input p-4 text-sm">
         <code className={className}>{code.trimEnd()}</code>
       </pre>
     </div>

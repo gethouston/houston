@@ -64,6 +64,25 @@ describe("embeddable bundle in a bare vm", () => {
     expect(typeof g.create).toBe("function");
   });
 
+  it("installs a working URLSearchParams when the engine lacks it", () => {
+    // The bare vm context omits URLSearchParams (JavaScriptCore parity); the
+    // bundle must self-shim it so runtime-client's providers/login path works.
+    const context = createContext(documentedPolyfills());
+    expect(
+      (context as { URLSearchParams?: unknown }).URLSearchParams,
+    ).toBeUndefined();
+    runInContext(bundle, context);
+    const ctor = (
+      context as { URLSearchParams: new (init?: unknown) => unknown }
+    ).URLSearchParams;
+    expect(typeof ctor).toBe("function");
+    const serialized = runInContext(
+      "const p = new URLSearchParams(); p.set('deviceAuth', 'false'); p.set('enterpriseDomain', 'acme.ghe.com'); p.toString();",
+      context,
+    );
+    expect(serialized).toBe("deviceAuth=false&enterpriseDomain=acme.ghe.com");
+  });
+
   it("round-trips a command with only the documented polyfills present", async () => {
     const context = createContext(documentedPolyfills());
     runInContext(bundle, context);

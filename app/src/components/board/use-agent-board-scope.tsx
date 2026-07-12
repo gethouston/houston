@@ -30,7 +30,7 @@ export function useAgentBoardScope({
 }): KanbanItem[] {
   const { scope } = useAgentPersonScope();
   const { data: session } = useSession();
-  const selfId = session?.user?.id ?? "";
+  const selfId = session?.uid ?? "";
 
   const peopleById = useAgentBoardPeople(path);
   // Join server-stamped attribution onto the activity-derived cards (which carry

@@ -1,4 +1,3 @@
-import type { User } from "@supabase/supabase-js";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useSession } from "../hooks/use-session";
 import {
@@ -20,12 +19,14 @@ import { useWorkspaceStore } from "../stores/workspaces";
  */
 export function usePersonFilterMode(): {
   mode: PersonFilterMode;
-  user: User | null;
+  user: { id: string; email: string | null } | null;
 } {
   const { capabilities } = useCapabilities();
   const { data: session } = useSession();
   const currentWorkspace = useWorkspaceStore((s) => s.current);
-  const user = session?.user ?? null;
+  const user = session
+    ? { id: session.uid, email: session.email || null }
+    : null;
 
   const mode = personFilterMode({
     hasSession: !!user,

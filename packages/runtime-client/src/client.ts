@@ -63,6 +63,13 @@ export interface SendOptions {
    * like `effort`).
    */
   mode?: "execute" | "plan" | "auto";
+  /**
+   * What renders as the user's chat bubble, when it must differ from `text`
+   * (the real prompt the model runs on). Presentation-only: persisted alongside
+   * the user message so a history reload renders `displayText ?? content`, while
+   * the model always received `text`. Omitted when the bubble and prompt match.
+   */
+  displayText?: string;
   signal?: AbortSignal;
 }
 
@@ -230,6 +237,17 @@ export class HoustonEngineClient {
       { method: "POST" },
     );
   }
+  /**
+   * Append the durable stop marker to retire a pending interaction (the stepper
+   * X / abandon). Answers 409 if a turn is running — the card is never shown
+   * mid-turn, so a race means the user should Stop instead.
+   */
+  dismissInteraction(id: string) {
+    return this.json<{ ok: boolean }>(
+      `/conversations/${encodeURIComponent(id)}/dismiss-interaction`,
+      { method: "POST" },
+    );
+  }
   renameConversation(id: string, title: string) {
     return this.json<{ ok: boolean }>(
       `/conversations/${encodeURIComponent(id)}`,
@@ -310,6 +328,7 @@ export class HoustonEngineClient {
         model: opts.model,
         effort: opts.effort,
         mode: opts.mode,
+        displayText: opts.displayText,
       }),
       signal: opts.signal,
     });

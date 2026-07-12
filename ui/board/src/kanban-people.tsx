@@ -141,7 +141,7 @@ export function KanbanPeople({
                 title={`+${extra}`}
                 className={cn(
                   chipClass,
-                  "relative flex shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground ring-2 ring-background transition-colors hover:bg-muted-foreground/20 cursor-pointer",
+                  "relative flex shrink-0 items-center justify-center rounded-full bg-chip-subtle text-ink-muted ring-2 ring-input transition-colors hover:bg-ink-muted/20 cursor-pointer",
                 )}
               >
                 +{extra}
@@ -163,7 +163,7 @@ export function KanbanPeople({
                       faceSize="size-6"
                       textSize="text-[10px]"
                     />
-                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink">
                       {person.label}
                     </span>
                   </div>

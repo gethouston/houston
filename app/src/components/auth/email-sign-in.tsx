@@ -1,9 +1,10 @@
 import { Button, Input } from "@houston-ai/core";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { sendEmailOtp, verifyEmailOtp } from "../../lib/auth";
 import { logger } from "../../lib/logger";
-import { prettifyAuthError } from "./auth-errors";
+import { authErrorKey } from "./auth-errors";
 
 type Step = "email" | "code";
 
@@ -17,6 +18,7 @@ type Step = "email" | "code";
  * email path sits neatly under the OAuth buttons in the sign-in panel.
  */
 export function EmailSignIn() {
+  const { t } = useTranslation("errors");
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -33,9 +35,7 @@ export function EmailSignIn() {
       setStep("code");
     } catch (err) {
       logger.error(`[auth] email otp send failed: ${err}`);
-      setError(
-        prettifyAuthError(err instanceof Error ? err.message : String(err)),
-      );
+      setError(t(authErrorKey(err)));
     } finally {
       setPending(false);
     }
@@ -51,9 +51,7 @@ export function EmailSignIn() {
       // Success: the session write flips the auth gate and unmounts us.
     } catch (err) {
       logger.error(`[auth] email otp verify failed: ${err}`);
-      setError(
-        prettifyAuthError(err instanceof Error ? err.message : String(err)),
-      );
+      setError(t(authErrorKey(err)));
     } finally {
       setPending(false);
     }
@@ -97,11 +95,11 @@ export function EmailSignIn() {
             maxLength={6}
             placeholder="123456"
             autoFocus
-            className="h-10 flex-1 rounded-full border-foreground/40 px-4 text-center tracking-[0.3em]"
+            className="h-10 flex-1 rounded-full border-ink/40 px-4 text-center tracking-[0.3em]"
           />
           <SendButton disabled={pending || code.trim().length === 0} />
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-ink-muted">
           We sent a 6-digit code to {email}.
         </p>
         <div className="flex items-center gap-4">
@@ -109,7 +107,7 @@ export function EmailSignIn() {
             type="button"
             disabled={pending}
             onClick={() => void sendCode()}
-            className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+            className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-50"
           >
             Resend code
           </button>
@@ -120,12 +118,12 @@ export function EmailSignIn() {
               setCode("");
               setError(null);
             }}
-            className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline"
           >
             Use a different email
           </button>
         </div>
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
       </form>
     );
   }
@@ -139,11 +137,11 @@ export function EmailSignIn() {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           placeholder="you@example.com"
-          className="h-10 flex-1 rounded-full border-foreground/40 px-4"
+          className="h-10 flex-1 rounded-full border-ink/40 px-4"
         />
         <SendButton disabled={pending || email.trim().length === 0} />
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </form>
   );
 }

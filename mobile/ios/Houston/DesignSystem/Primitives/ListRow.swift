@@ -14,7 +14,7 @@ struct ListRow<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Spacing.space12)
             .padding(.vertical, Spacing.space10)
-            .background(isSelected ? theme.accent : Color.clear)
+            .background(isSelected ? theme.hover : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
     }

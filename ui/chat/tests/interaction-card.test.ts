@@ -1,7 +1,9 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  advanceApproval,
   advanceConnect,
+  advanceCredential,
   advanceSignin,
   answerWithOption,
   answerWithText,
@@ -19,9 +21,10 @@ import {
   optionLabel,
   selectedOptionId,
   setDraft,
-  skipQuestion,
+  skipStep,
   toCompletedAnswers,
 } from "../src/interaction-card-logic.ts";
+import { humanizeActionSlug } from "../src/interaction-card-model.ts";
 
 const Q1: ChatInteractionStep = {
   kind: "question",
@@ -47,6 +50,21 @@ const SIGNIN: ChatInteractionStep = {
   kind: "signin",
   id: "s1",
   reason: "to use connected apps",
+};
+const APPROVAL: ChatInteractionStep = {
+  kind: "approval",
+  id: "a1",
+  toolkit: "gmail",
+  action: "GMAIL_SEND_DRAFT",
+  params: { To: "john@example.com" },
+  paramsHash: "hash-1",
+};
+
+const CREDENTIAL: ChatInteractionStep = {
+  kind: "credential",
+  id: "k1",
+  toolkit: "acme",
+  reason: "to reach the Acme API",
 };
 
 describe("hasSelectableOptions", () => {
@@ -91,8 +109,8 @@ describe("isLastStep", () => {
 });
 
 describe("defaultProgress", () => {
-  it("formats 'Step <current> of <total>'", () => {
-    assert.equal(defaultProgress(1, 3), "Step 1 of 3");
+  it("formats '<current> of <total>'", () => {
+    assert.equal(defaultProgress(1, 3), "1 of 3");
   });
 });
 
@@ -192,11 +210,11 @@ describe("stepper flow: question, question, connect", () => {
   });
 });
 
-describe("skipQuestion", () => {
+describe("skipStep", () => {
   const steps = [Q1, Q2, CONNECT];
 
   it("skips a middle question and omits it from the completed answers", () => {
-    let s = skipQuestion(initialStepperState(), steps).state; // skip Q1 -> Q2
+    let s = skipStep(initialStepperState(), steps).state; // skip Q1 -> Q2
     assert.equal(s.current, 1);
     assert.equal(s.answers.q1, undefined);
     s = setDraft(s, "q2", "Running late");
@@ -210,22 +228,41 @@ describe("skipQuestion", () => {
   it("skipping the LAST question still completes with the prior answers", () => {
     const s = answerWithOption(initialStepperState(), [Q1, Q2], "o1").state;
     assert.equal(s.current, 1); // on Q2, the last step
-    const done = skipQuestion(s, [Q1, Q2]);
+    const done = skipStep(s, [Q1, Q2]);
     assert.deepEqual(done.completed, [
       { stepId: "q1", question: "Who is it for?", answer: "John" },
     ]);
   });
 
-  it("is a no-op on a non-question step", () => {
+  it("skips a connect step, advancing the frontier without an answer", () => {
+    const s = answerWithOption(
+      initialStepperState(),
+      [Q1, CONNECT, SIGNIN],
+      "o1",
+    ).state;
+    assert.equal(s.current, 1); // on the connect step
+    const t = skipStep(s, [Q1, CONNECT, SIGNIN]);
+    assert.equal(t.completed, undefined);
+    assert.equal(t.state.current, 2); // -> signin step
+    assert.equal(t.state.reached, 2); // frontier advanced (Back/Forward work)
+  });
+
+  it("skipping the LAST connect step completes with the prior answers", () => {
     const s = answerWithOption(
       initialStepperState(),
       [Q1, CONNECT],
       "o1",
     ).state;
-    assert.equal(s.current, 1); // on the connect step
-    const t = skipQuestion(s, [Q1, CONNECT]);
-    assert.equal(t.state, s);
-    assert.equal(t.completed, undefined);
+    assert.equal(s.current, 1); // on the connect step, the last step
+    const done = skipStep(s, [Q1, CONNECT]);
+    assert.deepEqual(done.completed, [
+      { stepId: "q1", question: "Who is it for?", answer: "John" },
+    ]);
+  });
+
+  it("skipping a lone signin step completes with no answers", () => {
+    const done = skipStep(initialStepperState(), [SIGNIN]);
+    assert.deepEqual(done.completed, []);
   });
 });
 
@@ -251,7 +288,7 @@ describe("stepper flow: question, signin, connect", () => {
 
   it("advances the progress counter across the signin step", () => {
     // "N of X" is derived from current+1 / total; signin counts like any step.
-    assert.equal(defaultProgress(2, steps.length), "Step 2 of 3");
+    assert.equal(defaultProgress(2, steps.length), "2 of 3");
   });
 });
 
@@ -267,6 +304,22 @@ describe("advanceSignin", () => {
 
   it("contributes no answer for a signin-only sequence", () => {
     const done = advanceSignin(initialStepperState(), [SIGNIN]);
+    assert.deepEqual(done.completed, []);
+  });
+});
+
+describe("advanceCredential", () => {
+  it("completes when the credential step is the last step", () => {
+    const s = setDraft(initialStepperState(), "q2", "hi");
+    const afterQ = answerWithText(s, [Q2, CREDENTIAL]).state; // -> credential
+    const done = advanceCredential(afterQ, [Q2, CREDENTIAL]);
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "hi" },
+    ]);
+  });
+
+  it("contributes no answer for a credential-only sequence", () => {
+    const done = advanceCredential(initialStepperState(), [CREDENTIAL]);
     assert.deepEqual(done.completed, []);
   });
 });
@@ -349,6 +402,63 @@ describe("forward navigation past a completed step", () => {
   });
 });
 
+describe("reconsider a skipped step", () => {
+  const CONNECT_B: ChatInteractionStep = {
+    kind: "connect",
+    id: "c2",
+    toolkit: "slack",
+  };
+  // [question, connect A, connect B]. Skipping a NON-terminal connect advances
+  // the frontier; walking Back onto it must leave it revisitable AND still
+  // advanceable — the state machine cannot strand a skipped step, so the user
+  // can reconsider and connect after all (the "was skipped" vs "now connected"
+  // distinction is app-level accounting; the machine just moves the cursor).
+  const steps = [Q2, CONNECT, CONNECT_B];
+
+  it("skip a connect then Back leaves it revisitable and re-connectable", () => {
+    let s = setDraft(initialStepperState(), "q2", "Running late");
+    s = answerWithText(s, steps).state; // -> connect A (index 1, frontier)
+    s = skipStep(s, steps).state; // skip A -> connect B (index 2), reached 2
+    assert.equal(s.current, 2);
+    assert.equal(s.reached, 2);
+
+    s = goBack(s); // Back onto the skipped connect A (index 1)
+    assert.equal(s.current, 1);
+    // Still revisitable: Forward ("keep it skipped") is available...
+    assert.equal(canGoForward(s), true);
+    // ...and the step is NOT stranded — a reconsider-connect advances it.
+    s = advanceConnect(s, steps).state; // reconsider: connect A -> connect B
+    assert.equal(s.current, 2);
+
+    const done = advanceConnect(s, steps); // connect B -> complete
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "Running late" },
+    ]);
+  });
+
+  it("skip a connect, Back, then skip again stays idempotent (still index-stable)", () => {
+    let s = setDraft(initialStepperState(), "q2", "hi");
+    s = answerWithText(s, steps).state; // -> connect A (index 1)
+    s = skipStep(s, steps).state; // -> connect B (index 2)
+    s = goBack(s); // Back onto A (index 1)
+    s = goForward(s); // "keep it skipped": Forward back to B (index 2)
+    assert.equal(s.current, 2);
+    assert.equal(s.reached, 2);
+  });
+
+  it("skip a signin then Back leaves it revisitable and re-signinable", () => {
+    // [signin, connect]: skip the signin, Back onto it, and it can still sign in.
+    const flow = [SIGNIN, CONNECT];
+    let s = skipStep(initialStepperState(), flow).state; // skip signin -> connect
+    assert.equal(s.current, 1);
+    s = goBack(s); // Back onto the skipped signin (index 0)
+    assert.equal(s.current, 0);
+    assert.equal(canGoForward(s), true);
+    s = advanceSignin(s, flow).state; // reconsider: sign in -> connect
+    assert.equal(s.current, 1);
+  });
+});
+
 describe("drafts", () => {
   it("restores a typed draft on revisit and clears it on option pick", () => {
     let s = setDraft(initialStepperState(), "q1", "typed");
@@ -368,5 +478,68 @@ describe("toCompletedAnswers", () => {
       { stepId: "q1", question: "Who is it for?", answer: "John" },
       { stepId: "q2", question: "What should it say?", answer: "hi" },
     ]);
+  });
+
+  it("ignores approval steps (they produce no question answer)", () => {
+    const answers = { q1: { answer: "John", optionId: "o1" } };
+    assert.deepEqual(toCompletedAnswers([Q1, APPROVAL], answers), [
+      { stepId: "q1", question: "Who is it for?", answer: "John" },
+    ]);
+  });
+});
+
+describe("humanizeActionSlug", () => {
+  it("strips the toolkit prefix and lowercases the remainder", () => {
+    assert.equal(humanizeActionSlug("GMAIL_SEND_DRAFT", "gmail"), "send draft");
+  });
+
+  it("strips a multi-word toolkit prefix", () => {
+    assert.equal(
+      humanizeActionSlug("GOOGLE_MAPS_GET_ROUTE", "google_maps"),
+      "get route",
+    );
+  });
+
+  it("humanizes the whole slug when it lacks the toolkit prefix", () => {
+    assert.equal(humanizeActionSlug("SEND_DRAFT", "gmail"), "send draft");
+  });
+
+  it("falls back to the whole slug when the prefix is all there is", () => {
+    assert.equal(humanizeActionSlug("GMAIL", "gmail"), "gmail");
+  });
+});
+
+describe("advanceApproval", () => {
+  const steps = [Q2, APPROVAL];
+
+  it("advances a non-terminal approval to the next step", () => {
+    const approval2: ChatInteractionStep = {
+      kind: "approval",
+      id: "a2",
+      toolkit: "slack",
+      action: "SLACK_POST_MESSAGE",
+      paramsHash: "hash-2",
+    };
+    const flow = [APPROVAL, approval2];
+    const t = advanceApproval(initialStepperState(), flow);
+    assert.equal(t.completed, undefined);
+    assert.equal(t.state.current, 1);
+    assert.equal(t.state.reached, 1); // frontier advanced (Back/Forward work)
+  });
+
+  it("completes when the approval step is the last step", () => {
+    const s = setDraft(initialStepperState(), "q2", "hi");
+    const afterQ = answerWithText(s, steps).state; // -> approval (last)
+    const done = advanceApproval(afterQ, steps);
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "hi" },
+    ]);
+  });
+
+  it("advances a DENIED approval too (a decision, not a skip)", () => {
+    // The machine cannot tell allow from deny; both resolve and advance. The
+    // app records which decision before calling onResolve.
+    const done = advanceApproval(initialStepperState(), [APPROVAL]);
+    assert.deepEqual(done.completed, []);
   });
 });

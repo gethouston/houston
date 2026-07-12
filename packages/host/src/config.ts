@@ -61,6 +61,15 @@ export const config = {
   corsOrigin: process.env.CP_CORS_ORIGIN || "*",
 
   /**
+   * Agent Store gateway API base — the public `/v1/agentstore/*` API the host
+   * fetches a shared agent's IR from ("install from a link"). Publishing no
+   * longer touches the host: the app POSTs to the gateway with the user's own
+   * bearer.
+   */
+  agentStoreApiUrl:
+    process.env.HOUSTON_AGENTSTORE_API_URL || "https://gateway.gethouston.ai",
+
+  /**
    * Shared turn-state bus. Unset = in-process (single replica, the default).
    * Set to a Redis URL (Memorystore) and the relay/quota/connect state is
    * shared, which is what allows `replicas: 2+` on the control plane.

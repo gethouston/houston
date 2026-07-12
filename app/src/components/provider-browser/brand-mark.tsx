@@ -22,7 +22,7 @@ const MARK_SIZE = {
 /**
  * A colorful brand mark for a provider id. `aria-hidden` since adjacent text
  * carries the provider name. With a curated accent the glyph renders in the
- * brand color; without one it falls back to `text-foreground` (the deliberate
+ * brand color; without one it falls back to `text-ink` (the deliberate
  * look for black-brand marks and the monogram fallback).
  */
 export function BrandMark({
@@ -41,7 +41,7 @@ export function BrandMark({
       className={cn(
         "inline-grid shrink-0 place-items-center",
         MARK_SIZE[size],
-        !color && "text-foreground",
+        !color && "text-ink",
         className,
       )}
       style={color ? { color } : undefined}

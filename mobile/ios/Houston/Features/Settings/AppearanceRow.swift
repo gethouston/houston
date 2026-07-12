@@ -17,7 +17,7 @@ struct AppearanceRow: View {
         HStack(spacing: Spacing.space12) {
             Text(Strings.Settings.appearanceTitle)
                 .font(Typography.bodyMedium)
-                .foregroundStyle(theme.foreground)
+                .foregroundStyle(theme.ink)
             Spacer(minLength: Spacing.space8)
             Picker(
                 Strings.Settings.appearanceTitle,

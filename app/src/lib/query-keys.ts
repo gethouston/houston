@@ -49,6 +49,14 @@ export const queryKeys = {
   capabilities: () => ["capabilities"] as const,
 
   /**
+   * C9 personal API keys (`GET /v1/keys`). App-scoped (one set per user, not
+   * agent-scoped) and hosted-gateway only — the create/revoke mutations
+   * self-invalidate this key. The full secret from a mint is NEVER cached here;
+   * it lives only in the create dialog's local state for its one-time reveal.
+   */
+  apiKeys: () => ["api-keys"] as const,
+
+  /**
    * Per-workspace sidebar arrangement (sort mode + named groups + drag order).
    * Optimistically updated by the layout mutation; also invalidated on the
    * `SidebarLayoutChanged` event for best-effort cross-surface/tab sync.
@@ -65,6 +73,10 @@ export const queryKeys = {
   migrationReconnect: () => ["migration-reconnect"] as const,
   migrationReconnectDismissed: () => ["migration-reconnect-dismissed"] as const,
 
+  /** First-run cloud-migration wizard (HOU-719): the `detect_legacy_houston`
+   *  scan for old desktop data on this machine. Stable for the app's life. */
+  cloudMigrationDetect: () => ["cloud-migration-detect"] as const,
+
   // Integrations are user-level (shared across the user's agents), so they are
   // NOT keyed by agentPath even though they surface in a per-agent tab.
   integrationStatus: () => ["integration-status"] as const,
@@ -72,6 +84,8 @@ export const queryKeys = {
     ["integration-connections", provider] as const,
   integrationToolkits: (provider: string) =>
     ["integration-toolkits", provider] as const,
+  /** HOU-550: the user's custom (API / MCP) integrations. User-level, one list. */
+  customIntegrations: () => ["custom-integrations"] as const,
 
   // Multiplayer (org). The current user's org + roster is app-scoped (one org
   // per user); per-agent integration grants are keyed by agent id.

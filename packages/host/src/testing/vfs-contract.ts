@@ -87,17 +87,25 @@ export function runVfsContract(name: string, make: () => Vfs): void {
       expect(await vfs.listDetailed(`${P}/workspace/report.txt`)).toEqual([]);
     });
 
-    test("createdMs, when reported, survives overwrite and move", async () => {
+    test("createdMs, when reported, survives move; overwrite may reset it", async () => {
       const vfs = make();
       await vfs.writeText(`${P}/workspace/doc.txt`, "v1");
       const first = (await vfs.listDetailed(P))[0];
       if (first?.createdMs === undefined) return; // backend has no birthtime — allowed
+      // Overwrite: ATOMIC replacement (tmp+rename) is required of adapters — a
+      // plain in-place write let concurrent readers observe a truncated file
+      // (the activity.json torn-read 500s). Replacing the inode is how every
+      // atomic save works (editors included), and a filesystem's birthtime does
+      // not survive it — so overwrite only guarantees a createdMs that is
+      // never NEWER than the write itself, not the original stamp.
       await vfs.writeText(`${P}/workspace/doc.txt`, "v2 (longer content)");
       const overwritten = (await vfs.listDetailed(P))[0];
-      expect(overwritten?.createdMs).toBe(first.createdMs);
+      expect(overwritten?.createdMs ?? 0).toBeLessThanOrEqual(Date.now());
+      const afterOverwrite = overwritten?.createdMs;
+      // Move is a pure rename: the inode travels, so createdMs must survive.
       await vfs.move(`${P}/workspace/doc.txt`, `${P}/workspace/renamed.txt`);
       const moved = (await vfs.listDetailed(P))[0];
-      expect(moved?.createdMs).toBe(first.createdMs);
+      expect(moved?.createdMs).toBe(afterOverwrite);
     });
 
     test("traversal keys are rejected, never mapped", async () => {

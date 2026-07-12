@@ -11,7 +11,11 @@
  * `Activity` provides; nothing is invented.
  */
 
-import type { Activity, PendingInteraction } from "@houston/protocol";
+import type {
+  Activity,
+  NewActivity,
+  PendingInteraction,
+} from "@houston/protocol";
 
 /**
  * The canonical activity statuses (`packages/domain/src/activities.ts`,
@@ -64,6 +68,26 @@ export interface CreatedActivity {
   sessionKey: string;
 }
 
+/**
+ * No-refetch board writes for a host that owns its own read model (the web
+ * engine-adapter under `reactivity:false`): each performs the SAME
+ * `POST`/`PATCH`/`DELETE` as its {@link ActivitiesModule} sibling but does NOT
+ * call `refresh()` afterward, and RETURNS the raw wire {@link Activity}
+ * (`create`/`setStatus`/`rename`) so the host updates its cache without an extra
+ * `GET /agents/:id/activities`. The refetching facade methods are untouched —
+ * iOS keeps using those verbatim.
+ */
+export interface ActivitiesWrites {
+  /** `POST /agents/:id/activities`; returns the created wire activity. */
+  create(agentId: string, input: NewActivity): Promise<Activity>;
+  /** `PATCH …/:id` with `{ status }`; returns the updated wire activity. */
+  setStatus(agentId: string, id: string, status: string): Promise<Activity>;
+  /** `PATCH …/:id` with `{ title }`; returns the updated wire activity. */
+  rename(agentId: string, id: string, title: string): Promise<Activity>;
+  /** `DELETE …/:id`. */
+  delete(agentId: string, id: string): Promise<void>;
+}
+
 /** The typed facade for board/missions reads + writes. */
 export interface ActivitiesModule {
   /** Scope string for `sdk.subscribe(...)` / `sdk.getSnapshot(...)`. */
@@ -100,6 +124,12 @@ export interface ActivitiesModule {
   rename(agentId: string, id: string, title: string): Promise<void>;
   /** Delete a mission, then refetch. */
   delete(agentId: string, id: string): Promise<void>;
+  /**
+   * No-refetch write variants for a host that owns its own reads (web under
+   * `reactivity:false`): same wire writes, no post-write `refresh()`, and they
+   * return the wire entity. iOS keeps using the refetching methods above.
+   */
+  writes: ActivitiesWrites;
   /** Stop the reactivity stream. Module-local; the kernel calls it on dispose. */
   dispose(): void;
 }

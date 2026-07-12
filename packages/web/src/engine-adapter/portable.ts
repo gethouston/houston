@@ -13,6 +13,7 @@
 
 import {
   filterPackage,
+  type PortableContent,
   type PortablePackage,
   packageSeed,
   scanContent,
@@ -28,7 +29,7 @@ import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
 } from "../../../../ui/engine-client/src/types";
-import { HoustonEngineError } from "./client";
+import { HoustonEngineError } from "./client/errors";
 import {
   type ControlPlaneConfig,
   createAgent,
@@ -123,6 +124,30 @@ export function previewUpload(
 ): PortableUploadPreviewResponse {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   const pkg = unpackAgent(u8);
+  const packageId = crypto.randomUUID();
+  uploads.set(packageId, pkg);
+  return { packageId, ...packagePreview(pkg) };
+}
+
+/**
+ * Install from an Agent Store share link. The host fetches the published agent's
+ * IR (SSRF-guarded) and returns it as portable content; here we rebuild the
+ * package and park it in the SAME registry a file upload uses, so the wizard's
+ * scan/name/install steps downstream are byte-for-byte the file-upload flow.
+ */
+export async function importFromStoreLink(
+  cfg: ControlPlaneConfig,
+  url: string,
+): Promise<PortableUploadPreviewResponse> {
+  const res = await hostFetch(cfg, "/v1/portable/fetch-from-store", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+  const { manifest, content } = (await res.json()) as {
+    manifest: PortablePackage["manifest"];
+    content: PortableContent;
+  };
+  const pkg: PortablePackage = { manifest, ...content };
   const packageId = crypto.randomUUID();
   uploads.set(packageId, pkg);
   return { packageId, ...packagePreview(pkg) };

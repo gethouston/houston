@@ -209,16 +209,16 @@ pub fn run() {
     // Single-instance plugin — MUST be registered before the deep-link
     // plugin on Windows / Linux so its second-instance argv-forwarding
     // is the one the deep-link plugin attaches to. Without this, every
-    // `houston://auth-callback?...` from the Google OAuth flow launches
-    // a fresh houston-app.exe (the OS protocol handler does this by
-    // design — Start-menu launches resolve to `C:\Program Files\Houston\…`
-    // and protocol-handler launches resolve to the 8.3 short form
-    // `C:\PROGRA~1\Houston\…`, both visible as separate engine spawns
-    // in `backend.log` on the bad path) while the primary instance
-    // sits on the login screen waiting for an event that never arrives.
+    // `houston://` URL (e.g. the sign-in success page's "Open Houston"
+    // button) launches a fresh houston-app.exe (the OS protocol handler
+    // does this by design — Start-menu launches resolve to
+    // `C:\Program Files\Houston\…` and protocol-handler launches resolve
+    // to the 8.3 short form `C:\PROGRA~1\Houston\…`, both visible as
+    // separate engine spawns in `backend.log` on the bad path) instead of
+    // focusing the running one.
     //
-    // The callback below also raises the primary window so the user
-    // sees the auth state transition (browser → app) immediately.
+    // The callback raises the primary window so the deep link focuses the
+    // already-running app.
     //
     // No-op on macOS — NSWorkspace delivers `houston://` URLs to the
     // running app natively, no second instance is ever spawned.
@@ -240,35 +240,34 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())
         .setup(move |app| {
-            // Deep-link handler for Google-OAuth callbacks
-            // (`houston://auth-callback?code=...`). Forwards the URL to the
-            // frontend; Supabase's PKCE exchange runs in JS so the verifier
-            // stays in Keychain-backed storage end-to-end.
+            // Deep-link handler. The only `houston://` URL Houston emits today
+            // is the sign-in success page's "Open Houston" button
+            // (`houston://open`) — purely a focus affordance. The old
+            // `houston://auth-callback` OAuth path is retired: desktop sign-in
+            // now runs entirely over the loopback listener, which forwards the
+            // callback via the `auth://deep-link` event, and OAuth providers
+            // reject custom-scheme redirect URIs anyway. So any deep link just
+            // brings Houston to the front.
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
                 let handle = app.handle().clone();
-                app.deep_link().on_open_url(move |event| {
-                    for url in event.urls() {
-                        // Any deep link brings Houston forward — e.g. the
-                        // "Open Houston" button on the sign-in success page
-                        // (`houston://open`), or the `houston://auth-callback`
-                        // fallback when the loopback couldn't bind.
-                        window_focus::bring_to_front(&handle);
-                        // Only the OAuth callback carries a code/error for the
-                        // webview to exchange; a bare `houston://open` is
-                        // focus-only (routing it through the auth path would
-                        // surface a spurious "missing authorization code").
-                        if url.host_str() == Some("auth-callback") {
-                            auth::emit_deep_link(&handle, url.as_str());
-                        }
-                    }
-                });
+                app.deep_link()
+                    .on_open_url(move |_event| window_focus::bring_to_front(&handle));
             }
+
+            // One-shot loopback listener state (cancel channel for the current
+            // OAuth sign-in redirect). Managed unconditionally so
+            // `start_oauth_loopback` / `cancel_oauth_loopback` work in every mode.
+            app.manage(oauth_loopback::OauthLoopbackState::default());
 
             // Cancel-side state for the native Claude sign-in. Managed
             // unconditionally so `start_claude_login` / `cancel_claude_login`
             // work in both remote-host and bundled-sidecar modes.
             app.manage(claude_login::ClaudeLoginState::default());
+
+            // One-click migration source host (HOU-719) — managed even in
+            // remote-host/cloud mode; that's exactly where the wizard runs.
+            app.manage(commands::migration::MigrationSourceState::default());
 
             let houston = houston_dir();
 
@@ -286,7 +285,7 @@ pub fn run() {
             // crash and emits a toast via `houston-event` on each reconnect.
             //
             // Remote host mode: when VITE_NEW_ENGINE_URL (static token) or
-            // VITE_HOSTED_ENGINE_URL (Supabase bearer) is set, the frontend
+            // VITE_HOSTED_ENGINE_URL (Firebase bearer) is set, the frontend
             // talks to an external Houston host/gateway (see app/src/lib/engine.ts),
             // so don't spawn or health-check the local host sidecar at all.
             //
@@ -354,6 +353,12 @@ pub fn run() {
             commands::terminal::open_terminal,
             commands::portable::save_portable_agent,
             commands::portable::open_portable_agent,
+            // One-click desktop→cloud migration (HOU-719): detect legacy data
+            // and run the bundled host briefly as a passive read-only source.
+            commands::migration::detect_legacy_houston,
+            commands::migration::backup_houston_data,
+            commands::migration::start_migration_source_host,
+            commands::migration::stop_migration_source_host,
             // Native "Save as…" for Files-tab downloads — the webview ignores
             // anchor-download clicks, so the shell writes the bytes itself.
             commands::save_file::save_download,
@@ -373,14 +378,16 @@ pub fn run() {
             bug_report::report_bug,
             // Engine handshake pull (race-free fallback for `EngineGate`).
             get_engine_handshake,
-            // Keychain-backed storage for Supabase auth sessions.
+            // Keychain-backed storage for the identity session (GCIP/Firebase).
             auth::auth_get_item,
             auth::auth_set_item,
             auth::auth_remove_item,
-            // One-shot loopback listener for the Google OAuth redirect —
+            // One-shot loopback listener for the OAuth sign-in redirect —
             // keeps desktop sign-in on the user's machine (no website relay,
-            // no custom-scheme dialog).
+            // no custom-scheme dialog). `cancel` frees the port immediately
+            // when the frontend abandons an attempt.
             oauth_loopback::start_oauth_loopback,
+            oauth_loopback::cancel_oauth_loopback,
             // One-shot loopback listener for the OpenAI Codex OAuth redirect —
             // binds the fixed port 1455 OpenAI registered and forwards the raw
             // callback query to the webview as `codex-oauth://callback`.

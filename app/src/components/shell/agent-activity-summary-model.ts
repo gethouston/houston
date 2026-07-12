@@ -1,4 +1,4 @@
-import { isRoutineSetupMode } from "../../lib/routine-chat-setup.ts";
+import { isSetupChatMode } from "../../lib/integration-chat-setup.ts";
 
 export interface AgentActivitySummaryInput {
   id: string;
@@ -32,7 +32,7 @@ export function buildAgentActivitySummaries(
 
   for (const conversation of conversations) {
     if (conversation.type !== "activity") continue;
-    if (isRoutineSetupMode(conversation.agent)) continue;
+    if (isSetupChatMode(conversation.agent)) continue;
 
     const agentId = agentIdByPath.get(conversation.agent_path);
     if (!agentId) continue;

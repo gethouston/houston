@@ -57,6 +57,7 @@ export async function dispatchTurn(
   text: string,
   nonce: string | undefined,
   pin?: TurnPin,
+  displayText?: string,
 ): Promise<TurnStart> {
   const prefix = prefixFor(ws, agent);
   // Resolve the provider (+ effort) for this turn BEFORE claiming the quota/relay
@@ -100,6 +101,9 @@ export async function dispatchTurn(
               ...(pin?.model ? { model: pin.model } : {}),
               ...(effort ? { effort } : {}),
               ...(pin?.mode ? { mode: pin.mode } : {}),
+              // Presentation-only bubble text — the runtime persists it beside
+              // the user message; the model still runs on `text`.
+              ...(displayText ? { displayText } : {}),
               gcsPrefix: prefix,
               credential: cred
                 ? {
@@ -145,8 +149,18 @@ export async function startTurn(
   text: string,
   nonce: string | undefined,
   res: ServerResponse,
+  displayText?: string,
 ): Promise<void> {
-  const outcome = await dispatchTurn(deps, ws, agent, cid, text, nonce);
+  const outcome = await dispatchTurn(
+    deps,
+    ws,
+    agent,
+    cid,
+    text,
+    nonce,
+    undefined,
+    displayText,
+  );
   if (outcome.status === "quota")
     return json(res, 429, { error: outcome.message });
   if (outcome.status === "busy")

@@ -91,6 +91,9 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
       "integration_search",
       "integration_execute",
       "request_connection",
+      "custom_integration_detect",
+      "custom_integration_add",
+      "request_credential",
     ]),
   );
   expect(new Set(mcp.allowedTools)).toEqual(
@@ -100,6 +103,9 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
       "mcp__houston__request_connection",
+      "mcp__houston__custom_integration_detect",
+      "mcp__houston__custom_integration_add",
+      "mcp__houston__request_credential",
     ]),
   );
 });
@@ -153,16 +159,28 @@ test("suggest_reusable is bridged for execute/auto but stripped from plan", () =
 test("auto mode keeps the integration + suggest_reusable tools but drops the blocking tools", () => {
   const { tools, mcp } = build(INTEGRATIONS, "auto");
   // Autopilot never waits on the user: ask_user + request_connection are gone
-  // (and plan_ready is plan-only), the acting integration tools stay, and
-  // suggest_reusable stays too (it never blocks the turn).
+  // (and plan_ready is plan-only). The acting integration tools stay,
+  // suggest_reusable stays (it never blocks the turn), and request_credential
+  // stays — an API key is the one thing autonomy cannot produce, and its card
+  // auto-continues the run.
   expect(new Set(tools.map((t) => t.name))).toEqual(
-    new Set(["suggest_reusable", "integration_search", "integration_execute"]),
+    new Set([
+      "suggest_reusable",
+      "integration_search",
+      "integration_execute",
+      "custom_integration_detect",
+      "custom_integration_add",
+      "request_credential",
+    ]),
   );
   expect(new Set(mcp.allowedTools)).toEqual(
     new Set([
       "mcp__houston__suggest_reusable",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
+      "mcp__houston__custom_integration_detect",
+      "mcp__houston__custom_integration_add",
+      "mcp__houston__request_credential",
     ]),
   );
 });

@@ -28,7 +28,7 @@ export function LearningPreview({
           onClick={onToggle}
           className={cn(
             "size-7 shrink-0 rounded-lg flex items-center justify-center",
-            "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
+            "text-ink-muted hover:bg-ink/[0.04] hover:text-ink",
             "transition-colors",
           )}
           aria-label={
@@ -50,7 +50,7 @@ export function LearningPreview({
       )}
       <p
         className={cn(
-          "min-w-0 flex-1 text-sm leading-relaxed text-foreground break-words",
+          "min-w-0 flex-1 text-sm leading-relaxed text-ink break-words",
           expanded
             ? "whitespace-pre-wrap"
             : "overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]",
@@ -102,9 +102,9 @@ function IconButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "size-7 rounded-lg flex items-center justify-center text-muted-foreground",
-        "hover:bg-foreground/[0.04] transition-colors",
-        danger ? "hover:text-red-500" : "hover:text-foreground",
+        "size-7 rounded-lg flex items-center justify-center text-ink-muted",
+        "hover:bg-ink/[0.04] transition-colors",
+        danger ? "hover:text-red-500" : "hover:text-ink",
       )}
       aria-label={label}
       title={title}

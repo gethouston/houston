@@ -26,13 +26,13 @@ export function AppearanceSection() {
   const pill = (value: Theme) =>
     `flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors ${
       theme === value
-        ? "bg-primary text-primary-foreground"
-        : "text-muted-foreground hover:text-foreground"
+        ? "bg-action text-action-text"
+        : "text-ink-muted hover:text-ink"
     }`;
 
   return (
     <SettingsControlRow icon={Palette} title={t("appearance.title")}>
-      <div className="flex items-center gap-1 rounded-full bg-secondary p-0.5">
+      <div className="flex items-center gap-1 rounded-full bg-chip p-0.5">
         <button
           type="button"
           onClick={() => handleThemeToggle("light")}

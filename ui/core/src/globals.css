@@ -43,48 +43,54 @@
    from the root's --ht-* and merely inherits down — a mid-tree [data-theme] pin
    redeclares --ht-* but no utility re-reads it, so the pin is inert (the bug the
    sign-in card hit). `inline` makes Tailwind emit the utility as
-   `background-color: var(--ht-background)` directly — resolved at the CONSUMING
+   `background-color: var(--ht-input)` directly — resolved at the CONSUMING
    element — so a pinned subtree re-resolves every colour. Trade-off: `inline`
    drops the :root --color-* emission entirely, so nothing may read
    `var(--color-*)` directly; all direct consumers reference `var(--ht-*)`. */
 @theme inline {
+  --color-input: var(--ht-input);
+  --color-ink: var(--ht-ink);
+  /* The standard main-canvas surface: the light gray the content panes float
+     cards on (dark = the frosted "screen" glass). Backs the Arc `.canvas-screen`
+     panes; `bg-background` lets any surface that lives ON the canvas (e.g. the chat
+     panel) reference the SAME tone as one source of truth. */
+  --color-base: var(--ht-base);
   --color-background: var(--ht-background);
-  --color-foreground: var(--ht-foreground);
   --color-card: var(--ht-card);
   --color-card-hover: var(--ht-card-hover);
-  --color-card-foreground: var(--ht-card-fg);
+  --color-card-text: var(--ht-card-text);
   --color-dialog: var(--ht-dialog);
   --color-popover: var(--ht-popover);
-  --color-popover-foreground: var(--ht-popover-fg);
-  --color-primary: var(--ht-primary);
-  --color-primary-foreground: var(--ht-primary-fg);
-  --color-secondary: var(--ht-secondary);
-  --color-secondary-foreground: var(--ht-secondary-fg);
-  --color-muted: var(--ht-muted);
-  --color-muted-foreground: var(--ht-muted-fg);
-  --color-accent: var(--ht-accent);
-  --color-accent-foreground: var(--ht-accent-fg);
-  --color-destructive: var(--ht-destructive);
-  --color-destructive-foreground: var(--ht-destructive-fg);
-  --color-border: var(--ht-border);
-  --color-input: var(--ht-input);
-  --color-ring: var(--ht-ring);
+  --color-popover-text: var(--ht-popover-text);
+  --color-action: var(--ht-action);
+  --color-action-text: var(--ht-action-text);
+  --color-chip: var(--ht-chip);
+  --color-chip-text: var(--ht-chip-text);
+  --color-chip-subtle: var(--ht-chip-subtle);
+  --color-ink-muted: var(--ht-ink-muted);
+  --color-hover: var(--ht-hover);
+  --color-hover-text: var(--ht-hover-text);
+  --color-danger: var(--ht-danger);
+  --color-danger-text: var(--ht-danger-text);
+  --color-line: var(--ht-line);
+  --color-line-input: var(--ht-line-input);
+  --color-focus: var(--ht-focus);
   --color-sidebar: var(--ht-sidebar);
-  --color-sidebar-foreground: var(--ht-sidebar-fg);
-  --color-sidebar-border: var(--ht-sidebar-border);
-  --color-sidebar-accent: var(--ht-sidebar-accent);
-  --color-sidebar-accent-foreground: var(--ht-sidebar-accent-fg);
+  --color-sidebar-text: var(--ht-sidebar-text);
+  --color-sidebar-line: var(--ht-sidebar-line);
+  --color-sidebar-hover: var(--ht-sidebar-hover);
+  --color-sidebar-hover-text: var(--ht-sidebar-hover-text);
   --color-success: var(--ht-success);
-  --color-success-foreground: var(--ht-success-fg);
+  --color-success-text: var(--ht-success-text);
   --color-warning: var(--ht-warning);
-  --color-warning-foreground: var(--ht-warning-fg);
+  --color-warning-text: var(--ht-warning-text);
   --color-highlight: var(--ht-highlight);
-  --color-highlight-foreground: var(--ht-highlight-fg);
+  --color-highlight-text: var(--ht-highlight-text);
 }
 
 @layer base {
   * {
-    border-color: var(--ht-border);
+    border-color: var(--ht-line);
   }
 }
 
@@ -124,8 +130,8 @@ body.kanban-dragging.kanban-dragging-forbidden * {
 }
 
 body {
-  background-color: var(--ht-background);
-  color: var(--ht-foreground);
+  background-color: var(--ht-input);
+  color: var(--ht-ink);
   font-family:
     ui-sans-serif, -apple-system, "system-ui", "Segoe UI", Helvetica,
     "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
@@ -150,7 +156,7 @@ body {
 
 .card-running-glow {
   --glow-angle: 0deg;
-  --glow-bg: var(--ht-background, #ffffff);
+  --glow-bg: var(--ht-input, #ffffff);
   position: relative;
   background:
     linear-gradient(var(--glow-bg), var(--glow-bg)) padding-box,
@@ -210,7 +216,7 @@ body {
 /* Indeterminate progress line — the same comet palette as
  * .card-running-glow, flattened into a thin bar for sections that wait on
  * one finite operation (e.g. the export wizard's anonymize pass). Give the
- * element a track color yourself (e.g. `bg-foreground/5`); the comet sweeps
+ * element a track color yourself (e.g. `bg-ink/5`); the comet sweeps
  * left to right on the glow's 2.5s clock. */
 @keyframes glow-line-sweep {
   from {
@@ -277,7 +283,7 @@ body {
 /* One-shot confirmation flash when an agent is dropped into a sidebar group —
    the only signal when the folder is collapsed. */
 @keyframes sidebar-group-dropped {
-  0% { background-color: var(--ht-accent); }
+  0% { background-color: var(--ht-hover); }
   100% { background-color: transparent; }
 }
 .sidebar-group-dropped {
@@ -298,10 +304,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--ht-foreground) 15%, transparent);
+  background: color-mix(in srgb, var(--ht-ink) 15%, transparent);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--ht-foreground) 30%, transparent);
+  background: color-mix(in srgb, var(--ht-ink) 30%, transparent);
 }

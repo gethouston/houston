@@ -23,7 +23,7 @@ export function SpecChip({
   return (
     <span
       className={cn(
-        "ht-hairline inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground",
+        "ht-hairline inline-flex items-center gap-1 rounded-full bg-chip px-2 py-0.5 text-[11px] font-medium text-ink-muted",
         className,
       )}
     >
@@ -40,7 +40,7 @@ export function CapabilityChip({ label }: { label: string }) {
 /** Pre-formatted price text, e.g. "from $3" or "$5.00 / $25.00". */
 export function PriceText({ text }: { text: string }) {
   return (
-    <span className="font-mono text-[13px] text-muted-foreground tabular-nums">
+    <span className="font-mono text-[13px] text-ink-muted tabular-nums">
       {text}
     </span>
   );

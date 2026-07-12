@@ -181,11 +181,6 @@
     "stalledTitle": "Still working on it",
     "stalledBody": "This is taking longer than a normal start. We have not given up, your chat and messages are safe and will pick up the moment your agent answers."
   },
-  "agentWelcome": {
-    "missionTitle": "Meet {{name}}",
-    "missionDescription": "Your new agent introduces itself",
-    "failed": "We could not start your new agent's first chat. You can still send it a message yourself."
-  },
   "toolRuntimeError": {
     "title": "Something got stuck",
     "body": "A local tool did not start correctly. Try again, and report it if this keeps happening.",
@@ -299,7 +294,7 @@
     "reconnected": "Houston reconnected",
     "loadFailed": "Couldn't load your available AI models. Check your connection and try again.",
     "authRequiredTitle": "Sign-in required",
-    "authRequiredBody": "This build connects to Houston's hosted engine, but no sign-in is configured. Set SUPABASE_URL and SUPABASE_ANON_KEY for this build to enable Google sign-in."
+    "authRequiredBody": "This build connects to Houston's hosted engine, but no sign-in is configured. Set FIREBASE_API_KEY and FIREBASE_PROJECT_ID for this build to enable sign-in."
   },
   "providerError": {
     "rateLimited": {
@@ -321,6 +316,11 @@
       "useApiKey": "Use API key instead",
       "upgrade": "Upgrade plan",
       "switchProvider": "Switch provider"
+    },
+    "contextOverflow": {
+      "title": "This chat got too long for its model",
+      "body": "{{model}} can no longer read this whole conversation. Switch this chat to a model with more memory, or start a new mission for the next step.",
+      "switchModel": "Switch model"
     },
     "modelUnavailable": {
       "title": "Model not available",

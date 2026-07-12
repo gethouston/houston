@@ -110,6 +110,24 @@ PowerShell (Windows) so we don't take a `tauri-plugin-dialog` dep.
 
 Both live in `app/src-tauri/src/commands/portable.rs`.
 
+## Publish to the Agent Store (the hosted path)
+
+Beside "email a file" and "import from a friend" there is a THIRD path for the
+same gathered content: publish it to the public Agent Store at
+`store.gethouston.ai`. Instead of writing a `.houstonagent` zip, the host turns
+the portable content into an AgentIR and POSTs it to the store, then hands back a
+share URL anyone can install from. The recipient side of that flow reuses this
+doc's import wizard verbatim (a store link resolves to the same portable content
+shape via `POST /v1/portable/fetch-from-store`). Full architecture, the AgentIR
+2.0.0 shape, the store API + host publish routes, and the token/visibility model
+live in `knowledge-base/agent-store.md`.
+
+The one piece of store state that stays on the machine is the **publication
+record** at `<agentRoot>/.houston/store-publication/store-publication.json`. It
+carries NO secret (ownership is account-based via the user's GCIP bearer, no manage
+token) and is machine-local by construction: it is NOT one of the four shareable
+surfaces `gather_inventory` reads, so it can never ride out in an export.
+
 ## Trust contract — what NEVER leaks
 
 `gather_inventory` reads four specific paths. Anything else under the
@@ -121,6 +139,9 @@ agent root is invisible to it:
 - `.houston/prompts/modes/**` — user's mode overlays.
 - `.houston/connections.json` — Composio connection state.
 - `.source.json`, `.migrations.json` — bundled-package metadata.
+- `.houston/store-publication/store-publication.json`, the Agent Store
+  publication record (a token-free `{ storeAgentId, slug, shareUrl, publishedAt }`
+  pointer; ownership is account-based, so it holds no secret).
 - Any other dot-file or future surface that doesn't match the four
   shareable paths.
 

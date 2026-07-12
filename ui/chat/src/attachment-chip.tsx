@@ -109,20 +109,20 @@ export interface AttachmentChipProps {
 export function AttachmentChip({ name, onRemove }: AttachmentChipProps) {
   const ext = getExt(name);
   return (
-    <div className="relative flex items-center gap-2.5 rounded-xl border border-foreground/[0.08] bg-background pl-2.5 pr-8 py-2 min-w-0 shrink-0 max-w-[240px] shadow-sm">
+    <div className="relative flex items-center gap-2.5 rounded-xl border border-ink/[0.08] bg-input pl-2.5 pr-8 py-2 min-w-0 shrink-0 max-w-[240px] shadow-sm">
       <AttachmentIcon ext={ext} />
       <div className="min-w-0">
-        <p className="text-xs font-medium text-foreground truncate leading-tight">
+        <p className="text-xs font-medium text-ink truncate leading-tight">
           {name}
         </p>
-        <p className="text-[10px] text-muted-foreground leading-tight">
+        <p className="text-[10px] text-ink-muted leading-tight">
           {getTypeLabel(ext)}
         </p>
       </div>
       <button
         type="button"
         onClick={onRemove}
-        className="absolute top-1.5 right-1.5 size-4 rounded-full bg-foreground/60 text-background flex items-center justify-center hover:bg-foreground/80 transition-colors"
+        className="absolute top-1.5 right-1.5 size-4 rounded-full bg-ink/60 text-input flex items-center justify-center hover:bg-ink/80 transition-colors"
         aria-label={`Remove ${name}`}
       >
         <XIcon className="size-2.5" strokeWidth={3} />
@@ -172,7 +172,7 @@ export function ComposerTrailing({
         <button
           type="button"
           onClick={dictation.onStart}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-hover transition-colors"
           aria-label={dictation.labels.start}
         >
           <MicIcon className="size-5" />

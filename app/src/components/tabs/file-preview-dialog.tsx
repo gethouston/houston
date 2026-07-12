@@ -99,9 +99,9 @@ export function FilePreviewDialog({
             </DialogDescription>
           )}
         </DialogHeader>
-        <div className="min-h-[200px] max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/20">
+        <div className="min-h-[200px] max-h-[60vh] overflow-auto rounded-md border border-line bg-chip-subtle/20">
           {loaded.state === "loading" && (
-            <p className="p-6 text-sm text-muted-foreground">
+            <p className="p-6 text-sm text-ink-muted">
               {t("files.preview.loading")}
             </p>
           )}
@@ -110,7 +110,7 @@ export function FilePreviewDialog({
               <p className="text-sm font-medium">
                 {t("files.preview.errorTitle")}
               </p>
-              <p className="text-sm text-muted-foreground break-all">
+              <p className="text-sm text-ink-muted break-all">
                 {loaded.message}
               </p>
             </div>
@@ -135,7 +135,7 @@ export function FilePreviewDialog({
             </pre>
           )}
           {loaded.state === "binary" && (
-            <p className="p-6 text-sm text-muted-foreground">
+            <p className="p-6 text-sm text-ink-muted">
               {t("files.preview.unsupportedTitle")}
             </p>
           )}

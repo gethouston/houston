@@ -84,10 +84,10 @@ function FileContent({
 }) {
   if (!result?.content) return null;
   if (label && result.content === "ok") {
-    return <p className="text-xs text-muted-foreground py-1">{label}</p>;
+    return <p className="text-xs text-ink-muted py-1">{label}</p>;
   }
   return (
-    <div className="rounded-lg border border-border/50 overflow-hidden">
+    <div className="rounded-lg border border-line/50 overflow-hidden">
       <TruncatedCode content={result.content} maxLines={20} />
     </div>
   );
@@ -122,7 +122,7 @@ function EditContent({
   }
   if (pairs.length === 0) return <CodeResult result={result} maxLines={10} />;
   return (
-    <div className="rounded-lg border border-border/50 overflow-hidden text-xs font-mono">
+    <div className="rounded-lg border border-line/50 overflow-hidden text-xs font-mono">
       {pairs.map((p, i) => (
         // Order is the render identity here: pairs are derived per render.
         // biome-ignore lint/suspicious/noArrayIndexKey: static derived list
@@ -146,7 +146,7 @@ function DiffLine({
 }) {
   return (
     <div
-      className={`${tone === "red" ? "bg-red-50 dark:bg-red-950/40 border-b" : "bg-green-50 dark:bg-green-950/40"} px-3 py-1.5 border-border/30`}
+      className={`${tone === "red" ? "bg-red-50 dark:bg-red-950/40 border-b" : "bg-green-50 dark:bg-green-950/40"} px-3 py-1.5 border-line/30`}
     >
       <span
         className={`${tone === "red" ? "text-red-400" : "text-green-400"} select-none`}
@@ -181,7 +181,7 @@ function GenericContent({ tool }: { tool: ToolEntry }) {
   const args = formatArgs(tool.input);
   if (!args) return null;
   return (
-    <div className="rounded-lg border border-border/50 overflow-hidden">
+    <div className="rounded-lg border border-line/50 overflow-hidden">
       <TruncatedCode content={args} maxLines={10} />
     </div>
   );
@@ -208,7 +208,7 @@ function CodeResult({
 }) {
   if (!result?.content) return null;
   return (
-    <div className="rounded-lg border border-border/50 overflow-hidden">
+    <div className="rounded-lg border border-line/50 overflow-hidden">
       <TruncatedCode content={result.content} maxLines={maxLines} />
     </div>
   );

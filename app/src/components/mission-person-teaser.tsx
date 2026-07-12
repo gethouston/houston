@@ -55,7 +55,7 @@ export function MissionPersonTeaser({
           >
             <span className="relative">
               <PersonFace person={selfFace} />
-              <UserPlus className="absolute -bottom-1 -right-1 size-2.5 rounded-full bg-background text-muted-foreground" />
+              <UserPlus className="absolute -bottom-1 -right-1 size-2.5 rounded-full bg-input text-ink-muted" />
             </span>
             {t("peopleFilter.inviteTeaser")}
           </DropdownMenuItem>

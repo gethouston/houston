@@ -64,9 +64,7 @@ export default function ActivityTab({ ctx }: OrgTabProps) {
 
   if (isError) {
     return (
-      <p className="py-10 text-sm text-muted-foreground">
-        {t("activityTab.error")}
-      </p>
+      <p className="py-10 text-sm text-ink-muted">{t("activityTab.error")}</p>
     );
   }
 
@@ -90,17 +88,17 @@ export default function ActivityTab({ ctx }: OrgTabProps) {
           return (
             <li
               key={entry.id}
-              className="flex items-start gap-3 border-b border-border/40 py-3 last:border-0"
+              className="flex items-start gap-3 border-b border-line/40 py-3 last:border-0"
             >
               <span
                 aria-hidden
-                className="mt-1.5 size-2 shrink-0 rounded-full bg-muted-foreground/40"
+                className="mt-1.5 size-2 shrink-0 rounded-full bg-ink-muted/40"
               />
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-foreground">
+                <p className="text-sm text-ink">
                   {t(`activityTab.actions.${action}`, vars)}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-ink-muted">
                   {formatRelativeTime(entry.createdAt, i18n.language)}
                 </p>
               </div>

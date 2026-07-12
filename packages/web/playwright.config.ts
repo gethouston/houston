@@ -1,6 +1,12 @@
 import { FAKE_HOST_PORT } from "@houston/fake-host";
 import { defineConfig, devices } from "@playwright/test";
-import { WEB_PORT, WEB_URL } from "./e2e/config";
+import {
+  AUTH_WEB_PORT,
+  AUTH_WEB_URL,
+  FAKE_FIREBASE_API_KEY,
+  WEB_PORT,
+  WEB_URL,
+} from "./e2e/config";
 
 /**
  * Playwright drives the FULL desktop UI (app/src) as it runs in the browser
@@ -33,7 +39,21 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      // The identity-OFF server (no baked Firebase key): the whole suite boots
+      // straight to the shell. Excludes the sign-in spec, which needs identity on.
+      name: "chromium",
+      testIgnore: "**/sign-in.spec.ts",
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      // The GCIP SignInScreen spec, driven against the identity-ON server below.
+      name: "auth",
+      testMatch: "**/sign-in.spec.ts",
+      use: { ...devices["Desktop Chrome"], baseURL: AUTH_WEB_URL },
+    },
+  ],
   webServer: [
     {
       command: "pnpm fake-host",
@@ -47,6 +67,22 @@ export default defineConfig({
       // the default web root (see packages/web/src/main.tsx) — no env needed.
       command: "pnpm dev",
       port: WEB_PORT,
+      reuseExistingServer: !process.env.CI,
+      stdout: "pipe",
+      stderr: "pipe",
+      timeout: 120_000,
+    },
+    {
+      // A second vite server with a baked (fake) Firebase key so
+      // `isIdentityConfigured()` is true and `SignInScreen` renders. Only the
+      // `auth` project points here (baseURL = AUTH_WEB_URL). HOUSTON_E2E_WEB_PORT
+      // moves vite's own `server.port` (vite.config.ts) to AUTH_WEB_PORT.
+      command: "pnpm dev",
+      port: AUTH_WEB_PORT,
+      env: {
+        HOUSTON_E2E_WEB_PORT: String(AUTH_WEB_PORT),
+        FIREBASE_API_KEY: FAKE_FIREBASE_API_KEY,
+      },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
       stderr: "pipe",

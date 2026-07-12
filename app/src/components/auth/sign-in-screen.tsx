@@ -1,7 +1,9 @@
 import { Button } from "@houston-ai/core";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
+  cancelPendingAuthorize,
   onAuthError,
   signInWithGoogle,
   signInWithMicrosoft,
@@ -10,7 +12,7 @@ import { logger } from "../../lib/logger";
 import { tauriSystem } from "../../lib/tauri";
 import { HoustonLogo } from "../shell/experience-card";
 import { SpaceScreen } from "../space/space-screen";
-import { prettifyAuthError } from "./auth-errors";
+import { authErrorKey } from "./auth-errors";
 import { EmailSignIn } from "./email-sign-in";
 import { GoogleIcon, MicrosoftIcon } from "./provider-brand-icons";
 
@@ -21,7 +23,7 @@ const openExternal = (url: string) => () => {
 };
 
 /**
- * Full-screen sign-in overlay. Rendered by App.tsx when Supabase is
+ * Full-screen sign-in overlay. Rendered by App.tsx when identity (Firebase) is
  * configured but no session is present (the local account login), and by the
  * cloud engine gate (HostedEngineGate) for the remote-connection login. Keeps
  * copy product-benefit-focused — the audience is non-technical, so no mention
@@ -34,37 +36,50 @@ const openExternal = (url: string) => () => {
  * "Log in" surface, dark value panel, light primary buttons. Wordmark sits
  * top-left of the screen and the legal links anchor the footer.
  *
- * Re-click semantics: the provider spinner is only on while the system browser
- * is being opened (a few ms). After that the user is free to click again — the
- * PKCE flow is regenerated each click.
+ * Re-click semantics: the provider spinner is on only until the system browser
+ * opens (`onBrowserOpened` clears it). After that the buttons are free — a
+ * re-click starts a fresh PKCE attempt that SUPERSEDES the previous one (the
+ * abandoned attempt resolves benignly, no error). Unmounting the screen (e.g.
+ * the user finishes email sign-in while a Google tab is still open) cancels any
+ * in-flight loopback authorize so a late callback can't overwrite the session.
  */
 export function SignInScreen() {
+  const { t } = useTranslation("errors");
   const [pending, setPending] = useState<Provider | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Cancel any in-flight loopback authorize when this screen unmounts, so a late
+  // browser completion can't overwrite a session the user established another way.
+  useEffect(() => cancelPendingAuthorize, []);
 
   // Surface OAuth errors that happen AFTER the browser hands off (provider
   // rejection, code-exchange failure, identity already linked to another
   // user). Without this the user only saw the "kick off" failure path and
-  // every post-callback failure was invisible.
+  // every post-callback failure was invisible. Post-hand-off failures arrive
+  // as stable identity codes, resolved to localized copy here.
   useEffect(() => {
-    return onAuthError((message) => {
+    return onAuthError((code) => {
       setPending(null);
-      setError(prettifyAuthError(message));
+      setError(t(authErrorKey(code)));
     });
-  }, []);
+  }, [t]);
 
   const handleSignIn = (provider: Provider) => async () => {
     setPending(provider);
     setError(null);
+    // `onBrowserOpened` re-enables the buttons the instant the system browser
+    // opens, so the whole (up-to-300s) round-trip never freezes them.
+    const opts = { onBrowserOpened: () => setPending(null) };
     try {
-      await (provider === "azure" ? signInWithMicrosoft() : signInWithGoogle());
+      await (provider === "azure"
+        ? signInWithMicrosoft(opts)
+        : signInWithGoogle(opts));
     } catch (e) {
       logger.error(`[auth] ${provider} sign-in failed: ${e}`);
-      setError(prettifyAuthError(String(e)));
+      setError(t(authErrorKey(e)));
     } finally {
-      // Re-enable the buttons immediately once the browser is open. The
-      // SignInScreen itself unmounts when the deep-link callback flips the
-      // session, so we don't need a "waiting for callback" loading state.
+      // Belt-and-suspenders for a PRE-browser failure (config / loopback bind),
+      // where `onBrowserOpened` never fired. Post-browser, this is a no-op.
       setPending(null);
     }
   };
@@ -80,14 +95,14 @@ export function SignInScreen() {
         {/* data-theme="dark" pins the whole card to the dark palette so the
             login reads identically in both app themes (dark card on the
             theme-invariant space backdrop). */}
-        {/* text-foreground is declared HERE, inside the pin, on purpose:
+        {/* text-ink is declared HERE, inside the pin, on purpose:
             `color` inherits as a computed value, so a token utility set on an
             ancestor outside the pin would carry the APP theme's foreground in. */}
         <div
           data-theme="dark"
-          className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-border text-foreground shadow-2xl sm:grid-cols-3"
+          className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-line text-ink shadow-2xl sm:grid-cols-3"
         >
-          <div className="flex flex-col gap-5 bg-background p-8 sm:col-span-2">
+          <div className="flex flex-col gap-5 bg-input p-8 sm:col-span-2">
             <h1 className="text-lg font-medium">Log in</h1>
 
             <div className="flex flex-col gap-2.5">
@@ -120,20 +135,20 @@ export function SignInScreen() {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground">or</span>
-              <div className="h-px flex-1 bg-border" />
+              <div className="h-px flex-1 bg-line" />
+              <span className="text-xs text-ink-muted">or</span>
+              <div className="h-px flex-1 bg-line" />
             </div>
 
             <EmailSignIn />
 
-            {error && <p className="text-xs text-destructive">{error}</p>}
+            {error && <p className="text-xs text-danger">{error}</p>}
           </div>
 
-          <div className="flex flex-col justify-between gap-6 bg-primary p-8 text-primary-foreground sm:col-span-1">
+          <div className="flex flex-col justify-between gap-6 bg-action p-8 text-action-text sm:col-span-1">
             <div className="flex flex-col gap-3">
               <h2 className="text-lg font-medium">Share the love</h2>
-              <p className="text-sm text-primary-foreground/70">
+              <p className="text-sm text-action-text/70">
                 Know a team that would fly with Houston? Send them our way. When
                 they commit to 5 or more licenses, your team gets $250 in
                 credits.
@@ -143,7 +158,7 @@ export function SignInScreen() {
               variant="ghost"
               size="sm"
               onClick={openExternal("https://gethouston.ai/referrals")}
-              className="-ml-3 gap-1 self-start text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground dark:hover:bg-primary-foreground/10"
+              className="-ml-3 gap-1 self-start text-action-text hover:bg-action-text/10 hover:text-action-text dark:hover:bg-action-text/10"
             >
               See how it works
               <ArrowUpRight className="size-4" />

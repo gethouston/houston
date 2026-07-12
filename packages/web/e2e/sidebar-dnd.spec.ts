@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import { createAgent } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
 
 /**
@@ -7,18 +8,6 @@ import { expect, test } from "./support/fixtures";
  * an agent INTO and back OUT of a group, and reordering top-level agents WITH a
  * group present. Everything must persist across a reload.
  */
-
-async function createAgent(page: Page, name: string) {
-  await page.getByRole("button", { name: "New agent" }).click();
-  const scratch = page.getByText("From scratch");
-  await scratch.waitFor({ state: "visible" });
-  await scratch.click();
-  const nameField = page.getByPlaceholder("e.g. Product manager, Sales, Jerry");
-  await nameField.waitFor({ state: "visible" });
-  await nameField.fill(name);
-  await page.getByRole("button", { name: "Create Agent" }).click();
-  await expect(page.getByText(name).first()).toBeVisible();
-}
 
 async function center(loc: Locator) {
   const b = await loc.boundingBox();

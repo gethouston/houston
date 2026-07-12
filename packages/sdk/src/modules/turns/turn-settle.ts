@@ -105,8 +105,9 @@ const invisibleFinal = (s: TurnState) =>
  * The ONE exception is a LONE `suggest_reusable` step: the mission genuinely IS
  * done, and the card is just an optional offer to save the work as a Skill or
  * Routine, not something blocking completion — so it settles `done`, not
- * `needs_you`. Any other step kind, or `suggest_reusable` co-occurring with
- * anything else, still means `needs_you`.
+ * `needs_you`. Any other step kind is BLOCKING and means `needs_you`: an
+ * `approval` step (a permission the turn is waiting on), a `question`, a
+ * `request_connection`, and `suggest_reusable` co-occurring with any of them.
  */
 export function finishOk(s: TurnState): void {
   if (s.settled) return;

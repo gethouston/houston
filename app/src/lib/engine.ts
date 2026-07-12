@@ -12,7 +12,7 @@ declare global {
       token: string;
     };
     /** Hosted-session refresher the engine adapter calls on a gateway 401 —
-     *  mints a fresh Supabase access token so the request can be replayed
+     *  mints a fresh Firebase ID token so the request can be replayed
      *  invisibly (HOU-687). Installed by installHostedSessionRefresh below. */
     __HOUSTON_SESSION_REFRESH__?: () => Promise<string | null>;
     /** Active-space selector (C8, `cloud/docs/contracts/C8-spaces-billing.md`),
@@ -26,6 +26,12 @@ declare global {
      *  the gateway resolves the caller's personal org). The local host's
      *  header-free `/v1/ws` transport ignores it. */
     __HOUSTON_ACTIVE_ORG__?: string | null;
+    /** Runtime deploy environment injected by the web entry (packages/web
+     *  main.tsx) from the hostname, so ONE promoted bundle reports `preview` on
+     *  the preview site and `production` on app.gethouston.ai. Read by
+     *  `sentry.ts` + `analytics.ts` to tag their `environment`. Undefined on the
+     *  desktop (which derives environment from `import.meta.env.DEV` instead). */
+    __HOUSTON_DEPLOY_ENV__?: "production" | "preview" | "development";
   }
 }
 
@@ -56,7 +62,7 @@ const RESOLVED = resolveEngine(
 const STATIC_HOST_URL: string | undefined =
   RESOLVED.kind === "static-host" ? RESOLVED.url : undefined;
 // Hosted gateway URL (VITE_HOSTED_ENGINE_URL, baked into the build). OAuth (the
-// default) gates the app behind the Supabase Google-login screen and feeds the
+// default) gates the app behind the Firebase login screen and feeds the
 // session token in via setHostedEngineSessionToken, so the gateway only ever
 // sees a verified user JWT. `hosted-static` points straight at the URL with the
 // build's HOST_TOKEN (no login — for service-token smoke tests against e.g. the
@@ -87,7 +93,7 @@ function resolveConfig(): { baseUrl: string; token: string } | null {
   // sidecar-injected handshake.
   if (STATIC_HOST_URL) return { baseUrl: STATIC_HOST_URL, token: HOST_TOKEN };
   // Hosted OAuth (a managed gateway): the client is built ONLY from the
-  // Supabase session token via setHostedEngineSessionToken. Return null here
+  // Firebase session token via setHostedEngineSessionToken. Return null here
   // even if a Tauri-spawned sidecar injected window.__HOUSTON_ENGINE__
   // (lib.rs) — adopting that would wrongly point the hosted connection at the
   // local sidecar.
@@ -138,13 +144,24 @@ function applyConfig(config: { baseUrl: string; token: string }) {
 }
 
 /**
- * True when the desktop should run the Supabase Google-login gate: a hosted
+ * True when the desktop should run the Firebase Google-login gate: a hosted
  * gateway URL is set AND its auth mode is OAuth (`VITE_HOSTED_ENGINE_AUTH`).
  * Static-token hosted mode skips the login UI and bootstraps from HOST_TOKEN in
  * resolveConfig, exactly like `VITE_NEW_ENGINE_URL`.
  */
 export function hostedOauthGateActive(): boolean {
   return HOSTED_OAUTH;
+}
+
+/**
+ * True when the active engine is a REMOTE GATEWAY (`hosted-oauth` or
+ * `hosted-static` — a baked `VITE_HOSTED_ENGINE_URL`): agent-scoped requests go
+ * through the cloud gateway to per-agent pods. The first-run cloud-migration
+ * wizard (HOU-719) gates on this — it imports into cloud agents, so it must
+ * never show for the local sidecar or an external `VITE_NEW_ENGINE_URL` host.
+ */
+export function isHostedGatewayEngine(): boolean {
+  return Boolean(HOSTED_ENGINE_URL);
 }
 
 /**
@@ -173,7 +190,7 @@ export function isCoLocatedEngine(): boolean {
   return false; // hosted gateways are always remote
 }
 
-/** Updates the hosted engine bearer token from the current Supabase session. */
+/** Updates the hosted engine bearer token from the current Firebase session. */
 export function setHostedEngineSessionToken(token: string | null): void {
   if (!HOSTED_ENGINE_URL || typeof window === "undefined") return;
   const previousToken = window.__HOUSTON_ENGINE__?.token ?? null;
@@ -229,8 +246,8 @@ export function setActiveOrg(slug: string | null): boolean {
 
 /**
  * Installs the hosted-session refresher the engine adapter's gatewayAuthFetch
- * calls when the gateway answers 401: `refresh` force-mints a fresh Supabase
- * access token (or resolves null when the session is truly gone), the new
+ * calls when the gateway answers 401: `refresh` force-mints a fresh Firebase
+ * ID token (or resolves null when the session is truly gone), the new
  * token is pushed onto the engine global, and the adapter replays the failed
  * request — so an expired bearer never reaches the user as an error toast
  * (HOU-687). Hosted mode only; returns an uninstaller.

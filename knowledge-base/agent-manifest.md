@@ -31,8 +31,10 @@ interface AgentManifest {
 
 ## Tabs
 
-Every agent renders the same five tabs in the shell:
-`Activity` (board) / `Routines` / `Files` / `Agent Settings` (tab id `job-description`) / `Integrations`.
+Every agent renders the same standard tabs in the shell:
+`Activity` (board) / `Routines` / `Reactions` (event-driven automations, present
+only when `capabilities.triggers` is on — see `visibleAgentTabs`) / `Files` /
+`Agent Settings` (tab id `job-description`) / `Integrations`.
 
 This used to be configurable per agent via a `tabs: AgentTab[]` field in `houston.json`, plus an optional `customComponent` pointing at a per-agent `bundle.js`. The flexibility was never used in practice (zero shipped agents had a custom React tab) and caused drift between installed agents and fresh ones whenever the default set changed. The set is now hardcoded in `app/src/agents/standard-tabs.ts` (`STANDARD_TABS`, `DEFAULT_TAB_ID`). Old `tabs` / `defaultTab` fields on installed manifests are ignored by the loader.
 
@@ -117,6 +119,67 @@ Seeds agent CLAUDE.md from manifest `claudeMd` field or manifest's `CLAUDE.md` f
 other; the manager configures instructions/skills/model/allowlist afterward. See
 `knowledge-base/teams.md`.)
 
+## Agent activation (every new agent: a self-setup mission, no extra screens)
+
+After ANY agent is created (create dialog: from-scratch, AI-assisted,
+library/store template) or imported (friend-import wizard), Houston
+**auto-starts a real first mission in the normal shell** where the agent helps
+the user set *itself* up. No full-screen onboarding, no separate screens: the
+agent introduces itself, proposes 2-3 concrete example missions, then
+interviews the user about how it should work and **persists each thing the user
+says the moment they say it** through its normal abilities — lasting
+preferences/facts go into its instructions, repeatable procedures become Skills,
+anything on a schedule becomes a Routine (ask for the time, confirm first).
+"The agent creates itself." This replaced the earlier full-screen
+Meet → Connect → Conversation → Ready flow, which replaced the hardcoded
+"Meet {name}" welcome mission (HOU-713).
+
+- **Kickoff bubble vs hidden directive.** `lib/agent-setup-mission.ts`
+  `startAgentSetupMission(agent, { provider, model }, source)` calls the shared
+  `createMission` with the *visible* user bubble
+  (`agentOnboarding:setupMission.kickoff` = "Help me get set up") as the text and
+  the full instructions carried through `buildPrompt` →
+  `buildSetupMissionPrompt(agentName)`. The `buildPrompt` string reaches the
+  engine as system context, never rendering as a user chat line — so there is
+  **no CLAUDE.md mutation and none of the old strip/sweep/pending machinery**.
+  Effort is pinned `medium`; it opens the chat via
+  `useUIStore.setActivityPanelId(conversationId, { forceOpen: true })` (same move
+  the old welcome used). On a warming (hosted) agent `createMission` queues the
+  send and returns without throwing (surfacing its own toast on real failure);
+  on the local path a throw is caught and shown via `showErrorToast`
+  (`setupMission.startFailed`). Never silent. Analytics:
+  `agent_onboarding_started` carrying `source` ("created" | "imported") — the
+  only surviving `agent_onboarding_*` event.
+- **The prompt** keeps the reply-in-the-user's-language idiom (detect the
+  language, Latin-American neutral `tú` / Brazilian `você`; every English line a
+  template to translate) and the non-technical voice (never mention files,
+  folders, configs, or internals). It tells the agent to capture each preference/
+  Skill/Routine as the user speaks and briefly confirm what it saved, never batch
+  for later.
+- **In-dialog connect step (declared integrations only).** For a template whose
+  definition declares `integrations` (non-empty after trimming) AND the
+  deployment serves the integrations provider (`integrationsAvailable(capabilities)`),
+  the create dialog does NOT close after create — it advances to a `"connect"`
+  step **inside `DialogContent`** (`components/shell/connect-apps-step.tsx`): one
+  tile per declared toolkit (`connect-step-tile.tsx`, moved here from the deleted
+  onboarding dir) with the real `AppLogo` + name and a per-tile Connect running
+  the app's own OAuth via `useConnectFlow({ agentId, autoGrant })` (auto-grant
+  gated by `canManageAgentGrants` + `useIntegrationStatus` readiness/`attempted`,
+  mirroring `connect-email.tsx`). Footer is a single primary "Done"
+  (`connect.done`) → `handleClose()`; no Back (the agent already exists), and
+  Escape/outside-close just close (the mission already started, nothing lost).
+  The setup mission is fired **before** this branch, so it runs regardless.
+  Import wizard has no connect step.
+- i18n namespace: `agentOnboarding` (en/es/pt) — now just `setupMission.*`
+  (title/kickoff/startFailed) and `connect.*` (title/body/connect/connected/
+  waiting/cancel/done).
+- `WELCOME_SESSION_PREFIX` / `isWelcomeSessionKey` survive in
+  `lib/agent-welcome.ts` ONLY so boards from older builds still render their
+  derived greeting.
+- The Personal Assistant first-run onboarding below is a separate flow (the
+  connect-first setup); the assistant it seeds does NOT run the self-setup
+  mission today.
+
 ## Default Personal assistant + first-run onboarding
 
 Every newly-created workspace gets a `Personal assistant` instance from the
@@ -124,17 +187,19 @@ built-in `personal-assistant` config. Users do not create it manually.
 
 First-run onboarding is a short, connect-first flow driven by
 `app/src/components/onboarding/personal-assistant-onboarding.tsx`. There is **no
-naming/color step and no Try/Skill/Routine missions** — the old seven-mission
-tutorial (Welcome screen, Meet step, Tools/Try/Skill/Routine missions,
-`[TUTORIAL_COMPLETE]`/`[SKILL_COMPLETE]`/`[ROUTINE_COMPLETE]` tokens, summary
-cards) is gone. Houston ships ONE great default assistant (fixed name/color from
-`tutorial.defaults`), and the payoff is the seeded routine + skill it comes with
-(below), demoed by the UI tour rather than hand-built during setup.
+welcome/intro screen, no naming/color step, and no Try/Skill/Routine missions** —
+the old seven-mission tutorial (Welcome screen, Meet step, Tools/Try/Skill/Routine
+missions, `[TUTORIAL_COMPLETE]`/`[SKILL_COMPLETE]`/`[ROUTINE_COMPLETE]` tokens,
+summary cards) is gone, and the overview/"Start setup" intro screen was removed
+too — onboarding opens DIRECTLY on the connect step so login → the first real
+step has no extra beat. Houston ships ONE great default assistant (fixed
+name/color from `tutorial.defaults`), and the payoff is the seeded routine + skill
+it comes with (below), demoed by the UI tour rather than hand-built during setup.
 
-The screen state machine (`OnboardingStep` in `tutorial-copy.ts`):
+The screen state machine (`OnboardingStep` in `tutorial-copy.ts`; first screen is
+`connect`, the milestone labels live in `tutorial.milestones`):
 
-1. **intro** — a `SetupProgress` plan of the visible milestones, start CTA.
-2. **connect** — connect your AI (`missions/connect-ai.tsx`) via the shared
+1. **connect** — connect your AI (`missions/connect-ai.tsx`) via the shared
    `<ProviderBrowser>` (same ai-hub surface, `useProviderBrowserData`), with
    `curated` set so onboarding shows only `FEATURED_PROVIDER_IDS` split into
    Subscription / API-key sections, plus a "see all providers" chip that expands
@@ -144,10 +209,10 @@ The screen state machine (`OnboardingStep` in `tutorial-copy.ts`):
    (ref-guarded, once per install), kicks off **silent** workspace + assistant
    provisioning in the background (`useCreateAssistant`, no user-triggered
    button), and advances to `aiConnected`.
-3. **aiConnected** — a `SetupProgress` success beat; continue advances to
+2. **aiConnected** — a `SetupProgress` success beat; continue advances to
    `connectEmail` when integrations are available, else straight to `finished`
    (`stepAfterAgentCreated`).
-4. **connectEmail** — connect an email toolkit (`missions/connect-email.tsx`) so
+3. **connectEmail** — connect an email toolkit (`missions/connect-email.tsx`) so
    the assistant can send on the user's behalf. Three one-click brand action rows
    (Gmail → Google logo, Outlook → Microsoft logo, "Another provider" → a `Mail`
    icon that expands an inline input); tapping a brand row kicks off its OAuth
@@ -161,10 +226,10 @@ The screen state machine (`OnboardingStep` in `tutorial-copy.ts`):
    renders a recoverable error card (Try again re-fires the stored provider/model
    create; Back returns to the AI picker) instead of an infinite spinner. A soft
    "skip email" lands on `finished`.
-5. **emailConnected** — success beat, fires `integration_connected`.
-6. **emailChat** (`missions/email.tsx`) — the assistant sends one real email to
+4. **emailConnected** — success beat, fires `integration_connected`.
+5. **emailChat** (`missions/email.tsx`) — the assistant sends one real email to
    the user so they watch it act. Completing marks `emailSent`.
-7. **finished** (`missions/finished.tsx`) — the single celebratory payoff screen
+6. **finished** (`missions/finished.tsx`) — the single celebratory payoff screen
    with a `SuccessCheck` and exactly ONE **"Start building"** CTA (no secondary
    escape). Copy is honest via `variant`: `"sent"` only on the path that actually
    sent an email, `"ready"` when the email steps were skipped or the deployment
@@ -175,7 +240,7 @@ The screen state machine (`OnboardingStep` in `tutorial-copy.ts`):
 
 **Capability-aware step math.** On a no-integrations deployment the email steps
 never render, so they vanish from both the "Step N of M" counter and the
-intro/celebration plan. `integrationsAvailable(capabilities)` drives the visible
+celebration-screen milestone plan. `integrationsAvailable(capabilities)` drives the visible
 milestones and `stepPosition(screen, { emailSteps })` (`app/src/lib/setup-steps.ts`)
 computes the counter so the sole connect step never lies "Step 1 of 3".
 

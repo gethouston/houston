@@ -80,13 +80,44 @@ export function osOpenUrl(url: string): Promise<void> {
   return invoke<void>("open_url", { url });
 }
 
-/** Start a one-shot localhost listener for the Google OAuth redirect and
- * return the `redirectTo` URI Supabase should bounce the browser to. Keeps
+/** Start a one-shot localhost listener for the OAuth sign-in redirect and
+ * return the `redirect_uri` the provider should bounce the browser to. Keeps
  * desktop sign-in entirely on the user's machine — no website relay, no
- * custom-scheme "open app?" dialog. Desktop only; web/PWA clients have no
- * local listener and use the https relay bridge instead. */
+ * custom-scheme "open app?" dialog. Desktop only; web clients have no local
+ * listener and use the firebase-js-sdk popup instead. */
 export function osStartOauthLoopback(): Promise<string> {
   return invoke<string>("start_oauth_loopback");
+}
+
+/** Free the current loopback listener's port immediately — called when a
+ * sign-in attempt is superseded, cancelled (sign-in screen unmount), or times
+ * out, instead of waiting out the native 300s self-timeout. A no-op when no
+ * listener is bound. Desktop only. */
+export function osCancelOauthLoopback(): Promise<void> {
+  return invoke<void>("cancel_oauth_loopback");
+}
+
+// ── Identity session persistence (Keychain / DPAPI, via Rust `auth_*`) ──────
+// The desktop identity session-store round-trips the session JSON blob through
+// these three commands (app/src-tauri/src/auth.rs → macOS Keychain / Windows
+// DPAPI-encrypted file). They are the ONLY new invoke calls session-store may
+// use — it must never call `invoke` directly. `osAuthGetItem` resolves null
+// when no entry exists; set/remove reject on failure so session-store surfaces
+// the fault (no silent swallow).
+
+/** Read the identity session blob for `key`; null when there is no entry. */
+export function osAuthGetItem(key: string): Promise<string | null> {
+  return invoke<string | null>("auth_get_item", { key });
+}
+
+/** Write the identity session blob for `key`. Rejects on a storage failure. */
+export function osAuthSetItem(key: string, value: string): Promise<void> {
+  return invoke<void>("auth_set_item", { key, value });
+}
+
+/** Remove the identity session blob for `key`. Rejects on a storage failure. */
+export function osAuthRemoveItem(key: string): Promise<void> {
+  return invoke<void>("auth_remove_item", { key });
 }
 
 /** Bind a one-shot localhost listener for the Codex/OpenAI OAuth redirect. On
@@ -95,7 +126,7 @@ export function osStartOauthLoopback(): Promise<string> {
  * rejects with a message string if the port can't be bound. Desktop only, and
  * only used against a REMOTE engine (pi's own 1455 is in the pod, so binding a
  * LOCAL 1455 can't collide) — keeps ChatGPT sign-in zero-code even remotely.
- * Mirrors {@link osStartOauthLoopback} (the Supabase Google loopback). */
+ * Mirrors {@link osStartOauthLoopback} (the GCIP/Google sign-in loopback). */
 export function osStartCodexOauthLoopback(): Promise<void> {
   return invoke<void>("start_codex_oauth_loopback");
 }
@@ -278,6 +309,49 @@ export function osStopLocalBridge(): Promise<void> {
  *  event streams the same shape). */
 export function osLocalBridgeStatus(): Promise<BridgeStatus> {
   return invoke<BridgeStatus>("local_bridge_status");
+}
+
+// ── First-run cloud migration (HOU-719) ──────────────────────────────────
+// Native, desktop-only: only the shell can read the OLD local install's
+// `~/.houston` tree and spawn the bundled host against it. The wizard exports
+// each legacy agent over loopback HTTP and uploads it to the cloud gateway.
+
+import type { LegacyDetection } from "./cloud-migration";
+
+/** Scan for legacy desktop data worth migrating. Fast, read-only. */
+export function osDetectLegacyHouston(): Promise<LegacyDetection> {
+  return invoke<LegacyDetection>("detect_legacy_houston");
+}
+
+export interface HoustonBackup {
+  backupPath: string;
+  fileCount: number;
+  byteCount: number;
+}
+
+/** Make a full local backup of the user's Houston data before the cloud
+ *  migration uploads it — a sibling copy named `<dir>-<timestamp>-backup`.
+ *  Can block on a large tree (the copy runs on the blocking pool). Rejects
+ *  with "nothing to back up" when there's no legacy data to copy. */
+export function osBackupHoustonData(): Promise<HoustonBackup> {
+  return invoke<HoustonBackup>("backup_houston_data");
+}
+
+/** Spawn (or return the already-running) passive migration-source host against
+ *  the legacy tree. Can block for MINUTES — its boot converts a big chat db
+ *  before the banner prints — so callers show a "preparing" state. Idempotent. */
+export function osStartMigrationSourceHost(): Promise<{
+  baseUrl: string;
+  token: string;
+}> {
+  return invoke<{ baseUrl: string; token: string }>(
+    "start_migration_source_host",
+  );
+}
+
+/** Kill the migration-source host. Idempotent — absent is success. */
+export function osStopMigrationSourceHost(): Promise<void> {
+  return invoke<void>("stop_migration_source_host");
 }
 
 // ── On-device dictation (bundled whisper.cpp sidecar) ──────────────────────

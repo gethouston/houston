@@ -181,11 +181,6 @@
     "stalledTitle": "Ainda estamos nessa",
     "stalledBody": "Isso está demorando mais que o normal. Não desistimos, seu chat e suas mensagens estão seguros e vão continuar assim que seu agente responder."
   },
-  "agentWelcome": {
-    "missionTitle": "Conheça {{name}}",
-    "missionDescription": "Seu novo agente se apresenta",
-    "failed": "Não conseguimos iniciar o primeiro chat do seu novo agente. Você ainda pode enviar uma mensagem para ele."
-  },
   "toolRuntimeError": {
     "title": "Algo travou",
     "body": "Uma ferramenta local não iniciou corretamente. Tente de novo e reporte se continuar acontecendo.",
@@ -289,7 +284,7 @@
     "reconnected": "Houston reconectou",
     "loadFailed": "Não foi possível carregar seus modelos de IA disponíveis. Verifique sua conexão e tente novamente.",
     "authRequiredTitle": "Login necessário",
-    "authRequiredBody": "Esta versão se conecta ao motor hospedado do Houston, mas não tem login configurado. Defina SUPABASE_URL e SUPABASE_ANON_KEY nesta versão para habilitar o login com Google."
+    "authRequiredBody": "Esta versão se conecta ao motor hospedado do Houston, mas não tem login configurado. Defina FIREBASE_API_KEY e FIREBASE_PROJECT_ID nesta versão para habilitar o login."
   },
   "providerError": {
     "rateLimited": {
@@ -306,6 +301,11 @@
       "switchProvider": "Trocar de provedor",
       "useApiKey": "Usar chave de API no lugar",
       "bodyWithReset": "Seu plano do {{provider}} chegou ao limite. Ele reinicia {{time}}, ou faça upgrade para continuar."
+    },
+    "contextOverflow": {
+      "title": "Esta conversa ficou longa demais para o modelo",
+      "body": "{{model}} não consegue mais ler esta conversa inteira. Mude esta conversa para um modelo com mais memória ou comece uma nova missão para o próximo passo.",
+      "switchModel": "Trocar modelo"
     },
     "modelUnavailable": {
       "title": "Modelo não disponível",

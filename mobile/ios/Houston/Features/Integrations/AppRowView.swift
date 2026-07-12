@@ -27,12 +27,12 @@ struct AppRowView<Trailing: View>: View {
         VStack(alignment: .leading, spacing: Spacing.space2) {
           Text(display.name)
             .font(Typography.bodyMedium)
-            .foregroundStyle(theme.foreground)
+            .foregroundStyle(theme.ink)
             .lineLimit(1)
           if let subtitle, !subtitle.isEmpty {
             Text(subtitle)
               .font(Typography.caption)
-              .foregroundStyle(theme.mutedFg)
+              .foregroundStyle(theme.inkMuted)
               .lineLimit(1)
           }
         }

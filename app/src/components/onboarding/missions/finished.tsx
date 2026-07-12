@@ -95,7 +95,7 @@ export function FinishedMission({ variant, onStart }: FinishedMissionProps) {
           <h1 className="text-2xl font-semibold tracking-tight">
             {t(titleKey)}
           </h1>
-          <p className="max-w-md text-sm text-muted-foreground">
+          <p className="max-w-md text-sm text-ink-muted">
             {t(bodyKey)}
             <br />
             {t("tutorial.missions.finished.tagline")}
@@ -114,7 +114,7 @@ export function FinishedMission({ variant, onStart }: FinishedMissionProps) {
             <button
               type="button"
               onClick={() => setInviteOpen(true)}
-              className="text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+              className="text-xs text-ink-muted underline-offset-4 transition-colors hover:text-ink hover:underline"
             >
               {t("tutorial.missions.finished.inviteTeam")}
             </button>

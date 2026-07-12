@@ -48,7 +48,6 @@ test("gates and success screens are not numbered steps", () => {
   for (const opts of [WITH_EMAIL, NO_EMAIL]) {
     assert.equal(stepPosition("language", opts), null);
     assert.equal(stepPosition("agreement", opts), null);
-    assert.equal(stepPosition("intro", opts), null);
     assert.equal(stepPosition("aiConnected", opts), null);
     assert.equal(stepPosition("emailConnected", opts), null);
     assert.equal(stepPosition("finished", opts), null);

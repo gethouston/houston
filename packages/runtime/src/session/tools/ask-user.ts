@@ -37,6 +37,12 @@ const AskUserParams = Type.Object({
             label: Type.String({
               description: "The short user-facing label for this choice.",
             }),
+            recommended: Type.Optional(
+              Type.Boolean({
+                description:
+                  "Set true on AT MOST ONE option in the list to mark it as the suggested default. Shown to the user as a small 'Recommended' chip. Never mark more than one.",
+              }),
+            ),
           }),
           {
             description:

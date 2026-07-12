@@ -149,6 +149,23 @@ export const config = {
    */
   turnStallTimeoutMs: Number(env.HOUSTON_TURN_STALL_TIMEOUT_MS || 300_000),
 
+  /**
+   * Max live agent sessions kept hot in the in-memory conversation cache. Each
+   * cached session holds a backend session (pi/Claude) with its own in-memory
+   * transcript, so an unbounded cache grows without limit over a long-lived
+   * process. Past this bound the least-recently-used SETTLED session is disposed;
+   * it re-hydrates transparently from its on-disk transcript on the next turn (a
+   * session with a queued/running turn is never evicted). Ops can tune it.
+   */
+  sessionCacheMax: Number(env.HOUSTON_SESSION_CACHE_MAX || 40),
+  /**
+   * How long a settled session may sit idle before it is disposed (ms), even
+   * under the {@link sessionCacheMax} bound — reclaims memory for conversations
+   * a user walked away from. Re-hydrated from disk on next access. `0` (or a
+   * non-positive value) disables idle eviction, leaving only the size bound.
+   */
+  sessionCacheIdleMs: Number(env.HOUSTON_SESSION_CACHE_IDLE_MS || 1_800_000),
+
   version: "0.0.0",
 };
 

@@ -5,8 +5,8 @@ import { createElement, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
 import { useConversationFeed } from "../../hooks/use-conversation-vm";
+import { isSetupChatMode } from "../../lib/integration-chat-setup";
 import { missionCardTags } from "../../lib/mission-card";
-import { isRoutineSetupMode } from "../../lib/routine-chat-setup";
 import {
   type HistoryLoadOptions,
   tauriActivity,
@@ -59,7 +59,7 @@ export function useMissionControlArchived(agents: Agent[]) {
         (c) =>
           c.type === "activity" &&
           c.status === "archived" &&
-          !isRoutineSetupMode(c.agent),
+          !isSetupChatMode(c.agent),
       )
       .map((c) => {
         const agent = agentMap[c.agent_path];

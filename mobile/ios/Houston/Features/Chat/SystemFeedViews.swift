@@ -8,7 +8,7 @@ struct SystemLineView: View {
   var body: some View {
     Text(text)
       .font(Typography.caption)
-      .foregroundStyle(theme.mutedFg)
+      .foregroundStyle(theme.inkMuted)
       .multilineTextAlignment(.center)
       .frame(maxWidth: .infinity, alignment: .center)
       .padding(.vertical, Spacing.space4)
@@ -26,19 +26,19 @@ struct ToolRuntimeErrorView: View {
     VStack(alignment: .leading, spacing: Spacing.space4) {
       Text(Strings.Chat.toolRuntimeError)
         .font(Typography.label)
-        .foregroundStyle(theme.foreground)
+        .foregroundStyle(theme.ink)
       if !error.details.isEmpty {
         Text(error.details)
           .font(Typography.caption)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
       }
       Text(Strings.Chat.tryAgain)
         .font(Typography.caption)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.horizontal, Spacing.space12)
     .padding(.vertical, Spacing.space8)
-    .background(theme.muted, in: RoundedRectangle(cornerRadius: Radius.lg))
+    .background(theme.chipSubtle, in: RoundedRectangle(cornerRadius: Radius.lg))
   }
 }

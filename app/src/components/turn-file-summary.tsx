@@ -102,11 +102,11 @@ function SummarySection({
   t: TFunction<"chat">;
 }) {
   return (
-    <div className="rounded-lg border border-border/50 bg-secondary overflow-hidden">
+    <div className="rounded-lg border border-line/50 bg-chip overflow-hidden">
       <button
         type="button"
         onClick={() => onOpenChange(!open)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink-muted hover:text-ink transition-colors"
       >
         <ChevronDownIcon
           className={cn(
@@ -117,7 +117,7 @@ function SummarySection({
         <span>{title}</span>
       </button>
       {open && (
-        <div className="border-t border-border/50 divide-y divide-border/50">
+        <div className="border-t border-line/50 divide-y divide-line/50">
           {items.map((item) => {
             const key = item.kind === "file" ? item.path : item.update;
             const Icon = itemIcon(item);
@@ -130,9 +130,9 @@ function SummarySection({
                     ? onOpenFile(item.path)
                     : onOpenSemantic(item.update)
                 }
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-accent transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-hover transition-colors"
               >
-                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                <Icon className="h-4 w-4 text-ink-muted shrink-0" />
                 <span className="truncate">{itemLabel(item, t)}</span>
               </button>
             );

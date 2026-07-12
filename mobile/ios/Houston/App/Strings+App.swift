@@ -9,13 +9,13 @@ import Foundation
 // use plain, product-consistent copy. If PARITY.md later pins them, update here.
 extension Strings {
     enum Tabs {
-        static let agents = "Agents"
-        static let missionControl = "Mission Control"
-        static let settings = "Settings"
+        static let agents = String(localized: "tabs.agents", defaultValue: "Agents")
+        static let missionControl = String(localized: "tabs.missionControl", defaultValue: "Mission Control")
+        static let settings = String(localized: "tabs.settings", defaultValue: "Settings")
     }
 
     enum Startup {
-        static let failedTitle = "Couldn't reach Houston"
-        static let failedHint = "Check your connection and reopen the app."
+        static let failedTitle = String(localized: "startup.failedTitle", defaultValue: "Couldn't reach Houston")
+        static let failedHint = String(localized: "startup.failedHint", defaultValue: "Check your connection and reopen the app.")
     }
 }

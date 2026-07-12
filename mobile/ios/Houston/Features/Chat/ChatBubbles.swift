@@ -3,7 +3,7 @@ import UIKit
 
 /// The two conversational messages.
 ///
-/// User (you): a right-aligned bubble on a solid `theme.primary` fill — the
+/// User (you): a right-aligned bubble on a solid `theme.action` fill — the
 /// "sent" bubble, clearly visible (continuous corner). When a `timestamp` is
 /// known it renders bottom-right INSIDE the bubble (WhatsApp convention); a
 /// long-press lifts the bubble for a native Copy menu.
@@ -38,7 +38,7 @@ struct UserBubble: View {
         if let author {
           Text(author)
             .font(Typography.caption)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
         }
         bubble
       }
@@ -50,7 +50,7 @@ struct UserBubble: View {
       .padding(.horizontal, Spacing.space16)
       .padding(.vertical, Spacing.space10)
       .background(
-        theme.primary,
+        theme.action,
         in: RoundedRectangle(cornerRadius: ChatMetrics.bubbleRadius, style: .continuous))
       .contextMenu {
         Button {
@@ -116,12 +116,12 @@ struct UserBubble: View {
         // alert, not quiet metadata; sending/sent stay quiet like the time.
         .foregroundStyle(
           delivery == .failed
-            ? theme.primaryFg : theme.primaryFg.opacity(ChatMetrics.bubbleTimeOpacity)
+            ? theme.actionText : theme.actionText.opacity(ChatMetrics.bubbleTimeOpacity)
         )
         .animation(.snappy(duration: Motion.fast), value: delivery)
         .accessibilityLabel(deliveryLabel)
     }
-    .foregroundStyle(theme.primaryFg.opacity(ChatMetrics.bubbleTimeOpacity))
+    .foregroundStyle(theme.actionText.opacity(ChatMetrics.bubbleTimeOpacity))
   }
 
   /// VoiceOver label for the delivery tick, matching the resolved ``delivery``.
@@ -136,7 +136,7 @@ struct UserBubble: View {
   private func messageText(_ value: String) -> some View {
     Text(value)
       .font(Typography.body)
-      .foregroundStyle(theme.primaryFg)
+      .foregroundStyle(theme.actionText)
   }
 }
 

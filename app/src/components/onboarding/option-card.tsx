@@ -44,21 +44,19 @@ export function OptionCard({
       disabled={disabled}
       aria-pressed={selected}
       className={cn(
-        "flex w-full flex-col gap-3 rounded-lg border-l-2 py-3 pr-3 pl-3 text-left transition-colors",
+        "flex w-full flex-col gap-3 rounded-lg border-l-2 py-3 pr-3 pl-3 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
         disabled
           ? "cursor-not-allowed border-transparent opacity-50"
-          : "border-transparent hover:bg-foreground/[0.04]",
-        selected && !disabled && "border-l-foreground bg-foreground/[0.05]",
+          : "border-transparent hover:bg-ink/[0.04]",
+        selected && !disabled && "border-l-ink bg-ink/[0.05]",
       )}
     >
       <div className="flex items-center gap-3">
         {leading && <span className="shrink-0">{leading}</span>}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground">{label}</p>
+          <p className="text-sm font-medium text-ink">{label}</p>
           {description && (
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {description}
-            </p>
+            <p className="mt-0.5 text-xs text-ink-muted">{description}</p>
           )}
         </div>
         {trailing ?? (showRadio ? <RadioDot selected={selected} /> : null)}
@@ -74,10 +72,10 @@ function RadioDot({ selected }: { selected: boolean }) {
       aria-hidden
       className={cn(
         "flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors",
-        selected ? "border-foreground bg-foreground" : "border-foreground/25",
+        selected ? "border-ink bg-ink" : "border-ink/25",
       )}
     >
-      {selected && <Check className="size-3 text-background" />}
+      {selected && <Check className="size-3 text-input" />}
     </span>
   );
 }
