@@ -39,8 +39,6 @@ import { runtimeCommand } from "./runtime-command";
  *   HOUSTON_MANAGED_CLOUD=1  serve managed-cloud capabilities (K8s pod)
  *   HOUSTON_PASSIVE=1        migration-source mode: no scheduler, no watcher
  *   HOUSTON_STORE_URL         managed pod only: object-store gateway base URL
- *   COMPOSIO_WEBHOOK_SECRET   self-host: Composio webhook signing secret (C9)
- *   HOUSTON_PUBLIC_URL        self-host: public base URL to register the C9 webhook
  */
 
 function remoteCredentialConfig(hostTokenEnv: string | undefined) {
@@ -158,12 +156,6 @@ const host = buildLocalHost({
     // token the gateway knows, so leave it unset there.
     podToken: hostTokenEnv || undefined,
   },
-  // C9 event-driven routines (self-host): the webhook signing secret + this
-  // deployment's public URL. With a direct COMPOSIO_API_KEY, both present turn on
-  // the `triggers` capability. Absent on desktop (no public URL) and managed pods
-  // (the gateway ingests + reconciles), so triggers stays off there.
-  composioWebhookSecret: process.env.COMPOSIO_WEBHOOK_SECRET || undefined,
-  publicUrl: process.env.HOUSTON_PUBLIC_URL || undefined,
   onRuntimeLog: (line) => process.stderr.write(line),
 });
 

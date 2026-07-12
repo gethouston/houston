@@ -9,13 +9,7 @@ import {
 } from "./grants";
 import type { IntegrationProvider } from "./provider";
 import { IntegrationRegistry } from "./registry";
-import type {
-  Connection,
-  ProviderReadiness,
-  ToolMatch,
-  TriggerInstanceRef,
-  TriggerType,
-} from "./types";
+import type { Connection, ProviderReadiness, ToolMatch } from "./types";
 
 /** A provider that counts listConnections calls and can gate them behind a
  *  manually-resolved barrier, to prove concurrent first-reads materialize once. */
@@ -55,15 +49,6 @@ class CountingProvider implements IntegrationProvider {
   async execute() {
     return { successful: true };
   }
-  async listTriggerTypes(): Promise<TriggerType[]> {
-    return [];
-  }
-  async upsertTriggerInstance(): Promise<TriggerInstanceRef> {
-    throw new Error("unused");
-  }
-  async setTriggerInstanceStatus(): Promise<void> {}
-  async deleteTriggerInstance(): Promise<void> {}
-  async ensureWebhookSubscription(): Promise<void> {}
 }
 
 test("actionInToolkit matches the full slug prefix (single- and multi-word)", () => {

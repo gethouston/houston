@@ -6,11 +6,8 @@ import type {
   ProviderReadiness,
   Toolkit,
   ToolMatch,
-  TriggerInstanceRef,
-  TriggerType,
-  TriggerUpsertBinding,
 } from "../types";
-import { IntegrationUpstreamError, TriggersUnsupportedError } from "../types";
+import { IntegrationUpstreamError } from "../types";
 import type { CustomExecutorHost } from "./executor-host";
 import { searchCustomTools } from "./search";
 import type { CustomIntegrationStore } from "./store";
@@ -153,43 +150,6 @@ export class CustomIntegrationProvider implements IntegrationProvider {
     } finally {
       clearTimeout(timer);
     }
-  }
-
-  // ── Triggers (C9) ─────────────────────────────────────────────────────────
-  // Custom OpenAPI/MCP sources have no event-trigger concept: a routine can only
-  // wake on a Composio event, never on a user-added API. Every trigger verb
-  // refuses, exactly like the desktop gateway adapter, so the reconciler and the
-  // UI picker treat `custom` as trigger-less rather than half-supporting it.
-  async listTriggerTypes(_toolkit: string): Promise<TriggerType[]> {
-    throw new TriggersUnsupportedError(
-      "custom integrations have no event triggers",
-    );
-  }
-  async upsertTriggerInstance(
-    _userId: string,
-    _binding: TriggerUpsertBinding,
-  ): Promise<TriggerInstanceRef> {
-    throw new TriggersUnsupportedError(
-      "custom integrations have no event triggers",
-    );
-  }
-  async setTriggerInstanceStatus(
-    _triggerInstanceId: string,
-    _status: "enable" | "disable",
-  ): Promise<void> {
-    throw new TriggersUnsupportedError(
-      "custom integrations have no event triggers",
-    );
-  }
-  async deleteTriggerInstance(_triggerInstanceId: string): Promise<void> {
-    throw new TriggersUnsupportedError(
-      "custom integrations have no event triggers",
-    );
-  }
-  async ensureWebhookSubscription(_webhookUrl: string): Promise<void> {
-    throw new TriggersUnsupportedError(
-      "custom integrations have no event triggers",
-    );
   }
 }
 

@@ -7,9 +7,6 @@ import {
   type ProviderReadiness,
   type Toolkit,
   type ToolMatch,
-  type TriggerInstanceRef,
-  type TriggerType,
-  type TriggerUpsertBinding,
 } from "./types";
 
 /**
@@ -19,23 +16,12 @@ import {
  * a real provider. Connections start pending (like a real OAuth hand-off) and
  * are completed by the test via `completeConnection`.
  */
-interface FakeTriggerInstance {
-  userId: string;
-  binding: TriggerUpsertBinding;
-  status: "enable" | "disable";
-}
-
 export class FakeIntegrationProvider implements IntegrationProvider {
   readonly id: string;
   private readonly toolkits: Toolkit[];
   private readonly actions: ToolMatch[];
-  private readonly triggerTypes: TriggerType[];
   /** userId → that user's connections. */
   private readonly connections = new Map<string, Connection[]>();
-  /** Provisioned trigger instances by their deterministic id (C9 reconciler). */
-  private readonly triggerInstances = new Map<string, FakeTriggerInstance>();
-  /** Stable upsert key → instance id, so a re-upsert is idempotent. */
-  private readonly triggerInstanceKeys = new Map<string, string>();
   private notReady = false;
   /** Test helper: scoped calls throw like a signed-out gateway adapter. */
   throwSigninRequired = false;
@@ -50,7 +36,6 @@ export class FakeIntegrationProvider implements IntegrationProvider {
       id?: string;
       toolkits?: Toolkit[];
       actions?: ToolMatch[];
-      triggerTypes?: TriggerType[];
     } = {},
   ) {
     this.id = opts.id ?? "fake";
@@ -60,14 +45,6 @@ export class FakeIntegrationProvider implements IntegrationProvider {
         action: "GMAIL_SEND_EMAIL",
         toolkit: "gmail",
         description: "Send an email",
-      },
-    ];
-    this.triggerTypes = opts.triggerTypes ?? [
-      {
-        slug: "GMAIL_NEW_GMAIL_MESSAGE",
-        name: "New email",
-        type: "webhook",
-        config: {},
       },
     ];
   }
@@ -165,56 +142,5 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
     if (this.throwSearchExecute) throw this.throwSearchExecute;
     return { successful: true, data: { action, params } };
-  }
-
-  async listTriggerTypes(_toolkit: string): Promise<TriggerType[]> {
-    return this.triggerTypes.map((t) => ({ ...t }));
-  }
-
-  /** Idempotent per (user, trigger, account) — a re-upsert returns the same
-   *  deterministic id and updates the recorded config, mirroring Composio. */
-  async upsertTriggerInstance(
-    userId: string,
-    binding: TriggerUpsertBinding,
-  ): Promise<TriggerInstanceRef> {
-    const key = `${userId}:${binding.triggerSlug}:${
-      binding.connectedAccountId ?? binding.toolkit
-    }`;
-    const existing = this.triggerInstanceKeys.get(key);
-    const triggerInstanceId = existing ?? `ti-${++this.seq}`;
-    this.triggerInstanceKeys.set(key, triggerInstanceId);
-    this.triggerInstances.set(triggerInstanceId, {
-      userId,
-      binding,
-      status: "enable",
-    });
-    return { triggerInstanceId };
-  }
-
-  async setTriggerInstanceStatus(
-    triggerInstanceId: string,
-    status: "enable" | "disable",
-  ): Promise<void> {
-    const instance = this.triggerInstances.get(triggerInstanceId);
-    if (instance) instance.status = status;
-  }
-
-  async deleteTriggerInstance(triggerInstanceId: string): Promise<void> {
-    for (const [key, id] of this.triggerInstanceKeys) {
-      if (id === triggerInstanceId) this.triggerInstanceKeys.delete(key);
-    }
-    this.triggerInstances.delete(triggerInstanceId);
-  }
-
-  /** Test helper: the webhook URL the bootstrap registered (undefined if never). */
-  webhookUrl: string | undefined;
-
-  async ensureWebhookSubscription(webhookUrl: string): Promise<void> {
-    this.webhookUrl = webhookUrl;
-  }
-
-  /** Test helper: the current state of a provisioned instance (or undefined). */
-  triggerInstance(triggerInstanceId: string): FakeTriggerInstance | undefined {
-    return this.triggerInstances.get(triggerInstanceId);
   }
 }

@@ -492,10 +492,17 @@ A routine gets exactly one wake mechanism: a cron `schedule` OR a `trigger`
 binding (a Composio event, e.g. "a new Gmail message arrived"). Everything
 downstream of the wake — run records, chat mode, provider pins, Autopilot,
 acting-as the creator — is identical to a cron routine. Full design +
-cross-repo contract: `cloud/docs/contracts/C9-triggers.md`. Where it works:
-**managed cloud yes** (Go control plane), **self-host yes** (in-process),
-**desktop no** (no public webhook URL). Feature-detected by the `triggers`
-capability (§below); the UI hides the event option where it is off.
+cross-repo contract: `cloud/docs/contracts/C9-triggers.md`.
+
+**Placement (final): the Go cloud gateway is the ONLY trigger backend.** Triggers
+work ONLY where the Go gateway/control-plane fronts the deployment —
+**managed cloud yes**, **self-host no**, **desktop no**. The Go edge holds the
+Composio key + public webhook URL, owns reconciliation and the webhook ingress,
+and **advertises the `triggers` capability**. This TS host carries NO server-side
+trigger implementation (no reconciler, no ingress, no provider trigger verbs);
+its ONLY trigger surface is the internal pod DELIVERY route below. Self-host and
+desktop keep the capability off until a Go-based story exists for them; the UI
+hides the event option wherever `triggers` is absent.
 
 **Domain shape (protocol, additive).** `RoutineTriggerBinding`
 (`packages/protocol/src/domain/routine.ts`): `{toolkit, trigger_slug,
@@ -509,84 +516,32 @@ batch of events as UNTRUSTED third-party data (structured `<event>` delimiters +
 trigger runs pin Autopilot, so the framing bounds prompt-injection blast radius;
 grants bound it further.
 
-### Port verbs (`IntegrationProvider`)
+### Pod trigger-events route (the host's only trigger code)
 
-The port (`packages/host/src/integrations/provider.ts`) gains four verbs
-(types in `integrations/types.ts`: `TriggerType`, `TriggerInstanceRef`,
-`TriggerUpsertBinding`):
-
-- `listTriggerTypes(toolkit)` — the UI picker's event catalog.
-- `upsertTriggerInstance(userId, binding)` / `setTriggerInstanceStatus` /
-  `deleteTriggerInstance` — the reconciler's converge verbs.
-- `ensureWebhookSubscription(webhookUrl)` — one-time bootstrap of the ONE
-  project-level delivery URL.
-
-Adapters: `ComposioProvider` (the **direct** adapter) implements them against
-Composio v3 REST (`/api/v3/triggers_types`,
-`/api/v3/trigger_instances/{slug}/upsert`,
-`/api/v3/trigger_instances/manage/{id}` PATCH+DELETE,
-`/api/v3/webhook_subscriptions`). `RemoteIntegrationProvider` (the desktop's
-gateway adapter) THROWS `TriggersUnsupportedError` for all of them — the desktop
-never reconciles; the gateway/self-host that holds the key does.
-
-### Self-host path (single process)
-
-Turned on ONLY when a self-host deployment owns all three of: a direct
-`COMPOSIO_API_KEY` (not gateway-fronted), `COMPOSIO_WEBHOOK_SECRET`, and
-`HOUSTON_PUBLIC_URL`. Wired in `packages/host/src/local/host.ts`; a managed pod
-(`gatewayFronted`) is excluded even if it carried the env — the Go control plane
-owns cloud reconciliation. Parts, all in-process:
-
-- **Reconciler** (`triggers/reconciler.ts` → `triggers/converge.ts`): a periodic
-  sweep (60s) that diffs DESIRED state (the trigger bindings in each agent's
-  `routines.json`) against ACTUAL state (the Composio instances tracked in
-  `triggers/state-store.ts`, a per-agent host-local JSON keyed by routine id) and
-  converges via the port verbs — missing → create, config-hash changed →
-  recreate, disabled → disable, routine gone / toolkit ungranted / account
-  disconnected → delete. It reuses the SAME `LocalIntegrationGrants` policy that
-  gates search/execute: a trigger on an ungranted toolkit is not provisioned
-  (`paused_revoked`). Bindings bind to the single local owner (`LOCAL_USER`).
-- **Ingress** (`routes/integrations-webhook.ts`,
-  `POST /v1/integrations/composio/webhook`, UNAUTHENTICATED): reads the raw body
-  under a 1 MiB cap (backpressure, no whole-body buffering — the internet can
-  reach it), verifies the signature (`triggers/webhook-verify.ts`:
-  constant-time base64 HMAC-SHA256 over `{webhook-id}.{webhook-timestamp}.{body}`,
-  300s replay window — bad → 401), resolves `metadata.trigger_id` (the INSTANCE
-  id) to its routine via the state store (unknown/stale → 200 drop, Composio must
-  not retry), truncates the payload to 64KB (`triggers/payload.ts`), and fires.
-- **Firing** (`triggers/fire.ts`): dedups each event by id via the existing
-  `FireLock` and fires ONE run for the batch through the same `fireRoutineRun` /
-  `RoutineFirer` as cron.
-
-### Pod trigger-events route (internal)
-
-`POST /v1/agents/:agentId/trigger-events` (`routes/trigger-events.ts`) — the
-INTERNAL route the control-plane→pod path (and the self-host in-process path)
-delivers a batch onto. Host-token trust boundary, never user-facing. Body
+`POST /v1/agents/:agentId/trigger-events` (`routes/trigger-events.ts` →
+`triggers/fire.ts`) — the INTERNAL route the Go control plane delivers a batch
+onto for a managed pod. Host-token trust boundary, never user-facing (an inbound
+`x-houston-acting-as` means a user request was proxied here → 404). Body
 `{events: [{id, routine_id, trigger_slug, payload}]}`; all outcomes are HTTP 200
 with a discriminated `result` (`fired` + `event_ids` / `busy` / `no_routine`) so
-the caller can mark delivered or retry. `id` is the DEDUP key — the cloud outbox
-row id on the pod path, Composio's own event id on the self-host path — and the
-`FireLock` key `trigger-event:<id>` absorbs redeliveries. A busy routine leaves
-rows pending; the next successful delivery batches them into ONE run (storm
-control is free). Always mounted (every local host has a turn bus).
+the caller can mark delivered or retry. `id` is the DEDUP key (the cloud outbox
+row id); the `FireLock` key `trigger-event:<id>` absorbs redeliveries.
+`fireTriggerEvents` groups events by enabled trigger routine, dedups, and fires
+ONE run per routine through the same `fireRoutineRun` / `RoutineFirer` as cron
+(framing the batch via `routineTriggerPrompt`). A busy routine releases its fresh
+locks and returns `busy` so the redelivery re-fires. Always mounted — every local
+host has a turn bus, wired as `triggerLock` in `local/host.ts`.
 
-### Capability + status route
+### Capability + status (served by the Go edge, not this host)
 
-- **Capability**: `triggers: true` is added to `/v1/capabilities` ONLY when the
-  self-host webhook bootstrap succeeded (`local/host.ts`) — a host without
-  event-driven routines stays byte-identical to the nominal profile (absent =
-  off). A failed bootstrap flips it back to false and does NOT start the
-  reconciler (never a half-on capability advertised while no webhook is
-  registered).
-- **Status**: `GET /v1/agents/:agentId/trigger-status` (`routes/trigger-status.ts`)
-  → `{items: [{routine_id, status, detail?}]}` with status one of `active` /
-  `pending` / `paused_disconnected` / `paused_revoked` / `error`. Self-host serves
-  it from the reconciler's state store; a managed pod does not (`triggerState`
-  unset → 404) — the gateway serves the equivalent there. A user-`disabled`
-  routine carries no problem and is omitted (its own `enabled: false` already
-  tells the UI it is off). Every degradation reaches the user; no silent
-  automations.
+- **Capability**: `triggers` reaches the UI from `/v1/capabilities` served by the
+  **Go edge** on managed cloud. The TS host NEVER adds it — a pod/self-host/
+  desktop stays byte-identical to the nominal profile (absent = off).
+- **trigger-types / trigger-status**: `GET /v1/integrations/composio/trigger-types
+  ?toolkit=` and `GET /v1/agents/:slug/trigger-status` are served by the **Go
+  edge**; the engine-client (`ui/engine-client`) `triggerTypes` /
+  `agentTriggerStatus` call those gateway routes. A pod/self-host serves neither —
+  outside managed cloud the UI never advertises triggers, so it never calls them.
 
 ### UI surfaces — the Reactions tab
 
