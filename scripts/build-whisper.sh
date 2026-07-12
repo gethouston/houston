@@ -182,6 +182,14 @@ case "$OS" in
   windows | linux)
     # CPU-only, portable across CPUs (no -march=native), self-contained.
     CMAKE_FLAGS+=(-DGGML_NATIVE=OFF)
+    # ggml hard-refuses plain MSVC for ARM64 ("MSVC is not supported for ARM,
+    # use clang" — ggml-cpu/CMakeLists.txt): its ARM kernels need clang's
+    # NEON/ACLE intrinsics. Visual Studio's bundled ClangCL toolset compiles
+    # arm64 natively on the windows-11-arm runners while keeping the MSVC
+    # ABI + linker, which satisfies ggml's compiler check.
+    if [ "$OS" = "windows" ] && [ "$ARCH" = "aarch64" ]; then
+      CMAKE_FLAGS+=(-T ClangCL -A ARM64)
+    fi
     ;;
 esac
 
