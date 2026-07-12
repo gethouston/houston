@@ -586,27 +586,39 @@ visionPath: "vision/index.html"
      The screen itself: reproduces the real Mission Control's FLOATING-PANEL
      layout (sidebar, board and chat are each their own rounded panel sitting
      on a darker gutter, with visible gutter gaps between them — not
-     contiguous panes divided by border lines). The gutter/window background
-     is #141416, sampled directly off the real app (packages/design-tokens
-     color.dark.json → canvas-gutter / color.cool.gutter-dark = #141416).
-     Interior colours mirror the design-token dark theme:
-       gutter (canvas-gutter) #141416   panel (background/card) #1e1e1e
-       nested column white-a05 over panel   ink #e5e5e5   muted #9a9a9a
-       borders white-a09   primary #e5e5e5.
+     contiguous panes divided by border lines).
+
+     Every colour here is the EXACT design-token value the real app renders in
+     dark mode (packages/design-tokens/tokens/**, app/src/styles/futuristic.css):
+       window / gutter   canvas-gutter = cool.gutter-dark   #141416
+         + the app-shell AURORA glow (blue + warm-orange + indigo radial
+           gradients, [data-theme="dark"] body::before) bleeding up through it
+       floating panel    canvas-screen = glass.screen-55     rgba(38,38,40,0.55)
+         (translucent, so the aurora shows THROUGH the board + chat — the real
+          app's frosted "screen" over the coloured window)
+       task card (rest)  card-rest = neutral.750             #2c2c2b
+       column track      secondary = alpha.white-a05         rgba(255,255,255,0.05)
+       ink               foreground = neutral.150            #e5e5e5
+       ink-soft          accent-fg = neutral.250             #d4d4d4
+       muted             muted-fg = neutral.450              #9a9a9a
+       border            border = alpha.white-a10            rgba(255,255,255,0.1)
+       accent            accent = alpha.white-a08            rgba(255,255,255,0.08)
+       agent avatar      agent.purple = purple-bright        #a78bfa
      Board / card / chat styling lives in assets/hero-demo.css.
      No separate titlebar band: the traffic lights float directly over the
-     top-left of the screen (over the sidebar/gutter), on the same flat
+     top-left of the screen (over the sidebar/gutter), on the same
      background, exactly like the real app — no dividing line, no centered
      window title. */
   .app-mockup {
     --m-ink: #e5e5e5;
-    --m-ink-soft: #cfcfcf;
+    --m-ink-soft: #d4d4d4;
     --m-muted: #9a9a9a;
     --m-faint: #6f6f74;
     --m-canvas: #141416;
+    --m-panel: rgba(38,38,40,0.55);
     --m-col: rgba(255,255,255,0.05);
-    --m-card: #1e1e1e;
-    --m-border: rgba(255,255,255,0.09);
+    --m-card: #2c2c2b;
+    --m-border: rgba(255,255,255,0.1);
     --m-accent: rgba(255,255,255,0.08);
     --m-agent: #a78bfa;
 
@@ -621,9 +633,20 @@ visionPath: "vision/index.html"
     border-radius: 0;
     overflow: hidden;
     color: var(--m-ink);
-    /* Flat, opaque — matches the real app's window background exactly, no
-       photo bleed-through. The glass chrome lives on the MacBook frame. */
-    background: var(--m-canvas);
+    /* The real app's dark window background: the #141416 gutter base with the
+       app-shell AURORA glow bleeding up through it — the EXACT radial-gradient
+       recipe (blue #3b82f6, a warm orange #f97316 accent, indigo #818cf8) from
+       app/src/styles/futuristic.css `[data-theme="dark"] body::before`. The
+       translucent board/chat panels (--m-panel) let it bleed through, exactly
+       like real Mission Control. Kept STATIC (no drift): the hero already runs
+       the scripted demo; an always-animating gradient here would re-composite
+       every frame (see the hero perf notes / PR #856). */
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -8%, rgba(59, 130, 246, 0.22), transparent),
+      radial-gradient(ellipse 70% 55% at 88% 16%, rgba(249, 115, 22, 0.11), transparent),
+      radial-gradient(ellipse 65% 55% at 8% 90%, rgba(129, 140, 248, 0.18), transparent),
+      radial-gradient(ellipse 50% 45% at 55% 112%, rgba(59, 130, 246, 0.1), transparent),
+      var(--m-canvas);
   }
 
   /* Traffic lights fused directly onto the screen: no separate titlebar
@@ -652,7 +675,9 @@ visionPath: "vision/index.html"
     gap: 8px;
     height: 100%;
     min-height: 0;
-    background: var(--m-canvas);
+    /* Transparent so the window aurora (on .app-mockup) bleeds up through the
+       gutter gaps AND through the translucent board/chat panels. */
+    background: transparent;
     padding: 8px;
   }
 
@@ -922,7 +947,11 @@ visionPath: "vision/index.html"
 
   .agent-card {
     display: flex;
-    align-items: flex-start;
+    /* Center the 56px avatar against the whole text block (title + description
+       + tool row). Top-aligning a circle this much taller than the title made
+       it sag ~17px below the heading yet still sit above the block centre — the
+       "not quite anything" look. Centring anchors the pairing cleanly. */
+    align-items: center;
     gap: 16px;
     padding: 16px;
     border-radius: 16px;
@@ -995,7 +1024,6 @@ visionPath: "vision/index.html"
     flex-direction: column;
     gap: 2px;
     min-width: 0;
-    padding-top: 2px;
   }
 
   .agent-card-content h4 {
