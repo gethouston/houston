@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
 import { analytics } from "../../lib/analytics";
@@ -7,9 +8,11 @@ import { SpaceScreen } from "../space/space-screen";
 
 /**
  * First-run language flow, styled like the rest of setup. A single beat: the
- * language picker (pick, then Continue, so a misclick is recoverable) floated on
- * the shared `SpaceScreen` starfield, so it reads as the same continuous space
- * as sign-in and onboarding.
+ * language picker, floated on the shared `SpaceScreen` starfield so it reads as
+ * the same continuous space as sign-in and onboarding. Picking a language
+ * applies + persists it and advances immediately — no separate Continue button
+ * (the whole row is one large, keyboard-operable target, so a click is a
+ * deliberate choice; language is changeable later from Settings).
  *
  * This is the TRUE first screen of the app. Shown before the disclaimer so a
  * Spanish/Portuguese speaker reads the agreement in their own language. Skipped
@@ -52,21 +55,28 @@ function LanguagePicker({
 }: {
   onPick: (locale: SupportedLocale) => Promise<void>;
 }) {
-  const [selected, setSelected] = useState<SupportedLocale | null>(null);
-  const [pending, setPending] = useState(false);
+  // Which row is mid-apply (its choice is being applied + persisted). Null once
+  // idle. On success the gate swaps to the next screen, so this never resets to
+  // idle on the happy path.
+  const [pending, setPending] = useState<SupportedLocale | null>(null);
+  const [failed, setFailed] = useState(false);
 
-  const handleContinue = async () => {
-    if (!selected || pending) return;
-    setPending(true);
+  const handlePick = async (loc: SupportedLocale) => {
+    if (pending) return;
+    setPending(loc);
+    setFailed(false);
     try {
-      await onPick(selected);
-      // Funnel step 5: language chosen (fires only after the write succeeds,
+      await onPick(loc);
+      // Funnel step 5: language chosen (fires only after the choice is applied,
       // so a failed-then-retried pick isn't double counted).
-      analytics.track("onboarding_language_selected", { locale: selected });
+      analytics.track("onboarding_language_selected", { locale: loc });
     } catch {
-      // Write failed — stay on the picker so the user can retry. No localized
-      // error is possible yet (no locale).
-      setPending(false);
+      // Applying the language failed (a genuinely unexpected in-memory i18n
+      // swap failure — the account write is best-effort and doesn't reject).
+      // Re-enable the rows so the user can retry. No localized copy is possible
+      // yet (no locale), so the retry hint stays language-agnostic.
+      setPending(null);
+      setFailed(true);
     }
   };
 
@@ -75,21 +85,28 @@ function LanguagePicker({
       onSpace
       title="Choose your language"
       subtitle="English · Español · Português"
-      onNext={() => void handleContinue()}
-      nextLabel="Continue"
-      nextDisabled={!selected}
-      nextLoading={pending}
     >
       <div className="flex flex-col gap-2">
         {SUPPORTED_LOCALES.map((loc) => (
           <OptionCard
             key={loc}
             label={DISPLAY_NAMES[loc]}
-            selected={selected === loc}
-            onSelect={() => setSelected(loc)}
+            selected={false}
+            disabled={pending !== null && pending !== loc}
+            trailing={
+              pending === loc ? (
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              ) : undefined
+            }
+            onSelect={() => void handlePick(loc)}
           />
         ))}
       </div>
+      {failed && (
+        <p className="mt-4 text-xs text-destructive" role="alert">
+          Something went wrong. Please try again.
+        </p>
+      )}
     </SetupCard>
   );
 }

@@ -49,17 +49,12 @@
         "description": "Reúne todo lo que necesitas antes de tu próxima reunión: quién participa, qué hablaron la última vez y cualquier cosa urgente, a partir de tu bandeja de entrada y una búsqueda rápida en la web, y te lo entrega antes de que empiece."
       }
     },
+    "milestones": {
+      "ai": "Conecta tu IA",
+      "email": "Conecta tu correo",
+      "send": "Prueba tu asistente"
+    },
     "missions": {
-      "intro": {
-        "title": "Vamos a configurar tu cuenta",
-        "body": "Unos pasos rápidos y tu agente estará listo para trabajar.",
-        "cta": "Comenzar configuración",
-        "steps": {
-          "ai": "Conecta tu IA",
-          "email": "Conecta tu correo",
-          "send": "Prueba tu asistente"
-        }
-      },
       "connect": {
         "title": "Conecta tu IA",
         "body": "Elige la IA que ya pagas e inicia sesión. Tú traes tu propia suscripción, así que Houston nunca ve tu contraseña ni tu factura."

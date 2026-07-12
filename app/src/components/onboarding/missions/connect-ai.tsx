@@ -5,7 +5,9 @@ import { SetupCard } from "../setup-card";
 
 interface ConnectAiMissionProps {
   eyebrow: string;
-  onBack: () => void;
+  /** Back to the previous step. Omitted when this is the first setup step (the
+   *  welcome/intro screen was removed), so no Back button renders. */
+  onBack?: () => void;
   /** Fired with (providerId, model) the instant a provider connects. */
   onConnected: (provider: string, model: string) => void;
 }
@@ -41,7 +43,7 @@ export function ConnectAiMission({
       title={t("tutorial.missions.connect.title")}
       subtitle={t("tutorial.missions.connect.body")}
       onBack={onBack}
-      backLabel={t("tutorial.nav.back")}
+      backLabel={onBack ? t("tutorial.nav.back") : undefined}
     >
       <div className="min-h-0 flex-1 overflow-y-auto">
         <ProviderBrowser

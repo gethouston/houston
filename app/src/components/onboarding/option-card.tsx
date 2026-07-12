@@ -44,7 +44,7 @@ export function OptionCard({
       disabled={disabled}
       aria-pressed={selected}
       className={cn(
-        "flex w-full flex-col gap-3 rounded-lg border-l-2 py-3 pr-3 pl-3 text-left transition-colors",
+        "flex w-full flex-col gap-3 rounded-lg border-l-2 py-3 pr-3 pl-3 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
         disabled
           ? "cursor-not-allowed border-transparent opacity-50"
           : "border-transparent hover:bg-foreground/[0.04]",
