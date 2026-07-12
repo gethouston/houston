@@ -1,4 +1,9 @@
 import Foundation
+import os
+
+/// SDK diagnostics arrive on the `log` frame (BRIDGE.md §9.3). They land under
+/// the SDK subsystem, category `sdk`, beside the client/transport loggers.
+private let sdkDiagnostics = Logger(subsystem: "ai.gethouston.sdk", category: "sdk")
 
 /// The SDK → host receive path: offer native-port traffic to the ``portHandler``,
 /// decode the rest as ``BridgeOutbound``, and dispatch it. Runs on the main
@@ -6,8 +11,9 @@ import Foundation
 extension SdkClient {
   /// Entry point the transport calls for each outbound message string.
   func receiveOutbound(_ raw: String) {
-    // Native-port frames (`fetch/*`, `storage/*`) are claimed by the handler; a
-    // `log` frame the handler declines falls through to the inert branch below.
+    // Native-port frames (`fetch/*`, `storage/*`) are claimed by the handler.
+    // Everything else, including the SDK `log` diagnostic frame (§9.3), decodes
+    // as ``BridgeOutbound`` and is dispatched below.
     if portHandler?(raw) == true { return }
     guard let data = raw.data(using: .utf8) else {
       log.error("outbound message was not UTF-8")
@@ -42,9 +48,25 @@ extension SdkClient {
     case let .error(message, detail):
       log.error("protocol error: \(message, privacy: .public)")
       emit(.protocolError(message: message, detail: detail))
+    case let .log(payload):
+      dispatchLog(payload)
     case let .unknown(kind):
       // Inert per BRIDGE.md §4 — a future/unmodeled member, ignored not crashed.
       log.debug("ignoring inert outbound kind: \(kind, privacy: .public)")
+    }
+  }
+
+  /// Route an SDK diagnostic line (BRIDGE.md §9.3) to os.Logger. One-way: no
+  /// reply and no JS re-entry, just a cheap main-actor log call. An unknown level
+  /// falls through to `.info` so a future severity never drops the line. Message
+  /// text uses os.Logger's default redaction, like the `console` polyfill, since
+  /// a diagnostic line may carry user content.
+  private func dispatchLog(_ payload: SdkLogPayload) {
+    switch payload.level {
+    case "debug": sdkDiagnostics.debug("\(payload.message)")
+    case "warn": sdkDiagnostics.warning("\(payload.message)")
+    case "error": sdkDiagnostics.error("\(payload.message)")
+    default: sdkDiagnostics.info("\(payload.message)")
     }
   }
 
