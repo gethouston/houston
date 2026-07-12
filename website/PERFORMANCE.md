@@ -30,6 +30,20 @@ dark scrimmed photo the frosted look is visually identical (verified with
 before/after screenshots, desktop + mobile). The only kept blur is the transient
 `.dl-overlay` modal, which sits over a now-static background.
 
+## Hero mockup aurora — faithful colours, but static and blur-free
+
+The hero `.app-mockup` reproduces the real app's dark theme EXACTLY: the #141416
+gutter base plus the app-shell aurora glow (blue + warm-orange + indigo radial
+gradients, copied verbatim from `app/src/styles/futuristic.css`
+`[data-theme="dark"] body::before`), with translucent board/chat panels
+(`--m-panel`, the `canvas-screen` token) letting it bleed through. Two
+deliberate deviations from the real app keep both rules above intact: the aurora
+is **static** (the app slowly drifts it — we do not, so it never re-composites
+under the scripted demo), and the translucent panels carry **no
+`backdrop-filter`** (the smooth gradient behind them needs no blur to look
+clean). Do not "restore" the drift or the blur — that reintroduces Rule 1/Rule 2
+costs for zero visual gain.
+
 ## Gecko can't pan a full-bleed layer at 60 fps
 
 Even with ambient + blur removed, transforming the full-viewport photo/star
