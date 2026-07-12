@@ -431,6 +431,24 @@ container across a `shrink-0` masthead + a scrolling `PageContainer` below; the
 single-scroll surfaces (integrations, settings landing) use one. Settings landing
 now shares `max-w-5xl` (cards render wider than before, by design).
 
+**Flat "plane" page language (rolling out page by page; first: Integrations).**
+The owner is refactoring top-level pages against flat reference designs (the
+Integrations page's reference is ChatGPT's Plugins page). The vocabulary, all
+tokens: the page sits directly on `background`; list rows are TRANSPARENT at
+rest and paint the `hover` fill (`bg-hover`, light `#efefef`) on hover/focus,
+never a bordered card around every row; section headers are sentence-case
+`text-sm font-medium` with a small trailing `ChevronRight` in `ink-muted`
+(`SectionHeader`, `components/integrations/section-header.tsx`, a
+non-interactive visual motif, not navigation); rows are a large `rounded-xl`
+icon (~56px) + `text-sm font-medium` name over one truncated `text-[13px]`
+`ink-muted` description line + ONE quiet trailing glyph (`Plus`, lock, ...) at
+the row edge; the page hero is the shared `PageHeader` with a rounded
+`bg-input` search field (`border-line-input`, magnifier glyph) in its
+`trailing` slot. Two-column row grids collapse to one under `lg`. First shipped
+surface: the Integrations personal page (`integrations-view/`, see
+`knowledge-base/integrations.md` §3); apply this language when refactoring
+further pages instead of inventing new row chrome.
+
 **Settings (`app/src/components/settings/`)** — no sidebar. The landing is the
 **overview** (`settings-index.tsx`); it uses the shared `PageContainer` +
 `PageHeader` (title `text-[28px] font-normal`). Two row primitives (`settings-row.tsx`), both with a

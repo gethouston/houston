@@ -13,6 +13,7 @@ import { AgentPickerDialog } from "../agent-picker-dialog";
 import { CustomIntegrationRow } from "./custom-integration-row";
 import { CustomKeyDialog } from "./custom-key-dialog";
 import { IntegrationSetupChat } from "./integration-setup-chat";
+import { SectionHeader } from "./section-header";
 import { useIntegrationChatSetup } from "./use-integration-chat-setup";
 
 /**
@@ -58,16 +59,19 @@ export function CustomIntegrationsSection() {
 
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-medium text-ink">{t("custom.title")}</h3>
-          <p className="text-[13px] text-ink-muted">
+          <SectionHeader title={t("custom.title")} />
+          <p className="mt-0.5 text-[13px] text-ink-muted">
             {t("custom.description")}
           </p>
         </div>
+        {/* Outline, not filled: a filled pill here outweighed the page title
+            and pulled the flat page's one visual accent onto a side action. */}
         <Button
           type="button"
           size="sm"
+          variant="outline"
           className="shrink-0 gap-1.5"
           disabled={chatSetup.pending}
           onClick={() => setPickerOpen(true)}
@@ -115,11 +119,9 @@ export function CustomIntegrationsSection() {
       )}
 
       {items.length === 0 ? (
-        <p className="rounded-xl bg-chip px-6 py-8 text-center text-sm text-ink-muted">
-          {t("custom.empty")}
-        </p>
+        <p className="text-sm text-ink-muted">{t("custom.empty")}</p>
       ) : (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
           {items.map((integration) => (
             <CustomIntegrationRow
               key={integration.slug}

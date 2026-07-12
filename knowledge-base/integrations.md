@@ -327,12 +327,15 @@ shared `AllowlistEditor` (`integrations/allowlist-editor.tsx`) is the one
 presentational allowlist editor behind BOTH ceilings (§2).
 
 **Always-visible catalog** — `ConnectMoreAppsSection` (wrapping the internal
-`CatalogBrowser`) is a permanent "Connect more apps" section on BOTH surfaces, not
+`CatalogBrowser`) is a permanent "Connect more apps" section on the AGENT TAB, not
 a dialog: a brand-new user with zero connections immediately sees the full ~1000-app
 catalog. Apps list A-Z; a search box filters; "Load more" pages. It excludes
 already-connected toolkits (surfaced by the caller's own grids) and renders the
 `ConnectWaitingPanel` inline for an in-progress OAuth. There is NO add-apps dialog
-anymore (`AppCatalogPicker` was deleted).
+anymore (`AppCatalogPicker` was deleted). **The personal global page no longer uses
+it** — that page's "plane" redesign replaced the dropdown-filtered load-more grid
+with the grouped `CategoryCatalog` (see Personal mode below); `ConnectMoreAppsSection`
+still serves the agent tab and the allowlist editor.
 
 **Category filter (all surfaces)** — `AppCatalogGrid`'s control row is `search
 flex-1` + a category combobox (the shared `FilterCombobox`, moved to
@@ -340,10 +343,11 @@ flex-1` + a category combobox (the shared `FilterCombobox`, moved to
 agent-admin models, integrations; category options carry no `mark`). Category is
 CONTROLLED by the surface (threaded `AppCatalogGrid` → `CatalogBrowser` →
 `ConnectMoreAppsSection`), so ONE selection filters every list on the surface, not
-just the browse grid: the personal page's Connected grid, the agent tab's usable /
-disallowed grids, and the allowlist editor's Allowed list all narrow to
-the picked category (pure VIEW filter composing with the catalog's text search;
-"All categories" resets). Pure helpers in `integrations/model.ts` (node-tested):
+just the browse grid: the agent tab's usable / disallowed grids and the allowlist
+editor's Allowed list all narrow to the picked category (pure VIEW filter composing
+with the catalog's text search; "All categories" resets). The personal global page
+dropped this combobox in the "plane" redesign — its grouped `CategoryCatalog` IS the
+category navigation, driven by the page-level free-text search alone. Pure helpers in `integrations/model.ts` (node-tested):
 `categoriesOf` (options), `categoryLabel` (slug → "Developer tools"),
 `toolkitsInCategory(catalog, category)` (slug set, `null` for "all"), and
 `categoryListView` (mirrors the models editor's `allowedListView` — picks a
@@ -369,13 +373,32 @@ its ready state on `integrationsPageMode(capabilities)` (`integrations-view-mode
   note ("Only the workspace owner can change this."). Copy: `teams:integrations.orgAllowlist.*`
   + `integrations:policyPage.*`. A footer deep-links to Settings > Connected accounts
   (the deep-link contract below). NO connected grid and NO catalog in policy mode.
-- **Personal mode** (single-player / non-Teams) — the page as before: **Connected
-  apps** (a two-column grid of cards, each opening `AppDetailSheet`; pending/errored
-  connections shown full-width above the grid for recovery; omitted entirely at zero
-  connections) then the always-visible **Connect more apps** catalog. Disconnect is
-  scope `everywhere` and names affected agents. EXCEPTION: the `AppDetailSheet` renders
-  its per-agent grant toggles only when an `onToggleAgent` prop is passed, and this page
-  passes NONE — grant editing moved out (to Settings > Connected accounts, below).
+- **Personal mode** (single-player / non-Teams) — the flat, airy **"plane"**
+  (`integrations-ready.tsx`, reference: the ChatGPT Plugins page). A `PageHeader` hero
+  (title + `home.description` subtitle) carries the rounded `CatalogSearchField` in its
+  `trailing` slot (page-level `query` state). Below it, a calm `space-y-10` stack:
+  (1) any interrupted-OAuth connections as quiet flat `RecoveryRow`s (logo + name +
+  status badge over the shared `PendingConnectionCallout`); (2) an **Installed** strip
+  (`SectionHeader` + `InstalledStrip`) of the active connections as icon TILES that open
+  `AppDetailSheet`, shown only when `activeRows` is non-empty; (3) `CustomIntegrationsSection`;
+  (4) the grouped **`CategoryCatalog`** — the connectable catalog (connected toolkits
+  EXCLUDED, so connected apps never repeat below the strip) grouped by primary category
+  into flat two-column `PlaneAppRow`s, sections ordered by size via the pure
+  `groupCatalogByCategory` (`model.ts`). The page search threads ONLY into `CategoryCatalog`;
+  the Installed strip stays unfiltered (identity, not discovery). While `isLoading`, a
+  light local skeleton (tile row + text bars, `aria-hidden`) stands in for the strip +
+  catalog. Disconnect is scope `everywhere` and names affected agents. EXCEPTION: the
+  `AppDetailSheet` renders its per-agent grant toggles only when an `onToggleAgent` prop
+  is passed, and this page passes NONE — grant editing moved out (to Settings > Connected
+  accounts, below). The presentational pieces live in `components/integrations-view/`
+  (`catalog-search-field`, `section-header` — RELOCATED to `components/integrations/` so
+  `integrations-view/` imports from `integrations/`, never the reverse — `installed-strip`,
+  `plane-app-row`, `category-catalog`, `recovery-row`); the old two-column
+  `ConnectedAppsList` card grid and the dropdown-filtered `ConnectMoreAppsSection` are no
+  longer on this page (both still serve Settings > Connected accounts and the agent tab
+  respectively). The **Custom integrations** section (`CustomIntegrationRow`) shares the
+  same flat row language: leading letter avatar, transparent-at-rest `hover:bg-hover`, a
+  `SectionHeader` chevron heading, and a plain-paragraph empty state.
 
 **Settings > Connected accounts (all modes)** — the account home for every user,
 `app/src/components/settings/sections/connected-accounts*.tsx`, section id
