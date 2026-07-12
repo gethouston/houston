@@ -121,8 +121,8 @@ export function CatalogRow({
 /** An icon tile for the "Installed" strip: a 48px icon box whose content IS
  *  the art — no border, no chrome. Hover paints the SAME `hover` fill as the
  *  catalog rows on the icon box, and the tile's `label` fades in beneath it
- *  (space is reserved, so nothing reflows). The label doubles as the
- *  accessible name via the visible text. */
+ *  (space is reserved, so nothing reflows). `aria-label` pins the accessible
+ *  name to exactly the label — the icon's own alt text stays out of it. */
 export function CatalogTile({
   label,
   className,
@@ -132,6 +132,7 @@ export function CatalogTile({
   return (
     <button
       type="button"
+      aria-label={label}
       className={cn(
         // pb reserves the label line; the label itself is absolutely positioned
         // and centered so a long name shows IN FULL, overflowing the tile's
