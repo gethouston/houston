@@ -193,6 +193,7 @@ jobs:
         working-directory: mobile/ios
         run: |
           set -o pipefail
+          xcodebuild -version
           # Pick an available iPhone simulator dynamically; device names vary by
           # Xcode image, so hardcoding one would break on image bumps.
           DEVICE=$(xcrun simctl list devices available \
@@ -204,22 +205,14 @@ jobs:
             exit 1
           fi
           echo "Using simulator: $DEVICE"
-          if command -v xcpretty >/dev/null 2>&1; then
-            xcodebuild test \
-              -project Houston.xcodeproj \
-              -scheme Houston \
-              -destination "platform=iOS Simulator,name=$DEVICE" \
-              -resultBundlePath "$RUNNER_TEMP/HoustonTests.xcresult" \
-              CODE_SIGNING_ALLOWED=NO \
-              | xcpretty
-          else
-            xcodebuild test \
-              -project Houston.xcodeproj \
-              -scheme Houston \
-              -destination "platform=iOS Simulator,name=$DEVICE" \
-              -resultBundlePath "$RUNNER_TEMP/HoustonTests.xcresult" \
-              CODE_SIGNING_ALLOWED=NO
-          fi
+          # Plain xcodebuild output on purpose: xcpretty swallows the compiler
+          # error lines, which makes a red run undiagnosable from the log.
+          xcodebuild test \
+            -project Houston.xcodeproj \
+            -scheme Houston \
+            -destination "platform=iOS Simulator,name=$DEVICE" \
+            -resultBundlePath "$RUNNER_TEMP/HoustonTests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Upload xcresult bundle
         if: ${{ failure() }}
