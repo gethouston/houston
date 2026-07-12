@@ -30,12 +30,19 @@ export function appendUserMessage(
   state.histories.set(key, list);
 }
 
-/** Persist the assistant reply at turn END, stamped with the same turn id. */
+/**
+ * Persist the assistant reply at turn END, stamped with the same turn id.
+ * A turn that ended asking the user persists its interaction ON the reply,
+ * matching the real runtime (`exec-turn.ts` clean path) — so a client that
+ * settles from history (the terminal frame lost, or the turn completed before
+ * its subscription attached) recovers the needs_you split, not a false done.
+ */
 export function appendAssistantMessage(
   agentId: string,
   conversationId: string,
   replyText: string,
   turnId: string,
+  pendingInteraction: ChatMessage["pendingInteraction"] | null = null,
 ): void {
   const key = `${agentId}:${conversationId}`;
   const list = state.histories.get(key) ?? [];
@@ -45,6 +52,7 @@ export function appendAssistantMessage(
     ts: EPOCH,
     usage: SEED_USAGE,
     turnId,
+    ...(pendingInteraction ? { pendingInteraction } : {}),
   });
   state.histories.set(key, list);
 }
