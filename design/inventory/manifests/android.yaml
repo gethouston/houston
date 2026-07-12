@@ -65,6 +65,8 @@ components:
     status: not-started
   interaction-card:
     status: not-started
+  interaction-approval-card:
+    status: not-started
   plan-ready-card:
     status: not-started
   suggest-reusable-card:

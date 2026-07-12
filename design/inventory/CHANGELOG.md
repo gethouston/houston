@@ -3,6 +3,133 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v21 - 2026-07-12
+
+Two changes: the interaction stepper gains an ACTION-APPROVAL step, and its
+dismiss X is now a durable user interruption.
+
+New `interaction-approval-card`. Connected-app actions are no longer pre-asked
+via `ask_user`; instead the host GATES the integration `execute` (the sandbox
+route answers 409 `approval_required` with a display-ready `{toolkit, action,
+params, paramsHash}` payload) and the runtime records an `approval` step
+(protocol `InteractionStep` kind=approval) on the turn holder (`recordApproval`,
+deduped by paramsHash, ids `a1..aN`), landing LAST in the sequence (questions →
+signin → connects → approvals — approving follows connecting). It rides the SAME
+shared `InteractionModal` shell as signin/connect, app-supplied via a new
+`renderApproval` prop (ui/chat stays Composio-unaware). The card asks "Allow
+{app} to {action}?" over a two-column param block and offers THREE footer
+decisions — **Always allow** (outline, left), **Deny** (outline, Esc), **Allow
+once** (filled, Enter). Unlike a connect/signin "Not now", Deny is a real
+decision the model HEARS: allow-once writes a one-shot ticket (keyed by
+paramsHash, TTL 15 min, consume-once), always-allow appends the action slug, and
+the composed reply names the RAW action slug ("Approved: go ahead with
+{ACTION}." / "I chose not to allow {ACTION}. ..."). Autopilot auto-approves the
+gate (`x-houston-turn-mode: auto`), so the card never appears on an auto turn.
+The store is per-agent `<agent>/.houston/action-approvals.json`, kept pod-side in
+v1 (NOT gated on gatewayFronted; per-user Teams scoping is a cloud follow-up).
+Web `partial` (the composed card is app/-locked + Composio-coupled, like the
+connect/signin bodies).
+
+`interaction-card` dismiss = user interruption. The dismiss X (and typing a fresh
+message) no longer just drops the card locally: it persists a durable `stopped`
+marker on the assistant turn AND clears the pending interaction, so the sequence
+retires and the MODEL LEARNS NOTHING from the abandonment. A reload now renders
+the standard "Stopped by user" line and settles `needs_you` through the SAME
+`finishErr` stop path live and from history (fixing the old divergence where a
+stopped turn re-derived as `done`). The mid-turn race is refused (409).
+Tokens/prose only for `interaction-card`; the step-kind enumeration adds
+approvals and the family '(icon) NAME' note goes present-tense (the approval card
+adopts it).
+
+## v20 - 2026-07-12
+
+`interaction-card`: "treat it like a modal." The card family's chrome is now a
+shared shell — `InteractionModal` (with `InteractionModalTitle`) in `ui/chat` —
+that owns the surface, the HEADER row (title left; `‹ N of M ›` pager + dismiss X
+top-right), a body that fades on step swap, and a right-aligned FOOTER row. The
+question stepper, the sign-in step, and the connect step all compose it, so every
+consumer is structurally identical; the signin/connect bodies (app-supplied, so
+ui/chat stays auth/Composio-unaware) render their OWN `InteractionModal` wired
+with the `StepChrome` the stepper hands them (pager + dismiss). This replaces the
+old split where `ui/chat` drew the header/surface and the app drew a headerless
+body via the removed `InteractionFooter`.
+
+Header carries the identity. The signin/connect `(icon) NAME` lockup ("Google
+Sheets" / "Houston") moved OUT of the body and UP into the modal title, on the
+SAME row as the pager + X — fixing the complaint that the title sat below an
+empty header strip.
+
+Weight restraint, for real. The modal title and the option / identity labels drop
+from `font-medium` to REGULAR; color tone (foreground vs muted) now carries the
+hierarchy. `font-medium` survives only where it earns it: the Recommended chip,
+the number-badge digit, the filled CTA label.
+
+Option rows lose their inline description. Rows show label + Recommended chip
+only. `description` stays TOLERATED on the wire (protocol unchanged) but is no
+longer rendered, and the `ask_user` tool schema + Houston prompt (TS host + Rust
+mirror) drop their per-option description guidance so the model stops spending
+tokens on it (the `recommended` guidance stays).
+
+Unified decline in the footer. The question's old inline Skip pill left the
+free-text escape field (which keeps its honest-input treatment, now pill-free) and
+became a card-wide footer action. "Skip" and connect/sign-in's "Not now" unify
+into ONE label everywhere — **"Not now"** + an Esc keycap hint (owner-voice, warm
+deferral not a technical "skip"; already shipped in en/es/pt as `interaction.
+notNow`, so no new copy). A question footer is that decline ALONE (options advance
+on click); signin/connect place it beside the CTA. Esc now declines a question
+step too. Copy: `questionCard.skip` removed; `suggestReusable.notNow` folded into
+the shared `interaction.notNow`. Anatomy swaps `stepper-header`/`step-identity-row`/
+`option-description`/`skip-pill` for `modal-shell`/`modal-header`/`step-title-icon`/
+`footer-row`/`unified-decline`/`decline-esc-hint`; drops the `with-description`
+state; tokens only.
+
+Family note (judgment call): `suggest-reusable` and `plan-ready` were considered
+for the shell and deliberately NOT migrated — they are composer REPLACEMENTS
+(grey secondary surface, composer shape, a stacked menu of equal-weight action
+rows), a different family from this floating white modal, and the shell's
+header/body/footer does not fit plan-ready's three-way mode menu. They keep their
+own headers; only `suggest-reusable`'s dismiss word was unified onto
+`interaction.notNow`.
+
+## v19 - 2026-07-11
+
+`interaction-card`: three refinements from live use of the v17 Coworker cards.
+
+Weight restraint: the family used `font-semibold` on the question title, option
+labels, AND the connect/sign-in titles at once (competing bolds). It now holds
+to ONE medium step of hierarchy — titles and option/identity labels drop to
+`font-medium`, everything else is regular; no `font-semibold`/`font-bold`
+anywhere in the card family.
+
+Free-text escape row -> escape FIELD: the flat pencil + grey text + Skip row
+read as a static row, not an input. It becomes an honest field — a hairline
+`border-input bg-transparent` border on the row (the composer/`Input`
+vocabulary), `cursor-text` over the whole surface (click anywhere focuses the
+textarea), placeholder-toned text, a `border-ring` focus state, a leading pencil
+adornment, and the inline Skip pill. Its resting look now promises the text
+input it always became on focus.
+
+Connect/sign-in restructure: the reason was a bold title with the app
+description stacked under it (wrong hierarchy). Now the title row is `(icon)
+integration NAME` at medium weight (the identity line — "Google Sheets" /
+"Houston"), and the body is TWO fields: the agent's REASON in foreground tone
+(the prominent-but-not-bold "why") over the app description / sign-in explainer
+muted. This '(icon) name' pattern is documented as the family convention for any
+card with an app/brand icon (the future action-approval card adopts it; the
+icon-less suggest-reusable / plan-ready cards are untouched). Copy: `interaction.
+connectTitle` -> `connectReasonFallback` ("Connect {app} to continue."); new
+`interaction.signinAppName` ("Houston"); `signinTitle` now the sign-in reason
+fallback (en/es/pt).
+
+Decline consistency: "Not now" was hidden on a revisited/reconsidered
+signin/connect step (shown only on the live frontier), leaving a reconsidered
+step with only a Connect button. "Not now" now travels WITH the CTA — present
+wherever connecting/signing-in is offered — so skipping is consistently
+available everywhere it is legal. Anatomy swaps `step-identity-lockup`/
+`benefit-line`/`pencil-badge`/`free-text-escape-row` for `step-identity-row`/
+`integration-name`/`reason-line`/`app-description`/`pencil-adornment`/
+`free-text-escape-field`; tokens only.
+
 ## v18 - 2026-07-11
 
 Routines can now wake on an external event, not only a cron schedule (C9).
@@ -358,3 +485,5 @@ mission-status-chip, routine-row, skill-row, empty-state, toast.
 
 Surfaces: web (enforced, inventoryVersion 1), ios + android (unenforced,
 inventoryVersion 0, all not-started).
+
+## vN` headings.

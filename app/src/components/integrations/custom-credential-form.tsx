@@ -4,7 +4,7 @@ import type {
   CustomAuthMethod,
 } from "@houston-ai/engine-client";
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 interface CustomCredentialFormProps {
@@ -19,6 +19,16 @@ interface CustomCredentialFormProps {
   submitLabel: string;
   submittingLabel: string;
   autoFocus?: boolean;
+  /** DOM id on the `<form>`, so an EXTERNAL submit button (`type="submit"
+   *  form={formId}`) can drive it — the in-chat card puts Save in the shared
+   *  modal footer instead of inside the field block. */
+  formId?: string;
+  /** Hide the form's own trailing Save button (the dialog keeps it; the in-chat
+   *  card supplies its own footer CTA). Enter in a field still submits. */
+  hideSubmit?: boolean;
+  /** Reports whether every field is filled, so an external footer button can
+   *  gate its own disabled state (mirrors the internal Save button's gating). */
+  onReadyChange?: (ready: boolean) => void;
 }
 
 /** The fallback single-field method used until the integration's real auth
@@ -49,6 +59,9 @@ export function CustomCredentialForm({
   submitLabel,
   submittingLabel,
   autoFocus,
+  formId,
+  hideSubmit,
+  onReadyChange,
 }: CustomCredentialFormProps) {
   const { t } = useTranslation("integrations");
   const [values, setValues] = useState<Record<string, string>>({});
@@ -60,6 +73,11 @@ export function CustomCredentialForm({
       : fallbackFields(t("custom.credential.apiKeyLabel"));
   const ready = allFilled(fields, values);
 
+  // Let an external footer button mirror the internal Save button's gating.
+  useEffect(() => {
+    onReadyChange?.(ready);
+  }, [ready, onReadyChange]);
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ready || submitting) return;
@@ -70,7 +88,7 @@ export function CustomCredentialForm({
   };
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3">
+    <form id={formId} onSubmit={submit} className="flex flex-col gap-3">
       {fields.map((field, i) => {
         const show = revealed[field.variable] ?? false;
         return (
@@ -121,11 +139,13 @@ export function CustomCredentialForm({
           </div>
         );
       })}
-      <div className="flex justify-end">
-        <Button type="submit" size="sm" disabled={!ready || submitting}>
-          {submitting ? submittingLabel : submitLabel}
-        </Button>
-      </div>
+      {!hideSubmit && (
+        <div className="flex justify-end">
+          <Button type="submit" size="sm" disabled={!ready || submitting}>
+            {submitting ? submittingLabel : submitLabel}
+          </Button>
+        </div>
+      )}
     </form>
   );
 }

@@ -219,6 +219,87 @@ deployment.
 
 ---
 
+## 2b. Action approvals — the execute-time permission gate
+
+GRANTS answer "which toolkit may this agent touch at all"; APPROVALS answer "may
+this specific action call, with these params, run right now". Distinct concepts,
+distinct store. An `integration_execute` the user has not pre-blessed pauses the
+turn on an approval card instead of firing silently.
+
+**The gate** — `packages/host/src/routes/integrations-sandbox.ts`, in the execute
+branch, evaluated in strict PRECEDENCE (skipped wholesale when `deps.actionApprovals`
+is unwired, so existing installs/tests execute untouched):
+
+1. **Autopilot header** — an `auto` turn auto-approves. The runtime forwards
+   `x-houston-turn-mode: auto` on `/sandbox/integrations/execute` (from the
+   turn-mode `AsyncLocalStorage`, `packages/runtime/src/session/turn-mode-context.ts`)
+   ONLY on an Autopilot turn; the sandbox HMAC already authenticated the runtime,
+   so the header is trusted. Fire-and-forget can never wait on the user.
+2. **Always-allow record** — the action slug is on the agent's always list → runs.
+3. **One-shot ticket** — a FRESH ticket matching `hashActionParams(action, params)`
+   is consumed (single use) → runs. The hash is canonical JSON with recursively
+   SORTED keys → sha256 → 16 hex chars, so re-serializing the same call re-hashes
+   identically, yet ANY param drift changes the hash → a new card (drift is safe,
+   never silently pre-approved).
+4. **Else 409** `{error, code:"approval_required", approval:{toolkit, action,
+   params, paramsOmitted?, paramsHash}}`. `params` is display-ready
+   (`displayParams` returns `{params, omitted}`: strings pass, else JSON; each
+   value truncated to 80 chars, at most the first 8 keys). `paramsOmitted` (only
+   when > 0) is how many params were dropped past that cap — the card surfaces it
+   ("And N more settings") so the user knows the hash covers settings the rows
+   don't show. `toolkit` is best-effort (`resolveToolkit`, 409-path only: the
+   LONGEST matching GRANTED slug when a record exists, else the LONGEST matching
+   slug among the acting user's CONNECTIONS — fault-tolerant, so a `listConnections`
+   failure falls through — else the segment before the first `_`; display-only,
+   `paramsHash` + `action` are what gate).
+
+The runtime's `integration_execute` classifies the 409 by its `code` (never the
+bare status), records an `approval` step on the turn holder (`recordApproval`,
+deduped by paramsHash, ids `a1..aN`, LAST in the sequence — approving follows
+connecting), and returns non-error queued-pending text so the model ends the turn
+cleanly rather than erroring. See `knowledge-base/architecture.md` (interaction
+lifecycle).
+
+**The store** — `packages/host/src/integrations/{action-approval-store.ts,
+action-approvals.ts, approvals.ts}`, mirroring `FileIntegrationGrantStore`.
+`FileActionApprovalStore` persists per-agent JSON at
+`<agent>/.houston/action-approvals.json` `{always: string[], tickets:
+[{hash, ts}]}` (atomic tmp+rename; missing/corrupt reads as the empty record,
+never a crash; removed for free on agent deletion). Both file-backed stores share
+the agent-dir path derivation + atomic write via `agent-file.ts`
+(`agentDotHoustonFile` + `atomicWriteJson`), not two copies. `LocalActionApprovals` is the
+policy over it: `isAlways` / `allowAlways` (case-insensitive dedupe), `addTicket` /
+`consumeTicket` (consume-once). Tickets have a **15-minute TTL**
+(`TICKET_TTL_MS`) and are PRUNED on every read/write path, so a stale ticket never
+silently authorizes a later identical call. Every MUTATING op is a read→mutate→
+write across awaits, so they are **serialized per agent** through a promise-chain
+tail (`chains` map) — two concurrent `consumeTicket`s for one fresh ticket can't
+both win (no double-consume / resurrection); `consumeTicket` also skips the
+redundant `put` on a clean miss (nothing pruned or removed).
+
+**Pod-side in v1 (NOT gated on gatewayFronted).** Wired in `local/host.ts`
+whenever `registry` exists — UNLIKE grants, it does NOT check `!gatewayFronted`, so
+a managed cloud pod still enforces the gate pod-side per agent (the gateway does
+not own action approvals yet). Per-user approval scoping for Teams is a known
+cloud follow-up.
+
+**User routes** — `packages/host/src/routes/action-approvals.ts` (authorize =
+`canUseAgent`; dep absent → the handler falls through to 404 → client reads
+"unsupported" and degrades without a toast):
+
+- `GET  /v1/agents/:agentId/action-approvals` → `{always}`
+- `POST /v1/agents/:agentId/action-approvals/always`   `{action}` → `{always}`
+- `POST /v1/agents/:agentId/action-approvals/tickets`  `{hash}`   → `{ok:true}`
+
+The app calls `tickets` on "Allow once", `always` on "Always allow"; the model
+then re-issues the same execute and the gate lets it through. **The prompt no
+longer pre-asks** via `ask_user` for connected-app actions (`houston-prompt.ts` +
+the Rust mirror `houston_prompt/base.rs`): "For connected-app actions, do not ask.
+Houston shows its own approval card after your turn, so just call
+`integration_execute`."
+
+---
+
 ## 3. UI map
 
 Gated on `HOST_BUILD` (`app/src/agents/standard-tabs.ts`) — a deterministic build
@@ -365,14 +446,23 @@ calls the integration-gated `request_connection` tool (never writes a link). Tha
 records a `{kind:"connect", toolkit, reason?}` pending interaction which rides the
 turn's clean `done` frame and settles the board card to `needs_you`; the pending
 interaction floats a `ChatInteractionCard` stepper ABOVE the composer, whose
-connect step is `ChatConnectInteractionCard` — a COMPACT left-aligned identity
-lockup (reference "Coworker card" look, reversing the earlier centered hero): the
-app's brand logo (AppLogo `sm`, size-6) inline with a bold title (the agent's
-reason, else "Connect {app}?"; the sign-in step seats the Houston helmet in the
-same slot and titles with the reason or "Sign in to Houston"), one muted benefit
-line beneath (the connected state swaps it for a calm check + "Connected"). The
-footer is a quiet "Not now" + Esc hint beside the single filled "Connect" pill
-(with a return-key glyph); Enter fires Connect, Esc declines (a capture-phase
+connect step is `ChatConnectInteractionCard`. Every step (question, sign-in,
+connect, approval) composes ONE shared modal shell — `InteractionModal` + `InteractionModalTitle`
+in `ui/chat` (reference "Coworker card" look, inventory v19) — that owns the
+surface, the HEADER row (title left; `‹ N of M ›` pager + dismiss X top-right),
+the body, and a right-aligned FOOTER row. The connect step's `(icon) NAME`
+identity lockup (AppLogo `sm` beside the integration NAME at REGULAR weight — the
+sign-in step seats the Houston helmet + "Houston" in the same slot) is the modal
+TITLE, IN the header beside the pager/X; the body is a two-field block (the
+agent's reason in foreground tone over a muted app-description / sign-in-explainer
+line; the connected state swaps it for a calm check + "Connected"). The signin/
+connect body renders its OWN `InteractionModal`, wired with the `StepChrome`
+(`{ pager, onDismiss, dismissLabel, disabled }`) the stepper hands it, so ui/chat
+stays auth/Composio-unaware while the whole family shares one shell (there is no
+more headerless-body + `InteractionFooter` split). Weight is restrained: color
+tone carries the hierarchy, so titles and labels are REGULAR, never bold. The
+footer is the unified "Not now" + Esc hint beside the single filled "Connect"
+pill (with a return-key glyph); Enter fires Connect, Esc declines (a capture-phase
 handler pre-empting the global Escape-closes-panel shortcut). Navigation is the
 header pager for every kind (NO card-inside-a-card, NO body nav button). Every
 step kind is SKIPPABLE, and a SKIPPED signin/connect step is RECONSIDERABLE:
@@ -389,7 +479,8 @@ body reads `revisited` to suppress its frontier-only "Not now" and, once
 completed, its CTA). It shares the connect flow above with the inline link card
 through one hook (`app/src/components/use-integration-connect.tsx`); only the
 presentation forks — the inline `#houston_toolkit` renderer stays a `RowCard`
-badge, the stepper draws a surface-less compact lockup + footer CTA. Both render the logo
+badge, the stepper draws the shared `InteractionModal` (identity in the header,
+CTA in the footer). Both render the logo
 through the shared `AppLogo` (the hook holds the favicon-guess fallback until
 the toolkits catalog settles, and `AppLogo`'s failure latch is keyed to the
 failing URL — a pre-catalog 404 once permanently shadowed the real Composio
@@ -398,6 +489,33 @@ the app is already connected). The old `#houston_toolkit=` markdown-link
 connect hack is GONE from the prompt and tool guidance — the app's legacy
 link-card renderer survives only to render old transcripts. Full lifecycle →
 `knowledge-base/architecture.md`.
+
+**Action-approval card (in-chat).** When the host gates an
+`integration_execute` (§2b), the runtime queues an `approval` step and the same
+stepper renders `ChatApprovalInteractionCard`
+(`app/src/components/chat-approval-interaction-card.tsx`) through ui/chat's
+`renderApproval` prop — its own `InteractionModal` wired with the `StepChrome`
+(pager + dismiss X) the stepper hands it, so ui/chat stays Composio-unaware. It
+resolves the toolkit to a logo + name for the '(icon) NAME' title WITHOUT any
+connect side effect (no OAuth, no auto-continue — reusing `useIntegrationStatus`
+/ `useIntegrationToolkits` + the shared `AppLogo`), asks "Allow {app} to
+{action}?" (`humanizeActionSlug`) over a muted-key/foreground-value param block,
+and offers three FOOTER decisions — Always allow (outline, LEFT) / Deny (outline,
+Esc) / Allow once (filled, Enter). `onDecision` writes the store (allow-once →
+`tickets` POST, always-allow → `always` POST) then advances. The composed reply
+(`app/src/lib/interaction-reply.ts`) is TWO-FACED: the flat BODY the MODEL reads
+names the RAW action slug via `approvedLine` / `deniedLine` (so it re-issues the
+EXACT call — `approvedLine` also says "Use exactly the same parameters as before"
+to guard against param drift breaking the one-shot ticket), while the VISIBLE
+transcript payload a non-technical user reads names the HUMANIZED app + action via
+`approvedLineDisplay` / `deniedLineDisplay` ("Allowed Gmail to send draft.", never
+the slug). `finalApprovalNames` keeps one decision per step id (walked-back
+re-decides collapse to the LAST) and carries both the slug and the humanized
+`display` the panel computes (`humanizeActionSlug` + `prettifyToolkit`). A
+revisited decided step shows a calm check + "Allowed" (or muted "Denied") with no
+footer. The three step cards (approval/connect/signin) share ONE capture-phase
+Enter/Esc hook (`use-interaction-step-keys.ts`); the approval card's read-only
+app-identity resolution is `use-integration-app-display.ts`.
 
 **No silent failures.** All engine mutations route through `call()`
 (`app/src/lib/tauri.ts`), which toasts + reports once, so the integration hooks

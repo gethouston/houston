@@ -268,6 +268,14 @@ export interface ChatMessage {
    * false `done`. Absent when the turn ended with nothing outstanding.
    */
   pendingInteraction?: PendingInteraction;
+  /**
+   * Set on the assistant message when the user interrupted this turn — the Stop
+   * button, or dismissing the composer-replacing interaction card. Persisted so
+   * the standard "Stopped by user" line survives a history reload, and so the
+   * board-status derivation on reload settles the turn to `needs_you` instead of
+   * a false `done`. Absent on turns that ran to completion.
+   */
+  stopped?: true;
 }
 
 export interface ConversationSummary {

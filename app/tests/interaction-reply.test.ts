@@ -6,10 +6,15 @@ import type { ChatInteractionAnswer } from "@houston-ai/chat";
 import { decodeInteractionAnswersMessage } from "../../ui/chat/src/interaction-answers-message.ts";
 import { isAutoContinueMessage } from "../src/lib/auto-continue-message.ts";
 import {
+  type ApprovalDisplay,
+  type ApprovalOutcome,
   type ConnectOutcome,
+  type CredentialOutcome,
   composeInteractionReply,
   encodeInteractionAnswersMessage,
+  finalApprovalNames,
   finalConnectNames,
+  finalCredentialNames,
 } from "../src/lib/interaction-reply.ts";
 
 const answers: ChatInteractionAnswer[] = [
@@ -22,7 +27,12 @@ const base = {
   answers: [] as ChatInteractionAnswer[],
   connectedNames: [] as string[],
   skippedConnectNames: [] as string[],
+  approvedActions: [] as string[],
+  deniedActions: [] as string[],
+  approvedDisplays: [] as ApprovalDisplay[],
+  deniedDisplays: [] as ApprovalDisplay[],
   credentialedNames: [] as string[],
+  skippedCredentialNames: [] as string[],
   hasQuestionSteps: false,
   signedIn: false,
   signinSkipped: false,
@@ -32,6 +42,17 @@ const base = {
   signedInLine: "Signed in to Houston.",
   skippedSigninLine: "Skipped signing in.",
   signedInFollowup: "I've signed in. Please continue.",
+  // Body factories name the RAW slug (the model re-issues it).
+  approvedLine: (action: string) =>
+    `Approved: go ahead with ${action}. Use exactly the same parameters as before.`,
+  deniedLine: (action: string) =>
+    `I chose not to allow ${action}. Do not retry it; continue without it.`,
+  // Display factories name the humanized app + action (the visible payload).
+  approvedLineDisplay: ({ app, action }: ApprovalDisplay) =>
+    `Allowed ${app} to ${action}.`,
+  deniedLineDisplay: ({ app, action }: ApprovalDisplay) =>
+    `Did not allow ${app} to ${action}.`,
+  skippedCredentialLine: (name: string) => `Skipped adding the ${name} key.`,
   credentialedFollowup: "I've added the Acme key. Please continue.",
 };
 
@@ -176,6 +197,163 @@ describe("composeInteractionReply", () => {
     strictEqual(reply.includes("I've signed in. Please continue."), false);
   });
 
+  // ── Approval composition ───────────────────────────────────────────────
+  // An approval-only sequence has no user-typed text, so it resumes the agent
+  // HIDDEN, naming the go-ahead so the model re-issues the SAME action slug.
+  it("hides an approval-only sequence and names the approved action", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      approvedActions: ["GMAIL_SEND_EMAIL"],
+    });
+    strictEqual(isAutoContinueMessage(reply), true);
+    strictEqual(
+      reply.endsWith(
+        "Approved: go ahead with GMAIL_SEND_EMAIL. Use exactly the same parameters as before.",
+      ),
+      true,
+    );
+  });
+
+  // A question+approval sequence is visible (the user typed the answers); the
+  // approval line follows the answers, in sequence order.
+  it("appends the approval line after answers in a mixed question+approval sequence", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      answers,
+      approvedActions: ["GMAIL_SEND_EMAIL"],
+      hasQuestionSteps: true,
+    });
+    strictEqual(isAutoContinueMessage(reply), false);
+    strictEqual(
+      reply,
+      "To whom?: john@example.com\nSaying what?: Running late\nApproved: go ahead with GMAIL_SEND_EMAIL. Use exactly the same parameters as before.",
+    );
+  });
+
+  // A denied action is a fact the agent MUST hear (do not retry): it rides the
+  // hidden resume for an approval-only sequence.
+  it("hides a denied approval-only sequence but names the refusal", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      deniedActions: ["GMAIL_SEND_EMAIL"],
+    });
+    strictEqual(isAutoContinueMessage(reply), true);
+    strictEqual(
+      reply.endsWith(
+        "I chose not to allow GMAIL_SEND_EMAIL. Do not retry it; continue without it.",
+      ),
+      true,
+    );
+  });
+
+  // Approvals come AFTER the connect lines, approved before denied, in order.
+  it("orders approvals after connects, approved before denied", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      answers,
+      connectedNames: ["Gmail"],
+      approvedActions: ["GMAIL_SEND_EMAIL"],
+      deniedActions: ["GMAIL_DELETE_EMAIL"],
+      hasQuestionSteps: true,
+    });
+    strictEqual(
+      reply,
+      "To whom?: john@example.com\nSaying what?: Running late\nConnected Gmail.\nApproved: go ahead with GMAIL_SEND_EMAIL. Use exactly the same parameters as before.\nI chose not to allow GMAIL_DELETE_EMAIL. Do not retry it; continue without it.",
+    );
+  });
+});
+
+describe("finalApprovalNames", () => {
+  const outcomes = (
+    entries: [string, ApprovalOutcome][],
+  ): Map<string, ApprovalOutcome> => new Map(entries);
+  /** A display pair from the slug, mirroring the panel's humanization. */
+  const disp = (app: string, action: string): ApprovalDisplay => ({
+    app,
+    action,
+  });
+
+  it("splits final decisions into approved + denied slugs + displays, in step order", () => {
+    const { approvedActions, deniedActions, approvedDisplays, deniedDisplays } =
+      finalApprovalNames(
+        ["a1", "a2", "a3"],
+        outcomes([
+          [
+            "a1",
+            {
+              action: "GMAIL_SEND_EMAIL",
+              decision: "allowOnce",
+              display: disp("Gmail", "send email"),
+            },
+          ],
+          [
+            "a2",
+            {
+              action: "GMAIL_DELETE_EMAIL",
+              decision: "deny",
+              display: disp("Gmail", "delete email"),
+            },
+          ],
+          [
+            "a3",
+            {
+              action: "SLACK_POST",
+              decision: "alwaysAllow",
+              display: disp("Slack", "post"),
+            },
+          ],
+        ]),
+      );
+    deepStrictEqual(approvedActions, ["GMAIL_SEND_EMAIL", "SLACK_POST"]);
+    deepStrictEqual(deniedActions, ["GMAIL_DELETE_EMAIL"]);
+    // Displays stay aligned with their slug list, in step order.
+    deepStrictEqual(approvedDisplays, [
+      disp("Gmail", "send email"),
+      disp("Slack", "post"),
+    ]);
+    deepStrictEqual(deniedDisplays, [disp("Gmail", "delete email")]);
+  });
+
+  // Last decision wins: denied then re-approved records the approval only.
+  it("reports approved for a step denied then re-approved (last write wins)", () => {
+    const map = outcomes([
+      [
+        "a1",
+        {
+          action: "SLACK_POST",
+          decision: "deny",
+          display: disp("Slack", "post"),
+        },
+      ],
+    ]);
+    map.set("a1", {
+      action: "SLACK_POST",
+      decision: "allowOnce",
+      display: disp("Slack", "post"),
+    });
+    const { approvedActions, deniedActions } = finalApprovalNames(["a1"], map);
+    deepStrictEqual(approvedActions, ["SLACK_POST"]);
+    deepStrictEqual(deniedActions, []);
+  });
+
+  it("omits an approval step that was never reached", () => {
+    const { approvedActions, deniedActions } = finalApprovalNames(
+      ["a1", "a2"],
+      outcomes([
+        [
+          "a1",
+          {
+            action: "GMAIL_SEND_EMAIL",
+            decision: "alwaysAllow",
+            display: disp("Gmail", "send email"),
+          },
+        ],
+      ]),
+    );
+    deepStrictEqual(approvedActions, ["GMAIL_SEND_EMAIL"]);
+    deepStrictEqual(deniedActions, []);
+  });
+
   // ── Credential composition (HOU-550) ───────────────────────────────────
   // A credential-only sequence mirrors signin-only: no factual line to relay,
   // so it resumes with the dedicated hidden followup naming the integration.
@@ -206,6 +384,32 @@ describe("composeInteractionReply", () => {
       reply,
       "To whom?: john@example.com\nSaying what?: Running late\nAdded the Acme key.",
     );
+  });
+
+  // A SKIPPED credential is a fact the agent MUST hear (or it waits on a key
+  // that never comes): a skip-only sequence resumes HIDDEN naming the decline.
+  it("hides a credential-skip-only sequence but names the decline", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      skippedCredentialNames: ["Acme"],
+    });
+    strictEqual(isAutoContinueMessage(reply), true);
+    strictEqual(reply.endsWith("Skipped adding the Acme key."), true);
+    strictEqual(reply.includes("Please continue."), false);
+  });
+
+  // A save + a skip in the same sequence keeps BOTH facts (the credentialed
+  // followup shortcut must NOT swallow the skip): saved line then skipped line.
+  it("names both a saved and a skipped credential when they mix", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      credentialedNames: ["Acme"],
+      skippedCredentialNames: ["Globex"],
+    });
+    strictEqual(isAutoContinueMessage(reply), true);
+    strictEqual(reply.includes("Added the Acme key."), true);
+    strictEqual(reply.includes("Skipped adding the Globex key."), true);
+    strictEqual(reply.includes("Please continue."), false);
   });
 });
 
@@ -260,6 +464,47 @@ describe("finalConnectNames", () => {
     );
     deepStrictEqual(connectedNames, ["Gmail"]);
     deepStrictEqual(skippedConnectNames, []);
+  });
+});
+
+describe("finalCredentialNames", () => {
+  const outcomes = (
+    entries: [string, CredentialOutcome][],
+  ): Map<string, CredentialOutcome> => new Map(entries);
+
+  it("splits final outcomes into saved + skipped, in step order", () => {
+    const { credentialedNames, skippedCredentialNames } = finalCredentialNames(
+      ["k1", "k2", "k3"],
+      outcomes([
+        ["k1", { name: "Acme", saved: true }],
+        ["k2", { name: "Globex", saved: false }],
+        ["k3", { name: "Initech", saved: true }],
+      ]),
+    );
+    deepStrictEqual(credentialedNames, ["Acme", "Initech"]);
+    deepStrictEqual(skippedCredentialNames, ["Globex"]);
+  });
+
+  // The reconsider fix: a step skipped then saved records saved LAST, so it
+  // names "Added", never a stale "Skipped adding". One line per step.
+  it("reports saved for a step skipped then reconsidered (last write wins)", () => {
+    const map = outcomes([["k1", { name: "Acme", saved: false }]]);
+    map.set("k1", { name: "Acme", saved: true });
+    const { credentialedNames, skippedCredentialNames } = finalCredentialNames(
+      ["k1"],
+      map,
+    );
+    deepStrictEqual(credentialedNames, ["Acme"]);
+    deepStrictEqual(skippedCredentialNames, []);
+  });
+
+  it("omits a credential step that was never reached", () => {
+    const { credentialedNames, skippedCredentialNames } = finalCredentialNames(
+      ["k1", "k2"],
+      outcomes([["k1", { name: "Acme", saved: true }]]),
+    );
+    deepStrictEqual(credentialedNames, ["Acme"]);
+    deepStrictEqual(skippedCredentialNames, []);
   });
 });
 
@@ -319,6 +564,31 @@ describe("encodeInteractionAnswersMessage", () => {
     strictEqual(decodeInteractionAnswersMessage(encoded), null);
   });
 
+  // The model reads the RAW slug in the flat body, but the VISIBLE Q&A payload a
+  // non-technical user sees names the humanized app + action.
+  it("keeps the slug in the body but humanizes the approval line in the payload", () => {
+    const shared = {
+      ...base,
+      answers,
+      approvedActions: ["GMAIL_SEND_DRAFT"],
+      deniedActions: ["GMAIL_DELETE_EMAIL"],
+      approvedDisplays: [{ app: "Gmail", action: "send draft" }],
+      deniedDisplays: [{ app: "Gmail", action: "delete email" }],
+      hasQuestionSteps: true,
+    };
+    const encoded = encodeInteractionAnswersMessage(shared);
+    const flat = composeInteractionReply(shared);
+    // Body (what the model reads): the raw slug, verbatim.
+    strictEqual(flat.includes("go ahead with GMAIL_SEND_DRAFT."), true);
+    strictEqual(encoded.endsWith(`\n\n${flat}`), true);
+    // Payload (what the user reads): the humanized line, no slug.
+    const payload = decodeInteractionAnswersMessage(encoded);
+    deepStrictEqual(payload?.lines.slice(-2), [
+      { answer: "Allowed Gmail to send draft." },
+      { answer: "Did not allow Gmail to delete email." },
+    ]);
+  });
+
   it("does NOT mark a hidden credential-only sequence", () => {
     const encoded = encodeInteractionAnswersMessage({
       ...base,
@@ -326,5 +596,20 @@ describe("encodeInteractionAnswersMessage", () => {
     });
     strictEqual(isAutoContinueMessage(encoded), true);
     strictEqual(decodeInteractionAnswersMessage(encoded), null);
+  });
+
+  // A mixed question + credential-skip sequence surfaces the skipped-key line
+  // in the VISIBLE payload too, aligned with the "Skipped connecting" pattern.
+  it("humanizes a skipped credential in the visible payload", () => {
+    const encoded = encodeInteractionAnswersMessage({
+      ...base,
+      answers,
+      skippedCredentialNames: ["Acme"],
+      hasQuestionSteps: true,
+    });
+    const payload = decodeInteractionAnswersMessage(encoded);
+    deepStrictEqual(payload?.lines.slice(-1), [
+      { answer: "Skipped adding the Acme key." },
+    ]);
   });
 });

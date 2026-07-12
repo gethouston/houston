@@ -8,8 +8,10 @@
 // A turn's steps are the question steps (from one ask_user call, 1 to 3
 // questions) FOLLOWED BY at most one signin step (the user must sign in to
 // Houston first) FOLLOWED BY the connect steps (one per request_connection
-// call, deduped by toolkit). Any single kind alone still yields a valid
-// sequence.
+// call, deduped by toolkit) FOLLOWED BY the approval steps (one per
+// integration action awaiting the user's permission). Approvals land LAST:
+// approving an action happens after the toolkit it belongs to is connected.
+// Any single kind alone still yields a valid sequence.
 //
 // `suggest_reusable` is the ONE exception to "present → needs_you": the model
 // calls it on a clean finish to suggest saving the just-completed work as a
@@ -29,13 +31,16 @@ export interface InteractionOption {
 
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
  *  question steps, `s1` for the single signin step, `c1`..`cN` for connect
- *  steps, `k1`..`kN` for credential steps) so each step's outcome is
- *  addressable. A `question` carries its text + optional single-select options;
- *  a `signin` asks the user to sign in to Houston with an optional user-facing
- *  reason; a `connect` names the toolkit to connect with an optional
- *  user-facing reason; a `credential` asks the user to enter a custom
- *  integration's API key/token in a secure field (never into the chat) —
- *  `toolkit` is the custom integration's slug. */
+ *  steps, `a1`..`aN` for approval steps, `k1`..`kN` for credential steps) so
+ *  each step's outcome is addressable. A `question` carries its text + optional
+ *  single-select options; a `signin` asks the user to sign in to Houston with an
+ *  optional user-facing reason; a `connect` names the toolkit to connect with an
+ *  optional user-facing reason; an `approval` names the toolkit + action of an
+ *  integration call awaiting the user's permission and, like the other blocking
+ *  kinds, drives the board card to `needs_you` (present → needs_you); a
+ *  `credential` asks the user to enter a custom integration's API key/token in a
+ *  secure field (never into the chat) — `toolkit` is the custom integration's
+ *  slug. */
 export type InteractionStep =
   | {
       kind: "question";
@@ -53,10 +58,28 @@ export type InteractionStep =
       reusableKind: "skill" | "routine";
       title: string;
       rationale: string;
+    }
+  | {
+      kind: "approval";
+      /** Tool-assigned id: `a1`..`aN`, in first-seen order. */
+      id: string;
+      /** Lowercase toolkit slug, e.g. "gmail". */
+      toolkit: string;
+      /** The action slug, e.g. "GMAIL_SEND_DRAFT". */
+      action: string;
+      /** Display-ready key/values for the card's param rows (values already truncated host-side). */
+      params?: Record<string, string>;
+      /** How many params were dropped past the card's row cap (present only when
+       *  > 0). The card surfaces it so the user knows the hash covers settings
+       *  the rows don't show. */
+      paramsOmitted?: number;
+      /** Stable short digest of (action, raw params), minted host-side; the one-shot allow ticket is keyed by it. */
+      paramsHash: string;
     };
 
 /** The ordered steps the mission is waiting on: question steps first (at most 3),
- *  then at most one signin step, then connect steps. Always at least one step. */
+ *  then at most one signin step, then connect steps, then approval steps (which
+ *  land last — approving happens after connecting). Always at least one step. */
 export interface PendingInteraction {
   steps: InteractionStep[];
 }
@@ -78,6 +101,16 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
       (v.reusableKind === "skill" || v.reusableKind === "routine") &&
       typeof v.title === "string" &&
       typeof v.rationale === "string"
+    );
+  if (v.kind === "approval")
+    return (
+      typeof v.toolkit === "string" &&
+      typeof v.action === "string" &&
+      typeof v.paramsHash === "string" &&
+      (v.paramsOmitted === undefined || typeof v.paramsOmitted === "number") &&
+      (v.params === undefined ||
+        (isRecord(v.params) &&
+          Object.values(v.params).every((p) => typeof p === "string")))
     );
   return false;
 };

@@ -17,6 +17,7 @@ import {
   type FeedbackSender,
   parseFeedbackPayload,
 } from "./feedback";
+import type { LocalActionApprovals } from "./integrations/action-approvals";
 import type { LocalIntegrationGrants } from "./integrations/grants";
 import type { WorkspacePaths } from "./paths";
 import type {
@@ -27,6 +28,7 @@ import type {
   WorkspaceStore,
 } from "./ports";
 import { handleAccount } from "./routes/account";
+import { handleActionApprovals } from "./routes/action-approvals";
 import {
   type AgentConfigsDeps,
   handleAgentConfigs,
@@ -138,6 +140,14 @@ export interface ControlPlaneDeps {
    * sandbox proxy enforces nothing.
    */
   integrationGrants?: LocalIntegrationGrants;
+  /**
+   * Per-agent integration action approvals (LOCAL / self-host + managed pods).
+   * When present, the sandbox proxy gates each `integration_execute` on user
+   * approval (always-allow record OR a one-shot ticket) unless the turn is
+   * Autopilot; the user-facing routes below write the approvals. Absent → no
+   * gate and the routes 404 ("approvals unsupported").
+   */
+  actionApprovals?: LocalActionApprovals;
   /**
    * Installed agent-config library (the create-agent picker's "installed"
    * source + GitHub agent install). Absent → the list reads empty and installs
@@ -297,6 +307,7 @@ async function handle(
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;
   if (await handleIntegrationGrants(deps, userId, method, path, req, res))
     return;
+  if (await handleActionApprovals(deps, userId, method, path, req, res)) return;
   // Pre-agent provider connect (first-run onboarding): a hidden setup runtime
   // runs the OAuth so the user can connect their AI before any agent exists.
   if (await handleSetupRuntime(deps, userId, method, path, url, req, res))

@@ -50,6 +50,11 @@
 @theme inline {
   --color-background: var(--ht-background);
   --color-foreground: var(--ht-foreground);
+  /* The standard main-canvas surface: the light gray the content panes float
+     cards on (dark = the frosted "screen" glass). Backs the Arc `.canvas-screen`
+     panes; `bg-canvas` lets any surface that lives ON the canvas (e.g. the chat
+     panel) reference the SAME tone as one source of truth. */
+  --color-canvas: var(--ht-canvas-screen);
   --color-card: var(--ht-card);
   --color-card-hover: var(--ht-card-hover);
   --color-card-foreground: var(--ht-card-fg);

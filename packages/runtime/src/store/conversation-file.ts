@@ -86,6 +86,12 @@ export interface AssistantMessageMeta {
    * instead of a false `done`.
    */
   pendingInteraction?: ChatMessage["pendingInteraction"];
+  /**
+   * Set when the user STOPPED this turn — persisted so the standard "Stopped by
+   * user" line survives a history reload and the reload derivation settles the
+   * turn to `needs_you` instead of a false `done`. Absent on completed turns.
+   */
+  stopped?: true;
   /** The turn's wire id (`WireFrame.turnId`) — same as the user message's. */
   turnId?: string;
 }
@@ -141,6 +147,7 @@ export function appendAssistantMessageAt(
     providerError: meta.providerError,
     fileChanges: meta.fileChanges,
     pendingInteraction: meta.pendingInteraction,
+    stopped: meta.stopped,
     turnId: meta.turnId,
   });
   conv.updatedAt = Date.now();

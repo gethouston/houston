@@ -48,7 +48,9 @@ await import("./conversation-cache");
 const { execTurn } = await import("./exec-turn");
 const { runTurn } = await import("./chat");
 const { subscribe } = await import("./bus");
-const { getHistory } = await import("../store/conversations");
+const { getHistory, appendUserMessage } = await import(
+  "../store/conversations"
+);
 const { withWorkdirLock } = await import("./workdir-lock");
 const { setDefaultBackend } = await import("../backends/registry");
 const { config } = await import("../config");
@@ -173,6 +175,44 @@ test("a turn whose provider goes silent is aborted at the stall window and surfa
   expect(pe?.data.kind).toBe("provider_internal");
   // No false success: the empty turn must NOT settle as done.
   expect(events.some((e) => e.type === "done")).toBe(false);
+});
+
+test("a turn both stalled AND stopped settles as a user stop, never a synthesized provider error", async () => {
+  vi.useFakeTimers();
+  state.model = OPENAI;
+  const session = new StallSession();
+  const conv = convWith(session);
+  // The user hit Stop on THIS turn: cancelTurn stamps the marker before aborting.
+  // Its abort resolves the stalled prompt() the same way the watchdog's does, so
+  // both signals land on the one turn — a user Stop must win over the watchdog.
+  (conv as { stoppedTurnId?: string }).stoppedTurnId = "turn-stop";
+  // Seed the conversation file so execTurn's assistant-message persist lands
+  // (appendAssistantMessage no-ops on a conversation that was never created).
+  appendUserMessage("conv-stall-stop", "hi", { turnId: "turn-stop" });
+
+  const events: WireEvent[] = [];
+  const unsub = subscribe("conv-stall-stop", (e) => events.push(e));
+  const done = execTurn(conv, "conv-stall-stop", "turn-stop", "hi", {
+    author: undefined,
+    priorAuthors: [],
+  });
+
+  await vi.advanceTimersByTimeAsync(0);
+  // Cross the stall window: the watchdog fires (stalled) on a turn the user also
+  // stopped. The synthesized provider_internal must be suppressed.
+  await vi.advanceTimersByTimeAsync(STALL_MS);
+  await done;
+  unsub();
+
+  // No synthesized provider error frame — the stop is the terminal surface.
+  expect(events.some((e) => e.type === "provider_error")).toBe(false);
+  // No clean done either (a stopped turn never settles as a success).
+  expect(events.some((e) => e.type === "done")).toBe(false);
+  // The persisted message records the stop and carries NO provider error.
+  const messages = getHistory("conv-stall-stop")?.messages ?? [];
+  const last = messages[messages.length - 1];
+  expect(last?.stopped).toBe(true);
+  expect(last?.providerError).toBeUndefined();
 });
 
 test("a queued message is persisted + visible BEFORE the workdir lock frees — a stalled turn on another conversation can't hide it", async () => {

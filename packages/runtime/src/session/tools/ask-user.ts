@@ -37,12 +37,6 @@ const AskUserParams = Type.Object({
             label: Type.String({
               description: "The short user-facing label for this choice.",
             }),
-            description: Type.Optional(
-              Type.String({
-                description:
-                  "Optional one short line of consequence or benefit shown in muted text after this choice's label. Keep it to a single short phrase.",
-              }),
-            ),
             recommended: Type.Optional(
               Type.Boolean({
                 description:

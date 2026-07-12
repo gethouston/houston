@@ -187,6 +187,13 @@ export interface HostState {
   /** Per-user preference key -> value (locale, timezone, …). */
   preferences: Map<string, string>;
   /**
+   * agentId -> integration action approvals: `always` action slugs the user
+   * blessed for any params, and one-shot `tickets` (params-fingerprint hashes,
+   * consumed once). Mirrors the real host's ApprovalRecord minus the TTL the
+   * fake host never needs. A missing key reads as the empty record.
+   */
+  actionApprovals: Map<string, { always: string[]; tickets: string[] }>;
+  /**
    * workspaceId -> the sidebar's order + grouping (real host persists it as the
    * `sidebar_layout` workspace preference). A missing key reads as the default.
    */
@@ -251,6 +258,7 @@ function freshState(): HostState {
     // null), so a suite can assert the null→[] distinction by writing one.
     grants: new Map(),
     preferences: new Map(),
+    actionApprovals: new Map(),
     sidebarLayouts: new Map(),
     connSeq: 1,
   };

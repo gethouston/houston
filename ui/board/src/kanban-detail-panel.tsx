@@ -76,7 +76,10 @@ export const KanbanDetailPanel = forwardRef<
           content centers itself. A no-op for narrower panels: the cap never
           engages below max-w-3xl, so a normal 45%-width mission panel looks
           exactly as before. */}
-      <div className="shrink-0 px-4 py-3 border-b border-border">
+      {/* Borderless header on the chat canvas tone: it reads as part of the
+          chat surface rather than a separate bar (the light-gray canvas /
+          dark transparent matches ChatPanel's own background). */}
+      <div className="shrink-0 bg-muted/50 px-4 py-3 dark:bg-transparent">
         <div className="flex items-center gap-3 max-w-3xl mx-auto w-full">
           {leading}
           {avatar}

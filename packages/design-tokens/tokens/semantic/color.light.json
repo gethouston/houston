@@ -35,7 +35,7 @@
     "highlight-fg": { "$value": "{color.status.highlight-ink-light}" },
     "card-rest": { "$value": "{color.base.white}" },
     "canvas-gutter": { "$value": "{color.cool.gutter}" },
-    "canvas-screen": { "$value": "{color.base.white}" },
+    "canvas-screen": { "$value": "{color.neutral.50}" },
     "space-canvas": { "$value": "{color.space.canvas}" },
     "space-canvas-glow": { "$value": "{color.space.canvas-glow}" },
     "space-nebula-1": { "$value": "{color.space.nebula-1}" },

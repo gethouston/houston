@@ -404,6 +404,12 @@ export const tauriChat = {
     call<void>("stop_session", async () => {
       await getEngine().cancelSession(agentPath, sessionKey);
     }),
+  /** Retire a conversation's pending interaction (stepper X / abandon): appends
+   *  a durable stop marker, like a real Stop — the model learns nothing. */
+  dismissInteraction: (agentPath: string, conversationId: string) =>
+    call<void>("dismiss_interaction", () =>
+      getEngine().dismissInteraction(agentPath, conversationId),
+    ),
   loadHistory: (
     agentPath: string,
     sessionKey: string,
@@ -1528,6 +1534,19 @@ export const tauriIntegrations = {
   setGrants: (agentSlugOrId: string, toolkits: string[]) =>
     call("set_agent_integration_grants", () =>
       getEngine().setAgentIntegrationGrants(agentSlugOrId, toolkits),
+    ),
+  /** The actions this agent may run without asking again ("always allow"). */
+  actionApprovals: (agentId: string) =>
+    call("action_approvals", () => getEngine().agentActionApprovals(agentId)),
+  /** Add an action to the agent's "always allow" set; returns the new set. */
+  allowActionAlways: (agentId: string, action: string) =>
+    call("allow_action_always", () =>
+      getEngine().allowActionAlways(agentId, action),
+    ),
+  /** Approve one pending action once, by its hash (a single-use ticket). */
+  addApprovalTicket: (agentId: string, hash: string) =>
+    call("add_approval_ticket", () =>
+      getEngine().addActionApprovalTicket(agentId, hash),
     ),
   // ── custom integrations (HOU-550) ──────────────────────────────────────────
   // The list is a plain read (a React Query hook owns its error surface and

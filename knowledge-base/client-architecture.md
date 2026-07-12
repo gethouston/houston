@@ -162,8 +162,14 @@ Behavior is **never** written in surface code. Change it in the SDK, then bind.
 > the terminal `done`; ended on `ask_user`/`request_connection` → `needs_you`
 > carrying the `pendingInteraction` VM field. ONE exception: a lone
 > `suggest_reusable` step (save-as-Skill/Routine offer) settles `done`, not
-> `needs_you` — nothing is waiting on the user.
-> (`packages/sdk/src/modules/turns/turn-settle.ts` / `vm-output.ts`.)
+> `needs_you` — nothing is waiting on the user. A user Stop (or dismissing an
+> interaction card, which is a user interruption) now persists a durable
+> `stopped: true` marker on the assistant `ChatMessage`, so settle-FROM-HISTORY
+> routes it through the SAME `finishErr` stop settle → `needs_you` (live and
+> reload agree; a stopped turn re-derives neither a false `done` nor a
+> `pendingInteraction` card) — fixing the pre-marker divergence.
+> (`packages/sdk/src/modules/turns/turn-settle.ts` / `vm-output.ts` /
+> `settle-from-history.ts`.)
 
 ### b. Visual change → tokens procedure
 

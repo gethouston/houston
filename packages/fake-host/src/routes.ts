@@ -211,6 +211,15 @@ export function handleAgents(
         // the client settles the stuck card itself (the orphan path).
         return json({ ok: true, cancelled: cancelChat(id, cid) });
       }
+      if (action === "dismiss-interaction" && method === "POST") {
+        // Runtime passthrough: append the durable stop marker to the transcript
+        // AND retire the bound activity's pending interaction (mirrors the real
+        // dismiss). No turn runs in the fake host, so always the success path —
+        // the real host's 409-while-running never applies here.
+        state.appendStoppedMessage(id, cid);
+        state.clearActivityInteraction(id, cid);
+        return json({ ok: true });
+      }
       return noContent();
     }
 

@@ -48,6 +48,10 @@ export interface ActivityUpdate {
   routine_run_id?: string;
   provider?: string;
   model?: string;
+  /** Clear the persisted pending interaction (the board card leaves "Needs
+   *  you"). Only `null` is meaningful — it DELETES the key; the schema has no
+   *  null type, so `update()` removes it rather than writing `null`. */
+  pending_interaction?: null;
 }
 
 const NAME = "activity";
@@ -89,11 +93,16 @@ export async function update(
   const items = await list(agentPath);
   const idx = items.findIndex((a) => a.id === id);
   if (idx === -1) throw new Error(`Activity not found: ${id}`);
+  // `pending_interaction: null` clears the pending interaction. The schema has
+  // no null type, so spreading `null` would fail validation — DELETE the key
+  // instead (matches the host's domain `applyActivityUpdate` null semantics).
+  const { pending_interaction, ...rest } = patch;
   const merged: Activity = {
     ...items[idx],
-    ...patch,
+    ...rest,
     updated_at: now(),
   };
+  if (pending_interaction === null) delete merged.pending_interaction;
   const next = [...items];
   next[idx] = merged;
   await writeAgentJson(agentPath, NAME, s, next);
