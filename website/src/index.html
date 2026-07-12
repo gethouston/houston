@@ -74,13 +74,16 @@ visionPath: "vision/index.html"
     --border-light: rgba(255,255,255,0.08);
     --border-medium: rgba(255,255,255,0.18);
     --composer-shadow: 0 4px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06);
-    /* Dark glass panels — translucent dark surfaces over the photo. */
-    --glass: rgba(22,24,36,0.75);
-    --glass-strong: rgba(16,18,28,0.85);
+    /* Dark glass panels — translucent dark surfaces over the photo. Kept
+       backdrop-blur-free on purpose: blurring the moving space photo behind
+       these many panels forced a full re-blur every scroll frame (measured
+       ~30fps on Gecko). The panels are near-opaque dark fills instead, so the
+       frosted-glass look survives with zero per-frame cost. See space.css. */
+    --glass: rgba(22,24,36,0.92);
+    --glass-strong: rgba(16,18,28,0.95);
     --glass-raise: rgba(255,255,255,0.05);
     --glass-border: rgba(255,255,255,0.10);
     --glass-border-strong: rgba(255,255,255,0.16);
-    --glass-blur: saturate(1.15) blur(14px);
     --panel-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 20px 50px -24px rgba(0,0,0,0.7);
   }
 
@@ -158,14 +161,14 @@ visionPath: "vision/index.html"
     align-items: center;
     justify-content: space-between;
     background: transparent;
-    transition: background 0.3s ease, backdrop-filter 0.3s ease;
+    transition: background 0.3s ease;
   }
 
-  /* Scrolled: frosted DARK glass over the space page below (the page is dark
-     top to bottom now, so the nav stays dark-on-dark, never light). */
+  /* Scrolled: solid DARK bar over the space page below (the page is dark
+     top to bottom now, so the nav stays dark-on-dark, never light). Near-opaque
+     instead of blurred — blur re-rasterized every scroll frame on Gecko. */
   nav.scrolled {
-    background: rgba(11,12,19,0.85);
-    backdrop-filter: saturate(1.2) blur(20px);
+    background: rgba(11,12,19,0.94);
     border-bottom: 1px solid rgba(255,255,255,0.08);
   }
 
@@ -252,8 +255,7 @@ visionPath: "vision/index.html"
     left: 0;
     right: 0;
     z-index: 99;
-    background: rgba(11,12,19,0.92);
-    backdrop-filter: saturate(1.2) blur(20px);
+    background: rgba(11,12,19,0.97);
     padding: 8px 20px 16px;
     flex-direction: column;
     gap: 0;
@@ -963,8 +965,6 @@ visionPath: "vision/index.html"
     border-radius: 14px;
     background: var(--glass);
     border: 1px solid var(--glass-border);
-    -webkit-backdrop-filter: var(--glass-blur);
-    backdrop-filter: var(--glass-blur);
     z-index: 0;
     transition: background 0.2s;
   }
@@ -1178,9 +1178,7 @@ visionPath: "vision/index.html"
   footer {
     padding: 40px;
     border-top: 1px solid var(--border-light);
-    background: rgba(8,9,15,0.75);
-    -webkit-backdrop-filter: saturate(1.1) blur(12px);
-    backdrop-filter: saturate(1.1) blur(12px);
+    background: rgba(8,9,15,0.9);
     text-align: center;
     font-size: 13px;
     color: var(--gray-500);
@@ -1217,8 +1215,6 @@ visionPath: "vision/index.html"
     border: 1px solid var(--glass-border);
     overflow: hidden;
     background: var(--glass-strong);
-    -webkit-backdrop-filter: var(--glass-blur);
-    backdrop-filter: var(--glass-blur);
     text-align: left;
   }
 
@@ -1335,8 +1331,6 @@ visionPath: "vision/index.html"
   .glass-panel {
     background: var(--glass);
     border: 1px solid var(--glass-border);
-    -webkit-backdrop-filter: var(--glass-blur);
-    backdrop-filter: var(--glass-blur);
   }
 
   /* Agent selector pills (how-it-works). Class-driven so the active state is a

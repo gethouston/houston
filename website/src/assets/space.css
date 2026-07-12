@@ -6,29 +6,28 @@
  * position:fixed layers sit behind the page content (negative z-index, so the
  * normal-flow sections paint on top):
  *
- *   .space-bg     the photo itself (object-fit: cover). Two independent motions
- *                 compose here: a slow AMBIENT drift on the <picture> wrapper
- *                 (time-based, alive even when nobody scrolls) UNDER a
- *                 scroll-driven pan + zoom on the <img> (the galactic band
- *                 travels as you move down the page). NOT
- *                 background-attachment: fixed (broken on iOS); a real fixed
+ *   .space-bg     the photo itself (object-fit: cover), panned + zoomed on the
+ *                 <img> as you scroll (the galactic band travels down the page).
+ *                 NOT background-attachment: fixed (broken on iOS); a real fixed
  *                 element transformed on the compositor instead.
  *   .space-scrim  a readability veil (darker at top/bottom, lighter through the
  *                 middle so the bright band stays visible) — keeps every dark
  *                 glass panel + light body text well above contrast minimums.
  *   .space-stars  one sparse foreground star layer at a FASTER parallax rate,
- *                 for depth. Its star pixels live on ::before/::after and
- *                 TWINKLE (two out-of-phase opacity cycles) independent of the
- *                 pan, so the field shimmers even at rest.
+ *                 for depth. Star pixels live on ::before/::after.
  *
- * Motion is transform/opacity only (zero layout, zero paint, no scroll jank).
- * The scroll pan uses CSS scroll-driven animations (animation-timeline:
- * scroll()) where supported, with a rAF transform fallback
- * (assets/space-scroll.js) where not (WebKit lags here). The ambient drift +
- * twinkle are plain time-based CSS animations (every engine), paused while the
- * tab is hidden via the `.space-idle` class that space-scroll.js toggles.
- * prefers-reduced-motion freezes everything — static photo, no parallax, no
- * drift, no twinkle.
+ * Motion is transform-only, scroll-driven, and happens ONLY while scrolling —
+ * there is no continuous/idle animation. Perf constraint learned the hard way
+ * (see the git history / knowledge-base note): full-viewport fixed layers that
+ * animate every frame are cheap on Blink/WebKit but expensive on Gecko, and any
+ * continuous animation under the backdrop-blurred glass panels forced a per-frame
+ * re-blur. So: (1) no ambient drift/twinkle, (2) the glass panels carry no
+ * backdrop-filter (near-opaque fills instead), (3) the scroll pan runs via CSS
+ * scroll-driven animations (animation-timeline: scroll()) where supported, with
+ * a rAF transform fallback (assets/space-scroll.js) for older WebKit, and is
+ * disabled entirely on Gecko (static background there — it can't pan a full-bleed
+ * layer at 60fps). prefers-reduced-motion freezes everything — static photo,
+ * no parallax.
  */
 
 /* Dark base so nothing ever flashes white while the photo decodes. */
@@ -42,7 +41,6 @@ html {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  will-change: transform;
   contain: strict;
 }
 
@@ -60,12 +58,15 @@ html {
   height: 100%;
   object-fit: cover;
   object-position: center 42%;
-  /* Base scale leaves headroom so the scroll pan + drift never expose an edge. */
+  /* Base scale leaves headroom so the scroll pan never exposes an edge. */
   transform: scale(1.16) translate3d(0, 0, 0);
   transform-origin: center 38%;
 }
 
-.space-bg picture {
+/* Compositing hint reserved ONLY for the element that actually moves on scroll
+   (the photo), and only where the pan runs — dropped on Gecko below, where the
+   background is static. Deliberately not on the container/scrim (never move). */
+.space-bg img {
   will-change: transform;
 }
 
@@ -101,6 +102,7 @@ html {
    fully independent of the scroll pan (transform) that rides on the parent. */
 .space-stars {
   z-index: -1;
+  will-change: transform;
 }
 
 .space-stars::before,
@@ -126,62 +128,21 @@ html {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520'%3E%3Cg fill='%23ffffff'%3E%3Ccircle cx='95' cy='55' r='0.7' opacity='0.8'/%3E%3Ccircle cx='250' cy='90' r='0.5' opacity='0.5'/%3E%3Ccircle cx='400' cy='45' r='0.8' opacity='0.7'/%3E%3Ccircle cx='150' cy='160' r='0.6' opacity='0.6'/%3E%3Ccircle cx='330' cy='185' r='0.9' opacity='0.85'/%3E%3Ccircle cx='60' cy='260' r='0.6' opacity='0.55'/%3E%3Ccircle cx='210' cy='300' r='0.7' opacity='0.7'/%3E%3Ccircle cx='450' cy='290' r='0.5' opacity='0.5'/%3E%3Ccircle cx='120' cy='420' r='0.8' opacity='0.75'/%3E%3Ccircle cx='290' cy='460' r='0.6' opacity='0.55'/%3E%3Ccircle cx='390' cy='430' r='0.7' opacity='0.65'/%3E%3Ccircle cx='480' cy='150' r='0.6' opacity='0.5'/%3E%3Ccircle cx='30' cy='120' r='0.5' opacity='0.45'/%3E%3Ccircle cx='175' cy='380' r='0.6' opacity='0.6'/%3E%3C/g%3E%3C/svg%3E");
 }
 
-/* ── Ambient motion (time-based, every engine) ───────────────────────────────
-   The photo breathes with a very slow drift + zoom around its base transform;
-   the two star fields cross-fade to twinkle. All paused when the tab is hidden
-   (`.space-idle`, toggled by space-scroll.js) and off under reduced motion. */
-@media (prefers-reduced-motion: no-preference) {
-  .space-bg picture {
-    animation: space-drift 78s ease-in-out infinite;
-  }
-  .space-stars::before {
-    animation: star-twinkle-a 6.5s ease-in-out infinite;
-  }
-  .space-stars::after {
-    animation: star-twinkle-b 8.5s ease-in-out infinite;
-  }
-}
+/* ── Scroll-driven parallax ───────────────────────────────────────────────────
+   The ONLY motion on the background: it pans as you scroll (progress 0 at page
+   top → 1 at bottom); the photo drifts up + zooms in, the stars drift up ~3x
+   faster for depth. There is deliberately NO continuous/idle animation. A slow
+   time-based ambient drift + star twinkle used to live here; it was removed
+   because on Gecko (Firefox/Zen) it re-composited the full-viewport fixed layers
+   every frame even at rest (~46fps idle, constant jank) and, under the glass
+   panels, forced a per-frame re-blur. Motion now happens only while scrolling.
 
-html.space-idle .space-bg picture,
-html.space-idle .space-stars::before,
-html.space-idle .space-stars::after {
-  animation-play-state: paused;
-}
-
-@keyframes space-drift {
-  0% {
-    transform: scale(1.16) translate3d(0, 0, 0);
-  }
-  25% {
-    transform: scale(1.175) translate3d(-1.2%, -0.7%, 0);
-  }
-  50% {
-    transform: scale(1.19) translate3d(0.5%, -1.4%, 0);
-  }
-  75% {
-    transform: scale(1.175) translate3d(1.2%, -0.6%, 0);
-  }
-  100% {
-    transform: scale(1.16) translate3d(0, 0, 0);
-  }
-}
-
-@keyframes star-twinkle-a {
-  0%, 100% { opacity: 0.72; }
-  50% { opacity: 0.42; }
-}
-
-@keyframes star-twinkle-b {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.68; }
-}
-
-/* ── Scroll-driven parallax (CSS timeline path) ──────────────────────────────
-   Progress 0 (page top) → 1 (page bottom). The photo drifts up + zooms in; the
-   stars drift up ~3x faster. Guarded by @supports so only browsers with a
-   working scroll timeline take this path; everyone else gets the JS fallback
-   (which sets the same transforms inline). Ambient drift/twinkle above are
-   unaffected either way. */
+   CSS scroll-timeline path (Blink + modern WebKit), guarded by @supports.
+   Engines without a working scroll timeline get the rAF fallback in
+   space-scroll.js (same transforms, inline). Gecko is opted out entirely (see
+   .space-no-parallax below): it composites these full-bleed layers too slowly to
+   pan per frame (~35fps scroll on BOTH the CSS and rAF paths), so its background
+   stays static — the photo + stars still read premium, they just don't pan. */
 @supports (animation-timeline: scroll()) {
   @media (prefers-reduced-motion: no-preference) {
     .space-bg img {
@@ -213,13 +174,29 @@ html.space-idle .space-stars::after {
   }
 }
 
-/* The JS fallback adds this class to opt the pan layers out of the CSS pan
-   animation while it drives those transforms itself (belt-and-braces; the
-   @supports guard already excludes non-timeline engines). Ambient drift lives
-   on <picture> and twinkle on the star pseudos, so neither is touched here. */
+/* The rAF fallback (space-scroll.js) adds this class to opt the pan layers out
+   of the CSS pan animation while it drives those transforms inline itself
+   (belt-and-braces; the @supports guard already excludes non-timeline engines). */
 .space-js-parallax .space-bg img,
 .space-js-parallax .space-stars {
   animation: none;
+}
+
+/* Gecko (Firefox/Zen): keep the background fully static. space-scroll.js adds
+   this class on Gecko, cancelling the CSS-timeline pan and any inherited pan
+   transform, and dropping the compositing hint since nothing moves. Full-bleed
+   fixed layers are too costly to pan per frame there (measured ~35fps vs ~118fps
+   static); a static photo keeps the premium look with zero scroll cost. */
+.space-no-parallax .space-bg img,
+.space-no-parallax .space-stars {
+  animation: none !important;
+  will-change: auto;
+}
+.space-no-parallax .space-bg img {
+  transform: scale(1.16) translate3d(0, 0, 0);
+}
+.space-no-parallax .space-stars {
+  transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
