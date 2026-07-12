@@ -182,6 +182,16 @@ jobs:
       - name: Build design tokens
         run: pnpm --filter @houston/design-tokens build
 
+      - name: Select latest Xcode
+        # The image default (Xcode 16.4 / Swift 6.1) crashes in SILGen on the
+        # IsolatedDefaultValues pattern the app uses; the app targets the
+        # Xcode 26 toolchain it is developed against.
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "Selecting $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
