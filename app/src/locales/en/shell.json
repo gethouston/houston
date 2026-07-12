@@ -317,6 +317,11 @@
       "upgrade": "Upgrade plan",
       "switchProvider": "Switch provider"
     },
+    "contextOverflow": {
+      "title": "This chat got too long for its model",
+      "body": "{{model}} can no longer read this whole conversation. Switch this chat to a model with more memory, or start a new mission for the next step.",
+      "switchModel": "Switch model"
+    },
     "modelUnavailable": {
       "title": "Model not available",
       "body": "{{model}} is not available on your {{provider}} account.",

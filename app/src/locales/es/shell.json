@@ -317,6 +317,11 @@
       "upgrade": "Mejorar plan",
       "switchProvider": "Cambiar de proveedor"
     },
+    "contextOverflow": {
+      "title": "Esta conversación es muy larga para su modelo",
+      "body": "{{model}} ya no puede leer toda esta conversación. Cambia esta conversación a un modelo con más memoria o comienza una nueva misión para el siguiente paso.",
+      "switchModel": "Cambiar modelo"
+    },
     "modelUnavailable": {
       "title": "Modelo no disponible",
       "body": "{{model}} no está disponible en tu cuenta de {{provider}}.",

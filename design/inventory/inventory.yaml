@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 22
+version: 23
 
 components:
   - id: agent-avatar
@@ -129,7 +129,7 @@ components:
     title: Provider error card
     purpose: Actionable card for a provider failure in the feed (auth, quota, rate-limit).
     anatomy: [icon-bubble, title, reason, primary-action, secondary-action]
-    states: [unauthenticated, quota-exhausted, rate-limited, model-unavailable, transient]
+    states: [unauthenticated, quota-exhausted, rate-limited, model-unavailable, context-overflow, transient]
     variants: [single-action-row-card, multi-action-error-card]
     behavior: >-
       provider_error feed items carry a typed ProviderError (cause/scope). The
