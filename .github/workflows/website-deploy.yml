@@ -86,3 +86,15 @@ jobs:
           --project gethouston
           --non-interactive
           --message "${{ github.sha }}"
+
+      # TEMPORARY dual-deploy: gethouston.ai's apex/www DNS still points at
+      # Cloudflare Pages, so until the DNS flip (cutover step 4 in the header)
+      # Cloudflare must keep receiving deploys or the live site goes stale.
+      # DELETE this step when the DNS flip lands.
+      - name: Deploy to Cloudflare Pages (until DNS flip)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: website
+          command: pages deploy _site --project-name=houston-site --branch=main
