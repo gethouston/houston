@@ -15,7 +15,7 @@ struct SettingsSectionHeader: View {
     var body: some View {
         Text(title)
             .font(Typography.captionStrong)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
             .textCase(.uppercase)
     }
 }

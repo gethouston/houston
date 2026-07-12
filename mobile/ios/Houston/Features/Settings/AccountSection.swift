@@ -16,12 +16,12 @@ struct AccountSection: View {
                 VStack(alignment: .leading, spacing: Spacing.space2) {
                     Text(profile?.displayName ?? Strings.Settings.accountFallbackName)
                         .font(Typography.bodyMedium)
-                        .foregroundStyle(theme.foreground)
+                        .foregroundStyle(theme.ink)
                         .lineLimit(1)
                     if let email = profile?.email, !email.isEmpty {
                         Text(email)
                             .font(Typography.caption)
-                            .foregroundStyle(theme.mutedFg)
+                            .foregroundStyle(theme.inkMuted)
                             .lineLimit(1)
                     }
                 }
@@ -30,7 +30,7 @@ struct AccountSection: View {
             Button(role: .destructive, action: onSignOut) {
                 Text(Strings.Settings.signOut)
                     .font(Typography.bodyMedium)
-                    .foregroundStyle(theme.destructive)
+                    .foregroundStyle(theme.danger)
             }
         } header: {
             SettingsSectionHeader(Strings.Settings.accountTitle)
@@ -64,16 +64,16 @@ private struct AccountAvatar: View {
         }
         .frame(width: diameter, height: diameter)
         .clipShape(Circle())
-        .overlay(Circle().strokeBorder(theme.border))
+        .overlay(Circle().strokeBorder(theme.line))
         .accessibilityHidden(true)
     }
 
     private var placeholder: some View {
         ZStack {
-            theme.secondary
+            theme.chip
             Image(systemName: "person.fill")
                 .font(Typography.title)
-                .foregroundStyle(theme.mutedFg)
+                .foregroundStyle(theme.inkMuted)
         }
     }
 }

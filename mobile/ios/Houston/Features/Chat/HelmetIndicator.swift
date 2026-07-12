@@ -15,7 +15,7 @@ struct PulsingHelmet: View {
 
     var body: some View {
         HelmetShape()
-            .fill(theme.mutedFg)
+            .fill(theme.inkMuted)
             .frame(width: size, height: size)
             .opacity(pulsing && !reduceMotion ? (dimmed ? 0.5 : 1) : 1)
             .animation(
@@ -43,7 +43,7 @@ struct PendingTurnIndicator: View {
             if showLabel {
                 Text(Strings.Chat.missionInProgress)
                     .font(Typography.caption)
-                    .foregroundStyle(theme.mutedFg)
+                    .foregroundStyle(theme.inkMuted)
                     .shimmer(active: true)
             }
             PulsingHelmet(size: ChatMetrics.loadingHelmetSize)

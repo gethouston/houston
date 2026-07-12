@@ -87,6 +87,6 @@ private struct ChatUnavailableView: View {
     )
     .navigationTitle(route.title)
     .navigationBarTitleDisplayMode(.inline)
-    .background(theme.background)
+    .background(theme.input)
   }
 }

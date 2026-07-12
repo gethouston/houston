@@ -35,7 +35,7 @@ struct ProviderConnectSheet: View {
   var body: some View {
     NavigationStack {
       stageBody
-        .background(theme.background)
+        .background(theme.input)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {

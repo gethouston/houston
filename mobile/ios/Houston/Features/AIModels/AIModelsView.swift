@@ -52,7 +52,7 @@ private struct AIModelsAgentPicker: View {
     content
       .navigationTitle(Strings.AIModels.title)
       .navigationBarTitleDisplayMode(.inline)
-      .background(theme.background)
+      .background(theme.input)
       .navigationDestination(for: AIModelsAgentRoute.self) { route in
         AIModelsAgentView(agentId: route.id)
       }
@@ -78,10 +78,10 @@ private struct AIModelsAgentPicker: View {
           VStack(alignment: .leading, spacing: Spacing.space4) {
             Text(Strings.AIModels.Picker.title)
               .font(Typography.title)
-              .foregroundStyle(theme.foreground)
+              .foregroundStyle(theme.ink)
             Text(Strings.AIModels.Picker.description)
               .font(Typography.callout)
-              .foregroundStyle(theme.mutedFg)
+              .foregroundStyle(theme.inkMuted)
           }
           .textCase(nil)
           .padding(.bottom, Spacing.space8)
@@ -89,7 +89,7 @@ private struct AIModelsAgentPicker: View {
       }
       .listStyle(.plain)
       .scrollContentBackground(.hidden)
-      .background(theme.background)
+      .background(theme.input)
     }
   }
 
@@ -99,7 +99,7 @@ private struct AIModelsAgentPicker: View {
         HoustonAvatar(agentColorHex: nil, diameter: 32)
         Text(agent.name)
           .font(Typography.bodyMedium)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
       }
     }
     .listRowBackground(Color.clear)

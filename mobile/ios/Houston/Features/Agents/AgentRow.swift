@@ -36,13 +36,13 @@ struct AgentRow: View {
         HStack(spacing: Spacing.space8) {
             Text(overview.name)
                 .font(Typography.bodyMedium)
-                .foregroundStyle(theme.foreground)
+                .foregroundStyle(theme.ink)
                 .lineLimit(1)
             Spacer(minLength: Spacing.space8)
             if let timeLabel {
                 Text(timeLabel)
                     .font(Typography.caption)
-                    .foregroundStyle(theme.mutedFg)
+                    .foregroundStyle(theme.inkMuted)
                     .lineLimit(1)
             }
         }
@@ -53,7 +53,7 @@ struct AgentRow: View {
         HStack(spacing: Spacing.space8) {
             Text(preview.text)
                 .font(Typography.callout)
-                .foregroundStyle(preview.isWorking ? theme.accent : theme.mutedFg)
+                .foregroundStyle(theme.inkMuted)
                 .lineLimit(1)
             Spacer(minLength: Spacing.space8)
             if overview.needsYouCount > 0 {

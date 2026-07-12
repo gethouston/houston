@@ -47,7 +47,7 @@ struct AgentArchivedMissionsView: View {
                 .scrollContentBackground(.hidden)
             }
         }
-        .background(theme.background)
+        .background(theme.input)
         .navigationTitle(Strings.Board.archived)
         .navigationBarTitleDisplayMode(.inline)
     }

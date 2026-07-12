@@ -12,7 +12,7 @@ struct FeedDivider: View {
       rule
       Text(caption)
         .font(Typography.caption)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
         .fixedSize(horizontal: false, vertical: true)
         .multilineTextAlignment(.center)
       rule
@@ -22,7 +22,7 @@ struct FeedDivider: View {
 
   private var rule: some View {
     Rectangle()
-      .fill(theme.border)
+      .fill(theme.line)
       .frame(height: 1)
       .frame(maxWidth: .infinity)
   }

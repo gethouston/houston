@@ -54,7 +54,7 @@ struct InteractionCard: View {
       if stepper.showsProgress {
         Text(Strings.Interaction.progress(stepper.progress.current, stepper.progress.total))
           .font(Typography.caption)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
       }
       stepContent(step)
         .id(stepper.index)
@@ -65,7 +65,7 @@ struct InteractionCard: View {
     .background(theme.card, in: RoundedRectangle(cornerRadius: Radius.composer, style: .continuous))
     .overlay(
       RoundedRectangle(cornerRadius: Radius.composer, style: .continuous)
-        .strokeBorder(theme.border, lineWidth: 1))
+        .strokeBorder(theme.line, lineWidth: 1))
   }
 
   @ViewBuilder private func stepContent(_ step: InteractionStep) -> some View {

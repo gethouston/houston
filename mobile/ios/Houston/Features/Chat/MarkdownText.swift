@@ -18,30 +18,30 @@ struct MarkdownText: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .tint(theme.primary)
+        .tint(theme.action)
         .textSelection(.enabled)
     }
 
     @ViewBuilder private func view(for block: MarkdownBlock) -> some View {
         switch block {
         case let .paragraph(content):
-            Text(content).font(Typography.body).foregroundStyle(theme.foreground)
+            Text(content).font(Typography.body).foregroundStyle(theme.ink)
         case let .heading(level, content):
             Text(content)
                 .font(headingFont(level))
-                .foregroundStyle(theme.foreground)
+                .foregroundStyle(theme.ink)
                 .padding(.top, Spacing.space4)
         case let .listItem(ordered, ordinal, depth, content):
             listRow(ordered: ordered, ordinal: ordinal, depth: depth, content: content)
         case let .blockquote(content):
             HStack(spacing: Spacing.space8) {
-                Rectangle().fill(theme.border).frame(width: 2)
-                Text(content).font(Typography.body).foregroundStyle(theme.mutedFg)
+                Rectangle().fill(theme.line).frame(width: 2)
+                Text(content).font(Typography.body).foregroundStyle(theme.inkMuted)
             }
         case let .codeBlock(_, code):
             CodeSlab(code: code)
         case .thematicBreak:
-            Rectangle().fill(theme.border).frame(height: 1).padding(.vertical, Spacing.space4)
+            Rectangle().fill(theme.line).frame(height: 1).padding(.vertical, Spacing.space4)
         }
     }
 
@@ -51,9 +51,9 @@ struct MarkdownText: View {
         HStack(alignment: .firstTextBaseline, spacing: Spacing.space8) {
             Text(ordered ? "\(ordinal)." : "•")
                 .font(Typography.body)
-                .foregroundStyle(theme.mutedFg)
+                .foregroundStyle(theme.inkMuted)
                 .monospacedDigit()
-            Text(content).font(Typography.body).foregroundStyle(theme.foreground)
+            Text(content).font(Typography.body).foregroundStyle(theme.ink)
         }
         .padding(.leading, CGFloat(depth - 1) * Spacing.space16)
     }
@@ -78,10 +78,10 @@ private struct CodeSlab: View {
         ScrollView(.horizontal, showsIndicators: false) {
             Text(code)
                 .font(.system(size: HoustonFontSize.sm, design: .monospaced))
-                .foregroundStyle(theme.foreground)
+                .foregroundStyle(theme.ink)
                 .textSelection(.enabled)
                 .padding(Spacing.space12)
         }
-        .background(theme.secondary, in: RoundedRectangle(cornerRadius: Radius.lg))
+        .background(theme.chip, in: RoundedRectangle(cornerRadius: Radius.lg))
     }
 }

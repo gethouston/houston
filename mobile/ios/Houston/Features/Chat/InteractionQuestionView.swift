@@ -19,7 +19,7 @@ struct InteractionQuestionView: View {
     VStack(alignment: .leading, spacing: Spacing.space12) {
       Text(question)
         .font(Typography.bodyMedium)
-        .foregroundStyle(theme.foreground)
+        .foregroundStyle(theme.ink)
         .fixedSize(horizontal: false, vertical: true)
 
       if !options.isEmpty {
@@ -35,12 +35,12 @@ struct InteractionQuestionView: View {
 
       Text(Strings.Interaction.freeTextHint)
         .font(Typography.caption)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
     }
   }
 }
 
-/// One full-width option row: a raised `theme.secondary` chip (Radius.lg) that
+/// One full-width option row: a raised `theme.chip` chip (Radius.lg) that
 /// reads clickable at rest (no hover gate). Disabled — dimmed and inert — while a
 /// send is in flight.
 struct InteractionOptionRow: View {
@@ -54,11 +54,11 @@ struct InteractionOptionRow: View {
     Button(action: action) {
       Text(label)
         .font(Typography.body)
-        .foregroundStyle(theme.foreground)
+        .foregroundStyle(theme.ink)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Spacing.space12)
         .padding(.vertical, Spacing.space10)
-        .background(theme.secondary, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+        .background(theme.chip, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
     }
     .buttonStyle(.plain)

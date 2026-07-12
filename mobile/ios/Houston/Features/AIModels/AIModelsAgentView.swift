@@ -34,7 +34,7 @@ struct AIModelsAgentView: View {
     content
       .navigationTitle(Strings.AIModels.title)
       .navigationBarTitleDisplayMode(.inline)
-      .background(theme.background)
+      .background(theme.input)
       .onAppear { if retention == nil { retention = model.retain() } }
       .onDisappear { retention?.cancel(); retention = nil }
       .sheet(item: $connectCard) { card in
@@ -82,7 +82,7 @@ struct AIModelsAgentView: View {
   private var footer: some View {
     Text(scopingLine)
       .font(Typography.caption)
-      .foregroundStyle(theme.mutedFg)
+      .foregroundStyle(theme.inkMuted)
       .multilineTextAlignment(.center)
       .frame(maxWidth: .infinity)
       .padding(.horizontal, Spacing.space24)

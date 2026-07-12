@@ -12,7 +12,7 @@ struct SignInView: View {
 
     var body: some View {
         ZStack {
-            HoustonColors.background.resolve(theme).ignoresSafeArea()
+            HoustonColors.input.resolve(theme).ignoresSafeArea()
             VStack(spacing: HoustonSpacing.space24) {
                 Spacer()
                 HoustonMark()
@@ -22,13 +22,13 @@ struct SignInView: View {
                 if let message = controller.errorMessage {
                     Text(message)
                         .font(.system(size: HoustonFontSize.xs))
-                        .foregroundStyle(HoustonColors.destructive.resolve(theme))
+                        .foregroundStyle(HoustonColors.danger.resolve(theme))
                         .multilineTextAlignment(.center)
                 }
                 Spacer()
                 Text(Strings.Auth.retryHint)
                     .font(.system(size: HoustonFontSize.xs))
-                    .foregroundStyle(HoustonColors.mutedFg.resolve(theme))
+                    .foregroundStyle(HoustonColors.inkMuted.resolve(theme))
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, HoustonSpacing.space24)
@@ -40,10 +40,10 @@ struct SignInView: View {
         VStack(spacing: HoustonSpacing.space8) {
             Text(Strings.Auth.welcomeTitle)
                 .font(.system(size: HoustonFontSize.h1, weight: HoustonFontWeight.semibold))
-                .foregroundStyle(HoustonColors.foreground.resolve(theme))
+                .foregroundStyle(HoustonColors.ink.resolve(theme))
             Text(Strings.Auth.welcomeSubtitle)
                 .font(.system(size: HoustonFontSize.sm))
-                .foregroundStyle(HoustonColors.mutedFg.resolve(theme))
+                .foregroundStyle(HoustonColors.inkMuted.resolve(theme))
                 .multilineTextAlignment(.center)
         }
     }
@@ -54,7 +54,7 @@ struct SignInView: View {
         } label: {
             HStack(spacing: HoustonSpacing.space8) {
                 if controller.state == .signingIn {
-                    ProgressView().tint(HoustonColors.primaryFg.resolve(theme))
+                    ProgressView().tint(HoustonColors.actionText.resolve(theme))
                 }
                 Text(controller.state == .signingIn
                     ? Strings.Auth.continuePending
@@ -62,8 +62,8 @@ struct SignInView: View {
                     .font(.system(size: HoustonFontSize.base, weight: HoustonFontWeight.medium))
             }
             .frame(maxWidth: .infinity, minHeight: 44)
-            .foregroundStyle(HoustonColors.primaryFg.resolve(theme))
-            .background(HoustonColors.primary.resolve(theme))
+            .foregroundStyle(HoustonColors.actionText.resolve(theme))
+            .background(HoustonColors.action.resolve(theme))
             .clipShape(RoundedRectangle(cornerRadius: HoustonRadius.full))
         }
         .disabled(controller.state == .signingIn)

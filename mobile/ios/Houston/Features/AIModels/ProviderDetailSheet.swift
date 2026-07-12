@@ -30,7 +30,7 @@ struct ProviderDetailSheet: View {
         }
         .padding(Spacing.space20)
       }
-      .background(theme.background)
+      .background(theme.input)
       .navigationTitle(live.name)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
@@ -51,10 +51,10 @@ struct ProviderDetailSheet: View {
     HStack(spacing: Spacing.space12) {
       ProviderGlyph(providerId: live.glyphId, size: 28)
       VStack(alignment: .leading, spacing: Spacing.space2) {
-        Text(live.name).font(Typography.title).foregroundStyle(theme.foreground)
+        Text(live.name).font(Typography.title).foregroundStyle(theme.ink)
         Text(Strings.AIModels.Detail.signedInWith(live.name))
           .font(Typography.caption)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
       }
       Spacer(minLength: 0)
     }
@@ -64,11 +64,11 @@ struct ProviderDetailSheet: View {
     Button { confirmingSignOut = true } label: {
       Text(Strings.AIModels.Detail.signOut)
         .font(Typography.label)
-        .foregroundStyle(theme.destructive)
+        .foregroundStyle(theme.danger)
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.space12)
-        .background(theme.secondary, in: Capsule())
-        .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
+        .background(theme.chip, in: Capsule())
+        .overlay(Capsule().strokeBorder(theme.line, lineWidth: 1))
     }
     .buttonStyle(.plain)
   }

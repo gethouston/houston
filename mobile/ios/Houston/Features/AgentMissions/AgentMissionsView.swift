@@ -45,7 +45,7 @@ struct AgentMissionsView: View {
 
     var body: some View {
         content
-            .background(theme.background)
+            .background(theme.input)
             .navigationTitle(agent.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -38,7 +38,7 @@ struct MissionSearchResultsView: View {
         resultsList(matches)
       }
     }
-    .background(theme.background)
+    .background(theme.input)
   }
 
   private func resultsList(_ matches: [MissionMatch]) -> some View {
@@ -60,7 +60,7 @@ struct MissionSearchResultsView: View {
     VStack(alignment: .leading, spacing: Spacing.space4) {
       Text(match.title)
         .font(Typography.bodyMedium)
-        .foregroundStyle(theme.foreground)
+        .foregroundStyle(theme.ink)
         .lineLimit(2)
       if match.matchedIn.showsSnippet, let snippet = match.snippet, !snippet.isEmpty {
         HighlightedText(text: snippet, query: query)

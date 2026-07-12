@@ -17,13 +17,13 @@ struct MissionRowContent: View {
             HStack(alignment: .firstTextBaseline, spacing: Spacing.space8) {
                 Text(line.title)
                     .font(Typography.bodyMedium)
-                    .foregroundStyle(theme.foreground)
+                    .foregroundStyle(theme.ink)
                     .lineLimit(1)
                 Spacer(minLength: Spacing.space8)
                 if let time = line.time {
                     Text(time)
                         .font(Typography.caption)
-                        .foregroundStyle(theme.mutedFg)
+                        .foregroundStyle(theme.inkMuted)
                         .lineLimit(1)
                 }
             }
@@ -43,9 +43,11 @@ struct MissionRowContent: View {
 
     private var secondLineColor: Color {
         switch line.secondLine {
-        case .working: return theme.accent
-        case .snag: return theme.destructive
-        case .description, .none: return theme.mutedFg
+        // Working reads inkMuted like the chat title bar; the old accent role
+        // became the opaque hover fill in the token rename and is not for text.
+        case .working: return theme.inkMuted
+        case .snag: return theme.danger
+        case .description, .none: return theme.inkMuted
         }
     }
 }
