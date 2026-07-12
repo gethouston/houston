@@ -6,13 +6,13 @@ import { useTranslation } from "react-i18next";
 import { FilterCombobox } from "../shell/filter-combobox.tsx";
 import { type AppDisplay, appDisplay } from "./app-display";
 import { AppRow } from "./app-row";
-import { CatalogLockedSection } from "./catalog-locked-section";
 import {
   BROWSE_PAGE_SIZE,
   browseCatalogView,
   categoriesOf,
   categoryLabel,
-} from "./model";
+} from "./browse-model";
+import { CatalogLockedSection } from "./catalog-locked-section";
 
 /** What one app row contributes: its trailing control + optional row click. */
 export interface AppCatalogRow {

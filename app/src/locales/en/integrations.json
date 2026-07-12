@@ -89,11 +89,13 @@
   },
   "home": {
     "title": "Integrations",
-    "description": "Connect your apps once, then choose which agents can use each one.",
-    "connectedTitle": "Connected apps",
+    "description": "Work with your agents across your favorite tools.",
+    "searchPlaceholder": "Search integrations...",
+    "installedTitle": "Installed",
+    "otherCategory": "Other",
+    "showAllApps": "Show all {{count}} apps",
     "usedByNone": "No agents yet",
-    "usedByAll": "All agents",
-    "connectedNoneInCategory": "No connected apps in this category."
+    "usedByAll": "All agents"
   },
   "detail": {
     "activeOn": "Agents that can use this",

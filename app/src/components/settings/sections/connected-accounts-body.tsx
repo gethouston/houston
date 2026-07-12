@@ -73,7 +73,6 @@ export function ConnectedAccountsBody({
           recovering={apps.recoveringRows}
           grantsSupported={apps.grantsSupported}
           connectFlow={connectFlow}
-          columns={1}
           onOpen={openConn}
           onRemove={(toolkit) => disconnect.mutate(toolkit)}
         />

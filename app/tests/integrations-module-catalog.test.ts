@@ -10,9 +10,9 @@ import {
   categoriesOf,
   categoryLabel,
   categoryListView,
-  splitByGrant,
   toolkitsInCategory,
-} from "../src/components/integrations/model.ts";
+} from "../src/components/integrations/browse-model.ts";
+import { splitByGrant } from "../src/components/integrations/model.ts";
 
 const tk = (
   slug: string,

@@ -3,7 +3,7 @@ import { Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { appDisplay } from "./app-display";
 import { AppRow } from "./app-row";
-import { LOCKED_PREVIEW_CAP } from "./model";
+import { LOCKED_PREVIEW_CAP } from "./browse-model";
 
 interface CatalogLockedSectionProps {
   /** Policy-blocked apps (already filtered + A-Z), rendered read-only. */

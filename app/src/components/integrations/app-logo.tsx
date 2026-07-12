@@ -36,6 +36,10 @@ const LETTER_SIZE = {
  * catalog `logoUrl` arrives. A boolean latch here once ate the production
  * logos: the pre-catalog favicon guess 404'd, latched, and the real Composio
  * logo landing moments later was never rendered.
+ *
+ * The image loads lazily and decodes off the main thread: the grouped catalog
+ * mounts hundreds of rows at once, so offscreen logos must not fire their
+ * network fetch eagerly and stall the first paint.
  */
 export function AppLogo({
   display,
@@ -62,6 +66,8 @@ export function AppLogo({
     <img
       src={display.logoUrl}
       alt={display.name}
+      loading="lazy"
+      decoding="async"
       className={cn(box, "object-contain")}
       onError={() => setFailedUrl(display.logoUrl)}
     />

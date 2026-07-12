@@ -2,6 +2,7 @@ import { Button } from "@houston-ai/core";
 import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { KeyRound, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { AppLogo } from "./app-logo";
 import { customKindBadgeKey } from "./custom-integrations-model";
 
 interface CustomIntegrationRowProps {
@@ -35,11 +36,13 @@ function StatusLine({ integration }: { integration: CustomIntegrationView }) {
 }
 
 /**
- * One custom integration on the Integrations page, in the same card language as
- * the connected-apps rows: name + a connection-type badge ("API" / "MCP server")
- * on the top line, a status line under it, and always-visible trailing actions —
- * an "Enter key" button while it waits on a secret, plus a Remove button (no
- * hover gating). Presentational; the parent owns the key dialog + delete confirm.
+ * One custom integration on the Integrations page, in the flat "plane" row
+ * language shared with the category catalog: a leading letter avatar for visual
+ * rhythm, name + a connection-type badge ("API" / "MCP server") on the top line,
+ * a status line under it, and always-visible trailing actions — an "Enter key"
+ * button while it waits on a secret, plus a Remove button (no hover gating). The
+ * row is transparent at rest with a full-row hover fill, no bordered card or
+ * chip. Presentational; the parent owns the key dialog + delete confirm.
  */
 export function CustomIntegrationRow({
   integration,
@@ -50,7 +53,16 @@ export function CustomIntegrationRow({
   const pending = integration.state.status === "pending";
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-chip px-3 py-2.5">
+    <div className="flex items-center gap-4 rounded-2xl px-3 py-3 transition-colors hover:bg-hover">
+      <AppLogo
+        display={{
+          toolkit: integration.slug,
+          name: integration.name,
+          description: "",
+          logoUrl: "",
+        }}
+        size="lg"
+      />
       <div className="min-w-0 flex-1">
         <p className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-ink">
           <span className="min-w-0 truncate">{integration.name}</span>

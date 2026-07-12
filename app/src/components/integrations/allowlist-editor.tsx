@@ -9,7 +9,7 @@ import {
 import { AppCatalogGrid } from "./app-catalog-grid";
 import { appDisplay } from "./app-display";
 import { AppRow } from "./app-row";
-import { categoryListView, toolkitsInCategory } from "./model";
+import { categoryListView, toolkitsInCategory } from "./browse-model";
 
 /** i18n copy for {@link AllowlistEditor}; the consumer passes translated strings. */
 export interface AllowlistEditorCopy {

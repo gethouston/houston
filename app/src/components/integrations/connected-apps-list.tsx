@@ -13,31 +13,25 @@ interface ConnectedAppsListProps {
   recovering: RecoveringAppRow[];
   grantsSupported: boolean;
   connectFlow: ConnectFlow;
-  /** 1 = the narrow Settings drill-in (single column); 2 = the wide global
-   * Integrations page (a two-column grid on >= sm). */
-  columns: 1 | 2;
   onOpen: (connection: IntegrationConnection) => void;
   onRemove: (toolkit: string) => void;
 }
 
 /**
- * The connected-apps list shared by the global Integrations page and Settings >
- * Connected accounts: pending / errored connections first as full-width recovery
- * callouts (they need attention and would not fit a card), then the active apps
- * as clickable rows. `columns` picks the density — the wide Integrations page
- * lays the active apps out as a two-column grid, while the narrow Settings
- * drill-in keeps a single column. Each active row opens the detail sheet and
- * shows the agents using it BELOW the name via chips (or an "all/none agents"
- * label when the host has no per-agent grants), with a visible chevron so it
- * reads as openable without hovering. Purely presentational; the parent owns the
- * connect flow, the derived rows, and selection.
+ * The connected-apps list for Settings > Connected accounts: pending / errored
+ * connections first as full-width recovery callouts (they need attention and
+ * would not fit a card), then the active apps as a single-column stack of
+ * clickable rows. Each active row opens the detail sheet and shows the agents
+ * using it BELOW the name via chips (or an "all/none agents" label when the host
+ * has no per-agent grants), with a visible chevron so it reads as openable
+ * without hovering. Purely presentational; the parent owns the connect flow, the
+ * derived rows, and selection.
  */
 export function ConnectedAppsList({
   active,
   recovering,
   grantsSupported,
   connectFlow,
-  columns,
   onOpen,
   onRemove,
 }: ConnectedAppsListProps) {
@@ -65,13 +59,7 @@ export function ConnectedAppsList({
       )}
 
       {active.length > 0 && (
-        <div
-          className={
-            columns === 2
-              ? "grid grid-cols-1 gap-2 sm:grid-cols-2"
-              : "space-y-2"
-          }
-        >
+        <div className="space-y-2">
           {active.map(({ connection, app, chips }) => (
             <AppRow
               key={connKey(connection)}
@@ -98,26 +86,6 @@ export function ConnectedAppsList({
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-/** First-load placeholder rows while the connections + catalog fetch settles. */
-export function ConnectedAppsListSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-hidden>
-      {[0, 1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className="flex items-center gap-3 rounded-xl bg-chip px-3 py-2.5"
-        >
-          <div className="size-9 shrink-0 animate-pulse rounded-lg bg-chip-subtle/40" />
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="h-3 w-32 animate-pulse rounded bg-chip-subtle/40" />
-            <div className="h-2.5 w-20 animate-pulse rounded bg-chip-subtle/40" />
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

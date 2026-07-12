@@ -10,11 +10,25 @@ export {
 } from "./app-display";
 export { AppLogo } from "./app-logo";
 export { AppRow } from "./app-row";
-export { ConnectMoreAppsSection } from "./connect-more-apps";
 export {
-  ConnectedAppsList,
-  ConnectedAppsListSkeleton,
-} from "./connected-apps-list";
+  BROWSE_PAGE_SIZE,
+  type BrowseCatalogView,
+  browseCatalog,
+  browseCatalogView,
+  type CatalogSection,
+  type CategoryListView,
+  categoriesOf,
+  categoryLabel,
+  categoryListView,
+  groupCatalogByCategory,
+  LOCKED_PREVIEW_CAP,
+  SECTION_PREVIEW_CAP,
+  toolkitsInCategory,
+  UNCATEGORIZED,
+} from "./browse-model";
+export { ConnectMoreAppsSection } from "./connect-more-apps";
+export { ConnectWaitingPanel } from "./connect-waiting-panel";
+export { ConnectedAppsList } from "./connected-apps-list";
 export { agentChipsFor } from "./connected-apps-model";
 export {
   type ConnectionStatus,
@@ -24,24 +38,15 @@ export { CustomIntegrationsSection } from "./custom-integrations-section";
 export { DisconnectAppDialog } from "./disconnect-app-dialog";
 export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
 export {
-  BROWSE_PAGE_SIZE,
-  type BrowseCatalogView,
-  browseCatalog,
-  browseCatalogView,
-  type CategoryListView,
-  categoriesOf,
-  categoryLabel,
-  categoryListView,
   INTEGRATION_PROVIDER,
-  LOCKED_PREVIEW_CAP,
   POLL_INTERVAL_MS,
   POLL_MAX_ATTEMPTS,
   type PollOutcome,
   pollConnectionUntilActive,
   splitByGrant,
-  toolkitsInCategory,
 } from "./model";
 export { PendingConnectionCallout } from "./pending-connection-callout";
+export { SectionHeader } from "./section-header";
 export {
   LoadingState,
   ReconnectBanner,

@@ -89,11 +89,13 @@
   },
   "home": {
     "title": "Integrações",
-    "description": "Conecte seus apps uma vez e escolha quais agentes podem usar cada um.",
-    "connectedTitle": "Apps conectados",
+    "description": "Trabalhe com seus agentes nas suas ferramentas favoritas.",
+    "searchPlaceholder": "Buscar integrações...",
+    "installedTitle": "Instaladas",
+    "otherCategory": "Outras",
+    "showAllApps": "Ver todos os {{count}} aplicativos",
     "usedByNone": "Ainda não há agentes",
-    "usedByAll": "Todos os agentes",
-    "connectedNoneInCategory": "Nenhum app conectado nesta categoria."
+    "usedByAll": "Todos os agentes"
   },
   "detail": {
     "activeOn": "Agentes que podem usar",
