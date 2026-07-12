@@ -134,6 +134,8 @@ export function buildLocalEndpoint(opts: {
   /** Surface the model's chain-of-thought as thinking in Houston. Omitted from
    *  the payload unless true, to keep saved endpoints clean. */
   reasoning?: boolean;
+  /** Share the endpoint with teammates in the active team workspace. */
+  shared?: boolean;
 }): CustomEndpoint {
   return {
     baseUrl: `${opts.publicUrl.replace(/\/+$/, "")}/v1`,
@@ -141,6 +143,7 @@ export function buildLocalEndpoint(opts: {
     name: opts.name,
     apiKey: opts.proxyKey,
     ...(opts.reasoning ? { reasoning: true } : {}),
+    ...(opts.shared ? { shared: true } : {}),
   };
 }
 

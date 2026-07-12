@@ -60,6 +60,8 @@ export interface ProcessLauncherOptions {
   allocatePort?: () => Promise<number>;
   /** Poll the runtime's /health until ready. Injectable for tests. */
   waitHealthy?: (port: number, token: string) => Promise<void>;
+  /** Run once after each newly spawned runtime becomes healthy. */
+  afterSpawn?: (agent: Agent, endpoint: RuntimeEndpoint) => Promise<void>;
 }
 
 interface Running {
@@ -204,7 +206,18 @@ export class ProcessLauncher implements RuntimeLauncher {
     } finally {
       abortBoot = undefined;
     }
-    return { baseUrl: `http://127.0.0.1:${handle.port}`, token };
+    const endpoint = {
+      baseUrl: `http://127.0.0.1:${handle.port}`,
+      token,
+    };
+    try {
+      await this.opts.afterSpawn?.(agent, endpoint);
+    } catch (error) {
+      handle.kill();
+      if (this.running.get(agent.id) === entry) this.running.delete(agent.id);
+      throw error;
+    }
+    return endpoint;
   }
 
   async sleep(agentId: AgentId): Promise<void> {

@@ -142,6 +142,10 @@
       "label": "Mostrar o raciocínio do modelo",
       "help": "Ative isto para modelos de raciocínio (eles pensam antes de responder)."
     },
+    "share": {
+      "label": "Compartilhar com minha equipe",
+      "help": "Os agentes dos seus colegas podem usar este modelo. As solicitações deles são processadas no seu computador enquanto ele estiver online."
+    },
     "error": {
       "body": "Algo deu errado ao conectar. Confira se o app ainda está aberto no seu computador e tente de novo.",
       "retry": "Tentar de novo"

@@ -94,6 +94,21 @@ describe("local-model helpers", () => {
     );
   });
 
+  it("marks the endpoint as team-shared only when the toggle is on", () => {
+    const base = {
+      publicUrl: "https://sub.relay.example.com",
+      model: "qwen",
+      name: "n",
+      proxyKey: "k",
+    };
+    strictEqual("shared" in buildLocalEndpoint(base), false);
+    strictEqual(
+      "shared" in buildLocalEndpoint({ ...base, shared: false }),
+      false,
+    );
+    strictEqual(buildLocalEndpoint({ ...base, shared: true }).shared, true);
+  });
+
   it("detects reasoning models by id substring, case-insensitively", () => {
     for (const id of [
       "DeepSeek-R1",

@@ -7,6 +7,7 @@ import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
 import { ProxyChannel } from "../channel/proxy";
 import { FileCredentialStore } from "../credentials/file-store";
+import { RemoteSharedEndpointStore } from "../credentials/remote-shared-endpoint-store";
 import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { BusEventHub } from "../events/hub";
@@ -31,6 +32,7 @@ import { forward } from "../proxy/route";
 import { ChannelRoutineFirer } from "../schedule/firer";
 import { Scheduler } from "../schedule/scheduler";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
+import { syncSharedEndpoint } from "../shared-endpoint/sync";
 import { LocalWorkspaceStore } from "../store/local";
 import { StoreSyncDaemon } from "../store-sync";
 import { MemoryTurnBus } from "../turn/bus";
@@ -112,6 +114,13 @@ export interface LocalHostOptions {
    * one-time adoption fallback for pods that already captured a legacy credential.
    */
   credentials?: {
+    url: string;
+    orgSlug: string;
+    agentSlug: string;
+    podToken: string;
+  };
+  /** Managed-pod organization endpoint gateway. Absent on desktop/self-host. */
+  sharedEndpoints?: {
     url: string;
     orgSlug: string;
     agentSlug: string;
@@ -204,6 +213,14 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         fallback: fileCredentials,
       })
     : fileCredentials;
+  const sharedEndpoints = opts.sharedEndpoints
+    ? new RemoteSharedEndpointStore({
+        baseUrl: opts.sharedEndpoints.url,
+        orgSlug: opts.sharedEndpoints.orgSlug,
+        agentSlug: opts.sharedEndpoints.agentSlug,
+        podToken: opts.sharedEndpoints.podToken,
+      })
+    : undefined;
   const controlPlaneUrl = `http://127.0.0.1:${opts.port}`;
 
   const spawner =
@@ -239,6 +256,12 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       controlPlaneUrl,
       mintSandboxToken: (a) => vault.sandboxToken(a.workspaceId, a.id),
     },
+    afterSpawn:
+      opts.gatewayFronted && sharedEndpoints
+        ? async (_agent, runtime) => {
+            await syncSharedEndpoint({ store: sharedEndpoints, runtime });
+          }
+        : undefined,
   });
 
   const channel = new ProxyChannel({
@@ -406,6 +429,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
     credentials,
+    sharedEndpoints,
     vault,
     vfs,
     paths,

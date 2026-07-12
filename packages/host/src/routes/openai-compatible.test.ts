@@ -1,6 +1,10 @@
 import type { Server } from "node:http";
 import type { Capabilities, CustomEndpoint } from "@houston/protocol";
 import { afterEach, expect, test } from "vitest";
+import type {
+  SharedEndpointInput,
+  SharedEndpointStore,
+} from "../credentials/remote-shared-endpoint-store";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { ChannelCtx, RuntimeChannel, TokenVerifier } from "../ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
@@ -49,6 +53,23 @@ class SpyChannel implements RuntimeChannel {
   }
 }
 
+class SpySharedEndpointStore implements SharedEndpointStore {
+  puts: SharedEndpointInput[] = [];
+  removals: { ownerOnly: boolean }[] = [];
+  throwMessage: string | null = null;
+  async get() {
+    return null;
+  }
+  async put(endpoint: SharedEndpointInput) {
+    this.puts.push(endpoint);
+    if (this.throwMessage) throw new Error(this.throwMessage);
+  }
+  async remove(opts: { ownerOnly: boolean }) {
+    this.removals.push(opts);
+    if (this.throwMessage) throw new Error(this.throwMessage);
+  }
+}
+
 const baseCaps: Omit<Capabilities, "profile" | "openaiCompatible"> = {
   revealInOs: false,
   terminal: false,
@@ -89,9 +110,11 @@ async function setup(
   base: string;
   agentId: string;
   channel: SpyChannel;
+  sharedEndpoints: SpySharedEndpointStore;
 }> {
   const store = new MemoryWorkspaceStore();
   const channel = new SpyChannel();
+  const sharedEndpoints = new SpySharedEndpointStore();
   const deps: ControlPlaneDeps = {
     verifier,
     store,
@@ -101,6 +124,7 @@ async function setup(
     vfs: new MemoryVfs(),
     capabilities,
     gatewayFronted,
+    sharedEndpoints,
   };
   server = createControlPlaneServer(deps);
   await new Promise<void>((r) => server?.listen(0, "127.0.0.1", () => r()));
@@ -112,7 +136,7 @@ async function setup(
     body: JSON.stringify({ name: "Helper" }),
   });
   const agentId = ((await created.json()) as { id: string }).id;
-  return { base, agentId, channel };
+  return { base, agentId, channel, sharedEndpoints };
 }
 
 const connect = (base: string, agentId: string, body: unknown, who = "alice") =>
@@ -218,6 +242,88 @@ test("managed cloud forwards a valid public HTTPS endpoint to the channel", asyn
     baseUrl: "https://ollama.example.com/v1",
     model: "llama3.1",
   });
+});
+
+test("managed cloud publishes a team-shared endpoint after the runtime save", async () => {
+  const { base, agentId, channel, sharedEndpoints } = await setup(
+    MANAGED_CLOUD_CAPS,
+    true,
+  );
+  const res = await connect(base, agentId, {
+    baseUrl: "https://ollama.example.com/v1",
+    model: "llama3.1",
+    name: "Team Llama",
+    contextWindow: 131_072,
+    reasoning: false,
+    apiKey: "secret",
+    shared: true,
+  });
+
+  expect(res.status).toBe(200);
+  expect(channel.saved[0]?.shared).toBe(true);
+  expect(sharedEndpoints.puts).toEqual([
+    {
+      baseUrl: "https://ollama.example.com/v1",
+      model: "llama3.1",
+      name: "Team Llama",
+      contextWindow: 131_072,
+      reasoning: false,
+      apiKey: "secret",
+    },
+  ]);
+  expect(sharedEndpoints.removals).toEqual([]);
+});
+
+test("managed cloud owner-only removes its prior share when saving unshared", async () => {
+  const { base, agentId, sharedEndpoints } = await setup(
+    MANAGED_CLOUD_CAPS,
+    true,
+  );
+
+  const res = await connect(base, agentId, {
+    baseUrl: "https://ollama.example.com/v1",
+    model: "llama3.1",
+  });
+
+  expect(res.status).toBe(200);
+  expect(sharedEndpoints.puts).toEqual([]);
+  expect(sharedEndpoints.removals).toEqual([{ ownerOnly: true }]);
+});
+
+test("a share failure surfaces after the local runtime save succeeds", async () => {
+  const { base, agentId, channel, sharedEndpoints } = await setup(
+    MANAGED_CLOUD_CAPS,
+    true,
+  );
+  sharedEndpoints.throwMessage = "share gateway unavailable";
+
+  const res = await connect(base, agentId, {
+    baseUrl: "https://ollama.example.com/v1",
+    model: "llama3.1",
+    shared: true,
+  });
+
+  expect(res.status).toBe(502);
+  expect(channel.saved).toHaveLength(1);
+  expect(((await res.json()) as { error: string }).error).toContain(
+    "share gateway unavailable",
+  );
+});
+
+test("openai-compatible logout owner-only removes the caller's share", async () => {
+  const { base, agentId, sharedEndpoints } = await setup(
+    MANAGED_CLOUD_CAPS,
+    true,
+  );
+
+  const res = await fetch(`${base}/agents/${agentId}/credential/forget`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({ provider: "openai-compatible" }),
+  });
+
+  expect(res.status).toBe(200);
+  expect(sharedEndpoints.removals).toEqual([{ ownerOnly: true }]);
 });
 
 test("managed cloud rejects localhost with an actionable 400, never forwarded", async () => {

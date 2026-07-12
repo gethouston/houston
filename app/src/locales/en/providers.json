@@ -142,6 +142,10 @@
       "label": "Show the model's thinking",
       "help": "Turn this on for reasoning models (they think before answering)."
     },
+    "share": {
+      "label": "Share with my team",
+      "help": "Teammates' agents can use this model. Their requests run through your computer while it's online."
+    },
     "error": {
       "body": "Something went wrong while connecting. Make sure the app is still open on your computer, then try again.",
       "retry": "Try again"

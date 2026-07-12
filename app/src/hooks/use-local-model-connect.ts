@@ -10,38 +10,16 @@ import {
   connectDetectedModel,
   detectLocalModels,
 } from "../lib/local-model-connect";
+import {
+  LOCAL_MODEL_CONNECT_TIMEOUT_MS,
+  LOCAL_MODEL_DETECT_TIMEOUT_MS,
+  type LocalModelMode,
+} from "../lib/local-model-connect-state";
+import { withLocalModelTimeout } from "../lib/local-model-timeout";
+import { useLocalModelShare } from "./use-local-model-share";
 import { useReasoningToggle } from "./use-reasoning-toggle";
 
-export type LocalModelMode =
-  | "detecting"
-  | "empty"
-  | "pick"
-  | "connecting"
-  | "error"
-  | "manual";
-
-/** Detection is a quick localhost scan; the connect mints a tunnel + starts frpc
- *  and can legitimately take longer. Both fall back to the calm error state (with
- *  retry) if they hang, so the dialog can never spin forever. */
-const DETECT_TIMEOUT_MS = 20_000;
-const CONNECT_TIMEOUT_MS = 90_000;
-
-/** Race `work` against a timeout; aborting the controller stops the timer and
- *  (via the signal) rolls back any half-open bridge. */
-function withTimeout<T>(
-  work: (signal: AbortSignal) => Promise<T>,
-  ms: number,
-  controller: AbortController,
-): Promise<T> {
-  const timeout = new Promise<never>((_, reject) => {
-    const id = setTimeout(() => {
-      controller.abort();
-      reject(new Error("local-model timeout"));
-    }, ms);
-    controller.signal.addEventListener("abort", () => clearTimeout(id));
-  });
-  return Promise.race([work(controller.signal), timeout]);
-}
+export type { LocalModelMode } from "../lib/local-model-connect-state";
 
 /**
  * Owns the guided "connect a local model" flow: detection, model pick, and the
@@ -55,14 +33,20 @@ export function useLocalModelConnect(opts: {
   active: boolean;
   /** Native bridge available (desktop). Web opens straight to the manual form. */
   desktop: boolean;
+  /** Whether the active workspace can publish an organization share. */
+  teamWorkspace: boolean;
+  /** Active workspace identity, used to prevent sharing into a newly switched team. */
+  workspaceId: string;
   onConnected?: (model: string) => void;
   onClose: () => void;
 }) {
-  const { active, desktop, onConnected, onClose } = opts;
+  const { active, desktop, teamWorkspace, workspaceId, onConnected, onClose } =
+    opts;
   const [mode, setMode] = useState<LocalModelMode>("detecting");
   const [servers, setServers] = useState<DetectedServer[]>([]);
   const [selected, setSelected] = useState(0);
   const [model, setModelState] = useState("");
+  const { shared, setShared } = useLocalModelShare(workspaceId);
   // "Show the model's thinking" toggle (heuristic default, user can override).
   const {
     reasoning,
@@ -99,9 +83,9 @@ export function useLocalModelConnect(opts: {
     setMode("detecting");
     try {
       const found = connectableServers(
-        await withTimeout(
+        await withLocalModelTimeout(
           () => detectLocalModels(),
-          DETECT_TIMEOUT_MS,
+          LOCAL_MODEL_DETECT_TIMEOUT_MS,
           controller,
         ),
       );
@@ -126,11 +110,12 @@ export function useLocalModelConnect(opts: {
     if (!active) return;
     setServers([]);
     setSelected(0);
+    setShared(false);
     resetReasoning();
     chooseModel("");
     if (desktop) void runDetect();
     else setMode("manual");
-  }, [active, desktop, runDetect, chooseModel, resetReasoning]);
+  }, [active, desktop, runDetect, chooseModel, resetReasoning, setShared]);
 
   const selectServer = useCallback(
     (index: number) => {
@@ -148,7 +133,7 @@ export function useLocalModelConnect(opts: {
     abortRef.current = controller;
     setMode("connecting");
     try {
-      await withTimeout(
+      await withLocalModelTimeout(
         (signal) =>
           connectDetectedModel({
             server,
@@ -156,9 +141,10 @@ export function useLocalModelConnect(opts: {
             name: defaultEndpointName(server.kind, model),
             appName: appDisplayName(server.kind),
             reasoning,
+            shared: teamWorkspace && shared,
             signal,
           }),
-        CONNECT_TIMEOUT_MS,
+        LOCAL_MODEL_CONNECT_TIMEOUT_MS,
         controller,
       );
       if (controller.signal.aborted || !mounted.current) return;
@@ -169,7 +155,16 @@ export function useLocalModelConnect(opts: {
       // the bridge back. Show a calm retry state unless we were cancelled/closed.
       if (!controller.signal.aborted && mounted.current) setMode("error");
     }
-  }, [servers, selected, model, reasoning, onConnected, onClose]);
+  }, [
+    servers,
+    selected,
+    model,
+    reasoning,
+    shared,
+    teamWorkspace,
+    onConnected,
+    onClose,
+  ]);
 
   /** Cancel the in-flight detect/connect: abort the work (the connect's own
    *  abort path rolls back any half-open bridge) and close the dialog. */
@@ -191,6 +186,8 @@ export function useLocalModelConnect(opts: {
     setModel: chooseModel,
     reasoning,
     setReasoning,
+    shared,
+    setShared,
     selectServer,
     runDetect,
     connect,
