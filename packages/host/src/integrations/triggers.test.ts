@@ -291,3 +291,38 @@ test("the gateway adapter refuses every trigger verb (desktop never reconciles)"
     TriggersUnsupportedError,
   );
 });
+
+// ── ensureWebhookSubscription (bootstrap) ──────────────────────────────────
+
+test("ensureWebhookSubscription subscribes with the trigger event when absent", async () => {
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/webhook_subscriptions" && method === "GET") {
+      return { body: { items: [{ webhook_url: "https://other/webhook" }] } };
+    }
+    if (url.pathname === "/api/v3/webhook_subscriptions" && method === "POST") {
+      return { body: { id: "ws_1" } };
+    }
+    return { status: 404, body: {} };
+  });
+  await provider.ensureWebhookSubscription("https://gw/webhook");
+  const post = calls.find((c) => c.method === "POST");
+  expect(post?.path).toBe("/api/v3/webhook_subscriptions");
+  // Composio live-rejects an empty enabled_events ("At least one event must
+  // be enabled") — the bootstrap subscribes to exactly the delivery event.
+  expect(post?.body).toEqual({
+    webhook_url: "https://gw/webhook",
+    enabled_events: ["composio.trigger.message"],
+    version: "V3",
+  });
+});
+
+test("ensureWebhookSubscription is idempotent when the URL is already registered", async () => {
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/webhook_subscriptions" && method === "GET") {
+      return { body: { items: [{ webhook_url: "https://gw/webhook" }] } };
+    }
+    return { status: 500, body: { error: "should not POST" } };
+  });
+  await provider.ensureWebhookSubscription("https://gw/webhook");
+  expect(calls.filter((c) => c.method === "POST")).toHaveLength(0);
+});

@@ -14,6 +14,8 @@ import {
   type RawToolkit,
   type RawTriggerInstance,
   type RawTriggerType,
+  type RawWebhookSubscriptions,
+  webhookSubscriptionUrls,
 } from "./composio-wire";
 import type { ActingContext, IntegrationProvider } from "./provider";
 import {
@@ -313,13 +315,23 @@ export class ComposioProvider implements IntegrationProvider {
 
   /**
    * Register the project's single webhook URL so every trigger instance delivers
-   * to Houston's ingress. `enabled_events: []` means "all trigger events" — the
-   * per-instance filtering already happens at the trigger config, not here.
+   * to Houston's ingress. Composio REJECTS an empty `enabled_events` (live 400:
+   * "At least one event must be enabled"), so subscribe to exactly the trigger
+   * delivery event — per-instance filtering happens at the trigger config. A
+   * subscription already pointing at this URL is left alone (idempotent boot).
    */
   async ensureWebhookSubscription(webhookUrl: string): Promise<void> {
+    const existing = await this.http.call<RawWebhookSubscriptions>(
+      "/api/v3/webhook_subscriptions",
+    );
+    if (webhookSubscriptionUrls(existing).includes(webhookUrl)) return;
     await this.http.call("/api/v3/webhook_subscriptions", {
       method: "POST",
-      body: { webhook_url: webhookUrl, enabled_events: [] },
+      body: {
+        webhook_url: webhookUrl,
+        enabled_events: ["composio.trigger.message"],
+        version: "V3",
+      },
     });
   }
 }

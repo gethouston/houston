@@ -143,3 +143,21 @@ export function mapTriggerInstanceRef(
 ): TriggerInstanceRef {
   return { triggerInstanceId: r?.id ?? r?.trigger_id ?? "" };
 }
+
+/** GET /webhook_subscriptions reply: items-wrapped or a bare array. */
+export interface RawWebhookSubscriptions {
+  items?: Array<{ webhook_url?: string; url?: string }>;
+}
+
+/** Every webhook URL already registered on the project, shape-tolerant. */
+export function webhookSubscriptionUrls(
+  r:
+    | RawWebhookSubscriptions
+    | Array<{ webhook_url?: string; url?: string }>
+    | null,
+): string[] {
+  const items = Array.isArray(r) ? r : (r?.items ?? []);
+  return items
+    .map((s) => s.webhook_url ?? s.url ?? "")
+    .filter((u) => u.length > 0);
+}
