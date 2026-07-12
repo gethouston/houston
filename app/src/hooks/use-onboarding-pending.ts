@@ -66,13 +66,23 @@ export function useOnboardingPending(): OnboardingPendingState {
   // Stable across renders (react-query memoizes `mutateAsync`), so the consumer
   // can safely list `markPending` in an on-mount effect's deps without the
   // effect re-firing on mutation status churn.
+  //
+  // Both writers flip the query cache SYNCHRONOUSLY before the persisted write:
+  // `finishOnboarding` drops `tutorialActive` in the same event handler, and
+  // App.tsx re-renders on that store update before any mutation microtask runs.
+  // If the cache still said `true` in that render, App would remount the
+  // orchestrator via its `onboardingPending` branch, whose mount effect re-pins
+  // the tutorial and re-marks the flag — restarting onboarding from the first
+  // step on every finish. The `onSuccess` write is kept as the settled value.
   const markPending = useCallback(async () => {
+    qc.setQueryData<boolean>(queryKey, true);
     await mutateAsync(true);
-  }, [mutateAsync]);
+  }, [mutateAsync, qc]);
 
   const clearPending = useCallback(async () => {
+    qc.setQueryData<boolean>(queryKey, false);
     await mutateAsync(false);
-  }, [mutateAsync]);
+  }, [mutateAsync, qc]);
 
   return {
     isPending: query.data === true,
