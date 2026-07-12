@@ -11,6 +11,14 @@ export interface StreamTuning {
    * running sync) and the turn proceeds as if the send had succeeded.
    */
   sendVerdictMs?: number;
+  /**
+   * Grace before the PRE-SETTLED poll fires (see {@link PRESETTLED_POLL_MS}).
+   * A turn that completes BEFORE our subscription's first sync leaves us with a
+   * fresh idle sync and no frames ever replayed; after this grace with still no
+   * stream evidence, the sink reloads history and settles ONLY on conclusive
+   * proof the turn finished. Tests shrink it to fire quickly.
+   */
+  presettledPollMs?: number;
 }
 
 /**
@@ -43,6 +51,20 @@ export const SEND_IN_FLIGHT_MESSAGE = "A message is already being sent.";
  * send doesn't leave the user staring at a spinner.
  */
 export const SEND_VERDICT_MS = 15_000;
+/**
+ * How long the sink waits, after a FRESH idle sync in turn mode with the send
+ * accepted, before it suspects the turn completed BEFORE the subscription's
+ * first sync (the fake host's ~45ms canned reply, or a real instant error /
+ * cancel) — a window in which the user echo, frames and terminal were all
+ * emitted before we attached and are never replayed, so the stream carries no
+ * evidence and the card would hang on "running" forever (0407aaa0). On fire the
+ * sink reloads history and settles ONLY on conclusive proof the turn finished;
+ * inconclusive (a healthy slow turn whose reply hasn't persisted) re-arms the
+ * poll, and any stream evidence cancels it. Long enough that a turn that simply
+ * hasn't started yet isn't polled needlessly, short enough that a genuinely
+ * pre-settled turn leaves the spinner quickly.
+ */
+export const PRESETTLED_POLL_MS = 1_500;
 /**
  * Copy for a send that provably never landed: the send fetch failed at the
  * transport level AND no evidence of the turn arrived within the verdict

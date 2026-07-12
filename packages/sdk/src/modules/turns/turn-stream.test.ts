@@ -15,6 +15,7 @@ import {
   STREAM_LOST_MESSAGE,
   StreamRegistry,
 } from "./stream-registry";
+import { TurnSink } from "./turn-sink";
 import {
   observeConversation,
   type StreamTuning,
@@ -49,6 +50,8 @@ function fakeEngine(
   const sendOpts: Array<Record<string, unknown> | undefined> = [];
   /** The `text` (real model prompt) each sendMessage carried. */
   const texts: string[] = [];
+  /** How many times history was refetched (the pre-settled poll's reload). */
+  const historyCalls = { n: 0 };
   const engine = {
     async streamEvents(_id: string, streamOpts: EventStreamOptions) {
       const h = handlers[Math.min(afters.length, handlers.length - 1)];
@@ -66,10 +69,11 @@ function fakeEngine(
       if (opts.sendError !== undefined) throw opts.sendError;
     },
     async getHistory() {
+      historyCalls.n++;
       return { id: "c", title: "", messages: history };
     },
   } as unknown as HoustonEngineClient;
-  return { engine, afters, nonces, sendOpts, texts };
+  return { engine, afters, nonces, sendOpts, texts, historyCalls };
 }
 
 // Each test drives its own instance registry (no package global); a test that
@@ -1514,4 +1518,180 @@ test("a definitive send rejection (the engine answered) still fails the turn imm
     data: "A turn is already running",
     fails_pending: true,
   });
+});
+
+// ── Pre-settled turn poll (0407aaa0) ─────────────────────────────────────────
+// A turn that COMPLETES before our subscription's first sync leaves a fresh
+// idle sync and no frames ever replayed — the sink used to ignore it as "a turn
+// we're about to trigger" and hang forever. The conclusive-only history poll
+// settles it, without ever erroring a healthy slow turn.
+
+test("a turn that finished before the first sync settles from history via the poll — no hang, no TURN_DIED", async () => {
+  // The turn's frames were emitted before we attached and are never replayed;
+  // the stream only carries a FRESH idle sync, then goes quiet. History holds
+  // the finished reply.
+  const history: ChatMessage[] = [
+    { role: "user", content: "hi", ts: 1 },
+    { role: "assistant", content: "Hello from history", ts: 2 },
+  ];
+  const { engine } = fakeEngine(
+    [
+      (o) => {
+        o.onEvent(sync(false, "", 0));
+        return hang(o); // no user echo, no frames, no running sync ever arrive
+      },
+    ],
+    history,
+  );
+  const { items, sessionStatuses, board, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-presettled",
+    "hi",
+    output,
+    registry,
+    { tuning: { ...fast, presettledPollMs: 20 } },
+  );
+
+  // Settled conclusively from the persisted reply — never hung, never errored.
+  const texts = items.filter((i) => i.feed_type === "assistant_text");
+  expect(texts).toEqual([
+    { feed_type: "assistant_text", data: "Hello from history" },
+  ]);
+  expect(finals(items)).toHaveLength(1);
+  expect(items).not.toContainEqual({
+    feed_type: "system_message",
+    data: TURN_DIED_MESSAGE,
+  });
+  expect(sessionStatuses).toEqual(["running", "completed"]);
+  // The board leaves "running" — the card no longer eats Escape.
+  expect(board).toEqual(["running", "done"]);
+});
+
+test("a pre-settled ask_user turn recovers its persisted interaction: needs_you, not a false done", async () => {
+  // The mid-interview shape under the race: the turn ended asking the user and
+  // completed before we attached. The runtime persists the interaction ON the
+  // reply, so the poll's history settle must split to needs_you and carry it.
+  const interaction: PendingInteraction = {
+    steps: [
+      {
+        kind: "question",
+        id: "q1",
+        question: "What should the routine do?",
+        options: [{ id: "email", label: "Check my email" }],
+      },
+    ],
+  };
+  const history: ChatMessage[] = [
+    { role: "user", content: "hi", ts: 1 },
+    {
+      role: "assistant",
+      content: "Pick one:",
+      ts: 2,
+      pendingInteraction: interaction,
+    },
+  ];
+  const { engine } = fakeEngine(
+    [
+      (o) => {
+        o.onEvent(sync(false, "", 0));
+        return hang(o);
+      },
+    ],
+    history,
+  );
+  const { board, boardInteractions, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-presettled-ask",
+    "hi",
+    output,
+    registry,
+    { tuning: { ...fast, presettledPollMs: 20 } },
+  );
+
+  expect(board).toEqual(["running", "needs_you"]);
+  expect(boardInteractions).toEqual([null, interaction]);
+});
+
+test("the poll does NOT settle a healthy slow turn (trailing user in history), then frames settle it and cancel the poll", async () => {
+  // History ends on OUR user message the whole time the turn is slow: the reply
+  // hasn't persisted yet. Every poll reload is therefore INCONCLUSIVE — the poll
+  // must re-arm and settle nothing — until the live frames arrive.
+  const history: ChatMessage[] = [{ role: "user", content: "hi", ts: 1 }];
+  const { engine, historyCalls } = fakeEngine(
+    [
+      (o) =>
+        new Promise<void>((resolve) => {
+          o.onEvent(sync(false, "", 0)); // fresh idle sync → arms the poll
+          // The turn is genuinely slow: its frames land well after a poll tick.
+          setTimeout(() => {
+            o.onEvent({ type: "text", data: "slow reply", seq: 1 });
+            o.onEvent({ type: "done", data: null, seq: 2 });
+            resolve();
+          }, 90);
+        }),
+    ],
+    history,
+  );
+  const { items, sessionStatuses, board, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-slow-turn",
+    "hi",
+    output,
+    registry,
+    { tuning: { ...fast, presettledPollMs: 25 } },
+  );
+
+  // The poll fired at least once (reloaded history) but found it inconclusive —
+  // it never surfaced a premature error against the still-running turn.
+  expect(historyCalls.n).toBeGreaterThanOrEqual(1);
+  expect(sessionStatuses).not.toContain("error");
+  expect(items).not.toContainEqual({
+    feed_type: "system_message",
+    data: TURN_DIED_MESSAGE,
+  });
+  // The live frames settled it normally; the poll was cancelled by the evidence.
+  const texts = items.filter((i) => i.feed_type === "assistant_text");
+  expect(texts).toEqual([{ feed_type: "assistant_text", data: "slow reply" }]);
+  expect(sessionStatuses).toEqual(["running", "completed"]);
+  expect(board).toEqual(["running", "done"]);
+});
+
+test("dispose clears an armed pre-settled poll — teardown leaves nothing pending", async () => {
+  const { output } = makeOutput();
+  let historyCalls = 0;
+  const sink = new TurnSink({
+    agentPath: "Houston/Bo",
+    sessionKey: "activity-teardown",
+    output,
+    mode: "turn",
+    nonce: "n",
+    prompt: "hi",
+    stop: () => {},
+    reloadHistory: async () => {
+      historyCalls++;
+      return [];
+    },
+    historyGuard: () => false,
+    presettledPollMs: 20,
+  });
+
+  // Arm the poll: send accepted + a fresh idle sync are its two triggers.
+  sink.sendAccepted();
+  sink.onFrame(sync(false, "", 0));
+  // Tear down BEFORE the 20ms timer would fire.
+  sink.dispose();
+  await new Promise((r) => setTimeout(r, 60));
+
+  // The timer was cleared: history was never reloaded, nothing settled.
+  expect(historyCalls).toBe(0);
+  expect(sink.settled).toBe(false);
 });

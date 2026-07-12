@@ -4,6 +4,7 @@ import type { FeedOutput } from "./feed-output";
 import { randomNonce } from "./random-nonce";
 import {
   type ActiveStream,
+  PRESETTLED_POLL_MS,
   SEND_IN_FLIGHT_MESSAGE,
   SEND_LOST_MESSAGE,
   SEND_VERDICT_MS,
@@ -220,6 +221,9 @@ export async function streamTurn(
     // against two identical prompts in a row; turnId matching replaces it.
     historyGuard: (messages) =>
       messages.filter((m) => m.role === "user").at(-1)?.content === prompt,
+    // The grace before the pre-settled poll fires — a turn that finished before
+    // our first sync (its frames never replayed) hangs the card without it.
+    presettledPollMs: opts.tuning?.presettledPollMs ?? PRESETTLED_POLL_MS,
   });
   if (sent) sink.sendAccepted();
 
@@ -276,6 +280,7 @@ export async function streamTurn(
     if (!sink.settled) sink.fail(turnErrorMessage(e));
   } finally {
     if (sendVerdict !== undefined) clearTimeout(sendVerdict);
+    sink.dispose(); // clear any armed pre-settled poll — the stream is done
     ac.abort();
     registry.release(key, entry);
   }
