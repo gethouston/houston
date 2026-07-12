@@ -44,6 +44,20 @@ describe("resolveSuggestReusableOverride", () => {
     });
   });
 
+  it("renders the card for a learning suggestion (the reflection step's third kind)", () => {
+    const learning: InteractionStep = {
+      kind: "suggest_reusable",
+      id: "r1",
+      reusableKind: "learning",
+      title: "Preferred report format",
+      rationale: "You always want the summary first.",
+    };
+    deepStrictEqual(resolveSuggestReusableOverride([learning], null), {
+      kind: "card",
+      step: learning,
+    });
+  });
+
   it("returns none when the sole step is not a suggest_reusable step", () => {
     deepStrictEqual(resolveSuggestReusableOverride([question], null), {
       kind: "none",

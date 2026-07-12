@@ -47,6 +47,20 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
       ],
     }),
   ).toBe(true);
+  // A learning suggestion (the reflection step's third kind) is valid.
+  expect(
+    isPendingInteraction({
+      steps: [
+        {
+          kind: "suggest_reusable",
+          id: "r1",
+          reusableKind: "learning",
+          title: "Preferred report format",
+          rationale: "You always want the summary first.",
+        },
+      ],
+    }),
+  ).toBe(true);
   // An invalid reusableKind is invalid.
   expect(
     isPendingInteraction({

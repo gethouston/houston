@@ -18,6 +18,8 @@ export interface ChatSuggestReusableLabels {
   skillTitle: string;
   /** Save action label shown when `reusableKind === "routine"`. */
   routineTitle: string;
+  /** Save action label shown when `reusableKind === "learning"`. */
+  learningTitle: string;
   /** Dismiss action label. */
   notNow: string;
 }
@@ -28,15 +30,18 @@ export const DEFAULT_SUGGEST_REUSABLE_LABELS: ChatSuggestReusableLabels = {
   eyebrow: "Save this for next time",
   skillTitle: "Save as a Skill",
   routineTitle: "Save as a Routine",
+  learningTitle: "Remember this",
   notNow: "Not now",
 };
 
-/** The save row's label: the model's just-completed work can be saved either as
- *  a reusable Skill or a scheduled Routine, and the label names which. Pure so
- *  the mapping is unit-tested without a DOM. */
+/** The save row's label: the model's just-completed work can be saved as a
+ *  reusable Skill, a scheduled Routine, or a Learning, and the label names
+ *  which. Pure so the mapping is unit-tested without a DOM. */
 export function resolveSuggestReusableSaveLabel(
-  reusableKind: "skill" | "routine",
+  reusableKind: "skill" | "routine" | "learning",
   labels: ChatSuggestReusableLabels,
 ): string {
-  return reusableKind === "skill" ? labels.skillTitle : labels.routineTitle;
+  if (reusableKind === "skill") return labels.skillTitle;
+  if (reusableKind === "routine") return labels.routineTitle;
+  return labels.learningTitle;
 }

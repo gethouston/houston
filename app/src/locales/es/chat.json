@@ -92,8 +92,10 @@
     "title": "Guarda esto para la próxima vez",
     "skillTitle": "Guardar como Habilidad",
     "routineTitle": "Guardar como Rutina",
+    "learningTitle": "Recordar esto",
     "saveSkillMessage": "Guarda lo que acabo de hacer como una Habilidad llamada \"{{title}}\".",
-    "saveRoutineMessage": "Configura esto como una Rutina recurrente llamada \"{{title}}\"."
+    "saveRoutineMessage": "Configura esto como una Rutina recurrente llamada \"{{title}}\".",
+    "saveLearningMessage": "Recuerda \"{{title}}\" como un aprendizaje para la próxima vez."
   },
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",

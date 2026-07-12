@@ -69,6 +69,21 @@ test("carries the routine kind through unchanged", async () => {
   });
 });
 
+test("carries the learning kind through unchanged", async () => {
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () =>
+    run({
+      reusableKind: "learning",
+      title: "Preferred report format",
+      rationale: "You always want the summary first.",
+    }),
+  );
+  expect(holder.pending?.steps[0]).toMatchObject({
+    kind: "suggest_reusable",
+    reusableKind: "learning",
+  });
+});
+
 test("trims the title and rationale before recording", async () => {
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, () =>

@@ -38,9 +38,12 @@ test("skill guidance uses the current SKILL.md layout and omits legacy fields", 
   expect(p).not.toContain("prompt_template");
 });
 
-test("memory guidance requires explicit opt-in", () => {
+test("memory guidance requires explicit opt-in via the reflection step", () => {
   const p = houstonSystemPrompt();
-  expect(p).toContain("Want me to remember that for next time?");
+  // Inferred learnings are offered in the end-of-task reflection step (the
+  // suggest_reusable card), never asked mid-task via ask_user or plain text.
+  expect(p).toContain("end-of-task reflection step");
+  expect(p).toContain("Reflection step:");
   expect(p).toContain("Save a learning only when");
   expect(p).toContain(".houston/learnings/learnings.json");
 });
