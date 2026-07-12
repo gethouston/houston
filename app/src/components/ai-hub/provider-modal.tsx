@@ -87,10 +87,10 @@ export function ProviderModal({
     <div className="flex items-start gap-3 px-5 pt-5 pb-4">
       <BrandMark providerId={provider.id} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <span className="text-lg font-semibold text-foreground tracking-[-0.01em]">
+        <span className="text-lg font-semibold text-ink tracking-[-0.01em]">
           {provider.name}
         </span>
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
+        <p className="text-[13px] leading-relaxed text-ink-muted">
           {t(`providers.${providerDescriptionKey(provider.id)}.description`)}
         </p>
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
@@ -116,7 +116,7 @@ export function ProviderModal({
           type="button"
           onClick={onClose}
           aria-label={t("card.cancel")}
-          className="grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-card-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="grid size-8 place-items-center rounded-full text-ink-muted transition-colors hover:bg-card-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           <X className="size-4" aria-hidden="true" />
         </button>
@@ -126,7 +126,7 @@ export function ProviderModal({
 
   const footer = connected ? (
     <div className="flex items-center justify-between gap-3">
-      <span className="min-w-0 truncate text-[13px] text-muted-foreground">
+      <span className="min-w-0 truncate text-[13px] text-ink-muted">
         {t("providerModal.signedInWith", { provider: provider.name })}
       </span>
       <div className="flex shrink-0 items-center gap-2">
@@ -161,7 +161,7 @@ export function ProviderModal({
       footer={footer}
     >
       {isLocal || models.length === 0 ? (
-        <p className="px-5 py-8 text-center text-[13px] text-muted-foreground">
+        <p className="px-5 py-8 text-center text-[13px] text-ink-muted">
           {t("providerModal.noModels")}
         </p>
       ) : (

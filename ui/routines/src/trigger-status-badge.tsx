@@ -16,18 +16,18 @@ import type { TriggerStatusItem, TriggerStatusState } from "./types";
 
 const TONE: Record<TriggerStatusState, string> = {
   active: "text-success",
-  pending: "text-muted-foreground",
+  pending: "text-ink-muted",
   paused_disconnected: "text-warning",
   paused_revoked: "text-warning",
-  error: "text-destructive",
+  error: "text-danger",
 };
 
 const DOT: Record<TriggerStatusState, string> = {
   active: "bg-success",
-  pending: "bg-muted-foreground",
+  pending: "bg-ink-muted",
   paused_disconnected: "bg-warning",
   paused_revoked: "bg-warning",
-  error: "bg-destructive",
+  error: "bg-danger",
 };
 
 export interface TriggerStatusBadgeProps {
@@ -86,7 +86,7 @@ export function TriggerStatusBadge({
     <div className={cn("flex items-start justify-between gap-3", className)}>
       <div className="min-w-0 space-y-1">
         {badge}
-        {detail && <p className="text-xs text-muted-foreground">{detail}</p>}
+        {detail && <p className="text-xs text-ink-muted">{detail}</p>}
       </div>
       {showReconnect && (
         <Button

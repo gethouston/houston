@@ -65,7 +65,7 @@ export function AiReviewStep({
                     className={cn(
                       "h-6 w-6 rounded-full flex items-center justify-center transition-all duration-150",
                       isSelected
-                        ? "ring-2 ring-offset-2 ring-foreground/30"
+                        ? "ring-2 ring-offset-2 ring-ink/30"
                         : "hover:scale-110",
                     )}
                     style={{ backgroundColor: swatch }}
@@ -101,18 +101,18 @@ export function AiReviewStep({
               <p className="text-sm font-medium">
                 {t("aiReview.instructionsLabel")}
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-ink-muted mt-0.5">
                 {t("aiReview.instructionsHelper")}
               </p>
             </div>
-            <section className="rounded-xl bg-secondary p-3">
+            <section className="rounded-xl bg-chip p-3">
               <textarea
                 value={instructions}
                 onChange={(e) => onInstructionsChange(e.target.value)}
                 rows={Math.max(10, instructions.split("\n").length + 2)}
                 className={cn(
-                  "w-full px-4 py-3 text-sm text-foreground leading-relaxed",
-                  "bg-background border border-foreground/[0.04] rounded-lg",
+                  "w-full px-4 py-3 text-sm text-ink leading-relaxed",
+                  "bg-input border border-ink/[0.04] rounded-lg",
                   "outline-none resize-none transition-shadow duration-200",
                   "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
                 )}
@@ -120,7 +120,7 @@ export function AiReviewStep({
             </section>
           </div>
 
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
         </div>
       </div>
 

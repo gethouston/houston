@@ -58,7 +58,7 @@ export function SidebarFlatList({
                 type="button"
                 aria-label={l.addItem}
                 onClick={onAdd}
-                className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
                 {...(addItemDataAttrs ?? {})}
               >
                 <Plus className="size-4" />

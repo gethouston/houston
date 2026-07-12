@@ -24,15 +24,13 @@ export function UserSkillMessage({ invocation, attachmentLabels }: Props) {
     invocation;
   return (
     <div className="flex max-w-md flex-col items-end gap-2">
-      <div className="inline-block rounded-2xl bg-secondary p-4 text-left">
+      <div className="inline-block rounded-2xl bg-chip p-4 text-left">
         <div className="flex items-start gap-3">
           <SkillIcon image={image} />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-foreground">
-              {displayName}
-            </div>
+            <div className="text-sm font-semibold text-ink">{displayName}</div>
             {description && (
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
                 {description}
               </p>
             )}
@@ -40,15 +38,15 @@ export function UserSkillMessage({ invocation, attachmentLabels }: Props) {
         </div>
 
         {fields.length > 0 && (
-          <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3">
+          <div className="mt-3 flex flex-col gap-2 border-t border-line/50 pt-3">
             {fields.map((f) => (
               <div key={f.label} className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-ink-muted/70">
                   {f.label}
                 </span>
-                <span className="break-words whitespace-pre-wrap text-xs text-foreground">
+                <span className="break-words whitespace-pre-wrap text-xs text-ink">
                   {f.value || (
-                    <span className="italic text-muted-foreground">empty</span>
+                    <span className="italic text-ink-muted">empty</span>
                   )}
                 </span>
               </div>
@@ -58,7 +56,7 @@ export function UserSkillMessage({ invocation, attachmentLabels }: Props) {
       </div>
 
       {message.trim().length > 0 && (
-        <div className="inline-block max-w-full rounded-2xl bg-secondary px-4 py-2.5 text-left text-sm leading-6 text-foreground">
+        <div className="inline-block max-w-full rounded-2xl bg-chip px-4 py-2.5 text-left text-sm leading-6 text-ink">
           <span className="whitespace-pre-wrap break-words">{message}</span>
         </div>
       )}

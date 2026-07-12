@@ -42,7 +42,7 @@ export function PickStep({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-ink-muted">
         {t("shareViaTeam.pick.subtitle")}
       </p>
 
@@ -53,7 +53,7 @@ export function PickStep({
               <button
                 type="button"
                 onClick={() => onPick(team)}
-                className="flex w-full items-center rounded-xl border border-border bg-background px-4 py-3 text-left text-sm font-medium hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring/20"
+                className="flex w-full items-center rounded-xl border border-line bg-input px-4 py-3 text-left text-sm font-medium hover:bg-chip focus:outline-none focus:ring-2 focus:ring-focus/20"
               >
                 {team.name}
               </button>
@@ -61,9 +61,7 @@ export function PickStep({
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          {t("shareViaTeam.pick.empty")}
-        </p>
+        <p className="text-sm text-ink-muted">{t("shareViaTeam.pick.empty")}</p>
       )}
 
       {creating ? (
@@ -99,7 +97,7 @@ export function PickStep({
       )}
 
       {createError ? (
-        <p className="text-sm text-destructive">{createError}</p>
+        <p className="text-sm text-danger">{createError}</p>
       ) : null}
     </div>
   );
@@ -122,10 +120,10 @@ export function ConfirmStep({
   const { t } = useTranslation("teams");
   return (
     <div className="space-y-4">
-      <p className="text-sm text-foreground">
+      <p className="text-sm text-ink">
         {t("shareViaTeam.confirm.body", { agent: agentName, team: team.name })}
       </p>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-ink-muted">
         {t("shareViaTeam.confirm.downtime")}
       </p>
       <div className="flex justify-end gap-2">
@@ -151,8 +149,8 @@ export function BusyStep({
   return (
     <div className="flex flex-col items-center gap-3 py-8 text-center">
       <Spinner className="size-6" />
-      <p className="text-sm font-medium text-foreground">{heading}</p>
-      {body ? <p className="text-xs text-muted-foreground">{body}</p> : null}
+      <p className="text-sm font-medium text-ink">{heading}</p>
+      {body ? <p className="text-xs text-ink-muted">{body}</p> : null}
     </div>
   );
 }
@@ -173,8 +171,8 @@ export function MoveFailedStep({
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />
-        <p className="text-sm text-foreground">
+        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-danger" />
+        <p className="text-sm text-ink">
           {t(`shareViaTeam.moveFailed.${error}`)}
         </p>
       </div>
@@ -210,8 +208,8 @@ export function SwitchFailedStep({
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />
-        <p className="text-sm text-foreground">
+        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-danger" />
+        <p className="text-sm text-ink">
           {t("shareViaTeam.switchFailed.body", { team: team.name })}
         </p>
       </div>

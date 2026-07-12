@@ -70,7 +70,7 @@ export function SidebarItemRow({
     <div
       className={cn(
         sidebarItemRowClasses.root,
-        isActive ? "bg-accent" : "hover:bg-accent/50",
+        isActive ? "bg-hover" : "hover:bg-hover/50",
       )}
     >
       {isEditing ? (
@@ -97,7 +97,7 @@ export function SidebarItemRow({
           onKeyDown={(e) => onKeyDown(e, item.id)}
           className={cn(
             sidebarItemRowClasses.selectButton,
-            isActive ? "text-foreground" : "text-accent-foreground",
+            isActive ? "text-ink" : "text-hover-text",
           )}
         >
           {item.icon && (
@@ -156,7 +156,7 @@ export function SidebarItemRow({
                 {onDelete && (
                   <DropdownMenuItem
                     onClick={() => onDelete(item.id)}
-                    className="text-destructive focus:text-destructive"
+                    className="text-danger focus:text-danger"
                   >
                     {l.deleteItem}
                   </DropdownMenuItem>

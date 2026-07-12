@@ -66,14 +66,14 @@ export function SkillCategorySelect({
           type="button"
           aria-label={labels.ariaLabel}
           className={cn(
-            "inline-flex h-9 items-center gap-2 rounded-full border border-border bg-secondary px-4 text-[13px] font-medium text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
+            "inline-flex h-9 items-center gap-2 rounded-full border border-line bg-chip px-4 text-[13px] font-medium text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-focus/20",
             className,
           )}
         >
           <span className="truncate">
             {selected ? selected.label : labels.allCategories}
           </span>
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+          <ChevronDown className="size-4 shrink-0 text-ink-muted" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-52 p-0">

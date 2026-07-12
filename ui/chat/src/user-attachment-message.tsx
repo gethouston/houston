@@ -26,7 +26,7 @@ export function UserAttachmentMessage({
   return (
     <div className="flex max-w-md flex-col items-end gap-2">
       {message.length > 0 && (
-        <div className="inline-block max-w-full rounded-2xl bg-secondary px-4 py-2.5 text-left text-sm leading-6 text-foreground">
+        <div className="inline-block max-w-full rounded-2xl bg-chip px-4 py-2.5 text-left text-sm leading-6 text-ink">
           <span className="whitespace-pre-wrap break-words">{message}</span>
         </div>
       )}
@@ -42,13 +42,10 @@ export function UserAttachmentBadge({
   if (files.length === 0) return null;
   return (
     <div
-      className="inline-flex max-w-full items-center gap-2 rounded-full border border-border/50 bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm"
+      className="inline-flex max-w-full items-center gap-2 rounded-full border border-line/50 bg-input px-3 py-1.5 text-xs font-medium text-ink shadow-sm"
       title={files.map((file) => file.name).join(", ")}
     >
-      <Paperclip
-        className="size-3.5 shrink-0 text-muted-foreground"
-        aria-hidden
-      />
+      <Paperclip className="size-3.5 shrink-0 text-ink-muted" aria-hidden />
       <span className="truncate">
         {attachmentCountLabel(files.length, labels)}
       </span>

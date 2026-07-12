@@ -40,7 +40,7 @@ export function PickScreen({
   const current = servers[selected];
   return (
     <div className="flex flex-col gap-4 py-2">
-      <p className="text-[13px] leading-relaxed text-muted-foreground">
+      <p className="text-[13px] leading-relaxed text-ink-muted">
         {t("localModel.pick.body")}
       </p>
       <div className="flex flex-col gap-2">
@@ -51,16 +51,16 @@ export function PickScreen({
               key={server.baseUrl}
               type="button"
               onClick={() => onSelectServer(index)}
-              className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${active ? "border-ring bg-card" : "border-border bg-secondary hover:bg-card-hover"}`}
+              className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${active ? "border-focus bg-card" : "border-line bg-chip hover:bg-card-hover"}`}
             >
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-card text-muted-foreground">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-card text-ink-muted">
                 <Laptop className="size-4" aria-hidden="true" />
               </span>
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="text-[13px] font-medium text-foreground">
+                <span className="text-[13px] font-medium text-ink">
                   {appDisplayName(server.kind)}
                 </span>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-[11px] text-ink-muted">
                   {t("localModel.pick.modelsFound", {
                     count: server.models.length,
                   })}
@@ -68,7 +68,7 @@ export function PickScreen({
               </span>
               {active && (
                 <Check
-                  className="size-4 shrink-0 text-foreground"
+                  className="size-4 shrink-0 text-ink"
                   aria-hidden="true"
                 />
               )}

@@ -87,7 +87,7 @@ export function ToolsAndCards({
         );
       })}
       {allDone && (
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-ink-muted">
           <Shimmer duration={1.5}>Processing...</Shimmer>
         </div>
       )}

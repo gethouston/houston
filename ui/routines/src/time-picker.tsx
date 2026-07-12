@@ -78,13 +78,13 @@ export function TimePicker({
             aria-label={`${label}: ${formatTime(value, locale)}`}
             className={cn(
               "flex w-full items-center justify-between gap-2 px-3 py-2",
-              "rounded-lg border border-border/20 bg-background",
-              "text-sm text-foreground transition-shadow",
+              "rounded-lg border border-line/20 bg-input",
+              "text-sm text-ink transition-shadow",
               "focus:outline-none focus:shadow-sm",
             )}
           >
             <span>{formatTime(value, locale)}</span>
-            <Clock className="size-4 text-muted-foreground" aria-hidden />
+            <Clock className="size-4 text-ink-muted" aria-hidden />
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-auto rounded-2xl p-2">

@@ -44,7 +44,7 @@ export function DictationSetupDialog({
         {modelSetup.downloading && (
           <div className="flex flex-col gap-2">
             <Progress value={modelSetup.progressPct} />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-ink-muted">
               {t("composer.dictation.setupProgress", {
                 pct: modelSetup.progressPct,
               })}

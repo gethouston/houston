@@ -21,10 +21,10 @@ export function AgentDisallowedAppsSection({
 
   return (
     <section className="mt-8">
-      <h2 className="text-sm font-medium text-foreground">
+      <h2 className="text-sm font-medium text-ink">
         {t("integrations.notAllowed.title")}
       </h2>
-      <p className="mb-3 mt-0.5 text-xs text-muted-foreground">
+      <p className="mb-3 mt-0.5 text-xs text-ink-muted">
         {t("integrations.notAllowed.body")}
       </p>
 
@@ -35,7 +35,7 @@ export function AgentDisallowedAppsSection({
             display={app}
             description={app.description}
             trailing={
-              <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              <span className="rounded-full bg-chip px-2 py-0.5 text-[11px] font-medium text-ink-muted">
                 {t("integrations.notAllowed.badge")}
               </span>
             }

@@ -33,11 +33,7 @@ export function MigrationLoader() {
         style={RING_STYLE}
       />
       <span className="migration-helmet grid place-items-center">
-        <HoustonHelmet
-          size={52}
-          color="currentColor"
-          className="text-foreground"
-        />
+        <HoustonHelmet size={52} color="currentColor" className="text-ink" />
       </span>
     </div>
   );
@@ -82,7 +78,7 @@ export function MigrationStatusCycle({ phrases }: { phrases: string[] }) {
 
   return (
     <p
-      className="min-h-[1.25em] text-sm text-muted-foreground transition-opacity duration-300"
+      className="min-h-[1.25em] text-sm text-ink-muted transition-opacity duration-300"
       style={{ opacity: visible ? 1 : 0 }}
     >
       {phrases[index]}

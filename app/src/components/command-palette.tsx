@@ -219,7 +219,7 @@ export function CommandPalette() {
                   <PaletteAvatar color={colorByPath[m.agent_path]} />
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate">{m.title}</span>
-                    <span className="truncate text-xs text-muted-foreground">
+                    <span className="truncate text-xs text-ink-muted">
                       {m.agent_name}
                     </span>
                   </div>

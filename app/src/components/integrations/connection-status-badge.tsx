@@ -6,13 +6,13 @@ export type ConnectionStatus = "active" | "pending" | "error";
 const DOT: Record<ConnectionStatus, string> = {
   active: "bg-success",
   pending: "bg-warning",
-  error: "bg-destructive",
+  error: "bg-danger",
 };
 
 const TEXT: Record<ConnectionStatus, string> = {
   active: "text-success",
   pending: "text-warning",
-  error: "text-destructive",
+  error: "text-danger",
 };
 
 /** A small colored status dot, sized for inline use next to an app name. */

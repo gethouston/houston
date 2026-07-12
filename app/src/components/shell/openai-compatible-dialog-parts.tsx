@@ -40,10 +40,10 @@ export function LabeledTextField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`w-full rounded-md border bg-background px-3 py-2 text-[13px] ${mono ? "font-mono " : ""}focus:outline-none focus:ring-2 focus:ring-ring`}
+        className={`w-full rounded-md border bg-input px-3 py-2 text-[13px] ${mono ? "font-mono " : ""}focus:outline-none focus:ring-2 focus:ring-focus`}
         disabled={disabled}
       />
-      <p className="text-[12px] text-muted-foreground">{help}</p>
+      <p className="text-[12px] text-ink-muted">{help}</p>
     </div>
   );
 }
@@ -87,19 +87,19 @@ export function SecretField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-md border bg-background px-3 py-2 pr-10 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full rounded-md border bg-input px-3 py-2 pr-10 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-focus"
           disabled={disabled}
         />
         <button
           type="button"
           onClick={onToggleShow}
           aria-label={show ? hideLabel : showLabel}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded"
         >
           {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>
       </div>
-      <p className="text-[12px] text-muted-foreground">{help}</p>
+      <p className="text-[12px] text-ink-muted">{help}</p>
     </div>
   );
 }

@@ -9,7 +9,7 @@ surfaces regenerate.**
 
 ## What a token is
 
-A named design decision, decoupled from where it is used. `color.background`
+A named design decision, decoupled from where it is used. `color.input`
 means "the app background" — its concrete value (`#ffffff` light, `#1e1e1e`
 dark) lives in one place, so a re-skin never means find-and-replace across
 components.
@@ -22,8 +22,8 @@ The standard two-layer structure:
    (`#0d0d0d`), `color.glass.white-68`, `color.status.danger`. Value-named, never
    referenced by UI directly. This is the only place a literal hex/rgba lives.
 2. **Semantic** (`tokens/semantic/color.{light,dark}.json`) — role-named aliases
-   that **reference** primitives: `ht.background -> {color.base.white}`,
-   `ht.border -> {color.brand.border-wash}`. This is what the UI consumes. Light
+   that **reference** primitives: `ht.input -> {color.base.white}`,
+   `ht.line -> {color.brand.border-wash}`. This is what the UI consumes. Light
    and dark are two files with the same token names and different references —
    mirroring how the app themes: an attribute swap (`[data-theme="dark"]`), set
    by `app/src/lib/theme.ts`.
@@ -75,10 +75,22 @@ still re-exports `--ht-*` to Tailwind's `--color-*`). The futuristic layer keeps
 only its *effects* (aurora glow, glass blur, canvas layout) — the surface colour
 values moved into the token source.
 
-Because the legacy variable names were already consistent and semantic
-(`--ht-sidebar-accent-fg`, etc.), **all 33 map 1:1** — no legacy aliases were
-needed. The only string that changed is a cosmetic alpha normalization
+Because the variable names were already consistent and semantic
+(`--ht-sidebar-hover-text`, etc.), **all 33 map 1:1** — no legacy aliases were
+needed. (That statement is about the ORIGINAL CSS adoption; the names shown here
+are the CURRENT ones, after the July 2026 rename below.) The only string that
+changed in that adoption is a cosmetic alpha normalization
 (`rgba(255,255,255,0.10)` → `0.1`, an identical colour).
+
+**July 2026 — owner-vocabulary rename.** The semantic set was later renamed 1:1 to
+names the owner can speak as Tailwind utilities (`background` → `input`,
+`foreground` → `ink`, `primary` → `action`, `accent` → `hover`, `secondary` →
+`chip`, `border` → `line`, `destructive` → `danger`, and so on — the full table
+lives in `knowledge-base/design-system.md`). Every resolved value is
+byte-identical; only the names moved. `test/legacy-resolved.json` keys carry the
+NEW names while pinning the SAME resolved colours, so the same `zero-diff.test.ts`
+that proved CSS adoption moved zero pixels now also proves the rename moved zero
+pixels.
 
 `test/legacy-resolved.json` pins the resolved value of every `--ht-*` variable as
 it shipped pre-adoption (extracted from the old CSS, not hand-typed).

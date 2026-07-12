@@ -23,11 +23,11 @@ export function SkillList({
   onSkill: (name: string) => void;
 }) {
   if (!agentReady) {
-    return <p className="text-sm text-muted-foreground">{pickAgentLabel}</p>;
+    return <p className="text-sm text-ink-muted">{pickAgentLabel}</p>;
   }
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 text-sm text-ink-muted">
         <Spinner className="size-3.5" />
         {loadingLabel}
       </div>
@@ -35,7 +35,7 @@ export function SkillList({
   }
   if (skills.length === 0) {
     if (hideEmpty) return null;
-    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
+    return <p className="text-sm text-ink-muted">{emptyLabel}</p>;
   }
   return (
     <>

@@ -79,7 +79,7 @@ export function AccessChoice({
       <div
         role="radiogroup"
         aria-label={question}
-        className="flex w-full max-w-md rounded-full bg-secondary p-1"
+        className="flex w-full max-w-md rounded-full bg-chip p-1"
         onKeyDown={onKeyDown}
       >
         {options.map((opt) => {
@@ -98,13 +98,13 @@ export function AccessChoice({
               tabIndex={checked ? 0 : -1}
               disabled={disabled}
               onClick={() => select(opt.value)}
-              className="relative flex-1 rounded-full px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed"
+              className="relative flex-1 rounded-full px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed"
             >
               {checked && (
                 <motion.span
                   layoutId={thumbId}
                   aria-hidden
-                  className="absolute inset-0 rounded-full bg-background shadow-sm"
+                  className="absolute inset-0 rounded-full bg-input shadow-sm"
                   transition={
                     reduce
                       ? { duration: 0 }
@@ -114,7 +114,7 @@ export function AccessChoice({
               )}
               <span
                 className={`relative z-10 block truncate ${
-                  checked ? "text-foreground" : "text-muted-foreground"
+                  checked ? "text-ink" : "text-ink-muted"
                 }`}
               >
                 {opt.label}
@@ -127,7 +127,7 @@ export function AccessChoice({
         <AnimatePresence mode="wait" initial={false}>
           <motion.p
             key={selected.value}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-ink-muted"
             initial={reduce ? false : { opacity: 0, y: -3 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: 3 }}

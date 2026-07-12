@@ -111,16 +111,14 @@ export function ToolRuntimeErrorCard({
 
   return (
     <div className="w-full px-1 py-2">
-      <div className="flex items-start gap-4 rounded-2xl bg-secondary p-4 text-left">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
+      <div className="flex items-start gap-4 rounded-2xl bg-chip p-4 text-left">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-line bg-input text-ink-muted">
           <WrenchIcon className="size-5" />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="text-sm font-semibold text-foreground">{title}</p>
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {body}
-          </p>
+          <p className="text-sm font-semibold text-ink">{title}</p>
+          <p className="text-xs leading-relaxed text-ink-muted">{body}</p>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {isModelUnsupported && onSwitchModel && (

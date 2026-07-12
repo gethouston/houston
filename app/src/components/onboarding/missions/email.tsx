@@ -158,7 +158,7 @@ export function EmailMission({
       backLabel={t("setup:tutorial.nav.back")}
     >
       {session.error && (
-        <p className="mb-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+        <p className="mb-3 rounded-xl border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
           {session.error}
         </p>
       )}
@@ -169,7 +169,7 @@ export function EmailMission({
             diameter={24}
             running={session.isLoading}
           />
-          <span className="truncate text-xs font-medium text-muted-foreground">
+          <span className="truncate text-xs font-medium text-ink-muted">
             {agent.name}
           </span>
         </div>
@@ -226,7 +226,7 @@ export function EmailMission({
         </div>
         {session.showSkip && (
           <div className="flex shrink-0 items-center justify-between gap-3 pt-3">
-            <p className="min-w-0 text-xs text-muted-foreground">
+            <p className="min-w-0 text-xs text-ink-muted">
               {t("setup:tutorial.missions.email.skipHint")}
             </p>
             <Button

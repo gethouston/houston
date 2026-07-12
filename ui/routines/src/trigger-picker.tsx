@@ -34,11 +34,11 @@ export interface TriggerPickerProps {
 
 function AppLogo({ app }: { app: TriggerApp }) {
   const [broken, setBroken] = useState(false);
-  const box = "size-6 shrink-0 rounded-md bg-background";
+  const box = "size-6 shrink-0 rounded-md bg-input";
   if (broken || !app.logoUrl) {
     return (
       <span className={cn(box, "flex items-center justify-center")}>
-        <span className="text-[11px] font-semibold text-muted-foreground">
+        <span className="text-[11px] font-semibold text-ink-muted">
           {app.name.charAt(0).toUpperCase()}
         </span>
       </span>
@@ -70,13 +70,11 @@ export function TriggerPicker({
 
   if (!app) {
     if (apps.length === 0) {
-      return <p className="text-sm text-muted-foreground">{labels.noApps}</p>;
+      return <p className="text-sm text-ink-muted">{labels.noApps}</p>;
     }
     return (
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground">
-          {labels.chooseApp}
-        </p>
+        <p className="text-xs font-medium text-ink-muted">{labels.chooseApp}</p>
         <div className="grid grid-cols-2 gap-2">
           {apps.map((a) => (
             <button
@@ -84,12 +82,12 @@ export function TriggerPicker({
               key={a.toolkit}
               onClick={() => onSelectToolkit(a.toolkit)}
               className={cn(
-                "flex items-center gap-2 rounded-lg border border-foreground/[0.08] p-2.5 text-left",
-                "hover:border-foreground/20 transition-colors",
+                "flex items-center gap-2 rounded-lg border border-ink/[0.08] p-2.5 text-left",
+                "hover:border-ink/20 transition-colors",
               )}
             >
               <AppLogo app={a} />
-              <span className="min-w-0 truncate text-sm font-medium text-foreground">
+              <span className="min-w-0 truncate text-sm font-medium text-ink">
                 {a.name}
               </span>
             </button>
@@ -104,13 +102,13 @@ export function TriggerPicker({
       {/* Chosen app + change affordance */}
       <div className="flex items-center gap-2">
         <AppLogo app={app} />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
           {app.name}
         </span>
         <button
           type="button"
           onClick={() => onSelectToolkit("")}
-          className="text-xs font-medium text-muted-foreground hover:text-foreground"
+          className="text-xs font-medium text-ink-muted hover:text-ink"
         >
           {labels.changeApp}
         </button>
@@ -118,9 +116,7 @@ export function TriggerPicker({
 
       {app.accounts.length > 1 && (
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-foreground">
-            {labels.accountLabel}
-          </p>
+          <p className="text-xs font-medium text-ink">{labels.accountLabel}</p>
           <Select value={selectedAccountId} onValueChange={onSelectAccount}>
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -137,16 +133,16 @@ export function TriggerPicker({
       )}
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground">
+        <p className="text-xs font-medium text-ink-muted">
           {labels.chooseEvent}
         </p>
         {triggerTypesLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-ink-muted">
             <Spinner className="size-4" />
             {labels.loadingEvents}
           </div>
         ) : triggerTypes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{labels.noEvents}</p>
+          <p className="text-sm text-ink-muted">{labels.noEvents}</p>
         ) : (
           <div className="space-y-1.5">
             {triggerTypes.map((tt) => (
@@ -184,18 +180,18 @@ function TriggerTypeRow({
       className={cn(
         "w-full rounded-lg border p-2.5 text-left transition-colors",
         selected
-          ? "border-primary bg-primary/[0.04]"
-          : "border-foreground/[0.08] hover:border-foreground/20",
+          ? "border-action bg-action/[0.04]"
+          : "border-ink/[0.08] hover:border-ink/20",
       )}
     >
-      <p className="text-sm font-medium text-foreground">{type.name}</p>
+      <p className="text-sm font-medium text-ink">{type.name}</p>
       {type.description && (
-        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+        <p className="text-xs text-ink-muted mt-0.5 line-clamp-2">
           {type.description}
         </p>
       )}
       {type.type === "poll" && (
-        <p className="text-[11px] text-muted-foreground mt-1">{pollHint}</p>
+        <p className="text-[11px] text-ink-muted mt-1">{pollHint}</p>
       )}
     </button>
   );

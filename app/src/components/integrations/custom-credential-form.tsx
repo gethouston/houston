@@ -95,7 +95,7 @@ export function CustomCredentialForm({
           <div key={field.variable} className="space-y-1.5">
             <label
               htmlFor={`ci-${field.variable}`}
-              className="text-[13px] font-medium text-foreground"
+              className="text-[13px] font-medium text-ink"
             >
               {field.label}
             </label>
@@ -112,7 +112,7 @@ export function CustomCredentialForm({
                 }
                 placeholder={t("custom.credential.placeholder")}
                 disabled={submitting}
-                className="w-full rounded-md border bg-background px-3 py-2 pr-10 font-mono text-[13px] focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full rounded-md border bg-input px-3 py-2 pr-10 font-mono text-[13px] focus:outline-none focus:ring-2 focus:ring-focus"
               />
               <button
                 type="button"
@@ -127,7 +127,7 @@ export function CustomCredentialForm({
                     ? t("custom.credential.hide")
                     : t("custom.credential.show")
                 }
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded text-ink-muted hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
                 {show ? (
                   <EyeOff className="size-4" />

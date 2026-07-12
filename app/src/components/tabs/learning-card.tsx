@@ -66,7 +66,7 @@ export function LearningCard({
   };
 
   return (
-    <article className="rounded-xl border border-foreground/[0.05] bg-secondary px-4 py-3 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
+    <article className="rounded-xl border border-ink/[0.05] bg-chip px-4 py-3 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
       {editing && !readOnly ? (
         <LearningEditor
           value={value}
@@ -122,9 +122,9 @@ function LearningEditor({
         placeholder={isDraft ? t("agents:learnings.inputPlaceholder") : ""}
         rows={Math.max(4, value.split("\n").length + 1)}
         className={cn(
-          "w-full resize-none rounded-lg border border-foreground/[0.08] bg-background",
-          "px-3 py-2 text-sm leading-relaxed text-foreground outline-none",
-          "placeholder:text-muted-foreground/60 focus:border-foreground/20",
+          "w-full resize-none rounded-lg border border-ink/[0.08] bg-input",
+          "px-3 py-2 text-sm leading-relaxed text-ink outline-none",
+          "placeholder:text-ink-muted/60 focus:border-ink/20",
         )}
       />
       <div className="flex justify-end gap-2">

@@ -209,7 +209,7 @@ export function AppSidebar({
           type="button"
           aria-label={l.collapseSidebar}
           onClick={onToggleCollapsed}
-          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
         >
           <PanelLeftClose className="size-4" />
         </button>
@@ -235,7 +235,7 @@ export function AppSidebar({
         data-tour-target="sidebar"
         onClick={handleRailClick}
         className={cn(
-          "bg-sidebar text-sidebar-foreground flex flex-col h-full shrink-0 overflow-hidden",
+          "bg-sidebar text-sidebar-text flex flex-col h-full shrink-0 overflow-hidden",
           "transition-[width] duration-200 ease-out",
           collapsed ? "w-[56px] cursor-pointer" : "w-[220px]",
         )}
@@ -299,7 +299,7 @@ export function AppSidebar({
           {/* Section label + inline action (expanded only) */}
           {sectionLabel && !collapsed && (
             <div className="flex items-center gap-1 px-3 pt-3 pb-1">
-              <div className="min-w-0 flex-1 text-xs font-medium text-muted-foreground">
+              <div className="min-w-0 flex-1 text-xs font-medium text-ink-muted">
                 {sectionLabel}
               </div>
               {sectionAction}
@@ -310,7 +310,7 @@ export function AppSidebar({
                       type="button"
                       aria-label={l.addItem}
                       onClick={onAdd}
-                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
                       {...(addItemDataAttrs ?? {})}
                     >
                       <Plus className="size-4" />

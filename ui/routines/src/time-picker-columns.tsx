@@ -68,8 +68,8 @@ export function TimeColumn({
             className={cn(
               "shrink-0 rounded-md py-1.5 text-center text-sm tabular-nums transition-colors",
               on
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                ? "bg-action text-action-text"
+                : "text-ink-muted hover:bg-chip-subtle hover:text-ink",
             )}
           >
             {pad2(n)}
@@ -112,8 +112,8 @@ export function PeriodColumn({
             className={cn(
               "shrink-0 rounded-md py-1.5 text-center text-sm uppercase transition-colors",
               on
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                ? "bg-action text-action-text"
+                : "text-ink-muted hover:bg-chip-subtle hover:text-ink",
             )}
           >
             {it.label}

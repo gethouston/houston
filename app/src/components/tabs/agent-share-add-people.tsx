@@ -38,7 +38,7 @@ export function AgentShareAddPeople({
         <button
           type="button"
           disabled={disabled || candidates.length === 0}
-          className="inline-flex h-9 w-full cursor-pointer items-center gap-2 rounded-full border border-border bg-background px-3 text-sm text-muted-foreground hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
+          className="inline-flex h-9 w-full cursor-pointer items-center gap-2 rounded-full border border-line bg-input px-3 text-sm text-ink-muted hover:bg-chip focus:outline-none focus:ring-2 focus:ring-focus/20 disabled:opacity-50"
         >
           <Plus className="size-4" />
           <span>{t("share.addPeople")}</span>

@@ -90,7 +90,7 @@ export function AgentAvatar({ config, size = "md" }: AgentAvatarProps) {
   if (config.image) {
     return (
       <div
-        className={`${dim} shrink-0 rounded-full border border-border flex items-center justify-center ${imgPad} bg-background`}
+        className={`${dim} shrink-0 rounded-full border border-line flex items-center justify-center ${imgPad} bg-input`}
       >
         <img
           src={config.image}
@@ -105,7 +105,7 @@ export function AgentAvatar({ config, size = "md" }: AgentAvatarProps) {
 
   return (
     <div
-      className={`flex ${dim} shrink-0 items-center justify-center rounded-full bg-secondary`}
+      className={`flex ${dim} shrink-0 items-center justify-center rounded-full bg-chip`}
     >
       <Icon className={iconDim} style={{ color: resolved }} />
     </div>

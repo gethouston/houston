@@ -61,8 +61,8 @@ export function KanbanListItem({
           // archived list); top-align only when a snippet pushes it taller.
           snippet ? "items-start" : "items-center",
           selected
-            ? "border-transparent bg-accent shadow-sm"
-            : "border-border bg-card hover:bg-accent/40",
+            ? "border-transparent bg-hover shadow-sm"
+            : "border-line bg-card hover:bg-hover/40",
         )}
       >
         {(avatar ?? item.icon) && (
@@ -73,16 +73,16 @@ export function KanbanListItem({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             {item.group && (
-              <span className="text-xs text-muted-foreground shrink-0 truncate max-w-[120px]">
+              <span className="text-xs text-ink-muted shrink-0 truncate max-w-[120px]">
                 {item.group}
               </span>
             )}
-            <span className="text-[13px] font-medium text-foreground flex-1 truncate">
+            <span className="text-[13px] font-medium text-ink flex-1 truncate">
               {item.title}
             </span>
           </div>
           {snippet && (
-            <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">
+            <p className="mt-1 text-xs leading-snug text-ink-muted line-clamp-2">
               <HighlightedText text={snippet.text} ranges={snippet.ranges} />
             </p>
           )}
@@ -97,7 +97,7 @@ export function KanbanListItem({
                   setConfirm(true);
                 }}
                 className={cn(
-                  "shrink-0 p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors duration-200",
+                  "shrink-0 p-1 rounded-md text-ink-muted/40 hover:text-danger hover:bg-danger/10 transition-colors duration-200",
                   snippet && "mt-0.5",
                 )}
                 aria-label={labels?.deleteTooltip}

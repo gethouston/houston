@@ -95,14 +95,14 @@ export function SignInScreen() {
         {/* data-theme="dark" pins the whole card to the dark palette so the
             login reads identically in both app themes (dark card on the
             theme-invariant space backdrop). */}
-        {/* text-foreground is declared HERE, inside the pin, on purpose:
+        {/* text-ink is declared HERE, inside the pin, on purpose:
             `color` inherits as a computed value, so a token utility set on an
             ancestor outside the pin would carry the APP theme's foreground in. */}
         <div
           data-theme="dark"
-          className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-border text-foreground shadow-2xl sm:grid-cols-3"
+          className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-line text-ink shadow-2xl sm:grid-cols-3"
         >
-          <div className="flex flex-col gap-5 bg-background p-8 sm:col-span-2">
+          <div className="flex flex-col gap-5 bg-input p-8 sm:col-span-2">
             <h1 className="text-lg font-medium">Log in</h1>
 
             <div className="flex flex-col gap-2.5">
@@ -135,20 +135,20 @@ export function SignInScreen() {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground">or</span>
-              <div className="h-px flex-1 bg-border" />
+              <div className="h-px flex-1 bg-line" />
+              <span className="text-xs text-ink-muted">or</span>
+              <div className="h-px flex-1 bg-line" />
             </div>
 
             <EmailSignIn />
 
-            {error && <p className="text-xs text-destructive">{error}</p>}
+            {error && <p className="text-xs text-danger">{error}</p>}
           </div>
 
-          <div className="flex flex-col justify-between gap-6 bg-primary p-8 text-primary-foreground sm:col-span-1">
+          <div className="flex flex-col justify-between gap-6 bg-action p-8 text-action-text sm:col-span-1">
             <div className="flex flex-col gap-3">
               <h2 className="text-lg font-medium">Share the love</h2>
-              <p className="text-sm text-primary-foreground/70">
+              <p className="text-sm text-action-text/70">
                 Know a team that would fly with Houston? Send them our way. When
                 they commit to 5 or more licenses, your team gets $250 in
                 credits.
@@ -158,7 +158,7 @@ export function SignInScreen() {
               variant="ghost"
               size="sm"
               onClick={openExternal("https://gethouston.ai/referrals")}
-              className="-ml-3 gap-1 self-start text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground dark:hover:bg-primary-foreground/10"
+              className="-ml-3 gap-1 self-start text-action-text hover:bg-action-text/10 hover:text-action-text dark:hover:bg-action-text/10"
             >
               See how it works
               <ArrowUpRight className="size-4" />

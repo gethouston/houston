@@ -54,13 +54,13 @@ export function MigrationReconnectScreen({
   };
 
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-background px-6 text-foreground">
+    <div className="flex h-screen flex-col items-center justify-center bg-input px-6 text-ink">
       <div className="flex w-full max-w-md flex-col items-center gap-6 text-center">
         <HoustonLogo size={56} />
         <h1 className="text-[28px] font-normal leading-tight">
           {t("migrationReconnect.title")}
         </h1>
-        <p className="text-base text-muted-foreground">
+        <p className="text-base text-ink-muted">
           {t("migrationReconnect.body")}
         </p>
 
@@ -77,7 +77,7 @@ export function MigrationReconnectScreen({
         <button
           type="button"
           onClick={() => finish("skipped")}
-          className="rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className="rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
         >
           {t("migrationReconnect.skip")}
         </button>

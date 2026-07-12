@@ -151,7 +151,7 @@ export function ChatSigninInteractionCard({
         <InteractionModalTitle
           className="flex-1 truncate"
           icon={
-            <span className="flex size-6 shrink-0 items-center justify-center text-foreground">
+            <span className="flex size-6 shrink-0 items-center justify-center text-ink">
               <HoustonLogo size={22} />
             </span>
           }
@@ -163,10 +163,10 @@ export function ChatSigninInteractionCard({
       // explainer line.
       body={
         <div className="flex flex-col gap-1">
-          <p className="text-balance text-foreground text-sm leading-snug">
+          <p className="text-balance text-ink text-sm leading-snug">
             {reasonLine}
           </p>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-ink-muted text-sm">
             {t("interaction.signinDescription")}
           </p>
         </div>
@@ -176,7 +176,7 @@ export function ChatSigninInteractionCard({
           <>
             {showNotNow && (
               <Button
-                className="gap-1.5 text-muted-foreground"
+                className="gap-1.5 text-ink-muted"
                 disabled={pending}
                 onClick={onSkip}
                 size="sm"

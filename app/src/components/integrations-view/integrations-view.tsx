@@ -63,7 +63,7 @@ export function IntegrationsView() {
                     signingIn={gate.signingIn}
                   />
                 ) : (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-ink-muted">
                     {t("custom.catalogUnavailable")}
                   </p>
                 )}

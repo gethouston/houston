@@ -110,18 +110,14 @@ export function FolderSection({
           <FolderIcon />
           <span className="text-[13px] truncate">{node.name}</span>
         </div>
-        <span className="text-[11px] text-muted-foreground truncate px-2">
+        <span className="text-[11px] text-ink-muted truncate px-2">
           {formatFileManagerDate(node.entry?.dateModified)}
         </span>
-        <span className="text-[11px] text-muted-foreground truncate px-2">
+        <span className="text-[11px] text-ink-muted truncate px-2">
           {formatFileManagerDate(node.entry?.dateCreated)}
         </span>
-        <span className="text-[11px] text-muted-foreground text-right px-2">
-          --
-        </span>
-        <span className="text-[11px] text-muted-foreground truncate px-2">
-          Folder
-        </span>
+        <span className="text-[11px] text-ink-muted text-right px-2">--</span>
+        <span className="text-[11px] text-ink-muted truncate px-2">Folder</span>
       </button>
       {menu && (
         <FileMenu
@@ -205,7 +201,7 @@ export function FileRow({
   const renameRef = useRef<HTMLInputElement>(null);
   const padLeft = BASE_INDENT + depth * DEPTH_INDENT + TRIANGLE_AREA;
   const hasMenu = onOpen || onReveal || onDownload || onDelete;
-  const sec = selected ? "text-primary-foreground/80" : "text-muted-foreground";
+  const sec = selected ? "text-action-text/80" : "text-ink-muted";
 
   const startRename = () => {
     if (!onRename) return;
@@ -283,7 +279,7 @@ export function FileRow({
                 }
               }}
               onBlur={commitRename}
-              className="flex-1 text-[13px] bg-background text-foreground outline-none rounded px-1 -ml-1 min-w-0 border border-[#2068d0] shadow-sm"
+              className="flex-1 text-[13px] bg-input text-ink outline-none rounded px-1 -ml-1 min-w-0 border border-[#2068d0] shadow-sm"
             />
           ) : (
             <span className="text-[13px] truncate">{file.name}</span>

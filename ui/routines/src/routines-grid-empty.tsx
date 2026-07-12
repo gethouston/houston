@@ -37,23 +37,21 @@ export function RoutinesGridEmpty({
 
         {/* Guided walkthrough: what creating a routine actually involves. */}
         <div className="w-full text-left">
-          <p className="text-xs font-medium text-muted-foreground mb-2 px-1">
+          <p className="text-xs font-medium text-ink-muted mb-2 px-1">
             {l.emptyStepsTitle}
           </p>
-          <ol className="rounded-xl bg-secondary divide-y divide-border/60 overflow-hidden">
+          <ol className="rounded-xl bg-chip divide-y divide-line/60 overflow-hidden">
             {l.emptySteps.map((step, i) => (
               <li
                 key={step.title}
                 className="flex items-start gap-3 px-4 py-3.5"
               >
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-background text-[11px] font-medium text-foreground mt-0.5">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-input text-[11px] font-medium text-ink mt-0.5">
                   {i + 1}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground">
-                    {step.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-sm font-medium text-ink">{step.title}</p>
+                  <p className="text-xs text-ink-muted mt-0.5">
                     {step.description}
                   </p>
                 </div>

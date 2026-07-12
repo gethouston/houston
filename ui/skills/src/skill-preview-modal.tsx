@@ -103,7 +103,7 @@ export function SkillPreviewModal({
                     {l.bySource(owner, repo)}
                   </DialogDescription>
                   {skill.installs > 0 && (
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="truncate text-xs text-ink-muted">
                       {l.installsCount(
                         skill.installs,
                         formatInstalls(skill.installs),
@@ -117,9 +117,9 @@ export function SkillPreviewModal({
             <div>
               {preview.status === "loading" && (
                 <div className="space-y-2">
-                  <div className="animate-pulse bg-secondary rounded h-3 w-full" />
-                  <div className="animate-pulse bg-secondary rounded h-3 w-11/12" />
-                  <div className="animate-pulse bg-secondary rounded h-3 w-2/3" />
+                  <div className="animate-pulse bg-chip rounded h-3 w-full" />
+                  <div className="animate-pulse bg-chip rounded h-3 w-11/12" />
+                  <div className="animate-pulse bg-chip rounded h-3 w-2/3" />
                 </div>
               )}
               {preview.status === "loaded" &&
@@ -129,9 +129,7 @@ export function SkillPreviewModal({
                     labels={l.description}
                   />
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {l.noDescription}
-                  </p>
+                  <p className="text-sm text-ink-muted">{l.noDescription}</p>
                 ))}
               {preview.status === "error" && (
                 <div className="flex items-start gap-2 text-sm text-amber-600 dark:text-amber-500">
@@ -143,14 +141,14 @@ export function SkillPreviewModal({
 
             {preview.status === "loaded" && preview.preview.tags.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">
+                <p className="text-xs font-medium text-ink-muted mb-2">
                   {l.tagsHeading}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {preview.preview.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full bg-secondary px-2.5 py-0.5 text-xs text-foreground"
+                      className="rounded-full bg-chip px-2.5 py-0.5 text-xs text-ink"
                     >
                       {tag}
                     </span>
@@ -165,7 +163,7 @@ export function SkillPreviewModal({
                 onClick={onInstall}
                 disabled={installing || installed}
                 className={cn(
-                  "w-full h-11 flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors",
+                  "w-full h-11 flex items-center justify-center gap-2 rounded-full bg-action text-action-text text-sm font-medium hover:bg-action/90 transition-colors",
                   (installing || installed) && "opacity-60",
                   installing && "cursor-wait",
                 )}

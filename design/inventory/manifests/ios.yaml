@@ -74,7 +74,7 @@ components:
       appended rows slide up + fade in (FeedMotion.swift, gated to after first load
       + at-bottom; Reduce Motion -> opacity-only), and a faint tiled Houston-helmet
       wallpaper (ChatWallpaperLayout.swift / ChatWallpaperView.swift, static Canvas,
-      theme.foreground @ 0.035, OFF under Reduce Transparency) sits behind the feed
+      theme.ink @ 0.035, OFF under Reduce Transparency) sits behind the feed
       via ChatView.swift.
   assistant-message:
     status: partial

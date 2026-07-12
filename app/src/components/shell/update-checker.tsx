@@ -51,10 +51,10 @@ export function UpdateChecker() {
     <aside
       aria-label={t("updateChecker.cardLabel")}
       aria-live={downloading ? "polite" : "assertive"}
-      className="fixed bottom-4 left-4 z-50 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-[0_16px_60px_rgba(0,0,0,0.16)]"
+      className="fixed bottom-4 left-4 z-50 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-card p-4 text-card-text shadow-[0_16px_60px_rgba(0,0,0,0.16)]"
     >
       <div className="flex items-start gap-3">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-border">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-input ring-1 ring-line">
           <img
             src={houstonBlack}
             alt=""
@@ -73,31 +73,27 @@ export function UpdateChecker() {
             <h2 className="text-base font-semibold leading-tight">
               {t("updateChecker.title")}
             </h2>
-            {error && (
-              <AlertCircle className="size-4 shrink-0 text-destructive" />
-            )}
+            {error && <AlertCircle className="size-4 shrink-0 text-danger" />}
           </div>
-          <p className="mt-1 text-sm leading-snug text-muted-foreground">
-            {message}
-          </p>
+          <p className="mt-1 text-sm leading-snug text-ink-muted">{message}</p>
         </div>
         {!downloading && !ready && (
           <button
             type="button"
             onClick={dismiss}
             aria-label={t("updateChecker.dismissAction")}
-            className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="shrink-0 rounded-md p-1 text-ink-muted transition-colors hover:bg-hover hover:text-ink"
           >
             <X className="size-4" />
           </button>
         )}
       </div>
 
-      <div className="mt-4 rounded-xl bg-muted p-3">
-        <p className="text-xs font-medium text-foreground">
+      <div className="mt-4 rounded-xl bg-chip-subtle p-3">
+        <p className="text-xs font-medium text-ink">
           {t("updateChecker.detailsHeading")}
         </p>
-        <div className="mt-1 max-h-28 overflow-y-auto break-words text-xs leading-relaxed text-muted-foreground">
+        <div className="mt-1 max-h-28 overflow-y-auto break-words text-xs leading-relaxed text-ink-muted">
           {notes ? (
             <UpdateNotes notes={notes} />
           ) : (
@@ -107,9 +103,9 @@ export function UpdateChecker() {
       </div>
 
       {downloading && (
-        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-chip-subtle">
           <div
-            className={`h-full rounded-full bg-primary transition-[width] duration-200 ${progress === null ? "animate-pulse" : ""}`}
+            className={`h-full rounded-full bg-action transition-[width] duration-200 ${progress === null ? "animate-pulse" : ""}`}
             style={{ width: `${progress ?? 35}%` }}
           />
         </div>
@@ -119,7 +115,7 @@ export function UpdateChecker() {
         type="button"
         onClick={onAction}
         disabled={downloading}
-        className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-70"
+        className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-full bg-action px-4 text-sm font-medium text-action-text transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-70"
       >
         {downloading ? (
           <Loader2 className="size-4 animate-spin" />

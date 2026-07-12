@@ -61,7 +61,7 @@ export function RoutinesGridList({
       <div className="max-w-3xl mx-auto px-6 py-7">
         {/* Description + CTA. No page title — tab handles it. */}
         <div className="flex items-center justify-between gap-4 mb-4">
-          <p className="text-xs text-muted-foreground max-w-md">
+          <p className="text-xs text-ink-muted max-w-md">
             {l.descriptionShort}
           </p>
           {hasCreate && (
@@ -92,8 +92,8 @@ export function RoutinesGridList({
             leads, then draft chats, then real routines. */}
         <div
           className={cn(
-            "rounded-xl bg-secondary overflow-hidden",
-            "divide-y divide-border/60",
+            "rounded-xl bg-chip overflow-hidden",
+            "divide-y divide-line/60",
           )}
         >
           {newDraft && (

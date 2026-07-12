@@ -23,7 +23,7 @@ export function CodeBlockActions({
 
   const buttonClass = dark
     ? "inline-flex size-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
-    : "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    : "inline-flex size-7 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-chip-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
   return (
     <button

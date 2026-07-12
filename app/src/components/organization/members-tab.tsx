@@ -26,9 +26,7 @@ export default function MembersTab({ ctx }: OrgTabProps) {
       {canManage ? (
         <PeopleAddRow />
       ) : (
-        <p className="text-sm text-muted-foreground">
-          {t("people.adminNotice")}
-        </p>
+        <p className="text-sm text-ink-muted">{t("people.adminNotice")}</p>
       )}
       <PendingInvites
         invites={invites}

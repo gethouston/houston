@@ -97,12 +97,12 @@ export function AgentShareDialog({
               <Spinner className="size-5" />
             </div>
           ) : people.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-foreground/10 px-4 py-8 text-center">
-              <Users className="mx-auto mb-2 size-6 text-muted-foreground" />
-              <p className="text-sm font-medium text-foreground">
+            <div className="rounded-xl border border-dashed border-ink/10 px-4 py-8 text-center">
+              <Users className="mx-auto mb-2 size-6 text-ink-muted" />
+              <p className="text-sm font-medium text-ink">
                 {t("share.empty.title")}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-ink-muted">
                 {t("share.empty.body")}
               </p>
             </div>
@@ -120,7 +120,7 @@ export function AgentShareDialog({
             </ul>
           )}
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-ink-muted">
             {t("share.conversationNote")}
           </p>
         </div>

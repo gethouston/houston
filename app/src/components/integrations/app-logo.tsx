@@ -27,7 +27,7 @@ const LETTER_SIZE = {
  * States: the brand image renders BARE (its own art carries the brand — no
  * plate, no border, so it integrates into whatever surface hosts it); the
  * initial-letter fallback (no URL, or the image failed) keeps a soft
- * `bg-background` plate so the letter reads as a deliberate avatar. The box is
+ * `bg-input` plate so the letter reads as a deliberate avatar. The box is
  * a fixed size in every state, so swapping never shifts surrounding layout.
  *
  * The failure latch is keyed to the URL that actually failed: a card that
@@ -51,15 +51,8 @@ export function AppLogo({
 
   if (!display.logoUrl || failedUrl === display.logoUrl) {
     return (
-      <span
-        className={cn(box, "flex items-center justify-center bg-background")}
-      >
-        <span
-          className={cn(
-            "font-semibold text-muted-foreground",
-            LETTER_SIZE[size],
-          )}
-        >
+      <span className={cn(box, "flex items-center justify-center bg-input")}>
+        <span className={cn("font-semibold text-ink-muted", LETTER_SIZE[size])}>
           {display.name.charAt(0).toUpperCase()}
         </span>
       </span>

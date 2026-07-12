@@ -33,16 +33,14 @@ export function ReviewSidebar({
   }, [items]);
 
   return (
-    <div className="flex flex-col h-full bg-secondary border-r border-border">
+    <div className="flex flex-col h-full bg-chip border-r border-line">
       <div className="flex-1 overflow-y-auto px-2 py-3">
         {grouped.map((group) => (
           <div key={group.label} className="mb-1">
             <div className="flex items-center justify-between px-3 py-1">
-              <span className="text-[11px] text-muted-foreground">
-                {group.label}
-              </span>
+              <span className="text-[11px] text-ink-muted">{group.label}</span>
               {group.items.length > 0 && (
-                <span className="text-[11px] text-muted-foreground/60">
+                <span className="text-[11px] text-ink-muted/60">
                   {group.items.length}
                 </span>
               )}
@@ -56,15 +54,15 @@ export function ReviewSidebar({
                   className={cn(
                     "w-full text-left px-3 py-1.5 rounded-lg transition-colors duration-100 text-[13px] truncate",
                     item.id === selectedId
-                      ? "bg-accent text-foreground"
-                      : "text-accent-foreground hover:bg-accent/50",
+                      ? "bg-hover text-ink"
+                      : "text-hover-text hover:bg-hover/50",
                   )}
                 >
                   {item.title}
                 </button>
               ))
             ) : (
-              <p className="px-3 py-1 text-[12px] text-muted-foreground/60 italic">
+              <p className="px-3 py-1 text-[12px] text-ink-muted/60 italic">
                 None
               </p>
             )}

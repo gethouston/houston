@@ -43,18 +43,16 @@ export function PeopleAddRow() {
   };
 
   return (
-    <section className="rounded-2xl border border-foreground/5 bg-secondary p-4">
-      <h2 className="mb-1 text-sm font-medium text-foreground">
+    <section className="rounded-2xl border border-ink/5 bg-chip p-4">
+      <h2 className="mb-1 text-sm font-medium text-ink">
         {t("people.add.title")}
       </h2>
-      <p className="mb-3 text-xs text-muted-foreground">
-        {t("people.add.subtitle")}
-      </p>
+      <p className="mb-3 text-xs text-ink-muted">{t("people.add.subtitle")}</p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <div className="flex-1">
           <label
             htmlFor="org-add-email"
-            className="mb-1.5 block text-xs text-muted-foreground"
+            className="mb-1.5 block text-xs text-ink-muted"
           >
             {t("people.add.emailLabel")}
           </label>
@@ -76,7 +74,7 @@ export function PeopleAddRow() {
         <div className="sm:w-44">
           <label
             htmlFor="org-add-role"
-            className="mb-1.5 block text-xs text-muted-foreground"
+            className="mb-1.5 block text-xs text-ink-muted"
           >
             {t("people.add.roleLabel")}
           </label>
@@ -101,7 +99,7 @@ export function PeopleAddRow() {
           {t("people.add.submit")}
         </AsyncButton>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-2 text-xs text-ink-muted">
         {t(`people.roleHelp.${role}`)}
       </p>
       <p aria-live="polite" className="mt-2 min-h-4 text-xs text-success">

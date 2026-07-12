@@ -95,7 +95,7 @@ export function ConnectAppsStep({
       </DialogHeader>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6">
-        <p className="mb-4 text-sm text-muted-foreground">
+        <p className="mb-4 text-sm text-ink-muted">
           {t("connect.body", { name: agent.name })}
         </p>
         <div className="flex flex-col gap-2">
@@ -113,7 +113,7 @@ export function ConnectAppsStep({
         </div>
       </div>
 
-      <footer className="flex shrink-0 justify-end border-t border-foreground/[0.06] px-6 py-4">
+      <footer className="flex shrink-0 justify-end border-t border-ink/[0.06] px-6 py-4">
         <Button type="button" className="rounded-full" onClick={onDone}>
           {t("connect.done")}
         </Button>

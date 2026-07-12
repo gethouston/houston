@@ -177,7 +177,7 @@ export function ChatMessages({
             >
               <div>
                 {authorLabel ? (
-                  <div className="mb-1 px-1 text-xs text-muted-foreground group-[.is-user]:text-right">
+                  <div className="mb-1 px-1 text-xs text-ink-muted group-[.is-user]:text-right">
                     {authorLabel}
                   </div>
                 ) : null}

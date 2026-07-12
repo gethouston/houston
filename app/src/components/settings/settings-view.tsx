@@ -73,7 +73,7 @@ export function SettingsView() {
         <button
           type="button"
           onClick={() => setActive(null)}
-          className="inline-flex cursor-pointer items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex cursor-pointer items-center gap-1 text-sm text-ink-muted transition-colors hover:text-ink"
         >
           <ChevronLeft className="size-4" />
           {t("settings:title")}

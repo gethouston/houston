@@ -35,8 +35,8 @@ export function PublisherChips({
       className={cn(
         "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm transition-colors",
         active
-          ? "bg-accent text-foreground font-medium"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          ? "bg-hover text-ink font-medium"
+          : "text-ink-muted hover:bg-hover hover:text-ink",
       )}
     >
       {label}
@@ -54,7 +54,7 @@ function SkeletonGrid() {
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {SKELETON_KEYS.map((k) => (
-        <div key={k} className="h-14 animate-pulse rounded-xl bg-secondary" />
+        <div key={k} className="h-14 animate-pulse rounded-xl bg-chip" />
       ))}
     </div>
   );
@@ -68,8 +68,8 @@ function MutedNotice({
   children: ReactNode;
 }) {
   return (
-    <p className="flex items-center gap-1.5 py-4 text-sm text-muted-foreground">
-      {icon && <AlertCircle className="size-3.5 text-muted-foreground/60" />}
+    <p className="flex items-center gap-1.5 py-4 text-sm text-ink-muted">
+      {icon && <AlertCircle className="size-3.5 text-ink-muted/60" />}
       {children}
     </p>
   );
@@ -95,7 +95,7 @@ export function BrowseErrorNotice({
         <button
           type="button"
           onClick={onRetry}
-          className="text-xs text-foreground underline-offset-4 hover:underline"
+          className="text-xs text-ink underline-offset-4 hover:underline"
         >
           {retryLabel}
         </button>

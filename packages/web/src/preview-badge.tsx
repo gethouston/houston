@@ -23,7 +23,7 @@ export function PreviewBadge() {
     <div className="pointer-events-none fixed top-2 left-1/2 z-40 -translate-x-1/2 select-none">
       <Badge
         variant="outline"
-        className="gap-1.5 border-border/70 bg-background/80 text-muted-foreground shadow-sm backdrop-blur-sm"
+        className="gap-1.5 border-line/70 bg-input/80 text-ink-muted shadow-sm backdrop-blur-sm"
       >
         <FlaskConical aria-hidden="true" />
         {t("env.preview")}

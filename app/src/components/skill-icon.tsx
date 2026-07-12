@@ -23,7 +23,7 @@ const FALLBACK_SLUG = "sparkles";
  */
 export function SkillIcon({
   image,
-  bubbleClassName = "size-12 rounded-full bg-input flex items-center justify-center shrink-0 overflow-hidden",
+  bubbleClassName = "size-12 rounded-full bg-line-input flex items-center justify-center shrink-0 overflow-hidden",
 }: Props) {
   const [broken, setBroken] = useState(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: image is a prop and is a valid dependency; the effect must reset `broken` whenever the image source changes

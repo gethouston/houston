@@ -25,7 +25,7 @@ export function AgentChips({
   const { t } = useTranslation("integrations");
   if (agents.length === 0) {
     return emptyLabel ? (
-      <span className="text-xs text-muted-foreground">{emptyLabel}</span>
+      <span className="text-xs text-ink-muted">{emptyLabel}</span>
     ) : null;
   }
 
@@ -37,7 +37,7 @@ export function AgentChips({
       {shown.map((agent) => (
         <Tooltip key={agent.id}>
           <TooltipTrigger asChild>
-            <span className="rounded-full ring-2 ring-background">
+            <span className="rounded-full ring-2 ring-input">
               <HoustonAvatar
                 color={resolveAgentColor(agent.color)}
                 diameter={20}
@@ -48,7 +48,7 @@ export function AgentChips({
         </Tooltip>
       ))}
       {overflow > 0 && (
-        <span className="inline-flex h-5 items-center rounded-full bg-secondary px-1.5 text-[11px] font-medium text-muted-foreground ring-2 ring-background">
+        <span className="inline-flex h-5 items-center rounded-full bg-chip px-1.5 text-[11px] font-medium text-ink-muted ring-2 ring-input">
           {t("chips.more", { count: overflow })}
         </span>
       )}

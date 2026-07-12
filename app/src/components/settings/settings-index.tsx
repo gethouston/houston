@@ -181,7 +181,7 @@ export function SettingsIndex({
         <button
           type="button"
           onClick={() => void handleVersionClick()}
-          className="cursor-pointer text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className="cursor-pointer text-xs text-ink-muted transition-colors hover:text-ink"
         >
           {t("settings:version", { version: __APP_VERSION__ })}
         </button>

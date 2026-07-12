@@ -35,20 +35,16 @@ export function AgentAppsSection({
   return (
     <section className="mt-6">
       <div className="mb-3 min-w-0">
-        <h2 className="text-sm font-medium text-foreground">{copy.title}</h2>
+        <h2 className="text-sm font-medium text-ink">{copy.title}</h2>
         {copy.subtitle && (
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {copy.subtitle}
-          </p>
+          <p className="mt-0.5 text-xs text-ink-muted">{copy.subtitle}</p>
         )}
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-xl bg-secondary px-6 py-10 text-center">
-          <p className="text-sm font-medium text-foreground">
-            {copy.emptyTitle}
-          </p>
-          <p className="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
+        <div className="rounded-xl bg-chip px-6 py-10 text-center">
+          <p className="text-sm font-medium text-ink">{copy.emptyTitle}</p>
+          <p className="mx-auto mt-1 max-w-sm text-xs text-ink-muted">
             {copy.emptyBody}
           </p>
         </div>

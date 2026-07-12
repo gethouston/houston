@@ -30,7 +30,7 @@ export function ConnectedAccountsSection() {
       <h2 className="mb-1 text-lg font-semibold">
         {t("connectedAccounts.title")}
       </h2>
-      <p className="mb-4 text-sm text-muted-foreground">
+      <p className="mb-4 text-sm text-ink-muted">
         {t("connectedAccounts.subtitle")}
       </p>
       <ConnectedAccountsBody

@@ -85,11 +85,11 @@ export function FileCard({ filePath, agentPath }: FileCardProps) {
     <button
       type="button"
       onClick={handleOpen}
-      className="inline-flex items-center gap-2 rounded-lg border border-border/50 bg-secondary px-3 py-2 text-sm hover:bg-accent transition-colors cursor-pointer"
+      className="inline-flex items-center gap-2 rounded-lg border border-line/50 bg-chip px-3 py-2 text-sm hover:bg-hover transition-colors cursor-pointer"
     >
-      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+      <Icon className="h-4 w-4 text-ink-muted shrink-0" />
       <span className="truncate max-w-[240px]">{fileName}</span>
-      <ExternalLinkIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-1" />
+      <ExternalLinkIcon className="h-3.5 w-3.5 text-ink-muted shrink-0 ml-1" />
     </button>
   );
 }

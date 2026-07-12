@@ -72,7 +72,7 @@ export function QuestionStepBody({
           />
         </div>
         <Button
-          className="mt-1.5 gap-1.5 text-muted-foreground"
+          className="mt-1.5 gap-1.5 text-ink-muted"
           disabled={skip.disabled}
           onClick={skip.onSkip}
           size="sm"
@@ -117,10 +117,10 @@ export function OptionRow({
       aria-checked={selected}
       className={cn(
         "group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors",
-        "hover:bg-accent focus-visible:bg-accent",
-        "focus-visible:ring-[2px] focus-visible:ring-ring/50",
+        "hover:bg-hover focus-visible:bg-hover",
+        "focus-visible:ring-[2px] focus-visible:ring-focus/50",
         "disabled:pointer-events-none disabled:opacity-50",
-        selected && "bg-accent",
+        selected && "bg-hover",
       )}
       disabled={disabled}
       onClick={onSelect}
@@ -128,11 +128,11 @@ export function OptionRow({
       type="button"
     >
       <span className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="min-w-0 truncate text-foreground text-sm">
+        <span className="min-w-0 truncate text-ink text-sm">
           {option.label}
         </span>
         {option.recommended && (
-          <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-medium text-[11px] text-muted-foreground">
+          <span className="shrink-0 rounded-full bg-chip px-2 py-0.5 font-medium text-[11px] text-ink-muted">
             {recommendedLabel}
           </span>
         )}
@@ -142,7 +142,7 @@ export function OptionRow({
       <span className="relative flex size-7 shrink-0 items-center justify-center">
         <span
           className={cn(
-            "absolute inset-0 flex items-center justify-center rounded-full bg-muted font-medium text-[13px] text-muted-foreground tabular-nums transition-opacity",
+            "absolute inset-0 flex items-center justify-center rounded-full bg-chip-subtle font-medium text-[13px] text-ink-muted tabular-nums transition-opacity",
             "group-hover:opacity-0",
             selected && "opacity-0",
           )}
@@ -151,7 +151,7 @@ export function OptionRow({
         </span>
         <ArrowRight
           className={cn(
-            "size-4 text-muted-foreground opacity-0 transition-opacity",
+            "size-4 text-ink-muted opacity-0 transition-opacity",
             "group-hover:opacity-100",
             selected && "opacity-100",
           )}
@@ -163,8 +163,8 @@ export function OptionRow({
 
 /** The free-text escape row: the answer field the user types their OWN answer
  *  into. It is a MINIATURE of the real composer so nothing about it needs
- *  learning: the same 28px pill roundness, the same `border-input` hairline,
- *  and the same circular arrow-up send button that turns on (bg-primary at
+ *  learning: the same 28px pill roundness, the same `border-line-input` hairline,
+ *  and the same circular arrow-up send button that turns on (bg-action at
  *  full strength) the moment there is text — dimmed while empty, exactly like
  *  the chat input's send. Clicking anywhere in the field focuses the textarea;
  *  typing expands it; Enter or the arrow submits. The card-wide decline is NOT
@@ -192,15 +192,15 @@ export function FreeTextRow({
     // biome-ignore lint/a11y/noStaticElementInteractions: focus-delegation surface — the real widget is the <textarea> inside; clicking the field's padding focuses it (mirrors the composer). role="presentation" is correct, no widget role applies.
     <div
       className={cn(
-        "mt-1.5 flex cursor-text items-center gap-2 rounded-[28px] border border-input bg-transparent py-1.5 pr-1.5 pl-4 transition-colors dark:bg-input/30",
-        "focus-within:border-ring",
+        "mt-1.5 flex cursor-text items-center gap-2 rounded-[28px] border border-line-input bg-transparent py-1.5 pr-1.5 pl-4 transition-colors dark:bg-line-input/30",
+        "focus-within:border-focus",
         disabled && "pointer-events-none opacity-50",
       )}
       onClick={() => textareaRef.current?.focus()}
       role="presentation"
     >
       <textarea
-        className="max-h-40 min-w-0 flex-1 resize-none border-none bg-transparent py-1 text-foreground text-sm leading-snug outline-none placeholder:text-muted-foreground"
+        className="max-h-40 min-w-0 flex-1 resize-none border-none bg-transparent py-1 text-ink text-sm leading-snug outline-none placeholder:text-ink-muted"
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
@@ -218,7 +218,7 @@ export function FreeTextRow({
           with text (disabled:opacity-30 while empty, like the chat input). */}
       <button
         aria-label={sendLabel}
-        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-30"
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-action text-action-text transition-colors hover:bg-action/90 disabled:opacity-30"
         disabled={disabled || !hasText}
         onClick={(e) => {
           e.stopPropagation();

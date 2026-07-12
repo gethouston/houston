@@ -130,9 +130,7 @@ export function RoutinesGrid(props: RoutinesGridProps) {
   if (loading && routines.length === 0 && draftActivities.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-transparent">
-        <p className="text-sm text-muted-foreground animate-pulse">
-          {labels.loading}
-        </p>
+        <p className="text-sm text-ink-muted animate-pulse">{labels.loading}</p>
       </div>
     );
   }

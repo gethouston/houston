@@ -79,10 +79,7 @@ export function ConnectedAppsList({
               status="active"
               onClick={() => onOpen(connection)}
               trailing={
-                <ChevronRight
-                  aria-hidden
-                  className="size-4 text-muted-foreground"
-                />
+                <ChevronRight aria-hidden className="size-4 text-ink-muted" />
               }
             >
               <div className="mt-1.5">
@@ -92,7 +89,7 @@ export function ConnectedAppsList({
                     emptyLabel={t("home.usedByNone")}
                   />
                 ) : (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-ink-muted">
                     {t("home.usedByAll")}
                   </span>
                 )}
@@ -112,12 +109,12 @@ export function ConnectedAppsListSkeleton() {
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
-          className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5"
+          className="flex items-center gap-3 rounded-xl bg-chip px-3 py-2.5"
         >
-          <div className="size-9 shrink-0 animate-pulse rounded-lg bg-muted/40" />
+          <div className="size-9 shrink-0 animate-pulse rounded-lg bg-chip-subtle/40" />
           <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="h-3 w-32 animate-pulse rounded bg-muted/40" />
-            <div className="h-2.5 w-20 animate-pulse rounded bg-muted/40" />
+            <div className="h-3 w-32 animate-pulse rounded bg-chip-subtle/40" />
+            <div className="h-2.5 w-20 animate-pulse rounded bg-chip-subtle/40" />
           </div>
         </div>
       ))}

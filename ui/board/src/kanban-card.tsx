@@ -165,13 +165,13 @@ export function KanbanCard({
         // (--glow-bg) so the accent tint is visible through the rotating
         // border. The accent token is a translucent overlay (rgba), which
         // would let the conic gradient bleed through — flatten it via
-        // color-mix to a solid tint that matches bg-accent rendered over
+        // color-mix to a solid tint that matches bg-hover rendered over
         // the card background.
         style={
           (selected || highlighted) && isRunning
             ? ({
                 "--glow-bg":
-                  "color-mix(in srgb, var(--ht-background) 93%, currentColor 7%)",
+                  "color-mix(in srgb, var(--ht-input) 93%, currentColor 7%)",
               } as React.CSSProperties)
             : undefined
         }
@@ -188,7 +188,7 @@ export function KanbanCard({
           // by the board) overrides this everywhere, so the same grab/not-
           // allowed cursor shows on every OS.
           "cursor-pointer",
-          selected || highlighted ? "bg-accent" : "bg-background",
+          selected || highlighted ? "bg-hover" : "bg-input",
           // Running cards keep their own animated border untouched —
           // setting Tailwind's `border` would override the
           // `border-style: solid` from card-running-glow's shorthand
@@ -198,17 +198,17 @@ export function KanbanCard({
           isRunning
             ? "card-running-glow shadow-[0_2px_12px_rgba(59,130,246,0.12)]"
             : isError
-              ? "border border-destructive/60"
+              ? "border border-danger/60"
               : selected || highlighted
                 ? "border border-transparent"
-                : "border border-border/20",
+                : "border border-line/20",
           // Multi-select ring sits on top of (not replacing) the card's
           // own border treatment so a selected running card keeps its glow.
           // Half-strength primary (not solid) so selecting a whole column
           // reads as a calm grey outline, not a wall of hard black/white
           // edges — the filled checkbox is the primary "selected" signal.
           selectedForBulk &&
-            "ring-2 ring-primary/50 ring-offset-1 ring-offset-background",
+            "ring-2 ring-action/50 ring-offset-1 ring-offset-input",
           // Dim the card while it's being dragged.
           dragging && "opacity-40",
         )}
@@ -237,8 +237,8 @@ export function KanbanCard({
                   className={cn(
                     "size-4 rounded-[5px] border flex items-center justify-center transition-colors relative",
                     selectedForBulk
-                      ? "bg-primary border-primary text-primary-foreground"
-                      : "border-muted-foreground/40 text-transparent hover:border-foreground",
+                      ? "bg-action border-action text-action-text"
+                      : "border-ink-muted/40 text-transparent hover:border-ink",
                   )}
                 >
                   <input
@@ -271,7 +271,7 @@ export function KanbanCard({
                 </span>
               ))}
             {item.group && (
-              <span className="ml-1.5 text-[11px] text-muted-foreground truncate">
+              <span className="ml-1.5 text-[11px] text-ink-muted truncate">
                 {item.group}
               </span>
             )}
@@ -286,7 +286,7 @@ export function KanbanCard({
                       e.stopPropagation();
                       onApprove();
                     }}
-                    className="p-1 rounded-md text-muted-foreground/40 hover:text-[#00a240] hover:bg-[#00a240]/10 transition-colors duration-200"
+                    className="p-1 rounded-md text-ink-muted/40 hover:text-[#00a240] hover:bg-[#00a240]/10 transition-colors duration-200"
                     aria-label={l.approveTooltip}
                   >
                     <Check className="size-3" />
@@ -301,7 +301,7 @@ export function KanbanCard({
                   <button
                     type="button"
                     onClick={handleRenameClick}
-                    className="p-1 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-accent transition-colors duration-200"
+                    className="p-1 rounded-md text-ink-muted/40 hover:text-ink hover:bg-hover transition-colors duration-200"
                     aria-label={l.renameTooltip}
                   >
                     <Pencil className="size-3" />
@@ -316,7 +316,7 @@ export function KanbanCard({
                   <button
                     type="button"
                     onClick={handleDeleteClick}
-                    className="p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors duration-200"
+                    className="p-1 rounded-md text-ink-muted/40 hover:text-danger hover:bg-danger/10 transition-colors duration-200"
                     aria-label={l.deleteTooltip}
                   >
                     <Trash2 className="size-3" />
@@ -345,17 +345,17 @@ export function KanbanCard({
                 if (e.key === "Escape") setEditing(false);
               }}
               onClick={(e) => e.stopPropagation()}
-              className="text-[13px] font-medium text-foreground bg-transparent border-b border-foreground/20 outline-none w-full"
+              className="text-[13px] font-medium text-ink bg-transparent border-b border-ink/20 outline-none w-full"
             />
           ) : (
-            <p className="text-[13px] font-medium text-foreground line-clamp-2 cursor-pointer">
+            <p className="text-[13px] font-medium text-ink line-clamp-2 cursor-pointer">
               {item.title}
             </p>
           )}
 
           {/* Description */}
           {item.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+            <p className="text-xs text-ink-muted line-clamp-2 mt-1">
               {item.description}
             </p>
           )}
@@ -364,7 +364,7 @@ export function KanbanCard({
              description's final line, or the title when the description is
              empty/short). Absolutely positioned so it floats over existing
              content and never grows the card height; the strip row is gone.
-             `ring-2 ring-background` on every face (from AvatarGroup) is the
+             `ring-2 ring-input` on every face (from AvatarGroup) is the
              only separation from the text underneath — no border/divider. The
              expandable "+N" popover is portalled, so nothing clips it. Renders
              nothing when the mission has no people, leaving the card
@@ -391,7 +391,7 @@ export function KanbanCard({
               {item.tags?.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex h-[18px] items-center rounded-full bg-secondary px-2 text-[10px] font-medium text-muted-foreground"
+                  className="inline-flex h-[18px] items-center rounded-full bg-chip px-2 text-[10px] font-medium text-ink-muted"
                 >
                   {tag}
                 </span>

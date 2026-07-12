@@ -23,12 +23,12 @@ export function RoutineDraftRow({
       <div
         className={cn(
           "flex size-5 shrink-0 items-center justify-center rounded-full",
-          "bg-background text-muted-foreground",
+          "bg-input text-ink-muted",
         )}
       >
         <MessageCircle className="size-3" strokeWidth={2} />
       </div>
-      <p className="min-w-0 flex-1 truncate text-sm font-medium text-muted-foreground italic">
+      <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink-muted italic">
         {labels.draftTitle}
       </p>
       <div className="flex shrink-0 items-center gap-1">

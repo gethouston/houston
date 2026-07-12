@@ -23,14 +23,14 @@ function Benefit({
   body: string;
 }) {
   return (
-    <div className="flex flex-col gap-2.5 rounded-xl border border-border/70 bg-secondary p-4 text-left">
+    <div className="flex flex-col gap-2.5 rounded-xl border border-line/70 bg-chip p-4 text-left">
       <div className="flex items-center gap-2.5">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-border bg-background">
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-line bg-input">
           {icon}
         </span>
         <h3 className="text-[0.9rem] font-semibold leading-tight">{title}</h3>
       </div>
-      <p className="text-xs leading-relaxed text-muted-foreground">{body}</p>
+      <p className="text-xs leading-relaxed text-ink-muted">{body}</p>
     </div>
   );
 }
@@ -38,11 +38,11 @@ function Benefit({
 function Step({ n, title, body }: { n: string; title: string; body: string }) {
   return (
     <div className="flex flex-1 flex-col items-center gap-1 px-3 text-center">
-      <span className="relative z-10 grid size-7 place-items-center rounded-full border border-border bg-background text-xs font-semibold tabular-nums">
+      <span className="relative z-10 grid size-7 place-items-center rounded-full border border-line bg-input text-xs font-semibold tabular-nums">
         {n}
       </span>
       <h4 className="mt-2 text-sm font-semibold">{title}</h4>
-      <p className="text-xs leading-relaxed text-muted-foreground">{body}</p>
+      <p className="text-xs leading-relaxed text-ink-muted">{body}</p>
     </div>
   );
 }
@@ -61,7 +61,7 @@ export function OfferScreen({
     <WizardFrame
       wide
       badge={
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-foreground">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-chip px-3 py-1 text-xs font-medium text-ink">
           <Sparkles className="size-3.5" aria-hidden />
           {t("offer.betaBadge")}
         </span>
@@ -79,7 +79,7 @@ export function OfferScreen({
           <button
             type="button"
             onClick={onSkip}
-            className="rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
           >
             {t("offer.migrateLater")}
           </button>
@@ -106,13 +106,13 @@ export function OfferScreen({
         </div>
 
         <div>
-          <p className="mb-4 text-center text-xs font-semibold text-muted-foreground">
+          <p className="mb-4 text-center text-xs font-semibold text-ink-muted">
             {t("offer.howTitle")}
           </p>
           <div className="relative flex">
             <div
               aria-hidden
-              className="pointer-events-none absolute left-1/4 right-1/4 top-3.5 h-px -translate-y-1/2 bg-border"
+              className="pointer-events-none absolute left-1/4 right-1/4 top-3.5 h-px -translate-y-1/2 bg-line"
             />
             <Step
               n="1"
@@ -127,7 +127,7 @@ export function OfferScreen({
           </div>
         </div>
 
-        <div className="rounded-xl bg-secondary p-4 text-left text-sm leading-relaxed text-muted-foreground">
+        <div className="rounded-xl bg-chip p-4 text-left text-sm leading-relaxed text-ink-muted">
           <p>{t("offer.freeNote")}</p>
           <p className="mt-2">{t("offer.keepOpen")}</p>
         </div>

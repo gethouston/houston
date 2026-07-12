@@ -50,7 +50,7 @@ function Pager({
   disabled: boolean;
 }) {
   return (
-    <div className="flex items-center gap-0.5 text-muted-foreground">
+    <div className="flex items-center gap-0.5 text-ink-muted">
       <Button
         aria-label={pager.backLabel}
         className="size-6"
@@ -98,9 +98,7 @@ export function InteractionModalTitle({
       {/* leading-6 makes the first text line exactly 24px — the same box as the
           pager/dismiss icon buttons (size-6) — so the header's left and right
           sides sit on one optical line even when the title wraps. */}
-      <span
-        className={cn("min-w-0 text-base text-foreground leading-6", className)}
-      >
+      <span className={cn("min-w-0 text-base text-ink leading-6", className)}>
         {children}
       </span>
     </div>
@@ -137,7 +135,7 @@ export function InteractionModal({
     <div
       aria-disabled={disabled || undefined}
       className={cn(
-        "overflow-clip rounded-2xl border border-border bg-background p-5 dark:bg-card/95",
+        "overflow-clip rounded-2xl border border-line bg-input p-5 dark:bg-card/95",
         "shadow-[0_1px_2px_rgba(0,0,0,0.02),0_1px_4px_rgba(0,0,0,0.03)]",
         "focus-within:shadow-[0_1px_2px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.04)]",
         "dark:shadow-[0_1px_2px_rgba(0,0,0,0.25)]",
@@ -153,7 +151,7 @@ export function InteractionModal({
             {onDismiss && (
               <Button
                 aria-label={dismissLabel}
-                className="-mr-1 shrink-0 text-muted-foreground"
+                className="-mr-1 shrink-0 text-ink-muted"
                 disabled={disabled}
                 onClick={onDismiss}
                 size="icon-sm"

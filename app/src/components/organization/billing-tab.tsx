@@ -35,9 +35,7 @@ export default function BillingTab({ ctx }: OrgTabProps) {
 
   if (!billing) {
     return (
-      <p className="py-10 text-sm text-muted-foreground">
-        {t("billing.unavailable")}
-      </p>
+      <p className="py-10 text-sm text-ink-muted">{t("billing.unavailable")}</p>
     );
   }
 
@@ -51,8 +49,8 @@ export default function BillingTab({ ctx }: OrgTabProps) {
   return (
     <div className="flex max-w-xl flex-col gap-6 py-6">
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-medium text-foreground">{statusLine}</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm font-medium text-ink">{statusLine}</p>
+        <p className="text-sm text-ink-muted">
           {t("billing.seats", { count: billing.seats })}
           {billing.interval
             ? ` · ${t(`billing.interval.${billing.interval}`)}`
@@ -62,9 +60,7 @@ export default function BillingTab({ ctx }: OrgTabProps) {
 
       {action === "checkout" && (
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground">
-            {t("billing.pickPlan")}
-          </p>
+          <p className="text-sm text-ink-muted">{t("billing.pickPlan")}</p>
           <div className="flex flex-wrap gap-3">
             <AsyncButton onClick={() => checkout.mutateAsync("monthly")}>
               {t("billing.checkoutMonthly")}
@@ -88,7 +84,7 @@ export default function BillingTab({ ctx }: OrgTabProps) {
       )}
 
       {!ctx.isOwner && (
-        <p className="text-sm text-muted-foreground">{t("billing.askOwner")}</p>
+        <p className="text-sm text-ink-muted">{t("billing.askOwner")}</p>
       )}
     </div>
   );

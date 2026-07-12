@@ -77,7 +77,7 @@ export function SetupProgress({
           <HoustonLogo size={52} />
           <div className="flex flex-col items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-            <p className="max-w-md text-sm text-muted-foreground">{message}</p>
+            <p className="max-w-md text-sm text-ink-muted">{message}</p>
           </div>
         </div>
 
@@ -94,8 +94,8 @@ export function SetupProgress({
                   className={cn(
                     "flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors",
                     isDone
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border text-muted-foreground",
+                      ? "border-ink bg-ink text-input"
+                      : "border-line text-ink-muted",
                     m === justCompleted && "success-pop",
                   )}
                 >
@@ -108,7 +108,7 @@ export function SetupProgress({
                 <span
                   className={cn(
                     "flex-1 text-sm font-medium",
-                    isDone ? "text-foreground" : "text-muted-foreground",
+                    isDone ? "text-ink" : "text-ink-muted",
                   )}
                 >
                   {label[m]}

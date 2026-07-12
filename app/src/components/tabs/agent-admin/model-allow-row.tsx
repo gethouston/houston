@@ -25,13 +25,13 @@ export function ModelAllowRow({
   onToggle: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-xl bg-chip px-3 py-2.5">
       <BrandMark providerId={modelMarkId(model)} size="sm" />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px] font-medium text-foreground">
+        <div className="truncate text-[13px] font-medium text-ink">
           {model.name}
         </div>
-        <div className="truncate text-xs text-muted-foreground">
+        <div className="truncate text-xs text-ink-muted">
           {labName(model.lab)}
         </div>
       </div>

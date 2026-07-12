@@ -51,7 +51,7 @@ export function MissionBoardEmptyState({
         </EmptyHeader>
         {isSearchingText ? (
           <div className="mt-4 flex h-9 items-center justify-center">
-            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            <Loader2 className="size-4 animate-spin text-ink-muted" />
           </div>
         ) : (
           <Button

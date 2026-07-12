@@ -36,7 +36,7 @@ The hero `.app-mockup` reproduces the real app's dark theme EXACTLY: the #141416
 gutter base plus the app-shell aurora glow (blue + warm-orange + indigo radial
 gradients, copied verbatim from `app/src/styles/futuristic.css`
 `[data-theme="dark"] body::before`), with translucent board/chat panels
-(`--m-panel`, the `canvas-screen` token) letting it bleed through. Two
+(`--m-panel`, the `layer-1` token) letting it bleed through. Two
 deliberate deviations from the real app keep both rules above intact: the aurora
 is **static** (the app slowly drifts it — we do not, so it never re-composites
 under the scripted demo), and the translucent panels carry **no

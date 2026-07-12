@@ -52,10 +52,10 @@ export function AgentPickerDialog({
                     onPick(a);
                     onOpenChange(false);
                   }}
-                  className="flex items-center gap-4 rounded-2xl bg-secondary p-4 text-left transition-colors duration-200 hover:bg-accent w-full"
+                  className="flex items-center gap-4 rounded-2xl bg-chip p-4 text-left transition-colors duration-200 hover:bg-hover w-full"
                 >
                   <HoustonAvatar color={color} diameter={48} />
-                  <span className="text-sm font-semibold text-foreground">
+                  <span className="text-sm font-semibold text-ink">
                     {a.name}
                   </span>
                 </button>

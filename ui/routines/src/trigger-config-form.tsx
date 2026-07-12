@@ -39,8 +39,8 @@ export interface TriggerConfigFormProps {
 }
 
 const FIELD_CLASS = cn(
-  "w-full px-3 py-2 text-sm text-foreground",
-  "bg-background border border-foreground/[0.08] rounded-lg",
+  "w-full px-3 py-2 text-sm text-ink",
+  "bg-input border border-ink/[0.08] rounded-lg",
   "outline-none transition-shadow duration-200",
   "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
 );
@@ -69,7 +69,7 @@ export function TriggerConfigForm({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-medium text-muted-foreground">
+      <p className="text-xs font-medium text-ink-muted">
         {labels.detailsTitle}
       </p>
       {parsed.fields.map((field) => (
@@ -145,11 +145,9 @@ function FieldHeader({
 }) {
   return (
     <div className={cn(inline && "min-w-0")}>
-      <p className="text-xs font-medium text-foreground">{field.label}</p>
+      <p className="text-xs font-medium text-ink">{field.label}</p>
       {field.description && (
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {field.description}
-        </p>
+        <p className="text-xs text-ink-muted mt-0.5">{field.description}</p>
       )}
     </div>
   );
@@ -184,10 +182,8 @@ function RawJsonField({
 
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium text-foreground">
-        {labels.rawJsonLabel}
-      </p>
-      <p className="text-xs text-muted-foreground">{labels.rawJsonHint}</p>
+      <p className="text-xs font-medium text-ink">{labels.rawJsonLabel}</p>
+      <p className="text-xs text-ink-muted">{labels.rawJsonHint}</p>
       <Textarea
         value={raw}
         onChange={(e) => handle(e.target.value)}
@@ -196,7 +192,7 @@ function RawJsonField({
         className={cn(FIELD_CLASS, "font-mono resize-none")}
       />
       {invalid && (
-        <p className="text-xs text-destructive">{labels.rawJsonInvalid}</p>
+        <p className="text-xs text-danger">{labels.rawJsonInvalid}</p>
       )}
     </div>
   );

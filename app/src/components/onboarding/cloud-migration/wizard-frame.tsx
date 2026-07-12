@@ -34,7 +34,7 @@ export function WizardFrame({
   wide?: boolean;
 }) {
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-background px-6 py-10 text-foreground">
+    <div className="flex h-screen flex-col items-center justify-center bg-input px-6 py-10 text-ink">
       <div
         className={`flex min-h-0 w-full flex-col items-center gap-6 text-center ${wide ? "max-w-[820px]" : "max-w-xl"}`}
       >
@@ -42,13 +42,11 @@ export function WizardFrame({
         {badge}
         <div>
           {eyebrow && (
-            <p className="mb-1 text-xs font-medium text-muted-foreground">
-              {eyebrow}
-            </p>
+            <p className="mb-1 text-xs font-medium text-ink-muted">{eyebrow}</p>
           )}
           <h1 className="text-[28px] font-normal leading-tight">{title}</h1>
         </div>
-        {body && <p className="text-base text-muted-foreground">{body}</p>}
+        {body && <p className="text-base text-ink-muted">{body}</p>}
         {children && (
           <div className="min-h-0 w-full flex-1 overflow-y-auto text-left">
             {children}

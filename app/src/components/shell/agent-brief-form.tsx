@@ -22,7 +22,7 @@ export function AgentBriefForm({
     <div className="space-y-3">
       <label
         htmlFor="agent-brief"
-        className="block text-sm font-medium text-foreground"
+        className="block text-sm font-medium text-ink"
       >
         {t("aiAssist.briefLabel")}
       </label>
@@ -34,9 +34,9 @@ export function AgentBriefForm({
         rows={6}
         disabled={disabled}
         className={cn(
-          "w-full px-4 py-3 text-sm text-foreground leading-relaxed",
-          "placeholder:text-muted-foreground/60",
-          "bg-secondary border border-foreground/[0.04] rounded-xl",
+          "w-full px-4 py-3 text-sm text-ink leading-relaxed",
+          "placeholder:text-ink-muted/60",
+          "bg-chip border border-ink/[0.04] rounded-xl",
           "outline-none resize-none transition-shadow duration-200",
           "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
           "disabled:opacity-60 disabled:cursor-not-allowed",
@@ -44,7 +44,7 @@ export function AgentBriefForm({
       />
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground">
+        <p className="text-xs font-medium text-ink-muted">
           {t("aiAssist.examplesLabel")}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -60,7 +60,7 @@ export function AgentBriefForm({
               }
               className={cn(
                 "rounded-xl border px-3 py-2 text-left text-sm transition-colors",
-                "border-border bg-secondary hover:bg-accent text-foreground",
+                "border-line bg-chip hover:bg-hover text-ink",
                 "disabled:pointer-events-none disabled:opacity-50",
               )}
             >

@@ -63,12 +63,12 @@ function ProgressCard({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="rounded-xl border border-line bg-card shadow-sm">
         <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 text-sm font-medium">
           Progress
           <ChevronDown
             className={cn(
-              "size-4 text-muted-foreground transition-transform",
+              "size-4 text-ink-muted transition-transform",
               !open && "-rotate-90",
             )}
           />
@@ -76,7 +76,7 @@ function ProgressCard({
         <CollapsibleContent>
           <div className="px-4 pb-3">
             {steps.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-1">
+              <p className="text-xs text-ink-muted py-1">
                 Progress will appear when the agent starts working
               </p>
             ) : (
@@ -111,23 +111,20 @@ function StepRow({ step }: { step: SidebarStep }) {
         )}
         {step.status === "active" && (
           <Loader2
-            className="size-4 text-foreground/60 animate-spin"
+            className="size-4 text-ink/60 animate-spin"
             strokeWidth={1.5}
           />
         )}
         {step.status === "pending" && (
-          <Circle
-            className="size-4 text-muted-foreground/25"
-            strokeWidth={1.5}
-          />
+          <Circle className="size-4 text-ink-muted/25" strokeWidth={1.5} />
         )}
       </div>
       <span
         className={cn(
           "text-xs leading-snug",
-          step.status === "done" && "text-foreground/50",
-          step.status === "active" && "text-foreground font-medium",
-          step.status === "pending" && "text-foreground/60",
+          step.status === "done" && "text-ink/50",
+          step.status === "active" && "text-ink font-medium",
+          step.status === "pending" && "text-ink/60",
         )}
       >
         {step.title}

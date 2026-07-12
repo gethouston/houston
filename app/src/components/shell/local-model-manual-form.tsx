@@ -126,7 +126,7 @@ export function LocalModelManualForm({
       />
 
       {error && (
-        <p className="text-[12px] text-destructive" role="alert">
+        <p className="text-[12px] text-danger" role="alert">
           {error}
         </p>
       )}

@@ -86,7 +86,7 @@ export function MigrationSection() {
   return (
     <section>
       <h2 className="text-lg font-semibold mb-1">{t("migration.title")}</h2>
-      <p className="text-sm text-muted-foreground mb-4">
+      <p className="text-sm text-ink-muted mb-4">
         {t("migration.description")}
       </p>
       <Button className="rounded-full" onClick={handleContinue}>

@@ -67,11 +67,11 @@ export function ModalShell({
           </div>
         ) : (
           <div className="flex flex-col gap-1 px-5 pt-5 pb-4">
-            <DialogTitle className="text-[17px] font-semibold text-foreground tracking-[-0.01em]">
+            <DialogTitle className="text-[17px] font-semibold text-ink tracking-[-0.01em]">
               {title}
             </DialogTitle>
             {description ? (
-              <DialogDescription className="text-[13px] text-muted-foreground">
+              <DialogDescription className="text-[13px] text-ink-muted">
                 {description}
               </DialogDescription>
             ) : null}
@@ -84,7 +84,7 @@ export function ModalShell({
             lists then read as a second, janky scroll. */}
         <div className="min-h-0 overflow-y-auto">{children}</div>
         {footer ? (
-          <div className="border-t border-border px-5 py-3">{footer}</div>
+          <div className="border-t border-line px-5 py-3">{footer}</div>
         ) : null}
       </DialogContent>
     </Dialog>

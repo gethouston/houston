@@ -34,33 +34,33 @@ export function UsageAgentRow({
   const pct = Math.max(2, Math.round((agent.messages / max) * 100));
 
   return (
-    <li className="border-b border-border/40 py-3 last:border-0">
+    <li className="border-b border-line/40 py-3 last:border-0">
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex w-full items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <ChevronRight
           aria-hidden
           className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            "size-4 shrink-0 text-ink-muted transition-transform duration-200",
             open && "rotate-90",
           )}
         />
         <HoustonAvatar color={color} diameter={28} />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-3">
-            <span className="truncate text-sm font-medium text-foreground">
+            <span className="truncate text-sm font-medium text-ink">
               {name}
             </span>
-            <span className="shrink-0 text-sm text-muted-foreground">
+            <span className="shrink-0 text-sm text-ink-muted">
               {t("usageTab.messages", { count: agent.messages })}
             </span>
           </div>
-          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-secondary">
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-chip">
             <div
-              className="h-full rounded-full bg-primary"
+              className="h-full rounded-full bg-action"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -72,7 +72,7 @@ export function UsageAgentRow({
           {agent.people.map((p) => (
             <li
               key={p.userId}
-              className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground"
+              className="flex items-baseline justify-between gap-3 text-xs text-ink-muted"
             >
               <span className="truncate">{memberName(p.userId)}</span>
               <span className="shrink-0">

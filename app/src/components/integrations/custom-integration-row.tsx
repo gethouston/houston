@@ -17,18 +17,18 @@ function StatusLine({ integration }: { integration: CustomIntegrationView }) {
   const state = integration.state;
   if (state.status === "active")
     return (
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-[11px] text-ink-muted">
         {t("custom.toolCount", { count: state.toolCount })}
       </p>
     );
   if (state.status === "pending")
     return (
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-[11px] text-ink-muted">
         {t("custom.status.pendingKey")}
       </p>
     );
   return (
-    <p className="truncate text-[11px] text-destructive" title={state.message}>
+    <p className="truncate text-[11px] text-danger" title={state.message}>
       {t("custom.status.error", { message: state.message })}
     </p>
   );
@@ -50,11 +50,11 @@ export function CustomIntegrationRow({
   const pending = integration.state.status === "pending";
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-xl bg-chip px-3 py-2.5">
       <div className="min-w-0 flex-1">
-        <p className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-foreground">
+        <p className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-ink">
           <span className="min-w-0 truncate">{integration.name}</span>
-          <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+          <span className="shrink-0 rounded-full bg-chip-subtle px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
             {t(customKindBadgeKey(integration.kind))}
           </span>
         </p>
@@ -80,7 +80,7 @@ export function CustomIntegrationRow({
           aria-label={t("custom.delete.confirm")}
           onClick={() => onRemove(integration)}
         >
-          <Trash2 className="size-4 text-muted-foreground" />
+          <Trash2 className="size-4 text-ink-muted" />
         </Button>
       </div>
     </div>

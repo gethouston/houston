@@ -69,17 +69,17 @@ export function RoutineRowMeta({
     <div className="hidden sm:flex flex-col items-end shrink-0 min-w-[140px]">
       {nextDescr ? (
         <>
-          <p className="text-xs text-foreground tabular-nums">
+          <p className="text-xs text-ink tabular-nums">
             {interp(labels.next, { relative: nextDescr.relative })}
           </p>
-          <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
+          <p className="text-[11px] text-ink-muted tabular-nums mt-0.5">
             {nextDescr.absolute}
           </p>
         </>
       ) : isTrigger ? null : routine.enabled ? (
-        <p className="text-xs text-muted-foreground">{labels.noNextRun}</p>
+        <p className="text-xs text-ink-muted">{labels.noNextRun}</p>
       ) : (
-        <p className="text-xs text-muted-foreground">{labels.paused}</p>
+        <p className="text-xs text-ink-muted">{labels.paused}</p>
       )}
       {isPaused ? (
         <p className="text-[11px] text-amber-700 mt-0.5 tabular-nums">
@@ -87,7 +87,7 @@ export function RoutineRowMeta({
         </p>
       ) : (
         lastLabel && (
-          <p className="text-[11px] text-muted-foreground/70 mt-0.5 tabular-nums">
+          <p className="text-[11px] text-ink-muted/70 mt-0.5 tabular-nums">
             {lastLabel}
           </p>
         )

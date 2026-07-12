@@ -59,7 +59,7 @@ export function ConnectedAccountsBody({
     <div className="space-y-4">
       {reconnectNotice && <ReconnectBanner onDismiss={dismissReconnect} />}
 
-      <h3 className="text-sm font-medium text-foreground">
+      <h3 className="text-sm font-medium text-ink">
         {t("connectedAccounts.heading")}
       </h3>
 
@@ -78,7 +78,7 @@ export function ConnectedAccountsBody({
           onRemove={(toolkit) => disconnect.mutate(toolkit)}
         />
       ) : (
-        <p className="rounded-xl bg-secondary px-6 py-10 text-center text-sm text-muted-foreground">
+        <p className="rounded-xl bg-chip px-6 py-10 text-center text-sm text-ink-muted">
           {t("connectedAccounts.empty")}
         </p>
       )}
@@ -87,13 +87,13 @@ export function ConnectedAccountsBody({
         <button
           type="button"
           onClick={() => setViewMode(INTEGRATIONS_VIEW_ID)}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-action transition-colors hover:text-action/80"
         >
           <Plus className="size-4" />
           {t("connectedAccounts.connectMore")}
         </button>
       ) : (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-ink-muted">
           {t("connectedAccounts.connectHint")}
         </p>
       )}

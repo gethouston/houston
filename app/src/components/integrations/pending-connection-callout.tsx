@@ -54,21 +54,21 @@ export function PendingConnectionCallout({
         };
 
   return (
-    <div className="mt-2 rounded-xl border border-border bg-background p-3">
-      <p className="text-[11px] text-muted-foreground">{copy.body}</p>
+    <div className="mt-2 rounded-xl border border-line bg-input p-3">
+      <p className="text-[11px] text-ink-muted">{copy.body}</p>
       <div className="mt-2.5 flex flex-wrap gap-2">
         <button
           type="button"
           disabled={busy}
           onClick={() => void connectFlow.connect(toolkit)}
-          className="inline-flex h-7 items-center rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+          className="inline-flex h-7 items-center rounded-full bg-action px-3 text-xs font-medium text-action-text transition-colors hover:bg-action/90 disabled:opacity-60"
         >
           {copy.primary}
         </button>
         <button
           type="button"
           onClick={onRemove}
-          className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary"
+          className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium text-ink-muted transition-colors hover:bg-chip"
         >
           {copy.remove}
         </button>

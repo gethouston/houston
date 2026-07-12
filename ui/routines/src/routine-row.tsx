@@ -127,10 +127,10 @@ export function RoutineRow({
 
         {/* Title + meta column */}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground truncate leading-tight">
+          <p className="text-sm font-medium text-ink truncate leading-tight">
             {routine.name || labels.untitled}
           </p>
-          <p className="text-xs text-muted-foreground truncate mt-0.5">
+          <p className="text-xs text-ink-muted truncate mt-0.5">
             {routine.trigger
               ? (triggerSummary ?? triggerLabels.wakeEvent)
               : cronSummary(

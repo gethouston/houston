@@ -1783,7 +1783,7 @@ export function useAgentChatPanel({
     return (
       <div className="flex flex-col gap-1.5">
         {showSharedNote && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-xs text-ink-muted">
             <Users className="size-3.5 shrink-0" />
             <span>{t("teams:share.chatNote")}</span>
           </div>
@@ -1809,10 +1809,10 @@ export function useAgentChatPanel({
       <div className="self-stretch w-full h-full overflow-y-auto">
         <div className="max-w-3xl mx-auto w-full px-6 pt-6 pb-4 flex flex-col gap-3">
           <div className="text-center mb-1">
-            <h3 className="text-base font-semibold text-foreground">
+            <h3 className="text-base font-semibold text-ink">
               {t("chatEmpty.heading")}
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-ink-muted mt-1">
               {t("chatEmpty.subheading")}
             </p>
           </div>
@@ -1856,7 +1856,7 @@ export function useAgentChatPanel({
           type="button"
           onClick={() => setPickerOpen(true)}
           data-keep-panel-open
-          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-medium text-ink-muted hover:text-ink hover:bg-hover transition-colors"
         >
           <Play className="size-3 fill-current" />
           {t("composerSkill.browse")}
@@ -1913,9 +1913,9 @@ export function useAgentChatPanel({
           onClick={() => {
             openFilePicker();
           }}
-          className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-foreground hover:bg-accent transition-colors"
+          className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-ink hover:bg-hover transition-colors"
         >
-          <Paperclip className="size-4 text-muted-foreground" />
+          <Paperclip className="size-4 text-ink-muted" />
           {t("composerAttach.addFiles")}
         </button>
       </div>

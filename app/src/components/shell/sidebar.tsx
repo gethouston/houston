@@ -209,7 +209,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
                       );
                       if (id) setRenamingGroupId(id);
                     }}
-                    className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="flex size-6 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
                   >
                     <Users className="size-4" />
                   </button>
@@ -247,7 +247,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
           {/* Gutter around the floating "screen" (Arc canvas). The small
             padding lets the window background show as a frame on all
             four sides; the screen itself is workspace-shell.tsx's
-            rounded bg-background panel. */}
+            rounded bg-input panel. */}
           <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col p-2">
             {children}
           </div>

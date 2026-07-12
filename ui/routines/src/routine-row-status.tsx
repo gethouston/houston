@@ -42,5 +42,5 @@ export function RoutineRowStatus({
   }
   // Idle (scheduled, waiting for the next fire) and disabled both read as a
   // clock; the row already dims to 55% opacity when disabled.
-  return <Clock className={cn(cls, "text-muted-foreground")} aria-hidden />;
+  return <Clock className={cn(cls, "text-ink-muted")} aria-hidden />;
 }

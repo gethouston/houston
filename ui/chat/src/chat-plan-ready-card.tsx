@@ -39,7 +39,7 @@ const ACTION_ICONS: Record<PlanReadyActionKey, LucideIcon> = {
  * The in-chat surface shown when the agent finishes planning and calls
  * `plan_ready`: the drafted plan plus three ways forward. It REPLACES the
  * composer, so it borrows the interaction card's vocabulary (rounded-[28px]
- * grey `bg-secondary` surface) with the plan text raised as the prominent head.
+ * grey `bg-chip` surface) with the plan text raised as the prominent head.
  * The options render as the composer mode menu's rows: each a full-width row
  * with its icon inline with the title and a description on its own line below
  * (icon in the title's foreground color), each option raised on its own
@@ -66,35 +66,31 @@ export function ChatPlanReadyCard({
     <div
       aria-disabled={disabled || undefined}
       className={cn(
-        "overflow-clip rounded-[28px] border border-border/50 bg-secondary p-2.5",
+        "overflow-clip rounded-[28px] border border-line/50 bg-chip p-2.5",
         "shadow-[0_1px_6px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_6px_rgba(0,0,0,0.2)]",
         disabled && "opacity-50",
       )}
     >
       <div className="flex flex-col px-2.5 pt-2 pb-2">
-        <p className="font-medium text-muted-foreground text-xs">
-          {labels.title}
-        </p>
-        <p className="mt-1.5 text-base text-foreground leading-relaxed">
-          {summary}
-        </p>
+        <p className="font-medium text-ink-muted text-xs">{labels.title}</p>
+        <p className="mt-1.5 text-base text-ink leading-relaxed">{summary}</p>
         <div className="mt-4 flex flex-col gap-2">
           {actions.map((action) => {
             const Icon = ACTION_ICONS[action.key];
             return (
               <button
-                className="flex w-full items-center rounded-xl border border-border/60 bg-background px-3.5 py-3 text-left outline-none transition-colors hover:border-border hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
+                className="flex w-full items-center rounded-xl border border-line/60 bg-input px-3.5 py-3 text-left outline-none transition-colors hover:border-line hover:bg-hover focus-visible:border-focus focus-visible:ring-[3px] focus-visible:ring-focus/50 disabled:pointer-events-none disabled:opacity-50"
                 disabled={action.disabled}
                 key={action.key}
                 onClick={handlers[action.key]}
                 type="button"
               >
                 <span className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <Icon className="size-4 shrink-0 text-foreground" />
+                  <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <Icon className="size-4 shrink-0 text-ink" />
                     {action.title}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-ink-muted">
                     {action.description}
                   </span>
                 </span>
