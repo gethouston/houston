@@ -10,7 +10,7 @@ the host + app. This sits one layer above Portable Agents
 hosted catalog instead of a file.
 
 The authoritative wire/DB surface is the gateway's contract
-`cloud/docs/contracts/C10-agent-store.md`; the cross-repo coupling is
+`cloud/docs/contracts/C11-agent-store.md`; the cross-repo coupling is
 `cloud/INTEGRATION.md` §Agent Store. This doc is the houston side.
 
 ## Where the pieces live
