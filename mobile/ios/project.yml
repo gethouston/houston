@@ -59,6 +59,13 @@ targets:
       path: Houston/Info.plist
       properties:
         CFBundleDisplayName: Houston
+        # Shipped UI languages (Localizable.xcstrings mirrors desktop en/es/pt).
+        # Explicit so the per-app language picker appears in iOS Settings.
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations:
+          - en
+          - es
+          - pt
         UILaunchScreen: {}
         # OAuth callback deep link: Supabase redirects to houston://auth-callback.
         CFBundleURLTypes:

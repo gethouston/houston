@@ -5,6 +5,9 @@
 > as desktop. This file is the enforceable contract for the iOS surfaces; update it via the
 > normal inventory/procedures flow (knowledge-base/client-architecture.md) when desktop changes.
 > Locale strings come from app/src/locales/en/*.json; es/pt mirror the same keys.
+> iOS ships en/es/pt natively: copy lives in `Strings*.swift` backed by
+> `Houston/Localizable.xcstrings`; en mirrors desktop en/*.json exactly, and es/pt reuse the
+> desktop translations verbatim wherever a desktop key exists (see knowledge-base/i18n.md, iOS section).
 
 ## 1. Status vocabulary
 
