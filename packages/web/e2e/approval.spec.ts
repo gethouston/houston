@@ -28,9 +28,6 @@ import { expect, test } from "./support/fixtures";
  * question/connect specs in interaction.spec.ts.
  */
 
-const SHOTS =
-  "/private/tmp/claude-501/-Users-ja-dev-houston/89dcedf6-5c2a-4e86-852c-1b2c0f455072/scratchpad/shots";
-
 /** Kick off a fresh mission whose next turn ends on the armed interaction. */
 async function startMission(page: Page, text: string) {
   await page.goto("/");
@@ -90,7 +87,6 @@ function approvalCard(page: Page) {
  * (1) The lone approval card renders the full reference lockup: the app NAME in
  * the header, the "Allow Gmail to send draft?" permission question, both param
  * rows (muted label + foreground value), and the three footer buttons. Also the
- * light-mode reference screenshots (element + chat-panel crop).
  */
 test("renders the approval card with its params and three footer buttons", async ({
   page,
@@ -123,31 +119,28 @@ test("renders the approval card with its params and three footer buttons", async
 
   // Reference screenshots (default light theme): the card element, then a
   // wider crop of the chat panel it sits in.
-  await card.screenshot({ path: `${SHOTS}/approval-card-rest.png` });
   await page
     .locator("div.overflow-clip")
     .filter({ hasText: "Allow Gmail to send draft?" })
     .scrollIntoViewIfNeeded();
-  await page.screenshot({
-    path: `${SHOTS}/approval-card-chatpanel.png`,
-    clip: { x: 800, y: 0, width: 480, height: 720 },
-  });
 });
 
-/** The footer button hover states (two shots), for the visual review. */
-test("captures the footer hover states", async ({ page }) => {
+/** Hovering either footer action keeps it enabled and clickable (no
+ *  hover-gated affordance regression). */
+test("footer actions stay enabled under hover", async ({ page }) => {
   await armInteraction(page, [gmailApprovalStep]);
   await startMission(page, "send the draft");
   await expect(page.getByText("Allow Gmail to send draft?")).toBeVisible({
     timeout: 15_000,
   });
-  const card = approvalCard(page);
 
-  await page.getByRole("button", { name: /Allow once/ }).hover();
-  await card.screenshot({ path: `${SHOTS}/approval-hover-allow-once.png` });
+  const allowOnce = page.getByRole("button", { name: /Allow once/ });
+  await allowOnce.hover();
+  await expect(allowOnce).toBeEnabled();
 
-  await page.getByRole("button", { name: "Always allow" }).hover();
-  await card.screenshot({ path: `${SHOTS}/approval-hover-always-allow.png` });
+  const alwaysAllow = page.getByRole("button", { name: "Always allow" });
+  await alwaysAllow.hover();
+  await expect(alwaysAllow).toBeEnabled();
 });
 
 /**
@@ -173,7 +166,6 @@ test("renders the app's real logo in the header once the catalog resolves", asyn
   const logo = card.getByRole("img", { name: "Gmail" });
   await expect(logo).toBeVisible();
   expect(await logo.getAttribute("src")).toMatch(/^data:image\/png/);
-  await card.screenshot({ path: `${SHOTS}/approval-card-real-logo.png` });
 });
 
 /**
@@ -297,7 +289,6 @@ test("always allow posts the action and sends the approved continue", async ({
  * The pager's decided state: in a two-approval sequence, denying step 1 advances
  * to step 2; walking Back onto step 1 shows the calm "Denied" record (no footer)
  * instead of re-offering the buttons — the forward chevron is the way onward.
- * Doubles as the resolved/denied reference screenshot.
  */
 test("walking Back onto a denied approval shows the calm decided state", async ({
   page,
@@ -333,7 +324,6 @@ test("walking Back onto a denied approval shows the calm decided state", async (
   await expect(page.getByRole("button", { name: "Always allow" })).toHaveCount(
     0,
   );
-  await card.screenshot({ path: `${SHOTS}/approval-card-denied-state.png` });
 });
 
 /**
@@ -357,10 +347,6 @@ test("dismiss X on an approval step interrupts and clears the persisted card", a
   // Card gone instantly; the transcript reads the standard stop line.
   await expect(page.getByText("Allow Gmail to send draft?")).toHaveCount(0);
   await expect(page.getByText("Stopped by user")).toBeVisible();
-  await page.screenshot({
-    path: `${SHOTS}/approval-dismiss-interrupted.png`,
-    clip: { x: 800, y: 0, width: 480, height: 720 },
-  });
 
   // Reload + reopen the mission from the board: the card stays gone (persisted
   // interaction cleared), the stop marker persists.
@@ -475,15 +461,10 @@ test("the question Skip is a bordered outline pill (rest + hover)", async ({
     page.getByText("Anything special I should know about the trip?"),
   ).toBeVisible({ timeout: 15_000 });
 
-  const card = page
-    .locator("div.overflow-clip")
-    .filter({ hasText: "Anything special I should know about the trip?" });
   const skip = page.getByRole("button", { name: /Skip/ });
   await expect(skip).toBeVisible();
 
-  await card.screenshot({ path: `${SHOTS}/question-skip-rest.png` });
   await skip.hover();
-  await card.screenshot({ path: `${SHOTS}/question-skip-hover.png` });
 
   // It is genuinely clickable: clicking skips the (lone) question.
   await skip.click();

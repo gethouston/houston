@@ -1067,8 +1067,6 @@ test("pressing Esc declines a lone connect step", async ({ page, request }) => {
  */
 
 /** The absolute path for the light-theme reference shot of the credential card. */
-const CREDENTIAL_SHOT =
-  "/private/tmp/claude-501/-Users-ja-dev-houston/89dcedf6-5c2a-4e86-852c-1b2c0f455072/scratchpad/credential-card-light.png";
 
 /** A pending custom integration whose slug the credential step names. Its auth
  *  method's field label ("API key (X-Api-Key)") is the key input's <label>. */
@@ -1177,7 +1175,6 @@ test("renders the credential card, saves the key, and resumes the agent", async 
   await expect(save).toBeDisabled();
 
   // Light-theme reference shot of the card element (not the full page).
-  await card.screenshot({ path: CREDENTIAL_SHOT });
 
   // Fill the key -> Save enables. Store it -> the sequence completes and resumes
   // the agent with the hidden auto-continue; the fake host echoes it back.
