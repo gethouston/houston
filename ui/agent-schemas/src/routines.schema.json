@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Routines",
-  "description": "Scheduled prompts for a Houston agent.",
+  "description": "Automations for a Houston agent. Each routine wakes exactly one way: on a cron schedule ('schedule') or when an external event arrives ('trigger') — set one, never both.",
   "type": "array",
   "items": {
     "type": "object",
@@ -9,12 +9,12 @@
       "id",
       "name",
       "prompt",
-      "schedule",
       "enabled",
       "suppress_when_silent",
       "created_at",
       "updated_at"
     ],
+    "oneOf": [{ "required": ["schedule"] }, { "required": ["trigger"] }],
     "properties": {
       "id": { "type": "string" },
       "name": { "type": "string" },
@@ -24,7 +24,31 @@
       },
       "schedule": {
         "type": "string",
-        "description": "Cron expression (e.g. '0 9 * * 1-5')."
+        "description": "Cron expression (e.g. '0 9 * * 1-5'). Omit when 'trigger' is set."
+      },
+      "trigger": {
+        "type": "object",
+        "required": ["toolkit", "trigger_slug", "trigger_config"],
+        "properties": {
+          "toolkit": {
+            "type": "string",
+            "description": "Connected app that emits the event (e.g. 'gmail')."
+          },
+          "trigger_slug": {
+            "type": "string",
+            "description": "Event type slug (e.g. 'GMAIL_NEW_GMAIL_MESSAGE')."
+          },
+          "trigger_config": {
+            "type": "object",
+            "description": "Event filters, validated against the event type's config schema."
+          },
+          "connected_account_id": {
+            "type": "string",
+            "description": "Pins one account when the user connected the app more than once; otherwise omit."
+          }
+        },
+        "additionalProperties": false,
+        "description": "External event that wakes this routine. Omit when 'schedule' is set."
       },
       "enabled": { "type": "boolean" },
       "suppress_when_silent": {

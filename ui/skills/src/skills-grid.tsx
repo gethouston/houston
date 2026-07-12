@@ -90,9 +90,7 @@ export function SkillsGrid({
   if (loading && skills.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-sm text-muted-foreground animate-pulse">
-          {l.loading}
-        </p>
+        <p className="text-sm text-ink-muted animate-pulse">{l.loading}</p>
       </div>
     );
   }
@@ -133,9 +131,7 @@ export function SkillsGrid({
   return (
     <div>
       <div className="flex items-center justify-between gap-4 mb-4">
-        <p className="text-xs text-muted-foreground max-w-md">
-          {l.descriptionShort}
-        </p>
+        <p className="text-xs text-ink-muted max-w-md">{l.descriptionShort}</p>
         {canAdd && (
           <Button
             size="sm"
@@ -148,7 +144,7 @@ export function SkillsGrid({
         )}
       </div>
 
-      <div className="rounded-xl bg-secondary overflow-hidden divide-y divide-border/60">
+      <div className="rounded-xl bg-chip overflow-hidden divide-y divide-line/60">
         {sorted.map((skill) => (
           <SkillRow
             key={skill.id}

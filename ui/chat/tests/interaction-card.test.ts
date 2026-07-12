@@ -1,7 +1,9 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  advanceApproval,
   advanceConnect,
+  advanceCredential,
   advanceSignin,
   answerWithOption,
   answerWithText,
@@ -22,6 +24,7 @@ import {
   skipStep,
   toCompletedAnswers,
 } from "../src/interaction-card-logic.ts";
+import { humanizeActionSlug } from "../src/interaction-card-model.ts";
 
 const Q1: ChatInteractionStep = {
   kind: "question",
@@ -47,6 +50,21 @@ const SIGNIN: ChatInteractionStep = {
   kind: "signin",
   id: "s1",
   reason: "to use connected apps",
+};
+const APPROVAL: ChatInteractionStep = {
+  kind: "approval",
+  id: "a1",
+  toolkit: "gmail",
+  action: "GMAIL_SEND_DRAFT",
+  params: { To: "john@example.com" },
+  paramsHash: "hash-1",
+};
+
+const CREDENTIAL: ChatInteractionStep = {
+  kind: "credential",
+  id: "k1",
+  toolkit: "acme",
+  reason: "to reach the Acme API",
 };
 
 describe("hasSelectableOptions", () => {
@@ -290,6 +308,22 @@ describe("advanceSignin", () => {
   });
 });
 
+describe("advanceCredential", () => {
+  it("completes when the credential step is the last step", () => {
+    const s = setDraft(initialStepperState(), "q2", "hi");
+    const afterQ = answerWithText(s, [Q2, CREDENTIAL]).state; // -> credential
+    const done = advanceCredential(afterQ, [Q2, CREDENTIAL]);
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "hi" },
+    ]);
+  });
+
+  it("contributes no answer for a credential-only sequence", () => {
+    const done = advanceCredential(initialStepperState(), [CREDENTIAL]);
+    assert.deepEqual(done.completed, []);
+  });
+});
+
 describe("optionLabel on a signin step", () => {
   it("returns null (signin steps carry no options)", () => {
     assert.equal(optionLabel(SIGNIN, "o1"), null);
@@ -444,5 +478,68 @@ describe("toCompletedAnswers", () => {
       { stepId: "q1", question: "Who is it for?", answer: "John" },
       { stepId: "q2", question: "What should it say?", answer: "hi" },
     ]);
+  });
+
+  it("ignores approval steps (they produce no question answer)", () => {
+    const answers = { q1: { answer: "John", optionId: "o1" } };
+    assert.deepEqual(toCompletedAnswers([Q1, APPROVAL], answers), [
+      { stepId: "q1", question: "Who is it for?", answer: "John" },
+    ]);
+  });
+});
+
+describe("humanizeActionSlug", () => {
+  it("strips the toolkit prefix and lowercases the remainder", () => {
+    assert.equal(humanizeActionSlug("GMAIL_SEND_DRAFT", "gmail"), "send draft");
+  });
+
+  it("strips a multi-word toolkit prefix", () => {
+    assert.equal(
+      humanizeActionSlug("GOOGLE_MAPS_GET_ROUTE", "google_maps"),
+      "get route",
+    );
+  });
+
+  it("humanizes the whole slug when it lacks the toolkit prefix", () => {
+    assert.equal(humanizeActionSlug("SEND_DRAFT", "gmail"), "send draft");
+  });
+
+  it("falls back to the whole slug when the prefix is all there is", () => {
+    assert.equal(humanizeActionSlug("GMAIL", "gmail"), "gmail");
+  });
+});
+
+describe("advanceApproval", () => {
+  const steps = [Q2, APPROVAL];
+
+  it("advances a non-terminal approval to the next step", () => {
+    const approval2: ChatInteractionStep = {
+      kind: "approval",
+      id: "a2",
+      toolkit: "slack",
+      action: "SLACK_POST_MESSAGE",
+      paramsHash: "hash-2",
+    };
+    const flow = [APPROVAL, approval2];
+    const t = advanceApproval(initialStepperState(), flow);
+    assert.equal(t.completed, undefined);
+    assert.equal(t.state.current, 1);
+    assert.equal(t.state.reached, 1); // frontier advanced (Back/Forward work)
+  });
+
+  it("completes when the approval step is the last step", () => {
+    const s = setDraft(initialStepperState(), "q2", "hi");
+    const afterQ = answerWithText(s, steps).state; // -> approval (last)
+    const done = advanceApproval(afterQ, steps);
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "hi" },
+    ]);
+  });
+
+  it("advances a DENIED approval too (a decision, not a skip)", () => {
+    // The machine cannot tell allow from deny; both resolve and advance. The
+    // app records which decision before calling onResolve.
+    const done = advanceApproval(initialStepperState(), [APPROVAL]);
+    assert.deepEqual(done.completed, []);
   });
 });

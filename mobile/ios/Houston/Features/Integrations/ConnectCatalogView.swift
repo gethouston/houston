@@ -31,7 +31,7 @@ struct ConnectCatalogView: View {
       if results.isEmpty {
         Text(Strings.Integrations.pickerNoResults)
           .font(Typography.callout)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
           .frame(maxWidth: .infinity)
           .padding(.vertical, Spacing.space16)
       } else {
@@ -67,13 +67,13 @@ struct ConnectCatalogView: View {
               .lineLimit(1)
             Image(systemName: "chevron.down").font(Typography.caption)
           }
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
           .padding(.horizontal, Spacing.space12)
           .padding(.vertical, Spacing.space10)
-          .background(theme.muted, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+          .background(theme.chipSubtle, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
           .overlay(
             RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-              .strokeBorder(theme.border, lineWidth: 1))
+              .strokeBorder(theme.line, lineWidth: 1))
         }
       }
     }
@@ -94,7 +94,7 @@ struct ConnectCatalogView: View {
       } else {
         Image(systemName: "plus")
           .font(Typography.label)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
       }
     }
   }
@@ -105,11 +105,11 @@ struct ConnectCatalogView: View {
     } label: {
       Text(Strings.Integrations.loadMore(remaining: results.count - visible))
         .font(Typography.label)
-        .foregroundStyle(theme.foreground)
+        .foregroundStyle(theme.ink)
         .padding(.horizontal, Spacing.space16)
         .padding(.vertical, Spacing.space8)
-        .background(theme.muted, in: Capsule())
-        .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
+        .background(theme.chipSubtle, in: Capsule())
+        .overlay(Capsule().strokeBorder(theme.line, lineWidth: 1))
     }
     .frame(maxWidth: .infinity)
     .padding(.top, Spacing.space4)

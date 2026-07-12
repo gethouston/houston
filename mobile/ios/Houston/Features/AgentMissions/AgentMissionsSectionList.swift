@@ -28,7 +28,7 @@ struct AgentMissionsSectionList: View {
                 } header: {
                     Text(section.column.label)
                         .font(Typography.captionStrong)
-                        .foregroundStyle(theme.mutedFg)
+                        .foregroundStyle(theme.inkMuted)
                         .textCase(.uppercase)
                 }
             }
@@ -45,16 +45,16 @@ struct AgentMissionsSectionList: View {
             HStack(spacing: Spacing.space8) {
                 Label(Strings.Board.archived, systemImage: "archivebox")
                     .font(Typography.bodyMedium)
-                    .foregroundStyle(theme.foreground)
+                    .foregroundStyle(theme.ink)
                 Spacer(minLength: Spacing.space8)
                 if grouping.archivedCount > 0 {
                     Text("\(grouping.archivedCount)")
                         .font(Typography.callout)
-                        .foregroundStyle(theme.mutedFg)
+                        .foregroundStyle(theme.inkMuted)
                 }
                 Image(systemName: "chevron.right")
                     .font(Typography.caption)
-                    .foregroundStyle(theme.mutedFg)
+                    .foregroundStyle(theme.inkMuted)
             }
         }
         .buttonStyle(.plain)

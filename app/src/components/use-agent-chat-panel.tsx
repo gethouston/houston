@@ -28,6 +28,8 @@ import {
   type ChatSuggestReusableLabels,
   decodeAttachmentMessage,
   decodeInteractionAnswersMessage,
+  humanizeActionSlug,
+  prettifyToolkit,
   UserAttachmentMessage,
   type UserAttachmentMessageLabels,
   UserInteractionAnswersMessage,
@@ -80,9 +82,13 @@ import { useDictation } from "../lib/dictation/use-dictation";
 import { genericErrorDescription } from "../lib/error-toast";
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import {
+  type ApprovalOutcome,
   type ConnectOutcome,
+  type CredentialOutcome,
   encodeInteractionAnswersMessage,
+  finalApprovalNames,
   finalConnectNames,
+  finalCredentialNames,
 } from "../lib/interaction-reply";
 import {
   modelSelectorDecision,
@@ -120,6 +126,7 @@ import {
   tauriAttachments,
   tauriChat,
   tauriConfig,
+  tauriIntegrations,
   tauriProvider,
   withAttachmentPaths,
 } from "../lib/tauri";
@@ -132,7 +139,9 @@ import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { newConversationDraftKey, useDraftStore } from "../stores/drafts";
 import { useUIStore } from "../stores/ui";
+import { ChatApprovalInteractionCard } from "./chat-approval-interaction-card";
 import { ChatConnectInteractionCard } from "./chat-connect-interaction-card";
+import { ChatCredentialInteractionCard } from "./chat-credential-interaction-card";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ChatEffortSelector } from "./chat-effort-selector";
 import { ChatModeSelector } from "./chat-mode-selector";
@@ -248,7 +257,7 @@ export function useAgentChatPanel({
   // Multiplayer attribution (C5): the signed-in viewer's id lets ChatPanel tell
   // the viewer's own bubbles from teammates'. Undefined signed out / local.
   const { data: session } = useSession();
-  const currentUserId = session?.user.id;
+  const currentUserId = session?.uid;
   const authorLabels = undefined;
 
   // ── Dictation (desktop-only voice typing) ──────────────────────────────
@@ -998,7 +1007,9 @@ export function useAgentChatPanel({
     () => ({
       placeholder: t("chat:questionCard.placeholder"),
       escapePlaceholder: t("chat:questionCard.escapePlaceholder"),
-      skip: t("chat:questionCard.skip"),
+      send: t("chat:questionCard.send"),
+      skip: t("chat:interaction.skip"),
+      esc: t("chat:interaction.esc"),
       back: t("chat:questionCard.back"),
       forward: t("chat:questionCard.forward"),
       dismiss: t("chat:questionCard.dismiss"),
@@ -1038,6 +1049,58 @@ export function useAgentChatPanel({
     setDismissedSuggestReusable(null);
     setAbandonedInteractionKey(null);
   }, [selectedSessionKey]);
+
+  // Clear the PERSISTED pending interaction on the open activity so its card
+  // never reappears on reload, then repaint the board + transcript. Used both by
+  // the interrupt (dismissActiveInteraction, with a stop marker) and by the lone
+  // suggest_reusable "Not now" (the mission genuinely finished — no marker). The
+  // activity write does NOT self-toast (it's the data layer, not a `call()`), so
+  // a failure surfaces here; the query invalidations are the AI-native repaint
+  // (the runtime transcript write does not fire a chat-history event on its own).
+  // Keyed on the STABLE `selectedActivityId` string (not the `selectedActivity`
+  // object), so an activity-query refetch mid-sequence never gives this callback
+  // a new reference — which would recompute the composerOverride memo and RESET
+  // the in-progress connect/approval outcome maps the user is walking.
+  const clearPersistedInteraction = useCallback(async () => {
+    if (!path) return;
+    if (selectedActivityId) {
+      try {
+        await tauriActivity.update(path, selectedActivityId, {
+          pending_interaction: null,
+        });
+      } catch (err) {
+        addToast({
+          title: t("chat:errors.interactionDismissFailed"),
+          description: genericErrorDescription("interaction_dismiss", err),
+          variant: "error",
+        });
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
+    if (selectedSessionKey)
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chatHistory(path, selectedSessionKey),
+      });
+  }, [path, selectedActivityId, selectedSessionKey, queryClient, addToast, t]);
+
+  // The stepper's X on ANY step kind (question/signin/connect/approval): "the
+  // user interrupted, nothing was decided" — exactly a Stop. Hide the card at
+  // once (the abandoned-key suppresses it), append the durable stop marker on the
+  // runtime (its own toast on failure via `call()`; swallow the re-throw so the
+  // clear still runs), then clear the persisted interaction + repaint. The model
+  // learns nothing from an interrupt, deliberately.
+  const dismissActiveInteraction = useCallback(() => {
+    if (!path || !selectedSessionKey || !interactionKey) return;
+    setAbandonedInteractionKey(interactionKey);
+    void (async () => {
+      // The marker surfaces its own failure through `call()`; swallow the
+      // re-throw so a failed marker never blocks clearing the persisted card.
+      await tauriChat
+        .dismissInteraction(path, selectedSessionKey)
+        .catch(() => {});
+      await clearPersistedInteraction();
+    })();
+  }, [path, selectedSessionKey, interactionKey, clearPersistedInteraction]);
 
   // Start a turn from the plan-ready card: flip the composer's Mode pill (and
   // persist it) to the chosen mode, then send the confirming message with an
@@ -1090,8 +1153,8 @@ export function useAgentChatPanel({
   // ── Suggest-reusable offer (suggest_reusable) ─────────────────────────
   // On a clean finish the model may call `suggest_reusable`, arriving as a lone
   // `{kind:"suggest_reusable", ...}` step. The card offers to save the work as a
-  // Skill or Routine. "Save" sends a follow-up message asking the agent to
-  // actually WRITE the Skill/Routine file, so it always runs in `execute` mode
+  // Skill, Routine, or Learning. "Save" sends a follow-up message asking the agent
+  // to actually WRITE the Skill/Routine/Learning, so it always runs in `execute` mode
   // regardless of the composer's pinned mode (planning it is not enough), and it
   // does NOT flip the composer's Mode pill (this is a one-off follow-up, not a
   // change to the ongoing mode). It dismisses the offer locally first so the
@@ -1101,7 +1164,9 @@ export function useAgentChatPanel({
       eyebrow: t("chat:suggestReusable.title"),
       skillTitle: t("chat:suggestReusable.skillTitle"),
       routineTitle: t("chat:suggestReusable.routineTitle"),
-      notNow: t("chat:suggestReusable.notNow"),
+      learningTitle: t("chat:suggestReusable.learningTitle"),
+      // The unified card-family decline word, shared with the interaction card.
+      notNow: t("chat:interaction.notNow"),
     }),
     [t],
   );
@@ -1113,7 +1178,13 @@ export function useAgentChatPanel({
       const text =
         step.reusableKind === "skill"
           ? t("chat:suggestReusable.saveSkillMessage", { title: step.title })
-          : t("chat:suggestReusable.saveRoutineMessage", { title: step.title });
+          : step.reusableKind === "routine"
+            ? t("chat:suggestReusable.saveRoutineMessage", {
+                title: step.title,
+              })
+            : t("chat:suggestReusable.saveLearningMessage", {
+                title: step.title,
+              });
       tauriChat
         .send(path, text, selectedSessionKey, {
           providerOverride: effectiveProvider,
@@ -1187,7 +1258,15 @@ export function useAgentChatPanel({
           rationale={step.rationale}
           labels={suggestReusableLabels}
           onSave={() => saveReusable(step)}
-          onDismiss={() => setDismissedSuggestReusable(step.id)}
+          onDismiss={() => {
+            // "Not now" on the save offer: dismiss locally AND clear the
+            // persisted interaction so it doesn't reappear on reload. NO stop
+            // marker — the mission genuinely finished, so "interrupted" would be
+            // false (unlike the stepper's X). plan_ready's "Keep planning" stays
+            // local-only: it's an explicit choice to continue, not an abandon.
+            setDismissedSuggestReusable(step.id);
+            void clearPersistedInteraction();
+          }}
         />
       );
     }
@@ -1227,18 +1306,31 @@ export function useAgentChatPanel({
     // doesn't recompute — and the outcomes don't reset — while the user walks
     // the steps; a fresh interaction starts clean.
     const connectOutcomes = new Map<string, ConnectOutcome>();
+    // Per approval step's FINAL decision (last write wins), recorded in place as
+    // the user acts — like `connectOutcomes`. Lives in the memo body (not a ref)
+    // for the same reason: `deriveActiveInteraction` returns a STABLE reference
+    // so the memo doesn't recompute while the user walks the steps; a fresh
+    // interaction starts clean.
+    const approvalOutcomes = new Map<string, ApprovalOutcome>();
     let signinOutcome: "pending" | "signedIn" | "skipped" = "pending";
+    // Per credential step's FINAL outcome (saved wins over an earlier skip),
+    // recorded in place as the user acts — the credential mirror of
+    // `connectOutcomes`. Folded into the ONE composed reply below so a credential
+    // step resumes the agent exactly like a connect: a saved key names "Added
+    // the X key.", a declined one "Skipped adding the X key." (a fact the agent
+    // MUST hear, or it waits on a key that never comes).
+    const credentialOutcomes = new Map<string, CredentialOutcome>();
     return (
       <ChatInteractionCard
         steps={steps}
         labels={interactionLabels}
-        onDismiss={() => setAbandonedInteractionKey(interactionKey)}
+        onDismiss={dismissActiveInteraction}
         onComplete={(answers: ChatInteractionAnswer[]) => {
           // ONE send after the LAST step: a sequence with questions replies with
-          // the user's visible answers; a signin/connect-only sequence resumes
-          // the agent with a hidden auto-continue message (no fake user bubble).
-          // The visible reply also carries a structured marker so the transcript
-          // renders the answers as a Q&A card, not an undifferentiated bubble.
+          // the user's visible answers; a signin/connect/credential-only
+          // sequence resumes the agent with a hidden auto-continue message (no
+          // fake user bubble). The visible reply also carries a structured
+          // marker so the transcript renders the answers as a Q&A card.
           //
           // Derive the connected/skipped lines from each step's FINAL outcome,
           // in step order — a step skipped then reconsidered reports "Connected"
@@ -1247,11 +1339,39 @@ export function useAgentChatPanel({
             steps.filter((s) => s.kind === "connect").map((s) => s.id),
             connectOutcomes,
           );
+          // Approval decisions ride AFTER the connect lines, in step order. The
+          // flat body the MODEL reads names the RAW slug (so it re-issues the
+          // EXACT same action, or leaves a denied one alone); the VISIBLE
+          // transcript payload names the humanized `display` a non-technical user
+          // can read ("Allowed Gmail to send draft.").
+          const {
+            approvedActions,
+            deniedActions,
+            approvedDisplays,
+            deniedDisplays,
+          } = finalApprovalNames(
+            steps.filter((s) => s.kind === "approval").map((s) => s.id),
+            approvalOutcomes,
+          );
+          // Credential outcomes mirror connects: saved keys name "Added the X
+          // key.", declined ones "Skipped adding the X key." — FINAL state, so a
+          // key skipped then reconsidered reports saved, never a stale skip.
+          const { credentialedNames, skippedCredentialNames } =
+            finalCredentialNames(
+              steps.filter((s) => s.kind === "credential").map((s) => s.id),
+              credentialOutcomes,
+            );
           sendInteractionMessage(
             encodeInteractionAnswersMessage({
               answers,
               connectedNames,
               skippedConnectNames,
+              approvedActions,
+              deniedActions,
+              approvedDisplays,
+              deniedDisplays,
+              credentialedNames,
+              skippedCredentialNames,
               hasQuestionSteps,
               signedIn: signinOutcome === "signedIn",
               signinSkipped: signinOutcome === "skipped",
@@ -1259,14 +1379,35 @@ export function useAgentChatPanel({
                 t("chat:interaction.connectedLine", { name }),
               skippedConnectLine: (name) =>
                 t("chat:interaction.skippedConnectLine", { name }),
+              credentialedLine: (name) =>
+                t("chat:credential.savedLine", { name }),
+              skippedCredentialLine: (name) =>
+                t("chat:credential.skippedLine", { name }),
               signedInLine: t("chat:interaction.signedInLine"),
               skippedSigninLine: t("chat:interaction.skippedSigninLine"),
               signedInFollowup: t("chat:interaction.signedInFollowup"),
+              approvedLine: (action) =>
+                t("chat:interaction.approvedLine", { action }),
+              deniedLine: (action) =>
+                t("chat:interaction.deniedLine", { action }),
+              approvedLineDisplay: ({ app, action }) =>
+                t("chat:interaction.approvedLineDisplay", { app, action }),
+              deniedLineDisplay: ({ app, action }) =>
+                t("chat:interaction.deniedLineDisplay", { app, action }),
+              credentialedFollowup: t("chat:credential.savedFollowup", {
+                name: credentialedNames.join(", "),
+              }),
             }),
           );
         }}
         renderSignin={(step, api) => (
           <ChatSigninInteractionCard
+            key={step.id}
+            stepId={step.id}
+            pager={api.pager}
+            onDismiss={api.onDismiss}
+            dismissLabel={api.dismissLabel}
+            disabled={api.disabled}
             reason={step.reason}
             revisited={api.revisited}
             onSignedIn={() => {
@@ -1285,6 +1426,12 @@ export function useAgentChatPanel({
         )}
         renderConnect={(step, api) => (
           <ChatConnectInteractionCard
+            key={step.id}
+            stepId={step.id}
+            pager={api.pager}
+            onDismiss={api.onDismiss}
+            dismissLabel={api.dismissLabel}
+            disabled={api.disabled}
             provider={step.provider}
             agentId={agent.id}
             autoGrant={canManageAgentGrants(capabilities, agent)}
@@ -1307,6 +1454,104 @@ export function useAgentChatPanel({
             toolkit={step.toolkit}
           />
         )}
+        renderApproval={(step, api) => {
+          // The recorded decision maps to the card's calm decided-state label
+          // when the user walks Back onto a resolved step.
+          const recorded = approvalOutcomes.get(step.id);
+          const outcome = recorded
+            ? recorded.decision === "deny"
+              ? "denied"
+              : recorded.decision === "alwaysAllow"
+                ? "alwaysAllowed"
+                : "allowedOnce"
+            : undefined;
+          return (
+            <ChatApprovalInteractionCard
+              key={step.id}
+              stepId={step.id}
+              pager={api.pager}
+              onDismiss={api.onDismiss}
+              dismissLabel={api.dismissLabel}
+              disabled={api.disabled}
+              toolkit={step.toolkit}
+              action={step.action}
+              params={step.params}
+              paramsOmitted={step.paramsOmitted}
+              revisited={api.revisited}
+              outcome={outcome}
+              onDecision={(decision) => {
+                // The RAW slug is what the model re-issues; `display` is the
+                // humanized app + action the visible transcript line shows a
+                // non-technical user ("Allowed Gmail to send draft.").
+                const display = {
+                  app: prettifyToolkit(step.toolkit),
+                  action: humanizeActionSlug(step.action, step.toolkit),
+                };
+                // FIRST the store write (deny writes nothing), THEN on success
+                // record the outcome and advance. Deny resolves synchronously.
+                // A write FAILURE keeps the frontier here so the user can retry
+                // (the tauri `call()` already toasted once — never double-toast,
+                // never advance on failure).
+                if (decision === "deny") {
+                  approvalOutcomes.set(step.id, {
+                    action: step.action,
+                    decision,
+                    display,
+                  });
+                  api.onResolve();
+                  return;
+                }
+                const write =
+                  decision === "allowOnce"
+                    ? tauriIntegrations.addApprovalTicket(
+                        agent.id,
+                        step.paramsHash,
+                      )
+                    : tauriIntegrations.allowActionAlways(
+                        agent.id,
+                        step.action,
+                      );
+                write
+                  .then(() => {
+                    approvalOutcomes.set(step.id, {
+                      action: step.action,
+                      decision,
+                      display,
+                    });
+                    api.onResolve();
+                  })
+                  // `call()` toasted; swallow the re-throw and DON'T advance.
+                  .catch(() => {});
+              }}
+            />
+          );
+        }}
+        renderCredential={(step, api) => (
+          <ChatCredentialInteractionCard
+            key={step.id}
+            stepId={step.id}
+            pager={api.pager}
+            onDismiss={api.onDismiss}
+            dismissLabel={api.dismissLabel}
+            disabled={api.disabled}
+            toolkit={step.toolkit}
+            reason={step.reason}
+            revisited={api.revisited}
+            onSaved={(name) => {
+              // Record the FINAL outcome (saved wins over any earlier skip for
+              // this step) and advance ONLY. The composed `onComplete` reply
+              // resumes the agent once EVERY step is done, mirroring connect.
+              credentialOutcomes.set(step.id, { name, saved: true });
+              api.onSaved();
+            }}
+            onSkip={(name) => {
+              // Record the decline and advance ONLY (one send at completion) —
+              // the agent hears "Skipped adding the X key." so it stops waiting.
+              credentialOutcomes.set(step.id, { name, saved: false });
+              api.onSkip();
+            }}
+          />
+        )}
       />
     );
   }, [
@@ -1322,6 +1567,8 @@ export function useAgentChatPanel({
     saveReusable,
     interactionLabels,
     sendInteractionMessage,
+    clearPersistedInteraction,
+    dismissActiveInteraction,
     capabilities,
     t,
   ]);
@@ -1544,7 +1791,7 @@ export function useAgentChatPanel({
     return (
       <div className="flex flex-col gap-1.5">
         {showSharedNote && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-xs text-ink-muted">
             <Users className="size-3.5 shrink-0" />
             <span>{t("teams:share.chatNote")}</span>
           </div>
@@ -1570,10 +1817,10 @@ export function useAgentChatPanel({
       <div className="self-stretch w-full h-full overflow-y-auto">
         <div className="max-w-3xl mx-auto w-full px-6 pt-6 pb-4 flex flex-col gap-3">
           <div className="text-center mb-1">
-            <h3 className="text-base font-semibold text-foreground">
+            <h3 className="text-base font-semibold text-ink">
               {t("chatEmpty.heading")}
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-ink-muted mt-1">
               {t("chatEmpty.subheading")}
             </p>
           </div>
@@ -1617,7 +1864,7 @@ export function useAgentChatPanel({
           type="button"
           onClick={() => setPickerOpen(true)}
           data-keep-panel-open
-          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-medium text-ink-muted hover:text-ink hover:bg-hover transition-colors"
         >
           <Play className="size-3 fill-current" />
           {t("composerSkill.browse")}
@@ -1674,9 +1921,9 @@ export function useAgentChatPanel({
           onClick={() => {
             openFilePicker();
           }}
-          className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-foreground hover:bg-accent transition-colors"
+          className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-ink hover:bg-hover transition-colors"
         >
-          <Paperclip className="size-4 text-muted-foreground" />
+          <Paperclip className="size-4 text-ink-muted" />
           {t("composerAttach.addFiles")}
         </button>
       </div>

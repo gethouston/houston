@@ -112,7 +112,7 @@ export function finishTurn(
     turnId,
     ...(pendingInteraction ? { pendingInteraction } : {}),
   });
-  state.appendAssistantMessage(agentId, cid, reply, turnId);
+  state.appendAssistantMessage(agentId, cid, reply, turnId, pendingInteraction);
   ch.pending = null;
 }
 

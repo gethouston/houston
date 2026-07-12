@@ -30,10 +30,10 @@ export function LoadingState() {
         <EmptyTitle>{t("loading.title")}</EmptyTitle>
         <EmptyDescription>{t("loading.body")}</EmptyDescription>
       </EmptyHeader>
-      <div className="h-[2px] w-48 overflow-hidden rounded-full bg-foreground/10">
+      <div className="h-[2px] w-48 overflow-hidden rounded-full bg-ink/10">
         <div
           ref={barRef}
-          className="h-full rounded-full bg-foreground"
+          className="h-full rounded-full bg-ink"
           style={{ width: "0%", transition: "width 5s linear" }}
         />
       </div>
@@ -60,7 +60,7 @@ export function SigninState({
         type="button"
         onClick={onSignIn}
         disabled={signingIn}
-        className="inline-flex h-7 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:opacity-60"
+        className="inline-flex h-7 items-center gap-1.5 rounded-full bg-action px-3 text-xs font-medium text-action-text transition-colors duration-200 hover:bg-action/90 disabled:opacity-60"
       >
         {signingIn && <Loader2 className="size-3 animate-spin" />}
         {t("signin.button")}
@@ -90,7 +90,7 @@ export function ReconnectBanner({
 }) {
   const { t } = useTranslation("integrations");
   return (
-    <div className="flex items-start gap-2 rounded-xl bg-secondary p-4 text-sm text-muted-foreground">
+    <div className="flex items-start gap-2 rounded-xl bg-chip p-4 text-sm text-ink-muted">
       <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
       <span className="flex-1">{t("reconnectNotice")}</span>
       <AsyncButton

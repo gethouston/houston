@@ -93,7 +93,7 @@ export function AgentIntegrationsBody({
         <button
           type="button"
           onClick={onManageAll}
-          className="text-xs text-muted-foreground underline underline-offset-4 decoration-dotted transition-colors hover:text-foreground"
+          className="text-xs text-ink-muted underline underline-offset-4 decoration-dotted transition-colors hover:text-ink"
         >
           {canSeePolicyPage
             ? t("agentTab.manageAll")

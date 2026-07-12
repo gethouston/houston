@@ -22,14 +22,14 @@ export function ModelRow({
       onSelect={() => onSelect(model.id)}
     >
       <div className="min-w-0 flex-1">
-        <div className="truncate text-foreground">{model.name}</div>
+        <div className="truncate text-ink">{model.name}</div>
         {model.description && (
-          <div className="truncate text-xs text-muted-foreground">
+          <div className="truncate text-xs text-ink-muted">
             {model.description}
           </div>
         )}
       </div>
-      {selected && <Check className="size-4 shrink-0 text-foreground" />}
+      {selected && <Check className="size-4 shrink-0 text-ink" />}
     </CommandItem>
   );
 }

@@ -89,11 +89,15 @@
   },
   "home": {
     "title": "Integraciones",
-    "description": "Conecta tus apps una vez y elige qué agentes pueden usar cada una.",
-    "connectedTitle": "Apps conectadas",
+    "description": "Trabaja con tus agentes en tus herramientas favoritas.",
+    "searchPlaceholder": "Buscar integraciones...",
+    "allCategories": "Todas las categorías",
+    "categoryFilter": "Filtrar por categoría",
+    "installedTitle": "Instaladas",
+    "otherCategory": "Otras",
+    "showAllApps": "Ver las {{count}} aplicaciones",
     "usedByNone": "Aún no hay agentes",
-    "usedByAll": "Todos los agentes",
-    "connectedNoneInCategory": "No hay apps conectadas en esta categoría."
+    "usedByAll": "Todos los agentes"
   },
   "detail": {
     "activeOn": "Agentes que pueden usarla",
@@ -115,6 +119,56 @@
       "subtitle": "Apps que conectaste y que este agente aún no puede usar."
     },
     "manageAll": "Administrar todas las integraciones"
+  },
+  "custom": {
+    "title": "Integraciones personalizadas",
+    "description": "Conecta una API o un servidor MCP que no esté en el catálogo de aplicaciones.",
+    "addButton": "Agregar integración personalizada",
+    "empty": "Aún no tienes integraciones personalizadas. Agrega una para conectar una herramienta que no esté en el catálogo.",
+    "badge": {
+      "api": "API",
+      "mcp": "Servidor MCP"
+    },
+    "toolCount_one": "{{count}} acción",
+    "toolCount_other": "{{count}} acciones",
+    "enterKey": "Ingresar clave",
+    "status": {
+      "pendingKey": "Necesita una clave de API",
+      "error": "{{message}}"
+    },
+    "credential": {
+      "apiKeyLabel": "Clave de API",
+      "placeholder": "Pega tu clave",
+      "show": "Mostrar clave",
+      "hide": "Ocultar clave"
+    },
+    "keyDialog": {
+      "title": "Ingresa la clave de {{name}}",
+      "description": "Tu clave se guarda de forma segura y nunca se muestra en el chat.",
+      "save": "Guardar clave",
+      "saving": "Guardando...",
+      "savedToast": "{{name}} está listo para usarse",
+      "savedUnverifiedToast": "Clave guardada para {{name}}. El servicio aún no la ha confirmado."
+    },
+    "delete": {
+      "title": "¿Quitar {{name}}?",
+      "description": "Tus agentes perderán acceso a sus acciones. Esto no se puede deshacer.",
+      "confirm": "Quitar",
+      "cancel": "Cancelar"
+    },
+    "setupChat": {
+      "missionTitle": "Configurar una integración personalizada",
+      "back": "Volver a integraciones",
+      "opening": "Abriendo el chat...",
+      "bannerTitle": "Estás configurando una integración personalizada en el chat",
+      "bannerDescription": "Retoma donde quedaste o descarta el chat en curso.",
+      "continue": "Continuar",
+      "discard": "Descartar",
+      "startError": "No se pudo iniciar el chat de configuración",
+      "done": "Listo",
+      "doneToast": "¡Perfecto! Tu integración personalizada está lista para usar."
+    },
+    "catalogUnavailable": "El catálogo de aplicaciones no está disponible en esta configuración, pero aún puedes agregar integraciones personalizadas."
   },
   "hubs": {
     "title": "Centros de aplicaciones",

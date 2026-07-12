@@ -20,14 +20,14 @@ struct ConnectedAppCard: View {
           AppLogoView(display: display, diameter: 40)
           Text(display.name)
             .font(Typography.bodyMedium)
-            .foregroundStyle(theme.foreground)
+            .foregroundStyle(theme.ink)
             .lineLimit(1)
           Spacer(minLength: 0)
         }
         ConnectionStatusBadge(status: connection.status)
         Text(usedByLine)
           .font(Typography.caption)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
           .lineLimit(1)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -35,7 +35,7 @@ struct ConnectedAppCard: View {
       .background(theme.card, in: RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
       .overlay(
         RoundedRectangle(cornerRadius: Radius.xl, style: .continuous)
-          .strokeBorder(theme.border, lineWidth: 1))
+          .strokeBorder(theme.line, lineWidth: 1))
     }
     .buttonStyle(.plain)
   }

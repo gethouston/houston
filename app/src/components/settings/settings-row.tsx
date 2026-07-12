@@ -12,11 +12,9 @@ export function SettingsCard({ title, children }: SettingsCardProps) {
   return (
     <section>
       {title && (
-        <h2 className="mb-3 px-1 text-base font-semibold text-foreground">
-          {title}
-        </h2>
+        <h2 className="mb-3 px-1 text-base font-semibold text-ink">{title}</h2>
       )}
-      <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+      <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-card">
         {children}
       </div>
     </section>
@@ -37,7 +35,7 @@ function Leading({
   return (
     <Icon
       className={`size-[18px] shrink-0 ${
-        destructive ? "text-destructive" : "text-muted-foreground"
+        destructive ? "text-danger" : "text-ink-muted"
       }`}
     />
   );
@@ -54,13 +52,13 @@ function RowText({ title, description, destructive }: RowTextProps) {
     <span className="min-w-0 flex-1">
       <span
         className={`block truncate text-sm font-medium ${
-          destructive ? "text-destructive" : "text-foreground"
+          destructive ? "text-danger" : "text-ink"
         }`}
       >
         {title}
       </span>
       {description && (
-        <span className="block truncate text-xs text-muted-foreground">
+        <span className="block truncate text-xs text-ink-muted">
           {description}
         </span>
       )}
@@ -91,7 +89,7 @@ export function SettingsRow({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-secondary/60"
+      className="group flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-chip/60"
     >
       <Leading icon={icon} destructive={destructive} />
       <RowText
@@ -100,9 +98,9 @@ export function SettingsRow({
         destructive={destructive}
       />
       {value && (
-        <span className="shrink-0 text-sm text-muted-foreground">{value}</span>
+        <span className="shrink-0 text-sm text-ink-muted">{value}</span>
       )}
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground/70 transition-colors group-hover:text-muted-foreground" />
+      <ChevronRight className="size-4 shrink-0 text-ink-muted/70 transition-colors group-hover:text-ink-muted" />
     </button>
   );
 }

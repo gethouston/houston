@@ -5,7 +5,7 @@
  *  - the SOURCE host — the passive sidecar `start_migration_source_host`
  *    spawned against the old `~/.houston` tree (loopback URL + static bearer);
  *  - the CLOUD GATEWAY — agent-scoped `/agents/:slug/migration/*` routes,
- *    authenticated with the live Supabase session token.
+ *    authenticated with the live identity session token (a Firebase ID token).
  *
  * Gateway auth mirrors the engine adapter's `gatewayAuthFetch` (HOU-687): the
  * bearer is read LIVE from `window.__HOUSTON_ENGINE__` per attempt, and a 401
@@ -90,7 +90,7 @@ export async function exportSourceZip(
   return await res.arrayBuffer();
 }
 
-// ── Cloud gateway (agent-scoped, live Supabase bearer) ────────────────
+// ── Cloud gateway (agent-scoped, live Firebase ID-token bearer) ───────
 
 function gatewayBaseUrl(): string {
   const cfg = typeof window !== "undefined" ? window.__HOUSTON_ENGINE__ : null;

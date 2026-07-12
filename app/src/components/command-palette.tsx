@@ -17,7 +17,7 @@ import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 import { useAllConversations } from "../hooks/queries";
 import { useSidebarLayout } from "../hooks/use-sidebar-layout";
 import { flatSidebarOrder } from "../lib/agent-order";
-import { isRoutineSetupMode } from "../lib/routine-chat-setup";
+import { isSetupChatMode } from "../lib/integration-chat-setup";
 import { shortcutLabel } from "../lib/shortcuts";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
@@ -74,7 +74,7 @@ export function CommandPalette() {
           (c) =>
             c.type === "activity" &&
             c.status !== "archived" &&
-            !isRoutineSetupMode(c.agent),
+            !isSetupChatMode(c.agent),
         )
         .slice()
         .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""))
@@ -219,7 +219,7 @@ export function CommandPalette() {
                   <PaletteAvatar color={colorByPath[m.agent_path]} />
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate">{m.title}</span>
-                    <span className="truncate text-xs text-muted-foreground">
+                    <span className="truncate text-xs text-ink-muted">
                       {m.agent_name}
                     </span>
                   </div>

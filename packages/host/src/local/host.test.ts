@@ -12,12 +12,9 @@ import { expect, test } from "vitest";
 import { MANAGED_CLOUD_CAPABILITIES } from "../capabilities";
 import { EnvCredentialVault } from "../credentials/vault";
 import type { Agent } from "../domain/types";
-import { MemoryMcpAuthStore } from "../integrations/mcp/auth-store";
-import { HubCatalogSource } from "../integrations/mcp/hub-catalog-source";
 import type { RuntimeSpawner } from "../launcher/process";
 import {
   buildLocalHost,
-  buildLocalIntegrationRegistry,
   formatIntegrationsModeLog,
   LOCAL_CAPABILITIES,
   type LocalHostOptions,
@@ -122,10 +119,14 @@ test("integration mode log appends MCP servers after the primary provider", () =
   );
 });
 
-test("Composio stays first when MCP providers are also wired", () => {
-  const wiring = buildLocalIntegrationRegistry(
-    {
+test("registry order: composio first, MCP hubs before the custom provider", async () => {
+  // Order is load-bearing twice: providerForAction picks the first NON-custom
+  // provider for slug-style actions, and the UI's activeIntegration picker
+  // takes the first non-custom provider when composio is absent.
+  const { host, base } = await setup({
+    integrations: {
       gatewayUrl: "https://cloud.test",
+      hubCatalogUrl: "",
       mcpServers: [
         {
           id: "composio-apps",
@@ -134,12 +135,15 @@ test("Composio stays first when MCP providers are also wired", () => {
         },
       ],
     },
-    new MemoryMcpAuthStore(),
-    new HubCatalogSource({ cachePath: "/dev/null", url: "" }),
-    { current: null },
-  );
-  expect(wiring?.registry.ids()[0]).toBe("composio");
-  expect(wiring?.registry.ids()).toEqual(["composio", "composio-apps"]);
+  });
+  try {
+    const caps = (await (await fetch(`${base}/v1/capabilities`)).json()) as {
+      integrations: string[];
+    };
+    expect(caps.integrations).toEqual(["composio", "composio-apps", "custom"]);
+  } finally {
+    await host.stop();
+  }
 });
 
 test("integration mode log identifies direct mode without exposing the key", () => {
@@ -206,9 +210,10 @@ test("capabilities report the local profile", async () => {
     const r = await fetch(`${base}/v1/capabilities`);
     expect(r.status).toBe(200);
     const caps = (await r.json()) as Capabilities;
-    // Integration availability is CONFIG-driven: this boot wired no gateway
-    // URL and no platform key, so the served list is honestly empty.
-    expect(caps).toEqual({ ...LOCAL_CAPABILITIES, integrations: [] });
+    // Composio availability is CONFIG-driven (this boot wired no gateway URL
+    // and no platform key), but the key-free custom provider (HOU-550) is
+    // always on — an install with no Composio can still add its own.
+    expect(caps).toEqual({ ...LOCAL_CAPABILITIES, integrations: ["custom"] });
     expect(caps.profile).toBe("local");
     expect(caps.codeExecution).toBe("local-bash");
     expect(caps.providers).toContain("anthropic");
@@ -226,7 +231,10 @@ test("capabilities can report the managed cloud pod profile", async () => {
     const r = await fetch(`${base}/v1/capabilities`);
     expect(r.status).toBe(200);
     const caps = (await r.json()) as Capabilities;
-    expect(caps).toEqual({ ...MANAGED_CLOUD_CAPABILITIES, integrations: [] });
+    expect(caps).toEqual({
+      ...MANAGED_CLOUD_CAPABILITIES,
+      integrations: ["custom"],
+    });
     // Pods run the agent's bash in the single-tenant container (HOU-669).
     expect(caps.codeExecution).toBe("local-bash");
     // Managed pods offer the full provider set plus a BYO OpenAI-compatible
@@ -314,13 +322,16 @@ test("a configured integrations gateway advertises composio and wins over a dire
     const caps = (await (
       await fetch(`${base}/v1/capabilities`)
     ).json()) as Capabilities;
-    expect(caps.integrations).toEqual(["composio"]);
+    // The key-free custom provider (HOU-550) rides along unconditionally.
+    expect(caps.integrations).toEqual(["composio", "custom"]);
     // Desktop gateway before sign-in: present but signin-gated, never a 503.
+    // The custom provider needs no session, so it is ready even signed out.
     const status = await (
       await fetch(`${base}/v1/integrations`, { headers: auth })
     ).json();
     expect(status.items).toEqual([
       { provider: "composio", ready: false, reason: "signin" },
+      { provider: "custom", ready: true },
     ]);
   } finally {
     host.stop();

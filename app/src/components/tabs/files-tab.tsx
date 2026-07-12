@@ -185,7 +185,7 @@ function FooterButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+      className="flex items-center gap-1 text-[11px] text-ink-muted hover:text-ink transition-colors"
     >
       {icon}
       {label}

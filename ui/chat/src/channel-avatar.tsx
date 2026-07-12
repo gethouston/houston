@@ -26,7 +26,7 @@ export function ChannelAvatar({
         "rounded-full flex items-center justify-center shrink-0",
         source === "telegram" && "bg-[#2AABEE]",
         source === "slack" && "bg-[#4A154B]",
-        !["telegram", "slack"].includes(source) && "bg-muted",
+        !["telegram", "slack"].includes(source) && "bg-chip-subtle",
         sizeClass,
         className,
       )}

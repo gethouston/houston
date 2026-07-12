@@ -86,7 +86,7 @@ export function MissionControlToolbar({
             <TooltipContent side="bottom">{t("archived.back")}</TooltipContent>
           </Tooltip>
         )}
-        <h1 className="shrink-0 text-xl font-semibold text-foreground">
+        <h1 className="shrink-0 text-xl font-semibold text-ink">
           {archivedActive ? t("archived.title") : t("title")}
         </h1>
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
@@ -121,7 +121,7 @@ export function MissionControlToolbar({
                 ) : (
                   <Button variant="ghost" className="rounded-full gap-1.5">
                     {selectedAgent?.name ?? t("filter.allAgents")}
-                    <ChevronDown className="size-3.5 text-muted-foreground" />
+                    <ChevronDown className="size-3.5 text-ink-muted" />
                   </Button>
                 )}
               </DropdownMenuTrigger>

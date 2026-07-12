@@ -38,10 +38,37 @@ vi.mock("../ai/providers", async (importOriginal) => {
   };
 });
 
-const { runTurn, ensureProviderForTurn, disposeConversation } = await import(
-  "./chat"
-);
+const { runTurn, cancelTurn, ensureProviderForTurn, disposeConversation } =
+  await import("./chat");
+const { conversations } = await import("./conversation-cache");
 const { switchNeedsCompaction } = await import("./provider-switch");
+
+type Conv = Parameters<typeof conversations.set>[1];
+
+/** A minimal cached Conversation whose session records aborts. */
+function fakeCachedConv(turnId?: string): {
+  conv: Conv;
+  aborted: () => boolean;
+} {
+  let aborted = false;
+  const conv = {
+    session: {
+      subscribe: () => () => {},
+      async abort() {
+        aborted = true;
+      },
+      dispose() {},
+    },
+    queue: Promise.resolve(),
+    provider: "openai",
+    model: "gpt-x",
+    backendId: "pi",
+    mode: "execute",
+    pending: 0,
+    turnId,
+  } as unknown as Conv;
+  return { conv, aborted: () => aborted };
+}
 const { subscribe } = await import("./bus");
 const { createSessionsStore } = await import(
   "../backends/claude/sessions-store"
@@ -76,6 +103,31 @@ test("runTurn refuses with a clear error (never a hang) if the provider vanished
   expect(err).toBeDefined();
   expect(err?.data.message).toContain("No provider connected");
   expect(events.some((e) => e.type === "done")).toBe(false);
+});
+
+test("cancelTurn stamps stoppedTurnId on the executing turn, then aborts", async () => {
+  // The durable "stopped by user" seam: cancelTurn marks the executing turn so
+  // execTurn can persist `stopped: true` (pi resolves the aborted turn clean, so
+  // this marker is the only trace). Only when a turn is actually executing.
+  const live = fakeCachedConv("turn-live");
+  conversations.set("conv-cancel-live", live.conv);
+  expect(await cancelTurn("conv-cancel-live")).toBe(true);
+  expect((live.conv as { stoppedTurnId?: string }).stoppedTurnId).toBe(
+    "turn-live",
+  );
+  expect(live.aborted()).toBe(true);
+
+  // A stop that raced turn end (no turnId) marks nothing — there is no turn to
+  // stamp — but still aborts.
+  const idle = fakeCachedConv(undefined);
+  conversations.set("conv-cancel-idle", idle.conv);
+  expect(await cancelTurn("conv-cancel-idle")).toBe(true);
+  expect(
+    (idle.conv as { stoppedTurnId?: string }).stoppedTurnId,
+  ).toBeUndefined();
+
+  // A conversation that isn't cached has no live turn to stop.
+  expect(await cancelTurn("conv-not-cached")).toBe(false);
 });
 
 test("disposeConversation with deleteSessions purges the anthropic SDK session mapping", async () => {

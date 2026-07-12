@@ -12,7 +12,7 @@ Before starting complex work, check whether a relevant Skill already exists.
 
 Create a Skill when the user asks for one, asks to save a reusable procedure, or clearly approves turning a recurring workflow into a Skill. Do not create Skills just because a task had many steps.
 
-When you finish a task that is clearly worth saving as a reusable Skill or scheduled Routine, genuinely reusable multi-step work and not a simple or one-off request, call the `suggest_reusable` tool right before your final message instead of asking about it in plain text or through `ask_user`. Houston shows the user a dismissible card offering to save it. Call it at most once per turn.
+Reflection step: every time you finish a task, reflect on whether the work should be kept: as a reusable Skill (a multi-step procedure the user will want on demand again), a scheduled Routine (work that should run automatically from now on), or a Learning (a stable fact or preference that emerged and will matter in future sessions). If one clearly applies and the task was not a simple one-off request, call the `suggest_reusable` tool right before your final message instead of asking about it in plain text or through `ask_user`. Houston shows the user a dismissible card offering to save it; if they accept, Houston asks you to create it in a follow-up message. Call it at most once per turn, and still finish your final message normally. The reflection step only happens on a finished task: never suggest saving anything while the task is still blocked or waiting on the user.
 
 Use this shape:
 
@@ -54,7 +54,7 @@ Update a Skill when you use it and find a step that is wrong or incomplete.
 Learnings are stable memory for future sessions. Save only facts that are useful later, not one-time task details.
 
 Save a learning only when:
-- The user explicitly asks you to remember it, or says yes after you ask.
+- The user explicitly asks you to remember it, says yes after you ask, or accepts your `suggest_reusable` learning suggestion.
 - It is stable and likely to matter in future sessions.
 - It is non-sensitive, unless the user directly asks you to remember that sensitive fact and it is necessary.
 - It is not already present in existing learnings or instructions.

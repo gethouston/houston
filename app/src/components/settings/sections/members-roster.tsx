@@ -43,13 +43,13 @@ export function MemberRoster({
           return (
             <li
               key={member.userId}
-              className="flex items-center gap-3 rounded-xl border border-foreground/5 bg-card px-4 py-3"
+              className="flex items-center gap-3 rounded-xl border border-ink/5 bg-card px-4 py-3"
             >
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">
                   {member.email ?? member.userId}
                   {isSelf && (
-                    <span className="ml-2 text-xs text-muted-foreground">
+                    <span className="ml-2 text-xs text-ink-muted">
                       {t("members.roster.you")}
                     </span>
                   )}
@@ -80,14 +80,14 @@ export function MemberRoster({
                   </SelectContent>
                 </Select>
               ) : (
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
+                <span className="rounded-full bg-chip px-3 py-1 text-xs text-ink-muted">
                   {roleLabel(member.role)}
                 </span>
               )}
               {canEdit && (
                 <Button
                   variant="ghost"
-                  className="rounded-full text-destructive hover:text-destructive"
+                  className="rounded-full text-danger hover:text-danger"
                   onClick={() => setPendingRemove(member)}
                 >
                   {t("members.roster.remove")}

@@ -38,13 +38,13 @@ struct AgentFilterBar: View {
         HoustonAvatar(agentColorHex: colorHex, diameter: 20)
         Text(label)
           .font(Typography.label)
-          .foregroundStyle(selected ? theme.accentFg : theme.foreground)
+          .foregroundStyle(selected ? theme.hoverText : theme.ink)
           .lineLimit(1)
       }
       .padding(.horizontal, Spacing.space10)
       .padding(.vertical, Spacing.space6)
-      .background(selected ? theme.accent : theme.muted, in: Capsule())
-      .overlay(Capsule().strokeBorder(theme.border, lineWidth: selected ? 0 : 1))
+      .background(selected ? theme.hover : theme.chipSubtle, in: Capsule())
+      .overlay(Capsule().strokeBorder(theme.line, lineWidth: selected ? 0 : 1))
     }
     .buttonStyle(.plain)
     .accessibilityAddTraits(selected ? [.isSelected] : [])

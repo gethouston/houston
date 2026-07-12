@@ -175,6 +175,14 @@ export async function cancelTurn(id: string): Promise<boolean> {
   // the web adapter to render it as a neutral "you stopped it", not a failure.
   // Stamped with the EXECUTING turn's id (absent when the stop raced turn end)
   // so the stop terminates exactly the turn the user watched.
+  //
+  // Mark the executing turn as stopped so execTurn can stamp it durably: pi
+  // routes the aborted turn down the usage path (prompt() resolves clean, no
+  // provider_error), so without this marker the persisted assistant message
+  // would carry no trace of the stop and a reload would re-derive it as a clean
+  // done. Only when a turn is actually executing (turnId set) — a stop that
+  // raced turn end has nothing to mark.
+  if (conv.turnId) conv.stoppedTurnId = conv.turnId;
   publish(id, {
     type: "error",
     data: { message: STOPPED_BY_USER },

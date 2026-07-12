@@ -16,7 +16,7 @@
  * edge once scrolling — and is hidden while transcribing.
  *
  * Rendered on a devicePixelRatio-scaled <canvas> for crisp, cheap drawing.
- * Colors come from `currentColor` (the wrapper carries `text-muted-foreground`)
+ * Colors come from `currentColor` (the wrapper carries `text-ink-muted`)
  * so it themes without hardcoded hex. Levels are polled with requestAnimationFrame
  * — never through React state — so per-frame updates never trigger a re-render.
  */
@@ -134,7 +134,7 @@ export function DictationWaveform({ control }: { control: DictationControl }) {
 
   return (
     <div
-      className="relative flex h-9 min-w-0 flex-1 items-center text-muted-foreground"
+      className="relative flex h-9 min-w-0 flex-1 items-center text-ink-muted"
       role="status"
       aria-live="polite"
     >
@@ -146,7 +146,7 @@ export function DictationWaveform({ control }: { control: DictationControl }) {
       <span
         ref={rocketRef}
         aria-hidden="true"
-        className="pointer-events-none absolute left-0 top-1/2 text-foreground"
+        className="pointer-events-none absolute left-0 top-1/2 text-ink"
         style={{ opacity: 0, willChange: "transform" }}
       >
         <RocketIcon style={{ width: ROCKET_PX, height: ROCKET_PX }} />

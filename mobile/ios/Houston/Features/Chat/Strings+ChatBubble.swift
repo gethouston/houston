@@ -4,5 +4,5 @@ import Foundation
 // `Strings+Chat.swift` so parallel surface work never collides on that file.
 extension Strings.Chat {
   /// Long-press context-menu action that copies a message's raw text.
-  static let copy = "Copy"
+  static let copy = String(localized: "chat.copy", defaultValue: "Copy")
 }

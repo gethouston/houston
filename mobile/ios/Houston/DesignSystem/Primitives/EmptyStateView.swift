@@ -17,26 +17,26 @@ struct EmptyStateView: View {
             if let systemImage {
                 Image(systemName: systemImage)
                     .font(Typography.font(HoustonFontSize.h1))
-                    .foregroundStyle(theme.mutedFg)
+                    .foregroundStyle(theme.inkMuted)
             }
             Text(title)
                 .font(Typography.title)
-                .foregroundStyle(theme.foreground)
+                .foregroundStyle(theme.ink)
                 .multilineTextAlignment(.center)
             if let description {
                 Text(description)
                     .font(Typography.callout)
-                    .foregroundStyle(theme.mutedFg)
+                    .foregroundStyle(theme.inkMuted)
                     .multilineTextAlignment(.center)
             }
             if let ctaTitle, let ctaAction {
                 Button(action: ctaAction) {
                     Text(ctaTitle)
                         .font(Typography.label)
-                        .foregroundStyle(theme.primaryFg)
+                        .foregroundStyle(theme.actionText)
                         .padding(.horizontal, Spacing.space16)
                         .padding(.vertical, Spacing.space8)
-                        .background(theme.primary, in: Capsule())
+                        .background(theme.action, in: Capsule())
                 }
                 .padding(.top, Spacing.space4)
             }

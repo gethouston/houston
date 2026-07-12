@@ -3,11 +3,34 @@
 /** Whether a routine's runs share one chat ("shared", default) or each run gets its own ("per_run"). */
 export type RoutineChatMode = "shared" | "per_run";
 
+/**
+ * Binds a routine to an external event (a Composio trigger) as its wake
+ * mechanism instead of a cron schedule. User intent only — no Composio instance
+ * ids live here; the gateway/host reconciler owns the actual trigger instance
+ * keyed by the routine id. A routine has EXACTLY ONE of `schedule` or `trigger`.
+ */
+export interface RoutineTriggerBinding {
+  /** Composio toolkit slug, e.g. "gmail". */
+  toolkit: string;
+  /** Composio trigger-type slug, e.g. "GMAIL_NEW_GMAIL_MESSAGE". */
+  trigger_slug: string;
+  /** Instance config validated against the trigger type's config schema. */
+  trigger_config: Record<string, unknown>;
+  /** Pinned when the user has >1 connected account for the toolkit. */
+  connected_account_id?: string;
+}
+
 export interface Routine {
   id: string;
   name: string;
   prompt: string;
-  schedule: string;
+  /**
+   * Cron expression that wakes this routine. Absent on trigger routines —
+   * exactly one of `schedule` / `trigger` is set (enforced in normalizeRoutines).
+   */
+  schedule?: string;
+  /** External-event wake binding. Absent on cron routines (see `schedule`). */
+  trigger?: RoutineTriggerBinding;
   enabled: boolean;
   suppress_when_silent: boolean;
   chat_mode: RoutineChatMode;
@@ -38,7 +61,10 @@ export interface Routine {
 export interface NewRoutine {
   name: string;
   prompt: string;
-  schedule: string;
+  /** Cron expression; supply this OR `trigger`, never both. */
+  schedule?: string;
+  /** External-event wake binding; supply this OR `schedule`, never both. */
+  trigger?: RoutineTriggerBinding;
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
@@ -56,7 +82,10 @@ export interface NewRoutine {
 export interface RoutineUpdate {
   name?: string;
   prompt?: string;
+  /** Switch to (or edit) a cron wake; clears `trigger` when the routine is saved. */
   schedule?: string;
+  /** Switch to (or edit) an event wake; clears `schedule` when the routine is saved. */
+  trigger?: RoutineTriggerBinding;
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;

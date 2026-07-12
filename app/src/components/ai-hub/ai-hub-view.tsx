@@ -91,7 +91,7 @@ export function AiHubView() {
           {/* Fixed masthead: the hero title + tabs never scroll away. No
               background of its own — it's a non-overlapping flex sibling of the
               scroll region below (nothing renders behind it), so it inherits the
-              `.canvas-screen` glass. An opaque `bg-background` here painted a
+              `.canvas-screen` glass. An opaque `bg-input` here painted a
               solid slab that broke the frosted-glass screen in dark mode (the
               aurora bleeds through everywhere else). */}
           <div className="shrink-0">
@@ -189,9 +189,9 @@ function HubSkeleton({ loading }: { loading: boolean }): ReactNode {
   if (!loading) return null;
   return (
     <div className="flex flex-col gap-4">
-      <div className="h-8 w-40 rounded-lg bg-secondary" />
-      <div className="h-4 w-2/3 rounded-lg bg-secondary" />
-      <div className="mt-4 h-9 w-56 rounded-full bg-secondary" />
+      <div className="h-8 w-40 rounded-lg bg-chip" />
+      <div className="h-4 w-2/3 rounded-lg bg-chip" />
+      <div className="mt-4 h-9 w-56 rounded-full bg-chip" />
     </div>
   );
 }

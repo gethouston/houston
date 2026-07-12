@@ -146,12 +146,10 @@ export function ModelPicker({
           type="button"
           aria-label={labels.back}
           onClick={back}
-          className="flex items-center gap-1.5 border-b border-border px-3 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="flex items-center gap-1.5 border-b border-line px-3 py-2 text-left text-xs font-medium text-ink-muted transition-colors hover:text-ink"
         >
           <ChevronLeft className="size-4 shrink-0" />
-          <span className="truncate text-foreground">
-            {activeProvider.name}
-          </span>
+          <span className="truncate text-ink">{activeProvider.name}</span>
         </button>
       )}
 

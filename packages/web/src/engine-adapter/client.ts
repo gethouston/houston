@@ -22,6 +22,7 @@ export { HoustonEngineError, isHoustonEngineError } from "./client/errors";
 import { ActivitiesMixin } from "./client/activities-mixin";
 import { AgentFilesMixin } from "./client/agent-files-mixin";
 import { AgentsMixin } from "./client/agents-mixin";
+import { ApiKeysMixin } from "./client/api-keys-mixin";
 import { HoustonClientBase } from "./client/base";
 import { BootMixin } from "./client/boot-mixin";
 import { ChatHistoryMixin } from "./client/chat-history-mixin";
@@ -37,6 +38,7 @@ import { ProviderCredentialsMixin } from "./client/provider-credentials-mixin";
 import { ProviderLoginMixin } from "./client/provider-login-mixin";
 import { ProviderStatusMixin } from "./client/provider-status-mixin";
 import { RoutinesSkillsMixin } from "./client/routines-skills-mixin";
+import { StoreMixin } from "./client/store-mixin";
 import { TeamsMixin } from "./client/teams-mixin";
 import { WorkspacesMixin } from "./client/workspaces-mixin";
 
@@ -61,8 +63,14 @@ const Composed = BootMixin(
                             IntegrationsMixin(
                               OrgsMixin(
                                 TeamsMixin(
-                                  PortableMixin(
-                                    LegacyUnsupportedMixin(HoustonClientBase),
+                                  ApiKeysMixin(
+                                    StoreMixin(
+                                      PortableMixin(
+                                        LegacyUnsupportedMixin(
+                                          HoustonClientBase,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),

@@ -14,12 +14,12 @@ struct StatusChip: View {
                 .frame(width: 6, height: 6)
             Text(label)
                 .font(Typography.label)
-                .foregroundStyle(theme.foreground)
+                .foregroundStyle(theme.ink)
         }
         .padding(.horizontal, Spacing.space8)
         .padding(.vertical, Spacing.space4)
-        .background(theme.muted, in: Capsule())
-        .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
+        .background(theme.chipSubtle, in: Capsule())
+        .overlay(Capsule().strokeBorder(theme.line, lineWidth: 1))
     }
 
     private var label: String {
@@ -36,9 +36,9 @@ struct StatusChip: View {
         switch state {
         case .running: return GlowColor.running
         case .needsYou: return theme.warning
-        case .error: return theme.destructive
+        case .error: return theme.danger
         case .done: return theme.success
-        case .archived, .unknown: return theme.mutedFg
+        case .archived, .unknown: return theme.inkMuted
         }
     }
 }
@@ -54,7 +54,7 @@ struct NeedsYouChip: View {
     var body: some View {
         Text(Strings.cappedCount(count))
             .font(Typography.captionStrong)
-            .foregroundStyle(theme.warningFg)
+            .foregroundStyle(theme.warningText)
             .padding(.horizontal, Spacing.space6)
             .padding(.vertical, Spacing.space2)
             .background(Capsule().fill(theme.warning))

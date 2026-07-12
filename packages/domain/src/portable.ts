@@ -143,7 +143,15 @@ export function portableInventory(pkg: PortablePackage): PortableInventory {
     routines: pkg.routines.map((r) => ({
       id: r.id,
       name: r.name,
-      schedule: r.schedule,
+      ...(r.schedule ? { schedule: r.schedule } : {}),
+      ...(r.trigger
+        ? {
+            trigger: {
+              toolkit: r.trigger.toolkit,
+              trigger_slug: r.trigger.trigger_slug,
+            },
+          }
+        : {}),
     })),
     learnings: pkg.learnings.map((l) => ({ id: l.id, text: l.text })),
   };

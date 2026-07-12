@@ -120,7 +120,7 @@ export function ProviderLoginDialog({
               {t("providerLogin.browserDescription")}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex items-center gap-3 py-2 text-[13px] text-muted-foreground">
+          <div className="flex items-center gap-3 py-2 text-[13px] text-ink-muted">
             <Loader2 className="size-4 animate-spin" aria-hidden />
             <span>{t("providerLogin.deviceWaiting")}</span>
           </div>
@@ -129,7 +129,7 @@ export function ProviderLoginDialog({
               type="button"
               variant="link"
               size="sm"
-              className="h-auto gap-1.5 p-0 text-muted-foreground"
+              className="h-auto gap-1.5 p-0 text-ink-muted"
               onClick={() => void tauriSystem.openUrl(url)}
             >
               <ExternalLink className="size-3.5" />
@@ -214,7 +214,7 @@ export function ProviderLoginDialog({
               {/* Setup-token steps from the runtime, shown prominently above
                   the paste field. The docs `url` is only a small reference
                   link (opened on click) — never auto-opened. */}
-              <p className="rounded-md border bg-muted/40 p-3 text-[13px] whitespace-pre-line">
+              <p className="rounded-md border bg-chip-subtle/40 p-3 text-[13px] whitespace-pre-line">
                 {instructions}
               </p>
               {host && (
@@ -222,7 +222,7 @@ export function ProviderLoginDialog({
                   type="button"
                   variant="link"
                   size="sm"
-                  className="h-auto gap-1.5 p-0 text-muted-foreground"
+                  className="h-auto gap-1.5 p-0 text-ink-muted"
                   onClick={() => void tauriSystem.openUrl(url)}
                 >
                   <ExternalLink className="size-3.5" />
@@ -233,7 +233,7 @@ export function ProviderLoginDialog({
           ) : (
             <>
               {host && (
-                <p className="text-[13px] text-muted-foreground">
+                <p className="text-[13px] text-ink-muted">
                   {t("providerLogin.destinationHint", { host })}
                 </p>
               )}
@@ -282,7 +282,7 @@ export function ProviderLoginDialog({
               {showUrl && (
                 <div
                   id="provider-login-url"
-                  className="max-h-24 select-all overflow-y-auto rounded-md border bg-muted/40 p-3 text-[12px] break-all font-mono"
+                  className="max-h-24 select-all overflow-y-auto rounded-md border bg-chip-subtle/40 p-3 text-[12px] break-all font-mono"
                 >
                   {url}
                 </div>
@@ -319,13 +319,13 @@ export function ProviderLoginDialog({
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder={t("providerLogin.codePlaceholder")}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full rounded-md border bg-input px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-focus"
                   disabled={submitting}
                 />
               </div>
 
               {error && (
-                <p className="text-[12px] text-destructive" role="alert">
+                <p className="text-[12px] text-danger" role="alert">
                   {error}
                 </p>
               )}

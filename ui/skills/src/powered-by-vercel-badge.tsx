@@ -17,7 +17,7 @@ export function PoweredByVercelBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 text-xs text-muted-foreground",
+        "inline-flex items-center gap-1.5 text-xs text-ink-muted",
         className,
       )}
     >

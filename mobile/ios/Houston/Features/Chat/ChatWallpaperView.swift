@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The signature chat wallpaper: `theme.background` overlaid with a sparse,
+/// The signature chat wallpaper: `theme.input` overlaid with a sparse,
 /// static diagonal lattice of the Houston helmet glyph at very low contrast —
 /// the Houston-branded answer to WhatsApp's doodle background, whose flat
 /// backdrop is the #1 "this isn't a messenger" tell.
@@ -19,7 +19,7 @@ struct ChatWallpaperView: View {
 
   var body: some View {
     ZStack {
-      theme.background
+      theme.input
       if ChatWallpaperVisibility.showsPattern(reduceTransparency: reduceTransparency) {
         pattern
       }
@@ -35,7 +35,7 @@ struct ChatWallpaperView: View {
       let side = ChatWallpaperLayout.glyphSize
       let base = HelmetShape().path(in: CGRect(x: 0, y: 0, width: side, height: side))
       let shading = GraphicsContext.Shading.color(
-        theme.foreground.opacity(ChatWallpaperLayout.patternOpacity))
+        theme.ink.opacity(ChatWallpaperLayout.patternOpacity))
 
       for center in ChatWallpaperLayout.glyphCenters(in: size) {
         let stamped = base.applying(

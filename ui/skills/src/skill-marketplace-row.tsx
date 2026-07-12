@@ -81,14 +81,12 @@ export function SkillMarketplaceRow({
           onOpenInfo();
         }
       }}
-      className="group flex w-full cursor-pointer items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 text-left transition-colors hover:bg-foreground/[0.05] focus-visible:bg-foreground/[0.05] focus-visible:outline-none"
+      className="group flex w-full cursor-pointer items-center gap-3 rounded-xl bg-chip px-3 py-2.5 text-left transition-colors hover:bg-ink/[0.05] focus-visible:bg-ink/[0.05] focus-visible:outline-none"
     >
       <SkillOwnerAvatar owner={owner} size="md" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium text-foreground">
-          {title}
-        </p>
-        <p className="truncate text-[11px] text-muted-foreground">{subtitle}</p>
+        <p className="truncate text-[13px] font-medium text-ink">{title}</p>
+        <p className="truncate text-[11px] text-ink-muted">{subtitle}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <button
@@ -102,8 +100,8 @@ export function SkillMarketplaceRow({
           className={cn(
             "inline-flex h-7 shrink-0 items-center gap-1 rounded-full px-3 text-xs font-medium transition-colors",
             installed
-              ? "bg-secondary text-muted-foreground"
-              : "bg-primary text-primary-foreground hover:bg-primary/90",
+              ? "bg-chip text-ink-muted"
+              : "bg-action text-action-text hover:bg-action/90",
             installing && "cursor-wait opacity-70",
           )}
         >
@@ -128,7 +126,7 @@ export function SkillMarketplaceRow({
             e.stopPropagation();
             onOpenInfo();
           }}
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
+          className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-ink/[0.05] hover:text-ink"
         >
           <Info className="size-4" />
         </button>

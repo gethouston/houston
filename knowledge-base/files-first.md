@@ -2,6 +2,21 @@
 
 Houston uses files, not DB, for agent-visible data. SQLite only for chat replay + app prefs.
 
+> **Authority differs by deployment (read this first).** On **desktop and
+> self-host** the `.houston/` files ARE the authority — the local disk is ground
+> truth, exactly as this doc describes. On **managed cloud** they are NOT: the
+> pod's `/data` is a **disposable cache** of the gateway's object store. The host
+> hydrates it on boot (`HOUSTON_STORE_URL` set → `StoreSyncDaemon.hydrate()` must
+> succeed before HTTP listen), the runtime reads/writes the local files as usual,
+> and a debounced `syncBack` mirrors every write to the store
+> (`PUT /v1/pod/store/{org}/{agent}/objects/...`, host-token auth) — the store is
+> authoritative and the pod is replaceable (`packages/host/src/store-sync/`,
+> `packages/host/src/local/host.ts` `start()`). So everywhere below, read "the
+> file is the source of truth" as **the LOCAL representation** the app and agent
+> read/write; on managed cloud its durable copy lives in the object store, and a
+> fresh pod is expected to boot empty and rehydrate. The layout, atomic-write
+> discipline, schemas, and reactivity model are identical in both worlds.
+
 > **Updated: the backend is the TypeScript host now, not the Rust engine.** The
 > `.houston/` layout, atomic-write discipline, JSON schemas, and AI-native
 > reactivity model below all carry over unchanged — but the implementation moved

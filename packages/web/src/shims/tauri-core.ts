@@ -201,7 +201,8 @@ export async function invoke<T = unknown>(
       } as T;
 
     // ── Desktop-only: surface a clear error if a user triggers them ─────
-    case "start_oauth_loopback": // desktop uses a native loopback listener; web uses the redirect flow
+    case "start_oauth_loopback": // desktop uses a native loopback listener; web uses the firebase-js-sdk popup
+    case "cancel_oauth_loopback": // frees the desktop loopback port; web has no local listener to cancel
     case "start_codex_oauth_loopback": // desktop relays the Codex 1455 callback; web stays on device-code
     case "start_claude_login": // desktop runs `claude auth login`; web uses the setup-token paste flow
     case "cancel_claude_login": // desktop-only sign-in helper; no web counterpart

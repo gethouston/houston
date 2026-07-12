@@ -1,4 +1,5 @@
 import * as controlPlane from "../control-plane";
+import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 
 export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
@@ -92,6 +93,15 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (!this.ctx.cp) return null;
       return controlPlane.agentIntegrationGrants(this.ctx.cp, agentSlugOrId);
     }
+    // Trigger status degrades to `null` (triggers unsupported here) the same way
+    // grants do: no gateway (desktop) or a host that 404s the route → the UI hides
+    // the badge rather than erroring. A gateway that serves triggers answers 200.
+    async agentTriggerStatus(
+      agentId: string,
+    ): Promise<controlPlane.TriggerStatusItem[] | null> {
+      if (!this.ctx.cp) return null;
+      return controlPlane.agentTriggerStatus(this.ctx.cp, agentId);
+    }
     async setAgentIntegrationGrants(
       agentSlugOrId: string,
       toolkits: string[],
@@ -107,6 +117,67 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
       // above) stays on cpFetch: its GET carries `transientRetryFetch`, which the
       // SDK path lacks, so delegating it would drop that retry resilience.
       await this.ctx.sdk.integrations.setGrants(agentSlugOrId, toolkits);
+    }
+
+    // ---- per-agent action approvals ----
+    // Unlike grants, these are HOST routes that work in BOTH deployments: the
+    // local/self-host host and the cloud gateway each serve
+    // `/v1/agents/:id/action-approvals[...]` for the signed-in owner. So they
+    // route through `authFetch` against `baseUrl` (bearer + `x-houston-org`,
+    // live in both) — never cp-gated, or the local approval card would break.
+    async agentActionApprovals(
+      agentSlugOrId: string,
+    ): Promise<{ always: string[] }> {
+      const res = await this.ctx.authFetch(
+        `${this.ctx.baseUrl}/v1/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals`,
+      );
+      // A host that does not serve the gate answers 404 → nothing pre-approved.
+      // The card only shows where the gate exists, so degrade rather than throw
+      // (mirrors the shim's `agentActionApprovals`).
+      if (res.status === 404) return { always: [] };
+      if (!res.ok)
+        throw new HoustonEngineError(
+          res.status,
+          await res.json().catch(() => ({})),
+        );
+      return (await res.json()) as { always: string[] };
+    }
+    async allowActionAlways(
+      agentSlugOrId: string,
+      action: string,
+    ): Promise<{ always: string[] }> {
+      const res = await this.ctx.authFetch(
+        `${this.ctx.baseUrl}/v1/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals/always`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        },
+      );
+      if (!res.ok)
+        throw new HoustonEngineError(
+          res.status,
+          await res.json().catch(() => ({})),
+        );
+      return (await res.json()) as { always: string[] };
+    }
+    async addActionApprovalTicket(
+      agentSlugOrId: string,
+      hash: string,
+    ): Promise<void> {
+      const res = await this.ctx.authFetch(
+        `${this.ctx.baseUrl}/v1/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals/tickets`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hash }),
+        },
+      );
+      if (!res.ok)
+        throw new HoustonEngineError(
+          res.status,
+          await res.json().catch(() => ({})),
+        );
     }
   }
   return Teams;

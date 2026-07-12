@@ -112,7 +112,7 @@ function NonReadyBody({
   return (
     <>
       {status === "error" ? (
-        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+        <div className="flex items-start gap-2 text-sm text-ink-muted">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           <span>{l.loadFailed}</span>
         </div>
@@ -121,10 +121,7 @@ function NonReadyBody({
           {SKELETON_LINES.map((line) => (
             <div
               key={line.key}
-              className={cn(
-                "h-3 animate-pulse rounded bg-secondary",
-                line.width,
-              )}
+              className={cn("h-3 animate-pulse rounded bg-chip", line.width)}
             />
           ))}
         </div>
@@ -171,9 +168,9 @@ function ReadyEditBody({
         onChange={(e) => setDraft(e.target.value)}
         placeholder={l.editorPlaceholder}
         className={cn(
-          "h-80 w-full resize-none overflow-y-auto rounded-lg border border-border/20 bg-background px-4 py-3",
-          "font-mono text-sm leading-relaxed text-foreground",
-          "placeholder:text-muted-foreground/60",
+          "h-80 w-full resize-none overflow-y-auto rounded-lg border border-line/20 bg-input px-4 py-3",
+          "font-mono text-sm leading-relaxed text-ink",
+          "placeholder:text-ink-muted/60",
           "outline-none transition-shadow duration-200 focus:shadow-sm",
         )}
       />
@@ -210,7 +207,7 @@ function FooterButtons({
         type="button"
         onClick={onCancel}
         disabled={saving}
-        className="inline-flex h-9 items-center rounded-full px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-foreground/[0.05] hover:text-foreground disabled:opacity-60"
+        className="inline-flex h-9 items-center rounded-full px-4 text-sm font-medium text-ink-muted transition-colors hover:bg-ink/[0.05] hover:text-ink disabled:opacity-60"
       >
         {l.cancel}
       </button>
@@ -219,7 +216,7 @@ function FooterButtons({
         onClick={onSave}
         disabled={disabled}
         className={cn(
-          "inline-flex h-9 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90",
+          "inline-flex h-9 items-center rounded-full bg-action px-5 text-sm font-medium text-action-text transition-colors hover:bg-action/90",
           disabled && "opacity-60",
           saving && "cursor-wait",
         )}

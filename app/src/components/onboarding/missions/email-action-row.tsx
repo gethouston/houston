@@ -19,7 +19,7 @@ interface EmailActionRowProps {
 
 /**
  * A one-click brand action row for the connect-email step. Reads as a real
- * button (filled `bg-secondary` row + a recessed `bg-background` media tile +
+ * button (filled `bg-chip` row + a recessed `bg-input` media tile +
  * label + a trailing "go" chevron), rhyming with the AI step's provider rows.
  *
  * Three states:
@@ -48,21 +48,21 @@ export function EmailActionRow({
       aria-label={loading ? cancelLabel : undefined}
       onClick={onClick}
       className={cn(
-        "group/row flex w-full items-center gap-3 rounded-xl bg-secondary px-4 py-3 text-left transition-colors",
-        disabled ? "cursor-not-allowed opacity-50" : "hover:bg-accent",
+        "group/row flex w-full items-center gap-3 rounded-xl bg-chip px-4 py-3 text-left transition-colors",
+        disabled ? "cursor-not-allowed opacity-50" : "hover:bg-hover",
       )}
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-input">
         {icon}
       </span>
       {loading ? (
         <>
-          <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
+          <span className="min-w-0 flex-1 text-sm font-medium text-ink">
             {/* Resting: "Connecting". Hover: "Cancel" — the click aborts. */}
             <span className="group-hover/row:hidden">{busyLabel}</span>
             <span className="hidden group-hover/row:inline">{cancelLabel}</span>
           </span>
-          <span className="relative size-4 shrink-0 text-muted-foreground">
+          <span className="relative size-4 shrink-0 text-ink-muted">
             <Loader2
               className="size-4 animate-spin transition-opacity group-hover/row:opacity-0"
               aria-hidden="true"
@@ -75,11 +75,11 @@ export function EmailActionRow({
         </>
       ) : (
         <>
-          <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
+          <span className="min-w-0 flex-1 text-sm font-medium text-ink">
             {label}
           </span>
           <ChevronRight
-            className="size-4 shrink-0 text-muted-foreground"
+            className="size-4 shrink-0 text-ink-muted"
             aria-hidden="true"
           />
         </>

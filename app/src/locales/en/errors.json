@@ -1,4 +1,16 @@
 {
   "generic": "Something went wrong.",
-  "unknown": "Unknown error"
+  "unknown": "Unknown error",
+  "auth": {
+    "invalidCredentials": "That sign-in didn't work. Check your details and try again.",
+    "credentialMismatch": "This email is already linked to a different sign-in method. Use the option you signed up with.",
+    "providerDisabled": "This sign-in option isn't available yet. Try another one.",
+    "otpInvalid": "That code is wrong or expired. Request a new one and try again.",
+    "otpRateLimited": "Too many attempts. Wait a minute, then try again.",
+    "network": "Can't reach the sign-in service. Check your connection and try again.",
+    "tooManyAttempts": "Too many attempts. Wait a few minutes, then try again.",
+    "userDisabled": "This account has been disabled. Contact support.",
+    "configError": "Sign-in isn't set up correctly. Please contact support.",
+    "generic": "Sign-in failed. Please try again."
+  }
 }

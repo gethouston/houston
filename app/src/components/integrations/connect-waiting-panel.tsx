@@ -18,14 +18,14 @@ export function ConnectWaitingPanel({
 }) {
   const { t } = useTranslation("integrations");
   return (
-    <div className="rounded-xl border border-border bg-background p-3">
+    <div className="rounded-xl border border-line bg-input p-3">
       <div className="flex items-start gap-2.5">
-        <Spinner className="mt-0.5 size-4 text-muted-foreground" />
+        <Spinner className="mt-0.5 size-4 text-ink-muted" />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-foreground">
+          <p className="text-[13px] font-medium text-ink">
             {t("waiting.title", { app: appName })}
           </p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <p className="mt-0.5 text-[11px] text-ink-muted">
             {t("waiting.body")}
           </p>
         </div>
@@ -34,21 +34,21 @@ export function ConnectWaitingPanel({
         <button
           type="button"
           onClick={() => connectFlow.checkNow()}
-          className="inline-flex h-7 items-center rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          className="inline-flex h-7 items-center rounded-full bg-action px-3 text-xs font-medium text-action-text transition-colors hover:bg-action/90"
         >
           {t("waiting.check")}
         </button>
         <button
           type="button"
           onClick={() => void connectFlow.reopen()}
-          className="inline-flex h-7 items-center rounded-full border border-border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+          className="inline-flex h-7 items-center rounded-full border border-line bg-input px-3 text-xs font-medium text-ink transition-colors hover:bg-chip"
         >
           {t("waiting.reopen")}
         </button>
         <button
           type="button"
           onClick={() => connectFlow.cancel()}
-          className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary"
+          className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium text-ink-muted transition-colors hover:bg-chip"
         >
           {t("waiting.cancel")}
         </button>

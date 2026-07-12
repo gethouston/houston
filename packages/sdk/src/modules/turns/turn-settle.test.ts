@@ -192,6 +192,63 @@ test("a persisted providerError for our turn settles as the typed card", () => {
   expect(items.some((i) => i.feed_type === "provider_error")).toBe(true);
 });
 
+test("a persisted stopped reply settles needs_you with the standard stop line, not a false done", () => {
+  const { s, items, statuses } = run(
+    [
+      { role: "user", content: "do it", ts: 1, turnId: "t-1" },
+      // The runtime never publishes a clean `done` for a stopped turn; adopting
+      // it as a plain reply would collapse to a false `done`.
+      {
+        role: "assistant",
+        content: "working on",
+        ts: 2,
+        turnId: "t-1",
+        stopped: true,
+      },
+    ],
+    "t-1",
+  );
+  expect(s.settled).toBe(true);
+  // Mirrors the LIVE stop settle recovered from history: needs_you, the standard
+  // "Stopped by user" line, an `error` status with no text — same code path.
+  expect(s.terminal).toBe("needs_you");
+  expect(items).toContainEqual({
+    feed_type: "system_message",
+    data: "Stopped by user",
+  });
+  expect(items.some((i) => i.feed_type === "provider_error")).toBe(false);
+  expect(statuses).toEqual([["error", undefined]]);
+});
+
+test("a stopped reply with an (illegal) pendingInteraction: stopped wins, no card is rendered", () => {
+  const interaction: PendingInteraction = {
+    steps: [{ kind: "question", id: "q1", question: "which date?" }],
+  };
+  const { s, items } = run(
+    [
+      { role: "user", content: "do it", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        turnId: "t-1",
+        stopped: true,
+        pendingInteraction: interaction,
+      },
+    ],
+    "t-1",
+  );
+  // Precedence: `stopped` wins — a stopped turn must never render a card, so the
+  // interaction is never adopted onto the board.
+  expect(s.terminal).toBe("needs_you");
+  expect(s.pendingInteraction).toBeNull();
+  expect(items.some((i) => i.feed_type === "provider_error")).toBe(false);
+  expect(items).toContainEqual({
+    feed_type: "system_message",
+    data: "Stopped by user",
+  });
+});
+
 test("our user message with NO assistant reply for our turnId settles as the dead-turn ERROR", () => {
   const { s, items, statuses } = run(
     [{ role: "user", content: "hi", ts: 1, turnId: "t-1" }],
@@ -344,6 +401,56 @@ test("finishOk with suggest_reusable co-occurring with a question still settles 
         reusableKind: "skill",
         title: "Weekly sales summary",
         rationale: "Saves you rebuilding it every Monday.",
+      },
+    ],
+  };
+  finishOk(s);
+  expect(s.terminal).toBe("needs_you");
+});
+
+test("finishOk with a single approval step settles needs_you (approvals are BLOCKING)", () => {
+  const { statuses, output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-approval", output);
+  s.text = "Ready to send the email?";
+  // A permission the turn is waiting on — nothing about it is optional, so it
+  // must block completion (unlike a lone suggest_reusable).
+  s.pendingInteraction = {
+    steps: [
+      {
+        kind: "approval",
+        id: "a1",
+        toolkit: "gmail",
+        action: "GMAIL_SEND_DRAFT",
+        paramsHash: "h1",
+      },
+    ],
+  };
+  finishOk(s);
+  expect(s.terminal).toBe("needs_you");
+  expect(statuses).toEqual([["completed", undefined]]);
+});
+
+test("finishOk with an approval step co-occurring with suggest_reusable still settles needs_you", () => {
+  const { output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-approval-mixed", output);
+  s.text = "Ready?";
+  // suggest_reusable only settles `done` when it is ALONE — a blocking approval
+  // beside it means the mission is not done.
+  s.pendingInteraction = {
+    steps: [
+      {
+        kind: "approval",
+        id: "a1",
+        toolkit: "gmail",
+        action: "GMAIL_SEND_DRAFT",
+        paramsHash: "h1",
+      },
+      {
+        kind: "suggest_reusable",
+        id: "r1",
+        reusableKind: "skill",
+        title: "Send the weekly email",
+        rationale: "Saves you doing it every Monday.",
       },
     ],
   };

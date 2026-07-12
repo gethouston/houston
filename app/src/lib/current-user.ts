@@ -1,27 +1,30 @@
-import { isAuthConfigured, supabase } from "./supabase";
+import {
+  isIdentityConfigured,
+  SESSION_QUERY_KEY,
+  type Session,
+} from "./identity";
+import { queryClient } from "./query-client";
 
 /**
- * Synchronous accessor for the signed-in user's email. Returns `null`
- * when signed out or when Supabase isn't configured (dev builds without
- * SUPABASE_URL).
+ * Synchronous accessor for the signed-in user's email. Returns `null` when
+ * signed out or when identity isn't configured (dev builds without Firebase creds).
  *
- * Why a module-level cache instead of `supabase.auth.getSession()`:
- * call sites are inside non-async UI callbacks (toast actions) and
- * bug-report payload construction. The cache is kept fresh by
- * subscribing once to `onAuthStateChange` at module load, mirroring
- * how `useSession` keeps the React tree in sync.
+ * Why a module-level cache instead of an async session read: call sites are
+ * inside non-async UI callbacks (toast actions) and bug-report payload
+ * construction. The cache subscribes once to the `["session"]` TanStack cache —
+ * the single source both surfaces write (desktop `useSession`/refresh, web
+ * `cloud-login`/`useSession`) — so it stays fresh without a second auth channel.
  */
 let cachedEmail: string | null = null;
 
-if (isAuthConfigured()) {
-  // Seed from any persisted session so reports fired before the first
-  // auth-state event still carry the email.
-  supabase.auth.getSession().then(({ data }) => {
-    cachedEmail = data.session?.user?.email ?? null;
-  });
-
-  supabase.auth.onAuthStateChange((_event, session) => {
-    cachedEmail = session?.user?.email ?? null;
+if (isIdentityConfigured()) {
+  const read = () => {
+    const session = queryClient.getQueryData<Session | null>(SESSION_QUERY_KEY);
+    cachedEmail = session?.email ?? null;
+  };
+  read(); // seed from anything already cached
+  queryClient.getQueryCache().subscribe((event) => {
+    if (event.query.queryKey[0] === SESSION_QUERY_KEY[0]) read();
   });
 }
 

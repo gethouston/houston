@@ -26,12 +26,12 @@ export function ProgressPanel({
   const total = steps.length;
 
   return (
-    <div className="flex flex-col h-full border-l border-border bg-secondary/30">
+    <div className="flex flex-col h-full border-l border-line bg-chip/30">
       {/* Header */}
-      <div className="px-5 pt-5 pb-4 border-b border-border">
-        <h2 className="text-sm font-medium text-foreground">{title}</h2>
+      <div className="px-5 pt-5 pb-4 border-b border-line">
+        <h2 className="text-sm font-medium text-ink">{title}</h2>
         {total > 0 && (
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-ink-muted mt-0.5">
             {doneCount} of {total} steps complete
           </p>
         )}
@@ -54,7 +54,7 @@ function StepRow({ step }: { step: ProgressStep }) {
     <div
       className={cn(
         "flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors",
-        step.status === "active" && "bg-accent/50",
+        step.status === "active" && "bg-hover/50",
       )}
     >
       <div className="mt-0.5 shrink-0">
@@ -65,23 +65,20 @@ function StepRow({ step }: { step: ProgressStep }) {
         )}
         {step.status === "active" && (
           <Loader2
-            className="size-5 text-foreground/60 animate-spin"
+            className="size-5 text-ink/60 animate-spin"
             strokeWidth={1.5}
           />
         )}
         {step.status === "pending" && (
-          <Circle
-            className="size-5 text-muted-foreground/25"
-            strokeWidth={1.5}
-          />
+          <Circle className="size-5 text-ink-muted/25" strokeWidth={1.5} />
         )}
       </div>
       <p
         className={cn(
           "text-sm leading-snug",
-          step.status === "done" && "text-foreground/50",
-          step.status === "active" && "text-foreground font-medium",
-          step.status === "pending" && "text-foreground/60",
+          step.status === "done" && "text-ink/50",
+          step.status === "active" && "text-ink font-medium",
+          step.status === "pending" && "text-ink/60",
         )}
       >
         {step.title}

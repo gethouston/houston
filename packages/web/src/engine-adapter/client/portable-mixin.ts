@@ -50,6 +50,13 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
     async importScan(packageId: string): Promise<PortableScanResponse> {
       return portable.scanUpload(packageId);
     }
+    async importFromStoreLink(
+      url: string,
+    ): Promise<PortableUploadPreviewResponse> {
+      if (!this.ctx.cp)
+        throw new Error("Installing from a link needs a connected host.");
+      return portable.importFromStoreLink(this.ctx.cp, url);
+    }
     async importInstall(
       req: PortableInstallRequest,
     ): Promise<PortableInstalledAgent> {

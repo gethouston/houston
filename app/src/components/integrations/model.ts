@@ -1,7 +1,6 @@
 import type {
   Capabilities,
   IntegrationConnection,
-  IntegrationToolkit,
 } from "@houston-ai/engine-client";
 
 /**
@@ -30,7 +29,12 @@ export function activeIntegration<T extends { provider: string }>(
   items: T[] | undefined,
 ): T | undefined {
   if (!items || items.length === 0) return undefined;
-  return items.find((i) => i.provider === INTEGRATION_PROVIDER) ?? items[0];
+  return (
+    items.find((i) => i.provider === INTEGRATION_PROVIDER) ??
+    // The key-free custom provider is ALWAYS registered and has its own
+    // section — it must never become the page's primary provider.
+    items.find((i) => i.provider !== "custom")
+  );
 }
 
 export function integrationsSupported(
@@ -42,91 +46,6 @@ export function integrationsSupported(
 /** How long to wait between connection polls, and how many times to poll. */
 export const POLL_INTERVAL_MS = 2000;
 export const POLL_MAX_ATTEMPTS = 150; // ~5 min at 2s/attempt.
-
-/** Page size for the browse grid's "Load more" (catalog holds ~1000 apps). */
-export const BROWSE_PAGE_SIZE = 100;
-
-/**
- * The browse grid's contents: an active category narrows first; a search query
- * then matches name/slug/description case-insensitively. `connected` lets the
- * caller exclude already-connected apps (pass an empty set to keep them, e.g.
- * the picker renders them with a connected state instead). Results are sorted
- * ALPHABETICALLY by app name (case-insensitive) AFTER filtering, so a brand-new
- * user scanning 1000+ apps gets a predictable A-Z list rather than the
- * provider's usage-ranked order. Pure so it's unit-testable.
- */
-export function browseCatalog(opts: {
-  catalog: IntegrationToolkit[];
-  query: string;
-  category: string;
-  connected: ReadonlySet<string>;
-}): IntegrationToolkit[] {
-  let filtered = opts.catalog.filter((t) => !opts.connected.has(t.slug));
-  if (opts.category !== "all") {
-    filtered = filtered.filter((t) =>
-      (t.categories ?? []).includes(opts.category),
-    );
-  }
-  const q = opts.query.trim().toLowerCase();
-  if (q) {
-    filtered = filtered.filter(
-      (t) =>
-        t.name.toLowerCase().includes(q) ||
-        t.slug.toLowerCase().includes(q) ||
-        (t.description ?? "").toLowerCase().includes(q),
-    );
-  }
-  return filtered.sort((a, b) =>
-    a.name.toLowerCase().localeCompare(b.name.toLowerCase()),
-  );
-}
-
-/**
- * Max policy-blocked (locked) apps shown inline in the browse catalog before the
- * rest collapse into a "+N more" count line. Caps the locked group so a tiny
- * Teams allowlist over the ~1000-app catalog can't bury the connectable apps.
- */
-export const LOCKED_PREVIEW_CAP = 8;
-
-/** The browse catalog split by the Teams allowlist ceiling. Both lists A-Z. */
-export interface BrowseCatalogView {
-  /** Apps the member may connect right now (inside the ceiling). */
-  connectable: IntegrationToolkit[];
-  /** Apps the ceiling BLOCKS — shown as locked rows, never connectable. */
-  locked: IntegrationToolkit[];
-}
-
-/**
- * Partition the browse catalog into the apps a member may connect and the apps a
- * Teams allowlist ceiling BLOCKS, after the same category + search +
- * connected-exclusion filter {@link browseCatalog} applies. `allowlist === null`
- * means unrestricted (single-player, or a Teams host with no ceiling), so nothing
- * is ever locked — locks never appear off Teams. Both lists keep `browseCatalog`'s
- * A-Z order so the surface renders the actionable `connectable` apps first and the
- * `locked` group after them. Pure so it's unit-testable.
- */
-export function browseCatalogView(opts: {
-  catalog: IntegrationToolkit[];
-  query: string;
-  category: string;
-  connected: ReadonlySet<string>;
-  allowlist: string[] | null;
-}): BrowseCatalogView {
-  const results = browseCatalog({
-    catalog: opts.catalog,
-    query: opts.query,
-    category: opts.category,
-    connected: opts.connected,
-  });
-  if (opts.allowlist === null) return { connectable: results, locked: [] };
-  const allowed = new Set(opts.allowlist);
-  const connectable: IntegrationToolkit[] = [];
-  const locked: IntegrationToolkit[] = [];
-  for (const t of results) {
-    (allowed.has(t.slug) ? connectable : locked).push(t);
-  }
-  return { connectable, locked };
-}
 
 /**
  * Split the user's connections into the two grant buckets:
@@ -148,63 +67,6 @@ export function splitByGrant(opts: {
     (opts.grants.has(c.toolkit) ? granted : available).push(c);
   }
   return { granted, available };
-}
-
-/** Every category present in the catalog, sorted by display label. */
-export function categoriesOf(catalog: IntegrationToolkit[]): string[] {
-  const seen = new Set<string>();
-  for (const t of catalog) {
-    for (const c of t.categories ?? []) seen.add(c);
-  }
-  return [...seen].sort((a, b) =>
-    categoryLabel(a).localeCompare(categoryLabel(b)),
-  );
-}
-
-/** "developer-tools" -> "Developer tools". */
-export function categoryLabel(cat: string): string {
-  return cat.charAt(0).toUpperCase() + cat.slice(1).replace(/-/g, " ");
-}
-
-/**
- * The set of toolkit slugs belonging to `category`, or `null` for the "all"
- * sentinel (no category filter). Lets every surface filter its own app lists
- * (connected / allowed / available) by category exactly the way `browseCatalog`
- * filters the browse grid — one rule, no drift. Pure so it's unit-testable.
- */
-export function toolkitsInCategory(
-  catalog: IntegrationToolkit[],
-  category: string,
-): Set<string> | null {
-  if (category === "all") return null;
-  const set = new Set<string>();
-  for (const t of catalog) {
-    if ((t.categories ?? []).includes(category)) set.add(t.slug);
-  }
-  return set;
-}
-
-/**
- * Which variant of a category-filtered app list to render. Mirrors the
- * allowed-models editor's `allowedListView`: an empty *visible* list means
- * either the list is genuinely empty (`"empty"`) or an active category filter
- * hides every row (`"empty-category"`). Distinct copy keeps the empty state from
- * falsely claiming the list is empty when the user simply picked a category with
- * no apps present. `"empty-category"` only applies while a category is selected
- * AND the list has some app overall. Pure so it's unit-testable.
- */
-export type CategoryListView = "list" | "empty" | "empty-category";
-
-export function categoryListView(args: {
-  /** How many rows remain visible after the category filter. */
-  visibleCount: number;
-  /** Whether the list has any app at all (before the category filter). */
-  hasAny: boolean;
-  /** Whether a specific category (not "all") is currently selected. */
-  categoryFiltered: boolean;
-}): CategoryListView {
-  if (args.visibleCount > 0) return "list";
-  return args.categoryFiltered && args.hasAny ? "empty-category" : "empty";
 }
 
 /**

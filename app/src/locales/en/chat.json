@@ -41,11 +41,11 @@
     "description": "Type a message to talk to your assistant."
   },
   "questionCard": {
-    "placeholder": "Type something else...",
-    "escapePlaceholder": "None of these. Tell the agent what to do instead.",
+    "placeholder": "Type another option...",
+    "escapePlaceholder": "Type another option...",
+    "send": "Send",
     "back": "Back",
     "forward": "Forward",
-    "skip": "Skip",
     "dismiss": "Dismiss",
     "progress": "{{current}} of {{total}}"
   },
@@ -55,11 +55,25 @@
     "signedInFollowup": "I've signed in. Please continue.",
     "skippedConnectLine": "Skipped connecting {{name}}.",
     "skippedSigninLine": "Skipped signing in.",
+    "approvedLine": "Approved: go ahead with {{action}}. Use exactly the same parameters as before.",
+    "deniedLine": "I chose not to allow {{action}}. Do not retry it; continue without it.",
+    "approvedLineDisplay": "Allowed {{app}} to {{action}}.",
+    "deniedLineDisplay": "Did not allow {{app}} to {{action}}.",
+    "approvalMoreParams_one": "And {{count}} more setting",
+    "approvalMoreParams_other": "And {{count}} more settings",
+    "signinAppName": "Houston",
     "signinTitle": "Sign in to Houston",
     "signinDescription": "Your accounts stay yours; the agent acts on your behalf.",
     "signin": "Sign in",
-    "connectTitle": "Connect {{app}}?",
+    "connectReasonFallback": "Connect {{app}} to continue.",
+    "approvalTitle": "Allow {{app}} to {{action}}?",
+    "alwaysAllow": "Always allow",
+    "deny": "Deny",
+    "allowOnce": "Allow once",
+    "approvalAllowed": "Allowed",
+    "approvalDenied": "Denied",
     "recommended": "Recommended",
+    "skip": "Skip",
     "notNow": "Not now",
     "esc": "Esc"
   },
@@ -78,15 +92,17 @@
     "title": "Save this for next time",
     "skillTitle": "Save as a Skill",
     "routineTitle": "Save as a Routine",
-    "notNow": "Not now",
+    "learningTitle": "Remember this",
     "saveSkillMessage": "Save what I just did as a Skill called \"{{title}}\".",
-    "saveRoutineMessage": "Set this up as a recurring Routine called \"{{title}}\"."
+    "saveRoutineMessage": "Set this up as a recurring Routine called \"{{title}}\".",
+    "saveLearningMessage": "Remember \"{{title}}\" as a learning for next time."
   },
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",
     "stopSession": "Couldn't stop the mission: {{error}}",
     "modelPersistFailed": "Failed to save model preference",
-    "missionRowFailed": "We could not save this mission to your board. Your message was still sent."
+    "missionRowFailed": "We could not save this mission to your board. Your message was still sent.",
+    "interactionDismissFailed": "Couldn't dismiss the request."
   },
   "toolRuntimeError": {
     "retryPrompt": "Try again."
@@ -204,5 +220,17 @@
     "cancel": "Cancel",
     "dividerFull": "Continued with {{provider}}",
     "dividerSummary": "Continued with {{provider}}, summarized to fit"
+  },
+  "credential": {
+    "title": "Add your {{name}} key",
+    "subtitle": "Paste it below. It is stored securely and never shown in chat.",
+    "save": "Save key",
+    "saving": "Saving...",
+    "saved": "Key saved",
+    "savedToast": "{{name}} is ready to use",
+    "savedLine": "Added the {{name}} key.",
+    "skippedLine": "Skipped adding the {{name}} key.",
+    "savedFollowup": "I've added the {{name}} key. Please continue.",
+    "savedUnverifiedToast": "Key saved for {{name}}. The service hasn't confirmed it yet, so I'll flag it if calls fail."
   }
 }

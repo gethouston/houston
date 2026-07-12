@@ -1,7 +1,7 @@
 //! One-shot localhost loopback listener for the OpenAI Codex OAuth redirect.
 //!
 //! OpenAI's Codex OAuth client has a SINGLE registered redirect URI —
-//! `http://localhost:1455/auth/callback` — so unlike the Supabase sign-in
+//! `http://localhost:1455/auth/callback` — so unlike the GCIP sign-in
 //! loopback (which picks the first free port from a small candidate list) this
 //! listener MUST bind port 1455 exactly. There is no fallback: if 1455 is held
 //! by another process the flow cannot complete, so we surface a clear error

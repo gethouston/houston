@@ -59,7 +59,7 @@ export function ArchivedEmptyState({
   return (
     <Empty className="border-0">
       <EmptyHeader>
-        <Archive className="size-8 text-muted-foreground" strokeWidth={1.5} />
+        <Archive className="size-8 text-ink-muted" strokeWidth={1.5} />
         <EmptyTitle>
           {hasQuery
             ? isSearchingText

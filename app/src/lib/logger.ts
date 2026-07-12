@@ -1,3 +1,4 @@
+import { setIdentityLogSink } from "./identity/log";
 import { osWriteFrontendLog } from "./os-bridge";
 
 type LogLevel = "error" | "warn" | "info" | "debug";
@@ -25,6 +26,13 @@ export const logger = {
  * Call once at app startup (main.tsx).
  */
 export function initFrontendLogging() {
+  // Route identity module logs (identity/log.ts seam) into frontend.log so the
+  // REST/loopback/refresh discards are visible; until this runs they fall back
+  // to console (never silent). Both app + web call initFrontendLogging.
+  setIdentityLogSink((level, message, context) =>
+    logger[level](message, context),
+  );
+
   const originalOnError = window.onerror;
   window.onerror = (event, source, line, col, error) => {
     const message = error?.message ?? String(event);

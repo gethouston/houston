@@ -41,11 +41,11 @@
     "description": "Escribe un mensaje para hablar con tu asistente."
   },
   "questionCard": {
-    "placeholder": "Escribe otra cosa...",
-    "escapePlaceholder": "Ninguna de estas. Dile al agente qué hacer.",
+    "placeholder": "Escribe otra opción...",
+    "escapePlaceholder": "Escribe otra opción...",
+    "send": "Enviar",
     "back": "Atrás",
     "forward": "Adelante",
-    "skip": "Omitir",
     "dismiss": "Descartar",
     "progress": "{{current}} de {{total}}"
   },
@@ -55,11 +55,25 @@
     "signedInFollowup": "Ya inicié sesión. Continúa, por favor.",
     "skippedConnectLine": "Omitiste conectar {{name}}.",
     "skippedSigninLine": "Omitiste iniciar sesión.",
+    "approvedLine": "Aprobado: adelante con {{action}}. Usa exactamente los mismos parámetros que antes.",
+    "deniedLine": "Decidí no permitir {{action}}. No lo reintentes; continúa sin eso.",
+    "approvedLineDisplay": "Permitiste que {{app}} hiciera {{action}}.",
+    "deniedLineDisplay": "No permitiste que {{app}} hiciera {{action}}.",
+    "approvalMoreParams_one": "Y {{count}} ajuste más",
+    "approvalMoreParams_other": "Y {{count}} ajustes más",
+    "signinAppName": "Houston",
     "signinTitle": "Inicia sesión en Houston",
     "signinDescription": "Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
     "signin": "Iniciar sesión",
-    "connectTitle": "¿Conectar {{app}}?",
+    "connectReasonFallback": "Conecta {{app}} para continuar.",
+    "approvalTitle": "¿Permitir que {{app}} haga esto: {{action}}?",
+    "alwaysAllow": "Permitir siempre",
+    "deny": "Denegar",
+    "allowOnce": "Permitir una vez",
+    "approvalAllowed": "Permitido",
+    "approvalDenied": "Denegado",
     "recommended": "Recomendado",
+    "skip": "Omitir",
     "notNow": "Ahora no",
     "esc": "Esc"
   },
@@ -78,15 +92,17 @@
     "title": "Guarda esto para la próxima vez",
     "skillTitle": "Guardar como Habilidad",
     "routineTitle": "Guardar como Rutina",
-    "notNow": "Ahora no",
+    "learningTitle": "Recordar esto",
     "saveSkillMessage": "Guarda lo que acabo de hacer como una Habilidad llamada \"{{title}}\".",
-    "saveRoutineMessage": "Configura esto como una Rutina recurrente llamada \"{{title}}\"."
+    "saveRoutineMessage": "Configura esto como una Rutina recurrente llamada \"{{title}}\".",
+    "saveLearningMessage": "Recuerda \"{{title}}\" como un aprendizaje para la próxima vez."
   },
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",
     "stopSession": "No se pudo detener la misión: {{error}}",
     "modelPersistFailed": "No se pudo guardar la preferencia de modelo",
-    "missionRowFailed": "No pudimos guardar esta misión en tu tablero. Tu mensaje sí fue enviado."
+    "missionRowFailed": "No pudimos guardar esta misión en tu tablero. Tu mensaje sí fue enviado.",
+    "interactionDismissFailed": "No pudimos descartar la solicitud."
   },
   "toolRuntimeError": {
     "retryPrompt": "Intenta de nuevo."
@@ -204,5 +220,17 @@
     "cancel": "Cancelar",
     "dividerFull": "Se continuó con {{provider}}",
     "dividerSummary": "Se continuó con {{provider}}, resumido para que quepa"
+  },
+  "credential": {
+    "title": "Agrega tu clave de {{name}}",
+    "subtitle": "Pégala abajo. Se guarda de forma segura y nunca se muestra en el chat.",
+    "save": "Guardar clave",
+    "saving": "Guardando...",
+    "saved": "Clave guardada",
+    "savedToast": "{{name}} está listo para usarse",
+    "savedLine": "Agregué la clave de {{name}}.",
+    "skippedLine": "Omití agregar la clave de {{name}}.",
+    "savedFollowup": "Agregué la clave de {{name}}. Por favor continúa.",
+    "savedUnverifiedToast": "Clave guardada para {{name}}. El servicio aún no la ha confirmado, te avisaré si las llamadas fallan."
   }
 }

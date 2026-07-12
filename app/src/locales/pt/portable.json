@@ -2,7 +2,7 @@
   "exportMenu": "Exportar uma cópia",
   "newAgent": {
     "fromFriendCard": "De um amigo",
-    "fromFriendDescription": "Envie um arquivo que alguém te compartilhou e traga o agente para seu espaço."
+    "fromFriendDescription": "Traga um agente que alguém compartilhou com você, de um arquivo ou um link."
   },
   "flagged": "Houston marcou este para você dar uma olhada.",
   "export": {
@@ -55,6 +55,10 @@
       "yes": "Sim",
       "no": "Não"
     },
+    "review": {
+      "title": "Pronto para compartilhar",
+      "body": "Envie {{name}} como arquivo, ou publique na Agent Store para qualquer pessoa instalar."
+    },
     "actions": {
       "back": "Voltar",
       "cancel": "Cancelar",
@@ -79,9 +83,10 @@
     "eyebrow": "De um amigo",
     "flagged": "Houston marcou este para você dar uma olhada.",
     "step1": {
-      "title": "Envie o arquivo que seu amigo mandou",
-      "body": "Houston lê na sua máquina. Nada é enviado para a internet.",
+      "title": "Traga um agente que alguém compartilhou",
+      "body": "Abra um arquivo que te enviaram, ou cole um link de compartilhamento. Houston lê e mostra o que tem dentro antes de instalar qualquer coisa.",
       "pickFile": "Escolher arquivo",
+      "or": "ou",
       "uploadedFrom": "Compartilhado por {{name}}",
       "anonymous": "seu amigo",
       "counts": "{{skills}} habilidades, {{routines}} rotinas, {{learnings}} aprendizados",
@@ -127,6 +132,21 @@
       "needsConnection": "Conectar depois",
       "connectLater": "Rotinas que precisem de um app esperam até você conectá-lo."
     },
+    "link": {
+      "label": "Instalar por um link",
+      "placeholder": "Cole um link de compartilhamento, como https://store.gethouston.ai/a/agent",
+      "fetch": "Buscar",
+      "fetching": "Buscando",
+      "hint": "Cole o link que te deram. Houston busca o agente para você revisar antes de instalar.",
+      "errors": {
+        "empty": "Cole um link de compartilhamento primeiro.",
+        "invalid": "Isso não parece um link de agente válido.",
+        "notFound": "Não encontramos um agente publicado nesse link.",
+        "unreadable": "Não foi possível ler esse agente. Peça para quem compartilhou publicar de novo.",
+        "network": "Não conseguimos falar com a Agent Store. Verifique sua conexão e tente de novo.",
+        "generic": "Algo deu errado ao buscar esse agente. Tente de novo."
+      }
+    },
     "actions": {
       "back": "Voltar",
       "cancel": "Cancelar",
@@ -144,6 +164,95 @@
     "toasts": {
       "installedTitle": "Agente pronto",
       "installedDescription": "{{name}} está no seu espaço."
+    }
+  },
+  "publish": {
+    "actions": {
+      "publish": "Publicar na Agent Store",
+      "publishNow": "Publicar agora",
+      "publishing": "Publicando.",
+      "saveUpdate": "Salvar alterações",
+      "done": "Pronto",
+      "signInToPublish": "Entre para publicar",
+      "signingIn": "Entrando."
+    },
+    "listing": {
+      "title": "Publique {{name}} na Agent Store",
+      "body": "Conte às pessoas o que este agente faz. Você pode mudar tudo isso depois na página de gestão.",
+      "descriptionLabel": "Descrição",
+      "descriptionPlaceholder": "O que este agente faz e para quem ele é?",
+      "taglineLabel": "Frase curta",
+      "taglinePlaceholder": "Uma linha curta que resuma tudo",
+      "categoryLabel": "Categoria",
+      "categoryPlaceholder": "Escolha uma categoria",
+      "tagsLabel": "Etiquetas",
+      "tagsHint": "Até {{max}}",
+      "tagsPlaceholder": "Digite uma etiqueta e pressione Enter",
+      "tagsFull": "Você já atingiu o máximo de etiquetas",
+      "removeTag": "Remover {{tag}}",
+      "creatorNameLabel": "Seu nome",
+      "creatorNamePlaceholder": "Como você quer aparecer",
+      "creatorUrlLabel": "Link",
+      "creatorUrlPlaceholder": "https://seu-site.com",
+      "requiredMark": "(obrigatório)"
+    },
+    "categories": {
+      "writing": "Escrita e conteúdo",
+      "productivity": "Produtividade",
+      "research": "Pesquisa e análise",
+      "marketing": "Marketing e redes",
+      "sales": "Vendas e CRM",
+      "coding": "Programação e desenvolvimento",
+      "design": "Design e criatividade",
+      "data": "Dados e planilhas",
+      "education": "Educação e aprendizagem",
+      "finance": "Finanças e dinheiro",
+      "customer-support": "Suporte ao cliente",
+      "personal": "Pessoal e estilo de vida",
+      "fun": "Diversão e jogos",
+      "other": "Outros"
+    },
+    "share": {
+      "title": "{{name}} está na Agent Store",
+      "body": "Compartilhe este link para qualquer pessoa instalar seu agente.",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "viewListing": "Ver publicação",
+      "unlistedNote": "Por enquanto sua publicação não está listada, então só quem tem o link pode encontrá-la. Peça um espaço público quando quiser na página de gestão."
+    },
+    "manage": {
+      "title": "{{name}} está publicado",
+      "body": "Seu agente está no ar na Agent Store. Compartilhe o link, atualize a publicação ou retire-a.",
+      "update": "Atualizar publicação",
+      "updateHint": "Ao atualizar, os mesmos passos de seleção e anonimização se repetem, então você escolhe exatamente o que sai.",
+      "remove": "Remover da loja",
+      "removeConfirmTitle": "Remover da loja?",
+      "removeConfirmBody": "{{name}} não poderá mais ser instalado pelo link. Você pode publicá-lo de novo depois.",
+      "removeConfirm": "Remover",
+      "removeCancel": "Manter"
+    },
+    "errors": {
+      "generic": "Algo deu errado. Tente de novo.",
+      "statusFailed": "Não consegui verificar a publicação.",
+      "publishFailed": "Não consegui publicar o agente.",
+      "updateFailed": "Não consegui atualizar a publicação.",
+      "unpublishFailed": "Não consegui remover a publicação.",
+      "copyFailed": "Não consegui copiar o link.",
+      "openFailed": "Não consegui abrir a publicação.",
+      "codes": {
+        "cannotPublishArchived": "Esta publicação foi arquivada, então não pode ser publicada de novo. Crie uma publicação nova para compartilhar este agente.",
+        "invalidCreator": "Adicione seu nome antes de publicar para que saibam quem criou este agente.",
+        "conflictingOps": "Outra alteração ainda está sendo salva. Aguarde um momento e tente de novo.",
+        "slugExhausted": "Não encontramos um link disponível para este nome. Tente um nome diferente.",
+        "rateLimited": "Você está fazendo isso rápido demais. Aguarde um momento e tente de novo.",
+        "secretsDetected": "Parece que este agente ainda tem uma senha ou chave. Remova e tente de novo.",
+        "notFound": "Não encontramos esta publicação. Ela pode já ter sido removida."
+      },
+      "signInFailed": "Não foi possível entrar."
+    },
+    "toasts": {
+      "removedTitle": "Removido da loja",
+      "removedBody": "{{name}} não está mais publicado."
     }
   }
 }

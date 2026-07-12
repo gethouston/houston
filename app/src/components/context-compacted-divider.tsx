@@ -39,10 +39,10 @@ export function ContextCompactedDivider({
   }
 
   return (
-    <div className="flex items-center gap-3 max-w-3xl mx-auto px-4 py-3 text-muted-foreground/70">
-      <div className="h-px flex-1 bg-border/60" />
+    <div className="flex items-center gap-3 max-w-3xl mx-auto px-4 py-3 text-ink-muted/70">
+      <div className="h-px flex-1 bg-line/60" />
       <span className="text-xs italic whitespace-nowrap">{label}</span>
-      <div className="h-px flex-1 bg-border/60" />
+      <div className="h-px flex-1 bg-line/60" />
     </div>
   );
 }

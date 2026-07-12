@@ -8,16 +8,22 @@
 
 import type { Activity, ActivityUpdate } from "./activity";
 
-/** Apply `patch` to every item whose id is in `ids`, stamping `updated_at`. */
+/** Apply `patch` to every item whose id is in `ids`, stamping `updated_at`.
+ *  `pending_interaction: null` DELETES the key (the schema has no null type),
+ *  mirroring `data/activity.ts` `update()`. */
 export function applyBulkPatch(
   items: Activity[],
   ids: ReadonlySet<string>,
   patch: ActivityUpdate,
   timestamp: string,
 ): Activity[] {
-  return items.map((item) =>
-    ids.has(item.id) ? { ...item, ...patch, updated_at: timestamp } : item,
-  );
+  const { pending_interaction, ...rest } = patch;
+  return items.map((item) => {
+    if (!ids.has(item.id)) return item;
+    const merged: Activity = { ...item, ...rest, updated_at: timestamp };
+    if (pending_interaction === null) delete merged.pending_interaction;
+    return merged;
+  });
 }
 
 /** Drop one item by id. Missing ids are an idempotent no-op. */

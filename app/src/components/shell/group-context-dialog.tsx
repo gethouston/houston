@@ -64,7 +64,7 @@ export function GroupContextDialog({
           onChange={(e) => setDraft(e.target.value)}
           placeholder={t("sidebar.groups.contextDialog.placeholder")}
           rows={8}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+          className="w-full rounded-md border border-line bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-focus resize-none"
           autoFocus
         />
         <DialogFooter>

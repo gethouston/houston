@@ -94,7 +94,56 @@ final class BridgeMessagesTests: XCTestCase {
   func testUnknownKindIsInert() throws {
     // A future member (or an unrouted port frame) decodes to `.unknown`, never a throw.
     XCTAssertEqual(try decodeOutbound(#"{"kind":"fetch/start","id":"f1"}"#), .unknown(kind: "fetch/start"))
-    XCTAssertEqual(try decodeOutbound(#"{"kind":"log","level":"info","message":"hi"}"#), .unknown(kind: "log"))
+    XCTAssertEqual(try decodeOutbound(#"{"kind":"future/frame"}"#), .unknown(kind: "future/frame"))
+  }
+
+  // MARK: Log frame (§9.3)
+
+  private enum LogTestError: Error { case notLog }
+
+  private func logPayload(_ raw: String) throws -> SdkLogPayload {
+    // A log frame must decode to `.log`, never fall through to inert `.unknown`.
+    let decoded = try decodeOutbound(raw)
+    guard case let .log(payload) = decoded else {
+      XCTFail("expected .log, got \(decoded)")
+      throw LogTestError.notLog
+    }
+    return payload
+  }
+
+  func testDecodesLogFrameEachLevel() throws {
+    for level in ["debug", "info", "warn", "error"] {
+      let payload = try logPayload(#"{"kind":"log","level":"\#(level)","message":"diag"}"#)
+      XCTAssertEqual(payload.level, level)
+      XCTAssertEqual(payload.message, "diag")
+      XCTAssertNil(payload.fields)
+    }
+  }
+
+  func testDecodesLogFrameWithFields() throws {
+    let payload = try logPayload(
+      #"{"kind":"log","level":"error","message":"boom","fields":{"code":500}}"#)
+    XCTAssertEqual(payload.fields, .object(["code": .int(500)]))
+  }
+
+  func testLogFrameToleratesUnknownLevel() throws {
+    // A future severity is preserved verbatim (mapped to `.info` only at dispatch),
+    // and crucially still decodes as `.log`, not `.unknown`.
+    let payload = try logPayload(#"{"kind":"log","level":"trace","message":"hmm"}"#)
+    XCTAssertEqual(payload.level, "trace")
+  }
+
+  func testLogFrameToleratesMissingFields() throws {
+    // Forward-compatible: absent level/message default rather than throwing.
+    let payload = try logPayload(#"{"kind":"log"}"#)
+    XCTAssertEqual(payload.level, "info")
+    XCTAssertEqual(payload.message, "")
+  }
+
+  func testLogFrameIsNotUnknown() throws {
+    // Guards the regression: `log` used to fall to `.unknown(kind:"log")` and drop.
+    let decoded = try decodeOutbound(#"{"kind":"log","level":"info","message":"hi"}"#)
+    XCTAssertNotEqual(decoded, .unknown(kind: "log"))
   }
 
   func testOutboundRoundTrips() throws {
@@ -103,6 +152,7 @@ final class BridgeMessagesTests: XCTestCase {
       .result(CommandResult(id: "c1", ok: true, value: .string("v"), error: nil)),
       .snapshot(sub: "s1", scope: "agents", snapshot: .array([])),
       .fatal(reason: "tokenExpired", message: "gone"),
+      .log(SdkLogPayload(level: "warn", message: "slow", fields: .object(["ms": .int(12)]))),
     ]
     for value in cases {
       XCTAssertEqual(try decodeOutbound(BridgeTestJSON.encode(value)), value)

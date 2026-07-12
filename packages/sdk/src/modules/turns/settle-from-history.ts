@@ -1,5 +1,6 @@
 import { isPendingInteraction } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
+import { STOPPED_BY_USER } from "./turn-errors";
 import {
   finishErr,
   finishOk,
@@ -72,6 +73,17 @@ function adoptReply(s: TurnState, reply: ChatMessage): void {
     settleProviderErrorCard(s, reply.providerError);
     return;
   }
+  // A turn the user interrupted persisted `stopped`. The runtime never publishes
+  // a clean `done` for it, so adopting it as a plain reply would collapse to a
+  // false `done`. Route it through the SAME body the live Stop uses — `finishErr`
+  // with the verbatim `STOPPED_BY_USER`: it pushes the "Stopped by user" system
+  // line, an invisible final, an `error` status with no text, and settles
+  // `needs_you`. `stopped` wins over any (illegal) `pendingInteraction` — a
+  // stopped turn must never render a card — so this precedes the adopt below.
+  if (reply.stopped) {
+    finishErr(s, STOPPED_BY_USER);
+    return;
+  }
   s.text = reply.content;
   // Adopt the persisted reasoning only when nothing streamed live — a settle
   // from history must not clobber (or double) what the watcher already saw
@@ -87,6 +99,67 @@ function adoptReply(s: TurnState, reply: ChatMessage): void {
   if (isPendingInteraction(reply.pendingInteraction))
     s.pendingInteraction = reply.pendingInteraction;
   finishOk(s);
+}
+
+/**
+ * The PRE-SETTLED poll's settle source: a turn that finished BEFORE our
+ * subscription's first sync (no frames ever replayed, only a fresh idle sync).
+ * Unlike {@link settleFromHistory} — which is entered on a CONFIRMED
+ * lost-terminal (a boundary / resync) and therefore falls through to
+ * `finishErr(TURN_DIED)` when it finds no reply — this settle is SPECULATIVE:
+ * a fresh idle sync in turn mode is ALSO the normal "turn we're about to
+ * trigger" shape, so a turn that simply hasn't produced its reply yet must NOT
+ * be errored. It settles ONLY on conclusive proof the turn is over — a reply
+ * for our exact `turnId`, or (legacy, no ids) a trailing assistant message the
+ * `guard` accepts as ours — and returns `true` iff it did. Inconclusive (a
+ * trailing USER message, a guard reject, a failed reload, or live evidence that
+ * arrived mid-reload) returns `false` and settles nothing: the poll re-arms and
+ * the stream stays the authority.
+ */
+export async function presettleFromHistory(
+  s: TurnState,
+  reloadHistory: () => Promise<ChatMessage[]>,
+  turnId: string | undefined,
+  guard: (messages: ChatMessage[]) => boolean,
+  hasEvidence: () => boolean,
+): Promise<boolean> {
+  let messages: ChatMessage[];
+  try {
+    messages = await reloadHistory();
+  } catch {
+    // A speculative background reload — swallow and re-arm, never surface noise
+    // on every poll tick. A genuinely lost stream is owned by the reconnect
+    // budget, which settles the turn on its own.
+    return false;
+  }
+  // Live evidence landed while we were reloading, or another path already
+  // settled: the stream now owns the turn — never settle from a stale poll.
+  if (s.settled || hasEvidence()) return false;
+  const reply = conclusiveReply(messages, turnId, guard);
+  if (!reply) return false;
+  adoptReply(s, reply);
+  return true;
+}
+
+/**
+ * The one message that PROVES the turn is over, or null (inconclusive). With a
+ * turnId it must be the reply persisted FOR THIS TURN; without one (legacy) the
+ * trailing message must be an assistant reply the `guard` accepts as ours.
+ */
+function conclusiveReply(
+  messages: ChatMessage[],
+  turnId: string | undefined,
+  guard: (messages: ChatMessage[]) => boolean,
+): ChatMessage | null {
+  if (turnId) {
+    return (
+      messages.find((m) => m.role === "assistant" && m.turnId === turnId) ??
+      null
+    );
+  }
+  const last = messages[messages.length - 1];
+  if (last?.role === "assistant" && guard(messages)) return last;
+  return null;
 }
 
 /**

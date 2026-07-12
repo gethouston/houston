@@ -1,23 +1,101 @@
 "use client";
 
-import { Button, cn } from "@houston-ai/core";
-import {
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-  Pencil,
-  XIcon,
-} from "lucide-react";
-import type { ReactNode } from "react";
+import { Button, cn, Kbd } from "@houston-ai/core";
+import { ArrowRight, ArrowUp } from "lucide-react";
+import { useRef } from "react";
 import type { ChatInteractionOption } from "./interaction-card-logic";
 
-/** One selectable answer, a full-width single-select row (click = answer). In
- *  the reference language: a LEFT circular number badge (the digit doubles as
- *  the keyboard shortcut), a bold label, an optional soft "Recommended" chip,
- *  and the option's description muted INLINE after the label (single line,
- *  truncated). The row surface is transparent until hover/selected, when it
- *  fills a soft grey and reveals a trailing arrow — the affordance that a click
- *  answers and advances. Selection is carried by that same fill, not a border. */
+/** A question step's body: the single-select option rows (when the agent offered
+ *  choices) followed by the free-text ESCAPE field, as ONE tight list so the
+ *  field reads as the last row, not a separate control. The card-wide decline is
+ *  NOT here — it lives in the modal footer. Selecting an option answers and
+ *  advances; typing + Enter submits the field. */
+export function QuestionStepBody({
+  options,
+  selectedId,
+  disabled,
+  recommendedLabel,
+  draft,
+  placeholder,
+  sendLabel,
+  skip,
+  onOption,
+  onDraftChange,
+  onSubmit,
+}: {
+  options?: ChatInteractionOption[];
+  selectedId: string | null;
+  disabled: boolean;
+  recommendedLabel: string;
+  draft: string;
+  placeholder: string;
+  sendLabel: string;
+  /** The card-wide decline, rendered OUTSIDE the field at its right so the
+   *  input row reads as "type here, or skip" in one glance. */
+  skip: {
+    label: string;
+    escLabel: string;
+    onSkip: () => void;
+    disabled: boolean;
+  };
+  onOption: (optionId: string) => void;
+  onDraftChange: (value: string) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      {options && options.length > 0 && (
+        <div className="flex flex-col gap-0.5" role="radiogroup">
+          {options.map((option, index) => (
+            <OptionRow
+              disabled={disabled}
+              key={option.id}
+              onSelect={() => onOption(option.id)}
+              option={option}
+              position={index + 1}
+              recommendedLabel={recommendedLabel}
+              selected={selectedId === option.id}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <FreeTextRow
+            disabled={disabled}
+            onChange={onDraftChange}
+            onSubmit={onSubmit}
+            placeholder={placeholder}
+            sendLabel={sendLabel}
+            value={draft}
+          />
+        </div>
+        <Button
+          className="mt-1.5 gap-1.5 text-ink-muted"
+          disabled={skip.disabled}
+          onClick={skip.onSkip}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          {skip.label}
+          <Kbd>{skip.escLabel}</Kbd>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** One selectable answer, a full-width single-select row (click = answer): a
+ *  REGULAR-weight label (never bold — color tone carries the hierarchy), an
+ *  optional soft "Recommended" chip, and a RIGHT-edge circular number badge
+ *  (the digit doubles as the keyboard shortcut). The row surface is transparent
+ *  until hover/selected, when it fills a soft grey and the badge crossfades
+ *  into a trailing arrow — the affordance that a click answers and advances —
+ *  in the same right slot, so nothing shifts. Selection is carried by that same
+ *  fill, not a border. The option's wire `description` is intentionally NOT
+ *  rendered: the label + chip say enough. */
 export function OptionRow({
   option,
   selected,
@@ -39,81 +117,90 @@ export function OptionRow({
       aria-checked={selected}
       className={cn(
         "group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors",
-        "hover:bg-accent focus-visible:bg-accent",
-        "focus-visible:ring-[2px] focus-visible:ring-ring/50",
+        "hover:bg-hover focus-visible:bg-hover",
+        "focus-visible:ring-[2px] focus-visible:ring-focus/50",
         "disabled:pointer-events-none disabled:opacity-50",
-        selected && "bg-accent",
+        selected && "bg-hover",
       )}
       disabled={disabled}
       onClick={onSelect}
       role="radio"
       type="button"
     >
-      <span
-        className={cn(
-          "flex size-7 shrink-0 items-center justify-center rounded-full bg-muted font-medium text-[13px] text-muted-foreground tabular-nums transition-colors",
-          "group-hover:bg-muted-foreground/15",
-          selected && "bg-muted-foreground/15",
-        )}
-      >
-        {position}
-      </span>
       <span className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="shrink-0 font-semibold text-foreground text-sm">
+        <span className="min-w-0 truncate text-ink text-sm">
           {option.label}
         </span>
         {option.recommended && (
-          <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-medium text-[11px] text-muted-foreground">
+          <span className="shrink-0 rounded-full bg-chip px-2 py-0.5 font-medium text-[11px] text-ink-muted">
             {recommendedLabel}
           </span>
         )}
-        {option.description && (
-          <span className="min-w-0 truncate text-muted-foreground text-sm">
-            {option.description}
-          </span>
-        )}
       </span>
-      <ArrowRight
-        className={cn(
-          "size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity",
-          "group-hover:opacity-100",
-          selected && "opacity-100",
-        )}
-      />
+      {/* One right slot: the number badge at rest, the advance arrow on
+          hover/selected — a crossfade in place, so the row never reflows. */}
+      <span className="relative flex size-7 shrink-0 items-center justify-center">
+        <span
+          className={cn(
+            "absolute inset-0 flex items-center justify-center rounded-full bg-chip-subtle font-medium text-[13px] text-ink-muted tabular-nums transition-opacity",
+            "group-hover:opacity-0",
+            selected && "opacity-0",
+          )}
+        >
+          {position}
+        </span>
+        <ArrowRight
+          className={cn(
+            "size-4 text-ink-muted opacity-0 transition-opacity",
+            "group-hover:opacity-100",
+            selected && "opacity-100",
+          )}
+        />
+      </span>
     </button>
   );
 }
 
-/** The free-text escape row: styled as the LAST row of the option list. A pencil
- *  icon fills the same circular left-badge slot, the input carries a muted
- *  placeholder ("None of these..."), and a `Skip` outline pill sits INLINE at
- *  the row's right. Typing expands the input; Enter submits the answer, the pill
- *  skips the question. On a free-text-only question (no options) it is the
- *  primary answer field, so it takes a neutral placeholder. */
+/** The free-text escape row: the answer field the user types their OWN answer
+ *  into. It is a MINIATURE of the real composer so nothing about it needs
+ *  learning: the same 28px pill roundness, the same `border-line-input` hairline,
+ *  and the same circular arrow-up send button that turns on (bg-action at
+ *  full strength) the moment there is text — dimmed while empty, exactly like
+ *  the chat input's send. Clicking anywhere in the field focuses the textarea;
+ *  typing expands it; Enter or the arrow submits. The card-wide decline is NOT
+ *  here — it lives in the modal footer, so this row is purely the input it
+ *  looks like. On a free-text-only question (no options) it is the primary
+ *  answer field, so it takes a neutral placeholder. */
 export function FreeTextRow({
   value,
   placeholder,
-  skipLabel,
+  sendLabel,
   disabled,
   onChange,
   onSubmit,
-  onSkip,
 }: {
   value: string;
   placeholder: string;
-  skipLabel: string;
+  sendLabel: string;
   disabled: boolean;
   onChange: (value: string) => void;
   onSubmit: () => void;
-  onSkip: () => void;
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const hasText = value.trim().length > 0;
   return (
-    <div className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors focus-within:bg-accent/60">
-      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <Pencil className="size-3.5" />
-      </span>
+    // biome-ignore lint/a11y/noStaticElementInteractions: focus-delegation surface — the real widget is the <textarea> inside; clicking the field's padding focuses it (mirrors the composer). role="presentation" is correct, no widget role applies.
+    <div
+      className={cn(
+        "mt-1.5 flex cursor-text items-center gap-2 rounded-[28px] border border-line-input bg-transparent py-1.5 pr-1.5 pl-4 transition-colors dark:bg-line-input/30",
+        "focus-within:border-focus",
+        disabled && "pointer-events-none opacity-50",
+      )}
+      onClick={() => textareaRef.current?.focus()}
+      role="presentation"
+    >
       <textarea
-        className="max-h-40 min-w-0 flex-1 resize-none border-none bg-transparent py-0.5 text-foreground text-sm leading-snug outline-none placeholder:text-muted-foreground"
+        className="max-h-40 min-w-0 flex-1 resize-none border-none bg-transparent py-1 text-ink text-sm leading-snug outline-none placeholder:text-ink-muted"
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
@@ -123,153 +210,24 @@ export function FreeTextRow({
           }
         }}
         placeholder={placeholder}
+        ref={textareaRef}
         rows={1}
         value={value}
       />
-      <Button
-        className="shrink-0 rounded-full"
-        disabled={disabled}
-        onClick={onSkip}
-        size="sm"
+      {/* The composer's send button, verbatim: circular arrow-up that turns on
+          with text (disabled:opacity-30 while empty, like the chat input). */}
+      <button
+        aria-label={sendLabel}
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-action text-action-text transition-colors hover:bg-action/90 disabled:opacity-30"
+        disabled={disabled || !hasText}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSubmit();
+        }}
         type="button"
-        variant="outline"
       >
-        {skipLabel}
-      </Button>
+        <ArrowUp className="size-4" />
+      </button>
     </div>
-  );
-}
-
-/** The compact pager pinned top-right: `‹ N of M ›`. The chevrons ARE the
- *  step navigation (Back / Forward), replacing a footer nav row; each is
- *  disabled at its end of the sequence. Rendered only for a multi-step sequence
- *  (a lone step shows no pager). */
-function Pager({
-  label,
-  backLabel,
-  forwardLabel,
-  onBack,
-  onForward,
-  disabled,
-}: {
-  label: string;
-  backLabel: string;
-  forwardLabel: string;
-  onBack: (() => void) | null;
-  onForward: (() => void) | null;
-  disabled: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-0.5 text-muted-foreground">
-      <Button
-        aria-label={backLabel}
-        className="size-6"
-        disabled={disabled || !onBack}
-        onClick={onBack ?? undefined}
-        size="icon-sm"
-        type="button"
-        variant="ghost"
-      >
-        <ChevronLeft className="size-4" />
-      </Button>
-      <span className="px-0.5 text-xs tabular-nums">{label}</span>
-      <Button
-        aria-label={forwardLabel}
-        className="size-6"
-        disabled={disabled || !onForward}
-        onClick={onForward ?? undefined}
-        size="icon-sm"
-        type="button"
-        variant="ghost"
-      >
-        <ChevronRight className="size-4" />
-      </Button>
-    </div>
-  );
-}
-
-export interface StepperHeaderProps {
-  /** Total step count; the pager shows only for a multi-step sequence. */
-  total: number;
-  /** The pager's compact progress copy, e.g. "1 of 3". */
-  progressLabel: string;
-  /** The current step's title, rendered bold and left. Question steps pass their
-   *  question here; signin/connect steps render their OWN icon+title lockup in
-   *  the body and leave this undefined, so the header keeps only the right-hand
-   *  pager + dismiss cluster. */
-  title?: string;
-  /** Step navigation, wired straight to the stepper: the pager's back chevron
-   *  (null on the first step) and forward chevron (null at the frontier). */
-  onBack: (() => void) | null;
-  onForward: (() => void) | null;
-  backLabel: string;
-  forwardLabel: string;
-  /** Dismisses the WHOLE interaction sequence. The X renders only when supplied. */
-  onDismiss?: () => void;
-  dismissLabel: string;
-  disabled: boolean;
-}
-
-/** Card header in the reference language: a bold left title with, top-RIGHT on
- *  the same row, the compact `‹ N of M ›` pager (Back/Forward chevrons) and the
- *  dismiss X. No eyebrow. A signin/connect step leaves `title` undefined (its
- *  icon+title lockup lives in the body) so only the pager + X remain. */
-export function StepperHeader({
-  total,
-  progressLabel,
-  title,
-  onBack,
-  onForward,
-  backLabel,
-  forwardLabel,
-  onDismiss,
-  dismissLabel,
-  disabled,
-}: StepperHeaderProps) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="min-w-0 flex-1">
-        {title && (
-          <p className="text-balance font-semibold text-base text-foreground leading-snug">
-            {title}
-          </p>
-        )}
-      </div>
-
-      <div className="flex shrink-0 items-center gap-1">
-        {total > 1 && (
-          <Pager
-            backLabel={backLabel}
-            disabled={disabled}
-            forwardLabel={forwardLabel}
-            label={progressLabel}
-            onBack={onBack}
-            onForward={onForward}
-          />
-        )}
-        {onDismiss && (
-          <Button
-            aria-label={dismissLabel}
-            className="-mr-1 shrink-0 text-muted-foreground"
-            disabled={disabled}
-            onClick={onDismiss}
-            size="icon-sm"
-            variant="ghost"
-          >
-            <XIcon className="size-4" />
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** The one right-aligned footer row a signin/connect body composes: quiet
- *  "Not now" + Esc hint on the way to the single filled CTA pill. Exported so
- *  the app composes the EXACT same footer chrome — one place owns spacing and
- *  alignment. Question steps have NO footer (their actions live in the rows). */
-export function InteractionFooter({ children }: { children: ReactNode }) {
-  return (
-    <div className="mt-5 flex items-center justify-end gap-3">{children}</div>
   );
 }

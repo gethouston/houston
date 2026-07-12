@@ -26,12 +26,12 @@ export function SkillOwnerAvatar({
   className,
 }: SkillOwnerAvatarProps) {
   const [imgError, setImgError] = useState(false);
-  const box = cn(SIZES[size], "shrink-0 rounded-lg bg-secondary", className);
+  const box = cn(SIZES[size], "shrink-0 rounded-lg bg-chip", className);
 
   if (imgError || !owner) {
     return (
       <div className={cn(box, "flex items-center justify-center")}>
-        <span className="text-xs font-semibold text-muted-foreground">
+        <span className="text-xs font-semibold text-ink-muted">
           {owner.charAt(0).toUpperCase()}
         </span>
       </div>

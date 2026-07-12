@@ -106,6 +106,23 @@ end-state is that it dissolves into direct SDK consumption
   legacy desktop/Rust methods throw explicitly (`client/legacy-unsupported-mixin.ts`);
   there is no catch-all Proxy returning silent `[]`.
 
+**Hosted, capability-gated surfaces (worked example: C9 personal API keys).** A
+gateway-only feature adds ONE method across the four fetch layers in signature
+lockstep — miss one and the web typecheck fails: `ui/engine-client`
+(`client.ts` `request()` + a wire type in `types.ts`), the web adapter
+(`cp/<feature>.ts` `cpFetch` fns re-exported by `control-plane.ts` + a
+`client/<feature>-mixin.ts` with the `if (!this.ctx.cp)` off-cloud throw, composed
+in `client.ts`), and the app facade (`lib/tauri.ts` `call()` wrapper). Feature-
+detect with an optional `Capabilities` flag (C9 = `apiKeys?: boolean`), absent on
+desktop/self-host/older gateways — `capabilities()` returns the raw `/v1/capabilities`
+JSON, so a new optional flag needs NO adapter mapping. Gate the whole UI on it
+(the settings row + the query's `enabled`), keep pure logic (gate/validation/error
+classifier) in a `lib/*-model.ts` unit-tested under bare Node, and route an
+EXPECTED business 400 (e.g. `key_limit`, read off the gateway's flat top-level
+`body.code`) through `call()`'s `silence` predicate so it renders inline instead
+of the red bug toast. Files: `app/src/{lib/api-keys-model,hooks/queries/use-api-keys}.ts`
++ `components/settings/sections/api-keys*.tsx`.
+
 **Strict-additive / iOS-safe rule.** `@houston/sdk` is consumed by BOTH web AND
 the native iOS app (via the JavaScriptCore bridge, `bridge/entry.ts`). iOS reaches
 the SDK ONLY through dispatched bridge COMMANDS and subscribed SCOPES — never
@@ -161,9 +178,16 @@ Behavior is **never** written in surface code. Change it in the SDK, then bind.
 > *clean* turn splits on whether it ended on an interaction: nothing outstanding →
 > the terminal `done`; ended on `ask_user`/`request_connection` → `needs_you`
 > carrying the `pendingInteraction` VM field. ONE exception: a lone
-> `suggest_reusable` step (save-as-Skill/Routine offer) settles `done`, not
-> `needs_you` — nothing is waiting on the user.
-> (`packages/sdk/src/modules/turns/turn-settle.ts` / `vm-output.ts`.)
+> `suggest_reusable` step (the reflection step's save-as-Skill/Routine/Learning
+> offer) settles `done`, not
+> `needs_you` — nothing is waiting on the user. A user Stop (or dismissing an
+> interaction card, which is a user interruption) now persists a durable
+> `stopped: true` marker on the assistant `ChatMessage`, so settle-FROM-HISTORY
+> routes it through the SAME `finishErr` stop settle → `needs_you` (live and
+> reload agree; a stopped turn re-derives neither a false `done` nor a
+> `pendingInteraction` card) — fixing the pre-marker divergence.
+> (`packages/sdk/src/modules/turns/turn-settle.ts` / `vm-output.ts` /
+> `settle-from-history.ts`.)
 
 ### b. Visual change → tokens procedure
 

@@ -79,6 +79,40 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       // /v1/integrations/reconnect-notice/dismiss.
       await this.ctx.sdk.integrations.dismissReconnectNotice();
     }
+
+    // ---- triggers (C9 event-driven routines) — hosted gateway only ----
+    async triggerTypes(toolkit: string): Promise<controlPlane.TriggerType[]> {
+      if (!this.ctx.cp) return [];
+      return controlPlane.triggerTypes(this.ctx.cp, toolkit);
+    }
+
+    // ---- custom integrations (HOU-550) — host only ----
+    // A host without the custom-integrations surface answers 404 on the read,
+    // which `customIntegrations` maps to null so the section stays hidden. The
+    // writes require a host and surface any failure.
+    async customIntegrations(): Promise<
+      controlPlane.CustomIntegrationView[] | null
+    > {
+      if (!this.ctx.cp) return null;
+      return controlPlane.customIntegrations(this.ctx.cp);
+    }
+    async removeCustomIntegration(slug: string): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("Integrations require a connected host");
+      return controlPlane.removeCustomIntegration(this.ctx.cp, slug);
+    }
+    async submitCustomIntegrationCredential(
+      slug: string,
+      values: Record<string, string>,
+    ): Promise<controlPlane.CustomIntegrationView> {
+      if (!this.ctx.cp)
+        throw new Error("Integrations require a connected host");
+      return controlPlane.submitCustomIntegrationCredential(
+        this.ctx.cp,
+        slug,
+        values,
+      );
+    }
   }
   return Integrations;
 }

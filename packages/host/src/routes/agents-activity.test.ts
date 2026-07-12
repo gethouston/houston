@@ -219,6 +219,22 @@ test("counts OTHER held /agents/* requests as busy (open SSE stream)", async () 
   });
 });
 
+test("POST /conversations/:cid/dismiss-interaction reaches the runtime dispatch", async () => {
+  const path = `/agents/${encodeURIComponent(agentId)}/conversations/c1/dismiss-interaction`;
+  const url = new URL(path, "http://host.local");
+  const handled = await handleAgents(
+    deps,
+    "alice",
+    "POST",
+    path,
+    url,
+    req(),
+    res(),
+  );
+  expect(handled).toBe(true);
+  expect(channel.dispatched).toEqual(["conversations/c1/dismiss-interaction"]);
+});
+
 test("unknown or unauthorized agents follow the existing authz statuses", async () => {
   const unknown = await activity("alice", "nope");
   expect(unknown.response.status).toBe(404);

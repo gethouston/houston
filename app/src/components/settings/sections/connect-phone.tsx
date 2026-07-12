@@ -110,18 +110,18 @@ export function ConnectPhoneSection() {
         </h2>
         <Badge
           variant="outline"
-          className="h-4 px-1.5 text-[9px] font-semibold tracking-wider text-muted-foreground"
+          className="h-4 px-1.5 text-[9px] font-semibold tracking-wider text-ink-muted"
         >
           BETA
         </Badge>
       </div>
-      <p className="text-sm text-muted-foreground mb-5">
+      <p className="text-sm text-ink-muted mb-5">
         {t("settings:connectPhone.description")}
       </p>
 
       <div className="flex flex-col items-center gap-3">
         {qrUrl ? (
-          <div className="rounded-xl border border-border/50 bg-white p-4">
+          <div className="rounded-xl border border-line/50 bg-white p-4">
             <QRCodeSVG
               value={qrUrl}
               size={220}
@@ -131,12 +131,12 @@ export function ConnectPhoneSection() {
             />
           </div>
         ) : error ? (
-          <div className="rounded-lg bg-destructive/10 px-3 py-6 text-center text-sm text-destructive max-w-[260px]">
+          <div className="rounded-lg bg-danger/10 px-3 py-6 text-center text-sm text-danger max-w-[260px]">
             {error}
           </div>
         ) : (
-          <div className="size-[220px] rounded-xl bg-muted/40 animate-pulse flex items-center justify-center">
-            <p className="text-[11px] text-muted-foreground text-center px-6 leading-relaxed">
+          <div className="size-[220px] rounded-xl bg-chip-subtle/40 animate-pulse flex items-center justify-center">
+            <p className="text-[11px] text-ink-muted text-center px-6 leading-relaxed">
               {t("settings:connectPhone.loading")}
             </p>
           </div>
@@ -148,7 +148,7 @@ export function ConnectPhoneSection() {
           </div>
         )}
 
-        <p className="text-[11px] text-muted-foreground leading-relaxed text-center max-w-[260px]">
+        <p className="text-[11px] text-ink-muted leading-relaxed text-center max-w-[260px]">
           {t("settings:connectPhone.keepComputerAwake")}
           <br />
           <Trans
@@ -160,11 +160,11 @@ export function ConnectPhoneSection() {
         </p>
       </div>
 
-      <div className="mt-8 pt-6 border-t border-border">
+      <div className="mt-8 pt-6 border-t border-line">
         <h3 className="text-sm font-medium mb-1">
           {t("settings:connectPhone.reset.title")}
         </h3>
-        <p className="text-xs text-muted-foreground mb-3">
+        <p className="text-xs text-ink-muted mb-3">
           {t("settings:connectPhone.reset.description")}
         </p>
         <Button
@@ -176,7 +176,7 @@ export function ConnectPhoneSection() {
           {t("settings:connectPhone.reset.button")}
         </Button>
         {!canReset && (
-          <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">
+          <p className="mt-2 text-[11px] text-ink-muted leading-relaxed">
             {t("settings:connectPhone.reset.unavailable")}
           </p>
         )}

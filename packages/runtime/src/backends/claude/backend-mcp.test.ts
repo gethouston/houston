@@ -119,9 +119,10 @@ test("plan mode builds the MCP server WITHOUT integrations — ask_user + plan_r
 });
 
 test("auto mode builds the MCP with integrations ON and ask_user OFF", async () => {
-  // Autopilot is the inverse of plan: it KEEPS the acting integration tools (and
-  // the non-blocking suggest_reusable) but drops the two blocking tools
-  // (ask_user, request_connection) so the agent never waits on the user.
+  // Autopilot is the inverse of plan: it KEEPS the acting integration tools
+  // (and the non-blocking suggest_reusable, and request_credential — the one
+  // hand-off autonomy cannot avoid) but drops the blocking tools (ask_user,
+  // request_connection) so the agent never waits on the user.
   const options = await runTurn(
     { baseUrl: "http://host.local", sandboxToken: "tok" },
     "auto",
@@ -129,7 +130,14 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
   expect(options.mcpServers?.houston).toBeDefined();
   const exposed = h.capturedMcp?.tools.map((t) => t.name) ?? [];
   expect(new Set(exposed)).toEqual(
-    new Set(["suggest_reusable", "integration_search", "integration_execute"]),
+    new Set([
+      "suggest_reusable",
+      "integration_search",
+      "integration_execute",
+      "custom_integration_detect",
+      "custom_integration_add",
+      "request_credential",
+    ]),
   );
   expect(exposed).not.toContain("ask_user");
   expect(exposed).not.toContain("request_connection");
@@ -138,6 +146,9 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
       "mcp__houston__suggest_reusable",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
+      "mcp__houston__custom_integration_detect",
+      "mcp__houston__custom_integration_add",
+      "mcp__houston__request_credential",
     ]),
   );
   // Built-ins keep the full execute policy — auto acts with everything else.

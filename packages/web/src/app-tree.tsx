@@ -30,6 +30,7 @@ import { TooltipProvider } from "@houston-ai/core";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Component, type ReactNode, useEffect, useState } from "react";
 import { I18nextProvider } from "react-i18next";
+import { PreviewBadge } from "./preview-badge";
 import "@houston/app/styles/globals.css";
 
 // Sentry first so the global handlers below can capture from the first render.
@@ -143,6 +144,10 @@ export default function AppTree() {
         <TooltipProvider>
           <EngineGate>
             <I18nextProvider i18n={i18n}>
+              {/* Web-only "Preview" pill — fixed + pointer-events-none, so it
+                  overlays every gate/screen without disturbing layout or clicks.
+                  Renders null off the preview deployment. */}
+              <PreviewBadge />
               <LanguageGate>
                 <DisclaimerGate>
                   <App />

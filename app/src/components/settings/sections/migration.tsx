@@ -4,26 +4,39 @@ import { useTranslation } from "react-i18next";
 import { useSession } from "../../../hooks/use-session";
 import { isHostedGatewayEngine } from "../../../lib/engine";
 import { reportError } from "../../../lib/error-toast";
-import { readMigrationStatus } from "../../../lib/migration-status";
 import { osDetectLegacyHouston, osIsTauri } from "../../../lib/os-bridge";
 import { queryKeys } from "../../../lib/query-keys";
 
 /** Same per-machine outcome key the wizard gate writes (use-cloud-migration.ts). */
 const STORAGE_PREFIX = "houston.cloudMigration.";
 
+/** The wizard's persisted per-user outcome on THIS machine, or `null`. */
+function readOutcome(userId: string): "done" | "skipped" | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + userId);
+    return raw === "done" || raw === "skipped" ? raw : null;
+  } catch (e) {
+    reportError("cloud_migration_storage", "reading the outcome failed", e);
+    return null;
+  }
+}
+
 /**
  * The "Continue migration" section shows only when a re-run makes sense: a
- * hosted desktop build, legacy data still on THIS machine, and the account not
- * already marked migrated. Mirrors `useAccountAvailable` — a hook the settings
- * view calls to gate the row. The detect query shares its key with the wizard
- * gate's, so React Query dedupes the filesystem scan.
+ * hosted desktop build, legacy data still on THIS machine, and this machine's
+ * migration not already completed ("done"). Mirrors `useAccountAvailable` — a
+ * hook the settings view calls to gate the row. The detect query shares its key
+ * with the wizard gate's, so React Query dedupes the filesystem scan. Identity
+ * (Firebase) has no client-writable user metadata, so the completed state is the
+ * per-machine localStorage outcome (the retired Supabase `user_metadata` flag).
  */
 export function useMigrationAvailable(): boolean {
   const { data: session } = useSession();
+  const userId = session?.uid ?? null;
   const gates =
     isHostedGatewayEngine() &&
     osIsTauri() &&
-    readMigrationStatus(session) !== "completed";
+    (userId ? readOutcome(userId) : null) !== "done";
   const detect = useQuery({
     queryKey: queryKeys.cloudMigrationDetect(),
     queryFn: async () => {
@@ -53,7 +66,7 @@ export function useMigrationAvailable(): boolean {
 export function MigrationSection() {
   const { t } = useTranslation("settings");
   const { data: session } = useSession();
-  const userId = session?.user?.id ?? null;
+  const userId = session?.uid ?? null;
 
   const handleContinue = () => {
     if (userId) {
@@ -73,7 +86,7 @@ export function MigrationSection() {
   return (
     <section>
       <h2 className="text-lg font-semibold mb-1">{t("migration.title")}</h2>
-      <p className="text-sm text-muted-foreground mb-4">
+      <p className="text-sm text-ink-muted mb-4">
         {t("migration.description")}
       </p>
       <Button className="rounded-full" onClick={handleContinue}>

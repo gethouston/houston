@@ -11,9 +11,9 @@ import Foundation
 extension Strings {
     enum AgentsSearch {
         /// Placeholder in the pull-down search field (hidden until pulled down).
-        static let placeholder = "Search"
+        static let placeholder = String(localized: "agentsSearch.placeholder", defaultValue: "Search")
 
         /// Empty-state title when a non-empty query matches no agent.
-        static let noResultsTitle = "No results"
+        static let noResultsTitle = String(localized: "agentsSearch.noResultsTitle", defaultValue: "No results")
     }
 }

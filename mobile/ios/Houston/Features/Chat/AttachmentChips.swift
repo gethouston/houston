@@ -25,29 +25,29 @@ struct StagedAttachmentChips: View {
     HStack(spacing: Spacing.space6) {
       Image(systemName: "doc")
         .imageScale(.small)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
       Text(attachment.name)
         .font(Typography.caption)
-        .foregroundStyle(theme.foreground)
+        .foregroundStyle(theme.ink)
         .lineLimit(1)
       Button {
         onRemove(attachment.id)
       } label: {
         Image(systemName: "xmark.circle.fill")
           .imageScale(.small)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
       }
       .buttonStyle(.plain)
       .accessibilityLabel(Strings.Chat.Attachments.remove(attachment.name))
     }
     .padding(.horizontal, Spacing.space10)
     .padding(.vertical, Spacing.space6)
-    .background(theme.secondary, in: Capsule())
+    .background(theme.chip, in: Capsule())
   }
 }
 
 /// A compact, read-only chips row rendered INSIDE a user bubble under the text
-/// (doc icon + name on a `theme.secondary` capsule). Shown when a persisted user
+/// (doc icon + name on a `theme.chip` capsule). Shown when a persisted user
 /// message decodes to attachment references (``AttachmentMessage/decode(_:)``).
 struct BubbleAttachmentChips: View {
   @Environment(\.theme) private var theme
@@ -65,8 +65,8 @@ struct BubbleAttachmentChips: View {
         }
         .padding(.horizontal, Spacing.space8)
         .padding(.vertical, Spacing.space4)
-        .foregroundStyle(theme.secondaryFg)
-        .background(theme.secondary, in: Capsule())
+        .foregroundStyle(theme.chipText)
+        .background(theme.chip, in: Capsule())
       }
     }
     .accessibilityLabel(Strings.Chat.Attachments.label)

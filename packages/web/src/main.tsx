@@ -4,18 +4,26 @@
  * `@houston-ai/engine-client` to the host adapter). Which root mounts depends
  * only on the deployment:
  *
- *  - **Cloud host** (`VITE_CONTROL_PLANE_URL`): the app's own Supabase auth
- *    gates sign-in (plus the `/admin` operator dashboard on that path).
+ *  - **Cloud host** (`VITE_CONTROL_PLANE_URL`): the app's own GCIP (Firebase)
+ *    auth gates sign-in (plus the `/admin` operator dashboard on that path).
  *  - **Default**: `<NewEngineRoot>` — the host URL + token come from a stored
  *    config, are pre-seeded via `VITE_NEW_ENGINE_URL` / `VITE_NEW_ENGINE_TOKEN`,
  *    or are entered at runtime on the Connect screen.
  */
 import { createRoot } from "react-dom/client";
+import { currentDeployEnvironment } from "./deploy-environment";
 import {
   type EngineConfig,
   NEW_ENGINE_STORAGE_KEY,
   readStoredEngineConfig,
 } from "./engine-config";
+
+// Publish the runtime deploy environment BEFORE the app module graph loads: the
+// shared Sentry + PostHog init (app/src) read `window.__HOUSTON_DEPLOY_ENV__` to
+// tag their `environment`, and those run as soon as `./app-tree` is imported
+// below. ONE bundle serves both sites, so this is derived from the hostname, not
+// baked at build time (see ./deploy-environment).
+window.__HOUSTON_DEPLOY_ENV__ = currentDeployEnvironment();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Missing #root element");
@@ -25,15 +33,15 @@ const controlPlaneUrl = env.VITE_CONTROL_PLANE_URL || "";
 
 if (controlPlaneUrl && window.location.pathname.startsWith("/admin")) {
   // Operator dashboard (served at /admin by nginx try_files): pods-per-user + GCP
-  // spend. Its own Supabase sign-in + control-plane /admin/* calls; the desktop UI
-  // never mounts here.
+  // spend. Its own GCIP (Firebase) sign-in + control-plane /admin/* calls; the
+  // desktop UI never mounts here.
   void import("./admin/dashboard").then(({ AdminDashboard }) =>
     createRoot(rootEl).render(
       <AdminDashboard controlPlaneUrl={controlPlaneUrl} />,
     ),
   );
 } else if (controlPlaneUrl) {
-  // Cloud host mode: the app's own Supabase auth gates sign-in, then the desktop UI
+  // Cloud host mode: the app's own GCIP (Firebase) auth gates sign-in, then the desktop UI
   // boots in host mode. app/src/lib/engine.ts reads these globals at
   // module-eval (which fires as soon as cloud-login statically imports the app
   // tree), so they MUST be set before that import — otherwise EngineGate hangs

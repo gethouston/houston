@@ -89,25 +89,21 @@ function AgreementScreen({
           {sections.map((section, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: sections is a static translation array — no reordering, no add/remove, no per-item state
             <li key={i} className="flex items-start gap-3">
-              <span className="w-4 shrink-0 text-sm font-medium tabular-nums text-muted-foreground">
+              <span className="w-4 shrink-0 text-sm font-medium tabular-nums text-ink-muted">
                 {i + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-medium text-ink">
                   {section.heading}
                 </p>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  {section.body}
-                </p>
+                <p className="mt-0.5 text-sm text-ink-muted">{section.body}</p>
               </div>
             </li>
           ))}
         </ol>
-        <p className="mt-5 text-xs text-muted-foreground">
-          {t("legal:closing")}
-        </p>
+        <p className="mt-5 text-xs text-ink-muted">{t("legal:closing")}</p>
         {error && (
-          <p className="mt-2 text-xs text-destructive" role="alert">
+          <p className="mt-2 text-xs text-danger" role="alert">
             {error}
           </p>
         )}

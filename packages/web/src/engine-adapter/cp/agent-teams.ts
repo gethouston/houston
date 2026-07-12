@@ -3,6 +3,7 @@ import type {
   AgentModelChoice,
   AgentModelChoiceInfo,
   AgentSettings,
+  TriggerStatusItem,
 } from "../../../../../ui/engine-client/src/types";
 import { HoustonEngineError } from "../client/errors";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
@@ -100,6 +101,27 @@ export async function agentIntegrationGrants(
       `/v1/agents/${encodeURIComponent(agentSlugOrId)}/integration-grants`,
     );
     return ((await res.json()) as { toolkits: string[] }).toolkits;
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * One agent's per-routine trigger status (C9), or `null` when the gateway does
+ * not serve triggers (404). Callers treat `null` as "triggers unsupported here"
+ * and hide the badge; every other error throws. Mirrors `agentIntegrationGrants`.
+ */
+export async function agentTriggerStatus(
+  cfg: ControlPlaneConfig,
+  agentSlugOrId: string,
+): Promise<TriggerStatusItem[] | null> {
+  try {
+    const res = await cpFetch(
+      cfg,
+      `/v1/agents/${encodeURIComponent(agentSlugOrId)}/trigger-status`,
+    );
+    return ((await res.json()) as { items: TriggerStatusItem[] }).items;
   } catch (err) {
     if (err instanceof HoustonEngineError && err.status === 404) return null;
     throw err;

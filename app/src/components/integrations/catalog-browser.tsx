@@ -55,7 +55,7 @@ export function CatalogBrowser({
         if (connectedToolkits.has(tk.slug)) {
           return {
             trailing: (
-              <span className="text-[11px] font-medium text-muted-foreground">
+              <span className="text-[11px] font-medium text-ink-muted">
                 {t("picker.connected")}
               </span>
             ),
@@ -65,9 +65,9 @@ export function CatalogBrowser({
         return {
           onClick: busy ? undefined : () => onConnect(tk.slug),
           trailing: connecting ? (
-            <Spinner className="size-3.5 text-muted-foreground" />
+            <Spinner className="size-3.5 text-ink-muted" />
           ) : (
-            <Plus className="size-3.5 text-muted-foreground/60" />
+            <Plus className="size-3.5 text-ink-muted/60" />
           ),
         };
       }}

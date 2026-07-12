@@ -1,42 +1,52 @@
 //! One-shot localhost loopback listener for the OAuth sign-in redirect.
 //!
 //! Replaces the gethouston.ai relay page for the **desktop** app. After
-//! Google consent, Supabase 302-redirects the user's system browser straight
-//! to `http://127.0.0.1:<port>/auth/callback?code=...`. Because that's a
-//! plain HTTP navigation (not a custom `houston://` scheme), the browser
-//! shows NO "open this app?" dialog — it just loads the page. We then:
-//!   1. capture the `?code=...` query,
-//!   2. hand it to the webview via the existing `auth://deep-link` event so
-//!      the PKCE exchange runs in JS with the Keychain-stored verifier,
-//!      exactly as the `houston://` deep-link path did,
+//! provider consent (Google / Microsoft), the identity provider 302-redirects
+//! the user's system browser straight to
+//! `http://127.0.0.1:<port>/auth/callback?code=...&state=...`. Because that's a
+//! plain HTTP navigation (not a custom `houston://` scheme), the browser shows
+//! NO "open this app?" dialog — it just loads the page. We then:
+//!   1. capture the `?code=...&state=...` query,
+//!   2. hand it to the webview via the `auth://deep-link` event so the PKCE
+//!      exchange + GCIP (Firebase) sign-in run in JS with the in-memory verifier
+//!      (see `app/src/lib/identity/*`),
 //!   3. serve a small "you're signed in, return to Houston" page,
-//!   4. pull the app window to the front — the macOS deep-link path never
+//!   4. pull the app window to the front — the old macOS deep-link path never
 //!      did this, which is a big part of why users thought sign-in "hung",
 //!   5. shut the listener down.
 //!
 //! PKCE puts the authorization code in the query string, which reaches the
 //! server. (The implicit-flow `#access_token` fragment never leaves the
-//! browser — but our client is configured `flowType: "pkce"`, so the code
-//! always arrives as `?code=`.)
+//! browser — but our clients use the authorization-code + PKCE flow, so the
+//! code always arrives as `?code=`.)
 //!
-//! Web / mobile-PWA clients are NOT co-located with a local listener, so
-//! they keep using the https relay bridge (see `app/src/lib/auth.ts`).
+//! The frontend owns the attempt lifecycle. Starting a new listener supersedes
+//! any previous one (freeing its port), and the frontend can `cancel_oauth_loopback`
+//! to free the port immediately when an attempt is superseded, the sign-in
+//! screen unmounts, or the attempt times out — instead of waiting out the 300s
+//! self-timeout. Rust holds NO client secret and performs NO token exchange:
+//! that all lives in TS.
+//!
+//! Web / mobile clients are NOT co-located with a local listener, so they use
+//! the firebase-js-sdk popup instead (see `packages/web/src/identity/`).
 
+use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
-use tauri::AppHandle;
+use tauri::{AppHandle, State};
 use tokio::net::TcpListener;
+use tokio::sync::oneshot;
 
 use crate::loopback_util::{read_request_target, split_target, write_response};
 
-/// Loopback ports we try, in order. EVERY port here must be registered in
-/// the Supabase project's redirect allow-list as
-/// `http://127.0.0.1:<port>/auth/callback`, or the browser redirect is
+/// Loopback ports we try, in order. EVERY port here must be registered as an
+/// authorized redirect URI on the **Desktop OAuth client**
+/// (`http://127.0.0.1:<port>/auth/callback`), or the browser redirect is
 /// rejected before it ever reaches us. We bind the first free one; the short
 /// list survives the rare case where another process holds a port.
 const CANDIDATE_PORTS: &[u16] = &[8975, 8976, 8977, 8978];
 
-/// Path Supabase redirects to. Kept narrow so a stray request to `/` or
+/// Path the provider redirects to. Kept narrow so a stray request to `/` or
 /// `/favicon.ico` isn't mistaken for the callback.
 const CALLBACK_PATH: &str = "/auth/callback";
 
@@ -45,33 +55,98 @@ const CALLBACK_PATH: &str = "/auth/callback";
 /// calls `start_oauth_loopback` again for a fresh attempt.
 const LISTEN_TIMEOUT: Duration = Duration::from_secs(300);
 
-/// Start a one-shot loopback listener and return the redirect URI the
-/// frontend hands to Supabase as `redirectTo`. The listener runs in a
-/// background task and shuts itself down after the first callback (or the
-/// timeout).
+/// Cancellation channel for the currently-bound loopback listener. Exactly one
+/// listener is meant to be active at a time — a new `start_oauth_loopback`
+/// supersedes the previous by firing its stored sender. Sending makes the
+/// listener's task drop its `TcpListener` and free the port immediately instead
+/// of waiting out the 300s self-timeout. A stale sender (the task already ended)
+/// sends `Err`, which we treat as "already gone".
+#[derive(Default)]
+pub struct OauthLoopbackState {
+    cancel: Mutex<Option<oneshot::Sender<()>>>,
+}
+
+impl OauthLoopbackState {
+    fn lock(&self) -> Result<MutexGuard<'_, Option<oneshot::Sender<()>>>, String> {
+        self.cancel
+            .lock()
+            .map_err(|e| format!("oauth loopback state lock poisoned: {e}"))
+    }
+
+    /// Store a new cancel sender, returning the previous one (if any) so the
+    /// caller can supersede it.
+    fn replace(&self, tx: oneshot::Sender<()>) -> Result<Option<oneshot::Sender<()>>, String> {
+        Ok(self.lock()?.replace(tx))
+    }
+
+    /// Take the current cancel sender, clearing the slot.
+    fn take(&self) -> Result<Option<oneshot::Sender<()>>, String> {
+        Ok(self.lock()?.take())
+    }
+}
+
+/// Start a one-shot loopback listener and return the redirect URI the frontend
+/// hands to the provider as `redirect_uri`. The listener runs in a background
+/// task and shuts itself down after the first callback, a client cancel, or the
+/// timeout.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn start_oauth_loopback(app: AppHandle) -> Result<String, String> {
+pub async fn start_oauth_loopback(
+    app: AppHandle,
+    state: State<'_, OauthLoopbackState>,
+) -> Result<String, String> {
     let (listener, port) = bind_first_free().await?;
     let redirect_uri = format!("http://127.0.0.1:{port}{CALLBACK_PATH}");
     tracing::info!("[oauth-loopback] listening on {redirect_uri}");
 
+    // Supersede any previous listener so its port frees now, not after the old
+    // attempt's 300s self-timeout.
+    let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
+    if let Some(prev) = state.replace(cancel_tx)? {
+        if prev.send(()).is_err() {
+            tracing::debug!("[oauth-loopback] previous listener already ended");
+        }
+    }
+
     tokio::spawn(async move {
-        match tokio::time::timeout(LISTEN_TIMEOUT, serve_callback(&listener, &app)).await {
-            Ok(Ok(())) => {}
-            // The listener is a background task: the `start_oauth_loopback`
-            // command already returned, so there's no Result left to bubble
-            // up to a toast. This is the documented event-callback exception
-            // to the no-silent-failure rule. The user-visible safety nets are
-            // the `houston://` deep-link fallback and the SignInScreen retry.
-            Ok(Err(e)) => tracing::error!("[oauth-loopback] listener error: {e}"),
-            Err(_) => tracing::info!(
-                "[oauth-loopback] timed out after {}s with no callback; freeing port",
-                LISTEN_TIMEOUT.as_secs()
-            ),
+        tokio::select! {
+            _ = cancel_rx => {
+                tracing::info!(
+                    "[oauth-loopback] cancelled by client on port {port}; freeing port"
+                );
+            }
+            result = tokio::time::timeout(LISTEN_TIMEOUT, serve_callback(&listener, &app)) => {
+                match result {
+                    Ok(Ok(())) => {}
+                    // The listener is a background task: the `start_oauth_loopback`
+                    // command already returned, so there's no Result left to bubble
+                    // up to a toast. This is the documented event-callback exception
+                    // to the no-silent-failure rule. The user-visible safety net is
+                    // the SignInScreen retry.
+                    Ok(Err(e)) => tracing::error!("[oauth-loopback] listener error: {e}"),
+                    Err(_) => tracing::info!(
+                        "[oauth-loopback] timed out after {}s on port {port} with no callback; freeing port",
+                        LISTEN_TIMEOUT.as_secs()
+                    ),
+                }
+            }
         }
     });
 
     Ok(redirect_uri)
+}
+
+/// Free the currently-bound loopback listener's port immediately. The frontend
+/// calls this when a sign-in attempt is superseded, cancelled (the sign-in
+/// screen unmounts), or times out, so an abandoned listener does not hold its
+/// port for the full 300s self-timeout. A no-op when no listener is active.
+#[tauri::command(rename_all = "snake_case")]
+pub fn cancel_oauth_loopback(state: State<'_, OauthLoopbackState>) -> Result<(), String> {
+    if let Some(tx) = state.take()? {
+        if tx.send(()).is_err() {
+            tracing::debug!("[oauth-loopback] cancel: listener already ended");
+        }
+    }
+    Ok(())
 }
 
 /// Bind the first available candidate port on the loopback interface.
@@ -85,6 +160,14 @@ async fn bind_first_free() -> Result<(TcpListener, u16), String> {
     Err(format!(
         "Could not start the sign-in listener: all loopback ports {CANDIDATE_PORTS:?} are in use."
     ))
+}
+
+/// Build the `auth://deep-link` event payload the webview parses. The synthetic
+/// `houston://auth-callback?<query>` shape is kept for parity with the TS
+/// callback parser (`identity/oauth-callback.ts`), which reads `code`/`state`
+/// off it. This is NOT an OS deep link — just the event payload string.
+fn callback_deep_link(query: &str) -> String {
+    format!("houston://auth-callback?{query}")
 }
 
 /// Accept connections until one hits the callback path, then handle it and
@@ -112,10 +195,9 @@ async fn serve_callback(listener: &TcpListener, app: &AppHandle) -> Result<(), S
             continue;
         }
 
-        // Hand the code to the webview through the SAME event the `houston://`
-        // deep link uses, so the JS PKCE exchange is unchanged.
-        let deep_link = format!("houston://auth-callback?{query}");
-        crate::auth::emit_deep_link(app, &deep_link);
+        // Hand the code to the webview through the `auth://deep-link` event so
+        // the JS PKCE exchange + GCIP sign-in run with the in-memory verifier.
+        crate::auth::emit_deep_link(app, &callback_deep_link(query));
 
         let _ = write_response(&mut stream, "200 OK", SUCCESS_PAGE).await;
 
@@ -202,6 +284,44 @@ mod tests {
             None => (target, ""),
         };
         assert_ne!(path, CALLBACK_PATH);
+    }
+
+    #[test]
+    fn callback_deep_link_forwards_query_verbatim() {
+        // The `auth://deep-link` payload keeps `code` + `state` intact for the
+        // TS parser — this is the query-forward contract Wave 2a depends on.
+        assert_eq!(
+            callback_deep_link("code=abc123&state=xyz"),
+            "houston://auth-callback?code=abc123&state=xyz"
+        );
+    }
+
+    #[test]
+    fn replace_returns_previous_sender_and_stores_new() {
+        // A new listener supersedes the previous: `replace` hands back the old
+        // sender so `start_oauth_loopback` can fire it and free the old port.
+        let state = OauthLoopbackState::default();
+        let (tx1, _rx1) = oneshot::channel::<()>();
+        assert!(state.replace(tx1).unwrap().is_none());
+        let (tx2, _rx2) = oneshot::channel::<()>();
+        assert!(state.replace(tx2).unwrap().is_some());
+    }
+
+    #[test]
+    fn cancel_take_signals_receiver_and_clears_slot() {
+        // What `cancel_oauth_loopback` does: take the current sender, fire it
+        // (the listener task's `select!` wakes and frees the port), and leave
+        // the slot empty so a second cancel is a harmless no-op.
+        let state = OauthLoopbackState::default();
+        let (tx, mut rx) = oneshot::channel::<()>();
+        state.replace(tx).unwrap();
+
+        let taken = state.take().unwrap().expect("a sender was stored");
+        taken.send(()).expect("receiver still alive");
+        assert!(rx.try_recv().is_ok());
+
+        // Slot cleared — cancelling again finds nothing to fire.
+        assert!(state.take().unwrap().is_none());
     }
 
     #[test]

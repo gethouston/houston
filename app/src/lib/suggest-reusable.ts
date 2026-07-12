@@ -1,7 +1,7 @@
 import type { InteractionStep } from "@houston/protocol";
 
 /** A suggest_reusable step: the model called `suggest_reusable` on a clean
- *  finish to offer saving the just-completed work as a Skill or Routine. It
+ *  finish to offer saving the just-completed work as a Skill, Routine, or Learning. It
  *  reaches the frontend as a lone step in a `PendingInteraction`, exactly like
  *  plan_ready. Extracted from the protocol union so the app narrows to it. */
 export type SuggestReusableStep = Extract<

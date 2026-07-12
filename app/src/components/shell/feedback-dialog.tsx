@@ -80,7 +80,7 @@ export function FeedbackDialog({ open, onOpenChange }: Props) {
           onChange={(e) => setMessage(e.target.value)}
           placeholder={t("feedback.placeholder")}
           rows={5}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+          className="w-full rounded-md border border-line bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-focus resize-none"
           disabled={sending}
           autoFocus
         />

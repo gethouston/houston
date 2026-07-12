@@ -1,26 +1,33 @@
-import { supabase } from "@houston/app/lib/supabase";
+import {
+  identityConfig,
+  SESSION_QUERY_KEY,
+  type Session,
+} from "@houston/app/lib/identity";
+import { queryClient } from "@houston/app/lib/query-client";
+import {
+  initWebAuth,
+  webOnIdTokenChanged,
+  webRefreshIdToken,
+} from "@houston/web-identity";
 import { useEffect } from "react";
 import AppTree from "./app-tree";
 
 /**
  * Cloud bootstrap.
  *
- * The web build configures the app's OWN Supabase client (VITE_CP_SUPABASE_* →
- * SUPABASE_URL/ANON at build time), so the desktop app's native auth drives
+ * The web build configures the app's OWN Firebase Auth (VITE_CP_FIREBASE_* /
+ * FIREBASE_* baked at build time), so the desktop app's native auth drives
  * everything: its `SignInScreen` renders when signed out, and its sidebar
  * `UserMenu` shows the signed-in user — no bespoke cloud login UI, no floating
  * profile chip. All this component does is point the engine adapter at the
- * control plane and keep the bearer token in sync with the live Supabase
- * session.
- *
- * The token is read live by the engine adapter (control-plane.liveToken), so a
- * silent token refresh is picked up without a reload.
+ * control plane and keep the bearer (Firebase ID) token in sync with the live
+ * SDK session (`onIdTokenChanged`), which also covers silent token refresh.
  */
 /**
- * Dev-only bearer: with `VITE_CP_DEV_TOKEN` set (and no Supabase configured, so
+ * Dev-only bearer: with `VITE_CP_DEV_TOKEN` set (and no Firebase configured, so
  * the app's SignInScreen is skipped), the adapter authenticates to a CP_DEV host
  * as that principal — e.g. `dev:alice` for the DevTokenVerifier. Unset in any
- * real build, so production always uses the live Supabase session.
+ * real build, so production always uses the live Firebase session.
  */
 const DEV_TOKEN =
   (import.meta as { env?: Record<string, string | undefined> }).env
@@ -40,29 +47,25 @@ export function CloudApp({ controlPlaneUrl }: { controlPlaneUrl: string }) {
       window.__HOUSTON_ENGINE__ = { baseUrl: controlPlaneUrl, token };
     };
     if (DEV_TOKEN) {
-      apply(DEV_TOKEN); // dev: skip Supabase entirely
+      apply(DEV_TOKEN); // dev: skip Firebase entirely
       return;
     }
-    void supabase.auth
-      .getSession()
-      .then(({ data }) => apply(data.session?.access_token ?? ""));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) =>
-      apply(session?.access_token ?? ""),
-    );
+    initWebAuth(identityConfig);
+    // Mirror the live SDK session into the engine bearer AND the ["session"]
+    // TanStack cache (the shared auth gate source). onIdTokenChanged fires on
+    // sign-in, sign-out, and every silent refresh, so the bearer stays fresh.
+    const unsub = webOnIdTokenChanged((session: Session | null) => {
+      apply(session?.idToken ?? "");
+      queryClient.setQueryData<Session | null>(SESSION_QUERY_KEY, session);
+    });
     // The 401 → refresh → replay seam (HOU-687): the adapter's gatewayAuthFetch
-    // calls this to force-mint a fresh access token when the gateway rejects
-    // the current one (expired while the tab idled, gateway roll severed the
-    // streams). Null = the session is really gone; the 401 surfaces.
-    const refresher = async () => {
-      const { data, error } = await supabase.auth.refreshSession();
-      const token = error ? null : (data.session?.access_token ?? null);
-      if (token) apply(token);
-      return token;
-    };
-    window.__HOUSTON_SESSION_REFRESH__ = refresher;
+    // calls this to force-mint a fresh ID token when the gateway rejects the
+    // current one. The forced refresh also fires onIdTokenChanged above, so the
+    // engine global updates too. Null = the session is really gone; the 401 surfaces.
+    window.__HOUSTON_SESSION_REFRESH__ = webRefreshIdToken;
     return () => {
-      sub.subscription.unsubscribe();
-      if (window.__HOUSTON_SESSION_REFRESH__ === refresher) {
+      unsub();
+      if (window.__HOUSTON_SESSION_REFRESH__ === webRefreshIdToken) {
         delete window.__HOUSTON_SESSION_REFRESH__;
       }
     };

@@ -2,11 +2,11 @@
  * Pure, dependency-free helpers for the profile-picture upload flow: file
  * validation, storage path building, and cache-bust URL construction. Kept free
  * of any runtime import (mirrors `user-profiles-map.ts`) so they unit-test under
- * `node --test` without pulling in the live Supabase client. The impure upload
- * routine lives in `profile-avatar.ts`, which re-exports everything here.
+ * `node --test`. Retained scaffolding: avatar upload itself is disabled while the
+ * Supabase-backed store is gone (see knowledge-base/auth-migration.md), and
+ * these helpers return with the gateway profile store.
  */
 
-export const AVATAR_BUCKET = "avatars";
 /** 5 MB upload ceiling (checked before any decode work). */
 export const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 /** Output edge length; avatars render small, so 256px is plenty. */

@@ -37,6 +37,7 @@ import {
 import { newInteractionHolder, runWithInteractionCapture } from "./interaction";
 import { switchNeedsCompaction } from "./provider-switch";
 import { createStallWatchdog } from "./stall-watchdog";
+import { runWithTurnMode } from "./turn-mode-context";
 
 /** A turn's pinned provider/model/effort/mode. Absent = keep current/default. */
 export interface TurnPin {
@@ -358,13 +359,22 @@ export async function execTurn(
     watchdog.arm();
     try {
       await runWithActingContext(acting, () =>
-        runWithInteractionCapture(interaction, () =>
-          conv.session.prompt(promptText),
+        runWithTurnMode(mode, () =>
+          runWithInteractionCapture(interaction, () =>
+            conv.session.prompt(promptText),
+          ),
         ),
       );
     } finally {
       watchdog.disarm();
     }
+    // Did the user STOP this turn? cancelTurn marks `conv.stoppedTurnId` before
+    // aborting, and pi routes the aborted turn down the usage path (prompt()
+    // resolves clean, no provider_error), so this marker is the only trace. Used
+    // below to stamp the persisted message `stopped: true` (so the stop survives
+    // a reload) and to skip the clean `done`. Cleared with `conv.turnId` in the
+    // finally.
+    const stopped = conv.stoppedTurnId === turnId;
     // A stall-abort resolves prompt() the same way a user Stop does (pi marks it
     // "aborted" and emits no provider_error), so synthesize the typed failure
     // here — else the empty, contentless turn would settle below as a clean
@@ -372,7 +382,11 @@ export async function execTurn(
     // provider (the socket was live) and it then failed to deliver — a
     // provider-side fault, "try again in a moment", NOT the user's connectivity.
     // No HTTP status: the stream went silent, it never returned a response code.
-    if (stalled && !providerError) {
+    // A user STOP always wins over the watchdog: if the same turn was both
+    // stalled and stopped, cancelTurn's "Stopped by user" frame is the terminal
+    // surface — synthesizing a provider error on top would double-settle the turn
+    // (a red card over the neutral stop). So skip the synthesis when stopped.
+    if (stalled && !providerError && !stopped) {
       providerError = {
         kind: "provider_internal",
         provider: model.provider,
@@ -411,12 +425,21 @@ export async function execTurn(
       compaction,
       providerError,
       fileChanges,
+      // Durable "stopped by user" marker: it exists so the stop survives a
+      // reload — the SDK renders the standard stopped line from `stopped: true`
+      // and settles the reload derivation to `needs_you`, fixing the old
+      // divergence where settle-from-history re-derived a stopped turn as a
+      // clean `done` (pi resolves the aborted turn clean, leaving no trace).
+      stopped: stopped ? true : undefined,
       // Persist what the turn is waiting on the user for under the SAME
       // condition that puts it on the clean `done` frame below (no provider
       // error) — so a client that misses the live `done` settles from history
       // to `needs_you`, never dropping the question/connect card to a false
-      // `done`. A failed/stalled turn (providerError set) never carries it.
-      pendingInteraction: providerError ? undefined : interaction.pending,
+      // `done`. A failed/stalled turn (providerError set) never carries it; a
+      // stopped turn never carries it either — the user walked away mid-ask, so
+      // nothing should re-render a card.
+      pendingInteraction:
+        providerError || stopped ? undefined : interaction.pending,
       turnId,
     });
     if (fileChanges)
@@ -424,10 +447,13 @@ export async function execTurn(
     // Skip the clean `done` when the turn failed: the provider_error frame is the
     // turn's terminal surface (the web adapter settles on it), and a `done` would
     // settle the chat as a clean success — firing the "mission complete"
-    // notification on top of the error. On the clean-done path, carry whatever
-    // the model is now waiting on the user for so the board card settles to
-    // `needs_you` (absent → `done`). Only the clean done ever carries it.
-    if (!providerError)
+    // notification on top of the error. Also skip it when the user STOPPED the
+    // turn: cancelTurn's live "Stopped by user" error frame is the terminal
+    // surface, and a `done` on top would race the client's settle. On the
+    // clean-done path, carry whatever the model is now waiting on the user for so
+    // the board card settles to `needs_you` (absent → `done`). Only the clean
+    // done ever carries it.
+    if (!providerError && !stopped)
       publish(id, {
         type: "done",
         data: null,
@@ -493,6 +519,9 @@ export async function execTurn(
       });
   } finally {
     conv.turnId = undefined;
+    // Clear the stop marker alongside the turn id so it never bleeds into the
+    // next turn on this conversation (read above to stamp `stopped`).
+    conv.stoppedTurnId = undefined;
     // Never leak the stall timer past the turn (no-op if it threw before arming).
     watchdog.disarm();
     // Undefined only if resolveModel/switchBackendIfNeeded threw before we

@@ -29,6 +29,13 @@ export interface TurnSinkOptions {
   /** Refetch persisted history (the resync settle source). */
   reloadHistory: () => Promise<ChatMessage[]>;
   /**
+   * Turn mode only: the grace before the pre-settled poll fires (a turn that
+   * finished before our first sync, so no frames ever replayed — see
+   * `PRESETTLED_POLL_MS`). Absent disables the poll (observer mode never arms
+   * it): the sink then relies solely on frames and the reconnect budget.
+   */
+  presettledPollMs?: number;
+  /**
    * LEGACY-only guard for settle-from-history (servers/histories without turn
    * ids): whether the trailing assistant message really is THE settling turn's
    * reply. Turn mode matches the prompt (weak against two identical prompts in

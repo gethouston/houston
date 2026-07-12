@@ -56,7 +56,7 @@ struct ChatView: View {
       .safeAreaInset(edge: .bottom, spacing: 0) { footer }
       // The signature branded wallpaper sits behind the whole surface — applied
       // after the composer inset so it bleeds under the composer material (and
-      // supplies the base `theme.background` the flat fill used to provide).
+      // supplies the base `theme.input` the flat fill used to provide).
       .background { ChatWallpaperView() }
       .onAppear { model.appear() }
       .onDisappear { model.disappear() }

@@ -28,7 +28,7 @@ enum ChatWallpaperLayout {
   /// the half-row offset produces a clear diagonal cadence. Feature constant.
   static let rowSpacing: CGFloat = 60
 
-  /// The pattern's fill opacity, applied to `theme.foreground`. Very low so the
+  /// The pattern's fill opacity, applied to `theme.ink`. Very low so the
   /// wallpaper is a texture, not decoration — it must never compete with bubbles
   /// or the day/date pills layered over it. Feature constant.
   static let patternOpacity: CGFloat = 0.035
@@ -70,7 +70,7 @@ enum ChatWallpaperLayout {
 }
 
 /// Whether the branded pattern draws, or the surface falls back to a flat
-/// `theme.background`. Split out as a pure predicate so the accessibility gate
+/// `theme.input`. Split out as a pure predicate so the accessibility gate
 /// is unit-tested without touching SwiftUI's environment.
 enum ChatWallpaperVisibility {
   /// The pattern is suppressed under Reduce Transparency: users who ask for a

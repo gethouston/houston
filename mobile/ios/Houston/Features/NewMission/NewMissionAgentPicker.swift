@@ -28,10 +28,10 @@ struct NewMissionAgentPicker: View {
             VStack(alignment: .leading, spacing: Spacing.space4) {
               Text(Strings.AgentPicker.title)
                 .font(Typography.title)
-                .foregroundStyle(theme.foreground)
+                .foregroundStyle(theme.ink)
               Text(Strings.AgentPicker.description)
                 .font(Typography.callout)
-                .foregroundStyle(theme.mutedFg)
+                .foregroundStyle(theme.inkMuted)
             }
             .textCase(nil)
             .padding(.bottom, Spacing.space8)
@@ -41,7 +41,7 @@ struct NewMissionAgentPicker: View {
         .scrollContentBackground(.hidden)
       }
     }
-    .background(theme.background)
+    .background(theme.input)
     .navigationTitle(Strings.NewMission.title)
     .navigationBarTitleDisplayMode(.inline)
   }
@@ -52,11 +52,11 @@ struct NewMissionAgentPicker: View {
         HoustonAvatar(agentColorHex: nil, diameter: 32)
         Text(agent.name)
           .font(Typography.bodyMedium)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
         Spacer(minLength: Spacing.space8)
         Image(systemName: "chevron.right")
           .font(Typography.caption)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
       }
       .contentShape(Rectangle())
     }

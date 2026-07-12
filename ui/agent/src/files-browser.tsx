@@ -164,7 +164,7 @@ export function FilesBrowser({
           <h1 className="text-2xl font-semibold tracking-tight">
             {emptyTitle}
           </h1>
-          <p className="text-sm text-muted-foreground">{emptyDescription}</p>
+          <p className="text-sm text-ink-muted">{emptyDescription}</p>
         </div>
         {onBrowse && (
           <Button variant="default" size="sm" onClick={onBrowse}>
@@ -177,10 +177,10 @@ export function FilesBrowser({
 
   return (
     <div
-      className="relative flex flex-col overflow-hidden bg-background border border-border rounded-xl h-full"
+      className="relative flex flex-col overflow-hidden bg-input border border-line rounded-xl h-full"
       {...(onFilesDropped || onMove ? dragHandlers : {})}
     >
-      <div className="h-[24px] shrink-0 border-b border-border bg-muted/40 select-none flex items-center rounded-t-xl px-1">
+      <div className="h-[24px] shrink-0 border-b border-line bg-chip-subtle/40 select-none flex items-center rounded-t-xl px-1">
         <div
           className="flex-1 min-w-0 items-center h-full"
           style={{ display: "grid", gridTemplateColumns: COL_GRID }}
@@ -248,11 +248,11 @@ export function FilesBrowser({
       >
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <p className="text-sm text-muted-foreground/50">{l.loading}</p>
+            <p className="text-sm text-ink-muted/50">{l.loading}</p>
           </div>
         ) : (
           <>
-            <div className="shrink-0 [&>:nth-child(even)]:bg-muted/30 [&>:nth-child(even)]:rounded-lg">
+            <div className="shrink-0 [&>:nth-child(even)]:bg-chip-subtle/30 [&>:nth-child(even)]:rounded-lg">
               {creatingFolder && (
                 <NewFolderInput
                   onConfirm={(n) => {
@@ -318,8 +318,8 @@ export function FilesBrowser({
         )}
       </div>
 
-      <div className="h-[22px] shrink-0 border-t border-border bg-muted/40 select-none flex items-center justify-between px-3 rounded-b-xl">
-        <span className="text-[11px] text-muted-foreground">
+      <div className="h-[22px] shrink-0 border-t border-line bg-chip-subtle/40 select-none flex items-center justify-between px-3 rounded-b-xl">
+        <span className="text-[11px] text-ink-muted">
           {fileCount} {fileCount === 1 ? "item" : "items"}
         </span>
         {statusBarAction}
@@ -376,7 +376,7 @@ function FillerStripes({
             key={`filler-${rowIndex}`}
             className={cn(
               "h-[24px]",
-              rowIndex % 2 === 1 && "bg-muted/30 rounded-lg",
+              rowIndex % 2 === 1 && "bg-chip-subtle/30 rounded-lg",
             )}
             onClick={onDeselect}
             onContextMenu={onContextMenu}
@@ -409,13 +409,13 @@ function BgContextMenu({
         }}
       />
       <div
-        className="fixed z-50 bg-popover/95 backdrop-blur-xl border border-border rounded-lg shadow-lg py-1 min-w-[160px]"
+        className="fixed z-50 bg-popover/95 backdrop-blur-xl border border-line rounded-lg shadow-lg py-1 min-w-[160px]"
         style={{ left: position.x, top: position.y }}
       >
         <button
           type="button"
           onClick={onNewFolder}
-          className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-primary hover:text-primary-foreground rounded-md mx-0.5"
+          className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-action hover:text-action-text rounded-md mx-0.5"
           style={{ width: "calc(100% - 4px)" }}
         >
           New Folder
@@ -449,8 +449,8 @@ function HeaderCell({
       type="button"
       onClick={() => onSort(col)}
       className={cn(
-        "flex items-center justify-between h-full px-2 text-[11px] font-medium text-muted-foreground hover:bg-muted transition-colors",
-        !last && "border-r border-border",
+        "flex items-center justify-between h-full px-2 text-[11px] font-medium text-ink-muted hover:bg-chip-subtle transition-colors",
+        !last && "border-r border-line",
         className,
       )}
     >

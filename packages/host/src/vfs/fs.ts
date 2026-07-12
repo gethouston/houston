@@ -102,7 +102,14 @@ export class FsVfs implements Vfs {
   async writeBytes(key: string, content: Buffer): Promise<void> {
     const path = this.pathFor(key);
     await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, content);
+    // Atomic tmp+rename: a plain in-place write let concurrent readers catch a
+    // TRUNCATED file — list_conversations 500'd ("not valid JSON") whenever a
+    // read raced an activity.json write. The tmp lives in the same directory
+    // (rename is only atomic within one filesystem) with a unique suffix so
+    // two concurrent writers never collide on it.
+    const tmp = `${path}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`;
+    await writeFile(tmp, content);
+    await rename(tmp, path);
   }
 
   async deleteKey(key: string): Promise<void> {

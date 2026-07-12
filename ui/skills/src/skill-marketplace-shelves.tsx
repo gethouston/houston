@@ -46,7 +46,7 @@ function ShelfSkeletonRow() {
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {SKELETON_KEYS.map((k) => (
-        <div key={k} className="h-14 animate-pulse rounded-xl bg-secondary" />
+        <div key={k} className="h-14 animate-pulse rounded-xl bg-chip" />
       ))}
     </div>
   );
@@ -118,13 +118,11 @@ export function SkillMarketplaceShelves({
         .map((shelf) => (
           <section key={shelf.id}>
             <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-foreground">
-                {shelf.title}
-              </p>
+              <p className="text-sm font-medium text-ink">{shelf.title}</p>
               <button
                 type="button"
                 onClick={() => onSeeAll(shelf.id)}
-                className="shrink-0 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                className="shrink-0 text-xs text-ink-muted underline-offset-4 hover:text-ink hover:underline"
               >
                 {labels.seeAll}
               </button>

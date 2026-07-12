@@ -29,14 +29,14 @@ struct IntegrationsReadyView: View {
       VStack(alignment: .leading, spacing: Spacing.space20) {
         Text(Strings.Integrations.homeDescription)
           .font(Typography.callout)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
         if !connections.isEmpty { connectedSection }
         ConnectCatalogView(model: model, flow: flow)
       }
       .padding(.horizontal, Spacing.space16)
       .padding(.vertical, Spacing.space16)
     }
-    .background(theme.background)
+    .background(theme.input)
     .sheet(item: $selected) { connection in
       AppDetailSheet(model: model, flow: flow, connection: connection)
     }

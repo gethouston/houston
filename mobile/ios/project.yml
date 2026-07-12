@@ -59,6 +59,20 @@ targets:
       path: Houston/Info.plist
       properties:
         CFBundleDisplayName: Houston
+        # Shipped UI languages (Localizable.xcstrings mirrors desktop en/es/pt).
+        # Explicit so the per-app language picker appears in iOS Settings.
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations:
+          - en
+          - es
+          - pt
+        # Version comes from the build settings above; without these XcodeGen
+        # writes literal 1.0/1 and the target's MARKETING_VERSION is ignored.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # HTTPS-only standard crypto: exempt, so TestFlight uploads skip the
+        # per-build export-compliance question.
+        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
         # OAuth callback deep link: Supabase redirects to houston://auth-callback.
         CFBundleURLTypes:

@@ -87,7 +87,7 @@ export function ChatModeSelector({
             type="button"
             aria-label={t("modeSelector.modeValue", { mode: labels[mode] })}
             title={descriptions[mode]}
-            className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground whitespace-nowrap hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-ink-muted whitespace-nowrap hover:text-ink hover:bg-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus"
           >
             <ActiveIcon className="size-3.5" />
             <span>{labels[mode]}</span>
@@ -99,7 +99,7 @@ export function ChatModeSelector({
         <DropdownMenuContent
           align="start"
           sideOffset={6}
-          className="w-[300px] rounded-2xl border-border p-1.5 shadow-lg"
+          className="w-[300px] rounded-2xl border-line p-1.5 shadow-lg"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           {MODE_ORDER.map((m) => {
@@ -112,17 +112,15 @@ export function ChatModeSelector({
                 className="items-center gap-3 rounded-xl px-2.5 py-2.5"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <Icon className="size-4 shrink-0 text-foreground" />
+                  <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <Icon className="size-4 shrink-0 text-ink" />
                     {labels[m]}
                   </span>
-                  <span className="line-clamp-2 text-xs text-muted-foreground">
+                  <span className="line-clamp-2 text-xs text-ink-muted">
                     {descriptions[m]}
                   </span>
                 </div>
-                {active && (
-                  <Check className="size-4 shrink-0 text-foreground" />
-                )}
+                {active && <Check className="size-4 shrink-0 text-ink" />}
               </DropdownMenuItem>
             );
           })}

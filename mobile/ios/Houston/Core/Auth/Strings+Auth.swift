@@ -7,10 +7,10 @@ import Foundation
 /// Auth surface's additive contribution (per the pinned Strings convention).
 extension Strings {
     enum Auth {
-        static let welcomeTitle = "Welcome to Houston"
-        static let welcomeSubtitle = "Sign in to save your agents and keep everything in sync."
-        static let continueWithGoogle = "Continue with Google"
-        static let continuePending = "Opening browser..."
-        static let retryHint = "Wrong browser profile? Just click again to retry."
+        static let welcomeTitle = String(localized: "auth.welcomeTitle", defaultValue: "Welcome to Houston")
+        static let welcomeSubtitle = String(localized: "auth.welcomeSubtitle", defaultValue: "Sign in to save your agents and keep everything in sync.")
+        static let continueWithGoogle = String(localized: "auth.continueWithGoogle", defaultValue: "Continue with Google")
+        static let continuePending = String(localized: "auth.continuePending", defaultValue: "Opening browser...")
+        static let retryHint = String(localized: "auth.retryHint", defaultValue: "Wrong browser profile? Just click again to retry.")
     }
 }

@@ -2,6 +2,7 @@
   "title": "Settings",
   "nav": {
     "connectedAccounts": "Connected accounts",
+    "apiKeys": "API keys",
     "workspaceContext": "Workspace context",
     "userContext": "Your context",
     "language": "Language",
@@ -124,6 +125,7 @@
     "rows": {
       "members": "People who can use your agents",
       "connectedAccounts": "Apps you've connected to Houston",
+      "apiKeys": "Keys to run your agents from your own tools",
       "workspaceContext": "What every agent knows about this workspace",
       "userContext": "What every agent knows about you",
       "shortcuts": "Run Houston without the mouse",
@@ -145,5 +147,48 @@
     "empty": "You haven't connected any apps yet.",
     "connectMore": "Connect more apps",
     "connectHint": "Connect new apps from any agent's Integrations tab."
+  },
+  "apiKeys": {
+    "title": "API keys",
+    "intro": "Use API keys to start missions from your own tools and scripts. <docs>Read the developer docs</docs>.",
+    "dialogClose": "Close",
+    "createButton": "Create key",
+    "empty": {
+      "title": "No API keys yet",
+      "description": "An API key lets your own tools and scripts start missions with your agents. Create one to get started."
+    },
+    "error": {
+      "title": "Couldn't load your keys",
+      "description": "Something went wrong reaching the server. Check your connection and try again.",
+      "retry": "Try again"
+    },
+    "row": {
+      "created": "Created {{date}}",
+      "lastUsed": "Last used {{when}}",
+      "neverUsed": "Never used",
+      "revoke": "Revoke"
+    },
+    "create": {
+      "title": "Create API key",
+      "subtitle": "Give this key a name so you can recognize it later.",
+      "nameLabel": "Key name",
+      "namePlaceholder": "e.g. My automation script",
+      "limitReached": "You've reached the maximum of 20 keys. Revoke one you no longer use to create a new key.",
+      "cancel": "Cancel",
+      "submit": "Create key",
+      "revealTitle": "Copy your API key",
+      "revealSubtitle": "\"{{name}}\" is ready. Copy it now and store it somewhere safe.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Couldn't copy the key",
+      "warning": "This is the only time you'll see this key. You won't be able to view it again after closing.",
+      "done": "Done"
+    },
+    "revoke": {
+      "title": "Revoke this key?",
+      "description": "\"{{name}}\" will stop working right away. Any tool using it will lose access. This cannot be undone.",
+      "confirm": "Revoke",
+      "cancel": "Cancel"
+    }
   }
 }

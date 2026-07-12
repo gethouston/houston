@@ -17,6 +17,7 @@ import { SYSTEM_PROMPT } from "./resource-loader";
 import { buildToolSelection } from "./tool-selection";
 import { makeAskUserTool } from "./tools/ask-user";
 import { makeClampedFileTools } from "./tools/clamped-fs";
+import { makeCustomIntegrationTools } from "./tools/custom-integrations";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
 import { makePlanReadyTool } from "./tools/plan-ready";
@@ -69,6 +70,16 @@ const integrationTools =
       })
     : [];
 
+// Custom-integration setup tools (HOU-550): same reachability gate and trust
+// posture — they proxy to /sandbox/integrations/custom/* and hold no secret.
+const customIntegrationTools =
+  config.controlPlaneUrl && config.sandboxToken
+    ? makeCustomIntegrationTools({
+        baseUrl: config.controlPlaneUrl,
+        sandboxToken: config.sandboxToken,
+      })
+    : [];
+
 const toolSelection = buildToolSelection({
   codeExecution: config.codeExecution,
   integrations: integrationTools.length > 0,
@@ -104,6 +115,7 @@ const piBackend = createPiBackend({
     suggestReusableTool,
     ...(runCodeTool ? [runCodeTool] : []),
     ...integrationTools,
+    ...customIntegrationTools,
   ],
 });
 setDefaultBackend(piBackend);
@@ -183,6 +195,15 @@ export type Conversation = {
    * settles the turn it actually interrupts, not whatever a client guesses.
    */
   turnId?: string;
+  /**
+   * The wire id of a turn the user STOPPED (set by `cancelTurn` when it aborts a
+   * live turn; read + cleared by `execTurn` after `prompt()` resolves). pi routes
+   * an aborted turn down the normal usage path — `prompt()` resolves clean with
+   * no provider_error — so this marker is the only trace that the resolution was
+   * a stop. execTurn uses it to stamp `stopped: true` on the persisted assistant
+   * message (so the stop survives a reload) and to skip the clean `done`.
+   */
+  stoppedTurnId?: string;
   /**
    * Turns queued-or-running for this conversation (incremented for a turn's
    * whole lifetime by chat.ts `runTurn`, decremented when it settles). `> 0`

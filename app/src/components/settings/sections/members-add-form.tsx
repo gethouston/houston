@@ -38,13 +38,13 @@ export function AddMemberForm() {
   };
 
   return (
-    <div className="mb-6 rounded-xl border border-foreground/5 bg-secondary p-4">
+    <div className="mb-6 rounded-xl border border-ink/5 bg-chip p-4">
       <h3 className="text-sm font-medium mb-3">{t("members.add.title")}</h3>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <div className="flex-1">
           <label
             htmlFor="add-member-email"
-            className="text-xs text-muted-foreground block mb-1.5"
+            className="text-xs text-ink-muted block mb-1.5"
           >
             {t("members.add.emailLabel")}
           </label>
@@ -63,7 +63,7 @@ export function AddMemberForm() {
         <div className="sm:w-40">
           <label
             htmlFor="add-member-role"
-            className="text-xs text-muted-foreground block mb-1.5"
+            className="text-xs text-ink-muted block mb-1.5"
           >
             {t("members.add.roleLabel")}
           </label>

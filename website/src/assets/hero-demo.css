@@ -33,7 +33,9 @@
   display: flex;
   flex-direction: column;
   padding: 16px 16px 16px;
-  background: var(--m-card);
+  /* Translucent "screen" glass (canvas-screen token) — the window aurora
+     bleeds through, exactly like the real app's floating content area. */
+  background: var(--m-panel);
   border-radius: 16px;
 }
 
@@ -233,7 +235,8 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: var(--m-card);
+  /* Same translucent "screen" glass as the board panel (canvas-screen). */
+  background: var(--m-panel);
   border-radius: 16px;
   overflow: hidden;
 }

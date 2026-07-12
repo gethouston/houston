@@ -34,8 +34,14 @@ interface Props extends TabProps {
   /** The Back button, rendered to the left of the agent avatar — the ONE
    *  header this chat has (no second header stacked above it). */
   panelLeading: ReactNode;
-  /** Overrides the panel's auto "Mission: {title}" line with "Routine: {name}". */
-  missionLabel: string;
+  /** Overrides the panel's auto "Mission: {title}" line (routines pass
+   *  "Routine: {name}"). Omit to keep the default "Mission: {title}" — the
+   *  custom-integration setup chat reuses this board and IS a mission, so it
+   *  wants that default. */
+  missionLabel?: string;
+  /** Header actions on the panel's right side (the integration setup chat
+   *  puts its "Done" button here). Omit for none (routines). */
+  panelActions?: ReactNode;
 }
 
 export function RoutineSetupChatBoard({
@@ -46,6 +52,7 @@ export function RoutineSetupChatBoard({
   panelContainer,
   panelLeading,
   missionLabel,
+  panelActions,
 }: Props) {
   const path = agent.folderPath;
   const queuedLabels = useQueuedMessageLabels();
@@ -94,6 +101,15 @@ export function RoutineSetupChatBoard({
     [path],
   );
 
+  // Stable identity: AIBoard folds `sessionKeyFor` into its `hydrateSession`
+  // callback, and its composer-autofocus effect is keyed on that callback. An
+  // inline arrow gave it a fresh identity every render, re-firing the effect
+  // and re-focusing the composer on EVERY chat re-render (a streaming/settling
+  // reply, an activity refetch) instead of once on open — the composer would
+  // yank focus back from wherever the user clicked. useCallback makes the
+  // autofocus one-shot, matching every other AIBoard consumer.
+  const keyForSession = useCallback(() => sessionKey ?? "", [sessionKey]);
+
   const items: KanbanItem[] = useMemo(
     () => [
       {
@@ -126,7 +142,7 @@ export function RoutineSetupChatBoard({
         hidePanelClose
         feedItems={feedItems}
         isLoading={send.effectiveLoading}
-        sessionKeyFor={() => sessionKey ?? ""}
+        sessionKeyFor={keyForSession}
         onSendMessage={sendQueue.handleSendMessage}
         onComposerSubmit={panel.onComposerSubmit}
         queuedMessages={sendQueue.queuedMessages}
@@ -145,6 +161,7 @@ export function RoutineSetupChatBoard({
         onAttachmentRejections={attachmentValidation.onAttachmentRejections}
         thinkingIndicator={panel.thinkingIndicator}
         panelLeading={panelLeading}
+        panelActions={panelActions ? () => panelActions : undefined}
         panelAgentName={agent.name}
         panelMissionLabel={missionLabel}
         panelAvatar={<AgentPanelAvatar color={agent.color} running={running} />}

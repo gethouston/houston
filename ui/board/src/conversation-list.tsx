@@ -42,20 +42,20 @@ export function ConversationList({ entries, onSelect }: ConversationListProps) {
       {entries.map((entry) => (
         <Card
           key={entry.id}
-          className="cursor-pointer hover:shadow-md transition-shadow border-foreground/5 px-4 py-3"
+          className="cursor-pointer hover:shadow-md transition-shadow border-ink/5 px-4 py-3"
           onClick={() => onSelect(entry)}
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               {entry.type === "primary" && (
-                <MessageSquare className="size-4 shrink-0 text-muted-foreground" />
+                <MessageSquare className="size-4 shrink-0 text-ink-muted" />
               )}
               <div className="min-w-0">
                 <span className="text-sm font-medium truncate block">
                   {entry.title}
                 </span>
                 {entry.agentName && (
-                  <span className="text-xs text-muted-foreground truncate block">
+                  <span className="text-xs text-ink-muted truncate block">
                     {entry.agentName}
                   </span>
                 )}
@@ -63,7 +63,7 @@ export function ConversationList({ entries, onSelect }: ConversationListProps) {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {entry.updatedAt && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-ink-muted">
                   {formatRelative(entry.updatedAt)}
                 </span>
               )}

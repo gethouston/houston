@@ -263,13 +263,20 @@ export type {
   ChatInteractionCardProps,
   ChatInteractionOption,
   ChatInteractionStep,
+  StepChrome,
   StepFooterApi,
 } from "./interaction-card";
 export { ChatInteractionCard } from "./interaction-card";
-export { prettifyToolkit } from "./interaction-card-model";
-// The shared footer row a signin/connect step body composes so its filled CTA
-// sits in the exact same chrome as a question step's Next.
-export { InteractionFooter } from "./interaction-card-parts";
+export { humanizeActionSlug, prettifyToolkit } from "./interaction-card-model";
+// The shared modal shell every interaction step composes (a signin/connect body
+// renders its own, wired with the StepChrome the stepper hands it) so the whole
+// family shares one surface, header row, and footer row.
+export {
+  InteractionModal,
+  type InteractionModalPager,
+  type InteractionModalProps,
+  InteractionModalTitle,
+} from "./interaction-modal";
 // Clean, human-readable preview of a persisted user-message body: decodes the
 // Skill / attachment markers so cards and lists never show the raw marker.
 export { messagePreviewText } from "./message-preview";

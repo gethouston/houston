@@ -49,17 +49,12 @@
         "description": "Pull together everything you need before your next meeting: who is on the call, what you last discussed, and anything time-sensitive, from your inbox and a quick web check, handed to you before it starts."
       }
     },
+    "milestones": {
+      "ai": "Connect your AI",
+      "email": "Connect your email",
+      "send": "Test your assistant"
+    },
     "missions": {
-      "intro": {
-        "title": "Let's set up your account",
-        "body": "A few quick steps and your agent is ready to work for you.",
-        "cta": "Start setup",
-        "steps": {
-          "ai": "Connect your AI",
-          "email": "Connect your email",
-          "send": "Test your assistant"
-        }
-      },
       "connect": {
         "title": "Connect your AI",
         "body": "Choose the AI you already pay for and sign in. You bring your own subscription, so Houston never sees your password or your bill."

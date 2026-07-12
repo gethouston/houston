@@ -19,13 +19,13 @@ struct ModelPickerView: View {
     VStack(alignment: .leading, spacing: Spacing.space8) {
       Text(member.name.isEmpty ? Strings.AIModels.Detail.models : member.name)
         .font(Typography.captionStrong)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
         .textCase(.uppercase)
 
       if member.models.isEmpty {
         Text(Strings.AIModels.Detail.noModels)
           .font(Typography.callout)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
       } else {
         VStack(spacing: Spacing.space2) {
           ForEach(member.models, id: \.self) { modelId in
@@ -45,17 +45,17 @@ struct ModelPickerView: View {
           VStack(alignment: .leading, spacing: Spacing.space2) {
             Text(meta?.label ?? modelId)
               .font(Typography.bodyMedium)
-              .foregroundStyle(theme.foreground)
+              .foregroundStyle(theme.ink)
             if let description = meta?.description, !description.isEmpty {
               Text(description)
                 .font(Typography.caption)
-                .foregroundStyle(theme.mutedFg)
+                .foregroundStyle(theme.inkMuted)
                 .multilineTextAlignment(.leading)
             }
           }
           Spacer(minLength: Spacing.space8)
           if isSelected {
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(theme.primary)
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(theme.action)
           }
         }
         .contentShape(Rectangle())
@@ -69,7 +69,7 @@ struct ModelPickerView: View {
     }
     .padding(Spacing.space12)
     .background(
-      isSelected ? theme.accent : Color.clear,
+      isSelected ? theme.hover : Color.clear,
       in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
   }
 
@@ -77,17 +77,17 @@ struct ModelPickerView: View {
     VStack(alignment: .leading, spacing: Spacing.space6) {
       Text(Strings.AIModels.Detail.effort)
         .font(Typography.caption)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
       HStack(spacing: Spacing.space6) {
         ForEach(levels, id: \.self) { level in
           Button { setEffort(level, modelId: modelId) } label: {
             Text(Strings.AIModels.effortLabel(level))
               .font(Typography.caption)
-              .foregroundStyle(effort == level ? theme.primaryFg : theme.foreground)
+              .foregroundStyle(effort == level ? theme.actionText : theme.ink)
               .padding(.horizontal, Spacing.space10)
               .padding(.vertical, Spacing.space6)
               .background(
-                effort == level ? theme.primary : theme.secondary, in: Capsule())
+                effort == level ? theme.action : theme.chip, in: Capsule())
           }
           .buttonStyle(.plain)
         }

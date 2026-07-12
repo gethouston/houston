@@ -110,7 +110,7 @@ export function AgentPersonScopeMenu({
               >
                 <PersonFace person={selfFace} />
                 <span>{selfName}</span>
-                <span className="ml-auto text-muted-foreground text-xs">
+                <span className="ml-auto text-ink-muted text-xs">
                   {t("dashboard:peopleFilter.mine")}
                 </span>
               </DropdownMenuItem>
@@ -139,7 +139,7 @@ export function AgentPersonScopeMenu({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => setShareOpen(true)}
-                className="gap-2 text-muted-foreground"
+                className="gap-2 text-ink-muted"
               >
                 <UserPlus className="size-4" />
                 {inviteLabel}

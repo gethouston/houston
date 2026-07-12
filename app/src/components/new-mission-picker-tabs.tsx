@@ -88,8 +88,8 @@ export function ScrollableTabs({
             className={cn(
               "px-3 py-1.5 text-sm rounded-full transition-colors whitespace-nowrap",
               activeTab === tab.id
-                ? "bg-accent text-foreground font-medium"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                ? "bg-hover text-ink font-medium"
+                : "text-ink-muted hover:bg-hover hover:text-ink",
             )}
           >
             {tab.label}
@@ -102,7 +102,7 @@ export function ScrollableTabs({
           type="button"
           onClick={() => scrollBy(-1)}
           aria-label={scrollLeftLabel}
-          className="absolute left-2 top-1/2 -translate-y-1/2 size-6 rounded-full bg-background/90 border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors -mt-1.5"
+          className="absolute left-2 top-1/2 -translate-y-1/2 size-6 rounded-full bg-input/90 border border-line shadow-sm flex items-center justify-center text-ink-muted hover:text-ink transition-colors -mt-1.5"
         >
           <ChevronLeft className="size-3.5" />
         </button>
@@ -112,7 +112,7 @@ export function ScrollableTabs({
           type="button"
           onClick={() => scrollBy(1)}
           aria-label={scrollRightLabel}
-          className="absolute right-2 top-1/2 -translate-y-1/2 size-6 rounded-full bg-background/90 border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors -mt-1.5"
+          className="absolute right-2 top-1/2 -translate-y-1/2 size-6 rounded-full bg-input/90 border border-line shadow-sm flex items-center justify-center text-ink-muted hover:text-ink transition-colors -mt-1.5"
         >
           <ChevronRight className="size-3.5" />
         </button>

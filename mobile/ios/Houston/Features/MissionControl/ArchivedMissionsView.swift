@@ -35,6 +35,6 @@ struct ArchivedMissionsView: View {
         .scrollContentBackground(.hidden)
       }
     }
-    .background(theme.background)
+    .background(theme.input)
   }
 }

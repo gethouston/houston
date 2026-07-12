@@ -46,13 +46,13 @@ export function ModelOfferRow({
 
   // A boxless logo lockup + copy + action, on the modal's grey slab.
   const row = (action: ReactNode) => (
-    <span className="flex w-full min-w-0 items-center gap-3 rounded-xl bg-secondary px-3 py-2.5">
+    <span className="flex w-full min-w-0 items-center gap-3 rounded-xl bg-chip px-3 py-2.5">
       <BrandMark providerId={provider.id} size="sm" />
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate font-medium text-[13px] text-foreground">
+        <span className="truncate font-medium text-[13px] text-ink">
           {provider.name}
         </span>
-        <span className="text-[11px] text-foreground/70">{description}</span>
+        <span className="text-[11px] text-ink/70">{description}</span>
       </span>
       <span className="flex shrink-0 items-center gap-2">{action}</span>
     </span>
@@ -64,7 +64,7 @@ export function ModelOfferRow({
         type="button"
         onClick={onOpenProvider ? () => onOpenProvider(provider) : undefined}
         disabled={!onOpenProvider}
-        className="w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+        className="w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default"
       >
         {row(<LiveStatus label={t("card.connected")} />)}
       </button>

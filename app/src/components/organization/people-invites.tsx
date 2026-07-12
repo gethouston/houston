@@ -25,19 +25,17 @@ export function PendingInvites({
 
   return (
     <section>
-      <h2 className="mb-2 text-sm font-medium text-foreground">
+      <h2 className="mb-2 text-sm font-medium text-ink">
         {t("people.invites.title")}
       </h2>
       {invites.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {t("people.invites.empty")}
-        </p>
+        <p className="text-sm text-ink-muted">{t("people.invites.empty")}</p>
       ) : (
         <ul className="space-y-2">
           {invites.map((invite) => (
             <li
               key={invite.id}
-              className="flex items-center gap-3 rounded-xl border border-foreground/5 bg-card px-4 py-3"
+              className="flex items-center gap-3 rounded-xl border border-ink/5 bg-card px-4 py-3"
             >
               <Avatar>
                 <AvatarFallback className="text-xs">
@@ -45,22 +43,22 @@ export function PendingInvites({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-foreground">
+                <div className="truncate text-sm font-medium text-ink">
                   {invite.email}
                 </div>
-                <div className="truncate text-xs text-muted-foreground">
+                <div className="truncate text-xs text-ink-muted">
                   {t("people.invites.invitedBy", {
                     name: inviterLabel(invite.invitedBy, members),
                   })}
                 </div>
               </div>
-              <span className="rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
+              <span className="rounded-full bg-chip px-3 py-1 text-xs text-ink-muted">
                 {t(`people.roles.${invite.role}`)}
               </span>
               {canManage && (
                 <AsyncButton
                   variant="ghost"
-                  className="rounded-full text-destructive hover:text-destructive"
+                  className="rounded-full text-danger hover:text-danger"
                   aria-label={t("people.invites.revokeLabel", {
                     email: invite.email,
                   })}

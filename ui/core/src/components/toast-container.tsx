@@ -49,7 +49,7 @@ function ToastItem({
       exit={{ opacity: 0, y: -10, scale: 0.95 }}
       className={cn(
         "flex items-start gap-3 rounded-lg border px-4 py-3 shadow-lg bg-card",
-        toast.variant === "error" && "border-destructive/30",
+        toast.variant === "error" && "border-danger/30",
         toast.variant === "success" && "border-success/30",
       )}
     >
@@ -57,17 +57,17 @@ function ToastItem({
         className={cn(
           "w-4 h-4 mt-0.5 shrink-0",
           toast.variant === "success" && "text-success",
-          toast.variant === "error" && "text-destructive",
-          toast.variant === "info" && "text-primary",
+          toast.variant === "error" && "text-danger",
+          toast.variant === "info" && "text-action",
         )}
       />
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-foreground">{toast.message}</p>
+        <p className="text-sm text-ink">{toast.message}</p>
         {toast.action && (
           <button
             type="button"
             onClick={toast.action.onClick}
-            className="mt-1.5 rounded-full bg-foreground/10 px-3 py-1 text-xs font-medium text-foreground hover:bg-foreground/20 transition-colors"
+            className="mt-1.5 rounded-full bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/20 transition-colors"
           >
             {toast.action.label}
           </button>
@@ -76,7 +76,7 @@ function ToastItem({
       <button
         type="button"
         onClick={() => onDismiss(toast.id)}
-        className="text-muted-foreground hover:text-foreground shrink-0"
+        className="text-ink-muted hover:text-ink shrink-0"
       >
         <X className="w-3.5 h-3.5" />
       </button>

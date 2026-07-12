@@ -1,10 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { LocalActionApprovals } from "../integrations/action-approvals";
+import { displayParams, hashActionParams } from "../integrations/approvals";
+import { CUSTOM_ACTION_PREFIX } from "../integrations/custom/provider";
 import {
+  actionInToolkit,
   filterMatchesToGranted,
   isActionGranted,
   type LocalIntegrationGrants,
 } from "../integrations/grants";
-import { searchAllProviders } from "../integrations/search-fanout";
+import type { IntegrationProvider } from "../integrations/provider";
+import type { IntegrationRegistry } from "../integrations/registry";
 import { IntegrationSigninRequiredError } from "../integrations/types";
 import type { CredentialVault, WorkspaceStore } from "../ports";
 import { bearer, header, json, readJson } from "./http";
@@ -13,6 +18,24 @@ import {
   relayIntegrationUpstreamError,
   signinRequired,
 } from "./integrations";
+
+/**
+ * Which provider owns an action the runtime tool passed with no explicit
+ * provider: executor addresses (`tools.<integration>....`) belong to the
+ * custom provider when it is registered; everything else goes to the first
+ * non-custom provider (Composio's slug convention), falling back to whatever
+ * is registered.
+ */
+export function providerForAction(
+  registry: IntegrationRegistry,
+  action: string,
+): string {
+  const ids = registry.ids();
+  if (action.startsWith(CUSTOM_ACTION_PREFIX) && ids.includes("custom")) {
+    return "custom";
+  }
+  return ids.find((id) => id !== "custom") ?? ids[0] ?? "custom";
+}
 
 /**
  * The RUNTIME-facing integrations proxy (`/sandbox/integrations/*`, authed by
@@ -34,6 +57,13 @@ export async function handleSandboxIntegrations(
      * toolkits and execute of an ungranted toolkit is refused with 403.
      */
     integrationGrants?: LocalIntegrationGrants;
+    /**
+     * Per-agent action-approval policy (LOCAL / self-host + managed pods). When
+     * present, execute is gated on user approval unless the turn runs in
+     * Autopilot (auto header) — see the gate below. Absent → no gate (existing
+     * installs/tests execute untouched).
+     */
+    actionApprovals?: LocalActionApprovals;
   },
   method: string,
   path: string,
@@ -66,19 +96,16 @@ export async function handleSandboxIntegrations(
   const { registry } = deps.integrations;
 
   const body = await readJson(req);
-  // Execute (and an explicit-provider search) target ONE provider: the id the
-  // runtime echoes back from a search result's `provider` stamp, else the
-  // first registered (composio whenever it is wired — registration order is
-  // load-bearing). Search WITHOUT an explicit provider fans out instead.
-  const providerId =
-    typeof body.provider === "string" ? body.provider : registry.ids()[0];
-  if (!providerId || !registry.has(providerId)) {
+  // An explicit provider narrows the call; omitted (the runtime tools always
+  // omit it) means ALL providers: search fans out and merges, execute resolves
+  // the owning provider from the action's shape (see providersFor/executorOf).
+  if (typeof body.provider === "string" && !registry.has(body.provider)) {
     json(res, 404, {
-      error: `unknown integration provider '${providerId ?? ""}'`,
+      error: `unknown integration provider '${body.provider}'`,
     });
     return true;
   }
-  const provider = registry.get(providerId);
+  const explicit = typeof body.provider === "string" ? body.provider : null;
 
   // The sandbox proves its workspace; the provider acts as the workspace owner.
   const ws = await deps.store.getWorkspace(claim.workspaceId);
@@ -103,19 +130,41 @@ export async function handleSandboxIntegrations(
 
   try {
     if (m[1] === "search") {
-      if (typeof body.query !== "string") {
+      const query = body.query;
+      if (typeof query !== "string") {
         json(res, 400, { error: "missing 'query'" });
         return true;
       }
-      const items =
-        typeof body.provider === "string"
-          ? await provider.search(ws.ownerUserId, body.query, acting)
-          : await searchAllProviders(
-              registry,
-              ws.ownerUserId,
-              body.query,
-              acting,
-            );
+      const providerIds = explicit ? [explicit] : registry.ids();
+      // Fan out and merge. One provider failing must not hide another's
+      // results (desktop signed out: the gateway adapter throws while the
+      // key-free custom provider still answers) — but an ALL-empty merge with
+      // a signin failure underneath must still surface THAT, or the runtime
+      // would render the wrong speech act ("no such app" instead of the
+      // sign-in card).
+      const settled = await Promise.allSettled(
+        providerIds.map(async (id) => {
+          const found = await registry
+            .get(id)
+            .search(ws.ownerUserId, query, acting);
+          // Stamp the source provider so the runtime can echo it back on
+          // execute — exact routing even when two providers overlap (e.g.
+          // Composio platform + a Composio MCP hub both serving "gmail").
+          return found.map((item) => ({ ...item, provider: id }));
+        }),
+      );
+      const items = settled.flatMap((s) =>
+        s.status === "fulfilled" ? s.value : [],
+      );
+      const failures = settled.flatMap((s) =>
+        s.status === "rejected" ? [s.reason] : [],
+      );
+      if (items.length === 0 && failures.length > 0) {
+        throw (
+          failures.find((f) => f instanceof IntegrationSigninRequiredError) ??
+          failures[0]
+        );
+      }
       json(res, 200, {
         items: granted ? filterMatchesToGranted(items, granted) : items,
       });
@@ -123,30 +172,74 @@ export async function handleSandboxIntegrations(
     }
 
     // execute
-    if (typeof body.action !== "string") {
+    const action = body.action;
+    if (typeof action !== "string") {
       json(res, 400, { error: "missing 'action'" });
       return true;
     }
+    const providerId = explicit ?? providerForAction(registry, action);
     // Grant check before the upstream call — an ungranted toolkit never runs.
-    // Slug attribution (`GMAIL_SEND_EMAIL` → gmail) fits Composio's naming; an
-    // MCP server's tools carry arbitrary names, so a grant of the provider's
-    // OWN id (its single pseudo-toolkit, e.g. "composio-apps") also authorizes it.
+    // Slug attribution fits Composio naming; an MCP server's tools carry
+    // arbitrary names, so a grant of the provider's OWN id (its single
+    // pseudo-toolkit) also authorizes it.
     if (
       granted &&
-      !isActionGranted(body.action, granted) &&
+      !isActionGranted(action, granted) &&
       !granted.includes(providerId)
     ) {
       json(res, 403, { error: "toolkit_not_granted" });
       return true;
     }
+    const provider = registry.get(providerId);
     const params =
       body.params && typeof body.params === "object"
         ? (body.params as Record<string, unknown>)
         : {};
+
+    // Action-approval gate. Precedence: (1) an Autopilot turn auto-approves —
+    // the runtime stamps x-houston-turn-mode:auto and the sandbox HMAC already
+    // authenticated the runtime, so the header is trusted; (2) an always-allow
+    // record for THIS action runs; (3) a fresh one-shot ticket matching
+    // hash(action, params) is consumed (single use) and runs; else 409
+    // approval_required with a display payload the runtime turns into an
+    // approval step on the interaction card. Skipped wholesale when the policy
+    // is unwired (deps.actionApprovals absent → existing installs unchanged).
+    const approvals = deps.actionApprovals;
+    if (approvals && header(req, "x-houston-turn-mode") !== "auto") {
+      if (!(await approvals.isAlways(claim.agentId, action))) {
+        const hash = hashActionParams(action, params);
+        if (!(await approvals.consumeTicket(claim.agentId, hash))) {
+          const display = displayParams(params);
+          json(res, 409, {
+            error: "approval required",
+            code: "approval_required",
+            approval: {
+              toolkit: await resolveToolkit(
+                action,
+                granted,
+                provider,
+                ws.ownerUserId,
+              ),
+              action,
+              params: display.params,
+              paramsHash: hash,
+              // The user approves the full call; when the card caps its param
+              // rows, tell it how many settings it isn't showing so it can say so
+              // (present only when > 0 — omitted from the common no-cap case).
+              ...(display.omitted > 0
+                ? { paramsOmitted: display.omitted }
+                : {}),
+            },
+          });
+          return true;
+        }
+      }
+    }
+
     json(
       res,
       200,
-      await provider.execute(ws.ownerUserId, body.action, params, acting),
+      await provider.execute(ws.ownerUserId, action, params, acting),
     );
     return true;
   } catch (err) {
@@ -157,4 +250,53 @@ export async function handleSandboxIntegrations(
     if (relayIntegrationUpstreamError(res, err)) return true;
     throw err;
   }
+}
+
+/** Longest slug in `slugs` whose full-prefix matches `action` (so a multi-word
+ *  `google_maps` wins over a shorter `google` that also prefixes the action), or
+ *  null when none matches. */
+function longestMatchingSlug(action: string, slugs: string[]): string | null {
+  let best: string | null = null;
+  for (const slug of slugs) {
+    if (actionInToolkit(action, slug) && (!best || slug.length > best.length))
+      best = slug;
+  }
+  return best;
+}
+
+/**
+ * Best-effort toolkit slug for the approval card (execute carries only the
+ * action slug). Resolution, in order:
+ *   1. When the agent HAS a grant record, the LONGEST matching granted slug.
+ *   2. Otherwise (no record — the common backward-compat case) the LONGEST
+ *      matching slug among the acting user's CONNECTIONS, so a multi-word slug
+ *      like `google_maps` is labeled correctly instead of the segment before the
+ *      first underscore (`google`). Fault-tolerant: a `listConnections` failure
+ *      falls through — the 409 must never fail on this display-only lookup.
+ *   3. The segment before the first underscore, lowercased — the last-resort
+ *      fallback (lossy for multi-word slugs). Only the paramsHash + action gate
+ *      the call; the toolkit label is display-only.
+ * Runs ONLY on the 409 path, never on the happy path.
+ */
+async function resolveToolkit(
+  action: string,
+  granted: string[] | null,
+  provider: IntegrationProvider,
+  userId: string,
+): Promise<string> {
+  if (granted) {
+    const best = longestMatchingSlug(action, granted);
+    if (best) return best;
+  } else {
+    try {
+      const connected = (await provider.listConnections(userId)).map(
+        (c) => c.toolkit,
+      );
+      const best = longestMatchingSlug(action, connected);
+      if (best) return best;
+    } catch {
+      // Display-only lookup — never let it fail the 409; fall through.
+    }
+  }
+  return action.split("_")[0]?.toLowerCase() ?? "";
 }

@@ -25,7 +25,7 @@ export const TruncatedCode = memo(
     const remaining = lines.length - maxLines;
     const toolbarClass = dark
       ? "flex justify-end border-b border-zinc-800 px-2 py-1"
-      : "flex justify-end border-b border-border/30 bg-muted/50 px-2 py-1";
+      : "flex justify-end border-b border-line/30 bg-chip-subtle/50 px-2 py-1";
 
     return (
       <div>
@@ -42,7 +42,7 @@ export const TruncatedCode = memo(
                 : "text-zinc-300"
               : isError
                 ? "text-red-600 bg-red-50 dark:text-red-300 dark:bg-red-950/40"
-                : "text-foreground bg-muted/50"
+                : "text-ink bg-chip-subtle/50"
           }`}
         >
           {display}
@@ -54,7 +54,7 @@ export const TruncatedCode = memo(
             className={`w-full px-3 py-1 text-[10px] text-center transition-colors ${
               dark
                 ? "text-zinc-500 hover:text-zinc-300 border-t border-zinc-800"
-                : "text-muted-foreground hover:text-foreground border-t border-border/30"
+                : "text-ink-muted hover:text-ink border-t border-line/30"
             }`}
           >
             {remaining} more lines

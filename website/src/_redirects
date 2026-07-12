@@ -21,3 +21,6 @@
 # English landing's pricing section.
 /pricing/      /#pricing      301
 /pricing/es/   /#pricing      301
+
+# Agent store bridge. 302 until the store.gethouston.ai domain is proven, then flip to 301.
+/agent-store   https://store.gethouston.ai   302

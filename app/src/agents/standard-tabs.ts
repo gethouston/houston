@@ -25,6 +25,9 @@ export interface AgentTab {
 export const STANDARD_TABS: AgentTab[] = [
   { id: "activity", label: "Activity", builtIn: "board", badge: "activity" },
   { id: "routines", label: "Routines", builtIn: "routines" },
+  // Reactions (event-driven automations, C9) sit beside Routines but are shown
+  // only where the deployment supports event triggers — see visibleAgentTabs.
+  { id: "reactions", label: "Reactions", builtIn: "reactions" },
   // Integrations (Composio, platform mode) are served by the Houston host's
   // /v1/integrations routes — present in every build.
   { id: "integrations", label: "Integrations", builtIn: "integrations" },
@@ -47,18 +50,21 @@ export const STANDARD_TAB_IDS: ReadonlySet<string> = new Set(
 
 /**
  * The tabs a given caller may see on a specific agent. Everyone sees Activity /
- * Routines / Integrations / Files / Archived; the Agent Settings
- * (`job-description`) admin surface is added only for callers who may configure
- * the agent — single-player (the sole user owns everything) or an org
- * agent-manager/owner. A plain org member never gets it (Teams matrix v2). The
- * gateway is the real enforcer; this only hides an affordance a member can't act
- * on. Pure and DOM-free so the visibility rule is unit-tested in isolation.
+ * Routines / Integrations / Files / Archived. Reactions (event-driven
+ * automations) is added only where the deployment supports event triggers
+ * (`capabilities.triggers`). The Agent Settings (`job-description`) admin surface
+ * is added only for callers who may configure the agent — single-player (the
+ * sole user owns everything) or an org agent-manager/owner. A plain org member
+ * never gets it (Teams matrix v2). The gateway is the real enforcer; this only
+ * hides an affordance a member can't act on. Pure and DOM-free so the visibility
+ * rule is unit-tested in isolation.
  */
 export function visibleAgentTabs(
   caps: Capabilities | null | undefined,
   agent: Pick<Agent, "access">,
 ): AgentTab[] {
   return STANDARD_TABS.filter((tab) => {
+    if (tab.id === "reactions") return !!caps?.triggers;
     if (tab.id === "job-description") {
       return !isMultiplayer(caps) || isAgentManager(caps, agent);
     }

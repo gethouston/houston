@@ -41,6 +41,20 @@ const REPLAYS_ON_ERROR_SAMPLE_RATE = 1.0;
 
 let initialized = false;
 
+/**
+ * Sentry `environment` tag. The web entry injects the runtime deploy
+ * environment (`production` / `preview` / `development`, derived from the
+ * hostname of the ONE promoted bundle) on `window.__HOUSTON_DEPLOY_ENV__`; use
+ * it when present so preview and production crashes are filterable apart. On the
+ * desktop the global is unset, so we keep the original dev/prod split.
+ */
+function resolveEnvironment(): string {
+  const injected =
+    typeof window !== "undefined" ? window.__HOUSTON_DEPLOY_ENV__ : undefined;
+  if (injected) return injected;
+  return import.meta.env.DEV ? "development" : "production";
+}
+
 // Per-event delivery outcome recorded by the confirming transport (below) and
 // read+cleared by captureException: true once Sentry accepts the event with a
 // 2xx. Bounded so it can't grow unboundedly from envelopes captured outside
@@ -85,7 +99,7 @@ export function initSentry(): void {
   Sentry.init({
     dsn: DSN,
     release: RELEASE,
-    environment: import.meta.env.DEV ? "development" : "production",
+    environment: resolveEnvironment(),
     // Keep PII off for Session Replay — Houston serves non-technical users
     // whose chat messages, prompts, agent + workspace names and file paths must
     // never enter a recording (the masking integration options below enforce

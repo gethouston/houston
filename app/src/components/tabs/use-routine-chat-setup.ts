@@ -1,46 +1,66 @@
 import type { Routine } from "@houston-ai/engine-client";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity } from "../../hooks/queries";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
 import { analytics } from "../../lib/analytics";
 import { createMission } from "../../lib/create-mission";
-import { logger } from "../../lib/logger";
 import { providerName } from "../../lib/providers";
 import { queryKeys } from "../../lib/query-keys";
 import {
-  type ConnectedProviderRef,
+  encodeReactionModifyMessage,
+  encodeReactionSetupMessage,
+} from "../../lib/reaction-chat-prompts";
+import {
   encodeRoutineModifyMessage,
   encodeRoutineSetupMessage,
+} from "../../lib/routine-chat-prompts";
+import {
   findDraftSetupActivities,
   findRoutineChatActivity,
-  findRoutineChatHeal,
-  ROUTINE_SETUP_AGENT_MODE,
+  SETUP_AGENT_MODE,
+  type SetupChatKind,
 } from "../../lib/routine-chat-setup";
+import type { ConnectedProviderRef } from "../../lib/setup-chat-prompt-shared";
 import { tauriActivity, tauriConfig, tauriRoutines } from "../../lib/tauri";
 import { readAgentTurnMode } from "../../lib/turn-mode";
 import type { Agent } from "../../lib/types";
+import { useRoutineChatHeal } from "./use-routine-chat-heal";
 
 /**
- * Owns every routine's chat (HOU-725). It's a normal mission tagged with the
- * routine-setup sentinel so it never shows as a board card — its only home is
- * the Routines tab's full-page chat view. A chat starts life as a "draft" (no
- * routine yet) — a person can have several in construction at once, each its
- * own item in the list; once a routine claims one (link resolution lives in
- * `lib/routine-chat-setup.ts`, stored in both directions) that chat belongs
- * to the routine for good, and opening the routine resumes it. Routines
- * without a chat get one on first open via `startForRoutine`.
+ * Owns every routine's / reaction's setup chat (HOU-725), tagged with the
+ * kind's sentinel so it never shows as a board card — its only home is its
+ * tab's full-page chat view. A chat starts as a "draft" (no routine yet); once
+ * a routine claims one (link resolution in `lib/routine-chat-setup.ts`, stored
+ * both directions) the chat is the routine's for good, and reopening resumes
+ * it. Routines without a chat get one on first open via `startForRoutine`. The
+ * `kind` selects the sentinel, the kickoff prompts, and the mission title.
  */
 export function useRoutineChatSetup(
   agent: Agent,
   routines: Routine[] | undefined,
+  kind: SetupChatKind,
 ) {
   const { t } = useTranslation("routines");
   const path = agent.folderPath;
   const queryClient = useQueryClient();
   const { data: rawItems } = useActivity(path);
   const [pending, setPending] = useState(false);
+
+  // Everything routing off the kind: which sentinel tags the chat, which
+  // kickoff prompts steer the agent, and the mission title.
+  const isReaction = kind === "reaction";
+  const mode = SETUP_AGENT_MODE[kind];
+  const encodeSetup = isReaction
+    ? encodeReactionSetupMessage
+    : encodeRoutineSetupMessage;
+  const encodeModify = isReaction
+    ? encodeReactionModifyMessage
+    : encodeRoutineModifyMessage;
+  const missionTitle = t(
+    isReaction ? "reactions.setupChat.missionTitle" : "setupChat.missionTitle",
+  );
 
   // The kickoffs name the user's connected providers so the agent never pins
   // a routine to one that isn't (e.g. "use deepseek" with no DeepSeek login).
@@ -54,9 +74,10 @@ export function useRoutineChatSetup(
         .filter((s) => s.authenticated)
         .map((s) => ({ id: s.provider, name: providerName(s.provider) }));
 
-  /** Every unlinked, live create-chat for this agent — a person can be
-   *  building several routines at once. */
-  const draftActivities = findDraftSetupActivities(rawItems, routines);
+  /** Every unlinked, live create-chat OF THIS KIND for this agent — a person
+   *  can be building several at once. Filtered by mode so a routine draft never
+   *  leaks into the Reactions tab and vice versa. */
+  const draftActivities = findDraftSetupActivities(rawItems, routines, mode);
 
   /** The persisted chat attached to a routine, or null if it has none yet. */
   const activityFor = useCallback(
@@ -64,45 +85,9 @@ export function useRoutineChatSetup(
     [rawItems],
   );
 
-  // Link reconciliation: keep the chat↔routine link intact in BOTH stores.
-  // The agent rewriting routines.json can drop `setup_activity_id` (this made
-  // the open chat vanish the moment an agent-made edit landed); the durable
-  // `routine_id` stamp on the activity lets us restore it. One repair per
-  // pass; the invalidation refetch re-runs the effect until consistent.
-  // Failures only log: this is background reconciliation (no user action to
-  // toast on), and the next routines/activity refetch retries it anyway.
-  const healingRef = useRef(false);
-  useEffect(() => {
-    if (healingRef.current) return;
-    const heal = findRoutineChatHeal(rawItems, routines);
-    if (!heal) return;
-    healingRef.current = true;
-    const apply =
-      heal.kind === "stamp_activity"
-        ? tauriActivity
-            .update(path, heal.activityId, { routine_id: heal.routineId })
-            .then(() =>
-              queryClient.invalidateQueries({
-                queryKey: queryKeys.activity(path),
-              }),
-            )
-        : tauriRoutines
-            .update(path, heal.routineId, {
-              setup_activity_id: heal.activityId,
-            })
-            .then(() =>
-              queryClient.invalidateQueries({
-                queryKey: queryKeys.routines(path),
-              }),
-            );
-    apply
-      .catch((err) =>
-        logger.error(`[routine-chat] link heal (${heal.kind}) failed: ${err}`),
-      )
-      .finally(() => {
-        healingRef.current = false;
-      });
-  }, [rawItems, routines, path, queryClient]);
+  // Background chat↔routine link reconciliation, extracted to keep this file
+  // under the size cap (see the hook for why both link directions are kept).
+  useRoutineChatHeal(rawItems, routines, path, queryClient);
 
   /**
    * Start a brand-new create-chat. Always creates a fresh one — "New
@@ -118,11 +103,11 @@ export function useRoutineChatSetup(
       // The kickoff needs the activity's own id (the agent writes it into the
       // routine's `setup_activity_id`), so the prompt is built after create.
       const { conversationId } = await createMission(agent, "", {
-        title: t("setupChat.missionTitle"),
-        agentMode: ROUTINE_SETUP_AGENT_MODE,
+        title: missionTitle,
+        agentMode: mode,
         modeOverride: await readAgentTurnMode(path, tauriConfig.read),
         buildPrompt: (activityId) =>
-          encodeRoutineSetupMessage(activityId, connectedProvidersRef.current),
+          encodeSetup(activityId, connectedProvidersRef.current),
       });
       // createMission bypasses useCreateActivity — refetch so the chat view's
       // backing activity exists before it tries to render.
@@ -136,7 +121,7 @@ export function useRoutineChatSetup(
     } finally {
       setPending(false);
     }
-  }, [agent, path, pending, queryClient, t]);
+  }, [agent, path, pending, queryClient, mode, encodeSetup, missionTitle]);
 
   /**
    * Start the persistent chat for a routine that doesn't have one yet, and
@@ -149,10 +134,10 @@ export function useRoutineChatSetup(
       try {
         const { conversationId } = await createMission(
           agent,
-          encodeRoutineModifyMessage(routine, connectedProvidersRef.current),
+          encodeModify(routine, connectedProvidersRef.current),
           {
             title: routine.name,
-            agentMode: ROUTINE_SETUP_AGENT_MODE,
+            agentMode: mode,
             modeOverride: await readAgentTurnMode(path, tauriConfig.read),
           },
         );
@@ -176,7 +161,7 @@ export function useRoutineChatSetup(
         setPending(false);
       }
     },
-    [agent, path, pending, queryClient],
+    [agent, path, pending, queryClient, mode, encodeModify],
   );
 
   return {

@@ -44,6 +44,16 @@ export function appendAssistantMessage(
   appendAssistantMessageAt(dir, id, content, meta);
 }
 
+/**
+ * Append the durable stop marker: an empty assistant message flagged
+ * `stopped`, which retires a pending interaction exactly the way a real Stop
+ * does — the SDK renders it as the "Stopped by user" system line and a history
+ * reload settles the turn as stopped instead of re-deriving a clean `done`.
+ */
+export function markConversationStopped(id: string): void {
+  appendAssistantMessage(id, "", { stopped: true });
+}
+
 export function getHistory(id: string): ConversationHistory | null {
   return getHistoryAt(dir, id);
 }

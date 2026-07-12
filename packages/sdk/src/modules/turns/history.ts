@@ -13,6 +13,7 @@
  */
 
 import type { ChatMessage } from "@houston/runtime-client";
+import { STOPPED_BY_USER } from "./turn-errors";
 
 /**
  * One replayed feed frame: the SAME `{ feed_type, data }` push the turn
@@ -128,6 +129,14 @@ export function historyToFeed(
     // the chat attaches it to this turn's assistant message on reload.
     if (m.fileChanges) {
       out.push({ feed_type: "file_changes", data: m.fileChanges, ts });
+    }
+    // A turn the user interrupted persisted `stopped`: replay the standard
+    // "Stopped by user" system line so the transcript reads identically after a
+    // reload — the exact copy + position the live stop settle produces
+    // (`finishErr`'s system_message, after the turn's text/tools). A stopped
+    // turn never carries a `pendingInteraction`, so no card competes with it.
+    if (m.stopped) {
+      out.push({ feed_type: "system_message", data: STOPPED_BY_USER, ts });
     }
     if (m.usage) {
       out.push({

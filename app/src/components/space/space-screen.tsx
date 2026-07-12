@@ -24,7 +24,7 @@ export function SpaceScreen({
   return (
     <div
       className={cn(
-        "relative flex h-screen flex-col bg-[var(--ht-space-canvas)] text-foreground",
+        "relative flex h-screen flex-col bg-[var(--ht-space-canvas)] text-ink",
         className,
       )}
     >

@@ -31,25 +31,25 @@ struct DeviceCodeView: View {
         VStack(alignment: .leading, spacing: Spacing.space8) {
           Text(Strings.AIModels.Login.title(card.name))
             .font(Typography.title)
-            .foregroundStyle(theme.foreground)
+            .foregroundStyle(theme.ink)
           Text(Strings.AIModels.Login.deviceDescription)
             .font(Typography.callout)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
         }
 
         codeBlock
         Text(Strings.AIModels.Login.deviceCodeHint(card.name))
           .font(Typography.caption)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
 
         if let url = URL(string: verificationUri) {
           Button { openURL(url) } label: {
             Label(Strings.AIModels.Login.openUrl, systemImage: "arrow.up.right.square")
               .font(Typography.label)
-              .foregroundStyle(theme.primaryFg)
+              .foregroundStyle(theme.actionText)
               .frame(maxWidth: .infinity)
               .padding(.vertical, Spacing.space12)
-              .background(theme.primary, in: Capsule())
+              .background(theme.action, in: Capsule())
           }
           .buttonStyle(.plain)
         }
@@ -57,17 +57,17 @@ struct DeviceCodeView: View {
         if card.id == "openai" {
           Text(Strings.AIModels.Login.deviceSettingsHint)
             .font(Typography.caption)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
         }
 
         if let failure {
-          Text(failure).font(Typography.caption).foregroundStyle(theme.destructive)
+          Text(failure).font(Typography.caption).foregroundStyle(theme.danger)
         } else {
           HStack(spacing: Spacing.space8) {
             ProgressView().controlSize(.small)
             Text(Strings.AIModels.Login.deviceWaiting)
               .font(Typography.caption)
-              .foregroundStyle(theme.mutedFg)
+              .foregroundStyle(theme.inkMuted)
           }
         }
       }
@@ -87,7 +87,7 @@ struct DeviceCodeView: View {
     HStack(spacing: Spacing.space12) {
       Text(userCode)
         .font(.system(.title2, design: .monospaced))
-        .foregroundStyle(theme.foreground)
+        .foregroundStyle(theme.ink)
         .textSelection(.enabled)
       Spacer(minLength: 0)
       Button(action: copyCode) {
@@ -95,16 +95,16 @@ struct DeviceCodeView: View {
           copied ? Strings.AIModels.Login.codeCopied : Strings.AIModels.Login.copyCode,
           systemImage: copied ? "checkmark" : "doc.on.doc")
           .font(Typography.label)
-          .foregroundStyle(copied ? theme.success : theme.primary)
+          .foregroundStyle(copied ? theme.success : theme.action)
       }
       .buttonStyle(.plain)
     }
     .padding(Spacing.space16)
     .frame(maxWidth: .infinity)
-    .background(theme.secondary, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+    .background(theme.chip, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
     .overlay(
       RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-        .strokeBorder(theme.border, lineWidth: 1))
+        .strokeBorder(theme.line, lineWidth: 1))
   }
 
   private func copyCode() {

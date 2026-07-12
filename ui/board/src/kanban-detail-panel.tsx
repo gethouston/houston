@@ -76,16 +76,20 @@ export const KanbanDetailPanel = forwardRef<
           content centers itself. A no-op for narrower panels: the cap never
           engages below max-w-3xl, so a normal 45%-width mission panel looks
           exactly as before. */}
-      <div className="shrink-0 px-4 py-3 border-b border-border">
+      {/* Borderless header on the chat canvas tone: it reads as part of the
+          chat surface rather than a separate bar (`bg-background` is the SAME
+          token ChatPanel and the panes wear, so header, chat, and pane are
+          one color — no seam on the light canvas / dark transparent). */}
+      <div className="shrink-0 bg-background px-4 py-3 dark:bg-transparent">
         <div className="flex items-center gap-3 max-w-3xl mx-auto w-full">
           {leading}
           {avatar}
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">
+            <p className="text-sm font-semibold text-ink">
               {agentName ?? title}
             </p>
             {(agentName ? missionLabel : subtitle) && (
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs text-ink-muted truncate">
                 {agentName ? missionLabel : subtitle}
                 {status && (
                   <>
@@ -118,7 +122,7 @@ export const KanbanDetailPanel = forwardRef<
             <button
               type="button"
               onClick={onClose}
-              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0"
+              className="size-7 flex items-center justify-center rounded-md text-ink-muted hover:text-ink hover:bg-hover/50 transition-colors shrink-0"
             >
               <XIcon className="size-4" strokeWidth={1.75} />
             </button>

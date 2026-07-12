@@ -106,13 +106,13 @@ export function ModelsBrowser({
     <div className={cn("flex flex-col gap-4", className)}>
       <div className="flex flex-col gap-2">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="h-9 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
+            className="h-9 w-full rounded-full border border-line bg-input pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
           />
         </div>
 
@@ -193,7 +193,7 @@ export function ModelsBrowser({
           <button
             type="button"
             onClick={() => setVisible((v) => v + PAGE)}
-            className="rounded-full bg-secondary px-4 py-1.5 font-medium text-muted-foreground text-xs transition-colors hover:bg-accent hover:text-foreground"
+            className="rounded-full bg-chip px-4 py-1.5 font-medium text-ink-muted text-xs transition-colors hover:bg-hover hover:text-ink"
           >
             {t("directory.showMore")}
           </button>

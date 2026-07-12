@@ -52,7 +52,7 @@ export function AgentSharePersonRow({
       : t("share.levels.user");
 
   return (
-    <li className="flex items-center gap-3 rounded-xl border border-foreground/5 bg-card px-3 py-2.5">
+    <li className="flex items-center gap-3 rounded-xl border border-ink/5 bg-card px-3 py-2.5">
       <Avatar size="sm">
         {avatarUrl && (
           <AvatarImage src={avatarUrl} alt="" referrerPolicy="no-referrer" />
@@ -60,10 +60,10 @@ export function AgentSharePersonRow({
         <AvatarFallback>{initial(person)}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm text-foreground">
+        <div className="truncate text-sm text-ink">
           {name}
           {person.isSelf && (
-            <span className="ml-1.5 text-xs text-muted-foreground">
+            <span className="ml-1.5 text-xs text-ink-muted">
               {t("share.you")}
             </span>
           )}
@@ -71,22 +71,20 @@ export function AgentSharePersonRow({
       </div>
 
       {person.isOwner ? (
-        <span className="shrink-0 text-xs text-muted-foreground">
+        <span className="shrink-0 text-xs text-ink-muted">
           {t("share.ownerAccess")}
         </span>
       ) : readOnly ? (
-        <span className="shrink-0 text-xs text-muted-foreground">
-          {levelLabel}
-        </span>
+        <span className="shrink-0 text-xs text-ink-muted">{levelLabel}</span>
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger
             disabled={disabled}
             aria-label={t("share.changeAccessFor", { name })}
-            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-border px-3 text-sm text-foreground hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-line px-3 text-sm text-ink hover:bg-chip focus:outline-none focus:ring-2 focus:ring-focus/20 disabled:opacity-50"
           >
             <span>{levelLabel}</span>
-            <ChevronDown className="size-3.5 text-muted-foreground" />
+            <ChevronDown className="size-3.5 text-ink-muted" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-60">
             <DropdownMenuItem
@@ -100,7 +98,7 @@ export function AgentSharePersonRow({
                     <Check className="size-3.5" />
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-ink-muted">
                   {person.canBeManager
                     ? t("share.levels.managerHint")
                     : t("share.managerRequiresSeat")}
@@ -113,7 +111,7 @@ export function AgentSharePersonRow({
                   <span>{t("share.levels.user")}</span>
                   {person.access === "user" && <Check className="size-3.5" />}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-ink-muted">
                   {t("share.levels.userHint")}
                 </p>
               </div>
@@ -126,7 +124,7 @@ export function AgentSharePersonRow({
               {t("share.remove")}
             </DropdownMenuItem>
             {person.isSelf && (
-              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+              <DropdownMenuLabel className="text-xs font-normal text-ink-muted">
                 {t("share.selfNote")}
               </DropdownMenuLabel>
             )}

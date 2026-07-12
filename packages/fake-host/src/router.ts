@@ -18,6 +18,7 @@ import {
 } from "./chat-controls";
 import { CORS, json } from "./http";
 import { authStatusBody, handleAgents, providersBody } from "./routes";
+import { handleActionApprovals } from "./routes-action-approvals";
 import { handleUserRoutes } from "./routes-integrations";
 import { handleTeamsRoutes } from "./routes-teams";
 import { sseResponse } from "./sse";
@@ -104,15 +105,30 @@ export async function handle(req: Request): Promise<Response> {
       advanced: turnBoundary(String(body?.nextText ?? "next turn")),
     });
   }
-  // Toggle Composio readiness: "ready" | "unavailable" (503) | "signin".
+  // Toggle Composio readiness: "ready" | "unavailable" (503) | "signin" |
+  // "absent" (not registered at all — only the custom provider, when armed).
   if (path === "/__test__/integrations-mode" && method === "POST") {
     const body = await parseBody(req);
     state.setIntegrationsMode(
-      body?.mode === "unavailable" || body?.mode === "signin"
+      body?.mode === "unavailable" ||
+        body?.mode === "signin" ||
+        body?.mode === "absent"
         ? body.mode
         : "ready",
     );
     return json({ mode: state.integrationsMode() });
+  }
+  // Arm the custom-integrations feature (HOU-550): `{items: [...]}` serves the
+  // definitions + a ready `custom` provider; `{items: null}` disarms (404s —
+  // the pre-feature host shape). Reset restores disarmed.
+  if (path === "/__test__/custom-integrations" && method === "POST") {
+    const body = await parseBody(req);
+    state.setCustomIntegrations(
+      Array.isArray(body?.items)
+        ? (body.items as state.CustomIntegrationSeed[])
+        : null,
+    );
+    return json({ items: state.listCustomIntegrations() });
   }
   // Override advertised capabilities (Teams e2e): merge a partial into the set,
   // e.g. `{ integrations:["composio"], multiplayer:true, teams:true, role:"owner" }`
@@ -128,6 +144,12 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/__test__/agent-settings" && method === "POST") {
     const body = await parseBody(req);
     return json(state.setTeamsSettings((body ?? {}) as Partial<TeamsSettings>));
+  }
+  // Read back the action-approval writes the interaction card made: the
+  // always-allow slugs AND the "Allow once" ticket hashes (the product tickets
+  // route never reads back). Lets an e2e assert Allow once posted the step's hash.
+  if (path === "/__test__/action-approvals" && method === "GET") {
+    return json(state.approvalsSnapshot());
   }
   // Flip a pending connection to active (models the OAuth completing).
   if (path === "/__test__/integrations-activate" && method === "POST") {
@@ -166,6 +188,10 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/v1/catalog" && method === "GET") {
     return json(buildProviderCatalog());
   }
+  // --- per-agent integration action approvals (owner routes, both deployments) ---
+  const approvalRoute = handleActionApprovals(method, segs, body);
+  if (approvalRoute) return approvalRoute;
+
   // --- user-scoped gateway routes (integrations, grants, preferences, locale) ---
   const userRoute = handleUserRoutes(method, segs, body);
   if (userRoute) return userRoute;

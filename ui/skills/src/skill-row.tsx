@@ -38,16 +38,14 @@ export function SkillRow({ skill, onClick, onDelete }: SkillRowProps) {
         "group flex items-start gap-3 px-5 py-4 cursor-pointer w-full text-left",
         "bg-transparent border-0 p-0",
         "transition-colors duration-150",
-        "hover:bg-foreground/[0.03]",
-        "focus-visible:outline-none focus-visible:bg-foreground/[0.03]",
+        "hover:bg-ink/[0.03]",
+        "focus-visible:outline-none focus-visible:bg-ink/[0.03]",
       )}
     >
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">
-          {displayName}
-        </p>
+        <p className="text-sm font-medium text-ink truncate">{displayName}</p>
         {skill.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-snug">
+          <p className="text-xs text-ink-muted line-clamp-2 mt-0.5 leading-snug">
             {skill.description}
           </p>
         )}

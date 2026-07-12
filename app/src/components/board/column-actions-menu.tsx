@@ -36,7 +36,7 @@ export function ColumnActionsMenu({
           size="icon-xs"
           aria-label={labels.menu}
           onClick={(e) => e.stopPropagation()}
-          className="text-muted-foreground/60 hover:text-foreground"
+          className="text-ink-muted/60 hover:text-ink"
         >
           <MoreHorizontal className="size-4" />
         </Button>

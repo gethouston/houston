@@ -7,7 +7,7 @@
  *
  * This file is the ONE sanctioned place for raw hex literals: these are genuine
  * brand-identity values (a provider's official accent), not UI colors, so they
- * cannot live as theme tokens. The token rule (`text-foreground`, `bg-secondary`,
+ * cannot live as theme tokens. The token rule (`text-ink`, `bg-chip`,
  * ...) stays in force EVERYWHERE else — no other file may hardcode a hex.
  *
  * Deliberately ABSENT: xai, vercel, moonshotai, zai, opencode, opencode-go — all

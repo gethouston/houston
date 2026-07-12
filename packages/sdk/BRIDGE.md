@@ -694,6 +694,8 @@ NOT polyfill them, but MAY:
 - `AbortController` / `AbortSignal` — stream cancellation.
 - `TextEncoder` / `TextDecoder` — UTF-8 SSE decoding (`TextDecoder` with
   `{ stream: true }`).
+- `URLSearchParams` — `startLogin` assembles the `providers/login` query string
+  (`deviceAuth` / `enterpriseDomain`) with it.
 
 **Optional** (used if present, gracefully degraded if not):
 

@@ -1,0 +1,244 @@
+---
+activeDoc: overview
+lang: en
+---
+{% extends "base.njk" %}
+{% block title %}Houston API — Run and drive agent missions programmatically{% endblock %}
+{% block meta %}
+<meta name="description" content="The Houston public API: start and drive AI agent missions from your own code over REST, Agent2Agent (A2A), and MCP. Authenticate with an API key and get running in 60 seconds.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gethouston.ai/developers/">
+<meta property="og:title" content="Houston API — Run agent missions programmatically">
+<meta property="og:description" content="Start and drive Houston agent missions from your own code over REST, A2A, and MCP.">
+<meta property="og:site_name" content="Houston">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" hreflang="en" href="https://gethouston.ai/developers/">
+<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/developers/">
+{% endblock %}
+{% block stylesheets %}
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/developers/style.css">
+{% endblock %}
+{% block body %}
+    {% include "nav-docs.njk" %}
+
+    <div class="layout">
+      {% include "sidebar-developers.njk" %}
+
+      <main class="content hero">
+        <div class="content-label">Developers</div>
+        <h1>The Houston API.</h1>
+        <p class="lead">
+          Start and drive your Houston agents' missions from your own code.
+          One API key, three ways in: a REST API, the Agent2Agent (A2A)
+          protocol, and MCP. Give an agent an instruction, then poll, stream,
+          or get a signed webhook when it finishes.
+        </p>
+
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#quickstart">60-second quickstart</a>
+          <a class="btn btn-secondary" href="/developers/missions/">REST reference</a>
+        </div>
+
+        <h2 id="what">What the API does</h2>
+        <p>
+          Every Houston agent runs <strong>missions</strong>: you hand it an
+          instruction in natural language, it does the work across your
+          connected tools, and it returns a result. The API exposes that
+          exact loop programmatically, so you can trigger agents from a cron
+          job, a backend, another agent, or any tool that speaks MCP or A2A.
+        </p>
+
+        <h2 id="auth">Authentication</h2>
+        <p>
+          The API authenticates with an <strong>API key</strong>. Mint one in
+          the Houston app under <code>Settings → API Keys</code>. Keys look
+          like <code>hst_...</code> and are <strong>shown only once</strong> at
+          creation, so copy it somewhere safe immediately.
+        </p>
+        <p>Send it as a bearer token on every request:</p>
+        <div class="codeblock"><pre><code>{% raw %}Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708{% endraw %}</code></pre></div>
+        <div class="callout callout-warning">
+          <div class="callout-label">Keep keys server-side</div>
+          <p>
+            An API key can start missions and read their results. Treat it
+            like a password: never ship it in a browser, mobile app, or public
+            repository. You can revoke a key at any time from
+            <code>Settings → API Keys</code>.
+          </p>
+        </div>
+
+        <h2 id="base-url">Base URL</h2>
+        <p>
+          All endpoints live on the Houston Cloud gateway:
+        </p>
+        <div class="endpoint">
+          <span class="path"><b>https://poc-gateway.gethouston.ai</b></span>
+        </div>
+        <p>
+          Every path below is relative to that origin. All requests and
+          responses are JSON (<code>application/json</code>), except the
+          streaming endpoints, which are Server-Sent Events.
+        </p>
+
+        <h2 id="surfaces">Three surfaces</h2>
+        <p>
+          Pick the surface that fits how you are integrating. They all drive
+          the same agents and the same missions underneath.
+        </p>
+        <div class="card-grid">
+          <a class="surface-card" href="/developers/missions/">
+            <div class="surface-kicker">REST</div>
+            <div class="surface-title">Missions API</div>
+            <div class="surface-desc">
+              Plain HTTP + JSON. Create a mission, poll or stream it, cancel
+              it, and receive signed webhooks. The most direct way in.
+            </div>
+          </a>
+          <a class="surface-card" href="/developers/a2a/">
+            <div class="surface-kicker">A2A</div>
+            <div class="surface-title">Agent2Agent</div>
+            <div class="surface-desc">
+              A standard JSON-RPC agent protocol. Point any A2A-capable agent
+              (LangGraph, CrewAI, ADK) straight at your Houston agent.
+            </div>
+          </a>
+          <a class="surface-card" href="/developers/mcp/">
+            <div class="surface-kicker">MCP</div>
+            <div class="surface-title">Model Context Protocol</div>
+            <div class="surface-desc">
+              Expose your agents as tools to Claude Code and any MCP client
+              over a single Streamable HTTP endpoint.
+            </div>
+          </a>
+        </div>
+
+        <h2 id="quickstart">60-second quickstart</h2>
+        <p>
+          This uses the REST Missions API. Replace <code>hst_...</code> with
+          your key and <code>revenue-manager</code> with your agent's slug.
+        </p>
+
+        <h3>1 · Start a mission</h3>
+        <p>
+          <code>POST</code> an instruction to the agent. You get a
+          <code>202 Accepted</code> back immediately with the mission id; the
+          agent keeps working in the background.
+        </p>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <span class="path">/v1/agents/<b>:slug</b>/missions</span>
+        </div>
+        <div class="codeblock"><pre><code>{% raw %}curl -X POST https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions \
+  -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": "Run a market pulse for Lisbon, check-in 2026-08-14 for 3 nights.",
+    "mode": "auto",
+    "webhook": {
+      "url": "https://api.acme.com/hooks/houston",
+      "secret": "whsec_a1b2c3d4e5f6"
+    }
+  }'{% endraw %}</code></pre></div>
+        <p><strong>202 Accepted</strong></p>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "id": "msn_7Q4c1a9f2b",
+  "agentSlug": "revenue-manager",
+  "conversationId": "cnv_3e8d0364f1",
+  "status": "running",
+  "createdAt": "2026-07-12T09:31:07.482Z"
+}{% endraw %}</code></pre></div>
+
+        <h3>2 · Get the result</h3>
+        <p>
+          You have three ways to learn how the mission ends. Use whichever
+          fits your stack:
+        </p>
+        <ul>
+          <li>
+            <strong>Poll</strong> the mission until <code>status</code>
+            becomes terminal (<code>completed</code>, <code>failed</code>, or
+            <code>canceled</code>). The <code>result</code> field carries the
+            agent's final text.
+          </li>
+          <li>
+            <strong>Stream</strong> live progress over Server-Sent Events, with
+            <code>Last-Event-ID</code> resume.
+          </li>
+          <li>
+            <strong>Webhook</strong> — the simplest for servers. Houston
+            <code>POST</code>s a signed payload to your URL the moment the
+            mission finishes. No polling.
+          </li>
+        </ul>
+
+        <p><strong>Poll:</strong></p>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <span class="path">/v1/agents/<b>:slug</b>/missions/<b>:id</b></span>
+        </div>
+        <div class="codeblock"><pre><code>{% raw %}curl https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions/msn_7Q4c1a9f2b \
+  -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "id": "msn_7Q4c1a9f2b",
+  "agentSlug": "revenue-manager",
+  "conversationId": "cnv_3e8d0364f1",
+  "status": "completed",
+  "result": "Market pulse for Lisbon (Aug 14-17) is ready...",
+  "createdAt": "2026-07-12T09:31:07.482Z"
+}{% endraw %}</code></pre></div>
+
+        <p><strong>Or stream</strong> with Server-Sent Events:</p>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <span class="path">/v1/agents/<b>:slug</b>/missions/<b>:id</b>/events</span>
+        </div>
+        <div class="codeblock"><pre><code>{% raw %}curl -N https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions/msn_7Q4c1a9f2b/events \
+  -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
+        <div class="callout callout-info">
+          <div class="callout-label">Streaming in the browser</div>
+          <p>
+            <code>EventSource</code> cannot set headers, so the events
+            endpoint also accepts the key as a query parameter:
+            <code>?token=hst_...</code>. Reconnect from where you left off by
+            sending the <code>Last-Event-ID</code> header (curl and native SSE
+            clients do this automatically).
+          </p>
+        </div>
+
+        <h3>3 · Find your agents</h3>
+        <p>
+          Do not know an agent's slug? List everything the key can reach:
+        </p>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <span class="path">/agents</span>
+        </div>
+        <div class="codeblock"><pre><code>{% raw %}curl https://poc-gateway.gethouston.ai/agents \
+  -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
+
+        <div class="callout callout-success">
+          <div class="callout-label">That's the whole loop</div>
+          <p>
+            Create → poll, stream, or await a webhook → read the result. The
+            <a class="link" href="/developers/missions/">Missions reference</a>
+            documents every field, webhook signing, cancellation, and key
+            scoping in full.
+          </p>
+        </div>
+
+        <div class="pager">
+          <a href="/learn/">
+            <div class="pager-label">← Learn</div>
+            <div class="pager-title">Building agents on Houston</div>
+          </a>
+          <a href="/developers/missions/" class="next">
+            <div class="pager-label">Next →</div>
+            <div class="pager-title">Missions (REST) reference</div>
+          </a>
+        </div>
+      </main>
+    </div>
+
+    {% include "footer-developers.njk" %}
+  {% endblock %}

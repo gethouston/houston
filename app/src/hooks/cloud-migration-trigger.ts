@@ -9,8 +9,8 @@
  * topology — a REMOTE gateway build finding the machine's OLD local data.
  */
 
-/** The wizard's persisted outcome, keyed per Supabase user in localStorage —
- *  the legacy data is machine-local, so the flag is too. */
+/** The wizard's persisted outcome, keyed per signed-in user (identity uid) in
+ *  localStorage — the legacy data is machine-local, so the flag is too. */
 export type CloudMigrationOutcome = "done" | "skipped";
 
 export interface CloudMigrationInputs {
@@ -27,14 +27,16 @@ export interface CloudMigrationInputs {
   signedIn: boolean;
   /** `detect_legacy_houston` found legacy workspaces with agents. */
   hasLegacyWorkspaces: boolean;
-  /** This user already finished or declined the wizard on this machine. */
-  outcome: CloudMigrationOutcome | null;
   /**
-   * The AUTHORITATIVE, cross-machine flag from the user's Supabase metadata:
-   * `true` once `migration_status === "completed"`. Wins over everything else —
-   * a user who migrated on any machine is never offered the wizard again.
+   * This user already finished ("done") or declined ("skipped") the wizard on
+   * this machine — the persisted per-uid localStorage flag. The migration reads
+   * THIS machine's `~/.houston`, so the record is machine-local: identity
+   * (Firebase) exposes no client-writable user metadata for a cross-machine
+   * "already migrated" flag (unlike the retired Supabase `user_metadata`).
+   * Cross-machine RESUME still holds — the gateway's per-agent import markers
+   * mark already-migrated agents `alreadyDone` on any machine.
    */
-  migrationCompleted: boolean;
+  outcome: CloudMigrationOutcome | null;
   /** The detection probe is still in flight. */
   loading: boolean;
 }
@@ -53,9 +55,9 @@ export function cloudMigrationGateState(
   if (!i.remoteGateway) return "pass";
   if (!i.isTauri) return "pass";
   if (!i.signedIn) return "pass";
-  // Cross-machine authority first: a completed account never sees the wizard,
-  // even on a new machine that still has a leftover `.houston` folder.
-  if (i.migrationCompleted) return "pass";
+  // A machine that already finished or declined the wizard never sees it again
+  // (per-uid localStorage). The migration is inherently machine-scoped — it
+  // reads this machine's `~/.houston` — so this per-machine flag is the gate.
   if (i.outcome) return "pass";
   if (i.loading) return "loading";
   return i.hasLegacyWorkspaces ? "show" : "pass";

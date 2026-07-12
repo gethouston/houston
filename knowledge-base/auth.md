@@ -1,690 +1,366 @@
-# Auth (Supabase + Google SSO)
+# Auth (GCP Identity Platform / Firebase Auth, project `gethouston`)
 
-One-click Google sign-in on first launch. CI release tokens live in macOS Keychain / Windows Credential Manager, never localStorage or disk. Local builds use browser storage scoped per worktree to avoid macOS Keychain prompts from changing local signatures. Identifies users in PostHog, lays the foundation for Houston Cloud.
+Houston's client sign-in runs on **GCP Identity Platform (Firebase Auth)**,
+project `gethouston`. Four ways in: **Google**, **Microsoft**, passwordless
+**6-digit email code**, and (operators only) **email + password** on `/admin`.
+CI-release session tokens live in the macOS Keychain / Windows DPAPI, never
+localStorage or disk. Local dev builds use worktree-scoped browser storage to
+avoid repeated macOS Keychain prompts. Sign-in identifies the user in PostHog and
+mints the bearer the cloud gateway verifies.
 
-> **Updated: Houston runs on the TypeScript host now — the Rust `engine/` was removed.** The auth/session behavior below is current, but `engine/houston-*` crate names and `.rs` paths (e.g. `houston-terminal-manager`, `houston-ui-events`) are historical pointers; the implementation lives in the **host** (`packages/host`) + the **pi runtime**.
+> **How we got here.** This platform replaced Supabase Auth in the client-auth
+> migration. The migration record — what changed, the deliberate Supabase
+> exceptions, and the open human follow-ups (OAuth client provenance, Azure app
+> registration, GCIP email/password enablement) — lives in
+> **`knowledge-base/auth-migration.md`**. `app/src/lib/supabase.ts` was deleted;
+> auth now lives in `app/src/lib/identity/` + `app/src/lib/auth.ts`.
+>
+> **The website waitlist still uses Supabase** (`website/`, anon `POST
+> /rest/v1/waitlist`) — that is a pure data write with no auth session and is
+> intentionally left alone. Don't "finish" the migration by ripping it out.
 
-## The flow (PKCE)
+## The gateway bearer contract (shared desktop + web)
 
-1. User clicks **Continue with Google** in `SignInScreen`.
-2. Frontend calls `supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: "houston://auth-callback", skipBrowserRedirect: true } })`.
-3. Supabase generates a PKCE code_verifier, writes it to the configured auth storage adapter, returns an auth URL.
-4. Frontend opens the URL in the user's system browser via `tauriSystem.openUrl()`.
-5. User completes Google consent.
-6. Google redirects to Supabase → Supabase redirects to `houston://auth-callback?code=<code>`.
-7. macOS delivers the URL to the running Houston via `tauri-plugin-deep-link`.
-8. Rust handler in `app/src-tauri/src/auth.rs::emit_deep_link` forwards the URL on a Tauri event (`auth://deep-link`).
-9. Frontend listener in `app/src/lib/auth.ts::installDeepLinkListener` extracts `code`, calls `supabase.auth.exchangeCodeForSession(code)` — Supabase reads the verifier from configured auth storage, exchanges, writes the session back.
-10. `supabase.auth.onAuthStateChange` fires → `useSession()` re-queries → `App.tsx` dismisses `SignInScreen` → sidebar footer `UserMenu` + Settings → Account section appear.
+The bearer the cloud gateway verifies is a **Firebase ID token** (JWT):
 
-`SignInScreen` (`app/src/components/auth/sign-in-screen.tsx`) renders a two-panel
-sign-in card over a `SpaceBackground` deep-space backdrop layer
-(`space-background.tsx`) — a theme-invariant starfield-canvas + framer-motion
-nebula field on the `--ht-space-*` tokens, reduced-motion-aware (see
-`knowledge-base/design-system.md` → Sign-in space backdrop). The card wordmark
-and footer links draw from the `--ht-space-foreground*` tokens so they read on the
-dark canvas in both themes.
-11. PostHog: `analytics.alias(userId, { email, name })` merges the anonymous `install_id` history into the identified user.
+- issuer `https://securetoken.google.com/gethouston`, audience `gethouston`,
+  `sub` = the Firebase UID (an opaque, fresh-platform user id).
+- JWKS `https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com`
+  (Google's public keys). Verification is a **`cloud/` gateway** change (Go side
+  authoritative) — see `cloud/INTEGRATION.md`.
+- Header shape is **unchanged**: `Authorization: Bearer <jwt>` plus `x-houston-org`.
 
-## Web / Cloud (same components, browser flow)
+The engine adapter reads the bearer **live per request** (`cp/context.ts`
+`liveToken`, `cp/fetch.ts`) and on a **401** runs one single-flight refresh +
+replay via `window.__HOUSTON_SESSION_REFRESH__` (`session-refresh.ts`). Nothing
+about the header/replay seam changed with the provider swap — only the token's
+provenance did.
 
-The cloud web build (`packages/web`, cloud mode) reuses the SAME native auth UI —
-`SignInScreen` for sign-in and the sidebar `UserMenu` for the signed-in account.
-Don't build bespoke login UIs for new surfaces; configure the app's own Supabase
-client instead (bake `SUPABASE_URL`/`SUPABASE_ANON_KEY` at build time) and the
-native components activate. Platform differences are `isTauri()`-guarded:
+## Sign-in methods
 
-- **Desktop**: system browser + `houston://` deep link + manual
-  `exchangeCodeForSession` (steps above); `detectSessionInUrl: false`.
-- **Web**: a normal in-page redirect to `${origin}/auth/callback`;
-  `detectSessionInUrl: true` lets supabase-js consume the `?code=` on load.
-  Storage is localStorage (no Keychain in a browser).
+The UI is `SignInScreen` (`app/src/components/auth/sign-in-screen.tsx`): Google +
+Microsoft buttons over a passwordless email field, on the `SpaceBackground`
+deep-space backdrop (see `knowledge-base/design-system.md`). Copy is
+benefit-focused — the audience is non-technical, so no mention of OAuth / tokens /
+APIs. The same screen renders for the app-wide gate (`App.tsx`) and for the
+remote-gateway gate (`HostedEngineGate`). `app/src/components/auth/email-sign-in.tsx`
+owns the two-step (email → code) email flow inline.
 
-**Gotcha that bit us live:** every web origin must be in Supabase
-**Authentication → URL Configuration → Redirect URLs** (e.g.
-`https://<cloud-run-host>/**`). When `redirectTo` isn't allow-listed, Supabase
-silently falls back to the project Site URL — which is the DESKTOP bridge at
-`gethouston.ai/auth/callback`, so browser users get bounced into the desktop
-app. The Site URL must stay the desktop bridge; add web origins to the
-allow-list instead.
+The dispatcher is `app/src/lib/auth.ts`. Every method branches on
+`osIsTauri()` — desktop uses REST + a system-browser loopback; web uses the
+firebase-js-sdk popup (loaded lazily behind the `@houston/web-identity` alias, so
+the desktop bundle ships **zero** firebase-js-sdk). Every failure becomes a typed
+`IdentityError`; user-initiated calls emit the `.code` on the auth-error bus AND
+rethrow (see "Error surfacing").
 
-In cloud mode the Supabase access token doubles as the control-plane bearer:
-`CloudApp` (packages/web/src/cloud-login.tsx) mirrors the live session token
-into `window.__HOUSTON_ENGINE__`, and the engine adapter reads it per request
-(`control-plane.liveToken`) so silent refreshes are picked up without a reload.
+### Google / Microsoft — desktop (loopback + PKCE → GCIP REST)
 
-## Desktop hosted mode + the OAuth toggle (HOU-611)
+```
+User clicks "Continue with Google" (or Microsoft) in SignInScreen
+ → auth.ts signInWithGoogle() / signInWithMicrosoft():
+    1. runLoopbackAuthorize(): mint PKCE verifier + CSRF state,
+       osStartOauthLoopback() → 127.0.0.1:<8975-8978>/auth/callback,
+       open the provider authorize URL in the SYSTEM browser
+       (onBrowserOpened() frees the sign-in buttons the instant it opens)
+ → provider consent in the system browser
+ → 302 → 127.0.0.1:<port>/auth/callback?code=…&state=…
+ → oauth_loopback.rs captures it, emits `auth://deep-link`, brings the window front
+ → oauth-callback.ts parseCallbackUrl(): validate CSRF `state` FIRST, then code
+    2. exchange code at the provider token endpoint (google-authorize.ts /
+       microsoft-authorize.ts) → provider id_token (Google also sends its
+       installed-app client_secret; Microsoft is a public PKCE client, no secret)
+    3. firebase-rest.ts signInWithIdp({ providerId, idToken }) → Firebase session
+    4. session-from-idp.ts assembles the Session; saveSession() → Keychain;
+       cacheSession() flips the gate; startProactiveRefresh(); PostHog track
+```
 
-The desktop app talks to the managed cloud gateway when `VITE_HOSTED_ENGINE_URL`
-is set. There the bearer is the **Supabase session token**, not a static key:
-`EngineGate` (`app/src/components/shell/engine-gate.tsx`) routes to
-`HostedEngineGate`, which blocks the app behind `SignInScreen` until Google
-sign-in lands, then feeds the session token to the engine client via
-`setHostedEngineSessionToken` (`app/src/lib/engine.ts`). The gateway verifies
-that JWT (`gethouston/cloud`, `src/auth/verify-supabase.ts`) and swaps in the
-pod's internal token — the user JWT never reaches the pod.
+The loopback ports `8975-8978` must be **Authorized redirect URIs** on the
+**Desktop OAuth client** (Google) / Azure app registration (Microsoft). The Rust
+loopback (`app/src-tauri/src/oauth_loopback.rs`) is a dumb listener: it forwards
+`?code=&state=` verbatim on the `auth://deep-link` event and never sees the
+client secret or does a token exchange (TS owns both). A `cancel_oauth_loopback`
+command frees the port immediately on cancel.
 
-Whether that OAuth gate runs is the **`VITE_HOSTED_ENGINE_AUTH`** switch
-(`hostedAuthMode` / `hostedOauthLoginActive` in `app/src/lib/engine-mode.ts`):
+**Benign-cancel model.** A re-click (supersession), the sign-in screen unmounting
+(`cancelPendingAuthorize()` on unmount), and the 300s timeout all resolve `null` —
+no session, no error toast — so an abandoned browser tab can never freeze the
+buttons or fire a minutes-later error. A **foreign-state** callback (a stale tab's,
+delivered onto the shared `auth://deep-link` channel after a loopback port rebinds)
+is **ignored** — the attempt keeps waiting for its own correct-state callback
+rather than failing. Only a genuine callback error (provider `error` param on a
+matching state, unreadable payload, missing code) or a failure to open the browser
+/ bind the loopback rejects typed. **There is no `houston://auth-callback`
+fallback** — Google/Microsoft reject custom-scheme redirects on direct OAuth, so a
+loopback-bind failure surfaces a typed error for the generic retry UI.
 
-| `VITE_HOSTED_ENGINE_AUTH` | Behavior |
-|---|---|
-| unset (hosted URL set) | **`oauth`** — Google login required (the managed-cloud default; unchanged contract) |
-| `oauth` / `supabase` / `google` / `1` / `true` / `on` | Google login required |
-| `static` / `token` / `none` / `0` / `false` / `off` | No login — point at the hosted URL with the static bearer (`VITE_HOSTED_ENGINE_TOKEN` / `VITE_NEW_ENGINE_TOKEN`), exactly like `VITE_NEW_ENGINE_URL`. For service-token smoke tests. |
+### Google / Microsoft — web (firebase-js-sdk popup)
 
-Hosted OAuth needs a baked Supabase project (`SUPABASE_URL` + `SUPABASE_ANON_KEY`).
-A build that turns OAuth on without them can never obtain a token, so the gate
-renders a loud **"Sign-in required"** screen (`shell:engineGate.authRequired*`)
-instead of spinning on the start splash forever.
+`packages/web/src/identity/firebase-popup.ts`: `initializeApp` + `getAuth` +
+`browserLocalPersistence`, then `signInWithPopup(GoogleAuthProvider)` /
+`signInWithPopup(new OAuthProvider("microsoft.com"))`. The SDK owns persistence +
+auto-refresh; `onIdTokenChanged` mirrors the live token into the engine global and
+the `["session"]` cache (`cloud-login.tsx`). A cancelled popup resolves `null`
+(benign). No redirect bridge, no `detectSessionInUrl`.
 
-`static` suppresses only this hosted-engine OAuth gate. If a build separately
-bakes Supabase, the app-wide sign-in (`App.tsx`'s `isAuthConfigured()` gate) still
-applies, so the no-login path is meant for service-token smoke builds that bake no
-Supabase creds.
+### Email OTP (6-digit) — all surfaces
 
-**Shipping a cloud desktop build.** The signed, all-platform CI for this mode is
-the `cloud-v*` channel of `.github/workflows/release.yml`: tag `cloud-v<version>`
-and it builds mac/win/linux with `VITE_HOSTED_ENGINE_URL` baked from the
-`HOSTED_ENGINE_URL` **secret** (the gateway URL is never a literal) plus
-`VITE_HOSTED_ENGINE_AUTH=oauth`, so users just sign in with Google — no URL to
-enter. The plain `v*` channel is the unchanged local build. See
-`convergence/README.md` → "Host-sidecar release CI" for the channel details and
-the updater-isolation note.
+GCIP has no native 6-digit OTP, so the **gateway owns it** and hands back a GCIP
+**custom token** the client exchanges for a normal Firebase session
+(`app/src/lib/identity/otp.ts`, the pinned contract of record):
 
-### Testing Google login against the local kind gateway
+```
+POST {gateway}/v1/auth/email-otp/start   { email }        → 204   (gateway emails a code)
+POST {gateway}/v1/auth/email-otp/verify  { email, code }  → 200 { customToken }
+                                                             401 → otp_invalid_code
+                                                             429 → otp_rate_limited
+signInWithCustomToken(customToken)   (REST on desktop, SDK on web) → Firebase session
+decodeIdTokenClaims(idToken) fills uid/email/name → Session (provider: "custom")
+```
 
-To exercise the real Google-login flow against the `gethouston/cloud` local kind
-gateway (`cloud/k8s/kind`) with the desktop app as client:
+The gateway base URL is the engine URL the client already has
+(`auth-gateway.ts` `gatewayUrl()` → `resolveEngine` / `window.__HOUSTON_ENGINE__.baseUrl`;
+a typed throw when none is configured, never a silent no-op).
 
-1. Bake the Supabase project into the dev build — in `app/.env.local`:
-   ```
-   SUPABASE_URL=https://zfpnlvxazrataiannvtq.supabase.co
-   SUPABASE_ANON_KEY=<anon public key>
-   VITE_HOSTED_ENGINE_URL=http://localhost:9080
-   # VITE_HOSTED_ENGINE_AUTH defaults to oauth when the hosted URL is set;
-   # set it to `static` (+ VITE_HOSTED_ENGINE_TOKEN=<service token>) to test
-   # the no-login path instead.
-   ```
-2. Bring the gateway up: `make kind-up` in the cloud repo. Its
-   `ServiceTokenVerifier` falls through to the real `SupabaseTokenVerifier`
-   (kind sets `GW_SUPABASE_JWKS_URL`), so a Google-issued JWT verifies with no
-   gateway change.
-3. `pnpm tauri dev` in `app/` → **Continue with Google** → the verified session
-   token reaches the gateway, which provisions your per-user pod.
+### Admin (`/admin`) — email/password + Google popup
 
-## Runtime engine-connection chooser (HOU-621)
+The operator dashboard (`packages/web/src/admin/*`) is self-contained: it can't
+reach the desktop Keychain, so it does NOT use `identity/refresh.ts` /
+`session-store.ts`. `admin/auth.ts` (pure, tested) + `admin/use-admin-auth.ts`:
+email/password via REST `signInWithPassword`, Google via the web popup; both yield
+an `AdminSession { idToken, refreshToken, expiresAt, email }`. A single proactive
+`refreshIdToken` timer keeps the bearer fresh (terminal-vs-transient like
+`refresh.ts`); the session persists to localStorage for reload survival. The live
+`idToken` is the control-plane bearer. The operator allowlist (`CP_ADMIN_USER_IDS`)
+is the real gate, enforced gateway-side — the UI just shows the 403/404 reason.
 
-The hosted mode above is baked at **build** time. HOU-621 adds a **runtime** pick
-for the TS-engine build so one binary can go either way. It only appears in the
-TS-engine build (`VITE_NEW_ENGINE=1`, the build where `vite.config.ts`'s `useHost`
-aliases the v3 adapter) **and** when no URL is baked (`VITE_HOSTED_ENGINE_URL` /
-`VITE_NEW_ENGINE_URL` still win and skip the chooser). The plain Rust build (no
-flags) never sees it — `resolveEngine` returns `sidecar` and `ConnectionGate` is a
-passthrough.
+> **Infra follow-up (open):** `cloud-tf/infra/terraform/identity.tf` enables the
+> Google + Microsoft IdPs but **not** the email/password method, so admin
+> email/password returns GCIP `OPERATION_NOT_ALLOWED` ("This sign-in method isn't
+> enabled for operators.") until infra adds a `sign_in { email { enabled = true } }`
+> block. Google popup works. Admin accounts are provisioned out-of-band; the UI
+> only signs existing accounts in.
 
-Flow (`app/src/components/auth/connection-chooser.tsx`, gated by
-`ConnectionGate` above `EngineGate` in `main.tsx`):
+## Session + Keychain model
 
-- **Use this computer** → persists `{mode:"local"}` → runs the Tauri host sidecar
-  (the normal handshake). Account sign-in is the standard `SignInScreen`; the
-  manual-paste box shows only in **dev** builds (the #146 deep-link-collision
-  fallback), never in production standalone.
-- **Connect to a remote engine** → prompts for a URL (`normalizeEngineUrl`
-  accepts a bare host and prepends `https://`, e.g. `engine.example.com`) →
-  persists `{mode:"remote", url}` → reload → treated exactly like an
-  OAuth-hosted gateway: `HostedEngineGate` + `SignInScreen` **with** the
-  paste-the-code fallback (`allowManualCallback`), and the Supabase session token
-  becomes the gateway bearer. The allowlist is enforced server-side (the gateway
-  401s a non-allowlisted JWT). **Provider (Codex/OpenAI) OAuth against a remote
-  DESKTOP no longer forces device-code** (the claim this section used to make):
-  the desktop binds its OWN local `127.0.0.1:1455` loopback relay and finishes
-  ChatGPT sign-in with zero code (PR #648) — pi's own 1455 lives in the pod, so
-  there is no collision. Only a WEB (non-Tauri) remote client falls back to
-  device-code. Full topology + rationale: **"Provider connect + turn execution
-  (TS engine)"** below.
-
-The choice lives in `localStorage` (`houston.engineConnection`,
-`app/src/lib/engine-connection.ts`) and is read **synchronously** at
-`engine.ts` module load — so applying one reloads the webview to re-run that
-module deterministically (the HOU-546 "engine mode is a build-time constant"
-invariant). Because the TS-engine build's Tauri shell still spawns a local
-sidecar (`lib.rs` `host_mode` only checks the URL envs) and `window.eval`-injects
-`window.__HOUSTON_ENGINE__`, `resolveConfig()` returns `null` for the remote
-(`HOSTED_OAUTH`) path so the remote client is built **only** from the session
-token and never adopts the idle local sidecar.
-
-**Sign out returns to the chooser**: `signOut()` clears the stored choice and
-reloads (only when a choice existed, so the Rust build is unaffected).
-
-## Keychain boundary
+`Session = { idToken, refreshToken, uid, email, emailVerified, displayName,
+photoUrl, provider, expiresAt }`, `provider ∈ google.com | microsoft.com |
+password | custom` (`identity/session.ts`).
 
 | Piece | Where |
 |---|---|
-| Session JSON (access_token, refresh_token, user) | CI releases: Keychain entry `com.houston.app.auth` / `houston-auth` |
-| PKCE code verifier | CI releases: Keychain entry `com.houston.app.auth` / `sb-…-auth-token-code-verifier` (Supabase-managed key) |
-| Storage adapter | CI releases: `app/src/lib/supabase.ts::keychainStorage` → Tauri commands `auth_get_item` / `auth_set_item` / `auth_remove_item` in `auth.rs` |
-| Local storage | Browser storage with worktree-scoped key `houston-auth-local-<hash>` |
-| Rust dep | `keyring = "3"` with `apple-native` + `windows-native` features |
+| Session JSON blob | CI releases: Keychain service `com.houston.app.auth`, key `houston-auth` (Windows: DPAPI file) |
+| PKCE code verifier | **In memory** for the flow — desktop owns both ends of the loopback, so no Keychain round-trip |
+| Storage adapter | `identity/session-store.ts` → os-bridge `osAuthGetItem/SetItem/RemoveItem` → Tauri `auth_*` cmds (`app/src-tauri/src/auth.rs`) |
+| Local dev storage | Browser storage, worktree-scoped key `houston-auth-local-<hash>` |
+| Rust dep | `keyring = "3"` (`apple-native` + `windows-native`) |
 
-CI releases never touch localStorage. If Keychain is locked or unavailable, the in-memory session on the current run still works; nothing persists across launches. Degraded mode, not failure.
+`session-store.ts` reuses the `houston-auth` key, so an upgrading user may have a
+stale **Supabase** blob under it — `deserializeSession` treats any non-Firebase
+shape (legacy blob / corrupt JSON) as signed-out: discard + log, never throw, never
+silently accept (`identity/session.ts`). If the Keychain is locked, the in-memory
+session on the current run still works but nothing persists across launches —
+degraded mode, not failure. Override the storage backend with
+`HOUSTON_AUTH_STORAGE=keychain|browser`.
 
-Local builds are different on purpose: Supabase uses browser storage with a worktree-scoped key (`houston-auth-local-<hash>`) and the Rust startup path does not read the persisted Keychain user id. macOS can treat every rebuild or worktree as a different app for Keychain access and show repeated password prompts. CI builds keep Keychain storage. Override with `HOUSTON_AUTH_STORAGE=keychain` or `HOUSTON_AUTH_STORAGE=browser`.
+`useSession` (`app/src/hooks/use-session.ts`) is the TanStack source of truth
+(`SESSION_QUERY_KEY = ["session"]`): desktop reads the Keychain via `loadSession`
+and mirrors `subscribeSession` broadcasts; web awaits the first `onIdTokenChanged`
+so a returning user never flashes signed-out. `App.tsx` renders `SignInScreen`
+when `isIdentityConfigured() && !session`.
 
-## Gating + offline behavior
+## Refresh
 
-- `isAuthConfigured()` (true when `SUPABASE_URL` + `SUPABASE_ANON_KEY` baked in) is the master switch. Unconfigured builds skip auth entirely — useful for local dev without secrets.
-- `App.tsx` shows a splash while `useSession()` is loading, `SignInScreen` once the session resolves to `null`, the app otherwise.
-- `supabase.auth.getSession()` reads local auth storage (CI-release Keychain, local browser storage) — transient Supabase blips do NOT kick the user. Silent token refresh handles token TTL under the hood.
-- Hard sign-out: `signOut()` in `app/src/lib/auth.ts` clears the configured Supabase session storage and calls `analytics.reset()` so subsequent anonymous events don't attach to the prior user.
+`identity/refresh.ts` runs a proactive timer that refreshes ~5 min before
+`expiresAt` (`REFRESH_SKEW_MS`), replacing Supabase's `autoRefreshToken`. It also
+backs `window.__HOUSTON_SESSION_REFRESH__` (`refreshNow()`, single-flight) for the
+gateway 401 seam — **no engine-adapter change**. Firebase refresh tokens are
+long-lived and not rotated. A terminal refresh failure (revoked/expired refresh
+token) resolves `null` → a real sign-out surfaced by the auth gate; a transient
+throw is logged and treated as `null` so the 401 surfaces rather than crashing the
+refresher. On web the firebase-js-sdk owns refresh; `webRefreshIdToken` force-mints
+a fresh token for the same seam.
 
-## PostHog integration
+## Sign-out
 
-- Anonymous launch: `distinct_id = install_id` (minted in `install-id.ts`).
-- Sign-in: `analytics.alias(userId, { email, name })` — merges the pre-signup history to the identified user.
-- Sign-out: `analytics.reset()` — future events use a fresh anonymous `distinct_id`.
+`signOut()` (`app/src/lib/auth.ts`) does a full cleanup: `stopProactiveRefresh()` +
+`clearSession()` (Keychain, desktop) or `webSignOut()` (SDK, web) → `cacheSession(null)`
+→ `clearPersistedLocalData()` (wipes locally persisted per-user data, HOU-712) →
+`analytics.reset()` (so later anonymous events don't attach to the prior user). A
+failed remote/Keychain clear is logged, never silent, and never blocks local
+cleanup. The desktop hosted-mode **engine bearer clears reactively**: `cacheSession(null)`
+→ `["session"]` null → `HostedEngineGate` effect calls `setHostedEngineSessionToken(null)`.
 
-## Engine identity plumbing
+## The `identity/` module map (`app/src/lib/identity/`)
 
-- At engine spawn (`app/src-tauri/src/lib.rs`), CI-release builds read the persisted Supabase session from Keychain and pass `HOUSTON_APP_USER_ID` as an env var to the subprocess. Local builds skip this Keychain read. Engine treats the value as an opaque string.
-- The env var is only set when the user was already signed in on a prior launch and the build uses Keychain auth storage. First-run signed-in users don't get the env var until the next app restart — engine doesn't need it yet; server-side use is future work.
-- `HoustonEvent` envelope does NOT carry `user_id` today — deferred until there's a server-side consumer that needs it. When that lands, wrap `HoustonEvent` in an envelope struct in `engine/houston-ui-events` rather than adding `user_id` to each variant.
+| Module | Role |
+|---|---|
+| `config.ts` | Reads baked `__FIREBASE_*__` (+ `VITE_FIREBASE_*` dev override); `identityConfig`, `isIdentityConfigured()` = apiKey && projectId |
+| `errors.ts` | `IdentityError` + the `IdentityErrorCode` union + `mapGcipCode` (raw GCIP code → stable code, mapped ONCE; downstream never string-matches) |
+| `rest-client.ts` | Transport core — the one place GCIP error bodies become typed errors |
+| `firebase-rest.ts` | `signInWithIdp` (generic), `signInWithCustomToken`, `refreshIdToken`, `signInWithPassword` |
+| `id-token.ts` | `decodeIdTokenClaims` (decode-only, for the custom-token OTP path) |
+| `otp.ts` | `startEmailOtp` / `verifyEmailOtp` (gateway contract; module header is the pinned contract) |
+| `session.ts` | `Session` shape + shape-tolerant serialize/deserialize + `sessionExpiresWithin` |
+| `session-store.ts` | Keychain/browser persistence + `subscribeSession` + `SESSION_QUERY_KEY` |
+| `refresh.ts` | Proactive timer, `refreshNow` (401 seam), `setSessionSink`, `start/stopProactiveRefresh` |
+| `desktop-oauth.ts` | Loopback+PKCE driver (Tauri wiring); shared by Google + Microsoft |
+| `oauth-attempt.ts` | Tauri-free attempt lifecycle (supersede / cancel / timeout / ignore-foreign-state) — unit-testable |
+| `oauth-callback.ts` | Pure callback parser: CSRF `state` validated first; `isCsrfStateMismatch` predicate |
+| `pkce.ts` | Code verifier / S256 challenge / state |
+| `google-authorize.ts` / `microsoft-authorize.ts` | Provider authorize + token-exchange specifics |
+| `desktop-signin.ts` | `google/microsoft/customToken DesktopSession` — authorize → REST → Session |
+| `session-from-idp.ts` | `IdpSignInResult` → `Session` |
+| `log.ts` | node-test-safe log seam (`setIdentityLogSink` / `identityLog`) |
+| `index.ts` | Barrel |
+| `firebase-popup-stub.ts` | Desktop stub for `@houston/web-identity` (each export throws) — keeps firebase out of the desktop bundle |
 
-## Required secrets
+Web-only: `packages/web/src/identity/firebase-popup.ts` (the real firebase-js-sdk
+surface, aliased as `@houston/web-identity`) + `firebase-errors.ts` (SDK error →
+`IdentityError` mapping, benign-popup-cancel detection).
 
-| Var | Source | Notes |
-|---|---|---|
-| `SUPABASE_URL` | Supabase project settings → Project URL | Public; baked into the bundle at build time via Vite `define` |
-| `SUPABASE_ANON_KEY` | Supabase project settings → Project API keys → `anon` `public` | Public by design; RLS policies gate all data access |
+## Error surfacing (no silent failures)
 
-Also in CI as GitHub Secrets.
+Every sign-in failure is classified ONCE into an `IdentityErrorCode`
+(`identity/errors.ts`) and collapsed to a localized copy bucket by
+`app/src/components/auth/auth-errors.ts` `authErrorKey()` (an exhaustive
+`Record<IdentityErrorCode, …>` — a new code fails to compile until bucketed). The
+`errors.auth.*` keys exist in **en / es / pt**. OAuth failures that happen AFTER
+the browser hands off (provider rejection, code-exchange failure) arrive on the
+`auth-error-bus` (`onAuthError`) and render on `SignInScreen`; email-OTP errors
+render inline in `EmailSignIn` (emitted with `emit:false` to avoid a double render).
 
-## One-time GCP setup (human)
+The identity log seam (`identity/log.ts`) is wired to the app logger by
+`initFrontendLogging()` (`app/src/lib/logger.ts`), called at startup by **both**
+entrypoints — `app/src/main.tsx` (desktop) and `packages/web/src/app-tree.tsx`
+(web) — and by `packages/web/src/admin/dashboard.tsx` (the `/admin` entry, which
+does not go through app-tree). Until a sink is set the seam falls back to `console`
+(never silent).
 
-1. GCP Console → APIs & Services → Credentials → Create OAuth 2.0 Client ID
-2. Type: Web application
-3. Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback` (from Supabase → Auth → Google → Callback URL)
-4. Copy client_id + client_secret → Supabase → Authentication → Providers → Google → paste + enable
+## Gating + offline
 
-## One-time Supabase setup (via Supabase MCP)
+- `isIdentityConfigured()` (baked `FIREBASE_API_KEY` && `FIREBASE_PROJECT_ID`) is
+  the master switch. Unconfigured builds skip auth entirely — local dev without
+  secrets still boots.
+- `App.tsx`: splash while `useSession()` loads, `SignInScreen` once it resolves to
+  `null`, the app otherwise.
+- Cached Keychain session serves `loadSession()` offline; an unrefreshable token
+  degrades gracefully (identical to signed-in-but-stale), it does not kick the user.
 
-Minimal schema + trigger to auto-create a `profiles` row on user signup:
+## Desktop hosted mode + the OAuth toggle (HOU-611)
 
-```sql
-create table public.profiles (
-  user_id uuid primary key references auth.users on delete cascade,
-  email text not null,
-  name text,
-  avatar_url text,
-  created_at timestamptz not null default now(),
-  last_seen_at timestamptz not null default now()
-);
-alter table public.profiles enable row level security;
-create policy "read own profile" on public.profiles for select using (auth.uid() = user_id);
-create policy "update own profile" on public.profiles for update using (auth.uid() = user_id);
+The desktop app talks to the managed gateway when `VITE_HOSTED_ENGINE_URL` is set;
+there the bearer is the **Firebase ID token**, fed to the engine client via
+`setHostedEngineSessionToken` (`app/src/lib/engine.ts`) from the `useSession`
+→ `HostedEngineGate` reactive path. Whether that sign-in gate runs is the
+`VITE_HOSTED_ENGINE_AUTH` switch (`app/src/lib/engine-mode.ts`):
 
-create function public.handle_new_user() returns trigger as $$
-begin
-  insert into public.profiles (user_id, email, name, avatar_url)
-  values (new.id, new.email, new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'avatar_url');
-  return new;
-end; $$ language plpgsql security definer;
+| `VITE_HOSTED_ENGINE_AUTH` | Behavior |
+|---|---|
+| unset (hosted URL set) | **`oauth`** — sign-in required (managed-cloud default) |
+| `oauth` / `google` / `1` / `true` / `on` (legacy alias `supabase`) | sign-in required |
+| `static` / `token` / `none` / `0` / `false` / `off` | no login — hosted URL + static bearer (`VITE_HOSTED_ENGINE_TOKEN`), for service-token smoke tests |
 
-create trigger on_auth_user_created after insert on auth.users
-  for each row execute procedure public.handle_new_user();
+Hosted OAuth needs a baked Firebase project. A build that turns OAuth on without
+one can never obtain a token, so `HostedEngineGate` renders a loud "Sign-in
+required" screen (`shell:engineGate.authRequired*`) instead of spinning forever.
+Signed cloud desktop builds ship on the `cloud-v*` release channel (see
+`convergence/README.md`).
+
+### Testing sign-in against the local kind gateway
+
+Bake the Firebase project into the dev build — in `app/.env.local`:
+
 ```
+FIREBASE_API_KEY=<web-api-key>
+FIREBASE_AUTH_DOMAIN=gethouston.firebaseapp.com
+FIREBASE_PROJECT_ID=gethouston
+GOOGLE_DESKTOP_CLIENT_ID=<desktop-oauth-client-id>
+GOOGLE_DESKTOP_CLIENT_SECRET=<installed-app-secret>
+MICROSOFT_DESKTOP_CLIENT_ID=<entra-public-client-id>
+VITE_HOSTED_ENGINE_URL=http://localhost:9080
+# VITE_HOSTED_ENGINE_AUTH defaults to oauth when the hosted URL is set;
+# set it to `static` (+ VITE_HOSTED_ENGINE_TOKEN) to test the no-login path.
+```
+
+Bring the gateway up (`make kind-up` in `cloud/`) with its Firebase issuer/JWKS
+env set, then `pnpm tauri dev` in `app/` → sign in → the verified Firebase ID
+token reaches the gateway, which provisions your per-user pod. (Dev builds sign in
+with the passwordless email code: the loopback opens the SYSTEM browser, and a
+Google/Microsoft consent redirect can land in the installed prod app, so the
+OAuth buttons are prod-only there — HOU-642.)
+
+## PostHog identity
+
+- Anonymous launch: `distinct_id = install_id` (`install-id.ts`).
+- Sign-in: `analytics.alias(firebaseUid, { email, name })` — merges pre-signup
+  history onto the identified user; the person property is `firebase_uid`.
+- Sign-out: `analytics.reset()` — future events use a fresh anonymous id.
+
+> The uid switched from the Supabase id to the Firebase uid — a fresh platform, so
+> historical Supabase-id joins break. Acceptable, intentional discontinuity
+> (`auth-migration.md`, "Intentional discontinuities").
+
+## Config / secrets matrix
+
+All Firebase web values are **public by design** (the apiKey is not a secret —
+access is gated by GCIP provider config + the gateway allowlist), so they are
+baked into the bundle at build time exactly as the Supabase anon key was.
+
+| Var | Baked as (Vite `define`) | Source / notes |
+|---|---|---|
+| `FIREBASE_API_KEY` | `__FIREBASE_API_KEY__` | Firebase web API key |
+| `FIREBASE_AUTH_DOMAIN` | `__FIREBASE_AUTH_DOMAIN__` | e.g. `gethouston.firebaseapp.com` (web popup domain) |
+| `FIREBASE_PROJECT_ID` | `__FIREBASE_PROJECT_ID__` | `gethouston` — token issuer/audience |
+| `GOOGLE_DESKTOP_CLIENT_ID` | `__GOOGLE_DESKTOP_CLIENT_ID__` | Google "Desktop app" OAuth client (loopback + PKCE) |
+| `GOOGLE_DESKTOP_CLIENT_SECRET` | `__GOOGLE_DESKTOP_CLIENT_SECRET__` | Non-confidential installed-app secret; the code→id_token exchange runs in TS |
+| `MICROSOFT_DESKTOP_CLIENT_ID` | `__MICROSOFT_DESKTOP_CLIENT_ID__` | Entra **public** client (PKCE, no secret) |
+
+- **Dev override (no rebuild):** `VITE_FIREBASE_API_KEY` / `VITE_FIREBASE_AUTH_DOMAIN`
+  / `VITE_FIREBASE_PROJECT_ID` (`import.meta.env`), so a scratch project is a
+  `.env.local` edit. See `app/src-tauri/.env.example` + the repo-root `.env.example`.
+- **Baked in both bundles:** `app/vite.config.ts` + `packages/web/vite.config.ts`
+  (auth-domain defaults `gethouston.firebaseapp.com`, project defaults `gethouston`).
+- **Release CI:** `.github/workflows/release.yml` sets all six from GitHub Secrets
+  in each of the three Tauri build blocks (macOS / Windows / Linux). The old
+  `SUPABASE_URL` / `SUPABASE_ANON_KEY` were fully removed.
+- **Web image:** `packages/web/Dockerfile` documents the `FIREBASE_*` build args
+  (the SPA config bakes at `pnpm --filter houston-web build`; the image just
+  serves `dist`).
+
+## One-time GCP / Firebase setup (human)
+
+See `knowledge-base/auth-migration.md` ("Open human / cross-repo follow-ups") for
+the full checklist and open human tasks. In brief:
+
+1. **Web/admin Google provider** — enable Google in the GCIP console; the web
+   popup uses the GCIP handler redirect `https://gethouston.firebaseapp.com/__/auth/handler`.
+2. **Desktop OAuth client** — a Google "Desktop app" client (PKCE) with the
+   `127.0.0.1` loopback ports as authorized redirect URIs; its "secret" is the
+   non-confidential installed-app secret (baked via env, never a literal).
+3. **Microsoft** — an Azure app registration (`microsoft.com` GCIP provider) whose
+   redirect includes the desktop loopback ports; public PKCE client, no secret.
+4. **Email OTP** — the `POST /v1/auth/email-otp/{start,verify}` endpoints are a
+   `cloud/` gateway build (contract pinned in `identity/otp.ts`).
+5. **Gateway verifier** — issuer/JWKS swap to Firebase is a `cloud` Go change; the
+   gateway must accept Firebase tokens before/with the client cutover.
 
 ## What's deliberately out of scope
 
-- Apple SSO, email magic-link, phone OTP. Surface a "More sign-in options coming soon" microcopy line today; add providers later in Supabase dashboard.
-- Server-side Rust emitting PostHog events directly — frontend covers Houston's event surface.
-- Houston Cloud API endpoints — this is the identity foundation, not the product surface.
-- Mobile (Capacitor) — Supabase JS works there too; deep-link scheme registered separately per platform.
-- In-app NPS — PostHog has it built in; configure later.
-- Stripe billing — future Supabase schema extension.
+- Apple SSO. Add it later as a GCIP provider.
+- Server-side (Rust) emitting PostHog events directly — the frontend covers
+  Houston's event surface. **The engine receives no user-id env at spawn today**
+  (an earlier note claiming a `HOUSTON_APP_USER_ID` env was passed was inaccurate —
+  no such variable exists; add an envelope carrier when a server-side consumer
+  needs the uid).
+- A gateway-backed profile/avatar store. The old Supabase `public.profiles` table +
+  avatar storage retired with Supabase auth (RLS `auth.uid()` can't match Firebase
+  uids); `use-user-profiles.ts` is stubbed, so faces fall back to initials and
+  self-face uses the session `displayName`/`photoUrl` until the gateway store lands.
 
-## Teams / orgs — SHIPPED (multiplayer)
+## Teams / orgs
 
-No longer out of scope. Orgs, roles (owner/admin/user), and per-agent access
-levels ship in the paid hosted cloud. The **gateway** owns and enforces all of
-it (org membership lives in the gateway's `gateway` Postgres schema, not the
-Supabase identity project); the open repo carries only the capability-gated
-client surface. Client model: `knowledge-base/teams.md`. Server contracts:
-`cloud/docs/contracts/C3` (roles/assignments), `C7-teams.md`.
-
-**Invite → first-login path.** Adding an unknown email creates a pending invite
-(`POST /org/members` → 202 `{invited:true}`). Ownership transfer is out of scope
-for v1 (`GRANTABLE_ROLES` never includes `owner`).
-
-> **C8 Spaces supersedes one-org-per-user.** The "one org per user, invite
-> consumed atomically at first sign-in" model above is C8-amended (contract
-> `cloud/docs/contracts/C8-spaces-billing.md`; open-repo client model:
-> `knowledge-base/teams.md` > Spaces). A user now belongs to MANY spaces. On
-> first sign-in the personal space is ALWAYS minted first (the C7 "invitee lands
-> directly in the inviting org, no personal org" behaviour is reversed), then
-> pending invites auto-accept oldest-first. An EXISTING user does NOT auto-join:
-> pending invites surface on `GET /v1/orgs` and are accepted explicitly
-> (`POST /v1/org-invites/:id/accept`) or declined. Migration 006's
-> one-org-per-user unique index is dropped; uniqueness is now the personal
-> space (one `personal_of` per user) plus one pending invite per team.
-
-## Provider connect + turn execution (TS engine) — CURRENT
-
-This is the CURRENT provider-auth model (pi runtime + host, PRs #636 / #647 /
-#648). It REPLACES the Rust-engine "Provider CLI re-auth" section below, which is
-retired. There are no provider CLIs — pi talks to providers in-process — with ONE
-exception: Anthropic, which runs through the Claude Agent SDK for compliance (see
-below). Cross-ref: `convergence/README.md` → Standing decisions → "Anthropic in
-cloud" (packaging) and the backend seam.
-
-### Per-provider turn execution — the `HarnessBackend` seam
-
-Turn execution is pluggable per provider behind `HarnessBackend`
-(`packages/runtime/src/backends/types.ts` + `registry.ts`). Both the long-lived
-server (`session/`) and the per-request cloud runtime (`turn/`) drive turns
-through this port; the emitted wire dialect (`WireEvent`) is identical whatever
-backend runs.
-
-- **pi is the default backend** (`backends/pi/`): `setDefaultBackend(pi)`, and any
-  provider without a specific registration resolves to it via
-  `backendFor(providerId)` (throws if neither a registration nor a default exists
-  — a turn never silently runs on no backend).
-- **`anthropic` registers the Claude Agent SDK backend** (`backends/claude/`):
-  `registerBackend("anthropic", claudeBackend)`, so Anthropic turns run the real
-  `claude` subprocess (`@anthropic-ai/claude-agent-sdk`) instead of pi's
-  in-process Anthropic client.
-
-**Why the SDK for Anthropic.** Anthropic server-blocks raw subscription-OAuth
-replay (harness-spoofing) since 2026-04. The sanctioned way to use a Claude
-Pro/Max subscription programmatically is to run Anthropic's OWN harness — the
-Claude Agent SDK, which spawns their native `claude` binary. So Houston runs it
-rather than replaying OAuth against Anthropic's API itself.
-
-**Compliance rule (load-bearing):** when the active provider is `anthropic`, BOTH
-turns AND conversation titles go through the SDK subprocess — NEVER pi's
-in-process Anthropic client. Turns: `backends/claude/backend.ts` → `ClaudeSession`
-(`session.ts`, `translate.ts` maps SDK messages → `WireEvent`s). Titles:
-`backends/claude/title.ts` (`titleWithClaude`) is a one-shot SDK query, NOT pi's
-in-process summarizer — a title leaking to the in-process client would be the
-exact replay Anthropic blocks. `title.ts` and `backend.ts` share `tokenEnv` so
-the two paths set the identical auth env var.
-
-How the SDK subprocess runs (`backend.ts`):
-- **Credential via the SHARED login dir (primary), env token (fallback).** The
-  desktop browser login (`claude auth login`, below) caches its credential in the
-  shared `CLAUDE_CONFIG_DIR` = `claudeLoginConfigDir()`; the SDK reads it there and
-  self-refreshes it, so `buildClaudeEnv` sets NO token env on that path. The
-  degraded setup-token PASTE fallback still stores a token in auth.json, read by
-  `read-token.ts` and set as `CLAUDE_CODE_OAUTH_TOKEN` (`sk-ant-oat01…`) /
-  `ANTHROPIC_API_KEY` (`sk-ant-api03…` console key) via `tokenEnv`. Either way
-  `options.env` REPLACES the child env, so `process.env` is spread in to keep
-  PATH/HOME while pinning the config dir; the three credential env vars are always
-  scrubbed first so an ambient host key never survives.
-- **Shared `CLAUDE_CONFIG_DIR`** = `claudeLoginConfigDir()` (`paths.ts`) =
-  `<HOUSTON_HOME>/claude-login`, WORKSPACE-shared (NOT per-agent) so ONE
-  `claude auth login` connects every agent, and the Tauri shell derives the
-  identical `houston_dir()/claude-login`. `settingSources: []` keeps the host's
-  `~/.claude` out. Per-agent isolation still holds: `sessions.json` (the
-  conversationId → session_id map) stays under the agent `dataDir`, and SDK
-  transcripts under the shared `projects/` tree are namespaced by the agent's cwd
-  slug (unique session_ids), so agents never collide.
-- **Workspace-clamp `canUseTool`** (`tool-policy.ts`): pi's clamped toolset
-  (Read/Edit/Write/Glob/Grep, plus Bash only when code execution is local) mirrored
-  as the SDK `tools` allowlist + a `disallowedTools` deny of the Claude Code tools
-  pi lacks; every call routes through a `WorkspaceGuard`-backed handler that
-  auto-approves in-workspace targets and denies escapes. There is deliberately NO
-  `allowedTools` — an allow rule short-circuits `canUseTool` and would bypass the
-  clamp.
-- **Houston's custom tools reach the subprocess via an in-process MCP server.** The
-  SDK backend does NOT only see file built-ins: `custom-tools.ts` registers an
-  in-process MCP server (`"houston"`, tools surface as `mcp__houston__*`) that
-  bridges Houston's pi-shaped `ask_user` / `request_connection` /
-  `integration_search` / `integration_execute` onto the SDK's `createSdkMcpServer`,
-  reusing the SAME implementations verbatim. WHY: the shared system prompt MANDATES
-  `ask_user` for every blocking question and `request_connection` for connect
-  hand-offs; without this bridge an `anthropic`-backed agent would be told to use
-  tools it lacks. Handlers run in THIS runtime process, so `recordPendingInteraction`
-  and the sandbox integration proxy work exactly as on the pi path (the per-turn
-  AsyncLocalStorage stores propagate in). See `knowledge-base/architecture.md`
-  (interaction lifecycle).
-- **SDK is an OPTIONAL dep**, lazily imported inside `createSession`/`titleWithClaude`;
-  its absence throws typed `ClaudeBackendUnavailableError`, never crashes the runtime.
-- **Binary resolution** (`binary-path.ts`): on Node (self-host / engine-pod /
-  per-turn Docker / dev / tests) the SDK self-resolves its ~250 MB per-platform
-  native binary via `require.resolve`; inside the Bun-compiled desktop sidecar
-  `require.resolve` can't reach `$bunfs`, so `resolveClaudeExecutable` points the
-  SDK at the `<dir of sidecar>/claude` sibling via `pathToClaudeCodeExecutable`.
-  Which images carry vs strip the ~250 MB binary (and the deferred desktop
-  externalBin wiring) is in `convergence/README.md`.
-  - **Placeholder guard (silent-hang bug fixed 2026-07):** `build.rs` stages a
-    stub in `binaries/claude-<triple>` when the real binary isn't compiled in
-    (any local/dev bundle built WITHOUT `scripts/build-host-sidecar.sh`; release
-    CI always stages the real one and `build.rs` panics if it can't). The stub
-    was historically `sleep 2147483647` — so a debug bundle that spawned the
-    sidecar handed the SDK a sleep-forever "claude" and EVERY Claude turn hung on
-    "mission in progress" with no output and no error (`prompt()` awaits a
-    generator that never yields → no catch, no `done`). Two guards now: (1) the
-    stub EXITS NON-ZERO instead of sleeping (build.rs, like the frpc stub); (2)
-    `resolveClaudeExecutable` sniffs the sibling's first bytes and throws
-    `ClaudeBackendUnavailableError` for a `#!`/`@echo` stub BEFORE spawning, so
-    the turn fails loud (surfaced via exec-turn's catch → `error` frame) instead
-    of hanging. To actually USE Claude in a local bundle, run
-    `scripts/build-host-sidecar.sh <triple>` first (stages the real binary); the
-    external-host dev loop (`pnpm dev:host`, Node) self-resolves and needs nothing.
-
-**Cloud per-turn keeps Anthropic OFF** (ToS). The multi-tenant per-turn Cloud Run
-image strips the `claude` binary and the catalog doesn't advertise `anthropic`;
-only local + self-host + the managed single-tenant pod run it. Config asymmetry,
-not a code fork.
-
-### Anthropic connect UX — desktop browser login (PRIMARY), setup-token PASTE (fallback)
-
-**PRIMARY (desktop + co-located engine): zero-terminal browser login.** Clicking
-Connect for Claude on the desktop runs `claude auth login --claudeai` FOR the user
-via a native Tauri command (`app/src-tauri/src/claude_login.rs`,
-`start_claude_login`/`cancel_claude_login`) — NOT the setup-token paste flow, and
-NOT a terminal. The bundled `claude` (Phase-A externalBin sibling of the host
-sidecar) opens the browser, catches its own loopback callback, and caches the
-credential in the shared `CLAUDE_CONFIG_DIR` = `<HOUSTON_HOME>/claude-login`
-(macOS Keychain, scoped by that dir; Linux `<dir>/.credentials.json`). The Rust
-command emits `claude-login://url` (authorize URL, for a "didn't open? open
-sign-in" fallback link) and `claude-login://done` `{ success, error }` (a `null`
-error = benign cancel). Frontend driver: `app/src/lib/claude-login.ts`
-`beginClaudeBrowserLogin`, wired at the ONE choke point `tauriProvider.launchLogin`
-(`lib/tauri.ts`) so every connect surface funnels through it, gated by
-`shouldUseClaudeDesktopLogin` (`provider-login-url.ts`) = anthropic && Tauri &&
-co-located engine. On success it confirms the engine now reads connected
-(`checkStatus` polls `/providers`, which re-probes `claude auth status`) then
-publishes a synthetic `ProviderLoginComplete` on the client bus
-(`events.ts` `publishLocalHoustonEvent`) so all surfaces flip the card / toast /
-clear pending exactly as for a normal OAuth completion. The spinner UI is a shell
-component (`claude-browser-login.tsx`) rendering `ProviderLoginDialog` in
-`browserPending` mode.
-
-**Connected signal.** Because the browser-login credential is NOT in auth.json,
-`providerConnected(store, "anthropic")` = `store.has("anthropic")` (fallback token)
-OR `anthropicCredentialCached()` — a cache warmed by `claude auth status --json`
-(the only reliable cross-platform probe; no artifact to stat on macOS). Refreshed
-live by the `/providers` and `/auth/status` routes and primed at boot;
-`getAuthStatus`/`/providers` are now async. `logout("anthropic")` also runs
-`claude auth logout` to clear the shared-dir credential + resets the cache.
-
-**Cloud SEAM (follow-up element):** the browser login assumes a CO-LOCATED engine
-(the cached cred is the very dir the local runtime reads). The local-vs-remote
-branch point is `shouldUseClaudeDesktopLogin`'s co-location check; a REMOTE engine
-(hosted pod) can't read this machine's Keychain, so a later element extracts the
-cred after `claude-login://done` success and pushes it to the pod (TODO markers in
-`claude-login.ts`). Until then remote-engine desktop keeps the setup-token paste
-flow below.
-
-**FALLBACK — the setup-token PASTE flow.** `auth/anthropic-setup-token.ts` +
-`auth/login.ts` (the runtime `startLogin("anthropic")` branch). Kept for web /
-remote-engine clients (and if the bundled binary is unavailable): the user runs
-`claude setup-token` in their own terminal (mints a long-lived `sk-ant-oat01…`
-token) and PASTES it into Houston; a console `sk-ant-api03…` API key works too.
-Houston never replays OAuth itself (the blocked path).
-
-**Wire shape:** `startLogin("anthropic")` emits a
-`{ kind:"auth_code", url, instructions }` LoginInfo and reuses `completeLogin`'s
-paste promise — the pasted value is a token, not an OAuth code. `url` is
-Anthropic's CLI-reference **docs** page, NOT a sign-in page.
-
-**The `auth_code` event flag (the "opens docs instead of paste box" fix).** The
-app adapter (`engine-adapter/client.ts`, both emit paths) forwards
-`auth_code: info.kind === "auth_code"` and the runtime's `instructions` on the
-`ProviderLoginUrl` bus event (`ui/core` `HoustonEvent`, additive fields). This
-is load-bearing: without it a setup-token event (paste flow, docs url, no
-`user_code`) is indistinguishable from a co-located loopback `url`, so on desktop
-`shouldOpenLoginUrlDirectly({isDesktop,userCode})` returned true and the app
-**auto-opened the docs cli-reference page and skipped the paste dialog**. Now
-`shouldOpenLoginUrlDirectly` / `providerLoginFallbackAction` take an `authCode`
-flag and always resolve to the **dialog** for `auth_code` (never auto-open), and
-every `ProviderLoginUrl` consumer (`use-provider-login-events.ts` in
-`hooks/provider-connections`, `provider-login-fallback.tsx`) passes it through.
-(The onboarding, migration-reconnect, and workspace-setup flows all connect
-through the shared `<ProviderBrowser>` / `useProviderConnections` now, so their
-bespoke `onboarding/missions/use-provider-login-events.ts` was deleted.) `provider-login-dialog.tsx`
-renders the `instructions` prominently above the paste field and demotes the docs
-`url` to a small optional "Reference" link. The codex loopback relay
-(`shouldUseCodexLoopback`, openai-only) and codex device-code paths are
-unaffected — anthropic is never openai and never carries a `user_code`.
-
-**What's stored + why the shape matters:** the token is persisted under
-`"anthropic"` as pi's **`api_key`** PiCred variant
-(`authStorage.set("anthropic", { type:"api_key", key })`). Because an api_key
-credential has no refresh token, the central refresh path (`refresh.ts`) and the
-credential-scrub gate stay a NO-OP for anthropic — untouched. pi-ai's anthropic
-provider auto-detects the `sk-ant-oat` prefix and switches to Bearer + Claude Code
-identity headers; an `sk-ant-api03…` key routes to the standard `x-api-key` path.
-`read-token.ts` reads the same stored value back for the SDK backend, again
-selecting the env var by prefix (no-silent-failure: a wrong variant or unknown
-prefix returns undefined AND logs the reason).
-
-### OpenAI / Codex (ChatGPT) login topology — truth table (as shipped)
-
-Codex OAuth has two flows: the **browser/loopback** login (approve in your own
-browser, no code) and the **device-code** grant (type a one-time code while the
-runtime polls). Which runs is decided by the CLIENT'S topology, because the
-loopback callback lands on `127.0.0.1:1455` — whoever binds that port must be
-co-located with the user's browser. `tauri.ts::launchLogin` resolves the
-`deviceAuth` flag centrally so every entry point (picker, settings, reconnect
-card, banner) agrees.
-
-| Client topology | Flow | Who owns the 1455 loopback |
-|---|---|---|
-| **Local sidecar** (co-located desktop) OR **loopback dev URL** (`VITE_NEW_ENGINE_URL` at 127.0.0.1/localhost) | pi's own browser login (`deviceAuth:false`); client just opens the authorize URL | **pi, in-process** — zero app code |
-| **Remote DESKTOP** (`VITE_HOSTED_ENGINE_URL`, or a non-loopback `VITE_NEW_ENGINE_URL`) | zero-code browser login via the desktop **1455 relay** (`launchLogin` forces `deviceAuth:false` for `openai` here) | **the desktop app** binds its OWN local 1455 and relays the callback code — pi's 1455 is in the pod |
-| **Web** (non-Tauri) | device-code — verification URL + one-time `user_code`, runtime polls | nobody (no local browser reachable) |
-
-- **Frontend gates** (`app/src/lib/engine-mode.ts`):
-  `providerLoginUsesDeviceAuthByDefault` is the topology default for the
-  `deviceAuth` a client sends (co-located desktop → `false`; remote desktop / web
-  → `true`). `codexUsesLoopbackRelay` = `isTauri && device-auth-by-default`, i.e.
-  the relay is **desktop-remote ONLY**. For `openai` in that case
-  `launchLogin` OVERRIDES `deviceAuth` back to `false` so the runtime emits an
-  authorize URL (not a device code), then `shouldUseCodexLoopback`
-  (`provider-login-url.ts`, requires `provider==="openai"` + no `userCode`) routes
-  it to the relay. The relay itself is `app/src/lib/codex-loopback.ts`
-  (`beginCodexBrowserLogin`: bind the native loopback, open the URL, relay
-  `code=…&state=…` to the engine via `submitLoginCode`).
-- **Runtime side** (`auth/login.ts`): `codexLoginMethod` picks browser vs
-  device-code purely from `deviceAuth`. The browser method works even against a
-  remote runtime because pi races its own local callback server against a
-  manually-relayed code — the desktop catches the fixed
-  `http://localhost:1455/auth/callback` redirect and relays code+state, and the
-  runtime does the token exchange, so its own loopback never needs to be reachable.
-
-**History (#615 → #620 → #648).** #453/#615 first dropped `ProviderLoginUrl` when
-`osIsTauri()` and left codex's `localhost:1455` fallback alone; the sharp edge is
-that a CO-LOCATED desktop that binds 1455 fights pi, which already owns it there.
-#648 gates the desktop 1455 relay REMOTE-ONLY (`codexUsesLoopbackRelay`) precisely
-to dodge that LOCAL 1455 collision: only when pi's 1455 is elsewhere (in the pod)
-does the desktop bind its own. Co-located desktop and loopback dev URLs keep pi's
-in-process flow untouched.
-
-## Provider CLI re-auth (Claude Code / Codex) — [LEGACY, Rust engine — RETIRED]
-
-_This is the legacy Rust-engine CLI-subprocess path. The TS engine's provider
-model is **"Provider connect + turn execution (TS engine)"** above — in-process
-OAuth for OpenAI/Codex, the Claude Agent SDK for Anthropic, and pasted API keys
-for the rest. The sections below survive only to explain the retired build._
-
-Separate from Houston account auth. Claude Code and Codex keep their own CLI
-sessions. When those sessions expire mid-chat, `houston-terminal-manager`
-classifies auth-shaped stderr/stdout (`401`, `unauthorized`, `not authenticated`,
-expired OAuth/API-key messages) and `houston-agents-conversations` emits
-`HoustonEvent::AuthRequired`. Desktop listens in `use-session-events.ts`, sets
-`authRequired`, and `ProviderReconnectCard` renders inside chat via
-`ChatPanel.afterMessages`. The card opens `claude auth login --claudeai` or
-`codex login` through `/v1/providers/:name/login` and polls provider status
-until the CLI reports authenticated.
-
-**`ProviderLoginDialog` is a remote-only affordance.** On desktop the engine
-is the co-located sidecar: the provider CLI opens the user's own browser and
-finishes through its `localhost` OAuth callback, so the connect surfaces (the
-shared `<ProviderBrowser>` — AI Hub, onboarding, migration, workspace-setup — all
-via the `useProviderConnections` hook, `app/src/hooks/use-provider-connections.ts`
-+ `components/provider-browser`) **drop `ProviderLoginUrl` when
-`osIsTauri()`** and show no dialog — they just wait for `ProviderLoginComplete`
-to flip the card (issue #453). Without that guard claude (which prints its
-`https://claude.com/…` URL unconditionally) flashed a paste-back dialog that
-instantly auto-dismissed; codex never did, because its desktop fallback URL is
-`http://localhost:1455/…`, which the relay's `https://`-only regex skips. The
-engine still emits `ProviderLoginUrl` either way — it's frontend-agnostic; the
-client decides whether it can reach a local browser.
-
-**Headless connect uses two completion shapes.** A remote client (browser
-webapp, or the desktop app pointed at `VITE_NEW_ENGINE_URL` /
-`VITE_HOSTED_ENGINE_URL`) can't receive the runtime's `localhost` OAuth
-callback. The shared app adapter defaults `deviceAuth` through
-`providerLoginUsesDeviceAuthByDefault`: co-located desktop (Rust sidecar or
-bundled host sidecar, no remote URL) passes `false`; browser clients and desktop
-clients using a remote host pass `true`. That flips codex to its device-code
-flow (`codex login --device-auth`): the engine surfaces a verification URL plus
-a one-time `ProviderLoginUrl.user_code`, the user enters that code on OpenAI's
-page, and codex polls + writes `~/.codex/auth.json` itself (no paste-back).
-**codex colourizes stdout even over a pipe**, so the relay strips ANSI escape
-sequences from each line before scanning (`login_relay::strip_ansi`): the
-`\x1b[94m` wrapper's trailing `m` otherwise sits flush against the code and
-defeats the `\b` anchor in the device-code regex, leaving `user_code` unset and
-the dialog wrongly stuck on paste-back. Claude has no device variant — its
-standard login already completes headlessly via the paste-back code
-(`/v1/providers/:name/login/code`), so the flag is a no-op for it. Note the
-mid-chat `ProviderReconnectCard` doesn't render the dialog, so headless re-auth
-currently routes through the picker/settings; the device-code requires the
-user's OpenAI account to have device sign-in enabled.
-
-### Cancelling / retrying a stuck sign-in
-
-A login subprocess only ends when the CLI exits, the user pastes a code, or
-the 10-minute relay timeout fires (`LOGIN_SESSION_TIMEOUT` in
-`engine-core::provider::login_relay`). If the user closes the OAuth tab before
-finishing, the CLI keeps its localhost callback open and just hangs — so the
-status poll never flips to authenticated and the connect UI spins. Worse, a
-fresh Connect click is rejected by `insert_session` as "already pending" until
-the timeout, which read to users as "I have to restart the app" (#237).
-
-`POST /v1/providers/:name/login/cancel` → `cancel_login` fixes this: it removes
-the in-flight session from `LOGIN_SESSIONS` **eagerly** (so the next Connect
-isn't rejected) and signals the relay task — which holds an `Arc<Notify>` clone
-— to kill the subprocess. The relay emits a **benign**
-`ProviderLoginComplete { success: false, error: null }`; the frontend treats a
-completion with no `error` as "not an error" and silently clears its pending
-spinner (no toast). A monotonic per-session token guards the relay's
-end-of-life map cleanup so it can't evict a freshly-spawned retry session that
-reused the same provider id. Every connect surface wires to it through the one
-shared `<ProviderBrowser>` (`components/provider-browser`, via the
-`useProviderConnections` hook): the AI Hub, onboarding, migration-reconnect, and
-workspace-setup.
-
-Codex has one extra wrinkle: it can emit retry-shaped 401 messages while it
-refreshes or reconnects, then continue successfully. Treat the synthetic
-`__auth_retry__` marker as provisional. Suppress it, remember it, and emit
-`AuthRequired` only if the session exits with an auth-flavored error. Terminal
-401 / unauthenticated messages still emit `AuthRequired` immediately.
-
-OpenAI provider status should prefer `codex login status` over shallow
-`~/.codex/auth.json` parsing. Keep the auth-file check only as fallback for old
-Codex versions or unrelated config-load failures, because config drift should
-not look like sign-out.
-
-Provider status uses tri-state auth: `authenticated`, `unauthenticated`, or
-`unknown`. Reconnect UI renders from feed signals only when status confirms
-`unauthenticated`; `unknown` resolves the signal without a card.
-
-Claude Code can sometimes return `Error: Unknown error` for non-auth failures.
-Treat that shape as a prompt to run `claude auth status`, not as logout by
-itself. Emit `AuthRequired` only when the status probe confirms
-`unauthenticated`.
-
-Never mutate `~/.codex/config.toml` to make Codex read Houston agent
-instructions. Agent directories already expose `CLAUDE.md` through an
-`AGENTS.md` symlink, and global Codex config writes can land under the active
-TOML table and break Codex startup.
-
-## Gemini (API key, no CLI login)
-
-Gemini does not have an OAuth-style `gemini auth login`. The CLI reads
-credentials from one of three places, in order:
-
-1. `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) environment variable in the
-   spawning shell.
-2. `~/.gemini/.env` file with the same env-var format.
-3. `~/.gemini/settings.json` with a `selectedAuthType` and matching
-   credential block.
-
-`GeminiAdapter::probe_auth` (in `engine/houston-terminal-manager/src/provider/gemini.rs`)
-checks all three. Any positive signal returns `authenticated`; missing
-file or missing key returns `unauthenticated`; parse / I/O errors map to
-`unknown` (NOT `authenticated`, per the no-silent-failures rule).
-
-`probe_auth` runs synchronously off the file system, no spawn. It is
-the same path used by `GET /v1/providers/gemini/status` and by the
-session runner's pre-spawn auth gate.
-
-### `launch_login("gemini")` returns BadRequest
-
-Because there is no CLI login, the `ProviderAdapter::login_args` impl
-returns `None`. `engine-core::provider::launch_login` surfaces this as
-`BadRequest("gemini has no CLI login flow, connect via settings instead")`.
-Same for logout. The desktop frontend short-circuits before this path
-is reached: the provider picker checks `loginKind === "apiKey"` and
-opens the Connect-API-Key dialog instead of calling
-`/v1/providers/gemini/login`.
-
-### Connect flow (Option A-lite, current)
-
-The picker's Gemini card opens a modal with three steps:
-
-1. Open `https://aistudio.google.com/app/apikey` in the user's browser
-   (`tauriSystem.openUrl`).
-2. Show a Copy-able `export GEMINI_API_KEY=...` snippet.
-3. Restart Houston so the env var is in scope for the engine
-   subprocess.
-
-Strings live under the `providers.apiKeyConnect.*` namespace
-(`app/src/locales/{en,es,pt}/providers.json`). Component:
-`app/src/components/shell/api-key-connect-dialog.tsx`. Provider config:
-`app/src/lib/providers.ts` (`loginKind`, `apiKeyConsoleUrl`,
-`apiKeyEnvVar` fields).
-
-### Connect flow (Option A, in-flight)
-
-The follow-up flow writes the key directly to `~/.gemini/.env` so the
-user does not have to fiddle with shell rc files. The engine route is
-`POST /v1/providers/gemini/credentials` (atomic write, mode 0600,
-parent dir ensure). When the in-flight upgrade lands, the dialog gains
-a paste input + Save button and the restart-Houston step disappears.
-
-### HOME isolation for spawned gemini sessions
-
-Gemini-cli loads `<HOME>/.gemini/GEMINI.md` as global memory on every
-invocation, and its built-in memory tool auto-appends the user's
-cross-project preferences to that file. Without isolation, every
-Houston-spawned gemini inherits notes from the user's other projects
-("Initializing Workspace... Ombra library", Alpine.js styling rules,
-etc.) and answers Houston tasks with the wrong context.
-
-`houston-terminal-manager::gemini_home::ensure_gemini_runtime_home`
-builds a Houston-managed HOME at `~/.houston/runtime/gemini-home/`
-containing only `.gemini/oauth_creds.json` + `google_accounts.json`
-+ `.env` symlinked from the real home (so OAuth and API-key auth
-both keep working without re-auth) plus a minimal
-`.gemini/settings.json` that mirrors the user's `selectedType`. No
-`GEMINI.md` is present, so global memory discovery finds nothing.
-Per-agent context still flows because gemini-cli walks UP from
-`cwd` and the agent dir contains `GEMINI.md → CLAUDE.md` seeded by
-`seed_agent`. Both `gemini_runner::spawn_gemini` and
-`sessions::summarize::run_gemini_summary` set `cmd.env("HOME", ...)`
-to this runtime path before spawning.
-
-**Windows symlink fallback.** Stock Windows installs reject
-`symlink_file` (os error 1314, "A required privilege is not held by
-the client") unless Developer Mode or admin is on. `ensure_symlink`
-falls back to `fs::copy`. If the real-home source file does not
-exist yet — common for first-time gemini users who have not
-completed OAuth or pasted an API key — the Windows path treats the
-missing source as "skip this entry" instead of erroring. Without
-that, the user-visible toast was: _"Failed to prepare gemini
-runtime home: The system cannot find the file specified. (os
-error 2). Houston cannot spawn gemini safely without it."_
+Orgs, roles (owner/admin/user), per-agent access, and C8 Spaces ship in the paid
+hosted cloud; the **gateway** owns and enforces all of it (org membership lives in
+the gateway's Postgres, not the identity project). The open repo carries only the
+capability-gated client surface. Client model: `knowledge-base/teams.md`. Server
+contracts: `cloud/docs/contracts/C3`, `C7-teams.md`, `C8-spaces-billing.md`.

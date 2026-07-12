@@ -28,7 +28,7 @@ struct AppDetailSheet: View {
         }
         .padding(Spacing.space16)
       }
-      .background(theme.background)
+      .background(theme.input)
       .safeAreaInset(edge: .bottom) { actions }
       .navigationBarTitleDisplayMode(.inline)
     }
@@ -51,7 +51,7 @@ struct AppDetailSheet: View {
       VStack(alignment: .leading, spacing: Spacing.space4) {
         Text(display.name)
           .font(Typography.title)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
           .lineLimit(1)
         ConnectionStatusBadge(status: connection.status)
       }
@@ -63,7 +63,7 @@ struct AppDetailSheet: View {
     VStack(alignment: .leading, spacing: Spacing.space8) {
       Text(Strings.Integrations.detailActiveOn)
         .font(Typography.label)
-        .foregroundStyle(theme.foreground)
+        .foregroundStyle(theme.ink)
       if let error = model.grantsError {
         grantsError(error)
       } else if !model.grants.supported {
@@ -83,7 +83,7 @@ struct AppDetailSheet: View {
       HoustonAvatar(agentColorHex: nil, diameter: 24)
       Text(agent.name)
         .font(Typography.body)
-        .foregroundStyle(theme.foreground)
+        .foregroundStyle(theme.ink)
         .lineLimit(1)
       Spacer(minLength: Spacing.space8)
       Toggle("", isOn: binding(for: agent.id))
@@ -111,7 +111,7 @@ struct AppDetailSheet: View {
       } label: {
         Text(Strings.Integrations.grantsRetry)
           .font(Typography.label)
-          .foregroundStyle(theme.primary)
+          .foregroundStyle(theme.action)
       }
       .accessibilityHint(message)
     }
@@ -120,10 +120,10 @@ struct AppDetailSheet: View {
   private func note(_ text: String) -> some View {
     Text(text)
       .font(Typography.caption)
-      .foregroundStyle(theme.mutedFg)
+      .foregroundStyle(theme.inkMuted)
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(Spacing.space12)
-      .background(theme.muted, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+      .background(theme.chipSubtle, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
   }
 
   private var actions: some View {
@@ -132,17 +132,17 @@ struct AppDetailSheet: View {
         dismiss()
         Task { await flow.connect(toolkit: connection.toolkit, appName: display.name) }
       } label: {
-        actionLabel(Strings.Integrations.detailReconnect, icon: "arrow.clockwise", tint: theme.foreground)
-          .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
+        actionLabel(Strings.Integrations.detailReconnect, icon: "arrow.clockwise", tint: theme.ink)
+          .overlay(Capsule().strokeBorder(theme.line, lineWidth: 1))
       }
       Button {
         confirmingDisconnect = true
       } label: {
-        actionLabel(Strings.Integrations.detailDisconnect, icon: "bolt.slash", tint: theme.destructive)
+        actionLabel(Strings.Integrations.detailDisconnect, icon: "bolt.slash", tint: theme.danger)
       }
     }
     .padding(Spacing.space16)
-    .background(theme.background)
+    .background(theme.input)
   }
 
   private func actionLabel(_ title: String, icon: String, tint: Color) -> some View {
@@ -154,6 +154,6 @@ struct AppDetailSheet: View {
     .foregroundStyle(tint)
     .frame(maxWidth: .infinity)
     .padding(.vertical, Spacing.space12)
-    .background(theme.muted, in: Capsule())
+    .background(theme.chipSubtle, in: Capsule())
   }
 }

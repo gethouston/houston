@@ -32,6 +32,7 @@ import { handleMigration } from "./migration";
 import { handlePortableExport } from "./portable";
 import { handlePortableAnonymize } from "./portable-anonymize";
 import { handlePortablePreview } from "./portable-preview";
+import { handlePortableStore } from "./portable-store";
 import { handleRoutineRuns } from "./routine-runs";
 import { handleSkills } from "./skills";
 import { handleSkillsRemote } from "./skills-remote";
@@ -692,6 +693,21 @@ export async function handleAgents(
         req,
         res,
         emit,
+      )
+    )
+      return true;
+    if (
+      await handlePortableStore(
+        {
+          vfs: deps.vfs,
+          paths,
+          grants: deps.integrationGrants,
+        },
+        { ...ctx, userId },
+        method,
+        rest,
+        req,
+        res,
       )
     )
       return true;

@@ -18,10 +18,10 @@ struct DayPill: View {
   var body: some View {
     Text(text)
       .font(Typography.caption)
-      .foregroundStyle(theme.mutedFg)
+      .foregroundStyle(theme.inkMuted)
       .padding(.horizontal, Spacing.space10)
       .padding(.vertical, Spacing.space4)
-      .background(theme.secondary.opacity(0.8), in: Capsule())
+      .background(theme.chip.opacity(0.8), in: Capsule())
   }
 }
 
@@ -58,9 +58,9 @@ struct UnreadBadge: View {
   var body: some View {
     Text(Strings.cappedCount(count))
       .font(Typography.captionStrong)
-      .foregroundStyle(theme.primaryFg)
+      .foregroundStyle(theme.actionText)
       .padding(.horizontal, Spacing.space6)
       .padding(.vertical, Spacing.space2)
-      .background(theme.primary, in: Capsule())
+      .background(theme.action, in: Capsule())
   }
 }

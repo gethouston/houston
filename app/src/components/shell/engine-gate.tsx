@@ -1,6 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { useSession } from "../../hooks/use-session";
-import { installDeepLinkListener } from "../../lib/auth";
 import {
   hostedOauthGateActive,
   installHostedSessionRefresh,
@@ -10,13 +9,14 @@ import {
 } from "../../lib/engine";
 import { hostedGateState } from "../../lib/engine-mode";
 import i18n from "../../lib/i18n";
-import { isAuthConfigured, supabase } from "../../lib/supabase";
+import { isIdentityConfigured, refreshNow } from "../../lib/identity";
+import { logger } from "../../lib/logger";
 import { SignInScreen } from "../auth/sign-in-screen";
 import { WorkspaceLoading } from "./workspace-loading";
 
 /**
  * Blocks app rendering until the selected engine transport is ready. The hosted
- * OAuth gate waits for a Supabase session token before any engine-backed hook
+ * OAuth gate waits for a Firebase session token before any engine-backed hook
  * mounts; every other mode (co-located sidecar, static-token host, static-token
  * hosted gateway) waits only for the engine handshake.
  */
@@ -32,32 +32,32 @@ function HostedEngineGate({ children }: { children: ReactNode }) {
   const { data: session, isLoading: sessionLoading } = useSession();
 
   useEffect(() => {
-    if (!isAuthConfigured()) return;
-    return installDeepLinkListener();
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthConfigured()) return;
+    if (!isIdentityConfigured()) return;
     // The 401 → refresh → replay seam (HOU-687): when the gateway rejects a
     // bearer (token expired while the app idled, connections severed by a
-    // gateway roll), the adapter force-mints a fresh access token and retries
-    // instead of toasting. refreshSession failing (revoked/absent refresh
-    // token) resolves null — a real sign-out, surfaced by the auth gate.
+    // gateway roll), the adapter force-mints a fresh ID token and retries
+    // instead of toasting. `refreshNow` returns null on a terminal refresh
+    // failure (revoked/expired refresh token) — a real sign-out surfaced by the
+    // auth gate; a transient throw is logged and treated as null so the 401
+    // surfaces rather than crashing the refresher (parity with the old path).
     return installHostedSessionRefresh(async () => {
-      const { data, error } = await supabase.auth.refreshSession();
-      if (error) return null;
-      return data.session?.access_token ?? null;
+      try {
+        return await refreshNow();
+      } catch (e) {
+        logger.warn(`[auth] hosted session refresh failed: ${e}`);
+        return null;
+      }
     });
   }, []);
 
   useEffect(() => {
-    const token = session?.access_token ?? null;
+    const token = session?.idToken ?? null;
     setHostedEngineSessionToken(token);
     if (token) setReady(true);
-  }, [session?.access_token]);
+  }, [session?.idToken]);
 
   const state = hostedGateState({
-    authConfigured: isAuthConfigured(),
+    authConfigured: isIdentityConfigured(),
     sessionLoading,
     hasSession: Boolean(session),
     engineReady: ready,
@@ -65,7 +65,7 @@ function HostedEngineGate({ children }: { children: ReactNode }) {
 
   switch (state) {
     case "misconfigured":
-      // Hosted OAuth is on but the build baked no Supabase project, so a session
+      // Hosted OAuth is on but the build baked no Firebase project, so a session
       // token can never be obtained — the gateway would 401 every request. Fail
       // loudly instead of spinning on the "starting" splash forever.
       return <HostedAuthMisconfigured />;

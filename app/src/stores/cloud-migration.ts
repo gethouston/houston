@@ -27,7 +27,6 @@ import {
 } from "../lib/cloud-migration-runner";
 import type { SourceHostHandshake } from "../lib/cloud-migration-transport";
 import { reportError } from "../lib/error-toast";
-import { writeMigrationStatus } from "../lib/migration-status";
 import {
   osBackupHoustonData,
   osStartMigrationSourceHost,
@@ -173,9 +172,9 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
           reportError("cloud_migration_backup", message, err);
           return;
         }
-        // Backup is safe on disk; mark the account "in progress" (best-effort)
-        // so a crash before the run finishes is recoverable from Settings.
-        await writeMigrationStatus("in_progress");
+        // Backup is safe on disk. Crash-recovery is server-side: the gateway
+        // stamps a per-agent import marker as each agent lands, so a re-run from
+        // Settings skips already-migrated agents (see buildMigrationPlan resume).
         let tasks: MigrationTask[];
         try {
           const prepared = await prepareMigration(

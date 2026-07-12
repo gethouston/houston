@@ -23,7 +23,7 @@ interface Props {
  * The single source of truth for "skill card" visual treatment used in
  * the chat empty state and the New Mission picker.
  *
- * Visual contract: `rounded-2xl` card on `bg-secondary`, 48px grayscale
+ * Visual contract: `rounded-2xl` card on `bg-chip`, 48px grayscale
  * image bubble on the left, title + description stacked on the right and
  * vertically centered.
  */
@@ -45,22 +45,22 @@ export function SkillCard({
       disabled={disabled}
       aria-busy={busy || undefined}
       className={cn(
-        "flex items-center gap-4 rounded-2xl bg-secondary p-4 text-left transition-colors duration-200 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed w-full",
+        "flex items-center gap-4 rounded-2xl bg-chip p-4 text-left transition-colors duration-200 hover:bg-hover disabled:opacity-50 disabled:cursor-not-allowed w-full",
         className,
       )}
     >
       {media ?? <SkillIcon image={image} />}
       <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-        <span className="text-sm font-semibold text-foreground">{title}</span>
+        <span className="text-sm font-semibold text-ink">{title}</span>
         {description && (
-          <span className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+          <span className="text-xs text-ink-muted line-clamp-3 leading-relaxed">
             {description}
           </span>
         )}
         {footer && <div className="mt-0.5">{footer}</div>}
       </div>
       {busy && (
-        <Spinner className="size-4 shrink-0 self-center text-muted-foreground" />
+        <Spinner className="size-4 shrink-0 self-center text-ink-muted" />
       )}
     </button>
   );

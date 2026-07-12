@@ -1,6 +1,7 @@
 import { existsSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { basename, dirname, join } from "node:path";
+import type { Capabilities } from "@houston/protocol";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
@@ -9,19 +10,22 @@ import { FileCredentialStore } from "../credentials/file-store";
 import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { BusEventHub } from "../events/hub";
+import { FileActionApprovalStore } from "../integrations/action-approval-store";
+import { LocalActionApprovals } from "../integrations/action-approvals";
 import { ComposioProvider } from "../integrations/composio";
+import { CustomExecutorHost } from "../integrations/custom/executor-host";
+import { CustomIntegrationManager } from "../integrations/custom/manager";
+import { CustomIntegrationProvider } from "../integrations/custom/provider";
+import { FileCustomSecretStore } from "../integrations/custom/secrets";
+import { FileCustomIntegrationStore } from "../integrations/custom/store";
 import { FileIntegrationGrantStore } from "../integrations/grant-store";
 import { LocalIntegrationGrants } from "../integrations/grants";
-import {
-  FileMcpAuthStore,
-  type McpAuthStore,
-} from "../integrations/mcp/auth-store";
+import { FileMcpAuthStore } from "../integrations/mcp/auth-store";
 import { HubCatalogSource } from "../integrations/mcp/hub-catalog-source";
 import {
   McpIntegrationProvider,
   type McpServerConfig,
 } from "../integrations/mcp/provider";
-import type { IntegrationProvider } from "../integrations/provider";
 import { IntegrationRegistry } from "../integrations/registry";
 import { RemoteIntegrationProvider } from "../integrations/remote";
 import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
@@ -137,6 +141,7 @@ export interface LocalHostOptions {
     gatewayUrl?: string;
     composioApiKey?: string;
     podToken?: string;
+    /** OAuth-2.1 remote MCP servers (HOUSTON_MCP_INTEGRATIONS). */
     mcpServers?: McpServerConfig[];
     /** Override / disable ("" = offline) the hub-catalog refresh URL. */
     hubCatalogUrl?: string;
@@ -193,41 +198,6 @@ export function formatIntegrationsModeLog(
   }
   if (mcp.length > 0) return `[local-host] integrations: ${mcp.join(" + ")}`;
   return "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL, COMPOSIO_API_KEY, or HOUSTON_MCP_INTEGRATIONS to enable";
-}
-
-export function buildLocalIntegrationRegistry(
-  integrations: LocalHostOptions["integrations"],
-  store: McpAuthStore,
-  catalog: HubCatalogSource,
-  sessionToken: { current: string | null },
-): {
-  registry: IntegrationRegistry;
-  mcpProviders: McpIntegrationProvider[];
-} | null {
-  const providers: IntegrationProvider[] = [];
-  if (integrations?.gatewayUrl) {
-    providers.push(
-      new RemoteIntegrationProvider({
-        id: "composio",
-        upstreamUrl: integrations.gatewayUrl,
-        token: () => sessionToken.current,
-        podToken: integrations.podToken,
-      }),
-    );
-  } else if (integrations?.composioApiKey) {
-    providers.push(
-      new ComposioProvider({ apiKey: integrations.composioApiKey }),
-    );
-  }
-  // Registry order is load-bearing: the sandbox route defaults to ids()[0],
-  // so Composio must stay first whenever it is configured.
-  const mcpProviders = (integrations?.mcpServers ?? []).map(
-    (config) => new McpIntegrationProvider({ ...config, store, catalog }),
-  );
-  providers.push(...mcpProviders);
-  return providers.length > 0
-    ? { registry: new IntegrationRegistry(providers), mcpProviders }
-    : null;
 }
 
 /**
@@ -322,36 +292,91 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     dirname(opts.credentialsPath),
     "integrations.json",
   );
-  const integrationWiring = buildLocalIntegrationRegistry(
-    opts.integrations,
-    new FileMcpAuthStore(dirname(opts.credentialsPath)),
-    new HubCatalogSource({
-      cachePath: join(dirname(opts.credentialsPath), "mcp-hub-catalog.json"),
-      url: opts.integrations?.hubCatalogUrl,
-    }),
-    sessionToken,
+  // The DIRECT Composio adapter (self-host / dev with an own key). Only when NOT
+  // in gateway mode (gatewayUrl wins), where the desktop forwards to Houston's
+  // cloud host with the user's Supabase session instead.
+  const directProvider =
+    opts.integrations?.composioApiKey && !opts.integrations?.gatewayUrl
+      ? new ComposioProvider({ apiKey: opts.integrations.composioApiKey })
+      : undefined;
+  const composioProvider = opts.integrations?.gatewayUrl
+    ? new RemoteIntegrationProvider({
+        id: "composio",
+        upstreamUrl: opts.integrations.gatewayUrl,
+        token: () => sessionToken.current,
+        // Managed pods pass their host token so routine turns authenticate as
+        // the creator; the desktop leaves this undefined.
+        podToken: opts.integrations.podToken,
+      })
+    : (directProvider ?? null);
+
+  // Custom integrations (HOU-550): user-added API/MCP sources compiled to
+  // agent tools by the embedded executor engine. Key-free and session-free —
+  // definitions + secrets live on THIS host's disk — so the provider is wired
+  // unconditionally: an install with no Composio at all can still add its own.
+  const customDir = dirname(opts.credentialsPath);
+  const customStore = new FileCustomIntegrationStore(
+    join(customDir, "custom-integrations.json"),
   );
-  const registry = integrationWiring?.registry ?? null;
-  const integrations = registry
-    ? {
-        registry,
-        ...(opts.integrations?.gatewayUrl
-          ? {
-              session: {
-                set: (token: string | null) => {
-                  sessionToken.current = token;
-                },
-              },
-            }
-          : {}),
-        reconnectNotice: {
-          active: () => existsSync(legacyIntegrationsPath),
-          // force: already-gone is success (idempotent dismiss); a real
-          // failure (EACCES…) throws and surfaces as the route's error.
-          dismiss: () => rmSync(legacyIntegrationsPath, { force: true }),
-        },
-      }
-    : undefined;
+  const customSecrets = new FileCustomSecretStore(
+    join(customDir, "custom-integration-secrets.json"),
+  );
+  const customExecutor = new CustomExecutorHost(customSecrets, () =>
+    customStore.list(),
+  );
+  const customProvider = new CustomIntegrationProvider(
+    customStore,
+    customExecutor,
+  );
+  const customIntegrations = new CustomIntegrationManager(
+    customStore,
+    customSecrets,
+    customExecutor,
+    () => events.emit(LOCAL_USER, { type: "CustomIntegrationsChanged" }),
+  );
+
+  // MCP integrations (HOUSTON_MCP_INTEGRATIONS): OAuth-2.1 remote servers,
+  // e.g. Composio's hosted MCP. Ordered AFTER the platform provider (composio
+  // stays the preferred owner when wired) and BEFORE custom (the always-on
+  // key-free provider must not become a hub-only install's primary — the UI's
+  // activeIntegration picker skips "custom" and takes the first hub).
+  const mcpAuthStore = new FileMcpAuthStore(dirname(opts.credentialsPath));
+  const hubCatalog = new HubCatalogSource({
+    cachePath: join(dirname(opts.credentialsPath), "mcp-hub-catalog.json"),
+    url: opts.integrations?.hubCatalogUrl,
+  });
+  const mcpProviders = (opts.integrations?.mcpServers ?? []).map(
+    (config) =>
+      new McpIntegrationProvider({
+        ...config,
+        store: mcpAuthStore,
+        catalog: hubCatalog,
+      }),
+  );
+
+  const registry = new IntegrationRegistry([
+    ...(composioProvider ? [composioProvider] : []),
+    ...mcpProviders,
+    customProvider,
+  ]);
+  const integrations = {
+    registry,
+    ...(opts.integrations?.gatewayUrl
+      ? {
+          session: {
+            set: (token: string | null) => {
+              sessionToken.current = token;
+            },
+          },
+        }
+      : {}),
+    reconnectNotice: {
+      active: () => existsSync(legacyIntegrationsPath),
+      // force: already-gone is success (idempotent dismiss); a real
+      // failure (EACCES…) throws and surfaces as the route's error.
+      dismiss: () => rmSync(legacyIntegrationsPath, { force: true }),
+    },
+  };
 
   // Did this install carry over a Rust-desktop chat-history db? Its mere
   // presence means the user is migrating from the legacy desktop build — their
@@ -371,13 +396,31 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   // so the gateway in front stays the single owner of grant policy, and the pod
   // never shadows it (the grant routes 404, the sandbox proxy enforces nothing).
   // The record lives inside each agent's own dir, so agent deletion removes it.
-  const integrationGrants =
-    registry && !opts.gatewayFronted
-      ? new LocalIntegrationGrants({
-          store: new FileIntegrationGrantStore(opts.workspacesRoot),
-          registry,
-        })
-      : undefined;
+  const integrationGrants = !opts.gatewayFronted
+    ? new LocalIntegrationGrants({
+        store: new FileIntegrationGrantStore(opts.workspacesRoot),
+        registry,
+      })
+    : undefined;
+
+  // C9 event-driven routines are served ONLY where the Go cloud gateway fronts
+  // the deployment (managed cloud): the Go control plane owns trigger
+  // reconciliation and the ingress, and the gateway's edge advertises the
+  // `triggers` capability. This TS host carries no self-host trigger backend —
+  // the pod's only trigger surface is the delivery route (trigger-events), wired
+  // below via `triggerLock`. Self-host and desktop simply don't get triggers.
+
+  // Per-agent action approvals: the execute-time gate the runtime turns into an
+  // approval step on the interaction card. UNLIKE grants this is NOT gated on
+  // gatewayFronted — v1 keeps the approval store pod-side per agent even on
+  // managed cloud pods (the gateway does not own action approvals yet). The
+  // record lives inside the agent dir, so agent deletion removes it for free.
+  // Known follow-up: per-user approval scoping for Teams lives cloud-side later.
+  const actionApprovals = registry
+    ? new LocalActionApprovals({
+        store: new FileActionApprovalStore(opts.workspacesRoot),
+      })
+    : undefined;
 
   // The installed agent-config library. FsVfs keys must be non-empty, so root
   // the vfs at the library's PARENT and address it by its basename — this vfs
@@ -390,6 +433,15 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       }
     : undefined;
 
+  const capabilities: Capabilities = {
+    ...(opts.capabilities ?? LOCAL_CAPABILITIES),
+    // Served capabilities advertise the integrations actually wired, not the
+    // profile's nominal list — an unconfigured deployment says [] honestly.
+    integrations: registry.ids(),
+    // `triggers` is never advertised here: this host has no trigger backend. On
+    // managed cloud the Go edge advertises the capability; a pod/self-host/desktop
+    // stays byte-identical to the nominal profile (absent = off, protocol #core).
+  };
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
@@ -399,18 +451,18 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     paths,
     events,
     channels: { local: channel },
-    // Served capabilities advertise the integrations actually wired, not the
-    // profile's nominal list — an unconfigured deployment says [] honestly.
-    capabilities: {
-      ...(opts.capabilities ?? LOCAL_CAPABILITIES),
-      integrations: registry?.ids() ?? [],
-    },
+    capabilities,
     chatHistoryMigrated,
     integrations,
-    mcpOAuth: integrationWiring
-      ? { providers: integrationWiring.mcpProviders }
-      : undefined,
+    // MCP OAuth callbacks: public route, mounted only when servers exist.
+    mcpOAuth: mcpProviders.length > 0 ? { providers: mcpProviders } : undefined,
     integrationGrants,
+    actionApprovals,
+    customIntegrations,
+    // Every local host has a turn bus, so the internal pod trigger-events route is
+    // always available — on managed cloud the Go control plane POSTs delivered
+    // events to it. The lock dedupes redeliveries.
+    triggerLock: bus,
     agentConfigs,
     // Managed pods record the gateway-minted acting identity as a routine's
     // `created_by` (C2 — the sub the gateway re-authorizes at fire time);

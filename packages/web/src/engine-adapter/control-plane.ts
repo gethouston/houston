@@ -24,9 +24,12 @@ export type {
   AgentMoveStart,
   AgentMoveStatus,
   AgentSettings,
+  ApiKey,
+  ApiKeyCreated,
   AuditEntry,
   BillingCheckout,
   BillingSummary,
+  CustomIntegrationView,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
@@ -38,12 +41,15 @@ export type {
   OrgSettings,
   OrgSummary,
   OrgsList,
+  TriggerStatusItem,
+  TriggerType,
   UsageRow,
 } from "../../../../ui/engine-client/src/types";
 
 export * from "./cp/agent-color";
 export * from "./cp/agent-teams";
 export * from "./cp/agents";
+export * from "./cp/api-keys";
 export * from "./cp/board";
 export * from "./cp/credentials";
 export * from "./cp/events";

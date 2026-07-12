@@ -31,8 +31,10 @@ interface AgentManifest {
 
 ## Tabs
 
-Every agent renders the same five tabs in the shell:
-`Activity` (board) / `Routines` / `Files` / `Agent Settings` (tab id `job-description`) / `Integrations`.
+Every agent renders the same standard tabs in the shell:
+`Activity` (board) / `Routines` / `Reactions` (event-driven automations, present
+only when `capabilities.triggers` is on — see `visibleAgentTabs`) / `Files` /
+`Agent Settings` (tab id `job-description`) / `Integrations`.
 
 This used to be configurable per agent via a `tabs: AgentTab[]` field in `houston.json`, plus an optional `customComponent` pointing at a per-agent `bundle.js`. The flexibility was never used in practice (zero shipped agents had a custom React tab) and caused drift between installed agents and fresh ones whenever the default set changed. The set is now hardcoded in `app/src/agents/standard-tabs.ts` (`STANDARD_TABS`, `DEFAULT_TAB_ID`). Old `tabs` / `defaultTab` fields on installed manifests are ignored by the loader.
 
@@ -185,17 +187,19 @@ built-in `personal-assistant` config. Users do not create it manually.
 
 First-run onboarding is a short, connect-first flow driven by
 `app/src/components/onboarding/personal-assistant-onboarding.tsx`. There is **no
-naming/color step and no Try/Skill/Routine missions** — the old seven-mission
-tutorial (Welcome screen, Meet step, Tools/Try/Skill/Routine missions,
-`[TUTORIAL_COMPLETE]`/`[SKILL_COMPLETE]`/`[ROUTINE_COMPLETE]` tokens, summary
-cards) is gone. Houston ships ONE great default assistant (fixed name/color from
-`tutorial.defaults`), and the payoff is the seeded routine + skill it comes with
-(below), demoed by the UI tour rather than hand-built during setup.
+welcome/intro screen, no naming/color step, and no Try/Skill/Routine missions** —
+the old seven-mission tutorial (Welcome screen, Meet step, Tools/Try/Skill/Routine
+missions, `[TUTORIAL_COMPLETE]`/`[SKILL_COMPLETE]`/`[ROUTINE_COMPLETE]` tokens,
+summary cards) is gone, and the overview/"Start setup" intro screen was removed
+too — onboarding opens DIRECTLY on the connect step so login → the first real
+step has no extra beat. Houston ships ONE great default assistant (fixed
+name/color from `tutorial.defaults`), and the payoff is the seeded routine + skill
+it comes with (below), demoed by the UI tour rather than hand-built during setup.
 
-The screen state machine (`OnboardingStep` in `tutorial-copy.ts`):
+The screen state machine (`OnboardingStep` in `tutorial-copy.ts`; first screen is
+`connect`, the milestone labels live in `tutorial.milestones`):
 
-1. **intro** — a `SetupProgress` plan of the visible milestones, start CTA.
-2. **connect** — connect your AI (`missions/connect-ai.tsx`) via the shared
+1. **connect** — connect your AI (`missions/connect-ai.tsx`) via the shared
    `<ProviderBrowser>` (same ai-hub surface, `useProviderBrowserData`), with
    `curated` set so onboarding shows only `FEATURED_PROVIDER_IDS` split into
    Subscription / API-key sections, plus a "see all providers" chip that expands
@@ -205,10 +209,10 @@ The screen state machine (`OnboardingStep` in `tutorial-copy.ts`):
    (ref-guarded, once per install), kicks off **silent** workspace + assistant
    provisioning in the background (`useCreateAssistant`, no user-triggered
    button), and advances to `aiConnected`.
-3. **aiConnected** — a `SetupProgress` success beat; continue advances to
+2. **aiConnected** — a `SetupProgress` success beat; continue advances to
    `connectEmail` when integrations are available, else straight to `finished`
    (`stepAfterAgentCreated`).
-4. **connectEmail** — connect an email toolkit (`missions/connect-email.tsx`) so
+3. **connectEmail** — connect an email toolkit (`missions/connect-email.tsx`) so
    the assistant can send on the user's behalf. Three one-click brand action rows
    (Gmail → Google logo, Outlook → Microsoft logo, "Another provider" → a `Mail`
    icon that expands an inline input); tapping a brand row kicks off its OAuth
@@ -222,10 +226,10 @@ The screen state machine (`OnboardingStep` in `tutorial-copy.ts`):
    renders a recoverable error card (Try again re-fires the stored provider/model
    create; Back returns to the AI picker) instead of an infinite spinner. A soft
    "skip email" lands on `finished`.
-5. **emailConnected** — success beat, fires `integration_connected`.
-6. **emailChat** (`missions/email.tsx`) — the assistant sends one real email to
+4. **emailConnected** — success beat, fires `integration_connected`.
+5. **emailChat** (`missions/email.tsx`) — the assistant sends one real email to
    the user so they watch it act. Completing marks `emailSent`.
-7. **finished** (`missions/finished.tsx`) — the single celebratory payoff screen
+6. **finished** (`missions/finished.tsx`) — the single celebratory payoff screen
    with a `SuccessCheck` and exactly ONE **"Start building"** CTA (no secondary
    escape). Copy is honest via `variant`: `"sent"` only on the path that actually
    sent an email, `"ready"` when the email steps were skipped or the deployment
@@ -236,7 +240,7 @@ The screen state machine (`OnboardingStep` in `tutorial-copy.ts`):
 
 **Capability-aware step math.** On a no-integrations deployment the email steps
 never render, so they vanish from both the "Step N of M" counter and the
-intro/celebration plan. `integrationsAvailable(capabilities)` drives the visible
+celebration-screen milestone plan. `integrationsAvailable(capabilities)` drives the visible
 milestones and `stepPosition(screen, { emailSteps })` (`app/src/lib/setup-steps.ts`)
 computes the counter so the sole connect step never lies "Step 1 of 3".
 

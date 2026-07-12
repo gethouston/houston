@@ -302,7 +302,7 @@ export function SidebarGroupedList({
         {activeItem ? (
           <div
             className={cn(
-              "rounded-lg bg-card shadow-lg ring-1 ring-border transition-opacity",
+              "rounded-lg bg-card shadow-lg ring-1 ring-line transition-opacity",
               droppingIntoGroup && "opacity-50",
             )}
           >
@@ -321,7 +321,7 @@ export function SidebarGroupedList({
             />
           </div>
         ) : activeGroup ? (
-          <div className="rounded-lg bg-card shadow-lg ring-1 ring-border">
+          <div className="rounded-lg bg-card shadow-lg ring-1 ring-line">
             <SidebarGroupHeader
               group={activeGroup}
               count={

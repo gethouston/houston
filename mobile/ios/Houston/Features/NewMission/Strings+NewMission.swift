@@ -8,11 +8,11 @@ import Foundation
 extension Strings {
   enum NewMission {
     /// Sheet/nav title for the picker.
-    static let title = "New mission"
+    static let title = String(localized: "newMission.title", defaultValue: "New mission")
     /// Cancel / dismiss the sheet.
-    static let cancel = "Cancel"
+    static let cancel = String(localized: "newMission.cancel", defaultValue: "Cancel")
     /// Shown when there are no agents to pick from (mirrors the board's copy).
-    static let noAgentsTitle = "No agents yet"
-    static let noAgentsDescription = "Build your AI team and ship the impossible."
+    static let noAgentsTitle = String(localized: "newMission.noAgentsTitle", defaultValue: "No agents yet")
+    static let noAgentsDescription = String(localized: "newMission.noAgentsDescription", defaultValue: "Build your AI team and ship the impossible.")
   }
 }

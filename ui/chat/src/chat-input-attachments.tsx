@@ -69,7 +69,7 @@ export function ChatInputAttachButton({
     <button
       type="button"
       onClick={attachMenu ? undefined : onOpenFilePicker}
-      className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent transition-colors"
+      className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-hover transition-colors"
       aria-label={ariaLabel}
     >
       <Plus className="size-5" />

@@ -35,20 +35,18 @@ export function OrgAgentCard({
       type="button"
       aria-label={openLabel}
       onClick={onOpen}
-      className="flex flex-col gap-3 rounded-xl border border-border/50 bg-card p-4 text-left transition-shadow hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex flex-col gap-3 rounded-xl border border-line/50 bg-card p-4 text-left transition-shadow hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
     >
       <div className="flex items-center gap-3">
         <HoustonAvatar color={color} diameter={36} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">{name}</p>
+          <p className="truncate text-sm font-medium text-ink">{name}</p>
           {managedBy && (
-            <p className="truncate text-xs text-muted-foreground">
-              {managedBy}
-            </p>
+            <p className="truncate text-xs text-ink-muted">{managedBy}</p>
           )}
         </div>
       </div>
-      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+      <div className="flex items-center justify-between gap-3 text-xs text-ink-muted">
         <span className="flex min-w-0 items-center gap-1.5">
           <Users aria-hidden className="size-3.5 shrink-0" />
           <span className="truncate">{access}</span>

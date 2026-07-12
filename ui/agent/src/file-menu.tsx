@@ -67,7 +67,7 @@ export function FileMenu({
       />
       <div
         role="menu"
-        className="fixed z-50 min-w-[160px] rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+        className="fixed z-50 min-w-[160px] rounded-md border bg-popover p-1 text-popover-text shadow-md"
         style={{ left: position.x, top: position.y }}
         onKeyDown={(e) => e.key === "Escape" && onClose()}
       >
@@ -112,7 +112,7 @@ export function FileMenu({
           />
         )}
         {(onOpen || onRename || onReveal || onDownload) && onDelete && (
-          <div className="-mx-1 my-1 h-px bg-border" />
+          <div className="-mx-1 my-1 h-px bg-line" />
         )}
         {onDelete && (
           <MenuItem
@@ -146,7 +146,7 @@ function MenuItem({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-accent [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground ${destructive ? "text-destructive [&_svg]:text-destructive" : ""}`}
+      className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-hover [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-ink-muted ${destructive ? "text-danger [&_svg]:text-danger" : ""}`}
     >
       {icon}
       {label}

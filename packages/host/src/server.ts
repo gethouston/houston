@@ -17,6 +17,7 @@ import {
   type FeedbackSender,
   parseFeedbackPayload,
 } from "./feedback";
+import type { LocalActionApprovals } from "./integrations/action-approvals";
 import type { LocalIntegrationGrants } from "./integrations/grants";
 import type { WorkspacePaths } from "./paths";
 import type {
@@ -27,6 +28,7 @@ import type {
   WorkspaceStore,
 } from "./ports";
 import { handleAccount } from "./routes/account";
+import { handleActionApprovals } from "./routes/action-approvals";
 import {
   type AgentConfigsDeps,
   handleAgentConfigs,
@@ -34,6 +36,11 @@ import {
 import { handleAgents } from "./routes/agents";
 import { handleCatalog } from "./routes/catalog";
 import { handleSandboxCredential } from "./routes/credential";
+import {
+  type CustomIntegrationDeps,
+  handleCustomIntegrations,
+  handleSandboxCustomIntegrations,
+} from "./routes/custom-integrations";
 import { handleEventStream } from "./routes/events-stream";
 import { bearer, json, readJson } from "./routes/http";
 import { handleIntegrationGrants } from "./routes/integration-grants";
@@ -48,9 +55,12 @@ import {
 import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
 import { handleMigrationSource } from "./routes/migration-source";
 import { handlePortableAccount } from "./routes/portable";
+import { handlePortableFromStore } from "./routes/portable-from-store";
 import { BodyTooLargeError } from "./routes/read-body";
 import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSkillsDirectory } from "./routes/skills-directory";
+import { handleTriggerEvents } from "./routes/trigger-events";
+import type { TriggerEventLock } from "./triggers/fire";
 import type { Vfs } from "./vfs";
 
 export type { RuntimeProxy } from "./channel/proxy";
@@ -124,6 +134,12 @@ export interface ControlPlaneDeps {
   /** Configured MCP OAuth callbacks, mounted publicly for authorization servers. */
   mcpOAuth?: McpCallbackDeps;
   /**
+   * Custom integrations (HOU-550): user-added API/MCP sources compiled to agent
+   * tools by the embedded executor engine. Absent → the definition routes 404
+   * (client reads that as "unsupported host") and the sandbox setup routes 503.
+   */
+  customIntegrations?: CustomIntegrationDeps["customIntegrations"];
+  /**
    * Per-agent integration grants (LOCAL / self-host profile only). Present ONLY
    * when this host is NOT gateway-fronted — a managed cloud pod leaves it unset so
    * the gateway that fronts it stays the single owner of grant policy. Absent →
@@ -131,6 +147,14 @@ export interface ControlPlaneDeps {
    * sandbox proxy enforces nothing.
    */
   integrationGrants?: LocalIntegrationGrants;
+  /**
+   * Per-agent integration action approvals (LOCAL / self-host + managed pods).
+   * When present, the sandbox proxy gates each `integration_execute` on user
+   * approval (always-allow record OR a one-shot ticket) unless the turn is
+   * Autopilot; the user-facing routes below write the approvals. Absent → no
+   * gate and the routes 404 ("approvals unsupported").
+   */
+  actionApprovals?: LocalActionApprovals;
   /**
    * Installed agent-config library (the create-agent picker's "installed"
    * source + GitHub agent install). Absent → the list reads empty and installs
@@ -155,6 +179,19 @@ export interface ControlPlaneDeps {
    * scoped to the per-agent surface only).
    */
   agentRequestCount?: () => number;
+  /**
+   * Cross-replica dedup lock for the pod trigger-events route (C9): the Go
+   * control plane delivers external events to a managed pod; the lock stops a
+   * redelivery double-firing. Absent → that route 503s. Present on every host
+   * with a turn bus.
+   */
+  triggerLock?: TriggerEventLock;
+  /**
+   * Agent Store gateway API base ("install from a link" fetches a shared
+   * agent's IR from it). Absent → the route falls back to the
+   * `HOUSTON_AGENTSTORE_API_URL` config default.
+   */
+  agentStoreApiUrl?: string;
   corsOrigin?: string;
 }
 
@@ -228,6 +265,9 @@ async function handle(
   // Runtime-facing integration proxy (HMAC sandbox token, not a user JWT).
   if (await handleSandboxIntegrations(deps, method, path, url, req, res))
     return;
+  // Runtime-facing custom-integration setup (detect/add; HMAC sandbox token).
+  if (await handleSandboxCustomIntegrations(deps, method, path, url, req, res))
+    return;
 
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);
@@ -275,18 +315,37 @@ async function handle(
   if (await handleSkillsDirectory(method, path, req, res)) return;
   if (await handleAccount(deps, userId, method, path, req, res)) return;
   if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
+  if (
+    await handlePortableFromStore(
+      { apiUrl: deps.agentStoreApiUrl },
+      method,
+      path,
+      req,
+      res,
+    )
+  )
+    return;
   // Desktop→cloud migration source listing (HOU-719): every agent across every
   // workspace with its migration manifest. Desktop-local by design — the cloud
   // gateway proxies only agent-scoped routes, so a pod never serves this.
   if (await handleMigrationSource(deps, userId, method, path, res)) return;
   if (await handleAgentConfigs(deps, userId, method, path, req, res)) return;
+  // Custom-integration definitions — BEFORE the generic provider routes, whose
+  // `/v1/integrations/:provider/*` catch-all would 404 these subpaths.
+  if (await handleCustomIntegrations(deps, method, path, req, res)) return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;
   if (await handleIntegrationGrants(deps, userId, method, path, req, res))
     return;
+  if (await handleActionApprovals(deps, userId, method, path, req, res)) return;
   // Pre-agent provider connect (first-run onboarding): a hidden setup runtime
   // runs the OAuth so the user can connect their AI before any agent exists.
   if (await handleSetupRuntime(deps, userId, method, path, url, req, res))
     return;
+
+  // Pod trigger delivery (C9) — matched before the generic per-agent dispatch
+  // (the runtime has no trigger routes). The Go control plane POSTs external
+  // events here for a managed pod; the pod fires the matching routine.
+  if (await handleTriggerEvents(deps, userId, method, path, req, res)) return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;
 

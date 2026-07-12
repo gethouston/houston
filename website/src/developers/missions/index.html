@@ -1,0 +1,320 @@
+---
+activeDoc: missions
+lang: en
+---
+{% extends "base.njk" %}
+{% block title %}Missions (REST) — Houston API reference{% endblock %}
+{% block meta %}
+<meta name="description" content="Full REST reference for the Houston Missions API: create, list, get, stream, and cancel agent missions, API-key scope, and signed webhooks with HMAC-SHA256 verification.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://gethouston.ai/developers/missions/">
+<meta property="og:title" content="Missions (REST) — Houston API reference">
+<meta property="og:description" content="Create, list, get, stream, and cancel Houston agent missions, plus signed webhooks.">
+<meta property="og:site_name" content="Houston">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" hreflang="en" href="https://gethouston.ai/developers/missions/">
+<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/developers/missions/">
+{% endblock %}
+{% block stylesheets %}
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/developers/style.css">
+{% endblock %}
+{% block body %}
+    {% include "nav-docs.njk" %}
+
+    <div class="layout">
+      {% include "sidebar-developers.njk" %}
+
+      <main class="content">
+        <div class="content-label">Developers · REST</div>
+        <h1>Missions.</h1>
+        <p class="lead">
+          The REST Missions API is the most direct way to drive a Houston
+          agent. Create a mission, then poll it, stream it, or wait for a
+          signed webhook. All paths are on
+          <code>https://poc-gateway.gethouston.ai</code> and take
+          <code>Authorization: Bearer hst_...</code>.
+        </p>
+
+        <div class="toc">
+          <div class="toc-label">On this page</div>
+          <ol>
+            <li><a href="#create">Create a mission</a></li>
+            <li><a href="#list">List missions</a></li>
+            <li><a href="#get">Get a mission</a></li>
+            <li><a href="#events">Stream events (SSE)</a></li>
+            <li><a href="#cancel">Cancel a mission</a></li>
+            <li><a href="#agents">List agents</a></li>
+            <li><a href="#scope">API-key scope &amp; limits</a></li>
+            <li><a href="#webhooks">Webhooks</a></li>
+          </ol>
+        </div>
+
+        <h2 id="create">Create a mission</h2>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <span class="path">/v1/agents/<b>:slug</b>/missions</span>
+        </div>
+        <p>
+          Starts a mission and returns <code>202 Accepted</code> right away.
+          The agent runs in the background; use the id in the response to
+          track it.
+        </p>
+
+        <h3>Request body</h3>
+        <div class="table-scroll">
+        <table class="fields-table">
+          <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>input</code> <span class="req">required</span></td><td>string</td><td>The instruction for the agent, in natural language.</td></tr>
+            <tr><td><code>mode</code> <span class="opt">optional</span></td><td>string</td><td>One of <code>execute</code>, <code>plan</code>, or <code>auto</code>. Defaults to <code>auto</code> (the agent decides whether to plan first or act directly).</td></tr>
+            <tr><td><code>model</code> <span class="opt">optional</span></td><td>string</td><td>Override the model for this mission. Defaults to the agent's configured model.</td></tr>
+            <tr><td><code>effort</code> <span class="opt">optional</span></td><td>string</td><td>Reasoning effort for the mission. Defaults to the agent's setting.</td></tr>
+            <tr><td><code>title</code> <span class="opt">optional</span></td><td>string</td><td>A label for the mission, shown in the Houston app. Auto-generated if omitted.</td></tr>
+            <tr><td><code>webhook</code> <span class="opt">optional</span></td><td>object</td><td>Delivers a signed callback when the mission finishes. See <a class="link" href="#webhooks">Webhooks</a>.</td></tr>
+            <tr><td><code>webhook.url</code></td><td>string</td><td>Public <code>https://</code> URL to POST to. Private and internal addresses are rejected.</td></tr>
+            <tr><td><code>webhook.secret</code></td><td>string</td><td>Signing secret used to compute the <code>X-Houston-Signature</code> HMAC.</td></tr>
+          </tbody>
+        </table>
+        </div>
+
+        <div class="codeblock"><pre><code>{% raw %}curl -X POST https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions \
+  -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": "Draft the weekly competitor summary for the Lisbon property.",
+    "mode": "auto",
+    "model": "claude-opus-4-5",
+    "title": "Weekly competitor summary",
+    "webhook": {
+      "url": "https://api.acme.com/hooks/houston",
+      "secret": "whsec_a1b2c3d4e5f6"
+    }
+  }'{% endraw %}</code></pre></div>
+        <p><strong>202 Accepted</strong></p>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "id": "msn_7Q4c1a9f2b",
+  "agentSlug": "revenue-manager",
+  "conversationId": "cnv_3e8d0364f1",
+  "status": "running",
+  "createdAt": "2026-07-12T09:31:07.482Z"
+}{% endraw %}</code></pre></div>
+
+        <h2 id="list">List missions</h2>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <span class="path">/v1/agents/<b>:slug</b>/missions</span>
+        </div>
+        <p>Returns the agent's missions, newest first.</p>
+        <div class="table-scroll">
+        <table class="fields-table">
+          <thead><tr><th>Query</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>limit</code> <span class="opt">optional</span></td><td>integer</td><td>How many to return. Defaults to <code>50</code>, maximum <code>200</code>.</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="codeblock"><pre><code>{% raw %}curl "https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions?limit=20" \
+  -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "missions": [
+    {
+      "id": "msn_7Q4c1a9f2b",
+      "agentSlug": "revenue-manager",
+      "conversationId": "cnv_3e8d0364f1",
+      "status": "completed",
+      "createdAt": "2026-07-12T09:31:07.482Z"
+    }
+  ]
+}{% endraw %}</code></pre></div>
+
+        <h2 id="get">Get a mission</h2>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <span class="path">/v1/agents/<b>:slug</b>/missions/<b>:id</b></span>
+        </div>
+        <p>
+          Returns the mission's current state. <code>status</code> is one of
+          <code>running</code>, <code>completed</code>, <code>failed</code>,
+          or <code>canceled</code>. Once the status is terminal,
+          <code>result</code> carries the agent's final text. If the mission
+          was created with a webhook, the response includes a
+          <code>webhook</code> block recording when it was delivered, or the
+          last error if delivery has not yet succeeded.
+        </p>
+        <div class="codeblock"><pre><code>{% raw %}curl https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions/msn_7Q4c1a9f2b \
+  -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "id": "msn_7Q4c1a9f2b",
+  "agentSlug": "revenue-manager",
+  "conversationId": "cnv_3e8d0364f1",
+  "status": "completed",
+  "result": "Weekly competitor summary is ready. Three properties moved rates...",
+  "createdAt": "2026-07-12T09:31:07.482Z",
+  "webhook": {
+    "url": "https://api.acme.com/hooks/houston",
+    "deliveredAt": "2026-07-12T09:34:52.140Z"
+  }
+}{% endraw %}</code></pre></div>
+
+        <h2 id="events">Stream events (SSE)</h2>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <span class="path">/v1/agents/<b>:slug</b>/missions/<b>:id</b>/events</span>
+        </div>
+        <p>
+          Streams the mission's progress as Server-Sent Events and closes when
+          the mission reaches a terminal state. Each event has an id; if the
+          connection drops, reconnect and send the
+          <code>Last-Event-ID</code> header to resume without gaps. Native SSE
+          clients and curl do this for you.
+        </p>
+        <div class="codeblock"><pre><code>{% raw %}curl -N https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions/msn_7Q4c1a9f2b/events \
+  -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
+        <div class="callout callout-info">
+          <div class="callout-label">Browser (EventSource)</div>
+          <p>
+            <code>EventSource</code> cannot send an <code>Authorization</code>
+            header, so this endpoint also accepts the key as a query
+            parameter: <code>?token=hst_...</code>. Keep that URL out of logs.
+          </p>
+        </div>
+
+        <h2 id="cancel">Cancel a mission</h2>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <span class="path">/v1/agents/<b>:slug</b>/missions/<b>:id</b>/cancel</span>
+        </div>
+        <p>
+          Requests cancellation of a running mission. If the mission has
+          already reached a terminal state, you get <code>409 Conflict</code>:
+        </p>
+        <div class="codeblock"><pre><code>{% raw %}{ "code": "mission_finished" }{% endraw %}</code></pre></div>
+
+        <h2 id="agents">List agents</h2>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <span class="path">/agents</span>
+        </div>
+        <p>
+          Lists the agents this key can reach, with the slugs you pass to the
+          mission endpoints.
+        </p>
+        <div class="codeblock"><pre><code>{% raw %}curl https://poc-gateway.gethouston.ai/agents \
+  -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
+
+        <h2 id="scope">API-key scope &amp; limits</h2>
+        <p>
+          API keys are deliberately narrow. A key works
+          <strong>only</strong> on the programmatic surfaces: the Missions
+          endpoints, A2A, MCP, and <code>GET /agents</code>. Point it at any
+          other part of the gateway and you get <code>403 Forbidden</code>:
+        </p>
+        <div class="codeblock"><pre><code>{% raw %}{ "code": "api_key_scope" }{% endraw %}</code></pre></div>
+        <p>
+          You can hold up to <strong>20 active keys</strong>. Creating a 21st
+          returns <code>400 Bad Request</code>; revoke an old one first.
+        </p>
+        <div class="codeblock"><pre><code>{% raw %}{ "code": "key_limit" }{% endraw %}</code></pre></div>
+
+        <h2 id="webhooks">Webhooks</h2>
+        <p>
+          Pass a <code>webhook</code> object when you create a mission and
+          Houston will <code>POST</code> a signed payload to your URL the
+          instant the mission finishes. This is the recommended pattern for
+          servers: no polling, no open connections.
+        </p>
+
+        <h3>Payload</h3>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "event": "mission.completed",
+  "mission": {
+    "id": "msn_7Q4c1a9f2b",
+    "agentSlug": "revenue-manager",
+    "conversationId": "cnv_3e8d0364f1",
+    "status": "completed",
+    "result": "Weekly competitor summary is ready...",
+    "createdAt": "2026-07-12T09:31:07.482Z"
+  }
+}{% endraw %}</code></pre></div>
+        <p>
+          <code>event</code> is one of <code>mission.completed</code>,
+          <code>mission.failed</code>, or <code>mission.canceled</code>.
+        </p>
+
+        <h3>Headers</h3>
+        <div class="table-scroll">
+        <table class="fields-table">
+          <thead><tr><th>Header</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td><code>X-Houston-Event</code></td><td>The event name, e.g. <code>mission.completed</code>.</td></tr>
+            <tr><td><code>X-Houston-Delivery</code></td><td>A unique id for this delivery attempt group. Use it to deduplicate.</td></tr>
+            <tr><td><code>X-Houston-Signature</code></td><td><code>sha256=&lt;hex&gt;</code>, the HMAC-SHA256 of the raw request body keyed with your <code>webhook.secret</code>.</td></tr>
+          </tbody>
+        </table>
+        </div>
+
+        <h3>Delivery &amp; reliability</h3>
+        <ul>
+          <li>Houston waits up to <strong>10 seconds</strong> for your endpoint to respond.</li>
+          <li>Delivery is attempted up to <strong>6 times</strong>: the initial POST plus <strong>5 retries</strong>, backing off 30s, 1m, 2m, 4m, then 8m.</li>
+          <li>Delivery is <strong>at-least-once</strong>. Retries can duplicate an event, so treat handlers as idempotent and <strong>deduplicate on <code>X-Houston-Delivery</code></strong>.</li>
+          <li>The URL must be a <strong>public <code>https://</code></strong> address. Private, loopback, and internal addresses are rejected.</li>
+        </ul>
+
+        <h3>Verify the signature</h3>
+        <p>
+          Compute the HMAC over the <strong>raw</strong> request body (not a
+          re-serialized object) and compare in constant time:
+        </p>
+        <div class="codeblock"><pre><code>{% raw %}import crypto from "node:crypto";
+
+// `rawBody` is the exact bytes Houston sent (a Buffer or string).
+// In Express, capture it with express.raw({ type: "application/json" }).
+function verifyHoustonWebhook(rawBody, signatureHeader, secret) {
+  const expected =
+    "sha256=" +
+    crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+  const a = Buffer.from(signatureHeader ?? "");
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+app.post("/hooks/houston", express.raw({ type: "application/json" }), (req, res) => {
+  const ok = verifyHoustonWebhook(
+    req.body,
+    req.get("X-Houston-Signature"),
+    process.env.HOUSTON_WEBHOOK_SECRET,
+  );
+  if (!ok) return res.sendStatus(401);
+
+  // Deduplicate on the delivery id, then process.
+  const deliveryId = req.get("X-Houston-Delivery");
+  const payload = JSON.parse(req.body.toString("utf8"));
+  // ... handle payload.event / payload.mission ...
+  res.sendStatus(200);
+});{% endraw %}</code></pre></div>
+        <div class="callout callout-warning">
+          <div class="callout-label">Sign over raw bytes</div>
+          <p>
+            Frameworks that auto-parse JSON change the byte stream. Verify
+            against the untouched body Houston sent, or the HMAC will not
+            match even with the right secret.
+          </p>
+        </div>
+
+        <div class="pager">
+          <a href="/developers/">
+            <div class="pager-label">← Previous</div>
+            <div class="pager-title">Overview</div>
+          </a>
+          <a href="/developers/a2a/" class="next">
+            <div class="pager-label">Next →</div>
+            <div class="pager-title">Agent2Agent (A2A)</div>
+          </a>
+        </div>
+      </main>
+    </div>
+
+    {% include "footer-developers.njk" %}
+  {% endblock %}

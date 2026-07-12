@@ -203,7 +203,7 @@ export function ConnectEmailMission({
             onClick={() => onBrandRow("outlook", "Outlook")}
           />
           <EmailActionRow
-            icon={<Mail className="size-4 text-muted-foreground" />}
+            icon={<Mail className="size-4 text-ink-muted" />}
             label={t("tutorial.missions.connectEmail.other")}
             busyLabel={busyLabel}
             cancelLabel={cancelLabel}
@@ -265,7 +265,7 @@ export function ConnectEmailMission({
         </div>
         {showSkip && (
           <div className="flex items-center justify-center gap-3">
-            <p className="min-w-0 text-xs text-muted-foreground">
+            <p className="min-w-0 text-xs text-ink-muted">
               {t("tutorial.missions.connectEmail.skipHint")}
             </p>
             <Button

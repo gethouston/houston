@@ -65,9 +65,9 @@ export function SectionHeader({
 }) {
   return (
     <div className="inline-flex items-center gap-2">
-      <span className="text-[13px] font-medium text-foreground">{label}</span>
+      <span className="text-[13px] font-medium text-ink">{label}</span>
       {count != null ? (
-        <span className="font-mono text-xs text-muted-foreground tabular-nums">
+        <span className="font-mono text-xs text-ink-muted tabular-nums">
           {count}
         </span>
       ) : null}
@@ -144,9 +144,9 @@ export function ProviderEmpty({
   description: string;
 }) {
   return (
-    <div className="ht-hairline flex flex-col items-center gap-1 rounded-2xl bg-secondary px-6 py-16 text-center">
-      <p className="text-[15px] font-medium text-foreground">{title}</p>
-      <p className="text-[13px] text-muted-foreground">{description}</p>
+    <div className="ht-hairline flex flex-col items-center gap-1 rounded-2xl bg-chip px-6 py-16 text-center">
+      <p className="text-[15px] font-medium text-ink">{title}</p>
+      <p className="text-[13px] text-ink-muted">{description}</p>
     </div>
   );
 }
@@ -163,14 +163,14 @@ export function ProviderBrowserSkeleton({ count }: { count: number }) {
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length static placeholder grid, no reordering.
           key={i}
-          className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5"
+          className="flex items-center gap-3 rounded-xl bg-chip px-3 py-2.5"
         >
-          <div className="size-8 shrink-0 animate-pulse rounded-lg bg-accent" />
+          <div className="size-8 shrink-0 animate-pulse rounded-lg bg-hover" />
           <div className="flex flex-1 flex-col gap-1.5">
-            <div className="h-3 w-24 animate-pulse rounded bg-accent" />
-            <div className="h-2.5 w-32 animate-pulse rounded bg-accent" />
+            <div className="h-3 w-24 animate-pulse rounded bg-hover" />
+            <div className="h-2.5 w-32 animate-pulse rounded bg-hover" />
           </div>
-          <div className="h-8 w-[92px] shrink-0 animate-pulse rounded-full bg-accent" />
+          <div className="h-8 w-[92px] shrink-0 animate-pulse rounded-full bg-hover" />
         </div>
       ))}
     </div>

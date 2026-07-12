@@ -38,12 +38,12 @@ export function ConnectStepTile({
   const { t } = useTranslation("agentOnboarding");
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-secondary p-4">
+    <div className="flex items-center gap-3 rounded-xl bg-chip p-4">
       <AppLogo display={display} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground">{display.name}</p>
+        <p className="text-sm font-medium text-ink">{display.name}</p>
         {display.description && (
-          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+          <p className="mt-0.5 line-clamp-1 text-xs text-ink-muted">
             {display.description}
           </p>
         )}
@@ -53,7 +53,7 @@ export function ConnectStepTile({
           <span
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-3 py-1",
-              "bg-foreground/[0.06] text-xs font-medium text-muted-foreground",
+              "bg-ink/[0.06] text-xs font-medium text-ink-muted",
             )}
           >
             <Check className="size-3.5" />
@@ -61,7 +61,7 @@ export function ConnectStepTile({
           </span>
         ) : connecting ? (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-ink-muted">
               {t("connect.waiting")}
             </span>
             <Button

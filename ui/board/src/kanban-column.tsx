@@ -81,21 +81,21 @@ export function KanbanColumn({
       // Name must match board-drag-dom's COLUMN_ID_ATTR (drop hit-testing).
       data-kanban-column={columnId}
       className={cn(
-        "min-w-[180px] flex-1 flex flex-col h-full min-h-0 rounded-xl bg-secondary transition-[box-shadow,background-color] duration-150",
+        "min-w-[180px] flex-1 flex flex-col h-full min-h-0 rounded-xl bg-chip transition-[box-shadow,background-color] duration-150",
         // Valid drop target during a drag: a faint inset ring hints "drop here".
         // The column the pointer is over gets a stronger ring + tint.
         isDropTarget &&
           (isOver
-            ? "ring-2 ring-inset ring-primary/40 bg-accent"
-            : "ring-1 ring-inset ring-primary/15"),
+            ? "ring-2 ring-inset ring-action/40 bg-hover"
+            : "ring-1 ring-inset ring-action/15"),
       )}
     >
       {/* Column header */}
       <div className="px-3 py-2.5 flex items-center justify-center relative shrink-0">
         <div className="flex items-center gap-1.5">
-          <h3 className="text-sm font-medium text-foreground">{label}</h3>
+          <h3 className="text-sm font-medium text-ink">{label}</h3>
           {items.length > 0 && (
-            <span className="text-xs text-muted-foreground/60 tabular-nums">
+            <span className="text-xs text-ink-muted/60 tabular-nums">
               {items.length}
             </span>
           )}
@@ -158,7 +158,7 @@ export function KanbanColumn({
             aria-label={addLabel}
             title={addLabel}
             onClick={onAdd}
-            className="flex h-10 w-full items-center justify-center rounded-2xl border border-black/[0.06] bg-white/80 text-muted-foreground/80 transition-colors hover:border-black/[0.12] hover:bg-white hover:text-foreground [[data-theme=dark]_&]:border-black/70 [[data-theme=dark]_&]:bg-[#0d0d0d] [[data-theme=dark]_&]:text-muted-foreground [[data-theme=dark]_&]:hover:border-black [[data-theme=dark]_&]:hover:bg-[#141414] [[data-theme=dark]_&]:hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-10 w-full items-center justify-center rounded-2xl border border-black/[0.06] bg-white/80 text-ink-muted/80 transition-colors hover:border-black/[0.12] hover:bg-white hover:text-ink [[data-theme=dark]_&]:border-black/70 [[data-theme=dark]_&]:bg-[#0d0d0d] [[data-theme=dark]_&]:text-ink-muted [[data-theme=dark]_&]:hover:border-black [[data-theme=dark]_&]:hover:bg-[#141414] [[data-theme=dark]_&]:hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             <Plus className="h-4 w-4" />
           </button>

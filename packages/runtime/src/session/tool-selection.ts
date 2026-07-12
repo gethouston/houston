@@ -1,6 +1,7 @@
 import type { TurnMode } from "@houston/protocol";
 import { ASK_USER_TOOL_NAME } from "./tools/ask-user";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
+import { CUSTOM_INTEGRATION_TOOL_NAMES } from "./tools/custom-integrations";
 import {
   INTEGRATION_TOOL_NAMES,
   REQUEST_CONNECTION_TOOL_NAME,
@@ -53,12 +54,20 @@ export function planToolNames(all: readonly string[]): string[] {
 }
 
 /**
- * The two blocking/interactive tools Autopilot ("auto") mode drops: `ask_user`
- * (holds the turn open on a question) and `request_connection` (holds it open on
- * a connect card). Auto never waits on the user, so both are removed. EVERYTHING
- * else an execute turn had — the clamped-fs read AND write tools, `bash` /
- * `run_code`, and the acting integration tools (`integration_search`,
+ * The blocking/interactive tools Autopilot ("auto") mode drops: `ask_user`
+ * (holds the turn open on a question) and `request_connection` (holds it open
+ * on a connect card). Auto never waits on the user, so both are removed.
+ * EVERYTHING else an execute turn had — the clamped-fs read AND write tools,
+ * `bash` / `run_code`, and the acting integration tools (`integration_search`,
  * `integration_execute`) — stays: auto acts, it just never blocks.
+ *
+ * `request_credential` deliberately SURVIVES auto: a custom integration's API
+ * key is the one thing autonomy cannot produce, and without the tool an auto
+ * run that adds a keyed integration is a dead end by construction — the add
+ * result says "call request_credential" while the mode has removed it, so the
+ * agent can neither show the secure card nor (per the prompt) accept a key in
+ * chat. Recording the step doesn't hold the turn open; it ends the turn with
+ * the key-entry card, and the saved key AUTO-CONTINUES the autopilot run.
  */
 export const AUTO_MODE_EXCLUDED_TOOL_NAMES: readonly string[] = [
   ASK_USER_TOOL_NAME,
@@ -124,7 +133,9 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
       // and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES, so auto keeps it.
       SUGGEST_REUSABLE_TOOL_NAME,
       ...executable,
-      ...(input.integrations ? INTEGRATION_TOOL_NAMES : []),
+      ...(input.integrations
+        ? [...INTEGRATION_TOOL_NAMES, ...CUSTOM_INTEGRATION_TOOL_NAMES]
+        : []),
     ],
     includeRunCode: input.codeExecution === "remote",
   };

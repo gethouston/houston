@@ -74,7 +74,7 @@ components:
       appended rows slide up + fade in (FeedMotion.swift, gated to after first load
       + at-bottom; Reduce Motion -> opacity-only), and a faint tiled Houston-helmet
       wallpaper (ChatWallpaperLayout.swift / ChatWallpaperView.swift, static Canvas,
-      theme.foreground @ 0.035, OFF under Reduce Transparency) sits behind the feed
+      theme.ink @ 0.035, OFF under Reduce Transparency) sits behind the feed
       via ChatView.swift.
   assistant-message:
     status: partial
@@ -242,6 +242,9 @@ components:
       replace it), free-text answers are a raw composer send (no in-card
       textarea), and a question answer is terminal (protocol orders questions
       first). Answer-text ported from desktop composeInteractionReply.
+  interaction-approval-card:
+    status: not-started
+    notes: Action-approval step (Allow/Always/Deny) for a host-gated integration execute inside the interaction stepper; not in mobile v1.
   plan-ready-card:
     status: partial
     ref: mobile/ios/Houston/Features/Chat/InteractionActionSteps.swift

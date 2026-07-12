@@ -1,7 +1,8 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
-import { recordConnection, recordSignin } from "../interaction";
+import { recordApproval, recordConnection, recordSignin } from "../interaction";
+import { currentTurnMode } from "../turn-mode-context";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google
@@ -81,6 +82,83 @@ function signalCode(detail: string): string | undefined {
   return undefined;
 }
 
+/** The host's action-approval payload (409 "approval_required" on `execute`). */
+interface ApprovalPayload {
+  toolkit: string;
+  action: string;
+  params?: Record<string, string>;
+  /** How many params the host dropped past the card's row cap (present only when
+   *  > 0); passed through to the approval step so the card can surface it. */
+  paramsOmitted?: number;
+  paramsHash: string;
+}
+
+/**
+ * Parse the `approval` object off a 409 body, TOLERANTLY: toolkit/action/
+ * paramsHash must be strings, params (optional) a record of strings,
+ * paramsOmitted (optional) a number. A malformed payload returns undefined so
+ * the caller falls through to the generic error throw rather than queueing a
+ * broken approval card.
+ */
+function parseApproval(detail: string): ApprovalPayload | undefined {
+  try {
+    const body: unknown = JSON.parse(detail);
+    if (!body || typeof body !== "object") return undefined;
+    const { approval } = body as { approval?: unknown };
+    if (!approval || typeof approval !== "object") return undefined;
+    const { toolkit, action, params, paramsOmitted, paramsHash } = approval as {
+      toolkit?: unknown;
+      action?: unknown;
+      params?: unknown;
+      paramsOmitted?: unknown;
+      paramsHash?: unknown;
+    };
+    if (
+      typeof toolkit !== "string" ||
+      typeof action !== "string" ||
+      typeof paramsHash !== "string"
+    )
+      return undefined;
+    if (paramsOmitted !== undefined && typeof paramsOmitted !== "number")
+      return undefined;
+    let parsedParams: Record<string, string> | undefined;
+    if (params !== undefined) {
+      if (
+        typeof params !== "object" ||
+        params === null ||
+        !Object.values(params as Record<string, unknown>).every(
+          (v) => typeof v === "string",
+        )
+      )
+        return undefined;
+      parsedParams = params as Record<string, string>;
+    }
+    return {
+      toolkit,
+      action,
+      paramsHash,
+      ...(parsedParams ? { params: parsedParams } : {}),
+      ...(paramsOmitted !== undefined ? { paramsOmitted } : {}),
+    };
+  } catch {
+    // Non-JSON body → not an approval signal; generic error.
+  }
+  return undefined;
+}
+
+/**
+ * Thrown by `post()` when the host gated an integration `execute` (409
+ * "approval_required"). Module-private: the `execute` tool catches it, queues an
+ * approval step, and RETURNS a normal (non-error) instruction — being gated is
+ * an expected state, not a tool failure.
+ */
+class ApprovalRequiredError extends Error {
+  constructor(readonly payload: ApprovalPayload) {
+    super("approval required");
+    this.name = "ApprovalRequiredError";
+  }
+}
+
 export interface IntegrationToolOptions {
   /** The host control-plane base URL (HOUSTON_CONTROL_PLANE_URL). */
   baseUrl: string;
@@ -107,9 +185,9 @@ interface ToolMatch {
   connected?: boolean;
   /** Host-reported app status; absent only from an older host (derive it). */
   status?: AppStatus;
-  /** Which host-side provider produced this match (multi-provider hosts stamp
-   *  it in the search fan-out). Echoed back on execute/connect so the host
-   *  routes to the right provider; absent on single-provider hosts. */
+  /** Which host-side provider produced this match (the sandbox search fan-out
+   *  stamps it). Echoed back on execute/connect so the host routes exactly,
+   *  even when two providers overlap on a toolkit. */
   provider?: string;
 }
 
@@ -161,8 +239,8 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
   // The provider stamp of every match seen this session, keyed by action slug
   // and by toolkit slug. Written on each search, read back on execute (route
   // the call) and request_connection (route the connect card) — the MODEL
-  // never sees or carries provider ids. Missing entry ⇒ omit ⇒ the host uses
-  // its default provider, which is exactly the pre-multi-provider behavior.
+  // never sees or carries provider ids. Missing entry ⇒ omit ⇒ the host
+  // resolves the owner itself (providerForAction), the pre-stamp behavior.
   const providerByAction = new Map<string, string>();
   const providerByToolkit = new Map<string, string>();
   const rememberProviders = (items: ToolMatch[]) => {
@@ -183,6 +261,10 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     // (chat.ts wraps the turn), so it's present only when this turn received one —
     // absent otherwise, preserving the act-as-owner behavior.
     const acting = currentActingContext();
+    // Autopilot turns act un-gated: tell the host this is an "auto" turn so its
+    // action-approval gate lets the call through. Any other mode (or outside a
+    // turn) omits the header, so the host gates un-approved actions as normal.
+    const auto = currentTurnMode() === "auto";
     const res = await fetch(`${base}/sandbox/integrations/${path}`, {
       method: "POST",
       headers: {
@@ -192,6 +274,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         ...(acting?.actingUser
           ? { "x-houston-acting-user": acting.actingUser }
           : {}),
+        ...(auto ? { "x-houston-turn-mode": "auto" } : {}),
       },
       body: JSON.stringify(body),
       signal,
@@ -205,6 +288,14 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       // status, and let any uncoded failure fall through to the generic error
       // below rather than a false "sign in" / "not set up" claim.
       const code = signalCode(detail);
+      // approval_required (409): the host gated this integration action pending
+      // the user's permission (a non-Autopilot turn). Parse the approval payload
+      // and throw the typed error the execute tool turns into a queued approval
+      // card. A malformed payload falls through to the generic error below.
+      if (code === "approval_required") {
+        const approval = parseApproval(detail);
+        if (approval) throw new ApprovalRequiredError(approval);
+      }
       // signin_required (409): integrations can't act for this user yet (on
       // desktop: they're signed out of Houston, so the gateway has no session to
       // forward) — a normal, actionable state. Queue a signin step in THIS
@@ -298,7 +389,13 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     },
   });
 
-  const execute = defineTool({
+  const execute = defineTool<
+    typeof ExecuteParams,
+    // Pinned so the success path ({ action }) and the gated path ({ action,
+    // queuedApproval: true }) share ONE details type — `queuedApproval` is
+    // present only when the action was queued for the user's approval.
+    { action: string; queuedApproval?: boolean }
+  >({
     name: "integration_execute",
     label: "Run an app action",
     description:
@@ -311,16 +408,39 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       params: ExecuteParams,
       signal: AbortSignal | undefined,
     ) {
-      const provider = providerByAction.get(params.action);
-      const result = await post<ActionResult>(
-        "execute",
-        {
-          action: params.action,
-          params: params.params ?? {},
-          ...(provider ? { provider } : {}),
-        },
-        signal,
-      );
+      let result: ActionResult;
+      try {
+        const provider = providerByAction.get(params.action);
+        result = await post<ActionResult>(
+          "execute",
+          {
+            action: params.action,
+            params: params.params ?? {},
+            ...(provider ? { provider } : {}),
+          },
+          signal,
+        );
+      } catch (err) {
+        // Gated by the host pending the user's permission: NOT a tool failure.
+        // Queue an approval card for this turn and return a normal instruction
+        // telling the model to end its turn — Houston re-prompts it once the
+        // user decides. (Signin/not-configured keep their throw; only approval
+        // is a normal, expected state.)
+        if (err instanceof ApprovalRequiredError) {
+          recordApproval(err.payload);
+          const action = err.payload.action;
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `This action needs the user's permission. Houston queued an approval card for "${action}" that the user will see when you end your turn. Do not run this action again now and do not ask for permission in text. Queue anything else the task needs (ask_user questions, request_connection) in this same turn, then end your turn. Houston sends you a message automatically once the user decides.`,
+              },
+            ],
+            details: { action, queuedApproval: true },
+          };
+        }
+        throw err;
+      }
       // The action ran but the app rejected it → surface, don't pretend success.
       if (!result.successful) {
         const reason = result.error ?? "unknown error";

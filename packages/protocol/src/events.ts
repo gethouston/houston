@@ -27,6 +27,7 @@ export type HoustonEvent =
   | { type: "SidebarLayoutChanged"; workspaceId: string }
   | { type: "Toast"; level: "info" | "error"; message: string }
   | { type: "CompletionToast"; agentPath: string; title: string; body: string }
-  | { type: "AuthRequired"; provider: string };
+  | { type: "AuthRequired"; provider: string }
+  | { type: "CustomIntegrationsChanged" };
 
 export type HoustonEventType = HoustonEvent["type"];

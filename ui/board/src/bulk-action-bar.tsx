@@ -103,12 +103,12 @@ export function BulkActionBar({
     <>
       <div
         data-keep-panel-open
-        className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border/60 bg-popover/95 px-2 py-1.5 shadow-lg backdrop-blur"
+        className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border border-line/60 bg-popover/95 px-2 py-1.5 shadow-lg backdrop-blur"
       >
-        <span className="px-2 text-xs font-medium tabular-nums text-muted-foreground">
+        <span className="px-2 text-xs font-medium tabular-nums text-ink-muted">
           {labels.selected(count)}
         </span>
-        <span className="mx-0.5 h-5 w-px bg-border" />
+        <span className="mx-0.5 h-5 w-px bg-line" />
         {moveTargets.length === 1 ? (
           // A locked selection can only move to one other section — show it
           // directly instead of a one-item dropdown.
@@ -156,18 +156,18 @@ export function BulkActionBar({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 gap-1 rounded-full text-destructive hover:text-destructive"
+          className="h-7 gap-1 rounded-full text-danger hover:text-danger"
           onClick={() => setPending({ kind: "delete" })}
         >
           <Trash2 className="size-3.5" />
           {labels.delete}
         </Button>
-        <span className="mx-0.5 h-5 w-px bg-border" />
+        <span className="mx-0.5 h-5 w-px bg-line" />
         <button
           type="button"
           aria-label={labels.clear}
           onClick={onClear}
-          className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex size-7 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-hover hover:text-ink"
         >
           <X className="size-4" />
         </button>

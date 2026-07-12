@@ -64,7 +64,7 @@ export function TeamStatusBanner() {
         <button
           type="button"
           onClick={openBilling}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-chip-subtle/50 px-3 py-1 text-xs font-medium text-ink transition-colors hover:bg-chip-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           <Clock className="size-3.5" />
           {view.daysLeft !== null
@@ -78,10 +78,10 @@ export function TeamStatusBanner() {
   return (
     <div
       role="status"
-      className="flex shrink-0 items-center justify-between gap-3 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm"
+      className="flex shrink-0 items-center justify-between gap-3 border-b border-danger/30 bg-danger/10 px-4 py-2 text-sm"
     >
-      <span className="flex items-center gap-2 text-foreground">
-        <AlertTriangle className="size-4 shrink-0 text-destructive" />
+      <span className="flex items-center gap-2 text-ink">
+        <AlertTriangle className="size-4 shrink-0 text-danger" />
         {view.isOwner ? t("degrade.owner") : t("degrade.member")}
       </span>
       {view.isOwner && (

@@ -18,13 +18,13 @@ export interface FileChipProps {
 
 export function FileChip({ name, onRemove }: FileChipProps) {
   return (
-    <div className="flex items-center gap-1 bg-secondary border border-foreground/[0.08] rounded-md px-2 py-1 text-xs text-foreground">
-      <FileIcon className="size-3 shrink-0 text-muted-foreground" />
+    <div className="flex items-center gap-1 bg-chip border border-ink/[0.08] rounded-md px-2 py-1 text-xs text-ink">
+      <FileIcon className="size-3 shrink-0 text-ink-muted" />
       <span className="max-w-[140px] truncate">{name}</span>
       <button
         type="button"
         onClick={onRemove}
-        className="ml-0.5 rounded-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="ml-0.5 rounded-sm text-ink-muted hover:text-ink transition-colors"
         aria-label={`Remove ${name}`}
       >
         <XIcon className="size-3" />
@@ -81,7 +81,7 @@ export function AttachMenu({ items, onClose, anchorRef }: AttachMenuProps) {
       />
       <div
         ref={menuRef}
-        className="fixed z-50 min-w-[180px] rounded-xl border border-border/80 bg-popover shadow-lg py-1"
+        className="fixed z-50 min-w-[180px] rounded-xl border border-line/80 bg-popover shadow-lg py-1"
         style={
           pos
             ? { left: pos.left, bottom: pos.bottom }
@@ -98,7 +98,7 @@ export function AttachMenu({ items, onClose, anchorRef }: AttachMenuProps) {
               item.onClick();
               onClose();
             }}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-ink hover:bg-hover transition-colors"
           >
             {item.icon}
             {item.label}
