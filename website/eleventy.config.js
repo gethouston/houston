@@ -24,6 +24,7 @@ export default function (eleventyConfig) {
   // no bundler, no runtime CDN dependency.
   eleventyConfig.addPassthroughCopy("src/assets");
   eleventyConfig.addPassthroughCopy("src/learn/style.css");
+  eleventyConfig.addPassthroughCopy("src/developers/style.css");
   // Workshop guides: screenshots + downloadable PDFs and agent file
   eleventyConfig.addPassthroughCopy("src/guides/assets");
   eleventyConfig.addPassthroughCopy("src/guides/downloads");

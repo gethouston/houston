@@ -10,5 +10,11 @@ Houston lets anyone hire AI agents that actually complete tasks across the apps 
 - [Waitlist](https://gethouston.ai/waitlist/): Join the beta waiting list.
 - [Changelog](https://gethouston.ai/changelog/): Every release in plain language.
 
+## Developers
+- [Developer API](https://gethouston.ai/developers/): Start and drive agent missions programmatically over REST, A2A, and MCP. API keys, base URL, and a 60-second quickstart.
+- [Missions (REST)](https://gethouston.ai/developers/missions/): Full REST reference: create, list, get, stream (SSE), and cancel missions, API-key scope, and signed webhooks.
+- [Agent2Agent (A2A)](https://gethouston.ai/developers/a2a/): Point any A2A-capable agent at a Houston agent over JSON-RPC (message/send, message/stream, tasks/get, tasks/cancel).
+- [MCP](https://gethouston.ai/developers/mcp/): Expose agents as tools over a stateless Streamable HTTP MCP endpoint for Claude Code and other MCP clients.
+
 ## Code
 - [GitHub](https://github.com/gethouston/houston): The open source Houston repository.

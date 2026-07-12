@@ -1,0 +1,49 @@
+<footer class="footer">
+  <div>
+    Houston is free and open source. The public API runs on Houston Cloud.
+  </div>
+  <div style="margin-top: 12px; display: flex; gap: 16px; font-size: 12px; color: var(--gray-500); flex-wrap: wrap; justify-content: center;">
+    <a href="/learn/" style="color: var(--gray-500);">Learn</a>
+    <a href="/changelog/" style="color: var(--gray-500);">Changelog</a>
+    <a href="/privacy/" style="color: var(--gray-500);">Privacy Policy</a>
+    <a href="/terms/" style="color: var(--gray-500);">Terms of Service</a>
+  </div>
+</footer>
+
+<script>
+  // Hamburger menu (mirrors footer-learn.njk)
+  (function() {
+    var burger = document.getElementById('nav-burger');
+    var dropdown = document.getElementById('nav-dropdown');
+    var icon = document.getElementById('burger-icon');
+    if (!burger || !dropdown) return;
+    burger.addEventListener('click', function() {
+      var open = dropdown.classList.toggle('open');
+      icon.innerHTML = open ? '<path d="M18 6L6 18M6 6l12 12"/>' : '<path d="M4 6h16M4 12h16M4 18h16"/>';
+    });
+    dropdown.querySelectorAll('a').forEach(function(a) {
+      a.addEventListener('click', function() { dropdown.classList.remove('open'); icon.innerHTML = '<path d="M4 6h16M4 12h16M4 18h16"/>'; });
+    });
+  })();
+
+  // Copy-to-clipboard for code blocks.
+  (function() {
+    document.querySelectorAll('.codeblock').forEach(function(block) {
+      var pre = block.querySelector('pre');
+      if (!pre) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'copy-btn';
+      btn.textContent = 'Copy';
+      btn.setAttribute('aria-label', 'Copy code to clipboard');
+      btn.addEventListener('click', function() {
+        navigator.clipboard.writeText(pre.innerText).then(function() {
+          btn.textContent = 'Copied';
+          btn.classList.add('copied');
+          setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1600);
+        });
+      });
+      block.appendChild(btn);
+    });
+  })();
+</script>

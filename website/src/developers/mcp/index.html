@@ -1,0 +1,192 @@
+---
+activeDoc: mcp
+lang: en
+---
+{% extends "base.njk" %}
+{% block title %}MCP — Houston API{% endblock %}
+{% block meta %}
+<meta name="description" content="Expose your Houston agents as tools over the Model Context Protocol. A single stateless Streamable HTTP endpoint with list_agents, start_mission, get_mission, and cancel_mission, plus a copy-paste config for Claude Code and other MCP clients.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://gethouston.ai/developers/mcp/">
+<meta property="og:title" content="MCP — Houston API">
+<meta property="og:description" content="Connect Claude Code and any MCP client to your Houston agents over one endpoint.">
+<meta property="og:site_name" content="Houston">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" hreflang="en" href="https://gethouston.ai/developers/mcp/">
+<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/developers/mcp/">
+{% endblock %}
+{% block stylesheets %}
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/developers/style.css">
+{% endblock %}
+{% block body %}
+    {% include "nav-docs.njk" %}
+
+    <div class="layout">
+      {% include "sidebar-developers.njk" %}
+
+      <main class="content">
+        <div class="content-label">Developers · MCP</div>
+        <h1>MCP.</h1>
+        <p class="lead">
+          Houston exposes your agents as tools over the Model Context Protocol.
+          Connect Claude Code, or any MCP client, to one endpoint and let it
+          list your agents and start, check, and cancel their missions.
+        </p>
+
+        <div class="toc">
+          <div class="toc-label">On this page</div>
+          <ol>
+            <li><a href="#endpoint">The endpoint</a></li>
+            <li><a href="#connect">Connect a client</a></li>
+            <li><a href="#tools">Tools</a></li>
+          </ol>
+        </div>
+
+        <h2 id="endpoint">The endpoint</h2>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <span class="path">/mcp</span>
+        </div>
+        <p>
+          A single <strong>Streamable HTTP</strong> MCP endpoint. It is
+          <strong>stateless</strong>, so there is no session to establish:
+          each request stands alone. It speaks protocol version
+          <code>2025-06-18</code>, and authenticates with your
+          <code>hst_...</code> API key as a bearer token.
+        </p>
+        <div class="callout callout-info">
+          <div class="callout-label">Stateless by design</div>
+          <p>
+            Because the endpoint keeps no session, it scales cleanly and
+            reconnects for free. Every call carries the
+            <code>Authorization</code> header; there is no separate
+            initialize-then-reuse handshake to manage.
+          </p>
+        </div>
+
+        <h2 id="connect">Connect a client</h2>
+        <p>
+          Point any MCP client at <code>https://gateway.gethouston.ai/mcp</code>
+          with your key in the <code>Authorization</code> header.
+        </p>
+
+        <h3>Claude Code</h3>
+        <p>Add it from the CLI:</p>
+        <div class="codeblock"><pre><code>{% raw %}claude mcp add --transport http houston https://gateway.gethouston.ai/mcp \
+  --header "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
+        <p>
+          Or add it to your project's <code>.mcp.json</code> (the same shape
+          works for other MCP clients that use a JSON server config):
+        </p>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "mcpServers": {
+    "houston": {
+      "type": "http",
+      "url": "https://gateway.gethouston.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"
+      }
+    }
+  }
+}{% endraw %}</code></pre></div>
+        <div class="callout callout-warning">
+          <div class="callout-label">Do not commit your key</div>
+          <p>
+            <code>.mcp.json</code> is often checked into a repo. Keep the raw
+            key out of version control, for example by referencing an
+            environment variable if your client supports it, and revoke any
+            key that leaks from <code>Settings → API Keys</code>.
+          </p>
+        </div>
+
+        <h2 id="tools">Tools</h2>
+        <p>
+          The server exposes four tools. Their input schemas are standard JSON
+          Schema, so MCP clients render and validate them automatically.
+        </p>
+
+        <h3>list_agents</h3>
+        <p>Lists the agents your key can reach, with their slugs. No input.</p>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "name": "list_agents",
+  "description": "List the Houston agents this API key can drive.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  }
+}{% endraw %}</code></pre></div>
+
+        <h3>start_mission</h3>
+        <p>Starts a mission on an agent and returns the mission id and status.</p>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "name": "start_mission",
+  "description": "Start a mission on a Houston agent.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "agent": { "type": "string", "description": "The agent slug to run." },
+      "input": { "type": "string", "description": "The instruction for the agent." },
+      "mode":  { "type": "string", "enum": ["execute", "plan", "auto"], "default": "auto" }
+    },
+    "required": ["agent", "input"],
+    "additionalProperties": false
+  }
+}{% endraw %}</code></pre></div>
+
+        <h3>get_mission</h3>
+        <p>Returns a mission's status and, once terminal, its result.</p>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "name": "get_mission",
+  "description": "Get the status and result of a mission.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "missionId": { "type": "string" }
+    },
+    "required": ["missionId"],
+    "additionalProperties": false
+  }
+}{% endraw %}</code></pre></div>
+
+        <h3>cancel_mission</h3>
+        <p>Requests cancellation of a running mission.</p>
+        <div class="codeblock"><pre><code>{% raw %}{
+  "name": "cancel_mission",
+  "description": "Cancel a running mission.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "missionId": { "type": "string" }
+    },
+    "required": ["missionId"],
+    "additionalProperties": false
+  }
+}{% endraw %}</code></pre></div>
+
+        <div class="callout callout-success">
+          <div class="callout-label">In practice</div>
+          <p>
+            Once connected, ask your MCP client to "list my Houston agents,
+            then start a mission on the revenue manager." It calls
+            <code>list_agents</code>, then <code>start_mission</code>, then
+            <code>get_mission</code> to report the result.
+          </p>
+        </div>
+
+        <div class="pager">
+          <a href="/developers/a2a/">
+            <div class="pager-label">← Previous</div>
+            <div class="pager-title">Agent2Agent (A2A)</div>
+          </a>
+          <a href="/developers/" class="next">
+            <div class="pager-label">Next →</div>
+            <div class="pager-title">Overview</div>
+          </a>
+        </div>
+      </main>
+    </div>
+
+    {% include "footer-developers.njk" %}
+  {% endblock %}
