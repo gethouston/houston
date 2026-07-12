@@ -29,12 +29,43 @@ import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
 } from "../../../../ui/engine-client/src/types";
-import { type ControlPlaneConfig, createAgent } from "./control-plane";
-import { hostFetch } from "./host-fetch";
+import { HoustonEngineError } from "./client/errors";
+import {
+  type ControlPlaneConfig,
+  createAgent,
+  gatewayAuthFetch,
+} from "./control-plane";
 import { packagePreview, toWireSelection } from "./portable-map";
 
 /** Unpacked uploads awaiting install, keyed by the packageId handed to the wizard. */
 const uploads = new Map<string, PortablePackage>();
+
+async function hostFetch(
+  cfg: ControlPlaneConfig,
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
+  // gatewayAuthFetch: live bearer per attempt + 401 refresh/replay (HOU-687).
+  // Carry the active-space selector (C8) so a team-space agent's portable
+  // routes resolve in the team namespace, not the caller's personal org.
+  const res = await gatewayAuthFetch(cfg.token, () => cfg.activeOrgSlug)(
+    `${cfg.baseUrl}${path}`,
+    {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
+    },
+  );
+  if (!res.ok) {
+    throw new HoustonEngineError(
+      res.status,
+      await res.json().catch(() => ({})),
+    );
+  }
+  return res;
+}
 
 /** The agent's exportable content, for the "Export a copy" pick screen. */
 export async function exportPreview(

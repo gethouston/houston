@@ -38,6 +38,7 @@ import { ProviderCredentialsMixin } from "./client/provider-credentials-mixin";
 import { ProviderLoginMixin } from "./client/provider-login-mixin";
 import { ProviderStatusMixin } from "./client/provider-status-mixin";
 import { RoutinesSkillsMixin } from "./client/routines-skills-mixin";
+import { StoreMixin } from "./client/store-mixin";
 import { TeamsMixin } from "./client/teams-mixin";
 import { WorkspacesMixin } from "./client/workspaces-mixin";
 
@@ -63,8 +64,12 @@ const Composed = BootMixin(
                               OrgsMixin(
                                 TeamsMixin(
                                   ApiKeysMixin(
-                                    PortableMixin(
-                                      LegacyUnsupportedMixin(HoustonClientBase),
+                                    StoreMixin(
+                                      PortableMixin(
+                                        LegacyUnsupportedMixin(
+                                          HoustonClientBase,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),

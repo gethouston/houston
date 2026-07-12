@@ -316,6 +316,9 @@ importers:
       '@houston-ai/agent-schemas':
         specifier: workspace:*
         version: link:../../ui/agent-schemas
+      '@houston/agentstore-contract':
+        specifier: workspace:*
+        version: link:../agentstore-contract
       '@houston/protocol':
         specifier: workspace:*
         version: link:../protocol
@@ -390,6 +393,9 @@ importers:
       '@executor-js/sdk':
         specifier: 1.5.32
         version: 1.5.32(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
+      '@houston/agentstore-contract':
+        specifier: workspace:*
+        version: link:../agentstore-contract
       '@houston/domain':
         specifier: workspace:*
         version: link:../domain

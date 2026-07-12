@@ -15,8 +15,7 @@
  *     current session token (see app/src/lib/auth-gateway.ts).
  */
 
-import { type ControlPlaneConfig, liveToken } from "./control-plane";
-import { refreshLiveToken } from "./session-refresh";
+import { type ControlPlaneConfig, gatewayAuthFetch } from "./control-plane";
 
 declare global {
   interface Window {
@@ -44,31 +43,20 @@ export function storeApiBase(cfg: ControlPlaneConfig): string {
   return trimSlash(installed || cfg.baseUrl);
 }
 
-/** The live store bearer: the shell-installed session token, else the live
- *  engine token (hosted mode, where it already IS the user's session token). */
-function liveStoreToken(fallback: string): string {
-  const installed =
-    typeof window !== "undefined" ? window.__HOUSTON_STORE__?.token : "";
-  return installed || liveToken(fallback);
-}
-
 /**
- * A `fetch` for the store gateway API: the bearer is read LIVE per attempt, and
- * a 401 triggers one session refresh + replay (mirrors `gatewayAuthFetch`, but
- * with the store bearer and no org header). A 401 that survives the refresh
- * returns as-is so a real sign-out surfaces.
+ * A `fetch` for the store gateway API, built on the engine transport's
+ * {@link gatewayAuthFetch} (live bearer per attempt + one 401 refresh/replay,
+ * HOU-687) with NO `x-houston-org` header — the store routes are user-scoped.
+ *
+ * The bearer must be the user's SESSION token. In hosted mode `gatewayAuthFetch`
+ * reads it live off `window.__HOUSTON_ENGINE__` (already the session). In
+ * local-sidecar mode the engine global holds the LOCAL host token, not the
+ * session, so the shell-installed `window.__HOUSTON_STORE__.token` (the session)
+ * is passed as the fallback `gatewayAuthFetch` falls back to when no engine
+ * global is present.
  */
 export function storeAuthFetch(fallbackToken: string): typeof fetch {
-  return async (input, init) => {
-    const send = (bearer: string) => {
-      const headers = new Headers(init?.headers);
-      if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
-      return fetch(input, { ...init, headers });
-    };
-    const res = await send(liveStoreToken(fallbackToken));
-    if (res.status !== 401) return res;
-    const fresh = await refreshLiveToken();
-    if (!fresh) return res;
-    return send(fresh);
-  };
+  const installed =
+    typeof window !== "undefined" ? window.__HOUSTON_STORE__?.token : "";
+  return gatewayAuthFetch(installed || fallbackToken);
 }

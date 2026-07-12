@@ -7,6 +7,7 @@ import { AgentIcon } from "@/components/agent-icon";
 import { InstallPanel } from "@/components/install-panel";
 import { IntegrationChips } from "@/components/integration-chips";
 import { Markdown } from "@/components/markdown";
+import { ReportDialog } from "@/components/report-dialog";
 import { SkillList } from "@/components/skill-list";
 import { resolveIntegrationLabels } from "@/lib/agents/integrations";
 import { taglineOrDescription } from "@/lib/export/shared";
@@ -178,10 +179,20 @@ export default async function AgentDetailPage({ params }: PageParams) {
               instructions={instructions}
               skillZipUrl={urls.skillZipUrl}
               copyPasteUrl={urls.copyPasteUrl}
+              shareUrl={urls.pageUrl}
             />
           </div>
         </aside>
       </div>
+
+      <Separator className="mt-12 mb-6" />
+
+      <footer className="flex items-center justify-between gap-4">
+        <p className="text-xs text-muted-foreground">
+          Something wrong with this agent? Let us know.
+        </p>
+        <ReportDialog slug={slug} agentName={identity.name} />
+      </footer>
     </main>
   );
 }

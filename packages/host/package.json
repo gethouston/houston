@@ -24,6 +24,7 @@
     "@executor-js/plugin-mcp": "1.5.32",
     "@executor-js/plugin-openapi": "1.5.32",
     "@executor-js/sdk": "1.5.32",
+    "@houston/agentstore-contract": "workspace:*",
     "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",

@@ -25,6 +25,7 @@ import { analytics } from "../../lib/analytics";
 import { signInWithGoogle } from "../../lib/auth";
 import { getEngine } from "../../lib/engine";
 import { genericErrorDescription } from "../../lib/error-toast";
+import { isIdentityConfigured } from "../../lib/identity";
 import { osRevealPath } from "../../lib/os-bridge";
 import {
   buildAnonymizeOverrides,
@@ -35,7 +36,6 @@ import {
   toExportSelection,
   type WizardSelection,
 } from "../../lib/portable-share";
-import { isAuthConfigured } from "../../lib/supabase";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { AnonymizeStep } from "./anonymize-step";
@@ -83,7 +83,7 @@ export function ExportAgentWizard() {
   // Publishing to the Agent Store needs the user's own account (the app POSTs
   // with their gateway bearer). Signed-out users get a sign-in CTA, never a
   // dead button; a build with no auth baked can't publish, so hide the option.
-  const canPublish = isAuthConfigured();
+  const canPublish = isIdentityConfigured();
   const signedIn = Boolean(session);
   const [signingIn, setSigningIn] = useState(false);
 

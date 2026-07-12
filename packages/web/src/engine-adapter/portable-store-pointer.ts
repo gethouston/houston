@@ -7,8 +7,7 @@
  */
 
 import type { StorePublishRequest } from "../../../../ui/engine-client/src/types";
-import type { ControlPlaneConfig } from "./control-plane";
-import { hostFetch } from "./host-fetch";
+import { type ControlPlaneConfig, cpFetch } from "./control-plane";
 import { storePublishBody } from "./portable-map";
 
 /** The machine-local pointer the host keeps for a published agent (no secrets). */
@@ -28,7 +27,7 @@ export async function gatherStoreIr(
   agentId: string,
   req: StorePublishRequest,
 ): Promise<unknown> {
-  const res = await hostFetch(
+  const res = await cpFetch(
     cfg,
     `/agents/${encodeURIComponent(agentId)}/portable/store-ir`,
     { method: "POST", body: JSON.stringify(storePublishBody(req)) },
@@ -41,7 +40,7 @@ export async function readPointer(
   cfg: ControlPlaneConfig,
   agentId: string,
 ): Promise<StorePointer | null> {
-  const res = await hostFetch(cfg, pointerPath(agentId));
+  const res = await cpFetch(cfg, pointerPath(agentId));
   return ((await res.json()) as { pointer: StorePointer | null }).pointer;
 }
 
@@ -51,7 +50,7 @@ export async function writePointer(
   agentId: string,
   pointer: StorePointer,
 ): Promise<void> {
-  await hostFetch(cfg, pointerPath(agentId), {
+  await cpFetch(cfg, pointerPath(agentId), {
     method: "POST",
     body: JSON.stringify(pointer),
   });
@@ -62,5 +61,5 @@ export async function clearPointer(
   cfg: ControlPlaneConfig,
   agentId: string,
 ): Promise<void> {
-  await hostFetch(cfg, pointerPath(agentId), { method: "DELETE" });
+  await cpFetch(cfg, pointerPath(agentId), { method: "DELETE" });
 }

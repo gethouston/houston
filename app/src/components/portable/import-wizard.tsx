@@ -48,6 +48,7 @@ import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { ChatModelSelector } from "../chat-model-selector";
+import { InstallFromLinkPanel } from "./install-from-link";
 
 type StepId = "upload" | "name" | "skills" | "routines" | "learnings";
 
@@ -137,26 +138,27 @@ export function ImportAgentWizard() {
     }
   };
 
+  // Shared by both entry points into the wizard — a `.houstonagent` file and an
+  // Agent Store link. Both produce the same preview, so everything downstream
+  // (scan, name, pickers, install) is identical whichever way the agent arrived.
+  const applyPreview = useCallback((result: PortableUploadPreviewResponse) => {
+    setUploaded(result);
+    setSelection({
+      skillSlugs: new Set(result.preview.skills.map((s) => s.slug)),
+      routineIds: new Set(result.preview.routines.map((r) => r.id)),
+      learningIds: new Set(result.preview.learnings.map((l) => l.id)),
+    });
+    setName((prev) =>
+      !prev && result.manifest.agentName ? result.manifest.agentName : prev,
+    );
+  }, []);
+
   const handleOpenFile = async () => {
     try {
       const bytes = await invoke<number[] | null>("open_portable_agent");
       if (!bytes) return;
       const u8 = new Uint8Array(bytes);
-      const result = await getEngine().importPreview(u8.buffer);
-      setUploaded(result);
-      setSelection({
-        skillSlugs: new Set(
-          result.preview.skills.map((s: { slug: string }) => s.slug),
-        ),
-        routineIds: new Set(
-          result.preview.routines.map((r: { id: string }) => r.id),
-        ),
-        learningIds: new Set(
-          result.preview.learnings.map((l: { id: string }) => l.id),
-        ),
-      });
-      if (!name && result.manifest.agentName)
-        setName(result.manifest.agentName);
+      applyPreview(await getEngine().importPreview(u8.buffer));
     } catch (err) {
       addToast({
         variant: "error",
@@ -281,6 +283,7 @@ export function ImportAgentWizard() {
                 wantScan={wantScan}
                 onChooseScan={handleChooseScan}
                 onPick={handleOpenFile}
+                onPreview={applyPreview}
                 scanning={scanning}
                 scan={scan}
               />
@@ -402,6 +405,7 @@ function UploadStep({
   wantScan,
   onChooseScan,
   onPick,
+  onPreview,
   scanning,
   scan,
 }: {
@@ -409,6 +413,7 @@ function UploadStep({
   wantScan: boolean | null;
   onChooseScan: (yes: boolean) => void;
   onPick: () => void;
+  onPreview: (preview: PortableUploadPreviewResponse) => void;
   scanning: boolean;
   scan: PortableScanResponse | null;
 }) {
@@ -425,10 +430,16 @@ function UploadStep({
       </header>
 
       {!uploaded ? (
-        <div>
-          <Button onClick={onPick} className="rounded-full">
-            {t("import.step1.pickFile")}
-          </Button>
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <Button onClick={onPick} className="rounded-full">
+              {t("import.step1.pickFile")}
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {t("import.step1.or")}
+            </span>
+          </div>
+          <InstallFromLinkPanel onPreview={onPreview} />
         </div>
       ) : (
         <section className="space-y-2 text-sm">
