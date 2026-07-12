@@ -92,8 +92,10 @@
     "title": "Save this for next time",
     "skillTitle": "Save as a Skill",
     "routineTitle": "Save as a Routine",
+    "learningTitle": "Remember this",
     "saveSkillMessage": "Save what I just did as a Skill called \"{{title}}\".",
-    "saveRoutineMessage": "Set this up as a recurring Routine called \"{{title}}\"."
+    "saveRoutineMessage": "Set this up as a recurring Routine called \"{{title}}\".",
+    "saveLearningMessage": "Remember \"{{title}}\" as a learning for next time."
   },
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",

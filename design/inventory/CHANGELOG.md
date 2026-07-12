@@ -3,6 +3,19 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v22 - 2026-07-12
+
+`suggest-reusable-card` gains a third variant: `learning`. The agent's
+end-of-mission REFLECTION STEP (the `suggest_reusable` tool, fired only on a
+clean `done` finish, never on `needs_you`) can now offer to keep the
+just-completed work as a reusable Skill, a scheduled Routine, OR a Learning (a
+stable fact/preference saved to `.houston/learnings/learnings.json`). Same
+card, same two rows; the save row's label and icon name the kind (Sparkles /
+CalendarClock / Lightbulb), and accepting sends the same follow-up-message
+flow (an execute turn asking the agent to write the Skill/Routine/Learning).
+Protocol `InteractionStep` kind=suggest_reusable widens `reusableKind` with
+`"learning"` — additive, no anatomy/state change, no new component.
+
 ## v21 - 2026-07-12
 
 Two changes: the interaction stepper gains an ACTION-APPROVAL step, and its

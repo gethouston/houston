@@ -178,7 +178,8 @@ Behavior is **never** written in surface code. Change it in the SDK, then bind.
 > *clean* turn splits on whether it ended on an interaction: nothing outstanding →
 > the terminal `done`; ended on `ask_user`/`request_connection` → `needs_you`
 > carrying the `pendingInteraction` VM field. ONE exception: a lone
-> `suggest_reusable` step (save-as-Skill/Routine offer) settles `done`, not
+> `suggest_reusable` step (the reflection step's save-as-Skill/Routine/Learning
+> offer) settles `done`, not
 > `needs_you` — nothing is waiting on the user. A user Stop (or dismissing an
 > interaction card, which is a user interruption) now persists a durable
 > `stopped: true` marker on the assistant `ChatMessage`, so settle-FROM-HISTORY

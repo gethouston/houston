@@ -233,6 +233,23 @@ null-clears the interaction at the next turn's start — unchanged. `suggest_reu
 "Not now" also clears the persisted interaction (no stop marker); `plan_ready`
 "Keep planning" stays local-only.
 
+**Reflection step (suggest_reusable).** The prompt names the agent's
+end-of-mission evaluation the REFLECTION STEP: every time the agent finishes a
+task (a clean `done`, never `needs_you`), it reflects on whether the work should
+be kept and, if so, calls `suggest_reusable` right before its final message with
+`reusableKind: "skill" | "routine" | "learning"` — a reusable procedure, a
+scheduled automation, or a stable fact/preference for
+`.houston/learnings/learnings.json`. The step arrives as a LONE
+`suggest_reusable` interaction step on the `done` frame and renders
+`ChatSuggestReusableCard` (Sparkles / CalendarClock / Lightbulb icon per kind);
+accepting sends a follow-up user message (always an `execute` turn) asking the
+agent to actually write the Skill/Routine/Learning, "Not now" dismisses and
+clears the persisted interaction. Inferred learnings route ONLY through this
+card — the old mid-task `ask_user` "Want me to remember that?" flow is gone;
+a direct user "remember this" still saves immediately. Concept name lives in
+prompts/docs only; the wire kind stays `suggest_reusable` (persisted in user
+data). Inventory: `suggest-reusable-card` v22.
+
 The old `#houston_toolkit=` markdown-link connect hack is GONE from the prompt and
 tool guidance; the app's legacy link-card renderer survives only to render old
 transcripts. Client-side settle detail: `knowledge-base/client-architecture.md`.

@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 21
+version: 22
 
 components:
   - id: agent-avatar
@@ -385,10 +385,10 @@ components:
 
   - id: suggest-reusable-card
     title: Suggest-reusable card
-    purpose: In-chat offer shown when the agent finishes a mission cleanly and calls suggest_reusable; proposes saving the just-completed work as a reusable Skill or a scheduled Routine, floating above the always-mounted composer.
+    purpose: In-chat offer shown when the agent finishes a mission cleanly and, in its end-of-task reflection step, calls suggest_reusable; proposes saving the just-completed work as a reusable Skill, a scheduled Routine, or a Learning to remember, floating above the always-mounted composer.
     anatomy: [eyebrow, proposed-title, rationale, save-row, not-now-row]
     states: [default, disabled]
-    variants: [skill, routine]
+    variants: [skill, routine, learning]
     behavior: >-
       Rendered from a pending interaction carrying a single suggest_reusable
       step (reusableKind, title, rationale) on the terminal done frame. Unlike
@@ -397,12 +397,12 @@ components:
       waiting). Shows the eyebrow, the model-proposed name prominently, and the
       model's one-line rationale, then two full-width rows in the plan-ready
       card's idiom: Save (Sparkles icon for a Skill, CalendarClock for a
-      Routine; label names the kind) sends a follow-up message asking the agent
-      to actually write the Skill/Routine, always as an execute turn regardless
-      of the composer's pinned mode, dismissing the offer locally first; "Not
-      now" dismisses locally. Typing in the composer instead abandons it like
-      any interaction card. Dismissal is per-offer (step id) and per
-      conversation.
+      Routine, Lightbulb for a Learning; label names the kind) sends a
+      follow-up message asking the agent to actually write the
+      Skill/Routine/Learning, always as an execute turn regardless of the
+      composer's pinned mode, dismissing the offer locally first; "Not now"
+      dismisses locally. Typing in the composer instead abandons it like any
+      interaction card. Dismissal is per-offer (step id) and per conversation.
     a11y: eyebrow then title then rationale read in order; two labeled row buttons visible at rest (no hover gate), keyboard-reachable; disabled marks the surface aria-disabled and gates both rows.
     since: 12
 
