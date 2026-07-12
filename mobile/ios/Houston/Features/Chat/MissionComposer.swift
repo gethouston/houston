@@ -81,7 +81,7 @@ struct MissionComposer<PlusMenu: View>: View {
       .fill(.regularMaterial)
       .overlay(alignment: .top) {
         Rectangle()
-          .fill(theme.border)
+          .fill(theme.line)
           .frame(height: ChatMetrics.inputBarHairline)
       }
       .ignoresSafeArea(.container, edges: .bottom)
@@ -97,7 +97,7 @@ struct MissionComposer<PlusMenu: View>: View {
     } label: {
       Image(systemName: "plus")
         .font(.system(size: ChatMetrics.plusGlyphSize, weight: .regular))
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
         .frame(width: ChatMetrics.plusButtonSize, height: ChatMetrics.plusButtonSize)
     }
     .buttonStyle(.plain)
@@ -109,13 +109,13 @@ struct MissionComposer<PlusMenu: View>: View {
       .textFieldStyle(.plain)
       .lineLimit(1...ChatMetrics.inputFieldMaxLines)
       .font(Typography.body)
-      .foregroundStyle(theme.foreground)
-      .tint(theme.primary)
+      .foregroundStyle(theme.ink)
+      .tint(theme.action)
       .padding(.horizontal, ChatMetrics.inputFieldHInset)
       .padding(.vertical, ChatMetrics.inputFieldVInset)
       .background(
         RoundedRectangle(cornerRadius: ChatMetrics.inputFieldRadius, style: .continuous)
-          .fill(theme.secondary))
+          .fill(theme.chip))
       .focused($focused)
   }
 
@@ -127,7 +127,7 @@ struct MissionComposer<PlusMenu: View>: View {
       isRunning ? onStop() : onSend()
     } label: {
       ZStack {
-        Circle().fill(active ? theme.primary : theme.muted)
+        Circle().fill(active ? theme.action : theme.chipSubtle)
         glyph
       }
       .frame(width: ChatMetrics.sendButtonSize, height: ChatMetrics.sendButtonSize)
@@ -149,11 +149,11 @@ struct MissionComposer<PlusMenu: View>: View {
     if isSending && !isRunning {
       ProgressView()
         .controlSize(.small)
-        .tint(theme.primaryFg)
+        .tint(theme.actionText)
     } else {
       Image(systemName: isRunning ? "stop.fill" : "paperplane.fill")
         .font(.system(size: ChatMetrics.sendGlyphSize, weight: .semibold))
-        .foregroundStyle(active ? theme.primaryFg : theme.mutedFg)
+        .foregroundStyle(active ? theme.actionText : theme.inkMuted)
         .contentTransition(.symbolEffect(.replace))
     }
   }

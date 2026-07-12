@@ -38,7 +38,7 @@ struct AgentsView: View {
         NavigationStack(path: $path) {
             content
                 .navigationTitle(Strings.Agents.title)
-                .background(theme.background)
+                .background(theme.input)
                 .searchable(
                     text: $query,
                     placement: .navigationBarDrawer(displayMode: .automatic),

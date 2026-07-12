@@ -13,20 +13,20 @@ struct FileChangesBlock: View {
       HStack(spacing: Spacing.space6) {
         Image(systemName: "doc.badge.gearshape")
           .font(Typography.caption)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
         Text(Strings.Chat.updatesMade)
           .font(Typography.label)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
       }
       ForEach(FileChangesSummary.lines(created: created, modified: modified), id: \.self) { line in
         Text(line)
           .font(Typography.caption)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
       }
       ForEach(paths, id: \.self) { path in
         Text(path)
           .font(Typography.caption)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
           .lineLimit(1)
           .truncationMode(.middle)
       }
@@ -34,7 +34,7 @@ struct FileChangesBlock: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.horizontal, Spacing.space12)
     .padding(.vertical, Spacing.space8)
-    .background(theme.muted, in: RoundedRectangle(cornerRadius: Radius.lg))
+    .background(theme.chipSubtle, in: RoundedRectangle(cornerRadius: Radius.lg))
   }
 
   private var paths: [String] { created + modified }

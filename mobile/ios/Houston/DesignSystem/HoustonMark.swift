@@ -14,7 +14,7 @@ struct HoustonMark: View {
 
     var body: some View {
         HelmetShape()
-            .fill(HoustonColors.foreground.resolve(theme))
+            .fill(HoustonColors.ink.resolve(theme))
             .accessibilityHidden(true)
     }
 }

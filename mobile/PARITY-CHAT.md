@@ -111,7 +111,7 @@ See `packages/sdk/BRIDGE.md` §7. `ts` is OPTIONAL: older data has none, so ever
 degrades gracefully (a flat, separator-less feed; no crash).
 
 - **In-bubble user timestamp** — bottom-right inside the user bubble (WhatsApp convention),
-  `Typography.caption`, `primaryFg` @ opacity `0.6` (`ChatMetrics.bubbleTimeOpacity`),
+  `Typography.caption`, `actionText` @ opacity `0.6` (`ChatMetrics.bubbleTimeOpacity`),
   `Date.FormatStyle(time: .shortened)` (locale clock: 3:45 PM / 15:45), rendered in the
   device's local time zone. A custom `TimedBubbleLayout` (`Layout`) places it inline on the
   last line, or drops it to its own bottom-right line when the block is full — never overlaps.
@@ -137,7 +137,7 @@ degrades gracefully (a flat, separator-less feed; no crash).
   returning to the bottom clears it. State: `UnreadCounter` (`ChatTimelineScroll.swift`).
 - **Title bar (principal)** — a WhatsApp-style bar: agent avatar (`HoustonAvatar`, 26pt) + the
   agent name (line 1, `bodyMedium`) + a status line (line 2, `caption`): "Working…" (shimmer,
-  `mutedFg`) while running, "Needs your attention" (`warning`) when settled needs-you, else
+  `inkMuted`) while running, "Needs your attention" (`warning`) when settled needs-you, else
   hidden. Derivation: `ChatTitleStatus.derive(running:boardStatus:)`. Files: `ChatTitleView.swift`,
   `ChatTitleStatus.swift`, `Strings.Chat.TitleBar`. The name is threaded via
   `ChatView(agentId:conversationId:title:agentName:)` (optional; Mission Control opens a chat by
@@ -157,7 +157,7 @@ pending. Optional: absent → confirmed, so every consumer degrades to a plain c
 
 - **Delivery ticks (clock → check)** — the in-bubble user timestamp gains a trailing tick glyph:
   `clock` (SF Symbol) while `pending`, `checkmark` once confirmed — WhatsApp's sending/sent cue.
-  Same `Typography.caption` + `primaryFg` @ `0.6` as the time, `.imageScale(.small)`, morphing via
+  Same `Typography.caption` + `actionText` @ `0.6` as the time, `.imageScale(.small)`, morphing via
   `.contentTransition(.symbolEffect(.replace))` + `.animation(.snappy(Motion.fast), value: pending)`.
   The tick renders only inside the time cluster (no `ts` → no tick). Pure selector:
   `ChatBubbleTick.symbolName(pending:)`. VoiceOver: `Strings.Chat.deliveryPending` / `.deliverySent`.

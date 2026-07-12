@@ -34,12 +34,12 @@ struct ProcessBlockView: View {
                 PulsingHelmet(size: ChatMetrics.headerHelmetSize, pulsing: false)
                 Text(ProcessHeader.label(for: group))
                     .font(Typography.caption)
-                    .foregroundStyle(theme.mutedFg)
+                    .foregroundStyle(theme.inkMuted)
                     .lineLimit(1)
                     .shimmer(active: group.active)
                 Image(systemName: "chevron.down")
                     .font(Typography.caption)
-                    .foregroundStyle(theme.mutedFg)
+                    .foregroundStyle(theme.inkMuted)
                     .rotationEffect(.degrees(expanded ? 180 : 0))
                 Spacer(minLength: 0)
             }
@@ -55,12 +55,12 @@ struct ProcessBlockView: View {
                 // once settled (PARITY §4 copy).
                 Text(ThinkingCopy.label(streaming: streaming))
                     .font(Typography.label)
-                    .foregroundStyle(theme.mutedFg)
+                    .foregroundStyle(theme.inkMuted)
                     .shimmer(active: streaming)
                 if !text.isEmpty {
                     Text(text)
                         .font(Typography.callout)
-                        .foregroundStyle(theme.mutedFg)
+                        .foregroundStyle(theme.inkMuted)
                         .textSelection(.enabled)
                 }
             }
@@ -91,7 +91,7 @@ private struct ToolRowView: View {
                 HStack(alignment: .firstTextBaseline, spacing: Spacing.space6) {
                     Image(systemName: ToolLabel.symbol(call.name))
                         .font(Typography.caption)
-                        .foregroundStyle(theme.mutedFg)
+                        .foregroundStyle(theme.inkMuted)
                         .frame(width: Spacing.space16)
                     Text(label)
                         .font(Typography.caption)
@@ -106,11 +106,11 @@ private struct ToolRowView: View {
             if showResult, let result {
                 Text(result.content)
                     .font(.system(size: HoustonFontSize.xs, design: .monospaced))
-                    .foregroundStyle(result.isError ? theme.destructive : theme.mutedFg)
+                    .foregroundStyle(result.isError ? theme.danger : theme.inkMuted)
                     .textSelection(.enabled)
                     .padding(Spacing.space8)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(theme.secondary, in: RoundedRectangle(cornerRadius: Radius.md))
+                    .background(theme.chip, in: RoundedRectangle(cornerRadius: Radius.md))
             }
         }
     }
@@ -119,11 +119,11 @@ private struct ToolRowView: View {
     /// joined with " — " (desktop `tool-block.tsx:98-101`).
     private var label: AttributedString {
         var verb = AttributedString(ToolLabel.action(call.name, done: done))
-        verb.foregroundColor = theme.mutedFg
+        verb.foregroundColor = theme.inkMuted
         guard let detail = ToolDetail.string(name: call.name, input: call.input), !detail.isEmpty
         else { return verb }
         var suffix = AttributedString(" — \(detail)")
-        suffix.foregroundColor = theme.mutedFg.opacity(0.5)
+        suffix.foregroundColor = theme.inkMuted.opacity(0.5)
         return verb + suffix
     }
 }

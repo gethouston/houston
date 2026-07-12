@@ -36,7 +36,7 @@ struct MissionControlView: View {
         header
         body(for: overview.agents)
       }
-      .background(theme.background)
+      .background(theme.input)
       .navigationTitle(showingArchived ? Strings.Board.archived : Strings.Board.missionControlTitle)
       .navigationBarTitleDisplayMode(.large)
       .toolbar {
@@ -86,7 +86,7 @@ struct MissionControlView: View {
       } label: {
         Label(Strings.Board.archived, systemImage: showingArchived ? "archivebox.fill" : "archivebox")
       }
-      .tint(showingArchived ? theme.primary : theme.foreground)
+      .tint(showingArchived ? theme.action : theme.ink)
       .accessibilityAddTraits(showingArchived ? [.isSelected] : [])
     }
   }

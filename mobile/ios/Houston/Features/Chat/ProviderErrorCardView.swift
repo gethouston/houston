@@ -13,23 +13,23 @@ struct ProviderErrorCardView: View {
       HStack(spacing: Spacing.space6) {
         Image(systemName: "exclamationmark.triangle.fill")
           .font(Typography.caption)
-          .foregroundStyle(theme.destructive)
+          .foregroundStyle(theme.danger)
         Text(presentation.title)
           .font(Typography.label)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
       }
       Text(presentation.detail)
         .font(Typography.callout)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
         .fixedSize(horizontal: false, vertical: true)
       if let raw = presentation.rawExcerpt {
         VStack(alignment: .leading, spacing: Spacing.space2) {
           Text(Strings.Chat.ProviderErrorCopy.rawLabel)
             .font(Typography.captionStrong)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
           Text(raw)
             .font(Typography.caption)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
             .textSelection(.enabled)
             .lineLimit(8)
         }
@@ -38,9 +38,9 @@ struct ProviderErrorCardView: View {
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(Spacing.space12)
-    .background(theme.destructive.opacity(0.08), in: RoundedRectangle(cornerRadius: Radius.lg))
+    .background(theme.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: Radius.lg))
     .overlay(
       RoundedRectangle(cornerRadius: Radius.lg)
-        .strokeBorder(theme.destructive.opacity(0.5), lineWidth: 1))
+        .strokeBorder(theme.danger.opacity(0.5), lineWidth: 1))
   }
 }

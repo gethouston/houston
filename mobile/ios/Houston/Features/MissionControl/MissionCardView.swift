@@ -22,16 +22,16 @@ struct MissionCardView: View {
       VStack(alignment: .leading, spacing: Spacing.space4) {
         Text(card.agentName)
           .font(Typography.caption)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
           .lineLimit(1)
         Text(card.title)
           .font(Typography.title)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
           .lineLimit(2)
         if !card.descriptionPreview.isEmpty {
           Text(card.descriptionPreview)
             .font(Typography.callout)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
             .lineLimit(2)
         }
         footer
@@ -50,16 +50,16 @@ struct MissionCardView: View {
       ForEach(card.tags, id: \.self) { tag in
         Text(tag)
           .font(Typography.label)
-          .foregroundStyle(theme.secondaryFg)
+          .foregroundStyle(theme.chipText)
           .padding(.horizontal, Spacing.space8)
           .padding(.vertical, Spacing.space2)
-          .background(theme.secondary, in: Capsule())
+          .background(theme.chip, in: Capsule())
       }
       Spacer(minLength: Spacing.space8)
       if let updated = MissionTimestamp.relativeLabel(card.updatedAt) {
         Text(updated)
           .font(Typography.caption)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
       }
     }
     .padding(.top, Spacing.space4)
@@ -67,9 +67,9 @@ struct MissionCardView: View {
 
   @ViewBuilder private var border: some View {
     if isError {
-      shape.strokeBorder(theme.destructive.opacity(0.6), lineWidth: 1)
+      shape.strokeBorder(theme.danger.opacity(0.6), lineWidth: 1)
     } else if !isRunning {
-      shape.strokeBorder(theme.border, lineWidth: 1)
+      shape.strokeBorder(theme.line, lineWidth: 1)
     }
   }
 }

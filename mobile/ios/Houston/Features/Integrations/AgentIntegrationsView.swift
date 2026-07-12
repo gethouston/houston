@@ -23,7 +23,7 @@ struct AgentIntegrationsView: View {
     content
       .navigationTitle(Strings.Integrations.title)
       .navigationBarTitleDisplayMode(.inline)
-      .background(theme.background)
+      .background(theme.input)
       .onAppear {
         if retention == nil { retention = model.retain() }
         if flow == nil {
@@ -70,7 +70,7 @@ struct AgentIntegrationsView: View {
           Button(action: onManageAll) {
             Text(Strings.Integrations.agentManageAll)
               .font(Typography.callout)
-              .foregroundStyle(theme.mutedFg)
+              .foregroundStyle(theme.inkMuted)
           }
           .frame(maxWidth: .infinity)
         }
@@ -78,7 +78,7 @@ struct AgentIntegrationsView: View {
       .padding(.horizontal, Spacing.space16)
       .padding(.vertical, Spacing.space16)
     }
-    .background(theme.background)
+    .background(theme.input)
     .sheet(item: sessionBinding(flow)) { session in
       ConnectWaitingSheet(session: session, flow: flow)
     }
@@ -121,7 +121,7 @@ struct AgentIntegrationsView: View {
       if let subtitle {
         Text(subtitle)
           .font(Typography.caption)
-          .foregroundStyle(theme.mutedFg)
+          .foregroundStyle(theme.inkMuted)
           .padding(.horizontal, Spacing.space12)
       }
       if empty {
@@ -143,13 +143,13 @@ struct AgentIntegrationsView: View {
   }
 
   private func deactivateButton(toolkit: String) -> some View {
-    pill(Strings.Integrations.agentDeactivate, tint: theme.mutedFg) {
+    pill(Strings.Integrations.agentDeactivate, tint: theme.inkMuted) {
       Task { await model.setGrant(toolkit: toolkit, agentId: agentId, active: false) }
     }
   }
 
   private func activateButton(toolkit: String) -> some View {
-    pill(Strings.Integrations.agentActivate, tint: theme.primary) {
+    pill(Strings.Integrations.agentActivate, tint: theme.action) {
       Task { await model.setGrant(toolkit: toolkit, agentId: agentId, active: true) }
     }
   }
@@ -161,8 +161,8 @@ struct AgentIntegrationsView: View {
         .foregroundStyle(tint)
         .padding(.horizontal, Spacing.space10)
         .padding(.vertical, Spacing.space6)
-        .background(theme.muted, in: Capsule())
-        .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
+        .background(theme.chipSubtle, in: Capsule())
+        .overlay(Capsule().strokeBorder(theme.line, lineWidth: 1))
     }
     .buttonStyle(.plain)
   }

@@ -26,10 +26,10 @@ struct AppLogoView: View {
       }
     }
     .frame(width: diameter, height: diameter)
-    .background(theme.muted, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+    .background(theme.chipSubtle, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
     .overlay(
       RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-        .strokeBorder(theme.border, lineWidth: 1)
+        .strokeBorder(theme.line, lineWidth: 1)
     )
     .accessibilityHidden(true)
   }
@@ -37,7 +37,7 @@ struct AppLogoView: View {
   private var fallback: some View {
     Text(display.initial)
       .font(Typography.font(diameter * 0.4, HoustonFontWeight.semibold))
-      .foregroundStyle(theme.mutedFg)
+      .foregroundStyle(theme.inkMuted)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 }

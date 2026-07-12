@@ -81,10 +81,10 @@ struct EffortSheet: View {
       HStack {
         Text(label)
           .font(Typography.body)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
         Spacer(minLength: Spacing.space8)
         if isCurrent {
-          Image(systemName: "checkmark").foregroundStyle(theme.primary)
+          Image(systemName: "checkmark").foregroundStyle(theme.action)
         }
       }
       .contentShape(Rectangle())

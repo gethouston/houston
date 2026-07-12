@@ -12,10 +12,10 @@ struct SearchField: View {
         HStack(spacing: Spacing.space8) {
             Image(systemName: "magnifyingglass")
                 .font(Typography.callout)
-                .foregroundStyle(theme.mutedFg)
+                .foregroundStyle(theme.inkMuted)
             TextField(placeholder, text: $text)
                 .font(Typography.body)
-                .foregroundStyle(theme.foreground)
+                .foregroundStyle(theme.ink)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
@@ -24,17 +24,17 @@ struct SearchField: View {
                     text = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(theme.mutedFg)
+                        .foregroundStyle(theme.inkMuted)
                 }
                 .accessibilityLabel(Strings.Search.clear)
             }
         }
         .padding(.horizontal, Spacing.space12)
         .padding(.vertical, Spacing.space10)
-        .background(theme.muted, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+        .background(theme.chipSubtle, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                .strokeBorder(theme.border, lineWidth: 1)
+                .strokeBorder(theme.line, lineWidth: 1)
         )
     }
 }

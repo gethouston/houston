@@ -20,17 +20,17 @@ struct ApiKeyView: View {
         VStack(alignment: .leading, spacing: Spacing.space8) {
           Text(Strings.AIModels.ApiKey.title(card.name))
             .font(Typography.title)
-            .foregroundStyle(theme.foreground)
+            .foregroundStyle(theme.ink)
           Text(Strings.AIModels.ApiKey.description(card.name))
             .font(Typography.callout)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
         }
 
         if let urlString = card.apiKeyUrl, let url = URL(string: urlString) {
           Button { openURL(url) } label: {
             Label(Strings.AIModels.ApiKey.getKey, systemImage: "arrow.up.right.square")
               .font(Typography.label)
-              .foregroundStyle(theme.primary)
+              .foregroundStyle(theme.action)
           }
           .buttonStyle(.plain)
         }
@@ -38,18 +38,18 @@ struct ApiKeyView: View {
         VStack(alignment: .leading, spacing: Spacing.space6) {
           Text(Strings.AIModels.ApiKey.label)
             .font(Typography.caption)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
           SecureField(Strings.AIModels.ApiKey.placeholder, text: $key)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .padding(Spacing.space12)
-            .background(theme.input, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+            .background(theme.lineInput, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
         }
 
         if let error {
           Text(error)
             .font(Typography.caption)
-            .foregroundStyle(theme.destructive)
+            .foregroundStyle(theme.danger)
         }
 
         Button(action: connect) {
@@ -58,10 +58,10 @@ struct ApiKeyView: View {
             Text(Strings.AIModels.ApiKey.save)
           }
           .font(Typography.label)
-          .foregroundStyle(theme.primaryFg)
+          .foregroundStyle(theme.actionText)
           .frame(maxWidth: .infinity)
           .padding(.vertical, Spacing.space12)
-          .background(theme.primary, in: Capsule())
+          .background(theme.action, in: Capsule())
         }
         .buttonStyle(.plain)
         .disabled(submitting)

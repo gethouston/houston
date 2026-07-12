@@ -15,7 +15,7 @@ struct ConnectionStatusBadge: View {
         .frame(width: 6, height: 6)
       Text(Strings.Integrations.status(status))
         .font(Typography.caption)
-        .foregroundStyle(theme.mutedFg)
+        .foregroundStyle(theme.inkMuted)
     }
   }
 
@@ -23,8 +23,8 @@ struct ConnectionStatusBadge: View {
     switch status {
     case .active: return theme.success
     case .pending: return theme.warning
-    case .error: return theme.destructive
-    case .unknown: return theme.mutedFg
+    case .error: return theme.danger
+    case .unknown: return theme.inkMuted
     }
   }
 }

@@ -15,7 +15,7 @@ struct HighlightedText: View {
     var body: some View {
         Text(attributed)
             .font(Typography.callout)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
             .lineLimit(lineLimit)
     }
 
@@ -36,7 +36,7 @@ struct HighlightedText: View {
             let aLower = chars.index(chars.startIndex, offsetBy: lower)
             let aUpper = chars.index(chars.startIndex, offsetBy: upper)
             attr[aLower..<aUpper].backgroundColor = theme.highlight
-            attr[aLower..<aUpper].foregroundColor = theme.highlightFg
+            attr[aLower..<aUpper].foregroundColor = theme.highlightText
             from = match.upperBound
         }
         return attr

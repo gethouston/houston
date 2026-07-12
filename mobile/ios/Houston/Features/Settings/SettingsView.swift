@@ -24,10 +24,10 @@ struct SettingsView: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(theme.background)
+            .background(theme.input)
             .navigationTitle(Strings.Settings.title)
         }
-        .tint(theme.primary)
+        .tint(theme.action)
     }
 
     private var appearanceGroup: some View {

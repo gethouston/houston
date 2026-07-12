@@ -11,7 +11,7 @@ struct SectionHeader<Accessory: View>: View {
         HStack(spacing: Spacing.space8) {
             Text(title)
                 .font(Typography.captionStrong)
-                .foregroundStyle(theme.mutedFg)
+                .foregroundStyle(theme.inkMuted)
                 .textCase(.uppercase)
             Spacer(minLength: Spacing.space8)
             accessory()

@@ -132,7 +132,7 @@ struct ProviderInitialFallback: View {
         Text(initial)
             .font(.system(size: 10, weight: .semibold))
             .tracking(-0.25)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
             .frame(width: size, height: size)
             .accessibilityHidden(true)
     }

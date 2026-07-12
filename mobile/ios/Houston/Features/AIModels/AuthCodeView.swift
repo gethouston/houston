@@ -24,20 +24,20 @@ struct AuthCodeView: View {
         VStack(alignment: .leading, spacing: Spacing.space8) {
           Text(Strings.AIModels.Login.title(card.name))
             .font(Typography.title)
-            .foregroundStyle(theme.foreground)
+            .foregroundStyle(theme.ink)
           Text(instructions ?? Strings.AIModels.Login.authCodeDescription(card.name))
             .font(Typography.callout)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
         }
 
         if let link = URL(string: url) {
           Button { openURL(link) } label: {
             Label(Strings.AIModels.Login.openUrl, systemImage: "arrow.up.right.square")
               .font(Typography.label)
-              .foregroundStyle(theme.primaryFg)
+              .foregroundStyle(theme.actionText)
               .frame(maxWidth: .infinity)
               .padding(.vertical, Spacing.space12)
-              .background(theme.primary, in: Capsule())
+              .background(theme.action, in: Capsule())
           }
           .buttonStyle(.plain)
         }
@@ -45,16 +45,16 @@ struct AuthCodeView: View {
         VStack(alignment: .leading, spacing: Spacing.space6) {
           Text(Strings.AIModels.Login.codeLabel)
             .font(Typography.caption)
-            .foregroundStyle(theme.mutedFg)
+            .foregroundStyle(theme.inkMuted)
           TextField(Strings.AIModels.Login.codePlaceholder, text: $code)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .padding(Spacing.space12)
-            .background(theme.input, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+            .background(theme.lineInput, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
         }
 
         if let error {
-          Text(error).font(Typography.caption).foregroundStyle(theme.destructive)
+          Text(error).font(Typography.caption).foregroundStyle(theme.danger)
         }
 
         Button(action: submit) {
@@ -63,11 +63,11 @@ struct AuthCodeView: View {
             Text(Strings.AIModels.Login.submit)
           }
           .font(Typography.label)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.ink)
           .frame(maxWidth: .infinity)
           .padding(.vertical, Spacing.space12)
-          .background(theme.secondary, in: Capsule())
-          .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
+          .background(theme.chip, in: Capsule())
+          .overlay(Capsule().strokeBorder(theme.line, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .disabled(submitting)
