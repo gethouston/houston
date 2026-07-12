@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+/* Semantic colour tokens: --ht-* on :root (light) and [data-theme="dark"].
+   SINGLE SOURCE OF TRUTH is @houston/design-tokens. The `@theme inline` block
+   below re-exports these to Tailwind's --color-* utilities. Mirrors the wiring
+   in ui/core/src/globals.css so @houston-ai/core components render identically
+   here. */
+@import "@houston/design-tokens/css";
+
+/* @houston-ai/core ships TypeScript source (not a prebuilt stylesheet), so
+   Tailwind must scan its components for the utility classes they use. Point at
+   the workspace symlink in node_modules — Tailwind skips node_modules unless a
+   source is registered explicitly. */
+@source "../../node_modules/@houston-ai/core/src";
+
+/* Dark mode via data-theme="dark" on an ancestor (NOT a .dark class), matching
+   ui/core. A subtree can pin itself light with data-theme="light"; the :not()
+   keeps `dark:` utilities from leaking into such a subtree. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *):not(:where([data-theme="light"], [data-theme="light"] *)));
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* Corner radius kept as a plain :root var (not a @theme token) so direct
+   var(--radius) consumers in @houston-ai/core keep resolving — `@theme inline`
+   emits nothing to :root. */
+:root {
+  --radius: 0.5rem;
+}
+
+/* `@theme inline` (NOT plain `@theme`) is load-bearing for subtree theme
+   pinning: it emits each utility as `background-color: var(--ht-background)`
+   resolved at the CONSUMING element, so a pinned subtree re-resolves every
+   colour. Nothing may read `var(--color-*)` directly — all consumers use
+   `var(--ht-*)`. */
+@theme inline {
+  --color-background: var(--ht-background);
+  --color-foreground: var(--ht-foreground);
+  --color-card: var(--ht-card);
+  --color-card-hover: var(--ht-card-hover);
+  --color-card-foreground: var(--ht-card-fg);
+  --color-dialog: var(--ht-dialog);
+  --color-popover: var(--ht-popover);
+  --color-popover-foreground: var(--ht-popover-fg);
+  --color-primary: var(--ht-primary);
+  --color-primary-foreground: var(--ht-primary-fg);
+  --color-secondary: var(--ht-secondary);
+  --color-secondary-foreground: var(--ht-secondary-fg);
+  --color-muted: var(--ht-muted);
+  --color-muted-foreground: var(--ht-muted-fg);
+  --color-accent: var(--ht-accent);
+  --color-accent-foreground: var(--ht-accent-fg);
+  --color-destructive: var(--ht-destructive);
+  --color-destructive-foreground: var(--ht-destructive-fg);
+  --color-border: var(--ht-border);
+  --color-input: var(--ht-input);
+  --color-ring: var(--ht-ring);
+  --color-sidebar: var(--ht-sidebar);
+  --color-sidebar-foreground: var(--ht-sidebar-fg);
+  --color-sidebar-border: var(--ht-sidebar-border);
+  --color-sidebar-accent: var(--ht-sidebar-accent);
+  --color-sidebar-accent-foreground: var(--ht-sidebar-accent-fg);
+  --color-success: var(--ht-success);
+  --color-success-foreground: var(--ht-success-fg);
+  --color-warning: var(--ht-warning);
+  --color-warning-foreground: var(--ht-warning-fg);
+  --color-highlight: var(--ht-highlight);
+  --color-highlight-foreground: var(--ht-highlight-fg);
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  --font-display:
+    var(--font-space-grotesk), var(--font-inter), ui-sans-serif, system-ui,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+@layer base {
+  * {
+    border-color: var(--ht-border);
+  }
+  body {
+    background-color: var(--ht-background);
+    color: var(--ht-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+button,
+[role="button"],
+a,
+summary {
+  cursor: pointer;
+}
+
+/* Custom scrollbars — match the Houston app's thin, theme-aware treatment. */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ht-foreground) 15%, transparent);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--ht-foreground) 30%, transparent);
+}

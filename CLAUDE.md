@@ -40,6 +40,7 @@ Need specific knowledge? Load on demand:
 - Skills on disk + UI, picker, invocation marker → `knowledge-base/skills.md`
 - Integrations (Composio platform mode — provider port, direct vs gateway adapter, sandbox path, grants model incl. local single-player grants, UI map; PLUS custom integrations, HOU-550: the embedded executor engine, `custom` provider, secure credential card, agent setup tools) → `knowledge-base/integrations.md`
 - Agent manifest, tiers, sidebar, workspaces → `knowledge-base/agent-manifest.md`
+- Agent Store (public catalog, publish/install, store.gethouston.ai) → `knowledge-base/agent-store.md`
 - Multiplayer Teams (orgs) client surface — roles owner/admin/user + per-agent access manager/user, role matrix v2 (`app/src/lib/org-roles.ts`), org dashboard, Share dialog, allowed-models ceiling + per-user model choice, integration allowlists; **plus C8 Spaces** (personal + team spaces, the `org:<slug>` workspace switcher / `x-houston-org` active-space pin, create-team, share-via-team pipeline, seat billing + trial + degrade states, `capabilities.spaces` + per-space role); the gateway is the sole enforcer → `knowledge-base/teams.md` (server contracts: `cloud/docs/contracts/C3`,`C4`,`C7-teams.md`,`C8-spaces-billing.md`)
 - v3 wire protocol (REST + SSE) → `packages/protocol/` (types + zod). The host is `packages/host` (run: `pnpm --filter @houston/host dev`).
 - Provider error taxonomy → `knowledge-base/provider-errors.md` (the shared taxonomy the host/pi providers map to; the old Rust classifier is gone).

@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@houston-ai/agent-schemas": "workspace:*",
+    "@houston/agentstore-contract": "workspace:*",
     "@houston/protocol": "workspace:*",
     "croner": "10.0.1",
     "fflate": "0.8.3",

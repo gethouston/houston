@@ -2,6 +2,7 @@ packages:
   - "ui/*"
   - "app"
   - "packages/*"
+  - "agentstore"
 
 # Approve native build scripts (pnpm 10 blocks dependency postinstall by
 # default). @sentry/cli's postinstall downloads the platform `sentry-cli`

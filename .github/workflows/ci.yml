@@ -231,3 +231,34 @@ jobs:
           name: ios-xcresult
           path: ${{ runner.temp }}/HoustonTests.xcresult
           retention-days: 14
+
+  agentstore:
+    name: Agent Store (contract + app typecheck · tests · DB-less build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (contract)
+        run: pnpm --filter @houston/agentstore-contract typecheck
+
+      - name: Unit + contract tests (contract)
+        run: pnpm --filter @houston/agentstore-contract test
+
+      - name: Typecheck (agentstore)
+        run: pnpm --filter houston-agentstore typecheck
+
+      - name: Unit tests (agentstore)
+        run: pnpm --filter houston-agentstore test
+
+      - name: Build (agentstore, no database)
+        run: pnpm --filter houston-agentstore build

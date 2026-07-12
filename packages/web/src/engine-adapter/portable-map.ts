@@ -8,6 +8,7 @@ import { type PortablePackage, portableInventory } from "@houston/domain";
 import type {
   PortableInventoryPreview,
   PortableManifestSummary,
+  StorePublishRequest,
 } from "../../../../ui/engine-client/src/types";
 
 /** The host's `PortableSelection` wire shape (packages/protocol). */
@@ -30,6 +31,24 @@ export function toWireSelection(sel: {
     skillSlugs: sel.includeSkillSlugs,
     routineIds: sel.includeRoutineIds,
     learningIds: sel.includeLearningIds,
+  };
+}
+
+/** The store publish/update wire body — client selection mapped to the host's
+ *  `PortableSelection`, listing metadata passed through as-is. */
+export function storePublishBody(req: StorePublishRequest): {
+  selection: WireSelection;
+  overrides: StorePublishRequest["overrides"];
+  identity: StorePublishRequest["identity"];
+  creator: StorePublishRequest["creator"];
+  anonymized: boolean;
+} {
+  return {
+    selection: toWireSelection(req.selection),
+    overrides: req.overrides,
+    identity: req.identity,
+    creator: req.creator,
+    anonymized: req.anonymized ?? false,
   };
 }
 

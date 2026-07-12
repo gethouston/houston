@@ -72,6 +72,7 @@ export type AnalyticsEventName =
   | "agent_created"
   | "agent_installed_from_store"
   | "agent_shared"
+  | "agent_published"
   | "agent_imported"
   // Fired when an agent's self-setup mission auto-starts after it is
   // created/imported. Carries `source` (created vs imported).

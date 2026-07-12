@@ -12,7 +12,12 @@
     ],
     "redirects": [
       { "source": "/pricing/", "destination": "/#pricing", "type": 301 },
-      { "source": "/pricing/es/", "destination": "/#pricing", "type": 301 }
+      { "source": "/pricing/es/", "destination": "/#pricing", "type": 301 },
+      {
+        "source": "/agent-store",
+        "destination": "https://store.gethouston.ai",
+        "type": 302
+      }
     ],
     "headers": [
       {

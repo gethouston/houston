@@ -29,6 +29,7 @@ import {
   clearUser as clearSentryUser,
   setUser as setSentryUser,
 } from "./lib/sentry";
+import { useStoreGatewaySession } from "./lib/store-gateway-session";
 import { tauriSystem } from "./lib/tauri";
 import { useAgentStore } from "./stores/agents";
 import { useUIStore } from "./stores/ui";
@@ -40,6 +41,9 @@ export default function App() {
   useAgentInvalidation();
   useAnalyticsSubscriber();
   useIntegrationSessionSync();
+  // Keep the Agent Store adapter pointed at the gateway with the user's session
+  // token in local-sidecar mode (account-based publish; no manage tokens).
+  useStoreGatewaySession();
   // Fetch the host's pi-ai catalog once and hydrate the PROVIDERS cache app-wide,
   // so every provider/model surface renders the real runnable set from load.
   useProviderCatalog();

@@ -1,0 +1,16 @@
+# Next.js
+/.next/
+/out/
+
+# OpenNext / Cloudflare Workers build output
+/.open-next/
+.wrangler/
+
+# TypeScript incremental build
+*.tsbuildinfo
+next-env.d.ts
+
+# Local env
+.env
+.env.local
+.dev.vars

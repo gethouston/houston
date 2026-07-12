@@ -8,6 +8,7 @@ import type {
   WorkspaceRuntime,
 } from "../domain/types";
 import type { EventHub } from "../events/hub";
+import type { LocalIntegrationGrants } from "../integrations/grants";
 import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
@@ -57,6 +58,12 @@ export interface AgentRouteDeps {
    * defeat idle-sleep wholesale.
    */
   agentRequestCount?: () => number;
+  /**
+   * Local per-agent integration grants (desktop/self-host). The publish flow
+   * reads them to declare, in the published IR, the toolkits the agent uses.
+   * Absent on managed cloud pods, where the gateway owns grant policy.
+   */
+  integrationGrants?: LocalIntegrationGrants;
 }
 
 export const DEFAULT_PATHS = new CloudPaths();

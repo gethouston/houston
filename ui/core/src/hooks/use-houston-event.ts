@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect } from "react";
 
 /** Minimal type for the Tauri event wrapper. */
