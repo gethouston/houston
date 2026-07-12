@@ -32,7 +32,7 @@ lang: en
           The REST Missions API is the most direct way to drive a Houston
           agent. Create a mission, then poll it, stream it, or wait for a
           signed webhook. All paths are on
-          <code>https://gateway.gethouston.ai</code> and take
+          <code>https://poc-gateway.gethouston.ai</code> and take
           <code>Authorization: Bearer hst_...</code>.
         </p>
 
@@ -78,7 +78,7 @@ lang: en
         </table>
         </div>
 
-        <div class="codeblock"><pre><code>{% raw %}curl -X POST https://gateway.gethouston.ai/v1/agents/revenue-manager/missions \
+        <div class="codeblock"><pre><code>{% raw %}curl -X POST https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions \
   -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708" \
   -H "Content-Type: application/json" \
   -d '{
@@ -114,7 +114,7 @@ lang: en
           </tbody>
         </table>
         </div>
-        <div class="codeblock"><pre><code>{% raw %}curl "https://gateway.gethouston.ai/v1/agents/revenue-manager/missions?limit=20" \
+        <div class="codeblock"><pre><code>{% raw %}curl "https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions?limit=20" \
   -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
         <div class="codeblock"><pre><code>{% raw %}{
   "missions": [
@@ -142,7 +142,7 @@ lang: en
           <code>webhook</code> block recording when it was delivered, or the
           last error if delivery has not yet succeeded.
         </p>
-        <div class="codeblock"><pre><code>{% raw %}curl https://gateway.gethouston.ai/v1/agents/revenue-manager/missions/msn_7Q4c1a9f2b \
+        <div class="codeblock"><pre><code>{% raw %}curl https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions/msn_7Q4c1a9f2b \
   -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
         <div class="codeblock"><pre><code>{% raw %}{
   "id": "msn_7Q4c1a9f2b",
@@ -169,7 +169,7 @@ lang: en
           <code>Last-Event-ID</code> header to resume without gaps. Native SSE
           clients and curl do this for you.
         </p>
-        <div class="codeblock"><pre><code>{% raw %}curl -N https://gateway.gethouston.ai/v1/agents/revenue-manager/missions/msn_7Q4c1a9f2b/events \
+        <div class="codeblock"><pre><code>{% raw %}curl -N https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions/msn_7Q4c1a9f2b/events \
   -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
         <div class="callout callout-info">
           <div class="callout-label">Browser (EventSource)</div>
@@ -200,7 +200,7 @@ lang: en
           Lists the agents this key can reach, with the slugs you pass to the
           mission endpoints.
         </p>
-        <div class="codeblock"><pre><code>{% raw %}curl https://gateway.gethouston.ai/agents \
+        <div class="codeblock"><pre><code>{% raw %}curl https://poc-gateway.gethouston.ai/agents \
   -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
 
         <h2 id="scope">API-key scope &amp; limits</h2>

@@ -67,13 +67,13 @@ lang: en
 
         <h2 id="connect">Connect a client</h2>
         <p>
-          Point any MCP client at <code>https://gateway.gethouston.ai/mcp</code>
+          Point any MCP client at <code>https://poc-gateway.gethouston.ai/mcp</code>
           with your key in the <code>Authorization</code> header.
         </p>
 
         <h3>Claude Code</h3>
         <p>Add it from the CLI:</p>
-        <div class="codeblock"><pre><code>{% raw %}claude mcp add --transport http houston https://gateway.gethouston.ai/mcp \
+        <div class="codeblock"><pre><code>{% raw %}claude mcp add --transport http houston https://poc-gateway.gethouston.ai/mcp \
   --header "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
         <p>
           Or add it to your project's <code>.mcp.json</code> (the same shape
@@ -83,7 +83,7 @@ lang: en
   "mcpServers": {
     "houston": {
       "type": "http",
-      "url": "https://gateway.gethouston.ai/mcp",
+      "url": "https://poc-gateway.gethouston.ai/mcp",
       "headers": {
         "Authorization": "Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"
       }

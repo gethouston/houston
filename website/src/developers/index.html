@@ -73,7 +73,7 @@ lang: en
           All endpoints live on the Houston Cloud gateway:
         </p>
         <div class="endpoint">
-          <span class="path"><b>https://gateway.gethouston.ai</b></span>
+          <span class="path"><b>https://poc-gateway.gethouston.ai</b></span>
         </div>
         <p>
           Every path below is relative to that origin. All requests and
@@ -129,7 +129,7 @@ lang: en
           <span class="method post">POST</span>
           <span class="path">/v1/agents/<b>:slug</b>/missions</span>
         </div>
-        <div class="codeblock"><pre><code>{% raw %}curl -X POST https://gateway.gethouston.ai/v1/agents/revenue-manager/missions \
+        <div class="codeblock"><pre><code>{% raw %}curl -X POST https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions \
   -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708" \
   -H "Content-Type: application/json" \
   -d '{
@@ -177,7 +177,7 @@ lang: en
           <span class="method get">GET</span>
           <span class="path">/v1/agents/<b>:slug</b>/missions/<b>:id</b></span>
         </div>
-        <div class="codeblock"><pre><code>{% raw %}curl https://gateway.gethouston.ai/v1/agents/revenue-manager/missions/msn_7Q4c1a9f2b \
+        <div class="codeblock"><pre><code>{% raw %}curl https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions/msn_7Q4c1a9f2b \
   -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
         <div class="codeblock"><pre><code>{% raw %}{
   "id": "msn_7Q4c1a9f2b",
@@ -193,7 +193,7 @@ lang: en
           <span class="method get">GET</span>
           <span class="path">/v1/agents/<b>:slug</b>/missions/<b>:id</b>/events</span>
         </div>
-        <div class="codeblock"><pre><code>{% raw %}curl -N https://gateway.gethouston.ai/v1/agents/revenue-manager/missions/msn_7Q4c1a9f2b/events \
+        <div class="codeblock"><pre><code>{% raw %}curl -N https://poc-gateway.gethouston.ai/v1/agents/revenue-manager/missions/msn_7Q4c1a9f2b/events \
   -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
         <div class="callout callout-info">
           <div class="callout-label">Streaming in the browser</div>
@@ -214,7 +214,7 @@ lang: en
           <span class="method get">GET</span>
           <span class="path">/agents</span>
         </div>
-        <div class="codeblock"><pre><code>{% raw %}curl https://gateway.gethouston.ai/agents \
+        <div class="codeblock"><pre><code>{% raw %}curl https://poc-gateway.gethouston.ai/agents \
   -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
 
         <div class="callout callout-success">
