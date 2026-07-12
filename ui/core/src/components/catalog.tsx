@@ -3,6 +3,13 @@
 import { ChevronRight, Search } from "lucide-react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "../utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
 
 /**
  * The flat "catalog plane" family — the browse-page grammar shared by every
@@ -111,25 +118,42 @@ export function CatalogRow({
   );
 }
 
-/** An icon tile for the "Installed" strip: a 48px hover-fill button whose
- *  content IS the art — no border, no chrome. Give it an `aria-label` (the
- *  tile has no text). */
+/** An icon tile for the "Installed" strip: a 48px icon box whose content IS
+ *  the art — no border, no chrome. Hover paints the SAME `hover` fill as the
+ *  catalog rows on the icon box, and the tile's `label` fades in beneath it
+ *  (space is reserved, so nothing reflows). The label doubles as the
+ *  accessible name via the visible text. */
 export function CatalogTile({
+  label,
   className,
   children,
   ...rest
-}: ComponentPropsWithoutRef<"button">) {
+}: ComponentPropsWithoutRef<"button"> & { label: string }) {
   return (
     <button
       type="button"
       className={cn(
-        "flex size-12 items-center justify-center rounded-xl transition-colors",
-        "hover:bg-hover focus-visible:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/40",
+        "group flex w-14 flex-col items-center gap-1 outline-none",
         className,
       )}
       {...rest}
     >
-      {children}
+      <span
+        className={cn(
+          "flex size-12 items-center justify-center rounded-xl transition-colors",
+          "group-hover:bg-hover group-focus-visible:bg-hover group-focus-visible:ring-2 group-focus-visible:ring-focus/40",
+        )}
+      >
+        {children}
+      </span>
+      <span
+        className={cn(
+          "h-4 max-w-full truncate text-[12px] text-ink-muted leading-4 opacity-0 transition-opacity",
+          "group-hover:opacity-100 group-focus-visible:opacity-100",
+        )}
+      >
+        {label}
+      </span>
     </button>
   );
 }
@@ -180,5 +204,43 @@ export function CatalogSearchField({
         className="h-9 w-full rounded-full border border-line-input bg-input pr-4 pl-10 text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
       />
     </div>
+  );
+}
+
+/** The category filter beside the search field: a rounded select matching the
+ *  field's height. `options` include whatever "all" entry the consumer wants
+ *  first; all copy comes from the consumer. */
+export function CatalogFilterSelect({
+  value,
+  onChange,
+  options,
+  label,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  label: string;
+  className?: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger
+        aria-label={label}
+        className={cn(
+          "h-9 rounded-full border-line-input bg-input text-ink text-sm",
+          className,
+        )}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

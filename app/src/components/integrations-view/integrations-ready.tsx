@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { CatalogFilterSelect } from "@houston-ai/core";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDisconnectIntegration } from "../../hooks/queries";
 import {
   AppDetailSheet,
   CustomIntegrationsSection,
+  catalogCategorySlugs,
+  categoryLabel,
   DisconnectAppDialog,
   INTEGRATION_PROVIDER,
   ReconnectBanner,
   SectionHeader,
+  UNCATEGORIZED,
   useConnectedApps,
   useConnectFlow,
   useConnectionSelection,
@@ -49,7 +53,25 @@ export function IntegrationsReady({
 }: IntegrationsReadyProps) {
   const { t } = useTranslation("integrations");
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("all");
   const apps = useConnectedApps();
+  // The category dropdown's options: "all" first, then the catalog's primary
+  // categories in section order, the uncategorized bucket labeled "Other".
+  const categoryOptions = useMemo(() => {
+    const connected = new Set(apps.connData.map((c) => c.toolkit));
+    return [
+      { value: "all", label: t("home.allCategories") },
+      ...catalogCategorySlugs({ catalog: apps.catalogData, connected }).map(
+        (slug) => ({
+          value: slug,
+          label:
+            slug === UNCATEGORIZED
+              ? t("home.otherCategory")
+              : categoryLabel(slug),
+        }),
+      ),
+    ];
+  }, [apps.catalogData, apps.connData, t]);
   const connectFlow = useConnectFlow({ autoGrant: false });
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const {
@@ -68,12 +90,20 @@ export function IntegrationsReady({
         title={t("home.title")}
         subtitle={t("home.description")}
         trailing={
-          <CatalogSearchField
-            value={query}
-            onChange={setQuery}
-            label={t("home.searchPlaceholder")}
-            className="w-64 sm:w-72"
-          />
+          <div className="flex items-center gap-2">
+            <CatalogSearchField
+              value={query}
+              onChange={setQuery}
+              label={t("home.searchPlaceholder")}
+              className="w-52 sm:w-60"
+            />
+            <CatalogFilterSelect
+              value={category}
+              onChange={setCategory}
+              label={t("home.categoryFilter")}
+              options={categoryOptions}
+            />
+          </div>
         }
         className="mb-7"
       />
@@ -120,6 +150,7 @@ export function IntegrationsReady({
             connections={apps.connData}
             connectFlow={connectFlow}
             query={query}
+            category={category}
           />
         )}
       </div>

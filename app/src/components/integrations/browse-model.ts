@@ -152,7 +152,7 @@ export const UNCATEGORIZED = "__uncategorized";
  * Bounds the row count at first paint: each browse section renders at most this
  * many rows until the user expands it, and every section expands independently.
  */
-export const SECTION_PREVIEW_CAP = 10;
+export const SECTION_PREVIEW_CAP = 6;
 
 /** One category's slice: `category` is the primary slug (or {@link UNCATEGORIZED}),
  * `connectable` the section's apps A-Z by name. */
@@ -173,13 +173,17 @@ export function groupCatalogByCategory(opts: {
   catalog: IntegrationToolkit[];
   query: string;
   connected: ReadonlySet<string>;
+  /** Narrow to ONE primary-category slug ("all" = every section). */
+  category?: string;
 }): CatalogSection[] {
   const q = opts.query.trim().toLowerCase();
+  const only = opts.category && opts.category !== "all" ? opts.category : null;
   const buckets = new Map<string, IntegrationToolkit[]>();
   for (const t of opts.catalog) {
     if (opts.connected.has(t.slug)) continue;
     if (!matchesQuery(t, q)) continue;
     const category = t.categories?.[0] || UNCATEGORIZED;
+    if (only && category !== only) continue;
     const bucket = buckets.get(category);
     if (bucket) bucket.push(t);
     else buckets.set(category, [t]);
@@ -196,4 +200,17 @@ export function groupCatalogByCategory(opts: {
     if (bySize !== 0) return bySize;
     return categoryLabel(a.category).localeCompare(categoryLabel(b.category));
   });
+}
+
+/**
+ * The primary-category slugs present in the browse catalog (connected apps
+ * excluded), in {@link groupCatalogByCategory}'s section order — the option
+ * set for the category filter beside the search field. The consumer prepends
+ * its "all" entry and labels {@link UNCATEGORIZED} itself.
+ */
+export function catalogCategorySlugs(opts: {
+  catalog: IntegrationToolkit[];
+  connected: ReadonlySet<string>;
+}): string[] {
+  return groupCatalogByCategory({ ...opts, query: "" }).map((s) => s.category);
 }

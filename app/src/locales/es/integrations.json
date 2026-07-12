@@ -91,6 +91,8 @@
     "title": "Integraciones",
     "description": "Trabaja con tus agentes en tus herramientas favoritas.",
     "searchPlaceholder": "Buscar integraciones...",
+    "allCategories": "Todas las categorías",
+    "categoryFilter": "Filtrar por categoría",
     "installedTitle": "Instaladas",
     "otherCategory": "Otras",
     "showAllApps": "Ver las {{count}} aplicaciones",

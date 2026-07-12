@@ -17,6 +17,7 @@ export {
   browseCatalogView,
   type CatalogSection,
   type CategoryListView,
+  catalogCategorySlugs,
   categoriesOf,
   categoryLabel,
   categoryListView,

@@ -36,11 +36,14 @@ export function CategoryCatalog({
   connections,
   connectFlow,
   query,
+  category,
 }: {
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
   connectFlow: ConnectFlow;
   query: string;
+  /** The filter dropdown's pick: a primary-category slug or "all". */
+  category: string;
 }) {
   const { t } = useTranslation("integrations");
 
@@ -53,8 +56,8 @@ export function CategoryCatalog({
     [connections],
   );
   const sections: CatalogSection[] = useMemo(
-    () => groupCatalogByCategory({ catalog, query, connected }),
-    [catalog, query, connected],
+    () => groupCatalogByCategory({ catalog, query, connected, category }),
+    [catalog, query, connected, category],
   );
 
   // A fresh query resets every section back to its capped preview. Adjusting
