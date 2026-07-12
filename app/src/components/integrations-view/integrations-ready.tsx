@@ -71,6 +71,7 @@ export function IntegrationsReady({
           <CatalogSearchField
             value={query}
             onChange={setQuery}
+            label={t("home.searchPlaceholder")}
             className="w-64 sm:w-72"
           />
         }

@@ -10,6 +10,7 @@ export * from "./components/button";
 export * from "./components/button-group";
 export * from "./components/card";
 export * from "./components/carousel";
+export * from "./components/catalog";
 export * from "./components/collapsible";
 export * from "./components/command";
 export * from "./components/confirm-dialog";

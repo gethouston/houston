@@ -1,3 +1,4 @@
+import { CatalogGrid, CatalogShowMore } from "@houston-ai/core";
 import type {
   IntegrationConnection,
   IntegrationToolkit,
@@ -105,7 +106,7 @@ export function CategoryCatalog({
                   }
                   className="mb-3"
                 />
-                <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
+                <CatalogGrid>
                   {rows.map((tk) => (
                     <PlaneAppRow
                       key={tk.slug}
@@ -115,10 +116,9 @@ export function CategoryCatalog({
                       busy={connectFlow.state !== null}
                     />
                   ))}
-                </div>
+                </CatalogGrid>
                 {hasMore && (
-                  <button
-                    type="button"
+                  <CatalogShowMore
                     onClick={() =>
                       setExpanded((prev) => {
                         const next = new Set(prev);
@@ -126,12 +126,11 @@ export function CategoryCatalog({
                         return next;
                       })
                     }
-                    className="mt-1 px-3 text-[13px] text-ink-muted transition-colors hover:text-ink"
                   >
                     {t("home.showAllApps", {
                       count: section.connectable.length,
                     })}
-                  </button>
+                  </CatalogShowMore>
                 )}
               </section>
             );
