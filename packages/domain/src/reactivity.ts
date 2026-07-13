@@ -45,8 +45,8 @@ export function agentFileEventType(
   if (relPath.startsWith(".houston/config")) return "ConfigChanged";
   if (relPath.startsWith(".houston/learnings")) return "LearningsChanged";
   if (
-    relPath.startsWith(".houston/conversations") ||
-    relPath.startsWith(".houston/sessions")
+    relPath.startsWith(".houston/runtime/conversations") ||
+    relPath.startsWith(".houston/runtime/sessions")
   ) {
     return "ConversationsChanged";
   }
