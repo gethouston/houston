@@ -134,7 +134,7 @@
     },
     "link": {
       "label": "Instalar por um link",
-      "placeholder": "Cole um link de compartilhamento, como https://store.gethouston.ai/a/agent",
+      "placeholder": "Cole um link de compartilhamento, como https://agents.gethouston.ai/a/agent",
       "fetch": "Buscar",
       "fetching": "Buscando",
       "hint": "Cole o link que te deram. Houston busca o agente para você revisar antes de instalar.",

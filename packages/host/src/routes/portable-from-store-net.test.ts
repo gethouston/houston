@@ -55,7 +55,7 @@ test("vetResolvedHost rejects when ANY answer is private", async () => {
 });
 
 test("vetResolvedHost passes an all-public resolution", async () => {
-  const result = await vetResolvedHost("store.gethouston.ai", async () => [
+  const result = await vetResolvedHost("agents.gethouston.ai", async () => [
     "93.184.216.34",
   ]);
   expect(result).toEqual({ ok: true });

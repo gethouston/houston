@@ -114,7 +114,7 @@ Both live in `app/src-tauri/src/commands/portable.rs`.
 
 Beside "email a file" and "import from a friend" there is a THIRD path for the
 same gathered content: publish it to the public Agent Store at
-`store.gethouston.ai`. Instead of writing a `.houstonagent` zip, the host turns
+`agents.gethouston.ai`. Instead of writing a `.houstonagent` zip, the host turns
 the portable content into an AgentIR and POSTs it to the store, then hands back a
 share URL anyone can install from. The recipient side of that flow reuses this
 doc's import wizard verbatim (a store link resolves to the same portable content

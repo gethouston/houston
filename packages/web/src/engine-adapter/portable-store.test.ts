@@ -70,7 +70,7 @@ beforeEach(() => {
         return jsonResponse({
           agentId: "S1",
           slug: "mailer",
-          shareUrl: "https://store.gethouston.ai/a/mailer",
+          shareUrl: "https://agents.gethouston.ai/a/mailer",
         });
       }
       if (url.includes("/v1/agentstore/agents/S1") && method === "PATCH") {
@@ -103,7 +103,7 @@ afterEach(() => {
 test("publish gathers the IR, POSTs it to the gateway, and records the pointer", async () => {
   const res = await publishToStore(cfg, "A", req);
   expect(res).toEqual({
-    shareUrl: "https://store.gethouston.ai/a/mailer",
+    shareUrl: "https://agents.gethouston.ai/a/mailer",
     slug: "mailer",
     storeAgentId: "S1",
   });
@@ -117,7 +117,7 @@ test("publish gathers the IR, POSTs it to the gateway, and records the pointer",
   expect(pointer).toMatchObject({
     storeAgentId: "S1",
     slug: "mailer",
-    shareUrl: "https://store.gethouston.ai/a/mailer",
+    shareUrl: "https://agents.gethouston.ai/a/mailer",
   });
 });
 
@@ -125,7 +125,7 @@ test("a kept pointer re-publishes the SAME store agent (no duplicate POST)", asy
   pointer = {
     storeAgentId: "S1",
     slug: "mailer",
-    shareUrl: "https://store.gethouston.ai/a/mailer",
+    shareUrl: "https://agents.gethouston.ai/a/mailer",
     publishedAt: "2026-07-09T00:00:00.000Z",
   };
   const res = await publishToStore(cfg, "A", req);
@@ -142,7 +142,7 @@ test("getPublication merges the pointer with the live listing", async () => {
   pointer = {
     storeAgentId: "S1",
     slug: "mailer",
-    shareUrl: "https://store.gethouston.ai/a/mailer",
+    shareUrl: "https://agents.gethouston.ai/a/mailer",
     publishedAt: "2026-07-09T00:00:00.000Z",
   };
   const status = await getPublication(cfg, "A");
@@ -157,7 +157,7 @@ test("getPublication on a never-published agent needs no store call", async () =
   expect(status).toEqual({
     published: false,
     linked: false,
-    storeUrl: "https://store.gethouston.ai",
+    storeUrl: "https://agents.gethouston.ai",
   });
 });
 
@@ -165,7 +165,7 @@ test("unpublish PATCHes the gateway and keeps the pointer", async () => {
   pointer = {
     storeAgentId: "S1",
     slug: "mailer",
-    shareUrl: "https://store.gethouston.ai/a/mailer",
+    shareUrl: "https://agents.gethouston.ai/a/mailer",
     publishedAt: "2026-07-09T00:00:00.000Z",
   };
   const res = await unpublishFromStore(cfg, "A");

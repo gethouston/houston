@@ -50,7 +50,7 @@ export const exampleAgentIr: AgentIR = {
     tags: ["email", "productivity", "inbox"],
     creator: {
       displayName: "Avery Chen",
-      url: "https://store.gethouston.ai/@avery",
+      url: "https://agents.gethouston.ai/@avery",
     },
   },
   instructions:
