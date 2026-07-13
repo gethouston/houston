@@ -4,21 +4,6 @@
     "loading": "Cargando…",
     "emptyTitle": "Programa y olvídate",
     "emptyDescription": "Una automatización es tu agente trabajando por su cuenta, sin que tengas que pedírselo cada vez. Describe una tarea una sola vez, elige cuándo debe ocurrir y él se encarga del resto.",
-    "emptyStepsTitle": "Cómo funciona",
-    "emptySteps": [
-      {
-        "title": "Dile qué hacer",
-        "description": "Describe la tarea en lenguaje simple, como se lo dirías a una persona."
-      },
-      {
-        "title": "Elige cuándo ocurre",
-        "description": "Elige cuándo se ejecuta: cada mañana, cada hora, una vez por semana, lo que te convenga."
-      },
-      {
-        "title": "Revisa preguntando",
-        "description": "No hace falta revisar su trabajo a mano, solo pregunta qué pasó."
-      }
-    ],
     "newRoutine": "Nueva automatización",
     "newRoutineWithAi": "Con IA",
     "newRoutineManually": "Manualmente",
@@ -30,7 +15,9 @@
     "timezoneLabel": "Zona horaria",
     "timezoneHint": "Todas tus automatizaciones programadas se ejecutan en esta zona horaria.",
     "timezoneSearchPlaceholder": "Buscar zonas horarias…",
-    "timezoneNoResults": "No se encontraron zonas horarias"
+    "timezoneNoResults": "No se encontraron zonas horarias",
+    "sectionActive": "Activas",
+    "sectionPaused": "Pausadas"
   },
   "setupChat": {
     "missionTitle": "Configurar una nueva automatización"

@@ -100,22 +100,16 @@ export interface ScheduleLabels {
   summary: ScheduleSummaryLabels;
 }
 
-/** A single step in the empty state's "how it works" walkthrough. */
-export interface RoutineHowItWorksStep {
-  title: string;
-  description: string;
-}
-
 /** RoutinesGrid empty state + meta row. */
 export interface RoutinesGridLabels {
   loading: string;
   emptyTitle: string;
   emptyDescription: string;
-  /** Heading above the 3-step walkthrough in the empty state. */
-  emptyStepsTitle: string;
-  /** The walkthrough itself: describe the task, set a schedule, review in chat. */
-  emptySteps: RoutineHowItWorksStep[];
   descriptionShort: string;
+  /** Section headers over the split list (catalog grammar, with count chips).
+   *  The Active header only renders when a Paused section exists. */
+  sectionActive: string;
+  sectionPaused: string;
   /** "New routine" split-button trigger + its two menu entries. */
   newRoutine: string;
   newRoutineWithAi: string;

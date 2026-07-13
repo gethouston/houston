@@ -116,11 +116,18 @@ export function RoutineRow({
   const hasMenu = runNow || stopRun || onSave || onEditWithAi || onDelete;
 
   return (
+    // Catalog-grammar row: transparent at rest, the `hover` fill sweeping the
+    // full row; while the inline editor is open the row + panel share one
+    // `chip` card so they read as a single surface.
     <div
       data-testid="routine-row"
-      className={cn(!routine.enabled && "opacity-55")}
+      className={cn(
+        "rounded-xl transition-colors",
+        expanded ? "bg-chip" : "hover:bg-hover",
+        !routine.enabled && !expanded && "opacity-55 hover:opacity-100",
+      )}
     >
-      <div className="flex items-center gap-4 px-5 py-4">
+      <div className="flex items-center gap-3 px-3 py-2.5">
         {/* Leading state icon — clock while waiting, pulsing bolt mid-run,
             amber pause while a run sleeps on a usage-limit window. */}
         <RoutineRowStatus

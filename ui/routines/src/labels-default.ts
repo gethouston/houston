@@ -82,26 +82,10 @@ export const DEFAULT_GRID_LABELS: RoutinesGridLabels = {
   emptyTitle: "Set it and forget it",
   emptyDescription:
     "An automation is your agent working on its own, without you asking each time. Describe a task once, choose when it should happen, and it takes care of the rest.",
-  emptyStepsTitle: "How it works",
-  emptySteps: [
-    {
-      title: "Tell it what to do",
-      description:
-        "Describe the task in plain language, like you would to a person.",
-    },
-    {
-      title: "Choose when it happens",
-      description:
-        "Pick when it runs: every morning, every hour, once a week, whatever fits.",
-    },
-    {
-      title: "Review by asking",
-      description:
-        "No need to check its work by hand, just ask the assistant what happened.",
-    },
-  ],
   descriptionShort:
     "Work your agent does on its own, pinging you only when something needs attention.",
+  sectionActive: "Active",
+  sectionPaused: "Paused",
   newRoutine: "New automation",
   newRoutineWithAi: "With AI",
   newRoutineManually: "Manually",

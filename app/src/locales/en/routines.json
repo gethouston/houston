@@ -4,21 +4,6 @@
     "loading": "Loading…",
     "emptyTitle": "Set it and forget it",
     "emptyDescription": "An automation is your agent working on its own, without you asking each time. Describe a task once, choose when it should happen, and it takes care of the rest.",
-    "emptyStepsTitle": "How it works",
-    "emptySteps": [
-      {
-        "title": "Tell it what to do",
-        "description": "Describe the task in plain language, like you would to a person."
-      },
-      {
-        "title": "Choose when it happens",
-        "description": "Pick when it runs: every morning, every hour, once a week, whatever fits."
-      },
-      {
-        "title": "Review by asking",
-        "description": "No need to check its work by hand, just ask what happened."
-      }
-    ],
     "newRoutine": "New automation",
     "newRoutineWithAi": "With AI",
     "newRoutineManually": "Manually",
@@ -30,7 +15,9 @@
     "timezoneLabel": "Timezone",
     "timezoneHint": "All your scheduled automations run in this timezone.",
     "timezoneSearchPlaceholder": "Search timezones…",
-    "timezoneNoResults": "No timezones found"
+    "timezoneNoResults": "No timezones found",
+    "sectionActive": "Active",
+    "sectionPaused": "Paused"
   },
   "setupChat": {
     "missionTitle": "Set up a new automation"

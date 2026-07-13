@@ -737,7 +737,10 @@ distinction, not a user distinction, so the tab set never varies by deployment
 and the wake mechanism is a choice INSIDE the editor. The domain model stays
 ONE `routines.json` list; the tab (`app/src/components/tabs/routines-tab.tsx`)
 renders it unfiltered, with per-row sentence summaries ("Runs every day at
-9:00" vs "Wakes on an event in Gmail").
+9:00" vs "Wakes on an event in Gmail"). The list sits on the shared catalog
+grammar (inventory v24/v25): flat hover-fill rows, Active / Paused sections
+with `CatalogSectionHeader` count chips, a pure empty state (title +
+description + one filled CTA).
 
 `RoutineRowEdit` owns the wake choice: a plain-language "When should this
 happen?" toggle ("On a schedule" / "When something happens in an app"),

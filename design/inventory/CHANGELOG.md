@@ -14,12 +14,22 @@ a new email, a message, a change in an app"), shown only where the deployment
 supports event triggers (`capabilities.triggers`) — the tab set no longer
 varies by deployment. The trigger picker's no-connected-apps empty state gains
 a "Connect an app" CTA (dashed panel) that jumps to the Integrations surface.
-CONTRACT change: `RoutineRowLabels` gains `whenTitle`, `whenSchedule`,
-`whenScheduleHint`, `whenEvent`, `whenEventHint`; `TriggerLabels` gains
-`connectApp`; `TriggerPicker` gains `onConnectApp`; `RoutinesGrid`'s
-`newDraftVariant` prop is replaced by `allowEventWake` (the new-draft editor
-always starts on the schedule side and the user switches). No new component;
-`routine-row` anatomy gains `wake-choice` inside its edit panel.
+The list surface converged on the v24 catalog grammar: `routine-row` is now a
+flat transparent row with the full-row `hover` fill (the bg-chip slab card and
+hairline dividers are gone), the list splits into Active / Paused sections
+under `CatalogSectionHeader` count chips (headers render only when both groups
+exist), the local new-draft editor sits in its own bordered `input` panel, and
+the empty state is the pure catalog shape (title + description + one filled
+CTA — the three-step walkthrough is gone; the editor's wake choice teaches
+itself). CONTRACT change: `RoutineRowLabels` gains `whenTitle`,
+`whenSchedule`, `whenScheduleHint`, `whenEvent`, `whenEventHint`;
+`TriggerLabels` gains `connectApp`; `TriggerPicker` gains `onConnectApp`;
+`RoutinesGridLabels` gains `sectionActive` / `sectionPaused` and DROPS
+`emptyStepsTitle` / `emptySteps` (with `RoutineHowItWorksStep`);
+`RoutinesGrid`'s `newDraftVariant` prop is replaced by `allowEventWake` (the
+new-draft editor always starts on the schedule side and the user switches).
+No new component; `routine-row` anatomy gains `wake-choice` inside its edit
+panel.
 
 ## v24 - 2026-07-12
 
