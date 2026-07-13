@@ -4,10 +4,13 @@
  * callers: a row's inline "Edit manually" panel and the grid's LOCAL new-routine
  * draft (nothing is written until Save succeeds).
  *
- * A single editor authors exactly ONE wake mechanism, fixed by `variant`: the
- * Routines surface edits a cron `schedule` (the built-in ScheduleBuilder), the
- * Reactions surface edits an event `trigger` (the app-injected trigger editor).
- * There is no in-editor toggle between them — the surface decides.
+ * A routine wakes in exactly ONE of two ways — a cron `schedule` or an event
+ * `trigger` (C9) — and the editor owns that choice: where the deployment
+ * supports event triggers (`allowEventWake` + an injected trigger editor), a
+ * plain-language "When should this happen?" toggle switches between the
+ * built-in ScheduleBuilder and the app-injected trigger editor. Where it
+ * doesn't, the toggle is absent and the editor authors a schedule, exactly as
+ * before — one product, capability-shaped.
  *
  * The panel does NOT own its open/closed state — the parent mounts/unmounts it.
  * It owns the field values, mirrored against a `baseline` of the last adopted
@@ -16,6 +19,7 @@
  * Cancel.
  */
 import { Button, cn } from "@houston-ai/core";
+import { Clock, Zap } from "lucide-react";
 import { useState } from "react";
 import {
   DEFAULT_ROW_LABELS,
@@ -52,10 +56,12 @@ export interface RoutineRowEditProps {
   /** Override the Save button text (e.g. "Create routine"). */
   saveLabel?: string;
   autoFocusName?: boolean;
-  /** Which wake mechanism this editor authors: a cron schedule (default) or an
-   *  event trigger. The Reactions surface passes "event". */
-  variant?: RoutineWakeMode;
-  /** App-wired trigger editor (picker + config form); required for "event". */
+  /** Whether the "when something happens in an app" wake is offered — true only
+   *  where the deployment supports event triggers (`capabilities.triggers`).
+   *  Off, the editor is schedule-only and shows no choice. */
+  allowEventWake?: boolean;
+  /** App-wired trigger editor (picker + config form); required for the event
+   *  wake to be editable. */
   renderTriggerEditor?: RenderTriggerEditor;
   /** Live status of an already-provisioned event routine (editor badge). */
   triggerStatus?: TriggerStatusItem;
@@ -73,7 +79,7 @@ export function RoutineRowEdit({
   requireContent = false,
   saveLabel,
   autoFocusName = false,
-  variant = "schedule",
+  allowEventWake = false,
   renderTriggerEditor,
   triggerStatus,
   onReconnectTrigger,
@@ -82,7 +88,6 @@ export function RoutineRowEdit({
   triggerLabels = DEFAULT_TRIGGER_LABELS,
   locale = "en-US",
 }: RoutineRowEditProps) {
-  const isEvent = variant === "event";
   const {
     name,
     setName,
@@ -96,14 +101,37 @@ export function RoutineRowEdit({
     setTriggerValid,
     isDirty,
   } = useRoutineEditFields(initial);
+  // An existing event routine opens on its event; everything else on schedule.
+  const initialMode: RoutineWakeMode = initial.trigger ? "event" : "schedule";
+  const [mode, setMode] = useState<RoutineWakeMode>(initialMode);
+  // Adopt an external wake change (agent rewrote the routine) while the user
+  // hasn't flipped the choice themselves — same render-phase adjust as the
+  // field baseline in useRoutineEditFields.
+  const [modeBaseline, setModeBaseline] =
+    useState<RoutineWakeMode>(initialMode);
+  if (initialMode !== modeBaseline) {
+    setModeBaseline(initialMode);
+    if (mode === modeBaseline) setMode(initialMode);
+  }
   const [saving, setSaving] = useState(false);
+
+  const isEvent = mode === "event";
+  // The choice needs both the capability AND the injected editor; an existing
+  // event routine keeps its event side visible even if the editor is absent.
+  const showWakeChoice = allowEventWake && !!renderTriggerEditor;
 
   const wakeReady = isEvent
     ? !!trigger && triggerValid
     : schedule.trim().length > 0;
   const contentReady = !requireContent || (!!name.trim() && !!prompt.trim());
+  // Switching wake mode is itself an edit (e.g. event → schedule keeps the
+  // default cron but must still be savable), so it counts toward dirtiness.
+  const modeChanged = initialMode !== mode;
   const saveDisabled =
-    saving || !wakeReady || !contentReady || (!requireContent && !isDirty);
+    saving ||
+    !wakeReady ||
+    !contentReady ||
+    (!requireContent && !isDirty && !modeChanged);
 
   const handleSave = async () => {
     const wake: RoutineWake =
@@ -126,6 +154,23 @@ export function RoutineRowEdit({
     "outline-none transition-shadow duration-200",
     "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
   );
+
+  // Option cards for the wake choice: icon + label + one-line example. The
+  // selected card reads by border weight AND the filled icon chip (never color
+  // alone); aria-pressed carries it for AT.
+  const wakeCard = (active: boolean) =>
+    cn(
+      "flex-1 flex items-start gap-2.5 rounded-lg border p-3 text-left",
+      "transition-colors duration-150",
+      active
+        ? "border-ink/60 bg-chip"
+        : "border-ink/[0.08] bg-input hover:bg-hover",
+    );
+  const wakeIcon = (active: boolean) =>
+    cn(
+      "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full",
+      active ? "bg-action text-action-text" : "bg-chip text-ink-muted",
+    );
 
   return (
     <div className="px-5 pb-4 space-y-3">
@@ -156,6 +201,52 @@ export function RoutineRowEdit({
           className={cn(fieldClass, "leading-relaxed resize-none")}
         />
       </div>
+
+      {showWakeChoice && (
+        <div>
+          <p className="text-xs font-medium text-ink-muted mb-1.5">
+            {labels.whenTitle}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              aria-pressed={!isEvent}
+              className={wakeCard(!isEvent)}
+              onClick={() => setMode("schedule")}
+            >
+              <span className={wakeIcon(!isEvent)}>
+                <Clock className="size-3.5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-ink">
+                  {labels.whenSchedule}
+                </span>
+                <span className="block text-xs text-ink-muted mt-0.5">
+                  {labels.whenScheduleHint}
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              aria-pressed={isEvent}
+              className={wakeCard(isEvent)}
+              onClick={() => setMode("event")}
+            >
+              <span className={wakeIcon(isEvent)}>
+                <Zap className="size-3.5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-ink">
+                  {labels.whenEvent}
+                </span>
+                <span className="block text-xs text-ink-muted mt-0.5">
+                  {labels.whenEventHint}
+                </span>
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {isEvent ? (
         <div className="space-y-3">

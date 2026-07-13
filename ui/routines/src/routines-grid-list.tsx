@@ -46,7 +46,7 @@ export function RoutinesGridList({
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
   scheduleLabels = DEFAULT_SCHEDULE_LABELS,
   triggerLabels = DEFAULT_TRIGGER_LABELS,
-  newDraftVariant = "schedule",
+  allowEventWake = false,
   renderTriggerEditor,
   triggerStatuses = {},
   triggerSummaries = {},
@@ -99,15 +99,11 @@ export function RoutinesGridList({
           {newDraft && (
             <div className="px-5 py-4">
               <RoutineRowEdit
-                initial={
-                  newDraftVariant === "event"
-                    ? { name: "", prompt: "" }
-                    : { name: "", prompt: "", schedule: "0 9 * * *" }
-                }
+                initial={{ name: "", prompt: "", schedule: "0 9 * * *" }}
                 requireContent
                 saveLabel={l.createRoutine}
                 autoFocusName
-                variant={newDraftVariant}
+                allowEventWake={allowEventWake}
                 onSave={newDraft.onSave}
                 onCancel={newDraft.onCancel}
                 renderTriggerEditor={renderTriggerEditor}
@@ -159,6 +155,7 @@ export function RoutinesGridList({
                     ? () => onStopRun(routine.id, lastRun.id)
                     : undefined
                 }
+                allowEventWake={allowEventWake}
                 renderTriggerEditor={renderTriggerEditor}
                 triggerStatus={triggerStatuses[routine.id]}
                 triggerSummary={triggerSummaries[routine.id]}

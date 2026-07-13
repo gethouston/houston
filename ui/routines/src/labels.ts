@@ -172,6 +172,14 @@ export interface RoutineRowLabels {
   /** Inline edit panel fields. */
   nameLabel: string;
   namePlaceholder: string;
+  /** The wake-mechanism choice ("When should this happen?") shown when the
+   *  deployment supports event triggers; plain human copy, never "trigger".
+   *  Each option card carries a label and a one-line example hint. */
+  whenTitle: string;
+  whenSchedule: string;
+  whenScheduleHint: string;
+  whenEvent: string;
+  whenEventHint: string;
   /** The prompt sent to the agent when the routine fires — framed to the
    *  user as an instruction, not a technical "prompt". */
   instructionLabel: string;
@@ -195,8 +203,8 @@ export interface TriggerStatusLabels {
  * and the status badge. All human, never "webhook"/"schema"/"instance".
  */
 export interface TriggerLabels {
-  /** Generic "wakes on an event" fallback, shown when a reaction routine has no
-   *  humanized event summary yet. */
+  /** Generic "wakes on an event" fallback, shown when an event-driven routine
+   *  has no humanized event summary yet. */
   wakeEvent: string;
   /** App + event picker. */
   chooseApp: string;
@@ -204,6 +212,8 @@ export interface TriggerLabels {
   changeApp: string;
   /** Shown when the agent has no connected apps to build a trigger on. */
   noApps: string;
+  /** CTA under the no-apps empty state — jumps to the Integrations surface. */
+  connectApp: string;
   loadingEvents: string;
   noEvents: string;
   /** Subtle latency hint under a poll-type event ("checks every few minutes"). */

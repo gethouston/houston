@@ -96,8 +96,8 @@
         "body": "The board of every conversation with this agent. Running, needs you, done."
       },
       "tabRoutines": {
-        "title": "Routines",
-        "body": "Your assistant already comes with ready-made routines, like the Morning briefing. Schedule anything else to run in the background here."
+        "title": "Automations",
+        "body": "Your assistant already comes with ready-made automations, like the Morning briefing. Set up anything else to happen on its own here."
       },
       "tabIntegrations": {
         "title": "Integrations",

@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 22
+version: 23
 
 components:
   - id: agent-avatar
@@ -511,7 +511,9 @@ components:
       one-click reconnect on a disconnected account). The toggle enables/disables
       the routine; the leading status icon reflects the live run state. The
       quick-actions menu renames inline and deletes behind a confirm dialog.
-      Authoring the schedule or event trigger is a separate surface.
+      The inline edit panel authors the wake mechanism: where the deployment
+      supports event triggers it offers a plain-language "When should this
+      happen?" choice (schedule / app event); otherwise it is schedule-only.
     a11y: >-
       listitem role; toggle labeled with the routine name; next-run/status as
       text; status never color-alone (icon shape + row text carry it); menu

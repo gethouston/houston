@@ -3,6 +3,24 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v23 - 2026-07-12
+
+The Routines/Reactions tab split is merged into ONE "Automations" tab, and the
+wake mechanism becomes a choice INSIDE the routine editor. `routine-row`'s
+inline edit panel gains a "When should this happen?" choice rendered as two
+option cards (Clock / Zap icon chip + label + one-line example hint: "On a
+schedule — every morning, once a week, you choose" / "When something happens —
+a new email, a message, a change in an app"), shown only where the deployment
+supports event triggers (`capabilities.triggers`) — the tab set no longer
+varies by deployment. The trigger picker's no-connected-apps empty state gains
+a "Connect an app" CTA (dashed panel) that jumps to the Integrations surface.
+CONTRACT change: `RoutineRowLabels` gains `whenTitle`, `whenSchedule`,
+`whenScheduleHint`, `whenEvent`, `whenEventHint`; `TriggerLabels` gains
+`connectApp`; `TriggerPicker` gains `onConnectApp`; `RoutinesGrid`'s
+`newDraftVariant` prop is replaced by `allowEventWake` (the new-draft editor
+always starts on the schedule side and the user switches). No new component;
+`routine-row` anatomy gains `wake-choice` inside its edit panel.
+
 ## v22 - 2026-07-12
 
 `suggest-reusable-card` gains a third variant: `learning`. The agent's

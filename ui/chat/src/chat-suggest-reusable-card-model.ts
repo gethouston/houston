@@ -29,7 +29,7 @@ export interface ChatSuggestReusableLabels {
 export const DEFAULT_SUGGEST_REUSABLE_LABELS: ChatSuggestReusableLabels = {
   eyebrow: "Save this for next time",
   skillTitle: "Save as a Skill",
-  routineTitle: "Save as a Routine",
+  routineTitle: "Save as an Automation",
   learningTitle: "Remember this",
   notNow: "Not now",
 };

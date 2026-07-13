@@ -34,7 +34,7 @@ async function routineNames(agentId: string): Promise<string[]> {
 async function openRoutinesTab(page: import("@playwright/test").Page) {
   await page.locator('[data-tour-target="tab-routines"]').click();
   await expect(
-    page.getByRole("button", { name: "New routine" }).first(),
+    page.getByRole("button", { name: "New automation" }).first(),
   ).toBeVisible();
 }
 

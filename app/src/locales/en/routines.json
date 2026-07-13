@@ -3,7 +3,7 @@
   "grid": {
     "loading": "Loading…",
     "emptyTitle": "Set it and forget it",
-    "emptyDescription": "A routine is your agent working on a schedule, without you asking each time. Describe a task once, and it runs on its own, daily, weekly, or however often you like.",
+    "emptyDescription": "An automation is your agent working on its own, without you asking each time. Describe a task once, choose when it should happen, and it takes care of the rest.",
     "emptyStepsTitle": "How it works",
     "emptySteps": [
       {
@@ -11,34 +11,34 @@
         "description": "Describe the task in plain language, like you would to a person."
       },
       {
-        "title": "Choose when it runs",
-        "description": "Pick a schedule: every morning, every hour, once a week, whatever fits."
+        "title": "Choose when it happens",
+        "description": "Pick when it runs: every morning, every hour, once a week, whatever fits."
       },
       {
         "title": "Review by asking",
         "description": "No need to check its work by hand, just ask what happened."
       }
     ],
-    "newRoutine": "New routine",
+    "newRoutine": "New automation",
     "newRoutineWithAi": "With AI",
     "newRoutineManually": "Manually",
-    "createRoutine": "Create routine",
-    "draftTitle": "Routine being created in chat",
+    "createRoutine": "Create automation",
+    "draftTitle": "Automation being created in chat",
     "draftResume": "Resume",
     "draftDiscard": "Discard",
-    "descriptionShort": "Recurring tasks that fire on schedule and only ping you when something needs attention.",
+    "descriptionShort": "Work your agent does on its own, pinging you only when something needs attention.",
     "timezoneLabel": "Timezone",
-    "timezoneHint": "All your routines run in this timezone.",
+    "timezoneHint": "All your scheduled automations run in this timezone.",
     "timezoneSearchPlaceholder": "Search timezones…",
     "timezoneNoResults": "No timezones found"
   },
   "setupChat": {
-    "missionTitle": "Set up a new routine"
+    "missionTitle": "Set up a new automation"
   },
   "chat": {
-    "newRoutineTitle": "New routine",
-    "routineLabel": "Routine: {{name}}",
-    "back": "Back to routines",
+    "newRoutineTitle": "New automation",
+    "routineLabel": "Automation: {{name}}",
+    "back": "Back to automations",
     "opening": "Opening chat…"
   },
   "row": {
@@ -51,8 +51,8 @@
     "ranMinutes": "ran {n}m ago",
     "ranHours": "ran {n}h ago",
     "ranDays": "ran {n}d ago",
-    "pauseRoutine": "Pause routine",
-    "resumeRoutine": "Resume routine",
+    "pauseRoutine": "Pause automation",
+    "resumeRoutine": "Resume automation",
     "runNow": "Run now",
     "stopRun": "Stop run",
     "moreActions": "More actions",
@@ -68,7 +68,12 @@
     "instructionLabel": "Instruction",
     "instructionPlaceholder": "What should the agent do when this runs?",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "whenTitle": "When should this happen?",
+    "whenSchedule": "On a schedule",
+    "whenEvent": "When something happens",
+    "whenScheduleHint": "Every morning, once a week, you choose",
+    "whenEventHint": "A new email, a message, a change in an app"
   },
   "schedule": {
     "presets": {
@@ -170,48 +175,8 @@
     "statusDisconnectedHint": "The connected account was disconnected.",
     "statusRevokedHint": "This app was turned off for this agent.",
     "rowSummary": "Wakes on an event in {{app}}",
-    "loadFailed": "Couldn't load event triggers"
-  },
-  "reactions": {
-    "grid": {
-      "loading": "Loading…",
-      "emptyTitle": "React the moment it happens",
-      "emptyDescription": "Your agent reacts the moment something happens in your connected apps, like a new email, a message, or a code change.",
-      "emptyStepsTitle": "How it works",
-      "emptySteps": [
-        {
-          "title": "Pick what wakes it",
-          "description": "Choose an app and the event to react to, like a new email or a new message."
-        },
-        {
-          "title": "Say what to do",
-          "description": "Describe the task in plain language, like you would to a person."
-        },
-        {
-          "title": "It runs on its own",
-          "description": "No need to watch for it, your agent reacts the moment it happens."
-        }
-      ],
-      "newRoutine": "New reaction",
-      "newRoutineWithAi": "With AI",
-      "newRoutineManually": "Manually",
-      "createRoutine": "Create reaction",
-      "draftTitle": "Reaction being created in chat",
-      "draftResume": "Resume",
-      "draftDiscard": "Discard",
-      "descriptionShort": "Automations that fire the moment something happens in one of your connected apps.",
-      "timezoneLabel": "Timezone",
-      "timezoneHint": "All your routines run in this timezone.",
-      "timezoneSearchPlaceholder": "Search timezones…",
-      "timezoneNoResults": "No timezones found"
-    },
-    "setupChat": {
-      "missionTitle": "Set up a new reaction"
-    },
-    "chat": {
-      "newTitle": "New reaction",
-      "itemLabel": "Reaction: {{name}}"
-    }
+    "loadFailed": "Couldn't load event triggers",
+    "connectApp": "Connect an app"
   },
   "toasts": {
     "timezoneSet": "Timezone set to {{zone}}",

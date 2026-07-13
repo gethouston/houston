@@ -27,6 +27,8 @@ export interface RoutineTriggerEditorProps {
   agentId: string;
   value: RoutineTriggerBinding | null;
   onChange: (binding: RoutineTriggerBinding | null, valid: boolean) => void;
+  /** Jump to the Integrations surface — the no-apps empty state's CTA. */
+  onConnectApp?: () => void;
   labels: TriggerLabels;
 }
 
@@ -34,6 +36,7 @@ export function RoutineTriggerEditor({
   agentId,
   value,
   onChange,
+  onConnectApp,
   labels,
 }: RoutineTriggerEditorProps) {
   const { apps, loading: appsLoading } = useUsableToolkits(agentId);
@@ -136,6 +139,7 @@ export function RoutineTriggerEditor({
         onSelectTriggerType={selectTriggerType}
         selectedAccountId={accountId}
         onSelectAccount={selectAccount}
+        onConnectApp={onConnectApp}
         labels={labels}
       />
       {selectedType && (
