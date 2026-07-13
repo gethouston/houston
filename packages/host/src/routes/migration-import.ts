@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { type AgentFileChangeEvent, agentFileEventType } from "@houston/domain";
 import { unzipSync } from "fflate";
-import { messageFor } from "../migrate/reconstruct";
+import { importedHistoryNote, messageFor } from "../migrate/reconstruct";
 import type { StoredConversation } from "../migrate/types";
 import type { Vfs } from "../vfs";
 import { safeSeedKey } from "./agent-seed";
@@ -67,11 +67,16 @@ function synthesizeSessionFromTranscript(
   );
   if (!pairs.some((m) => m.role === "assistant")) return;
   const mgr = SessionManager.create(agentDir, sessionDir);
+  let lastTs = 0;
   for (const m of pairs) {
     mgr.appendMessage(
       messageFor({ role: m.role, content: m.content, ts: m.ts }),
     );
+    if (m.ts > lastTs) lastTs = m.ts;
   }
+  // Close the imported block so the next live turn treats it as a record, not
+  // as pending instructions (see IMPORTED_HISTORY_NOTE for the incident).
+  mgr.appendMessage(importedHistoryNote(lastTs));
 }
 
 export async function applyMigrationArchive(opts: {

@@ -1,4 +1,10 @@
-import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -320,7 +326,13 @@ test("imported transcripts re-synthesize pi sessions anchored at agentDir", asyn
     "activity-1",
   );
   expect(existsSync(sessionDir)).toBe(true);
-  expect(readdirSync(sessionDir).length).toBeGreaterThan(0);
+  const sessionFiles = readdirSync(sessionDir);
+  expect(sessionFiles.length).toBeGreaterThan(0);
+  // The imported block is closed by the boundary note so a stale imperative in
+  // old history can never read as pending work on the first post-import turn.
+  const jsonl = readFileSync(join(sessionDir, sessionFiles[0] ?? ""), "utf8");
+  const lines = jsonl.trim().split("\n");
+  expect(lines[lines.length - 1]).toContain("[Imported history]");
   // Re-import: transcript skip-existing AND the session dir left untouched.
   const again = await call(
     vfs,
