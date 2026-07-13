@@ -99,6 +99,13 @@ The dev loop (`pnpm dev` — doctor + mprocs, THE single entry point; `knowledge
 
 ## Hard rules (ALWAYS)
 
+### Features default ON — no dark switches (Felipe's rule)
+Polarity is fixed: everything on; turning something OFF is an explicit, committed, visible act. Three classes, three rules:
+1. **Needs nothing external → no switch exists.** Merging = releasing. Not ready to be seen = not merged (short branches, not long-lived flags). Never add an `X_ENABLED` boolean for a plain code path — the Apple button rotted invisible for months behind one.
+2. **Needs a credential → the credential IS the switch.** Key present = feature on, automatically. Key absent = loud, named OFF with the remedy (the dev doctor's feature matrix line; in-app, a visible error — never a hidden surface). Never layer a boolean on top of a credential.
+3. **Deliberately off (e.g. analytics in dev) → a committed line** in `.env.development` + a matrix line saying why. Personal/one-off toggles go in `.env.local`, never CLI flags (invisible state).
+Capability gating (`/v1/capabilities` — multiplayer, terminal, revealInOs) is NOT a feature flag: it is the server describing the deployment. Keep it.
+
 ### Debugging
 **Never guess.** Read logs first. See `/debug`.
 

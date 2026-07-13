@@ -37,8 +37,11 @@ multiplayer orgs. Analytics/Sentry are no-ops in dev by design.
 ## Env: the two-file model
 
 - **`.env.development`** (committed) — every non-secret knob, identical for the
-  whole team. Editing it is a team-wide change: send a PR. It also pins every
-  feature flag ON (e.g. `APPLE_SIGN_IN_ENABLED`) and keeps dev writes local
+  whole team. Editing it is a team-wide change: send a PR. Polarity is
+  **default-ON, explicit opt-OUT** (the "no dark switches" hard rule in
+  CLAUDE.md): plain features have no switch at all, credential-gated features
+  turn on by the key's presence (never a boolean on top), and anything
+  deliberately off is a committed line here. Dev writes stay local
   (`VITE_AGENTSTORE_GATEWAY_URL` → the dev gateway, never prod). The doctor's
   feature matrix is the contract: every gate is a line, ON or OFF-with-remedy —
   a feature must never silently disappear.
