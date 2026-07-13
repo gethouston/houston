@@ -21,10 +21,12 @@
 #   provider + registry the engine-pod-image.yml build uses; do NOT reuse the
 #   broader github-deploy@ SA (that one also carries Kubernetes Engine Developer).
 #
-# ── Required GitHub secret ─────────────────────────────────────────────────────
+# ── Required GitHub secrets ────────────────────────────────────────────────────
 #   CLOUD_DISPATCH_TOKEN — fine-grained PAT scoped ONLY to gethouston/cloud, with
 #   the minimum permission GitHub requires for the repository_dispatch endpoint.
 #   Used solely to notify cloud that a new image is ready; carries no GCP access.
+#   FIREBASE_API_KEY / FIREBASE_AUTH_DOMAIN / FIREBASE_PROJECT_ID — the Firebase
+#   web client config (public identifiers by design), shared with release.yml.
 
 name: Agent Store Image
 
@@ -100,19 +102,20 @@ jobs:
         id: build
         env:
           # The Firebase web config, inlined into the client bundle at build time
-          # (NEXT_PUBLIC_*). Public web identifiers, so they live as repo
-          # Variables (not Secrets) — a project change is one edit in repo
-          # settings. store.gethouston.ai signs users in against this project.
-          FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
-          FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          # (NEXT_PUBLIC_*). Public web identifiers by design, sourced from the
+          # same FIREBASE_* repo secrets release.yml already bakes into the
+          # desktop/web app — one Firebase project, one place to rotate it.
+          # store.gethouston.ai signs users in against this project.
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: |
           # Fail loudly rather than ship a bundle with a dead sign-in surface:
           # a missing NEXT_PUBLIC_FIREBASE_* value inlines as undefined and
           # silently kills publish/claim/me/admin in production.
           for var in FIREBASE_API_KEY FIREBASE_AUTH_DOMAIN FIREBASE_PROJECT_ID; do
             if [ -z "${!var}" ]; then
-              echo "::error::$var is empty — set the NEXT_PUBLIC_FIREBASE_* repository variables" >&2
+              echo "::error::$var is empty — set the FIREBASE_* repository secrets (shared with release.yml)" >&2
               exit 1
             fi
           done
