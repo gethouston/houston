@@ -309,6 +309,59 @@ h2 {
 }
 
 /* ═══════════════════════════════════════════
+   Link cards (changelog / external resources)
+   ═══════════════════════════════════════════ */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin: 24px 0 8px;
+}
+
+@media (max-width: 640px) {
+  .card-grid { grid-template-columns: 1fr; }
+}
+
+.surface-card {
+  display: block;
+  padding: 22px 24px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background: var(--panel);
+  transition: border-color 0.15s, box-shadow 0.2s, transform 0.15s;
+}
+
+.surface-card:hover {
+  border-color: var(--border-medium);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.surface-card .surface-kicker {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--info);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.surface-card .surface-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gray-950);
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+
+.surface-card .surface-desc {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+
+/* ═══════════════════════════════════════════
    Coming soon cards
    ═══════════════════════════════════════════ */
 

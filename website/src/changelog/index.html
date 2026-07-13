@@ -1,4 +1,5 @@
 ---
+navActive: guides
 rootPath: "../"
 ---
 {% extends "base.njk" %}
@@ -18,22 +19,28 @@ rootPath: "../"
 {% block inlineStyles %}
 <style>
   :root {
-    --background: #ffffff;
-    --foreground: #0d0d0d;
-    --secondary: #f9f9f9;
-    --muted-foreground: #5d5d5d;
-    --border: #e5e5e5;
-    --gray-50: #f9f9f9;
-    --gray-100: #ececec;
-    --gray-200: #e3e3e3;
-    --gray-300: #cdcdcd;
-    --gray-400: #b4b4b4;
-    --gray-500: #9b9b9b;
-    --gray-600: #676767;
-    --gray-700: #424242;
-    --gray-950: #0d0d0d;
-    --border-light: rgba(13,13,13,0.05);
-    --border-medium: rgba(0,0,0,0.15);
+    /* Space theme: the page sits over the landing's fixed Milky Way background
+       (space-bg.njk + /assets/space.css). Same token set as the guides /
+       learn / developers stylesheets. */
+    --background: transparent;
+    --foreground: rgba(255, 255, 255, 0.92);
+    --secondary: rgba(255, 255, 255, 0.05);
+    --muted-foreground: rgba(255, 255, 255, 0.6);
+    --border: rgba(255, 255, 255, 0.14);
+    --gray-50: rgba(255, 255, 255, 0.06);
+    --gray-100: rgba(255, 255, 255, 0.1);
+    --gray-200: rgba(255, 255, 255, 0.14);
+    --gray-300: rgba(255, 255, 255, 0.28);
+    --gray-400: rgba(255, 255, 255, 0.4);
+    --gray-500: rgba(255, 255, 255, 0.55);
+    --gray-600: rgba(255, 255, 255, 0.65);
+    --gray-700: rgba(255, 255, 255, 0.78);
+    --gray-950: #ffffff;
+    --border-light: rgba(255, 255, 255, 0.1);
+    --border-medium: rgba(255, 255, 255, 0.22);
+    --panel: rgba(13, 15, 24, 0.86);
+    --panel-solid: #0b0c13;
+    --code-bg: rgba(8, 9, 15, 0.92);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -44,43 +51,6 @@ rootPath: "../"
     line-height: 1.6;
   }
   a { color: inherit; text-decoration: none; }
-
-  /* Top nav — mirrors landing */
-  body { padding-top: 65px; }
-  nav {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    padding: 16px 40px;
-    display: flex; align-items: center; justify-content: space-between;
-    background: rgba(255,255,255,0.85);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid transparent;
-    transition: border-color 0.2s, background 0.2s;
-  }
-  nav.scrolled { border-bottom-color: var(--border-light); }
-  .nav-logo {
-    font-family: 'General Sans', sans-serif;
-    font-size: 22px; font-weight: 500; letter-spacing: -0.02em;
-    color: var(--gray-950);
-  }
-  .nav-center {
-    position: absolute; left: 50%; transform: translateX(-50%);
-    display: flex; gap: 32px; align-items: center;
-  }
-  .nav-center a { font-size: 14px; color: var(--gray-700); }
-  .nav-center a:hover { color: var(--gray-950); }
-  .nav-right { display: flex; align-items: center; gap: 12px; }
-  .nav-right a { font-size: 14px; color: var(--gray-700); }
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 0 16px; height: 36px; border-radius: 10px;
-    font-size: 14px; font-weight: 500;
-    border: 1px solid transparent; cursor: pointer;
-    transition: all 0.15s;
-  }
-  .btn-primary {
-    background: var(--gray-950); color: white; border-color: var(--gray-950);
-  }
-  .btn-primary:hover { background: black; }
 
   /* Page header */
   .page-header {
@@ -119,45 +89,52 @@ rootPath: "../"
     border-bottom-color: var(--gray-950);
   }
 
-  /* Timeline rail */
+  /* Timeline rail, on the translucent content card */
   .timeline {
-    max-width: 760px; margin: 0 auto;
-    padding: 0 40px 120px;
+    width: min(824px, calc(100% - 32px));
+    margin: 0 auto 72px;
+    padding: 48px 40px 72px;
+    background: rgba(8, 10, 18, 0.66);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
     position: relative;
   }
   .timeline::before {
     content: "";
     position: absolute;
-    left: 60px; top: 16px; bottom: 16px;
+    left: 60px; top: 60px; bottom: 60px;
     width: 1px; background: var(--border);
   }
   @media (max-width: 720px) {
-    .timeline::before { left: 24px; }
+    .timeline { width: calc(100% - 24px); padding: 32px 20px 56px; }
+    .timeline::before { left: 40px; top: 44px; bottom: 44px; }
   }
 
   .release {
     position: relative;
-    padding: 16px 0 56px 120px;
+    padding: 16px 0 56px 100px;
   }
   @media (max-width: 720px) {
-    .release { padding-left: 56px; }
+    .release { padding-left: 48px; }
   }
   .release-marker {
     position: absolute;
-    left: 53px; top: 22px;
+    /* Centered on the rail: rail left 60px inside .timeline padding, release
+       content is offset by its own padding — 60 - 40 (timeline pad) - 7 = 13. */
+    left: 13px; top: 22px;
     width: 14px; height: 14px;
     border-radius: 50%;
-    background: white;
+    background: var(--panel-solid);
     border: 2px solid var(--gray-300);
     z-index: 1;
   }
   @media (max-width: 720px) {
-    .release-marker { left: 17px; }
+    .release-marker { left: 13px; }
   }
   .release.is-latest .release-marker {
     border-color: var(--gray-950);
     background: var(--gray-950);
-    box-shadow: 0 0 0 4px rgba(13,13,13,0.06);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
   }
 
   .release-meta {
@@ -179,7 +156,7 @@ rootPath: "../"
     padding: 2px 10px; border-radius: 999px;
     font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
     text-transform: uppercase;
-    background: var(--gray-950); color: white;
+    background: var(--gray-950); color: #0d0d0d;
   }
   .release-badge.beta {
     background: var(--gray-100); color: var(--gray-700);
@@ -226,13 +203,14 @@ rootPath: "../"
     border-radius: 4px;
   }
   .release-body pre {
-    background: var(--gray-50);
+    background: var(--code-bg);
     border: 1px solid var(--border-light);
     border-radius: 8px;
     padding: 12px 14px;
     overflow-x: auto;
     font-size: 13px;
     margin: 0 0 14px;
+    color: #f0f0f0;
   }
   .release-body pre code {
     background: transparent; padding: 0;
@@ -273,23 +251,19 @@ rootPath: "../"
     color: var(--gray-600);
   }
   .empty p { margin-bottom: 16px; }
+
+  .footer {
+    border-top: 1px solid var(--border-light);
+    padding: 32px;
+    text-align: center;
+    color: var(--gray-500);
+    font-size: 13px;
+  }
 </style>
 {% endblock %}
 {% block body %}
-<nav>
-  <a href="../" class="nav-logo">Houston</a>
-  <div class="nav-center">
-    <a href="../#agents">Agents</a>
-    <a href="../#features">Features</a>
-    <a href="../guides/">Guides</a>
-    <a href="../changelog/">Changelog</a>
-    <a href="../#pricing">Pricing</a>
-    <a href="../startups/">For Startups</a>
-  </div>
-  <div class="nav-right">
-    <a class="btn btn-primary" href="../#download">Download</a>
-  </div>
-</nav>
+{% include "space-bg.njk" %}
+{% include "nav-docs.njk" %}
 
 <div class="page-header">
   <div class="page-eyebrow">Changelog</div>
@@ -328,18 +302,16 @@ rootPath: "../"
   {% endif %}
 </div>
 
-{% include "footer-landing.njk" %}
-
-<script>
-  (function() {
-    var nav = document.querySelector('nav');
-    if (!nav) return;
-    function check() {
-      if (window.scrollY > 10) nav.classList.add('scrolled');
-      else nav.classList.remove('scrolled');
-    }
-    window.addEventListener('scroll', check, { passive: true });
-    check();
-  })();
-</script>
+<footer class="footer">
+  <div>
+    Every Houston release, in plain language.
+  </div>
+  <div style="margin-top: 12px; display: flex; gap: 16px; font-size: 12px; color: var(--gray-500); flex-wrap: wrap; justify-content: center;">
+    <a href="/guides/" style="color: var(--gray-500);">Guides</a>
+    <a href="/learn/" style="color: var(--gray-500);">Learn</a>
+    <a href="/developers/" style="color: var(--gray-500);">Developers</a>
+    <a href="/privacy/" style="color: var(--gray-500);">Privacy Policy</a>
+    <a href="/terms/" style="color: var(--gray-500);">Terms of Service</a>
+  </div>
+</footer>
 {% endblock %}
