@@ -24,9 +24,10 @@ The authoritative wire/DB surface is the gateway's contract
 | Engine seam | `ui/engine-client/src/client.ts` (front door), `packages/web/src/engine-adapter/portable.ts` (impl) + `store-gateway.ts` | `publishAgentToStore` / `updateStorePublication` / `unpublishFromStore` / `getStorePublication` / `importFromStoreLink`. |
 | App UI | `app/src/components/portable/` | Share wizard (`share-screen`, `listing-step`), `manage-publication`, `install-from-link`, `use-store-publication.ts`. |
 
-The store shares **no code** with `theagentlibrary/`. The tie to `cloud/` is the
-gateway API + a shared Firebase project; the AgentIR contract is a byte-copy
-relationship, not a runtime import.
+The tie to `cloud/` is the gateway API + a shared Firebase project; the AgentIR
+contract is a byte-copy relationship, not a runtime import. (The standalone
+`gethouston/theagentlibrary` repo was retired in July 2026 — this store
+supersedes it; they never shared code.)
 
 ## AgentIR 2.0.0 (the schema of record)
 
@@ -186,7 +187,7 @@ with the key named (beta policy: surface, never silently orphan the store agent)
 | `AGENTSTORE_GATEWAY_URL` | store frontend (server) | Gateway base for public catalog reads (RSC). Default `https://gateway.gethouston.ai`. |
 | `NEXT_PUBLIC_AGENTSTORE_GATEWAY_URL` | store frontend (browser) | Gateway base for client authed/anonymous writes (claim, publish, `/me`, admin, report). |
 | `NEXT_PUBLIC_SITE_URL` | store build | Canonical public URL for OG + share/schema links. |
-| `FIREBASE_API_KEY` / `AUTH_DOMAIN` / `PROJECT_ID` | store frontend | GCIP sign-in (SAME Firebase project as the gateway). |
+| `FIREBASE_API_KEY` / `AUTH_DOMAIN` / `PROJECT_ID` | store frontend | GCIP sign-in (SAME Firebase project as the gateway). In CI the image build reads the `FIREBASE_*` repo secrets shared with `release.yml`. |
 | `VITE_AGENTSTORE_GATEWAY_URL` | app build | Store gateway target in desktop LOCAL-sidecar mode. Default `https://gateway.gethouston.ai`. |
 | `VITE_AGENTSTORE_SITE_URL` | app build | Public store SITE base for "browse the store" links. Default `https://store.gethouston.ai`. |
 | `HOUSTON_AGENTSTORE_API_URL` | host | Gateway base for install-from-link IR fetch. Default `https://gateway.gethouston.ai`. |
