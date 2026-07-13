@@ -135,6 +135,9 @@ export function planInvalidation(
     // without waiting for the next mount (issue #342).
     case "ProviderLoginComplete":
       plan.invalidate.push(queryKeys.providerStatuses());
+      // The Usage tab lists connected accounts — a fresh connect (or sign-out)
+      // changes the account set, so its rows refresh alongside the statuses.
+      plan.invalidate.push(queryKeys.providerUsage());
       plan.focusWindow = true;
       break;
     // HOU-550: a custom integration was added / credentialed / removed (host add,

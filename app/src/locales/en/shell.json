@@ -2,6 +2,7 @@
   "sidebar": {
     "missionControl": "Mission Control",
     "aiModels": "AI Models",
+    "usage": "Usage",
     "integrations": "Integrations",
     "agentStore": "Agent Store",
     "settings": "Settings",

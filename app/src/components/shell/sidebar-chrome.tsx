@@ -5,6 +5,7 @@ import {
   Blocks,
   Boxes,
   Building2,
+  Gauge,
   LayoutDashboard,
   Settings,
   Store,
@@ -15,6 +16,7 @@ import { hasSpaces } from "../../lib/org-roles";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
 import { ORGANIZATION_VIEW_ID } from "../organization";
 import { STORE_VIEW_ID } from "../store-view";
+import { USAGE_VIEW_ID } from "../usage-view";
 import { CreateTeamDialog } from "./create-team-dialog";
 
 type ShellT = TFunction<["shell", "common", "portable", "teams"]>;
@@ -57,6 +59,15 @@ export function buildSidebarNavItems(args: {
             icon: <Boxes className="h-4 w-4" />,
             onClick: () => setViewMode("ai-hub"),
             dataAttrs: { "data-tour-target": "nav-ai-hub" },
+          },
+          // Usage reads the same workspace-central provider accounts the hub
+          // manages, so it rides the same Teams gate.
+          {
+            id: USAGE_VIEW_ID,
+            label: t("shell:sidebar.usage"),
+            icon: <Gauge className="h-4 w-4" />,
+            onClick: () => setViewMode(USAGE_VIEW_ID),
+            dataAttrs: { "data-tour-target": "nav-usage" },
           },
         ]
       : []),

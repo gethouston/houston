@@ -81,6 +81,7 @@ import type {
   ProjectConfig,
   ProjectFile,
   ProviderStatus,
+  ProviderUsage,
   PushRegisterRequest,
   RemoveWorktreeRequest,
   RenameWorkspace,
@@ -1007,6 +1008,16 @@ export class HoustonClient {
 
   providerStatus(name: string): Promise<ProviderStatus> {
     return this.request("GET", `/providers/${this.seg(name)}/status`);
+  }
+  /**
+   * Live per-account usage for every CONNECTED provider — rate-limit windows
+   * (Claude 5h/weekly, Codex session/weekly, Copilot quotas) and prepaid
+   * balances, fetched by the engine from each provider's own usage API. One
+   * row per connected provider; a provider with no readable usage surface
+   * answers an honest non-`ok` status rather than being omitted.
+   */
+  providerUsage(): Promise<ProviderUsage[]> {
+    return this.request("GET", "/providers/usage");
   }
   /**
    * Launch the provider's CLI login. `opts.deviceAuth` requests the

@@ -20,6 +20,7 @@ import type {
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
   ProviderAuthState,
+  ProviderUsage,
 } from "@houston-ai/engine-client";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import {
@@ -1223,6 +1224,13 @@ export const tauriProvider = {
         };
       },
     ),
+  /**
+   * Live per-account usage for every connected provider (rate-limit windows +
+   * prepaid balances) — the AI Hub's Usage tab. One engine round-trip; a
+   * failure surfaces through `call()`'s toast + Report-bug path.
+   */
+  usage: () =>
+    call<ProviderUsage[]>("provider_usage", () => getEngine().providerUsage()),
   setLastUsed: (provider: string, model: string) =>
     call<void>("set_last_used_provider", async () => {
       const eng = getEngine();

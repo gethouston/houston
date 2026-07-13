@@ -57,6 +57,7 @@ export {
 export { useOrgAudit } from "./use-org-audit";
 export { USAGE_DEFAULT_DAYS, useOrgUsage } from "./use-org-usage";
 export { useCreateTeam } from "./use-orgs";
+export { useProviderUsage } from "./use-provider-usage";
 export {
   useCancelRoutineRun,
   useCreateRoutine,

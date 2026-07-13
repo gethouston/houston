@@ -1,4 +1,7 @@
-import type { ProviderStatus } from "../../../../../ui/engine-client/src/types";
+import type {
+  ProviderStatus,
+  ProviderUsage,
+} from "../../../../../ui/engine-client/src/types";
 import { toNewProvider } from "../synthetic";
 import type { BaseCtor } from "./mixin";
 
@@ -49,6 +52,18 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
           activeModel: p?.activeModel || undefined,
         } as ProviderStatus;
       });
+    }
+    /**
+     * Live per-account usage for every connected provider (rate-limit windows
+     * + prepaid balances), served by the runtime's `GET /providers/usage`.
+     * Rides the SAME per-agent runtime routing as provider status: any real
+     * agent's runtime serves the workspace-central credentials, so the
+     * selection only picks a pod. Unlike the status probe this THROWS when the
+     * engine is unreachable — the Usage page must show the real failure, never
+     * a fabricated "no usage" (beta no-silent-failure policy).
+     */
+    async providerUsage(): Promise<ProviderUsage[]> {
+      return this.ctx.providerEngine().listProviderUsage();
     }
   }
   return ProviderStatusMethods;

@@ -203,6 +203,8 @@ components:
   ai-provider-card:
     status: implemented
     ref: mobile/ios/Houston/Features/AIModels/ProviderCardView.swift
+  provider-usage-card:
+    status: not-started
     notes: >-
       Per-agent provider grid tile (logo via ProviderGlyph, name, description,
       model-count) with available/connected/connecting/coming-soon states and a
