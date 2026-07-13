@@ -5,7 +5,7 @@
  */
 
 import type { ChatMessage } from "@houston/runtime-client";
-import { EPOCH, SEED_USAGE, state } from "./state-store";
+import { EPOCH, emitDomain, SEED_USAGE, state } from "./state-store";
 
 export function getHistory(
   agentId: string,
@@ -28,6 +28,7 @@ export function appendUserMessage(
   const list = state.histories.get(key) ?? [];
   list.push({ role: "user", content: userText, ts: EPOCH, turnId });
   state.histories.set(key, list);
+  emitDomain("ConversationsChanged", agentId);
 }
 
 /**
@@ -44,6 +45,7 @@ export function appendStoppedMessage(
   const list = state.histories.get(key) ?? [];
   list.push({ role: "assistant", content: "", ts: EPOCH, stopped: true });
   state.histories.set(key, list);
+  emitDomain("ConversationsChanged", agentId);
 }
 
 /**
@@ -71,4 +73,5 @@ export function appendAssistantMessage(
     ...(pendingInteraction ? { pendingInteraction } : {}),
   });
   state.histories.set(key, list);
+  emitDomain("ConversationsChanged", agentId);
 }

@@ -7,6 +7,7 @@ import {
   asAttachmentsSaveInput,
   createAttachmentsOperation,
 } from "./attachments";
+import { startTurnsEventStream } from "./events-stream";
 import type { FeedOutput } from "./feed-output";
 import { createTurnOperations } from "./operations";
 import { StreamRegistry } from "./stream-registry";
@@ -54,13 +55,26 @@ export function createTurnsModule(
   // web adapter) can't cross-abort our streams or collide on a shared key.
   const registry = new StreamRegistry();
 
-  const { send, observe, history, cancel } = createTurnOperations(ctx, {
+  const operations = createTurnOperations(ctx, {
     vm,
     defaults,
     external,
     registry,
   });
+  const { send, observe, history, cancel } = operations;
   const attachments = createAttachmentsOperation(ctx);
+  const stopEvents =
+    ctx.config.reactivity === false
+      ? () => {}
+      : startTurnsEventStream({
+          baseUrl: ctx.config.baseUrl,
+          ...ctx.config.ports,
+          handlers: {
+            onConnect: () => operations.refreshObserved(),
+            onConversationsChanged: operations.refreshObserved,
+            onUnauthorized: () => ctx.authExpiry.notifyExpired(),
+          },
+        });
 
   ctx.registerCommand("turns/send", (payload) => send(asSendInput(payload)));
   ctx.registerCommand("turns/attachments/save", (payload) =>
@@ -100,6 +114,7 @@ export function createTurnsModule(
      */
     forget(conversationId: string, agentId?: string): void {
       vm.forget(agentId ?? "", conversationId);
+      operations.forgetObserved(conversationId, agentId);
     },
     /**
      * Attach an extra {@link FeedOutput} that every subsequent turn also drives
@@ -113,6 +128,7 @@ export function createTurnsModule(
     },
     /** Abort every live turn/observer stream this module owns (SDK teardown). */
     dispose(): void {
+      stopEvents();
       registry.disposeAll();
     },
   };
