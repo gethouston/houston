@@ -274,50 +274,33 @@ lang: es
     details.ts summary::after{display:none}
   }
 
-  /* site navigation (mirrors homepage nav) */
-  body{padding-top:64px}
-  nav.site{position:fixed; top:0; left:0; right:0; z-index:100; height:64px; padding:0 40px;
-    display:flex; align-items:center; justify-content:space-between;
-    background:rgba(11,12,19,0.94);
-    border-bottom:1px solid rgba(255,255,255,0.08)}
-  nav.site .nav-logo{display:flex; align-items:center; gap:9px; text-decoration:none; color:var(--ink);
-    font-family:'General Sans',sans-serif; font-weight:600; letter-spacing:-0.02em; font-size:19px}
-  nav.site .nav-logo svg{width:22px; height:24px; filter:brightness(0) invert(1)}
-  nav.site .nav-center{position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:28px; align-items:center}
-  nav.site .nav-center a{font-size:14px; color:var(--gray7); text-decoration:none}
-  nav.site .nav-center a:hover{color:#fff}
-  nav.site .nav-center a.active{color:#fff; font-weight:600}
-  nav.site .nav-right{display:flex; align-items:center; gap:12px}
-  nav.site .pdfbtn2{display:inline-flex; align-items:center; gap:7px; background:var(--ink); color:#0d0d0d;
-    border-radius:999px; padding:8px 16px; font-weight:600; font-size:13px; text-decoration:none}
-  nav.site .pdfbtn2:hover{opacity:.88}
-  nav.site .pdfbtn2 svg{width:14px; height:14px}
+  /* nav utilities (rendered into the shared top menu via navUtilities;
+     the menu itself lives in nav-docs.njk) */
+  .site-nav .pdfbtn2{display:inline-flex; align-items:center; gap:7px; background:transparent;
+    color:rgba(255,255,255,0.92); border:1px solid rgba(255,255,255,0.22);
+    border-radius:999px; padding:7px 15px; font-weight:600; font-size:13px; text-decoration:none;
+    transition:background 0.15s, border-color 0.15s}
+  .site-nav .pdfbtn2:hover{background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.35)}
+  .site-nav .pdfbtn2 svg{width:14px; height:14px}
   /* language picker (shows current language) */
-  nav.site .langdd{position:relative}
-  nav.site .langdd summary{list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+  .site-nav .langdd{position:relative}
+  .site-nav .langdd summary{list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
     font-size:12.5px; font-weight:700; color:var(--gray7); border:1px solid var(--border); border-radius:999px;
     padding:6px 12px; letter-spacing:.02em}
-  nav.site .langdd summary::-webkit-details-marker{display:none}
-  nav.site .langdd summary:hover{border-color:rgba(255,255,255,0.28); color:#fff}
-  nav.site .langdd summary svg{width:18px; height:13px; display:block}
-  nav.site .langdd summary .chev{width:7px; height:7px; border-right:1.5px solid var(--gray6); border-bottom:1.5px solid var(--gray6); transform:rotate(45deg); margin-top:-3px}
-  nav.site .langdd[open] summary .chev{transform:rotate(-135deg); margin-top:3px}
-  nav.site .langdd .menu{position:absolute; right:0; top:calc(100% + 8px); background:var(--panel-solid); border:1px solid var(--border);
+  .site-nav .langdd summary::-webkit-details-marker{display:none}
+  .site-nav .langdd summary:hover{border-color:rgba(255,255,255,0.28); color:#fff}
+  .site-nav .langdd summary svg{width:18px; height:13px; display:block}
+  .site-nav .langdd summary .chev{width:7px; height:7px; border-right:1.5px solid var(--gray6); border-bottom:1.5px solid var(--gray6); transform:rotate(45deg); margin-top:-3px}
+  .site-nav .langdd[open] summary .chev{transform:rotate(-135deg); margin-top:3px}
+  .site-nav .langdd .menu{position:absolute; right:0; top:calc(100% + 8px); background:var(--panel-solid); border:1px solid var(--border);
     border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.5); padding:6px; min-width:160px; z-index:200}
-  nav.site .langdd .menu a{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px;
+  .site-nav .langdd .menu a{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px;
     font-size:13.5px; color:var(--gray7); text-decoration:none; font-weight:500}
-  nav.site .langdd .menu a svg{width:18px; height:13px; display:block}
-  nav.site .langdd .menu a:hover{background:rgba(255,255,255,0.1); color:#fff}
-  nav.site .langdd .menu a.on{color:#fff; font-weight:600}
-  nav.site .langdd .menu a.on::after{content:"✓"; margin-left:auto; font-size:12px; color:var(--green)}
-  @media (max-width:940px){ nav.site .nav-center{display:none} }
-  @media (max-width:640px){ nav.site{padding:0 20px} }
-  @media print{
-    nav.site{position:static; background:#fff; border-bottom:1px solid #e5e5e5}
-    nav.site .nav-logo svg{filter:none}
-    nav.site .nav-center, nav.site .langdd, nav.site .pdfbtn2{display:none !important}
-    body{padding-top:0}
-  }
+  .site-nav .langdd .menu a svg{width:18px; height:13px; display:block}
+  .site-nav .langdd .menu a:hover{background:rgba(255,255,255,0.1); color:#fff}
+  .site-nav .langdd .menu a.on{color:#fff; font-weight:600}
+  .site-nav .langdd .menu a.on::after{content:"✓"; margin-left:auto; font-size:12px; color:var(--green)}
+  @media (max-width:640px){ .site-nav .pdfbtn2{display:none} }
 
   /* ---------- step mode (focus view) ---------- */
   .glayout{max-width:1150px; margin:0 auto; padding:0 24px; display:grid; grid-template-columns:255px minmax(0,1fr); gap:44px; align-items:start}
@@ -399,21 +382,11 @@ lang: es
 <path d="M370.408,283.292c-6.086,17.577-13.539,33.4-26.392,47.208,26.021-57.679,30.288-124.219,4.132-182.266-6.661-14.783-15.007-27.347-24.809-41.076,5.144.8,12.975.86,16.972,4.164,7.836,6.477,12.518,15.527,17.384,24.5,24.5,45.2,29.763,98.227,12.713,147.465" fill="#161615"/>
 </symbol></svg>
 
-<nav class="site">
-  <a class="nav-logo" href="/"><svg class="mark"><use href="#hlogo"/></svg><span>houston</span></a>
-  <div class="nav-center">
-    <a href="/#agents">Agents</a>
-    <a href="/#features">Features</a>
-    <a href="/#pricing">Pricing</a>
-    <a href="/agent-store">Agent Store</a>
-    <a class="active" href="/guides/es/">Guías</a>
-    <a href="/vision/">Vision</a>
-  </div>
-  <div class="nav-right">
-    <details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>ES<span class="chev"></span></summary><div class="menu"><a href="/guides/revenue-manager/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a class="on" href="/guides/es/revenue-manager/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details>
-    <a class="pdfbtn2" href="/guides/downloads/houston-revenue-manager-guide-es.pdf" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>Descargar PDF</a>
-  </div>
-</nav>
+{% set navActive = "guides" %}
+{% set navDownloadLabel = "Descargar" %}
+{% set navUtilities %}<details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>ES<span class="chev"></span></summary><div class="menu"><a href="/guides/revenue-manager/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a class="on" href="/guides/es/revenue-manager/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details><a class="pdfbtn2 nav-util" href="/guides/downloads/houston-revenue-manager-guide-es.pdf" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>Descargar PDF</a>{% endset %}
+{% set navDropdownExtra %}<a href="/guides/revenue-manager/">English</a><a href="/guides/downloads/houston-revenue-manager-guide-es.pdf" download>Descargar PDF</a>{% endset %}
+{% include "nav-docs.njk" %}
 
 <div class="gprog" id="gprog"></div>
 <div class="glayout" id="top">

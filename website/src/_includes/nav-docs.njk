@@ -1,22 +1,122 @@
-{# Shared nav for learn, developers, vision, and guides pages. The CENTER menu
-   mirrors the landing nav exactly (nav-landing.njk) so every page carries the
-   same top menu; the anchors are absolute so they work off the homepage too. #}
-<nav>
+{# The ONE site top menu for every page except the landing (which keeps its own
+   copy in nav-landing.njk with the download-modal trigger — the two must stay
+   visually identical). Mirrors the landing exactly: transparent over the top of
+   the page, near-opaque dark once scrolled, same center links, GitHub + white
+   Download pill on the right, burger + dropdown on mobile.
+
+   Self-contained: styles and the scroll/burger behavior live HERE — page
+   stylesheets must not carry nav rules. Optional context vars:
+     navActive        "guides" | "vision" — highlights that center link
+     navDownloadLabel Download button label (default "Download")
+     navUtilities     HTML injected before the Download pill (language picker,
+                      PDF button, ...) — style those in the page, scoped to
+                      `.site-nav`; give links that carry their OWN colors the
+                      `nav-util` class so the menu's link tinting skips them
+     navDropdownExtra extra <a> rows appended to the mobile dropdown #}
+<style>
+  body { padding-top: 65px; }
+  .site-nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 16px 40px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: transparent;
+    transition: background 0.3s ease;
+  }
+  /* Scrolled: solid dark bar (near-opaque, never blurred — same perf rule as
+     the landing over the moving space photo). */
+  .site-nav.scrolled {
+    background: rgba(11, 12, 19, 0.94);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .site-nav .nav-logo {
+    font-family: 'General Sans', sans-serif;
+    font-size: 22px; font-weight: 500; letter-spacing: -0.02em;
+    color: #fff; display: flex; align-items: center; gap: 8px;
+    text-decoration: none;
+  }
+  .site-nav .nav-center {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 32px; align-items: center;
+  }
+  .site-nav .nav-center a {
+    font-size: 14px; color: rgba(255, 255, 255, 0.65);
+    text-decoration: none; transition: color 0.2s;
+  }
+  /* At the very top links sit on the bright sky — lift them a touch, like the
+     landing. */
+  .site-nav:not(.scrolled) .nav-center a,
+  .site-nav:not(.scrolled) .nav-right a:not(.btn-dl):not(.nav-util) { color: rgba(255, 255, 255, 0.74); }
+  .site-nav .nav-center a:hover { color: #fff; }
+  .site-nav .nav-center a.active { color: #fff; font-weight: 600; }
+  .site-nav .nav-right { display: flex; gap: 16px; align-items: center; }
+  .site-nav .nav-right a:not(.btn-dl):not(.nav-util) {
+    color: rgba(255, 255, 255, 0.65); text-decoration: none; transition: color 0.2s;
+  }
+  .site-nav .nav-right a:not(.btn-dl):not(.nav-util):hover { color: #fff; }
+  .site-nav .btn-dl {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 36px; padding: 0 16px; border-radius: 9999px;
+    font-size: 14px; font-weight: 500;
+    background: #fff; color: #0d0d0d; text-decoration: none;
+    transition: background 0.15s;
+  }
+  .site-nav .btn-dl:hover { background: rgba(255, 255, 255, 0.85); }
+  .site-nav .nav-burger {
+    display: none; width: 36px; height: 36px; border-radius: 8px; border: none;
+    background: transparent; cursor: pointer;
+    align-items: center; justify-content: center; padding: 0;
+    color: rgba(255, 255, 255, 0.78); transition: background 0.2s;
+  }
+  .site-nav .nav-burger:hover { background: rgba(255, 255, 255, 0.12); }
+  .site-nav .nav-burger svg { width: 20px; height: 20px; }
+  #nav-dropdown {
+    display: none; position: fixed; top: 65px; left: 0; right: 0; z-index: 99;
+    background: rgba(11, 12, 19, 0.97);
+    padding: 8px 20px 16px; flex-direction: column;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+  #nav-dropdown.open { display: flex; }
+  #nav-dropdown a {
+    font-size: 15px; color: rgba(255, 255, 255, 0.78); text-decoration: none;
+    padding: 10px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex; align-items: center; gap: 8px;
+  }
+  #nav-dropdown a:last-child { border-bottom: none; }
+  #nav-dropdown a svg { width: 16px; height: 16px; opacity: 0.5; }
+  @media (max-width: 900px) {
+    .site-nav { padding: 16px 20px; }
+    .site-nav .nav-center { display: none; }
+    .site-nav .nav-burger { display: flex; }
+    .site-nav .nav-gh { display: none !important; }
+  }
+  @media print {
+    /* Keep the brand bar in printed/PDF output, light-on-white, menu hidden. */
+    .site-nav { position: static; background: #fff; border-bottom: 1px solid #e5e5e5; }
+    .site-nav .nav-logo { color: #0d0d0d; }
+    .site-nav .nav-logo svg, .site-nav .nav-logo img { filter: none; }
+    .site-nav .nav-center, .site-nav .nav-right { display: none !important; }
+    #nav-dropdown { display: none !important; }
+    body { padding-top: 0; }
+  }
+</style>
+<nav class="site-nav" id="site-nav">
   <a href="/" class="nav-logo">Houston</a>
   <div class="nav-center">
     <a href="/#agents">Agents</a>
     <a href="/#features">Features</a>
     <a href="/#pricing">Pricing</a>
     <a href="/agent-store">Agent Store</a>
-    <a href="/guides/">Guides</a>
-    <a href="/vision/">Vision</a>
+    <a href="/guides/"{% if navActive == "guides" %} class="active"{% endif %}>Guides</a>
+    <a href="/vision/"{% if navActive == "vision" %} class="active"{% endif %}>Vision</a>
   </div>
   <div class="nav-right">
-    <a href="https://github.com/gethouston/houston" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;">
+    <a class="nav-gh" href="https://github.com/gethouston/houston" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;">
       <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
     </a>
-    <a href="/#download" class="btn btn-primary"><span class="btn-full-text">Download</span><span class="btn-short-text">Download</span></a>
-    <button class="nav-burger" id="nav-burger" aria-label="Menu">
+    {{ navUtilities | safe }}
+    <a href="/#download" class="btn-dl">{{ navDownloadLabel or "Download" }}</a>
+    <button class="nav-burger" id="nav-burger" aria-label="Menu" aria-controls="nav-dropdown" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="burger-icon"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button>
   </div>
@@ -29,8 +129,41 @@
   <a href="/agent-store">Agent Store</a>
   <a href="/guides/">Guides</a>
   <a href="/vision/">Vision</a>
+  {{ navDropdownExtra | safe }}
   <a href="https://github.com/gethouston/houston" target="_blank" rel="noopener noreferrer">
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
     GitHub
   </a>
 </div>
+
+<script>
+  // Owned by this component: scroll transparency + burger. Pages must not
+  // bind their own handlers to these ids (double-toggling cancels out).
+  (function() {
+    var nav = document.getElementById('site-nav');
+    if (nav) {
+      var check = function() {
+        if (window.scrollY > 10) nav.classList.add('scrolled');
+        else nav.classList.remove('scrolled');
+      };
+      window.addEventListener('scroll', check, { passive: true });
+      check();
+    }
+    var burger = document.getElementById('nav-burger');
+    var dropdown = document.getElementById('nav-dropdown');
+    var icon = document.getElementById('burger-icon');
+    if (!burger || !dropdown) return;
+    burger.addEventListener('click', function() {
+      var open = dropdown.classList.toggle('open');
+      burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+      icon.innerHTML = open ? '<path d="M18 6L6 18M6 6l12 12"/>' : '<path d="M4 6h16M4 12h16M4 18h16"/>';
+    });
+    dropdown.querySelectorAll('a').forEach(function(a) {
+      a.addEventListener('click', function() {
+        dropdown.classList.remove('open');
+        burger.setAttribute('aria-expanded', 'false');
+        icon.innerHTML = '<path d="M4 6h16M4 12h16M4 18h16"/>';
+      });
+    });
+  })();
+</script>
