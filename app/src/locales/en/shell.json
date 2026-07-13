@@ -109,7 +109,7 @@
         "body": "Docs your assistant can read or share with you. Drop anything here for context."
       },
       "tabArchived": {
-        "title": "Completed",
+        "title": "Archived",
         "body": "Missions this agent has wrapped up. Send a message to reopen one and it comes right back to the active board."
       },
       "tabJobDescription": {
