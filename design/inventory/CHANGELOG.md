@@ -3,6 +3,21 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v26 - 2026-07-13
+
+New component `provider-usage-card`: a new top-level Usage page (its own
+sidebar item, sharing the AI Models hub's Teams gate) shows each CONNECTED
+provider account's live limits, one card per account (brand mark + name +
+plan chip). Subscription providers render a labeled meter per rolling
+rate-limit window (percent used + localized reset note, warning tint at >=
+90%); prepaid API-key providers render their remaining balance. Data is the
+engine's new `GET /providers/usage` (protocol `ProviderUsage`): the runtime
+reads each provider's own usage API with the already-linked credential
+(Anthropic OAuth usage, ChatGPT/Codex rate limits, Copilot quota snapshots,
+OpenRouter credits, DeepSeek balance); providers with no readable surface
+report an honest `unsupported` row. Web-only today, app/-locked
+(`app/src/components/usage-view/`), so the web manifest lands it `partial`.
+
 ## v25 - 2026-07-12
 
 The Routines/Reactions tab split is merged into ONE "Automations" tab, and the

@@ -84,6 +84,48 @@ test("POST /settings/claim claims a fresh agent but never moves a saved provider
   }
 });
 
+test("GET /providers/usage answers one row per connected provider", async () => {
+  const prevDataDir = process.env.HOUSTON_DATA_DIR;
+  const prevHome = process.env.HOUSTON_HOME;
+  const prevFetch = globalThis.fetch;
+  const dataDir = mkdtempSync(join(tmpdir(), "houston-usage-route-"));
+  process.env.HOUSTON_DATA_DIR = dataDir;
+  // Pin HOUSTON_HOME to the same empty dir so the anthropic shared-login-dir
+  // probe can't read a real credential off the developer machine — the batch
+  // must stay empty and offline.
+  process.env.HOUSTON_HOME = dataDir;
+  globalThis.fetch = (async () => {
+    throw new Error("network must not be touched with nothing connected");
+  }) as typeof fetch;
+
+  try {
+    vi.resetModules();
+    // Nothing is connected in this fresh dataDir, so the route answers an
+    // empty batch — the contract under test is routing + shape, not fetchers
+    // (those have their own suite in ../ai/usage/usage.test.ts).
+    const { handleProviderRoute } = await import("./provider-routes");
+    const { res, out } = mockRes();
+
+    expect(
+      await handleProviderRoute({
+        method: "GET",
+        path: "/providers/usage",
+        url: new URL("http://runtime.test/providers/usage"),
+        req: { headers: {} } as IncomingMessage,
+        res,
+      }),
+    ).toBe(true);
+
+    expect(out.status).toBe(200);
+    expect(Array.isArray(out.body)).toBe(true);
+  } finally {
+    globalThis.fetch = prevFetch;
+    restoreEnv("HOUSTON_DATA_DIR", prevDataDir);
+    restoreEnv("HOUSTON_HOME", prevHome);
+    vi.resetModules();
+  }
+});
+
 test("GET /providers hydrates served credentials before listing providers", async () => {
   const prevDataDir = process.env.HOUSTON_DATA_DIR;
   const prevControlPlaneUrl = process.env.HOUSTON_CONTROL_PLANE_URL;

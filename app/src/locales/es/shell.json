@@ -2,6 +2,7 @@
   "sidebar": {
     "missionControl": "Centro de misiones",
     "aiModels": "Modelos de IA",
+    "usage": "Uso",
     "integrations": "Integraciones",
     "agentStore": "Tienda de agentes",
     "settings": "Configuración",

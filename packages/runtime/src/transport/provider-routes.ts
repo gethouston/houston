@@ -4,6 +4,7 @@ import {
   listProviders,
   setSettings,
 } from "../ai/providers";
+import { listProviderUsage } from "../ai/usage";
 import { exportCredential } from "../auth/export";
 import {
   cancelLogin,
@@ -30,6 +31,17 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
     // /providers, not /auth/status). listProviders() then reads the fresh cache.
     await refreshAnthropicCredential();
     json(res, 200, listProviders());
+    return true;
+  }
+  // Per-account usage (rate-limit windows / balances) for every CONNECTED
+  // provider, fetched live from each provider's own usage API. Registered
+  // before the generic /providers/* matchers as a literal path.
+  if (method === "GET" && path === "/providers/usage") {
+    await syncServedCredentialSafe("providers-usage");
+    // Warm the anthropic shared-dir probe so a just-connected Claude account
+    // counts as connected on this poll (same rationale as GET /providers).
+    await refreshAnthropicCredential();
+    json(res, 200, await listProviderUsage());
     return true;
   }
   if (method === "PUT" && path === "/settings") {

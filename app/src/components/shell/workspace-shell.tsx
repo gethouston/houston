@@ -58,6 +58,7 @@ import { SettingsView } from "../settings/settings-view";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
 import { STORE_VIEW_ID, StoreView } from "../store-view";
 import { AgentShareButton } from "../tabs/agent-share-button";
+import { USAGE_VIEW_ID, UsageView } from "../usage-view";
 import { AgentWarmingDialog } from "./agent-warming-dialog";
 import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
@@ -230,6 +231,8 @@ export function WorkspaceShell({
                     <Dashboard />
                   ) : viewMode === "ai-hub" && showAiModels ? (
                     <AiHubView />
+                  ) : viewMode === USAGE_VIEW_ID && showAiModels ? (
+                    <UsageView />
                   ) : viewMode === "settings" ? (
                     <SettingsView />
                   ) : viewMode === INTEGRATIONS_VIEW_ID && showIntegrations ? (

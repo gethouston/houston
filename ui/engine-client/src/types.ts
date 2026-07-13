@@ -1007,6 +1007,66 @@ export interface ProviderStatus {
   activeModel?: string;
 }
 
+/**
+ * Stable rate-limit window identifiers on a provider account, mapped to
+ * translated labels by the frontend: `session` = the short rolling window
+ * (Claude 5h, Codex primary), `week`/`week_opus` = 7-day windows, `month` =
+ * monthly, `premium`/`chat`/`completions` = Copilot's quota lanes.
+ * Mirrors `@houston/protocol`.
+ */
+export type ProviderUsageWindowId =
+  | "session"
+  | "week"
+  | "week_opus"
+  | "month"
+  | "premium"
+  | "chat"
+  | "completions";
+
+/** One rolling rate-limit window on a connected provider account. */
+export interface ProviderUsageWindow {
+  id: ProviderUsageWindowId;
+  /** 0–100, clamped engine-side; never NaN. */
+  usedPercent: number;
+  /** ISO 8601 instant the window resets, when the provider reports one. */
+  resetsAt: string | null;
+  /** Window length in minutes, when the provider reports one (300 = 5h). */
+  windowMinutes?: number;
+}
+
+/** Prepaid balance for API-key providers that expose one. */
+export interface ProviderUsageCredits {
+  remaining: number;
+  /** Total granted, when reported. */
+  granted?: number;
+  unit: "USD" | "credits";
+}
+
+export type ProviderUsageStatus =
+  | "ok"
+  | "unsupported" // the provider has no usage surface Houston can read
+  | "unauthenticated" // no readable credential for the usage probe
+  | "error"; // the probe failed (network, provider outage, bad payload)
+
+/**
+ * One connected provider account's live usage — rate-limit windows for
+ * subscription providers, a credit balance for prepaid API keys. One row per
+ * CONNECTED provider (`providerUsage()`); unreadable providers report an
+ * honest non-`ok` status instead of being omitted.
+ */
+export interface ProviderUsage {
+  provider: string;
+  status: ProviderUsageStatus;
+  windows: ProviderUsageWindow[];
+  credits?: ProviderUsageCredits;
+  /** Plan/tier name when the provider reports one (e.g. Codex "pro"). */
+  plan?: string;
+  /** ISO 8601 instant the row was fetched (`ok` rows only). */
+  fetchedAt?: string;
+  /** Human-readable failure detail (`error` rows only; never a secret). */
+  message?: string;
+}
+
 export interface PreferenceValue {
   value: string | null;
 }

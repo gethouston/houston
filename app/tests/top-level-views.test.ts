@@ -2,6 +2,7 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { INTEGRATIONS_VIEW_ID } from "../src/components/integrations-view/id.ts";
 import { ORGANIZATION_VIEW_ID } from "../src/components/organization/id.ts";
+import { USAGE_VIEW_ID } from "../src/components/usage-view/id.ts";
 import {
   blockedTopLevelView,
   isTopLevelView,
@@ -13,6 +14,7 @@ describe("isTopLevelView", () => {
       "dashboard",
       "settings",
       "ai-hub",
+      USAGE_VIEW_ID,
       INTEGRATIONS_VIEW_ID,
       ORGANIZATION_VIEW_ID,
     ]) {
@@ -70,6 +72,19 @@ describe("blockedTopLevelView", () => {
     );
     strictEqual(
       blockedTopLevelView("ai-hub", gates({ showAiModels: true })),
+      false,
+    );
+  });
+
+  it("blocks a stale Usage page when the AI Models gate is off", () => {
+    // Usage reads the same workspace-central provider accounts the hub
+    // manages, so it shares the hub's gate exactly.
+    strictEqual(
+      blockedTopLevelView(USAGE_VIEW_ID, gates({ showAiModels: false })),
+      true,
+    );
+    strictEqual(
+      blockedTopLevelView(USAGE_VIEW_ID, gates({ showAiModels: true })),
       false,
     );
   });
