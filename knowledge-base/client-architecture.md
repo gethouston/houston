@@ -76,8 +76,12 @@ end-state is that it dissolves into direct SDK consumption
   WRITES. Do not adopt the SDK's scope snapshots as the web read model.
 - **Turn/feed + reactivity already run on the SDK.** `turn-stream.ts` delegates
   to the SDK's `streamTurn`/`observeConversation`; `feed-output.ts` implements the
-  SDK's `FeedOutput`; both the SDK and adapter consume the ONE `streamGlobalEvents`
-  in `runtime-client`. The conversation VM cache is bounded — `ConversationVmOutput`
+  SDK's `FeedOutput`; both the SDK and adapter use the canonical `streamGlobalEvents`
+  loop in `runtime-client`. With SDK reactivity enabled (native), the turns module
+  handles `ConversationsChanged` by reloading subscribed conversation VMs, including
+  an idle open chat whose per-conversation observer has closed. Web/desktop leave
+  SDK reactivity disabled and perform the same invalidation through their existing
+  TanStack Query event bus. The conversation VM cache is bounded — `ConversationVmOutput`
   keeps folded transcripts in an `LruCache` (default `conversationCacheMax` 50);
   idle conversations evict and re-hydrate from history, live/subscribed ones are
   pinned, `turns.forget(id)` drops one explicitly.

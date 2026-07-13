@@ -101,8 +101,10 @@ facade exposed as a property (`sdk.session`, `sdk.agents`, …). The `ctx`
 client resolver (`clientFor(agentId)` — the host nests routes under
 `/agents/<id>`), and the shared auth-expiry notifier, so every module speaks the
 same transport and emits one canonical `session/tokenExpired` signal. Tear the
-SDK down with `sdk.dispose()` (stops the agents reactivity stream and every
-in-flight turn stream).
+SDK down with `sdk.dispose()` (stops the agents, activities, and conversation
+reactivity streams plus every in-flight turn stream). Native clients receive
+`ConversationsChanged` through the turns module: subscribed conversation VMs
+reload their persisted history, including after an idle observer has closed.
 
 ## Native bridge — embedding the SDK in a mobile host
 

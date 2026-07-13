@@ -6,7 +6,7 @@ import { observeConversation } from "./observe-stream";
 import { type StreamRegistry, streamKey } from "./stream-registry";
 import type { TurnSendInput } from "./turn-inputs";
 import { streamTurn, type TurnWirePin } from "./turn-stream";
-import type { ConversationVmOutput } from "./vm-output";
+import { type ConversationVmOutput, conversationScope } from "./vm-output";
 
 /** The always-on state the four turn operations drive and share. */
 export interface TurnOperationsDeps {
@@ -25,6 +25,10 @@ export interface TurnOperations {
   observe(conversationId: string, agentId?: string): Promise<void>;
   history(conversationId: string, agentId?: string): Promise<FeedFrame[]>;
   cancel(conversationId: string, agentId?: string): Promise<void>;
+  /** Refresh actively subscribed conversations after a global change event. */
+  refreshObserved(agentId?: string): void;
+  /** Remove one conversation from the global-refresh registry. */
+  forgetObserved(conversationId: string, agentId?: string): void;
 }
 
 /**
@@ -36,6 +40,10 @@ export function createTurnOperations(
   ctx: ModuleContext,
   { vm, defaults, external, registry }: TurnOperationsDeps,
 ): TurnOperations {
+  const observed = new Map<
+    string,
+    { agentId: string; conversationId: string }
+  >();
   /**
    * Start a turn against the agent's sandbox client (`clientFor(agentId)` — the
    * host nests turn/settings routes under `/agents/<id>`). A model/effort pick
@@ -98,15 +106,17 @@ export function createTurnOperations(
     conversationId: string,
     agentId?: string,
   ): Promise<void> => {
-    const client = ctx.clientFor(agentId ?? "");
-    const key = streamKey(agentId ?? "", conversationId);
+    const resolvedAgentId = agentId ?? "";
+    const client = ctx.clientFor(resolvedAgentId);
+    const key = streamKey(resolvedAgentId, conversationId);
+    observed.set(key, { agentId: resolvedAgentId, conversationId });
     const { messages } = await client.getHistory(conversationId);
     const output = new MultiplexFeedOutput([...defaults, ...external]);
     if (!registry.get(key))
-      vm.seedHistory(agentId ?? "", conversationId, historyToFeed(messages));
+      vm.seedHistory(resolvedAgentId, conversationId, historyToFeed(messages));
     observeConversation(
       client,
-      agentId ?? "",
+      resolvedAgentId,
       conversationId,
       output,
       messages.length,
@@ -137,5 +147,37 @@ export function createTurnOperations(
     await ctx.clientFor(agentId ?? "").cancel(conversationId);
   };
 
-  return { send, observe, history, cancel };
+  const forgetObserved = (conversationId: string, agentId?: string): void => {
+    observed.delete(streamKey(agentId ?? "", conversationId));
+  };
+
+  const refreshObserved = (agentId?: string): void => {
+    for (const [key, ref] of observed) {
+      if (agentId !== undefined && ref.agentId !== agentId) continue;
+      if (
+        !ctx.store.hasSubscribers(
+          conversationScope(ref.agentId, ref.conversationId),
+        )
+      ) {
+        observed.delete(key);
+        continue;
+      }
+      void observe(ref.conversationId, ref.agentId).catch((err) =>
+        ctx.config.ports.logger.debug("conversation refresh failed", {
+          agentId: ref.agentId,
+          conversationId: ref.conversationId,
+          error: String(err),
+        }),
+      );
+    }
+  };
+
+  return {
+    send,
+    observe,
+    history,
+    cancel,
+    refreshObserved,
+    forgetObserved,
+  };
 }
