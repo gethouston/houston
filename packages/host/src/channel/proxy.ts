@@ -36,6 +36,10 @@ export class ProxyChannel implements RuntimeChannel {
       launcher: RuntimeLauncher;
       proxy: RuntimeProxy;
       credentials: CredentialStore;
+      /** Per-agent durable mirror for the Claude SDK-owned rotating file. */
+      claudeCredentials?: {
+        put(credential: ClaudeOAuthCredential): Promise<void>;
+      };
       /**
        * Whether an inbound `x-houston-acting-as` header is relayed to the
        * runtime. The runtime decodes that token's payload WITHOUT verifying
@@ -426,6 +430,10 @@ export class ProxyChannel implements RuntimeChannel {
       refreshToken: cred.refreshToken ?? "",
       expiresAt: cred.expiresAt ?? 0,
     });
+    // Secret Manager mirror is per-agent: two SDKs must never rotate the same
+    // refresh token. The standing runtime write below remains the immediate
+    // materialization path.
+    await this.opts.claudeCredentials?.put(cred);
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     const res = await fetch(
       `${endpoint.baseUrl}/auth/anthropic/oauth-credential`,

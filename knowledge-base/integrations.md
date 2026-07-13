@@ -606,15 +606,20 @@ signed-out desktop, still serves it. `capabilities.integrations` therefore
 always contains `"custom"`.
 
 **Houston owns persistence; the executor is a compiled view.**
-`custom-integrations.json` (definitions, next to credentials.json) +
-`custom-integration-secrets.json` (0600, values keyed `ci_<slug>_<var>`) are the
-durable truth. `CustomExecutorHost` lazily builds one in-memory executor and
-rehydrates every definition into it (addSpec/addServer + an org/`default`
-connection per def); a definition that fails to compile degrades to state
-`error` for itself only. Secrets reach requests via a Houston
-`CredentialProvider` (`secrets.ts`) resolved lazily — the executor never copies
-values. `CustomSecretStore` is a port: a cloud adapter can move custody to
-encrypted Pg / a secret manager without touching anything above it.
+`custom-integrations.json` holds definitions next to credentials.json. On
+local/self-host, `custom-integration-secrets.json` is the 0600 secret store; on
+managed cloud, `RemoteCustomSecretStore` sends values over the agent's
+host-token-authenticated gateway route into GCP Secret Manager, and no value is
+written to the agent-data store. At the first managed boot after upgrade, the
+host hydrates the legacy file, uploads every entry, and removes it only after
+all writes succeed; the following sync deletes the old GCS object. A partial
+migration leaves the whole file intact for safe retry.
+
+`CustomExecutorHost` lazily builds one in-memory executor and rehydrates every
+definition into it (addSpec/addServer + an org/`default` connection per def); a
+definition that fails to compile degrades to state `error` for itself only.
+Secrets reach requests via a Houston `CredentialProvider` (`secrets.ts`)
+resolved lazily — the executor never copies values.
 
 **Definition shape** (discriminated union, `types.ts`): `openapi` (spec
 url|blob, baseUrl?) or `mcp` (remote endpoint, headers?), plus
@@ -670,10 +675,11 @@ key.", `chat:credential.skippedLine`; `finalCredentialNames` mirrors
 `finalConnectNames`) so the agent stops waiting. Hidden when the host 404s the
 definitions route (engine-client returns `null`, same convention as grants).
 
-**Cloud caveat**: pods store definitions on their own disk; the gateway only
-proxies agent-scoped routes, so the cloud web client cannot reach
-`/v1/integrations/custom/*` until the gateway allowlists it (same story as the
-skills marketplace, PR #706). Desktop/self-host are fully served.
+**Cloud custody**: definitions remain agent data, while values are agent-scoped
+Secret Manager secrets. Engine pods have no GCP IAM; only the gateway can
+resolve the deterministic non-PII resource id. The cloud web client's global
+custom-management route still depends on gateway proxy support; custody is safe
+regardless of whether that UI surface is enabled.
 
 ---
 

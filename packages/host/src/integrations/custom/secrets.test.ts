@@ -1,8 +1,12 @@
-import { mkdtempSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
-import { FileCustomSecretStore, secretIdFor } from "./secrets";
+import {
+  FileCustomSecretStore,
+  RemoteCustomSecretStore,
+  secretIdFor,
+} from "./secrets";
 
 /**
  * FileCustomSecretStore holds credential VALUES (API keys, MCP tokens) — the
@@ -64,4 +68,82 @@ test("secretIdFor is stable and namespaced per slug+variable", () => {
   expect(secretIdFor("acme", "apiKey")).toBe("ci_acme_apiKey");
   expect(secretIdFor("beta", "token")).toBe("ci_beta_token");
   expect(secretIdFor("acme", "token")).not.toBe(secretIdFor("beta", "token"));
+});
+
+test("remote store uses the scoped pod route and never echoes writes locally", async () => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const fetchImpl = async (url: string | URL | Request, init?: RequestInit) => {
+    calls.push({ url: String(url), init });
+    if (!init?.method)
+      return new Response(JSON.stringify({ value: "remote-key" }), {
+        status: 200,
+      });
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  };
+  const store = new RemoteCustomSecretStore({
+    baseUrl: "https://gateway.example/",
+    orgSlug: "0123456789abcdef",
+    agentSlug: "aaaaaaaaaaaaaaaa",
+    podToken: "host-token",
+    fetchImpl: fetchImpl as typeof fetch,
+  });
+  await store.set("ci_acme_token", "never-on-disk");
+  expect(await store.get("ci_acme_token")).toBe("remote-key");
+  await store.delete("ci_acme_token");
+  expect(calls.map((call) => call.init?.method ?? "GET")).toEqual([
+    "PUT",
+    "GET",
+    "DELETE",
+  ]);
+  expect(calls[0]?.url).toContain(
+    "/v1/pod/custom-secrets/0123456789abcdef/aaaaaaaaaaaaaaaa/ci_acme_token",
+  );
+  expect(
+    (calls[0]?.init?.headers as Record<string, string>).Authorization,
+  ).toBe("Bearer host-token");
+});
+
+test("legacy migration uploads every value before removing the plaintext file", async () => {
+  const legacy = new FileCustomSecretStore(path);
+  await legacy.set("ci_acme_token", "a");
+  await legacy.set("ci_beta_token", "b");
+  const uploaded = new Map<string, string>();
+  const remote = new RemoteCustomSecretStore({
+    baseUrl: "https://gateway.example",
+    orgSlug: "0123456789abcdef",
+    agentSlug: "aaaaaaaaaaaaaaaa",
+    podToken: "host-token",
+    legacy,
+    fetchImpl: (async (url: string | URL | Request, init?: RequestInit) => {
+      const id = decodeURIComponent(String(url).split("/").at(-1) ?? "");
+      const body = JSON.parse(String(init?.body)) as { value: string };
+      uploaded.set(id, body.value);
+      return new Response(`{"ok":true}`, { status: 200 });
+    }) as typeof fetch,
+  });
+  expect(await remote.migrateLegacy()).toBe(2);
+  expect(uploaded).toEqual(
+    new Map([
+      ["ci_acme_token", "a"],
+      ["ci_beta_token", "b"],
+    ]),
+  );
+  expect(existsSync(path)).toBe(false);
+});
+
+test("legacy migration keeps the file when any upload fails", async () => {
+  const legacy = new FileCustomSecretStore(path);
+  await legacy.set("ci_acme_token", "a");
+  const remote = new RemoteCustomSecretStore({
+    baseUrl: "https://gateway.example",
+    orgSlug: "0123456789abcdef",
+    agentSlug: "aaaaaaaaaaaaaaaa",
+    podToken: "host-token",
+    legacy,
+    fetchImpl: (async () =>
+      new Response("down", { status: 503 })) as typeof fetch,
+  });
+  await expect(remote.migrateLegacy()).rejects.toThrow("503");
+  expect(existsSync(path)).toBe(true);
+  expect(await legacy.get("ci_acme_token")).toBe("a");
 });

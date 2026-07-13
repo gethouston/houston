@@ -8,6 +8,7 @@ import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
 import { ProxyChannel } from "../channel/proxy";
 import { FileCredentialStore } from "../credentials/file-store";
+import { RemoteClaudeCredentialStore } from "../credentials/remote-claude-store";
 import { RemoteSharedEndpointStore } from "../credentials/remote-shared-endpoint-store";
 import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
@@ -18,7 +19,10 @@ import { ComposioProvider } from "../integrations/composio";
 import { CustomExecutorHost } from "../integrations/custom/executor-host";
 import { CustomIntegrationManager } from "../integrations/custom/manager";
 import { CustomIntegrationProvider } from "../integrations/custom/provider";
-import { FileCustomSecretStore } from "../integrations/custom/secrets";
+import {
+  FileCustomSecretStore,
+  RemoteCustomSecretStore,
+} from "../integrations/custom/secrets";
 import { FileCustomIntegrationStore } from "../integrations/custom/store";
 import { FileIntegrationGrantStore } from "../integrations/grant-store";
 import { LocalIntegrationGrants } from "../integrations/grants";
@@ -236,6 +240,19 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       })
     : undefined;
   const controlPlaneUrl = `http://127.0.0.1:${opts.port}`;
+  const claudeCredentialPath = join(
+    dirname(opts.credentialsPath),
+    "claude-login",
+    ".credentials.json",
+  );
+  const remoteClaudeCredentials = opts.credentials
+    ? new RemoteClaudeCredentialStore({
+        baseUrl: opts.credentials.url,
+        orgSlug: opts.credentials.orgSlug,
+        agentSlug: opts.credentials.agentSlug,
+        podToken: opts.credentials.podToken,
+      })
+    : undefined;
 
   const spawner =
     opts.spawner ??
@@ -282,6 +299,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     launcher,
     proxy: { forward },
     credentials,
+    claudeCredentials: remoteClaudeCredentials,
     // Desktop: clients talk to this host DIRECTLY (no gateway in front to mint
     // or strip identity headers), so an inbound x-houston-acting-as is
     // untrusted client input — never relay it to the runtime; identity is the
@@ -335,9 +353,19 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   const customStore = new FileCustomIntegrationStore(
     join(customDir, "custom-integrations.json"),
   );
-  const customSecrets = new FileCustomSecretStore(
+  const legacyCustomSecrets = new FileCustomSecretStore(
     join(customDir, "custom-integration-secrets.json"),
   );
+  const remoteCustomSecrets = opts.credentials
+    ? new RemoteCustomSecretStore({
+        baseUrl: opts.credentials.url,
+        orgSlug: opts.credentials.orgSlug,
+        agentSlug: opts.credentials.agentSlug,
+        podToken: opts.credentials.podToken,
+        legacy: legacyCustomSecrets,
+      })
+    : undefined;
+  const customSecrets = remoteCustomSecrets ?? legacyCustomSecrets;
   const customExecutor = new CustomExecutorHost(customSecrets, () =>
     customStore.list(),
   );
@@ -537,6 +565,21 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       // readiness-critical and must finish before migrations or HTTP listening;
       // failure propagates so the pod restarts without ever syncing an empty tree.
       await syncDaemon?.hydrate();
+      // Managed cloud: migrate the hydrated plaintext custom-integration file
+      // into Secret Manager before starting the watcher/sync loop. Removing it
+      // after every upload succeeds makes the first sync delete the old GCS
+      // object; a partial failure leaves it intact for a safe boot retry.
+      if (remoteClaudeCredentials) {
+        await remoteClaudeCredentials.restore(claudeCredentialPath);
+      }
+      if (remoteCustomSecrets) {
+        const migrated = await remoteCustomSecrets.migrateLegacy();
+        if (migrated > 0) {
+          console.log(
+            `[local-host] migrated ${migrated} custom integration secret(s) to remote custody`,
+          );
+        }
+      }
       // One-time, idempotent migration of the pre-v0.4 FLAT `.houston/` layout
       // into the per-type folders the domain reads (ported from the Rust
       // engine's migrate_agent_data). Runs BEFORE the watcher so migrated files
@@ -584,6 +627,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       if (!opts.passive) {
         watcher.start();
         syncDaemon?.start();
+        remoteClaudeCredentials?.watch(claudeCredentialPath);
         scheduler.start();
         usageSampler?.start();
       }
@@ -630,6 +674,10 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         // Await actual child exit (bounded): the final sync below must not
         // walk /data while a runtime is still flushing its last writes.
         await launcher.shutdownAllAndWait();
+        if (remoteClaudeCredentials) {
+          await remoteClaudeCredentials.sync(claudeCredentialPath);
+          remoteClaudeCredentials.stop();
+        }
         await syncDaemon?.stop();
         await new Promise<void>((resolve, reject) => {
           if (!server.listening) return resolve();
