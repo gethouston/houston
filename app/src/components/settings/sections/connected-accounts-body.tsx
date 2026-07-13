@@ -3,7 +3,6 @@ import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useDisconnectIntegration } from "../../../hooks/queries";
 import { useAgentGrantToggle } from "../../../hooks/queries/use-agent-grant-toggle";
-import { useCapabilities } from "../../../hooks/use-capabilities";
 import { useUIStore } from "../../../stores/ui";
 import {
   AppDetailDialog,
@@ -16,7 +15,6 @@ import {
   useConnectionSelection,
 } from "../../integrations";
 import { INTEGRATIONS_VIEW_ID } from "../../integrations-view/id";
-import { connectAffordance } from "../connected-accounts-model";
 
 interface ConnectedAccountsBodyProps {
   reconnectNotice: boolean;
@@ -28,15 +26,14 @@ interface ConnectedAccountsBodyProps {
  * read-model, the one-column list, and the per-app detail sheet + disconnect
  * dialog. ONE connect flow (connect-only, no auto-grant) is shared by the
  * recovery callouts and the sheet's reconnect so closing either never kills an
- * in-flight OAuth poll. Connecting MORE apps is a link to the global catalog
- * page, or a muted hint on a Teams host where that page carries no catalog.
+ * in-flight OAuth poll. Connecting MORE apps is a link to the global
+ * Integrations page, which everyone can reach.
  */
 export function ConnectedAccountsBody({
   reconnectNotice,
   dismissReconnect,
 }: ConnectedAccountsBodyProps) {
   const { t } = useTranslation("settings");
-  const { capabilities } = useCapabilities();
   const apps = useConnectedApps();
   const connectFlow = useConnectFlow({ autoGrant: false });
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
@@ -53,7 +50,6 @@ export function ConnectedAccountsBody({
   } = useConnectionSelection(apps);
 
   const hasConnections = apps.connData.length > 0;
-  const affordance = connectAffordance(capabilities);
 
   return (
     <div className="space-y-4">
@@ -82,20 +78,14 @@ export function ConnectedAccountsBody({
         </p>
       )}
 
-      {affordance === "link" ? (
-        <button
-          type="button"
-          onClick={() => setViewMode(INTEGRATIONS_VIEW_ID)}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-action transition-colors hover:text-action/80"
-        >
-          <Plus className="size-4" />
-          {t("connectedAccounts.connectMore")}
-        </button>
-      ) : (
-        <p className="text-xs text-ink-muted">
-          {t("connectedAccounts.connectHint")}
-        </p>
-      )}
+      <button
+        type="button"
+        onClick={() => setViewMode(INTEGRATIONS_VIEW_ID)}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-action transition-colors hover:text-action/80"
+      >
+        <Plus className="size-4" />
+        {t("connectedAccounts.connectMore")}
+      </button>
 
       {selectedConn && selectedApp && (
         <AppDetailDialog

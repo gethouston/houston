@@ -72,7 +72,8 @@
       "allowedEmpty": "No apps picked yet. Add apps below.",
       "allowedEmptyCategory": "No allowed apps in this category yet.",
       "addHeading": "Add apps",
-      "ownerOnly": "Only the workspace owner can change this."
+      "ownerOnly": "Only the workspace owner can change this.",
+      "perAgentNote": "Want tighter limits for one agent? Set them in that agent's settings."
     },
     "notAllowed": {
       "title": "Not allowed for this agent",
@@ -100,19 +101,21 @@
     }
   },
   "org": {
-    "title": "Organization",
-    "subtitle": "Manage your team, agents, and activity in one place.",
-    "nav": "Organization",
-    "tablistLabel": "Organization sections",
+    "title": "Admin",
+    "subtitle": "Manage your team, agents, policies, and activity in one place.",
+    "nav": "Admin",
+    "tablistLabel": "Admin sections",
     "tabs": {
       "people": "People",
       "agents": "Agents",
+      "allowedIntegrations": "Allowed integrations",
+      "allowedModels": "Allowed AI models",
       "activity": "Activity",
       "usage": "Usage",
       "billing": "Billing"
     },
-    "loading": "Loading your organization...",
-    "unavailable": "We couldn't load your organization."
+    "loading": "Loading your workspace...",
+    "unavailable": "We couldn't load your workspace."
   },
   "share": {
     "title": "Share {{name}}",

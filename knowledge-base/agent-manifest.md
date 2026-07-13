@@ -711,7 +711,7 @@ The view is laid out by the shared **`CatalogShell`** (`ui/core`, the same
 grammar as the Integrations page): a consolidated **Connected** strip of
 provider brand tiles OUTSIDE the tabs (`connected-providers-strip.tsx`, a tile
 opens the provider modal — sign-out lives there), then the Providers / Models
-(/ Workspace policy on Teams) tabs with `CatalogCount` chips. The whole page is
+tabs with `CatalogCount` chips. The whole page is
 ONE scroll region (the old fixed-masthead split is gone); while a modal is open
 the scroller flips to `overflow-y-hidden` (Radix only locks `<body>`) with
 `scrollbar-gutter: stable` holding the offset.

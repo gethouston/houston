@@ -1,10 +1,5 @@
 {
   "title": "Integraciones",
-  "policyPage": {
-    "subtitle": "Elige qué aplicaciones pueden usar los agentes de este espacio de trabajo.",
-    "manageAccounts": "Gestiona tus aplicaciones conectadas",
-    "perAgentNote": "¿Quieres límites más estrictos para un agente? Configúralos en los ajustes de ese agente."
-  },
   "loading": {
     "title": "Cargando tus integraciones",
     "body": "Verificando tu proveedor de integraciones…"

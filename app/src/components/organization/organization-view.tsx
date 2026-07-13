@@ -10,6 +10,8 @@ import { useWorkspaceStore } from "../../stores/workspaces";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import ActivityTab from "./activity-tab";
 import AgentsTab from "./agents-tab";
+import AllowedIntegrationsTab from "./allowed-integrations-tab";
+import AllowedModelsTab from "./allowed-models-tab";
 import BillingTab from "./billing-tab";
 import MembersTab from "./members-tab";
 import { useOrgNav } from "./org-nav-store";
@@ -39,14 +41,17 @@ const TAB_COMPONENTS: Record<OrgTabId, (props: OrgTabProps) => ReactNode> = {
   agents: AgentsTab,
   activity: ActivityTab,
   usage: UsageTab,
+  allowedIntegrations: AllowedIntegrationsTab,
+  allowedModels: AllowedModelsTab,
   billing: BillingTab,
 };
 
 /**
  * The top-level Organization dashboard (Teams v2): People, Agents, Activity,
- * Usage. A shell only — it loads the org, builds the shared `OrgViewContext`,
- * and renders the active tab; each tab module owns its own data + UI so the
- * parallel UI wave fills them without touching this file.
+ * Usage, Allowed integrations, Allowed AI models. A shell only — it loads the
+ * org, builds the shared `OrgViewContext`, and renders the active tab; each tab
+ * module owns its own data + UI so the parallel UI wave fills them without
+ * touching this file.
  *
  * Rendered ONLY when `canSeeOrganization` (multiplayer owner/admin) — the
  * sidebar hides the nav entry and `workspace-shell` guards the render for
@@ -60,13 +65,15 @@ export function OrganizationView() {
   const requestedTab = useOrgNav((s) => s.requestedTab);
   const clearRequestedTab = useOrgNav((s) => s.clearRequestedTab);
 
-  // The Billing tab exists only for owner/admin on a team space (C8). Compute
-  // the visible tab set so a personal space / non-billing host never shows it.
+  // The policy tabs exist only on a Teams host (no `/org/settings` route on a
+  // host that predates Teams); the Billing tab only for owner/admin on a team
+  // space (C8). Compute the visible tab set so neither ever shows a dead pane.
+  const showPolicy = capabilities?.teams === true;
   const showBilling = canSeeBillingTab(
     capabilities,
     current ? isTeamWorkspace(current.id) : false,
   );
-  const tabIds = orgTabIds(showBilling);
+  const tabIds = orgTabIds({ policy: showPolicy, billing: showBilling });
 
   const [tab, setTab] = useState<OrgTabId>("people");
 

@@ -145,8 +145,7 @@
     "subtitle": "Apps you've connected. Choose which agents can use each one.",
     "heading": "Your apps",
     "empty": "You haven't connected any apps yet.",
-    "connectMore": "Connect more apps",
-    "connectHint": "Connect new apps from any agent's Integrations tab."
+    "connectMore": "Connect more apps"
   },
   "apiKeys": {
     "title": "API keys",

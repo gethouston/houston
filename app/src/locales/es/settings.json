@@ -145,8 +145,7 @@
     "subtitle": "Aplicaciones que conectaste. Elige qué agentes pueden usar cada una.",
     "heading": "Tus aplicaciones",
     "empty": "Aún no conectaste ninguna aplicación.",
-    "connectMore": "Conectar más aplicaciones",
-    "connectHint": "Conecta nuevas aplicaciones desde la pestaña Integraciones de cualquier agente."
+    "connectMore": "Conectar más aplicaciones"
   },
   "apiKeys": {
     "title": "Claves de API",

@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next";
-import { useCapabilities } from "../../hooks/use-capabilities";
 import {
   CustomIntegrationsSection,
   LoadingState,
@@ -8,16 +7,13 @@ import {
   useIntegrationsGate,
 } from "../integrations";
 import { PageContainer, PageHeader } from "../shell/page-shell";
-import { IntegrationsPolicy } from "./integrations-policy";
 import { IntegrationsReady } from "./integrations-ready";
-import { integrationsPageMode } from "./integrations-view-model";
 
 /**
- * The top-level Integrations page (sidebar destination). Exactly one identity
- * per mode: in a Teams workspace it is the org POLICY surface (owner/admin only,
- * gated by the nav); everywhere else it is the caller's PERSONAL connected-apps
- * page. Shares the exact gate UX of the per-agent tab (loading / unavailable /
- * signin / ready) via `useIntegrationsGate`; the ready body owns the mode split.
+ * The top-level Integrations page (sidebar destination): the caller's PERSONAL
+ * connected-apps catalog in every mode (org integration policy lives on the
+ * Admin page). Shares the exact gate UX of the per-agent tab (loading /
+ * unavailable / signin / ready) via `useIntegrationsGate`.
  *
  * The gate's non-ready kinds describe the COMPOSIO catalog only: the key-free
  * custom provider (HOU-550) is served independently, so when the gate reports
@@ -27,24 +23,16 @@ import { integrationsPageMode } from "./integrations-view-model";
  */
 export function IntegrationsView() {
   const { t } = useTranslation("integrations");
-  const { capabilities } = useCapabilities();
   const gate = useIntegrationsGate();
 
   return (
     <div className="h-full overflow-auto">
       <PageContainer className="py-10">
         {gate.kind === "ready" ? (
-          integrationsPageMode(capabilities) === "policy" ? (
-            <IntegrationsPolicy
-              reconnectNotice={gate.reconnectNotice}
-              dismissReconnect={gate.dismissReconnect}
-            />
-          ) : (
-            <IntegrationsReady
-              reconnectNotice={gate.reconnectNotice}
-              dismissReconnect={gate.dismissReconnect}
-            />
-          )
+          <IntegrationsReady
+            reconnectNotice={gate.reconnectNotice}
+            dismissReconnect={gate.dismissReconnect}
+          />
         ) : (
           <>
             <PageHeader

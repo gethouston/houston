@@ -6,8 +6,7 @@
   },
   "tabs": {
     "providers": "Providers",
-    "models": "Models",
-    "policy": "Workspace policy"
+    "models": "Models"
   },
   "sections": {
     "connected": "Connected",

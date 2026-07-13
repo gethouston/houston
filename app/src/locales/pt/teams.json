@@ -72,7 +72,8 @@
       "allowedEmpty": "Nenhum aplicativo escolhido ainda. Adicione aplicativos abaixo.",
       "allowedEmptyCategory": "Nenhum aplicativo permitido nesta categoria ainda.",
       "addHeading": "Adicionar aplicativos",
-      "ownerOnly": "Apenas o proprietário do espaço de trabalho pode alterar isso."
+      "ownerOnly": "Apenas o proprietário do espaço de trabalho pode alterar isso.",
+      "perAgentNote": "Quer limites mais restritos para um agente? Defina isso nas configurações desse agente."
     },
     "notAllowed": {
       "title": "Não permitido para este agente",
@@ -100,19 +101,21 @@
     }
   },
   "org": {
-    "title": "Organização",
-    "subtitle": "Gerencie sua equipe, agentes e atividade em um só lugar.",
-    "nav": "Organização",
-    "tablistLabel": "Seções da organização",
+    "title": "Administração",
+    "subtitle": "Gerencie sua equipe, agentes, políticas e atividade em um só lugar.",
+    "nav": "Administração",
+    "tablistLabel": "Seções de administração",
     "tabs": {
       "people": "Pessoas",
       "agents": "Agentes",
+      "allowedIntegrations": "Integrações permitidas",
+      "allowedModels": "Modelos de IA permitidos",
       "activity": "Atividade",
       "usage": "Uso",
       "billing": "Cobrança"
     },
-    "loading": "Carregando sua organização...",
-    "unavailable": "Não foi possível carregar sua organização."
+    "loading": "Carregando seu espaço de trabalho...",
+    "unavailable": "Não foi possível carregar seu espaço de trabalho."
   },
   "share": {
     "title": "Compartilhar {{name}}",

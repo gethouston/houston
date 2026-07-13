@@ -1,10 +1,5 @@
 {
   "title": "Integrations",
-  "policyPage": {
-    "subtitle": "Choose which apps agents in this workspace can use.",
-    "manageAccounts": "Manage your connected apps",
-    "perAgentNote": "Want tighter limits for one agent? Set them in that agent's settings."
-  },
   "loading": {
     "title": "Loading your integrations",
     "body": "Checking your integrations provider…"

@@ -130,8 +130,8 @@
         "body": "Add providers like Claude and OpenAI. Manage your subscriptions and API keys here."
       },
       "organization": {
-        "title": "Organization",
-        "body": "Invite teammates, assign roles, and manage access here."
+        "title": "Admin",
+        "body": "Invite teammates, assign roles, and set workspace policies for allowed integrations and AI models here."
       },
       "settings": {
         "title": "Settings",

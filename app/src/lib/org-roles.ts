@@ -57,32 +57,15 @@ export function canSeeMembers(caps: Capabilities | null | undefined): boolean {
 }
 
 /**
- * Should the global Integrations page be visible to this caller? In a Teams
- * workspace that page becomes admin policy (the org-wide app ceiling), so only
- * owner/admin see it there. Plain Teams members manage apps from the agent tab
- * plus Settings > Connected accounts, and never see the policy page. Everyone
- * else — single-player and non-Teams multiplayer — keeps the page unchanged. A
- * cosmetic gate: the gateway is the real enforcer; this only hides an
- * affordance that would be read-only (or forbidden) for a plain member.
- */
-export function canSeeIntegrationsPage(
-  caps: Capabilities | null | undefined,
-): boolean {
-  if (isMultiplayer(caps) && caps?.teams === true) return canSeeMembers(caps);
-  return true;
-}
-
-/**
  * Should the global AI Models hub be visible to this caller? In a Teams
  * workspace the hub is owner/admin territory: AI provider connections are
  * org-level (one credential per org — whoever connects, every member's agents
- * work; C6), so a plain member has no account to connect there, and the new
- * workspace model-policy is admin-only. Members pick their own model per agent in
- * the composer instead, so they lose the hub nav exactly as they lose the
- * Integrations nav. Everyone else — single-player and non-Teams multiplayer —
- * keeps the hub unchanged. A cosmetic gate: the gateway is the real enforcer
- * (a member's provider-connect POST already 403s); this only hides an
- * affordance that would be dead for a plain member.
+ * work; C6), so a plain member has no account to connect there. Members pick
+ * their own model per agent in the composer instead. Everyone else —
+ * single-player and non-Teams multiplayer — keeps the hub unchanged. A
+ * cosmetic gate: the gateway is the real enforcer (a member's provider-connect
+ * POST already 403s); this only hides an affordance that would be dead for a
+ * plain member.
  */
 export function canSeeAiModelsPage(
   caps: Capabilities | null | undefined,

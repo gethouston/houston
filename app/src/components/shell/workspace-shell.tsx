@@ -28,11 +28,7 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { analytics } from "../../lib/analytics";
 import { isSetupChatMode } from "../../lib/integration-chat-setup";
-import {
-  canSeeAiModelsPage,
-  canSeeIntegrationsPage,
-  hasSpaces,
-} from "../../lib/org-roles";
+import { canSeeAiModelsPage, hasSpaces } from "../../lib/org-roles";
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
 import { shortcutLabel } from "../../lib/shortcuts";
@@ -113,9 +109,6 @@ export function WorkspaceShell({
   // Teams v2: guard the Organization render so a stale `viewMode` can never show
   // it to a plain member / single-player (the sidebar already hides the entry).
   const showOrganization = canSeeOrganization(capabilities);
-  // Teams v2: guard the Integrations render + tour anchor so a stale `viewMode`
-  // can never show the page to a plain member (the sidebar already hides it).
-  const showIntegrations = canSeeIntegrationsPage(capabilities);
   // Teams v2: same guard for the AI Models hub — owner/admin only in a Teams
   // workspace (org-level providers + admin model policy).
   const showAiModels = canSeeAiModelsPage(capabilities);
@@ -140,13 +133,12 @@ export function WorkspaceShell({
 
   useEffect(() => {
     if (!isAgentView) {
-      // A gated top-level view (Integrations for a plain Teams member,
-      // Organization for a member / single-player) with a stale `viewMode`
-      // would fall through every render branch and strand the user on the
-      // engine pane with its nav entry hidden; reset to the dashboard.
+      // A gated top-level view (Organization for a member / single-player, the
+      // AI Models hub for a plain member) with a stale `viewMode` would fall
+      // through every render branch and strand the user on the engine pane with
+      // its nav entry hidden; reset to the dashboard.
       if (
         blockedTopLevelView(viewMode, {
-          showIntegrations,
           showAiModels,
           showOrganization,
         })
@@ -164,7 +156,6 @@ export function WorkspaceShell({
     currentAgent,
     isAgentView,
     setViewMode,
-    showIntegrations,
     showAiModels,
     showOrganization,
     viewMode,
@@ -235,7 +226,7 @@ export function WorkspaceShell({
                     <UsageView />
                   ) : viewMode === "settings" ? (
                     <SettingsView />
-                  ) : viewMode === INTEGRATIONS_VIEW_ID && showIntegrations ? (
+                  ) : viewMode === INTEGRATIONS_VIEW_ID ? (
                     <IntegrationsView />
                   ) : viewMode === STORE_VIEW_ID ? (
                     <StoreView />
@@ -589,13 +580,6 @@ export function WorkspaceShell({
               step.targetSelector === "[data-tour-target='nav-organization']"
             ) {
               return showOrganization;
-            }
-            // The Integrations nav item is hidden from plain Teams members, so
-            // drop its tour step where the anchor never renders.
-            if (
-              step.targetSelector === "[data-tour-target='nav-integrations']"
-            ) {
-              return showIntegrations;
             }
             // The AI Models hub is hidden from plain Teams members too — drop its
             // tour step where the anchor never renders.

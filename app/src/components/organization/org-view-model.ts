@@ -8,12 +8,20 @@ import { canSeeMembers } from "../../lib/org-roles.ts";
  */
 
 /** The sections of the Organization dashboard, in tab order. */
-export type OrgTabId = "people" | "agents" | "activity" | "usage" | "billing";
+export type OrgTabId =
+  | "people"
+  | "agents"
+  | "activity"
+  | "usage"
+  | "allowedIntegrations"
+  | "allowedModels"
+  | "billing";
 
 /**
- * The always-present sections, in display order. `billing` (C8) is appended
- * conditionally by {@link orgTabIds} — it exists only on a Spaces host, only in
- * a team space, and only for owner/admin, so it is never a fixed member.
+ * The always-present sections, in display order. The rest are appended
+ * conditionally by {@link orgTabIds}: the two policy tabs only on a Teams host
+ * (a host that predates Teams has no `/org/settings` route to edit), `billing`
+ * (C8) only on a Spaces host, in a team space, for owner/admin.
  */
 export const ORG_TAB_IDS: readonly OrgTabId[] = [
   "people",
@@ -22,14 +30,28 @@ export const ORG_TAB_IDS: readonly OrgTabId[] = [
   "usage",
 ] as const;
 
+/** The org policy ceilings (Teams v2): appended only when `caps.teams`. */
+export const POLICY_TAB_IDS: readonly OrgTabId[] = [
+  "allowedIntegrations",
+  "allowedModels",
+] as const;
+
 /**
- * The dashboard's tab ids in display order, with `billing` appended when
+ * The dashboard's tab ids in display order: the fixed set, plus the policy
+ * ceilings when the host serves Teams (`caps.teams`), plus `billing` when
  * `canSeeBillingTab` (in `lib/org-roles`) holds. Pure so the tab set is
  * unit-tested without React; the view maps each id to its component + `t()`
  * label.
  */
-export function orgTabIds(showBilling: boolean): readonly OrgTabId[] {
-  return showBilling ? [...ORG_TAB_IDS, "billing"] : ORG_TAB_IDS;
+export function orgTabIds(gates: {
+  policy: boolean;
+  billing: boolean;
+}): readonly OrgTabId[] {
+  return [
+    ...ORG_TAB_IDS,
+    ...(gates.policy ? POLICY_TAB_IDS : []),
+    ...(gates.billing ? (["billing"] as const) : []),
+  ];
 }
 
 /**
