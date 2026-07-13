@@ -5,7 +5,7 @@ import { expect, test } from "./support/fixtures";
 /**
  * The redesigned personal Integrations page — the flat, airy "plane". A hero
  * title + rounded search sit above a calm stack: an "Installed" strip of the
- * apps already connected (icon tiles that open the detail sheet), then the full
+ * apps already connected (icon tiles that open the detail modal), then the full
  * connectable catalog grouped into flat category sections. Connected apps never
  * repeat in the catalog (the seed's one active Gmail connection appears ONLY as
  * an installed tile, never as a catalog row). The page-level search filters the
@@ -106,25 +106,57 @@ test("clicking a row's + starts the connect flow", async ({
   await armCapabilities(request, { integrations: ["composio"] });
   await openIntegrationsPage(page);
 
-  const slackRow = page.getByRole("button", { name: /Slack Team messaging/ });
-  await expect(slackRow).toBeVisible();
-  await slackRow.click();
+  // The filled + at the row's right edge is the install affordance.
+  const slackAdd = page.getByRole("button", { name: "Connect Slack" });
+  await expect(slackAdd).toBeVisible();
+  await slackAdd.click();
 
   // The shared waiting panel takes over above the sections while the OAuth
   // hand-off is in flight.
   await expect(page.getByText("Finish connecting Slack")).toBeVisible();
 
-  // Single flight: while one connect owns the flow, other rows are inert.
-  await expect(page.getByRole("button", { name: /GitHub/ })).toBeDisabled();
+  // Single flight: while one connect owns the flow, the other + buttons
+  // disable. The row BODIES stay clickable (reading about an app is safe).
+  await expect(
+    page.getByRole("button", { name: "Connect GitHub" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: /GitHub Issues, PRs, and repos/ }),
+  ).toBeEnabled();
 
-  // Cancel returns the calm catalog — the waiting panel goes away and the rows
-  // are interactive again.
+  // Cancel returns the calm catalog — the waiting panel goes away and the +
+  // buttons are interactive again.
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(page.getByText("Finish connecting Slack")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /GitHub/ })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Connect GitHub" }),
+  ).toBeEnabled();
 });
 
-test("an installed tile opens the app detail sheet", async ({
+test("clicking a row's body opens the more-info modal, and its CTA connects", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["composio"] });
+  await openIntegrationsPage(page);
+
+  // The row body (name + description) opens the detail modal, not a connect.
+  await page.getByRole("button", { name: /Slack Team messaging/ }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Slack", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Team messaging")).toBeVisible();
+  // The app's category renders as a chip.
+  await expect(dialog.getByText("Communication")).toBeVisible();
+  await expect(page.getByText("Finish connecting Slack")).toHaveCount(0);
+
+  // The modal's CTA hands off to the same connect flow and closes the modal.
+  await dialog.getByRole("button", { name: "Connect", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByText("Finish connecting Slack")).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+});
+
+test("an installed tile opens the app detail modal", async ({
   page,
   request,
 }) => {
@@ -133,7 +165,7 @@ test("an installed tile opens the app detail sheet", async ({
 
   await page.getByRole("button", { name: "Gmail", exact: true }).click();
 
-  // The detail sheet is the view + reconnect + disconnect surface.
+  // The detail modal is the view + reconnect + disconnect surface.
   await expect(page.getByRole("heading", { name: "Gmail" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Reconnect" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Disconnect" })).toBeVisible();

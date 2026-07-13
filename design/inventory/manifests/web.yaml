@@ -138,8 +138,12 @@ components:
     ref: "@houston-ai/routines RoutineRow / RoutinesGrid"
 
   skill-row:
-    status: implemented
-    ref: "@houston-ai/skills SkillRow / SkillsGrid"
+    status: partial
+    ref: "ui/skills skill-marketplace-row.tsx + app/src/components/tabs/installed-skill-tile.tsx"
+    notes: >-
+      Rides the shared ui/ catalog family (CatalogRow / CatalogAddButton /
+      CatalogTile / CatalogShell); the skills composition itself is split
+      between ui/skills and app/. Extract the surface before mobile.
 
   empty-state:
     status: implemented
@@ -151,18 +155,19 @@ components:
 
   ai-provider-card:
     status: partial
-    ref: "app/src/components/ai-hub/provider-card.tsx"
+    ref: "app/src/components/ai-hub/providers-pane.tsx + provider-browser/provider-row.tsx"
     notes: >-
-      Ships in the AI models hub but app/-locked; connection state comes from the
-      shared use-provider-connections hook. Extract into ui/ before mobile.
+      The hub row rides the shared ui/ catalog family (CatalogRow /
+      CatalogAddButton / CatalogShell); the provider-specific composition and
+      the connect-flow card are still app/-locked. Extract before mobile.
 
   ai-model-row:
     status: partial
     ref: "app/src/components/ai-hub/model-card-row.tsx (in models-browser.tsx)"
     notes: >-
-      The card grid + facet controls (ModelsBrowser) are app/-locked in the hub
-      and shared by the directory and the provider modal. Extract the shared card
-      into ui/ before mobile can reuse its structure.
+      The row rides the shared ui/ catalog family (CatalogRow / CatalogGrid);
+      the facet controls (ModelsBrowser) are app/-locked in the hub and shared
+      by the directory and the provider modal. Extract before mobile.
 
   ai-model-offer-row:
     status: partial

@@ -20,6 +20,7 @@ import type {
 } from "@houston/runtime-client";
 import { SEED_AGENT_ID, SEED_AGENT_NAME, SEED_WORKSPACE_ID } from "./config";
 import { resetProviders } from "./state-providers";
+import { resetSkills } from "./state-skills";
 
 /**
  * Gateway integrations readiness, toggled by `/__test__/integrations-mode`:
@@ -270,6 +271,7 @@ export let state: HostState = freshState();
 export function reset(): void {
   state = freshState();
   resetProviders();
+  resetSkills();
   domainListeners.clear();
 }
 

@@ -36,12 +36,24 @@ async function armCustomIntegrations(
   });
 }
 
-async function openIntegrationsPage(page: Page): Promise<void> {
+/**
+ * Navigate to the Integrations page and land on the custom-integrations
+ * surface: the standalone section on a composio-absent host (its heading
+ * proves it rendered), else the Custom integrations tab of the ready page.
+ */
+async function openCustomIntegrations(
+  page: Page,
+  mode: "absent" | "ready",
+): Promise<void> {
   await page.goto("/");
   await page.locator('[data-tour-target="nav-integrations"]').click();
-  await expect(
-    page.getByRole("heading", { name: "Custom integrations" }),
-  ).toBeVisible();
+  if (mode === "ready") {
+    await page.getByRole("tab", { name: "Custom integrations" }).click();
+  } else {
+    await expect(
+      page.getByRole("heading", { name: "Custom integrations" }),
+    ).toBeVisible();
+  }
 }
 
 async function startSetupChat(page: Page): Promise<void> {
@@ -61,7 +73,7 @@ test("composio-absent: Add custom integration opens the embedded chat, agent spe
   await armCapabilities(request, { integrations: ["custom"] });
   await armIntegrationsMode(request, "absent");
   await armCustomIntegrations(request, []);
-  await openIntegrationsPage(page);
+  await openCustomIntegrations(page, "absent");
 
   await startSetupChat(page);
 
@@ -87,7 +99,7 @@ test("a draft chat survives a reload as a Continue banner that resumes the same 
   await armCapabilities(request, { integrations: ["composio", "custom"] });
   await armIntegrationsMode(request, "ready");
   await armCustomIntegrations(request, []);
-  await openIntegrationsPage(page);
+  await openCustomIntegrations(page, "ready");
 
   await startSetupChat(page);
   await expect(page.getByText(/Roger that\./)).toBeVisible({ timeout: 15_000 });
@@ -96,6 +108,7 @@ test("a draft chat survives a reload as a Continue banner that resumes the same 
   // host is not — the cross-agent scan finds it and offers to continue.
   await page.reload();
   await page.locator('[data-tour-target="nav-integrations"]').click();
+  await page.getByRole("tab", { name: "Custom integrations" }).click();
   await expect(
     page.getByText("You are setting up a custom integration in chat"),
   ).toBeVisible({ timeout: 10_000 });
@@ -140,7 +153,7 @@ test("the interview surface renders: an ask_user question card replaces the comp
   await armCapabilities(request, { integrations: ["custom"] });
   await armIntegrationsMode(request, "absent");
   await armCustomIntegrations(request, []);
-  await openIntegrationsPage(page);
+  await openCustomIntegrations(page, "absent");
 
   await startSetupChat(page);
   await expect(
@@ -165,7 +178,7 @@ test("Done retires the chat: no banner, and the next Add starts a FRESH chat", a
   await armCapabilities(request, { integrations: ["composio", "custom"] });
   await armIntegrationsMode(request, "ready");
   await armCustomIntegrations(request, []);
-  await openIntegrationsPage(page);
+  await openCustomIntegrations(page, "ready");
 
   await startSetupChat(page);
   await expect(page.getByText(/Roger that\./)).toBeVisible({ timeout: 15_000 });

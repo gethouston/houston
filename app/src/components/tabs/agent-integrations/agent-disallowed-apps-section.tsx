@@ -20,7 +20,7 @@ export function AgentDisallowedAppsSection({
   const { t } = useTranslation("teams");
 
   return (
-    <section className="mt-8">
+    <section>
       <h2 className="text-sm font-medium text-ink">
         {t("integrations.notAllowed.title")}
       </h2>

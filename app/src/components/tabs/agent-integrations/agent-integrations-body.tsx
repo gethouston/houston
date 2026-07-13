@@ -1,16 +1,25 @@
+import { CatalogShell, type CatalogShellTab } from "@houston-ai/core";
 import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCustomIntegrations } from "../../../hooks/queries";
 import {
+  AppDetailDialog,
   type ConnectFlow,
-  ConnectMoreAppsSection,
-  toolkitsInCategory,
+  CustomIntegrationsSection,
+  IntegrationDisconnectDialog,
 } from "../../integrations";
-import { AgentAppsBody } from "./agent-apps-body";
-import type { AgentIntegrationsView } from "./model";
+import { CatalogPane } from "../../integrations-view/catalog-pane";
+import { InstalledStrip } from "../../integrations-view/installed-strip";
+import { AgentDisallowedAppsSection } from "./agent-disallowed-apps-section";
+import {
+  type AgentAppRow,
+  type AgentIntegrationsView,
+  connectableCount,
+} from "./model";
 
 interface AgentIntegrationsBodyProps {
   view: AgentIntegrationsView;
@@ -36,13 +45,20 @@ interface AgentIntegrationsBodyProps {
 }
 
 /**
- * The resolved body of the Integrations tab (apps list + browse catalog). It
- * owns the view-only category filter that narrows every list at once. Split out
- * of {@link IntegrationsTab} so the parent can remount it per agent with
- * `key={agent.id}`: the tab components stay mounted across agent switches (see
- * experience-renderer.tsx), so keeping `category` here would leak one agent's
- * filter onto the next — remounting resets it. All lifted view state lives in
- * this keyed component so none of it crosses agents.
+ * The resolved body of the per-agent Integrations tab — the SAME catalog
+ * layout as the global Integrations page, minus its page header (the tab label
+ * already says Integrations): the consolidated Installed strip (this agent's
+ * usable apps + the custom integrations) OUTSIDE the tabs, then the
+ * Integrations / Custom integrations tabs via the shared {@link CatalogShell}.
+ * The catalog tab is the shared {@link CatalogPane} (search + A-Z category
+ * combobox, recovery rows, the grouped category catalog with Teams locked
+ * rows), carrying the agent-only disallowed-apps section as its `children`. A
+ * strip tile opens the shared detail modal (view + reconnect + disconnect —
+ * grant editing lives in Settings > Connected accounts, so this tab stays a
+ * pure connect surface); connect auto-grants to this agent via the surface's
+ * `connectFlow`. Split out of {@link IntegrationsTab} so the parent can
+ * remount it per agent with `key={agent.id}` — all lifted view state (tab,
+ * search, category, open modals) lives here so none of it crosses agents.
  */
 export function AgentIntegrationsBody({
   view,
@@ -57,37 +73,84 @@ export function AgentIntegrationsBody({
   onManageAll,
 }: AgentIntegrationsBodyProps) {
   const { t } = useTranslation("integrations");
+  const [tab, setTab] = useState("catalog");
+  const [detailRow, setDetailRow] = useState<AgentAppRow | null>(null);
+  const [disconnectRow, setDisconnectRow] = useState<AgentAppRow | null>(null);
+  const custom = useCustomIntegrations();
+  const customItems = custom.data ?? [];
 
-  // View-only category filter, one control for every list on the tab (the
-  // usable / account / disallowed grids and the browse catalog below).
-  const [category, setCategory] = useState("all");
-  const inCat = useMemo(
-    () => toolkitsInCategory(catalog, category),
-    [catalog, category],
+  // The agent's usable apps: active ones tile the strip; pending / errored
+  // ones surface as recovery rows inside the catalog tab.
+  const usable = view.mode === "grants" ? view.activeRows : view.rows;
+  const active = useMemo(
+    () => usable.filter((r) => r.connection.status === "active"),
+    [usable],
   );
+  const recovering = useMemo(
+    () => usable.filter((r) => r.connection.status !== "active"),
+    [usable],
+  );
+  const disallowed = view.mode === "grants" ? view.disallowedRows : [];
+  const installedCount = active.length + customItems.length;
+
+  const tabs: CatalogShellTab[] = [
+    {
+      value: "catalog",
+      label: t("home.tabs.catalog"),
+      count: connectableCount({ catalog, connections, allowlist }),
+      content: (
+        <CatalogPane
+          catalog={catalog}
+          connections={connections}
+          recovering={recovering}
+          isLoading={catalogLoading}
+          connectFlow={connectFlow}
+          onRemoveRecovering={onDisconnect}
+          allowlist={allowlist}
+          readOnly={!canEdit}
+        >
+          {disallowed.length > 0 && (
+            <AgentDisallowedAppsSection rows={disallowed} />
+          )}
+        </CatalogPane>
+      ),
+    },
+    ...(custom.data !== null
+      ? [
+          {
+            value: "custom",
+            label: t("home.tabs.custom"),
+            count: custom.data?.length,
+            content: <CustomIntegrationsSection variant="tab" />,
+          },
+        ]
+      : []),
+  ];
 
   return (
     <>
-      <AgentAppsBody
-        view={view}
-        canEdit={canEdit}
-        inCat={inCat}
-        categoryActive={category !== "all"}
-        connectFlow={connectFlow}
-        onDisconnect={onDisconnect}
+      <CatalogShell
+        installedTitle={t("home.installedTitle")}
+        installedCount={installedCount}
+        installed={
+          installedCount > 0 ? (
+            <InstalledStrip
+              active={active}
+              custom={customItems}
+              onOpen={(connection) => {
+                const row = active.find(
+                  (r) => r.connection.connectionId === connection.connectionId,
+                );
+                if (row) setDetailRow(row);
+              }}
+              onOpenCustom={() => setTab("custom")}
+            />
+          ) : undefined
+        }
+        tabs={tabs}
+        value={tab}
+        onValueChange={setTab}
       />
-
-      <div className="mt-8">
-        <ConnectMoreAppsSection
-          catalog={catalog}
-          connections={connections}
-          connectFlow={connectFlow}
-          category={category}
-          onCategoryChange={setCategory}
-          allowlist={allowlist}
-          loading={catalogLoading}
-        />
-      </div>
 
       <div className="mt-8 flex justify-center">
         <button
@@ -100,6 +163,35 @@ export function AgentIntegrationsBody({
             : t("policyPage.manageAccounts")}
         </button>
       </div>
+
+      {detailRow && (
+        <AppDetailDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setDetailRow(null);
+          }}
+          display={detailRow.app}
+          connection={detailRow.connection}
+          onReconnect={() => {
+            void connectFlow.connect(detailRow.connection.toolkit);
+            setDetailRow(null);
+          }}
+          onDisconnect={() => {
+            setDisconnectRow(detailRow);
+            setDetailRow(null);
+          }}
+        />
+      )}
+
+      <IntegrationDisconnectDialog
+        app={disconnectRow?.app ?? null}
+        scope="everywhere"
+        onClose={() => setDisconnectRow(null)}
+        onConfirm={(toolkit) => {
+          onDisconnect(toolkit);
+          setDisconnectRow(null);
+        }}
+      />
     </>
   );
 }

@@ -156,6 +156,21 @@ export type ProviderError =
        */
       undelivered_prompt?: string;
     }
+  | {
+      /**
+       * The conversation no longer fits the model's context window — the
+       * provider rejected the request outright. Not a credential/quota/server
+       * fault: the recovery is a larger-window model or a fresh conversation,
+       * so the card's CTA opens the model picker. Token counts are the
+       * provider's own numbers when it named them.
+       */
+      kind: "context_overflow";
+      provider: string;
+      model: string | null;
+      context_window_tokens: number | null;
+      prompt_tokens: number | null;
+      message: string;
+    }
   | { kind: "network_unreachable"; provider: string; message: string }
   | {
       kind: "provider_internal";

@@ -10,7 +10,8 @@ import { expect, test } from "./support/fixtures";
  * key-free `custom` provider, and the page must render the Custom
  * integrations section instead of going dark with "not available in this
  * setup" (the regression this spec pins). The ready-mode case checks the
- * section coexists with the catalog and the pending → enter-key flow works.
+ * custom integration surfaces in the consolidated Installed strip + its own
+ * tab, and that the pending → enter-key flow works.
  */
 
 async function armCapabilities(
@@ -106,11 +107,14 @@ test("ready mode lists a pending custom integration and the enter-key flow activ
   await armCustomIntegrations(request, [ACME_PENDING]);
   await openIntegrationsPage(page);
 
-  // The section coexists with the catalog surfaces.
+  // The consolidated Installed strip (OUTSIDE the tabs) carries the custom
+  // integration as a tile alongside the catalog connections.
   await expect(
-    page.getByRole("heading", { name: "Custom integrations" }),
+    page.getByRole("button", { name: "Acme CRM", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Acme CRM")).toBeVisible();
+
+  // Its row (status + actions) lives in the Custom integrations tab.
+  await page.getByRole("tab", { name: "Custom integrations" }).click();
   await expect(page.getByText("Needs an API key")).toBeVisible();
 
   // Enter the key: the secure dialog collects it, the definition flips active.

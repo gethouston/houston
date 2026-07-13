@@ -68,6 +68,7 @@ test("hydrate materializes the prefix and syncBack returns the new manifest", as
     "workspace/deck.pptx",
     "workspace/notes.txt",
   ]);
+  expect(result.totalBytes).toBe(8);
 });
 
 test("empty prefix hydrates agent-relative keys", async () => {

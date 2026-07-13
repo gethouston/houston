@@ -5,12 +5,8 @@
   },
   "grid": {
     "loading": "Cargando skills...",
-    "emptyTitle": "Sin skills instalados",
-    "emptyDescription": "Los skills son procedimientos reutilizables que tu agente puede ejecutar.",
     "addSkill": "Añadir skill",
-    "yourSkillsHeading": "Tus skills",
-    "editSkillAria": "Editar {{name}}",
-    "deleteSkillAria": "Eliminar {{name}}"
+    "yourSkillsHeading": "Tus skills"
   },
   "addDialog": {
     "title": "Añadir skills",
@@ -84,11 +80,7 @@
       "installedAria": "{{name}} instalado",
       "installsCount_one": "{{formatted}} instalación",
       "installsCount_other": "{{formatted}} instalaciones",
-      "bySource": "de {{owner}}",
-      "infoAria": "Acerca de {{name}}",
-      "add": "Agregar",
-      "adding": "Agregando...",
-      "added": "Agregado"
+      "bySource": "de {{owner}}"
     },
     "preview": {
       "install": "Instalar",
@@ -132,5 +124,11 @@
     "Setup": "Configuración",
     "Support": "Soporte",
     "Tracking": "Seguimiento"
+  },
+  "tabs": {
+    "store": "Tienda",
+    "custom": "Habilidades personalizadas",
+    "customEmptyTitle": "Aún no tienes habilidades personalizadas",
+    "customEmptyDescription": "Crea tu propia habilidad desde cero o impórtala desde GitHub."
   }
 }

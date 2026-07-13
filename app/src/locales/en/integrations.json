@@ -71,9 +71,6 @@
     "noResults": "No matching apps found.",
     "loading": "Loading apps..."
   },
-  "connectMore": {
-    "title": "Connect more apps"
-  },
   "locked": {
     "heading": "Not enabled by your admin",
     "askAdmin": "Ask your admin to enable {{name}}",
@@ -90,9 +87,15 @@
   "home": {
     "title": "Integrations",
     "description": "Work with your agents across your favorite tools.",
+    "tabs": {
+      "catalog": "Integrations",
+      "custom": "Custom integrations"
+    },
     "searchPlaceholder": "Search integrations...",
     "allCategories": "All categories",
     "categoryFilter": "Filter by category",
+    "connect": "Connect",
+    "connectApp": "Connect {{name}}",
     "installedTitle": "Installed",
     "otherCategory": "Other",
     "showAllApps": "Show all {{count}} apps",
@@ -107,24 +110,16 @@
     "allAgentsNote": "Every agent can use this app."
   },
   "agentTab": {
-    "activeTitle": "Apps this agent can use",
-    "empty": {
-      "title": "No apps yet",
-      "body": "Add an app so this agent can act on it.",
-      "categoryTitle": "No apps in this category",
-      "categoryBody": "No apps here match this category. Try another one or clear the filter."
-    },
-    "allApps": {
-      "title": "Your other connected apps",
-      "subtitle": "Apps you connected that this agent can't use yet."
-    },
     "manageAll": "Manage all integrations"
   },
   "custom": {
     "title": "Custom integrations",
     "description": "Connect an API or MCP server that isn't in the app catalog.",
     "addButton": "Add custom integration",
+    "searchPlaceholder": "Search custom integrations...",
     "empty": "No custom integrations yet. Add one to connect a tool that isn't in the catalog.",
+    "emptyTitle": "No custom integrations yet",
+    "noResults": "No custom integrations match your search.",
     "badge": {
       "api": "API",
       "mcp": "MCP server"

@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 22
+version: 24
 
 components:
   - id: agent-avatar
@@ -129,7 +129,7 @@ components:
     title: Provider error card
     purpose: Actionable card for a provider failure in the feed (auth, quota, rate-limit).
     anatomy: [icon-bubble, title, reason, primary-action, secondary-action]
-    states: [unauthenticated, quota-exhausted, rate-limited, model-unavailable, transient]
+    states: [unauthenticated, quota-exhausted, rate-limited, model-unavailable, context-overflow, transient]
     variants: [single-action-row-card, multi-action-error-card]
     behavior: >-
       provider_error feed items carry a typed ProviderError (cause/scope). The
@@ -520,16 +520,18 @@ components:
 
   - id: skill-row
     title: Skill row
-    purpose: A skill in the skills list -- icon, name, description, install/run action.
-    anatomy: [icon, name, description, trailing-action]
+    purpose: A skill in the Skills surface -- an installed tile or a community catalog row.
+    anatomy: [icon, name, description, install-or-check]
     states: [available, installed, installing, error, editing]
-    variants: [installed-row, community-row]
+    variants: [installed-tile, community-catalog-row]
     behavior: >-
-      Community rows reflect install state (an "Add" pill plus an info button).
-      Installed rows carry a Delete pill and a pen that expands an inline editor
-      in place (large auto-growing textarea, Save/Cancel); there is no separate
-      skill-detail surface.
-    a11y: listitem role; action buttons labeled; install state conveyed as text.
+      Community rows ride the shared catalog grammar (CatalogRow): the row body
+      opens the skill's info modal, a ghost round + installs (spinner while in
+      flight, a quiet check once installed). Installed skills are tiles in the
+      consolidated strip above the Store / Custom skills tabs (CatalogShell);
+      a tile opens the edit modal, whose footer carries Save/Cancel and the
+      destructive Delete (confirm-gated). No separate skill-detail surface.
+    a11y: tile/row are single labeled buttons beside a labeled install button, never nested; install state conveyed as text.
     since: 1
 
   - id: empty-state
@@ -555,32 +557,40 @@ components:
     since: 1
 
   - id: ai-provider-card
-    title: AI provider card
-    purpose: A marketplace tile for one AI provider in the AI models hub (connect / connected).
-    anatomy: [logo-media, name, description, meta-chips, action-footer]
-    states: [available, connected, connecting, signing-out, coming-soon]
-    variants: [connectable-card, coming-soon-card]
+    title: AI provider row
+    purpose: One AI provider in a browse surface (the AI models hub or a connect flow).
+    anatomy: [brand-mark, name, model-count-and-cost-line, trailing-action]
+    states: [available, connected, connecting, signing-out]
+    variants: [hub-catalog-row, connect-flow-card]
     behavior: >-
       Connection state (connected / in-flight) comes from the shared
-      provider-connections layer; the model-count chip is derived from the hub
-      catalog across the card's gateway ids. The whole card opens the provider
-      detail; the footer action always shows (no hover gate).
-    a11y: button role with a visible focus ring; inner Connect/Cancel buttons stop propagation; connected shown as dot + label, not color alone.
+      provider-connections layer; the model count is derived from the hub
+      catalog across the row's gateway ids. The hub-catalog-row variant is the
+      shared catalog grammar (CatalogRow): the row BODY opens the provider
+      detail modal, a ghost round + connects (a Cancel pill while that connect
+      is in flight), and connected providers leave the grid for the
+      consolidated Connected tile strip above the tabs (CatalogShell). The
+      connect-flow-card variant (onboarding / migration / workspace setup)
+      keeps the static card with a trailing Connect / Sign out action; nothing
+      hover-only in either variant.
+    a11y: two sibling buttons, never nested (row body + labeled install); Connect/+ carries the provider name; connected shown as dot + label or a labeled tile, not color alone.
     since: 2
 
   - id: ai-model-row
-    title: AI model card
-    purpose: One model card in the AI hub directory grid or a provider's model list.
-    anatomy: [lab-glyph, name, lab-name, see-more]
+    title: AI model row
+    purpose: One model in the AI hub directory or a provider's model list.
+    anatomy: [lab-glyph, name, lab-name]
     states: [default]
-    variants: [directory-card, provider-model-card]
+    variants: [directory-grid-row, provider-modal-list-row]
     behavior: >-
-      A unique cross-provider catalog model, shown as a compact card in a
-      two-column grid. The whole card is one button that opens the model detail
-      modal; a trailing "See more" cue (label + chevron) is always visible, never
-      hover-gated. The directory grid sits under a control row of a search box +
-      the AI provider / Good at / Cost / Memory facet comboboxes.
-    a11y: single button role; model name + "See more" as the accessible label; no nested buttons.
+      A unique cross-provider catalog model in the shared catalog grammar
+      (CatalogRow): transparent at rest, the hover fill sweeping the full row.
+      The whole row is one button that opens the model detail modal (models
+      install via a provider offer inside it, so the row carries no +). The
+      directory renders the responsive two-column CatalogGrid; the provider
+      modal keeps a single column. Both sit under a control row of a search box
+      + the AI provider / Good at / Cost / Memory facet comboboxes.
+    a11y: single button role; model name + lab as the accessible label; no nested buttons.
     since: 2
 
   - id: ai-model-offer-row

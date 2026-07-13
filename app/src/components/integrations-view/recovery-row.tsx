@@ -14,15 +14,19 @@ import {
  * the shared {@link PendingConnectionCallout} beneath as the action affordance
  * (Finish connecting / Reconnect + Remove; it carries its own quiet input-surface
  * panel). Purely presentational; the parent owns the connect flow and removal.
+ * `readOnly` (a Teams viewer without edit rights on the agent tab) keeps the
+ * identity line + status for transparency but drops the action callout.
  */
 export function RecoveryRow({
   row,
   connectFlow,
   onRemove,
+  readOnly = false,
 }: {
   row: RecoveringAppRow;
   connectFlow: ConnectFlow;
   onRemove: () => void;
+  readOnly?: boolean;
 }) {
   const { connection, app } = row;
   const status = connection.status === "error" ? "error" : "pending";
@@ -35,13 +39,15 @@ export function RecoveryRow({
         </span>
         <ConnectionStatusBadge status={status} />
       </div>
-      <PendingConnectionCallout
-        status={status}
-        toolkit={connection.toolkit}
-        connectFlow={connectFlow}
-        appName={app.name}
-        onRemove={onRemove}
-      />
+      {!readOnly && (
+        <PendingConnectionCallout
+          status={status}
+          toolkit={connection.toolkit}
+          connectFlow={connectFlow}
+          appName={app.name}
+          onRemove={onRemove}
+        />
+      )}
     </div>
   );
 }

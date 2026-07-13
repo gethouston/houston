@@ -111,6 +111,26 @@ export type ProviderError =
       message: string;
     }
   | {
+      /**
+       * The conversation no longer fits the model's context window — the
+       * provider rejected the request outright (llama.cpp/Jan's
+       * `exceed_context_size_error`, OpenAI's `context_length_exceeded`,
+       * Anthropic's "prompt is too long"). Distinct from `model_unavailable`
+       * (the model itself is fine) and from rate/quota (nothing to wait out):
+       * the recovery is a larger-window model or a fresh conversation. The
+       * token fields carry the provider's own numbers when it named them —
+       * `context_window_tokens` is the model's REAL window, which the runtime
+       * also uses to correct an over-assumed custom-endpoint window
+       * (`learnCustomContextWindow`).
+       */
+      kind: "context_overflow";
+      provider: string;
+      model: string | null;
+      context_window_tokens: number | null;
+      prompt_tokens: number | null;
+      message: string;
+    }
+  | {
       kind: "provider_internal";
       provider: string;
       http_status: number | null;
