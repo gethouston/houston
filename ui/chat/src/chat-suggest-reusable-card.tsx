@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@houston-ai/core";
-import { CalendarClock, Sparkles, X } from "lucide-react";
+import { CalendarClock, Lightbulb, Sparkles, X } from "lucide-react";
 import {
   type ChatSuggestReusableLabels,
   resolveSuggestReusableSaveLabel,
@@ -11,15 +11,15 @@ export type { ChatSuggestReusableLabels } from "./chat-suggest-reusable-card-mod
 export { DEFAULT_SUGGEST_REUSABLE_LABELS } from "./chat-suggest-reusable-card-model";
 
 export interface ChatSuggestReusableCardProps {
-  /** Whether the work is being offered as a reusable Skill or a scheduled Routine. */
-  reusableKind: "skill" | "routine";
-  /** The model's proposed name for the Skill/Routine, shown as the prominent head. */
+  /** Whether the work is offered as a reusable Skill, a scheduled Routine, or a Learning. */
+  reusableKind: "skill" | "routine" | "learning";
+  /** The model's proposed name for the Skill/Routine/Learning, shown as the prominent head. */
   title: string;
   /** The model's one-line rationale for saving it (model-generated, passed through). */
   rationale: string;
   /** Gates both actions uniformly (another turn is active). */
   disabled?: boolean;
-  /** Send the follow-up message that asks the agent to write the Skill/Routine. */
+  /** Send the follow-up message that asks the agent to write the Skill/Routine/Learning. */
   onSave: () => void;
   /** Dismiss the offer locally and return the composer. */
   onDismiss: () => void;
@@ -29,7 +29,7 @@ export interface ChatSuggestReusableCardProps {
 /**
  * The in-chat surface shown when the agent finishes cleanly and calls
  * `suggest_reusable`: an optional, dismissible offer to save the just-completed
- * work as a reusable Skill or a scheduled Routine. It REPLACES the composer, so
+ * work as a reusable Skill, a scheduled Routine, or a Learning. It REPLACES the composer, so
  * it borrows the plan-ready card's vocabulary (rounded-[28px] grey
  * `bg-chip` surface) with the proposed title raised as the prominent head
  * and the rationale below it. The two actions (Save / Not now) render as
@@ -48,8 +48,14 @@ export function ChatSuggestReusableCard({
 }: ChatSuggestReusableCardProps) {
   const saveLabel = resolveSuggestReusableSaveLabel(reusableKind, labels);
   // A Skill is reusable know-how (Sparkles); a Routine runs on a schedule
-  // (CalendarClock). Icons are internal so the labels contract stays icon-free.
-  const SaveIcon = reusableKind === "skill" ? Sparkles : CalendarClock;
+  // (CalendarClock); a Learning is remembered insight (Lightbulb). Icons are
+  // internal so the labels contract stays icon-free.
+  const SaveIcon =
+    reusableKind === "skill"
+      ? Sparkles
+      : reusableKind === "routine"
+        ? CalendarClock
+        : Lightbulb;
 
   return (
     <div

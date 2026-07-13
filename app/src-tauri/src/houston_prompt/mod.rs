@@ -111,7 +111,10 @@ mod tests {
     fn memory_guidance_requires_user_opt_in() {
         let prompt = system_prompt_pi();
 
-        assert!(prompt.contains("Want me to remember that for next time?"));
+        // Inferred learnings are offered in the end-of-task reflection step
+        // (the suggest_reusable card), never asked mid-task via ask_user.
+        assert!(prompt.contains("end-of-task reflection step"));
+        assert!(prompt.contains("Reflection step:"));
         assert!(prompt.contains("Save a learning only when"));
         assert!(!prompt.contains("Save ALL"));
         assert!(!prompt.contains("do NOT wait"));

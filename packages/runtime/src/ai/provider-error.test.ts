@@ -211,12 +211,12 @@ test("unclassifiable error → unknown, preserving the raw text", () => {
   const err = classifyProviderError({
     provider: "anthropic",
     model: "claude-opus-4-8",
-    message: "prompt is too long: 250000 tokens > 200000 maximum",
+    message: "something odd happened while streaming the response",
   });
   expect(err).toEqual({
     kind: "unknown",
     provider: "anthropic",
-    raw_excerpt: "prompt is too long: 250000 tokens > 200000 maximum",
+    raw_excerpt: "something odd happened while streaming the response",
   });
 });
 
@@ -375,4 +375,68 @@ test("a genuine opencode 401 invalid key still reads as unauthenticated", () => 
   });
   expect(err.kind).toBe("unauthenticated");
   if (err.kind === "unauthenticated") expect(err.cause).toBe("invalid_api_key");
+});
+
+// ---------------------------------------------------------------------------
+// Context overflow — the conversation no longer fits the model's window.
+// The Jan fixture is the VERBATIM llama.cpp rejection from the production
+// incident that used to fall through to `unknown` (a Jan-v3.5-4B custom
+// endpoint with n_ctx=8192 behind a Houston tunnel).
+
+test("llama.cpp/Jan exceed_context_size_error → context_overflow with both token counts", () => {
+  const err = classifyProviderError({
+    provider: "openai-compatible",
+    model: "Jan-v3.5-4B-Q4_K_XL",
+    message:
+      '400: {"code":400,"message":"request (15246 tokens) exceeds the available context size (8192 tokens), try increasing it","type":"exceed_context_size_error","n_prompt_tokens":15246,"n_ctx":8192}',
+  });
+  expect(err).toEqual({
+    kind: "context_overflow",
+    provider: "openai-compatible",
+    model: "Jan-v3.5-4B-Q4_K_XL",
+    context_window_tokens: 8192,
+    prompt_tokens: 15246,
+    message:
+      '400: {"code":400,"message":"request (15246 tokens) exceeds the available context size (8192 tokens), try increasing it","type":"exceed_context_size_error","n_prompt_tokens":15246,"n_ctx":8192}',
+  });
+});
+
+test("OpenAI context_length_exceeded → context_overflow with the window parsed", () => {
+  const err = classifyProviderError({
+    provider: "openai",
+    model: "gpt-4o",
+    message:
+      "OpenAI API error (400): This model's maximum context length is 128000 tokens. However, your messages resulted in 131085 tokens. Please reduce the length of the messages. (context_length_exceeded)",
+  });
+  expect(err.kind).toBe("context_overflow");
+  if (err.kind === "context_overflow") {
+    expect(err.context_window_tokens).toBe(128000);
+  }
+});
+
+test("Anthropic 'prompt is too long' → context_overflow, never rate_limited despite the 400 body", () => {
+  const err = classifyProviderError({
+    provider: "anthropic",
+    model: "claude-opus-4-8",
+    message:
+      '400 {"type":"error","error":{"type":"invalid_request_error","message":"prompt is too long: 213462 tokens > 200000 maximum"}}',
+  });
+  expect(err.kind).toBe("context_overflow");
+  if (err.kind === "context_overflow") {
+    expect(err.prompt_tokens).toBe(213462);
+    expect(err.context_window_tokens).toBe(200000);
+  }
+});
+
+test("overflow text without numbers still classifies, with null token counts", () => {
+  const err = classifyProviderError({
+    provider: "amazon-bedrock",
+    model: "anthropic.claude-3",
+    message: "400: Input is too long for requested model.",
+  });
+  expect(err.kind).toBe("context_overflow");
+  if (err.kind === "context_overflow") {
+    expect(err.context_window_tokens).toBeNull();
+    expect(err.prompt_tokens).toBeNull();
+  }
 });

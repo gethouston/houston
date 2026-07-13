@@ -201,3 +201,51 @@ test("failed hydration prevents start and never uploads the local tree", async (
   expect(uploads).toBe(0);
   expect(await new LocalDirStore(remoteRoot).list("")).toEqual([]);
 });
+
+test("warns only after synced data crosses 80% of the hydration cap", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "store-sync-remote-"));
+  const localRoot = mkdtempSync(join(tmpdir(), "store-sync-local-"));
+  const logs: string[] = [];
+  const daemon = new StoreSyncDaemon({
+    store: new LocalDirStore(remoteRoot),
+    rootDir: localRoot,
+    quietMs: 20,
+    maxHydrateBytes: 1000,
+    log: (message) => logs.push(message),
+  });
+  await daemon.hydrate();
+  daemon.start();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+
+  writeFileSync(join(localRoot, "small.bin"), Buffer.alloc(500));
+  await eventually(() =>
+    expect(readFileSync(join(remoteRoot, "small.bin")).length).toBe(500),
+  );
+  expect(logs.some((message) => message.includes("hydration cap"))).toBe(false);
+
+  writeFileSync(join(localRoot, "large.bin"), Buffer.alloc(400));
+  await eventually(() =>
+    expect(logs.some((message) => message.includes("hydration cap"))).toBe(
+      true,
+    ),
+  );
+  await daemon.stop();
+});
+
+test("final sync warns when the tree is past 80% of the cap", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "store-sync-remote-"));
+  const localRoot = mkdtempSync(join(tmpdir(), "store-sync-local-"));
+  const logs: string[] = [];
+  const daemon = new StoreSyncDaemon({
+    store: new LocalDirStore(remoteRoot),
+    rootDir: localRoot,
+    quietMs: 20,
+    maxHydrateBytes: 1000,
+    log: (message) => logs.push(message),
+  });
+  await daemon.hydrate();
+  writeFileSync(join(localRoot, "big.bin"), Buffer.alloc(900));
+  daemon.start();
+  await daemon.stop(); // final sync sees 900/1000 bytes
+  expect(logs.some((m) => m.includes("hydration cap"))).toBe(true);
+});

@@ -589,14 +589,14 @@ export type InteractionStep =
    *  choosing a mode (start working / Autopilot) or dismisses to keep planning. */
   | { kind: "plan_ready"; id: string; summary: string }
   /** The model finished cleanly and offers to save the just-completed work as a
-   *  reusable Skill or a scheduled Routine. Optional and dismissible: unlike the
-   *  other kinds, a lone `suggest_reusable` step does NOT flip the board to
-   *  `needs_you` (the mission genuinely finished). Mirrors
+   *  reusable Skill, a scheduled Routine, or a Learning to remember. Optional and
+   *  dismissible: unlike the other kinds, a lone `suggest_reusable` step does NOT
+   *  flip the board to `needs_you` (the mission genuinely finished). Mirrors
    *  `packages/protocol/src/domain/interaction.ts`. */
   | {
       kind: "suggest_reusable";
       id: string;
-      reusableKind: "skill" | "routine";
+      reusableKind: "skill" | "routine" | "learning";
       title: string;
       rationale: string;
     }

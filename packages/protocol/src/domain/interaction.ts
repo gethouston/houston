@@ -15,7 +15,7 @@
 //
 // `suggest_reusable` is the ONE exception to "present → needs_you": the model
 // calls it on a clean finish to suggest saving the just-completed work as a
-// Skill or Routine, so the mission genuinely IS done. `turn-settle.ts` treats
+// Skill, a Routine, or a Learning, so the mission genuinely IS done. `turn-settle.ts` treats
 // a lone `suggest_reusable` step as `done`, not `needs_you` — see that file's
 // `finishOk`. It arrives on the same `done` frame and renders a card the same
 // way; only the board-status mapping differs.
@@ -55,7 +55,7 @@ export type InteractionStep =
   | {
       kind: "suggest_reusable";
       id: string;
-      reusableKind: "skill" | "routine";
+      reusableKind: "skill" | "routine" | "learning";
       title: string;
       rationale: string;
     }
@@ -98,7 +98,9 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
   if (v.kind === "plan_ready") return typeof v.summary === "string";
   if (v.kind === "suggest_reusable")
     return (
-      (v.reusableKind === "skill" || v.reusableKind === "routine") &&
+      (v.reusableKind === "skill" ||
+        v.reusableKind === "routine" ||
+        v.reusableKind === "learning") &&
       typeof v.title === "string" &&
       typeof v.rationale === "string"
     );

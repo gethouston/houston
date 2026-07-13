@@ -3,7 +3,7 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
-## v22 - 2026-07-12
+## v24 - 2026-07-12
 
 The AI models hub moved to the shared catalog grammar (the ui/ CatalogShell +
 CatalogRow family, shared with the Integrations page).
@@ -24,6 +24,33 @@ directory / single column in the provider modal.
 tiles above Store / Custom skills tabs), community rows are CatalogRows with the
 ghost + install, and the old installed row (pen/trash) is gone — edit opens from
 a tile, delete moved into the edit modal footer.
+
+## v23 - 2026-07-12
+
+`provider-error-card` gains a `context-overflow` state. The engine taxonomy
+(protocol `ProviderError`, mirrored in `ui/chat`) adds `context_overflow`: the
+provider rejected the request because the conversation no longer fits the
+model's context window (llama.cpp/Jan `exceed_context_size_error`, OpenAI
+`context_length_exceeded`, Anthropic "prompt is too long"). Previously this
+fell through to the generic `unknown` card. The card names the model that ran
+out of room and offers the model picker as its CTA (a larger-window model, or
+the user starts a fresh mission). Wire fields carry the provider's own numbers
+(`context_window_tokens`, `prompt_tokens`); the runtime also uses the reported
+window to correct an over-assumed custom-endpoint window so autocompact fires
+at the real boundary on later turns.
+
+## v22 - 2026-07-12
+
+`suggest-reusable-card` gains a third variant: `learning`. The agent's
+end-of-mission REFLECTION STEP (the `suggest_reusable` tool, fired only on a
+clean `done` finish, never on `needs_you`) can now offer to keep the
+just-completed work as a reusable Skill, a scheduled Routine, OR a Learning (a
+stable fact/preference saved to `.houston/learnings/learnings.json`). Same
+card, same two rows; the save row's label and icon name the kind (Sparkles /
+CalendarClock / Lightbulb), and accepting sends the same follow-up-message
+flow (an execute turn asking the agent to write the Skill/Routine/Learning).
+Protocol `InteractionStep` kind=suggest_reusable widens `reusableKind` with
+`"learning"` — additive, no anatomy/state change, no new component.
 
 ## v21 - 2026-07-12
 

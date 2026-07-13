@@ -1153,8 +1153,8 @@ export function useAgentChatPanel({
   // ── Suggest-reusable offer (suggest_reusable) ─────────────────────────
   // On a clean finish the model may call `suggest_reusable`, arriving as a lone
   // `{kind:"suggest_reusable", ...}` step. The card offers to save the work as a
-  // Skill or Routine. "Save" sends a follow-up message asking the agent to
-  // actually WRITE the Skill/Routine file, so it always runs in `execute` mode
+  // Skill, Routine, or Learning. "Save" sends a follow-up message asking the agent
+  // to actually WRITE the Skill/Routine/Learning, so it always runs in `execute` mode
   // regardless of the composer's pinned mode (planning it is not enough), and it
   // does NOT flip the composer's Mode pill (this is a one-off follow-up, not a
   // change to the ongoing mode). It dismisses the offer locally first so the
@@ -1164,6 +1164,7 @@ export function useAgentChatPanel({
       eyebrow: t("chat:suggestReusable.title"),
       skillTitle: t("chat:suggestReusable.skillTitle"),
       routineTitle: t("chat:suggestReusable.routineTitle"),
+      learningTitle: t("chat:suggestReusable.learningTitle"),
       // The unified card-family decline word, shared with the interaction card.
       notNow: t("chat:interaction.notNow"),
     }),
@@ -1177,7 +1178,13 @@ export function useAgentChatPanel({
       const text =
         step.reusableKind === "skill"
           ? t("chat:suggestReusable.saveSkillMessage", { title: step.title })
-          : t("chat:suggestReusable.saveRoutineMessage", { title: step.title });
+          : step.reusableKind === "routine"
+            ? t("chat:suggestReusable.saveRoutineMessage", {
+                title: step.title,
+              })
+            : t("chat:suggestReusable.saveLearningMessage", {
+                title: step.title,
+              });
       tauriChat
         .send(path, text, selectedSessionKey, {
           providerOverride: effectiveProvider,
