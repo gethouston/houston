@@ -121,7 +121,13 @@ classifier) in a `lib/*-model.ts` unit-tested under bare Node, and route an
 EXPECTED business 400 (e.g. `key_limit`, read off the gateway's flat top-level
 `body.code`) through `call()`'s `silence` predicate so it renders inline instead
 of the red bug toast. Files: `app/src/{lib/api-keys-model,hooks/queries/use-api-keys}.ts`
-+ `components/settings/sections/api-keys*.tsx`.
++ `components/settings/sections/api-keys*.tsx`. The same flag also gates the
+Agent Settings **Connect** section ("Use from other apps",
+`components/tabs/agent-admin/agent-admin-connect.tsx`), which needs NO new wire
+method: it builds the public MCP / A2A / missions addresses client-side
+(`lib/agent-connect-model.ts`) from the gateway origin
+(`window.__HOUSTON_ENGINE__.baseUrl`), the hosted agent id (= public slug), and
+the org slug (team workspace id, else the personal membership from `GET /v1/orgs`).
 
 **Strict-additive / iOS-safe rule.** `@houston/sdk` is consumed by BOTH web AND
 the native iOS app (via the JavaScriptCore bridge, `bridge/entry.ts`). iOS reaches

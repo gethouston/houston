@@ -1,0 +1,37 @@
+{
+  "row": {
+    "title": "Usar desde otras apps"
+  },
+  "section": {
+    "title": "Usar desde otras apps",
+    "intro": "{{name}} puede recibir trabajo desde fuera de Houston. Conecta un asistente de IA, otro agente o una herramienta de automatización, y las misiones que inicien aparecerán aquí como cualquier otra misión."
+  },
+  "key": {
+    "title": "Cada conexión necesita una clave",
+    "description": "Una clave funciona como una contraseña: permite que una app de tu confianza inicie misiones en tu nombre. Crea una, cópiala y pégala en la app que quieres conectar.",
+    "create": "Crear clave",
+    "manage_one": "Administrar {{count}} clave",
+    "manage_other": "Administrar {{count}} claves"
+  },
+  "cards": {
+    "assistant": {
+      "title": "Asistentes de IA",
+      "description": "Agrega {{name}} a Claude o a cualquier asistente compatible con herramientas (MCP). Pega esta dirección y tu clave donde el asistente pida una nueva herramienta.",
+      "addressLabel": "Dirección para asistentes de IA"
+    },
+    "agents": {
+      "title": "Otros agentes",
+      "description": "Los agentes de otras plataformas pueden descubrir a {{name}} y encargarle tareas con el estándar A2A. Comparte esta dirección con la otra plataforma.",
+      "addressLabel": "Dirección de la tarjeta del agente"
+    },
+    "automation": {
+      "title": "Automatizaciones y desarrolladores",
+      "description": "Las herramientas de automatización y los scripts pueden iniciar misiones para {{name}} y recibir el resultado cuando termine.",
+      "addressLabel": "Dirección de misiones"
+    },
+    "copy": "Copiar",
+    "copied": "Dirección copiada",
+    "copyFailed": "No se pudo copiar la dirección",
+    "docs": "Ver cómo"
+  }
+}

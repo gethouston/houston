@@ -125,7 +125,7 @@
     "rows": {
       "members": "People who can use your agents",
       "connectedAccounts": "Apps you've connected to Houston",
-      "apiKeys": "Keys to run your agents from your own tools",
+      "apiKeys": "Let other apps and AI assistants start missions with your agents",
       "workspaceContext": "What every agent knows about this workspace",
       "userContext": "What every agent knows about you",
       "shortcuts": "Run Houston without the mouse",
@@ -150,12 +150,12 @@
   },
   "apiKeys": {
     "title": "API keys",
-    "intro": "Use API keys to start missions from your own tools and scripts. <docs>Read the developer docs</docs>.",
+    "intro": "Other apps, AI assistants, and automation tools can start missions with your agents. Each connection needs a key you create here. <docs>Read the developer docs</docs>.",
     "dialogClose": "Close",
     "createButton": "Create key",
     "empty": {
       "title": "No API keys yet",
-      "description": "An API key lets your own tools and scripts start missions with your agents. Create one to get started."
+      "description": "A key lets an app you trust start missions with your agents. Create one to connect your first app."
     },
     "error": {
       "title": "Couldn't load your keys",

@@ -1,4 +1,5 @@
 import { AgentAccessSection } from "../agent-access-section";
+import { AgentAdminConnect } from "./agent-admin-connect";
 import { AgentAdminInstructions } from "./agent-admin-instructions";
 import { AgentAdminIntegrations } from "./agent-admin-integrations";
 import { AgentAdminKnowledge } from "./agent-admin-knowledge";
@@ -30,6 +31,8 @@ export function AgentAdminScreenView({
       return <AgentAdminModel agent={agent} />;
     case "integrations":
       return <AgentAdminIntegrations agent={agent} />;
+    case "connect":
+      return <AgentAdminConnect agent={agent} />;
     case "people":
       return (
         <div className="mx-auto w-full max-w-xl px-8 py-10">
