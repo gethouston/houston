@@ -1,3 +1,4 @@
+import type { PortableUploadPreviewResponse } from "@houston-ai/engine-client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { SettingsSectionId } from "../lib/settings-sections";
@@ -82,6 +83,14 @@ interface UIState {
   shareAgentId: string | null;
   /** Whether the "From a friend" import wizard is open. */
   importFromFriendOpen: boolean;
+  /** A one-shot preview the import wizard adopts on open — set by the Agent
+   * Store's one-click install right before opening the wizard, cleared by the
+   * wizard once applied. Ephemeral, never persisted. */
+  importSeedPreview: PortableUploadPreviewResponse | null;
+  /** A one-shot slug the Agent Store view opens the detail dialog on — set by
+   * "See it in the store" affordances before `setViewMode(STORE_VIEW_ID)`,
+   * cleared by the view once consumed. */
+  storeFocusSlug: string | null;
   /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
   sidebarCollapsed: boolean;
   setViewMode: (mode: string) => void;
@@ -120,6 +129,8 @@ interface UIState {
   setUiTourActive: (active: boolean) => void;
   setShareAgentId: (agentId: string | null) => void;
   setImportFromFriendOpen: (open: boolean) => void;
+  setImportSeedPreview: (preview: PortableUploadPreviewResponse | null) => void;
+  setStoreFocusSlug: (slug: string | null) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
 }
@@ -161,6 +172,8 @@ export const useUIStore = create<UIState>()(
       uiTourActive: false,
       shareAgentId: null,
       importFromFriendOpen: false,
+      importSeedPreview: null,
+      storeFocusSlug: null,
       sidebarCollapsed: false,
 
       setViewMode: (viewMode) => set({ viewMode }),
@@ -281,6 +294,8 @@ export const useUIStore = create<UIState>()(
       setShareAgentId: (shareAgentId) => set({ shareAgentId }),
       setImportFromFriendOpen: (importFromFriendOpen) =>
         set({ importFromFriendOpen }),
+      setImportSeedPreview: (importSeedPreview) => set({ importSeedPreview }),
+      setStoreFocusSlug: (storeFocusSlug) => set({ storeFocusSlug }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       toggleSidebarCollapsed: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),

@@ -48,6 +48,7 @@ import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { ChatModelSelector } from "../chat-model-selector";
+import { STORE_VIEW_ID } from "../store-view";
 import { InstallFromLinkPanel } from "./install-from-link";
 
 type StepId = "upload" | "name" | "skills" | "routines" | "learnings";
@@ -152,6 +153,17 @@ export function ImportAgentWizard() {
       !prev && result.manifest.agentName ? result.manifest.agentName : prev,
     );
   }, []);
+
+  // The Agent Store's one-click install opens the wizard with the preview
+  // already fetched: adopt the one-shot seed on open, exactly as if the user
+  // had pasted the listing's link — the scan choice and every later step stay
+  // in the flow untouched.
+  const seedPreview = useUIStore((s) => s.importSeedPreview);
+  useEffect(() => {
+    if (!open || !seedPreview) return;
+    useUIStore.getState().setImportSeedPreview(null);
+    applyPreview(seedPreview);
+  }, [open, seedPreview, applyPreview]);
 
   const handleOpenFile = async () => {
     try {
@@ -440,6 +452,17 @@ function UploadStep({
             </span>
           </div>
           <InstallFromLinkPanel onPreview={onPreview} />
+          <button
+            type="button"
+            onClick={() => {
+              const ui = useUIStore.getState();
+              ui.setImportFromFriendOpen(false);
+              ui.setViewMode(STORE_VIEW_ID);
+            }}
+            className="text-sm text-ink-muted underline-offset-4 transition-colors hover:text-ink hover:underline"
+          >
+            {t("import.link.browseStore")}
+          </button>
         </div>
       ) : (
         <section className="space-y-2 text-sm">

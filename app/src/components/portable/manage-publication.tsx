@@ -7,6 +7,9 @@
 import { Button, ConfirmDialog } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useUIStore } from "../../stores/ui";
+import { STORE_VIEW_ID } from "../store-view";
+import { storeSlugFromShareUrl } from "../store-view/store-view-model";
 import { ShareLink, UnlistedNote } from "./share-screen";
 
 export function ManagePublication({
@@ -24,6 +27,7 @@ export function ManagePublication({
 }) {
   const { t } = useTranslation("portable");
   const [confirming, setConfirming] = useState(false);
+  const storeSlug = storeSlugFromShareUrl(shareUrl);
 
   return (
     <div className="space-y-8">
@@ -44,6 +48,21 @@ export function ManagePublication({
           <Button className="rounded-full" onClick={onUpdate} disabled={busy}>
             {t("publish.manage.update")}
           </Button>
+          {storeSlug && (
+            <Button
+              variant="outline"
+              className="rounded-full"
+              disabled={busy}
+              onClick={() => {
+                const ui = useUIStore.getState();
+                ui.setShareAgentId(null);
+                ui.setStoreFocusSlug(storeSlug);
+                ui.setViewMode(STORE_VIEW_ID);
+              }}
+            >
+              {t("publish.manage.seeInStore")}
+            </Button>
+          )}
           <Button
             variant="outline"
             className="rounded-full text-destructive hover:text-destructive"

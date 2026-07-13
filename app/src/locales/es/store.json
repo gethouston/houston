@@ -1,0 +1,26 @@
+{
+  "title": "Tienda de agentes",
+  "subtitle": "Agentes listos para usar, creados por la comunidad de Houston. Instala uno y hazlo tuyo.",
+  "searchPlaceholder": "Buscar agentes",
+  "allCategories": "Todos",
+  "sort": {
+    "recent": "Más nuevos",
+    "installs": "Más instalados"
+  },
+  "installs_one": "{{count}} instalación",
+  "installs_other": "{{count}} instalaciones",
+  "install": "Instalar",
+  "installLabel": "Instalar {{name}}",
+  "empty": "Aún no hay agentes aquí. Prueba otra categoría o búsqueda.",
+  "loadFailed": "No pudimos conectar con la tienda. Revisa tu conexión e intenta de nuevo.",
+  "retry": "Intentar de nuevo",
+  "showMore": "Mostrar más agentes",
+  "detail": {
+    "by": "Creado por {{name}}",
+    "skills": "Habilidades",
+    "integrations": "Funciona con",
+    "learnings_one": "Incluye {{count}} aprendizaje de uso real",
+    "learnings_other": "Incluye {{count}} aprendizajes de uso real"
+  },
+  "installFailed": "Houston no pudo traer ese agente de la tienda. Intenta de nuevo en un momento."
+}

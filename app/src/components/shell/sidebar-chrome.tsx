@@ -7,12 +7,14 @@ import {
   Building2,
   LayoutDashboard,
   Settings,
+  Store,
 } from "lucide-react";
 import { useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { hasSpaces } from "../../lib/org-roles";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
 import { ORGANIZATION_VIEW_ID } from "../organization";
+import { STORE_VIEW_ID } from "../store-view";
 import { CreateTeamDialog } from "./create-team-dialog";
 
 type ShellT = TFunction<["shell", "common", "portable", "teams"]>;
@@ -58,6 +60,13 @@ export function buildSidebarNavItems(args: {
           },
         ]
       : []),
+    {
+      id: STORE_VIEW_ID,
+      label: t("shell:sidebar.agentStore"),
+      icon: <Store className="h-4 w-4" />,
+      onClick: () => setViewMode(STORE_VIEW_ID),
+      dataAttrs: { "data-tour-target": "nav-agent-store" },
+    },
     ...(showOrganization
       ? [
           {

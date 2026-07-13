@@ -1640,6 +1640,53 @@ export interface StorePublicationStatus {
   identity?: StorePublishIdentity;
 }
 
+/** One public Agent Store listing, exactly as the catalog API serializes it. */
+export interface StoreCatalogAgent {
+  id: string;
+  /** Null only while a listing is a draft; always set for published agents. */
+  slug: string | null;
+  name: string;
+  tagline: string | null;
+  description: string;
+  icon: { kind: string; value: string } | null;
+  color: string | null;
+  category: string;
+  tags: string[];
+  /** UPPERCASE Composio toolkit slugs the agent uses. */
+  integrations: string[];
+  creator: { displayName: string; url?: string };
+  installsCount: number;
+  publishedAt: string | null;
+  updatedAt: string;
+}
+
+/** One page of the public catalog (page size is server-fixed at 24). */
+export interface StoreCatalogPage {
+  items: StoreCatalogAgent[];
+  hasMore: boolean;
+}
+
+export type StoreCatalogSort = "recent" | "installs";
+
+export interface StoreCatalogQuery {
+  /** Full-text search (websearch syntax). */
+  q?: string;
+  /** A store category slug; omit for all categories. */
+  category?: string;
+  sort?: StoreCatalogSort;
+  /** 1-based. */
+  page?: number;
+}
+
+/** A listing's detail: the summary plus the parts of its IR the app renders. */
+export interface StoreCatalogAgentDetail {
+  agent: StoreCatalogAgent;
+  ir: {
+    skills?: Array<{ slug: string }>;
+    learnings?: unknown[];
+  };
+}
+
 // ── integrations (Composio, platform mode) ───────────────────────────────────
 // User-level: no provider account — the user only connects apps (Gmail, Slack…)
 // via OAuth; Houston's platform key lives server-side, keyed by the user's id.

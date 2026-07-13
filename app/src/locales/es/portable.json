@@ -145,7 +145,8 @@
         "unreadable": "No se pudo leer ese agente. Pide a quien lo compartió que lo publique de nuevo.",
         "network": "No pudimos conectar con la Agent Store. Revisa tu conexión e inténtalo de nuevo.",
         "generic": "Algo salió mal al traer ese agente. Inténtalo de nuevo."
-      }
+      },
+      "browseStore": "O explora la Tienda de agentes"
     },
     "actions": {
       "back": "Atrás",
@@ -229,7 +230,8 @@
       "removeConfirmTitle": "¿Quitar de la tienda?",
       "removeConfirmBody": "{{name}} ya no se podrá instalar desde su enlace. Puedes publicarlo de nuevo más adelante.",
       "removeConfirm": "Quitar",
-      "removeCancel": "Dejarlo"
+      "removeCancel": "Dejarlo",
+      "seeInStore": "Verlo en la tienda"
     },
     "errors": {
       "generic": "Algo salió mal. Inténtalo de nuevo.",
