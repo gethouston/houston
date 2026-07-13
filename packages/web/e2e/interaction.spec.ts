@@ -250,7 +250,7 @@ test("single question with options sends on option click (fast path)", async ({
   await expect(
     page.getByText("Do you want the morning or evening flight?"),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText(/ of /)).toHaveCount(0);
+  await expect(page.getByText(/\d+ of \d+/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
   const morning = page.getByRole("radio", { name: "Morning flight" });
   await expect(morning).toBeVisible();
@@ -486,7 +486,7 @@ test("shows a lone signin step for a signin-only sequence", async ({
     page.getByText("Sign in to Houston to use your connected apps."),
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
-  await expect(page.getByText(/ of /)).toHaveCount(0);
+  await expect(page.getByText(/\d+ of \d+/)).toHaveCount(0);
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
 
@@ -522,7 +522,7 @@ test("shows a lone connect step for a connect-only sequence", async ({
     page.getByText("I need access to your Gmail to send the trip itinerary."),
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
-  await expect(page.getByText(/ of /)).toHaveCount(0);
+  await expect(page.getByText(/\d+ of \d+/)).toHaveCount(0);
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
 
@@ -1145,7 +1145,7 @@ test("renders the credential card, saves the key, and resumes the agent", async 
   await expect(
     page.getByText("I need your API key to sync your records."),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText(/ of /)).toHaveCount(0);
+  await expect(page.getByText(/\d+ of \d+/)).toHaveCount(0);
   const card = credentialCard(page);
 
   // Header identity: the integration NAME (its own node, resolved from the slug),
