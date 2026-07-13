@@ -21,6 +21,18 @@ export function SiteFooter() {
           <p className="mt-1 text-sm text-muted-foreground">
             A catalog of no-code AI agents for Houston.
           </p>
+          <p className="mt-1 text-xs text-muted-foreground/70">
+            Background: ESO/S. Brunier (
+            <a
+              href="https://www.eso.org/public/images/eso0932a/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2"
+            >
+              CC BY 4.0
+            </a>
+            )
+          </p>
         </div>
         <nav
           aria-label="Footer"
