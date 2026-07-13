@@ -476,11 +476,13 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           err,
         );
       }
-      // One-time, additive, idempotent migration of the Rust-desktop era's chat
-      // history (SQLite chat_feed) into each agent's `.houston/runtime/`. Runs
-      // BEFORE the watcher so its writes are already on disk when reactivity
-      // turns on, and only when the db is actually present. Never modifies the
-      // db or the existing tree, and a `.migrated` marker makes re-boots no-ops.
+      // Additive, idempotent migration of the Rust-desktop era's chat history
+      // (SQLite chat_feed) into each agent's `.houston/runtime/`. Runs BEFORE
+      // the watcher so its writes are already on disk when reactivity turns
+      // on, and only when the db is actually present. Never modifies the db or
+      // the existing tree; per-conversation existence checks make re-boots
+      // cheap no-ops (deliberately re-scanned every boot — see chat-history.ts
+      // on why a wholesale per-agent marker lost data).
       if (opts.chatHistoryDbPath && existsSync(opts.chatHistoryDbPath)) {
         try {
           migrateChatHistory({

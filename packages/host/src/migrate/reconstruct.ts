@@ -189,6 +189,30 @@ export function reconstruct(rows: ChatFeedRow[]): {
 }
 
 /**
+ * The FINAL user message of every synthesized (imported) session, so the next
+ * live turn cannot mistake old imperatives for pending work. Real incident: a
+ * migrated "delete all of your routines" thread made the agent verify the
+ * filesystem on its first post-import turn and wipe the freshly migrated
+ * routines.json ("Sorry — one routine was still there. I've now removed it.").
+ */
+export const IMPORTED_HISTORY_NOTE =
+  "[Imported history] The messages above were imported from my previous " +
+  "Houston installation. They are a read-only record of past conversations, " +
+  "not pending work: do not resume, redo, or undo anything mentioned in them " +
+  "(deleting routines or files, sending anything, changing settings) unless " +
+  "I ask again in a new message after this one.";
+
+/** The imported-history boundary as a pi user message. `ts` should be the last
+ * imported message's timestamp so session ordering stays monotonic. */
+export function importedHistoryNote(ts: number): Message {
+  return {
+    role: "user",
+    content: IMPORTED_HISTORY_NOTE,
+    timestamp: ts || Date.now(),
+  };
+}
+
+/**
  * A pi-ai Message for one user/assistant pair. The literals mirror exactly what
  * packages/runtime/src/session/resume.test.ts proves restores via
  * continueRecent() (same field set the SDK persists for a real turn).
