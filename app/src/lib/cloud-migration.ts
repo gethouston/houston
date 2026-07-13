@@ -194,6 +194,29 @@ export function collectIntegrations(sourceAgents: SourceAgent[]): string[] {
   return [...all].sort();
 }
 
+/**
+ * Whether the done screen's second step ("Reconnect your apps" + the
+ * leftovers report) has anything to show. Modern legacy installs (v0.4.2x)
+ * connected integrations in PLATFORM mode — account-level in Composio, no
+ * per-agent `.houston/integrations.json` on disk — so the manifest's
+ * integration list is empty for them and the step would render as a bare
+ * shell. Skip it then; but leftovers (failed agents, excluded/rejected
+ * files) must always surface, so any of those keeps the step.
+ */
+export function hasReconnectAppsStep(counts: {
+  integrations: number;
+  failedAgents: number;
+  excludedFiles: number;
+  rejectedFiles: number;
+}): boolean {
+  return (
+    counts.integrations > 0 ||
+    counts.failedAgents > 0 ||
+    counts.excludedFiles > 0 ||
+    counts.rejectedFiles > 0
+  );
+}
+
 // The per-agent progress state machine (pending → … → done | error) lives in
 // `cloud-migration-progress.ts`; the wizard's prepare phase (spawn source
 // host, scan, resume-probe, plan) in `cloud-migration-prepare.ts`.
