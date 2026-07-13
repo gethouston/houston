@@ -80,13 +80,6 @@ export default defineConfig(({ mode }) => {
       __FIREBASE_PROJECT_ID__: JSON.stringify(
         env.FIREBASE_PROJECT_ID ?? "gethouston",
       ),
-      // Gates the "Continue with Apple" button: the GCIP apple.com provider
-      // needs one-time Apple Developer + console config, and an unconfigured
-      // build must not show a sign-in method that can only error. Set
-      // APPLE_SIGN_IN_ENABLED=1 once the provider is live.
-      __APPLE_SIGN_IN_ENABLED__: JSON.stringify(
-        env.APPLE_SIGN_IN_ENABLED ?? "",
-      ),
       // Desktop-only: the "Desktop app" Google OAuth client used by the
       // loopback + PKCE sign-in. Google installed-app clients require the
       // client secret in the code→token exchange; it is non-confidential

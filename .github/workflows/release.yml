@@ -618,9 +618,6 @@ jobs:
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          # Gates "Continue with Apple" (repo variable, not a secret): set to 1
-          # once the GCIP apple.com provider is configured (knowledge-base/auth.md).
-          APPLE_SIGN_IN_ENABLED: ${{ vars.APPLE_SIGN_IN_ENABLED || '' }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
@@ -1238,9 +1235,6 @@ jobs:
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          # Gates "Continue with Apple" (repo variable, not a secret): set to 1
-          # once the GCIP apple.com provider is configured (knowledge-base/auth.md).
-          APPLE_SIGN_IN_ENABLED: ${{ vars.APPLE_SIGN_IN_ENABLED || '' }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
@@ -1502,9 +1496,6 @@ jobs:
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          # Gates "Continue with Apple" (repo variable, not a secret): set to 1
-          # once the GCIP apple.com provider is configured (knowledge-base/auth.md).
-          APPLE_SIGN_IN_ENABLED: ${{ vars.APPLE_SIGN_IN_ENABLED || '' }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
@@ -1671,9 +1662,6 @@ jobs:
         env:
           VITE_CONTROL_PLANE_URL: ${{ secrets.HOSTED_ENGINE_URL }}
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          # Gates "Continue with Apple" (repo variable, not a secret): set to 1
-          # once the GCIP apple.com provider is configured (knowledge-base/auth.md).
-          APPLE_SIGN_IN_ENABLED: ${{ vars.APPLE_SIGN_IN_ENABLED || '' }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}

@@ -132,9 +132,6 @@ if (fails.length > 0) {
 const on = paint.ok("ON ");
 const off = paint.warn("OFF");
 const integrations = env.COMPOSIO_API_KEY || env.HOUSTON_INTEGRATIONS_URL;
-const appleOn = ["1", "true", "on", "yes"].includes(
-  (env.APPLE_SIGN_IN_ENABLED || "").trim().toLowerCase(),
-);
 const emailOtp = env.RESEND_API_KEY && env.GW_OTP_SIGNER_SA;
 const bugReports = env.LINEAR_API_KEY && env.LINEAR_TEAM_ID;
 const desktopLogin =
@@ -146,7 +143,6 @@ ${paint.bold("── pnpm dev · feature matrix ──────────�
                                 multiplayer Teams/Spaces · agent moves
   Engines       local processes spawned per agent (data: ${(process.env.CP_DEV_DATA_DIR || path.join(homedir(), ".dev-houston-cloud")).replace(homedir(), "~")})
   ${desktopLogin ? on : off} desktop login  ${desktopLogin ? "Google loopback sign-in + sign-out (Settings → Account) on the desktop" : "desktop runs ACCOUNT-LESS — set GOOGLE_DESKTOP_CLIENT_ID + GOOGLE_DESKTOP_CLIENT_SECRET in .env.local to test login/logout there (web pane always has accounts)"}
-  ${appleOn ? on : off} apple sign-in  ${appleOn ? "web button renders (needs the GCIP apple.com provider to work)" : "APPLE_SIGN_IN_ENABLED is off — button hidden"}
   ${emailOtp ? on : off} email sign-in  ${emailOtp ? "Resend key + OTP signer present" : "the code field ERRORS in dev (gateway 503s without RESEND_API_KEY + GW_OTP_SIGNER_SA) — sign in with Google/Microsoft/Apple"}
   ${on} agent store    catalog/publish/install stay on the LOCAL gateway (never prod)
   ${bugReports ? on : off} bug reports    ${bugReports ? "desktop Report-bug files to Linear" : "desktop Report-bug ERRORS — set LINEAR_API_KEY + LINEAR_TEAM_ID in .env.local"}

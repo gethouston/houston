@@ -128,12 +128,10 @@ handler, team ID, key ID + private key → GCIP console / terraform), and add
 `127.0.0.1` to the project's **authorized domains** so the desktop loopback
 `continueUri` is accepted by `createAuthUri`.
 
-**The button is GATED until that setup is done:** `isAppleSignInEnabled()`
-(`identity/config.ts`) reads the baked `APPLE_SIGN_IN_ENABLED` flag (Vite
-define; release CI reads the `APPLE_SIGN_IN_ENABLED` repo VARIABLE, dev
-override `VITE_APPLE_SIGN_IN_ENABLED=1`) — default off, so an unconfigured
-build never shows a sign-in method that can only error. Flip the repo
-variable to `1` after the provider is live; the next release shows the button.
+That one-time setup is done, and the button renders UNCONDITIONALLY, exactly
+like Google and Microsoft — no flag (the old Apple sign-in enable gate was
+deleted per the "Features default ON — no dark switches" rule; it kept the
+shipped button invisible for months).
 
 ### Google / Microsoft — web (firebase-js-sdk popup)
 

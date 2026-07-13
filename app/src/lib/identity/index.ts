@@ -11,11 +11,7 @@
 // `.ts`-subpath imports, so they are intentionally NOT re-exported here — a
 // slim barrel keeps the public surface honest.
 
-export {
-  identityConfig,
-  isAppleSignInEnabled,
-  isIdentityConfigured,
-} from "./config.ts";
+export { identityConfig, isIdentityConfigured } from "./config.ts";
 export {
   IdentityError,
   type IdentityErrorCode,
