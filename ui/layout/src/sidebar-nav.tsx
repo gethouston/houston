@@ -33,7 +33,7 @@ export function SidebarNavItem({
             {...dataAttrs}
             className={cn(
               "relative flex size-9 items-center justify-center rounded-lg transition-colors",
-              active ? "bg-hover text-ink" : "text-ink hover:bg-hover",
+              active ? "bg-sidebar-active text-ink" : "text-ink hover:bg-hover",
             )}
           >
             {icon}
@@ -53,7 +53,9 @@ export function SidebarNavItem({
       {...dataAttrs}
       className={cn(
         "w-full flex items-center gap-2 text-sm py-1.5 px-2.5 rounded-lg transition-colors",
-        active ? "bg-hover font-medium text-ink" : "text-ink hover:bg-hover",
+        active
+          ? "bg-sidebar-active font-medium text-ink"
+          : "text-ink hover:bg-hover",
       )}
     >
       {icon}

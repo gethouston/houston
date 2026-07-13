@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { hasReconnectAppsStep } from "../../../lib/cloud-migration";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
 import { SetupCard } from "../setup-card";
 import { DoneCongrats, DoneStepAi, DoneStepApps } from "./done-followups";
@@ -46,6 +47,17 @@ export function DoneScreen({
     (x) => progress[x.sourceId]?.rejected ?? [],
   );
 
+  // Modern legacy installs (v0.4.2x platform-mode integrations) have no
+  // per-agent integration record on disk, so the apps step would be an empty
+  // shell — skip straight to congrats unless it has apps or leftovers to show.
+  const showAppsStep = hasReconnectAppsStep({
+    integrations: integrations.length,
+    failedAgents: failedTasks.length,
+    excludedFiles: excluded.length,
+    rejectedFiles: rejected.length,
+  });
+  const afterAi: Step = showAppsStep ? "apps" : "congrats";
+
   if (step === "congrats") {
     return <DoneCongrats onFinish={() => persistOutcome("done")} />;
   }
@@ -54,19 +66,19 @@ export function DoneScreen({
     return (
       <SetupCard
         onSpace
-        eyebrow={t("done.stepAi")}
+        eyebrow={showAppsStep ? t("done.stepAi") : undefined}
         title={t("done.reconnectAiTitle")}
         subtitle={t("done.reconnectAiBody")}
         helper={
           <button
             type="button"
-            onClick={() => setStep("apps")}
+            onClick={() => setStep(afterAi)}
             className="underline-offset-4 transition-colors hover:text-ink hover:underline"
           >
             {t("done.skip")}
           </button>
         }
-        onNext={() => setStep("apps")}
+        onNext={() => setStep(afterAi)}
         nextLabel={t("done.continue")}
       >
         <div className="min-h-0 flex-1 overflow-y-auto">

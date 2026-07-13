@@ -25,9 +25,25 @@ const AUTH_PATTERNS = [
   "no provider connected",
 ] as const;
 
+/**
+ * Match each pattern on WORD BOUNDARIES, not as a bare substring: a raw
+ * `.includes("401")` fired inside any token that merely contained the digits —
+ * fatally, inside a hex UUID like `…d96401409c01…`. The routine-setup kickoff
+ * embeds the chat's activity UUID (`setup_activity_id`) in its prompt, and the
+ * agent's reply can echo it, so a conversation whose id happened to contain
+ * `401` had its whole reply misread as an auth error and hidden — the chat
+ * rendered empty (HOU-734). Boundaries keep the intended hits (`Error 401:`,
+ * `401 Unauthorized`) while a code buried in a longer alphanumeric run no
+ * longer matches. The patterns start and end with word characters, so `\b`
+ * anchors both ends cleanly.
+ */
+const AUTH_PATTERN_RES = AUTH_PATTERNS.map(
+  (pattern) =>
+    new RegExp(`\\b${pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"),
+);
+
 export function isProviderAuthMessage(message: string): boolean {
-  const lower = message.toLowerCase();
-  return AUTH_PATTERNS.some((pattern) => lower.includes(pattern));
+  return AUTH_PATTERN_RES.some((re) => re.test(message));
 }
 
 export function isProviderAuthFeedItem(item: FeedItem): boolean {

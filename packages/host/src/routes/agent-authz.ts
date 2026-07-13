@@ -1,5 +1,6 @@
 import type { ServerResponse } from "node:http";
 import type { Capabilities } from "@houston/protocol";
+import type { SharedEndpointStore } from "../credentials/remote-shared-endpoint-store";
 import { canUseAgent } from "../domain/access";
 import type {
   Agent,
@@ -32,6 +33,8 @@ export interface AgentRouteDeps {
   events?: EventHub;
   /** Deployment capabilities; gates local-only routes (OpenAI-compatible connect). */
   capabilities?: Capabilities;
+  /** Managed gateway store for the active organization's shared local endpoint. */
+  sharedEndpoints?: SharedEndpointStore;
   /**
    * The agent's absolute on-disk directory, when this deployment is co-located
    * with the files (local profile). Serialized as `dir` on agent payloads so

@@ -161,6 +161,14 @@ components:
       CatalogAddButton / CatalogShell); the provider-specific composition and
       the connect-flow card are still app/-locked. Extract before mobile.
 
+  provider-usage-card:
+    status: partial
+    ref: "app/src/components/usage-view/usage-provider-card.tsx (+ usage-pane.tsx, usage-model.ts)"
+    notes: >-
+      Ships on the hub's Usage tab but is app/-locked (the pure pairing/format
+      model and the card composition live in app/, not a shared ui/ package).
+      Extract before mobile.
+
   ai-model-row:
     status: partial
     ref: "app/src/components/ai-hub/model-card-row.tsx (in models-browser.tsx)"

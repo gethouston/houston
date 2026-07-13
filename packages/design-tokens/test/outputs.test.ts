@@ -8,8 +8,8 @@ import { color, durationMs, easing, radius, space } from "../dist/ts/tokens.ts";
 describe("generated TypeScript tokens", () => {
   it("exposes both themes with the same colour keys", () => {
     expect(Object.keys(color.light)).toEqual(Object.keys(color.dark));
-    expect(color.light["input"]).toBe("#ffffff");
-    expect(color.dark["input"]).toBe("#1e1e1e");
+    expect(color.light.input).toBe("#ffffff");
+    expect(color.dark.input).toBe("#1e1e1e");
   });
 
   it("exposes numeric motion durations for JS animation", () => {

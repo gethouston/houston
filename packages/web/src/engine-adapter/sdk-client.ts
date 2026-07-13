@@ -11,7 +11,7 @@
  * that later waves delegate those writes to, so web matches iOS.
  *
  * **Wave 1 is the inert seam.** Construction opens NO network: the SDK is built
- * with `reactivity: false`, so its agents/activities modules do NOT start their
+ * with `reactivity: false`, so its agents/activities/turns modules do NOT start
  * `/v1/events` streams — web keeps its own read model (TanStack Query) and its
  * own `/v1/events` bus (`client.ts subscribeServerEvents`) unchanged. The SDK
  * exposes only its WRITE surface for wave 2 (`sdk.agents/activities/providers/

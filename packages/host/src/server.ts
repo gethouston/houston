@@ -5,6 +5,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import { type Capabilities, PROTOCOL_VERSION } from "@houston/protocol";
+import type { SharedEndpointStore } from "./credentials/remote-shared-endpoint-store";
 import type {
   Agent,
   UserId,
@@ -87,6 +88,8 @@ export interface ControlPlaneDeps {
   store: WorkspaceStore;
   /** Connect-once: the one subscription credential per workspace, served to its sandboxes. */
   credentials: CredentialStore;
+  /** Managed gateway store for the active organization's shared local endpoint. */
+  sharedEndpoints?: SharedEndpointStore;
   /** Validates per-sandbox HMAC tokens (the sandbox-facing credential endpoint). */
   vault: CredentialVault;
   /**

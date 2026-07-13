@@ -103,6 +103,8 @@ export async function connectDetectedModel(opts: {
   appName: string;
   /** Surface the model's chain-of-thought as thinking in Houston. */
   reasoning?: boolean;
+  /** Share this endpoint with the active team workspace. */
+  shared?: boolean;
   signal?: AbortSignal;
 }): Promise<void> {
   return withBridgeOp(async () => {
@@ -138,6 +140,7 @@ export async function connectDetectedModel(opts: {
       name: opts.name,
       proxyKey: bridge.proxyKey,
       reasoning: opts.reasoning,
+      shared: opts.shared,
     });
     try {
       await tauriProvider.setCustomEndpoint(endpoint);

@@ -97,6 +97,7 @@ function storeSyncConfig(hostTokenEnv: string | undefined) {
 const houstonHome = process.env.HOUSTON_HOME || join(homedir(), ".houston");
 const hostTokenEnv = process.env.HOUSTON_HOST_TOKEN;
 const hostToken = hostTokenEnv || randomBytes(32).toString("hex");
+const remoteGateway = remoteCredentialConfig(hostTokenEnv);
 const host = buildLocalHost({
   workspacesRoot:
     process.env.HOUSTON_WORKSPACES_ROOT || join(houstonHome, "workspaces"),
@@ -139,7 +140,8 @@ const host = buildLocalHost({
   // x-houston-acting-as); relay that header to the runtime so integration
   // calls act as the driving user. Desktop/self-host stay direct → false.
   gatewayFronted: process.env.HOUSTON_MANAGED_CLOUD === "1",
-  credentials: remoteCredentialConfig(hostTokenEnv),
+  credentials: remoteGateway,
+  sharedEndpoints: remoteGateway,
   // Migration-source spawns (HOU-719): serve + migrate on boot, but never fire
   // routines or churn watch events while the cloud app reads the old tree.
   passive: process.env.HOUSTON_PASSIVE === "1",

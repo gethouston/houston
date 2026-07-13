@@ -129,5 +129,30 @@
       "description": "Run models on your own computer with Ollama, LM Studio, and friends."
     }
   },
+  "usage": {
+    "pageTitle": "Usage",
+    "pageSubtitle": "How much of each connected AI account you've used, and when its limits reset.",
+    "window": {
+      "session": "Session limit",
+      "week": "Weekly limit",
+      "week_opus": "Weekly limit (Opus)",
+      "month": "Monthly limit",
+      "premium": "Premium requests",
+      "chat": "Chat requests",
+      "completions": "Code completions"
+    },
+    "percentUsed": "{{percent}}% used",
+    "resets": "Resets {{when}}",
+    "creditsLeft": "{{amount}} left",
+    "noData": "This account reports no limits right now.",
+    "unsupported": "This provider doesn't share usage details yet.",
+    "reconnect": "Sign in again to see this account's usage.",
+    "error": "Couldn't load usage right now. Try again in a moment.",
+    "empty": {
+      "title": "No accounts connected",
+      "body": "Connect an AI provider to see how much of its limits you've used.",
+      "connect": "Connect a provider"
+    }
+  },
   "toast": {}
 }

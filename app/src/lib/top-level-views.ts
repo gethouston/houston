@@ -9,11 +9,13 @@
 import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id.ts";
 import { ORGANIZATION_VIEW_ID } from "../components/organization/id.ts";
 import { STORE_VIEW_ID } from "../components/store-view/id.ts";
+import { USAGE_VIEW_ID } from "../components/usage-view/id.ts";
 
 export const TOP_LEVEL_VIEWS = new Set<string>([
   "dashboard",
   "settings",
   "ai-hub",
+  USAGE_VIEW_ID,
   INTEGRATIONS_VIEW_ID,
   ORGANIZATION_VIEW_ID,
   STORE_VIEW_ID,
@@ -45,5 +47,8 @@ export function blockedTopLevelView(
   if (viewMode === INTEGRATIONS_VIEW_ID) return !gates.showIntegrations;
   if (viewMode === ORGANIZATION_VIEW_ID) return !gates.showOrganization;
   if (viewMode === "ai-hub") return !gates.showAiModels;
+  // The Usage page reads the same workspace-central provider accounts the AI
+  // Models hub manages, so it shares the hub's Teams gate exactly.
+  if (viewMode === USAGE_VIEW_ID) return !gates.showAiModels;
   return false;
 }

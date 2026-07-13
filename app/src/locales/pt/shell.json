@@ -2,6 +2,7 @@
   "sidebar": {
     "missionControl": "Central de missões",
     "aiModels": "Modelos de IA",
+    "usage": "Uso",
     "settings": "Configurações",
     "yourAgents": "Seus agentes",
     "selectWorkspace": "Escolha um espaço de trabalho",
@@ -109,7 +110,7 @@
         "body": "Documentos que seu assistente pode ler ou compartilhar com você. Solte qualquer coisa aqui para dar contexto."
       },
       "tabArchived": {
-        "title": "Concluídas",
+        "title": "Arquivadas",
         "body": "Missões que este agente já concluiu. Envie uma mensagem para reabrir uma e ela volta direto para o painel ativo."
       },
       "tabJobDescription": {

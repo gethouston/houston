@@ -2,6 +2,7 @@
   "sidebar": {
     "missionControl": "Centro de misiones",
     "aiModels": "Modelos de IA",
+    "usage": "Uso",
     "integrations": "Integraciones",
     "agentStore": "Tienda de agentes",
     "settings": "Configuración",
@@ -109,7 +110,7 @@
         "body": "Documentos que tu asistente puede leer o compartir contigo. Arrastra lo que quieras para dar contexto."
       },
       "tabArchived": {
-        "title": "Completadas",
+        "title": "Archivadas",
         "body": "Misiones que este agente ya terminó. Envía un mensaje para reabrir una y vuelve directo al tablero activo."
       },
       "tabJobDescription": {

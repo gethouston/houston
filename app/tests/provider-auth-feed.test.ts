@@ -39,6 +39,41 @@ describe("isProviderAuthMessage", () => {
     );
     strictEqual(isProviderAuthMessage("Hallo! Wie kann ich helfen?"), false);
   });
+
+  it("does not match a code buried inside a longer token (HOU-734)", () => {
+    // A `.includes("401")` fired on any hex UUID that contained the digits,
+    // e.g. the activity id the routine-setup kickoff echoes — hiding the whole
+    // reply. Word-boundary matching leaves such an embedded code alone.
+    strictEqual(
+      isProviderAuthMessage(
+        'Set its "setup_activity_id" field to exactly ' +
+          '"9a7a4276-750e-43dc-a551-d96401409c01".',
+      ),
+      false,
+    );
+    // Neither does a plain sentence that merely spells the digits inside a word.
+    strictEqual(isProviderAuthMessage("Order #40199 shipped."), false);
+    // …but a standalone status code is still an auth signal.
+    strictEqual(isProviderAuthMessage("Request failed: 401"), true);
+  });
+});
+
+describe("filterProviderAuthFeedItems keeps a real reply that echoes a 401-bearing id (HOU-734)", () => {
+  it("does not drop the assistant reply or its final_result", () => {
+    const reply =
+      'Roger that. Set "setup_activity_id" to ' +
+      '"9a7a4276-750e-43dc-a551-d96401409c01".';
+    const items: FeedItem[] = [
+      { feed_type: "user_message", data: "" },
+      { feed_type: "assistant_text", data: reply },
+      {
+        feed_type: "final_result",
+        data: { result: reply, cost_usd: null, duration_ms: null, usage: null },
+      },
+    ];
+    const filtered = filterProviderAuthFeedItems(items);
+    strictEqual(filtered.length, 3);
+  });
 });
 
 describe("providerAuthSignalKey", () => {

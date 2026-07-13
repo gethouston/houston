@@ -80,12 +80,21 @@
   --color-sidebar-line: var(--ht-sidebar-line);
   --color-sidebar-hover: var(--ht-sidebar-hover);
   --color-sidebar-hover-text: var(--ht-sidebar-hover-text);
+  --color-sidebar-active: var(--ht-sidebar-active);
   --color-success: var(--ht-success);
   --color-success-text: var(--ht-success-text);
   --color-warning: var(--ht-warning);
   --color-warning-text: var(--ht-warning-text);
   --color-highlight: var(--ht-highlight);
   --color-highlight-text: var(--ht-highlight-text);
+  --animate-caret-blink: caret-blink 1.2s ease-out infinite;
+}
+
+/* Fake caret blink inside the OTP input's active slot (`input-otp` hides the
+   real input and renders its caret as a DOM node). */
+@keyframes caret-blink {
+  0%, 70%, 100% { opacity: 1; }
+  20%, 50% { opacity: 0; }
 }
 
 @layer base {
