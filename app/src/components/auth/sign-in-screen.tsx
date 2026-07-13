@@ -1,5 +1,5 @@
 import { Button } from "@houston-ai/core";
-import { ArrowUpRight, Loader2 } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -9,16 +9,13 @@ import {
   signInWithGoogle,
   signInWithMicrosoft,
 } from "../../lib/auth";
-import { isAppleSignInEnabled } from "../../lib/identity";
 import { logger } from "../../lib/logger";
 import { tauriSystem } from "../../lib/tauri";
 import { HoustonLogo } from "../shell/experience-card";
 import { SpaceScreen } from "../space/space-screen";
 import { authErrorKey } from "./auth-errors";
 import { EmailSignIn } from "./email-sign-in";
-import { AppleIcon, GoogleIcon, MicrosoftIcon } from "./provider-brand-icons";
-
-type Provider = "google" | "apple" | "azure";
+import { type Provider, ProviderButtonRow } from "./provider-button-row";
 
 const SIGN_IN_BY_PROVIDER = {
   google: signInWithGoogle,
@@ -37,9 +34,9 @@ const openExternal = (url: string) => () => {
  * copy product-benefit-focused — the audience is non-technical, so no mention
  * of OAuth / tokens / APIs.
  *
- * Two-panel card: the LEFT panel is the sign-in itself (Google, Apple,
- * Microsoft, and passwordless email — the 6-digit code stays fully in-app);
- * the RIGHT panel is
+ * Two-panel card: the LEFT panel is the sign-in itself — Google / Apple /
+ * Microsoft as one row of icon pills, then passwordless email under the
+ * divider (the 6-digit code stays fully in-app); the RIGHT panel is
  * a calm value note on a muted surface. The card is pinned to the DARK palette
  * (data-theme="dark") so the login looks the same in both app themes: dark
  * "Log in" surface, dark value panel, light primary buttons. Wordmark sits
@@ -114,52 +111,7 @@ export function SignInScreen() {
           <div className="flex flex-col gap-5 bg-[var(--ht-space-glass)] p-8 backdrop-blur-md sm:col-span-2">
             <h1 className="text-lg font-medium">Log in</h1>
 
-            <div className="flex flex-col gap-2.5">
-              <Button
-                variant="default"
-                onClick={handleSignIn("google")}
-                disabled={pending !== null}
-                className="h-10 w-full justify-center rounded-full border-none! shadow-none"
-              >
-                {pending === "google" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <GoogleIcon />
-                )}
-                Continue with Google
-              </Button>
-              {/* Gated: renders only once the GCIP apple.com provider is
-                  configured (APPLE_SIGN_IN_ENABLED) — an unconfigured build
-                  must never show a sign-in method that can only error. */}
-              {isAppleSignInEnabled() && (
-                <Button
-                  variant="default"
-                  onClick={handleSignIn("apple")}
-                  disabled={pending !== null}
-                  className="h-10 w-full justify-center rounded-full border-none! shadow-none"
-                >
-                  {pending === "apple" ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <AppleIcon />
-                  )}
-                  Continue with Apple
-                </Button>
-              )}
-              <Button
-                variant="default"
-                onClick={handleSignIn("azure")}
-                disabled={pending !== null}
-                className="h-10 w-full justify-center rounded-full border-none! shadow-none"
-              >
-                {pending === "azure" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <MicrosoftIcon />
-                )}
-                Continue with Microsoft
-              </Button>
-            </div>
+            <ProviderButtonRow pending={pending} onSignIn={handleSignIn} />
 
             <div className="flex items-center gap-3">
               <div className="h-px flex-1 bg-line" />
