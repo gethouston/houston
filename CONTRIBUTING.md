@@ -29,10 +29,11 @@ Before changing architecture or shared behavior, read [`CLAUDE.md`](CLAUDE.md) a
 ## Development
 
 ```bash
-# Run the Houston app
-cd app && pnpm start
+# Run Houston — THE one dev entry point: doctor, then the full stack via
+# mprocs (desktop app, web app, host, local cloud). See knowledge-base/dev-loop.md
+pnpm dev
 
-# Run the TypeScript host local profile (the engine)
+# Run just the TypeScript host local profile (the engine)
 cd packages/host && pnpm dev
 
 # TypeScript check

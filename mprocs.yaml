@@ -1,13 +1,30 @@
+# The `pnpm dev` stack — the ONE way to run Houston in development. Every
+# teammate gets the same panes, the same env, the same features; the doctor
+# (scripts/dev-doctor.mjs) has already validated tools/env/ports before mprocs
+# starts. Env contract: every pane sources scripts/dev/env.sh, which loads the
+# committed .env.development and then .env.local (secrets only) — see the
+# header of .env.development.
 procs:
+  # Postgres for the cloud stack (recreated each boot; data persists in the
+  # `houston-dev-pg` docker volume).
+  pg:
+    shell: scripts/dev/pg.sh
+  # The Go gateway (sibling cloud/ checkout) on :9080 — real GCIP sign-in,
+  # multiplayer/Teams/Spaces capabilities, billing off.
+  gateway:
+    shell: scripts/dev/gateway.sh
+  # The Go control-plane in dev-launcher mode: spawns one engine process per
+  # agent from THIS checkout (no Kubernetes).
+  control-plane:
+    shell: scripts/dev/control-plane.sh
+  # The local single-player host on :4318 — what the desktop app talks to.
   host:
-    # dev:host itself sources repo-root .env.local (gitignored) so local dev
-    # secrets — e.g. COMPOSIO_API_KEY / HOUSTON_INTEGRATIONS_URL — reach the
-    # host on EVERY dev loop (mprocs or a bare `pnpm dev:host`), without living
-    # in a committed file or your shell profile.
     shell: pnpm dev:host
+  # The desktop app (Tauri) against the host above: LOCAL profile (terminal,
+  # reveal-in-OS, dictation, local models; no sign-in).
   app:
     shell: pnpm dev:app
-  # The `gateway:` pane (a local stand-in for the cloud integrations path,
-  # backed by the retired @houston/host-cloud) is gone. To exercise the
-  # production integrations path, run the private gateway locally or point
-  # HOUSTON_INTEGRATIONS_URL at the deployed one.
+  # The web app on :1430 against the gateway: CLOUD profile (Google sign-in,
+  # multiplayer). Test two users with a second browser/incognito window.
+  web:
+    shell: scripts/dev/web.sh

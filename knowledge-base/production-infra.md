@@ -178,6 +178,10 @@ Skip Sentry's default "every issue" email alert — it's too noisy. Slack-only w
 
 ## Required env vars
 
+These are **release/CI** vars (baked at build time). Day-to-day development
+uses the two-file model instead — committed `.env.development` + secrets-only
+`.env.local`, validated by the doctor — see `dev-loop.md`.
+
 Shell (local builds) AND GitHub Secrets (CI):
 
 | Var | Purpose | Source |
