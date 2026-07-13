@@ -137,13 +137,15 @@ const appleOn = ["1", "true", "on", "yes"].includes(
 );
 const emailOtp = env.RESEND_API_KEY && env.GW_OTP_SIGNER_SA;
 const bugReports = env.LINEAR_API_KEY && env.LINEAR_TEAM_ID;
+const desktopLogin =
+  env.GOOGLE_DESKTOP_CLIENT_ID && env.GOOGLE_DESKTOP_CLIENT_SECRET;
 console.log(`
 ${paint.bold("── pnpm dev · feature matrix ──────────────────────────────────")}
   Desktop app   local profile   no sign-in · terminal · files · local models
   Web app       cloud profile   http://localhost:1430 · Google sign-in ·
                                 multiplayer Teams/Spaces · agent moves
   Engines       local processes spawned per agent (data: ${(process.env.CP_DEV_DATA_DIR || path.join(homedir(), ".dev-houston-cloud")).replace(homedir(), "~")})
-  ${off} desktop login  the dev DESKTOP runs account-less BY DESIGN (no dev OAuth client ids; its sign-in would be uncompletable) — account/cloud features live in the web pane
+  ${desktopLogin ? on : off} desktop login  ${desktopLogin ? "Google loopback sign-in + sign-out (Settings → Account) on the desktop" : "desktop runs ACCOUNT-LESS — set GOOGLE_DESKTOP_CLIENT_ID + GOOGLE_DESKTOP_CLIENT_SECRET in .env.local to test login/logout there (web pane always has accounts)"}
   ${appleOn ? on : off} apple sign-in  ${appleOn ? "web button renders (needs the GCIP apple.com provider to work)" : "APPLE_SIGN_IN_ENABLED is off — button hidden"}
   ${emailOtp ? on : off} email sign-in  ${emailOtp ? "Resend key + OTP signer present" : "the code field ERRORS in dev (gateway 503s without RESEND_API_KEY + GW_OTP_SIGNER_SA) — sign in with Google/Microsoft/Apple"}
   ${on} agent store    catalog/publish/install stay on the LOCAL gateway (never prod)

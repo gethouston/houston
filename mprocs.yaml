@@ -21,10 +21,10 @@ procs:
   host:
     shell: pnpm dev:host
   # The desktop app (Tauri) against the host above: LOCAL profile (terminal,
-  # reveal-in-OS, dictation, local models). Runs ACCOUNT-LESS: dev:app blanks
-  # FIREBASE_API_KEY so the sign-in gate never mounts — dev has no desktop
-  # OAuth client ids and desktop email-OTP posts to the local host (404), so
-  # a mounted gate would be uncompletable. Accounts/cloud → the web pane.
+  # reveal-in-OS, dictation, local models). Desktop login/logout are REAL when
+  # GOOGLE_DESKTOP_CLIENT_ID(+_SECRET) are in .env.local; otherwise the pane
+  # runs account-less (scripts/dev/app.sh explains why a gate without them
+  # would be uncompletable). The doctor matrix states which mode you're in.
   app:
     shell: pnpm dev:app
   # The web app on :1430 against the gateway: CLOUD profile (Google sign-in,

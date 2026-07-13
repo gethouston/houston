@@ -21,7 +21,7 @@
     "dev": "scripts/dev/dev.sh",
     "dev:down": "scripts/dev/reap.sh",
     "dev:host": ". scripts/dev/env.sh && HOUSTON_HOME=\"$HOME/.dev-houston\" pnpm --filter @houston/host dev",
-    "dev:app": ". scripts/dev/env.sh && cd app && VITE_HOSTED_ENGINE_URL= FIREBASE_API_KEY= pnpm tauri dev",
+    "dev:app": "scripts/dev/app.sh",
     "ios": "bash mobile/ios/scripts/dev-sim.sh"
   },
   "devDependencies": {
