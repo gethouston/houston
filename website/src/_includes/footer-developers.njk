@@ -11,22 +11,8 @@
 </footer>
 
 <script>
-  // Hamburger menu (mirrors footer-learn.njk)
-  (function() {
-    var burger = document.getElementById('nav-burger');
-    var dropdown = document.getElementById('nav-dropdown');
-    var icon = document.getElementById('burger-icon');
-    if (!burger || !dropdown) return;
-    burger.addEventListener('click', function() {
-      var open = dropdown.classList.toggle('open');
-      icon.innerHTML = open ? '<path d="M18 6L6 18M6 6l12 12"/>' : '<path d="M4 6h16M4 12h16M4 18h16"/>';
-    });
-    dropdown.querySelectorAll('a').forEach(function(a) {
-      a.addEventListener('click', function() { dropdown.classList.remove('open'); icon.innerHTML = '<path d="M4 6h16M4 12h16M4 18h16"/>'; });
-    });
-  })();
-
-  // Copy-to-clipboard for code blocks.
+  // Copy-to-clipboard for code blocks. (The top-menu burger/scroll behavior
+  // lives in nav-docs.njk — do not bind to those ids here.)
   (function() {
     document.querySelectorAll('.codeblock').forEach(function(block) {
       var pre = block.querySelector('pre');

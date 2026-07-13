@@ -1,0 +1,22 @@
+{# Full-page space background (fixed, behind everything) — the same three
+   layers as the landing page: the ESO Milky Way panorama (eso0932a,
+   ESO/S. Brunier, CC BY 4.0, https://www.eso.org/public/images/eso0932a/),
+   a readability scrim, and a sparse star field. Styles + scroll parallax:
+   /assets/space.css + /assets/space-scroll.js (linked here so any page that
+   includes this partial gets the full theme with one include). The landing
+   page keeps its own inline copy of this markup. #}
+<link rel="stylesheet" href="/assets/space.css">
+<div class="space-bg" aria-hidden="true">
+  <picture>
+    <source type="image/avif" sizes="100vw"
+            srcset="/assets/space/milkyway-1280.avif 1280w, /assets/space/milkyway-1920.avif 1920w, /assets/space/milkyway-2560.avif 2560w">
+    <source type="image/webp" sizes="100vw"
+            srcset="/assets/space/milkyway-1280.webp 1280w, /assets/space/milkyway-1920.webp 1920w, /assets/space/milkyway-2560.webp 2560w">
+    <img src="/assets/space/milkyway-1920.jpg" sizes="100vw"
+         srcset="/assets/space/milkyway-1280.jpg 1280w, /assets/space/milkyway-1920.jpg 1920w, /assets/space/milkyway-2560.jpg 2560w"
+         width="2560" height="1440" alt="" decoding="async" fetchpriority="high">
+  </picture>
+</div>
+<div class="space-scrim" aria-hidden="true"></div>
+<div class="space-stars" aria-hidden="true"></div>
+<script defer src="/assets/space-scroll.js"></script>

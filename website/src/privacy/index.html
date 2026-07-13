@@ -14,12 +14,15 @@ visionPath: "../vision/index.html"
 {% block inlineStyles %}
 <style>
   .legal {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 72px 32px 96px;
+    width: min(784px, calc(100% - 32px));
+    margin: 28px auto 72px;
+    padding: 64px 48px 88px;
+    background: rgba(8, 10, 18, 0.66);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
   }
   @media (max-width: 700px) {
-    .legal { padding: 48px 24px 72px; }
+    .legal { width: calc(100% - 24px); margin-top: 12px; padding: 44px 24px 64px; }
   }
   .legal .eyebrow {
     font-size: 13px;
@@ -143,7 +146,8 @@ visionPath: "../vision/index.html"
 </style>
 {% endblock %}
 {% block body %}
-{% include "nav-docs.njk" %}
+{% include "space-bg.njk" %}
+    {% include "nav-docs.njk" %}
 
 <main class="legal">
   <div class="eyebrow">Legal</div>

@@ -15,17 +15,15 @@ lang: es
 <link rel="alternate" hreflang="es" href="https://gethouston.ai/guides/es/revenue-manager/">
 <link rel="alternate" hreflang="x-default" href="https://gethouston.ai/guides/revenue-manager/">
 {% endblock %}
-{% block stylesheets %}
-<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
-{% endblock %}
 {% block inlineStyles %}
 <style>
   :root{
-    --ink:#0d0d0d; --muted:#5d5d5d; --gray6:#676767; --gray7:#424242;
-    --bg:#ffffff; --border:#e5e5e5; --soft:#f6f7f9;
-    --blue:#3b82f6; --indigo:#818cf8; --orange:#f97316; --gold:#eab308; --green:#00a240;
-    --grad:linear-gradient(100deg,#3b82f6 0%,#818cf8 42%,#f97316 100%);
-    --font:'General Sans', ui-sans-serif, -apple-system, system-ui, sans-serif;
+    --ink:rgba(255,255,255,0.92); --muted:rgba(255,255,255,0.6); --gray6:rgba(255,255,255,0.55); --gray7:rgba(255,255,255,0.78);
+    --bg:transparent; --border:rgba(255,255,255,0.12); --soft:rgba(255,255,255,0.06);
+    --blue:#8ab4ff; --indigo:#a5b4fc; --orange:#fdba74; --gold:#fbbf24; --green:#4ade80;
+    --grad:linear-gradient(100deg,#60a5fa 0%,#a5b4fc 42%,#fb923c 100%);
+    --panel:rgba(13,15,24,0.86); --panel-solid:#0b0c13; --code-bg:rgba(8,9,15,0.92);
+    --font:ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
     --maxw:820px;
   }
   *{box-sizing:border-box}
@@ -34,35 +32,29 @@ lang: es
     margin:0; font-family:var(--font); color:var(--ink); background:var(--bg);
     line-height:1.6; -webkit-font-smoothing:antialiased;
   }
-  .wash{
-    position:fixed; inset:0; z-index:-1; background:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,130,246,0.10), transparent),
-      radial-gradient(ellipse 60% 40% at 85% 25%, rgba(249,115,22,0.06), transparent),
-      radial-gradient(ellipse 60% 40% at 15% 70%, rgba(129,140,248,0.06), transparent);
-  }
   .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
 
   /* top bar */
   .topbar{
-    position:sticky; top:0; z-index:20; backdrop-filter:saturate(180%) blur(10px);
-    background:rgba(255,255,255,0.82); border-bottom:1px solid var(--border);
+    position:sticky; top:0; z-index:20;
+    background:rgba(11,12,19,0.94); border-bottom:1px solid rgba(255,255,255,0.08);
   }
   .topbar .wrap{display:flex; align-items:center; justify-content:space-between; height:58px}
   .lockup{display:flex; align-items:center; gap:9px; text-decoration:none; color:var(--ink)}
   .mark{width:22px; height:24px}
-  .wordmark{font-weight:600; letter-spacing:-0.02em; font-size:19px}
+  .wordmark{font-family:'General Sans',sans-serif; font-weight:600; letter-spacing:-0.02em; font-size:19px}
   .topbar .tag{font-size:12.5px; color:var(--muted); font-weight:500}
 
   /* hero */
   .hero{padding:64px 0 34px}
   .eyebrow{
     display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600;
-    letter-spacing:.02em; color:var(--gray7); background:#fff; border:1px solid var(--border);
+    letter-spacing:.02em; color:var(--gray7); background:var(--panel); border:1px solid var(--border);
     border-radius:999px; padding:7px 14px; text-transform:uppercase;
   }
   .eyebrow .dot{width:7px; height:7px; border-radius:50%; background:var(--grad)}
   h1{
-    font-weight:700; letter-spacing:-0.035em; line-height:1.05; font-size:52px;
+    font-weight:400; letter-spacing:-0.035em; line-height:1.05; font-size:52px;
     margin:20px 0 0;
   }
   h1 .accent{
@@ -72,7 +64,7 @@ lang: es
   .lede{font-size:19px; color:var(--muted); font-weight:400; margin:18px 0 0; max-width:660px}
   .meta{display:flex; flex-wrap:wrap; gap:10px; margin-top:26px}
   .chip{
-    display:inline-flex; align-items:center; gap:9px; background:#fff; border:1px solid var(--border);
+    display:inline-flex; align-items:center; gap:9px; background:var(--panel); border:1px solid var(--border);
     border-radius:12px; padding:11px 15px; font-size:14px;
   }
   .chip svg{width:17px; height:17px; flex:none}
@@ -91,13 +83,13 @@ lang: es
   .road{display:grid; gap:10px; margin-top:14px}
   .road a{
     display:flex; gap:14px; align-items:center; text-decoration:none; color:var(--ink);
-    background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px 16px;
+    background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px 16px;
     transition:.15s border-color, .15s transform;
   }
-  .road a:hover{border-color:#cfd4dc; transform:translateY(-1px)}
+  .road a:hover{border-color:rgba(255,255,255,0.28); transform:translateY(-1px)}
   .road .n{
     flex:none; width:30px; height:30px; border-radius:9px; font-weight:600; font-size:14px;
-    display:grid; place-items:center; color:#fff; background:var(--ink);
+    display:grid; place-items:center; color:#0d0d0d; background:var(--ink);
   }
   .road .t{font-weight:600}
   .road .d{color:var(--muted); font-size:14px}
@@ -108,7 +100,7 @@ lang: es
   .step-head{display:flex; align-items:flex-start; gap:16px; margin-bottom:6px}
   .badge{
     flex:none; width:46px; height:46px; border-radius:13px; display:grid; place-items:center;
-    background:var(--ink); color:#fff; font-weight:700; font-size:19px; letter-spacing:-0.02em;
+    background:var(--ink); color:#0d0d0d; font-weight:700; font-size:19px; letter-spacing:-0.02em;
   }
   .step-head .est{color:var(--gray6); font-size:13px; font-weight:500; margin-top:3px}
 
@@ -126,14 +118,14 @@ lang: es
   }
   ol.steps>li b{font-weight:600}
   code.ui{
-    background:#f0f2f5; border:1px solid var(--border); border-radius:6px; padding:1px 7px;
+    background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:6px; padding:1px 7px;
     font-family:var(--font); font-weight:600; font-size:.92em; white-space:nowrap;
   }
 
   /* checkpoint */
   .check{
     display:flex; gap:11px; align-items:flex-start; margin:14px 0 4px; padding:12px 15px;
-    background:rgba(0,162,64,0.06); border:1px solid rgba(0,162,64,0.25); border-radius:12px;
+    background:rgba(74,222,128,0.09); border:1px solid rgba(74,222,128,0.3); border-radius:12px;
   }
   .check svg{width:20px; height:20px; flex:none; margin-top:1px}
   .check .lbl{font-weight:700; color:var(--green); font-size:12.5px; letter-spacing:.04em; text-transform:uppercase; display:block; margin-bottom:1px}
@@ -144,17 +136,17 @@ lang: es
   .call svg{width:19px; height:19px; flex:none; margin-top:2px}
   .call .lbl{font-weight:700; font-size:12px; letter-spacing:.05em; text-transform:uppercase; display:block; margin-bottom:2px}
   .call p{margin:0}
-  .tip{background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.25)}
+  .tip{background:rgba(96,165,250,0.1); border:1px solid rgba(96,165,250,0.32)}
   .tip .lbl{color:var(--blue)}
-  .warn{background:rgba(249,115,22,0.07); border:1px solid rgba(249,115,22,0.3)}
-  .warn .lbl{color:#c2560c}
+  .warn{background:rgba(251,146,60,0.1); border:1px solid rgba(251,146,60,0.32)}
+  .warn .lbl{color:var(--orange)}
   .note{background:var(--soft); border:1px solid var(--border)}
   .note .lbl{color:var(--gray7)}
 
   /* prompt block */
   .prompt{
-    position:relative; background:#0f1115; color:#e8eaed; border-radius:12px; padding:15px 16px;
-    font-size:14.5px; line-height:1.5; margin:12px 0; border:1px solid #1c1f26;
+    position:relative; background:var(--code-bg); color:#e8eaed; border-radius:12px; padding:15px 16px;
+    font-size:14.5px; line-height:1.5; margin:12px 0; border:1px solid rgba(255,255,255,0.1);
   }
   .prompt .pl{display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#8b93a1; font-weight:600; margin-bottom:7px}
   .prompt .txt{font-family:var(--font)}
@@ -163,7 +155,7 @@ lang: es
   /* screenshot placeholder */
   .shot{
     display:flex; gap:14px; align-items:center; margin:16px 0; padding:14px 16px;
-    background:#fff; border:1.5px dashed #c3c9d4; border-radius:14px;
+    background:var(--panel); border:1.5px dashed rgba(255,255,255,0.25); border-radius:14px;
   }
   .shot .cam{
     flex:none; width:40px; height:40px; border-radius:10px; display:grid; place-items:center;
@@ -172,7 +164,7 @@ lang: es
   .shot .cam svg{width:20px; height:20px}
   .shot .num{font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue)}
   figure.shot-real{margin:16px 0}
-  .shot-real img{width:100%; display:block; border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 24px rgba(13,13,13,0.07)}
+  .shot-real img{width:100%; display:block; border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,0.35)}
   .shot-real figcaption{font-size:13px; color:var(--gray6); margin-top:8px}
   .shot-real figcaption .num{font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue); margin-right:8px}
   .shot-real.narrow img{max-width:360px; margin:0 auto}
@@ -185,24 +177,24 @@ lang: es
   ul.plain li{margin:7px 0}
 
   /* troubleshooting */
-  details.ts{border:1px solid var(--border); border-radius:12px; padding:0 16px; margin:10px 0; background:#fff}
+  details.ts{border:1px solid var(--border); border-radius:12px; padding:0 16px; margin:10px 0; background:var(--panel)}
   details.ts+details.ts{margin-top:8px}
   details.ts summary{
     cursor:pointer; list-style:none; padding:15px 0; font-weight:600; font-size:16px;
     display:flex; gap:11px; align-items:flex-start;
   }
   details.ts summary::-webkit-details-marker{display:none}
-  details.ts summary .q{flex:none; width:22px; height:22px; border-radius:6px; background:rgba(249,115,22,0.12); color:#c2560c; font-weight:700; font-size:13px; display:grid; place-items:center; margin-top:1px}
+  details.ts summary .q{flex:none; width:22px; height:22px; border-radius:6px; background:rgba(251,146,60,0.15); color:var(--orange); font-weight:700; font-size:13px; display:grid; place-items:center; margin-top:1px}
   details.ts[open] summary{border-bottom:1px solid var(--border)}
   details.ts .ans{padding:4px 0 16px 33px; color:var(--gray7); font-size:15px}
   details.ts .ans code.ui{white-space:normal}
 
   /* success checklist */
-  .final{background:#fff; border:1px solid var(--border); border-radius:16px; padding:8px 22px 18px}
+  .final{background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:8px 22px 18px}
   .final ul{list-style:none; padding:0; margin:0}
   .final li{display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); font-size:15.5px}
   .final li:last-child{border-bottom:none}
-  .final .box{flex:none; width:22px; height:22px; border-radius:6px; border:2px solid #cfd4dc}
+  .final .box{flex:none; width:22px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,0.28)}
 
   /* shot index */
   .idx{background:var(--soft); border:1px solid var(--border); border-radius:14px; padding:6px 20px}
@@ -214,7 +206,7 @@ lang: es
 
   /* footer */
   footer{border-top:1px solid var(--border); padding:40px 0 60px; margin-top:20px}
-  .foot-card{background:var(--ink); color:#fff; border-radius:18px; padding:30px 32px}
+  .foot-card{background:var(--panel); color:#fff; border:1px solid var(--border); border-radius:18px; padding:30px 32px}
   .foot-card h3{margin:0 0 6px; font-size:22px; font-weight:600; letter-spacing:-0.02em}
   .foot-card p{margin:0; color:#c7c9cf; font-size:15px}
   .foot-card .fl{display:flex; align-items:center; gap:9px; margin-top:18px; color:#fff}
@@ -223,24 +215,24 @@ lang: es
 
   a.inline{color:var(--blue); text-decoration:none; font-weight:500; word-break:break-all}
   a.inline:hover{text-decoration:underline}
-  .ph{background:rgba(234,179,8,0.16); border:1px solid rgba(234,179,8,0.5); border-radius:6px; padding:1px 7px; font-weight:600; font-size:.92em; color:#7a5c00; white-space:nowrap}
+  .ph{background:rgba(251,191,36,0.16); border:1px solid rgba(251,191,36,0.5); border-radius:6px; padding:1px 7px; font-weight:600; font-size:.92em; color:var(--gold); white-space:nowrap}
 
   /* review additions */
   .stepno{font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--blue); margin:2px 0 2px}
   .subh{font-weight:600; font-size:18px; margin:22px 0 0}
-  .btnlink{display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#fff; border-radius:999px; padding:11px 22px; font-weight:500; font-size:14.5px; text-decoration:none; letter-spacing:-0.01em; margin:8px 0 0}
+  .btnlink{display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#0d0d0d; border-radius:999px; padding:11px 22px; font-weight:500; font-size:14.5px; text-decoration:none; letter-spacing:-0.01em; margin:8px 0 0}
   .btnlink:hover{opacity:.88}
   .urlnote{display:block; font-size:12.5px; color:var(--gray6); margin-top:7px; word-break:break-all}
-  .prompt .copybtn{position:absolute; top:10px; right:10px; background:#fff; color:var(--ink); border:none; border-radius:999px; padding:6px 15px; font-family:var(--font); font-weight:600; font-size:12.5px; cursor:pointer}
-  .prompt .copybtn.ok{background:var(--green); color:#fff}
+  .prompt .copybtn{position:absolute; top:10px; right:10px; background:#fff; color:#0d0d0d; border:none; border-radius:999px; padding:6px 15px; font-family:var(--font); font-weight:600; font-size:12.5px; cursor:pointer}
+  .prompt .copybtn.ok{background:var(--green); color:#0d0d0d}
   .prompt .pl{padding-right:78px}
   details.ts summary{position:relative; padding-right:32px}
   details.ts summary::after{content:""; position:absolute; right:6px; top:21px; width:8px; height:8px; border-right:2px solid var(--gray6); border-bottom:2px solid var(--gray6); transform:rotate(45deg); transition:.18s transform}
   details.ts[open] summary::after{transform:rotate(-135deg); top:25px}
   .final label{display:flex; gap:12px; align-items:center; cursor:pointer; width:100%}
-  .final input[type=checkbox]{appearance:none; -webkit-appearance:none; flex:none; width:22px; height:22px; border-radius:6px; border:2px solid #cfd4dc; cursor:pointer; margin:0; display:grid; place-items:center; background:#fff; transition:.12s}
+  .final input[type=checkbox]{appearance:none; -webkit-appearance:none; flex:none; width:22px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,0.28); cursor:pointer; margin:0; display:grid; place-items:center; background:rgba(255,255,255,0.06); transition:.12s}
   .final input[type=checkbox]:checked{background:var(--green); border-color:var(--green)}
-  .final input[type=checkbox]:checked::after{content:""; width:10px; height:5px; border-left:2.5px solid #fff; border-bottom:2.5px solid #fff; transform:rotate(-45deg) translate(0,-1px)}
+  .final input[type=checkbox]:checked::after{content:""; width:10px; height:5px; border-left:2.5px solid #0d0d0d; border-bottom:2.5px solid #0d0d0d; transform:rotate(-45deg) translate(0,-1px)}
   .final input[type=checkbox]:checked~span{color:var(--gray6)}
   .foot-card .mark{filter:brightness(0) invert(1)}
 
@@ -250,14 +242,27 @@ lang: es
   }
   @page{margin:12mm 11mm 14mm}
   @media print{
+    :root{
+      --ink:#0d0d0d; --muted:#5d5d5d; --gray6:#676767; --gray7:#424242;
+      --bg:#ffffff; --border:#e5e5e5; --soft:#f6f7f9;
+      --blue:#3b82f6; --indigo:#818cf8; --orange:#f97316; --gold:#eab308; --green:#00a240;
+      --grad:linear-gradient(100deg,#3b82f6 0%,#818cf8 42%,#f97316 100%);
+      --panel:#ffffff; --panel-solid:#ffffff; --code-bg:#0f1115;
+    }
+    .road .n,.badge,.btnlink{color:#fff}
+    code.ui{background:#f0f2f5}
+    .final input[type=checkbox]{background:#fff}
+    .final input[type=checkbox]:checked::after{border-left-color:#fff; border-bottom-color:#fff}
+    .shot-real img{box-shadow:none}
     h1{font-size:42px}
     h1 .accent, h2 .accent{
       background:none !important;
       -webkit-background-clip:initial !important; background-clip:initial !important;
       -webkit-text-fill-color:#3b82f6 !important; color:#3b82f6 !important;
     }
-    .wash,.copybtn,figure.shot{display:none} body{background:#fff}
-    .topbar{position:static; background:#fff; backdrop-filter:none}
+    .space-bg,.space-scrim,.space-stars,.copybtn,figure.shot{display:none} body{background:#fff}
+    .glayout{width:auto; margin:0 auto; padding:0 24px; background:none; border:none; border-radius:0}
+    .topbar{position:static; background:#fff}
     .hero{padding-top:34px}
     *{-webkit-print-color-adjust:exact; print-color-adjust:exact}
     .step{break-inside:auto} .step-head{break-after:avoid}
@@ -269,49 +274,33 @@ lang: es
     details.ts summary::after{display:none}
   }
 
-  /* site navigation (mirrors homepage nav) */
-  body{padding-top:64px}
-  nav.site{position:fixed; top:0; left:0; right:0; z-index:100; height:64px; padding:0 40px;
-    display:flex; align-items:center; justify-content:space-between;
-    background:rgba(255,255,255,0.85); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
-    border-bottom:1px solid rgba(13,13,13,0.08)}
-  nav.site .nav-logo{display:flex; align-items:center; gap:9px; text-decoration:none; color:#0d0d0d;
-    font-weight:600; letter-spacing:-0.02em; font-size:19px}
-  nav.site .nav-logo svg{width:22px; height:24px}
-  nav.site .nav-center{position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:28px; align-items:center}
-  nav.site .nav-center a{font-size:14px; color:#424242; text-decoration:none}
-  nav.site .nav-center a:hover{color:#0d0d0d}
-  nav.site .nav-center a.active{color:#0d0d0d; font-weight:600}
-  nav.site .nav-right{display:flex; align-items:center; gap:12px}
-  nav.site .pdfbtn2{display:inline-flex; align-items:center; gap:7px; background:#0d0d0d; color:#fff;
-    border-radius:999px; padding:8px 16px; font-weight:600; font-size:13px; text-decoration:none}
-  nav.site .pdfbtn2:hover{opacity:.88}
-  nav.site .pdfbtn2 svg{width:14px; height:14px}
+  /* nav utilities (rendered into the shared top menu via navUtilities;
+     the menu itself lives in nav-docs.njk) */
+  .site-nav .pdfbtn2{display:inline-flex; align-items:center; gap:7px; background:transparent;
+    color:rgba(255,255,255,0.92); border:1px solid rgba(255,255,255,0.22);
+    border-radius:999px; padding:7px 15px; font-weight:600; font-size:13px; text-decoration:none;
+    transition:background 0.15s, border-color 0.15s}
+  .site-nav .pdfbtn2:hover{background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.35)}
+  .site-nav .pdfbtn2 svg{width:14px; height:14px}
   /* language picker (shows current language) */
-  nav.site .langdd{position:relative}
-  nav.site .langdd summary{list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
-    font-size:12.5px; font-weight:700; color:#424242; border:1px solid #e5e5e5; border-radius:999px;
+  .site-nav .langdd{position:relative}
+  .site-nav .langdd summary{list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+    font-size:12.5px; font-weight:700; color:var(--gray7); border:1px solid var(--border); border-radius:999px;
     padding:6px 12px; letter-spacing:.02em}
-  nav.site .langdd summary::-webkit-details-marker{display:none}
-  nav.site .langdd summary:hover{border-color:#cfd4dc; color:#0d0d0d}
-  nav.site .langdd summary svg{width:18px; height:13px; display:block}
-  nav.site .langdd summary .chev{width:7px; height:7px; border-right:1.5px solid #676767; border-bottom:1.5px solid #676767; transform:rotate(45deg); margin-top:-3px}
-  nav.site .langdd[open] summary .chev{transform:rotate(-135deg); margin-top:3px}
-  nav.site .langdd .menu{position:absolute; right:0; top:calc(100% + 8px); background:#fff; border:1px solid #e5e5e5;
-    border-radius:12px; box-shadow:0 8px 24px rgba(13,13,13,0.08); padding:6px; min-width:160px; z-index:200}
-  nav.site .langdd .menu a{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px;
-    font-size:13.5px; color:#424242; text-decoration:none; font-weight:500}
-  nav.site .langdd .menu a svg{width:18px; height:13px; display:block}
-  nav.site .langdd .menu a:hover{background:#f6f7f9; color:#0d0d0d}
-  nav.site .langdd .menu a.on{color:#0d0d0d; font-weight:600}
-  nav.site .langdd .menu a.on::after{content:"✓"; margin-left:auto; font-size:12px; color:#00a240}
-  @media (max-width:940px){ nav.site .nav-center{display:none} }
-  @media (max-width:640px){ nav.site{padding:0 20px} }
-  @media print{
-    nav.site{position:static; background:#fff; backdrop-filter:none; border-bottom:1px solid #e5e5e5}
-    nav.site .nav-center, nav.site .langdd, nav.site .pdfbtn2{display:none !important}
-    body{padding-top:0}
-  }
+  .site-nav .langdd summary::-webkit-details-marker{display:none}
+  .site-nav .langdd summary:hover{border-color:rgba(255,255,255,0.28); color:#fff}
+  .site-nav .langdd summary svg{width:18px; height:13px; display:block}
+  .site-nav .langdd summary .chev{width:7px; height:7px; border-right:1.5px solid var(--gray6); border-bottom:1.5px solid var(--gray6); transform:rotate(45deg); margin-top:-3px}
+  .site-nav .langdd[open] summary .chev{transform:rotate(-135deg); margin-top:3px}
+  .site-nav .langdd .menu{position:absolute; right:0; top:calc(100% + 8px); background:var(--panel-solid); border:1px solid var(--border);
+    border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.5); padding:6px; min-width:160px; z-index:200}
+  .site-nav .langdd .menu a{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px;
+    font-size:13.5px; color:var(--gray7); text-decoration:none; font-weight:500}
+  .site-nav .langdd .menu a svg{width:18px; height:13px; display:block}
+  .site-nav .langdd .menu a:hover{background:rgba(255,255,255,0.1); color:#fff}
+  .site-nav .langdd .menu a.on{color:#fff; font-weight:600}
+  .site-nav .langdd .menu a.on::after{content:"✓"; margin-left:auto; font-size:12px; color:var(--green)}
+  @media (max-width:640px){ .site-nav .pdfbtn2{display:none} }
 
   /* ---------- step mode (focus view) ---------- */
   .glayout{max-width:1150px; margin:0 auto; padding:0 24px; display:grid; grid-template-columns:255px minmax(0,1fr); gap:44px; align-items:start}
@@ -322,13 +311,13 @@ lang: es
   .gside li.gs-div{border-top:1px solid var(--border); margin:8px 2px}
   .gside button.gs-item{display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:none; border:none; border-radius:10px; padding:8px 10px; cursor:pointer; font-family:var(--font); color:var(--gray7)}
   .gside button.gs-item:hover{background:var(--soft)}
-  .gside .gs-num{flex:none; width:24px; height:24px; border-radius:50%; border:1px solid var(--border); background:#fff; color:var(--gray7); font-weight:600; font-size:12px; display:grid; place-items:center; transition:.15s}
+  .gside .gs-num{flex:none; width:24px; height:24px; border-radius:50%; border:1px solid var(--border); background:var(--panel); color:var(--gray7); font-weight:600; font-size:12px; display:grid; place-items:center; transition:.15s}
   .gside .gs-t{font-size:13.5px; font-weight:500; line-height:1.25}
   .gside .gs-m{display:block; font-size:11.5px; color:var(--gray6); font-weight:400}
-  .gside .gs-item.on{background:#fff; box-shadow:inset 0 0 0 1px var(--border)}
+  .gside .gs-item.on{background:var(--panel); box-shadow:inset 0 0 0 1px var(--border)}
   .gside .gs-item.on .gs-t{font-weight:600; color:var(--ink)}
   .gside .gs-item.on .gs-num{border-color:transparent; background:var(--grad); color:#fff}
-  .gside .gs-item.done .gs-num{border-color:rgba(0,162,64,0.4); background:rgba(0,162,64,0.08); color:var(--green)}
+  .gside .gs-item.done .gs-num{border-color:rgba(74,222,128,0.4); background:rgba(74,222,128,0.1); color:var(--green)}
   .gside .gs-item.done .gs-num::before{content:"✓"; font-size:12px}
   .gside .gs-item.done .gs-num span{display:none}
   .gside .gs-foot{margin-top:14px; padding:0 2px}
@@ -344,8 +333,8 @@ lang: es
   /* step nav buttons */
   .gnav{display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 0 70px}
   .gnav .gprev{background:none; border:1px solid var(--border); color:var(--gray7); border-radius:999px; padding:11px 20px; font-family:var(--font); font-weight:500; font-size:14px; cursor:pointer}
-  .gnav .gprev:hover{border-color:#cfd4dc; color:var(--ink)}
-  .gnav .gnext{margin-left:auto; display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#fff; border:none; border-radius:999px; padding:13px 26px; font-family:var(--font); font-weight:600; font-size:14.5px; cursor:pointer; letter-spacing:-0.01em}
+  .gnav .gprev:hover{border-color:rgba(255,255,255,0.28); color:var(--ink)}
+  .gnav .gnext{margin-left:auto; display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#0d0d0d; border:none; border-radius:999px; padding:13px 26px; font-family:var(--font); font-weight:600; font-size:14.5px; cursor:pointer; letter-spacing:-0.01em}
   .gnav .gnext:hover{opacity:.88}
   .gnav .gdone-msg{margin-left:auto; font-weight:600; color:var(--green); font-size:15px}
   /* full view: everything visible, no step chrome */
@@ -356,7 +345,7 @@ lang: es
   body.fullview section[data-pane]{border-top:1px solid var(--border)}
   @media (max-width:920px){
     .glayout{display:block}
-    .gside{position:sticky; top:64px; z-index:40; background:rgba(255,255,255,0.92); backdrop-filter:blur(10px); margin:0 -24px; padding:10px 24px; border-bottom:1px solid var(--border)}
+    .gside{position:sticky; top:64px; z-index:40; background:rgba(11,12,19,0.94); margin:0 -24px; padding:10px 24px; border-bottom:1px solid var(--border)}
     .gside .gs-head, .gside .gs-m, .gside .gs-foot{display:none}
     .gside ul{flex-direction:row; overflow-x:auto; gap:6px; scrollbar-width:none}
     .gside ul::-webkit-scrollbar{display:none}
@@ -377,13 +366,12 @@ lang: es
   .gvideo{margin:22px 0 4px}
   .gvideo .vlabel{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--gray7); margin-bottom:10px}
   .gvideo .vlabel svg{width:16px; height:16px}
-  .gvideo .vframe{position:relative; width:100%; aspect-ratio:16/9; border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:0 6px 24px rgba(13,13,13,0.07); background:#0f1115}
+  .gvideo .vframe{position:relative; width:100%; aspect-ratio:16/9; border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:0 6px 24px rgba(0,0,0,0.35); background:#0f1115}
   .gvideo .vframe iframe{position:absolute; inset:0; width:100%; height:100%; border:0}
 </style>
 {% endblock %}
 {% block body %}
-
-<div class="wash"></div>
+{% include "space-bg.njk" %}
 
 <!-- inline logo symbol -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="hlogo" viewBox="0 0 412.248 448.898">
@@ -394,20 +382,11 @@ lang: es
 <path d="M370.408,283.292c-6.086,17.577-13.539,33.4-26.392,47.208,26.021-57.679,30.288-124.219,4.132-182.266-6.661-14.783-15.007-27.347-24.809-41.076,5.144.8,12.975.86,16.972,4.164,7.836,6.477,12.518,15.527,17.384,24.5,24.5,45.2,29.763,98.227,12.713,147.465" fill="#161615"/>
 </symbol></svg>
 
-<nav class="site">
-  <a class="nav-logo" href="/"><svg class="mark"><use href="#hlogo"/></svg><span>houston</span></a>
-  <div class="nav-center">
-    <a href="/#agents">Agents</a>
-    <a href="/#features">Features</a>
-    <a class="active" href="/guides/es/">Guides</a>
-    <a href="/changelog/">Changelog</a>
-    <a href="/startups/">For Startups</a>
-  </div>
-  <div class="nav-right">
-    <details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>ES<span class="chev"></span></summary><div class="menu"><a href="/guides/revenue-manager/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a class="on" href="/guides/es/revenue-manager/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details>
-    <a class="pdfbtn2" href="/guides/downloads/houston-revenue-manager-guide-es.pdf" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>Descargar PDF</a>
-  </div>
-</nav>
+{% set navActive = "guides" %}
+{% set navDownloadLabel = "Descargar" %}
+{% set navUtilities %}<details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>ES<span class="chev"></span></summary><div class="menu"><a href="/guides/revenue-manager/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a class="on" href="/guides/es/revenue-manager/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details><a class="pdfbtn2 nav-util" href="/guides/downloads/houston-revenue-manager-guide-es.pdf" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>Descargar PDF</a>{% endset %}
+{% set navDropdownExtra %}<a href="/guides/revenue-manager/">English</a><a href="/guides/downloads/houston-revenue-manager-guide-es.pdf" download>Descargar PDF</a>{% endset %}
+{% include "nav-docs.njk" %}
 
 <div class="gprog" id="gprog"></div>
 <div class="glayout" id="top">
@@ -438,25 +417,25 @@ lang: es
     <p class="lede">Sigue esta guía y repite, a tu ritmo, lo que hicimos en el workshop: crea tu cuenta de Houston, conecta tus herramientas e instala el agente que te compartimos. Al final tendrás un asistente que vigila el mercado por ti.</p>
     <div class="meta">
       <span class="chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
         <span><b>45–60 min</b> de configuración</span>
       </span>
       <span class="chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z" stroke-linejoin="round"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z" stroke-linejoin="round"/></svg>
         <span>Para <b>revenue managers y hoteleros</b></span>
       </span>
       <span class="chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4" stroke-linecap="round"/></svg>
         <span>Necesitas un <b>computador</b> Mac o Windows</span>
       </span>
       <span class="chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Sin conocimientos técnicos</span>
       </span>
     </div>
   </header>
     <div class="gvideo">
-      <div class="vlabel"><svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M4 5h16v14H4z" stroke-linejoin="round"/><path d="M10 9l5 3-5 3z" fill="#c2560c" stroke="none"/></svg>Mira el workshop completo (video)</div>
+      <div class="vlabel"><svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M4 5h16v14H4z" stroke-linejoin="round"/><path d="M10 9l5 3-5 3z" fill="#fdba74" stroke="none"/></svg>Mira el workshop completo (video)</div>
       <div class="vframe">
         <iframe id="gyt" src="https://www.youtube-nocookie.com/embed/5oPoU71rlok?rel=0&enablejsapi=1" title="Workshop: Crea tu Agente de Revenue Management con IA" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
       </div>
@@ -508,7 +487,7 @@ lang: es
       </li>
     </ul>
     <div class="call note">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#b6bec9" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">¿Estás listo?</span><p>Puedes abrir tu correo, tienes tu computador a mano y tienes a la vista los enlaces de esta guía. Reserva un rato tranquilo: la configuración toma 45–60 min y tu primer Pulso de Mercado, otros 20–60 min la primera vez.</p></div>
     </div>
   </section>
@@ -547,7 +526,7 @@ lang: es
       <li>Abre Houston.</li>
     </ol>
     <div class="call warn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
       <div><span class="lbl">Si usas Windows</span><p>Windows puede mostrar <b>"Windows protegió su PC"</b>. Es normal: Houston está en beta para Windows. Haz clic en <code class="ui">Más información</code> y luego en <code class="ui">Ejecutar de todas formas</code>.</p></div>
     </div>
     <figure class="shot-real narrow">
@@ -555,7 +534,7 @@ lang: es
       <figcaption><span class="num">Captura 5</span>El aviso de Windows. Haz clic en "Más información" y aparece "Ejecutar de todas formas". (Solo Windows.)</figcaption>
     </figure>
     <div class="check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Deberías ver</span><p>Houston instalado y abierto en tu computador. Si parece que "desapareció", está minimizado en la barra de tareas: vuelve a abrirlo.</p></div>
     </div>
   </section>
@@ -590,11 +569,11 @@ lang: es
       <figcaption><span class="num">Captura 9</span>La pantalla principal de Houston: tus agentes en la columna izquierda y el tablero de misiones. Así se ve un Revenue Manager en acción, con pulsos de mercado corriendo para varias ciudades.</figcaption>
     </figure>
     <div class="call tip">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.6.6-1 1.4-1 2.5H9c0-1.1-.4-1.9-1-2.5A6 6 0 0 1 12 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.6.6-1 1.4-1 2.5H9c0-1.1-.4-1.9-1-2.5A6 6 0 0 1 12 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Si algo se queda pegado</span><p>Si el navegador dice "puedes cerrar esta página" y Houston no avanza, o si Composio dice <b>"algo salió mal al conectar"</b>: haz clic en <code class="ui">Inténtalo de nuevo</code>. Si sigue, <b>cierra Houston y ábrelo otra vez</b>.</p></div>
     </div>
     <div class="check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Deberías ver</span><p>Se desbloquea la pantalla principal de Houston, con tus agentes en la columna de la izquierda. Ya tienes el proveedor de IA y el de integraciones conectados.</p></div>
     </div>
   </section>
@@ -619,7 +598,7 @@ lang: es
       <li>Regístrate.</li>
     </ol>
     <div class="call tip">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.6.6-1 1.4-1 2.5H9c0-1.1-.4-1.9-1-2.5A6 6 0 0 1 12 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.6.6-1 1.4-1 2.5H9c0-1.1-.4-1.9-1-2.5A6 6 0 0 1 12 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Consejo</span><p>Si el registro con correo te falla, usa <b>"Iniciar sesión con Google"</b>.</p></div>
     </div>
 
@@ -636,11 +615,11 @@ lang: es
       <li><b>Copia la llave y guárdala de inmediato</b> en un lugar seguro.</li>
     </ol>
     <div class="call warn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
       <div><span class="lbl">Importante</span><p>Anakin <b>no te vuelve a mostrar</b> la llave después de cerrar la ventana. Cópiala apenas la generes. Y por seguridad, <b>no compartas tu pantalla</b> mientras la creas.</p></div>
     </div>
     <div class="check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Deberías tener</span><p>Una cuenta de Apify y una cuenta de Anakin.io, con tu API Key de Anakin copiada y guardada.</p></div>
     </div>
   </section>
@@ -664,7 +643,7 @@ lang: es
       <li>Conecta <b>Apify MCP</b> (solo haces clic e inicias sesión, sin token). Confirma <i>"¿este eres tú?"</i> → <code class="ui">Autorizar</code>.</li>
     </ol>
     <div class="call warn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
       <div><span class="lbl">No te equivoques de Apify</span><p>Conecta <b>Apify MCP</b>, no la "Apify" a secas. La otra te pide un <i>token</i> y es la que más confunde a la gente.</p></div>
     </div>
     <h3 class="subh">B · Google Sheets</h3>
@@ -686,11 +665,11 @@ lang: es
       </li>
     </ol>
     <div class="call warn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
       <div><span class="lbl">Ojo con el nombre</span><p>Es <b>anakin.io</b> (con <b>.io</b>), no anakin.ai. Si ves que se intenta conectar a la otra, detén la ejecución con el <b>ícono de stop</b> (abajo a la derecha) y dile: <i>"la aplicación es anakin.io"</i>.</p></div>
     </div>
     <div class="check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Deberías tener</span><p>Las tres integraciones listas: Apify MCP, Google Sheets y Anakin.io (confirmado en el chat).</p></div>
     </div>
   </section>
@@ -719,19 +698,19 @@ lang: es
       <li>Haz clic en <code class="ui">Traer agente</code>.</li>
     </ol>
     <div class="call warn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
       <div><span class="lbl">No descomprimas el archivo</span><p>Sube el archivo <b>tal cual</b>, como un solo archivo. Si tu computador lo descomprime en varias partes, la instalación falla. Guárdalo todo junto.</p></div>
     </div>
     <div class="call note">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#b6bec9" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Plan B, si la importación falla</span><p>Si al elegir el archivo se abre una ventana rara (PowerShell) o no carga, usa el método alterno: <b>arrastra los archivos <code class="ui">.txt</code> de las habilidades al chat</b> y escribe <i>"estos son todos los skills, instálalos por favor"</i>.</p></div>
     </div>
     <div class="call tip">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.6.6-1 1.4-1 2.5H9c0-1.1-.4-1.9-1-2.5A6 6 0 0 1 12 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.6.6-1 1.4-1 2.5H9c0-1.1-.4-1.9-1-2.5A6 6 0 0 1 12 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Si dice que Apify no está conectado</span><p>Después de instalar, escríbele en el chat: <i>"ya lo tengo conectado a través de Apify MCP, por favor revisa y utiliza ese y actualiza mi skill."</i></p></div>
     </div>
     <div class="check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Deberías ver</span><p>Tu nuevo agente <b>Revenue Manager</b> en la columna izquierda, con sus instrucciones, habilidades y aprendizajes ya cargados.</p></div>
     </div>
   </section>
@@ -757,11 +736,11 @@ lang: es
       </li>
     </ol>
     <div class="check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Lo lograste cuando</span><p>Tienes un Google Sheets con las <b>7 pestañas</b> llenas. En la pestaña <b>Resumen</b>, escribe tu tarifa por noche (por ejemplo, $100) y el sheet te dice tu posición frente al mercado.</p></div>
     </div>
     <div class="call tip">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.6.6-1 1.4-1 2.5H9c0-1.1-.4-1.9-1-2.5A6 6 0 0 1 12 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.6.6-1 1.4-1 2.5H9c0-1.1-.4-1.9-1-2.5A6 6 0 0 1 12 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Paciencia la primera vez</span><p>La primera corrida bien hecha toma 20–60 min, porque vas revisando y dando feedback. Puedes detenerlo cuando quieras con el <b>ícono de stop</b> (abajo a la derecha) para corregirlo. Después, conviértelo en una <b>Rutina</b>: <i>"vuélvelo una rutina, todos los días a tal hora actualízalo."</i></p></div>
     </div>
   </section>

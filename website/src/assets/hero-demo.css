@@ -249,8 +249,16 @@
 }
 .mc-chat-head .m-avatar { width: 34px; height: 34px; }
 .mc-chat-head .m-avatar img { width: 21px; height: 21px; }
+/* The head's text column must be allowed to shrink (flex min-width) so the
+   mission line truncates with an ellipsis instead of wrapping after
+   "Mission:". */
+.mc-chat-head > div { min-width: 0; }
 .mc-chat-agent { font-size: 14px; font-weight: 600; color: var(--m-ink); line-height: 1.25; }
-.mc-chat-mission { font-size: 12px; color: var(--m-muted); line-height: 1.3; }
+.mc-chat-mission { font-size: 12px; color: var(--m-muted); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* devices.css resets `.device *` to display:block (see the stylesheet-order
+   note in index.html); the mission text span must stay inline or the label
+   breaks after "Mission:". */
+.mc-chat-mission span { display: inline; }
 .mc-chat-close { margin-left: auto; display: flex; color: var(--m-faint); }
 .mc-chat-close svg { width: 16px; height: 16px; }
 
