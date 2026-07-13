@@ -15,6 +15,7 @@
   },
   "toast": {
     "signInFailed": "Couldn't open {{provider}} sign-in",
+    "engineUnavailable": "Houston couldn't reach your workspace. Give it a moment and try again.",
     "signOutFailed": "Couldn't sign out of {{provider}}",
     "signInSucceeded": "Signed in to {{provider}}",
     "cancelFailed": "Couldn't cancel {{provider}} sign-in",

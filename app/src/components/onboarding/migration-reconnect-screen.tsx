@@ -4,7 +4,8 @@ import { genericErrorDescription } from "../../lib/error-toast";
 import { useUIStore } from "../../stores/ui";
 import { ProviderBrowser } from "../provider-browser/provider-browser";
 import { useProviderBrowserData } from "../provider-browser/use-provider-browser-data";
-import { HoustonLogo } from "../shell/experience-card";
+import { SpaceScreen } from "../space/space-screen";
+import { SetupCard } from "./setup-card";
 
 interface MigrationReconnectScreenProps {
   /**
@@ -54,17 +55,22 @@ export function MigrationReconnectScreen({
   };
 
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-input px-6 text-ink">
-      <div className="flex w-full max-w-md flex-col items-center gap-6 text-center">
-        <HoustonLogo size={56} />
-        <h1 className="text-[28px] font-normal leading-tight">
-          {t("migrationReconnect.title")}
-        </h1>
-        <p className="text-base text-ink-muted">
-          {t("migrationReconnect.body")}
-        </p>
-
-        <div className="w-full text-left">
+    <SpaceScreen>
+      <SetupCard
+        onSpace
+        title={t("migrationReconnect.title")}
+        subtitle={t("migrationReconnect.body")}
+        helper={
+          <button
+            type="button"
+            onClick={() => finish("skipped")}
+            className="underline-offset-4 transition-colors hover:text-ink hover:underline"
+          >
+            {t("migrationReconnect.skip")}
+          </button>
+        }
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <ProviderBrowser
             providers={providers}
             connections={connections}
@@ -73,15 +79,7 @@ export function MigrationReconnectScreen({
             selectOnMount
           />
         </div>
-
-        <button
-          type="button"
-          onClick={() => finish("skipped")}
-          className="rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
-        >
-          {t("migrationReconnect.skip")}
-        </button>
-      </div>
-    </div>
+      </SetupCard>
+    </SpaceScreen>
   );
 }

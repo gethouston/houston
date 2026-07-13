@@ -8,6 +8,8 @@ export interface ToastItem {
   description?: string;
   variant?: "error" | "success" | "info";
   action?: { label: string; onClick: () => void };
+  /** How many identical firings this toast represents (coalesced repeats). */
+  count?: number;
 }
 
 export type JobDescriptionTarget = "instructions" | "skills" | "learnings";
@@ -123,6 +125,9 @@ interface UIState {
 }
 
 let toastCounter = 0;
+// Live dismiss timers by toast id, so a coalesced repeat can RESTART its
+// toast's countdown (see addToast) and a manual dismiss cancels it.
+const toastTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export const useUIStore = create<UIState>()(
   persist(
@@ -174,28 +179,54 @@ export const useUIStore = create<UIState>()(
 
       addToast: (toast) =>
         set((s) => {
-          // Error toasts must always render. Dedup hid genuine repeated failures:
-          // clicking "Report bug" after the first failure would silently no-op
-          // because the error toast title+description matched the previous one,
-          // making the button feel broken even when it was firing correctly.
-          if (toast.variant !== "error") {
-            const isDuplicate = s.toasts.some(
-              (t) =>
-                t.title === toast.title && t.description === toast.description,
+          const timeout = toast.action ? 10000 : 5000;
+          const expireAfter = (id: string) => {
+            const prevTimer = toastTimers.get(id);
+            if (prevTimer) clearTimeout(prevTimer);
+            toastTimers.set(
+              id,
+              setTimeout(() => {
+                toastTimers.delete(id);
+                set((prev) => ({
+                  toasts: prev.toasts.filter((t) => t.id !== id),
+                }));
+              }, timeout),
             );
-            if (isDuplicate) return s;
+          };
+
+          // Repeats COALESCE instead of stacking (a repeatedly failing
+          // connect used to wall the screen with identical error boxes): the
+          // existing toast's counter bumps and its dismiss countdown restarts,
+          // so every firing still gives visible feedback AND the toast's
+          // action ("Report bug") stays alive — the two failure modes the old
+          // "never dedupe errors" rule protected against.
+          const existing = s.toasts.find(
+            (t) =>
+              t.title === toast.title &&
+              t.description === toast.description &&
+              (t.variant ?? "info") === (toast.variant ?? "info"),
+          );
+          if (existing) {
+            expireAfter(existing.id);
+            return {
+              toasts: s.toasts.map((t) =>
+                t.id === existing.id ? { ...t, count: (t.count ?? 1) + 1 } : t,
+              ),
+            };
           }
 
           const id = `toast-${++toastCounter}`;
-          const timeout = toast.action ? 10000 : 5000;
-          setTimeout(() => {
-            set((prev) => ({ toasts: prev.toasts.filter((t) => t.id !== id) }));
-          }, timeout);
+          expireAfter(id);
           return { toasts: [...s.toasts, { ...toast, id }] };
         }),
 
       dismissToast: (id) =>
-        set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+        set((s) => {
+          const timer = toastTimers.get(id);
+          if (timer) clearTimeout(timer);
+          toastTimers.delete(id);
+          return { toasts: s.toasts.filter((t) => t.id !== id) };
+        }),
 
       setCreateAgentDialogOpen: (createAgentDialogOpen) =>
         set({ createAgentDialogOpen }),

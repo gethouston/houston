@@ -15,6 +15,7 @@
   },
   "toast": {
     "signInFailed": "Não foi possível abrir o login de {{provider}}",
+    "engineUnavailable": "O Houston não conseguiu acessar seu espaço de trabalho. Aguarde um instante e tente de novo.",
     "signOutFailed": "Não foi possível sair de {{provider}}",
     "signInSucceeded": "Conectado a {{provider}}",
     "cancelFailed": "Não foi possível cancelar o login de {{provider}}",

@@ -80,23 +80,14 @@
       "nebula-1": {
         "$value": "#38346b"
       },
-      "nebula-2": {
-        "$value": "#14384c"
-      },
       "nebula-core": {
         "$value": "#b8b2e8"
-      },
-      "nebula-dust": {
-        "$value": "#04050c"
       },
       "star": {
         "$value": "#dce2f7"
       },
       "star-warm": {
         "$value": "#f6e7cd"
-      },
-      "haze": {
-        "$value": "#8f9bc9"
       },
       "foreground": {
         "$value": "#ffffff"

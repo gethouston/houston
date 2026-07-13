@@ -20,7 +20,7 @@ import {
 } from "./rest-client.ts";
 
 /** Federated provider ids GCIP `signInWithIdp` accepts here. */
-export type IdpProviderId = "google.com" | "microsoft.com";
+export type IdpProviderId = "google.com" | "microsoft.com" | "apple.com";
 
 export interface IdpSignInResult {
   idToken: string;
@@ -105,6 +105,70 @@ export async function signInWithIdp(params: {
     photoUrl: typeof body.photoUrl === "string" ? body.photoUrl : null,
     providerId:
       typeof body.providerId === "string" ? body.providerId : params.providerId,
+  };
+}
+
+/**
+ * Session-based federated sign-in completion, the second half of the
+ * GCIP-BROKERED flow (Apple): `createAuthUri` minted the authorize URL and a
+ * `sessionId`; after the provider bounced through GCIP's handler back to the
+ * loopback `continueUri`, the FULL callback URL goes back as `requestUri` and
+ * GCIP redeems the pair itself — no provider token exchange on the client, no
+ * provider secret anywhere near it.
+ */
+export async function signInWithIdpSession(params: {
+  apiKey: string;
+  requestUri: string;
+  sessionId: string;
+}): Promise<IdpSignInResult> {
+  const body = await postGcipJson(
+    `${IDENTITY_TOOLKIT_BASE}/accounts:signInWithIdp?key=${params.apiKey}`,
+    {
+      requestUri: params.requestUri,
+      sessionId: params.sessionId,
+      returnSecureToken: true,
+      returnIdpCredential: true,
+    },
+  );
+  return {
+    idToken: reqString(body, "idToken"),
+    refreshToken: reqString(body, "refreshToken"),
+    expiresAt: expiresAtFrom(body, "expiresIn"),
+    uid: reqString(body, "localId"),
+    email: typeof body.email === "string" ? body.email : "",
+    emailVerified: body.emailVerified === true,
+    displayName: typeof body.displayName === "string" ? body.displayName : null,
+    photoUrl: typeof body.photoUrl === "string" ? body.photoUrl : null,
+    providerId: typeof body.providerId === "string" ? body.providerId : "",
+  };
+}
+
+/**
+ * Mint a provider authorize URL through GCIP (`accounts:createAuthUri`) for the
+ * brokered desktop flow: GCIP builds the URL (its handler is the redirect the
+ * provider is registered with) and returns the `sessionId` that later pairs
+ * with the callback in {@link signInWithIdpSession}. `continueUri` is where
+ * GCIP's handler bounces the browser after the provider consents — the desktop
+ * loopback (must be an authorized domain on the identity project).
+ */
+export async function createAuthUri(params: {
+  apiKey: string;
+  providerId: IdpProviderId;
+  continueUri: string;
+  /** Space-delimited extra OAuth scopes (e.g. Apple's `name email`). */
+  oauthScope?: string;
+}): Promise<{ authUri: string; sessionId: string }> {
+  const body = await postGcipJson(
+    `${IDENTITY_TOOLKIT_BASE}/accounts:createAuthUri?key=${params.apiKey}`,
+    {
+      providerId: params.providerId,
+      continueUri: params.continueUri,
+      ...(params.oauthScope ? { oauthScope: params.oauthScope } : {}),
+    },
+  );
+  return {
+    authUri: reqString(body, "authUri"),
+    sessionId: reqString(body, "sessionId"),
   };
 }
 

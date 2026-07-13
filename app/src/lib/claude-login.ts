@@ -25,10 +25,14 @@
  *     setup-token paste flow, never a dead spinner.
  */
 
-import { finishRemoteClaudeLogin } from "./claude-login-remote";
+import {
+  finishRemoteClaudeLogin,
+  pushCachedClaudeCredential,
+} from "./claude-login-remote";
 import { isRemoteEngine } from "./engine";
 import { publishLocalHoustonEvent } from "./events";
 import i18n from "./i18n";
+import { logger } from "./logger";
 import {
   legacyListen,
   osCancelClaudeLogin,
@@ -99,6 +103,50 @@ async function confirmConnected(provider: string): Promise<boolean> {
     await new Promise((r) => setTimeout(r, CONFIRM_POLL_MS));
   }
   return false;
+}
+
+// One reconcile attempt per app session — it runs on the login surface's
+// mount, and a failed background push must not turn into a retry loop.
+let reconcileRan = false;
+
+/**
+ * Silently finish an EARLIER browser login whose cloud handoff failed. The
+ * `claude` CLI cached the minted credential on this machine, so when the
+ * hosted engine still reads anthropic as disconnected (the push failed — e.g.
+ * the gateway was unavailable at the time), the user's intent can be
+ * completed WITHOUT re-running the browser flow or asking for a token paste:
+ * re-push the cached credential and, on success, announce the normal
+ * completion so the provider card flips.
+ *
+ * Background reconciliation, not a user action: failures are logged, never
+ * toasted (the user retries from the connect card whenever they choose).
+ * One-shot per session; no-op off-desktop-hosted or when nothing is cached.
+ */
+export async function reconcileClaudeCredentialHandoff(): Promise<void> {
+  if (reconcileRan || !isRemoteEngine()) return;
+  reconcileRan = true;
+  try {
+    const status = await tauriProvider.checkStatus("anthropic");
+    if (status.authenticated) return; // nothing to finish
+  } catch {
+    return; // engine unreachable — nothing to reconcile against
+  }
+  const result = await pushCachedClaudeCredential();
+  if (!result.ok) {
+    if (result.reason === "push-failed") {
+      logger.warn(
+        `[claude-login] background credential reconcile failed: ${String(result.error)}`,
+      );
+    }
+    return;
+  }
+  const ok = await confirmConnected("anthropic");
+  if (ok) {
+    logger.info(
+      "[claude-login] finished an earlier Claude sign-in from the cached credential",
+    );
+    announce("anthropic", true, null);
+  }
 }
 
 /**

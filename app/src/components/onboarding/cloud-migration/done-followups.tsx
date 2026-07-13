@@ -7,6 +7,7 @@ import { appDisplay } from "../../integrations/app-display";
 import { AppRow } from "../../integrations/app-row";
 import { ProviderBrowser } from "../../provider-browser/provider-browser";
 import { useProviderBrowserData } from "../../provider-browser/use-provider-browser-data";
+import { SuccessCheck } from "../success-check";
 import { WizardFrame } from "./wizard-frame";
 
 /**
@@ -69,9 +70,11 @@ function fireConfetti() {
 
 /**
  * The wizard's final beat (HOU-719): a short congrats screen shown after the
- * two setup steps, before closing into the app. Fires the confetti payoff on
- * mount (guarded by the reduced-motion check), then a single "Start building"
- * button hands control back to the caller to close the wizard.
+ * two setup steps, before closing into the app. The celebratory
+ * {@link SuccessCheck} (onboarding's one colour-accent moment) over the space
+ * backdrop, the confetti payoff on mount (guarded by the reduced-motion
+ * check), then a single "Start building" button hands control back to the
+ * caller to close the wizard.
  */
 export function DoneCongrats({ onFinish }: { onFinish: () => void }) {
   const { t } = useTranslation("migration");
@@ -80,10 +83,11 @@ export function DoneCongrats({ onFinish }: { onFinish: () => void }) {
   }, []);
   return (
     <WizardFrame
+      mark={<SuccessCheck />}
       title={t("done.congratsTitle")}
       body={t("done.congratsBody")}
       footer={
-        <Button className="rounded-full px-6" onClick={onFinish}>
+        <Button className="h-11 rounded-full px-6" onClick={onFinish}>
           {t("done.finish")}
         </Button>
       }

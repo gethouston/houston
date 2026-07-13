@@ -228,9 +228,9 @@ export function PersonalAssistantOnboarding({
     });
   };
 
-  // One SpaceScreen at the top level (not per-step) so the WebGL nebula mounts
-  // once and never remounts on a step transition. Every step's SetupCard floats
-  // on it via `onSpace`, so onboarding reads as the same continuous starfield as
+  // One SpaceScreen at the top level (not per-step) so the backdrop photo mounts
+  // once and never re-fades on a step transition. Every step's SetupCard floats
+  // on it via `onSpace`, so onboarding reads as the same continuous space as
   // sign-in and the workspace-loading splash.
   return (
     <SpaceScreen>

@@ -89,4 +89,9 @@ now lives in git).
 - **[follow-up] Product stores.** A gateway-backed profile/avatar store (replaces the
   retired Supabase `profiles` table) and an account-level migration flag (restores the
   coarse cross-machine "never offer again").
-- **[later] Apple SSO** — add as a GCIP provider when wanted.
+- **[SHIPPED client-side] Apple SSO** — the client now offers "Continue with
+  Apple" on web (popup) and desktop (GCIP-brokered loopback; Apple rejects
+  `127.0.0.1` redirects, so `createAuthUri`/`signInWithIdp(sessionId)` broker
+  through GCIP's handler — see `knowledge-base/auth.md`). Human config still
+  owed: Apple Developer Services ID + key, GCIP `apple.com` provider enablement
+  (terraform `identity.tf`), and `127.0.0.1` in authorized domains.

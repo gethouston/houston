@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
-import { cancelClaudeBrowserLogin } from "../../lib/claude-login";
+import {
+  cancelClaudeBrowserLogin,
+  reconcileClaudeCredentialHandoff,
+} from "../../lib/claude-login";
 import { listenOsEvent } from "../../lib/events";
+import { osIsTauri } from "../../lib/os-bridge";
 import { PROVIDERS } from "../../lib/providers";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 
@@ -32,6 +36,14 @@ export function ClaudeBrowserLogin() {
       offUrl();
       offDone();
     };
+  }, []);
+
+  // Finish any EARLIER browser login whose cloud handoff failed: the minted
+  // credential is still cached on this machine, so the connect completes
+  // silently, with no browser round-trip and no token paste (one-shot per
+  // session; a quiet no-op when there's nothing to finish).
+  useEffect(() => {
+    if (osIsTauri()) void reconcileClaudeCredentialHandoff();
   }, []);
 
   if (!url || !ANTHROPIC) return null;

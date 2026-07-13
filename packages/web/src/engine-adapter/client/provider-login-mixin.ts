@@ -69,7 +69,7 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
       // `user_code`, which opens the code panel); a co-located desktop client gets
       // a loopback `url` (user_code null) that the handler opens straight in the
       // browser. `provider` MUST be the old/frontend id (the dialog's contract).
-      const agentId = this.ctx.currentAgentId();
+      const agentId = this.ctx.providerAgentId();
       const old = toOldProvider(pid);
       const engine = agentId
         ? controlPlane.runtimeClientFor(this.ctx.cp, agentId)
@@ -110,7 +110,7 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
       if (this.ctx.cp) {
         // Key mirrors pollProviderConnect: the agent's id, or the setup-runtime
         // sentinel when the first-run login started before any agent existed.
-        const agentId = this.ctx.currentAgentId();
+        const agentId = this.ctx.providerAgentId();
         this.ctx.activeLogins.delete(`${agentId ?? SETUP_LOGIN_KEY}:${pid}`); // stop the poll
         // Kill the runtime-side login too, in the same runtime the login started
         // in (the agent's sandbox, or the hidden setup runtime pre-agent) —
