@@ -204,13 +204,21 @@ export function groupCatalogByCategory(opts: {
 
 /**
  * The primary-category slugs present in the browse catalog (connected apps
- * excluded), in {@link groupCatalogByCategory}'s section order — the option
- * set for the category filter beside the search field. The consumer prepends
- * its "all" entry and labels {@link UNCATEGORIZED} itself.
+ * excluded), sorted A-Z by display label with {@link UNCATEGORIZED} pinned
+ * last — the option set for the category filter beside the search field. The
+ * dropdown orders alphabetically (a user LOOKS UP a category by name there)
+ * even though the page's sections order by size. The consumer prepends its
+ * "all" entry and labels {@link UNCATEGORIZED} itself.
  */
 export function catalogCategorySlugs(opts: {
   catalog: IntegrationToolkit[];
   connected: ReadonlySet<string>;
 }): string[] {
-  return groupCatalogByCategory({ ...opts, query: "" }).map((s) => s.category);
+  return groupCatalogByCategory({ ...opts, query: "" })
+    .map((s) => s.category)
+    .sort((a, b) => {
+      if (a === UNCATEGORIZED) return 1;
+      if (b === UNCATEGORIZED) return -1;
+      return categoryLabel(a).localeCompare(categoryLabel(b));
+    });
 }

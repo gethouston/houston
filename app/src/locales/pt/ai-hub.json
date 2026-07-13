@@ -19,7 +19,6 @@
     "connect": "Conectar",
     "connectName": "Conectar {{name}}",
     "connecting": "Conectando",
-    "details": "Ver detalhes de {{name}}",
     "connected": "Conectado",
     "signOut": "Sair",
     "cancel": "Cancelar",
@@ -29,7 +28,6 @@
   "directory": {
     "search": "Busque {{count}}+ modelos",
     "searchFew": "Buscar modelos",
-    "seeMore": "Ver mais",
     "filters": {
       "allSpecialties": "Todas as especialidades",
       "reasoning": "Raciocínio",

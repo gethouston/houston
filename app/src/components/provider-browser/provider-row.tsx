@@ -6,18 +6,16 @@
  * live model count in bold (`{N} models`), a middot, then
  * the muted friendly cost story (e.g. "Your Claude subscription" — how the
  * card is billed lives in this prose and in the Subscription/Pay-as-you-go
- * quick filter, `provider-filtering.ts`, not on the card itself) + a tight
- * trailing pair: the action button first — a Connect pill when disconnected
- * (which, while a connect is in flight, flips to Cancel on hover so a stuck
- * sign-in can be aborted) or a ghost Sign out when connected (opening the
- * shared confirm) — then an always-visible info button pinned to the FAR
- * right that opens the provider modal (the ONE open affordance — the body
- * itself is deliberately not clickable, an invisible click target was not
- * discoverable). Nothing hover-only.
+ * quick filter, `provider-filtering.ts`, not on the card itself) + a trailing
+ * action button: a Connect pill when disconnected (which, while a connect is
+ * in flight, flips to Cancel on hover so a stuck sign-in can be aborted) or a
+ * ghost Sign out when connected (opening the shared confirm). Nothing
+ * hover-only. Serves onboarding / migration / workspace setup; the AI hub's
+ * own Providers tab uses the catalog-grammar `ProvidersPane` instead.
  */
 
 import { AsyncButton, Button } from "@houston-ai/core";
-import { Info, Loader2, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
 import { LiveStatus } from "../ai-hub/hub-badges";
@@ -36,8 +34,6 @@ interface ProviderRowProps {
   connected: boolean;
   connecting: boolean;
   signingOut: boolean;
-  /** Open the provider's detail. When omitted the info button is hidden (no dead affordance). */
-  onOpen?: (provider: ProviderInfo) => void;
   onConnect: (provider: ProviderInfo) => void;
   onCancel: (provider: ProviderInfo) => void;
   onSignOut: (provider: ProviderInfo) => void;
@@ -50,7 +46,6 @@ export function ProviderRow({
   connected,
   connecting,
   signingOut,
-  onOpen,
   onConnect,
   onCancel,
   onSignOut,
@@ -78,10 +73,6 @@ export function ProviderRow({
         </span>
       </div>
 
-      {/* Trailing controls as a tight pair: the action button (Sign out /
-          Connect) first, then the info button pinned to the FAR right. DOM order
-          matches the visual order so keyboard focus lands on the action before
-          the info detail. */}
       <div className="flex shrink-0 items-center gap-1">
         {connected ? (
           <Button
@@ -133,24 +124,6 @@ export function ProviderRow({
               t("card.connect")
             )}
           </AsyncButton>
-        )}
-
-        {/* The ONE open affordance: an explicit info button (the card body is
-            not clickable), pinned to the far right after the action. The label
-            carries the provider name so every card's button reads distinctly to
-            screen readers. Hidden when no `onOpen` is wired, so a browser
-            without a detail surface shows no dead button. */}
-        {onOpen && (
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            className="text-ink-muted"
-            aria-label={t("card.details", { name: provider.name })}
-            title={t("card.details", { name: provider.name })}
-            onClick={() => onOpen(provider)}
-          >
-            <Info className="size-4" aria-hidden="true" />
-          </Button>
         )}
       </div>
     </div>

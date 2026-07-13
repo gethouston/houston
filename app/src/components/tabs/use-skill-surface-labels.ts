@@ -1,29 +1,24 @@
 import type {
-  InstalledSkillRowLabels,
   SkillEditModalLabels,
   SkillMarketplaceSectionLabels,
 } from "@houston-ai/skills";
 import { useTranslation } from "react-i18next";
 
 /**
- * Labels for the installed-skill rows (icon-only pen/trash actions), the edit
- * modal, and the shared delete-confirmation copy. The `ui/` pieces are
- * i18n-agnostic; this fills their `labels` props from `t()`. Save/placeholder
- * reuse the former detail screen's `detail.*` keys; Cancel/Delete come from the
- * shared `common:actions`.
+ * Labels for the edit modal (the installed tiles' one detail surface — its
+ * footer now carries the destructive delete) and the shared delete-confirmation
+ * copy. The `ui/` pieces are i18n-agnostic; this fills their `labels` props
+ * from `t()`. Save/placeholder reuse the former detail screen's `detail.*`
+ * keys; Cancel/Delete come from the shared `common:actions`.
  */
 export function useSkillSurfaceLabels() {
   const { t } = useTranslation(["skills", "common"]);
-
-  const installedRowLabels: InstalledSkillRowLabels = {
-    editAria: (name: string) => t("skills:grid.editSkillAria", { name }),
-    deleteAria: (name: string) => t("skills:grid.deleteSkillAria", { name }),
-  };
 
   const editModalLabels: SkillEditModalLabels = {
     save: t("skills:detail.saveChanges"),
     saving: t("skills:detail.savingChanges"),
     cancel: t("common:actions.cancel"),
+    delete: t("common:actions.delete"),
     editorPlaceholder: t("skills:detail.instructionsPlaceholder"),
     loadFailed: t("skills:detail.loadFailed"),
   };
@@ -34,7 +29,7 @@ export function useSkillSurfaceLabels() {
     confirmLabel: t("common:actions.delete"),
   };
 
-  return { installedRowLabels, editModalLabels, deleteConfirm };
+  return { editModalLabels, deleteConfirm };
 }
 
 export function useSkillDialogLabels() {
@@ -127,10 +122,6 @@ export function useSkillMarketplaceSectionLabels(): SkillMarketplaceSectionLabel
       installsCount: (count: number, formatted: string) =>
         t("store.card.installsCount", { count, formatted }),
       bySource: (owner: string) => t("store.card.bySource", { owner }),
-      infoAria: (name: string) => t("store.card.infoAria", { name }),
-      add: t("store.card.add"),
-      adding: t("store.card.adding"),
-      added: t("store.card.added"),
     },
     preview: {
       install: t("store.preview.install"),

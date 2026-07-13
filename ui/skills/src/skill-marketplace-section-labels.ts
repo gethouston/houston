@@ -40,10 +40,6 @@ const DEFAULT_CARD_LABELS: Required<SkillMarketplaceCardLabels> = {
   installsCount: (count, formatted) =>
     count === 1 ? `${formatted} install` : `${formatted} installs`,
   bySource: (owner) => `by ${owner}`,
-  infoAria: (name) => `About ${name}`,
-  add: "Add",
-  adding: "Adding...",
-  added: "Added",
 };
 
 const DEFAULT_PREVIEW_LABELS: Required<SkillPreviewSheetLabels> = {

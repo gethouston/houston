@@ -1,4 +1,4 @@
-import { Button, ConfirmDialog } from "@houston-ai/core";
+import { Button, CatalogSearchField } from "@houston-ai/core";
 import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { Plus } from "lucide-react";
 import { useState } from "react";
@@ -10,17 +10,26 @@ import {
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { AgentPickerDialog } from "../agent-picker-dialog";
+import { CustomDeleteDialog } from "./custom-delete-dialog";
+import { CustomEmptyState } from "./custom-empty-state";
 import { CustomIntegrationRow } from "./custom-integration-row";
+import { filterCustomIntegrations } from "./custom-integrations-model";
 import { CustomKeyDialog } from "./custom-key-dialog";
+import { CustomSetupBanner } from "./custom-setup-banner";
 import { IntegrationSetupChat } from "./integration-setup-chat";
 import { SectionHeader } from "./section-header";
 import { useIntegrationChatSetup } from "./use-integration-chat-setup";
 
 /**
- * The "Custom integrations" section of the global Integrations page (API / MCP
- * servers the app catalog doesn't offer). Hidden ENTIRELY when the host does not
- * support the feature (`useCustomIntegrations` → `null`) or before the list
- * resolves; otherwise always visible so the empty state can invite creation.
+ * Custom integrations (API / MCP servers the app catalog doesn't offer). Two
+ * variants, one body: `"section"` (default) is the standalone block with its
+ * own heading, embedded by the page's non-ready states; `"tab"` is the body of
+ * the global page's Custom integrations tab, where the tab label already names
+ * the surface, so the heading drops and a search field joins the Add button in
+ * a controls row (mirroring the catalog tab's layout). Hidden ENTIRELY when the
+ * host does not support the feature (`useCustomIntegrations` → `null`) or
+ * before the list resolves; otherwise always visible so the empty state can
+ * invite creation.
  *
  * "Add custom integration" picks an agent, then opens a guided setup chat
  * EMBEDDED right here (the same pattern as the routine setup chat) — an agent
@@ -32,7 +41,11 @@ import { useIntegrationChatSetup } from "./use-integration-chat-setup";
  * mutations route through `call()`, so failures toast once and carry no local
  * `onError`.
  */
-export function CustomIntegrationsSection() {
+export function CustomIntegrationsSection({
+  variant = "section",
+}: {
+  variant?: "section" | "tab";
+}) {
   const { t } = useTranslation("integrations");
   const list = useCustomIntegrations();
   const remove = useRemoveCustomIntegration();
@@ -40,6 +53,7 @@ export function CustomIntegrationsSection() {
   const chatSetup = useIntegrationChatSetup();
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [keyIntegration, setKeyIntegration] =
     useState<CustomIntegrationView | null>(null);
   const [removeIntegration, setRemoveIntegration] =
@@ -56,54 +70,69 @@ export function CustomIntegrationsSection() {
   if (!items) return null;
 
   const { activeAgent } = chatSetup;
+  const visible = filterCustomIntegrations(items, query);
+  // The tab with nothing in it and nothing in flight collapses to the pure
+  // empty state: no controls, just the explanation + CTA. A live draft (open
+  // chat or its banner) IS the in-progress add, so it takes the stage instead.
+  const tabEmptyState =
+    variant === "tab" &&
+    items.length === 0 &&
+    !chatSetup.open &&
+    !chatSetup.hasDraft;
+
+  // Outline, not filled: a filled pill here outweighed the page title and
+  // pulled the flat page's one visual accent onto a side action.
+  const addButton = (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      className="shrink-0 gap-1.5"
+      disabled={chatSetup.pending}
+      onClick={() => setPickerOpen(true)}
+    >
+      <Plus className="size-4" />
+      {t("custom.addButton")}
+    </Button>
+  );
 
   return (
     <section>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <SectionHeader title={t("custom.title")} />
-          <p className="mt-0.5 text-[13px] text-ink-muted">
-            {t("custom.description")}
-          </p>
-        </div>
-        {/* Outline, not filled: a filled pill here outweighed the page title
-            and pulled the flat page's one visual accent onto a side action. */}
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="shrink-0 gap-1.5"
-          disabled={chatSetup.pending}
-          onClick={() => setPickerOpen(true)}
-        >
-          <Plus className="size-4" />
-          {t("custom.addButton")}
-        </Button>
-      </div>
-
-      {/* A draft setup chat is in progress but its panel is closed: invite the
-          user back into it (or let them discard it). Always-visible buttons,
-          never a hover-only affordance. */}
-      {chatSetup.hasDraft && !chatSetup.open && activeAgent && (
-        <div className="mb-4 flex items-center gap-3 rounded-2xl bg-chip px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-ink">
-              {t("custom.setupChat.bannerTitle")}
+      {variant === "tab" ? (
+        items.length > 0 && (
+          <>
+            <div className="mb-2 flex items-center gap-2">
+              <CatalogSearchField
+                value={query}
+                onChange={setQuery}
+                label={t("custom.searchPlaceholder")}
+                className="flex-1"
+              />
+              {addButton}
+            </div>
+            <p className="mb-6 text-[13px] text-ink-muted">
+              {t("custom.description")}
             </p>
-            <p className="text-xs text-ink/70">
-              {t("custom.setupChat.bannerDescription")}
+          </>
+        )
+      ) : (
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <SectionHeader title={t("custom.title")} count={items.length} />
+            <p className="mt-0.5 text-[13px] text-ink-muted">
+              {t("custom.description")}
             </p>
           </div>
-          <Button variant="ghost" onClick={chatSetup.discard}>
-            {t("custom.setupChat.discard")}
-          </Button>
-          <Button variant="outline" onClick={chatSetup.finish}>
-            {t("custom.setupChat.done")}
-          </Button>
-          <Button onClick={() => chatSetup.openPanel(activeAgent.id)}>
-            {t("custom.setupChat.continue")}
-          </Button>
+          {addButton}
         </div>
+      )}
+
+      {chatSetup.hasDraft && !chatSetup.open && activeAgent && (
+        <CustomSetupBanner
+          onDiscard={chatSetup.discard}
+          onDone={chatSetup.finish}
+          onContinue={() => chatSetup.openPanel(activeAgent.id)}
+        />
       )}
 
       {/* The setup chat lives INLINE right here while open — an agent runs the
@@ -119,10 +148,21 @@ export function CustomIntegrationsSection() {
       )}
 
       {items.length === 0 ? (
-        <p className="text-sm text-ink-muted">{t("custom.empty")}</p>
+        tabEmptyState ? (
+          <CustomEmptyState
+            onAdd={() => setPickerOpen(true)}
+            pending={chatSetup.pending}
+          />
+        ) : (
+          variant === "section" && (
+            <p className="text-sm text-ink-muted">{t("custom.empty")}</p>
+          )
+        )
+      ) : visible.length === 0 ? (
+        <p className="text-sm text-ink-muted">{t("custom.noResults")}</p>
       ) : (
         <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
-          {items.map((integration) => (
+          {visible.map((integration) => (
             <CustomIntegrationRow
               key={integration.slug}
               integration={integration}
@@ -145,24 +185,10 @@ export function CustomIntegrationsSection() {
         onClose={() => setKeyIntegration(null)}
       />
 
-      <ConfirmDialog
-        open={removeIntegration !== null}
-        onOpenChange={(open) => {
-          if (!open) setRemoveIntegration(null);
-        }}
-        title={t("custom.delete.title", {
-          name: removeIntegration?.name ?? "",
-        })}
-        description={t("custom.delete.description", {
-          name: removeIntegration?.name ?? "",
-        })}
-        confirmLabel={t("custom.delete.confirm")}
-        cancelLabel={t("custom.delete.cancel")}
-        variant="destructive"
-        onConfirm={() => {
-          if (removeIntegration) remove.mutate(removeIntegration.slug);
-          setRemoveIntegration(null);
-        }}
+      <CustomDeleteDialog
+        integration={removeIntegration}
+        onClose={() => setRemoveIntegration(null)}
+        onConfirm={(integration) => remove.mutate(integration.slug)}
       />
     </section>
   );

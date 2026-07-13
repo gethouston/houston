@@ -5,12 +5,8 @@
   },
   "grid": {
     "loading": "Loading skills...",
-    "emptyTitle": "No skills installed",
-    "emptyDescription": "Skills are reusable procedures your agent can run.",
     "addSkill": "Add skill",
-    "yourSkillsHeading": "Your skills",
-    "editSkillAria": "Edit {{name}}",
-    "deleteSkillAria": "Delete {{name}}"
+    "yourSkillsHeading": "Your skills"
   },
   "addDialog": {
     "title": "Add skills",
@@ -84,11 +80,7 @@
       "installedAria": "{{name}} installed",
       "installsCount_one": "{{formatted}} install",
       "installsCount_other": "{{formatted}} installs",
-      "bySource": "by {{owner}}",
-      "infoAria": "About {{name}}",
-      "add": "Add",
-      "adding": "Adding...",
-      "added": "Added"
+      "bySource": "by {{owner}}"
     },
     "preview": {
       "install": "Install",
@@ -132,5 +124,11 @@
     "Setup": "Setup",
     "Support": "Support",
     "Tracking": "Tracking"
+  },
+  "tabs": {
+    "store": "Store",
+    "custom": "Custom skills",
+    "customEmptyTitle": "No custom skills yet",
+    "customEmptyDescription": "Create your own skill from scratch or import one from GitHub."
   }
 }

@@ -185,7 +185,7 @@ test("Settings > Connected accounts: a connected app opens the per-agent grant s
 }) => {
   // Single-player with apps. Seed a grant record so the host reports grants
   // supported (Gmail granted to the seed agent), which lights up the per-agent
-  // Switch inside the detail sheet.
+  // Switch inside the detail modal.
   await armCapabilities(request, { integrations: ["composio"] });
   await seedGrants(request, ["gmail"]);
   await openSettings(page);
@@ -199,7 +199,7 @@ test("Settings > Connected accounts: a connected app opens the per-agent grant s
     page.getByRole("heading", { name: "Connected accounts" }),
   ).toBeVisible();
 
-  // The seeded Gmail connection is listed; open its detail sheet.
+  // The seeded Gmail connection is listed; open its detail modal.
   await page.getByRole("button", { name: /Gmail/ }).click();
 
   // The sheet is the ONE grants surface: "Agents that can use this" with a
@@ -238,7 +238,7 @@ test("Agent Integrations tab: pure connect surface, no per-agent grant affordanc
   await page.locator('[data-tour-target="tab-integrations"]').click();
 
   // The connect catalog still renders (search box + a connectable app row)...
-  await expect(page.getByPlaceholder("Search apps...")).toBeVisible();
+  await expect(page.getByPlaceholder("Search integrations...")).toBeVisible();
   await expect(
     page.getByRole("button").filter({ hasText: "Slack" }).first(),
   ).toBeVisible();

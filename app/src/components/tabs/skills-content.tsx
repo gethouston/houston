@@ -1,15 +1,23 @@
-import { Button, ConfirmDialog, Spinner } from "@houston-ai/core";
+import {
+  Button,
+  CatalogShell,
+  type CatalogShellTab,
+  ConfirmDialog,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Spinner,
+} from "@houston-ai/core";
 import type {
   CommunitySkill,
   CommunitySkillPreview,
   InstalledSkillEditorState,
-  InstalledSkillRowLabels,
   RepoSkill,
   SkillEditModalLabels,
 } from "@houston-ai/skills";
 import {
   AddSkillDialog,
-  InstalledSkillRow,
   SkillEditModal,
   SkillMarketplaceSection,
 } from "@houston-ai/skills";
@@ -19,6 +27,7 @@ import { useTranslation } from "react-i18next";
 import { skillDisplayTitle } from "../../lib/humanize-skill-name";
 import { resolveSkillImageUrl } from "../../lib/skill-image";
 import type { SkillSummary } from "../../lib/types";
+import { InstalledSkillTile } from "./installed-skill-tile";
 import {
   useSkillDialogLabels,
   useSkillMarketplaceSectionLabels,
@@ -30,6 +39,17 @@ interface DeleteConfirmLabels {
   confirmLabel: string;
 }
 
+/**
+ * The Skills tab body in the shared catalog grammar (the same layout as the
+ * Integrations surfaces, minus a page header — the tab label carries that):
+ * the consolidated **Your skills** strip of installed-skill tiles OUTSIDE the
+ * tabs (a tile opens the edit modal, whose footer carries the delete), then
+ * two discovery tabs via {@link CatalogShell} — **Store** (the skills.sh
+ * marketplace section, with its own search + category controls) and **Custom
+ * skills** (an empty state for now: the explanation + the Add CTA opening the
+ * GitHub / From-scratch dialog). Read-only mode (managed agent, non-manager)
+ * drops the tabs entirely and keeps just the strip.
+ */
 export function SkillsContent({
   skills,
   loading,
@@ -40,7 +60,6 @@ export function SkillsContent({
   onCloseEdit,
   onSaveEditing,
   onDeleteSkill,
-  installedRowLabels,
   editModalLabels,
   deleteConfirm,
   onSearch,
@@ -55,7 +74,7 @@ export function SkillsContent({
   loading: boolean;
   /**
    * Managed-agent read-only mode (matrix v2): a non-manager may view skills but
-   * not add/create/install any. Hides the add affordance and the marketplace.
+   * not add/create/install any. Hides the discovery tabs and the add CTA.
    * The gateway 403s writes regardless.
    */
   readOnly?: boolean;
@@ -66,7 +85,6 @@ export function SkillsContent({
   onCloseEdit: () => void;
   onSaveEditing: (content: string) => Promise<void>;
   onDeleteSkill: (name: string) => Promise<void>;
-  installedRowLabels: InstalledSkillRowLabels;
   editModalLabels: SkillEditModalLabels;
   deleteConfirm: DeleteConfirmLabels;
   onSearch?: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>;
@@ -93,6 +111,7 @@ export function SkillsContent({
   const { t } = useTranslation("skills");
   const dialogLabels = useSkillDialogLabels();
   const marketplaceLabels = useSkillMarketplaceSectionLabels();
+  const [tab, setTab] = useState("store");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<SkillSummary | null>(null);
   const sorted = useMemo(
@@ -119,23 +138,62 @@ export function SkillsContent({
     );
   }
 
-  const addButton = addDialogProps && (
-    <Button size="sm" onClick={() => setDialogOpen(true)} className="shrink-0">
-      <Plus className="size-3.5" />
-      {t("grid.addSkill")}
-    </Button>
+  const installed = sorted.length > 0 && (
+    <div className="flex flex-wrap gap-3">
+      {sorted.map((skill) => (
+        <InstalledSkillTile
+          key={skill.name}
+          displayName={skillDisplayTitle(skill)}
+          imageUrl={resolveSkillImageUrl(skill.image)}
+          onOpen={() => onEditSkill(skill.name)}
+        />
+      ))}
+    </div>
   );
 
-  const marketplace =
-    !readOnly && onSearch && onInstallCommunity ? (
-      <SkillMarketplaceSection
-        onSearch={onSearch}
-        onInstall={onInstallCommunity}
-        onPreview={onPreviewCommunity}
-        installedSkillNames={installedSkillNames}
-        labels={marketplaceLabels}
-      />
-    ) : null;
+  const tabs: CatalogShellTab[] = [
+    ...(!readOnly && onSearch && onInstallCommunity
+      ? [
+          {
+            value: "store",
+            label: t("tabs.store"),
+            content: (
+              <SkillMarketplaceSection
+                onSearch={onSearch}
+                onInstall={onInstallCommunity}
+                onPreview={onPreviewCommunity}
+                installedSkillNames={installedSkillNames}
+                labels={marketplaceLabels}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(addDialogProps
+      ? [
+          {
+            value: "custom",
+            label: t("tabs.custom"),
+            content: (
+              <Empty className="py-16">
+                <EmptyHeader>
+                  <EmptyTitle className="text-lg">
+                    {t("tabs.customEmptyTitle")}
+                  </EmptyTitle>
+                  <EmptyDescription>
+                    {t("tabs.customEmptyDescription")}
+                  </EmptyDescription>
+                </EmptyHeader>
+                <Button type="button" onClick={() => setDialogOpen(true)}>
+                  <Plus className="size-4" />
+                  {t("grid.addSkill")}
+                </Button>
+              </Empty>
+            ),
+          },
+        ]
+      : []),
+  ];
 
   // The delete mutation surfaces its own error toast via the `call` wrapper, so
   // the row action stays quiet on failure; catch here only to keep the
@@ -151,45 +209,17 @@ export function SkillsContent({
   };
 
   return (
-    <div className="flex flex-col gap-8">
-      <section>
-        <div className="mb-3 flex items-center justify-between gap-4">
-          <p className="text-sm font-medium text-ink">
-            {t("grid.yourSkillsHeading")}
-          </p>
-          {addButton}
-        </div>
-        {sorted.length === 0 ? (
-          <div className="rounded-xl bg-chip px-6 py-8 text-center">
-            <p className="text-sm font-medium text-ink">
-              {t("grid.emptyTitle")}
-            </p>
-            <p className="mt-1 text-sm text-ink-muted">
-              {t("grid.emptyDescription")}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {sorted.map((skill) => (
-              <InstalledSkillRow
-                key={skill.name}
-                skill={{
-                  name: skill.name,
-                  title: skill.title,
-                  description: skill.description,
-                  image: skill.image,
-                }}
-                displayName={skillDisplayTitle(skill)}
-                imageUrl={resolveSkillImageUrl(skill.image)}
-                onEdit={() => onEditSkill(skill.name)}
-                onDelete={() => setPendingDelete(skill)}
-                labels={installedRowLabels}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-      {marketplace}
+    <>
+      {/* Read-only mode yields zero tabs: the shell then renders only the
+          installed strip (or nothing at all when there are no skills). */}
+      <CatalogShell
+        installedTitle={t("grid.yourSkillsHeading")}
+        installedCount={sorted.length}
+        installed={installed || undefined}
+        tabs={tabs}
+        value={tab}
+        onValueChange={setTab}
+      />
       {addDialogProps && (
         <AddSkillDialog
           open={dialogOpen}
@@ -207,6 +237,14 @@ export function SkillsContent({
         description={editingSkill?.description ?? ""}
         editor={editorState}
         onSave={onSaveEditing}
+        onDelete={
+          readOnly || !editingSkill
+            ? undefined
+            : () => {
+                setPendingDelete(editingSkill);
+                onCloseEdit();
+              }
+        }
         labels={editModalLabels}
       />
       <ConfirmDialog
@@ -223,6 +261,6 @@ export function SkillsContent({
         confirmLabel={deleteConfirm.confirmLabel}
         onConfirm={confirmDelete}
       />
-    </div>
+    </>
   );
 }

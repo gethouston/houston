@@ -1,26 +1,23 @@
-import { CatalogFilterSelect } from "@houston-ai/core";
+import { CatalogShell, type CatalogShellTab } from "@houston-ai/core";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useDisconnectIntegration } from "../../hooks/queries";
 import {
-  AppDetailSheet,
+  useCustomIntegrations,
+  useDisconnectIntegration,
+} from "../../hooks/queries";
+import {
+  AppDetailDialog,
   CustomIntegrationsSection,
-  catalogCategorySlugs,
-  categoryLabel,
   DisconnectAppDialog,
   INTEGRATION_PROVIDER,
   ReconnectBanner,
-  SectionHeader,
-  UNCATEGORIZED,
   useConnectedApps,
   useConnectFlow,
   useConnectionSelection,
 } from "../integrations";
 import { PageHeader } from "../shell/page-shell";
-import { CatalogSearchField } from "./catalog-search-field";
-import { CategoryCatalog } from "./category-catalog";
+import { CatalogPane } from "./catalog-pane";
 import { InstalledStrip } from "./installed-strip";
-import { RecoveryRow } from "./recovery-row";
 
 interface IntegrationsReadyProps {
   reconnectNotice: boolean;
@@ -28,52 +25,38 @@ interface IntegrationsReadyProps {
 }
 
 /**
- * The ready state of the global Integrations page (personal mode) as the flat,
- * airy "plane": a hero title + muted subtitle with the rounded catalog search in
- * the header's trailing slot, then a calm vertical stack —
+ * The ready state of the global Integrations page (personal mode): a hero
+ * title + muted subtitle over the {@link CatalogShell} layout —
  *
- *  1. any interrupted-OAuth connections as quiet recovery rows (finish / remove),
- *  2. an "Installed" strip of the apps already connected (icon tiles that open
- *     the detail sheet), shown only when there is at least one,
- *  3. the Custom integrations section, and
- *  4. the full connectable catalog grouped into flat category sections.
+ *  1. the consolidated **Installed** strip (active catalog connections AND
+ *     custom integrations — it belongs to both sources, so it sits OUTSIDE
+ *     the tabs and never changes when the user switches), then
+ *  2. two discovery tabs: **Integrations** (the app catalog:
+ *     {@link CatalogPane} with its search + category combobox and recovery
+ *     rows) and **Custom integrations** (the API / MCP surface with its own
+ *     search + Add controls row). When the host doesn't serve custom
+ *     integrations the shell renders the catalog alone, no tab chrome.
  *
- * Connected apps never repeat in the catalog — {@link CategoryCatalog} excludes
- * every connected toolkit, so the Installed strip is the single home for them.
- * The page-level search threads only into the category catalog; the Installed
- * strip stays unfiltered (it is identity, not discovery). Per-agent access lives
- * in Settings > Connected accounts, so the detail sheet here is view + reconnect
- * + disconnect only. ONE connect flow lives here (connect-only, no auto-grant)
- * and is handed to the catalog, the recovery rows, and the detail sheet so
- * closing any of them never kills an in-flight OAuth poll.
+ * Each tab owns its search; discovery controls live INSIDE the surface they
+ * filter. A custom tile in the strip jumps to the Custom tab (its row holds
+ * the status / key / remove affordances); a catalog tile opens the detail
+ * MODAL ({@link AppDetailDialog}, the same `CatalogDetailDialog` the browse
+ * rows use — never a slideover), which is view + reconnect + disconnect only
+ * (per-agent access lives in Settings > Connected accounts). ONE connect flow
+ * lives here (connect-only, no auto-grant) and is handed to the catalog, the
+ * recovery rows, and the detail modal so closing any of them — or switching
+ * tabs — never kills an in-flight OAuth poll.
  */
 export function IntegrationsReady({
   reconnectNotice,
   dismissReconnect,
 }: IntegrationsReadyProps) {
   const { t } = useTranslation("integrations");
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("all");
+  const [tab, setTab] = useState("catalog");
   const apps = useConnectedApps();
-  // The category dropdown's options: "all" first, then the catalog's primary
-  // categories in section order, the uncategorized bucket labeled "Other".
-  const categoryOptions = useMemo(() => {
-    const connected = new Set(apps.connData.map((c) => c.toolkit));
-    return [
-      { value: "all", label: t("home.allCategories") },
-      ...catalogCategorySlugs({ catalog: apps.catalogData, connected }).map(
-        (slug) => ({
-          value: slug,
-          label:
-            slug === UNCATEGORIZED
-              ? t("home.otherCategory")
-              : categoryLabel(slug),
-        }),
-      ),
-    ];
-  }, [apps.catalogData, apps.connData, t]);
   const connectFlow = useConnectFlow({ autoGrant: false });
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
+  const custom = useCustomIntegrations();
   const {
     selectedConn,
     selectedApp,
@@ -84,27 +67,49 @@ export function IntegrationsReady({
     closeDisconnect,
   } = useConnectionSelection(apps);
 
+  // `null` = the host doesn't serve custom integrations: no Custom tab (the
+  // shell drops the tab chrome), no custom tiles in the strip.
+  const customItems = custom.data ?? [];
+  // The catalog tab's count chip: the connectable apps (connected excluded,
+  // exactly what the tab browses). Hidden while the catalog settles.
+  const connectableCount = useMemo(() => {
+    const connected = new Set(apps.connData.map((c) => c.toolkit));
+    return apps.catalogData.filter((tk) => !connected.has(tk.slug)).length;
+  }, [apps.catalogData, apps.connData]);
+  const tabs: CatalogShellTab[] = [
+    {
+      value: "catalog",
+      label: t("home.tabs.catalog"),
+      count: apps.isLoading ? undefined : connectableCount,
+      content: (
+        <CatalogPane
+          catalog={apps.catalogData}
+          connections={apps.connData}
+          recovering={apps.recoveringRows}
+          isLoading={apps.isLoading}
+          connectFlow={connectFlow}
+          onRemoveRecovering={(toolkit) => disconnect.mutate(toolkit)}
+        />
+      ),
+    },
+    ...(custom.data !== null
+      ? [
+          {
+            value: "custom",
+            label: t("home.tabs.custom"),
+            count: custom.data?.length,
+            content: <CustomIntegrationsSection variant="tab" />,
+          },
+        ]
+      : []),
+  ];
+  const installedCount = apps.activeRows.length + customItems.length;
+
   return (
     <>
       <PageHeader
         title={t("home.title")}
         subtitle={t("home.description")}
-        trailing={
-          <div className="flex items-center gap-2">
-            <CatalogSearchField
-              value={query}
-              onChange={setQuery}
-              label={t("home.searchPlaceholder")}
-              className="w-52 sm:w-60"
-            />
-            <CatalogFilterSelect
-              value={category}
-              onChange={setCategory}
-              label={t("home.categoryFilter")}
-              options={categoryOptions}
-            />
-          </div>
-        }
         className="mb-7"
       />
 
@@ -114,49 +119,28 @@ export function IntegrationsReady({
         </div>
       )}
 
-      {apps.recoveringRows.length > 0 && (
-        <div className="mb-8 space-y-2">
-          {apps.recoveringRows.map((row) => (
-            <RecoveryRow
-              key={row.connection.connectionId}
-              row={row}
-              connectFlow={connectFlow}
-              onRemove={() => disconnect.mutate(row.connection.toolkit)}
+      <CatalogShell
+        installedTitle={t("home.installedTitle")}
+        installedCount={apps.isLoading ? undefined : installedCount}
+        installed={
+          apps.isLoading ? (
+            <InstalledSkeleton />
+          ) : installedCount > 0 ? (
+            <InstalledStrip
+              active={apps.activeRows}
+              custom={customItems}
+              onOpen={openConn}
+              onOpenCustom={() => setTab("custom")}
             />
-          ))}
-        </div>
-      )}
-
-      <div className="space-y-8">
-        {apps.isLoading ? (
-          <IntegrationsSkeleton />
-        ) : (
-          apps.activeRows.length > 0 && (
-            <section>
-              <SectionHeader
-                title={t("home.installedTitle")}
-                className="mb-4"
-              />
-              <InstalledStrip active={apps.activeRows} onOpen={openConn} />
-            </section>
-          )
-        )}
-
-        <CustomIntegrationsSection />
-
-        {!apps.isLoading && (
-          <CategoryCatalog
-            catalog={apps.catalogData}
-            connections={apps.connData}
-            connectFlow={connectFlow}
-            query={query}
-            category={category}
-          />
-        )}
-      </div>
+          ) : undefined
+        }
+        tabs={tabs}
+        value={tab}
+        onValueChange={setTab}
+      />
 
       {selectedConn && selectedApp && (
-        <AppDetailSheet
+        <AppDetailDialog
           open
           onOpenChange={(open) => {
             if (!open) closeConn();
@@ -185,24 +169,13 @@ export function IntegrationsReady({
   );
 }
 
-/**
- * A light placeholder standing in for the Installed strip and the category
- * catalog while the connections + toolkit catalog settle: a row of tile
- * placeholders over a few text bars. Decorative only, so it is `aria-hidden`.
- */
-function IntegrationsSkeleton() {
+/** A tile-row placeholder while the connections settle. Decorative only. */
+function InstalledSkeleton() {
   return (
-    <div aria-hidden className="space-y-8">
-      <div className="flex gap-3">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className="size-12 animate-pulse rounded-xl bg-chip" />
-        ))}
-      </div>
-      <div className="space-y-3">
-        <div className="h-4 w-32 animate-pulse rounded bg-chip" />
-        <div className="h-4 w-full max-w-md animate-pulse rounded bg-chip" />
-        <div className="h-4 w-full max-w-sm animate-pulse rounded bg-chip" />
-      </div>
+    <div aria-hidden className="flex gap-3">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="size-12 animate-pulse rounded-xl bg-chip" />
+      ))}
     </div>
   );
 }
