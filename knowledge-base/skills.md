@@ -82,7 +82,7 @@ Step-by-step instructions Claude follows when the Skill runs.
 1. **Engine** parses SKILL.md frontmatter via `serde_yml` (`engine/houston-skills/src/format.rs`). Unknown fields are silently ignored — old skills with `icon:` / `starter_prompt:` still parse.
 2. Engine returns the full `SkillSummaryResponse` on `GET /v1/skills`.
 3. **App** (`useSkills` query → `tauri.ts` → `engine-client`) maps the snake/camel-case wire shape back to app's `SkillSummary`.
-4. **Skill cards** use `app/src/components/skill-card.tsx` across the chat empty state and the New Mission picker. Keep these in sync by reusing the component, not recreating card markup. (The per-agent Skills tab no longer uses `SkillCard`: its installed list now renders `InstalledSkillRow`s — see "Add Skills UI" below.) **First-party store skills ship fully translated** (en/es/pt SKILL.md trees; a Spanish workspace seeds Spanish skills, the agent runs the Spanish procedure, editing is in Spanish). Display names come from the frontmatter `title:` field via `skillDisplayTitle` (accents the ASCII slug can't carry), falling back to `humanize(slug)`. See `knowledge-base/i18n.md` § "Store skills are translated at the CONTENT level".
+4. **Skill cards** use `app/src/components/skill-card.tsx` across the chat empty state and the New Mission picker. Keep these in sync by reusing the component, not recreating card markup. (The per-agent Skills tab no longer uses `SkillCard`: its installed skills are tiles in the catalog strip — see "Add Skills UI" below.) **First-party store skills ship fully translated** (en/es/pt SKILL.md trees; a Spanish workspace seeds Spanish skills, the agent runs the Spanish procedure, editing is in Spanish). Display names come from the frontmatter `title:` field via `skillDisplayTitle` (accents the ASCII slug can't carry), falling back to `humanize(slug)`. See `knowledge-base/i18n.md` § "Store skills are translated at the CONTENT level".
 5. **`useAgentChatPanel`** (`app/src/components/use-agent-chat-panel.tsx`) — single source of truth for the per-agent panel UX. Owns:
    - skill discovery (featured cards on empty state)
    - selected Skill chip above the composer
@@ -93,54 +93,44 @@ Step-by-step instructions Claude follows when the Skill runs.
    - `renderUserMessage` — decodes skill + attachment markers into cards
 6. Both **BoardTab** (per-agent kanban) and **Dashboard** (Mission Control / cross-agent kanban) consume this hook so the right panel is identical in both views.
 
-## Add Skills UI — inline marketplace section (Integrations-style)
+## Add Skills UI — the catalog-grammar Skills surface
 
-The Skills.sh marketplace ("the store") lives **inline on the agent's Skills
-tab**, below the installed-skills list, styled like the Integrations tab
-(installed at top, browse catalog below on the same page) — NOT inside a dialog.
-The `AddSkillDialog` is now **GitHub / From scratch only** (the store tab was
-removed). The store is `SkillMarketplaceSection` (`ui/skills/`), mounted by
-`app/src/components/tabs/skills-content.tsx` when the marketplace handlers are
-wired and the surface is not read-only; it fetches its shelves/popular feed on
-mount (prop `active`, default true), not lazily on dialog-open. Its section
-header ("Discover skills" / "Add ready-made skills from the community.") sits
-above the search box; the installed list gets its own "Your skills" heading.
+The agent's Skills section (`app/src/components/tabs/skills-content.tsx`) is
+the shared **catalog layout** (the ui/core `CatalogShell`, same grammar as the
+Integrations surfaces and the AI hub, no page header — the nav label carries
+it): the consolidated **Your skills** strip of installed-skill TILES (with a
+count chip) OUTSIDE two discovery tabs — **Store** (`skills:tabs.store`, the
+skills.sh marketplace) and **Custom skills** (`skills:tabs.custom`, currently a
+pure EMPTY STATE: `tabs.customEmptyTitle` + `tabs.customEmptyDescription` + the
+filled **Add skill** CTA that opens the GitHub / From-scratch `AddSkillDialog`;
+its real behavior is TBD). Read-only mode (managed agent, non-manager) yields
+ZERO tabs — the shell then renders only the strip. The Skills.sh store is
+`SkillMarketplaceSection` (`ui/skills/`), mounted as the Store tab's content
+when the marketplace handlers are wired; it fetches its shelves feed on mount.
+Its own header ("Discover skills" / subheading + the `PoweredByVercelBadge`
+inline on the subheading line) sits above its search box + category dropdown.
 
 The section composes `SkillMarketplaceGrid` + `SkillMarketplaceRow` +
-`SkillPreviewModal` (all in `ui/skills/`): compact **rows** in the Integrations
-`AppRow` idiom (owner avatar left, `kebabToTitle` name + `by <owner> · <installs>`
-subtitle, and TWO always-visible trailing actions in `[Add pill] [info icon]`
-order — a labeled **Add** pill (Integrations connect-pill idiom: `bg-action`,
-`Adding...` spinner, muted `Added` check once installed) followed by an **info**
-button), laid out as a two-column `gap-2` grid; publisher-derived filter chips
+`SkillPreviewModal` (all in `ui/skills/`). `SkillMarketplaceRow` is the shared
+catalog grammar (`CatalogRow` from ui/core): owner avatar, `kebabToTitle` name,
+`by <owner> · <installs>` subtitle, transparent at rest with the full-row hover
+fill. The row BODY opens `SkillPreviewModal` (a `Dialog` overlay); the ghost
+round `+` (`CatalogAddButton`, spinning while THIS skill installs) is the
+install action, becoming a quiet check mark once installed — the old labeled
+Add pill and the separate info button are gone. Publisher-derived filter chips
 (skills.sh has no real categories, so `topPublishers` derives them from the
-`owner/repo` source, search mode only). The "Powered by Vercel" attribution badge
-(skills.sh runs on Vercel) sits **inline on the subheading line** in the section
-header: heading on its own line, then one `flex flex-wrap items-center gap-x-2`
-line holding the subheading text followed by the `PoweredByVercelBadge` (both
-muted small text, wraps gracefully at narrow widths) — not stacked, and not at
-the bottom of the grid. Row click (or the
-info button) opens `SkillPreviewModal` — a `Dialog` overlay (replacing the old
-body-swap `SkillPreviewSheet`, which only existed because the store lived in a
-fixed-size dialog); the Add pill `stopPropagation`s so it never also opens the modal.
+`owner/repo` source) render in search mode only.
 
-### Installed skills — rows with an edit modal (no separate detail screen)
+### Installed skills — strip tiles with an edit modal (no separate detail screen)
 
-The per-agent Skills tab (`app/src/components/tabs/agent-admin/agent-admin-skills.tsx`)
-renders the installed list as `InstalledSkillRow`s (`ui/skills/`) in the SAME
-two-column `grid grid-cols-1 gap-2 sm:grid-cols-2` as the marketplace, not as
-`SkillCard`s. Each row is the AppRow idiom: a `size-8 rounded-lg` image box
-(monogram fallback on the display title's first letter; the app passes a resolved
-URL via `resolveSkillImageUrl` in `app/src/lib/skill-image.ts`, shared with
-`SkillIcon`), the display title + one-line description, and TWO icon-only trailing
-actions in `[pen] [trash]` order — a **pen** (left) that opens the edit modal and a
-**trash** (right) that opens the delete confirm. Both are `size-7 rounded-lg
-text-ink-muted hover:bg-ink/[0.05]`; the pen hovers to
-`hover:text-ink`, the trash to the danger `hover:text-danger`; both
-`stopPropagation`. A row-body click also opens the edit modal (mirroring the
-marketplace rows' row-click-opens-modal pattern). Delete opens the existing
-`ConfirmDialog` (reusing `detail.deleteTitle`/`deleteDescription` copy). Row aria
-labels come from `grid.editSkillAria` / `grid.deleteSkillAria`.
+The per-agent Skills section (`app/src/components/tabs/agent-admin/agent-admin-skills.tsx`
+→ `SkillsContent`) renders the installed list as TILES in the consolidated
+strip (`app/src/components/tabs/installed-skill-tile.tsx`, the shared
+`CatalogTile`): the skill image (resolved via `resolveSkillImageUrl` in
+`app/src/lib/skill-image.ts`, shared with `SkillIcon`) or a `skillMonogram`
+letter box when it has none, labeled with the display title. A tile click opens
+the edit modal — the skill's ONE detail surface. The old `InstalledSkillRow`
+(pen/trash row) was DELETED with this convergence.
 
 Editing happens in `SkillEditModal` (`ui/skills/src/skill-edit-modal.tsx`), a
 `Dialog`/`DialogContent` overlay mirroring `SkillPreviewModal` (`sm:max-w-2xl`,
@@ -148,8 +138,12 @@ Editing happens in `SkillEditModal` (`ui/skills/src/skill-edit-modal.tsx`), a
 description under it (`DialogTitle`/`DialogDescription` for a11y), body = the editor
 content states (loading skeleton lines / inline load-error note / a roomy fixed-height
 `h-80 resize-none overflow-y-auto` monospace textarea seeded from the loaded
-markdown), footer (`DialogFooter`) = Cancel (ghost) + Save changes (primary pill,
-disabled until dirty, "Saving..." state). A successful save clears the editing
+markdown), footer (`DialogFooter`) = an optional destructive **Delete** pill
+pinned left (`mr-auto`; rendered only when `onDelete` is wired — the tile has no
+per-tile delete affordance, so the destructive action lives here and opens the
+existing `ConfirmDialog` with `detail.deleteTitle`/`deleteDescription` copy) +
+Cancel (ghost) + Save changes (primary pill, disabled until dirty, "Saving..."
+state). A successful save clears the editing
 skill in `useSkillSurface`, which closes the modal; a save rejection propagates to
 the app toast path. The modal is rendered once by `SkillsContent` (one at a time),
 not by the row. The content loads via the existing `useSkillDetail` →
@@ -192,8 +186,18 @@ only if every shelf fails). There is **no Popular shelf** — its skills.sh seed
 dev-skewed, so the whole popular pathway (the `onPopular` prop, app `handlePopular`,
 `tauriSkills.popularCommunity`, and the adapter/engine-client
 `popularCommunitySkills` methods) was removed client-side; the host's public
-`community/popular` route stays. Each shelf renders a capped 2-column mini-grid of
-rows (`SHELF_GRID_CAP` = 4, matching the Integrations aesthetic); its "See all"
+`community/popular` route stays. No author repeats ANYWHERE
+in the preview: each shelf stores one skill per author (`dedupeByOwner` in
+`skill-marketplace-shelves-model.ts`, first hit per `owner`, capped at
+`SHELF_CARD_CAP` = 8 candidates), and the component then runs the pure
+`dedupeAcrossShelves` at render time in shelf display order — an owner rendered
+by an earlier shelf is skipped by every later one (skills.sh categories overlap
+heavily, so the same prolific publishers headlined every shelf). Only RENDERED
+owners consume (an uncapped spare never blocks a later shelf); a shelf emptied
+by the pass hides (`isShelfVisible` now requires a non-empty ready list).
+Search/category results stay complete so nothing is undiscoverable. Each shelf
+renders a capped 2-column mini-grid of rows (`SHELF_GRID_CAP` = 4, matching the
+Integrations aesthetic); its "See all"
 now SELECTS that category in the dropdown (one mental model), not a search-box
 stuff. A **category dropdown** (`skill-category-select.tsx`, a `@houston-ai/core`
 Popover + Command pill mirroring the app's `FilterCombobox` look) sits beside the

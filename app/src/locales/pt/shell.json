@@ -302,6 +302,11 @@
       "useApiKey": "Usar chave de API no lugar",
       "bodyWithReset": "Seu plano do {{provider}} chegou ao limite. Ele reinicia {{time}}, ou faça upgrade para continuar."
     },
+    "contextOverflow": {
+      "title": "Esta conversa ficou longa demais para o modelo",
+      "body": "{{model}} não consegue mais ler esta conversa inteira. Mude esta conversa para um modelo com mais memória ou comece uma nova missão para o próximo passo.",
+      "switchModel": "Trocar modelo"
+    },
     "modelUnavailable": {
       "title": "Modelo não disponível",
       "body": "O modelo {{model}} não está disponível na sua conta {{provider}}.",

@@ -2,13 +2,15 @@
  * The reusable model browser: a control stack (a full-width pill search box on
  * its own row, then the "AI provider" / "Good at" / "Cost" / "Memory" facet
  * comboboxes together on a second row, wrapping as a unit on narrow widths so
- * the search box never strands a lone combobox on its own line) above a
- * single-column list of {@link ModelCardRow} cards, the same card idiom as the
- * allowed-models editor. Each card opens the model modal via `onOpenModel`; the
- * grid caps at one page with a quiet "Show more" pill and shows the shared
+ * the search box never strands a lone combobox on its own line) above the
+ * {@link ModelCardRow} list in the shared catalog grammar. The directory
+ * (`ModelDirectory`) renders it as the responsive two-column `CatalogGrid`
+ * (`layout="grid"`); the provider modal keeps a single column (`"list"`,
+ * the default — the grid's breakpoint is viewport-based and would cramp two
+ * columns into the dialog). Each row opens the model modal via `onOpenModel`;
+ * the list caps at one page with a quiet "Show more" pill and shows the shared
  * Empty treatment when every filter + the search rule out everything. Owns all
- * filter state + filtering. Reused by the Models tab (`ModelDirectory`) and the
- * provider modal so both read identically.
+ * filter state + filtering.
  *
  * The "AI provider" combobox lists only the labs present in the passed `models`
  * and hides itself when they are all one lab (a single useless option); the
@@ -17,6 +19,7 @@
  */
 
 import {
+  CatalogGrid,
   cn,
   Empty,
   EmptyDescription,
@@ -51,10 +54,14 @@ const PAGE = 60;
 export function ModelsBrowser({
   models,
   onOpenModel,
+  layout = "list",
   className,
 }: {
   models: CatalogModel[];
   onOpenModel: (key: string) => void;
+  /** `"grid"` = the responsive two-column catalog grid (the directory);
+   *  `"list"` = one column (the provider modal's narrow dialog). */
+  layout?: "list" | "grid";
   className?: string;
 }) {
   const { t } = useTranslation("aiHub");
@@ -176,16 +183,15 @@ export function ModelsBrowser({
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="grid grid-cols-1 gap-2">
+        <CatalogGrid className={layout === "list" ? "lg:grid-cols-1" : ""}>
           {results.slice(0, visible).map((model) => (
             <ModelCardRow
               key={model.key}
               model={model}
-              seeMoreLabel={t("directory.seeMore")}
               onOpen={() => onOpenModel(model.key)}
             />
           ))}
-        </div>
+        </CatalogGrid>
       )}
 
       {visible < results.length && (

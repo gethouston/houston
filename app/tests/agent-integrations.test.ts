@@ -5,7 +5,10 @@ import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
-import { agentIntegrationsView } from "../src/components/tabs/agent-integrations/model.ts";
+import {
+  agentIntegrationsView,
+  connectableCount,
+} from "../src/components/tabs/agent-integrations/model.ts";
 
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
@@ -174,23 +177,23 @@ describe("E7 integrations tab source", () => {
 
   it("hands the effective allowlist down so blocked apps render as locked rows", () => {
     // The tab still computes the ceiling and hands it to the body, which now
-    // passes it to the browse section — blocked apps render as LOCKED rows there
-    // (via browseCatalogView + CatalogLockedSection) instead of being filtered
-    // out and vanishing silently.
+    // passes it to the shared catalog pane — blocked apps render as LOCKED rows
+    // there (via browseCatalogView + CatalogLockedSection) instead of being
+    // filtered out and vanishing silently.
     ok(src.includes("effectiveAllowlist"), "still computes the ceiling");
     ok(src.includes("useAgentSettings"), "still reads agent settings");
     ok(src.includes("allowlist={allowlist}"), "hands the ceiling to the body");
     const body = read(
       "../src/components/tabs/agent-integrations/agent-integrations-body.tsx",
     );
-    ok(body.includes("ConnectMoreAppsSection"), "browse section stays");
+    ok(body.includes("CatalogPane"), "the shared catalog pane stays");
     ok(
       body.includes("allowlist={allowlist}"),
-      "body hands the ceiling to the browse section (locks, not pre-filter)",
+      "body hands the ceiling to the pane (locks, not pre-filter)",
     );
     ok(
-      !body.includes("catalog.filter"),
-      "body no longer pre-filters blocked apps out of the catalog",
+      body.includes("catalog={catalog}"),
+      "the pane receives the FULL catalog, never a pre-filtered one",
     );
   });
 
@@ -205,5 +208,30 @@ describe("E7 integrations tab source", () => {
       "../src/components/tabs/agent-integrations/agent-integrations-body.tsx",
     );
     ok(body.includes("useState"), "the category filter lives in the body");
+  });
+});
+
+describe("connectableCount", () => {
+  it("counts unconnected apps, minus those a Teams ceiling blocks", () => {
+    strictEqual(
+      connectableCount({
+        catalog: CATALOG,
+        connections: [conn("gmail")],
+        allowlist: null,
+      }),
+      2,
+    );
+    strictEqual(
+      connectableCount({
+        catalog: CATALOG,
+        connections: [conn("gmail")],
+        allowlist: ["gmail", "slack"],
+      }),
+      1,
+    );
+    strictEqual(
+      connectableCount({ catalog: CATALOG, connections: [], allowlist: [] }),
+      0,
+    );
   });
 });

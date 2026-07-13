@@ -28,3 +28,19 @@ export function customAuthMethod(
 export function isPendingCredential(view: CustomIntegrationView): boolean {
   return view.state.status === "pending";
 }
+
+/**
+ * The custom-integrations list narrowed by the tab's search field: a
+ * case-insensitive substring over name and slug (there is no description or
+ * category on a custom integration). A blank query keeps everything.
+ */
+export function filterCustomIntegrations(
+  items: CustomIntegrationView[],
+  query: string,
+): CustomIntegrationView[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return items;
+  return items.filter(
+    (i) => i.name.toLowerCase().includes(q) || i.slug.toLowerCase().includes(q),
+  );
+}

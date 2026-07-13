@@ -20,6 +20,7 @@ export function ModelDirectory({
     <ModelsBrowser
       models={catalog.models}
       onOpenModel={onOpenModel}
+      layout="grid"
       className="flex-1"
     />
   );

@@ -1,5 +1,5 @@
-import { cn } from "@houston-ai/core";
-import { Check, Info, Loader2 } from "lucide-react";
+import { CatalogAddButton, CatalogRow } from "@houston-ai/core";
+import { Check } from "lucide-react";
 import {
   formatInstalls,
   kebabToTitle,
@@ -13,11 +13,6 @@ export interface SkillMarketplaceCardLabels {
   installedAria?: (name: string) => string;
   installsCount?: (count: number, formatted: string) => string;
   bySource?: (owner: string) => string;
-  infoAria?: (name: string) => string;
-  /** Labeled install pill copy. */
-  add?: string;
-  adding?: string;
-  added?: string;
 }
 
 const DEFAULT_LABELS: Required<SkillMarketplaceCardLabels> = {
@@ -26,10 +21,6 @@ const DEFAULT_LABELS: Required<SkillMarketplaceCardLabels> = {
   installsCount: (count, formatted) =>
     count === 1 ? `${formatted} install` : `${formatted} installs`,
   bySource: (owner) => `by ${owner}`,
-  infoAria: (name) => `About ${name}`,
-  add: "Add",
-  adding: "Adding...",
-  added: "Added",
 };
 
 export interface SkillMarketplaceRowProps {
@@ -42,13 +33,11 @@ export interface SkillMarketplaceRowProps {
 }
 
 /**
- * A compact marketplace row in the Integrations "AppRow" idiom: owner avatar +
- * title + subtitle on the left, two always-visible trailing actions on the
- * right (a labeled **Add** pill and an **info** button — no hover-gating).
- * Clicking the row body opens the detail info modal; the Add pill stops
- * propagation so it never also opens info. Rendered as a `div[role=button]`
- * (not a `<button>`) because it contains real `<button>` actions, and nesting
- * buttons would be invalid HTML.
+ * A marketplace row in the shared catalog grammar ({@link CatalogRow}): owner
+ * avatar + title + `by <owner> · <installs>` subtitle, transparent at rest
+ * with the full-row hover fill. The row BODY opens the detail info modal; the
+ * ghost `+` ({@link CatalogAddButton}, spinning while THIS skill installs) is
+ * the install action — once installed it becomes a quiet check mark.
  */
 export function SkillMarketplaceRow({
   skill,
@@ -70,67 +59,29 @@ export function SkillMarketplaceRow({
       : l.bySource(owner);
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: the row holds real <button> actions; a native <button> here would nest buttons (invalid HTML), so role="button" on a div is the correct pattern.
-    <div
-      role="button"
-      tabIndex={0}
+    <CatalogRow
+      icon={<SkillOwnerAvatar owner={owner} size="lg" />}
+      title={title}
+      description={subtitle}
       onClick={onOpenInfo}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpenInfo();
-        }
-      }}
-      className="group flex w-full cursor-pointer items-center gap-3 rounded-xl bg-chip px-3 py-2.5 text-left transition-colors hover:bg-ink/[0.05] focus-visible:bg-ink/[0.05] focus-visible:outline-none"
-    >
-      <SkillOwnerAvatar owner={owner} size="md" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium text-ink">{title}</p>
-        <p className="truncate text-[11px] text-ink-muted">{subtitle}</p>
-      </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onInstall();
-          }}
-          disabled={installing || installed}
-          aria-label={installed ? l.installedAria(title) : l.installAria(title)}
-          className={cn(
-            "inline-flex h-7 shrink-0 items-center gap-1 rounded-full px-3 text-xs font-medium transition-colors",
-            installed
-              ? "bg-chip text-ink-muted"
-              : "bg-action text-action-text hover:bg-action/90",
-            installing && "cursor-wait opacity-70",
-          )}
-        >
-          {installing ? (
-            <>
-              <Loader2 className="size-3.5 animate-spin" />
-              {l.adding}
-            </>
-          ) : installed ? (
-            <>
-              <Check className="size-3.5" />
-              {l.added}
-            </>
-          ) : (
-            l.add
-          )}
-        </button>
-        <button
-          type="button"
-          aria-label={l.infoAria(title)}
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenInfo();
-          }}
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-ink/[0.05] hover:text-ink"
-        >
-          <Info className="size-4" />
-        </button>
-      </div>
-    </div>
+      action={
+        installed ? (
+          <span
+            role="img"
+            aria-label={l.installedAria(title)}
+            title={l.installedAria(title)}
+            className="flex size-9 shrink-0 items-center justify-center text-ink-muted"
+          >
+            <Check className="size-4" />
+          </span>
+        ) : (
+          <CatalogAddButton
+            label={l.installAria(title)}
+            busy={installing}
+            onClick={onInstall}
+          />
+        )
+      }
+    />
   );
 }

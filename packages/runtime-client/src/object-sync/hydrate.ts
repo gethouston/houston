@@ -83,6 +83,12 @@ export interface SyncResult {
   uploaded: string[];
   deleted: string[];
   manifest: HydrateManifest;
+  /**
+   * Total bytes of every synced (non-excluded) file — the size the NEXT
+   * hydration must swallow. Callers compare it against their hydrate cap and
+   * warn while the agent is writing, not when a later wake fails.
+   */
+  totalBytes: number;
 }
 
 /**
@@ -100,11 +106,13 @@ export async function syncBack(
   const excludes = opts.excludes ?? DEFAULT_EXCLUDES;
   const uploaded: string[] = [];
   const nextManifest: HydrateManifest = new Map();
+  let totalBytes = 0;
   for (const rel of await walkFiles(dir, dir)) {
     if (excluded(rel, excludes)) continue;
     const abs = join(dir, ...rel.split("/"));
     const fileStat = await stat(abs);
     if (!fileStat.isFile()) continue;
+    totalBytes += fileStat.size;
     const hash = sha256(await readFile(abs));
     nextManifest.set(rel, hash);
     if (manifest.get(rel) !== hash) {
@@ -119,5 +127,5 @@ export async function syncBack(
       deleted.push(rel);
     }
   }
-  return { uploaded, deleted, manifest: nextManifest };
+  return { uploaded, deleted, manifest: nextManifest, totalBytes };
 }

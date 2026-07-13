@@ -3,7 +3,7 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
-## v23 - 2026-07-12
+## v25 - 2026-07-12
 
 The Routines/Reactions tab split is merged into ONE "Automations" tab, and the
 wake mechanism becomes a choice INSIDE the routine editor. `routine-row`'s
@@ -20,6 +20,42 @@ CONTRACT change: `RoutineRowLabels` gains `whenTitle`, `whenSchedule`,
 `newDraftVariant` prop is replaced by `allowEventWake` (the new-draft editor
 always starts on the schedule side and the user switches). No new component;
 `routine-row` anatomy gains `wake-choice` inside its edit panel.
+
+## v24 - 2026-07-12
+
+The AI models hub moved to the shared catalog grammar (the ui/ CatalogShell +
+CatalogRow family, shared with the Integrations page).
+
+`ai-provider-card` restructured: the hub row is now a split CatalogRow (body
+opens the provider detail modal, a ghost round + connects, Cancel pill while in
+flight), and connected providers moved out of the browse grid into the
+consolidated "Connected" tile strip above the tabs. The onboarding / migration
+/ workspace-setup connect card keeps the previous static shape as the
+connect-flow-card variant; its info button (the old one open affordance) is
+gone with the hub grid.
+
+`ai-model-row` restyled to the same CatalogRow: flat transparent row (no more
+bg-chip slab), no trailing "See more" cue, two-column CatalogGrid in the
+directory / single column in the provider modal.
+
+`skill-row` converged too: the Skills surface is now the CatalogShell (installed
+tiles above Store / Custom skills tabs), community rows are CatalogRows with the
+ghost + install, and the old installed row (pen/trash) is gone — edit opens from
+a tile, delete moved into the edit modal footer.
+
+## v23 - 2026-07-12
+
+`provider-error-card` gains a `context-overflow` state. The engine taxonomy
+(protocol `ProviderError`, mirrored in `ui/chat`) adds `context_overflow`: the
+provider rejected the request because the conversation no longer fits the
+model's context window (llama.cpp/Jan `exceed_context_size_error`, OpenAI
+`context_length_exceeded`, Anthropic "prompt is too long"). Previously this
+fell through to the generic `unknown` card. The card names the model that ran
+out of room and offers the model picker as its CTA (a larger-window model, or
+the user starts a fresh mission). Wire fields carry the provider's own numbers
+(`context_window_tokens`, `prompt_tokens`); the runtime also uses the reported
+window to correct an over-assumed custom-endpoint window so autocompact fires
+at the real boundary on later turns.
 
 ## v22 - 2026-07-12
 

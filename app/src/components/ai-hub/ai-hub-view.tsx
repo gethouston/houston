@@ -1,6 +1,6 @@
-import { cn } from "@houston-ai/core";
-import { AnimatePresence, motion } from "framer-motion";
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import { CatalogShell, type CatalogShellTab, cn } from "@houston-ai/core";
+import { useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderConnections } from "../../hooks/use-provider-connections";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types";
@@ -13,36 +13,34 @@ import {
   getConnectProviders,
   type ProviderInfo,
 } from "../../lib/providers";
-import { ProviderBrowser } from "../provider-browser/provider-browser";
 import { ProviderConnectionDialogs } from "../provider-browser/provider-connection-dialogs";
+import { groupProviders } from "../provider-browser/provider-grouping";
 import { PageContainer } from "../shell/page-shell";
 import { AiHubPolicy } from "./ai-hub-policy";
-import { AiHubTabs, type HubTab } from "./ai-hub-tabs";
+import { ConnectedProvidersStrip } from "./connected-providers-strip";
 import { HubHero } from "./hub-hero";
+import { HubSkeleton } from "./hub-skeleton";
 import { ModelDirectory } from "./model-directory";
 import { ModelModal } from "./model-modal";
 import { ProviderModal } from "./provider-modal";
-
-const TRANSITION = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-  transition: { duration: 0.2, ease: [0.25, 0.1, 0.25, 1] as const },
-};
+import { ProvidersPane } from "./providers-pane";
 
 /**
- * The AI models hub: a top-level marketplace surface. Composes the masthead, the
- * Providers / Models tabs, and the two surfaces (provider list + model grid),
- * driven by `useHubCatalog` (the model directory) and `useProviderConnections`
- * (connect / sign-out). A provider row or model row opens a centered MODAL
- * (`ProviderModal` / `ModelModal`) that fades in over a single dim scrim — the
- * page stays put (no recede/blur). The connect-dialog stack renders once here
- * for every card and offer row underneath.
+ * The AI models hub: a top-level marketplace surface in the shared
+ * {@link CatalogShell} grammar (the same layout as the Integrations page) —
+ * the hero, then the consolidated **Connected** strip of provider brand tiles
+ * OUTSIDE the tabs (a tile opens that provider's modal), then the discovery
+ * tabs with live count chips: **Providers** ({@link ProvidersPane}: the
+ * not-yet-connected catalog), **Models** (the cross-provider directory) and,
+ * on Teams, **Workspace policy**. A provider row/tile or model row opens a
+ * centered MODAL (`ProviderModal` / `ModelModal`); the connect-dialog stack
+ * renders once here for every surface underneath.
  */
 export function AiHubView() {
+  const { t } = useTranslation("aiHub");
   const { catalog, isLoading } = useHubCatalog();
   const connections = useProviderConnections();
-  const [tab, setTab] = useState<HubTab>("providers");
+  const [tab, setTab] = useState("providers");
   const [openProvider, setOpenProvider] = useState<ProviderInfo | null>(null);
   const [openModel, setOpenModel] = useState<CatalogModel | null>(null);
 
@@ -65,10 +63,19 @@ export function AiHubView() {
       }),
     [newEngine, providerCapabilities],
   );
+  // Connected providers live in the strip; only the rest browse in the tab.
+  // Until the first status probe resolves everything counts as available (the
+  // pane holds a skeleton and the counts stay hidden meanwhile).
+  const { connected, available } = useMemo(
+    () => groupProviders(connectProviders, connections.isConnected),
+    [connectProviders, connections.isConnected],
+  );
 
   // While a modal is up, freeze the page scroller behind it. Radix's scroll
   // lock only locks <body>; this inner region kept its own live scrollbar,
   // which sat next to the modal's as a second, draggable vertical scroll.
+  // Hidden boxes are still scroll containers, so `scrollbar-gutter: stable`
+  // keeps the gutter reserved and the scroll offset holds.
   const modalOpen = openProvider !== null || openModel !== null;
 
   // Retain the last provider/model while a modal animates out so Radix keeps it
@@ -80,75 +87,78 @@ export function AiHubView() {
   if (openModel) lastModel.current = openModel;
   const modelForModal = openModel ?? lastModel.current;
 
-  return (
-    <div className="flex h-full flex-col">
-      {!catalog ? (
-        <PageContainer className="flex flex-col gap-8 py-10">
-          <HubSkeleton loading={isLoading} />
-        </PageContainer>
-      ) : (
-        <>
-          {/* Fixed masthead: the hero title + tabs never scroll away. No
-              background of its own — it's a non-overlapping flex sibling of the
-              scroll region below (nothing renders behind it), so it inherits the
-              `.canvas-screen` glass. An opaque `bg-input` here painted a
-              solid slab that broke the frosted-glass screen in dark mode (the
-              aurora bleeds through everywhere else). */}
-          <div className="shrink-0">
-            <PageContainer className="flex flex-col gap-6 pt-10 pb-4">
-              <HubHero modelCount={catalog.modelCount} />
-              <AiHubTabs
-                active={tab}
-                providerCount={connectProviders.length}
-                modelCount={catalog.modelCount}
-                showPolicy={showPolicy}
-                onSelect={setTab}
-              />
-            </PageContainer>
-          </div>
+  const tabs: CatalogShellTab[] | null = catalog
+    ? [
+        {
+          value: "providers",
+          label: t("tabs.providers"),
+          count: connections.ready ? available.length : undefined,
+          content: (
+            <ProvidersPane
+              providers={available}
+              connections={connections}
+              catalog={catalog}
+              onOpen={setOpenProvider}
+            />
+          ),
+        },
+        {
+          value: "models",
+          label: t("tabs.models"),
+          count: catalog.modelCount,
+          content: (
+            <ModelDirectory
+              catalog={catalog}
+              onOpenModel={(key) => {
+                const model = catalog.byKey.get(key);
+                if (model) setOpenModel(model);
+              }}
+            />
+          ),
+        },
+        ...(showPolicy
+          ? [
+              {
+                value: "policy",
+                label: t("tabs.policy"),
+                content: <AiHubPolicy />,
+              },
+            ]
+          : []),
+      ]
+    : null;
 
-          {/* Only this region scrolls. While a modal is open it flips to
-              `overflow-y-hidden` — Radix's scroll lock covers only <body>, so
-              this region's scrollbar stayed live behind the modal (a second
-              draggable vertical scroll). Hidden boxes are still scroll
-              containers, so `scrollbar-gutter: stable` keeps the gutter
-              reserved and the scroll offset holds — the list stays put on
-              modal open/close. The ModelsBrowser control row + card grid
-              scroll within this region, beneath the fixed tabs above. */}
-          <div
-            className={cn(
-              "flex-1 [scrollbar-gutter:stable]",
-              modalOpen ? "overflow-y-hidden" : "overflow-y-auto",
-            )}
-          >
-            <PageContainer className="flex flex-col pb-10">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div key={tab} {...TRANSITION}>
-                  {tab === "providers" ? (
-                    <ProviderBrowser
-                      providers={connectProviders}
-                      connections={connections}
-                      catalog={catalog}
-                      onOpen={setOpenProvider}
-                      renderDialogs={false}
-                    />
-                  ) : tab === "policy" && showPolicy ? (
-                    <AiHubPolicy />
-                  ) : (
-                    <ModelDirectory
-                      catalog={catalog}
-                      onOpenModel={(key) => {
-                        const model = catalog.byKey.get(key);
-                        if (model) setOpenModel(model);
-                      }}
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </PageContainer>
-          </div>
-        </>
+  return (
+    <div
+      className={cn(
+        "h-full [scrollbar-gutter:stable]",
+        modalOpen ? "overflow-y-hidden" : "overflow-y-auto",
       )}
+    >
+      <PageContainer className="flex flex-col gap-6 py-10">
+        {!catalog || !tabs ? (
+          <HubSkeleton loading={isLoading} />
+        ) : (
+          <>
+            <HubHero modelCount={catalog.modelCount} />
+            <CatalogShell
+              installedTitle={t("sections.connected")}
+              installedCount={connections.ready ? connected.length : undefined}
+              installed={
+                connections.ready && connected.length > 0 ? (
+                  <ConnectedProvidersStrip
+                    providers={connected}
+                    onOpen={setOpenProvider}
+                  />
+                ) : undefined
+              }
+              tabs={tabs}
+              value={tab}
+              onValueChange={setTab}
+            />
+          </>
+        )}
+      </PageContainer>
 
       {providerForModal && catalog && (
         <ProviderModal
@@ -177,21 +187,6 @@ export function AiHubView() {
         />
       )}
       <ProviderConnectionDialogs {...connections.dialogProps} />
-    </div>
-  );
-}
-
-/**
- * A calm placeholder while the local catalog resolves. It loads from bundled
- * JSON so this flashes only for a frame; nothing flashy, just three muted bars.
- */
-function HubSkeleton({ loading }: { loading: boolean }): ReactNode {
-  if (!loading) return null;
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="h-8 w-40 rounded-lg bg-chip" />
-      <div className="h-4 w-2/3 rounded-lg bg-chip" />
-      <div className="mt-4 h-9 w-56 rounded-full bg-chip" />
     </div>
   );
 }

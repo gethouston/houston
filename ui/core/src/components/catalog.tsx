@@ -1,15 +1,8 @@
 "use client";
 
-import { ChevronRight, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "../utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./select";
 
 /**
  * The flat "catalog plane" family — the browse-page grammar shared by every
@@ -24,25 +17,49 @@ import {
  * from the consumer (ui/ stays i18n-agnostic).
  */
 
-/** A section label — small heading with a trailing chevron accent. The chevron
- *  is visual, NOT navigation: a plain `<h2>`, no fake affordance. Sits directly
- *  under the page's h1 so headings never skip a level. */
+/** The quiet count chip the catalog family shares (section headers, shell
+ *  tabs): a small muted pill carrying how many items live in that group. */
+export function CatalogCount({
+  count,
+  className,
+}: {
+  count: number;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "rounded-full bg-chip-subtle px-1.5 py-0.5 font-medium text-[11px] text-ink-muted leading-none tabular-nums",
+        className,
+      )}
+    >
+      {count}
+    </span>
+  );
+}
+
+/** A section label — small heading with an optional trailing count chip. A
+ *  plain `<h2>`, no fake affordance. Sits directly under the page's h1 so
+ *  headings never skip a level. */
 export function CatalogSectionHeader({
   title,
+  count,
   className,
 }: {
   title: string;
+  /** How many items the section holds; omit to hide the chip. */
+  count?: number;
   className?: string;
 }) {
   return (
     <h2
       className={cn(
-        "flex items-center gap-1 text-sm font-medium text-ink",
+        "flex items-center gap-2 text-sm font-medium text-ink",
         className,
       )}
     >
       {title}
-      <ChevronRight className="size-4 text-ink-muted" aria-hidden />
+      {count != null && <CatalogCount count={count} />}
     </h2>
   );
 }
@@ -59,62 +76,6 @@ export function CatalogGrid({
     <div className={cn("grid grid-cols-1 gap-1 lg:grid-cols-2", className)}>
       {children}
     </div>
-  );
-}
-
-export interface CatalogRowProps
-  extends Omit<ComponentPropsWithoutRef<"button">, "children"> {
-  /** Leading art (~40px): a brand logo, letter avatar, or glyph tile. */
-  icon: ReactNode;
-  title: string;
-  /** One muted line, truncated. */
-  description?: string;
-  /** Right-edge affordance: a quiet `+`, a spinner, a lock, a chevron... */
-  trailing?: ReactNode;
-  /**
-   * Inert-but-calm: the row ignores clicks WITHOUT looking greyed out (used
-   * while a sibling's async action is in flight). It drops its hover fill and
-   * pointer so the no-op reads intentionally quiet, never broken.
-   */
-  inert?: boolean;
-}
-
-/** One flat catalog row — the reference's GitHub-row look. The WHOLE row is
- *  the button (a generous hit target), transparent at rest, the `hover` fill
- *  sweeping the full row. Its accessible name is its text content. */
-export function CatalogRow({
-  icon,
-  title,
-  description,
-  trailing,
-  inert = false,
-  className,
-  disabled,
-  ...rest
-}: CatalogRowProps) {
-  return (
-    <button
-      type="button"
-      disabled={disabled || inert}
-      className={cn(
-        "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
-        "hover:bg-hover focus-visible:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/40",
-        inert
-          ? "disabled:cursor-default disabled:opacity-100 disabled:hover:bg-transparent"
-          : "disabled:pointer-events-none disabled:opacity-50",
-        className,
-      )}
-      {...rest}
-    >
-      {icon}
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-ink text-sm">{title}</p>
-        {description && (
-          <p className="truncate text-[13px] text-ink-muted">{description}</p>
-        )}
-      </div>
-      {trailing}
-    </button>
   );
 }
 
@@ -208,43 +169,5 @@ export function CatalogSearchField({
         className="h-9 w-full rounded-full border border-line-input bg-input pr-4 pl-10 text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
       />
     </div>
-  );
-}
-
-/** The category filter beside the search field: a rounded select matching the
- *  field's height. `options` include whatever "all" entry the consumer wants
- *  first; all copy comes from the consumer. */
-export function CatalogFilterSelect({
-  value,
-  onChange,
-  options,
-  label,
-  className,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  label: string;
-  className?: string;
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger
-        aria-label={label}
-        className={cn(
-          "h-9 rounded-full border-line-input bg-input text-ink text-sm",
-          className,
-        )}
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }

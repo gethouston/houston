@@ -105,17 +105,44 @@ export function handleAgents(
     case "skills": {
       // Marketplace + repo reads are agent-scoped (PR #706). Model the GitHub
       // "list skills from a repo" then "install the selected ones" flow the
-      // Add Skills dialog drives, so the UI test can exercise it end to end.
+      // Add Skills dialog drives, so the UI test can exercise it end to end;
+      // installs land in the per-agent skills state (state-skills.ts) so the
+      // installed-tile strip, the edit modal, and delete work end to end too.
       if (rest[2] === "repo" && rest[3] === "list" && method === "POST")
         return json(REPO_SKILLS);
       if (rest[2] === "repo" && rest[3] === "install" && method === "POST") {
         const picked = Array.isArray(body?.skills) ? body.skills : [];
-        return json(
-          picked.map((s) => String((s as { name?: string }).name ?? "skill")),
+        const names = picked.map((s) =>
+          String((s as { name?: string }).name ?? "skill"),
         );
+        return json(state.installSkills(id, names));
       }
-      if (method === "GET") return json({ items: [] });
-      return noContent(); // create/update/delete/run — accepted no-ops
+      if (rest.length === 2) {
+        if (method === "GET") return json({ items: state.listSkills(id) });
+        if (method === "POST") {
+          state.createSkill(id, (body ?? {}) as Record<string, string>);
+          return noContent(201);
+        }
+        return noContent(405);
+      }
+      const slug = decodeURIComponent(rest[2] ?? "");
+      if (rest.length === 3) {
+        if (method === "GET") {
+          const detail = state.loadSkill(id, slug);
+          return detail ? json(detail) : json({ error: {} }, 404);
+        }
+        if (method === "PUT") {
+          return state.saveSkill(id, slug, String(body?.content ?? ""))
+            ? noContent()
+            : json({ error: {} }, 404);
+        }
+        if (method === "DELETE") {
+          return state.deleteSkill(id, slug)
+            ? noContent()
+            : json({ error: {} }, 404);
+        }
+      }
+      return noContent(); // run etc. — accepted no-ops
     }
 
     case "routines": {

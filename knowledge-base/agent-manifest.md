@@ -706,41 +706,50 @@ The **AI Hub** is a top-level sidebar view ("AI models", `viewMode "ai-hub"`) th
 replaced the old Settings → AI provider section. It is a provider/model
 marketplace, not a settings pane. Entry: `app/src/components/ai-hub/ai-hub-view.tsx`
 (`AiHubView`), rendered by `workspace-shell.tsx` like any other top-level view.
+The view is laid out by the shared **`CatalogShell`** (`ui/core`, the same
+grammar as the Integrations page): a consolidated **Connected** strip of
+provider brand tiles OUTSIDE the tabs (`connected-providers-strip.tsx`, a tile
+opens the provider modal — sign-out lives there), then the Providers / Models
+(/ Workspace policy on Teams) tabs with `CatalogCount` chips. The whole page is
+ONE scroll region (the old fixed-masthead split is gone); while a modal is open
+the scroller flips to `overflow-y-hidden` (Radix only locks `<body>`) with
+`scrollbar-gutter: stable` holding the offset.
 
 **Four surfaces, one view:**
-- **Provider grid** — the shared `ProviderBrowser`
-  (`components/provider-browser/provider-browser.tsx`, rows in
-  `provider-browser/provider-row.tsx`, grouped by
-  `provider-browser/provider-grouping.ts`): brand-colored cards in Connected /
-  Available sections, featured pinned first, with a search box + two
-  Subscription/Pay-as-you-go toggle buttons (`provider-filters.tsx`,
-  single-select — click the active one to clear back to "all"). The filter is
+- **Providers tab** — `ai-hub/providers-pane.tsx`, the catalog grammar: a
+  controls row (search + the two Subscription/Pay-as-you-go toggle buttons,
+  `provider-browser/provider-filters.tsx`, single-select — click the active one
+  to clear back to "all") over a two-column grid of flat `CatalogRow`s (brand
+  mark, name, live model count · cost prose). The row BODY opens the provider
+  modal; the ghost `+` (`CatalogAddButton`) connects directly, flipping to a
+  Cancel pill while that provider's OAuth is in flight. Only NOT-connected
+  providers browse here — connected ones are strip tiles. The filter is
   driven by BILLING (`providerBilling()` in `provider-grouping.ts`), not by
   how the provider authenticates: it defaults from `auth` (oauth ->
   subscription, apiKey -> payg) but `PROVIDER_OVERRIDES[id].billing` overrides
   it where the two diverge — OpenCode Go is a flat $10/month subscription
-  unlocked with a pasted key. The merged OpenCode connect card (Zen + Go share
-  one key) spans both billing kinds and matches whichever filter is active
-  rather than being forced into one. No per-card auth badge/icon — how a
-  provider is paid for lives in the filter and the existing cost prose (e.g.
-  "Your Claude subscription"), not a separate visual element on every card
-  (an inline badge/icon was tried and dropped as too heavy / not worth the
-  clutter). The SAME `ProviderBrowser` component renders onboarding's connect
-  step, the migration reconnect screen, and workspace setup (they pass
-  `onSelect`/`selectOnMount`; the hub passes `onOpen` + `renderDialogs={false}`).
-  Onboarding alone also passes `curated`, which swaps the Connected/Available
-  grouping (and the billing filter bar) for a featured-only Subscription/API-key
-  split (`provider-browser-sections.tsx`'s `CuratedProviderSections`, grouping via
-  `groupByAuthType`/`filterToFeatured`) behind a "see all providers" expansion —
-  every other `curated`-omitting consumer keeps the full billing-filtered grid.
-  Coming-soon tiles are gone.
+  unlocked with a pasted key. The merged OpenCode connect row (Zen + Go share
+  one key) spans both billing kinds and matches whichever filter is active.
+  The old `ProviderBrowser` card grid
+  (`components/provider-browser/provider-browser.tsx`, cards in
+  `provider-row.tsx`) NO LONGER serves the hub — it remains the connect surface
+  for onboarding, the migration reconnect screen, and workspace setup (they
+  pass `onSelect`/`selectOnMount`; its `onOpen` info-button affordance was
+  removed with the hub grid). Onboarding alone also passes `curated`, which
+  swaps the Connected/Available grouping for a featured-only
+  Subscription/API-key split (`CuratedProviderSections`) behind a "see all
+  providers" expansion. Coming-soon tiles are gone.
 - **Provider detail** (`provider-modal.tsx`): connect / sign-out plus that
   provider's model list.
 - **Model directory** (`model-directory.tsx` → `models-browser.tsx` /
-  `model-card-row.tsx`): the cross-provider catalog (~378 unique models) as a
-  single-column list (BrandMark + name + lab + a visible "See more" cue),
-  above a control row of a pill search box + four facet comboboxes — AI provider
-  (self-hides at one lab), Good at, Cost, Memory. The comboboxes are the shared
+  `model-card-row.tsx`): the cross-provider catalog (~378 unique models) in the
+  shared catalog grammar — flat `CatalogRow`s (BrandMark + name + lab, whole
+  row opens the modal, NO trailing cue or `+`; models install via a provider
+  offer inside the modal) in the responsive two-column `CatalogGrid`
+  (`layout="grid"`; the provider modal passes the default `"list"` = one
+  column, since the grid's lg: breakpoint is viewport-based and would cramp
+  the dialog), above a control row of a pill search box + four facet
+  comboboxes — AI provider (self-hides at one lab), Good at, Cost, Memory. The comboboxes are the shared
   `ai-hub/filter-combobox.tsx` (Popover + cmdk, optional in-dropdown search),
   which the teams allowed-models editor's `agent-admin/lab-filter.tsx` also
   reuses. Cost/Memory buckets are the pure `costBucket` / `memoryBucket` in
@@ -752,9 +761,9 @@ marketplace, not a settings pane. Entry: `app/src/components/ai-hub/ai-hub-view.
 - **Model detail** (`model-modal.tsx` + `model-offer-row.tsx`): one model's
   per-provider offers ("Get it through" + pricing / subscription).
 
-Navigation is local `useState<HubLocation>` inside `AiHubView` (roots
-`providers` / `models` carry the hero + tabs; `provider` / `model` are drill-ins).
-The navigation shell is surface-specific idiom and stays uninventoried; only the
+Navigation is the `CatalogShell`'s controlled tab state plus two local modal
+states inside `AiHubView` (`openProvider` / `openModel`; the last value is
+retained through the exit animation). The shell itself is a ui/ component; the
 three reusable content components are in `design/inventory` (see below).
 
 ### The catalog

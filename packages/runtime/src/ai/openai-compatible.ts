@@ -198,3 +198,30 @@ export function setCustomEndpointConfig(input: CustomEndpointInput): void {
 export function clearCustomEndpointConfig(): void {
   save({});
 }
+
+/**
+ * Learn the endpoint's REAL context window from a provider context-overflow
+ * rejection (llama.cpp names its `n_ctx`). Local servers don't advertise a
+ * window pi can read, so an unset endpoint runs on the assumed default
+ * (`config.openaiCompatibleContextWindow`) — when that assumption is LARGER
+ * than the truth, autocompact never fires and every turn past the real window
+ * fails. Persisting the reported window makes the next turn's autocompact
+ * divide by the truth, so the conversation compacts instead of dying.
+ *
+ * Only ever sets or SHRINKS the stored window: the overflow proves the real
+ * window is at most `windowTokens`, but a report can't prove a LARGER window
+ * (and must never silently raise a value the user set deliberately). Returns
+ * whether anything was written.
+ */
+export function learnCustomContextWindow(windowTokens: number): boolean {
+  if (!Number.isInteger(windowTokens) || windowTokens <= 0) return false;
+  const e = load();
+  if (!e.baseUrl || !e.model) return false;
+  const stored = e.contextWindow ?? config.openaiCompatibleContextWindow;
+  if (stored <= windowTokens) return false;
+  save({ ...e, contextWindow: windowTokens });
+  console.log(
+    `[custom-endpoint] learned context window ${windowTokens} for ${e.model} (was assuming ${stored})`,
+  );
+  return true;
+}

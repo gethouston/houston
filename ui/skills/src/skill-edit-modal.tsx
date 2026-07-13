@@ -15,6 +15,8 @@ export interface SkillEditModalLabels {
   save?: string;
   saving?: string;
   cancel?: string;
+  /** The destructive footer action; only rendered when `onDelete` is wired. */
+  delete?: string;
   editorPlaceholder?: string;
   loadFailed?: string;
 }
@@ -23,6 +25,7 @@ const DEFAULT_LABELS: Required<SkillEditModalLabels> = {
   save: "Save changes",
   saving: "Saving...",
   cancel: "Cancel",
+  delete: "Delete skill",
   editorPlaceholder: "Instructions for this skill...",
   loadFailed: "Couldn't load this skill's instructions.",
 };
@@ -44,6 +47,9 @@ export interface SkillEditModalProps {
   description: string;
   editor: InstalledSkillEditorState;
   onSave: (content: string) => Promise<void>;
+  /** Open the delete confirm (the strip has no per-tile delete affordance, so
+   *  the destructive action lives here). Omit to hide the button. */
+  onDelete?: () => void;
   labels?: SkillEditModalLabels;
 }
 
@@ -64,6 +70,7 @@ export function SkillEditModal({
   description,
   editor,
   onSave,
+  onDelete,
   labels,
 }: SkillEditModalProps) {
   const l = { ...DEFAULT_LABELS, ...labels };
@@ -89,10 +96,16 @@ export function SkillEditModal({
             initial={editor.content}
             onSave={onSave}
             onCancel={close}
+            onDelete={onDelete}
             labels={l}
           />
         ) : (
-          <NonReadyBody status={editor.status} onCancel={close} labels={l} />
+          <NonReadyBody
+            status={editor.status}
+            onCancel={close}
+            onDelete={onDelete}
+            labels={l}
+          />
         )}
       </DialogContent>
     </Dialog>
@@ -103,10 +116,12 @@ export function SkillEditModal({
 function NonReadyBody({
   status,
   onCancel,
+  onDelete,
   labels: l,
 }: {
   status: InstalledSkillEditorState["status"];
   onCancel: () => void;
+  onDelete?: () => void;
   labels: Required<SkillEditModalLabels>;
 }) {
   return (
@@ -127,7 +142,7 @@ function NonReadyBody({
         </div>
       )}
       <DialogFooter>
-        <FooterButtons onCancel={onCancel} labels={l} />
+        <FooterButtons onCancel={onCancel} onDelete={onDelete} labels={l} />
       </DialogFooter>
     </>
   );
@@ -138,11 +153,13 @@ function ReadyEditBody({
   initial,
   onSave,
   onCancel,
+  onDelete,
   labels: l,
 }: {
   initial: string;
   onSave: (content: string) => Promise<void>;
   onCancel: () => void;
+  onDelete?: () => void;
   labels: Required<SkillEditModalLabels>;
 }) {
   const [draft, setDraft] = useState(initial);
@@ -178,6 +195,7 @@ function ReadyEditBody({
         <FooterButtons
           onCancel={onCancel}
           onSave={handleSave}
+          onDelete={onDelete}
           dirty={dirty}
           saving={saving}
           labels={l}
@@ -190,12 +208,14 @@ function ReadyEditBody({
 function FooterButtons({
   onCancel,
   onSave,
+  onDelete,
   dirty = false,
   saving = false,
   labels: l,
 }: {
   onCancel: () => void;
   onSave?: () => void;
+  onDelete?: () => void;
   dirty?: boolean;
   saving?: boolean;
   labels: Required<SkillEditModalLabels>;
@@ -203,6 +223,16 @@ function FooterButtons({
   const disabled = !dirty || saving || !onSave;
   return (
     <>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={saving}
+          className="mr-auto inline-flex h-9 items-center rounded-full px-4 text-sm font-medium text-danger transition-colors hover:bg-danger/10 disabled:opacity-60"
+        >
+          {l.delete}
+        </button>
+      )}
       <button
         type="button"
         onClick={onCancel}

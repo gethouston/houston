@@ -2,6 +2,7 @@ import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import {
+  catalogCategorySlugs,
   groupCatalogByCategory,
   UNCATEGORIZED,
 } from "../src/components/integrations/browse-model.ts";
@@ -159,6 +160,31 @@ describe("groupCatalogByCategory (new module)", () => {
         connected: new Set(),
       }),
       [],
+    );
+  });
+});
+
+describe("catalogCategorySlugs", () => {
+  it("orders A-Z by label with UNCATEGORIZED last, regardless of section size", () => {
+    deepStrictEqual(
+      catalogCategorySlugs({ catalog: CATALOG, connected: new Set() }),
+      [
+        "collaboration",
+        "communication",
+        "developer-tools",
+        "productivity",
+        UNCATEGORIZED,
+      ],
+    );
+  });
+
+  it("drops categories emptied by the connected exclusion", () => {
+    deepStrictEqual(
+      catalogCategorySlugs({
+        catalog: CATALOG,
+        connected: new Set(["slack", "discord", "random"]),
+      }),
+      ["collaboration", "developer-tools", "productivity"],
     );
   });
 });
