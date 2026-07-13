@@ -4,6 +4,7 @@ import {
   buildMigrationPlan,
   chunkPaths,
   collectIntegrations,
+  hasReconnectAppsStep,
   isPlausibleMigrationTarget,
   type SourceAgent,
   type SourceManifestEntry,
@@ -154,4 +155,33 @@ test("collects the sorted union of toolkit slugs across agents", () => {
     agent("Personal", "Helper", ["slack", "googlecalendar"]),
   ]);
   assert.deepEqual(slugs, ["gmail", "googlecalendar", "slack"]);
+});
+
+// ── hasReconnectAppsStep ──────────────────────────────────────────────
+
+test("the apps step is skipped when there is nothing to show", () => {
+  // The common v0.4.2x case: platform-mode integrations leave no per-agent
+  // record, and a clean migration has no leftovers → no empty-shell step.
+  assert.equal(
+    hasReconnectAppsStep({
+      integrations: 0,
+      failedAgents: 0,
+      excludedFiles: 0,
+      rejectedFiles: 0,
+    }),
+    false,
+  );
+});
+
+test("the apps step shows for integrations OR any leftover kind", () => {
+  const none = {
+    integrations: 0,
+    failedAgents: 0,
+    excludedFiles: 0,
+    rejectedFiles: 0,
+  };
+  assert.equal(hasReconnectAppsStep({ ...none, integrations: 2 }), true);
+  assert.equal(hasReconnectAppsStep({ ...none, failedAgents: 1 }), true);
+  assert.equal(hasReconnectAppsStep({ ...none, excludedFiles: 1 }), true);
+  assert.equal(hasReconnectAppsStep({ ...none, rejectedFiles: 1 }), true);
 });
