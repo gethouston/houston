@@ -73,6 +73,9 @@ jobs:
       - name: Boundary check
         run: pnpm check:boundaries
 
+      - name: AppImage sidecar repair regression test
+        run: scripts/test/repair-linux-appimage-sidecar.test.sh
+
       - name: Parity check (cross-surface component inventory)
         run: pnpm check:parity
 
