@@ -141,7 +141,7 @@ const desktopLogin =
   env.GOOGLE_DESKTOP_CLIENT_ID && env.GOOGLE_DESKTOP_CLIENT_SECRET;
 console.log(`
 ${paint.bold("── pnpm dev · feature matrix ──────────────────────────────────")}
-  Desktop app   local profile   no sign-in · terminal · files · local models
+  Desktop app   local profile   terminal · files · local models (login: see below)
   Web app       cloud profile   http://localhost:1430 · Google sign-in ·
                                 multiplayer Teams/Spaces · agent moves
   Engines       local processes spawned per agent (data: ${(process.env.CP_DEV_DATA_DIR || path.join(homedir(), ".dev-houston-cloud")).replace(homedir(), "~")})
