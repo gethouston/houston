@@ -70,7 +70,7 @@ export function SidebarItemRow({
     <div
       className={cn(
         sidebarItemRowClasses.root,
-        isActive ? "bg-hover" : "hover:bg-hover/50",
+        isActive ? "bg-sidebar-active" : "hover:bg-hover/50",
       )}
     >
       {isEditing ? (
@@ -97,7 +97,7 @@ export function SidebarItemRow({
           onKeyDown={(e) => onKeyDown(e, item.id)}
           className={cn(
             sidebarItemRowClasses.selectButton,
-            isActive ? "text-ink" : "text-hover-text",
+            isActive ? "font-medium text-ink" : "text-hover-text",
           )}
         >
           {item.icon && (

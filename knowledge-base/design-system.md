@@ -89,7 +89,8 @@ The owner vocabulary (say these words to direct changes):
 - **Lines & focus**: `line` (hairlines), `line-input` (field borders), `focus`.
 - **Status**: `danger`, `success`, `warning`, `highlight` (each with `-text`).
 - Untouched families: `space-*` (sign-in backdrop), `agent.*` (avatar palette),
-  `sidebar*` (with `-text`/`-hover`/`-line` suffixes).
+  `sidebar*` (with `-text`/`-hover`/`-line`/`-active` suffixes; `sidebar-active`
+  is the selected-row fill, a clear step above hover in both themes).
 
 ### `--ht-space-*` (sign-in backdrop)
 A deliberately **theme-invariant** group — both `color.light.json` and

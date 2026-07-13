@@ -61,7 +61,7 @@
     "selected_one": "{{count}} selected",
     "selected_other": "{{count}} selected",
     "moveTo": "Move to",
-    "archive": "Complete",
+    "archive": "Archive",
     "delete": "Delete",
     "clear": "Clear selection",
     "cancel": "Cancel",
@@ -73,10 +73,10 @@
       "action": "Move"
     },
     "confirmArchive": {
-      "title": "Complete missions?",
-      "description_one": "Complete {{count}} mission? You can reopen it from the Completed tab.",
-      "description_other": "Complete {{count}} missions? You can reopen them from the Completed tab.",
-      "action": "Complete"
+      "title": "Archive missions?",
+      "description_one": "Archive {{count}} mission? You can reopen it from the Archived tab.",
+      "description_other": "Archive {{count}} missions? You can reopen them from the Archived tab.",
+      "action": "Archive"
     },
     "confirmDelete": {
       "title": "Delete missions?",
@@ -90,9 +90,9 @@
     "selectAll": "Select all in column"
   },
   "archived": {
-    "emptyTitle": "No completed missions",
-    "emptyDescription": "Completed missions appear here. Reply to one to bring it back.",
-    "searchPlaceholder": "Search completed missions"
+    "emptyTitle": "No archived missions",
+    "emptyDescription": "Archived missions appear here. Reply to one to bring it back.",
+    "searchPlaceholder": "Search archived missions"
   },
   "dnd": {
     "moveError": "Couldn't move the mission: {{error}}"

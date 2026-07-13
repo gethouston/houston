@@ -26,6 +26,7 @@ export * from "./components/houston-avatar";
 export * from "./components/hover-card";
 export * from "./components/input";
 export * from "./components/input-group";
+export * from "./components/input-otp";
 export * from "./components/kbd";
 export * from "./components/model-picker";
 export * from "./components/popover";

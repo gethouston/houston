@@ -36,6 +36,7 @@
     "sidebar-line": { "$value": "{color.alpha.white-a08}" },
     "sidebar-hover": { "$value": "{color.alpha.white-a10}" },
     "sidebar-hover-text": { "$value": "{color.neutral.150}" },
+    "sidebar-active": { "$value": "{color.alpha.white-a10}" },
     "space-canvas": { "$value": "{color.space.canvas}" },
     "space-canvas-glow": { "$value": "{color.space.canvas-glow}" },
     "space-nebula-1": { "$value": "{color.space.nebula-1}" },
