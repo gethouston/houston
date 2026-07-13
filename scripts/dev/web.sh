@@ -8,4 +8,12 @@
 set -eu
 . scripts/dev/env.sh
 
+# The desktop pane's engine vars MUST NOT leak into the web bundle:
+# resolveEngine gives VITE_NEW_ENGINE_URL top priority, so a leaked value
+# points the CLOUD web app's engine at the local host, which then 401s every
+# request carrying the GCIP token (the old dev-cloud.sh blanked these for the
+# same reason). Present-but-empty = the mode falls through to CloudApp.
+export VITE_NEW_ENGINE_URL=
+export VITE_NEW_ENGINE_TOKEN=
+
 exec pnpm --filter houston-web dev
