@@ -1,0 +1,26 @@
+{
+  "title": "Agent Store",
+  "subtitle": "Ready-made agents from the Houston community. Install one and make it yours.",
+  "searchPlaceholder": "Search agents",
+  "allCategories": "All",
+  "sort": {
+    "recent": "Newest",
+    "installs": "Most installed"
+  },
+  "installs_one": "{{count}} install",
+  "installs_other": "{{count}} installs",
+  "install": "Install",
+  "installLabel": "Install {{name}}",
+  "empty": "No agents here yet. Try another category or search.",
+  "loadFailed": "The store could not be reached. Check your connection and try again.",
+  "retry": "Try again",
+  "showMore": "Show more agents",
+  "detail": {
+    "by": "Made by {{name}}",
+    "skills": "Skills",
+    "integrations": "Works with",
+    "learnings_one": "Comes with {{count}} learning from real use",
+    "learnings_other": "Comes with {{count}} learnings from real use"
+  },
+  "installFailed": "Houston could not fetch that agent from the store. Try again in a moment."
+}

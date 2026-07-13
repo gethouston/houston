@@ -22,7 +22,9 @@ The authoritative wire/DB surface is the gateway's contract
 | Domain bridge | `packages/domain/src/store-ir.ts` | `irFromPortable` / `portableFromIr` between Houston portable content and AgentIR. |
 | Host routes | `packages/host/src/routes/portable-store.ts`, `portable-store-ir.ts`, `store-publication-pointer.ts`, `portable-from-store.ts` | Credential-free: gather the IR + record a token-free local pointer; resolve an install link. |
 | Engine seam | `ui/engine-client/src/client.ts` (front door), `packages/web/src/engine-adapter/portable.ts` (impl) + `store-gateway.ts` | `publishAgentToStore` / `updateStorePublication` / `unpublishFromStore` / `getStorePublication` / `importFromStoreLink`. |
-| App UI | `app/src/components/portable/` | Share wizard (`share-screen`, `listing-step`), `manage-publication`, `install-from-link`, `use-store-publication.ts`. |
+| Catalog reads | `ui/engine-client/src/store-catalog.ts` (re-exported by the adapter) | Anonymous CORS-open browse: `fetchStoreCatalog` / `fetchStoreAgent` / `pingStoreInstall`. Plain fetch, no bearer, works signed-out; throws a status-carrying `StoreCatalogError` (deliberately not the engine error class). |
+| App UI (publish/install) | `app/src/components/portable/` | Share wizard (`share-screen`, `listing-step`), `manage-publication` (incl. in-app "See it in the store"), `install-from-link`, `use-store-publication.ts`. |
+| App UI (browse) | `app/src/components/store-view/` | The in-app Agent Store page (sidebar + ⌘K destination, view id `agent-store`): catalog-family rows over the public API, category chips + search + sort, detail modal, one-click install. |
 
 The tie to `cloud/` is the gateway API + a shared Firebase project; the AgentIR
 contract is a byte-copy relationship, not a runtime import. (The standalone
@@ -99,6 +101,33 @@ Two publish identities:
 going `public` is NOT self-serve; `requestPublic: true` only stamps a review flag,
 dropping the agent into the admin queue. Install/report counters are trigger-owned;
 no client writes them.
+
+## In-app browse (the Store view)
+
+The store is browsable INSIDE the app (`app/src/components/store-view/`,
+view id `agent-store` in `TOP_LEVEL_VIEWS`): a sidebar + command-palette
+destination rendering the public catalog in the shared catalog family
+(`CatalogRow`/`CatalogGrid`/`CatalogDetailDialog`/`CatalogSearchField`).
+Reads go straight to the gateway's anonymous CORS-open endpoints via
+`ui/engine-client/src/store-catalog.ts` — no account, no engine round-trip;
+base resolution mirrors the publish adapter (`__HOUSTON_STORE__` →
+`VITE_AGENTSTORE_GATEWAY_URL` → prod).
+
+**One-click install** (`use-store-install.ts`) is the link-install path with
+the paste skipped: `importFromStoreLink(slug)` fetches the preview through the
+host (SSRF-guarded), parks it, and opens the import wizard seeded via the
+one-shot `importSeedPreview` UI-store field — so the threat-scan choice,
+naming, and content pickers are byte-for-byte the file/link flow. The
+anonymous `installs` ping fires after, fire-and-forget (Sentry on failure,
+never blocks). Category chips reuse the publish wizard's
+`portable:publish.categories.*` labels via `storeCategoryLabelKey`; the view's
+own strings live in the `store` namespace (en/es/pt).
+
+Cross-links: the import wizard's upload step offers "browse the Agent Store"
+(closes itself into the view), and `manage-publication` offers "See it in the
+store" (sets the one-shot `storeFocusSlug`, which the view consumes into the
+detail dialog — unlisted listings resolve by direct slug, so owners see their
+own).
 
 ## Host routes + app plumbing
 

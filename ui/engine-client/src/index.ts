@@ -11,6 +11,7 @@
  */
 
 export * from "./client.ts";
+export * from "./store-catalog.ts";
 export * from "./types.ts";
 export * from "./vm.ts";
 export * from "./ws.ts";

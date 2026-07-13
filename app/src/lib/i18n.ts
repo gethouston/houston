@@ -33,6 +33,7 @@ import settingsEn from "../locales/en/settings.json";
 import setupEn from "../locales/en/setup.json";
 import shellEn from "../locales/en/shell.json";
 import skillsEn from "../locales/en/skills.json";
+import storeEn from "../locales/en/store.json";
 import teamsEn from "../locales/en/teams.json";
 import agentOnboardingEs from "../locales/es/agent-onboarding.json";
 import agentsEs from "../locales/es/agents.json";
@@ -56,6 +57,7 @@ import settingsEs from "../locales/es/settings.json";
 import setupEs from "../locales/es/setup.json";
 import shellEs from "../locales/es/shell.json";
 import skillsEs from "../locales/es/skills.json";
+import storeEs from "../locales/es/store.json";
 import teamsEs from "../locales/es/teams.json";
 import agentOnboardingPt from "../locales/pt/agent-onboarding.json";
 import agentsPt from "../locales/pt/agents.json";
@@ -79,6 +81,7 @@ import settingsPt from "../locales/pt/settings.json";
 import setupPt from "../locales/pt/setup.json";
 import shellPt from "../locales/pt/shell.json";
 import skillsPt from "../locales/pt/skills.json";
+import storePt from "../locales/pt/store.json";
 import teamsPt from "../locales/pt/teams.json";
 import {
   activeWorkspaceLocale,
@@ -149,6 +152,7 @@ const resources = {
     integrations: integrationsEn,
     migration: migrationEn,
     portable: portableEn,
+    store: storeEn,
     context: contextEn,
     connect: connectEn,
     org: orgEn,
@@ -174,6 +178,7 @@ const resources = {
     integrations: integrationsEs,
     migration: migrationEs,
     portable: portableEs,
+    store: storeEs,
     context: contextEs,
     connect: connectEs,
     org: orgEs,
@@ -199,6 +204,7 @@ const resources = {
     integrations: integrationsPt,
     migration: migrationPt,
     portable: portablePt,
+    store: storePt,
     context: contextPt,
     connect: connectPt,
     org: orgPt,
@@ -243,6 +249,7 @@ void i18n
       "events",
       "migration",
       "portable",
+      "store",
       "context",
       "connect",
       "org",

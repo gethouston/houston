@@ -56,6 +56,7 @@ import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
 import { SettingsView } from "../settings/settings-view";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
+import { STORE_VIEW_ID, StoreView } from "../store-view";
 import { AgentShareButton } from "../tabs/agent-share-button";
 import { AgentWarmingDialog } from "./agent-warming-dialog";
 import { CreateAgentDialog } from "./create-workspace-dialog";
@@ -233,6 +234,8 @@ export function WorkspaceShell({
                     <SettingsView />
                   ) : viewMode === INTEGRATIONS_VIEW_ID && showIntegrations ? (
                     <IntegrationsView />
+                  ) : viewMode === STORE_VIEW_ID ? (
+                    <StoreView />
                   ) : viewMode === ORGANIZATION_VIEW_ID && showOrganization ? (
                     <OrganizationView />
                   ) : currentAgent && agentDef && isAgentView ? (

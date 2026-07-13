@@ -145,7 +145,8 @@
         "unreadable": "That agent could not be read. Ask the person who shared it to publish it again.",
         "network": "We could not reach the Agent Store. Check your connection and try again.",
         "generic": "Something went wrong fetching that agent. Please try again."
-      }
+      },
+      "browseStore": "Or browse the Agent Store"
     },
     "actions": {
       "back": "Back",
@@ -229,7 +230,8 @@
       "removeConfirmTitle": "Remove from the store?",
       "removeConfirmBody": "{{name}} will no longer be installable from its link. You can publish it again later.",
       "removeConfirm": "Remove",
-      "removeCancel": "Keep it up"
+      "removeCancel": "Keep it up",
+      "seeInStore": "See it in the store"
     },
     "errors": {
       "generic": "Something went wrong. Please try again.",
