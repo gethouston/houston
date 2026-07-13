@@ -80,6 +80,7 @@ function harness(frames: WireFrame[] = doneTurn) {
     config: {
       baseUrl: "http://x",
       ports: { logger } as unknown as SdkConfig["ports"],
+      reactivity: false,
     },
     store,
     // One injected engine for any agent id — this suite asserts through the

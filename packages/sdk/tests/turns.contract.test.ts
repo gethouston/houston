@@ -27,6 +27,7 @@ import {
   type Harness,
   makeSdk,
   resetHost,
+  sleep,
   startHost,
   until,
 } from "./harness";
@@ -179,6 +180,48 @@ describe("turn send → stream → settle", () => {
     // Both messages of a turn share its id (the resync-by-turnId contract).
     expect(messages[0].turnId).toBeTruthy();
     expect(messages[1].turnId).toBe(messages[0].turnId);
+  });
+});
+
+describe("multi-client conversation reactivity", () => {
+  it("reloads an open idle chat when another client completes a turn", async () => {
+    const cid = "c-other-client";
+    const receiver = makeSdk(host.url);
+    const scope = conversationScope(SEED_AGENT_ID, cid);
+    const off = receiver.sdk.subscribe(scope, () => {});
+    try {
+      // iOS opens the chat while it is idle. Its per-conversation observer sees
+      // the idle sync and closes; future turns must arrive through the SDK's
+      // global ConversationsChanged reactivity path.
+      await receiver.sdk.turns.observe(cid, SEED_AGENT_ID);
+      await sleep(100);
+
+      await h.sdk.turns.send({
+        agentId: SEED_AGENT_ID,
+        conversationId: cid,
+        text: "From the other client",
+      });
+
+      await until(
+        () =>
+          convVm(receiver.sdk, cid)?.feed.some(
+            (item) =>
+              item.feed_type === "assistant_text" &&
+              item.data === cannedReply("From the other client"),
+          ) === true,
+        "receiver reloaded the other client's completed turn",
+      );
+      expect(
+        convVm(receiver.sdk, cid)?.feed.some(
+          (item) =>
+            item.feed_type === "user_message" &&
+            item.data === "From the other client",
+        ),
+      ).toBe(true);
+    } finally {
+      off();
+      receiver.sdk.dispose();
+    }
   });
 });
 
