@@ -1,25 +1,11 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { ThemeScript } from "@/components/theme-script";
+import { SpaceBackground } from "@/components/space-background";
 import { SessionProvider } from "@/lib/auth/session";
 import { siteConfig } from "@/lib/site-config";
 import "./globals.css";
-
-// Inter carries body text; Space Grotesk carries display headings. Exposed as
-// CSS variables consumed by --font-sans / --font-display in globals.css.
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-space-grotesk",
-  display: "swap",
-});
+import "./space.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -28,9 +14,6 @@ export const metadata: Metadata = {
     template: `%s · ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  // No og:image in v1 by design: agents have no branded share art yet, and a
-  // generic placeholder card reads worse than a clean text preview. Revisit when
-  // per-agent OG images ship.
   openGraph: {
     title: siteConfig.name,
     description: siteConfig.description,
@@ -38,8 +21,10 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     type: "website",
   },
+  // summary_large_image: share cards come from the opengraph-image file
+  // convention (a default store card here, a per-agent card under /a/[slug]).
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: siteConfig.name,
     description: siteConfig.description,
   },
@@ -49,13 +34,21 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={`${inter.variable} ${spaceGrotesk.variable}`}
-    >
-      <body className="flex min-h-screen flex-col">
-        <ThemeScript />
+    // The store ships the gethouston.ai space theme only — data-theme is
+    // pinned to dark (no toggle, no OS preference): the Milky Way background
+    // is inherently dark, and the app dark tokens are designed for it.
+    <html lang="en" data-theme="dark">
+      <head>
+        {/* Typography matches gethouston.ai: General Sans carries display
+            headings + the wordmark (--font-display in globals.css); body copy
+            is the system stack, so no body webfont is shipped at all. */}
+        <link
+          href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="flex min-h-screen flex-col pt-[65px]">
+        <SpaceBackground />
         <SessionProvider>
           <SiteHeader />
           <div className="flex-1">{children}</div>
