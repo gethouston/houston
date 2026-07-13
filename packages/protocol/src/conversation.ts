@@ -165,6 +165,11 @@ export interface CustomEndpoint {
   contextWindow?: number;
   /** Whether to send `reasoning_effort` (only set for a reasoning-capable model). */
   reasoning?: boolean;
+  /**
+   * Share this endpoint with the active organization. Only meaningful when
+   * saving in managed cloud; ignored by desktop and self-hosted runtimes.
+   */
+  shared?: boolean;
   /** Optional API key; blank for keyless servers. */
   apiKey?: string;
 }

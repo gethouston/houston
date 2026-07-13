@@ -196,3 +196,59 @@ test("GET /providers hydrates served credentials before listing providers", asyn
     vi.resetModules();
   }
 });
+
+test("openai-compatible route round-trips the org marker without returning its key", async () => {
+  const prevDataDir = process.env.HOUSTON_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), "houston-shared-route-"));
+  process.env.HOUSTON_DATA_DIR = dataDir;
+
+  try {
+    vi.resetModules();
+    const { handleProviderRoute } = await import("./provider-routes");
+    const request = async (method: string, path: string, body?: unknown) => {
+      const { res, out } = mockRes();
+      await handleProviderRoute({
+        method,
+        path,
+        url: new URL(`http://runtime.test${path}`),
+        req:
+          body === undefined
+            ? ({ headers: {} } as IncomingMessage)
+            : mockPostReq(body),
+        res,
+      });
+      return out;
+    };
+
+    expect(
+      (
+        await request("POST", "/providers/openai-compatible", {
+          baseUrl: "https://relay.example.com/v1",
+          model: "qwen",
+          apiKey: "never-return-this",
+          orgShared: true,
+        })
+      ).status,
+    ).toBe(200);
+    const configured = await request("GET", "/providers/openai-compatible");
+    expect(configured.body).toEqual({
+      configured: true,
+      orgShared: true,
+      endpoint: {
+        baseUrl: "https://relay.example.com/v1",
+        model: "qwen",
+      },
+    });
+    expect(JSON.stringify(configured.body)).not.toContain("never-return-this");
+
+    expect(
+      (await request("POST", "/auth/openai-compatible/logout")).status,
+    ).toBe(200);
+    expect((await request("GET", "/providers/openai-compatible")).body).toEqual(
+      { configured: false, orgShared: false },
+    );
+  } finally {
+    restoreEnv("HOUSTON_DATA_DIR", prevDataDir);
+    vi.resetModules();
+  }
+});

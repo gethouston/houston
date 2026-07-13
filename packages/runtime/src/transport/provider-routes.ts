@@ -1,4 +1,5 @@
 import { parseClaudeOAuthEnvelope } from "@houston/runtime-client";
+import { customEndpointStatus } from "../ai/openai-compatible";
 import {
   claimActiveProvider,
   listProviders,
@@ -87,6 +88,10 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
     await handleOpenAiCompatible(ctx);
     return true;
   }
+  if (method === "GET" && path === "/providers/openai-compatible") {
+    json(res, 200, customEndpointStatus());
+    return true;
+  }
   if (method === "POST" && path === "/auth/anthropic/oauth-credential") {
     await handleClaudeOAuthCredential(ctx);
     return true;
@@ -120,6 +125,7 @@ async function handleOpenAiCompatible(ctx: RouteContext) {
         typeof body.contextWindow === "number" ? body.contextWindow : undefined,
       reasoning:
         typeof body.reasoning === "boolean" ? body.reasoning : undefined,
+      orgShared: body.orgShared === true ? true : undefined,
       apiKey: typeof body.apiKey === "string" ? body.apiKey : undefined,
     });
     json(ctx.res, 200, { ok: true });

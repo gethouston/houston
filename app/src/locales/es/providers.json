@@ -143,6 +143,10 @@
       "label": "Mostrar el razonamiento del modelo",
       "help": "Actívalo para modelos de razonamiento (piensan antes de responder)."
     },
+    "share": {
+      "label": "Compartir con mi equipo",
+      "help": "Los agentes de tus compañeros pueden usar este modelo. Sus solicitudes se ejecutan en tu computador mientras esté en línea."
+    },
     "error": {
       "body": "Algo salió mal al conectar. Asegúrate de que la app siga abierta en tu computador e inténtalo de nuevo.",
       "retry": "Intentar de nuevo"

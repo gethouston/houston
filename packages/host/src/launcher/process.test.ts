@@ -77,6 +77,53 @@ test("a warm runtime is reused, not respawned", async () => {
   expect(spawns).toHaveLength(1); // reused
 });
 
+test("afterSpawn runs once per fresh runtime, including wake-from-idle respawns", async () => {
+  const { spawner } = recordingSpawner();
+  const started: string[] = [];
+  const launcher = new ProcessLauncher(
+    opts(spawner, {
+      afterSpawn: async (a, endpoint) => {
+        started.push(`${a.id}:${endpoint.baseUrl}`);
+      },
+    }),
+  );
+  const a = agent("shared");
+
+  await launcher.ensureAwake(a);
+  await launcher.ensureAwake(a);
+  await launcher.sleep(a.id);
+  await launcher.ensureAwake(a);
+
+  expect(started).toEqual([
+    "shared:http://127.0.0.1:5000",
+    "shared:http://127.0.0.1:5001",
+  ]);
+});
+
+test("a failed afterSpawn hook reaps the runtime so the next wake retries it", async () => {
+  const { spawner, spawns, killed } = recordingSpawner();
+  let attempts = 0;
+  const launcher = new ProcessLauncher(
+    opts(spawner, {
+      afterSpawn: async () => {
+        attempts++;
+        if (attempts === 1) throw new Error("startup hook failed");
+      },
+    }),
+  );
+  const a = agent("shared");
+
+  await expect(launcher.ensureAwake(a)).rejects.toThrow("startup hook failed");
+  expect(killed).toEqual([5000]);
+  expect(await launcher.status(a.id)).toBe("asleep");
+
+  await expect(launcher.ensureAwake(a)).resolves.toMatchObject({
+    baseUrl: "http://127.0.0.1:5001",
+  });
+  expect(spawns).toHaveLength(2);
+  expect(attempts).toBe(2);
+});
+
 test("sleep kills the process; the next ensureAwake spawns a fresh one", async () => {
   const { spawner, spawns, killed } = recordingSpawner();
   const launcher = new ProcessLauncher(opts(spawner));

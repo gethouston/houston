@@ -5,6 +5,7 @@ import { useReasoningToggle } from "../../hooks/use-reasoning-toggle";
 import { genericErrorDescription } from "../../lib/error-toast";
 import { connectManualEndpoint } from "../../lib/local-model-connect";
 import { ReasoningToggle } from "./local-model-dialog-parts";
+import { ShareEndpointToggle } from "./local-model-share-toggle";
 import {
   LabeledTextField,
   SecretField,
@@ -21,10 +22,16 @@ export function LocalModelManualForm({
   onConnected,
   onClose,
   onBack,
+  shared,
+  onSharedChange,
+  teamWorkspace,
 }: {
   onConnected?: (model: string) => void;
   onClose: () => void;
   onBack?: () => void;
+  shared: boolean;
+  onSharedChange: (value: boolean) => void;
+  teamWorkspace: boolean;
 }) {
   const { t } = useTranslation("providers");
   const [baseUrl, setBaseUrl] = useState("");
@@ -64,6 +71,7 @@ export function LocalModelManualForm({
         name: name.trim() || undefined,
         apiKey: key.trim() || undefined,
         ...(reasoning ? { reasoning: true } : {}),
+        ...(teamWorkspace && shared ? { shared: true } : {}),
       });
       onConnected?.(trimmedModel);
       onClose();
@@ -124,6 +132,14 @@ export function LocalModelManualForm({
         onChange={setReasoning}
         disabled={submitting}
       />
+      {teamWorkspace && (
+        <ShareEndpointToggle
+          id="lm-manual-share"
+          checked={shared}
+          onChange={onSharedChange}
+          disabled={submitting}
+        />
+      )}
 
       {error && (
         <p className="text-[12px] text-danger" role="alert">

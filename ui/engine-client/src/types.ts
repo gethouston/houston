@@ -1873,6 +1873,11 @@ export interface CustomEndpoint {
   name?: string;
   contextWindow?: number;
   reasoning?: boolean;
+  /**
+   * Share this endpoint with the active organization. Only meaningful when
+   * saving in managed cloud; ignored elsewhere.
+   */
+  shared?: boolean;
   apiKey?: string;
 }
 
