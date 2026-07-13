@@ -136,9 +136,14 @@ const emailOtp = env.RESEND_API_KEY && env.GW_OTP_SIGNER_SA;
 const bugReports = env.LINEAR_API_KEY && env.LINEAR_TEAM_ID;
 const desktopLogin =
   env.GOOGLE_DESKTOP_CLIENT_ID && env.GOOGLE_DESKTOP_CLIENT_SECRET;
+const desktopProfile = env.DEV_DESKTOP_PROFILE === "cloud" ? "cloud" : "local";
+if (desktopProfile === "cloud" && !desktopLogin)
+  console.log(
+    `  ${paint.warn("!")} DEV_DESKTOP_PROFILE=cloud needs GOOGLE_DESKTOP_CLIENT_ID(+_SECRET) — the app pane will refuse to start`,
+  );
 console.log(`
 ${paint.bold("── pnpm dev · feature matrix ──────────────────────────────────")}
-  Desktop app   local profile   terminal · files · local models (login: see below)
+  Desktop app   ${desktopProfile === "cloud" ? "CLOUD profile   gateway engine · real sign-in · MULTIPLAYER in the desktop window (local profile off this run — DEV_DESKTOP_PROFILE=cloud)" : "local profile   terminal · files · local models (login: see below · multiplayer in the desktop: set DEV_DESKTOP_PROFILE=cloud in .env.local)"}
   Web app       cloud profile   http://localhost:1430 · Google sign-in ·
                                 multiplayer Teams/Spaces · agent moves
   Engines       local processes spawned per agent (data: ${(process.env.CP_DEV_DATA_DIR || path.join(homedir(), ".dev-houston-cloud")).replace(homedir(), "~")})

@@ -26,7 +26,7 @@ process on one of our ports is left alone and hard-fails the doctor by name.
 | `gateway` | Go gateway from `../cloud` (`go run ./cmd/gateway`) — real GCIP sign-in, boot migrations, `GW_DEV` deliberately unset | 9080 |
 | `control-plane` | Go control-plane in **dev-launcher mode** (`CP_DEV_LAUNCHER=1`) — spawns engines as local processes, no kube client | 8081 |
 | `host` | The local single-player host (what the desktop app talks to) | 4318 |
-| `app` | Desktop app (Tauri) — **LOCAL profile**: terminal, reveal-in-OS, dictation, local models. Desktop **login/logout are real** (Google loopback → GCIP, Keychain session, sign-out in Settings → Account) when `GOOGLE_DESKTOP_CLIENT_ID`+`_SECRET` are in `.env.local`; without them `scripts/dev/app.sh` blanks `FIREBASE_API_KEY` so the gate never mounts (it would be uncompletable — no client id, and desktop email-OTP posts to the local host). The doctor states which mode you're in | — |
+| `app` | Desktop app (Tauri) — engine selected by `DEV_DESKTOP_PROFILE` in `.env.local` (one window, one engine; the doctor prints the active profile). **`local`** (default): the host pane — terminal, reveal-in-OS, dictation, local models; login/logout real when `GOOGLE_DESKTOP_CLIENT_ID`+`_SECRET` are set (account-less otherwise — a gate would be uncompletable). **`cloud`**: the local gateway in hosted-oauth mode — the production "Houston Cloud desktop" shape: real sign-in required, **multiplayer in the desktop window**; the local profile is simply not exercised that run | — |
 | `web` | Web app — **CLOUD profile**: Google sign-in, multiplayer Teams/Spaces, agent moves, API keys | 1430 |
 
 The two profiles are mutually exclusive by product design (reveal-in-OS vs
