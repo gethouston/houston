@@ -37,7 +37,16 @@ export interface HydrateOptions {
   /** Reject prefixes whose total size exceeds this (default 512 MiB). */
   maxBytes?: number;
   excludes?: string[];
+  /**
+   * Concurrent downloads (default 16). Hydration gates the managed pod's
+   * readiness, and one store round-trip per object (~80 ms through the pod
+   * store) dominates cold wake time when it runs sequentially: a routine
+   * 133-object workspace measured 10.5 s sequential vs 0.4 s at 16.
+   */
+  concurrency?: number;
 }
+
+const DEFAULT_HYDRATE_CONCURRENCY = 16;
 
 /** Download everything under `prefix` into `destDir`. Returns the manifest. */
 export async function hydrate(
@@ -48,22 +57,61 @@ export async function hydrate(
 ): Promise<HydrateManifest> {
   const excludes = opts.excludes ?? DEFAULT_EXCLUDES;
   const maxBytes = opts.maxBytes ?? 512 * 1024 * 1024;
+  // Guard against a non-finite override (NaN sizes the worker array to ZERO,
+  // which would return a successful empty manifest for a non-empty store —
+  // the exact partial-manifest state the hydration latch exists to prevent).
+  const requested = opts.concurrency ?? DEFAULT_HYDRATE_CONCURRENCY;
+  const concurrency =
+    Number.isFinite(requested) && requested >= 1
+      ? Math.floor(requested)
+      : DEFAULT_HYDRATE_CONCURRENCY;
   const manifest: HydrateManifest = new Map();
-  let total = 0;
+  const entries: { key: string; rel: string }[] = [];
   for (const key of await store.list(prefix)) {
     const rel = prefix ? key.slice(prefix.length + 1) : key;
     if (!rel || excluded(rel, excludes)) continue;
-    const dest = join(destDir, ...rel.split("/"));
-    await store.download(key, dest);
-    const buf = await readFile(dest);
-    total += buf.byteLength;
-    if (total > maxBytes) {
-      throw new Error(
-        `workspace exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB hydration limit`,
-      );
-    }
-    manifest.set(rel, sha256(buf));
+    entries.push({ key, rel });
   }
+  // Workers pull from a shared cursor. The first failure (download error or
+  // the size cap) parks every worker before it takes new work, and only that
+  // first error is thrown — workers themselves never reject, so a second
+  // failure can never become an unhandled rejection behind Promise.all.
+  let total = 0;
+  let next = 0;
+  let failed = false;
+  let firstError: unknown;
+  const worker = async () => {
+    // The cap check also gates NEW downloads (not only completed ones), so an
+    // over-cap workspace overshoots by at most the in-flight batch — the
+    // pooled analogue of the sequential loop's one-object overshoot.
+    while (!failed && total <= maxBytes) {
+      const entry = entries[next++];
+      if (!entry) return;
+      const { key, rel } = entry;
+      try {
+        const dest = join(destDir, ...rel.split("/"));
+        await store.download(key, dest);
+        const buf = await readFile(dest);
+        total += buf.byteLength;
+        if (total > maxBytes) {
+          throw new Error(
+            `workspace exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB hydration limit`,
+          );
+        }
+        manifest.set(rel, sha256(buf));
+      } catch (err) {
+        if (!failed) {
+          failed = true;
+          firstError = err;
+        }
+        return;
+      }
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, entries.length) }, worker),
+  );
+  if (failed) throw firstError;
   return manifest;
 }
 
