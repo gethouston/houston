@@ -6,6 +6,7 @@ declare const __POSTHOG_HOST__: string;
 declare const __FIREBASE_API_KEY__: string;
 declare const __FIREBASE_AUTH_DOMAIN__: string;
 declare const __FIREBASE_PROJECT_ID__: string;
+declare const __APPLE_SIGN_IN_ENABLED__: string;
 declare const __GOOGLE_DESKTOP_CLIENT_ID__: string;
 declare const __GOOGLE_DESKTOP_CLIENT_SECRET__: string;
 declare const __MICROSOFT_DESKTOP_CLIENT_ID__: string;
