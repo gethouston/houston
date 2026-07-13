@@ -16,6 +16,7 @@
 import App from "@houston/app/App";
 import { DisclaimerGate } from "@houston/app/components/shell/disclaimer-gate";
 import { LanguageGate } from "@houston/app/components/shell/language-gate";
+import { QueryPersistenceProvider } from "@houston/app/components/shell/query-persistence-provider";
 import { WorkspaceLoading } from "@houston/app/components/shell/workspace-loading";
 import { analytics, classifyAnalyticsError } from "@houston/app/lib/analytics";
 import { isEngineReady, whenEngineReady } from "@houston/app/lib/engine";
@@ -24,7 +25,6 @@ import { installGlobalErrorHandlers } from "@houston/app/lib/global-error-handle
 import i18n from "@houston/app/lib/i18n";
 import { initFrontendLogging, logger } from "@houston/app/lib/logger";
 import { queryClient } from "@houston/app/lib/query-client";
-import { setupQueryPersistence } from "@houston/app/lib/query-persist";
 import { initSentry } from "@houston/app/lib/sentry";
 import { TooltipProvider } from "@houston-ai/core";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -46,12 +46,6 @@ initFrontendLogging();
 // noise (Supabase Web Locks steal, HOU-435). Must run AFTER initFrontendLogging()
 // so the console.error → log file patch is already in place.
 installGlobalErrorHandlers();
-
-// List-query persistence (HOU-712 follow-up) — shared with the desktop entry
-// (app/src/main.tsx): restore persisted conversation lists/activities so the
-// sidebar/board paint instantly through an engine-pod cold start. No cloud
-// identity → no-op.
-void setupQueryPersistence(queryClient);
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -143,17 +137,19 @@ export default function AppTree() {
       <ErrorBoundary>
         <TooltipProvider>
           <EngineGate>
-            <I18nextProvider i18n={i18n}>
-              {/* Web-only "Preview" pill — fixed + pointer-events-none, so it
-                  overlays every gate/screen without disturbing layout or clicks.
-                  Renders null off the preview deployment. */}
-              <PreviewBadge />
-              <LanguageGate>
-                <DisclaimerGate>
-                  <App />
-                </DisclaimerGate>
-              </LanguageGate>
-            </I18nextProvider>
+            <QueryPersistenceProvider>
+              <I18nextProvider i18n={i18n}>
+                {/* Web-only "Preview" pill — fixed + pointer-events-none, so it
+                    overlays every gate/screen without disturbing layout or clicks.
+                    Renders null off the preview deployment. */}
+                <PreviewBadge />
+                <LanguageGate>
+                  <DisclaimerGate>
+                    <App />
+                  </DisclaimerGate>
+                </LanguageGate>
+              </I18nextProvider>
+            </QueryPersistenceProvider>
           </EngineGate>
         </TooltipProvider>
       </ErrorBoundary>

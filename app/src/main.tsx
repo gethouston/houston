@@ -9,13 +9,13 @@ import "./styles/globals.css";
 import { DisclaimerGate } from "./components/shell/disclaimer-gate";
 import { EngineGate } from "./components/shell/engine-gate";
 import { LanguageGate } from "./components/shell/language-gate";
+import { QueryPersistenceProvider } from "./components/shell/query-persistence-provider";
 import { analytics, classifyAnalyticsError } from "./lib/analytics";
 import { whenEngineReady } from "./lib/engine";
 import { showErrorToast } from "./lib/error-toast";
 import { installGlobalErrorHandlers } from "./lib/global-error-handlers";
 import i18n from "./lib/i18n";
 import { initFrontendLogging, logger } from "./lib/logger";
-import { setupQueryPersistence } from "./lib/query-persist";
 import { initSentry } from "./lib/sentry";
 import { installSentrySmokeShortcuts } from "./lib/sentry-smoke";
 import { runStartupAnalytics } from "./lib/startup-analytics";
@@ -45,13 +45,6 @@ initFrontendLogging();
 // can't drift. Must run AFTER initFrontendLogging() so the console.error → log
 // file patch is already in place.
 installGlobalErrorHandlers();
-
-// List-query persistence (HOU-712 follow-up): once the engine handshake (and,
-// hosted, the signed-in bearer) is in, restore the persisted conversation
-// lists/activities so the sidebar and board paint instantly through an
-// engine-pod cold start. No cloud identity → no-op. Mirrored in the web entry
-// (packages/web/src/app-tree.tsx).
-void setupQueryPersistence(queryClient);
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -159,11 +152,13 @@ createRoot(rootElement).render(
         <TooltipProvider>
           <StartupEffects>
             <EngineGate>
-              <LanguageGate>
-                <DisclaimerGate>
-                  <App />
-                </DisclaimerGate>
-              </LanguageGate>
+              <QueryPersistenceProvider>
+                <LanguageGate>
+                  <DisclaimerGate>
+                    <App />
+                  </DisclaimerGate>
+                </LanguageGate>
+              </QueryPersistenceProvider>
             </EngineGate>
           </StartupEffects>
         </TooltipProvider>
