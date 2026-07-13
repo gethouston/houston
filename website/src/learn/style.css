@@ -4,28 +4,35 @@
    ═══════════════════════════════════════════ */
 
 :root {
-  --background: #ffffff;
-  --foreground: #0d0d0d;
-  --secondary: #f9f9f9;
-  --muted-foreground: #5d5d5d;
-  --border: #e5e5e5;
-  --gray-50: #f9f9f9;
-  --gray-100: #ececec;
-  --gray-200: #e3e3e3;
-  --gray-300: #cdcdcd;
-  --gray-400: #b4b4b4;
-  --gray-500: #9b9b9b;
-  --gray-600: #676767;
-  --gray-700: #424242;
-  --gray-900: #1a1a1a;
-  --gray-950: #0d0d0d;
-  --success: #00a240;
-  --info: #2964aa;
-  --warning: #e0ac00;
-  --danger: #e02e2a;
-  --border-light: rgba(13, 13, 13, 0.05);
-  --border-medium: rgba(0, 0, 0, 0.12);
-  --border-heavy: rgba(13, 13, 13, 0.15);
+  /* Space theme: the docs sit over the landing's fixed Milky Way background
+     (space-bg.njk + /assets/space.css). Text is white-on-space, panels are
+     NEAR-OPAQUE dark fills — never backdrop-filter, which re-blurs the moving
+     photo every scroll frame on Gecko (see assets/space.css). */
+  --background: transparent;
+  --foreground: rgba(255, 255, 255, 0.92);
+  --secondary: rgba(255, 255, 255, 0.05);
+  --muted-foreground: rgba(255, 255, 255, 0.6);
+  --border: rgba(255, 255, 255, 0.14);
+  --gray-50: rgba(255, 255, 255, 0.06);
+  --gray-100: rgba(255, 255, 255, 0.1);
+  --gray-200: rgba(255, 255, 255, 0.14);
+  --gray-300: rgba(255, 255, 255, 0.28);
+  --gray-400: rgba(255, 255, 255, 0.4);
+  --gray-500: rgba(255, 255, 255, 0.55);
+  --gray-600: rgba(255, 255, 255, 0.65);
+  --gray-700: rgba(255, 255, 255, 0.78);
+  --gray-900: rgba(255, 255, 255, 0.9);
+  --gray-950: #ffffff;
+  --success: #4ade80;
+  --info: #8ab4ff;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-medium: rgba(255, 255, 255, 0.22);
+  --border-heavy: rgba(255, 255, 255, 0.3);
+  --panel: rgba(13, 15, 24, 0.86);
+  --panel-solid: #0b0c13;
+  --code-bg: rgba(8, 9, 15, 0.92);
   --composer-shadow:
     0 4px 4px rgba(0, 0, 0, 0.04),
     0 4px 80px 8px rgba(0, 0, 0, 0.04),
@@ -81,9 +88,8 @@ nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(11, 12, 19, 0.94);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .nav-logo {
@@ -126,8 +132,7 @@ nav {
   left: 0;
   right: 0;
   z-index: 99;
-  background: rgba(255,255,255,0.97);
-  backdrop-filter: blur(20px);
+  background: rgba(11, 12, 19, 0.97);
   padding: 8px 20px 16px;
   flex-direction: column;
   border-bottom: 1px solid var(--border-light);
@@ -211,17 +216,22 @@ nav .btn {
 .layout {
   display: grid;
   grid-template-columns: 260px 1fr;
-  max-width: 1280px;
-  margin: 0 auto;
+  width: min(1280px, calc(100% - 32px));
+  margin: 28px auto 72px;
   gap: 48px;
-  padding: 48px 32px 120px;
+  padding: 48px 40px 96px;
+  background: rgba(8, 10, 18, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
 }
 
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 1fr;
     gap: 0;
-    padding: 32px 24px 80px;
+    width: calc(100% - 24px);
+    margin-top: 12px;
+    padding: 32px 22px 64px;
   }
 }
 
@@ -393,7 +403,8 @@ nav .btn {
 }
 
 .content pre {
-  background: var(--gray-950);
+  background: var(--code-bg);
+  border: 1px solid var(--border-light);
   color: #f0f0f0;
   padding: 20px 24px;
   border-radius: 12px;
@@ -493,7 +504,7 @@ nav .btn {
 }
 
 .callout-info {
-  background: color-mix(in oklch, var(--info) 6%, white);
+  background: color-mix(in oklch, var(--info) 14%, var(--panel-solid));
   border-color: color-mix(in oklch, var(--info) 20%, transparent);
 }
 .callout-info .callout-label {
@@ -501,7 +512,7 @@ nav .btn {
 }
 
 .callout-warning {
-  background: color-mix(in oklch, var(--warning) 6%, white);
+  background: color-mix(in oklch, var(--warning) 14%, var(--panel-solid));
   border-color: color-mix(in oklch, var(--warning) 20%, transparent);
 }
 .callout-warning .callout-label {
@@ -509,7 +520,7 @@ nav .btn {
 }
 
 .callout-success {
-  background: color-mix(in oklch, var(--success) 6%, white);
+  background: color-mix(in oklch, var(--success) 14%, var(--panel-solid));
   border-color: color-mix(in oklch, var(--success) 20%, transparent);
 }
 .callout-success .callout-label {
@@ -560,7 +571,7 @@ nav .btn {
   height: 34px;
   padding: 0 14px;
   border-radius: 9999px;
-  background: white;
+  background: var(--panel);
   border: 1px solid var(--border-medium);
   font-size: 13px;
   font-weight: 500;
@@ -598,7 +609,7 @@ nav .btn {
   border: 1px solid var(--border-light);
   border-radius: 14px;
   padding: 22px 24px;
-  background: white;
+  background: var(--panel);
 }
 
 .compare-card h4 {
@@ -660,7 +671,7 @@ nav .btn {
   padding: 22px 24px;
   border: 1px solid var(--border-light);
   border-radius: 14px;
-  background: white;
+  background: var(--panel);
   transition:
     border-color 0.15s,
     box-shadow 0.2s,
@@ -747,15 +758,15 @@ nav .btn {
 
 .btn-primary {
   background: var(--gray-950);
-  color: white;
+  color: #0d0d0d;
 }
 
 .btn-primary:hover {
-  background: var(--gray-700);
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .btn-secondary {
-  background: white;
+  background: var(--panel);
   color: var(--gray-950);
   border: 1px solid var(--border-medium);
 }

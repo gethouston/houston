@@ -15,14 +15,19 @@ visionPath: "index.html"
 <style>
       /* Vision-specific overrides: essay layout, single column */
       .essay {
-        max-width: 680px;
-        margin: 0 auto;
-        padding: 72px 32px 120px;
+        width: min(744px, calc(100% - 32px));
+        margin: 28px auto 72px;
+        padding: 64px 48px 88px;
+        background: rgba(8, 10, 18, 0.66);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
       }
 
       @media (max-width: 700px) {
         .essay {
-          padding: 48px 24px 80px;
+          width: calc(100% - 24px);
+          margin-top: 12px;
+          padding: 44px 24px 64px;
         }
       }
 
@@ -76,7 +81,7 @@ visionPath: "index.html"
         padding: 6px 14px;
         border-radius: 9999px;
         background: var(--gray-950);
-        color: white;
+        color: #0d0d0d;
         font-size: 13px;
         font-weight: 500;
         text-decoration: none;
@@ -87,8 +92,8 @@ visionPath: "index.html"
       }
 
       .x-btn:hover {
-        background: var(--gray-700);
-        border-color: var(--gray-700);
+        background: rgba(255, 255, 255, 0.85);
+        border-color: rgba(255, 255, 255, 0.85);
         transform: translateY(-1px);
       }
 
@@ -300,6 +305,7 @@ visionPath: "index.html"
     </style>
 {% endblock %}
 {% block body %}
+    {% include "space-bg.njk" %}
     {% include "nav-docs.njk" %}
 
     <main class="essay">

@@ -19,6 +19,7 @@ lang: es
 <link rel="stylesheet" href="/guides/style.css">
 {% endblock %}
 {% block body %}
+{% include "space-bg.njk" %}
 <nav class="site">
   <a href="/" class="nav-logo">Houston</a>
   <div class="nav-center">
@@ -30,7 +31,6 @@ lang: es
     <a href="/vision/">Vision</a>
   </div>
   <div class="nav-right">
-    <details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>ES<span class="chev"></span></summary><div class="menu"><a href="/guides/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a class="on" href="/guides/es/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details>
     <a href="https://github.com/gethouston/houston" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;">
       <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
     </a>
@@ -61,10 +61,10 @@ lang: es
     guías para desarrolladores.
   </p>
 
-  <h2 id="workshops">Workshops</h2>
+  <h2 id="create">Crea tu agente</h2>
   <p class="section-lede">
-    Construcciones completas, desde el espacio de trabajo vacío hasta un
-    agente funcionando.
+    Workshops completos, desde el espacio de trabajo vacío hasta un agente
+    funcionando.
   </p>
   <div class="guide-grid">
     <a class="guide-card" data-guide="Revenue Manager Agent" data-status="live" href="/guides/es/revenue-manager/">
@@ -87,33 +87,25 @@ lang: es
     </a>
   </div>
 
-  <h2 id="connect">Usa tus agentes desde otras apps</h2>
+  <h2 id="connect">Conecta tus agentes</h2>
   <p class="section-lede">
     Tus agentes no viven encerrados en Houston. Asistentes de IA, otros
     agentes y herramientas de automatización pueden iniciar misiones y recibir
-    los resultados. Estas guías muestran cómo (disponibles en inglés).
+    los resultados. Una sola guía lo cubre todo (disponible en inglés).
   </p>
-  <div class="card-grid">
-    <a class="surface-card" data-guide="API Overview" data-status="live" href="/developers/">
-      <div class="surface-kicker">Empieza aquí</div>
-      <div class="surface-title">La API de Houston</div>
-      <div class="surface-desc">Una clave de API, tres caminos. El quickstart de 60 segundos te lleva de la clave a una misión terminada.</div>
+  <div class="guide-group" data-guide="Public API guide" data-status="live">
+    <a class="intro" href="/developers/">
+      <span class="kicker">Guía para desarrolladores</span>
+      <h3>Usa tus agentes desde otras apps</h3>
+      <p>Una clave de API, tres caminos: una API REST para automatizaciones, Agent2Agent para otros agentes y MCP para asistentes de IA como Claude. El quickstart de 60 segundos te lleva de la clave a una misión terminada.</p>
+      <span class="start">Empezar la guía →</span>
     </a>
-    <a class="surface-card" data-guide="Missions REST" data-status="live" href="/developers/missions/">
-      <div class="surface-kicker">REST</div>
-      <div class="surface-title">Misiones y webhooks</div>
-      <div class="surface-desc">Inicia misiones desde herramientas de automatización y scripts. Consulta, transmite o recibe un webhook firmado al terminar.</div>
-    </a>
-    <a class="surface-card" data-guide="A2A" data-status="live" href="/developers/a2a/">
-      <div class="surface-kicker">A2A</div>
-      <div class="surface-title">Agent2Agent</div>
-      <div class="surface-desc">Permite que agentes de otras plataformas descubran tu agente de Houston y le encarguen tareas.</div>
-    </a>
-    <a class="surface-card" data-guide="MCP" data-status="live" href="/developers/mcp/">
-      <div class="surface-kicker">MCP</div>
-      <div class="surface-title">Agentes como herramientas</div>
-      <div class="surface-desc">Agrega tus agentes a Claude o a cualquier cliente MCP, y deja que tu asistente los ponga a trabajar.</div>
-    </a>
+    <ul class="chapters">
+      <li><a href="/developers/"><span class="num">—</span>Overview y quickstart<span class="arrow">→</span></a></li>
+      <li><a href="/developers/missions/"><span class="num">01</span>Misiones (REST) y webhooks<span class="arrow">→</span></a></li>
+      <li><a href="/developers/a2a/"><span class="num">02</span>Agent2Agent<span class="arrow">→</span></a></li>
+      <li><a href="/developers/mcp/"><span class="num">03</span>MCP: agentes como herramientas<span class="arrow">→</span></a></li>
+    </ul>
   </div>
 
   <h2 id="coming-soon">Muy pronto</h2>
@@ -213,6 +205,7 @@ lang: es
     Cada workshop en vivo se convierte en una guía aquí.
   </div>
   <div style="margin-top: 12px; display: flex; gap: 16px; font-size: 12px; color: var(--gray-500); flex-wrap: wrap; justify-content: center;">
+    <a href="/guides/" style="color: var(--gray-500);">English</a>
     <a href="/learn/" style="color: var(--gray-500);">Learn</a>
     <a href="/developers/" style="color: var(--gray-500);">Developers</a>
     <a href="/changelog/" style="color: var(--gray-500);">Changelog</a>

@@ -1,31 +1,38 @@
 /* ═══════════════════════════════════════════
    Houston Guides — Design System
-   Mirrors the Learn / Developers sections
+   Mirrors the Learn / Developers sections,
+   over the landing's space background.
    ═══════════════════════════════════════════ */
 
 :root {
-  --background: #ffffff;
-  --foreground: #0d0d0d;
-  --secondary: #f9f9f9;
-  --muted-foreground: #5d5d5d;
-  --border: #e5e5e5;
-  --gray-50: #f9f9f9;
-  --gray-100: #ececec;
-  --gray-200: #e3e3e3;
-  --gray-300: #cdcdcd;
-  --gray-400: #b4b4b4;
-  --gray-500: #9b9b9b;
-  --gray-600: #676767;
-  --gray-700: #424242;
-  --gray-900: #1a1a1a;
-  --gray-950: #0d0d0d;
-  --success: #00a240;
-  --info: #2964aa;
-  --warning: #e0ac00;
-  --danger: #e02e2a;
-  --border-light: rgba(13, 13, 13, 0.05);
-  --border-medium: rgba(0, 0, 0, 0.12);
-  --border-heavy: rgba(13, 13, 13, 0.15);
+  /* Space theme: the page sits over the landing's fixed Milky Way background
+     (space-bg.njk + /assets/space.css). Text is white-on-space, panels are
+     NEAR-OPAQUE dark fills — never backdrop-filter, which re-blurs the moving
+     photo every scroll frame on Gecko (see assets/space.css). */
+  --background: transparent;
+  --foreground: rgba(255, 255, 255, 0.92);
+  --secondary: rgba(255, 255, 255, 0.05);
+  --muted-foreground: rgba(255, 255, 255, 0.6);
+  --border: rgba(255, 255, 255, 0.14);
+  --gray-50: rgba(255, 255, 255, 0.06);
+  --gray-100: rgba(255, 255, 255, 0.1);
+  --gray-200: rgba(255, 255, 255, 0.14);
+  --gray-300: rgba(255, 255, 255, 0.28);
+  --gray-400: rgba(255, 255, 255, 0.4);
+  --gray-500: rgba(255, 255, 255, 0.55);
+  --gray-600: rgba(255, 255, 255, 0.65);
+  --gray-700: rgba(255, 255, 255, 0.78);
+  --gray-900: rgba(255, 255, 255, 0.9);
+  --gray-950: #ffffff;
+  --success: #4ade80;
+  --info: #8ab4ff;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-medium: rgba(255, 255, 255, 0.22);
+  --border-heavy: rgba(255, 255, 255, 0.3);
+  --panel: rgba(13, 15, 24, 0.86);
+  --panel-solid: #0b0c13;
 }
 
 * {
@@ -71,9 +78,8 @@ nav.site {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(11, 12, 19, 0.94);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .nav-logo {
@@ -102,7 +108,7 @@ nav.site {
   color: var(--gray-700);
   transition: background 0.2s;
 }
-.nav-burger:hover { background: var(--gray-50); }
+.nav-burger:hover { background: var(--gray-100); }
 .nav-burger svg { width: 20px; height: 20px; }
 
 .nav-dropdown {
@@ -112,12 +118,11 @@ nav.site {
   left: 0;
   right: 0;
   z-index: 99;
-  background: rgba(255, 255, 255, 0.97);
-  backdrop-filter: blur(20px);
+  background: rgba(11, 12, 19, 0.97);
   padding: 8px 20px 16px;
   flex-direction: column;
   border-bottom: 1px solid var(--border-light);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 .nav-dropdown.open { display: flex; }
 .nav-dropdown a {
@@ -190,7 +195,7 @@ nav.site .btn {
   letter-spacing: 0.02em;
 }
 .langdd summary::-webkit-details-marker { display: none; }
-.langdd summary:hover { border-color: var(--gray-300); color: var(--gray-950); }
+.langdd summary:hover { border-color: var(--border-heavy); color: var(--gray-950); }
 .langdd summary svg { width: 18px; height: 13px; display: block; }
 .langdd summary .chev {
   width: 7px;
@@ -205,10 +210,10 @@ nav.site .btn {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  background: #fff;
+  background: var(--panel-solid);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(13, 13, 13, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   padding: 6px;
   min-width: 160px;
   z-index: 200;
@@ -225,7 +230,7 @@ nav.site .btn {
   font-weight: 500;
 }
 .langdd .menu a svg { width: 18px; height: 13px; display: block; }
-.langdd .menu a:hover { background: var(--gray-50); color: var(--gray-950); }
+.langdd .menu a:hover { background: var(--gray-100); color: var(--gray-950); }
 .langdd .menu a.on { color: var(--gray-950); font-weight: 600; }
 .langdd .menu a.on::after {
   content: "✓";
@@ -319,14 +324,14 @@ h2 {
   flex-direction: column;
   border: 1px solid var(--border-light);
   border-radius: 14px;
-  background: white;
+  background: var(--panel);
   overflow: hidden;
   transition: border-color 0.15s, box-shadow 0.2s, transform 0.15s;
 }
 
 .guide-card:hover {
   border-color: var(--border-medium);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 8px 24px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3);
   transform: translateY(-1px);
 }
 
@@ -393,56 +398,100 @@ h2 {
 }
 
 /* ═══════════════════════════════════════════
-   Developer guide cards (mirror surface-card)
+   Grouped guide (one guide, several chapters)
    ═══════════════════════════════════════════ */
 
-.card-grid {
+.guide-group {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  grid-template-columns: 5fr 4fr;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background: var(--panel);
+  overflow: hidden;
   margin: 24px 0 8px;
 }
 
-@media (max-width: 640px) {
-  .card-grid { grid-template-columns: 1fr; }
+@media (max-width: 760px) {
+  .guide-group { grid-template-columns: 1fr; }
 }
 
-.surface-card {
-  display: block;
-  padding: 22px 24px;
-  border: 1px solid var(--border-light);
-  border-radius: 14px;
-  background: white;
-  transition: border-color 0.15s, box-shadow 0.2s, transform 0.15s;
+.guide-group .intro {
+  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.surface-card:hover {
-  border-color: var(--border-medium);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 8px 24px rgba(0, 0, 0, 0.04);
-  transform: translateY(-1px);
-}
-
-.surface-card .surface-kicker {
+.guide-group .intro .kicker {
   font-size: 12px;
   font-weight: 600;
   color: var(--info);
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  margin-bottom: 8px;
 }
 
-.surface-card .surface-title {
-  font-size: 18px;
+.guide-group .intro h3 {
+  font-size: 22px;
   font-weight: 600;
   color: var(--gray-950);
-  letter-spacing: -0.01em;
-  margin-bottom: 8px;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
 }
 
-.surface-card .surface-desc {
-  font-size: 14px;
-  line-height: 1.55;
+.guide-group .intro p {
+  font-size: 14.5px;
+  line-height: 1.6;
   color: var(--muted-foreground);
+}
+
+.guide-group .intro .start {
+  margin-top: auto;
+  padding-top: 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--gray-950);
+}
+
+.guide-group .chapters {
+  list-style: none;
+  border-left: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px;
+  gap: 2px;
+}
+
+@media (max-width: 760px) {
+  .guide-group .chapters { border-left: none; border-top: 1px solid var(--border-light); }
+}
+
+.guide-group .chapters a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 14px;
+  color: var(--gray-700);
+  transition: background 0.15s, color 0.15s;
+}
+
+.guide-group .chapters a:hover {
+  background: var(--gray-100);
+  color: var(--gray-950);
+}
+
+.guide-group .chapters .num {
+  color: var(--gray-400);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  min-width: 18px;
+}
+
+.guide-group .chapters .arrow {
+  margin-left: auto;
+  color: var(--gray-400);
 }
 
 /* ═══════════════════════════════════════════
@@ -471,7 +520,7 @@ h2 {
   padding: 20px 22px;
   border: 1px solid var(--border-light);
   border-radius: 14px;
-  background: var(--gray-50);
+  background: rgba(13, 15, 24, 0.6);
 }
 
 .coming-card .surface-kicker {
@@ -530,8 +579,8 @@ h2 {
   transition: background 0.15s;
 }
 
-.btn-primary { background: var(--gray-950); color: white; }
-.btn-primary:hover { background: var(--gray-700); }
+.btn-primary { background: var(--gray-950); color: #0d0d0d; }
+.btn-primary:hover { background: rgba(255, 255, 255, 0.85); }
 
 .footer {
   border-top: 1px solid var(--border-light);

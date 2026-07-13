@@ -19,6 +19,7 @@ lang: en
 <link rel="stylesheet" href="/guides/style.css">
 {% endblock %}
 {% block body %}
+{% include "space-bg.njk" %}
 <nav class="site">
   <a href="/" class="nav-logo">Houston</a>
   <div class="nav-center">
@@ -30,7 +31,6 @@ lang: en
     <a href="/vision/">Vision</a>
   </div>
   <div class="nav-right">
-    <details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr1"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr1)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>EN<span class="chev"></span></summary><div class="menu"><a class="on" href="/guides/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a href="/guides/es/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details>
     <a href="https://github.com/gethouston/houston" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;">
       <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
     </a>
@@ -60,9 +60,9 @@ lang: en
     what you built to the rest of your stack with the developer guides.
   </p>
 
-  <h2 id="workshops">Workshops</h2>
+  <h2 id="create">Create your agent</h2>
   <p class="section-lede">
-    Complete builds, from blank workspace to working agent.
+    Complete workshop builds, from blank workspace to working agent.
   </p>
   <div class="guide-grid">
     <a class="guide-card" data-guide="Revenue Manager Agent" data-status="live" href="/guides/revenue-manager/">
@@ -85,33 +85,25 @@ lang: en
     </a>
   </div>
 
-  <h2 id="connect">Use your agents from other apps</h2>
+  <h2 id="connect">Connect your agents</h2>
   <p class="section-lede">
     Your agents are not locked inside Houston. AI assistants, other agents,
-    and automation tools can start missions and get the results back. These
-    guides show how.
+    and automation tools can start missions and get the results back. One
+    guide covers all of it.
   </p>
-  <div class="card-grid">
-    <a class="surface-card" data-guide="API Overview" data-status="live" href="/developers/">
-      <div class="surface-kicker">Start here</div>
-      <div class="surface-title">The Houston API</div>
-      <div class="surface-desc">One API key, three ways in. The 60-second quickstart takes you from key to finished mission.</div>
+  <div class="guide-group" data-guide="Public API guide" data-status="live">
+    <a class="intro" href="/developers/">
+      <span class="kicker">Developer guide</span>
+      <h3>Use your agents from other apps</h3>
+      <p>One API key, three ways in: a REST API for automations, Agent2Agent for other agents, and MCP for AI assistants like Claude. The 60-second quickstart takes you from key to finished mission.</p>
+      <span class="start">Start the guide →</span>
     </a>
-    <a class="surface-card" data-guide="Missions REST" data-status="live" href="/developers/missions/">
-      <div class="surface-kicker">REST</div>
-      <div class="surface-title">Missions &amp; webhooks</div>
-      <div class="surface-desc">Start missions from automation tools and scripts. Poll, stream, or get a signed webhook when the agent finishes.</div>
-    </a>
-    <a class="surface-card" data-guide="A2A" data-status="live" href="/developers/a2a/">
-      <div class="surface-kicker">A2A</div>
-      <div class="surface-title">Agent2Agent</div>
-      <div class="surface-desc">Let agents built on other platforms discover your Houston agent and hand it tasks.</div>
-    </a>
-    <a class="surface-card" data-guide="MCP" data-status="live" href="/developers/mcp/">
-      <div class="surface-kicker">MCP</div>
-      <div class="surface-title">Agents as tools</div>
-      <div class="surface-desc">Add your agents to Claude or any MCP client, and let your assistant put them to work.</div>
-    </a>
+    <ul class="chapters">
+      <li><a href="/developers/"><span class="num">—</span>Overview &amp; quickstart<span class="arrow">→</span></a></li>
+      <li><a href="/developers/missions/"><span class="num">01</span>Missions (REST) &amp; webhooks<span class="arrow">→</span></a></li>
+      <li><a href="/developers/a2a/"><span class="num">02</span>Agent2Agent<span class="arrow">→</span></a></li>
+      <li><a href="/developers/mcp/"><span class="num">03</span>MCP: agents as tools<span class="arrow">→</span></a></li>
+    </ul>
   </div>
 
   <h2 id="coming-soon">Coming soon</h2>
@@ -211,6 +203,7 @@ lang: en
     Every live workshop we run becomes a guide here.
   </div>
   <div style="margin-top: 12px; display: flex; gap: 16px; font-size: 12px; color: var(--gray-500); flex-wrap: wrap; justify-content: center;">
+    <a href="/guides/es/" style="color: var(--gray-500);">Español</a>
     <a href="/learn/" style="color: var(--gray-500);">Learn</a>
     <a href="/developers/" style="color: var(--gray-500);">Developers</a>
     <a href="/changelog/" style="color: var(--gray-500);">Changelog</a>
