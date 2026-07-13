@@ -727,33 +727,40 @@ host has a turn bus, wired as `triggerLock` in `local/host.ts`.
   `agentTriggerStatus` call those gateway routes. A pod/self-host serves neither —
   outside managed cloud the UI never advertises triggers, so it never calls them.
 
-### UI surfaces — the Reactions tab
+### UI surfaces — the Automations tab (merged, no Reactions tab)
 
-Event-driven automations are their OWN tab, **Reactions** (tab id `reactions`,
-es "Reacciones", pt "Reações"), beside Routines and shown only when
-`capabilities.triggers` is on (gated in `visibleAgentTabs`,
-`app/src/agents/standard-tabs.ts`). There is NO wake-mechanism toggle — the
-product decision is one concept per tab: Routines = "on a schedule", Reactions
-= "when something happens". The domain model stays ONE `routines.json` list;
-both tabs are filtered views over it, thin wrappers over the shared
-`RoutineListTab` (`app/src/components/tabs/routine-list-tab.tsx`,
-kind-parameterized: filters the list, picks labels, omits the timezone bar for
-Reactions, enables trigger data fetching only there).
+Event-driven automations live in the ONE **Automations** tab (tab id stays
+`routines` — it's a persisted viewMode value; label en "Automations", es
+"Automatizaciones", pt "Automações") together with schedule-driven ones. The
+old Reactions tab was merged away: the schedule/event split is an engineering
+distinction, not a user distinction, so the tab set never varies by deployment
+and the wake mechanism is a choice INSIDE the editor. The domain model stays
+ONE `routines.json` list; the tab (`app/src/components/tabs/routines-tab.tsx`)
+renders it unfiltered, with per-row sentence summaries ("Runs every day at
+9:00" vs "Wakes on an event in Gmail"). The list sits on the shared catalog
+grammar (inventory v24/v25): flat hover-fill rows, Active / Paused sections
+with `CatalogSectionHeader` count chips, a pure empty state (title +
+description + one filled CTA).
 
-`RoutineRowEdit` takes `variant: "schedule" | "event"` fixing the ONE wake
-mechanism it authors (built-in `ScheduleBuilder` vs the app-injected trigger
-editor slot); rows derive the variant from `routine.trigger`. `ui/` cannot
+`RoutineRowEdit` owns the wake choice: a plain-language "When should this
+happen?" toggle ("On a schedule" / "When something happens in an app"),
+rendered only when `allowEventWake` (from `capabilities.triggers`) AND the
+app-injected trigger editor are present; otherwise it is schedule-only with no
+choice shown. An existing event routine opens on its event side; switching to
+schedule on save clears the trigger (`routineUpdateFromPatch` sends
+`trigger: null`, preserving the server's exactly-one invariant). `ui/` cannot
 reach app data, so the app injects the editor as a slot —
 `RoutineTriggerEditor` (`app/src/components/tabs/routine-trigger-editor.tsx`)
 owns the pick-an-app → pick-an-event → fill-the-details flow over
 `TriggerPicker` / `TriggerConfigForm` (the config form is generated from the
 trigger type's JSON-schema); usable apps are scoped to the agent's granted
 toolkits (`use-usable-toolkits`). The live `TriggerStatusBadge` renders above
-it; a `paused_disconnected` reaction offers one-click reconnect. Creation
-mirrors Routines exactly: "With AI" (the same setup-chat flow with a
-reaction-specific kickoff, `reaction-chat-prompts.ts`) or "Manually" (inline
-draft card). Draft chats are kind-discriminated by a second agent-mode
-sentinel (`REACTION_SETUP_AGENT_MODE = "houston:reaction-setup"`) so a
-reaction draft never leaks into Routines and vice versa. Read queries:
-`useTriggerTypes` / trigger-status in `app/src/hooks/queries/use-triggers.ts`,
-gated on the `triggers` capability so a desktop build never fetches.
+it; a `paused_disconnected` routine offers one-click reconnect. Creation:
+"With AI" (ONE setup-chat kickoff, `routine-chat-prompts.ts`, which offers the
+event wake only when `capabilities.triggers` is on) or "Manually" (inline
+draft card, starts on the schedule side). Setup chats all carry
+`ROUTINE_SETUP_AGENT_MODE`; the legacy `REACTION_SETUP_AGENT_MODE =
+"houston:reaction-setup"` sentinel is recognized forever (pre-merge chats are
+user data) but never written. Read queries: `useTriggerTypes` /
+trigger-status in `app/src/hooks/queries/use-triggers.ts`, gated on the
+`triggers` capability so a desktop build never fetches.

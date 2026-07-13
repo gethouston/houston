@@ -35,7 +35,6 @@ describe("STANDARD_TABS order", () => {
       [
         "activity",
         "routines",
-        "reactions",
         "integrations",
         "files",
         "archived",
@@ -85,36 +84,25 @@ describe("visibleAgentTabs", () => {
   });
 });
 
-describe("visibleAgentTabs — Reactions (event-driven automations)", () => {
-  it("hides Reactions when the deployment has no event triggers", () => {
-    for (const c of [caps(), null, caps({ triggers: false })]) {
+describe("visibleAgentTabs — event triggers add no tab (merged Automations)", () => {
+  it("shows the same tab set with and without the triggers capability", () => {
+    // The wake mechanism is a choice inside the Automations editor, gated by
+    // `capabilities.triggers` there — never a separate tab, so the tab set is
+    // byte-identical across deployments.
+    deepStrictEqual(
+      ids(caps({ triggers: true }), agent()),
+      ids(caps(), agent()),
+    );
+    deepStrictEqual(
+      ids(caps({ triggers: false }), agent()),
+      ids(null, agent()),
+    );
+  });
+
+  it("never contains a reactions tab", () => {
+    for (const c of [caps(), null, caps({ triggers: true })]) {
       strictEqual(ids(c, agent()).includes("reactions"), false);
     }
-  });
-
-  it("shows Reactions, right after Routines, when triggers are supported", () => {
-    const shown = ids(caps({ triggers: true }), agent());
-    strictEqual(shown.includes("reactions"), true);
-    strictEqual(shown.indexOf("reactions"), shown.indexOf("routines") + 1);
-  });
-
-  it("gates Reactions on the capability, not on role", () => {
-    strictEqual(
-      ids(multiplayer("user"), agent("user")).includes("reactions"),
-      false,
-    );
-    strictEqual(
-      visibleAgentTabs(multiplayer("user"), agent("user")).some(
-        (t) => t.id === "reactions",
-      ),
-      false,
-    );
-    const withTriggers = caps({
-      multiplayer: true,
-      role: "user",
-      triggers: true,
-    });
-    strictEqual(ids(withTriggers, agent("user")).includes("reactions"), true);
   });
 });
 

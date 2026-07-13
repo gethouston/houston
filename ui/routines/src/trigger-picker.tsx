@@ -7,6 +7,7 @@
  * connected account. Purely presentational — data + fetching live in the app.
  */
 import {
+  Button,
   cn,
   Select,
   SelectContent,
@@ -29,6 +30,9 @@ export interface TriggerPickerProps {
   onSelectTriggerType: (slug: string) => void;
   selectedAccountId?: string;
   onSelectAccount: (accountId: string) => void;
+  /** Jump to the Integrations surface to connect an app — turns the no-apps
+   *  empty state into an actionable one instead of a dead end. */
+  onConnectApp?: () => void;
   labels?: TriggerLabels;
 }
 
@@ -64,13 +68,28 @@ export function TriggerPicker({
   onSelectTriggerType,
   selectedAccountId,
   onSelectAccount,
+  onConnectApp,
   labels = DEFAULT_TRIGGER_LABELS,
 }: TriggerPickerProps) {
   const app = apps.find((a) => a.toolkit === selectedToolkit) ?? null;
 
   if (!app) {
     if (apps.length === 0) {
-      return <p className="text-sm text-ink-muted">{labels.noApps}</p>;
+      return (
+        <div
+          className={cn(
+            "rounded-lg border border-dashed border-ink/[0.12]",
+            "flex flex-col items-center gap-2.5 px-4 py-5 text-center",
+          )}
+        >
+          <p className="text-sm text-ink-muted max-w-xs">{labels.noApps}</p>
+          {onConnectApp && (
+            <Button size="sm" onClick={onConnectApp}>
+              {labels.connectApp}
+            </Button>
+          )}
+        </div>
+      );
     }
     return (
       <div className="space-y-2">

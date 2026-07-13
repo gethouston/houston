@@ -4,7 +4,7 @@ import { expect, test } from "./support/fixtures";
 /**
  * HOU first-principles rebuild: a routine's chat is the ENTIRE Routines tab
  * content while it's open (no side-by-side editor, no run history list).
- * "New routine" is a split trigger — With AI opens the guided chat (agent
+ * "New automation" is a split trigger — With AI opens the guided chat (agent
  * speaks first, asks what/when, creates it), Manually drops a blank routine
  * into the list already expanded for inline editing. Rows aren't clickable;
  * "Edit with AI" in a row's menu is what opens an existing routine's chat.
@@ -17,12 +17,12 @@ import { expect, test } from "./support/fixtures";
 async function openRoutinesTab(page: import("@playwright/test").Page) {
   await page.locator('[data-tour-target="tab-routines"]').click();
   await expect(
-    page.getByRole("button", { name: "New routine" }).first(),
+    page.getByRole("button", { name: "New automation" }).first(),
   ).toBeVisible();
 }
 
 async function startNewRoutineWithAi(page: import("@playwright/test").Page) {
-  await page.getByRole("button", { name: "New routine" }).first().click();
+  await page.getByRole("button", { name: "New automation" }).first().click();
   await page.getByRole("menuitem", { name: "With AI" }).click();
 }
 
@@ -54,9 +54,9 @@ test("new routine with AI: opens straight into the chat, agent speaks first", as
 
   // No form, no grid behind it — the chat is the whole screen.
   await expect(
-    page.getByRole("button", { name: "Back to routines" }),
+    page.getByRole("button", { name: "Back to automations" }),
   ).toBeVisible();
-  await expect(page.getByText("New routine", { exact: true })).toBeVisible({
+  await expect(page.getByText("New automation", { exact: true })).toBeVisible({
     timeout: 10_000,
   });
 
@@ -79,13 +79,13 @@ async function listRoutines(agentId: string): Promise<{ name: string }[]> {
   return items;
 }
 
-test("new routine manually: local editor, nothing written until Create routine", async ({
+test("new routine manually: local editor, nothing written until Create automation", async ({
   page,
 }) => {
   const agentId = await seedAgentId();
   await page.goto("/");
   await openRoutinesTab(page);
-  await page.getByRole("button", { name: "New routine" }).first().click();
+  await page.getByRole("button", { name: "New automation" }).first().click();
   await page.getByRole("menuitem", { name: "Manually" }).click();
 
   // No screen change: still on the grid, with a LOCAL inline editor as the
@@ -101,8 +101,8 @@ test("new routine manually: local editor, nothing written until Create routine",
   await page
     .getByPlaceholder("What should the agent do when this runs?")
     .fill("Tidy up the shared drive.");
-  // The save button is "Create routine" for a brand-new routine.
-  await page.getByRole("button", { name: "Create routine" }).click();
+  // The save button is "Create automation" for a brand-new routine.
+  await page.getByRole("button", { name: "Create automation" }).click();
 
   // Now it's a real routine — in the list AND on disk.
   await expect(page.getByText("Weekly cleanup")).toBeVisible();
@@ -117,7 +117,7 @@ test("new routine manually: Cancel discards with zero disk writes", async ({
   const agentId = await seedAgentId();
   await page.goto("/");
   await openRoutinesTab(page);
-  await page.getByRole("button", { name: "New routine" }).first().click();
+  await page.getByRole("button", { name: "New automation" }).first().click();
   await page.getByRole("menuitem", { name: "Manually" }).click();
 
   const nameField = page.getByPlaceholder("e.g. Morning standup");
@@ -160,7 +160,7 @@ test("mid-interview: no board card, tab switch leaves the draft resumable in the
   await page.goto("/");
   await openRoutinesTab(page);
   await startNewRoutineWithAi(page);
-  await expect(page.getByText("New routine", { exact: true })).toBeVisible({
+  await expect(page.getByText("New automation", { exact: true })).toBeVisible({
     timeout: 10_000,
   });
   await expect(page.getByText(/Roger that\./)).toBeVisible({
@@ -182,20 +182,22 @@ test("mid-interview: no board card, tab switch leaves the draft resumable in the
   // list still holds the item, so assert visibility, not count).
   await page.locator('[data-tour-target="tab-activity"]').click();
   await expect(
-    page.getByText("Set up a new routine", { exact: true }),
+    page.getByText("Set up a new automation", { exact: true }),
   ).not.toBeVisible();
 
   // Back on Routines the chat is still open — leave it for the grid; the
   // unfinished draft surfaces as its own resumable row there.
   await page.locator('[data-tour-target="tab-routines"]').click();
-  await page.getByRole("button", { name: "Back to routines" }).click();
+  await page.getByRole("button", { name: "Back to automations" }).click();
   await page.locator('[data-tour-target="tab-activity"]').click();
   await openRoutinesTab(page);
-  await expect(page.getByText("Routine being created in chat")).toBeVisible();
+  await expect(
+    page.getByText("Automation being created in chat"),
+  ).toBeVisible();
 
   // Resume reopens the same chat (no duplicate mission created).
   await page.getByRole("button", { name: "Resume" }).click();
-  await expect(page.getByText("New routine", { exact: true })).toBeVisible();
+  await expect(page.getByText("New automation", { exact: true })).toBeVisible();
 });
 
 test("a routine created via chat claims the draft and resumes on reopen", async ({
@@ -237,12 +239,14 @@ test("a routine created via chat claims the draft and resumes on reopen", async 
   await page.reload();
   await openRoutinesTab(page);
   await expect(page.getByText("Morning brief")).toBeVisible();
-  await expect(page.getByText("Routine being created in chat")).toHaveCount(0);
+  await expect(page.getByText("Automation being created in chat")).toHaveCount(
+    0,
+  );
 
   // Opening the routine (Edit with AI) resumes the SAME chat: the header now
   // reads the routine's own name, and the earlier conversation is still there.
   await editRoutineWithAi(page, "Morning brief");
-  await expect(page.getByText("Routine: Morning brief")).toBeVisible({
+  await expect(page.getByText("Automation: Morning brief")).toBeVisible({
     timeout: 10_000,
   });
   await expect(page.getByText(/Roger that\./).first()).toBeVisible({
@@ -279,7 +283,7 @@ test("a routine without a chat gets one on first open, linked from then on", asy
   await editRoutineWithAi(page, "Legacy digest");
 
   // A chat starts (titled after the routine), agent first.
-  await expect(page.getByText("Routine: Legacy digest")).toBeVisible({
+  await expect(page.getByText("Automation: Legacy digest")).toBeVisible({
     timeout: 10_000,
   });
   await expect(page.getByText(/Roger that\./)).toBeVisible({
@@ -314,7 +318,7 @@ test("clicking app chrome never dismisses the routine chat", async ({
   await page.goto("/");
   await openRoutinesTab(page);
   await editRoutineWithAi(page, "Sticky chat");
-  await expect(page.getByText("Routine: Sticky chat")).toBeVisible({
+  await expect(page.getByText("Automation: Sticky chat")).toBeVisible({
     timeout: 15_000,
   });
 
@@ -323,7 +327,7 @@ test("clicking app chrome never dismisses the routine chat", async ({
   // that maximizes the window) must leave it open.
   await page.locator('[data-tour-target="tab-routines"]').click();
   await page.locator("body").click({ position: { x: 5, y: 5 } });
-  await expect(page.getByText("Routine: Sticky chat")).toBeVisible();
+  await expect(page.getByText("Automation: Sticky chat")).toBeVisible();
 });
 
 test("an agent edit that drops the routine's chat link self-heals", async ({
@@ -343,7 +347,7 @@ test("an agent edit that drops the routine's chat link self-heals", async ({
   await page.goto("/");
   await openRoutinesTab(page);
   await editRoutineWithAi(page, "Healed digest");
-  await expect(page.getByText("Routine: Healed digest")).toBeVisible({
+  await expect(page.getByText("Automation: Healed digest")).toBeVisible({
     timeout: 15_000,
   });
 
@@ -372,7 +376,7 @@ test("an agent edit that drops the routine's chat link self-heals", async ({
 
   // The open chat survives the drop (the activity's routine_id stamp is the
   // durable direction)…
-  await expect(page.getByText("Routine: Healed digest")).toBeVisible();
+  await expect(page.getByText("Automation: Healed digest")).toBeVisible();
   // …and the client restores the forward link on disk.
   await expect
     .poll(async () => (await routineByName()).setup_activity_id)
@@ -382,7 +386,7 @@ test("an agent edit that drops the routine's chat link self-heals", async ({
   await page.reload();
   await openRoutinesTab(page);
   await editRoutineWithAi(page, "Healed digest");
-  await expect(page.getByText("Routine: Healed digest")).toBeVisible({
+  await expect(page.getByText("Automation: Healed digest")).toBeVisible({
     timeout: 15_000,
   });
   const { items: activities } = (await (
@@ -399,8 +403,8 @@ test("the draft chat transitions in place the moment a routine claims it", async
   await startNewRoutineWithAi(page);
   await expect(page.getByText(/Roger that\./)).toBeVisible({ timeout: 15_000 });
 
-  // Until a routine claims it, the open draft chat's header reads "New routine".
-  await expect(page.getByText("New routine", { exact: true })).toBeVisible();
+  // Until a routine claims it, the open draft chat's header reads "New automation".
+  await expect(page.getByText("New automation", { exact: true })).toBeVisible();
 
   // Find the still-unclaimed draft (agent === routine-setup, no routine_id).
   const agentId = await seedAgentId();
@@ -426,7 +430,7 @@ test("the draft chat transitions in place the moment a routine claims it", async
 
   // The SAME open chat transitions in place — no reload, no user navigation —
   // and its header swaps to the routine's own name.
-  await expect(page.getByText("Routine: Morning brief")).toBeVisible({
+  await expect(page.getByText("Automation: Morning brief")).toBeVisible({
     timeout: 15_000,
   });
 });
@@ -477,7 +481,7 @@ test("Escape returns from a routine chat to the grid", async ({ page }) => {
   await page.goto("/");
   await openRoutinesTab(page);
   await editRoutineWithAi(page, "Escapable");
-  await expect(page.getByText("Routine: Escapable")).toBeVisible({
+  await expect(page.getByText("Automation: Escapable")).toBeVisible({
     timeout: 15_000,
   });
   await expect(page.getByText(/Roger that\./)).toBeVisible({
@@ -502,18 +506,18 @@ test("Escape returns from a routine chat to the grid", async ({ page }) => {
   await composer.click();
   await expect(composer).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(page.getByText("Routine: Escapable")).toBeVisible();
+  await expect(page.getByText("Automation: Escapable")).toBeVisible();
   await composer.blur();
   await expect(composer).not.toBeFocused();
   await page.keyboard.press("Escape");
   await expect(
-    page.getByRole("button", { name: "New routine" }).first(),
+    page.getByRole("button", { name: "New automation" }).first(),
   ).toBeVisible();
-  await expect(page.getByText("Routine: Escapable")).toBeHidden();
+  await expect(page.getByText("Automation: Escapable")).toBeHidden();
 
   // The chat still opens fine afterwards (Escape never wedged the view).
   await editRoutineWithAi(page, "Escapable");
-  await expect(page.getByText("Routine: Escapable")).toBeVisible({
+  await expect(page.getByText("Automation: Escapable")).toBeVisible({
     timeout: 15_000,
   });
 });

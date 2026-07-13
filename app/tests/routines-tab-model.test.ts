@@ -1,11 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { Routine, RoutineRun } from "@houston-ai/routines";
-import {
-  latestRunByRoutine,
-  reactionRoutines,
-  scheduleRoutines,
-} from "../src/components/tabs/routines-tab-model.ts";
+import type { RoutineRun } from "@houston-ai/routines";
+import { latestRunByRoutine } from "../src/components/tabs/routines-tab-model.ts";
 
 describe("routines tab model — latestRunByRoutine", () => {
   function run(overrides: Partial<RoutineRun>): RoutineRun {
@@ -56,49 +52,5 @@ describe("routines tab model — latestRunByRoutine", () => {
 
     strictEqual(latestRunByRoutine([newer, older]).r1.id, "b");
     strictEqual(latestRunByRoutine([older, newer]).r1.id, "b");
-  });
-});
-
-describe("routines tab model — schedule vs reaction filters", () => {
-  function routine(over: Partial<Routine>): Routine {
-    return {
-      id: "r",
-      name: "R",
-      prompt: "p",
-      enabled: true,
-      suppress_when_silent: true,
-      chat_mode: "shared",
-      integrations: [],
-      created_at: "",
-      updated_at: "",
-      ...over,
-    };
-  }
-
-  const scheduled = routine({ id: "s1", schedule: "0 9 * * *" });
-  const reaction = routine({
-    id: "e1",
-    trigger: {
-      toolkit: "gmail",
-      trigger_slug: "GMAIL_NEW_GMAIL_MESSAGE",
-      trigger_config: {},
-    },
-  });
-
-  it("splits one list into the schedule-driven and event-driven views", () => {
-    const all = [scheduled, reaction];
-    deepStrictEqual(
-      scheduleRoutines(all).map((r) => r.id),
-      ["s1"],
-    );
-    deepStrictEqual(
-      reactionRoutines(all).map((r) => r.id),
-      ["e1"],
-    );
-  });
-
-  it("treats undefined as empty (no crash before the list loads)", () => {
-    deepStrictEqual(scheduleRoutines(undefined), []);
-    deepStrictEqual(reactionRoutines(undefined), []);
   });
 });

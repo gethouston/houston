@@ -81,36 +81,20 @@ export const DEFAULT_GRID_LABELS: RoutinesGridLabels = {
   loading: "Loading…",
   emptyTitle: "Set it and forget it",
   emptyDescription:
-    "A routine is your agent working on a schedule, without you asking each time. Describe a task once, and it runs on its own, daily, weekly, or however often you like.",
-  emptyStepsTitle: "How it works",
-  emptySteps: [
-    {
-      title: "Tell it what to do",
-      description:
-        "Describe the task in plain language, like you would to a person.",
-    },
-    {
-      title: "Choose when it runs",
-      description:
-        "Pick a schedule: every morning, every hour, once a week, whatever fits.",
-    },
-    {
-      title: "Review by asking",
-      description:
-        "No need to check its work by hand, just ask the assistant what happened.",
-    },
-  ],
+    "An automation is your agent working on its own, without you asking each time. Describe a task once, choose when it should happen, and it takes care of the rest.",
   descriptionShort:
-    "Recurring tasks that fire on schedule and only ping you when something needs attention.",
-  newRoutine: "New routine",
+    "Work your agent does on its own, pinging you only when something needs attention.",
+  sectionActive: "Active",
+  sectionPaused: "Paused",
+  newRoutine: "New automation",
   newRoutineWithAi: "With AI",
   newRoutineManually: "Manually",
-  draftTitle: "Routine being created in chat",
+  draftTitle: "Automation being created in chat",
   draftResume: "Resume",
   draftDiscard: "Discard",
-  createRoutine: "Create routine",
+  createRoutine: "Create automation",
   timezoneLabel: "Timezone",
-  timezoneHint: "All your routines run in this timezone.",
+  timezoneHint: "All your scheduled automations run in this timezone.",
   timezoneSearchPlaceholder: "Search timezones…",
   timezoneNoResults: "No timezones found",
 };
@@ -121,6 +105,7 @@ export const DEFAULT_TRIGGER_LABELS: TriggerLabels = {
   chooseEvent: "What should wake it?",
   changeApp: "Change app",
   noApps: "Connect an app first to have a routine wake on events.",
+  connectApp: "Connect an app",
   loadingEvents: "Loading events…",
   noEvents: "This app has no events to wake on yet.",
   pollHint: "Checks every few minutes",
@@ -165,6 +150,11 @@ export const DEFAULT_ROW_LABELS: RoutineRowLabels = {
   deleteCancel: "Cancel",
   nameLabel: "Name",
   namePlaceholder: "e.g. Morning standup",
+  whenTitle: "When should this happen?",
+  whenSchedule: "On a schedule",
+  whenScheduleHint: "Every morning, once a week, you choose",
+  whenEvent: "When something happens",
+  whenEventHint: "A new email, a message, a change in an app",
   instructionLabel: "Instruction",
   instructionPlaceholder: "What should the agent do when this runs?",
   save: "Save",

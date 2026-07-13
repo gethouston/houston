@@ -7,12 +7,6 @@ import {
 } from "../src/lib/auto-continue-message.ts";
 import { selectActive, selectArchived } from "../src/lib/mission-selection.ts";
 import {
-  encodeReactionModifyMessage,
-  encodeReactionSetupMessage,
-  reactionModifyPrompt,
-  reactionSetupPrompt,
-} from "../src/lib/reaction-chat-prompts.ts";
-import {
   encodeRoutineModifyMessage,
   encodeRoutineSetupMessage,
   routineModifyPrompt,
@@ -33,10 +27,11 @@ import {
 // marker drifts, non-technical users see raw interview instructions as their
 // own first message.
 
-describe("routine chat setup message", () => {
+describe("automation chat setup message", () => {
   it("is tagged as an auto-continue message and filtered from the feed", () => {
     for (const body of [
-      encodeRoutineSetupMessage("act-1", null),
+      encodeRoutineSetupMessage("act-1", null, false),
+      encodeRoutineSetupMessage("act-1", null, true),
       encodeRoutineModifyMessage({ id: "r1", name: "Morning brief" }, null),
     ]) {
       ok(isAutoContinueMessage(body));
@@ -48,11 +43,13 @@ describe("routine chat setup message", () => {
   });
 
   it("carries the kickoff prompt as the model-facing body", () => {
-    ok(
-      encodeRoutineSetupMessage("act-1", null).endsWith(
-        routineSetupPrompt("act-1", null),
-      ),
-    );
+    for (const eventsAvailable of [false, true]) {
+      ok(
+        encodeRoutineSetupMessage("act-1", null, eventsAvailable).endsWith(
+          routineSetupPrompt("act-1", null, eventsAvailable),
+        ),
+      );
+    }
     const routine = { id: "r1", name: "Morning brief" };
     ok(
       encodeRoutineModifyMessage(routine, null).endsWith(
@@ -116,26 +113,52 @@ describe("routine chat setup message", () => {
     // models or providers. HOU-725 adds the persistence beats: the framing
     // says the chat stays available for later changes, and the routine is
     // linked back to this chat via setup_activity_id.
-    const prompt = routineSetupPrompt("act-42", [
-      { id: "anthropic", name: "Claude" },
-    ]);
+    for (const eventsAvailable of [false, true]) {
+      const prompt = routineSetupPrompt(
+        "act-42",
+        [{ id: "anthropic", name: "Claude" }],
+        eventsAvailable,
+      );
+      for (const needle of [
+        "The user has not said anything yet",
+        "Start RIGHT NOW, in this same turn",
+        "SINGLE ask_user call",
+        "friendly framing INTO the question",
+        "come back to this same chat",
+        "A turn that ends without an ask_user call is a mistake",
+        "exactly ONE question per ask_user call",
+        "Never batch",
+        "one ongoing chat",
+        "fresh chat",
+        "needs their attention",
+        "approval",
+        "Do not ask about models, providers",
+        '"setup_activity_id" field to exactly "act-42"',
+      ]) {
+        ok(prompt.includes(needle), `prompt must mention: ${needle}`);
+      }
+    }
+  });
+
+  it("offers the event wake only where the deployment supports triggers", () => {
+    // Where the deployment has no event triggers, the kickoff must never let
+    // the agent promise "the moment something happens" — it can't deliver.
+    const scheduleOnly = routineSetupPrompt("act-1", null, false);
+    ok(!scheduleOnly.includes("moment something happens"));
+    ok(!scheduleOnly.includes("trigger"));
+    ok(scheduleOnly.includes("When it should run"));
+    ok(scheduleOnly.includes("with the agreed schedule"));
+
+    // With triggers, both wakes are offered and the exactly-one rule is stated.
+    const both = routineSetupPrompt("act-1", null, true);
     for (const needle of [
-      "The user has not said anything yet",
-      "Start RIGHT NOW, in this same turn",
-      "SINGLE ask_user call",
-      "friendly framing INTO the question",
-      "come back to this same chat",
-      "A turn that ends without an ask_user call is a mistake",
-      "exactly ONE question per ask_user call",
-      "Never batch",
-      "one ongoing chat",
-      "fresh chat",
-      "needs their attention",
-      "approval",
-      "Do not ask about models, providers",
-      '"setup_activity_id" field to exactly "act-42"',
+      "On a schedule",
+      "moment something happens in one of their connected apps",
+      "actually connected",
+      "help them connect it first",
+      "exactly ONE wake mechanism",
     ]) {
-      ok(prompt.includes(needle), `prompt must mention: ${needle}`);
+      ok(both.includes(needle), `event-capable prompt must mention: ${needle}`);
     }
   });
 
@@ -165,9 +188,9 @@ describe("routine chat setup message", () => {
   });
 
   it("returns ALL live setup chats no routine claims, in input order", () => {
-    // A person can have several routines-in-construction going at once; each
-    // is its own resumable/discardable item, so every unclaimed live setup
-    // chat comes back, in the order it appeared in the input.
+    // A person can have several automations-in-construction going at once;
+    // each is its own resumable/discardable item, so every unclaimed live
+    // setup chat comes back, in the order it appeared in the input.
     const draftA = {
       id: "d1",
       agent: ROUTINE_SETUP_AGENT_MODE,
@@ -204,7 +227,6 @@ describe("routine chat setup message", () => {
       findDraftSetupActivities(
         [draftA, claimedForward, claimedReverse, archived, normal, draftB],
         routines,
-        ROUTINE_SETUP_AGENT_MODE,
       ),
       [draftA, draftB],
     );
@@ -226,50 +248,38 @@ describe("routine chat setup message", () => {
           { id: "c", agent: "researcher", status: "running" },
         ],
         routines,
-        ROUTINE_SETUP_AGENT_MODE,
       ),
       [],
     );
   });
 
-  it("scopes drafts to the requested kind: a reaction draft never leaks into Routines", () => {
-    // Both kinds share the one activities list; the mode filter is what keeps a
-    // routine draft out of the Reactions tab and vice versa.
+  it("keeps pre-merge reaction drafts resumable in the merged tab", () => {
+    // The old Reactions tab wrote its own sentinel; those chats are user data
+    // and must keep showing as drafts after the merge (recognized, never
+    // written anymore).
     const routineDraft = {
       id: "d1",
       agent: ROUTINE_SETUP_AGENT_MODE,
       status: "running",
     };
-    const reactionDraft = {
+    const legacyReactionDraft = {
       id: "d2",
       agent: REACTION_SETUP_AGENT_MODE,
       status: "running",
     };
-    const all = [routineDraft, reactionDraft];
     deepStrictEqual(
-      findDraftSetupActivities(all, [], ROUTINE_SETUP_AGENT_MODE),
-      [routineDraft],
-    );
-    deepStrictEqual(
-      findDraftSetupActivities(all, [], REACTION_SETUP_AGENT_MODE),
-      [reactionDraft],
+      findDraftSetupActivities([routineDraft, legacyReactionDraft], []),
+      [routineDraft, legacyReactionDraft],
     );
   });
 
   it("returns [] for empty or undefined inputs", () => {
-    deepStrictEqual(
-      findDraftSetupActivities([], [], ROUTINE_SETUP_AGENT_MODE),
-      [],
-    );
-    deepStrictEqual(
-      findDraftSetupActivities(undefined, undefined, ROUTINE_SETUP_AGENT_MODE),
-      [],
-    );
+    deepStrictEqual(findDraftSetupActivities([], []), []);
+    deepStrictEqual(findDraftSetupActivities(undefined, undefined), []);
     deepStrictEqual(
       findDraftSetupActivities(
         [{ id: "d1", agent: ROUTINE_SETUP_AGENT_MODE, status: "running" }],
         undefined,
-        ROUTINE_SETUP_AGENT_MODE,
       ),
       [{ id: "d1", agent: ROUTINE_SETUP_AGENT_MODE, status: "running" }],
     );
@@ -323,7 +333,8 @@ describe("routine chat setup message", () => {
       { id: "openai", name: "ChatGPT" },
     ];
     for (const prompt of [
-      routineSetupPrompt("act-1", connected),
+      routineSetupPrompt("act-1", connected, false),
+      routineSetupPrompt("act-1", connected, true),
       routineModifyPrompt({ id: "r1", name: "R" }, connected),
     ]) {
       ok(
@@ -335,81 +346,30 @@ describe("routine chat setup message", () => {
       ok(prompt.includes("Never invent provider or model names"));
     }
     // Statuses not loaded yet → generic caution, never a false "none".
-    const unknown = routineSetupPrompt("act-1", null);
+    const unknown = routineSetupPrompt("act-1", null, false);
     ok(unknown.includes("cannot confirm it is connected"));
     ok(!unknown.includes("only providers connected"));
   });
 
-  it("modify kickoff greets once and pins the routine it may edit", () => {
-    // The routine already exists: no interview, exactly one greeting line,
-    // and every later edit targets THIS routine (never a duplicate).
+  it("modify kickoff greets once, pins the routine, and keeps its wake", () => {
+    // The automation already exists: no interview, exactly one greeting line,
+    // every later edit targets THIS routine (never a duplicate), and its wake
+    // mechanism only changes when the user asks to change it.
     const prompt = routineModifyPrompt({ id: "r-7", name: "Morning brief" }, [
       { id: "anthropic", name: "Claude" },
     ]);
     for (const needle of [
-      'routine "Morning brief"',
+      'automation "Morning brief"',
       "exactly one short, friendly line",
       "do not call ask_user",
       "end your turn after that single line",
       'id is "r-7"',
-      "Never create a second routine",
+      "Never create a second one",
+      "keep how it wakes",
+      "exactly ONE wake mechanism",
       "approval",
     ]) {
       ok(prompt.includes(needle), `prompt must mention: ${needle}`);
-    }
-  });
-});
-
-describe("reaction (event-driven) chat setup", () => {
-  it("rides the auto-continue marker and carries the reaction kickoff body", () => {
-    ok(isAutoContinueMessage(encodeReactionSetupMessage("act-9", null)));
-    ok(
-      encodeReactionSetupMessage("act-9", null).endsWith(
-        reactionSetupPrompt("act-9", null),
-      ),
-    );
-    const reaction = { id: "x1", name: "Inbox watcher" };
-    ok(
-      encodeReactionModifyMessage(reaction, null).endsWith(
-        reactionModifyPrompt(reaction, null),
-      ),
-    );
-  });
-
-  it("steers the agent to an EVENT trigger, never a schedule", () => {
-    const prompt = reactionSetupPrompt("act-9", [
-      { id: "anthropic", name: "Claude" },
-    ]);
-    for (const needle of [
-      "New reaction",
-      "wakes on an EVENT",
-      "NOT on a clock",
-      "must NOT have a schedule",
-      "connected app",
-      "give it NO schedule",
-      '"setup_activity_id" field to exactly "act-9"',
-      "Never invent provider or model names",
-    ]) {
-      ok(prompt.includes(needle), `reaction prompt must mention: ${needle}`);
-    }
-  });
-
-  it("modify kickoff keeps the reaction event-driven and pins its id", () => {
-    const prompt = reactionModifyPrompt(
-      { id: "x-3", name: "Inbox watcher" },
-      null,
-    );
-    for (const needle of [
-      'reaction "Inbox watcher"',
-      "exactly one short, friendly line",
-      'routine whose id is "x-3"',
-      "never swap it for a schedule",
-      "Never create a second",
-    ]) {
-      ok(
-        prompt.includes(needle),
-        `reaction modify prompt must mention: ${needle}`,
-      );
     }
   });
 });

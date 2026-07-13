@@ -2,7 +2,6 @@
 
 export type {
   NextFireLabels,
-  RoutineHowItWorksStep,
   RoutineRowLabels,
   RoutinesGridLabels,
   ScheduleLabels,
