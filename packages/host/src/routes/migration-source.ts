@@ -5,6 +5,7 @@ import { CloudPaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import { json } from "./http";
+import { legacyConnectedToolkits } from "./migration-legacy-composio";
 import {
   classifyMigrationPath,
   MAX_MIGRATION_FILE_BYTES,
@@ -74,9 +75,12 @@ export interface MigrationSourceDeps {
   store: WorkspaceStore;
   vfs?: Vfs;
   paths?: WorkspacePaths;
+  /** Injectable for tests; defaults to the real `~/.composio` REST probe. */
+  accountIntegrations?: () => Promise<string[]>;
 }
 
-/** `GET /v1/migration/source` — every agent, every workspace, with manifests. */
+/** `GET /v1/migration/source` — every agent, every workspace, with manifests,
+ *  plus the legacy Composio account's connected toolkits (best-effort). */
 export async function handleMigrationSource(
   deps: MigrationSourceDeps,
   _userId: UserId,
@@ -89,7 +93,12 @@ export async function handleMigrationSource(
     json(res, 503, { error: "agent data not configured" });
     return true;
   }
+  const vfs = deps.vfs;
   const paths = deps.paths ?? new CloudPaths();
+  // The account-level probe (network) runs alongside the manifest walk (disk).
+  const accountIntegrationsPromise = (
+    deps.accountIntegrations ?? legacyConnectedToolkits
+  )();
   const agents = [];
   for (const agent of await deps.store.listAllAgents()) {
     const ws = await deps.store.getWorkspace(agent.workspaceId);
@@ -98,12 +107,12 @@ export async function handleMigrationSource(
       id: agent.id,
       workspaceId: agent.workspaceId,
       name: agent.name,
-      manifest: await buildMigrationManifest(
-        deps.vfs,
-        paths.agentRoot(ws, agent),
-      ),
+      manifest: await buildMigrationManifest(vfs, paths.agentRoot(ws, agent)),
     });
   }
-  json(res, 200, { agents });
+  json(res, 200, {
+    agents,
+    accountIntegrations: await accountIntegrationsPromise,
+  });
   return true;
 }
