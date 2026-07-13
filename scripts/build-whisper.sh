@@ -171,7 +171,15 @@ case "$OS" in
     # but Accelerate's new cblas ILP64 entry points are weak-linked and marked
     # available only on macOS 13.3+, which would crash on our 10.15 floor. Metal
     # is the accelerator on Apple anyway; the CPU fallback uses ggml's own kernels.
+    # GGML_NATIVE=OFF is load-bearing twice over: (1) a SHIPPED binary must be
+    # portable across every user's Mac, never tuned to the CI host's CPU; and
+    # (2) native detection emits `-mcpu=apple-m<N>` for whatever silicon the
+    # runner has, which a same-image clang that predates that chip rejects
+    # ("unknown target CPU 'apple-m3'" — the v0.5.6 build break when GitHub
+    # rotated the macOS runners to M3). Metal is the accelerator on Apple
+    # anyway; the portable CPU kernels are only the fallback.
     CMAKE_FLAGS+=(
+      -DGGML_NATIVE=OFF
       -DGGML_METAL=ON
       -DGGML_METAL_EMBED_LIBRARY=ON
       -DGGML_BLAS=OFF
