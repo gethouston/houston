@@ -27,10 +27,21 @@ export function useBoardSelectionUI({
   baseColumns,
   allItems,
   selection,
+  openChatId,
+  onCloseOpenChat,
 }: {
   baseColumns: KanbanColumnConfig[];
   allItems: KanbanItem[];
   selection?: BoardSelectionModel;
+  /**
+   * Id of the mission whose chat panel is open. A bulk archive/delete that
+   * covers it also closes the panel via `onCloseOpenChat` — the panel stays
+   * open across ANY other item churn (its visibility keys off the selection,
+   * see `resolvePanelState` in @houston-ai/board), so a removal the user
+   * just ordered must deselect explicitly.
+   */
+  openChatId?: string | null;
+  onCloseOpenChat?: () => void;
 }) {
   const { t } = useTranslation(["board", "dashboard"]);
   const addToast = useUIStore((s) => s.addToast);
@@ -141,6 +152,21 @@ export function useBoardSelectionUI({
     [addToast, t],
   );
 
+  // Run a bulk op that removes cards from the board; when the open chat's
+  // mission is among them, deselect it AFTER the op succeeds so its panel
+  // closes with the cards (membership is read before `op` — success clears
+  // the selection set).
+  const runBulkRemoval = useCallback(
+    (op: () => Promise<void>) =>
+      runBulk(async () => {
+        const closesOpenChat =
+          openChatId != null && selection?.selectedIds.has(openChatId);
+        await op();
+        if (closesOpenChat) onCloseOpenChat?.();
+      }),
+    [runBulk, selection, openChatId, onCloseOpenChat],
+  );
+
   const bulkActions = useMemo(() => {
     if (!selection) return undefined;
     return {
@@ -154,8 +180,8 @@ export function useBoardSelectionUI({
         }),
       ),
       onMove: (status: string) => runBulk(() => selection.move(status)),
-      onArchive: () => runBulk(() => selection.archive()),
-      onDelete: () => runBulk(() => selection.remove()),
+      onArchive: () => runBulkRemoval(() => selection.archive()),
+      onDelete: () => runBulkRemoval(() => selection.remove()),
       onClear: selection.clear,
       labels: {
         selected: (count: number) => t("board:bulk.selected", { count }),
@@ -178,7 +204,7 @@ export function useBoardSelectionUI({
         confirmDeleteAction: t("board:bulk.confirmDelete.action"),
       },
     };
-  }, [selection, selectionLockColumnId, runBulk, t]);
+  }, [selection, selectionLockColumnId, runBulk, runBulkRemoval, t]);
 
   const selectionProps =
     selection && bulkActions

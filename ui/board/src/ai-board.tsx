@@ -14,6 +14,7 @@ import { KanbanBoard } from "./kanban-board";
 import type { KanbanCardLabels } from "./kanban-card";
 import { KanbanDetailPanel } from "./kanban-detail-panel";
 import { KanbanList } from "./kanban-list";
+import { type ResolvedSelection, resolvePanelState } from "./panel-state";
 import type { BoardSearchSnippet, KanbanColumn, KanbanItem } from "./types";
 
 export interface NewPanelOptions {
@@ -412,35 +413,30 @@ export function AIBoard({
     if (selectedId) hydrateSession(selectedId);
   }, []);
 
-  // Set by handleSend right before it selects the conversation it just
-  // created, so the selection effect below can tell that internal
-  // selection apart from an external one (arrow keys, notification
-  // jump). Only external changes may close the "new mission" panel.
-  const createdSelectionRef = useRef<string | null>(null);
-
-  // When the selection changes from OUTSIDE (e.g. arrow-key navigation
-  // sets selectedId via the controlled prop, or session-notifications
-  // jumps to a different mission), hydrate the new session, close any
-  // "new mission" panel, and bump the composer focus token so the user
-  // can start typing immediately without reaching for the mouse.
+  // When a selection appears (a card click, arrow-key navigation, a
+  // notification jump, or the first send creating a conversation), hydrate
+  // the session, retire the "new mission" panel state, and bump the composer
+  // focus token so the user can start typing immediately without reaching
+  // for the mouse. Closing `newPanelOpen` here is safe even while the
+  // created activity hasn't landed in `items` yet: panel visibility keys off
+  // the selection itself (see resolvePanelState), not the resolved card.
   useEffect(() => {
     if (!selectedId) return;
     hydrateSession(selectedId);
-    if (createdSelectionRef.current === selectedId) {
-      // First-send flow: the freshly created activity isn't in `items`
-      // yet (the parent's list query is still refetching), so closing
-      // `newPanelOpen` would collapse `showPanel` and unmount the chat
-      // panel until the refetch lands (HOU-640).
-      createdSelectionRef.current = null;
-    } else {
-      setNewPanelOpen(false);
-    }
+    setNewPanelOpen(false);
     if (!disableComposerAutoFocus) {
       setComposerFocusToken((prev) => (prev ?? 0) + 1);
     }
   }, [selectedId, hydrateSession, disableComposerAutoFocus]);
 
   const selectedItem = items.find((i) => i.id === selectedId) ?? null;
+  // The same selection's last resolved card — the panel header's fallback
+  // while the card is transiently absent from `items` (engine cold start /
+  // refetch races). Render-time write, idempotent per (selectedId, items).
+  const lastResolvedRef = useRef<ResolvedSelection | null>(null);
+  if (selectedId && selectedItem) {
+    lastResolvedRef.current = { id: selectedId, item: selectedItem };
+  }
 
   const openNewPanel = useCallback(
     (options?: NewPanelOptions) => {
@@ -515,17 +511,11 @@ export function AIBoard({
       } else if (newPanelOpen && onCreateConversation) {
         const activityId = await onCreateConversation(text, files);
         onDraftChange?.(activeDraftKey, "");
-        // Select the new activity so the feed renders. We deliberately
-        // leave `newPanelOpen` truthy: there's a brief race where the
-        // freshly-created activity isn't yet in `items` (the parent
-        // invalidates the activity query asynchronously) and during
-        // that window `selectedItem` is still null. Closing
-        // `newPanelOpen` would collapse `showPanel` to false and
-        // dismiss the panel mid-create — `createdSelectionRef` tells
-        // the selection effect above to keep it open. `newPanelOpen`
-        // resets naturally on the next external selection, card
-        // select, or outside-click close.
-        createdSelectionRef.current = activityId;
+        // Select the new activity so the feed renders. The freshly-created
+        // activity may take a while to appear in `items` (the parent
+        // invalidates the activity query asynchronously; against a warming
+        // engine the row only lands when it wakes) — the panel stays open
+        // regardless, keyed off this selection (see resolvePanelState).
         setSelectedId(activityId);
       }
     },
@@ -555,12 +545,19 @@ export function AIBoard({
         })
       : afterMessages;
 
-  const showPanel = selectedItem || newPanelOpen;
-  const panelTitle = selectedItem?.title ?? "New conversation";
+  const { showPanel, panelItem } = resolvePanelState({
+    selectedId,
+    newPanelOpen,
+    selectedItem,
+    lastResolved: lastResolvedRef.current,
+  });
+  // Blank while a selected chat's card hasn't resolved yet — never the
+  // new-conversation label on an existing chat.
+  const panelTitle = panelItem?.title ?? (selectedId ? "" : "New conversation");
 
   // Notify parent when panel opens/closes
   useEffect(() => {
-    onPanelOpenChange?.(!!showPanel);
+    onPanelOpenChange?.(showPanel);
   }, [showPanel, onPanelOpenChange]);
 
   // Ensure parent resets its "panel open" state when AIBoard unmounts
@@ -716,12 +713,12 @@ export function AIBoard({
       onClose={hidePanelClose ? undefined : closePanel}
       leading={panelLeading}
       avatar={panelAvatar}
-      agentName={panelAgentName ?? selectedItem?.group}
+      agentName={panelAgentName ?? panelItem?.group}
       missionLabelOverride={panelMissionLabel}
-      people={selectedItem?.people}
+      people={panelItem?.people}
       peopleLabel={cardLabels?.people}
       peopleExpandLabel={cardLabels?.peopleExpand}
-      actions={selectedItem ? panelActions?.(selectedItem) : undefined}
+      actions={panelItem ? panelActions?.(panelItem) : undefined}
     >
       <div className="flex-1 min-h-0 flex flex-col">
         <ChatPanel
