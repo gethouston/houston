@@ -49,6 +49,8 @@
     "continue": "Continue",
     "back": "Back",
     "connect": "Connect",
+    "connecting": "Connecting…",
+    "connected": "Connected",
     "finish": "Start building",
     "congratsTitle": "You're all set",
     "congratsBody": "Your assistants are in the cloud and ready. Let's build something."
