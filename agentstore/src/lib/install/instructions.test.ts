@@ -3,10 +3,10 @@ import { exampleAgentIr } from "../export/__fixtures__/example-ir";
 import { buildInstallInstructions } from "./instructions";
 
 const urls = {
-  irUrl: "https://store.gethouston.ai/api/agents/inbox-triage-helper/ir",
+  irUrl: "https://agents.gethouston.ai/api/agents/inbox-triage-helper/ir",
   bundleUrl:
-    "https://store.gethouston.ai/api/agents/inbox-triage-helper/bundle?target=claude-skill-zip",
-  pageUrl: "https://store.gethouston.ai/a/inbox-triage-helper",
+    "https://agents.gethouston.ai/api/agents/inbox-triage-helper/bundle?target=claude-skill-zip",
+  pageUrl: "https://agents.gethouston.ai/a/inbox-triage-helper",
 };
 
 describe("buildInstallInstructions", () => {
@@ -37,7 +37,7 @@ describe("buildInstallInstructions", () => {
 
   it("credits the creator by display name and URL", () => {
     expect(text).toContain(
-      "Made by Avery Chen (https://store.gethouston.ai/@avery)",
+      "Made by Avery Chen (https://agents.gethouston.ai/@avery)",
     );
   });
 

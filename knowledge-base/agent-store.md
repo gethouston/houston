@@ -1,6 +1,6 @@
 # Agent Store (public catalog: publish + install)
 
-How a Houston agent becomes a public listing at `store.gethouston.ai/a/<slug>` and
+How a Houston agent becomes a public listing at `agents.gethouston.ai/a/<slug>` and
 how anyone installs it back. **The store's data plane lives in the Go gateway
 (`cloud/` repo), not this repo.** Houston owns three things: the AgentIR **contract
 package** (`packages/agentstore-contract`), the **SSR frontend** (`agentstore/`,
@@ -178,7 +178,7 @@ with the key named (beta policy: surface, never silently orphan the store agent)
   `gethouston/cloud` (`roll-agentstore.yml`) which does the GKE roll. This repo
   never touches the cluster; that handoff is the trust boundary
   (mirrors `engine-pod-image.yml`).
-- **Website bridge** `website/src/_redirects`: `/agent-store → store.gethouston.ai`.
+- **Website bridge** `website/src/_redirects`: `/agent-store → agents.gethouston.ai`.
 
 ### Environment variables
 
@@ -189,7 +189,7 @@ with the key named (beta policy: surface, never silently orphan the store agent)
 | `NEXT_PUBLIC_SITE_URL` | store build | Canonical public URL for OG + share/schema links. |
 | `FIREBASE_API_KEY` / `AUTH_DOMAIN` / `PROJECT_ID` | store frontend | GCIP sign-in (SAME Firebase project as the gateway). In CI the image build reads the `FIREBASE_*` repo secrets shared with `release.yml`. |
 | `VITE_AGENTSTORE_GATEWAY_URL` | app build | Store gateway target in desktop LOCAL-sidecar mode. Default `https://gateway.gethouston.ai`. |
-| `VITE_AGENTSTORE_SITE_URL` | app build | Public store SITE base for "browse the store" links. Default `https://store.gethouston.ai`. |
+| `VITE_AGENTSTORE_SITE_URL` | app build | Public store SITE base for "browse the store" links. Default `https://agents.gethouston.ai`. |
 | `HOUSTON_AGENTSTORE_API_URL` | host | Gateway base for install-from-link IR fetch. Default `https://gateway.gethouston.ai`. |
 
 ## Local dev

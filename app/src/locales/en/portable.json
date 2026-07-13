@@ -134,7 +134,7 @@
     },
     "link": {
       "label": "Install from a link",
-      "placeholder": "Paste a share link, like https://store.gethouston.ai/a/agent",
+      "placeholder": "Paste a share link, like https://agents.gethouston.ai/a/agent",
       "fetch": "Fetch",
       "fetching": "Fetching",
       "hint": "Paste the link someone gave you. Houston fetches the agent so you can review it before installing.",
