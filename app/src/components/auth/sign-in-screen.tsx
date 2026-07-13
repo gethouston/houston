@@ -9,6 +9,7 @@ import {
   signInWithGoogle,
   signInWithMicrosoft,
 } from "../../lib/auth";
+import { isAppleSignInEnabled } from "../../lib/identity";
 import { logger } from "../../lib/logger";
 import { tauriSystem } from "../../lib/tauri";
 import { HoustonLogo } from "../shell/experience-card";
@@ -127,19 +128,24 @@ export function SignInScreen() {
                 )}
                 Continue with Google
               </Button>
-              <Button
-                variant="default"
-                onClick={handleSignIn("apple")}
-                disabled={pending !== null}
-                className="h-10 w-full justify-center rounded-full border-none! shadow-none"
-              >
-                {pending === "apple" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <AppleIcon />
-                )}
-                Continue with Apple
-              </Button>
+              {/* Gated: renders only once the GCIP apple.com provider is
+                  configured (APPLE_SIGN_IN_ENABLED) — an unconfigured build
+                  must never show a sign-in method that can only error. */}
+              {isAppleSignInEnabled() && (
+                <Button
+                  variant="default"
+                  onClick={handleSignIn("apple")}
+                  disabled={pending !== null}
+                  className="h-10 w-full justify-center rounded-full border-none! shadow-none"
+                >
+                  {pending === "apple" ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <AppleIcon />
+                  )}
+                  Continue with Apple
+                </Button>
+              )}
               <Button
                 variant="default"
                 onClick={handleSignIn("azure")}

@@ -128,6 +128,13 @@ handler, team ID, key ID + private key → GCIP console / terraform), and add
 `127.0.0.1` to the project's **authorized domains** so the desktop loopback
 `continueUri` is accepted by `createAuthUri`.
 
+**The button is GATED until that setup is done:** `isAppleSignInEnabled()`
+(`identity/config.ts`) reads the baked `APPLE_SIGN_IN_ENABLED` flag (Vite
+define; release CI reads the `APPLE_SIGN_IN_ENABLED` repo VARIABLE, dev
+override `VITE_APPLE_SIGN_IN_ENABLED=1`) — default off, so an unconfigured
+build never shows a sign-in method that can only error. Flip the repo
+variable to `1` after the provider is live; the next release shows the button.
+
 ### Google / Microsoft — web (firebase-js-sdk popup)
 
 `packages/web/src/identity/firebase-popup.ts`: `initializeApp` + `getAuth` +

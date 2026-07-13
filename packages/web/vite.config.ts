@@ -92,6 +92,11 @@ export default defineConfig(({ mode }) => {
       // uses firebase-js-sdk (popup); the desktop client id below is a no-op here
       // but kept for define parity so app/src references it in both bundles.
       __FIREBASE_API_KEY__: JSON.stringify(env.FIREBASE_API_KEY ?? ""),
+      // Gates "Continue with Apple" until the GCIP apple.com provider is
+      // configured (see app/vite.config.ts).
+      __APPLE_SIGN_IN_ENABLED__: JSON.stringify(
+        env.APPLE_SIGN_IN_ENABLED ?? "",
+      ),
       __FIREBASE_AUTH_DOMAIN__: JSON.stringify(
         env.FIREBASE_AUTH_DOMAIN ?? "gethouston.firebaseapp.com",
       ),

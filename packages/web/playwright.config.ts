@@ -82,6 +82,8 @@ export default defineConfig({
       env: {
         HOUSTON_E2E_WEB_PORT: String(AUTH_WEB_PORT),
         FIREBASE_API_KEY: FAKE_FIREBASE_API_KEY,
+        // Keep the gated Apple button rendered (and covered) in the auth suite.
+        APPLE_SIGN_IN_ENABLED: "1",
       },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
