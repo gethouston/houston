@@ -308,7 +308,16 @@ configure surfaces are gated:
   settings nav rail, `agent-admin-sidebar.tsx`, grouping Configuration / Access +
   the selected section), manager-only and fully editable. Name / color / delete
   live on the sidebar agent row, not a "General" section (the old landing,
-  back-bar, and General card are gone).
+  back-bar, and General card are gone). On a public-API gateway
+  (`capabilities.apiKeys`, C10) the rail adds a third card, **Connect** ("Use
+  from other apps", `agent-admin-connect.tsx` + `connect-card.tsx`, `connect`
+  i18n ns): the non-technical pitch that outside apps can drive this agent, the
+  API-key step (reuses the settings `ApiKeyCreateDialog`, deep-links Settings >
+  API keys), and the three copyable public addresses (MCP / A2A agent card /
+  missions REST) built by the pure `lib/agent-connect-model.ts`
+  (`connectEndpoints` from the gateway origin + `agent.id`-as-slug;
+  `connectOrgSlug` resolves the A2A org slug from the team workspace id or the
+  personal membership in `GET /v1/orgs`).
 - **Model / effort pickers** (`chat-model-selector.tsx`,
   `chat-effort-selector.tsx`) are NOT hidden/locked for members (E8 reversed E7).
   In a Teams org the composer shows them to EVERYONE, clamps the option list to

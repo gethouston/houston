@@ -2,6 +2,7 @@ import { Badge, cn } from "@houston-ai/core";
 import {
   Blocks,
   Brain,
+  Cable,
   Cpu,
   FileText,
   LibraryBig,
@@ -25,6 +26,7 @@ const ICONS: Record<AgentAdminScreen, LucideIcon> = {
   model: Cpu,
   people: Users,
   integrations: Blocks,
+  connect: Cable,
 };
 
 /**
@@ -39,6 +41,7 @@ const ROW_TITLES = {
   model: "agentAdmin.rows.model.title",
   people: "agentAdmin.rows.people.title",
   integrations: "agentAdmin.rows.integrations.title",
+  connect: "connect:row.title",
 } as const satisfies Record<AgentAdminScreen, string>;
 
 /**

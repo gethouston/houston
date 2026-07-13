@@ -1,9 +1,7 @@
 import { Trans, useTranslation } from "react-i18next";
+import { DEVELOPER_DOCS } from "../../../lib/agent-connect-model";
 import { tauriSystem } from "../../../lib/tauri";
 import { ApiKeysBody } from "./api-keys-body";
-
-/** Developer docs for the public API, opened in the OS browser. */
-const DOCS_URL = "https://gethouston.ai/developers";
 
 /**
  * Settings > API keys (C9): mint and revoke personal keys for the public API.
@@ -25,7 +23,9 @@ export function ApiKeysSection() {
             docs: (
               <button
                 type="button"
-                onClick={() => void tauriSystem.openUrl(DOCS_URL)}
+                onClick={() =>
+                  void tauriSystem.openUrl(DEVELOPER_DOCS.overview)
+                }
                 className="cursor-pointer font-medium text-primary underline underline-offset-2 transition-colors hover:text-primary/80"
               />
             ),

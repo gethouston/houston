@@ -125,7 +125,7 @@
     "rows": {
       "members": "Pessoas que podem usar seus agentes",
       "connectedAccounts": "Aplicativos que você conectou ao Houston",
-      "apiKeys": "Chaves para usar seus agentes a partir das suas próprias ferramentas",
+      "apiKeys": "Permita que outros apps e assistentes de IA iniciem missões com seus agentes",
       "workspaceContext": "O que todo agente sabe sobre este espaço",
       "userContext": "O que todo agente sabe sobre você",
       "shortcuts": "Use o Houston sem o mouse",
@@ -150,12 +150,12 @@
   },
   "apiKeys": {
     "title": "Chaves de API",
-    "intro": "Use chaves de API para iniciar missões a partir das suas próprias ferramentas e scripts. <docs>Leia a documentação para desenvolvedores</docs>.",
+    "intro": "Outros apps, assistentes de IA e ferramentas de automação podem iniciar missões com seus agentes. Cada conexão precisa de uma chave que você cria aqui. <docs>Leia a documentação para desenvolvedores</docs>.",
     "dialogClose": "Fechar",
     "createButton": "Criar chave",
     "empty": {
       "title": "Você ainda não tem chaves de API",
-      "description": "Uma chave de API permite que suas próprias ferramentas e scripts iniciem missões com seus agentes. Crie uma para começar."
+      "description": "Uma chave permite que um app de sua confiança inicie missões com seus agentes. Crie uma para conectar seu primeiro app."
     },
     "error": {
       "title": "Não foi possível carregar suas chaves",

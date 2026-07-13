@@ -1,0 +1,37 @@
+{
+  "row": {
+    "title": "Use from other apps"
+  },
+  "section": {
+    "title": "Use from other apps",
+    "intro": "{{name}} can take work from outside Houston. Connect an AI assistant, another agent, or an automation tool, and the missions they start will show up here like any other mission."
+  },
+  "key": {
+    "title": "Every connection needs a key",
+    "description": "A key works like a password: it lets an app you trust start missions as you. Create one, copy it, and paste it into the app you are connecting.",
+    "create": "Create key",
+    "manage_one": "Manage {{count}} key",
+    "manage_other": "Manage {{count}} keys"
+  },
+  "cards": {
+    "assistant": {
+      "title": "AI assistants",
+      "description": "Add {{name}} to Claude or any assistant that supports tools (MCP). Paste this address and your key where the assistant asks for a new tool.",
+      "addressLabel": "Tool address for AI assistants"
+    },
+    "agents": {
+      "title": "Other agents",
+      "description": "Agents on other platforms can discover {{name}} and hand it tasks using the A2A standard. Share this address with the other platform.",
+      "addressLabel": "Agent card address"
+    },
+    "automation": {
+      "title": "Automations and developers",
+      "description": "Automation tools and scripts can start missions for {{name}} and receive the result when it finishes.",
+      "addressLabel": "Missions address"
+    },
+    "copy": "Copy",
+    "copied": "Address copied",
+    "copyFailed": "Couldn't copy the address",
+    "docs": "Learn how"
+  }
+}
