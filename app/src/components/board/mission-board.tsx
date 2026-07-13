@@ -49,10 +49,16 @@ export function MissionBoard({ source }: { source: BoardSource }) {
       ),
     [t, source.openNewMission],
   );
+  const closeOpenChat = useCallback(
+    () => source.setSelectedId(null),
+    [source.setSelectedId],
+  );
   const { columns, selectionProps } = useBoardSelectionUI({
     baseColumns,
     allItems: source.allItems,
     selection: source.selection,
+    openChatId: source.selectedId,
+    onCloseOpenChat: closeOpenChat,
   });
 
   // Per-agent chat panel features (skills, model selector, tool/link
