@@ -61,14 +61,28 @@ function sourceFetch(
   });
 }
 
-/** Every legacy agent across every workspace, with its migration manifest. */
-export async function fetchSourceAgents(
+export interface SourceScan {
+  agents: SourceAgent[];
+  /** The legacy Composio account's connected toolkit slugs (`~/.composio`),
+   *  best-effort — absent on an older source host reads as none. */
+  accountIntegrations: string[];
+}
+
+/** Every legacy agent across every workspace, with its migration manifest,
+ *  plus the account-level connected integrations. */
+export async function fetchSourceScan(
   src: SourceHostHandshake,
-): Promise<SourceAgent[]> {
+): Promise<SourceScan> {
   const res = await sourceFetch(src, "/v1/migration/source");
   if (!res.ok) await throwHttpError("migration source scan", res);
-  const body = (await res.json()) as { agents: SourceAgent[] };
-  return body.agents;
+  const body = (await res.json()) as {
+    agents: SourceAgent[];
+    accountIntegrations?: string[];
+  };
+  return {
+    agents: body.agents,
+    accountIntegrations: body.accountIntegrations ?? [],
+  };
 }
 
 /** Zip the given paths of one legacy agent on the source host. */

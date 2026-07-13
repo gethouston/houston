@@ -184,10 +184,13 @@ export function isPlausibleMigrationTarget(
   });
 }
 
-/** Union of every source agent's connected toolkit slugs, sorted, for the
- *  "reconnect your apps" checklist on the done screen. */
-export function collectIntegrations(sourceAgents: SourceAgent[]): string[] {
-  const all = new Set<string>();
+/** Union of every source agent's connected toolkit slugs plus the legacy
+ *  account-level list, sorted, for the "reconnect your apps" checklist. */
+export function collectIntegrations(
+  sourceAgents: SourceAgent[],
+  accountIntegrations: string[] = [],
+): string[] {
+  const all = new Set<string>(accountIntegrations);
   for (const a of sourceAgents) {
     for (const slug of a.manifest.integrations) all.add(slug);
   }

@@ -157,6 +157,23 @@ test("collects the sorted union of toolkit slugs across agents", () => {
   assert.deepEqual(slugs, ["gmail", "googlecalendar", "slack"]);
 });
 
+test("account-level legacy Composio slugs union into the checklist", () => {
+  // The v0.4.x cohort: no per-agent records, connections only in the
+  // consumer account probed via ~/.composio.
+  assert.deepEqual(collectIntegrations([], ["googledrive", "gmail"]), [
+    "gmail",
+    "googledrive",
+  ]);
+  // Both sources present: dedupe across them.
+  assert.deepEqual(
+    collectIntegrations(
+      [agent("Work", "Sales", ["gmail"])],
+      ["gmail", "slack"],
+    ),
+    ["gmail", "slack"],
+  );
+});
+
 // ── hasReconnectAppsStep ──────────────────────────────────────────────
 
 test("the apps step is skipped when there is nothing to show", () => {
