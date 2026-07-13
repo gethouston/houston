@@ -4,11 +4,11 @@ lang: en
 {% extends "base.njk" %}
 {% block title %}Guides — Houston{% endblock %}
 {% block meta %}
-<meta name="description" content="Official Houston guides. Build real AI agents by following what we do in our live workshops, step by step and at your own pace.">
+<meta name="description" content="Official Houston guides. Build real AI agents by following what we do in our live workshops, then connect them to your own tools with the developer guides.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://gethouston.ai/guides/">
 <meta property="og:title" content="Guides — Houston">
-<meta property="og:description" content="Official Houston guides. Build real AI agents by following what we do in our live workshops, step by step and at your own pace.">
+<meta property="og:description" content="Official Houston guides. Build real AI agents by following what we do in our live workshops, then connect them to your own tools with the developer guides.">
 <meta property="og:site_name" content="Houston">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="alternate" hreflang="en" href="https://gethouston.ai/guides/">
@@ -16,264 +16,247 @@ lang: en
 <link rel="alternate" hreflang="x-default" href="https://gethouston.ai/guides/">
 {% endblock %}
 {% block stylesheets %}
-<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
-{% endblock %}
-{% block inlineStyles %}
-<style>
-  :root{
-    --ink:#0d0d0d; --muted:#5d5d5d; --gray6:#676767; --gray7:#424242;
-    --bg:#ffffff; --border:#e5e5e5; --soft:#f6f7f9;
-    --grad:linear-gradient(100deg,#3b82f6 0%,#818cf8 42%,#f97316 100%);
-    --font:'General Sans', ui-sans-serif, -apple-system, system-ui, sans-serif;
-  }
-  *{box-sizing:border-box}
-  body{margin:0; font-family:var(--font); color:var(--ink); background:var(--bg); line-height:1.6; -webkit-font-smoothing:antialiased}
-  .wash{position:fixed; inset:0; z-index:-1; background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,130,246,0.10), transparent),
-    radial-gradient(ellipse 60% 40% at 85% 25%, rgba(249,115,22,0.06), transparent),
-    radial-gradient(ellipse 60% 40% at 15% 70%, rgba(129,140,248,0.06), transparent)}
-  .wrap{max-width:980px; margin:0 auto; padding:0 24px}
-  .mark{width:22px; height:24px}
-  .hero{padding:72px 0 30px}
-  .eyebrow{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; letter-spacing:.02em; color:var(--gray7); background:#fff; border:1px solid var(--border); border-radius:999px; padding:7px 14px; text-transform:uppercase}
-  .eyebrow .dot{width:7px; height:7px; border-radius:50%; background:var(--grad)}
-  h1{font-weight:700; letter-spacing:-0.035em; line-height:1.05; font-size:52px; margin:20px 0 0}
-  h1 .accent{background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent}
-  .lede{font-size:19px; color:var(--muted); font-weight:400; margin:18px 0 0; max-width:640px}
-  .grid{display:grid; grid-template-columns:1fr 1fr; gap:22px; padding:44px 0 26px}
-  .gcard{display:flex; flex-direction:column; text-decoration:none; color:var(--ink); background:#fff; border:1px solid var(--border); border-radius:18px; overflow:hidden; transition:.15s border-color, .15s transform, .15s box-shadow}
-  .gcard:hover{border-color:#cfd4dc; transform:translateY(-2px); box-shadow:0 10px 30px rgba(13,13,13,0.07)}
-  .gcard .thumb{aspect-ratio:2.1; overflow:hidden; border-bottom:1px solid var(--border); background:var(--soft)}
-  .gcard .thumb img{width:100%; height:100%; object-fit:cover; object-position:top; display:block}
-  .gcard .pad{padding:20px 22px 22px; display:flex; flex-direction:column; gap:8px; flex:1}
-  .gcard .cat{font-size:11.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:#3b82f6}
-  .gcard h2{font-weight:600; letter-spacing:-0.02em; font-size:22px; margin:0; line-height:1.25}
-  .gcard p{margin:0; color:var(--muted); font-size:14.5px}
-  .gcard .metarow{display:flex; align-items:center; gap:14px; margin-top:auto; padding-top:14px; font-size:12.5px; color:var(--gray6); font-weight:500}
-  .gcard .metarow .go{margin-left:auto; font-weight:600; color:var(--ink)}
-  footer{border-top:1px solid var(--border); padding:26px 0 40px}
-  .foot-meta{display:flex; justify-content:space-between; align-items:center; color:var(--gray6); font-size:13px}
-  .foot-meta a{color:inherit; text-decoration:none}
-  .foot-meta a:hover{color:var(--ink)}
-  /* coming soon section */
-  .coming-head{padding:26px 0 4px}
-  .coming-head h2{font-weight:600; letter-spacing:-0.025em; font-size:30px; margin:0}
-  .coming-head h2 .accent{background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent}
-  .coming-head p{margin:8px 0 0; color:var(--muted); font-size:15.5px}
-  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding:24px 0 90px}
-  .ccard{display:flex; flex-direction:column; color:var(--ink); background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; transition:.15s border-color, .15s transform, .15s box-shadow}
-  .ccard:hover{border-color:#cfd4dc; transform:translateY(-2px); box-shadow:0 8px 24px rgba(13,13,13,0.06)}
-  .cthumb{position:relative; aspect-ratio:2.6; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:center; text-align:center; padding:0 14px; background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(59,130,246,0.10), transparent),
-    radial-gradient(ellipse 60% 50% at 85% 80%, rgba(249,115,22,0.07), transparent),
-    radial-gradient(ellipse 60% 50% at 12% 85%, rgba(129,140,248,0.06), transparent), #fff}
-  .cthumb .cname{font-weight:600; letter-spacing:-0.03em; font-size:20.5px; line-height:1.1}
-  .cthumb .cname .grad{background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent}
-  .cthumb::after{content:""; position:absolute; right:13px; bottom:11px; width:9px; height:9px; border-radius:50%; background:linear-gradient(150deg,#818cf8,#3b82f6 38%,#fb923c 78%,#f97316)}
-  .cthumb .cs{position:absolute; top:10px; left:12px; font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--gray6); background:rgba(255,255,255,0.85); border-radius:999px; padding:3px 9px}
-  .cpad{padding:13px 16px 17px; display:flex; flex-direction:column; gap:5px; flex:1}
-  .ccat{font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:#3b82f6}
-  .cpad p{margin:0; color:var(--muted); font-size:13px; line-height:1.5}
-  .skl{display:flex; flex-wrap:wrap; gap:6px; margin-top:3px}
-  .skl span{font-size:11px; font-weight:500; color:var(--muted); background:#f2f3f6; border-radius:999px; padding:3.5px 10px}
-  @media (max-width:900px){ .grid3{grid-template-columns:repeat(2,1fr)} }
-  @media (max-width:760px){ .grid{grid-template-columns:1fr} h1{font-size:38px} .hero{padding:52px 0 20px} }
-  @media (max-width:640px){ .grid3{grid-template-columns:1fr} }
-  /* site navigation (mirrors homepage nav) */
-  body{padding-top:64px}
-  nav.site{position:fixed; top:0; left:0; right:0; z-index:100; height:64px; padding:0 40px;
-    display:flex; align-items:center; justify-content:space-between;
-    background:rgba(255,255,255,0.85); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
-    border-bottom:1px solid rgba(13,13,13,0.08)}
-  nav.site .nav-logo{display:flex; align-items:center; gap:9px; text-decoration:none; color:#0d0d0d;
-    font-weight:600; letter-spacing:-0.02em; font-size:19px}
-  nav.site .nav-logo svg{width:22px; height:24px}
-  nav.site .nav-center{position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:28px; align-items:center}
-  nav.site .nav-center a{font-size:14px; color:#424242; text-decoration:none}
-  nav.site .nav-center a:hover{color:#0d0d0d}
-  nav.site .nav-center a.active{color:#0d0d0d; font-weight:600}
-  nav.site .nav-right{display:flex; align-items:center; gap:12px}
-  nav.site .pdfbtn2{display:inline-flex; align-items:center; gap:7px; background:#0d0d0d; color:#fff;
-    border-radius:999px; padding:8px 16px; font-weight:600; font-size:13px; text-decoration:none}
-  nav.site .pdfbtn2:hover{opacity:.88}
-  nav.site .pdfbtn2 svg{width:14px; height:14px}
-  /* language picker (shows current language) */
-  nav.site .langdd{position:relative}
-  nav.site .langdd summary{list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
-    font-size:12.5px; font-weight:700; color:#424242; border:1px solid #e5e5e5; border-radius:999px;
-    padding:6px 12px; letter-spacing:.02em}
-  nav.site .langdd summary::-webkit-details-marker{display:none}
-  nav.site .langdd summary:hover{border-color:#cfd4dc; color:#0d0d0d}
-  nav.site .langdd summary svg{width:18px; height:13px; display:block}
-  nav.site .langdd summary .chev{width:7px; height:7px; border-right:1.5px solid #676767; border-bottom:1.5px solid #676767; transform:rotate(45deg); margin-top:-3px}
-  nav.site .langdd[open] summary .chev{transform:rotate(-135deg); margin-top:3px}
-  nav.site .langdd .menu{position:absolute; right:0; top:calc(100% + 8px); background:#fff; border:1px solid #e5e5e5;
-    border-radius:12px; box-shadow:0 8px 24px rgba(13,13,13,0.08); padding:6px; min-width:160px; z-index:200}
-  nav.site .langdd .menu a{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px;
-    font-size:13.5px; color:#424242; text-decoration:none; font-weight:500}
-  nav.site .langdd .menu a svg{width:18px; height:13px; display:block}
-  nav.site .langdd .menu a:hover{background:#f6f7f9; color:#0d0d0d}
-  nav.site .langdd .menu a.on{color:#0d0d0d; font-weight:600}
-  nav.site .langdd .menu a.on::after{content:"✓"; margin-left:auto; font-size:12px; color:#00a240}
-  @media (max-width:940px){ nav.site .nav-center{display:none} }
-  @media (max-width:640px){ nav.site{padding:0 20px} }
-  @media print{
-    nav.site{position:static; background:#fff; backdrop-filter:none; border-bottom:1px solid #e5e5e5}
-    nav.site .nav-center, nav.site .langdd, nav.site .pdfbtn2{display:none !important}
-    body{padding-top:0}
-  }
-</style>
+<link rel="stylesheet" href="/guides/style.css">
 {% endblock %}
 {% block body %}
-<div class="wash"></div>
-
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="hlogo" viewBox="0 0 412.248 448.898">
-<path d="M54.438,370.05a372.979,372.979,0,0,0,36.546,16.539c42.934,16.457,81.036,26.955,127.045,32.718,38.952,4.879,98.013,6.119,133.934-9.694l.22-28.709,10.9-4.2.1,7.633c.131,9.532,10.175,10.024,10.111,16.564l-.19,19.454a10.892,10.892,0,0,1-5.271,8.79A125.921,125.921,0,0,1,333.1,442.267c-27.35,5.945-54.827,7.61-83.009,6.115A501.786,501.786,0,0,1,135.308,429.09C98.277,418.317,63.295,404.2,30.364,384.378c-1.82-1.1-4.62-4.1-4.586-5.833l.486-25.225,11.07-8.41c1.485-34.5-.533-22.947-14.764-49.9-27.447-52-29.2-106.518-8.847-163.015,9.56,20.2,21.153,38.25,37.42,52.877C37.675,162.726,27.2,139.979,22.078,114.644,58.63,40.233,137.3-5.66,220.15.562c51,3.831,94.258,25.571,130.394,61.982-11.956-3.184-22.192-5.554-33.74-6.752C275.709,24.666,227.275,10.9,176.055,19.538c-20.923,3.528-34,6.957-50.682,16.877L139.5,33.929l15.86-2.793c8.528-1.5,24.632-1.04,33.836-.192,22.661,2.088,53.554,13.706,71.674,28.987-12.6,3.789-24.839,7.031-37.177,12.526C168.9,96.859,123.836,137.377,92.651,188.4c-7.872-2.92-15.5-4.417-23.465-2.461,29.782,6.032,38.956,41.129,31.8,67.976-2.394,8.985-7.428,16.16-14.663,22.377a346.506,346.506,0,0,0,147.25,97.184l12.006,21.237c1.847,3.267.35,10.053.346,14.518C191.213,405.71,137.381,395,88.063,371.576L54.751,355.753a55.521,55.521,0,0,0-.313,14.3m15.8-103.638c8.757-2.088,12.715-9.164,15.688-16.5,3.95-12.971,2.434-27.431-5.321-38.706-5.394-7.843-14.789-12.194-23.84-9.339A20.8,20.8,0,0,0,43.4,214.587c8.355-7.946,19.246-8.317,27.089-.185,12.642,13.106,13.272,37.962-.251,52.01M56.2,335.674c19.3,9.688,37.093,17.6,57.609,25.556l.46-40.938c.063-5.627-7.1-8.159-10.894-7.39-13.274,2.69-5.888,17.088-7.963,29.218L55.617,322.693c-1,4.557-1.287,9.423.582,12.981m139.579,48.288c1.144-4.393,1.22-8.69-.783-11.451a512.739,512.739,0,0,1-66.018-17.972,16.313,16.313,0,0,0-.129,12.157c8.276,2.7,16.239,5.339,24.7,7.329Z" fill="#161615"/>
-<path d="M325.964,373.522c-78.683,7.33-171.286-41.71-224.763-98.653,20.982-21.383,19.582-56.385,1.375-79.483,14.126-22.058,29.682-42,48.543-59.74C194.08,95.233,252.771,65.207,312.936,67.539c31.512,1.812,71.082,11.318,70.475,49.792a215.176,215.176,0,0,1,7.448,201.107c3.547,38.249-33.525,51.774-64.9,55.084m-156.623-69.56c44.588,29.3,106.347,54.129,159.883,46.515,8.458-1.2,16.5-3.934,24.588-6.324,5-1.476,7.137-5.17,9.631-9.01,48.185-74.159,42.9-170.662-13.764-238.39C301.111,78.61,245.166,94.247,202.936,121.54c-16.981,10.974-32.909,23.164-46.245,38.481-14.795,16.993-20.759,39.234-21.865,61.356-1.175,23.493,5.307,45.09,17.461,64.8a53.6,53.6,0,0,0,17.054,17.788" fill="#161615"/>
-<path d="M298.533,409.094c-4.467.414-7.883-1.707-9.4-5.237a12.287,12.287,0,0,1,1.075-10.992c1.473-2.484,5.351-4.9,8.887-5.18l31.941-2.488a8.616,8.616,0,0,1,9.262,6.052c.913,3.365.494,9.3-3.5,10.617-12.359,4.06-24.719,5.973-38.264,7.228" fill="#161615"/>
-<rect width="15.334" height="16.211" transform="translate(258.6 409.939) rotate(-89.717)" fill="#161615"/>
-<path d="M370.408,283.292c-6.086,17.577-13.539,33.4-26.392,47.208,26.021-57.679,30.288-124.219,4.132-182.266-6.661-14.783-15.007-27.347-24.809-41.076,5.144.8,12.975.86,16.972,4.164,7.836,6.477,12.518,15.527,17.384,24.5,24.5,45.2,29.763,98.227,12.713,147.465" fill="#161615"/>
-</symbol></svg>
-
 <nav class="site">
-  <a class="nav-logo" href="/"><svg class="mark"><use href="#hlogo"/></svg><span>houston</span></a>
+  <a href="/" class="nav-logo">Houston</a>
   <div class="nav-center">
     <a href="/#agents">Agents</a>
     <a href="/#features">Features</a>
-    <a class="active" href="/guides/">Guides</a>
-    <a href="/changelog/">Changelog</a>
     <a href="/#pricing">Pricing</a>
-    <a href="/startups/">For Startups</a>
+    <a href="/agent-store">Agent Store</a>
+    <a class="active" href="/guides/">Guides</a>
+    <a href="/vision/">Vision</a>
   </div>
   <div class="nav-right">
     <details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr1"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr1)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>EN<span class="chev"></span></summary><div class="menu"><a class="on" href="/guides/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a href="/guides/es/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details>
+    <a href="https://github.com/gethouston/houston" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+    </a>
+    <a href="/#download" class="btn btn-primary">Download</a>
+    <button class="nav-burger" id="nav-burger" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="burger-icon"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
   </div>
 </nav>
 
-<div class="wrap">
-  <header class="hero">
-    <span class="eyebrow"><span class="dot"></span>Official Houston guides</span>
-    <h1>Learn by <span class="accent">building</span>,<br>use our guides</h1>
-    <p class="lede">Every live workshop we run becomes a step-by-step guide. Follow along at your own pace and leave with a working agent, not just notes.</p>
-  </header>
+<div class="nav-dropdown" id="nav-dropdown">
+  <a href="/#agents">Agents</a>
+  <a href="/#features">Features</a>
+  <a href="/#pricing">Pricing</a>
+  <a href="/agent-store">Agent Store</a>
+  <a href="/guides/">Guides</a>
+  <a href="/vision/">Vision</a>
+  <a href="/guides/es/">Español</a>
+</div>
 
-  <div class="grid">
-    <a class="gcard" data-guide="Revenue Manager Agent" data-status="live" href="/guides/revenue-manager/">
+<main class="layout">
+  <div class="content-label">Official Houston guides</div>
+  <h1>Learn by building.</h1>
+  <p class="lead">
+    Every live workshop we run becomes a step-by-step guide. Follow along at
+    your own pace and leave with a working agent, not just notes. Then connect
+    what you built to the rest of your stack with the developer guides.
+  </p>
+
+  <h2 id="workshops">Workshops</h2>
+  <p class="section-lede">
+    Complete builds, from blank workspace to working agent.
+  </p>
+  <div class="guide-grid">
+    <a class="guide-card" data-guide="Revenue Manager Agent" data-status="live" href="/guides/revenue-manager/">
       <div class="thumb"><img src="/guides/assets/revenue-manager/en/hub-card.png" alt="Revenue Manager workshop guide" loading="lazy"></div>
       <div class="pad">
-        <span class="cat">Workshop · Airbnb</span>
-        <h2>Build your Revenue Management Agent</h2>
+        <span class="kicker">Workshop · Airbnb</span>
+        <h3>Build your Revenue Management Agent</h3>
         <p>An agent that checks Airbnb, Booking, Expedia, Vrbo and Hostelworld, and turns the market into a 7-tab revenue dashboard.</p>
         <div class="metarow"><span>6 steps</span><span>45–60 min setup</span><span class="go">Start →</span></div>
       </div>
     </a>
-    <a class="gcard" data-guide="LinkedIn SDR Agent" data-status="live" href="/guides/sdr-linkedin/">
+    <a class="guide-card" data-guide="LinkedIn SDR Agent" data-status="live" href="/guides/sdr-linkedin/">
       <div class="thumb"><img src="/guides/assets/sdr-linkedin/en/hub-card.png" alt="LinkedIn SDR workshop guide" loading="lazy"></div>
       <div class="pad">
-        <span class="cat">Workshop &middot; LinkedIn</span>
-        <h2>Build your LinkedIn SDR Agent</h2>
+        <span class="kicker">Workshop · LinkedIn</span>
+        <h3>Build your LinkedIn SDR Agent</h3>
         <p>An agent that turns the comments on any LinkedIn post into verified leads and a paused outbound campaign.</p>
-        <div class="metarow"><span>5 steps</span><span>60 to 90 min setup</span><span class="go">Start &rarr;</span></div>
+        <div class="metarow"><span>5 steps</span><span>60 to 90 min setup</span><span class="go">Start →</span></div>
       </div>
     </a>
   </div>
 
-  <div class="coming-head">
-    <h2>Coming <span class="accent">soon</span></h2>
-    <p>Every new workshop becomes a guide. New ones ship here first.</p>
+  <h2 id="connect">Use your agents from other apps</h2>
+  <p class="section-lede">
+    Your agents are not locked inside Houston. AI assistants, other agents,
+    and automation tools can start missions and get the results back. These
+    guides show how.
+  </p>
+  <div class="card-grid">
+    <a class="surface-card" data-guide="API Overview" data-status="live" href="/developers/">
+      <div class="surface-kicker">Start here</div>
+      <div class="surface-title">The Houston API</div>
+      <div class="surface-desc">One API key, three ways in. The 60-second quickstart takes you from key to finished mission.</div>
+    </a>
+    <a class="surface-card" data-guide="Missions REST" data-status="live" href="/developers/missions/">
+      <div class="surface-kicker">REST</div>
+      <div class="surface-title">Missions &amp; webhooks</div>
+      <div class="surface-desc">Start missions from automation tools and scripts. Poll, stream, or get a signed webhook when the agent finishes.</div>
+    </a>
+    <a class="surface-card" data-guide="A2A" data-status="live" href="/developers/a2a/">
+      <div class="surface-kicker">A2A</div>
+      <div class="surface-title">Agent2Agent</div>
+      <div class="surface-desc">Let agents built on other platforms discover your Houston agent and hand it tasks.</div>
+    </a>
+    <a class="surface-card" data-guide="MCP" data-status="live" href="/developers/mcp/">
+      <div class="surface-kicker">MCP</div>
+      <div class="surface-title">Agents as tools</div>
+      <div class="surface-desc">Add your agents to Claude or any MCP client, and let your assistant put them to work.</div>
+    </a>
   </div>
 
-  <div class="grid3">
-    <div class="ccard" data-guide="Chief of Staff Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Chief of Staff <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Operations</span><p>Runs your week: priorities, follow-through and the Monday brief.</p><div class="skl"><span>Weekly priorities & OKR tracking</span><span>Meeting notes to action items</span><span>Monday briefing</span></div></div>
+  <h2 id="coming-soon">Coming soon</h2>
+  <p class="section-lede">
+    Every new workshop becomes a guide. New ones ship here first.
+  </p>
+  <div class="coming-grid">
+    <div class="coming-card" data-guide="Chief of Staff Agent" data-status="coming_soon">
+      <span class="surface-kicker">Operations</span>
+      <span class="surface-title">Chief of Staff Agent</span>
+      <p>Runs your week: priorities, follow-through and the Monday brief.</p>
+      <div class="skl"><span>Weekly priorities &amp; OKR tracking</span><span>Meeting notes to action items</span><span>Monday briefing</span></div>
     </div>
-    <div class="ccard" data-guide="Fundraising Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Fundraising <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Fundraising</span><p>One agent that runs your raise end to end.</p><div class="skl"><span>Investor research & outreach</span><span>Investor updates</span><span>Data room prep</span></div></div>
+    <div class="coming-card" data-guide="Fundraising Agent" data-status="coming_soon">
+      <span class="surface-kicker">Fundraising</span>
+      <span class="surface-title">Fundraising Agent</span>
+      <p>One agent that runs your raise end to end.</p>
+      <div class="skl"><span>Investor research &amp; outreach</span><span>Investor updates</span><span>Data room prep</span></div>
     </div>
-    <div class="ccard" data-guide="Finance Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Finance <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Finance</span><p>Your back office: books closed, cash watched, invoices collected.</p><div class="skl"><span>Bookkeeping & monthly close</span><span>Cash flow & runway</span><span>Invoice chasing</span></div></div>
+    <div class="coming-card" data-guide="Finance Agent" data-status="coming_soon">
+      <span class="surface-kicker">Finance</span>
+      <span class="surface-title">Finance Agent</span>
+      <p>Your back office: books closed, cash watched, invoices collected.</p>
+      <div class="skl"><span>Bookkeeping &amp; monthly close</span><span>Cash flow &amp; runway</span><span>Invoice chasing</span></div>
     </div>
-    <div class="ccard" data-guide="Marketing Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Marketing <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Marketing</span><p>Turns one idea into a week of content in your voice.</p><div class="skl"><span>Blog & newsletter</span><span>LinkedIn & social calendar</span><span>Content repurposing</span></div></div>
+    <div class="coming-card" data-guide="Marketing Agent" data-status="coming_soon">
+      <span class="surface-kicker">Marketing</span>
+      <span class="surface-title">Marketing Agent</span>
+      <p>Turns one idea into a week of content in your voice.</p>
+      <div class="skl"><span>Blog &amp; newsletter</span><span>LinkedIn &amp; social calendar</span><span>Content repurposing</span></div>
     </div>
-    <div class="ccard" data-guide="Business Analyst Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Business Analyst <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Strategy</span><p>Watches the market and your metrics, and briefs you weekly.</p><div class="skl"><span>Competitor watch</span><span>Weekly KPI digest</span><span>Deep-dive research</span></div></div>
+    <div class="coming-card" data-guide="Business Analyst Agent" data-status="coming_soon">
+      <span class="surface-kicker">Strategy</span>
+      <span class="surface-title">Business Analyst Agent</span>
+      <p>Watches the market and your metrics, and briefs you weekly.</p>
+      <div class="skl"><span>Competitor watch</span><span>Weekly KPI digest</span><span>Deep-dive research</span></div>
     </div>
-    <div class="ccard" data-guide="Support Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Support <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Customer support</span><p>Answers customers from your own docs and escalates what matters.</p><div class="skl"><span>Answers from your docs</span><span>Draft replies</span><span>Smart escalation</span></div></div>
+    <div class="coming-card" data-guide="Support Agent" data-status="coming_soon">
+      <span class="surface-kicker">Customer support</span>
+      <span class="surface-title">Support Agent</span>
+      <p>Answers customers from your own docs and escalates what matters.</p>
+      <div class="skl"><span>Answers from your docs</span><span>Draft replies</span><span>Smart escalation</span></div>
     </div>
-    <div class="ccard" data-guide="Recruiter Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Recruiter <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">People</span><p>Sources, screens and schedules while you sleep.</p><div class="skl"><span>Candidate sourcing</span><span>Resume screening</span><span>Interview scheduling</span></div></div>
+    <div class="coming-card" data-guide="Recruiter Agent" data-status="coming_soon">
+      <span class="surface-kicker">People</span>
+      <span class="surface-title">Recruiter Agent</span>
+      <p>Sources, screens and schedules while you sleep.</p>
+      <div class="skl"><span>Candidate sourcing</span><span>Resume screening</span><span>Interview scheduling</span></div>
     </div>
-    <div class="ccard" data-guide="Personal Assistant" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Personal <span class="grad">Assistant</span></div></div>
-      <div class="cpad"><span class="ccat">Productivity</span><p>Your day, handled: inbox, calendar and meeting prep.</p><div class="skl"><span>Inbox triage</span><span>Calendar protection</span><span>Meeting prep</span></div></div>
+    <div class="coming-card" data-guide="Personal Assistant" data-status="coming_soon">
+      <span class="surface-kicker">Productivity</span>
+      <span class="surface-title">Personal Assistant</span>
+      <p>Your day, handled: inbox, calendar and meeting prep.</p>
+      <div class="skl"><span>Inbox triage</span><span>Calendar protection</span><span>Meeting prep</span></div>
     </div>
-    <div class="ccard" data-guide="Legal Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Legal <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Legal</span><p>First-pass legal review before you pay a lawyer.</p><div class="skl"><span>Contract review</span><span>NDA redlines</span><span>Risky-clause flags</span></div></div>
+    <div class="coming-card" data-guide="Legal Agent" data-status="coming_soon">
+      <span class="surface-kicker">Legal</span>
+      <span class="surface-title">Legal Agent</span>
+      <p>First-pass legal review before you pay a lawyer.</p>
+      <div class="skl"><span>Contract review</span><span>NDA redlines</span><span>Risky-clause flags</span></div>
     </div>
-    <div class="ccard" data-guide="Product Manager Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Product Manager <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Product</span><p>Turns user feedback into specs your team can build.</p><div class="skl"><span>Feedback synthesis</span><span>PRDs & user stories</span><span>Launch checklists</span></div></div>
+    <div class="coming-card" data-guide="Product Manager Agent" data-status="coming_soon">
+      <span class="surface-kicker">Product</span>
+      <span class="surface-title">Product Manager Agent</span>
+      <p>Turns user feedback into specs your team can build.</p>
+      <div class="skl"><span>Feedback synthesis</span><span>PRDs &amp; user stories</span><span>Launch checklists</span></div>
     </div>
-    <div class="ccard" data-guide="Customer Success Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Customer Success <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Customer success</span><p>Keeps customers healthy: check-ins, renewals and QBRs.</p><div class="skl"><span>Account health watch</span><span>Renewal follow-ups</span><span>QBR prep</span></div></div>
+    <div class="coming-card" data-guide="Customer Success Agent" data-status="coming_soon">
+      <span class="surface-kicker">Customer success</span>
+      <span class="surface-title">Customer Success Agent</span>
+      <p>Keeps customers healthy: check-ins, renewals and QBRs.</p>
+      <div class="skl"><span>Account health watch</span><span>Renewal follow-ups</span><span>QBR prep</span></div>
     </div>
-    <div class="ccard" data-guide="E-commerce Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">E-commerce <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Commerce</span><p>Keeps your store sharp: listings, reviews and stock.</p><div class="skl"><span>Listing optimization</span><span>Review responses</span><span>Inventory alerts</span></div></div>
+    <div class="coming-card" data-guide="E-commerce Agent" data-status="coming_soon">
+      <span class="surface-kicker">Commerce</span>
+      <span class="surface-title">E-commerce Agent</span>
+      <p>Keeps your store sharp: listings, reviews and stock.</p>
+      <div class="skl"><span>Listing optimization</span><span>Review responses</span><span>Inventory alerts</span></div>
     </div>
-    <div class="ccard" data-guide="Proposal Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Proposal <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Sales</span><p>Drafts proposals, quotes and RFP answers that win work.</p><div class="skl"><span>Proposal & quote drafting</span><span>RFP answers</span><span>SOW templates</span></div></div>
+    <div class="coming-card" data-guide="Proposal Agent" data-status="coming_soon">
+      <span class="surface-kicker">Sales</span>
+      <span class="surface-title">Proposal Agent</span>
+      <p>Drafts proposals, quotes and RFP answers that win work.</p>
+      <div class="skl"><span>Proposal &amp; quote drafting</span><span>RFP answers</span><span>SOW templates</span></div>
     </div>
-    <div class="ccard" data-guide="PR Agent" data-status="coming_soon">
-      <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">PR <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Communications</span><p>Gets you press: media lists, pitches and mention tracking.</p><div class="skl"><span>Media list building</span><span>Pitch drafting</span><span>Mention tracking</span></div></div>
+    <div class="coming-card" data-guide="PR Agent" data-status="coming_soon">
+      <span class="surface-kicker">Communications</span>
+      <span class="surface-title">PR Agent</span>
+      <p>Gets you press: media lists, pitches and mention tracking.</p>
+      <div class="skl"><span>Media list building</span><span>Pitch drafting</span><span>Mention tracking</span></div>
     </div>
   </div>
-</div>
+</main>
 
-<footer>
-  <div class="wrap foot-meta">
-    <span>Houston guides</span>
-    <span><a href="https://gethouston.ai">gethouston.ai</a></span>
+<footer class="footer">
+  <div>
+    Every live workshop we run becomes a guide here.
+  </div>
+  <div style="margin-top: 12px; display: flex; gap: 16px; font-size: 12px; color: var(--gray-500); flex-wrap: wrap; justify-content: center;">
+    <a href="/learn/" style="color: var(--gray-500);">Learn</a>
+    <a href="/developers/" style="color: var(--gray-500);">Developers</a>
+    <a href="/changelog/" style="color: var(--gray-500);">Changelog</a>
+    <a href="/privacy/" style="color: var(--gray-500);">Privacy Policy</a>
+    <a href="/terms/" style="color: var(--gray-500);">Terms of Service</a>
   </div>
 </footer>
 
 <script>
-(function(){
+  // Hamburger menu (mirrors footer-developers.njk)
+  (function() {
+    var burger = document.getElementById('nav-burger');
+    var dropdown = document.getElementById('nav-dropdown');
+    var icon = document.getElementById('burger-icon');
+    if (!burger || !dropdown) return;
+    burger.addEventListener('click', function() {
+      var open = dropdown.classList.toggle('open');
+      icon.innerHTML = open ? '<path d="M18 6L6 18M6 6l12 12"/>' : '<path d="M4 6h16M4 12h16M4 18h16"/>';
+    });
+    dropdown.querySelectorAll('a').forEach(function(a) {
+      a.addEventListener('click', function() { dropdown.classList.remove('open'); icon.innerHTML = '<path d="M4 6h16M4 12h16M4 18h16"/>'; });
+    });
+  })();
+
   // Mirrors the homepage track() helper: PostHog + GA4, both optional.
-  function track(name, props) {
-    if (typeof window === 'undefined') return;
-    var payload = props || {};
-    if (window.posthog && window.posthog.capture) {
-      try { window.posthog.capture(name, payload); } catch (e) {}
+  (function(){
+    function track(name, props) {
+      if (typeof window === 'undefined') return;
+      var payload = props || {};
+      if (window.posthog && window.posthog.capture) {
+        try { window.posthog.capture(name, payload); } catch (e) {}
+      }
+      if (typeof window.gtag === 'function') {
+        try { window.gtag('event', name, payload); } catch (e) {}
+      }
     }
-    if (typeof window.gtag === 'function') {
-      try { window.gtag('event', name, payload); } catch (e) {}
-    }
-  }
-  var lang = document.documentElement.lang || 'en';
-  document.querySelectorAll('[data-guide]').forEach(function(el){
-    el.addEventListener('click', function(){
-      track('guide_card_clicked', {
-        guide: el.getAttribute('data-guide'),
-        status: el.getAttribute('data-status') || 'coming_soon',
-        lang: lang
+    var lang = document.documentElement.lang || 'en';
+    document.querySelectorAll('[data-guide]').forEach(function(el){
+      el.addEventListener('click', function(){
+        track('guide_card_clicked', {
+          guide: el.getAttribute('data-guide'),
+          status: el.getAttribute('data-status') || 'coming_soon',
+          lang: lang
+        });
       });
     });
-  });
-})();
+  })();
 </script>
-
 {% endblock %}

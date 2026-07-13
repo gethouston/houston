@@ -25,6 +25,7 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/assets");
   eleventyConfig.addPassthroughCopy("src/learn/style.css");
   eleventyConfig.addPassthroughCopy("src/developers/style.css");
+  eleventyConfig.addPassthroughCopy("src/guides/style.css");
   // Workshop guides: screenshots + downloadable PDFs and agent file
   eleventyConfig.addPassthroughCopy("src/guides/assets");
   eleventyConfig.addPassthroughCopy("src/guides/downloads");
