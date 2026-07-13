@@ -481,6 +481,15 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   return {
     server,
     async start() {
+      // Boot-phase stamps. Everything before the listening banner used to be
+      // silent, which made a 15 s managed-pod wake unattributable from logs;
+      // process.uptime() in the first stamp exposes module-eval cost, and the
+      // banner's own timestamp closes the ledger.
+      const bootStamp = (phase: string) =>
+        console.log(
+          `[local-host] boot: ${phase} at +${process.uptime().toFixed(1)}s`,
+        );
+      bootStamp("module eval done");
       // The object store is authoritative in managed server mode. Hydration is
       // readiness-critical and must finish before migrations or HTTP listening;
       // failure propagates so the pod restarts without ever syncing an empty tree.
@@ -522,6 +531,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           );
         }
       }
+      bootStamp("hydration + migrations done");
       const bind = opts.bind ?? "127.0.0.1";
       await new Promise<void>((resolve) =>
         server.listen(opts.port, bind, () => resolve()),
