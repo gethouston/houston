@@ -37,7 +37,11 @@ multiplayer orgs. Analytics/Sentry are no-ops in dev by design.
 ## Env: the two-file model
 
 - **`.env.development`** (committed) — every non-secret knob, identical for the
-  whole team. Editing it is a team-wide change: send a PR.
+  whole team. Editing it is a team-wide change: send a PR. It also pins every
+  feature flag ON (e.g. `APPLE_SIGN_IN_ENABLED`) and keeps dev writes local
+  (`VITE_AGENTSTORE_GATEWAY_URL` → the dev gateway, never prod). The doctor's
+  feature matrix is the contract: every gate is a line, ON or OFF-with-remedy —
+  a feature must never silently disappear.
 - **`.env.local`** (gitignored) — secrets ONLY (`.env.example` is the
   template): `FIREBASE_API_KEY` (required), `ANTHROPIC_API_KEY` (optional —
   seeded into every fresh engine's `credentials.json` so turns work without

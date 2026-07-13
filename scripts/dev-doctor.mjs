@@ -132,12 +132,22 @@ if (fails.length > 0) {
 const on = paint.ok("ON ");
 const off = paint.warn("OFF");
 const integrations = env.COMPOSIO_API_KEY || env.HOUSTON_INTEGRATIONS_URL;
+const appleOn = ["1", "true", "on", "yes"].includes(
+  (env.APPLE_SIGN_IN_ENABLED || "").trim().toLowerCase(),
+);
+const emailOtp = env.RESEND_API_KEY && env.GW_OTP_SIGNER_SA;
+const bugReports = env.LINEAR_API_KEY && env.LINEAR_TEAM_ID;
 console.log(`
 ${paint.bold("── pnpm dev · feature matrix ──────────────────────────────────")}
   Desktop app   local profile   no sign-in · terminal · files · local models
   Web app       cloud profile   http://localhost:1430 · Google sign-in ·
                                 multiplayer Teams/Spaces · agent moves
   Engines       local processes spawned per agent (data: ${(process.env.CP_DEV_DATA_DIR || path.join(homedir(), ".dev-houston-cloud")).replace(homedir(), "~")})
+  ${appleOn ? on : off} apple sign-in  ${appleOn ? "button renders (needs the GCIP apple.com provider to work)" : "APPLE_SIGN_IN_ENABLED is off — button hidden"}
+  ${emailOtp ? on : off} email sign-in  ${emailOtp ? "Resend key + OTP signer present" : "the code field ERRORS in dev (gateway 503s without RESEND_API_KEY + GW_OTP_SIGNER_SA) — sign in with Google/Microsoft/Apple"}
+  ${on} agent store    catalog/publish/install stay on the LOCAL gateway (never prod)
+  ${bugReports ? on : off} bug reports    ${bugReports ? "desktop Report-bug files to Linear" : "desktop Report-bug ERRORS — set LINEAR_API_KEY + LINEAR_TEAM_ID in .env.local"}
+  ${off} shared tunnel   local-model tunnel share needs desktop+team+hosted session (relay is prod-only); share endpoints via the web pane's team space instead
   ${integrations ? on : off} integrations   ${integrations ? "Composio configured" : "set COMPOSIO_API_KEY in .env.local to enable connected apps"}
   ${env.ANTHROPIC_API_KEY ? on : off} agent turns    ${env.ANTHROPIC_API_KEY ? "engines seeded with ANTHROPIC_API_KEY" : "no ANTHROPIC_API_KEY — connect a provider in-app per agent"}
   ${env.COMPOSIO_API_KEY && env.COMPOSIO_WEBHOOK_SECRET ? on : off} triggers       ${env.COMPOSIO_API_KEY && env.COMPOSIO_WEBHOOK_SECRET ? "Composio key + webhook secret present" : "need COMPOSIO_API_KEY + COMPOSIO_WEBHOOK_SECRET"}
