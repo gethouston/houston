@@ -569,10 +569,12 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       // into Secret Manager before starting the watcher/sync loop. Removing it
       // after every upload succeeds makes the first sync delete the old GCS
       // object; a partial failure leaves it intact for a safe boot retry.
-      if (remoteClaudeCredentials) {
+      // Passive hosts (a read-only conversion source) must not mutate custody:
+      // no restore, no legacy migration, no rotation mirroring.
+      if (remoteClaudeCredentials && !opts.passive) {
         await remoteClaudeCredentials.restore(claudeCredentialPath);
       }
-      if (remoteCustomSecrets) {
+      if (remoteCustomSecrets && !opts.passive) {
         const migrated = await remoteCustomSecrets.migrateLegacy();
         if (migrated > 0) {
           console.log(
@@ -674,7 +676,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         // Await actual child exit (bounded): the final sync below must not
         // walk /data while a runtime is still flushing its last writes.
         await launcher.shutdownAllAndWait();
-        if (remoteClaudeCredentials) {
+        if (remoteClaudeCredentials && !opts.passive) {
           await remoteClaudeCredentials.sync(claudeCredentialPath);
           remoteClaudeCredentials.stop();
         }

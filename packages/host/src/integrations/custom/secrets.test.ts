@@ -85,6 +85,7 @@ test("remote store uses the scoped pod route and never echoes writes locally", a
     orgSlug: "0123456789abcdef",
     agentSlug: "aaaaaaaaaaaaaaaa",
     podToken: "host-token",
+    cacheTtlMs: 0, // pin the wire protocol; caching has its own test below
     fetchImpl: fetchImpl as typeof fetch,
   });
   await store.set("ci_acme_token", "never-on-disk");
@@ -101,6 +102,35 @@ test("remote store uses the scoped pod route and never echoes writes locally", a
   expect(
     (calls[0]?.init?.headers as Record<string, string>).Authorization,
   ).toBe("Bearer host-token");
+});
+
+test("remote store serves repeated reads from a short write-through cache", async () => {
+  let gets = 0;
+  const store = new RemoteCustomSecretStore({
+    baseUrl: "https://gateway.example",
+    orgSlug: "0123456789abcdef",
+    agentSlug: "aaaaaaaaaaaaaaaa",
+    podToken: "host-token",
+    fetchImpl: (async (_url: string | URL | Request, init?: RequestInit) => {
+      if (!init?.method) {
+        gets++;
+        return new Response(JSON.stringify({ value: "remote-key" }), {
+          status: 200,
+        });
+      }
+      return new Response(`{"ok":true}`, { status: 200 });
+    }) as typeof fetch,
+  });
+  // The executor's provider resolves per request with has() + get(): repeated
+  // reads inside the TTL must cost ONE gateway→Secret-Manager round trip.
+  expect(await store.get("ci_acme_token")).toBe("remote-key");
+  expect(await store.get("ci_acme_token")).toBe("remote-key");
+  expect(gets).toBe(1);
+  await store.set("ci_acme_token", "v2");
+  expect(await store.get("ci_acme_token")).toBe("v2");
+  await store.delete("ci_acme_token");
+  expect(await store.get("ci_acme_token")).toBeNull();
+  expect(gets).toBe(1);
 });
 
 test("legacy migration uploads every value before removing the plaintext file", async () => {

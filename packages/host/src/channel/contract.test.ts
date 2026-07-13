@@ -1,5 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import type { ClaudeOAuthCredential } from "@houston/protocol";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
@@ -252,7 +253,9 @@ beforeAll(async () => {
 
 afterAll(() => proxyRuntime.close());
 
-function makeProxyFixture(): ChannelFixture {
+function makeProxyFixture(claudeCredentials?: {
+  put(credential: ClaudeOAuthCredential): Promise<void>;
+}): ChannelFixture {
   proxyConnected = false; // each fixture starts disconnected
   const credentials = new MemoryCredentialStore();
   const launcher = new FakeLauncher({ baseUrl: proxyRuntimeUrl, token: "sbx" });
@@ -261,6 +264,7 @@ function makeProxyFixture(): ChannelFixture {
     launcher,
     proxy,
     credentials,
+    claudeCredentials,
     forwardActingHeader: false,
   });
   return {
@@ -426,5 +430,45 @@ describe("saveClaudeOAuthCredential (single-tenant only, asymmetric)", () => {
     await expect(channel.saveClaudeOAuthCredential(ctx, cred)).rejects.toThrow(
       /cloud|per-turn|available/i,
     );
+  });
+
+  test("ProxyChannel mirrors a rotating credential to custody", async () => {
+    const mirrored: ClaudeOAuthCredential[] = [];
+    const { channel } = makeProxyFixture({
+      put: async (credential) => {
+        mirrored.push(credential);
+      },
+    });
+    await channel.saveClaudeOAuthCredential(ctx, cred);
+    expect(mirrored).toEqual([cred]);
+  });
+
+  test("ProxyChannel custody mirror is best-effort: a failing mirror never fails the push", async () => {
+    proxyClaudeOAuthBody = null;
+    const { channel } = makeProxyFixture({
+      put: async () => {
+        throw new Error("custody down");
+      },
+    });
+    await channel.saveClaudeOAuthCredential(ctx, cred);
+    // The pod still received the CLI envelope; the watcher re-mirrors later.
+    expect(proxyClaudeOAuthBody).toEqual({ claudeAiOauth: cred });
+  });
+
+  test("ProxyChannel never mirrors a refresh-token-less credential", async () => {
+    proxyClaudeOAuthBody = null;
+    const mirrored: ClaudeOAuthCredential[] = [];
+    const { channel } = makeProxyFixture({
+      put: async (credential) => {
+        mirrored.push(credential);
+      },
+    });
+    const { refreshToken: _refreshToken, ...degraded } = cred;
+    // The protocol deliberately accepts a credential without a refresh token
+    // (degraded, not broken) — custody has nothing durable to keep for it and
+    // the push must still land on the pod.
+    await channel.saveClaudeOAuthCredential(ctx, degraded);
+    expect(mirrored).toEqual([]);
+    expect(proxyClaudeOAuthBody).toEqual({ claudeAiOauth: degraded });
   });
 });

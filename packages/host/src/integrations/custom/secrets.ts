@@ -102,31 +102,54 @@ export interface RemoteCustomSecretStoreOptions {
   podToken: string;
   legacy?: FileCustomSecretStore;
   fetchImpl?: typeof fetch;
+  /** How long a resolved value may serve from memory. Test seam; default 60s. */
+  cacheTtlMs?: number;
 }
 
 /**
  * Managed-cloud adapter. The host resolves values lazily through its scoped
  * gateway route; the engine pod has no GCP identity or Secret Manager IAM.
+ *
+ * Reads are cached in memory with a short TTL: the executor's credential
+ * provider resolves per request (`has` + `get` are BOTH remote reads), and one
+ * integration call must not cost two gateway→Secret-Manager round trips. The
+ * cache is write-through — this host is the only writer for its agent's
+ * secrets, so the TTL only bounds staleness against a future surface writing
+ * to custody directly.
  */
 export class RemoteCustomSecretStore implements CustomSecretStore {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly cacheTtlMs: number;
+  private readonly cache = new Map<
+    string,
+    { value: string | null; at: number }
+  >();
 
   constructor(private readonly opts: RemoteCustomSecretStoreOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
     this.fetchImpl = opts.fetchImpl ?? fetch;
+    this.cacheTtlMs = opts.cacheTtlMs ?? 60_000;
   }
 
   async get(id: string): Promise<string | null> {
+    const cached = this.cache.get(id);
+    if (cached && Date.now() - cached.at < this.cacheTtlMs) {
+      return cached.value;
+    }
     const response = await this.fetchImpl(this.url(id), {
       headers: this.headers(),
     });
-    if (response.status === 404) return null;
+    if (response.status === 404) {
+      this.cache.set(id, { value: null, at: Date.now() });
+      return null;
+    }
     if (!response.ok) throw await this.failure(response, "GET", id);
     const body = (await response.json()) as { value?: unknown };
     if (typeof body.value !== "string") {
       throw new Error(`custom secret gateway returned malformed ${id} body`);
     }
+    this.cache.set(id, { value: body.value, at: Date.now() });
     return body.value;
   }
 
@@ -137,6 +160,7 @@ export class RemoteCustomSecretStore implements CustomSecretStore {
       body: JSON.stringify({ value }),
     });
     if (!response.ok) throw await this.failure(response, "PUT", id);
+    this.cache.set(id, { value, at: Date.now() });
   }
 
   async delete(id: string): Promise<void> {
@@ -145,6 +169,7 @@ export class RemoteCustomSecretStore implements CustomSecretStore {
       headers: this.headers(),
     });
     if (!response.ok) throw await this.failure(response, "DELETE", id);
+    this.cache.set(id, { value: null, at: Date.now() });
   }
 
   /**

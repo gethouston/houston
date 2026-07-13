@@ -7,7 +7,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { RemoteClaudeCredentialStore } from "./remote-claude-store";
 
 const dirs: string[] = [];
@@ -84,6 +84,37 @@ test("sync uploads an SDK-rotated refresh token once", async () => {
   await remote.sync(target);
   await remote.sync(target);
   expect(uploaded).toEqual([envelope]);
+});
+
+test("a failed rotation upload retries on a timer without another file change", async () => {
+  const target = path();
+  let puts = 0;
+  const remote = new RemoteClaudeCredentialStore({
+    baseUrl: "https://gateway.example",
+    orgSlug: "0123456789abcdef",
+    agentSlug: "aaaaaaaaaaaaaaaa",
+    podToken: "host-token",
+    retryMs: 5,
+    fetchImpl: (async (_url: string | URL | Request, init?: RequestInit) => {
+      if (init?.method !== "PUT")
+        return new Response(`{"error":"not found"}`, { status: 404 });
+      puts++;
+      // First upload fails (gateway blip); the retry timer must land the
+      // rotation without the SDK touching the file again.
+      if (puts === 1) return new Response("down", { status: 503 });
+      return new Response(`{"ok":true}`, { status: 200 });
+    }) as typeof fetch,
+  });
+  writeFileSync(target, envelope);
+  // The file was written before watch(), so the poller never fires: drive one
+  // watch tick directly — the retry timer, not fs polling, is under test.
+  remote.watch(target);
+  try {
+    (remote as unknown as { queueSync(p: string): void }).queueSync(target);
+    await vi.waitFor(() => expect(puts).toBe(2), { timeout: 5_000 });
+  } finally {
+    remote.stop();
+  }
 });
 
 test("invalid local files are never uploaded", async () => {

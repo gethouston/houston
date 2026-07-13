@@ -679,7 +679,12 @@ definitions route (engine-client returns `null`, same convention as grants).
 Secret Manager secrets. Engine pods have no GCP IAM; only the gateway can
 resolve the deterministic non-PII resource id. The cloud web client's global
 custom-management route still depends on gateway proxy support; custody is safe
-regardless of whether that UI surface is enabled.
+regardless of whether that UI surface is enabled. Rollout and rollback are
+COUPLED: a gateway without Secret Manager custody (old image, or
+`GW_SECRET_MANAGER_PROJECT` unset outside dev) answers the pod custody routes
+401, so a new-image managed pod fails its startup Claude restore and every
+custom-secret read. Rolling the gateway's custody flag back requires pinning
+the engine image back in the same step.
 
 ---
 

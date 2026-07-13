@@ -431,9 +431,23 @@ export class ProxyChannel implements RuntimeChannel {
       expiresAt: cred.expiresAt ?? 0,
     });
     // Secret Manager mirror is per-agent: two SDKs must never rotate the same
-    // refresh token. The standing runtime write below remains the immediate
-    // materialization path.
-    await this.opts.claudeCredentials?.put(cred);
+    // refresh token. Best-effort — the runtime file write below is the
+    // materialization path and the file watcher re-mirrors on the next
+    // rotation, so a custody blip must not fail the login. A credential
+    // without a refresh token is never mirrored: there is nothing durable to
+    // preserve, and rejecting it would break the protocol's deliberate
+    // leniency (degraded, not broken).
+    if (cred.refreshToken) {
+      try {
+        await this.opts.claudeCredentials?.put(cred);
+      } catch (error) {
+        // Never log the payload.
+        console.error(
+          "[claude-credential-sync] custody mirror failed on push",
+          error,
+        );
+      }
+    }
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     const res = await fetch(
       `${endpoint.baseUrl}/auth/anthropic/oauth-credential`,

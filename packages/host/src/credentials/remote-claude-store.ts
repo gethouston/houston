@@ -15,6 +15,10 @@ export interface RemoteClaudeCredentialStoreOptions {
   agentSlug: string;
   podToken: string;
   fetchImpl?: typeof fetch;
+  /** Poll interval for the SDK-owned file. Test seam; default 2s. */
+  watchIntervalMs?: number;
+  /** Delay before a failed watcher upload is retried. Test seam; default 30s. */
+  retryMs?: number;
 }
 
 /**
@@ -25,13 +29,18 @@ export interface RemoteClaudeCredentialStoreOptions {
 export class RemoteClaudeCredentialStore {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly watchIntervalMs: number;
+  private readonly retryMs: number;
   private lastPayload: string | null = null;
   private syncing: Promise<void> = Promise.resolve();
   private watchedPath: string | undefined;
+  private retryTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private readonly opts: RemoteClaudeCredentialStoreOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
     this.fetchImpl = opts.fetchImpl ?? fetch;
+    this.watchIntervalMs = opts.watchIntervalMs ?? 2_000;
+    this.retryMs = opts.retryMs ?? 30_000;
   }
 
   async put(credential: ClaudeOAuthCredential): Promise<void> {
@@ -57,14 +66,29 @@ export class RemoteClaudeCredentialStore {
     if (this.watchedPath === path) return;
     this.stop();
     this.watchedPath = path;
-    watchFile(path, { interval: 2_000, persistent: false }, () => {
-      this.syncing = this.syncing
-        .then(() => this.sync(path))
-        .catch((error) => {
-          // Never include the payload in logs.
-          console.error("[claude-credential-sync] remote update failed", error);
-        });
-    });
+    watchFile(path, { interval: this.watchIntervalMs, persistent: false }, () =>
+      this.queueSync(path),
+    );
+  }
+
+  private queueSync(path: string): void {
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = undefined;
+    }
+    this.syncing = this.syncing
+      .then(() => this.sync(path))
+      .catch((error) => {
+        // Never include the payload in logs.
+        console.error("[claude-credential-sync] remote update failed", error);
+        // A rotation that fails to mirror must not wait for the next file
+        // change — there may never be one before a hard pod kill, and a lost
+        // rotation restores a burned refresh token on the replacement pod.
+        // Retry on a timer until the upload lands or the store stops.
+        if (this.watchedPath !== path) return;
+        this.retryTimer = setTimeout(() => this.queueSync(path), this.retryMs);
+        this.retryTimer.unref?.();
+      });
   }
 
   /** Upload the current valid file, if changed. Used for the shutdown flush. */
@@ -83,6 +107,10 @@ export class RemoteClaudeCredentialStore {
   stop(): void {
     if (this.watchedPath) unwatchFile(this.watchedPath);
     this.watchedPath = undefined;
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = undefined;
+    }
   }
 
   private async putEnvelope(payload: string): Promise<void> {
