@@ -57,10 +57,14 @@ export async function hydrate(
 ): Promise<HydrateManifest> {
   const excludes = opts.excludes ?? DEFAULT_EXCLUDES;
   const maxBytes = opts.maxBytes ?? 512 * 1024 * 1024;
-  const concurrency = Math.max(
-    1,
-    opts.concurrency ?? DEFAULT_HYDRATE_CONCURRENCY,
-  );
+  // Guard against a non-finite override (NaN sizes the worker array to ZERO,
+  // which would return a successful empty manifest for a non-empty store —
+  // the exact partial-manifest state the hydration latch exists to prevent).
+  const requested = opts.concurrency ?? DEFAULT_HYDRATE_CONCURRENCY;
+  const concurrency =
+    Number.isFinite(requested) && requested >= 1
+      ? Math.floor(requested)
+      : DEFAULT_HYDRATE_CONCURRENCY;
   const manifest: HydrateManifest = new Map();
   const entries: { key: string; rel: string }[] = [];
   for (const key of await store.list(prefix)) {
@@ -77,7 +81,10 @@ export async function hydrate(
   let failed = false;
   let firstError: unknown;
   const worker = async () => {
-    while (!failed) {
+    // The cap check also gates NEW downloads (not only completed ones), so an
+    // over-cap workspace overshoots by at most the in-flight batch — the
+    // pooled analogue of the sequential loop's one-object overshoot.
+    while (!failed && total <= maxBytes) {
       const entry = entries[next++];
       if (!entry) return;
       const { key, rel } = entry;

@@ -159,6 +159,18 @@ test("hydrate materializes many files faithfully under concurrency", async () =>
   }
 });
 
+test("a non-finite concurrency override still hydrates everything", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/a.txt": "a", "workspace/b.txt": "b" });
+  // NaN would size the worker pool to zero and return a successful EMPTY
+  // manifest — the partial-manifest state the hydration latch must prevent.
+  const manifest = await hydrate(store, PREFIX, work, {
+    concurrency: Number.NaN,
+  });
+  expect(manifest.size).toBe(2);
+  expect(readFileSync(join(work, "workspace", "a.txt"), "utf8")).toBe("a");
+});
+
 test("a download failure rejects hydrate with that error, workers stop", async () => {
   const { storeRoot, store, work } = setup();
   const files: Record<string, string> = {};
