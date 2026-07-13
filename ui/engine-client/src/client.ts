@@ -191,7 +191,7 @@ export interface HoustonClientOptions {
 }
 
 /** The public store site (not API) base, for "browse the store" links. */
-const STORE_SITE_URL = "https://store.gethouston.ai";
+const STORE_SITE_URL = "https://agents.gethouston.ai";
 
 /** The machine-local pointer the host keeps for a published agent (no secrets). */
 interface StorePointer {

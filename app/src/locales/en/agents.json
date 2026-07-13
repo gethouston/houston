@@ -82,8 +82,7 @@
   "tabLabels": {
     "activity": "Activity",
     "archived": "Completed",
-    "routines": "Routines",
-    "reactions": "Reactions",
+    "routines": "Automations",
     "files": "Files",
     "job-description": "Agent Settings",
     "integrations": "Integrations",

@@ -5,7 +5,7 @@ const API = "https://gateway.gethouston.ai";
 
 test("resolves a full share link to the gateway IR url", () => {
   const r = resolveStoreIrUrl(
-    "https://store.gethouston.ai/a/inbox-helper",
+    "https://agents.gethouston.ai/a/inbox-helper",
     API,
   );
   expect(r).toEqual({
@@ -15,7 +15,7 @@ test("resolves a full share link to the gateway IR url", () => {
 
 test("tolerates a trailing slash on the share path", () => {
   const r = resolveStoreIrUrl(
-    "https://store.gethouston.ai/a/inbox-helper/",
+    "https://agents.gethouston.ai/a/inbox-helper/",
     API,
   );
   expect(r).toEqual({
@@ -43,14 +43,14 @@ test("empty input is rejected", () => {
 });
 
 test("http (non-https) links are rejected", () => {
-  expect(resolveStoreIrUrl("http://store.gethouston.ai/a/foo", API)).toEqual({
+  expect(resolveStoreIrUrl("http://agents.gethouston.ai/a/foo", API)).toEqual({
     error: "The link must start with https://.",
   });
 });
 
 test("credentials in the URL are rejected", () => {
   const r = resolveStoreIrUrl(
-    "https://user:pass@store.gethouston.ai/a/foo",
+    "https://user:pass@agents.gethouston.ai/a/foo",
     API,
   );
   expect(r).toEqual({
@@ -74,9 +74,9 @@ test.each([
 });
 
 test("a URL that is not a /a/<slug> share link is rejected", () => {
-  expect(resolveStoreIrUrl("https://store.gethouston.ai/explore", API)).toEqual(
-    { error: "That is not a Houston agent share link." },
-  );
+  expect(
+    resolveStoreIrUrl("https://agents.gethouston.ai/explore", API),
+  ).toEqual({ error: "That is not a Houston agent share link." });
 });
 
 test("a slug with illegal characters is rejected", () => {
@@ -87,6 +87,6 @@ test("a slug with illegal characters is rejected", () => {
 
 test("a share-path slug with a slash cannot escape the /a/ segment", () => {
   expect(
-    resolveStoreIrUrl("https://store.gethouston.ai/a/foo/bar", API),
+    resolveStoreIrUrl("https://agents.gethouston.ai/a/foo/bar", API),
   ).toEqual({ error: "That is not a Houston agent share link." });
 });

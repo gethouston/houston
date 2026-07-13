@@ -13,15 +13,9 @@ interface Props extends TabProps {
   /** Which chat this is — a routine's own chat or an unclaimed draft. Drives
    *  the header label without any string-equality guessing. */
   kind: "routine" | "draft";
-  /** The routine's own name, for the "Routine: {name}" header. Unused when
+  /** The routine's own name, for the "Automation: {name}" header. Unused when
    *  `kind` is "draft". */
   routineName?: string;
-  /** Header label for a still-unclaimed draft chat. Defaults to the routine
-   *  wording ("New routine"); the Reactions tab passes its own copy. */
-  newLabel?: string;
-  /** Header label for a claimed item's chat, already interpolated with its name
-   *  ("Routine: X"). Defaults to the routine wording; Reactions passes its own. */
-  itemLabel?: string;
   /** Return to the list. */
   onBack: () => void;
 }
@@ -51,8 +45,6 @@ export function RoutineSetupChat({
   activity,
   kind,
   routineName,
-  newLabel,
-  itemLabel,
   onBack,
 }: Props) {
   const { t } = useTranslation("routines");
@@ -112,8 +104,8 @@ export function RoutineSetupChat({
   const sessionKey = activity.session_key ?? `activity-${activity.id}`;
   const missionLabel =
     kind === "draft"
-      ? (newLabel ?? t("chat.newRoutineTitle"))
-      : (itemLabel ?? t("chat.routineLabel", { name: routineName ?? "" }));
+      ? t("chat.newRoutineTitle")
+      : t("chat.routineLabel", { name: routineName ?? "" });
 
   return (
     <div className="flex h-full min-h-0 flex-col">

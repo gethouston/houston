@@ -1,7 +1,7 @@
 /**
- * Shared building blocks for the routine and reaction setup-chat kickoffs
- * (`routine-chat-prompts.ts`, `reaction-chat-prompts.ts`). Kept apart so each
- * kickoff file stays focused and under the size cap.
+ * Shared building blocks for the automation setup-chat kickoffs
+ * (`routine-chat-prompts.ts`). Kept apart so each kickoff file stays focused
+ * and under the size cap.
  */
 
 /** A provider the user has actually connected, for the kickoff prompts. */

@@ -15,7 +15,7 @@
       { "source": "/pricing/es/", "destination": "/#pricing", "type": 301 },
       {
         "source": "/agent-store",
-        "destination": "https://store.gethouston.ai",
+        "destination": "https://agents.gethouston.ai",
         "type": 302
       }
     ],

@@ -9,7 +9,7 @@ import {
 const LABELS: ChatSuggestReusableLabels = {
   eyebrow: "Save this for next time",
   skillTitle: "Save as a Skill",
-  routineTitle: "Save as a Routine",
+  routineTitle: "Save as an Automation",
   learningTitle: "Remember this",
   notNow: "Not now",
 };
@@ -25,7 +25,7 @@ describe("resolveSuggestReusableSaveLabel", () => {
   it("uses the routine label for a routine suggestion", () => {
     assert.equal(
       resolveSuggestReusableSaveLabel("routine", LABELS),
-      "Save as a Routine",
+      "Save as an Automation",
     );
   });
 
@@ -42,7 +42,7 @@ describe("DEFAULT_SUGGEST_REUSABLE_LABELS", () => {
     assert.equal(DEFAULT_SUGGEST_REUSABLE_LABELS.skillTitle, "Save as a Skill");
     assert.equal(
       DEFAULT_SUGGEST_REUSABLE_LABELS.routineTitle,
-      "Save as a Routine",
+      "Save as an Automation",
     );
     assert.equal(
       DEFAULT_SUGGEST_REUSABLE_LABELS.learningTitle,

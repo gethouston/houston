@@ -184,7 +184,7 @@ test("the publication pointer round-trips and never carries a token", async () =
   const pointer = {
     storeAgentId: "11111111-2222-3333-4444-555555555555",
     slug: "mailer",
-    shareUrl: "https://store.gethouston.ai/a/mailer",
+    shareUrl: "https://agents.gethouston.ai/a/mailer",
     publishedAt: "2026-07-09T00:00:00.000Z",
   };
   const wrote = await fetch(

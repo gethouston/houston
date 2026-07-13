@@ -9,7 +9,13 @@ import {
 import { join } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { sessionGroupsForAgent } from "./linkage";
-import { messageFor, reconstruct, rowTs, titleFor } from "./reconstruct";
+import {
+  importedHistoryNote,
+  messageFor,
+  reconstruct,
+  rowTs,
+  titleFor,
+} from "./reconstruct";
 import { Database } from "./sqlite";
 import type { ChatFeedRow, SessionPair, StoredConversation } from "./types";
 
@@ -21,8 +27,11 @@ import type { ChatFeedRow, SessionPair, StoredConversation } from "./types";
  *
  * Strictly additive + idempotent: we only WRITE new files under
  * `<agentRoot>/.houston/runtime/`. We NEVER modify, lock, or delete the source
- * db or any existing tree file. The db is opened READ-ONLY. A per-agent
- * `.migrated` marker plus a per-conversation existence check make re-runs no-ops.
+ * db or any existing tree file. The db is opened READ-ONLY. A per-conversation
+ * existence check makes re-runs no-ops — deliberately NO per-agent marker: a
+ * wholesale skip once lost every chat written by a Rust-era build AFTER the
+ * marker was stamped (old and new apps interleave on real machines, and the
+ * migration wizard's own source-host boot stamps first).
  *
  * Linkage (verified, see linkage.ts): the `.sid`/`.history` tracker files per
  * agent map a `session_key` (= conversation id) to its `claude_session_id`s.
@@ -31,7 +40,6 @@ import type { ChatFeedRow, SessionPair, StoredConversation } from "./types";
  */
 
 const RUNTIME_REL = join(".houston", "runtime");
-const MARKER_NAME = ".migrated";
 
 // ---------------------------------------------------------------------------
 // Results + options.
@@ -43,8 +51,6 @@ export interface MigrateAgentResult {
   migrated: number;
   /** Conversations already present (idempotent skip). */
   skipped: number;
-  /** Whether the agent was skipped wholesale via its `.migrated` marker. */
-  alreadyMarked: boolean;
 }
 
 export interface MigrateResult {
@@ -108,10 +114,15 @@ function synthesizeSession(
   if (!hasAssistant) return;
 
   const mgr = SessionManager.create(workspaceDir, sessionDir);
+  let lastTs = 0;
   for (const p of pairs) {
     if (!p.content) continue;
     mgr.appendMessage(messageFor(p));
+    if (p.ts > lastTs) lastTs = p.ts;
   }
+  // Close the imported block so the next live turn treats it as a record, not
+  // as pending instructions (see IMPORTED_HISTORY_NOTE for the incident).
+  mgr.appendMessage(importedHistoryNote(lastTs));
 }
 
 // ---------------------------------------------------------------------------
@@ -135,20 +146,10 @@ export function migrateAgentChatHistory(
   const runtimeDir = join(agentRoot, RUNTIME_REL);
   const conversationsDir = join(runtimeDir, "conversations");
   const sessionsOutDir = join(runtimeDir, "sessions");
-  const marker = join(runtimeDir, MARKER_NAME);
 
   const groups = sessionGroupsForAgent(agentRoot);
   if (referenced)
     for (const set of groups.values()) for (const id of set) referenced.add(id);
-
-  if (existsSync(marker)) {
-    return {
-      agentRoot,
-      migrated: 0,
-      skipped: groups.size,
-      alreadyMarked: true,
-    };
-  }
 
   // One reusable statement for all of this agent's ids.
   const stmt = db.query<ChatFeedRow, [string]>(
@@ -198,10 +199,12 @@ export function migrateAgentChatHistory(
     migrated++;
   }
 
-  mkdirSync(runtimeDir, { recursive: true });
-  writeFileSync(marker, new Date().toISOString());
-  log(`[migrate:chat] ${agentRoot}: migrated ${migrated}, skipped ${skipped}`);
-  return { agentRoot, migrated, skipped, alreadyMarked: false };
+  if (migrated > 0) {
+    log(
+      `[migrate:chat] ${agentRoot}: migrated ${migrated}, skipped ${skipped}`,
+    );
+  }
+  return { agentRoot, migrated, skipped };
 }
 
 // ---------------------------------------------------------------------------

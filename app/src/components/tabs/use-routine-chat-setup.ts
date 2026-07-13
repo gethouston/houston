@@ -3,15 +3,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity } from "../../hooks/queries";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
 import { analytics } from "../../lib/analytics";
 import { createMission } from "../../lib/create-mission";
 import { providerName } from "../../lib/providers";
 import { queryKeys } from "../../lib/query-keys";
-import {
-  encodeReactionModifyMessage,
-  encodeReactionSetupMessage,
-} from "../../lib/reaction-chat-prompts";
 import {
   encodeRoutineModifyMessage,
   encodeRoutineSetupMessage,
@@ -19,8 +16,7 @@ import {
 import {
   findDraftSetupActivities,
   findRoutineChatActivity,
-  SETUP_AGENT_MODE,
-  type SetupChatKind,
+  ROUTINE_SETUP_AGENT_MODE,
 } from "../../lib/routine-chat-setup";
 import type { ConnectedProviderRef } from "../../lib/setup-chat-prompt-shared";
 import { tauriActivity, tauriConfig, tauriRoutines } from "../../lib/tauri";
@@ -29,38 +25,29 @@ import type { Agent } from "../../lib/types";
 import { useRoutineChatHeal } from "./use-routine-chat-heal";
 
 /**
- * Owns every routine's / reaction's setup chat (HOU-725), tagged with the
- * kind's sentinel so it never shows as a board card — its only home is its
- * tab's full-page chat view. A chat starts as a "draft" (no routine yet); once
- * a routine claims one (link resolution in `lib/routine-chat-setup.ts`, stored
- * both directions) the chat is the routine's for good, and reopening resumes
- * it. Routines without a chat get one on first open via `startForRoutine`. The
- * `kind` selects the sentinel, the kickoff prompts, and the mission title.
+ * Owns every automation's setup chat (HOU-725), tagged with the setup sentinel
+ * so it never shows as a board card — its only home is the tab's full-page
+ * chat view. A chat starts as a "draft" (no routine yet); once a routine
+ * claims one (link resolution in `lib/routine-chat-setup.ts`, stored both
+ * directions) the chat is the routine's for good, and reopening resumes it.
+ * Routines without a chat get one on first open via `startForRoutine`. The
+ * create kickoff offers the event wake only where the deployment supports
+ * event triggers (`capabilities.triggers`).
  */
 export function useRoutineChatSetup(
   agent: Agent,
   routines: Routine[] | undefined,
-  kind: SetupChatKind,
 ) {
   const { t } = useTranslation("routines");
   const path = agent.folderPath;
   const queryClient = useQueryClient();
   const { data: rawItems } = useActivity(path);
   const [pending, setPending] = useState(false);
+  const { capabilities } = useCapabilities();
+  const eventsAvailable = !!capabilities?.triggers;
 
-  // Everything routing off the kind: which sentinel tags the chat, which
-  // kickoff prompts steer the agent, and the mission title.
-  const isReaction = kind === "reaction";
-  const mode = SETUP_AGENT_MODE[kind];
-  const encodeSetup = isReaction
-    ? encodeReactionSetupMessage
-    : encodeRoutineSetupMessage;
-  const encodeModify = isReaction
-    ? encodeReactionModifyMessage
-    : encodeRoutineModifyMessage;
-  const missionTitle = t(
-    isReaction ? "reactions.setupChat.missionTitle" : "setupChat.missionTitle",
-  );
+  const mode = ROUTINE_SETUP_AGENT_MODE;
+  const missionTitle = t("setupChat.missionTitle");
 
   // The kickoffs name the user's connected providers so the agent never pins
   // a routine to one that isn't (e.g. "use deepseek" with no DeepSeek login).
@@ -74,10 +61,9 @@ export function useRoutineChatSetup(
         .filter((s) => s.authenticated)
         .map((s) => ({ id: s.provider, name: providerName(s.provider) }));
 
-  /** Every unlinked, live create-chat OF THIS KIND for this agent — a person
-   *  can be building several at once. Filtered by mode so a routine draft never
-   *  leaks into the Reactions tab and vice versa. */
-  const draftActivities = findDraftSetupActivities(rawItems, routines, mode);
+  /** Every unlinked, live create-chat for this agent — a person can be
+   *  building several at once (legacy reaction drafts included). */
+  const draftActivities = findDraftSetupActivities(rawItems, routines);
 
   /** The persisted chat attached to a routine, or null if it has none yet. */
   const activityFor = useCallback(
@@ -107,7 +93,11 @@ export function useRoutineChatSetup(
         agentMode: mode,
         modeOverride: await readAgentTurnMode(path, tauriConfig.read),
         buildPrompt: (activityId) =>
-          encodeSetup(activityId, connectedProvidersRef.current),
+          encodeRoutineSetupMessage(
+            activityId,
+            connectedProvidersRef.current,
+            eventsAvailable,
+          ),
       });
       // createMission bypasses useCreateActivity — refetch so the chat view's
       // backing activity exists before it tries to render.
@@ -121,7 +111,7 @@ export function useRoutineChatSetup(
     } finally {
       setPending(false);
     }
-  }, [agent, path, pending, queryClient, mode, encodeSetup, missionTitle]);
+  }, [agent, path, pending, queryClient, eventsAvailable, missionTitle]);
 
   /**
    * Start the persistent chat for a routine that doesn't have one yet, and
@@ -134,7 +124,7 @@ export function useRoutineChatSetup(
       try {
         const { conversationId } = await createMission(
           agent,
-          encodeModify(routine, connectedProvidersRef.current),
+          encodeRoutineModifyMessage(routine, connectedProvidersRef.current),
           {
             title: routine.name,
             agentMode: mode,
@@ -161,7 +151,7 @@ export function useRoutineChatSetup(
         setPending(false);
       }
     },
-    [agent, path, pending, queryClient, mode, encodeModify],
+    [agent, path, pending, queryClient],
   );
 
   return {

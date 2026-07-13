@@ -18,20 +18,16 @@ import { RoutineTriggerEditor } from "./routine-trigger-editor";
 import { toStatusMap, toTriggerSummaries } from "./routine-trigger-maps";
 
 /**
- * Wires the Reactions tab's event-trigger surface (C9): the capability gate, the
- * per-routine status badges, the humanized row summaries, the injected editor
- * body, and the reconnect hand-off to the Integrations surface. Returns exactly
- * the trigger-related props `RoutinesGrid` takes.
- *
- * `enabled` lets a schedule-only caller (the Routines tab) turn the whole
- * surface off so it never fetches trigger status or catalogs; it is ANDed with
- * the deployment's `capabilities.triggers`.
+ * Wires the Automations tab's event-trigger surface (C9): the capability gate,
+ * the per-routine status badges, the humanized row summaries, the injected
+ * editor body, and the reconnect hand-off to the Integrations surface. Returns
+ * exactly the trigger-related props `RoutinesGrid` takes. Where the deployment
+ * has no `capabilities.triggers`, everything is off: no fetches, no editor.
  */
 export function useRoutineTriggers(
   agent: Agent,
   routines: Routine[] | undefined,
   triggerLabels: TriggerLabels,
-  enabled = true,
 ): {
   triggersEnabled: boolean;
   triggerStatuses: Record<string, TriggerStatusItem>;
@@ -41,7 +37,7 @@ export function useRoutineTriggers(
 } {
   const { t } = useTranslation("routines");
   const { capabilities } = useCapabilities();
-  const triggersEnabled = enabled && !!capabilities?.triggers;
+  const triggersEnabled = !!capabilities?.triggers;
 
   const statusQuery = useAgentTriggerStatus(agent.id, triggersEnabled);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, triggersEnabled);
@@ -82,11 +78,14 @@ export function useRoutineTriggers(
               agentId={agent.id}
               value={props.value}
               onChange={props.onChange}
+              // Same navigation as the status badge's Reconnect: the place
+              // where apps get connected.
+              onConnectApp={onReconnectTrigger}
               labels={triggerLabels}
             />
           )
         : undefined,
-    [triggersEnabled, agent.id, triggerLabels],
+    [triggersEnabled, agent.id, triggerLabels, onReconnectTrigger],
   );
 
   return {

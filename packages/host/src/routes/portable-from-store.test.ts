@@ -100,7 +100,7 @@ test("maps a fetched IR into { manifest, content }", async () => {
     { apiUrl: API, fetchImpl, lookup: publicLookup },
     "POST",
     "/v1/portable/fetch-from-store",
-    reqWith({ url: "https://store.gethouston.ai/a/inbox-triage-helper" }),
+    reqWith({ url: "https://agents.gethouston.ai/a/inbox-triage-helper" }),
     res,
   );
 
@@ -152,7 +152,7 @@ test("a store 404 surfaces a not-found error", async () => {
     { apiUrl: API, fetchImpl, lookup: publicLookup },
     "POST",
     "/v1/portable/fetch-from-store",
-    reqWith({ url: "https://store.gethouston.ai/a/ghost" }),
+    reqWith({ url: "https://agents.gethouston.ai/a/ghost" }),
     res,
   );
   const { status, body } = captured();
@@ -171,7 +171,7 @@ test("a malformed IR surfaces a 422", async () => {
     { apiUrl: API, fetchImpl, lookup: publicLookup },
     "POST",
     "/v1/portable/fetch-from-store",
-    reqWith({ url: "https://store.gethouston.ai/a/broken" }),
+    reqWith({ url: "https://agents.gethouston.ai/a/broken" }),
     res,
   );
   expect(captured().status).toBe(422);
@@ -234,7 +234,7 @@ test("a non-ok store response surfaces a 502 without echoing its body", async ()
     { apiUrl: API, fetchImpl, lookup: publicLookup },
     "POST",
     "/v1/portable/fetch-from-store",
-    reqWith({ url: "https://store.gethouston.ai/a/foo" }),
+    reqWith({ url: "https://agents.gethouston.ai/a/foo" }),
     res,
   );
   const { status, body } = captured();
@@ -252,7 +252,7 @@ test("a store network failure surfaces a 502", async () => {
     { apiUrl: API, fetchImpl, lookup: publicLookup },
     "POST",
     "/v1/portable/fetch-from-store",
-    reqWith({ url: "https://store.gethouston.ai/a/foo" }),
+    reqWith({ url: "https://agents.gethouston.ai/a/foo" }),
     res,
   );
   const { status, body } = captured();

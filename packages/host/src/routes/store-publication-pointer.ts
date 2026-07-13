@@ -17,7 +17,7 @@ export interface StorePublicationPointer {
   storeAgentId: string;
   /** The listing slug, for the public share URL. */
   slug: string;
-  /** The public share URL the gateway returned (store.gethouston.ai/a/<slug>). */
+  /** The public share URL the gateway returned (agents.gethouston.ai/a/<slug>). */
   shareUrl: string;
   /** ISO timestamp of the first successful publish. */
   publishedAt: string;

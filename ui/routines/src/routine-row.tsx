@@ -66,6 +66,9 @@ export interface RoutineRowProps {
   scheduleLabels?: ScheduleLabels;
   /** Trigger (event-driven) copy for the picker and status badge. */
   triggerLabels?: TriggerLabels;
+  /** Whether the edit panel offers the event wake — true only where the
+   *  deployment supports event triggers. */
+  allowEventWake?: boolean;
   /** App-wired trigger editor injected into the inline edit panel's event side. */
   renderTriggerEditor?: RenderTriggerEditor;
   /** Live provisioning status for an event-driven routine (badge + reconnect). */
@@ -94,6 +97,7 @@ export function RoutineRow({
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
   scheduleLabels = DEFAULT_SCHEDULE_LABELS,
   triggerLabels = DEFAULT_TRIGGER_LABELS,
+  allowEventWake = false,
   renderTriggerEditor,
   triggerStatus,
   triggerSummary,
@@ -112,11 +116,18 @@ export function RoutineRow({
   const hasMenu = runNow || stopRun || onSave || onEditWithAi || onDelete;
 
   return (
+    // Catalog-grammar row: transparent at rest, the `hover` fill sweeping the
+    // full row; while the inline editor is open the row + panel share one
+    // `chip` card so they read as a single surface.
     <div
       data-testid="routine-row"
-      className={cn(!routine.enabled && "opacity-55")}
+      className={cn(
+        "rounded-xl transition-colors",
+        expanded ? "bg-chip" : "hover:bg-hover",
+        !routine.enabled && !expanded && "opacity-55 hover:opacity-100",
+      )}
     >
-      <div className="flex items-center gap-4 px-5 py-4">
+      <div className="flex items-center gap-3 px-3 py-2.5">
         {/* Leading state icon — clock while waiting, pulsing bolt mid-run,
             amber pause while a run sleeps on a usage-limit window. */}
         <RoutineRowStatus
@@ -205,7 +216,7 @@ export function RoutineRow({
             return ok;
           }}
           onCancel={() => setExpanded(false)}
-          variant={routine.trigger ? "event" : "schedule"}
+          allowEventWake={allowEventWake}
           renderTriggerEditor={renderTriggerEditor}
           triggerStatus={triggerStatus}
           onReconnectTrigger={onReconnectTrigger}

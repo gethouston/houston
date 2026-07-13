@@ -24,10 +24,13 @@ export interface AgentTab {
 
 export const STANDARD_TABS: AgentTab[] = [
   { id: "activity", label: "Activity", builtIn: "board", badge: "activity" },
-  { id: "routines", label: "Routines", builtIn: "routines" },
-  // Reactions (event-driven automations, C9) sit beside Routines but are shown
-  // only where the deployment supports event triggers — see visibleAgentTabs.
-  { id: "reactions", label: "Reactions", builtIn: "reactions" },
+  // Automations: everything the agent does on its own — on a cron schedule, or
+  // (where the deployment supports event triggers, C9) the moment something
+  // happens in a connected app. ONE tab for both; the wake mechanism is a
+  // choice inside the editor, gated there by `capabilities.triggers`, so the
+  // tab set never varies by deployment. The id stays "routines" — it's a
+  // persisted viewMode value and the tour target.
+  { id: "routines", label: "Automations", builtIn: "routines" },
   // Integrations (Composio, platform mode) are served by the Houston host's
   // /v1/integrations routes — present in every build.
   { id: "integrations", label: "Integrations", builtIn: "integrations" },
@@ -50,9 +53,9 @@ export const STANDARD_TAB_IDS: ReadonlySet<string> = new Set(
 
 /**
  * The tabs a given caller may see on a specific agent. Everyone sees Activity /
- * Routines / Integrations / Files / Archived. Reactions (event-driven
- * automations) is added only where the deployment supports event triggers
- * (`capabilities.triggers`). The Agent Settings (`job-description`) admin surface
+ * Automations / Integrations / Files / Archived. (Event triggers no longer add
+ * a tab — the wake choice lives inside the Automations editor, gated there by
+ * `capabilities.triggers`.) The Agent Settings (`job-description`) admin surface
  * is added only for callers who may configure the agent — single-player (the
  * sole user owns everything) or an org agent-manager/owner. A plain org member
  * never gets it (Teams matrix v2). The gateway is the real enforcer; this only
@@ -64,7 +67,6 @@ export function visibleAgentTabs(
   agent: Pick<Agent, "access">,
 ): AgentTab[] {
   return STANDARD_TABS.filter((tab) => {
-    if (tab.id === "reactions") return !!caps?.triggers;
     if (tab.id === "job-description") {
       return !isMultiplayer(caps) || isAgentManager(caps, agent);
     }

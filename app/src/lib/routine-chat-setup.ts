@@ -1,17 +1,16 @@
 /**
- * The setup chat behind every routine and every reaction — its persistent
- * conversation, the whole tab screen while open (HOU-725, first-principles
- * rebuild). Each item gets exactly one: creating it starts the chat, and
- * reopening it resumes the very same conversation.
+ * The setup chat behind every automation — its persistent conversation, the
+ * whole tab screen while open (HOU-725, first-principles rebuild). Each item
+ * gets exactly one: creating it starts the chat, and reopening it resumes the
+ * very same conversation.
  *
- * Two kinds share this machinery, discriminated by the activity's `agent`
- * (mode) sentinel: schedule-driven **routines** (the Routines tab) and
- * event-driven **reactions** (the Reactions tab). Board surfaces hide BOTH via
- * `isRoutineSetupMode`; a draft only ever appears in the tab of its own kind
- * (`findDraftSetupActivities` filters by the exact mode). The kickoff prompts
- * live in `routine-chat-prompts.ts` (schedule) and `reaction-chat-prompts.ts`
- * (event); this module owns the sentinels, the kind discrimination, and the
- * chat <-> item link resolution.
+ * One kind of chat serves both wake mechanisms (schedule and event trigger) —
+ * the merged Automations tab replaced the old Routines/Reactions split. New
+ * chats carry `ROUTINE_SETUP_AGENT_MODE`; the legacy reaction sentinel is
+ * still RECOGNIZED (never written) so chats created before the merge keep
+ * resolving. Board surfaces hide both via `isRoutineSetupMode`; the kickoff
+ * prompts live in `routine-chat-prompts.ts`. This module owns the sentinels
+ * and the chat <-> item link resolution.
  *
  * The chat <-> item link is stored in both directions — the item's
  * `setup_activity_id` (written by the agent on chat-created items, by the
@@ -21,28 +20,21 @@
  */
 
 /**
- * Sentinels stored in the activity's `agent` (mode) field so every mission
- * surface can recognize a setup chat. Namespaced with `houston:` so they can
+ * Sentinel stored in the activity's `agent` (mode) field so every mission
+ * surface can recognize a setup chat. Namespaced with `houston:` so it can
  * never collide with a user-defined agent-mode id, and reusing the existing
  * field means no schema change and the value already flows through the
  * conversation adapters (HOU-665 keeps `agent` alive end to end).
  */
 export const ROUTINE_SETUP_AGENT_MODE = "houston:routine-setup";
+/** Legacy sentinel from the pre-merge Reactions tab — user data on disk still
+ *  carries it, so it is recognized forever; nothing writes it anymore. */
 export const REACTION_SETUP_AGENT_MODE = "houston:reaction-setup";
 
-/** Which surface a setup chat belongs to: a scheduled routine or an event reaction. */
-export type SetupChatKind = "routine" | "reaction";
-
-/** The `agent` sentinel a given kind's setup chats carry. */
-export const SETUP_AGENT_MODE: Record<SetupChatKind, string> = {
-  routine: ROUTINE_SETUP_AGENT_MODE,
-  reaction: REACTION_SETUP_AGENT_MODE,
-};
-
 /**
- * True when an activity's `agent` (mode) marks it as ANY setup chat (routine or
- * reaction). Board/mission surfaces use this to hide both kinds — a setup chat
- * never shows as a board card, its only home is its tab's full-page chat view.
+ * True when an activity's `agent` (mode) marks it as a setup chat (current or
+ * legacy sentinel). Board/mission surfaces use this to hide them — a setup chat
+ * never shows as a board card, its only home is the tab's full-page chat view.
  */
 export function isRoutineSetupMode(agent: string | null | undefined): boolean {
   return (
@@ -87,17 +79,15 @@ export function findRoutineChatActivity<A extends SetupActivityLike>(
 }
 
 /**
- * Every live "item in construction" chat OF THE GIVEN KIND: a setup chat no
- * routine has claimed yet (neither by forward link nor by its own `routine_id`
- * stamp), whose `agent` sentinel matches `mode`. Filtering by the exact mode is
- * what keeps a routine draft out of the Reactions tab and vice versa. A person
- * can have several going at once — each shows as its own resumable/discardable
- * item, so this returns ALL of them.
+ * Every live "item in construction" chat: a setup chat (current OR legacy
+ * sentinel — pre-merge reaction drafts stay resumable) that no routine has
+ * claimed yet, neither by forward link nor by its own `routine_id` stamp. A
+ * person can have several going at once — each shows as its own
+ * resumable/discardable item, so this returns ALL of them.
  */
 export function findDraftSetupActivities<A extends SetupActivityLike>(
   activities: A[] | undefined,
   routines: RoutineLinkLike[] | undefined,
-  mode: string,
 ): A[] {
   const claimed = new Set<string>();
   for (const r of routines ?? []) {
@@ -105,7 +95,7 @@ export function findDraftSetupActivities<A extends SetupActivityLike>(
   }
   return (activities ?? []).filter(
     (a) =>
-      a.agent === mode &&
+      isRoutineSetupMode(a.agent) &&
       a.status !== "archived" &&
       !a.routine_id &&
       !claimed.has(a.id),
