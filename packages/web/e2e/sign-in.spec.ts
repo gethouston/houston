@@ -73,6 +73,19 @@ test.describe("sign-in screen (GCIP)", () => {
     await expect(page.getByRole("button", { name: "Send code" })).toBeVisible();
   });
 
+  test("email and code fields use the pinned dark foreground", async ({
+    page,
+  }) => {
+    const emailInput = page.getByPlaceholder("you@example.com");
+    await emailInput.fill("pilot@example.com");
+    await expect(emailInput).toHaveCSS("color", "rgb(229, 229, 229)");
+
+    await page.getByRole("button", { name: "Send code" }).click();
+    const codeInput = page.getByPlaceholder("123456");
+    await codeInput.fill("123456");
+    await expect(codeInput).toHaveCSS("color", "rgb(229, 229, 229)");
+  });
+
   test("email entry advances to the 6-digit code screen", async ({ page }) => {
     await submitEmail(page, "pilot@example.com");
     // The code step: the numeric input + the confirmation copy naming the email.
