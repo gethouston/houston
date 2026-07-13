@@ -69,9 +69,11 @@ async function bootLocal(): Promise<{
   // arms (mirrors a real install: schemas are seeded on agent create). The
   // recursive fs.watch then reports the activity.json write at its full path —
   // a dir created AFTER arming can surface as a coarse parent-dir event.
-  mkdirSync(join(workspacesRoot, "Work", "Sales", ".houston", "activity"), {
-    recursive: true,
-  });
+  for (const dir of ["activity", "runtime/conversations"]) {
+    mkdirSync(join(workspacesRoot, "Work", "Sales", ".houston", dir), {
+      recursive: true,
+    });
+  }
   const credentialsPath = join(
     mkdtempSync(join(tmpdir(), "parity-react-cred-")),
     "credentials.json",
@@ -187,6 +189,40 @@ async function waitForEvent(
     ac.abort();
   }
 }
+
+test("a runtime transcript write surfaces ConversationsChanged on /v1/events", async () => {
+  const { host, base, workspacesRoot } = await bootLocal();
+  const conversationsDir = join(
+    workspacesRoot,
+    "Work",
+    "Sales",
+    ".houston",
+    "runtime",
+    "conversations",
+  );
+  try {
+    const event = await waitForEvent(
+      base,
+      () => {
+        setTimeout(() => {
+          writeFileSync(
+            join(conversationsDir, "activity-a1.json"),
+            JSON.stringify({ id: "activity-a1", messages: [] }),
+          );
+        }, 150);
+      },
+      (candidate) =>
+        candidate.type === "ConversationsChanged" &&
+        candidate.agentPath === "Work/Sales",
+    );
+    expect(event).toEqual({
+      type: "ConversationsChanged",
+      agentPath: "Work/Sales",
+    });
+  } finally {
+    host.stop();
+  }
+});
 
 test("a direct .houston file write surfaces on /v1/events (FsWatcher → SSE)", async () => {
   const { host, base, workspacesRoot } = await bootLocal();

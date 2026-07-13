@@ -16,6 +16,12 @@ Houston uses files, not DB, for agent-visible data. SQLite only for chat replay 
 > read/write; on managed cloud its durable copy lives in the object store, and a
 > fresh pod is expected to boot empty and rehydrate. The layout, atomic-write
 > discipline, schemas, and reactivity model are identical in both worlds.
+>
+> **Canonical chat storage:** v3 conversation transcripts live under
+> `.houston/runtime/conversations/`; pi session state lives under
+> `.houston/runtime/sessions/`. The host file watcher classifies writes to both
+> as `ConversationsChanged`, which the gateway fans to every client so an open
+> chat on another device reloads the same transcript.
 
 > **Updated: the backend is the TypeScript host now, not the Rust engine.** The
 > `.houston/` layout, atomic-write discipline, JSON schemas, and AI-native
@@ -187,7 +193,7 @@ Users + LLMs equal participants. Both read/write all workspace data. All changes
 ### Three-layer reactivity stack
 1. **TanStack Query (frontend)** — all `.houston/` fetches via `useQuery`. Query keys: `["activity", agentPath]` etc. Dedup, background refresh, stale-while-revalidate.
 2. **Event emission on engine writes** — the engine's write helpers emit `HoustonEvent` variants (`SkillsChanged`, `ActivityChanged`, `LearningsChanged`, …) onto its broadcast bus. The desktop WS client (`ui/engine-client`) fans them out; global listeners in `app/src/hooks/use-agent-invalidation.ts` invalidate the matching query key.
-3. **File watcher on `.houston/` (Rust `notify`, `houston-file-watcher`)** — catches direct agent writes that bypass the engine's write path. Emits the same events onto the same bus. Debounced.
+3. **Host file watcher (`packages/host/src/watch/`)** — catches direct runtime and agent writes that bypass host routes. It classifies canonical `.houston/runtime/{conversations,sessions}/**` writes as `ConversationsChanged`, emits onto the host `/v1/events` channel, and debounces bursts. In managed cloud, the gateway's pod-event fan-in republishes that event to every connected client for the user.
 
 ### The rule
 Never build feature where agent changes data but UI won't reflect until refresh. If in `.houston/`, must be reactive.
