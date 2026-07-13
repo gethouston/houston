@@ -80,6 +80,7 @@
   --color-sidebar-line: var(--ht-sidebar-line);
   --color-sidebar-hover: var(--ht-sidebar-hover);
   --color-sidebar-hover-text: var(--ht-sidebar-hover-text);
+  --color-sidebar-active: var(--ht-sidebar-active);
   --color-success: var(--ht-success);
   --color-success-text: var(--ht-success-text);
   --color-warning: var(--ht-warning);

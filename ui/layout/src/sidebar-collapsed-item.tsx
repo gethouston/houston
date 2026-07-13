@@ -57,7 +57,7 @@ export function SidebarCollapsedItem({
           onKeyDown={(e) => onKeyDown(e, item.id)}
           className={cn(
             "relative flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus",
-            isActive ? "bg-hover" : "hover:bg-hover/50",
+            isActive ? "bg-sidebar-active" : "hover:bg-hover/50",
           )}
         >
           {item.icon}
