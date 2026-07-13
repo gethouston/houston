@@ -52,33 +52,6 @@ export function identityConfigured(config: IdentityConfig): boolean {
   return Boolean(config.apiKey && config.projectId);
 }
 
-/**
- * Pure predicate for the Apple sign-in gate: truthy flag values switch the
- * button on. Baked value wins, dev env is the fallback (same precedence as
- * the identity config). Testable.
- */
-export function appleSignInFlagEnabled(baked: string, dev: string): boolean {
-  const v = (baked || dev).trim().toLowerCase();
-  return v === "1" || v === "true" || v === "on" || v === "yes";
-}
-
-/**
- * Whether "Continue with Apple" renders. Gated separately from
- * `isIdentityConfigured()`: the GCIP `apple.com` provider needs one-time
- * Apple Developer + console config (see knowledge-base/auth.md), and an
- * unconfigured build must never show a sign-in method that can only error.
- * Bake `APPLE_SIGN_IN_ENABLED=1` (or set `VITE_APPLE_SIGN_IN_ENABLED=1` in
- * dev) once the provider is live.
- */
-export function isAppleSignInEnabled(): boolean {
-  return appleSignInFlagEnabled(
-    typeof __APPLE_SIGN_IN_ENABLED__ !== "undefined"
-      ? __APPLE_SIGN_IN_ENABLED__
-      : "",
-    devEnv("VITE_APPLE_SIGN_IN_ENABLED"),
-  );
-}
-
 /** The resolved config for the current build. */
 export const identityConfig: IdentityConfig = resolveIdentityConfig({
   apiKey:

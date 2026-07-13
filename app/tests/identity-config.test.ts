@@ -1,7 +1,6 @@
 import { strictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  appleSignInFlagEnabled,
   identityConfigured,
   resolveIdentityConfig,
 } from "../src/lib/identity/config.ts";
@@ -62,24 +61,5 @@ describe("identity/config gating (identityConfigured)", () => {
       identityConfigured({ apiKey: "", authDomain: "", projectId: "" }),
       false,
     );
-  });
-});
-
-describe("appleSignInFlagEnabled (the Continue-with-Apple gate)", () => {
-  it("is OFF by default — an unconfigured build never shows the button", () => {
-    strictEqual(appleSignInFlagEnabled("", ""), false);
-    strictEqual(appleSignInFlagEnabled("0", ""), false);
-    strictEqual(appleSignInFlagEnabled("off", ""), false);
-  });
-
-  it("truthy baked values switch it on", () => {
-    for (const v of ["1", "true", "on", "yes", " TRUE "]) {
-      strictEqual(appleSignInFlagEnabled(v, ""), true, v);
-    }
-  });
-
-  it("the dev env is the fallback; the baked value wins", () => {
-    strictEqual(appleSignInFlagEnabled("", "1"), true);
-    strictEqual(appleSignInFlagEnabled("0", "1"), false);
   });
 });

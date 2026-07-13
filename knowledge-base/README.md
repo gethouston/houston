@@ -7,6 +7,7 @@ Load on demand.
 | File | Topic |
 |------|-------|
 | [architecture.md](architecture.md) | Repo shape — products + the single TS engine (host + pi runtime), the app/Tauri shell, current gaps |
+| [dev-loop.md](dev-loop.md) | `pnpm dev` — THE dev entry point: doctor, six panes, two-file env model, engines-as-processes (full multiplayer locally, no Kubernetes) |
 | [design-system.md](design-system.md) | Colors, typography, spacing, components, animation |
 | [client-architecture.md](client-architecture.md) | Three-surface client contract — SDK / tokens / inventory / parity, change-flow procedures |
 | [files-first.md](files-first.md) | `.houston/` layout, atomic writes, schemas, AI-native reactivity |

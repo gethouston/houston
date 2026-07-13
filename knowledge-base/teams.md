@@ -16,6 +16,11 @@ Everything here is **capability-gated**: absent/single-player hosts (desktop,
 self-host, legacy engine) never mount any of it, and the org routes
 404 → the reads degrade to `[]`/`null` silently.
 
+> **Test it locally with `pnpm dev`** — the web pane (:1430) runs the full
+> multiplayer surface against the local Go gateway with real Google sign-in
+> and engines as local processes (`dev-loop.md`). The kind loop is only for
+> pod/PVC/NetworkPolicy fidelity before a release.
+
 ---
 
 ## Feature detection
