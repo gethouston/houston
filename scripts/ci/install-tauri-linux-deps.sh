@@ -9,6 +9,7 @@ sudo apt-get install -y --no-install-recommends \
   librsvg2-dev \
   libayatana-appindicator3-dev \
   patchelf \
+  squashfs-tools \
   file \
   libssl-dev \
   build-essential \

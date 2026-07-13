@@ -1520,6 +1520,20 @@ jobs:
           LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
+      # linuxdeploy adds a RUNPATH to every dynamic ELF with patchelf. Bun's
+      # standalone executable has an appended JS payload, and that mutation
+      # makes the packaged host segfault before its listening banner. Rebuild
+      # the AppImage from its extracted tree with the pristine sidecar restored.
+      - name: Restore Bun host sidecar after AppImage packaging
+        run: |
+          set -euo pipefail
+          BUNDLE="target/x86_64-unknown-linux-gnu/release/bundle/appimage"
+          APPIMAGE=$(ls -t "$BUNDLE/"*.AppImage 2>/dev/null | head -1 || true)
+          test -f "$APPIMAGE" || { echo "::error::AppImage missing before sidecar repair"; exit 1; }
+          scripts/ci/repair-linux-appimage-sidecar.sh \
+            "$APPIMAGE" \
+            target/host-sidecar/houston-host-x86_64-unknown-linux-gnu
+
       - name: Locate Linux artifact
         id: artifacts-linux
         run: |
