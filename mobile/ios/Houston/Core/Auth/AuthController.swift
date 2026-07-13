@@ -1,11 +1,13 @@
 import Foundation
 import Observation
 
-/// The observable auth state machine surfaces bind to. Owns the PKCE sign-in,
-/// Keychain-backed session, proactive + on-demand token refresh, and the
-/// `SdkClient` token seam.
+/// The observable auth state machine surfaces bind to. Owns the GCIP session
+/// (Firebase ID token = the gateway bearer), the Keychain persistence,
+/// proactive + on-demand token refresh, and the `SdkClient` token seam.
 ///
-/// Refresh, scheduling, and the SDK `tokenExpired` seam live in
+/// Sign-in flows live in `AuthController+SignIn.swift` (Google / Microsoft /
+/// email code) and `AuthController+Apple.swift` (native Sign in with Apple);
+/// refresh, scheduling, and the SDK `tokenExpired` seam live in
 /// `AuthController+Refresh.swift`.
 @Observable
 @MainActor
@@ -16,84 +18,63 @@ final class AuthController {
         case signedIn
     }
 
+    /// Identity backends for one controller — injectable so tests never
+    /// touch the network or the real client registrations.
+    struct Configuration {
+        var firebaseAPIKey: String
+        var gatewayBaseURL: String
+        var googleClientID: String
+        var microsoftClientID: String
+    }
+
     // Read-only for surfaces by convention; mutated across the Auth module's
-    // own files (`AuthController+Refresh.swift`), so not `private(set)`.
+    // own files (`AuthController+*.swift`), so not `private(set)`.
     var state: State = .signedOut
     /// User-facing error from the last auth action (nil when clear).
     var errorMessage: String?
 
-    let auth: SupabaseAuth
+    let gcip: GcipAuth
+    let otp: EmailOtpClient
     let sdk: SdkClient
     let keychain: AuthKeychain
-    let callbackScheme: String
+    let config: Configuration
+    let urlSession: URLSession
 
     /// Refresh this far ahead of expiry so a token never lapses mid-request.
     let refreshMargin: TimeInterval = 60
     var refreshTask: Task<Void, Never>?
     var eventTask: Task<Void, Never>?
     var session: AuthSession?
+    /// Raw nonce minted when the Sign in with Apple request was configured;
+    /// consumed by the completion (`AuthController+Apple.swift`).
+    var pendingAppleNonce: String?
 
     init(
-        config: SupabaseAuthConfig,
+        config: Configuration,
         sdk: SdkClient = .shared,
         keychain: AuthKeychain = .shared,
         urlSession: URLSession = .shared
     ) {
-        auth = SupabaseAuth(config: config, session: urlSession)
+        self.config = config
+        gcip = GcipAuth(apiKey: config.firebaseAPIKey, session: urlSession)
+        otp = EmailOtpClient(gatewayBaseURL: config.gatewayBaseURL, session: urlSession)
         self.sdk = sdk
         self.keychain = keychain
-        callbackScheme = config.callbackScheme
+        self.urlSession = urlSession
         observeSdkFatal()
     }
 
-    /// Live controller reading Supabase creds from the app `Config` (owned by
-    /// the scaffold target). `houston://auth-callback` is already in the
-    /// Supabase redirect allow-list.
+    /// Live controller reading the GCIP + OAuth-client constants from the app
+    /// `Config` (owned by the scaffold target).
     static func live() -> AuthController {
-        // `Config.supabaseURL` is a compile-time constant, known-valid URL; a
-        // parse failure here is a build-time misconfiguration, not a runtime
-        // condition, so it is a programmer error rather than a recoverable one.
-        guard let baseURL = URL(string: Config.supabaseURL) else {
-            preconditionFailure("Config.supabaseURL is not a valid URL: \(Config.supabaseURL)")
-        }
-        return AuthController(
-            config: SupabaseAuthConfig(
-                baseURL: baseURL,
-                anonKey: Config.supabaseAnonKey,
-                redirectURL: Config.authCallbackURL
+        AuthController(
+            config: Configuration(
+                firebaseAPIKey: Config.firebaseAPIKey,
+                gatewayBaseURL: Config.gatewayBaseURL,
+                googleClientID: Config.googleIOSClientID,
+                microsoftClientID: Config.microsoftClientID
             )
         )
-    }
-
-    /// Begin Google sign-in: mint PKCE, open the browser, exchange the code.
-    func signIn() async {
-        guard state != .signingIn else { return }
-        state = .signingIn
-        errorMessage = nil
-        do {
-            let verifier = PKCE.makeCodeVerifier()
-            let challenge = PKCE.challenge(for: verifier)
-            guard let url = auth.authorizeURL(provider: "google", challenge: challenge) else {
-                throw SupabaseAuthError.malformedURL
-            }
-            let web = WebAuthSession()
-            let callback = try await web.start(url: url, callbackScheme: callbackScheme)
-            switch AuthCallback.parse(callback) {
-            case let .code(code):
-                let tokens = try await auth.exchangeCode(code, verifier: verifier)
-                try await adopt(AuthSession(from: tokens))
-            case let .error(code, description):
-                throw SupabaseAuthError.badResponse(status: 400, body: description ?? code)
-            case .none:
-                throw WebAuthSession.WebAuthError.noCallback
-            }
-        } catch WebAuthSession.WebAuthError.cancelled {
-            // User backed out of the browser sheet — return quietly, no banner.
-            state = .signedOut
-        } catch {
-            errorMessage = Self.describe(error)
-            state = .signedOut
-        }
     }
 
     /// Hard sign-out: cancel timers, wipe Keychain, detach the SDK token.
@@ -106,7 +87,7 @@ final class AuthController {
         } catch {
             // In-memory sign-out already happened and a future sign-in
             // overwrites the entry; surface the failure but still complete.
-            errorMessage = Self.describe(error)
+            errorMessage = AuthErrorCopy.message(for: error)
         }
         await sdk.setToken(nil)
         // Purge the previous user's cached scope snapshots so a different user
@@ -116,12 +97,13 @@ final class AuthController {
     }
 
     /// On launch: load the stored session, refresh if stale, attach the token.
+    /// A legacy (Supabase-era) or corrupt blob loads as `nil` — signed out.
     func restore() async {
         let stored: AuthSession?
         do {
             stored = try keychain.load()
         } catch {
-            errorMessage = Self.describe(error)
+            errorMessage = AuthErrorCopy.message(for: error)
             state = .signedOut
             return
         }
@@ -149,21 +131,8 @@ final class AuthController {
 
     private func attach(_ session: AuthSession) async {
         self.session = session
-        await sdk.setToken(session.accessToken)
+        await sdk.setToken(session.idToken)
         state = .signedIn
         scheduleRefresh(for: session)
-    }
-
-    static func describe(_ error: Error) -> String {
-        switch error {
-        case let SupabaseAuthError.badResponse(status, body):
-            return "Sign-in failed (\(status)). \(body)"
-        case let SupabaseAuthError.transport(underlying):
-            return "Network error: \(underlying.localizedDescription)"
-        case SupabaseAuthError.malformedURL:
-            return "Sign-in is misconfigured (bad Supabase URL)."
-        default:
-            return error.localizedDescription
-        }
     }
 }

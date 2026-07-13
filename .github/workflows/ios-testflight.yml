@@ -1,0 +1,120 @@
+# iOS → TestFlight
+#
+# Archives the Houston iOS app and uploads it to App Store Connect (TestFlight
+# processes it from there). Trigger: push an `ios-v*` tag (e.g. ios-v1.0.0), or
+# run manually via workflow_dispatch.
+#
+# Signing is cloud-managed: `-allowProvisioningUpdates` + the App Store Connect
+# API key lets xcodebuild mint/download the Apple Distribution certificate and
+# the App Store provisioning profile on the runner — no certificate secrets to
+# rotate. The app record for com.gethouston.Houston must exist in App Store
+# Connect (one-time manual step).
+#
+# Required repo secrets (shared with release.yml unless noted):
+#   APPLE_API_ISSUER       — App Store Connect API issuer ID
+#   APPLE_API_KEY          — App Store Connect API key ID
+#   APPLE_API_KEY_CONTENT  — Base64-encoded .p8 key file
+#   APPLE_TEAM_ID          — 10-char Apple Developer Team ID (iOS lane only)
+
+name: ios-testflight
+
+on:
+  push:
+    tags: ["ios-v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: ios-testflight-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-upload:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The Xcode pre-build phases rebuild these too, but building them here
+      # first fails fast and keeps the xcodebuild step's output clean.
+      - name: Build SDK bridge bundle + design tokens
+        run: |
+          pnpm --filter @houston/sdk build:bridge
+          pnpm --filter @houston/design-tokens build
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          cd mobile/ios
+          xcodegen generate
+        env:
+          DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Install App Store Connect API key
+        run: |
+          mkdir -p ~/private_keys
+          echo "${{ secrets.APPLE_API_KEY_CONTENT }}" | base64 --decode \
+            > ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
+
+      - name: Run unit tests
+        run: |
+          cd mobile/ios
+          xcodebuild test \
+            -project Houston.xcodeproj \
+            -scheme Houston \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Archive
+        run: |
+          cd mobile/ios
+          xcodebuild archive \
+            -project Houston.xcodeproj \
+            -scheme Houston \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Houston.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8 \
+            -authenticationKeyID ${{ secrets.APPLE_API_KEY }} \
+            -authenticationKeyIssuerID ${{ secrets.APPLE_API_ISSUER }} \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }}
+
+      - name: Export and upload to App Store Connect
+        run: |
+          cd mobile/ios
+          cat > build/export-options.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>destination</key>
+            <string>upload</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key>
+            <false/>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath build/Houston.xcarchive \
+            -exportOptionsPlist build/export-options.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8 \
+            -authenticationKeyID ${{ secrets.APPLE_API_KEY }} \
+            -authenticationKeyIssuerID ${{ secrets.APPLE_API_ISSUER }}

@@ -20,7 +20,7 @@ enum SdkEvent: Sendable, Equatable {
   case protocolError(message: String, detail: JSONValue?)
 
   /// True for the canonical fatal token-expiry signal — the whole-session lapse
-  /// a host recovers by refreshing its Supabase JWT and re-attaching.
+  /// a host recovers by refreshing its Firebase ID token and re-attaching.
   var isFatalTokenExpired: Bool {
     if case let .fatal(reason, _) = self { return reason == SdkFatalReason.tokenExpired }
     return false

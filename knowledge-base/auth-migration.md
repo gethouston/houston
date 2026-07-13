@@ -89,4 +89,18 @@ now lives in git).
 - **[follow-up] Product stores.** A gateway-backed profile/avatar store (replaces the
   retired Supabase `profiles` table) and an account-level migration flag (restores the
   coarse cross-machine "never offer again").
-- **[later] Apple SSO** — add as a GCIP provider when wanted.
+- **[LANDED — iOS] Apple SSO** — shipped natively in the iOS app (guideline 4.8
+  requires it next to Google); the `apple.com` GCIP IdP is terraform in
+  `cloud/infra/terraform/identity.tf`. Desktop/web Apple stays later (the web
+  flow additionally needs an Apple Services ID + private key).
+- **[HIGH — human] iOS registrations** — the iOS app moved to GCIP too
+  (`mobile/ios/Houston/Core/Auth/`, same REST approach as desktop; see
+  `knowledge-base/auth.md` "iOS (native app)"). Outstanding human steps:
+  register a Google **iOS** OAuth client (paste its id into
+  `mobile/ios/Houston/App/Config.swift`), add `houston://auth-callback` to the
+  Azure app's mobile redirect URIs (paste the app id likewise), enable the
+  Sign in with Apple capability on App ID `com.gethouston.Houston`, and create
+  the App Store Connect app record + `APPLE_TEAM_ID` secret for the TestFlight
+  lane (`.github/workflows/ios-testflight.yml`). Until the ids are pasted the
+  Google/Microsoft buttons surface the "not available yet" copy; Apple + the
+  email code work without them.

@@ -8,11 +8,12 @@ import XCTest
 /// `AuthController.signOut()` and asserts the cached snapshot is gone afterwards.
 @MainActor
 final class AuthSignOutPurgeTests: XCTestCase {
-  private func config() -> SupabaseAuthConfig {
-    SupabaseAuthConfig(
-      baseURL: URL(string: "https://test.supabase.co")!,
-      anonKey: "anon",
-      redirectURL: "houston://auth-callback")
+  private func config() -> AuthController.Configuration {
+    AuthController.Configuration(
+      firebaseAPIKey: "test-key",
+      gatewayBaseURL: "https://gateway.test",
+      googleClientID: "",
+      microsoftClientID: "")
   }
 
   /// A client whose commands (e.g. `session/setToken`) auto-succeed, so
@@ -62,7 +63,6 @@ final class AuthSignOutPurgeTests: XCTestCase {
 
     let auth = AuthController(config: config(), sdk: client)
     await auth.forceSignOut()  // the tokenExpired / failed-refresh terminal path
-
     XCTAssertEqual(auth.state, .signedOut)
     XCTAssertNil(store.snapshot, "the tokenExpired terminal path must purge too")
     token.cancel()
