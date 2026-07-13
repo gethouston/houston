@@ -1,47 +1,30 @@
 /**
- * One model card in the directory grid, in the AI-hub's visual language and
- * shaped like the allowed-models editor's rows: the model's colorful
- * {@link BrandMark}, its friendly name, its muted lab name, and an
- * always-visible trailing "See more" affordance (label + chevron) that opens the
- * model modal. The whole row is ONE focusable button (no nested buttons); the
- * "See more" cue is a plain span inside it, visible at rest and only brightened
- * on hover, so nothing is hover-gated.
+ * One model row in the directory, in the shared catalog grammar
+ * ({@link CatalogRow}, the same flat row the Integrations catalog and the
+ * hub's Providers tab use): the model's colorful {@link BrandMark}, its
+ * friendly name, its muted lab name. The whole row opens the model modal —
+ * models install through a provider offer inside that modal, so the row
+ * carries no `+`; the transparent-at-rest hover fill is the click affordance.
  */
 
-import { ChevronRight } from "lucide-react";
+import { CatalogRow } from "@houston-ai/core";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
 import { BrandMark } from "../provider-browser/brand-mark.tsx";
 import { labName, modelMarkId } from "./format.ts";
 
 export function ModelCardRow({
   model,
-  seeMoreLabel,
   onOpen,
 }: {
   model: CatalogModel;
-  /** Localized "See more" cue (also part of the button's accessible name). */
-  seeMoreLabel: string;
   onOpen: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <CatalogRow
+      icon={<BrandMark providerId={modelMarkId(model)} size="lg" />}
+      title={model.name}
+      description={labName(model.lab)}
       onClick={onOpen}
-      className="group flex w-full items-center gap-3 rounded-xl bg-chip px-3 py-2.5 text-left transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset"
-    >
-      <BrandMark providerId={modelMarkId(model)} size="sm" />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px] font-medium text-ink">
-          {model.name}
-        </div>
-        <div className="truncate text-xs text-ink-muted">
-          {labName(model.lab)}
-        </div>
-      </div>
-      <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-ink-muted transition-colors group-hover:text-ink">
-        {seeMoreLabel}
-        <ChevronRight className="size-3.5" aria-hidden="true" />
-      </span>
-    </button>
+    />
   );
 }

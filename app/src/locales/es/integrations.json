@@ -71,9 +71,6 @@
     "noResults": "No hay apps que coincidan.",
     "loading": "Cargando apps..."
   },
-  "connectMore": {
-    "title": "Conecta más apps"
-  },
   "locked": {
     "heading": "No habilitadas por tu administrador",
     "askAdmin": "Pídele a tu administrador que habilite {{name}}",
@@ -90,9 +87,15 @@
   "home": {
     "title": "Integraciones",
     "description": "Trabaja con tus agentes en tus herramientas favoritas.",
+    "tabs": {
+      "catalog": "Integraciones",
+      "custom": "Integraciones personalizadas"
+    },
     "searchPlaceholder": "Buscar integraciones...",
     "allCategories": "Todas las categorías",
     "categoryFilter": "Filtrar por categoría",
+    "connect": "Conectar",
+    "connectApp": "Conectar {{name}}",
     "installedTitle": "Instaladas",
     "otherCategory": "Otras",
     "showAllApps": "Ver las {{count}} aplicaciones",
@@ -107,24 +110,16 @@
     "allAgentsNote": "Todos los agentes pueden usar esta app."
   },
   "agentTab": {
-    "activeTitle": "Apps que este agente puede usar",
-    "empty": {
-      "title": "Aún no hay apps",
-      "body": "Agrega una app para que este agente pueda usarla.",
-      "categoryTitle": "No hay apps en esta categoría",
-      "categoryBody": "Ninguna app aquí coincide con esta categoría. Prueba con otra o quita el filtro."
-    },
-    "allApps": {
-      "title": "Tus otras apps conectadas",
-      "subtitle": "Apps que conectaste y que este agente aún no puede usar."
-    },
     "manageAll": "Administrar todas las integraciones"
   },
   "custom": {
     "title": "Integraciones personalizadas",
     "description": "Conecta una API o un servidor MCP que no esté en el catálogo de aplicaciones.",
     "addButton": "Agregar integración personalizada",
+    "searchPlaceholder": "Buscar integraciones personalizadas...",
     "empty": "Aún no tienes integraciones personalizadas. Agrega una para conectar una herramienta que no esté en el catálogo.",
+    "emptyTitle": "Aún no tienes integraciones personalizadas",
+    "noResults": "Ninguna integración personalizada coincide con tu búsqueda.",
     "badge": {
       "api": "API",
       "mcp": "Servidor MCP"

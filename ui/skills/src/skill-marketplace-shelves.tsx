@@ -2,20 +2,21 @@
  * SkillMarketplaceShelves: the app-store-style browse view for the marketplace
  * default state. Renders the curated category shelves, each a header row (title
  * + a "See all" that selects the category in the picker) above a capped 2-column
- * mini-grid of {@link SkillMarketplaceRow}s. Purely presentational: it owns no
- * fetching (see `use-skill-marketplace-shelves.ts`). A shelf shows skeletons
- * while loading and is hidden on error; when every shelf fails the whole view
- * degrades to the shared retryable fallback.
+ * mini-grid of {@link SkillMarketplaceRow}s — with NO author repeated anywhere
+ * in the preview ({@link dedupeAcrossShelves} runs at render time, in shelf
+ * display order). Purely presentational: it owns no fetching (see
+ * `use-skill-marketplace-shelves.ts`). A shelf shows skeletons while loading
+ * and is hidden on error (or when the cross-shelf dedupe empties it); when
+ * every shelf fails the whole view degrades to the shared retryable fallback.
  */
 
 import { BrowseErrorNotice } from "./skill-marketplace-grid-parts";
 import type { SkillMarketplaceCardLabels } from "./skill-marketplace-row";
 import { SkillMarketplaceRow } from "./skill-marketplace-row";
 import {
-  capShelfSkills,
+  dedupeAcrossShelves,
   isShelfVisible,
   type ResolvedShelf,
-  SHELF_GRID_CAP,
 } from "./skill-marketplace-shelves-model";
 import type { CommunitySkill } from "./types";
 
@@ -69,7 +70,7 @@ function ShelfCardRow({
 }) {
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {capShelfSkills(skills, SHELF_GRID_CAP).map((skill) => {
+      {skills.map((skill) => {
         const slug = (skill.skillId || skill.name).toLowerCase();
         const installed =
           installState.get(skill.id) === "installed" ||
@@ -113,7 +114,7 @@ export function SkillMarketplaceShelves({
 
   return (
     <div className="flex flex-col gap-5">
-      {shelves
+      {dedupeAcrossShelves(shelves)
         .filter((shelf) => isShelfVisible(shelf.state))
         .map((shelf) => (
           <section key={shelf.id}>

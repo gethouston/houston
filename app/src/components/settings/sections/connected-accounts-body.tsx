@@ -6,7 +6,7 @@ import { useAgentGrantToggle } from "../../../hooks/queries/use-agent-grant-togg
 import { useCapabilities } from "../../../hooks/use-capabilities";
 import { useUIStore } from "../../../stores/ui";
 import {
-  AppDetailSheet,
+  AppDetailDialog,
   ConnectedAppsList,
   DisconnectAppDialog,
   INTEGRATION_PROVIDER,
@@ -98,7 +98,7 @@ export function ConnectedAccountsBody({
       )}
 
       {selectedConn && selectedApp && (
-        <AppDetailSheet
+        <AppDetailDialog
           open
           onOpenChange={(open) => {
             if (!open) closeConn();

@@ -2,7 +2,7 @@ export { useAllAgentGrants } from "../../hooks/queries/use-all-agent-grants";
 export { type AgentChip, toAgentChip } from "./agent-chip";
 export { AgentChips } from "./agent-chips";
 export { AllowlistEditor } from "./allowlist-editor";
-export { AppDetailSheet } from "./app-detail-sheet";
+export { AppDetailDialog } from "./app-detail-dialog";
 export {
   type AppDisplay,
   appDisplay,
@@ -27,7 +27,7 @@ export {
   toolkitsInCategory,
   UNCATEGORIZED,
 } from "./browse-model";
-export { ConnectMoreAppsSection } from "./connect-more-apps";
+export { CatalogLockedSection } from "./catalog-locked-section";
 export { ConnectWaitingPanel } from "./connect-waiting-panel";
 export { ConnectedAppsList } from "./connected-apps-list";
 export { agentChipsFor } from "./connected-apps-model";
@@ -61,6 +61,7 @@ export {
 } from "./use-connect-flow";
 export {
   type ActiveAppRow,
+  type ConnectedApps,
   type RecoveringAppRow,
   useConnectedApps,
 } from "./use-connected-apps";

@@ -105,3 +105,19 @@ export function effectiveAllowlist(settings: {
   const orgSet = new Set(org);
   return agent.filter((slug) => orgSet.has(slug));
 }
+
+/** How many apps the catalog tab can still offer: not connected and, on a
+ *  Teams host, inside the effective allowlist (locked rows don't count) — the
+ *  tab trigger's count chip. Pure + node-tested. */
+export function connectableCount(opts: {
+  catalog: IntegrationToolkit[];
+  connections: IntegrationConnection[];
+  allowlist: string[] | null;
+}): number {
+  const connected = new Set(opts.connections.map((c) => c.toolkit));
+  const allowed = opts.allowlist === null ? null : new Set(opts.allowlist);
+  return opts.catalog.filter(
+    (tk) =>
+      !connected.has(tk.slug) && (allowed === null || allowed.has(tk.slug)),
+  ).length;
+}

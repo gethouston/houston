@@ -12,11 +12,6 @@ export {
   deriveInstalledSkillEditorState,
   skillMonogram,
 } from "./installed-skill-editor-model";
-export type {
-  InstalledSkillRowLabels,
-  InstalledSkillRowProps,
-} from "./installed-skill-row";
-export { InstalledSkillRow } from "./installed-skill-row";
 export type { LearningRowProps } from "./learning-row";
 export { LearningRow } from "./learning-row";
 export type { PoweredByVercelBadgeProps } from "./powered-by-vercel-badge";
@@ -63,6 +58,8 @@ export {
   allShelvesFailed,
   capShelfSkills,
   DEFAULT_SHELVES,
+  dedupeAcrossShelves,
+  dedupeByOwner,
   isShelfVisible,
   SHELF_CARD_CAP,
   SHELF_GRID_CAP,

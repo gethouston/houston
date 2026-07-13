@@ -2,8 +2,9 @@
  * The reusable provider marketplace surface: a recognition-first CARD GRID over a
  * pre-gated provider list, an optional sticky search + quick-filter bar, and
  * connect / cancel / sign-out via the shared `ProviderConnections`. Extracted
- * from the AI Hub's Providers tab so onboarding / migration / workspace-setup
- * reuse it; it never imports from `components/ai-hub/` (the hub composes this).
+ * from the AI Hub's old Providers tab; onboarding / migration / workspace-setup
+ * use it (the hub's own Providers tab is now the catalog-grammar
+ * `ai-hub/providers-pane.tsx`). It never imports from `components/ai-hub/`.
  *
  * Pipeline mirrors the hub: quick filter -> search -> featured-first pin ->
  * Connected/Available grouping. Cards render statically (no `layout` animation)
@@ -55,15 +56,8 @@ export interface ProviderBrowserProps {
   selectOnMount?: boolean;
   /** Show the search bar + quick-filter dropdown. Default true. */
   showFilters?: boolean;
-  /** Render the connect-dialog stack internally. Default true; the hub passes false. */
+  /** Render the connect-dialog stack internally. Default true. */
   renderDialogs?: boolean;
-  /**
-   * Open a provider's detail. When omitted the card's info button is hidden (no
-   * dead affordance). NOTE: not part of the originally pinned contract — added
-   * because `ProviderModal` is too hub-coupled to move here, so the consumer
-   * owns the modal. See the wave-1 report.
-   */
-  onOpen?: (provider: ProviderInfo) => void;
   /**
    * Curated onboarding mode (OPT-IN, default off). Shows only the "most popular"
    * providers, split into Subscription / API-key Sections, with a "see all" chip
@@ -82,7 +76,6 @@ export function ProviderBrowser({
   selectOnMount = false,
   showFilters = true,
   renderDialogs = true,
-  onOpen,
   curated = false,
   className,
 }: ProviderBrowserProps) {
@@ -128,7 +121,7 @@ export function ProviderBrowser({
     displayed,
     connections.isConnected,
   );
-  const row = makeProviderRow({ connections, catalog, onOpen });
+  const row = makeProviderRow({ connections, catalog });
 
   return (
     <div className={cn("flex flex-col", className)}>

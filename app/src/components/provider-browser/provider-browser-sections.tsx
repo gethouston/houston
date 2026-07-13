@@ -30,11 +30,9 @@ import { ProviderRow } from "./provider-row";
 export function makeProviderRow({
   connections,
   catalog,
-  onOpen,
 }: {
   connections: ProviderConnections;
   catalog: HubCatalog | undefined;
-  onOpen?: (provider: ProviderInfo) => void;
 }): (provider: ProviderInfo) => ReactNode {
   return (provider) => (
     <ProviderRow
@@ -47,7 +45,6 @@ export function makeProviderRow({
       connected={connections.isConnected(provider)}
       connecting={connections.busy[provider.id] === "connecting"}
       signingOut={connections.busy[provider.id] === "signingOut"}
-      onOpen={onOpen}
       onConnect={connections.connect}
       onCancel={connections.cancel}
       onSignOut={connections.signOut}
