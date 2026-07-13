@@ -15,6 +15,7 @@
   },
   "toast": {
     "signInFailed": "No se pudo abrir el inicio de sesión de {{provider}}",
+    "engineUnavailable": "Houston no pudo conectarse con tu espacio de trabajo. Espera un momento e intenta de nuevo.",
     "signOutFailed": "No se pudo cerrar sesión de {{provider}}",
     "signInSucceeded": "Sesión iniciada en {{provider}}",
     "cancelFailed": "No se pudo cancelar el inicio de sesión de {{provider}}",

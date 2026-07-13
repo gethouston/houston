@@ -123,6 +123,23 @@ export async function getTunnelCredentials(
   return (await res.json()) as TunnelCredentials;
 }
 
+/**
+ * Claude OAuth push on the setup runtime — `pushClaudeOAuthCredential`,
+ * agentless. Used when the desktop's browser login lands with NO agent
+ * selected yet (first-run onboarding, the cloud-migration wizard): the setup
+ * runtime stores it on the personal workspace, so every agent created or
+ * migrated after is already connected.
+ */
+export async function pushSetupClaudeOAuthCredential(
+  cfg: ControlPlaneConfig,
+  credentialJson: string,
+): Promise<void> {
+  await cpFetch(cfg, `/setup-runtime/credential/claude-oauth`, {
+    method: "POST",
+    body: credentialJson,
+  });
+}
+
 /** Connect-once capture on the setup runtime — `captureCredential`, agentless. */
 export async function captureSetupCredential(
   cfg: ControlPlaneConfig,

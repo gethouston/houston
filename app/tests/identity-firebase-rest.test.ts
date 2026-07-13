@@ -2,9 +2,11 @@ import { rejects, strictEqual } from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import { IdentityError } from "../src/lib/identity/errors.ts";
 import {
+  createAuthUri,
   refreshIdToken,
   signInWithCustomToken,
   signInWithIdp,
+  signInWithIdpSession,
   signInWithPassword,
 } from "../src/lib/identity/firebase-rest.ts";
 
@@ -217,6 +219,74 @@ describe("firebase-rest refreshIdToken", () => {
     await rejects(
       refreshIdToken({ apiKey: "k", refreshToken: "rt" }),
       hasCode("invalid_refresh_token"),
+    );
+  });
+});
+
+describe("firebase-rest createAuthUri (brokered flow, Apple)", () => {
+  it("posts providerId + continueUri + oauthScope and returns authUri/sessionId", async () => {
+    const { captured } = stubFetch(200, {
+      authUri: "https://gethouston.firebaseapp.com/__/auth/handler?state=st-9",
+      sessionId: "sess-9",
+    });
+    const res = await createAuthUri({
+      apiKey: "k",
+      providerId: "apple.com",
+      continueUri: "http://127.0.0.1:8975/auth/callback",
+      oauthScope: "name email",
+    });
+    strictEqual(res.authUri.includes("state=st-9"), true);
+    strictEqual(res.sessionId, "sess-9");
+    const body = JSON.parse(captured.body);
+    strictEqual(body.providerId, "apple.com");
+    strictEqual(body.continueUri, "http://127.0.0.1:8975/auth/callback");
+    strictEqual(body.oauthScope, "name email");
+    strictEqual(captured.url.includes("accounts:createAuthUri"), true);
+  });
+
+  it("maps a response missing sessionId to malformed_response", async () => {
+    stubFetch(200, { authUri: "https://x" });
+    await rejects(
+      createAuthUri({
+        apiKey: "k",
+        providerId: "apple.com",
+        continueUri: "http://127.0.0.1:8975/auth/callback",
+      }),
+      hasCode("malformed_response"),
+    );
+  });
+});
+
+describe("firebase-rest signInWithIdpSession (brokered flow, Apple)", () => {
+  it("posts requestUri + sessionId (no postBody) and normalizes the session", async () => {
+    const { captured } = stubFetch(200, { ...IDP_OK, providerId: "apple.com" });
+    const res = await signInWithIdpSession({
+      apiKey: "k",
+      requestUri: "http://127.0.0.1:8975/auth/callback?state=st-9&code=c",
+      sessionId: "sess-9",
+    });
+    strictEqual(res.uid, "uid-1");
+    strictEqual(res.providerId, "apple.com");
+    const body = JSON.parse(captured.body);
+    strictEqual(body.sessionId, "sess-9");
+    strictEqual(
+      body.requestUri,
+      "http://127.0.0.1:8975/auth/callback?state=st-9&code=c",
+    );
+    strictEqual("postBody" in body, false);
+    strictEqual(body.returnSecureToken, true);
+    strictEqual(body.returnIdpCredential, true);
+  });
+
+  it("maps GCIP errors to the taxonomy like the postBody variant", async () => {
+    stubFetch(400, { error: { message: "OPERATION_NOT_ALLOWED" } });
+    await rejects(
+      signInWithIdpSession({
+        apiKey: "k",
+        requestUri: "http://127.0.0.1:8975/auth/callback?x=1",
+        sessionId: "sess-9",
+      }),
+      hasCode("operation_not_allowed"),
     );
   });
 });

@@ -177,12 +177,17 @@ export default function App() {
   const { isPending: onboardingPending, isLoading: onboardingPendingLoading } =
     useOnboardingPending();
 
-  const mappedToasts: Toast[] = toasts.map((t) => ({
-    id: t.id,
-    message: t.description ? `${t.title} ${t.description}` : t.title,
-    variant: t.variant ?? "info",
-    action: t.action,
-  }));
+  const mappedToasts: Toast[] = toasts.map((t) => {
+    const base = t.description ? `${t.title} ${t.description}` : t.title;
+    return {
+      id: t.id,
+      // Coalesced repeats (store addToast) surface their tally, so a retried
+      // failure still visibly reacts instead of silently refreshing.
+      message: t.count && t.count > 1 ? `${base} (×${t.count})` : base,
+      variant: t.variant ?? "info",
+      action: t.action,
+    };
+  });
 
   // Auth gate: identity configured + session not yet resolved → splash.
   // Already resolved to null → sign-in screen. `null` session on a transient

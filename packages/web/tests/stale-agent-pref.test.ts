@@ -154,3 +154,66 @@ test("regression: after boot prunes a stale pref, first-run login runs on the SE
   expect(runtimeClientFor).not.toHaveBeenCalled();
   expect(startLogin).toHaveBeenCalledTimes(1);
 });
+
+test("provider login targets the FIRST live agent when none is selected but agents exist (never the setup runtime)", async () => {
+  // No selection at all (e.g. the migration wizard's connect step) — but the
+  // org HAS agents, so the login must run on a real pod: the setup pod was
+  // torn down at the org's first agent and re-materializing it is churn.
+  cpListAgents.mockResolvedValue([agent("ws/First"), agent("ws/Second")]);
+  const startLogin = vi.fn().mockResolvedValue({
+    kind: "device_code",
+    verificationUri: "https://auth.example/device",
+    userCode: "ABCD-1234",
+  });
+  runtimeClientFor.mockReturnValue({ startLogin });
+  setupRuntimeClientFor.mockReturnValue({
+    startLogin: vi.fn().mockRejectedValue(new Error("setup pod reached")),
+  });
+
+  const c = client();
+  await c.listAgents("ws");
+  await c.providerLogin("openai");
+
+  expect(runtimeClientFor).toHaveBeenCalledWith(expect.anything(), "ws/First");
+  expect(setupRuntimeClientFor).not.toHaveBeenCalled();
+  expect(startLogin).toHaveBeenCalledTimes(1);
+});
+
+test("provider login falls back to a live agent when the selected pref is stale and agents exist", async () => {
+  store.set(PREF, "ws/Deleted Agent");
+  cpListAgents.mockResolvedValue([agent("ws/Alive")]);
+  const startLogin = vi.fn().mockResolvedValue({
+    kind: "device_code",
+    verificationUri: "https://auth.example/device",
+    userCode: "ABCD-1234",
+  });
+  runtimeClientFor.mockReturnValue({ startLogin });
+  setupRuntimeClientFor.mockReturnValue({
+    startLogin: vi.fn().mockRejectedValue(new Error("setup pod reached")),
+  });
+
+  const c = client();
+  await c.listAgents("ws"); // prunes the pref + notes the live id set
+  await c.providerLogin("openai");
+
+  expect(runtimeClientFor).toHaveBeenCalledWith(expect.anything(), "ws/Alive");
+  expect(setupRuntimeClientFor).not.toHaveBeenCalled();
+});
+
+test("before any agent list resolves, the selected pref is trusted as-is", async () => {
+  store.set(PREF, "ws/Selected");
+  const startLogin = vi.fn().mockResolvedValue({
+    kind: "device_code",
+    verificationUri: "https://auth.example/device",
+    userCode: "ABCD-1234",
+  });
+  runtimeClientFor.mockReturnValue({ startLogin });
+
+  const c = client();
+  await c.providerLogin("openai"); // no listAgents ran yet
+
+  expect(runtimeClientFor).toHaveBeenCalledWith(
+    expect.anything(),
+    "ws/Selected",
+  );
+});

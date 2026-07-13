@@ -6,6 +6,7 @@ import { useCloudMigrationStore } from "../../../stores/cloud-migration";
 import { ClaudeBrowserLogin } from "../../shell/claude-browser-login";
 import { ProviderLoginFallback } from "../../shell/provider-login-fallback";
 import { WorkspaceLoading } from "../../shell/workspace-loading";
+import { SpaceScreen } from "../../space/space-screen";
 import { DoneScreen } from "./done-screen";
 import { OfferScreen } from "./offer-screen";
 import { ProgressScreen } from "./progress-screen";
@@ -60,32 +61,35 @@ function CloudMigrationWizard({
   const start = useCloudMigrationStore((s) => s.start);
   const deferMigration = useCloudMigrationStore((s) => s.deferMigration);
 
-  if (screen === "offer") {
-    return (
-      <OfferScreen
-        detection={detection}
-        onStart={() => start()}
-        onSkip={() => {
-          analytics.track("cloud_migration_skipped", {
-            agent_count: detection.agentDirCount,
-          });
-          persistOutcome("skipped");
-        }}
-      />
-    );
-  }
-  if (screen === "progress") {
-    return (
-      <ProgressScreen
-        onDefer={() => {
-          deferMigration();
-          analytics.track("cloud_migration_deferred", {
-            agent_count: detection.agentDirCount,
-          });
-          persistOutcome("skipped");
-        }}
-      />
-    );
-  }
-  return <DoneScreen persistOutcome={persistOutcome} />;
+  // One SpaceScreen wrapping every wizard screen (like onboarding) so the
+  // backdrop photo mounts once and never re-fades across offer → progress →
+  // done transitions.
+  return (
+    <SpaceScreen>
+      {screen === "offer" ? (
+        <OfferScreen
+          detection={detection}
+          onStart={() => start()}
+          onSkip={() => {
+            analytics.track("cloud_migration_skipped", {
+              agent_count: detection.agentDirCount,
+            });
+            persistOutcome("skipped");
+          }}
+        />
+      ) : screen === "progress" ? (
+        <ProgressScreen
+          onDefer={() => {
+            deferMigration();
+            analytics.track("cloud_migration_deferred", {
+              agent_count: detection.agentDirCount,
+            });
+            persistOutcome("skipped");
+          }}
+        />
+      ) : (
+        <DoneScreen persistOutcome={persistOutcome} />
+      )}
+    </SpaceScreen>
+  );
 }

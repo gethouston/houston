@@ -1,20 +1,21 @@
-import { Button } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
+import { SetupCard } from "../setup-card";
 import { DoneCongrats, DoneStepAi, DoneStepApps } from "./done-followups";
-import { WizardFrame } from "./wizard-frame";
 
 type Step = "ai" | "apps" | "congrats";
 
 /**
- * The wizard's post-migration setup (HOU-719 redesign): two setup steps in one
- * dialog, "Connect your AI" then "Reconnect your apps", then a brief congrats
- * beat (confetti payoff) before closing into the app. Also surfaces anything
- * that didn't make the move (failed agents, excluded files, rejected items) so
- * nothing is silently dropped. Stamps the persisted outcome on mount (`applyNow:
- * false`, so a relaunch skips the wizard without ripping this screen away);
- * the congrats step's button applies it in-session.
+ * The wizard's post-migration setup (HOU-719 redesign): two setup steps,
+ * "Connect your AI" then "Reconnect your apps", each a floating `SetupCard`
+ * on the shared space backdrop (the same card onboarding uses, so the two
+ * flows read as one voice), then a brief congrats beat (confetti payoff)
+ * before closing into the app. Also surfaces anything that didn't make the
+ * move (failed agents, excluded files, rejected items) so nothing is silently
+ * dropped. Stamps the persisted outcome on mount (`applyNow: false`, so a
+ * relaunch skips the wizard without ripping this screen away); the congrats
+ * step's button applies it in-session.
  */
 export function DoneScreen({
   persistOutcome,
@@ -51,57 +52,42 @@ export function DoneScreen({
 
   if (step === "ai") {
     return (
-      <WizardFrame
+      <SetupCard
+        onSpace
         eyebrow={t("done.stepAi")}
         title={t("done.reconnectAiTitle")}
-        body={t("done.reconnectAiBody")}
-        footer={
-          <>
-            <Button
-              className="rounded-full px-6"
-              onClick={() => setStep("apps")}
-            >
-              {t("done.continue")}
-            </Button>
-            <button
-              type="button"
-              onClick={() => setStep("apps")}
-              className="rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
-            >
-              {t("offer.startFresh")}
-            </button>
-          </>
+        subtitle={t("done.reconnectAiBody")}
+        helper={
+          <button
+            type="button"
+            onClick={() => setStep("apps")}
+            className="underline-offset-4 transition-colors hover:text-ink hover:underline"
+          >
+            {t("done.skip")}
+          </button>
         }
+        onNext={() => setStep("apps")}
+        nextLabel={t("done.continue")}
       >
-        <DoneStepAi />
-      </WizardFrame>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <DoneStepAi />
+        </div>
+      </SetupCard>
     );
   }
 
   return (
-    <WizardFrame
+    <SetupCard
+      onSpace
       eyebrow={t("done.stepApps")}
       title={t("done.reconnectAppsTitle")}
-      body={t("done.reconnectAppsBody")}
-      footer={
-        <>
-          <Button
-            className="rounded-full px-6"
-            onClick={() => setStep("congrats")}
-          >
-            {t("done.finish")}
-          </Button>
-          <button
-            type="button"
-            onClick={() => setStep("ai")}
-            className="rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
-          >
-            {t("done.back")}
-          </button>
-        </>
-      }
+      subtitle={t("done.reconnectAppsBody")}
+      onBack={() => setStep("ai")}
+      backLabel={t("done.back")}
+      onNext={() => setStep("congrats")}
+      nextLabel={t("done.finish")}
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">
         <DoneStepApps integrations={integrations} />
         {failedTasks.length > 0 && (
           <LeftoverList
@@ -120,7 +106,7 @@ export function DoneScreen({
           />
         )}
       </div>
-    </WizardFrame>
+    </SetupCard>
   );
 }
 

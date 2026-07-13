@@ -27,15 +27,17 @@ export function isCsrfStateMismatch(e: unknown): boolean {
 }
 
 /**
- * Extract the authorization `code` from a callback payload, enforcing the CSRF
- * `state`. Throws `IdentityError("invalid_idp_response")` on a state mismatch
- * (checked first — a stale/foreign callback), a provider error, or a missing
- * code — never returns a value the caller cannot trust.
+ * Shared validation: parse the payload, enforce the CSRF `state` FIRST (a
+ * payload that doesn't echo THIS attempt's state is a stale/foreign callback —
+ * all attempts share one `auth://deep-link` channel — so its `error`/`code`
+ * must never be acted on; the await-wrapper distinguishes that throw via
+ * `isCsrfStateMismatch` and keeps waiting), then surface any provider error.
+ * Returns the validated URL and its fragment params.
  */
-export function parseCallbackUrl(
+function validateCallback(
   payload: string,
   expectedState: string,
-): string {
+): { url: URL; fragment: URLSearchParams } {
   let url: URL;
   try {
     url = new URL(payload);
@@ -51,11 +53,6 @@ export function parseCallbackUrl(
     url.hash.startsWith("#") ? url.hash.slice(1) : "",
   );
 
-  // Validate the CSRF `state` FIRST — before trusting any other field. A payload
-  // that doesn't echo THIS attempt's state is a stale/foreign callback (all
-  // attempts share one `auth://deep-link` channel), so its `error`/`code` must
-  // never be acted on. The await-wrapper distinguishes this throw (via
-  // `isCsrfStateMismatch`) and keeps waiting rather than failing the attempt.
   const state = url.searchParams.get("state") ?? fragment.get("state");
   if (state !== expectedState) {
     throw new IdentityError("invalid_idp_response", {
@@ -72,6 +69,20 @@ export function parseCallbackUrl(
     throw new IdentityError("invalid_idp_response", { rawCode: errorParam });
   }
 
+  return { url, fragment };
+}
+
+/**
+ * Extract the authorization `code` from a callback payload, enforcing the CSRF
+ * `state`. Throws `IdentityError("invalid_idp_response")` on a state mismatch
+ * (checked first — a stale/foreign callback), a provider error, or a missing
+ * code — never returns a value the caller cannot trust.
+ */
+export function parseCallbackUrl(
+  payload: string,
+  expectedState: string,
+): string {
+  const { url, fragment } = validateCallback(payload, expectedState);
   const code = url.searchParams.get("code") ?? fragment.get("code");
   if (!code) {
     throw new IdentityError("invalid_idp_response", {
@@ -79,4 +90,19 @@ export function parseCallbackUrl(
     });
   }
   return code;
+}
+
+/**
+ * Extract the WHOLE callback query string (no leading `?`), enforcing the CSRF
+ * `state` and surfacing provider errors exactly like {@link parseCallbackUrl}.
+ * Used by the GCIP-brokered flows (Apple), where the sign-in completion needs
+ * the full `requestUri` — every param GCIP's handler forwarded — not just a
+ * `code`.
+ */
+export function parseCallbackQuery(
+  payload: string,
+  expectedState: string,
+): string {
+  const { url } = validateCallback(payload, expectedState);
+  return url.search.startsWith("?") ? url.search.slice(1) : url.search;
 }

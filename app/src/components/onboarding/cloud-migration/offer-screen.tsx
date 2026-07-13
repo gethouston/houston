@@ -3,50 +3,27 @@ import { Clock, RefreshCw, Sparkles, UploadCloud } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { LegacyDetection } from "../../../lib/cloud-migration";
+import { HoustonLogo } from "../../shell/experience-card";
 import { WizardFrame } from "./wizard-frame";
+
+/** One benefit, one breath: an icon + a few words, never a paragraph. */
+function Benefit({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full bg-chip px-4 py-2 text-sm font-medium text-ink">
+      {icon}
+      {label}
+    </span>
+  );
+}
 
 /**
  * The wizard's opening announcement (HOU-719). Shown on the FIRST run of the
- * new cloud app (the old desktop app auto-updates into this one, so there is no
- * separate "download the new app" step): it welcomes the user, sells the cloud
- * move (always on, routines keep running, nothing left behind), previews the
- * two things that happen next, reassures that it's free and quick, and starts
- * the migration. `detection` stays in the props for the caller's analytics.
+ * new cloud app (the old desktop app auto-updates into this one, so there is
+ * no separate "download the new app" step). A hero moment on the shared space
+ * backdrop: headline, one short line, three benefit chips, one big CTA.
+ * Deliberately no walls of text — the audience skims. `detection` stays in
+ * the props for the caller's analytics.
  */
-function Benefit({
-  icon,
-  title,
-  body,
-}: {
-  icon: ReactNode;
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2.5 rounded-xl border border-line/70 bg-chip p-4 text-left">
-      <div className="flex items-center gap-2.5">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-line bg-input">
-          {icon}
-        </span>
-        <h3 className="text-[0.9rem] font-semibold leading-tight">{title}</h3>
-      </div>
-      <p className="text-xs leading-relaxed text-ink-muted">{body}</p>
-    </div>
-  );
-}
-
-function Step({ n, title, body }: { n: string; title: string; body: string }) {
-  return (
-    <div className="flex flex-1 flex-col items-center gap-1 px-3 text-center">
-      <span className="relative z-10 grid size-7 place-items-center rounded-full border border-line bg-input text-xs font-semibold tabular-nums">
-        {n}
-      </span>
-      <h4 className="mt-2 text-sm font-semibold">{title}</h4>
-      <p className="text-xs leading-relaxed text-ink-muted">{body}</p>
-    </div>
-  );
-}
-
 export function OfferScreen({
   onStart,
   onSkip,
@@ -59,7 +36,7 @@ export function OfferScreen({
 
   return (
     <WizardFrame
-      wide
+      mark={<HoustonLogo size={56} />}
       badge={
         <span className="inline-flex items-center gap-1.5 rounded-full bg-chip px-3 py-1 text-xs font-medium text-ink">
           <Sparkles className="size-3.5" aria-hidden />
@@ -71,66 +48,37 @@ export function OfferScreen({
       footer={
         <div className="flex w-full max-w-xs flex-col items-center gap-3">
           <AsyncButton
-            className="w-full rounded-full px-6"
+            className="h-11 w-full rounded-full px-6 text-base"
             onClick={() => onStart()}
           >
             {t("offer.start")}
           </AsyncButton>
+          <p className="text-xs text-[var(--ht-space-foreground-muted)]">
+            {t("offer.freeNote")}
+          </p>
           <button
             type="button"
             onClick={onSkip}
-            className="rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
+            className="rounded-full px-3 py-1 text-xs text-[var(--ht-space-foreground-muted)] transition-colors hover:text-[var(--ht-space-foreground)]"
           >
             {t("offer.migrateLater")}
           </button>
         </div>
       }
     >
-      <div className="flex flex-col gap-7">
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-          <Benefit
-            icon={<Clock className="size-4" aria-hidden />}
-            title={t("offer.benefit1Title")}
-            body={t("offer.benefit1Body")}
-          />
-          <Benefit
-            icon={<RefreshCw className="size-4" aria-hidden />}
-            title={t("offer.benefit2Title")}
-            body={t("offer.benefit2Body")}
-          />
-          <Benefit
-            icon={<UploadCloud className="size-4" aria-hidden />}
-            title={t("offer.benefit3Title")}
-            body={t("offer.benefit3Body")}
-          />
-        </div>
-
-        <div>
-          <p className="mb-4 text-center text-xs font-semibold text-ink-muted">
-            {t("offer.howTitle")}
-          </p>
-          <div className="relative flex">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute left-1/4 right-1/4 top-3.5 h-px -translate-y-1/2 bg-line"
-            />
-            <Step
-              n="1"
-              title={t("offer.step1Title")}
-              body={t("offer.step1Body")}
-            />
-            <Step
-              n="2"
-              title={t("offer.step2Title")}
-              body={t("offer.step2Body")}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-xl bg-chip p-4 text-left text-sm leading-relaxed text-ink-muted">
-          <p>{t("offer.freeNote")}</p>
-          <p className="mt-2">{t("offer.keepOpen")}</p>
-        </div>
+      <div className="flex flex-wrap items-center justify-center gap-2.5">
+        <Benefit
+          icon={<Clock className="size-4" aria-hidden />}
+          label={t("offer.benefit1")}
+        />
+        <Benefit
+          icon={<RefreshCw className="size-4" aria-hidden />}
+          label={t("offer.benefit2")}
+        />
+        <Benefit
+          icon={<UploadCloud className="size-4" aria-hidden />}
+          label={t("offer.benefit3")}
+        />
       </div>
     </WizardFrame>
   );

@@ -19,8 +19,10 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
         const list = await controlPlane.listAgents(this.ctx.cp);
         // CP agent ids are global (the list ignores workspaceId), so this list is
         // the full truth the selection pref must exist in. Pruning here heals a
-        // stale pref at boot, before the first-run connect surface mounts.
+        // stale pref at boot, before the first-run connect surface mounts; the
+        // noted id set is what `providerAgentId()` validates against.
         this.ctx.dropLastAgentPref((id) => !list.some((a) => a.id === id));
+        this.ctx.noteAgentList(list.map((a) => a.id));
         return list;
       }
       return agents.listAgents(workspaceId);

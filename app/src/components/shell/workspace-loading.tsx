@@ -14,8 +14,8 @@ import { SpaceScreen } from "../space/space-screen";
  * desktop + web), the auth-session resolve, and the first workspace/agent load
  * (App.tsx) — so the whole startup reads as a single continuous loading state.
  *
- * Renders on the shared {@link SpaceScreen} space backdrop (WebGL nebula +
- * starfield), same as the sign-in screen.
+ * Renders on the shared {@link SpaceScreen} space backdrop (the landing
+ * page's Milky Way photograph), same as the sign-in screen.
  *
  * Reads the i18n singleton directly (not useTranslation): the web EngineGate
  * renders this OUTSIDE <I18nextProvider>, and at gate time the saved language

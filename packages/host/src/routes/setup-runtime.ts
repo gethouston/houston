@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { parseClaudeOAuthEnvelope } from "@houston/protocol";
 import type { Agent, UserId, WorkspaceRuntime } from "../domain/types";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
 import { json, readJson } from "./http";
@@ -19,10 +20,10 @@ import { json, readJson } from "./http";
  *    agent runtime from — the agent created right after first-run is already
  *    connected.
  *  - Only the connect surface is exposed (providers, auth status, login,
- *    login/complete, capture, api-key). Everything else the runtime serves
- *    (chat, files, settings) stays agent-scoped; notably `auth/export` is NOT
- *    reachable here — capture pulls it host-side and scrubs, so a refresh
- *    token never crosses to a client.
+ *    login/complete, capture, api-key, claude-oauth). Everything else the
+ *    runtime serves (chat, files, settings) stays agent-scoped; notably
+ *    `auth/export` is NOT reachable here — capture pulls it host-side and
+ *    scrubs, so a refresh token never crosses to a client.
  *
  * Returns true when the request was handled.
  */
@@ -111,6 +112,32 @@ export async function handleSetupRuntime(
     }
     await channel.saveApiKeyCredential(ctx, provider, apiKey);
     json(res, 200, { ok: true });
+    return true;
+  }
+
+  // Claude-subscription connect pre-agent: the desktop's browser login mints
+  // the OAuth credential locally, and with NO agent selected yet (first-run
+  // onboarding, the cloud-migration wizard) it lands here — the setup
+  // runtime's workspace-central store serves every agent created or migrated
+  // after. Mirrors the per-agent `/agents/:id/credential/claude-oauth`: the
+  // envelope is validated (a malformed push is a clean 400, never a false
+  // success) so the desktop can fall back to the paste flow.
+  if (rest === "credential/claude-oauth" && method === "POST") {
+    const parsed = parseClaudeOAuthEnvelope(
+      await readJson(req).catch(() => ({})),
+    );
+    if (!parsed.ok) {
+      json(res, 400, { error: parsed.error });
+      return true;
+    }
+    try {
+      await channel.saveClaudeOAuthCredential(ctx, parsed.value);
+      json(res, 200, { ok: true });
+    } catch (err) {
+      json(res, 502, {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
     return true;
   }
 

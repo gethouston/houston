@@ -38,21 +38,31 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
     /**
      * Push a desktop-extracted Anthropic OAuth credential (the `claude` CLI's
      * `.credentials.json` JSON) to the given agent's pod, which stores + materializes
-     * it on the PVC. The desktop calls this for a REMOTE engine after a successful
+     * it on the PVC. With NO agent selected yet (first-run onboarding, the
+     * cloud-migration wizard) it goes to the hidden SETUP runtime instead —
+     * same central store, so the agents created or migrated after are already
+     * connected. The desktop calls this for a REMOTE engine after a successful
      * browser login — the pod can't read this machine's Keychain. Cloud-only:
      * a co-located engine shares the credential dir with its local runtime, so it
      * never reaches here (a call without a control plane is a programming error).
      */
     async pushClaudeOAuthCredential(
-      agentId: string,
+      agentId: string | null,
       credentialJson: string,
     ): Promise<void> {
       if (!this.ctx.cp) {
         throw new Error("Pushing a Claude credential needs a cloud engine.");
       }
-      await controlPlane.pushClaudeOAuthCredential(
+      if (agentId) {
+        await controlPlane.pushClaudeOAuthCredential(
+          this.ctx.cp,
+          agentId,
+          credentialJson,
+        );
+        return;
+      }
+      await controlPlane.pushSetupClaudeOAuthCredential(
         this.ctx.cp,
-        agentId,
         credentialJson,
       );
     }
@@ -77,7 +87,7 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
         // First-run pre-agent: store through the setup runtime instead — the key
         // lands on the personal workspace and the agent created next reads it.
         // No per-agent settings exist yet to flip.
-        const agentId = this.ctx.currentAgentId();
+        const agentId = this.ctx.providerAgentId();
         if (!agentId) {
           for (const target of targets) {
             await controlPlane.setSetupApiKey(this.ctx.cp, target, apiKey);

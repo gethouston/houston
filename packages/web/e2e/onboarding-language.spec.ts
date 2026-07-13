@@ -11,9 +11,9 @@ import { expect, test } from "./support/fixtures";
  * agreement). The default fixture seeds `locale=en` to skip this gate; here we
  * clear it so the picker renders, and assert the connect-first flow's contract:
  *
- *   1. the picker floats on the shared SpaceScreen starfield (same backdrop as
- *      sign-in and the rest of onboarding — the WebGL nebula + starfield paint
- *      two <canvas> layers behind the card), and
+ *   1. the picker floats on the shared SpaceScreen space backdrop (same as
+ *      sign-in and the rest of onboarding — the landing page's Milky Way
+ *      photograph painted behind the card), and
  *   2. picking a language ADVANCES IMMEDIATELY — there is no Continue button, so
  *      a single click both persists the choice and moves past the gate. This is
  *      the regression guard for the dead-end where clicking a language did
@@ -27,7 +27,7 @@ const ACCEPTED_DISCLAIMER = JSON.stringify({
   acceptedAt: "2024-01-01T00:00:00.000Z",
 });
 
-test("first-run language gate: starfield backdrop, and a single click advances (no Continue)", async ({
+test("first-run language gate: space backdrop, and a single click advances (no Continue)", async ({
   page,
 }) => {
   // Seed the engine + the later gates, but NOT the locale, so the LanguageGate
@@ -70,8 +70,8 @@ test("first-run language gate: starfield backdrop, and a single click advances (
     page.getByRole("heading", { name: "Choose your language" }),
   ).toBeVisible();
 
-  // The shared space backdrop paints behind the card (nebula + starfield canvases).
-  expect(await page.locator("canvas").count()).toBeGreaterThan(0);
+  // The shared space backdrop paints behind the card (the Milky Way photo).
+  expect(await page.locator('img[src*="milkyway"]').count()).toBeGreaterThan(0);
 
   // No Continue button — the row itself is the action.
   await expect(

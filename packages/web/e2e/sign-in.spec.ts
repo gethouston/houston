@@ -58,9 +58,12 @@ test.describe("sign-in screen (GCIP)", () => {
     ).toBeVisible();
   });
 
-  test("renders all three sign-in methods", async ({ page }) => {
+  test("renders all four sign-in methods", async ({ page }) => {
     await expect(
       page.getByRole("button", { name: "Continue with Google" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Continue with Apple" }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Continue with Microsoft" }),

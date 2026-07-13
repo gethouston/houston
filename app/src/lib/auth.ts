@@ -26,6 +26,7 @@ import {
 } from "./identity";
 import { cancelPendingAuthorize } from "./identity/desktop-oauth";
 import {
+  appleDesktopSession,
   customTokenDesktopSession,
   googleDesktopSession,
   microsoftDesktopSession,
@@ -125,6 +126,23 @@ export function signInWithMicrosoft(opts?: SignInOptions): Promise<void> {
     const web = await loadWebIdentity();
     web.initWebAuth(identityConfig);
     establishWebSession(await web.webSignInWithMicrosoft(), "azure");
+  });
+}
+
+export function signInWithApple(opts?: SignInOptions): Promise<void> {
+  return guardAuthCall(async () => {
+    requireConfigured();
+    if (osIsTauri()) {
+      // GCIP-brokered loopback (Apple rejects 127.0.0.1 redirects on direct
+      // OAuth, so GCIP's handler is the registered return URL). A `null`
+      // session is a benign cancel (see signInWithGoogle).
+      const session = await appleDesktopSession(opts);
+      if (session) await establishDesktopSession(session, "apple");
+      return;
+    }
+    const web = await loadWebIdentity();
+    web.initWebAuth(identityConfig);
+    establishWebSession(await web.webSignInWithApple(), "apple");
   });
 }
 

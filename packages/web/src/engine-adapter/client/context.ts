@@ -161,6 +161,40 @@ export class AdapterContext {
   }
 
   /**
+   * The control plane's agent ids as of the last `listAgents`, in list order;
+   * `null` until a list has resolved. Ground truth for
+   * {@link providerAgentId}: the pref can go stale, this cannot.
+   */
+  knownAgentIds: string[] | null = null;
+
+  /** Record the live agent-id set (called by every cp `listAgents`). */
+  noteAgentList(ids: string[]): void {
+    this.knownAgentIds = ids;
+  }
+
+  /**
+   * The agent PROVIDER calls should target. Provider credentials are
+   * workspace-central (connect-once), so ANY real agent's runtime both serves
+   * and captures them — the selection only picks a pod:
+   *
+   *   1. the selected agent, when the live list confirms it still exists;
+   *   2. else the org's FIRST known agent — a stale pref or no selection must
+   *      not force the setup runtime while real pods exist (the setup pod was
+   *      torn down at the org's first agent, and re-materializing one costs a
+   *      provision + a lingering Deployment);
+   *   3. else `null` → the hidden setup runtime (true first-run, zero agents).
+   *
+   * Before the first list resolves the pref is trusted as-is (boot prunes a
+   * stale pref via `dropLastAgentPref` right when the list lands).
+   */
+  providerAgentId(): string | null {
+    const id = this.currentAgentId();
+    if (this.knownAgentIds === null) return id;
+    if (id && this.knownAgentIds.includes(id)) return id;
+    return this.knownAgentIds[0] ?? null;
+  }
+
+  /**
    * Forget the persisted agent selection when it names an agent the control
    * plane no longer has (deleted last agent, wiped user data, account switch) —
    * a stale id sends first-run logins to `/agents/<dead>/…` → 404.
@@ -182,14 +216,15 @@ export class AdapterContext {
     return id;
   }
 
-  /** Runtime client for provider/auth calls: the selected agent's sandbox in
-   *  cloud, the single runtime locally. Before ANY agent exists (first-run
-   *  onboarding), the host's hidden SETUP runtime — provider connect must work
-   *  pre-agent, and its capture lands on the personal workspace so the agent
-   *  created next is already connected. */
+  /** Runtime client for provider/auth calls: a real agent's sandbox in cloud
+   *  whenever one exists (see {@link providerAgentId}), the single runtime
+   *  locally. Before ANY agent exists (first-run onboarding), the host's
+   *  hidden SETUP runtime — provider connect must work pre-agent, and its
+   *  capture lands on the personal workspace so the agent created next is
+   *  already connected. */
   providerEngine(): HoustonEngineClient {
     if (!this._cp) return this.engine;
-    const id = this.currentAgentId();
+    const id = this.providerAgentId();
     return id
       ? runtimeClientFor(this._cp, id)
       : setupRuntimeClientFor(this._cp);

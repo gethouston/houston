@@ -92,7 +92,9 @@ describe("identity/session (de)serialization", () => {
       null,
     );
     strictEqual(
-      deserializeSession(JSON.stringify({ ...session, provider: "apple.com" })),
+      deserializeSession(
+        JSON.stringify({ ...session, provider: "someday.example" }),
+      ),
       null,
     );
     strictEqual(
