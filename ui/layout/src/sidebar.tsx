@@ -324,7 +324,7 @@ export function AppSidebar({
 
           {/* Items list */}
           <ScrollArea
-            className={cn("flex-1", collapsed ? "px-2 pt-2" : "px-2")}
+            className={cn("min-h-0 flex-1", collapsed ? "px-2 pt-2" : "px-2")}
           >
             {!collapsed && groups !== undefined ? (
               <SidebarGroupedList
@@ -352,8 +352,9 @@ export function AppSidebar({
           </ScrollArea>
         </div>
 
-        {/* Footer slot (e.g., update notification) */}
-        {footer}
+        {/* Footer slot (e.g., update notification). shrink-0 so a short
+            window squeezes the scrollable list, never the footer row. */}
+        {footer && <div className="shrink-0">{footer}</div>}
       </aside>
 
       {children}
