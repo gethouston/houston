@@ -1,36 +1,44 @@
-import { beforeEach, expect, test, vi } from "vitest";
-
-const { cpGetPreference, cpSetPreference } = vi.hoisted(() => ({
-  cpGetPreference: vi.fn(),
-  cpSetPreference: vi.fn(),
-}));
-
-vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import("../src/engine-adapter/control-plane")
-    >();
-  return {
-    ...actual,
-    getPreference: cpGetPreference,
-    setPreference: cpSetPreference,
-  };
-});
-
+import { afterEach, expect, test, vi } from "vitest";
 import { HoustonClient } from "../src/engine-adapter/client";
 
-let store: Map<string, string>;
+/**
+ * `houston_onboarding_segment` is an ACCOUNT_PREF_KEY (config-prefs-mixin.ts):
+ * in hosted/cloud mode it must round-trip through the host's
+ * `/v1/preferences/:key`, not this browser's localStorage, so the
+ * segmentation question is answered once per account, not once per device.
+ */
 
-beforeEach(() => {
-  store = new Map();
-  (globalThis as { localStorage?: unknown }).localStorage = {
-    getItem: (key: string) => store.get(key) ?? null,
-    setItem: (key: string, value: string) => void store.set(key, value),
-    removeItem: (key: string) => void store.delete(key),
-  };
-  cpGetPreference.mockReset();
-  cpSetPreference.mockReset();
+const PREF_PATH = "/v1/preferences/houston_onboarding_segment";
+
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  vi.restoreAllMocks();
 });
+
+function json(status: number, body: unknown = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+interface Call {
+  url: string;
+  init: RequestInit | undefined;
+}
+
+function stubFetch(...responses: Response[]): Call[] {
+  const calls: Call[] = [];
+  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
+    calls.push({ url: String(input), init });
+    const next = responses.shift();
+    if (!next) throw new Error("stubFetch: no responses left");
+    return next;
+  }) as unknown as typeof fetch;
+  return calls;
+}
 
 function hostedClient() {
   return new HoustonClient({
@@ -40,38 +48,33 @@ function hostedClient() {
   });
 }
 
-test("hosted getPreference falls back to the control plane when local cache is empty", async () => {
-  cpGetPreference.mockResolvedValue("business_owner");
-
-  await expect(hostedClient().getPreference("segment")).resolves.toBe(
-    "business_owner",
-  );
-
-  expect(cpGetPreference).toHaveBeenCalledWith(
-    expect.objectContaining({ baseUrl: "http://host" }),
-    "segment",
-  );
-});
-
-test("hosted setPreference writes the control plane before caching locally", async () => {
-  cpSetPreference.mockResolvedValue(undefined);
-
-  await hostedClient().setPreference("segment", "operations");
-
-  expect(cpSetPreference).toHaveBeenCalledWith(
-    expect.objectContaining({ baseUrl: "http://host" }),
-    "segment",
-    "operations",
-  );
-  expect(store.get("houston.pref.segment")).toBe("operations");
-});
-
-test("hosted setPreference does not silently cache after a control-plane failure", async () => {
-  cpSetPreference.mockRejectedValue(new Error("preference write failed"));
+test("hosted getPreference reads the segment from the control plane", async () => {
+  const calls = stubFetch(json(200, { value: "business_owner" }));
 
   await expect(
-    hostedClient().setPreference("segment", "operations"),
-  ).rejects.toThrow("preference write failed");
+    hostedClient().getPreference("houston_onboarding_segment"),
+  ).resolves.toBe("business_owner");
 
-  expect(store.has("houston.pref.segment")).toBe(false);
+  expect(calls[0].url).toBe(`http://host${PREF_PATH}`);
+});
+
+test("hosted setPreference writes the segment to the control plane", async () => {
+  const calls = stubFetch(json(200, { value: "operations" }));
+
+  await hostedClient().setPreference(
+    "houston_onboarding_segment",
+    "operations",
+  );
+
+  expect(calls[0].url).toBe(`http://host${PREF_PATH}`);
+  expect((calls[0].init?.method ?? "GET").toUpperCase()).toBe("PUT");
+  expect(calls[0].init?.body).toBe(JSON.stringify({ value: "operations" }));
+});
+
+test("hosted setPreference does not swallow a control-plane failure", async () => {
+  stubFetch(json(500, { error: "boom" }));
+
+  await expect(
+    hostedClient().setPreference("houston_onboarding_segment", "operations"),
+  ).rejects.toThrow();
 });

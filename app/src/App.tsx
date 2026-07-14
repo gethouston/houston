@@ -38,7 +38,7 @@ import { useUIStore } from "./stores/ui";
 import { useWorkspaceStore } from "./stores/workspaces";
 
 export default function App() {
-  const authConfigured = isAuthConfigured();
+  const authConfigured = isIdentityConfigured();
   useHoustonInit();
   useSessionEvents();
   useAgentInvalidation();
