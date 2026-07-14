@@ -64,15 +64,20 @@
       "question": "Which apps can agents in this workspace use?",
       "policyHelper": "You decide which apps agents here are allowed to use. People still connect their own accounts for each app you allow.",
       "anyLabel": "Any app",
-      "anyDesc": "Agents in this workspace can use any of 1000+ apps.",
+      "anyDesc": "Everyone can connect anything in the catalog.",
       "pickedLabel": "Only apps you pick",
-      "pickedDesc": "Agents can only use the apps you allow below.",
+      "pickedDesc": "Everything else shows as turned off, with a note to ask you.",
       "allowApp": "Allow {{name}}",
       "allowedHeading": "Allowed apps",
       "allowedEmpty": "No apps picked yet. Add apps below.",
       "allowedEmptyCategory": "No allowed apps in this category yet.",
       "addHeading": "Add apps",
-      "ownerOnly": "Only the workspace owner can change this."
+      "ownerOnly": "Only the workspace owner can change this.",
+      "perAgentNote": "Want tighter limits for one agent? Set them in that agent's settings.",
+      "usedByAgents_one": "Used by {{count}} agent",
+      "usedByAgents_other": "Used by {{count}} agents",
+      "workspaceOff_one": "{{count}} app is turned off in your workspace",
+      "workspaceOff_other": "{{count}} apps are turned off in your workspace"
     },
     "notAllowed": {
       "title": "Not allowed for this agent",
@@ -85,9 +90,9 @@
       "question": "Which models can agents in this workspace use?",
       "policyHelper": "You decide which AI models agents here can run on. People with access pick their own model from the ones you allow.",
       "anyLabel": "Any model",
-      "anyDesc": "Agents in this workspace can use any available model.",
+      "anyDesc": "Everyone can pick any available model.",
       "pickedLabel": "Only models you pick",
-      "pickedDesc": "Agents can only use the models you allow below.",
+      "pickedDesc": "Every other model shows as turned off.",
       "allowModel": "Allow {{name}}",
       "searchModels": "Search models",
       "noModels": "No models found",
@@ -96,23 +101,58 @@
       "allowedEmptyLab": "No models picked from this lab yet.",
       "addHeading": "Add models",
       "ownerOnly": "Only the workspace owner can change this.",
-      "perAgentNote": "Managers can narrow this further for each agent in its settings."
+      "perAgentNote": "Managers can narrow this further for each agent in its settings.",
+      "workspaceOff_one": "{{count}} model is turned off in your workspace",
+      "workspaceOff_other": "{{count}} models are turned off in your workspace"
     }
   },
   "org": {
-    "title": "Organization",
-    "subtitle": "Manage your team, agents, and activity in one place.",
-    "nav": "Organization",
-    "tablistLabel": "Organization sections",
+    "title": "Admin",
+    "subtitle": "Manage your team, agents, policies, and activity in one place.",
+    "nav": "Admin",
     "tabs": {
       "people": "People",
       "agents": "Agents",
+      "allowedIntegrations": "Allowed apps",
+      "allowedModels": "Allowed AI models",
       "activity": "Activity",
       "usage": "Usage",
       "billing": "Billing"
     },
-    "loading": "Loading your organization...",
-    "unavailable": "We couldn't load your organization."
+    "agentDetail": {
+      "subtitle": "Who can use this agent and what it is allowed to use.",
+      "openAgent": "Open agent",
+      "managerOnly": "Only this agent's Managers can change its access."
+    },
+    "index": {
+      "groups": {
+        "access": "Access",
+        "insights": "Insights"
+      },
+      "rows": {
+        "people": "Invite teammates, set roles, remove members.",
+        "agents": "Every agent in this workspace and who can use it.",
+        "allowedIntegrations": "Choose which apps people here can use.",
+        "allowedModels": "Choose which AI models agents here can use.",
+        "activity": "What happened in this workspace, newest first.",
+        "usage": "How much each agent and person is messaging.",
+        "billing": "Seats, plan, and payment."
+      },
+      "values": {
+        "members_one": "{{count}} member",
+        "members_other": "{{count}} members",
+        "agents_one": "{{count}} agent",
+        "agents_other": "{{count}} agents",
+        "allApps": "All apps",
+        "appsAllowed_one": "{{count}} allowed",
+        "appsAllowed_other": "{{count}} allowed",
+        "allModels": "All models",
+        "modelsAllowed_one": "{{count}} allowed",
+        "modelsAllowed_other": "{{count}} allowed"
+      }
+    },
+    "loading": "Loading your workspace...",
+    "unavailable": "We couldn't load your workspace."
   },
   "share": {
     "title": "Share {{name}}",

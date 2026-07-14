@@ -22,6 +22,7 @@ import type {
   Capabilities,
 } from "@houston-ai/engine-client";
 import { canEditAgentConfig } from "./agent-access.ts";
+import { decodeModelPickerId } from "./chat-model-picker-ids.ts";
 import { isMultiplayer } from "./org-roles.ts";
 
 export interface ModelSelectorDecision {
@@ -68,6 +69,29 @@ export function isModelAllowed(
 ): boolean {
   if (allowedModels == null) return true;
   return allowedModels.includes(model);
+}
+
+/**
+ * How many DISTINCT models the allowed-models ceiling removes from the picker's
+ * universe. Display-only: the gateway is the sole enforcer of the ceiling, so
+ * this count only keeps the clamp honest, surfacing the models it drops instead
+ * of hiding them in silence.
+ *
+ * A model offered by two providers is one hidden model, not two, so the count is
+ * over bare model ids. `allowedModels == null` = no ceiling → nothing hidden.
+ */
+export function hiddenModelCount(
+  pickerModels: ReadonlyArray<{ id: string }>,
+  allowedModels: string[] | null,
+): number {
+  if (allowedModels == null) return 0;
+  const allowed = new Set(allowedModels);
+  const hidden = new Set<string>();
+  for (const row of pickerModels) {
+    const { model } = decodeModelPickerId(row.id);
+    if (!allowed.has(model)) hidden.add(model);
+  }
+  return hidden.size;
 }
 
 /** A runnable provider/model/effort pin shown on the composer picker. */

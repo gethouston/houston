@@ -43,6 +43,7 @@ export function ModelPicker({
   onConnectMore,
   renderProviderIcon,
   labels: labelsProp,
+  footer,
   className,
 }: ModelPickerProps) {
   const labels = { ...DEFAULT_MODEL_PICKER_LABELS, ...labelsProp };
@@ -183,6 +184,17 @@ export function ModelPicker({
 
         {onConnectMore && (
           <ConnectMore label={labels.connectMore} onSelect={onConnectMore} />
+        )}
+
+        {/* Informative footer (e.g. a workspace-policy note). A plain div, not a
+            cmdk `CommandItem`, so it is never focusable/selectable and — since
+            cmdk only filters registered items — survives the search filter
+            untouched. Pinned last inside the scrollable list, matching the
+            `ConnectMore` footer look but non-interactive. */}
+        {footer && (
+          <div className="mt-1 border-t border-line/60 px-2 py-1.5 text-xs text-ink-muted">
+            {footer}
+          </div>
         )}
       </CommandList>
     </Command>

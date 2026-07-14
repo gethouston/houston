@@ -1,3 +1,4 @@
+import { CatalogCount } from "@houston-ai/core";
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import { Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -16,7 +17,8 @@ interface CatalogLockedSectionProps {
  * finds a locked row, with the ask-your-admin line visible at rest, rather than
  * an empty list that reads as "Houston doesn't support it". Each row is
  * non-interactive (a lock icon where Connect would sit, no click) and carries the
- * ask-admin subtitle. Capped at {@link LOCKED_PREVIEW_CAP} with a "+N more" line
+ * ask-admin subtitle. The heading carries the total locked count and a subtitle
+ * naming this as an admin choice. Capped at {@link LOCKED_PREVIEW_CAP} with a "+N more" line
  * so a tiny allowlist over the ~1000-app catalog can't flood past the connectable
  * apps above. Only rendered on a Teams host with a real ceiling — the caller
  * passes an empty `locked` list off Teams, so nothing shows.
@@ -28,10 +30,12 @@ export function CatalogLockedSection({ locked }: CatalogLockedSectionProps) {
 
   return (
     <section className="mt-6">
-      <h4 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+      <h4 className="flex items-center gap-1.5 text-xs font-medium text-ink-muted">
         <Lock className="size-3.5" />
         {t("locked.heading")}
+        <CatalogCount count={locked.length} />
       </h4>
+      <p className="mt-1 mb-3 text-xs text-ink-muted">{t("locked.subtitle")}</p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {shown.map((tk) => {
           const display = appDisplay(tk.slug, tk);

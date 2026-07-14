@@ -8,7 +8,6 @@ import {
   canSeeAiModelsPage,
   canSeeBilling,
   canSeeBillingTab,
-  canSeeIntegrationsPage,
   canSeeMembers,
   GRANTABLE_ROLES,
   isMultiplayer,
@@ -76,26 +75,6 @@ describe("canSeeMembers / canManageMembers", () => {
     strictEqual(canManageMembers(multiplayer("admin")), false);
     strictEqual(canManageMembers(multiplayer("user")), false);
     strictEqual(canManageMembers(caps()), false);
-  });
-});
-
-describe("canSeeIntegrationsPage", () => {
-  const teams = (role: OrgRole): Capabilities =>
-    caps({ multiplayer: true, role, teams: true });
-
-  it("single-player keeps the Integrations page", () => {
-    strictEqual(canSeeIntegrationsPage(caps()), true);
-    strictEqual(canSeeIntegrationsPage(null), true);
-  });
-
-  it("non-Teams multiplayer keeps it for every role", () => {
-    strictEqual(canSeeIntegrationsPage(multiplayer("user")), true);
-  });
-
-  it("in a Teams workspace only owner/admin see it", () => {
-    strictEqual(canSeeIntegrationsPage(teams("owner")), true);
-    strictEqual(canSeeIntegrationsPage(teams("admin")), true);
-    strictEqual(canSeeIntegrationsPage(teams("user")), false);
   });
 });
 

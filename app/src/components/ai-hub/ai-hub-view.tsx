@@ -6,7 +6,6 @@ import { useProviderConnections } from "../../hooks/use-provider-connections";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types";
 import { useHubCatalog } from "../../lib/ai-hub/use-hub-catalog";
 import { newEngineActive } from "../../lib/engine";
-import { isMultiplayer } from "../../lib/org-roles";
 import { osIsTauri } from "../../lib/os-bridge";
 import {
   EMPTY_PROVIDER_CAPABILITIES,
@@ -16,7 +15,6 @@ import {
 import { ProviderConnectionDialogs } from "../provider-browser/provider-connection-dialogs";
 import { groupProviders } from "../provider-browser/provider-grouping";
 import { PageContainer } from "../shell/page-shell";
-import { AiHubPolicy } from "./ai-hub-policy";
 import { ConnectedProvidersStrip } from "./connected-providers-strip";
 import { HubHero } from "./hub-hero";
 import { HubSkeleton } from "./hub-skeleton";
@@ -31,10 +29,10 @@ import { ProvidersPane } from "./providers-pane";
  * the hero, then the consolidated **Connected** strip of provider brand tiles
  * OUTSIDE the tabs (a tile opens that provider's modal), then the discovery
  * tabs with live count chips: **Providers** ({@link ProvidersPane}: the
- * not-yet-connected catalog), **Models** (the cross-provider directory) and,
- * on Teams, **Workspace policy**. A provider row/tile or model row opens a
- * centered MODAL (`ProviderModal` / `ModelModal`); the connect-dialog stack
- * renders once here for every surface underneath.
+ * not-yet-connected catalog) and **Models** (the cross-provider directory).
+ * A provider row/tile or model row opens a centered MODAL (`ProviderModal` /
+ * `ModelModal`); the connect-dialog stack renders once here for every surface
+ * underneath. (Workspace model policy lives on the Admin page.)
  */
 export function AiHubView() {
   const { t } = useTranslation("aiHub");
@@ -46,10 +44,6 @@ export function AiHubView() {
 
   const { capabilities } = useCapabilities();
   const newEngine = newEngineActive();
-  // Teams owner/admin only reach the hub (plain members lose its nav), so the
-  // workspace model-policy tab shows whenever this is a Teams deployment.
-  const showPolicy =
-    isMultiplayer(capabilities) && capabilities?.teams === true;
   const providerCapabilities =
     capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
   // The connect cards this deployment can show (merged OpenCode account, engine
@@ -116,15 +110,6 @@ export function AiHubView() {
             />
           ),
         },
-        ...(showPolicy
-          ? [
-              {
-                value: "policy",
-                label: t("tabs.policy"),
-                content: <AiHubPolicy />,
-              },
-            ]
-          : []),
       ]
     : null;
 

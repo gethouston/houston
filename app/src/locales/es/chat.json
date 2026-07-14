@@ -176,7 +176,9 @@
       "modelsLabel": "Modelos",
       "loading": "Cargando proveedores…",
       "empty": "No se encontraron modelos.",
-      "noProviders": "Aún no hay proveedores conectados."
+      "noProviders": "Aún no hay proveedores conectados.",
+      "hiddenByWorkspace_one": "{{count}} modelo más está desactivado en tu espacio de trabajo",
+      "hiddenByWorkspace_other": "{{count}} modelos más están desactivados en tu espacio de trabajo"
     },
     "modelDescriptions": {
       "gpt-5_5": "El modelo más avanzado de OpenAI.",

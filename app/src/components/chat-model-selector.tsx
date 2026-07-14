@@ -5,12 +5,14 @@ import {
   PopoverTrigger,
 } from "@houston-ai/core";
 import type { Agent } from "@houston-ai/engine-client";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Lock } from "lucide-react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useChatModelPicker } from "../hooks/use-chat-model-picker";
 import { decodeModelPickerId } from "../lib/chat-model-picker-ids";
 import {
+  hiddenModelCount,
   isModelAllowed,
   modelSelectorDecision,
 } from "../lib/model-selector-lock";
@@ -62,6 +64,7 @@ export function ChatModelSelector({
   agent,
   allowedModels,
 }: ChatModelSelectorProps) {
+  const { t } = useTranslation("chat");
   const { capabilities } = useCapabilities();
   const { show } = modelSelectorDecision(capabilities, agent);
   const picker = useChatModelPicker({
@@ -90,6 +93,14 @@ export function ChatModelSelector({
     const ids = new Set(models.map((m) => m.providerId));
     return picker.providers.filter((p) => ids.has(p.id));
   }, [picker.providers, models, allowedModels]);
+
+  // How many models the ceiling turns off, surfaced in a quiet picker footer so
+  // the clamp above is honest rather than silent. Counted over the full picker
+  // universe, not the clamped list.
+  const hidden = useMemo(
+    () => hiddenModelCount(picker.models, allowedModels ?? null),
+    [picker.models, allowedModels],
+  );
 
   // A plain member on a pre-Teams multiplayer host never sees the agent's model:
   // the picker renders nothing. The hooks above still run so the rules-of-hooks
@@ -151,6 +162,16 @@ export function ChatModelSelector({
               onConnectMore={picker.onConnectMore}
               renderProviderIcon={picker.renderProviderIcon}
               labels={picker.labels}
+              footer={
+                hidden > 0 ? (
+                  <span className="flex items-center gap-1.5 text-xs text-ink-muted">
+                    <Lock className="size-3 opacity-60" />
+                    {t("modelSelector.picker.hiddenByWorkspace", {
+                      count: hidden,
+                    })}
+                  </span>
+                ) : undefined
+              }
             />
           </PopoverContent>
         </Popover>

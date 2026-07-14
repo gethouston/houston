@@ -1,7 +1,9 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
+import { encodeModelPickerId } from "../src/lib/chat-model-picker-ids.ts";
 import {
+  hiddenModelCount,
   isModelAllowed,
   modelSelectorDecision,
   resolvePersonalModelPin,
@@ -149,5 +151,48 @@ describe("resolvePersonalModelPin", () => {
 
   it("keeps the fallback for an empty ceiling (no model to snap to)", () => {
     deepStrictEqual(resolvePersonalModelPin(null, [], fallback), fallback);
+  });
+});
+
+describe("hiddenModelCount", () => {
+  // Picker rows carry an opaque `provider::model` id; the fixture builds them
+  // from (provider, model) pairs the same way the container does.
+  const rows = (...pairs: [string, string][]) =>
+    pairs.map(([provider, model]) => ({
+      id: encodeModelPickerId(provider, model),
+    }));
+
+  const universe = rows(
+    ["anthropic", "claude"],
+    ["openai", "gpt-5.5"],
+    ["google", "gemini"],
+  );
+
+  it("hides nothing when there is no ceiling", () => {
+    strictEqual(hiddenModelCount(universe, null), 0);
+  });
+
+  it("hides nothing when the ceiling allows every model", () => {
+    strictEqual(hiddenModelCount(universe, ["claude", "gpt-5.5", "gemini"]), 0);
+  });
+
+  it("counts exactly the models the ceiling turns off", () => {
+    strictEqual(hiddenModelCount(universe, ["claude"]), 2);
+    strictEqual(hiddenModelCount(universe, ["claude", "gpt-5.5"]), 1);
+  });
+
+  it("counts a model offered by two providers once", () => {
+    // Same bare model id from two providers is one hidden model, not two.
+    const dupes = rows(
+      ["openrouter", "gpt-5.5"],
+      ["openai", "gpt-5.5"],
+      ["anthropic", "claude"],
+    );
+    strictEqual(hiddenModelCount(dupes, ["claude"]), 1);
+  });
+
+  it("hides nothing for an empty universe", () => {
+    strictEqual(hiddenModelCount([], ["claude"]), 0);
+    strictEqual(hiddenModelCount([], null), 0);
   });
 });

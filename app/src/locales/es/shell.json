@@ -130,8 +130,8 @@
         "body": "Agrega proveedores como Claude y OpenAI. Gestiona tus suscripciones y llaves de API aquí."
       },
       "organization": {
-        "title": "Organización",
-        "body": "Invita a tu equipo, asigna roles y gestiona el acceso aquí."
+        "title": "Administración",
+        "body": "Invita a tu equipo, asigna roles y define las políticas del espacio de trabajo para las integraciones y los modelos de IA permitidos aquí."
       },
       "settings": {
         "title": "Configuración",

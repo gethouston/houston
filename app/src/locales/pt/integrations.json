@@ -1,10 +1,5 @@
 {
   "title": "Integrações",
-  "policyPage": {
-    "subtitle": "Escolha quais aplicativos os agentes deste espaço de trabalho podem usar.",
-    "manageAccounts": "Gerencie seus aplicativos conectados",
-    "perAgentNote": "Quer limites mais restritos para um agente? Defina isso nas configurações desse agente."
-  },
   "loading": {
     "title": "Carregando suas integrações",
     "body": "Verificando seu provedor de integrações…"
@@ -72,10 +67,11 @@
     "loading": "Carregando apps..."
   },
   "locked": {
-    "heading": "Não habilitados pelo seu administrador",
+    "heading": "Desativados no seu espaço de trabalho",
+    "subtitle": "Seu administrador escolheu quais apps podem ser usados aqui. Eles existem no Houston, só estão desativados neste espaço de trabalho.",
     "askAdmin": "Peça ao seu administrador para habilitar {{name}}",
-    "more_one": "{{count}} app a mais que seu administrador não habilitou",
-    "more_other": "{{count}} apps a mais que seu administrador não habilitou"
+    "more_one": "{{count}} app a mais desativado no seu espaço de trabalho",
+    "more_other": "{{count}} apps a mais desativados no seu espaço de trabalho"
   },
   "chips": {
     "more": "+{{count}}"

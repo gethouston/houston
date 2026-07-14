@@ -28,23 +28,20 @@ export function isTopLevelView(viewMode: string): boolean {
 
 /**
  * Whether a top-level `viewMode` points at a view whose Teams gate is off for
- * this caller (Integrations and the AI Models hub hide from plain members,
- * Organization from members / single-player). The sidebar entry is already
- * hidden, so a STALE `viewMode` (e.g. the role changed on a space switch while
- * the page was open) would otherwise fall through every render branch and strand
- * the user on the shell's engine pane with no way back; the workspace shell
- * resets a blocked view to the dashboard. Pure so the fallback rule is
- * unit-tested.
+ * this caller (the AI Models hub hides from plain members, Organization from
+ * members / single-player). The sidebar entry is already hidden, so a STALE
+ * `viewMode` (e.g. the role changed on a space switch while the page was open)
+ * would otherwise fall through every render branch and strand the user on the
+ * shell's engine pane with no way back; the workspace shell resets a blocked
+ * view to the dashboard. Pure so the fallback rule is unit-tested.
  */
 export function blockedTopLevelView(
   viewMode: string,
   gates: {
-    showIntegrations: boolean;
     showOrganization: boolean;
     showAiModels: boolean;
   },
 ): boolean {
-  if (viewMode === INTEGRATIONS_VIEW_ID) return !gates.showIntegrations;
   if (viewMode === ORGANIZATION_VIEW_ID) return !gates.showOrganization;
   if (viewMode === "ai-hub") return !gates.showAiModels;
   // The Usage page reads the same workspace-central provider accounts the AI

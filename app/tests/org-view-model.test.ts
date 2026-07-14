@@ -43,12 +43,26 @@ describe("ORG_TAB_IDS", () => {
 });
 
 describe("orgTabIds", () => {
-  it("appends billing only when shown", () => {
+  it("appends the policy ceilings only on a Teams host", () => {
     strictEqual(
-      orgTabIds(true).join(","),
+      orgTabIds({ policy: true, billing: false }).join(","),
+      "people,agents,activity,usage,allowedIntegrations,allowedModels",
+    );
+    strictEqual(
+      orgTabIds({ policy: false, billing: false }).join(","),
+      "people,agents,activity,usage",
+    );
+  });
+
+  it("appends billing last, after any policy tabs", () => {
+    strictEqual(
+      orgTabIds({ policy: true, billing: true }).join(","),
+      "people,agents,activity,usage,allowedIntegrations,allowedModels,billing",
+    );
+    strictEqual(
+      orgTabIds({ policy: false, billing: true }).join(","),
       "people,agents,activity,usage,billing",
     );
-    strictEqual(orgTabIds(false).join(","), "people,agents,activity,usage");
   });
 });
 

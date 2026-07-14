@@ -176,7 +176,9 @@
       "modelsLabel": "Models",
       "loading": "Loading providers…",
       "empty": "No models found.",
-      "noProviders": "No providers connected yet."
+      "noProviders": "No providers connected yet.",
+      "hiddenByWorkspace_one": "{{count}} more model is turned off in your workspace",
+      "hiddenByWorkspace_other": "{{count}} more models are turned off in your workspace"
     },
     "modelDescriptions": {
       "gpt-5_5": "OpenAI's frontier model.",

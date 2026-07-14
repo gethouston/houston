@@ -24,7 +24,8 @@ interface AgentAllowlistSectionProps {
  * wrapper). A thin wrapper over the shared {@link AllowlistEditor}: it computes
  * the selectable universe from the org ceiling (a manager can only allow apps
  * the org itself allows) and supplies the `teams` i18n copy; all behavior lives
- * in the editor.
+ * in the editor. The narrowing is surfaced, not silent: a quiet footnote counts
+ * the apps the workspace hides so a manager knows why the catalog looks shorter.
  */
 export function AgentAllowlistSection({
   allowedToolkits,
@@ -44,27 +45,43 @@ export function AgentAllowlistSection({
     return catalog.filter((tk) => org.has(tk.slug));
   }, [catalog, orgAllowedToolkits]);
 
+  // Apps the workspace ceiling removes from an otherwise full catalog (the
+  // catalog is one row per toolkit, so a plain length delta is a distinct
+  // count). A `null` org ceiling hides nothing. Surfaced below when positive.
+  const workspaceHidden = catalog.length - universe.length;
+
   return (
-    <AllowlistEditor
-      universe={universe}
-      allowedToolkits={allowedToolkits}
-      seedToolkits={connectedToolkits}
-      saving={saving}
-      readOnly={false}
-      onSave={onSave}
-      copy={{
-        question: t("integrations.allowlist.question"),
-        policyHelper: t("integrations.allowlist.policyHelper"),
-        anyLabel: t("integrations.allowlist.anyLabel"),
-        anyDesc: t("integrations.allowlist.anyDesc"),
-        pickedLabel: t("integrations.allowlist.pickedLabel"),
-        pickedDesc: t("integrations.allowlist.pickedDesc"),
-        allowedHeading: t("integrations.allowlist.allowedHeading"),
-        addHeading: t("integrations.allowlist.addHeading"),
-        allowedEmpty: t("integrations.allowlist.allowedEmpty"),
-        allowedEmptyCategory: t("integrations.allowlist.allowedEmptyCategory"),
-        allowApp: (name) => t("integrations.allowlist.allowApp", { name }),
-      }}
-    />
+    <>
+      <AllowlistEditor
+        universe={universe}
+        allowedToolkits={allowedToolkits}
+        seedToolkits={connectedToolkits}
+        saving={saving}
+        readOnly={false}
+        onSave={onSave}
+        copy={{
+          question: t("integrations.allowlist.question"),
+          policyHelper: t("integrations.allowlist.policyHelper"),
+          anyLabel: t("integrations.allowlist.anyLabel"),
+          anyDesc: t("integrations.allowlist.anyDesc"),
+          pickedLabel: t("integrations.allowlist.pickedLabel"),
+          pickedDesc: t("integrations.allowlist.pickedDesc"),
+          allowedHeading: t("integrations.allowlist.allowedHeading"),
+          addHeading: t("integrations.allowlist.addHeading"),
+          allowedEmpty: t("integrations.allowlist.allowedEmpty"),
+          allowedEmptyCategory: t(
+            "integrations.allowlist.allowedEmptyCategory",
+          ),
+          allowApp: (name) => t("integrations.allowlist.allowApp", { name }),
+        }}
+      />
+      {workspaceHidden > 0 && (
+        <p className="mt-4 text-xs text-ink-muted">
+          {t("integrations.orgAllowlist.workspaceOff", {
+            count: workspaceHidden,
+          })}
+        </p>
+      )}
+    </>
   );
 }

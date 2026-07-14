@@ -78,5 +78,13 @@ export interface ModelPickerProps {
     className?: string,
   ) => React.ReactNode;
   labels?: Partial<ModelPickerLabels>;
+  /**
+   * Non-interactive informational block rendered after the rows (e.g. a
+   * workspace-policy note such as "N more models are turned off in your
+   * workspace"). Pinned inside the scrollable list, after the "Connect more"
+   * affordance, and never focusable/selectable/filterable. The consumer owns
+   * its content and copy — the picker stays i18n-agnostic and store-free.
+   */
+  footer?: React.ReactNode;
   className?: string;
 }

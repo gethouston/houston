@@ -24,6 +24,11 @@ test("opens the AI hub, browses providers and models via modals", async ({
 
   await expect(page.getByRole("tab", { name: "Providers" })).toBeVisible();
   await expect(page.getByRole("tab", { name: /Models/ })).toBeVisible();
+  // Only the two browse tabs live here now — the org model ceiling moved to the
+  // Admin page, so the old "Workspace policy" tab is gone.
+  await expect(page.getByRole("tab", { name: "Workspace policy" })).toHaveCount(
+    0,
+  );
 
   // The consolidated Connected strip sits OUTSIDE the tabs: the seeded
   // Anthropic connection is a brand tile, not a row in the browse grid.

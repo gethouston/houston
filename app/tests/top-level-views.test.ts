@@ -30,37 +30,20 @@ describe("isTopLevelView", () => {
 
 describe("blockedTopLevelView", () => {
   const gates = (over: {
-    showIntegrations?: boolean;
     showAiModels?: boolean;
     showOrganization?: boolean;
   }): {
-    showIntegrations: boolean;
     showAiModels: boolean;
     showOrganization: boolean;
   } => ({
-    showIntegrations: over.showIntegrations ?? true,
     showAiModels: over.showAiModels ?? true,
     showOrganization: over.showOrganization ?? true,
   });
 
-  it("blocks a stale Integrations view when its gate is off", () => {
-    // The Teams-member strand: role flipped (e.g. on a space switch) while the
-    // Integrations page was open. The nav entry is gone, so the stale viewMode
-    // must be reported blocked and reset, never left to dead-end the shell.
-    strictEqual(
-      blockedTopLevelView(
-        INTEGRATIONS_VIEW_ID,
-        gates({ showIntegrations: false }),
-      ),
-      true,
-    );
-    strictEqual(
-      blockedTopLevelView(
-        INTEGRATIONS_VIEW_ID,
-        gates({ showIntegrations: true }),
-      ),
-      false,
-    );
+  it("never blocks the Integrations page", () => {
+    // The Integrations page is ungated: every role in every mode keeps the
+    // personal catalog, so a stale viewMode can never strand there.
+    strictEqual(blockedTopLevelView(INTEGRATIONS_VIEW_ID, gates({})), false);
   });
 
   it("blocks a stale AI Models hub when its gate is off", () => {
@@ -112,7 +95,6 @@ describe("blockedTopLevelView", () => {
         blockedTopLevelView(
           id,
           gates({
-            showIntegrations: false,
             showAiModels: false,
             showOrganization: false,
           }),
