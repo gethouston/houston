@@ -65,6 +65,30 @@ test("operational ambient env (PATH) is preserved", () => {
   expect(env.PATH).toBe(process.env.PATH);
 });
 
+test("the username (USER/LOGNAME) reaches the subprocess", () => {
+  // The Claude CLI derives its macOS Keychain item's ACCOUNT from the
+  // username. Scrubbing USER made the SDK resolve "unknown" and read a
+  // DIFFERENT (empty) Keychain item than the one `claude auth login` wrote —
+  // connected in the UI, unauthenticated at every turn, unfixable by
+  // reconnecting.
+  const savedIdentity = {
+    USER: process.env.USER,
+    LOGNAME: process.env.LOGNAME,
+  };
+  process.env.USER = "jane";
+  process.env.LOGNAME = "jane";
+  try {
+    const env = buildClaudeEnv("/cfg", oauth);
+    expect(env.USER).toBe("jane");
+    expect(env.LOGNAME).toBe("jane");
+  } finally {
+    for (const [k, v] of Object.entries(savedIdentity)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+});
+
 test("Houston host secrets never reach the subprocess env", () => {
   // The core of the finding: the SDK subprocess runs model-directed Bash, so any
   // host secret in its env is one `printenv` away from exfiltration. These are the

@@ -387,18 +387,22 @@ export class ProxyChannel implements RuntimeChannel {
    * Materialize the desktop-pushed Claude subscription OAuth credential onto the
    * standing pod so its Claude Agent SDK authenticates and self-refreshes.
    *
-   * Dual write, mirroring saveApiKeyCredential: store it centrally (durability +
-   * a connected record) AND push it into the standing runtime, which writes the
-   * SDK's own `<CLAUDE_CONFIG_DIR>/.credentials.json` and warms the connected
-   * signal so status flips at once.
+   * Dual write, mirroring saveApiKeyCredential: store it centrally (access +
+   * refresh — the control plane is the single refresher from here on) AND push
+   * it into the standing runtime, which writes the SDK's own
+   * `<CLAUDE_CONFIG_DIR>/.credentials.json` (immediate connect signal) and
+   * warms the connected probe so status flips at once.
    *
-   * DELIBERATE Gate #2 departure, scoped to this SINGLE-TENANT pod: the refresh
-   * token is kept (in the central store AND on the pod). The pod self-refreshes
-   * from it, so anthropic is NEVER served through pi's per-turn access-only
-   * auth.json path (serve.ts excludes it) and is NEVER centrally refreshed —
-   * pulling a stale central access token per turn would fight the pod's file.
-   * The multi-tenant per-turn Cloud Run channel refuses this credential entirely.
-   * The token is never logged.
+   * From the next serve sync onward, a MANAGED pod rides the per-turn
+   * access-only path like every provider (serve.ts + routes/credential.ts):
+   * the gateway refreshes centrally and the pod never rotates the refresh
+   * token — one rotator, no family races, and a recycled pod (emptyDir /data)
+   * reconnects from the central store. The materialized file remains the
+   * fallback when a serve is unavailable; the served env token outranks it
+   * inside the SDK. On a desktop/self-host host this central entry is an inert
+   * durability marker (never served, never refreshed). The multi-tenant
+   * per-turn Cloud Run channel refuses this credential entirely. The token is
+   * never logged. Lifecycle map: knowledge-base/anthropic-credentials.md.
    */
   async saveClaudeOAuthCredential(
     ctx: ChannelCtx,

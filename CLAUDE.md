@@ -45,6 +45,7 @@ Need specific knowledge? Load on demand:
 - Multiplayer Teams (orgs) client surface — roles owner/admin/user + per-agent access manager/user, role matrix v2 (`app/src/lib/org-roles.ts`), org dashboard, Share dialog, allowed-models ceiling + per-user model choice, integration allowlists; **plus C8 Spaces** (personal + team spaces, the `org:<slug>` workspace switcher / `x-houston-org` active-space pin, create-team, share-via-team pipeline, seat billing + trial + degrade states, `capabilities.spaces` + per-space role); the gateway is the sole enforcer → `knowledge-base/teams.md` (server contracts: `cloud/docs/contracts/C3`,`C4`,`C7-teams.md`,`C8-spaces-billing.md`)
 - v3 wire protocol (REST + SSE) → `packages/protocol/` (types + zod). The host is `packages/host` (run: `pnpm --filter @houston/host dev`).
 - Provider error taxonomy → `knowledge-base/provider-errors.md` (the shared taxonomy the host/pi providers map to; the old Rust classifier is gone).
+- Anthropic credential lifecycle (Claude-SDK backend: keychain scoping, cloud push, per-turn access-only serve, single-rotator rule) → `knowledge-base/anthropic-credentials.md`
 - Integrations: Composio is an in-process REST tool behind the `IntegrationProvider` port (`packages/host/src/integrations/`) — no bundled CLI, pi has no provider CLIs.
 - Self-host the TS engine on a VPS (Docker + Caddy TLS) → `selfhost/README.md`
 - Windows testing loop from a Mac (UTM VM, SSH bridge, cross-compile, log fetch) → `knowledge-base/windows-testing.md`

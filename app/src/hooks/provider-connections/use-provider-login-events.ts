@@ -6,6 +6,7 @@ import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
 import { genericErrorDescription } from "../../lib/error-toast";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
+import { localizedProviderLoginError } from "../../lib/provider-login-error";
 import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
 import { tauriSystem } from "../../lib/tauri";
 import type {
@@ -125,7 +126,7 @@ export function useProviderLoginEvents({
             title: t("toast.signInFailed", {
               provider: prov?.name ?? ev.data.provider,
             }),
-            description: ev.data.error,
+            description: localizedProviderLoginError(ev.data.error),
             variant: "error",
           });
         }

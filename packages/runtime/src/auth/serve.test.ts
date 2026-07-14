@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -101,28 +101,27 @@ test("concurrent syncServedCredential calls share one in-flight sync (no auth.js
     expect(a).toEqual([]);
     expect(b).toEqual([]);
     expect(c).toEqual([]);
-    // Three concurrent callers, but only ONE batch of per-provider probes ran.
-    // Anthropic is bypassed (materialized as the pod's own .credentials.json, not
-    // served here), so the sweep probes every provider EXCEPT anthropic.
-    expect(calls).toBe(PROVIDERS.filter((p) => p.id !== "anthropic").length);
+    // Three concurrent callers, but only ONE batch of per-provider probes ran —
+    // EVERY provider, anthropic included (the host decides whether to serve it;
+    // routes/credential.ts answers a marked 404 off the managed cloud).
+    expect(calls).toBe(PROVIDERS.length);
   });
 });
 
-test("anthropic is bypassed: a central anthropic credential is never served to auth.json", async () => {
-  // The pod materializes the Claude subscription as its own .credentials.json and
-  // the SDK self-refreshes it there — so serve mode must never probe anthropic nor
-  // write an access-only (refresh-stripped) anthropic entry into auth.json.
-  const requested: string[] = [];
+test("a served anthropic credential lands in auth.json as an access-only oauth entry", async () => {
+  // Managed cloud: the gateway is the single refresher and serves a short-TTL
+  // access token; the runtime writes it to auth.json (refresh="") and the SDK
+  // backend rides it via CLAUDE_CODE_OAUTH_TOKEN. This is what lets a recycled
+  // pod (emptyDir /data, credential files excluded from store-sync) reconnect
+  // anthropic without the user doing anything.
   const fetchImpl = (async (input: RequestInfo | URL) => {
     const provider = new URL(String(input)).searchParams.get("provider");
-    if (provider) requested.push(provider);
     if (provider === "anthropic") {
-      // The host WOULD serve it if asked — prove the runtime never asks.
       return new Response(
         JSON.stringify({
           provider: "anthropic",
           kind: "oauth",
-          access: "AT-anthropic",
+          access: "sk-ant-oat01-served",
           expires: 1_900_000_000_000,
           accountId: null,
         }),
@@ -132,14 +131,18 @@ test("anthropic is bypassed: a central anthropic credential is never served to a
     return notConnected404();
   }) as unknown as typeof globalThis.fetch;
   await withServeMode(fetchImpl, async () => {
-    expect(await syncServedCredential()).toEqual([]);
-    expect(requested).not.toContain("anthropic");
-    // No anthropic entry was written (auth.json may not exist at all).
+    expect(await syncServedCredential()).toEqual(["anthropic"]);
     const path = join(config.dataDir, "auth.json");
-    const auth = existsSync(path)
-      ? (JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>)
-      : {};
-    expect(auth.anthropic).toBeUndefined();
+    const auth = JSON.parse(readFileSync(path, "utf8")) as Record<
+      string,
+      { type: string; access?: string; refresh?: string }
+    >;
+    expect(auth.anthropic).toEqual({
+      type: "oauth",
+      access: "sk-ant-oat01-served",
+      refresh: "",
+      expires: 1_900_000_000_000,
+    });
   });
 });
 
