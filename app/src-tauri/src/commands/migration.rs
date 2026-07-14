@@ -151,12 +151,13 @@ pub struct BackupResult {
     pub byte_count: u64,
 }
 
-/// Running totals for [`copy_dir_all`].
+/// Running totals for [`copy_dir_all`]. `skipped` counts entries that are
+/// deliberately not copied: symlinks/junctions and special files.
 #[derive(Default, Debug, PartialEq)]
 struct CopyStats {
     files: usize,
     bytes: u64,
-    skipped_links: usize,
+    skipped: usize,
 }
 
 /// Attach the offending path to an IO error — a bare `std::io::Error` renders
@@ -166,25 +167,28 @@ fn at_path<T>(res: std::io::Result<T>, path: &Path) -> std::io::Result<T> {
 }
 
 /// Recursively copy `src` into `dst`, preserving the directory structure.
-/// Symlinks (and Windows junctions) are counted and SKIPPED, never followed:
-/// agent workspaces contain links whose targets live outside the entry's own
-/// subtree (pnpm's node_modules junctions, tool caches), and `fs::copy` on a
-/// directory link fails — on Windows with ACCESS_DENIED (os error 5). Real
-/// files are still copied from wherever they actually live under the tree.
+/// Only regular files and directories are copied; everything else is counted
+/// and SKIPPED, because `fs::copy` refuses it and one such entry used to
+/// abort the whole backup:
+/// - symlinks/junctions (pnpm's node_modules layout: junctions on Windows →
+///   ACCESS_DENIED / os error 5, symlinks on macOS/Linux → "not a regular
+///   file"). Never followed; targets inside the tree are copied wherever
+///   they actually live, targets outside it don't belong in the backup.
+/// - sockets/FIFOs/devices an agent process left in its workspace (Unix).
 fn copy_dir_all(src: &Path, dst: &Path, stats: &mut CopyStats) -> std::io::Result<()> {
     at_path(std::fs::create_dir_all(dst), dst)?;
     for entry in at_path(std::fs::read_dir(src), src)? {
         let entry = at_path(entry, src)?;
         let src_path = entry.path();
         let file_type = at_path(entry.file_type(), &src_path)?;
-        if file_type.is_symlink() {
-            stats.skipped_links += 1;
-        } else if file_type.is_dir() {
+        if file_type.is_dir() {
             copy_dir_all(&src_path, &dst.join(entry.file_name()), stats)?;
-        } else {
+        } else if file_type.is_file() {
             let dst_path = dst.join(entry.file_name());
             stats.bytes += at_path(std::fs::copy(&src_path, &dst_path), &src_path)?;
             stats.files += 1;
+        } else {
+            stats.skipped += 1;
         }
     }
     Ok(())
@@ -228,10 +232,10 @@ pub async fn backup_houston_data() -> Result<BackupResult, String> {
         );
         let mut stats = CopyStats::default();
         copy_dir_all(&source, &dest, &mut stats).map_err(|e| format!("backup copy failed: {e}"))?;
-        if stats.skipped_links > 0 {
+        if stats.skipped > 0 {
             tracing::info!(
-                "[migration] backup skipped {} symlinks/junctions",
-                stats.skipped_links
+                "[migration] backup skipped {} symlinks/special files",
+                stats.skipped
             );
         }
 
@@ -337,7 +341,7 @@ mod tests {
             CopyStats {
                 files: 3,
                 bytes: 20,
-                skipped_links: 0,
+                skipped: 0,
             }
         );
 
@@ -354,12 +358,13 @@ mod tests {
         assert!(dst.join("workspaces/Work/Sales").is_dir());
     }
 
-    /// Symlinks are skipped, not followed — a directory link inside an agent
-    /// workspace (pnpm junction on Windows) used to abort the whole backup
-    /// with ACCESS_DENIED because `fs::copy` can't copy a directory.
+    /// Symlinks and special files are skipped, not copied — a directory link
+    /// inside an agent workspace (pnpm junction on Windows, pnpm symlink on
+    /// macOS) or a leftover socket/FIFO used to abort the whole backup
+    /// because `fs::copy` refuses anything but a regular file.
     #[cfg(unix)]
     #[test]
-    fn copy_dir_all_skips_symlinks() {
+    fn copy_dir_all_skips_symlinks_and_special_files() {
         let src = scratch();
         std::fs::create_dir_all(src.join("workspaces/Work/node_modules/.pnpm/pkg")).unwrap();
         std::fs::write(
@@ -377,6 +382,12 @@ mod tests {
             src.join("workspaces/Work/linked-file.js"),
         )
         .unwrap();
+        // A leftover unix socket/FIFO from some agent process.
+        let mkfifo = std::process::Command::new("mkfifo")
+            .arg(src.join("workspaces/Work/agent.pipe"))
+            .status()
+            .unwrap();
+        assert!(mkfifo.success());
 
         let dst = scratch().join("backup");
         let mut stats = CopyStats::default();
@@ -387,15 +398,16 @@ mod tests {
             CopyStats {
                 files: 1,
                 bytes: 1,
-                skipped_links: 2,
+                skipped: 3,
             }
         );
-        // The real file arrived; the links were left behind, not materialized.
+        // The real file arrived; links and the FIFO were left behind.
         assert!(dst
             .join("workspaces/Work/node_modules/.pnpm/pkg/index.js")
             .is_file());
         assert!(!dst.join("workspaces/Work/node_modules/pkg").exists());
         assert!(!dst.join("workspaces/Work/linked-file.js").exists());
+        assert!(!dst.join("workspaces/Work/agent.pipe").exists());
     }
 
     /// A copy failure must name the offending path — "os error 5" alone is
