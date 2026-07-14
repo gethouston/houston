@@ -3,6 +3,10 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { HttpObjectStore } from "@houston/runtime-client/object-sync";
 import {
+  initEngineSentry,
+  installConsoleCapture,
+} from "@houston/runtime-client/sentry";
+import {
   LOCAL_CAPABILITIES,
   MANAGED_CLOUD_CAPABILITIES,
 } from "../capabilities";
@@ -41,7 +45,31 @@ import { runtimeCommand } from "./runtime-command";
  *   HOUSTON_STORE_URL         managed pod only: object-store gateway base URL
  */
 
-function remoteCredentialConfig(hostTokenEnv: string | undefined) {
+// Crash reporting. Dormant without SENTRY_DSN; a DSN in a source run needs the
+// SENTRY_SEND_IN_DEV opt-in (activation rules: runtime-client/src/sentry/).
+// Console capture mirrors the Rust engine's sentry-tracing wiring — every
+// console.error becomes a Sentry event, info/warn become breadcrumbs — so the
+// beta "no silent failures" error sites all report without per-site changes.
+const sentry = initEngineSentry("host");
+if (sentry) installConsoleCapture(sentry);
+// The credential IS the switch — when it's absent (or dev-suppressed), say so
+// loudly and name the remedy, per the features-default-ON rule.
+console.info(
+  sentry
+    ? "[local-host] crash reporting: on (Sentry)"
+    : process.env.SENTRY_DSN
+      ? "[local-host] crash reporting: off (dev run; set SENTRY_SEND_IN_DEV=1 to send)"
+      : "[local-host] crash reporting: off (no SENTRY_DSN)",
+);
+
+/** Log a fatal config/boot error, deliver it, and exit non-zero. */
+async function fatal(...message: unknown[]): Promise<never> {
+  console.error(...message);
+  await sentry?.flush();
+  process.exit(1);
+}
+
+async function remoteCredentialConfig(hostTokenEnv: string | undefined) {
   const url = process.env.HOUSTON_CREDENTIALS_URL;
   const orgSlug = process.env.HOUSTON_ORG_SLUG;
   const agentSlug = process.env.HOUSTON_AGENT_SLUG;
@@ -54,10 +82,9 @@ function remoteCredentialConfig(hostTokenEnv: string | undefined) {
     // read as an org-wide logout, and a legacy pod would even start rotating
     // refresh tokens locally against the gateway's rotation. Die loudly so the
     // pod restarts into a fixed spec instead of degrading silently.
-    console.error(
+    return fatal(
       "[local-host] incomplete managed credential gateway env: set HOUSTON_CREDENTIALS_URL, HOUSTON_ORG_SLUG, HOUSTON_AGENT_SLUG, and HOUSTON_HOST_TOKEN together.",
     );
-    process.exit(1);
   }
   return undefined;
 }
@@ -72,16 +99,15 @@ function optionalPositiveNumber(name: string): number | undefined {
   return value;
 }
 
-function storeSyncConfig(hostTokenEnv: string | undefined) {
+async function storeSyncConfig(hostTokenEnv: string | undefined) {
   const url = process.env.HOUSTON_STORE_URL;
   if (!url) return undefined;
   const orgSlug = process.env.HOUSTON_ORG_SLUG;
   const agentSlug = process.env.HOUSTON_AGENT_SLUG;
   if (!orgSlug || !agentSlug || !hostTokenEnv) {
-    console.error(
+    return fatal(
       "[local-host] incomplete managed object-store env: set HOUSTON_STORE_URL, HOUSTON_ORG_SLUG, HOUSTON_AGENT_SLUG, and HOUSTON_HOST_TOKEN together.",
     );
-    process.exit(1);
   }
   const baseUrl = `${url.replace(/\/+$/, "")}/v1/pod/store/${encodeURIComponent(orgSlug)}/${encodeURIComponent(agentSlug)}`;
   const hydrateMaxMb = optionalPositiveNumber("HOUSTON_HYDRATE_MAX_MB");
@@ -97,7 +123,7 @@ function storeSyncConfig(hostTokenEnv: string | undefined) {
 const houstonHome = process.env.HOUSTON_HOME || join(homedir(), ".houston");
 const hostTokenEnv = process.env.HOUSTON_HOST_TOKEN;
 const hostToken = hostTokenEnv || randomBytes(32).toString("hex");
-const remoteGateway = remoteCredentialConfig(hostTokenEnv);
+const remoteGateway = await remoteCredentialConfig(hostTokenEnv);
 const host = buildLocalHost({
   workspacesRoot:
     process.env.HOUSTON_WORKSPACES_ROOT || join(houstonHome, "workspaces"),
@@ -145,7 +171,7 @@ const host = buildLocalHost({
   // Migration-source spawns (HOU-719): serve + migrate on boot, but never fire
   // routines or churn watch events while the cloud app reads the old tree.
   passive: process.env.HOUSTON_PASSIVE === "1",
-  storeSync: storeSyncConfig(hostTokenEnv),
+  storeSync: await storeSyncConfig(hostTokenEnv),
   // Platform-mode integrations: desktops get HOUSTON_INTEGRATIONS_URL (the
   // cloud gateway holding Houston's Composio key); self-host + the managed pod
   // set their own COMPOSIO_API_KEY and go direct. Neither → integrations off.
@@ -179,8 +205,7 @@ try {
 } catch (err) {
   // Hydration is a boot invariant in store-backed mode. Exit non-zero so the
   // orchestrator retries with a fresh emptyDir; never linger unready or sync it.
-  console.error("[local-host] startup failed:", err);
-  process.exit(1);
+  await fatal("[local-host] startup failed:", err);
 }
 
 let shuttingDown = false;
@@ -191,7 +216,12 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) {
     void host
       .stop()
       .catch((err) => console.error("[local-host] shutdown failed:", err))
-      .finally(() => process.exit(0));
+      .finally(async () => {
+        // Deliver anything still queued (e.g. a shutdown-failure event). A
+        // clean stop has an empty queue and this resolves immediately.
+        await sentry?.flush(500);
+        process.exit(0);
+      });
   });
 }
 

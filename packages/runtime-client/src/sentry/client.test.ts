@@ -1,0 +1,147 @@
+import type { Event } from "@sentry/core";
+import { createTransport } from "@sentry/core";
+import { describe, expect, it } from "vitest";
+import type { EngineSentryConfig } from "./activation";
+import { createEngineSentry, type EngineSentry } from "./client";
+import { installConsoleCapture } from "./console-capture";
+
+const CONFIG: EngineSentryConfig = {
+  dsn: "https://key@o1.ingest.sentry.io/1",
+  environment: "production",
+  release: "houston-app@0.5.9",
+  deployment: "managed-cloud",
+  tags: { org_slug: "acme", agent_slug: "Workspace%2FMax" },
+};
+
+/** A sentry client whose envelopes land in `events` instead of the network. */
+function testSentry(config: EngineSentryConfig = CONFIG): {
+  sentry: EngineSentry;
+  events: Event[];
+} {
+  const events: Event[] = [];
+  const sentry = createEngineSentry("host", config, (options) =>
+    createTransport(options, async (request) => {
+      // Envelope = newline-separated JSON: header, then (item header, item)*.
+      const lines = (request.body as string).split("\n");
+      for (let i = 1; i < lines.length; i += 2) {
+        const header = JSON.parse(lines[i] ?? "{}");
+        if (header.type === "event") {
+          events.push(JSON.parse(lines[i + 1] ?? "{}"));
+        }
+      }
+      return { statusCode: 200 };
+    }),
+  );
+  return { sentry, events };
+}
+
+describe("createEngineSentry", () => {
+  it("captures an exception with stack, tags, and identity", async () => {
+    const { sentry, events } = testSentry();
+    const id = sentry.captureException(new Error("pod boom"), {
+      source: "test",
+    });
+    await sentry.flush();
+
+    expect(id).toMatch(/^[0-9a-f]{32}$/);
+    expect(events).toHaveLength(1);
+    const event = events[0] as Event;
+    expect(event.exception?.values?.[0]).toMatchObject({
+      type: "Error",
+      value: "pod boom",
+    });
+    expect(
+      event.exception?.values?.[0]?.stacktrace?.frames?.length,
+    ).toBeGreaterThan(0);
+    expect(event.tags).toMatchObject({
+      runtime: "engine",
+      engine_process: "host",
+      deployment: "managed-cloud",
+      org_slug: "acme",
+      agent_slug: "Workspace%2FMax",
+    });
+    expect(event.release).toBe("houston-app@0.5.9");
+    expect(event.environment).toBe("production");
+    expect(event.extra).toMatchObject({ source: "test" });
+  });
+
+  it("captureLog: ERROR with an Error value becomes an exception event", async () => {
+    const { sentry, events } = testSentry();
+    sentry.captureLog("ERROR", [
+      "[local-host] uncaughtException:",
+      new Error("kaput"),
+    ]);
+    await sentry.flush();
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.exception?.values?.[0]?.value).toBe("kaput");
+    expect(events[0]?.extra?.log_message).toContain("uncaughtException");
+  });
+
+  it("captureLog: bare-string ERROR becomes a message event", async () => {
+    const { sentry, events } = testSentry();
+    sentry.captureLog("ERROR", ["settle write failed after %d tries", 3]);
+    await sentry.flush();
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.message).toBe("settle write failed after 3 tries");
+    expect(events[0]?.level).toBe("error");
+  });
+
+  it("captureLog: INFO/WARN are breadcrumbs riding the next event, not events", async () => {
+    const { sentry, events } = testSentry();
+    sentry.captureLog("INFO", ["booting agent runtime"]);
+    sentry.captureLog("WARN", ["provider slow"]);
+    await sentry.flush();
+    expect(events).toHaveLength(0);
+
+    sentry.captureLog("ERROR", ["it broke"]);
+    await sentry.flush();
+    const crumbs = events[0]?.breadcrumbs ?? [];
+    expect(crumbs.map((b) => b.message)).toEqual([
+      "booting agent runtime",
+      "provider slow",
+    ]);
+    expect(crumbs[1]?.level).toBe("warning");
+  });
+
+  it("redacts token=… credentials from captured lines (the host banner)", async () => {
+    const { sentry, events } = testSentry();
+    sentry.captureLog("INFO", [
+      "HOUSTON_HOST_LISTENING port=4318 token=deadbeefcafe",
+    ]);
+    sentry.captureLog("ERROR", ["request failed with api_key=sk-secret-123"]);
+    await sentry.flush();
+
+    expect(events[0]?.message).toBe("request failed with api_key=[redacted]");
+    expect(events[0]?.breadcrumbs?.[0]?.message).toBe(
+      "HOUSTON_HOST_LISTENING port=4318 token=[redacted]",
+    );
+  });
+
+  it("installConsoleCapture keeps printing and reports errors once", async () => {
+    const { sentry, events } = testSentry();
+    const printed: unknown[][] = [];
+    const fakeConsole = {
+      debug: (...v: unknown[]) => printed.push(v),
+      error: (...v: unknown[]) => printed.push(v),
+      info: (...v: unknown[]) => printed.push(v),
+      log: (...v: unknown[]) => printed.push(v),
+      warn: (...v: unknown[]) => printed.push(v),
+    } as unknown as Console;
+
+    const restore = installConsoleCapture(sentry, fakeConsole);
+    fakeConsole.info("hello");
+    fakeConsole.error("boom", new Error("from console"));
+    await sentry.flush();
+
+    expect(printed).toEqual([["hello"], ["boom", new Error("from console")]]);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.exception?.values?.[0]?.value).toBe("from console");
+
+    restore();
+    fakeConsole.error("after restore");
+    await sentry.flush();
+    expect(events).toHaveLength(1);
+  });
+});

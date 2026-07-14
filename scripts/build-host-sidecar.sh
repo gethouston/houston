@@ -107,7 +107,10 @@ OUT="$OUT_DIR/houston-host-${TRIPLE}${EXT}"
 
 mkdir -p "$OUT_DIR"
 echo "=== bun build --compile ($BUN_TARGET) → $OUT ==="
-bun build --compile --target="$BUN_TARGET" "$ENTRY" --outfile "$OUT"
+# --sourcemap embeds the map in the binary so runtime stack traces (and the
+# Sentry events built from them) point at the original TS files instead of
+# bundled offsets. No Sentry-side upload needed — frames arrive readable.
+bun build --compile --sourcemap --target="$BUN_TARGET" "$ENTRY" --outfile "$OUT"
 chmod +x "$OUT"
 
 SIZE="$(du -h "$OUT" | cut -f1)"

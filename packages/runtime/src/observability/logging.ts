@@ -21,6 +21,12 @@ export interface LoggerOptions {
   runId?: string;
   now?: () => Date;
   sinks?: LogSink[];
+  /**
+   * Forward each entry that passed the level filter, pre-formatting — the
+   * crash-reporting feed (ERROR → Sentry event, others → breadcrumb). Must
+   * never throw; the Sentry module's capture paths are self-guarded.
+   */
+  capture?: (level: LogLevel, values: unknown[]) => void;
 }
 
 export interface RuntimeLogger {
@@ -100,6 +106,7 @@ export function createRuntimeLogger(opts: LoggerOptions = {}): RuntimeLogger {
       message,
     });
     for (const sink of sinks) sink.write(line);
+    opts.capture?.(level, message);
   }
 
   return {
