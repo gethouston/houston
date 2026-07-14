@@ -220,6 +220,21 @@
   "filesUpdated_one": "1 file updated",
   "filesUpdated_other": "{{count}} files updated",
   "contextCompacted": "Earlier conversation summarized so the chat can keep going",
+  "conversationMap": {
+    "title": "Conversation map",
+    "view": "View map",
+    "hide": "Hide map",
+    "backToLatest": "Back to latest",
+    "empty": "This conversation does not have enough moments to navigate yet.",
+    "selected": "Selected message",
+    "messagePosition": "Message {{position}}",
+    "types": {
+      "user": "You",
+      "assistant": "Agent response",
+      "artifact": "Files updated",
+      "error": "Something needs attention"
+    }
+  },
   "providerSwitch": {
     "title": "Switch to {{provider}}?",
     "replayBody": "Switching brings this whole conversation over to {{provider}} so it can continue with full context. Reloading the conversation uses a considerable amount of tokens, and more the larger the conversation is right now. Continue?",

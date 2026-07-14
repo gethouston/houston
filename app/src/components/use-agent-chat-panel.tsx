@@ -222,6 +222,8 @@ interface AgentChatPanelProps {
   thinkingIndicator: ChatPanelProps["thinkingIndicator"];
   renderTurnSummary: ChatPanelProps["renderTurnSummary"];
   renderSystemMessage: AIBoardProps["renderSystemMessage"];
+  /** Props-only copy and metadata-only analytics for Conversation Map. */
+  conversationMap: AIBoardProps["conversationMap"];
   mapFeedItems: AIBoardProps["mapFeedItems"];
   afterMessages: AIBoardProps["afterMessages"];
   /** Hidden picker dialog mounted in the consumer. */
@@ -260,6 +262,60 @@ export function useAgentChatPanel({
   const { data: session } = useSession();
   const currentUserId = session?.uid;
   const authorLabels = undefined;
+
+  const conversationMap = useMemo<
+    NonNullable<AIBoardProps["conversationMap"]>
+  >(() => {
+    const baseProps = (conversationLength: number) => {
+      if (!agent || !selectedSessionKey) return undefined;
+      return {
+        agent_id: agent.id,
+        conversation_id: selectedSessionKey,
+        conversation_length: conversationLength,
+        surface: osIsTauri() ? "desktop" : "web",
+      };
+    };
+    return {
+      labels: {
+        title: t("chat:conversationMap.title"),
+        view: t("chat:conversationMap.view"),
+        hide: t("chat:conversationMap.hide"),
+        backToLatest: t("chat:conversationMap.backToLatest"),
+        empty: t("chat:conversationMap.empty"),
+        selected: t("chat:conversationMap.selected"),
+        messagePosition: (position: number) =>
+          t("chat:conversationMap.messagePosition", { position }),
+        types: {
+          user: t("chat:conversationMap.types.user"),
+          assistant: t("chat:conversationMap.types.assistant"),
+          artifact: t("chat:conversationMap.types.artifact"),
+          error: t("chat:conversationMap.types.error"),
+        },
+      },
+      onOpenChange: (open, conversationLength) => {
+        const props = baseProps(conversationLength);
+        if (!props) return;
+        analytics.track(
+          open ? "conversation_map_opened" : "conversation_map_closed",
+          props,
+        );
+      },
+      onMomentClick: (moment, conversationLength) => {
+        const props = baseProps(conversationLength);
+        if (!props) return;
+        analytics.track("conversation_map_moment_clicked", {
+          ...props,
+          moment_type: moment.type,
+          message_position: moment.position,
+        });
+      },
+      onBackToLatest: (conversationLength) => {
+        const props = baseProps(conversationLength);
+        if (!props) return;
+        analytics.track("conversation_map_back_to_latest_clicked", props);
+      },
+    };
+  }, [agent, selectedSessionKey, t]);
 
   // ── Dictation (desktop-only voice typing) ──────────────────────────────
   // Transcript text is appended to the SAME draft store AIBoard's
@@ -2000,6 +2056,7 @@ export function useAgentChatPanel({
     thinkingIndicator,
     renderTurnSummary,
     renderSystemMessage,
+    conversationMap,
     mapFeedItems,
     afterMessages,
     pickerDialog,

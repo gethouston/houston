@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { ToolsAndCardsProps } from "./chat-helpers";
-import type { ChatMessagesProps } from "./chat-messages";
+import type { ChatMessagesProps } from "./chat-messages-types";
 import type { DictationControl } from "./dictation-types";
 import type { ChatMessage } from "./feed-to-messages";
 import type {
@@ -108,4 +108,6 @@ export interface ChatPanelProps {
   currentUserId?: ChatMessagesProps["currentUserId"];
   /** Localized author-attribution labels. See `ChatAuthorLabels`. */
   authorLabels?: ChatMessagesProps["authorLabels"];
+  /** Props-only configuration for the optional Conversation Map. */
+  conversationMap?: ChatMessagesProps["conversationMap"];
 }

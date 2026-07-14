@@ -117,6 +117,8 @@ export interface AIBoardProps {
     | ((ctx: { sessionKey: string; feedItems: FeedItem[] }) => ReactNode);
   /** Custom renderer for user messages. Forwarded to ChatPanel. */
   renderUserMessage?: import("@houston-ai/chat").ChatPanelProps["renderUserMessage"];
+  /** Props-only configuration for long-conversation navigation. */
+  conversationMap?: ChatPanelProps["conversationMap"];
   /** Emitted by ChatPanel to surface short notices to the user
    *  (e.g. duplicate-file drop). Forwarded as-is; app decides display. */
   onNotice?: (message: string) => void;
@@ -319,6 +321,7 @@ export function AIBoard({
   mapFeedItems,
   afterMessages,
   renderUserMessage,
+  conversationMap,
   onNotice,
   prepareAttachments,
   onAttachmentRejections,
@@ -764,6 +767,7 @@ export function AIBoard({
           renderUserMessage={renderUserMessage}
           currentUserId={currentUserId}
           authorLabels={authorLabels}
+          conversationMap={conversationMap}
           dictation={dictation}
           afterMessages={renderedAfterMessages}
           onNotice={onNotice}

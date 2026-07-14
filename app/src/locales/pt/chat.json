@@ -220,6 +220,21 @@
   "filesUpdated_one": "1 arquivo atualizado",
   "filesUpdated_other": "{{count}} arquivos atualizados",
   "contextCompacted": "Resumimos a conversa anterior para o chat poder continuar",
+  "conversationMap": {
+    "title": "Mapa da conversa",
+    "view": "Ver mapa",
+    "hide": "Ocultar mapa",
+    "backToLatest": "Voltar ao final",
+    "empty": "Esta conversa ainda não tem momentos suficientes para navegar.",
+    "selected": "Mensagem selecionada",
+    "messagePosition": "Mensagem {{position}}",
+    "types": {
+      "user": "Você",
+      "assistant": "Resposta do agente",
+      "artifact": "Arquivos atualizados",
+      "error": "Algo precisa de atenção"
+    }
+  },
   "providerSwitch": {
     "title": "Mudar para {{provider}}?",
     "replayBody": "Mudar leva toda esta conversa para o {{provider}} continuar com todo o contexto. Recarregar a conversa usa uma quantidade considerável de tokens, e mais quanto maior a conversa estiver agora. Continuar?",

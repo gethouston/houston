@@ -83,6 +83,10 @@ export type AnalyticsEventName =
   | "chat_message_sent"
   | "chat_message_received"
   | "mission_created"
+  | "conversation_map_opened"
+  | "conversation_map_closed"
+  | "conversation_map_moment_clicked"
+  | "conversation_map_back_to_latest_clicked"
   // Feature adoption
   | "integration_connected"
   | "integration_disconnected"
@@ -128,6 +132,12 @@ type AnalyticsProperty =
   | "locale"
   | "detected_locale"
   | "step"
+  | "agent_id"
+  | "conversation_id"
+  | "moment_type"
+  | "message_position"
+  | "conversation_length"
+  | "surface"
   // Cloud migration (payload sizes, where already known)
   | "bytes"
   | "selected_segment"
@@ -166,6 +176,12 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "to_version",
   "locale",
   "step",
+  "agent_id",
+  "conversation_id",
+  "moment_type",
+  "message_position",
+  "conversation_length",
+  "surface",
   "bytes",
   "selected_segment",
   "source_screen",

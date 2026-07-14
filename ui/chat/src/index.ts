@@ -218,6 +218,16 @@ export {
   DEFAULT_SUGGEST_REUSABLE_LABELS,
   resolveSuggestReusableSaveLabel,
 } from "./chat-suggest-reusable-card-model";
+export type {
+  ConversationMapLabels,
+  ConversationMapProps,
+} from "./conversation-map";
+export { ConversationMap } from "./conversation-map";
+export type {
+  ConversationMoment,
+  ConversationMomentType,
+} from "./conversation-map-model";
+export { deriveConversationMoments } from "./conversation-map-model";
 // === Dictation ===
 export type {
   DictationControl,

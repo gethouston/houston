@@ -228,3 +228,31 @@ test("sends a follow-up inside an existing mission", async ({ page }) => {
     timeout: 15_000,
   });
 });
+
+test("navigates a long conversation with the conversation map", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByText("Plan a trip to Tokyo").click();
+
+  const composer = page.getByPlaceholder("Send a follow-up...");
+  await composer.fill("show me the budget");
+  await composer.press("Enter");
+  await expect(page.getByText(/You said: .show me the budget./)).toBeVisible({
+    timeout: 15_000,
+  });
+
+  await page.getByRole("button", { name: "View map" }).click();
+  const map = page.getByRole("navigation", { name: "Conversation map" });
+  await expect(map).toBeVisible();
+
+  const firstMoment = map.getByRole("button").first();
+  await firstMoment.click();
+  await expect(firstMoment).toHaveAttribute("aria-current", "true");
+
+  await page.getByRole("button", { name: "Back to latest" }).click();
+  await expect(map.getByRole("button").last()).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+});

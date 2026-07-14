@@ -68,6 +68,7 @@ export function ChatPanel({
   dictation,
   currentUserId,
   authorLabels,
+  conversationMap,
 }: ChatPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const status = statusProp ?? deriveStatus(feedItems, isLoading);
@@ -165,6 +166,7 @@ export function ChatPanel({
           renderLink={renderLink}
           currentUserId={currentUserId}
           authorLabels={authorLabels}
+          conversationMap={conversationMap}
         />
       ) : (
         <div className="flex-1 min-h-0 flex items-center justify-center">
