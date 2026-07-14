@@ -2,21 +2,33 @@ export const ONBOARDING_SEGMENT_PREF_KEY = "houston_onboarding_segment";
 export const ONBOARDING_SEGMENT_SOURCE_SCREEN = "first_run_segment";
 
 export const ONBOARDING_SEGMENTS = [
-  "business_owner",
-  "growth",
-  "hobbyist",
-  "consulting",
-  "ecommerce",
-  "operations",
+  "marketing",
+  "product",
   "legal",
-  "finance_accounting",
-  "other",
+  "engineering",
+  "student",
+  "design",
+  "operations",
+  "people_hr",
+  "data_science",
+  "finance",
+  "sales",
+  "something_else",
 ] as const;
 
 export type OnboardingSegment = (typeof ONBOARDING_SEGMENTS)[number];
 
+// Persisted when the user dismisses the question instead of answering it.
+// A first-class stored value (not an absent pref) so the screen never
+// re-prompts a skipper, and analytics can cohort them.
+export const ONBOARDING_SEGMENT_SKIPPED = "skipped";
+
+export type OnboardingSegmentChoice =
+  | OnboardingSegment
+  | typeof ONBOARDING_SEGMENT_SKIPPED;
+
 export interface OnboardingSegmentPreference {
-  segment: OnboardingSegment;
+  segment: OnboardingSegmentChoice;
   selectedAt: string;
   sourceScreen: typeof ONBOARDING_SEGMENT_SOURCE_SCREEN;
 }
@@ -30,6 +42,12 @@ export function isOnboardingSegment(
   );
 }
 
+export function isOnboardingSegmentChoice(
+  value: unknown,
+): value is OnboardingSegmentChoice {
+  return value === ONBOARDING_SEGMENT_SKIPPED || isOnboardingSegment(value);
+}
+
 export function parseOnboardingSegmentPreference(
   raw: string | null,
 ): OnboardingSegmentPreference | null {
@@ -39,7 +57,7 @@ export function parseOnboardingSegmentPreference(
     if (!parsed || typeof parsed !== "object") return null;
     const record = parsed as Partial<OnboardingSegmentPreference>;
     if (
-      isOnboardingSegment(record.segment) &&
+      isOnboardingSegmentChoice(record.segment) &&
       typeof record.selectedAt === "string" &&
       record.sourceScreen === ONBOARDING_SEGMENT_SOURCE_SCREEN
     ) {
@@ -56,7 +74,7 @@ export function parseOnboardingSegmentPreference(
 }
 
 export function createOnboardingSegmentPreference(
-  segment: OnboardingSegment,
+  segment: OnboardingSegmentChoice,
 ): OnboardingSegmentPreference {
   return {
     segment,

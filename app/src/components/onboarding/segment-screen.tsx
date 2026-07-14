@@ -1,3 +1,5 @@
+import { Button, cn } from "@houston-ai/core";
+import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
@@ -7,22 +9,24 @@ import {
   ONBOARDING_SEGMENTS,
   type OnboardingSegment,
 } from "../../lib/onboarding-segment";
+import { HoustonLogo } from "../shell/experience-card";
 import { SpaceScreen } from "../space/space-screen";
-import { OptionCard, SetupCard } from "./setup-card";
+import { SetupCard } from "./setup-card";
 
 interface SegmentOption {
   id: OnboardingSegment;
   label: string;
-  description: string;
 }
 
 interface OnboardingSegmentScreenProps {
   onContinue: (segment: OnboardingSegment) => Promise<void>;
+  onSkip: () => Promise<void>;
   saving: boolean;
 }
 
 export function OnboardingSegmentScreen({
   onContinue,
+  onSkip,
   saving,
 }: OnboardingSegmentScreenProps) {
   const { t } = useTranslation(["setup", "common"]);
@@ -38,13 +42,9 @@ export function OnboardingSegmentScreen({
   const options = useMemo(() => {
     const labels = t("setup:onboardingSegment.options", {
       returnObjects: true,
-    }) as Record<OnboardingSegment, { label: string; description: string }>;
+    }) as Record<OnboardingSegment, string>;
     return ONBOARDING_SEGMENTS.map((id): SegmentOption => {
-      return {
-        id,
-        label: labels[id].label,
-        description: labels[id].description,
-      };
+      return { id, label: labels[id] };
     });
   }, [t]);
 
@@ -71,37 +71,122 @@ export function OnboardingSegmentScreen({
     }
   };
 
+  const skip = async () => {
+    if (saving) return;
+    setError(null);
+    try {
+      await onSkip();
+      // Tracked AFTER the persist succeeds, mirroring `continued`: the event
+      // means "this install left the screen segmented as a skipper", not
+      // "the user clicked skip and maybe saw an error".
+      analytics.track("onboarding_segment_skipped", {
+        source_screen: ONBOARDING_SEGMENT_SOURCE_SCREEN,
+      });
+    } catch (err) {
+      setError(genericErrorDescription("save_onboarding_segment", err));
+    }
+  };
+
+  // Centered hero layout (logo → question → pill grid → Continue), modeled on
+  // the ChatGPT desktop segmentation screen but on Houston's space-glass card.
+  // The footer lives inside the children so the Continue button can sit
+  // centered under the grid instead of in SetupCard's corner footer.
   return (
     <SpaceScreen>
-      <SetupCard
-        onSpace
-        eyebrow={t("setup:onboardingSegment.eyebrow")}
-        title={t("setup:onboardingSegment.title")}
-        subtitle={t("setup:onboardingSegment.subtitle")}
-        onNext={() => void submit()}
-        nextLabel={t("common:actions.continue")}
-        nextDisabled={!selected}
-        nextLoading={saving}
-        helper={t("setup:onboardingSegment.helper")}
-      >
-        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
-          {options.map((option) => (
-            <OptionCard
-              key={option.id}
-              label={option.label}
-              description={option.description}
-              selected={selected === option.id}
-              onSelect={() => choose(option.id)}
-              disabled={saving}
-            />
-          ))}
+      <SetupCard onSpace>
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8 text-center">
+          <div className="flex flex-col items-center gap-4">
+            <HoustonLogo size={52} />
+            <div className="flex flex-col items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {t("setup:onboardingSegment.title")}
+              </h1>
+              <p className="max-w-md text-sm text-ink-muted">
+                {t("setup:onboardingSegment.subtitle")}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid w-full max-w-xl grid-cols-3 gap-2.5">
+            {options.map((option) => (
+              <SegmentPill
+                key={option.id}
+                label={option.label}
+                selected={selected === option.id}
+                onSelect={() => choose(option.id)}
+                disabled={saving}
+              />
+            ))}
+          </div>
+
           {error && (
-            <p className="mt-3 text-xs text-danger" role="alert">
+            <p className="text-xs text-danger" role="alert">
               {error}
             </p>
           )}
+
+          <div className="flex flex-col items-center gap-3">
+            <Button
+              type="button"
+              size="lg"
+              className="min-w-48 rounded-full"
+              onClick={() => void submit()}
+              disabled={!selected || saving}
+            >
+              {saving && <Loader2 className="size-4 animate-spin" />}
+              {t("common:actions.continue")}
+            </Button>
+            <p className="text-xs text-ink-muted">
+              {t("setup:onboardingSegment.helper")}
+            </p>
+            <button
+              type="button"
+              onClick={() => void skip()}
+              disabled={saving}
+              className="text-xs text-ink-muted underline underline-offset-2 transition-colors outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {t("setup:onboardingSegment.skip")}
+            </button>
+          </div>
         </div>
       </SetupCard>
     </SpaceScreen>
+  );
+}
+
+/**
+ * One choice in the segment grid: a bordered pill with a centered label, like
+ * the reference design. Selection is Houston-monochrome and always visible
+ * without hovering — the ink border plus a faint ink wash carry it (no
+ * hover-only affordances, no decorative accent color).
+ */
+function SegmentPill({
+  label,
+  selected,
+  onSelect,
+  disabled,
+}: {
+  label: string;
+  selected: boolean;
+  onSelect: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={disabled}
+      aria-pressed={selected}
+      className={cn(
+        "rounded-xl border px-3 py-3 text-center text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
+        disabled && "cursor-not-allowed opacity-50",
+        selected
+          ? "border-ink bg-ink/[0.08] font-medium text-ink"
+          : "border-ink/15 text-ink",
+        !disabled && !selected && "hover:bg-ink/[0.04]",
+      )}
+    >
+      {label}
+    </button>
   );
 }

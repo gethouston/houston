@@ -21,43 +21,20 @@
     "title": "¿Cuál describe mejor tu trabajo?",
     "subtitle": "Elige una opción para que Houston adapte agentes, plantillas y recomendaciones para ti.",
     "helper": "Puedes cambiarlo más tarde a medida que Houston aprenda qué te ayuda.",
+    "skip": "Omitir por ahora",
     "options": {
-      "business_owner": {
-        "label": "Propietario de negocio",
-        "description": "Diriges una empresa o administras todo el negocio."
-      },
-      "growth": {
-        "label": "Crecimiento",
-        "description": "Trabajas en marketing, ventas o adquisición de clientes."
-      },
-      "hobbyist": {
-        "label": "Aficionado",
-        "description": "Estás explorando agentes para proyectos personales."
-      },
-      "consulting": {
-        "label": "Consultoría",
-        "description": "Atiendes clientes y gestionas entregables."
-      },
-      "ecommerce": {
-        "label": "Comercio electrónico",
-        "description": "Vendes productos en línea o administras una tienda."
-      },
-      "operations": {
-        "label": "Operaciones",
-        "description": "Coordinas sistemas, procesos y trabajo diario."
-      },
-      "legal": {
-        "label": "Legal",
-        "description": "Gestionas contratos, cumplimiento u operaciones legales."
-      },
-      "finance_accounting": {
-        "label": "Finanzas y contabilidad",
-        "description": "Gestionas libros, reportes o flujos financieros."
-      },
-      "other": {
-        "label": "Otros",
-        "description": "Ninguna opción describe bien tu trabajo."
-      }
+      "marketing": "Marketing",
+      "product": "Producto",
+      "legal": "Legal",
+      "engineering": "Ingeniería",
+      "student": "Estudiante",
+      "design": "Diseño",
+      "operations": "Operaciones",
+      "people_hr": "Personas y RR. HH.",
+      "data_science": "Ciencia de datos",
+      "finance": "Finanzas",
+      "sales": "Ventas",
+      "something_else": "Otra cosa"
     }
   },
   "tutorial": {

@@ -49,11 +49,11 @@ function hostedClient() {
 }
 
 test("hosted getPreference reads the segment from the control plane", async () => {
-  const calls = stubFetch(json(200, { value: "business_owner" }));
+  const calls = stubFetch(json(200, { value: "marketing" }));
 
   await expect(
     hostedClient().getPreference("houston_onboarding_segment"),
-  ).resolves.toBe("business_owner");
+  ).resolves.toBe("marketing");
 
   expect(calls[0].url).toBe(`http://host${PREF_PATH}`);
 });

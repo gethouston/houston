@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createOnboardingSegmentPreference,
   ONBOARDING_SEGMENT_PREF_KEY,
-  type OnboardingSegment,
+  type OnboardingSegmentChoice,
   type OnboardingSegmentPreference,
   parseOnboardingSegmentPreference,
 } from "../lib/onboarding-segment";
@@ -23,7 +23,7 @@ export function useOnboardingSegment(enabled: boolean) {
   });
 
   const mutation = useMutation({
-    mutationFn: async (segment: OnboardingSegment) => {
+    mutationFn: async (segment: OnboardingSegmentChoice) => {
       const record = createOnboardingSegmentPreference(segment);
       await tauriPreferences.set(
         ONBOARDING_SEGMENT_PREF_KEY,

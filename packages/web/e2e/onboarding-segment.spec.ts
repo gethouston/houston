@@ -19,10 +19,10 @@ test("first-run segment screen persists the choice and does not reappear", async
   await expect(
     page.getByRole("heading", { name: "What best describes your work?" }),
   ).toBeVisible();
+  await expect(page.getByRole("button", { name: /Marketing/ })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: /Business Owner/ }),
+    page.getByRole("button", { name: /Something else/ }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: /Other/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
 
   await page.getByRole("button", { name: /Operations/ }).click();

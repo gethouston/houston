@@ -3,15 +3,22 @@ import { describe, it } from "node:test";
 import {
   createOnboardingSegmentPreference,
   isOnboardingSegment,
+  isOnboardingSegmentChoice,
+  ONBOARDING_SEGMENT_SKIPPED,
   ONBOARDING_SEGMENT_SOURCE_SCREEN,
   parseOnboardingSegmentPreference,
 } from "../src/lib/onboarding-segment.ts";
 
 describe("onboarding segment preference", () => {
   it("accepts only known segment ids", () => {
-    strictEqual(isOnboardingSegment("business_owner"), true);
-    strictEqual(isOnboardingSegment("finance_accounting"), true);
+    strictEqual(isOnboardingSegment("marketing"), true);
+    strictEqual(isOnboardingSegment("data_science"), true);
     strictEqual(isOnboardingSegment("founder_free_text"), false);
+    // "skipped" is a persistable CHOICE, never one of the segment answers.
+    strictEqual(isOnboardingSegment(ONBOARDING_SEGMENT_SKIPPED), false);
+    strictEqual(isOnboardingSegmentChoice(ONBOARDING_SEGMENT_SKIPPED), true);
+    strictEqual(isOnboardingSegmentChoice("operations"), true);
+    strictEqual(isOnboardingSegmentChoice("founder_free_text"), false);
   });
 
   it("parses a valid persisted preference", () => {
@@ -40,6 +47,16 @@ describe("onboarding segment preference", () => {
         }),
       ),
       null,
+    );
+  });
+
+  it("round-trips a skipped answer so the screen never re-prompts", () => {
+    const record = createOnboardingSegmentPreference(
+      ONBOARDING_SEGMENT_SKIPPED,
+    );
+    deepStrictEqual(
+      parseOnboardingSegmentPreference(JSON.stringify(record)),
+      record,
     );
   });
 

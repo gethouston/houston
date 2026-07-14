@@ -37,6 +37,7 @@ export type AnalyticsEventName =
   | "onboarding_segment_screen_viewed"
   | "onboarding_segment_selected"
   | "onboarding_segment_continued"
+  | "onboarding_segment_skipped"
   // One-time "reconnect your AI" moment after upgrading from the legacy build.
   | "migration_reconnect_completed"
   // First-run cloud-migration wizard (HOU-719): the cloud desktop build offers
@@ -369,6 +370,20 @@ export const analytics = {
       // users" without a complex insight.
       if (event === "chat_message_sent") {
         posthog.people.set({ is_activated: true });
+      }
+      // Stamp the onboarding answer as a person property so every cohort,
+      // funnel, and breakdown can slice by segment without joining back to
+      // the one-off event. Set on the confirmed answer (Continue), not the
+      // exploratory clicks. Skippers get "skipped" so they form their own
+      // cohort instead of vanishing into "no property".
+      if (
+        event === "onboarding_segment_continued" &&
+        typeof props?.selected_segment === "string"
+      ) {
+        posthog.people.set({ onboarding_segment: props.selected_segment });
+      }
+      if (event === "onboarding_segment_skipped") {
+        posthog.people.set({ onboarding_segment: "skipped" });
       }
     } catch {
       // Analytics unavailable
