@@ -7,7 +7,7 @@ import {
   resolveAgentColor,
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
+import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { OrgAgentCard } from "./org-agent-card";
@@ -20,19 +20,22 @@ import type { OrgTabProps } from "./organization-view";
  * Organization > Agents: a grid of the agents the caller can see (owner: every
  * org agent; admin: the ones assigned to them — the agent list query already
  * reflects this). Each tile shows who manages the agent, how many people can
- * use it, and when it was last opened; clicking it opens the agent. Fresh orgs
- * get a "create your first agent" empty state.
+ * use it, and when it was last opened; clicking it drills into the agent's
+ * admin detail (its stacked access controls, `onOpenAgent`) — staying inside
+ * Admin rather than leaving for the agent chat. Fresh orgs get a "create your
+ * first agent" empty state.
  *
  * The pinned AI model is intentionally omitted: it lives in each agent's config
  * file, not on the agent-list row, so surfacing it would cost one config fetch
  * per tile. We show managers + access + last-opened, which the list already
  * carries. Last-opened is the caller's own `lastOpenedAt`.
  */
-export default function AgentsTab({ ctx }: OrgTabProps) {
+export default function AgentsTab({
+  ctx,
+  onOpenAgent,
+}: OrgTabProps & { onOpenAgent: (agent: Agent) => void }) {
   const { t, i18n } = useTranslation("teams");
   const agents = useAgentStore((s) => s.agents);
-  const setCurrentAgent = useAgentStore((s) => s.setCurrent);
-  const setViewMode = useUIStore((s) => s.setViewMode);
   const setCreateAgentDialogOpen = useUIStore(
     (s) => s.setCreateAgentDialogOpen,
   );
@@ -90,10 +93,7 @@ export default function AgentsTab({ ctx }: OrgTabProps) {
             access={access}
             lastOpened={lastOpened}
             openLabel={t("agentsTab.open", { name: agent.name })}
-            onOpen={() => {
-              setCurrentAgent(agent);
-              setViewMode(DEFAULT_TAB_ID);
-            }}
+            onOpen={() => onOpenAgent(agent)}
           />
         );
       })}

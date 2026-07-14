@@ -11,6 +11,7 @@ import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import ActivityTab from "./activity-tab";
+import { AdminAgentDetail } from "./admin-agent-detail";
 import { AdminIndex } from "./admin-index";
 import AgentsTab from "./agents-tab";
 import AllowedIntegrationsTab from "./allowed-integrations-tab";
@@ -40,16 +41,20 @@ export interface OrgTabProps {
   ctx: OrgViewContext;
 }
 
-const SECTION_COMPONENTS: Record<OrgTabId, (props: OrgTabProps) => ReactNode> =
-  {
-    people: MembersTab,
-    agents: AgentsTab,
-    activity: ActivityTab,
-    usage: UsageTab,
-    allowedIntegrations: AllowedIntegrationsTab,
-    allowedModels: AllowedModelsTab,
-    billing: BillingTab,
-  };
+// Agents is off this map on purpose: it takes an extra `onOpenAgent` prop (the
+// fleet drill-in) that the generic `{ ctx }` contract can't carry, so the shell
+// renders it explicitly. Every OTHER section stays on the generic path.
+const SECTION_COMPONENTS: Record<
+  Exclude<OrgTabId, "agents">,
+  (props: OrgTabProps) => ReactNode
+> = {
+  people: MembersTab,
+  activity: ActivityTab,
+  usage: UsageTab,
+  allowedIntegrations: AllowedIntegrationsTab,
+  allowedModels: AllowedModelsTab,
+  billing: BillingTab,
+};
 
 /**
  * The top-level Admin (Organization) dashboard (Teams v2 + C8 billing). A shell
@@ -71,7 +76,8 @@ export function OrganizationView() {
   const { data: org, isLoading } = useOrg(true);
   const { capabilities } = useCapabilities();
   const current = useWorkspaceStore((s) => s.current);
-  const agentCount = useAgentStore((s) => s.agents).length;
+  const agents = useAgentStore((s) => s.agents);
+  const agentCount = agents.length;
   const requestedTab = useOrgNav((s) => s.requestedTab);
   const clearRequestedTab = useOrgNav((s) => s.clearRequestedTab);
 
@@ -89,6 +95,22 @@ export function OrganizationView() {
   // `null` = the index; a section id = its detail screen. Sections start on the
   // index so the admin lands on the scannable overview, not a section body.
   const [active, setActive] = useState<OrgTabId | null>(null);
+
+  // The agent drilled into inside the Agents section (fleet drill-in), held as
+  // an ID — not the object — so a share mutation that reloads the agent store
+  // (useShareAgent patches it) is reflected live; a snapshot would show stale
+  // assignments. Resolved against the current store below; if the id drops out
+  // of the store the detail falls back to the grid.
+  const [detailAgentId, setDetailAgentId] = useState<string | null>(null);
+  const detailAgent = detailAgentId
+    ? (agents.find((a) => a.id === detailAgentId) ?? null)
+    : null;
+
+  // Leaving the Agents section closes any open drill-in, so re-entering Agents
+  // (or any other section) always lands on the grid, never a stale detail.
+  useEffect(() => {
+    if (active !== "agents") setDetailAgentId(null);
+  }, [active]);
 
   // Honor a deep link straight into a section's detail (the C8 team-status
   // banner routes to Billing), then clear it so a later plain nav to the
@@ -124,7 +146,29 @@ export function OrganizationView() {
     );
   }
 
-  const ActiveSection = SECTION_COMPONENTS[active];
+  // Fleet drill-in: an agent's stacked access controls, one level below the
+  // Agents grid. Rendered in place of the section body; its own back bar returns
+  // to the grid (clears the drill-in) while `active` stays "agents".
+  if (active === "agents" && detailAgent) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="shrink-0 px-8 pt-8 pb-2">
+          <button
+            type="button"
+            onClick={() => setDetailAgentId(null)}
+            className="inline-flex cursor-pointer items-center gap-1 text-sm text-ink-muted transition-colors hover:text-ink"
+          >
+            <ChevronLeft className="size-4" />
+            {t("org.tabs.agents")}
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+          <AdminAgentDetail agent={detailAgent} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="shrink-0 px-8 pt-8 pb-2">
@@ -141,7 +185,14 @@ export function OrganizationView() {
         <PageContainer className="pb-10">
           <PageHeader title={t(`org.tabs.${active}`)} className="mb-6" />
           {ctx ? (
-            <ActiveSection ctx={ctx} />
+            active === "agents" ? (
+              <AgentsTab
+                ctx={ctx}
+                onOpenAgent={(agent) => setDetailAgentId(agent.id)}
+              />
+            ) : (
+              renderSection(active, ctx)
+            )
           ) : (
             <p className="py-10 text-sm text-ink-muted">
               {isLoading ? t("org.loading") : t("org.unavailable")}
@@ -151,4 +202,10 @@ export function OrganizationView() {
       </div>
     </div>
   );
+}
+
+/** Render a generic (non-agents) section from its shared `{ ctx }` contract. */
+function renderSection(id: Exclude<OrgTabId, "agents">, ctx: OrgViewContext) {
+  const Section = SECTION_COMPONENTS[id];
+  return <Section ctx={ctx} />;
 }

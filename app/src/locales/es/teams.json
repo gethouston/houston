@@ -119,6 +119,11 @@
       "usage": "Uso",
       "billing": "Facturación"
     },
+    "agentDetail": {
+      "subtitle": "Quién puede usar este agente y qué tiene permitido utilizar.",
+      "openAgent": "Abrir agente",
+      "managerOnly": "Solo los Managers de este agente pueden cambiar su acceso."
+    },
     "index": {
       "groups": {
         "access": "Acceso",

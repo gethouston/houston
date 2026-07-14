@@ -153,7 +153,14 @@ route), plus **Billing** conditional last (see the Spaces billing section).
   members surface: the old Settings > Members section (and the whole `org` i18n
   namespace it used) was deleted as a duplicate; "members" is no longer a
   `SettingsSectionId`.
-- **Agents** (`agents-tab.tsx`) — org agents with assignment counts.
+- **Agents** (`agents-tab.tsx`) — org agents with assignment counts. Each card
+  drills into an in-Admin agent detail (`admin-agent-detail.tsx`) that reuses
+  the Agent Settings access sections (`AgentAccessSection`,
+  `AgentAdminIntegrations`, `AgentAdminModel`) for the picked agent, resolved
+  live from the agent store by id. The detail gates on
+  `isAgentManager(caps, agent)` itself (those sections do not self-gate); a
+  non-manager admin gets the read-only people view plus a manager-only note.
+  An "Open agent" action preserves the old jump into the agent's chat.
 - **Activity** (`activity-tab.tsx`) — the audit log, paged.
 - **Usage** (`usage-tab.tsx`) — per-agent/user message counters.
 - **Allowed apps** (`allowed-integrations-tab.tsx`; label key

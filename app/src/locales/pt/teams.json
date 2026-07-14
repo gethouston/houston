@@ -119,6 +119,11 @@
       "usage": "Uso",
       "billing": "Cobrança"
     },
+    "agentDetail": {
+      "subtitle": "Quem pode usar este agente e o que ele tem permissão para utilizar.",
+      "openAgent": "Abrir agente",
+      "managerOnly": "Apenas os Managers deste agente podem alterar o acesso dele."
+    },
     "index": {
       "groups": {
         "access": "Acesso",
