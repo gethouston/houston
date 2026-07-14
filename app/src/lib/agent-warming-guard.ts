@@ -12,6 +12,7 @@
 
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { useUIStore } from "../stores/ui";
+import { warmingReadsAnswerEmpty } from "./agent-provisioning";
 import i18n from "./i18n";
 
 export interface WarmingWriteOptions {
@@ -37,6 +38,23 @@ export function isAgentPathWarming(agentPath: string): boolean {
   const entries = useAgentProvisioningStore.getState().provisioning;
   for (const entry of Object.values(entries)) {
     if (entry.agentPath === agentPath) return true;
+  }
+  return false;
+}
+
+/**
+ * True when this route key belongs to a JUST-CREATED warming agent — the only
+ * case where per-agent READS may answer "nothing yet" instantly (a fresh agent
+ * has no data by definition, HOU-693). An EXISTING agent detected asleep
+ * (HOU-730) must NOT short-circuit reads: it HAS data, and the locally
+ * persisted list/transcript caches are already painting it — an instant empty
+ * success would wipe the painted cards and overwrite the on-disk cache with
+ * `[]`. Its reads ride the gateway hold instead and settle on pod wake.
+ */
+export function isAgentPathCreating(agentPath: string): boolean {
+  const entries = useAgentProvisioningStore.getState().provisioning;
+  for (const entry of Object.values(entries)) {
+    if (entry.agentPath === agentPath) return warmingReadsAnswerEmpty(entry);
   }
   return false;
 }

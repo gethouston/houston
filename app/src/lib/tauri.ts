@@ -26,7 +26,7 @@ import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-
 import {
   blockWriteWhileWarming,
   blockWriteWhileWarmingById,
-  isAgentPathWarming,
+  isAgentPathCreating,
   type WarmingWriteOptions,
 } from "./agent-warming-guard";
 import { isKeyGoneError, isKeyLimitError } from "./api-keys-model";
@@ -417,10 +417,13 @@ export const tauriChat = {
     sessionKey: string,
     opts?: HistoryLoadOptions,
   ) =>
-    // Warming agent: nothing is persisted yet and the read (plus the observer
-    // stream it attaches) would be held for the whole warm-up. The open
-    // conversation renders from the local VM (queued bubbles) meanwhile.
-    isAgentPathWarming(agentPath)
+    // JUST-CREATED agent: nothing is persisted yet and the read (plus the
+    // observer stream it attaches) would be held for the whole warm-up. The
+    // open conversation renders from the local VM (queued bubbles) meanwhile.
+    // An EXISTING asleep agent (HOU-730) passes through: the engine client's
+    // transcript cache (HOU-712) paints the chat instantly and the held read
+    // revalidates on pod wake — answering [] here would blank a cached chat.
+    isAgentPathCreating(agentPath)
       ? Promise.resolve<Array<{ feed_type: string; data: unknown }>>([])
       : call<Array<{ feed_type: string; data: unknown }>>(
           "load_chat_history",
@@ -446,12 +449,16 @@ export const tauriAttachments = {
 // ─── Agent-data files (`.houston/**`) ─────────────────────────────────
 
 export const tauriAgent = {
-  // Warming agent (HOU-693): every per-agent request is held until its
+  // JUST-CREATED agent (HOU-693): every per-agent request is held until its
   // engine wakes. Reads answer instantly with "nothing yet" (a fresh agent
   // has no data; the ready-time events refetch the real state); writes open
-  // the "almost ready" dialog and reject typed (never toasted).
+  // the "almost ready" dialog and reject typed (never toasted). An EXISTING
+  // asleep agent (HOU-730) does NOT short-circuit reads: it has data, and an
+  // instant "" resolves the board/list queries as successful-empty — wiping
+  // the restored mission cards AND persisting [] over the on-disk cache.
+  // Its reads ride the gateway hold instead.
   readFile: (agentPath: string, relPath: string) =>
-    isAgentPathWarming(agentPath)
+    isAgentPathCreating(agentPath)
       ? Promise.resolve("")
       : call<string>("read_agent_file", () =>
           getEngine().readAgentFile(agentPath, relPath),
@@ -485,7 +492,7 @@ export const tauriAgent = {
 
 export const tauriSkills = {
   list: (agentPath: string) =>
-    isAgentPathWarming(agentPath)
+    isAgentPathCreating(agentPath)
       ? Promise.resolve<SkillSummary[]>([])
       : call<SkillSummary[]>("list_skills", async () =>
           (await getEngine().listSkills(agentPath)).map((s) => ({
@@ -760,7 +767,7 @@ import { osOpenFile, osRevealAgent, osRevealFile } from "./os-bridge";
 
 export const tauriFiles = {
   list: (agentPath: string) =>
-    isAgentPathWarming(agentPath)
+    isAgentPathCreating(agentPath)
       ? Promise.resolve<FileEntry[]>([])
       : call<FileEntry[]>("list_project_files", async () =>
           (await getEngine().listProjectFiles(agentPath)).map((f) => ({
@@ -859,7 +866,7 @@ interface RawConversation {
 
 export const tauriConversations = {
   list: (agentPath: string) =>
-    isAgentPathWarming(agentPath)
+    isAgentPathCreating(agentPath)
       ? Promise.resolve<RawConversation[]>([])
       : call<RawConversation[]>("list_conversations", async () =>
           (await getEngine().listConversations(agentPath)).map(
@@ -867,9 +874,13 @@ export const tauriConversations = {
           ),
         ),
   listAll: (agentPaths: string[]) => {
-    // A warming agent has no conversations yet and its read would hold the
-    // whole bulk scan — sweep only the reachable agents.
-    const reachable = agentPaths.filter((p) => !isAgentPathWarming(p));
+    // A JUST-CREATED agent has no conversations yet and its read would hold
+    // the whole bulk scan — sweep only past those. An EXISTING asleep agent
+    // stays IN the sweep: dropping it resolves Mission Control without its
+    // missions (a successful partial list that overwrites the restored cache);
+    // keeping it holds the sweep until its pod wakes while the cached rows
+    // keep painting.
+    const reachable = agentPaths.filter((p) => !isAgentPathCreating(p));
     if (reachable.length === 0) return Promise.resolve<RawConversation[]>([]);
     return call<RawConversation[]>("list_all_conversations", async () =>
       (await getEngine().listAllConversations(reachable)).map(
@@ -911,7 +922,7 @@ import * as configData from "../data/config";
 
 export const tauriRoutines = {
   list: (agentPath: string) =>
-    isAgentPathWarming(agentPath)
+    isAgentPathCreating(agentPath)
       ? Promise.resolve([])
       : call("list_routines", () => getEngine().listRoutines(agentPath)),
   create: (
@@ -941,7 +952,7 @@ export const tauriRoutines = {
     );
   },
   listRuns: (agentPath: string, routineId?: string) =>
-    isAgentPathWarming(agentPath)
+    isAgentPathCreating(agentPath)
       ? Promise.resolve([])
       : call("list_routine_runs", () =>
           getEngine().listRoutineRuns(agentPath, routineId),

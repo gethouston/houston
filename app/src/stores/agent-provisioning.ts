@@ -128,6 +128,7 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
         agentId: agent.id,
         agentPath: agent.folderPath,
         since: Date.now(),
+        reason: "create",
       });
     },
 
@@ -143,10 +144,15 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
         .then((asleep) => {
           // Re-check: a create/rename may have marked the id while we probed.
           if (!asleep || get().provisioning[agent.id]) return;
+          // "asleep", never "create": an existing agent's reads must keep
+          // riding the gateway hold so its locally cached lists/transcripts
+          // stay painted (see warmingReadsAnswerEmpty); sends still park and
+          // writes still block, exactly like a just-created agent.
           startEntry({
             agentId: agent.id,
             agentPath: agent.folderPath,
             since: Date.now(),
+            reason: "asleep",
           });
         })
         .finally(() => asleepChecks.delete(agent.id));
@@ -166,6 +172,7 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
         since: previous.since,
         pendingSends: previous.pendingSends,
         timedOut: previous.timedOut,
+        reason: previous.reason,
       });
     },
 
