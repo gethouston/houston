@@ -71,6 +71,10 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           WAITLIST_SHEET_ENDPOINT: ${{ secrets.WAITLIST_SHEET_ENDPOINT }}
+          # Lets src/_data/release.js resolve the latest installer URLs without
+          # hitting the unauthenticated per-IP GitHub API rate limit on shared
+          # Actions runners. The build fails if these URLs can't be resolved.
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Auth to GCP
         uses: google-github-actions/auth@v2
