@@ -52,6 +52,19 @@ export function readAnthropicToken(
       );
       return undefined;
     }
+    // Last line of defense: never hand the SDK an EXPIRED served token. The
+    // env token outranks the config dir's self-refreshing credential, so a
+    // stale entry that slipped past the host's serve guards (a control plane
+    // that can't refresh anthropic yet, an orphaned entry) would shadow a
+    // WORKING file/keychain credential. Returning undefined instead lets the
+    // SDK fall back to the config dir. expires=0 means "no expiry recorded"
+    // (a pasted token stored as oauth) and is served as-is.
+    if (cred.expires > 0 && cred.expires <= Date.now()) {
+      console.warn(
+        `[claude] stored "anthropic" oauth access token is expired; falling back to the config dir credential`,
+      );
+      return undefined;
+    }
     return classify(access);
   }
 

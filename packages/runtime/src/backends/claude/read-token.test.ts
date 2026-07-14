@@ -60,10 +60,34 @@ test("a served oauth credential maps its ACCESS token to an oauth-token", () => 
       type: "oauth",
       access: " sk-ant-oat01-served \n",
       refresh: "",
-      expires: 123,
+      expires: Date.now() + 60 * 60 * 1000,
     }),
   );
   expect(token).toEqual({ kind: "oauth-token", value: "sk-ant-oat01-served" });
+});
+
+test("an EXPIRED served oauth token is refused (falls back to the config dir)", () => {
+  // The env token outranks the config dir's self-refreshing credential inside
+  // the SDK — an expired served token must never shadow a working one.
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  expect(
+    readAnthropicToken(
+      store({
+        type: "oauth",
+        access: "sk-ant-oat01-stale",
+        refresh: "",
+        expires: Date.now() - 1,
+      }),
+    ),
+  ).toBeUndefined();
+  expect(warn).toHaveBeenCalledWith(expect.stringContaining("expired"));
+});
+
+test("an oauth entry with NO recorded expiry (expires=0) is served as-is", () => {
+  const token = readAnthropicToken(
+    store({ type: "oauth", access: "sk-ant-oat01-x", refresh: "", expires: 0 }),
+  );
+  expect(token).toEqual({ kind: "oauth-token", value: "sk-ant-oat01-x" });
 });
 
 test("an oauth credential with an empty access token returns undefined AND logs", () => {

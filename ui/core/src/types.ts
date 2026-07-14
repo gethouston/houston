@@ -203,14 +203,3 @@ export type HoustonEvent =
   // HOU-550: a custom (API / MCP) integration was added, credentialed, or
   // removed. Carries no payload — the whole user-level list is refetched.
   | { type: "CustomIntegrationsChanged" };
-
-/**
- * Stable sentinel strings the engine adapter puts in
- * `ProviderLoginComplete.error` for its own client-side timeouts. They double
- * as the English default copy (this package stays i18n-agnostic); the app maps
- * them to localized toast text — matching by value, so these are a CONTRACT:
- * change one here and the app-side mapping must move with it.
- */
-export const PROVIDER_LOGIN_TIMEOUT_ERROR = "Login timed out";
-export const PROVIDER_CONNECT_TIMEOUT_ERROR =
-  "Connection timed out. Please try connecting again.";

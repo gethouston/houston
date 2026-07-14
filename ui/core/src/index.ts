@@ -49,5 +49,6 @@ export * from "./components/tooltip";
 export * from "./hooks/use-houston-event";
 export * from "./hooks/use-mobile";
 export * from "./hooks/use-session-events";
+export * from "./provider-login";
 export * from "./types";
 export * from "./utils";
