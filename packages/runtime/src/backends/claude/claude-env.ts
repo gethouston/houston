@@ -50,6 +50,17 @@ const PASSTHROUGH_ENV_VARS: ReadonlySet<string> = new Set(
     "PATH",
     "HOME",
     "SHELL",
+    // Identity (non-secret). The Claude CLI names its macOS Keychain item's
+    // ACCOUNT after the username, and the bun runtime resolves that from
+    // USER/LOGNAME — with neither present it falls back to "unknown", so the
+    // SDK reads (and writes) a DIFFERENT Keychain item than the one
+    // `claude auth login` created for the same CLAUDE_CONFIG_DIR. The visible
+    // failure is brutal: the login says connected, every turn is
+    // unauthenticated, and reconnecting can never fix it. USERNAME is the
+    // Windows equivalent.
+    "USER",
+    "LOGNAME",
+    "USERNAME",
     // Locale — correct text handling in the subprocess.
     "LANG",
     "LC_ALL",

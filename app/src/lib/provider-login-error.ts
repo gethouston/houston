@@ -9,6 +9,10 @@
 // keeps it. Anything else keeps its real message (beta policy: the real
 // reason, never a generic swallow).
 
+import {
+  PROVIDER_CONNECT_TIMEOUT_ERROR,
+  PROVIDER_LOGIN_TIMEOUT_ERROR,
+} from "@houston-ai/core";
 import i18n from "./i18n";
 import { logger } from "./logger";
 
@@ -20,4 +24,19 @@ export function providerLoginFailureText(err: unknown): string {
     return i18n.t("providers:toast.engineUnavailable");
   }
   return raw;
+}
+
+/**
+ * Localize a `ProviderLoginComplete.error` string for the failure toast. The
+ * engine adapter stays i18n-agnostic and reports its client-side timeouts as
+ * stable English sentinels (`@houston-ai/core`); everything else is a real
+ * server/CLI message and passes through verbatim (beta policy: the real
+ * reason, never a generic swallow).
+ */
+export function localizedProviderLoginError(error: string): string {
+  if (error === PROVIDER_CONNECT_TIMEOUT_ERROR)
+    return i18n.t("providers:toast.connectTimedOut");
+  if (error === PROVIDER_LOGIN_TIMEOUT_ERROR)
+    return i18n.t("providers:toast.loginTimedOut");
+  return error;
 }

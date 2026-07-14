@@ -1,4 +1,8 @@
 import { EngineError, type ProviderId } from "@houston/runtime-client";
+import {
+  PROVIDER_CONNECT_TIMEOUT_ERROR,
+  PROVIDER_LOGIN_TIMEOUT_ERROR,
+} from "@houston-ai/core";
 import { emitEvent } from "../bus";
 import {
   captureCredential,
@@ -52,7 +56,7 @@ export function watchLoginCompletion(
         else if (pr?.login?.status === "error")
           finish(false, pr?.login?.error ?? "Login failed");
         else if (Date.now() - startedAt > 10 * 60 * 1000)
-          finish(false, "Login timed out");
+          finish(false, PROVIDER_LOGIN_TIMEOUT_ERROR);
       } catch {
         /* engine briefly unreachable; keep polling */
       }
@@ -140,7 +144,7 @@ export async function pollProviderConnect(
     emitEvent("ProviderLoginComplete", {
       provider: oldProvider,
       success: false,
-      error: "Connection timed out. Please try connecting again.",
+      error: PROVIDER_CONNECT_TIMEOUT_ERROR,
     });
   } finally {
     ctx.activeLogins.delete(key);

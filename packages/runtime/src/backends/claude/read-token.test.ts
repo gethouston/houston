@@ -51,16 +51,50 @@ test("an unrecognized token prefix returns undefined AND logs the reason", () =>
   );
 });
 
-test("a wrong-variant (oauth) stored credential returns undefined AND logs", () => {
+test("a served oauth credential maps its ACCESS token to an oauth-token", () => {
+  // The connect-once serve path (managed cloud) writes pi's oauth variant with
+  // a short-TTL access token and refresh="" — the SDK consumes the access
+  // token via CLAUDE_CODE_OAUTH_TOKEN exactly like a setup token.
+  const token = readAnthropicToken(
+    store({
+      type: "oauth",
+      access: " sk-ant-oat01-served \n",
+      refresh: "",
+      expires: 123,
+    }),
+  );
+  expect(token).toEqual({ kind: "oauth-token", value: "sk-ant-oat01-served" });
+});
+
+test("an oauth credential with an empty access token returns undefined AND logs", () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-  const oauth = {
-    type: "oauth",
-    access: "x",
-    refresh: "",
-    expires: 0,
-  } as unknown as AuthCredential;
-  expect(readAnthropicToken(store(oauth))).toBeUndefined();
+  expect(
+    readAnthropicToken(
+      store({ type: "oauth", access: "  ", refresh: "", expires: 0 }),
+    ),
+  ).toBeUndefined();
   expect(warn).toHaveBeenCalledWith(
-    expect.stringContaining("expected api_key"),
+    expect.stringContaining("empty access token"),
+  );
+});
+
+test("an oauth credential with an unrecognized prefix returns undefined AND logs", () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  expect(
+    readAnthropicToken(
+      store({ type: "oauth", access: "junk", refresh: "", expires: 0 }),
+    ),
+  ).toBeUndefined();
+  expect(warn).toHaveBeenCalledWith(
+    expect.stringContaining("unrecognized prefix"),
+  );
+});
+
+test("an unknown stored variant returns undefined AND logs", () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const bogus = { type: "wat" } as unknown as AuthCredential;
+  expect(readAnthropicToken(store(bogus))).toBeUndefined();
+  expect(warn).toHaveBeenCalledWith(
+    expect.stringContaining("expected api_key or oauth"),
   );
 });
