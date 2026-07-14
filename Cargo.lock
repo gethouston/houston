@@ -1927,7 +1927,7 @@ dependencies = [
 
 [[package]]
 name = "houston-app"
-version = "0.5.7"
+version = "0.5.9"
 dependencies = [
  "bytes",
  "chrono",
