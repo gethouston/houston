@@ -16,7 +16,6 @@ import type { CatalogModelEntry, ProviderCatalog } from "@houston/protocol";
 import {
   DROP_PI_PROVIDERS,
   PROVIDER_ID_RENAME,
-  PROVIDER_OVERRIDES,
 } from "../provider-overrides.ts";
 import { normalizeKey } from "./catalog-key.ts";
 import { detectLab } from "./catalog-lab.ts";
@@ -54,12 +53,14 @@ function entryToRaw(entry: CatalogModelEntry): RawModel {
  * the picker render exactly the same providers (a coming-soon or otherwise-gated
  * provider in the raw catalog never becomes a hub model the picker can't offer).
  *
- * Subscription/OAuth providers (Anthropic, OpenAI/Codex, GitHub Copilot) run
- * ONLY their curated `PROVIDER_OVERRIDES[id].models` set — the plan can't run
- * anything outside it — so pi's full runnable list (pi ships every historical
- * model id it can still talk to, ~24 for Anthropic alone) is filtered down to
- * that curated set here. API-key gateways are unaffected: their full snapshot
- * list is a legitimate "any model this key can run" offer.
+ * Every provider carries its FULL pi model list — subscription/OAuth providers
+ * included. The hub, the provider modal, and the chat model picker must offer
+ * the SAME runnable set: the picker maps the hydrated `PROVIDERS` (pi's full
+ * per-provider list, deduped) directly, so filtering OAuth providers down to
+ * `PROVIDER_OVERRIDES[id].models` here made the hub show 3 Anthropic models
+ * while the chat picker offered 10. The overrides remain presentation-only
+ * (labels/descriptions); pi's catalog is the single existence source, and pi
+ * ≥0.80 already prunes retired ids upstream.
  */
 export function piCatalogToCandidates(
   catalog: ProviderCatalog,
@@ -71,11 +72,7 @@ export function piCatalogToCandidates(
     const providerId = PROVIDER_ID_RENAME[provider.id] ?? provider.id;
     if (visibleIds && !visibleIds.has(providerId)) continue;
     const subscription = provider.auth === "oauth";
-    const curatedIds = subscription
-      ? PROVIDER_OVERRIDES[providerId]?.models
-      : undefined;
     for (const entry of provider.models) {
-      if (curatedIds && !(entry.id in curatedIds)) continue;
       const raw = entryToRaw(entry);
       candidates.push({
         providerId,

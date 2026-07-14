@@ -117,23 +117,23 @@ describe("piCatalogToCandidates maps the pi-ai catalog to merge candidates", () 
   });
 });
 
-describe("piCatalogToCandidates curates subscription providers", () => {
+describe("piCatalogToCandidates never filters a provider's model list", () => {
+  // The hub and the chat model picker must offer the SAME runnable set. The
+  // picker maps the hydrated PROVIDERS (pi's full per-provider list) directly,
+  // so the hub must not trim OAuth providers to the curated override set —
+  // that skew showed 3 Anthropic models in the hub against 10 in the picker.
   const catalog: ProviderCatalog = [
     provider("anthropic", "oauth", [
-      // Curated: a PROVIDER_OVERRIDES.anthropic.models entry.
+      // Has a PROVIDER_OVERRIDES.anthropic.models entry (label/description).
       entry("claude-sonnet-5"),
-      // Uncurated: pi runs it (an old id like claude-3-opus), but the plan's
-      // curated set doesn't list it — must be filtered out of the hub.
-      entry("claude-3-opus"),
+      // No override entry — still runnable, must still surface.
+      entry("claude-haiku-4-5"),
     ]),
-    provider("groq", "apiKey", [
-      // API-key gateways are NEVER curation-filtered: their full list stands.
-      entry("llama-4-scout"),
-    ]),
+    provider("groq", "apiKey", [entry("llama-4-scout")]),
   ];
   const candidates = piCatalogToCandidates(catalog);
 
-  it("keeps a curated OAuth model", () => {
+  it("keeps an OAuth model with a curated override", () => {
     ok(
       candidates.some(
         (c) => c.providerId === "anthropic" && c.raw.id === "claude-sonnet-5",
@@ -141,15 +141,15 @@ describe("piCatalogToCandidates curates subscription providers", () => {
     );
   });
 
-  it("drops an OAuth model absent from the curated set", () => {
+  it("keeps an OAuth model without any override entry", () => {
     ok(
-      !candidates.some(
-        (c) => c.providerId === "anthropic" && c.raw.id === "claude-3-opus",
+      candidates.some(
+        (c) => c.providerId === "anthropic" && c.raw.id === "claude-haiku-4-5",
       ),
     );
   });
 
-  it("never curation-filters an API-key gateway", () => {
+  it("keeps an API-key gateway's full list", () => {
     ok(
       candidates.some(
         (c) => c.providerId === "groq" && c.raw.id === "llama-4-scout",
