@@ -123,7 +123,6 @@
       "support": "Support"
     },
     "rows": {
-      "members": "People who can use your agents",
       "connectedAccounts": "Apps you've connected to Houston",
       "apiKeys": "Let other apps and AI assistants start missions with your agents",
       "workspaceContext": "What every agent knows about this workspace",
@@ -134,8 +133,6 @@
     },
     "values": {
       "set": "Set",
-      "membersCount_one": "{{count}} member",
-      "membersCount_other": "{{count}} members",
       "appsCount_one": "{{count}} app",
       "appsCount_other": "{{count}} apps"
     }

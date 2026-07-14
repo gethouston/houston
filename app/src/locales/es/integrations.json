@@ -67,10 +67,11 @@
     "loading": "Cargando apps..."
   },
   "locked": {
-    "heading": "No habilitadas por tu administrador",
+    "heading": "Desactivadas en tu espacio de trabajo",
+    "subtitle": "Tu administrador eligió qué apps se pueden usar aquí. Existen en Houston, solo están desactivadas en este espacio de trabajo.",
     "askAdmin": "Pídele a tu administrador que habilite {{name}}",
-    "more_one": "{{count}} app más que tu administrador no ha habilitado",
-    "more_other": "{{count}} apps más que tu administrador no ha habilitado"
+    "more_one": "{{count}} app más desactivada en tu espacio de trabajo",
+    "more_other": "{{count}} apps más desactivadas en tu espacio de trabajo"
   },
   "chips": {
     "more": "+{{count}}"

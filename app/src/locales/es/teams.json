@@ -64,16 +64,20 @@
       "question": "¿Qué aplicaciones pueden usar los agentes de este espacio de trabajo?",
       "policyHelper": "Tú decides qué aplicaciones pueden usar los agentes aquí. Cada persona conecta sus propias cuentas para cada aplicación que permitas.",
       "anyLabel": "Cualquier aplicación",
-      "anyDesc": "Los agentes de este espacio de trabajo pueden usar cualquiera de más de 1000 aplicaciones.",
+      "anyDesc": "Todos pueden conectar lo que quieran del catálogo.",
       "pickedLabel": "Solo las aplicaciones que elijas",
-      "pickedDesc": "Los agentes solo pueden usar las aplicaciones que permitas abajo.",
+      "pickedDesc": "Todo lo demás aparece como desactivado, con una nota para pedírtelo.",
       "allowApp": "Permitir {{name}}",
       "allowedHeading": "Aplicaciones permitidas",
       "allowedEmpty": "Aún no elegiste ninguna aplicación. Agrega aplicaciones abajo.",
       "allowedEmptyCategory": "No hay aplicaciones permitidas en esta categoría todavía.",
       "addHeading": "Agregar aplicaciones",
       "ownerOnly": "Solo el propietario del espacio de trabajo puede cambiar esto.",
-      "perAgentNote": "¿Quieres límites más estrictos para un agente? Configúralos en los ajustes de ese agente."
+      "perAgentNote": "¿Quieres límites más estrictos para un agente? Configúralos en los ajustes de ese agente.",
+      "usedByAgents_one": "Usada por {{count}} agente",
+      "usedByAgents_other": "Usada por {{count}} agentes",
+      "workspaceOff_one": "{{count}} app está desactivada en tu espacio de trabajo",
+      "workspaceOff_other": "{{count}} apps están desactivadas en tu espacio de trabajo"
     },
     "notAllowed": {
       "title": "No permitida para este agente",
@@ -86,9 +90,9 @@
       "question": "¿Qué modelos pueden usar los agentes de este espacio de trabajo?",
       "policyHelper": "Tú decides con qué modelos de IA pueden ejecutarse los agentes aquí. Las personas con acceso eligen su propio modelo entre los que permitas.",
       "anyLabel": "Cualquier modelo",
-      "anyDesc": "Los agentes de este espacio de trabajo pueden usar cualquier modelo disponible.",
+      "anyDesc": "Todos pueden elegir cualquier modelo disponible.",
       "pickedLabel": "Solo los modelos que elijas",
-      "pickedDesc": "Los agentes solo pueden usar los modelos que permitas abajo.",
+      "pickedDesc": "Los demás modelos aparecen como desactivados.",
       "allowModel": "Permitir {{name}}",
       "searchModels": "Buscar modelos",
       "noModels": "No se encontraron modelos",
@@ -97,22 +101,50 @@
       "allowedEmptyLab": "Aún no eliges modelos de este laboratorio.",
       "addHeading": "Agregar modelos",
       "ownerOnly": "Solo el propietario del espacio de trabajo puede cambiar esto.",
-      "perAgentNote": "Los managers pueden restringir esto aún más para cada agente en su configuración."
+      "perAgentNote": "Los managers pueden restringir esto aún más para cada agente en su configuración.",
+      "workspaceOff_one": "{{count}} modelo está desactivado en tu espacio de trabajo",
+      "workspaceOff_other": "{{count}} modelos están desactivados en tu espacio de trabajo"
     }
   },
   "org": {
     "title": "Administración",
     "subtitle": "Gestiona tu equipo, agentes, políticas y actividad en un solo lugar.",
     "nav": "Administración",
-    "tablistLabel": "Secciones de administración",
     "tabs": {
       "people": "Personas",
       "agents": "Agentes",
-      "allowedIntegrations": "Integraciones permitidas",
+      "allowedIntegrations": "Aplicaciones permitidas",
       "allowedModels": "Modelos de IA permitidos",
       "activity": "Actividad",
       "usage": "Uso",
       "billing": "Facturación"
+    },
+    "index": {
+      "groups": {
+        "access": "Acceso",
+        "insights": "Estadísticas"
+      },
+      "rows": {
+        "people": "Invita compañeros, asigna roles y quita miembros.",
+        "agents": "Cada agente de este espacio de trabajo y quién puede usarlo.",
+        "allowedIntegrations": "Elige qué aplicaciones pueden usar las personas aquí.",
+        "allowedModels": "Elige qué modelos de IA pueden usar los agentes aquí.",
+        "activity": "Lo que pasó en este espacio de trabajo, lo más reciente primero.",
+        "usage": "Cuántos mensajes envía cada agente y persona.",
+        "billing": "Asientos, plan y pago."
+      },
+      "values": {
+        "members_one": "{{count}} miembro",
+        "members_other": "{{count}} miembros",
+        "agents_one": "{{count}} agente",
+        "agents_other": "{{count}} agentes",
+        "allApps": "Todas las aplicaciones",
+        "appsAllowed_one": "{{count}} permitida",
+        "appsAllowed_other": "{{count}} permitidas",
+        "allModels": "Todos los modelos",
+        "modelsAllowed_one": "{{count}} permitido",
+        "modelsAllowed_other": "{{count}} permitidos"
+      }
     },
     "loading": "Cargando tu espacio de trabajo...",
     "unavailable": "No pudimos cargar tu espacio de trabajo."

@@ -5,17 +5,19 @@ import { expect, test } from "./support/fixtures";
 /**
  * The AI-models permissioning information architecture — the model-side twin of
  * `integrations-ia.spec.ts`. Each concept has one home:
- *  - POLICY (the org-wide allowed-models ceiling) → the AI Models hub's
- *    "Workspace policy" tab, an owner/admin surface (owner edits, admin
- *    read-only). AI provider connections are org-level (C6), so a plain member
- *    has no account or policy to act on in the hub and loses its nav entirely —
- *    exactly as they lose the Integrations nav.
+ *  - POLICY (the org-wide allowed-models ceiling) → the Admin page's "Allowed AI
+ *    models" section (the Organization view; a settings-style index of rows, not
+ *    a tab strip), an owner/admin surface (owner edits, admin read-only). The AI
+ *    Models hub's old "Workspace policy" tab is GONE —
+ *    the hub keeps only Providers / Models. AI provider connections are
+ *    org-level (C6), so a plain member has no account or policy to act on in the
+ *    hub and loses its nav entirely.
  *  - Each member's own model pick lives in the composer, not the hub.
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's
  * `/__test__/capabilities` (advertise `multiplayer` + `teams` + a `role`) and
- * `/__test__/agent-settings` (the agent/org model ceilings); the
- * `/v1/org/settings` gateway route backs the owner's saves. See
+ * `/__test__/agent-settings` (the agent/org model ceilings); the `/v1/org` view
+ * load + the `/v1/org/settings` owner saves are served by the fake host. See
  * `@houston/fake-host` README + `knowledge-base/ui-testing.md`.
  */
 
@@ -43,22 +45,31 @@ async function armAgentSettings(
   });
 }
 
-async function openWorkspacePolicy(page: Page): Promise<void> {
+/**
+ * Open the Admin (Organization) view and drill into one of its sections. The
+ * Admin page is a settings-style index of self-describing rows (not a tab
+ * strip), so each section is a row BUTTON whose accessible name leads with its
+ * title; clicking it opens the section's detail screen.
+ */
+async function openAdminSection(
+  page: Page,
+  sectionTitle: string,
+): Promise<void> {
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-ai-hub"]').click();
-  await page.getByRole("tab", { name: "Workspace policy" }).click();
+  await page.locator('[data-tour-target="nav-organization"]').click();
+  await page.getByRole("button", { name: sectionTitle }).click();
 }
 
 // ── 1. Owner policy editor ─────────────────────────────────────────────────
 
-test("Teams owner: the AI hub's Workspace policy tab is the org model ceiling editor, and restricting persists", async ({
+test("Teams owner: the Admin page's Allowed AI models section is the org model ceiling editor, and restricting persists", async ({
   page,
   request,
 }) => {
   await armCapabilities(request, OWNER_CAPS);
-  await openWorkspacePolicy(page);
+  await openAdminSection(page, "Allowed AI models");
 
-  // The tab is the org POLICY question — the two-mode choice at rest.
+  // The section is the org POLICY question — the two-mode choice at rest.
   await expect(
     page.getByRole("heading", {
       name: "Which models can agents in this workspace use?",
@@ -71,12 +82,16 @@ test("Teams owner: the AI hub's Workspace policy tab is the org model ceiling ed
   // Starts unrestricted (org ceiling is null): "Any model" is the checked mode
   // and no allowed-models list exists yet.
   await expect(page.getByRole("radio", { name: "Any model" })).toBeChecked();
-  await expect(page.getByText("Allowed models")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Allowed models" }),
+  ).toHaveCount(0);
 
   // Owner picks "Only models you pick" → a PUT /v1/org/settings persists the
   // ceiling, and the allowed-models list appears.
   await page.getByRole("radio", { name: "Only models you pick" }).click();
-  await expect(page.getByText("Allowed models")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Allowed models" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("radio", { name: "Only models you pick" }),
   ).toBeChecked();
@@ -85,26 +100,29 @@ test("Teams owner: the AI hub's Workspace policy tab is the org model ceiling ed
   // the ceiling is still restricted — the save reached the gateway, not just the
   // client cache.
   await page.reload();
-  await page.locator('[data-tour-target="nav-ai-hub"]').click();
-  await page.getByRole("tab", { name: "Workspace policy" }).click();
+  await page.locator('[data-tour-target="nav-organization"]').click();
+  await page.getByRole("button", { name: "Allowed AI models" }).click();
   await expect(
     page.getByRole("radio", { name: "Only models you pick" }),
   ).toBeChecked();
-  await expect(page.getByText("Allowed models")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Allowed models" }),
+  ).toBeVisible();
 });
 
 // ── 2. Admin read-only ─────────────────────────────────────────────────────
 
-test("Teams admin: the model policy editor is read-only with an owner-only note and no add list", async ({
+test("Teams admin: the Allowed AI models editor is read-only with an owner-only note and no add list", async ({
   page,
   request,
 }) => {
-  // An admin sees the SAME policy tab, but every control is read-only (only the
-  // owner may change the org ceiling). Arm a restricted ceiling so the page has
-  // an allowed list an owner could extend, then confirm the admin cannot.
+  // An admin sees the SAME Allowed AI models section, but every control is
+  // read-only (only the owner may change the org ceiling). Arm a restricted
+  // ceiling so the section has an allowed list an owner could extend, then
+  // confirm the admin cannot.
   await armCapabilities(request, { ...OWNER_CAPS, role: "admin" });
   await armAgentSettings(request, { orgAllowedModels: ["claude-opus-4-8"] });
-  await openWorkspacePolicy(page);
+  await openAdminSection(page, "Allowed AI models");
 
   // The policy question renders, with the owner-only explanation at rest.
   await expect(
@@ -131,11 +149,33 @@ test("Teams admin: the model policy editor is read-only with an owner-only note 
 
   // The allowed list shows (read-only), but the "Add models" list an owner uses
   // to widen the ceiling is absent for an admin.
-  await expect(page.getByText("Allowed models")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Allowed models" }),
+  ).toBeVisible();
   await expect(page.getByText("Add models")).toHaveCount(0);
 });
 
-// ── 3. Plain member: no AI Models nav ──────────────────────────────────────
+// ── 3. The AI hub dropped the Workspace policy tab ─────────────────────────
+
+test("Teams owner: the AI hub keeps only Providers / Models, the Workspace policy tab is gone", async ({
+  page,
+  request,
+}) => {
+  // The org model ceiling moved to the Admin page, so the owner — exactly who
+  // used to see the hub's "Workspace policy" tab — now finds only the two browse
+  // tabs there.
+  await armCapabilities(request, OWNER_CAPS);
+  await page.goto("/");
+  await page.locator('[data-tour-target="nav-ai-hub"]').click();
+
+  await expect(page.getByRole("tab", { name: "Providers" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /Models/ })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Workspace policy" })).toHaveCount(
+    0,
+  );
+});
+
+// ── 4. Plain member: no AI Models nav ──────────────────────────────────────
 
 test("Teams member: the AI Models nav item is gone, the rest of the shell stays", async ({
   page,
@@ -154,7 +194,7 @@ test("Teams member: the AI Models nav item is gone, the rest of the shell stays"
   await expect(page.locator('[data-tour-target="nav-settings"]')).toBeVisible();
 });
 
-// ── 4. Per-agent editor reflects the org ceiling ───────────────────────────
+// ── 5. Per-agent editor reflects the org ceiling ───────────────────────────
 
 test("Agent Settings > AI models: the addable set is narrowed to the org ceiling", async ({
   page,

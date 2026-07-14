@@ -25,7 +25,6 @@ import eventsEn from "../locales/en/events.json";
 import integrationsEn from "../locales/en/integrations.json";
 import legalEn from "../locales/en/legal.json";
 import migrationEn from "../locales/en/migration.json";
-import orgEn from "../locales/en/org.json";
 import portableEn from "../locales/en/portable.json";
 import providersEn from "../locales/en/providers.json";
 import routinesEn from "../locales/en/routines.json";
@@ -49,7 +48,6 @@ import eventsEs from "../locales/es/events.json";
 import integrationsEs from "../locales/es/integrations.json";
 import legalEs from "../locales/es/legal.json";
 import migrationEs from "../locales/es/migration.json";
-import orgEs from "../locales/es/org.json";
 import portableEs from "../locales/es/portable.json";
 import providersEs from "../locales/es/providers.json";
 import routinesEs from "../locales/es/routines.json";
@@ -73,7 +71,6 @@ import eventsPt from "../locales/pt/events.json";
 import integrationsPt from "../locales/pt/integrations.json";
 import legalPt from "../locales/pt/legal.json";
 import migrationPt from "../locales/pt/migration.json";
-import orgPt from "../locales/pt/org.json";
 import portablePt from "../locales/pt/portable.json";
 import providersPt from "../locales/pt/providers.json";
 import routinesPt from "../locales/pt/routines.json";
@@ -155,7 +152,6 @@ const resources = {
     store: storeEn,
     context: contextEn,
     connect: connectEn,
-    org: orgEn,
     teams: teamsEn,
     agentOnboarding: agentOnboardingEn,
   },
@@ -181,7 +177,6 @@ const resources = {
     store: storeEs,
     context: contextEs,
     connect: connectEs,
-    org: orgEs,
     teams: teamsEs,
     agentOnboarding: agentOnboardingEs,
   },
@@ -207,7 +202,6 @@ const resources = {
     store: storePt,
     context: contextPt,
     connect: connectPt,
-    org: orgPt,
     teams: teamsPt,
     agentOnboarding: agentOnboardingPt,
   },
@@ -252,7 +246,6 @@ void i18n
       "store",
       "context",
       "connect",
-      "org",
       "teams",
       "agentOnboarding",
     ],

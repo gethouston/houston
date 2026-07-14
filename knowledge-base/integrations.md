@@ -71,7 +71,10 @@ the agent which of four speech acts to perform:
   **Nothing in THIS repo produces `blocked`** — the allowlist ceiling lives solely
   in the closed cloud gateway (Teams v2, C7). The enum + rendering + prompt exist
   now so a later gateway change that annotates its `/search` items with `status`
-  lights it up here with zero further work.
+  lights it up here with zero further work. (Distinct from the browse-catalog **locked
+  rows** in §3: those are a CLIENT-SIDE intersection of the effective allowlist against
+  the ~1000-app catalog, a visible-UI affordance, not this agent-facing search-status
+  enum. The locked rows never set or read `blocked`.)
 - `unknown` — not a recognized toolkit (reserved; today an unrecognized query is
   simply the EMPTY result).
 
@@ -151,7 +154,7 @@ write), now consumed by `useOrgSettings` / `useSetOrgSettings`
 `queryKeys.orgSettings()`, wired through `tauriOrg.getSettings`/`setSettings`).
 BOTH ceilings render through the SHARED `AllowlistEditor`
 (`components/integrations/allowlist-editor.tsx`, i18n-agnostic `copy` prop):
-- the **org** editor is the Admin page's **Allowed integrations** tab
+- the **org** editor is the Admin page's **Allowed apps** tab
   (`organization/allowed-integrations-tab.tsx`, Teams owner edits / admin read-only),
   copy `teams:integrations.orgAllowlist.*` (see `teams.md`);
 - the **per-agent** editor stays in Agent Settings > **Access** > **Apps**
@@ -467,20 +470,26 @@ convergence; `AppCatalogGrid` survives solely for the allowlist editor.
 
 **Locked browse rows (Teams only).** On a Teams host with a real effective
 allowlist, the browse catalog no longer FILTERS blocked apps out (which read as
-"Houston doesn't support X"); instead the agent tab passes the effective
+"Houston doesn't support X"); instead the surface passes the effective
 `allowlist` down through `CatalogPane` → `CategoryCatalog`, which calls the pure
 `browseCatalogView` (`integrations/browse-model.ts`) to split the browse set into
 `connectable` (inside the ceiling, grouped into the category sections) and
-`locked` (outside it). Locked apps render via `CatalogLockedSection`: read-only
+`locked` (outside it). BOTH browse surfaces now feed it: the per-agent tab passes the
+agent's effective `allowlist`, and the **global Integrations page** now fetches the org
+app ceiling (`useOrgSettings(teamsEnabled)`, member-readable `GET /org/settings`) and
+passes that `allowlist` into `CatalogPane`, so org-blocked apps render in the SAME locked
+pipeline for EVERY member, search included. Off Teams the page passes `allowlist === null`
+(unchanged). Locked apps render via `CatalogLockedSection`: read-only
 `AppRow`s with a `Lock` trailing icon and the `integrations:locked.askAdmin`
 subtitle ("Ask your admin to enable {app}", visible at rest — no hover gating),
-under a muted `locked.heading`, capped at `LOCKED_PREVIEW_CAP` (8) with a
-`locked.more` "+N more" count line so a tiny allowlist over the ~1000-app catalog
-can't bury the connectable apps. A member SEARCHING for a blocked app finds its
-locked row (search + category filter before the partition), never emptiness.
-`allowlist === null` (single-player, or Teams with no ceiling) → `locked` always
-empty → no locks ever; the global integrations page passes no `allowlist`, and the
-manager's allowlist editor (`AppCatalogGrid`) is unchanged.
+under a muted `locked.heading` ("Turned off in your workspace") with a `CatalogCount`
+count badge and a `locked.subtitle` line ("Your admin picked which apps can be used
+here..."), capped at `LOCKED_PREVIEW_CAP` (8) with a reworded `locked.more_*` "+N more"
+count line so a tiny allowlist over the ~1000-app catalog can't bury the connectable
+apps. A member SEARCHING for a blocked app finds its locked row (search + category filter
+before the partition), never emptiness. `allowlist === null` (single-player, or Teams
+with no ceiling) → `locked` always empty → no locks ever; the manager's allowlist editor
+(`AppCatalogGrid`) is unchanged.
 
 **Connect flow + pending recovery** — `useConnectFlow` (in the shared module) lives
 on the SURFACE, never inside the picker, so closing the dialog never kills polling.

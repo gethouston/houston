@@ -1,14 +1,18 @@
 import { Spinner } from "@houston-ai/core";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useIntegrationConnections,
   useIntegrationToolkits,
 } from "../../hooks/queries";
+import { useAllAgentGrants } from "../../hooks/queries/use-all-agent-grants";
 import {
   useOrgSettings,
   useSetOrgSettings,
 } from "../../hooks/queries/use-org-settings";
+import { useAgentStore } from "../../stores/agents";
 import { AllowlistEditor, INTEGRATION_PROVIDER } from "../integrations";
+import { toolkitAgentIds } from "../integrations/connected-apps-model";
 import type { OrgTabProps } from "./organization-view";
 
 /**
@@ -29,6 +33,31 @@ export default function AllowedIntegrationsTab({ ctx }: OrgTabProps) {
   const setOrgSettings = useSetOrgSettings();
   const loading = orgSettings.isLoading || catalog.isLoading;
 
+  // "Used by N agents" impact meta, OWNER ONLY. Honesty constraint: the caller
+  // only sees grants for agents visible to them; that is the whole org for the
+  // owner but only the assigned agents for an admin, so a non-owner count would
+  // be a partial total dressed as a whole. Non-owner => enabled=false, no fetch.
+  const agents = useAgentStore((s) => s.agents);
+  const agentIds = useMemo(() => agents.map((a) => a.id), [agents]);
+  const grants = useAllAgentGrants(
+    agentIds,
+    ctx.isOwner && agentIds.length > 0,
+  );
+  const rowMeta = useMemo(() => {
+    if (!ctx.isOwner) return undefined;
+    // toolkitAgentIds only yields toolkits with >=1 agent, so a zero-agent app
+    // never gets an entry and correctly falls back to its normal description.
+    const byToolkit = toolkitAgentIds(grants.byAgent);
+    const meta = new Map<string, string>();
+    for (const [toolkit, ids] of byToolkit) {
+      meta.set(
+        toolkit,
+        t("integrations.orgAllowlist.usedByAgents", { count: ids.length }),
+      );
+    }
+    return meta;
+  }, [ctx.isOwner, grants.byAgent, t]);
+
   return (
     <div className="mx-auto w-full max-w-3xl">
       {loading ? (
@@ -42,6 +71,7 @@ export default function AllowedIntegrationsTab({ ctx }: OrgTabProps) {
           seedToolkits={(connections.data ?? []).map((c) => c.toolkit)}
           saving={setOrgSettings.isPending}
           readOnly={readOnly}
+          rowMeta={rowMeta}
           onSave={(next) => setOrgSettings.mutate(next)}
           copy={{
             question: t("integrations.orgAllowlist.question"),
