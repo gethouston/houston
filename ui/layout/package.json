@@ -1,6 +1,6 @@
 {
   "name": "@houston-ai/layout",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
