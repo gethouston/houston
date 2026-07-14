@@ -57,8 +57,7 @@ fn detect_in(root: &Path) -> LegacyDetection {
                 .map(|it| {
                     it.flatten()
                         .filter(|a| {
-                            !a.file_name().to_string_lossy().starts_with('.')
-                                && a.path().is_dir()
+                            !a.file_name().to_string_lossy().starts_with('.') && a.path().is_dir()
                         })
                         .count()
                 })
@@ -152,27 +151,43 @@ pub struct BackupResult {
     pub byte_count: u64,
 }
 
+/// Running totals for [`copy_dir_all`].
+#[derive(Default, Debug, PartialEq)]
+struct CopyStats {
+    files: usize,
+    bytes: u64,
+    skipped_links: usize,
+}
+
+/// Attach the offending path to an IO error — a bare `std::io::Error` renders
+/// as just "Acceso denegado. (os error 5)", which no bug report can act on.
+fn at_path<T>(res: std::io::Result<T>, path: &Path) -> std::io::Result<T> {
+    res.map_err(|e| std::io::Error::new(e.kind(), format!("{}: {e}", path.display())))
+}
+
 /// Recursively copy `src` into `dst`, preserving the directory structure.
-/// Creates `dst` (and any nested dirs) and `std::fs::copy`s every file.
-/// Returns the running (file_count, byte_count) of everything copied.
-fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<(usize, u64)> {
-    std::fs::create_dir_all(dst)?;
-    let mut files = 0usize;
-    let mut bytes = 0u64;
-    for entry in std::fs::read_dir(src)? {
-        let entry = entry?;
+/// Symlinks (and Windows junctions) are counted and SKIPPED, never followed:
+/// agent workspaces contain links whose targets live outside the entry's own
+/// subtree (pnpm's node_modules junctions, tool caches), and `fs::copy` on a
+/// directory link fails — on Windows with ACCESS_DENIED (os error 5). Real
+/// files are still copied from wherever they actually live under the tree.
+fn copy_dir_all(src: &Path, dst: &Path, stats: &mut CopyStats) -> std::io::Result<()> {
+    at_path(std::fs::create_dir_all(dst), dst)?;
+    for entry in at_path(std::fs::read_dir(src), src)? {
+        let entry = at_path(entry, src)?;
         let src_path = entry.path();
-        let dst_path = dst.join(entry.file_name());
-        if entry.file_type()?.is_dir() {
-            let (f, b) = copy_dir_all(&src_path, &dst_path)?;
-            files += f;
-            bytes += b;
+        let file_type = at_path(entry.file_type(), &src_path)?;
+        if file_type.is_symlink() {
+            stats.skipped_links += 1;
+        } else if file_type.is_dir() {
+            copy_dir_all(&src_path, &dst.join(entry.file_name()), stats)?;
         } else {
-            bytes += std::fs::copy(&src_path, &dst_path)?;
-            files += 1;
+            let dst_path = dst.join(entry.file_name());
+            stats.bytes += at_path(std::fs::copy(&src_path, &dst_path), &src_path)?;
+            stats.files += 1;
         }
     }
-    Ok((files, bytes))
+    Ok(())
 }
 
 /// Make a full local backup of the user's Houston data before the cloud
@@ -211,13 +226,19 @@ pub async fn backup_houston_data() -> Result<BackupResult, String> {
             source.display(),
             dest.display()
         );
-        let (file_count, byte_count) =
-            copy_dir_all(&source, &dest).map_err(|e| format!("backup copy failed: {e}"))?;
+        let mut stats = CopyStats::default();
+        copy_dir_all(&source, &dest, &mut stats).map_err(|e| format!("backup copy failed: {e}"))?;
+        if stats.skipped_links > 0 {
+            tracing::info!(
+                "[migration] backup skipped {} symlinks/junctions",
+                stats.skipped_links
+            );
+        }
 
         Ok(BackupResult {
             backup_path: dest.display().to_string(),
-            file_count,
-            byte_count,
+            file_count: stats.files,
+            byte_count: stats.bytes,
         })
     })
     .await
@@ -299,15 +320,26 @@ mod tests {
         let src = scratch();
         std::fs::create_dir_all(src.join("workspaces/Work/Sales")).unwrap();
         std::fs::write(src.join("workspaces/Work/Sales/CLAUDE.md"), b"hello").unwrap();
-        std::fs::write(src.join("workspaces/Work/Sales/notes.txt"), b"a longer note").unwrap();
+        std::fs::write(
+            src.join("workspaces/Work/Sales/notes.txt"),
+            b"a longer note",
+        )
+        .unwrap();
         std::fs::write(src.join("top.json"), b"{}").unwrap();
 
         let dst = scratch().join("backup");
-        let (files, bytes) = copy_dir_all(&src, &dst).unwrap();
+        let mut stats = CopyStats::default();
+        copy_dir_all(&src, &dst, &mut stats).unwrap();
 
         // 3 files: CLAUDE.md (5) + notes.txt (13) + top.json (2) = 20 bytes.
-        assert_eq!(files, 3);
-        assert_eq!(bytes, 20);
+        assert_eq!(
+            stats,
+            CopyStats {
+                files: 3,
+                bytes: 20,
+                skipped_links: 0,
+            }
+        );
 
         // Faithful reproduction: same relative paths + contents.
         assert_eq!(
@@ -320,5 +352,72 @@ mod tests {
         );
         assert_eq!(std::fs::read(dst.join("top.json")).unwrap(), b"{}");
         assert!(dst.join("workspaces/Work/Sales").is_dir());
+    }
+
+    /// Symlinks are skipped, not followed — a directory link inside an agent
+    /// workspace (pnpm junction on Windows) used to abort the whole backup
+    /// with ACCESS_DENIED because `fs::copy` can't copy a directory.
+    #[cfg(unix)]
+    #[test]
+    fn copy_dir_all_skips_symlinks() {
+        let src = scratch();
+        std::fs::create_dir_all(src.join("workspaces/Work/node_modules/.pnpm/pkg")).unwrap();
+        std::fs::write(
+            src.join("workspaces/Work/node_modules/.pnpm/pkg/index.js"),
+            b"x",
+        )
+        .unwrap();
+        std::os::unix::fs::symlink(
+            src.join("workspaces/Work/node_modules/.pnpm/pkg"),
+            src.join("workspaces/Work/node_modules/pkg"),
+        )
+        .unwrap();
+        std::os::unix::fs::symlink(
+            src.join("workspaces/Work/node_modules/.pnpm/pkg/index.js"),
+            src.join("workspaces/Work/linked-file.js"),
+        )
+        .unwrap();
+
+        let dst = scratch().join("backup");
+        let mut stats = CopyStats::default();
+        copy_dir_all(&src, &dst, &mut stats).unwrap();
+
+        assert_eq!(
+            stats,
+            CopyStats {
+                files: 1,
+                bytes: 1,
+                skipped_links: 2,
+            }
+        );
+        // The real file arrived; the links were left behind, not materialized.
+        assert!(dst
+            .join("workspaces/Work/node_modules/.pnpm/pkg/index.js")
+            .is_file());
+        assert!(!dst.join("workspaces/Work/node_modules/pkg").exists());
+        assert!(!dst.join("workspaces/Work/linked-file.js").exists());
+    }
+
+    /// A copy failure must name the offending path — "os error 5" alone is
+    /// undiagnosable from a user's bug report.
+    #[cfg(unix)]
+    #[test]
+    fn copy_dir_all_errors_carry_the_path() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let src = scratch();
+        let locked = src.join("locked");
+        std::fs::create_dir_all(&locked).unwrap();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+
+        let dst = scratch().join("backup");
+        let mut stats = CopyStats::default();
+        let err = copy_dir_all(&src, &dst, &mut stats).unwrap_err();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        assert!(
+            err.to_string().contains("locked"),
+            "error should name the path: {err}"
+        );
     }
 }
