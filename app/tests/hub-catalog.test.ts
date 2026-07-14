@@ -103,25 +103,26 @@ describe("pricing and subscription flags come from pi", () => {
     strictEqual(opencode?.costOutput, 2);
   });
 
-  it("curates an OAuth provider down to PROVIDER_OVERRIDES.<id>.models", () => {
-    // The fixture's `anthropic` provider also runs the prior-generation
-    // `claude-sonnet-4-6` / `claude-opus-4-7` ids, which have no
-    // PROVIDER_OVERRIDES.anthropic.models entry — the plan can't actually pick
-    // them, so the hub must not offer them (HOU curation gate).
+  it("offers an OAuth provider's FULL pi model list (no curation gate)", () => {
+    // The hub must mirror the chat model picker, which maps the hydrated
+    // PROVIDERS (pi's full per-provider list) directly. The fixture's
+    // `anthropic` provider also runs the prior-generation `claude-sonnet-4-6` /
+    // `claude-opus-4-7` ids with no PROVIDER_OVERRIDES.anthropic.models entry —
+    // they are runnable, so the hub offers them too.
     const ids = new Set<string>();
     for (const model of all.models)
       for (const offer of model.offers)
         if (offer.providerId === "anthropic") ids.add(offer.modelId);
     deepStrictEqual([...ids].sort(), [
       "claude-fable-5",
+      "claude-opus-4-7",
       "claude-opus-4-8",
+      "claude-sonnet-4-6",
       "claude-sonnet-5",
     ]);
-    ok(!ids.has("claude-sonnet-4-6"), "uncurated OAuth model must be filtered");
-    ok(!ids.has("claude-opus-4-7"), "uncurated OAuth model must be filtered");
   });
 
-  it("never curation-gates an API-key gateway", () => {
+  it("keeps an API-key gateway's full list", () => {
     // groq has no PROVIDER_OVERRIDES entry at all, and opencode is api-key —
     // both must expose every pi model they run.
     ok(all.byKey.get("llama 4 scout"));
