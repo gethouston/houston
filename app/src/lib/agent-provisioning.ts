@@ -131,6 +131,18 @@ export interface ProvisioningEntry {
   agentPath: string;
   /** Epoch ms of the create call — the TTL anchor. */
   since: number;
+  /**
+   * Why the agent is warming. `"create"` = a just-created agent (HOU-693):
+   * it has no data by definition, so per-agent reads may answer "nothing
+   * yet" instantly. `"asleep"` = an EXISTING agent whose pod was detected
+   * scaled-to-zero on open (HOU-730): it HAS data — the locally persisted
+   * list/transcript caches are already painting it — so reads must NOT
+   * short-circuit to empty (an instant empty success wipes the painted
+   * cards AND the on-disk cache); they ride the gateway hold instead and
+   * settle when the pod wakes. Absent on entries persisted by older builds:
+   * treated as `"create"` (the pre-split behavior).
+   */
+  reason?: "create" | "asleep";
   /** Messages queued while warming, flushed on ready (in order). */
   pendingSends?: PendingWarmingSend[];
   /**
@@ -142,6 +154,16 @@ export interface ProvisioningEntry {
    * false; a fresh entry (new create/rename) replaces it instead.
    */
   timedOut?: boolean;
+}
+
+/**
+ * Whether per-agent READS may answer "nothing yet" for this warming entry
+ * instead of riding the gateway hold. Only a just-created agent qualifies —
+ * see the `reason` doc above. Writes are unaffected (they always park or
+ * block, whatever the reason).
+ */
+export function warmingReadsAnswerEmpty(entry: ProvisioningEntry): boolean {
+  return entry.reason !== "asleep";
 }
 
 /**
