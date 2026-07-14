@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { hasReconnectAppsStep } from "../../../lib/cloud-migration";
+import {
+  doneScreenOutcome,
+  hasReconnectAppsStep,
+} from "../../../lib/cloud-migration";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
 import { SetupCard } from "../setup-card";
 import { DoneCongrats, DoneStepAi, DoneStepApps } from "./done-followups";
@@ -16,7 +19,9 @@ type Step = "ai" | "apps" | "congrats";
  * move (failed agents, excluded files, rejected items) so nothing is silently
  * dropped. Stamps the persisted outcome on mount (`applyNow: false`, so a
  * relaunch skips the wizard without ripping this screen away); the congrats
- * step's button applies it in-session.
+ * step's button applies it in-session. A run with failed agents stamps
+ * "skipped", not "done", so Settings' "Continue migration" keeps the retry
+ * available (`doneScreenOutcome`).
  */
 export function DoneScreen({
   persistOutcome,
@@ -32,14 +37,16 @@ export function DoneScreen({
   const progress = useCloudMigrationStore((s) => s.progress);
   const integrations = useCloudMigrationStore((s) => s.integrations);
 
-  useEffect(() => {
-    persistOutcome("done", { applyNow: false });
-  }, [persistOutcome]);
-
   const doneTasks = tasks.filter((x) => progress[x.sourceId]?.step === "done");
   const failedTasks = tasks.filter(
     (x) => progress[x.sourceId]?.step !== "done",
   );
+
+  // "skipped" when agents were left behind, so Settings keeps the retry alive.
+  const outcome = doneScreenOutcome(failedTasks.length);
+  useEffect(() => {
+    persistOutcome(outcome, { applyNow: false });
+  }, [persistOutcome, outcome]);
   const excluded = doneTasks.flatMap((x) =>
     x.manifest.excluded.map((e) => e.path),
   );
@@ -59,7 +66,7 @@ export function DoneScreen({
   const afterAi: Step = showAppsStep ? "apps" : "congrats";
 
   if (step === "congrats") {
-    return <DoneCongrats onFinish={() => persistOutcome("done")} />;
+    return <DoneCongrats onFinish={() => persistOutcome(outcome)} />;
   }
 
   if (step === "ai") {

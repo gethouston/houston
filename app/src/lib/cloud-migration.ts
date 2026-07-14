@@ -198,6 +198,16 @@ export function collectIntegrations(
 }
 
 /**
+ * The outcome the done screen persists. A clean run is final ("done"); a run
+ * that left agents behind stamps "skipped", so the wizard stays closed on
+ * relaunch but Settings' "Continue migration" row — which hides only on
+ * "done" (`useMigrationAvailable`) — keeps offering the retry.
+ */
+export function doneScreenOutcome(failedAgents: number): "done" | "skipped" {
+  return failedAgents > 0 ? "skipped" : "done";
+}
+
+/**
  * Whether the done screen's second step ("Reconnect your apps" + the
  * leftovers report) has anything to show. Modern legacy installs (v0.4.2x)
  * connected integrations in PLATFORM mode — account-level in Composio, no

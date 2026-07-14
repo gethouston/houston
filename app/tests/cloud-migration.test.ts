@@ -4,6 +4,7 @@ import {
   buildMigrationPlan,
   chunkPaths,
   collectIntegrations,
+  doneScreenOutcome,
   hasReconnectAppsStep,
   isPlausibleMigrationTarget,
   type SourceAgent,
@@ -201,4 +202,18 @@ test("the apps step shows for integrations OR any leftover kind", () => {
   assert.equal(hasReconnectAppsStep({ ...none, failedAgents: 1 }), true);
   assert.equal(hasReconnectAppsStep({ ...none, excludedFiles: 1 }), true);
   assert.equal(hasReconnectAppsStep({ ...none, rejectedFiles: 1 }), true);
+});
+
+// ── doneScreenOutcome ─────────────────────────────────────────────────
+
+test("a clean run stamps done — the wizard and Settings row both retire", () => {
+  assert.equal(doneScreenOutcome(0), "done");
+});
+
+test("a run with failed agents stamps skipped so Settings keeps the retry", () => {
+  // Settings' "Continue migration" hides only on "done" (useMigrationAvailable);
+  // stamping "done" here used to strand Continue-anyway users with no UI path
+  // back to their failed agents.
+  assert.equal(doneScreenOutcome(1), "skipped");
+  assert.equal(doneScreenOutcome(5), "skipped");
 });
