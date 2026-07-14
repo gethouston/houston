@@ -87,6 +87,23 @@ function AgentRow({
   );
 }
 
+/** The quiet "Migrate later" escape hatch — the same `onDefer` everywhere:
+ *  while the run is still going AND on every error state, so a user stuck on
+ *  a failing backup/prepare/agent is never trapped with only Retry (the
+ *  Settings "Continue migration" row keeps the re-run available). */
+function DeferButton({ onDefer }: { onDefer: () => void }) {
+  const { t } = useTranslation("migration");
+  return (
+    <button
+      type="button"
+      onClick={onDefer}
+      className="rounded-full px-3 py-1 text-xs text-[var(--ht-space-foreground-muted)] transition-colors hover:text-[var(--ht-space-foreground)]"
+    >
+      {t("progress.migrateLater")}
+    </button>
+  );
+}
+
 /**
  * Live migration wait screen (HOU-719 redesign): the shared {@link OrbitLoader}
  * (the rocket in transit — the move made literal) over a status line that
@@ -127,24 +144,25 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
       mark={waiting ? <OrbitLoader /> : undefined}
       title={t("progress.title")}
       footer={
-        startError ? undefined : anyError && !anyRunning ? (
-          <Button
-            variant="outline"
-            className="rounded-full"
-            onClick={continueAnyway}
-          >
-            {t("progress.continueAnyway")}
-          </Button>
+        startError ? (
+          // Backup/prepare failed: Retry lives in the card; the footer offers
+          // the way out so the error never traps the user in the wizard.
+          onDefer && <DeferButton onDefer={onDefer} />
+        ) : anyError && !anyRunning ? (
+          <div className="flex flex-col items-center gap-2">
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={continueAnyway}
+            >
+              {t("progress.continueAnyway")}
+            </Button>
+            {onDefer && <DeferButton onDefer={onDefer} />}
+          </div>
         ) : onDefer ? (
           // The migration is still running (backup / prepare / uploading): let
           // the user leave and finish later from Settings if it's slow.
-          <button
-            type="button"
-            onClick={onDefer}
-            className="rounded-full px-3 py-1 text-xs text-[var(--ht-space-foreground-muted)] transition-colors hover:text-[var(--ht-space-foreground)]"
-          >
-            {t("progress.migrateLater")}
-          </button>
+          <DeferButton onDefer={onDefer} />
         ) : undefined
       }
     >
