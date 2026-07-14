@@ -198,9 +198,16 @@ function bootstrap() {
     person_profiles: "identified_only",
     capture_pageview: false,
     capture_pageleave: false,
-    autocapture: false,
-    capture_dead_clicks: false,
-    rageclick: false,
+    // Friction signals ($rageclick / $dead_click) require autocapture. Masking
+    // keeps user content (agent names, email subjects, chat text) out of
+    // PostHog — only element selectors/positions leave the app. Specific
+    // question behind enabling (production-infra.md): where does the v0.5.9
+    // onboarding strand users?
+    autocapture: true,
+    mask_all_text: true,
+    mask_all_element_attributes: true,
+    capture_dead_clicks: true,
+    rageclick: true,
     disable_session_recording: true,
     enable_heatmaps: false,
     advanced_disable_flags: true,
