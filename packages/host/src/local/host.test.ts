@@ -204,11 +204,6 @@ test("managed credential config serves sandbox credentials from the gateway", as
   const agentSlug = "8899aabbccddeeff";
   const seen: { url?: string; auth?: string }[] = [];
   const gateway = createHttpServer((req, res) => {
-    if (req.url?.startsWith("/v1/pod/claude-oauth/")) {
-      res.writeHead(404, { "Content-Type": "application/json" });
-      res.end(`{"error":"credential not found"}`);
-      return;
-    }
     seen.push({ url: req.url, auth: req.headers.authorization });
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(

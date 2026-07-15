@@ -8,7 +8,6 @@ import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
 import { ProxyChannel } from "../channel/proxy";
 import { FileCredentialStore } from "../credentials/file-store";
-import { RemoteClaudeCredentialStore } from "../credentials/remote-claude-store";
 import { RemoteSharedEndpointStore } from "../credentials/remote-shared-endpoint-store";
 import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
@@ -240,19 +239,6 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       })
     : undefined;
   const controlPlaneUrl = `http://127.0.0.1:${opts.port}`;
-  const claudeCredentialPath = join(
-    dirname(opts.credentialsPath),
-    "claude-login",
-    ".credentials.json",
-  );
-  const remoteClaudeCredentials = opts.credentials
-    ? new RemoteClaudeCredentialStore({
-        baseUrl: opts.credentials.url,
-        orgSlug: opts.credentials.orgSlug,
-        agentSlug: opts.credentials.agentSlug,
-        podToken: opts.credentials.podToken,
-      })
-    : undefined;
 
   const spawner =
     opts.spawner ??
@@ -299,7 +285,6 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     launcher,
     proxy: { forward },
     credentials,
-    claudeCredentials: remoteClaudeCredentials,
     // Desktop: clients talk to this host DIRECTLY (no gateway in front to mint
     // or strip identity headers), so an inbound x-houston-acting-as is
     // untrusted client input — never relay it to the runtime; identity is the
@@ -570,10 +555,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       // after every upload succeeds makes the first sync delete the old GCS
       // object; a partial failure leaves it intact for a safe boot retry.
       // Passive hosts (a read-only conversion source) must not mutate custody:
-      // no restore, no legacy migration, no rotation mirroring.
-      if (remoteClaudeCredentials && !opts.passive) {
-        await remoteClaudeCredentials.restore(claudeCredentialPath);
-      }
+      // no legacy migration.
       if (remoteCustomSecrets && !opts.passive) {
         const migrated = await remoteCustomSecrets.migrateLegacy();
         if (migrated > 0) {
@@ -629,7 +611,6 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       if (!opts.passive) {
         watcher.start();
         syncDaemon?.start();
-        remoteClaudeCredentials?.watch(claudeCredentialPath);
         scheduler.start();
         usageSampler?.start();
       }
@@ -676,10 +657,6 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         // Await actual child exit (bounded): the final sync below must not
         // walk /data while a runtime is still flushing its last writes.
         await launcher.shutdownAllAndWait();
-        if (remoteClaudeCredentials && !opts.passive) {
-          await remoteClaudeCredentials.sync(claudeCredentialPath);
-          remoteClaudeCredentials.stop();
-        }
         await syncDaemon?.stop();
         await new Promise<void>((resolve, reject) => {
           if (!server.listening) return resolve();

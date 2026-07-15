@@ -682,9 +682,11 @@ custom-management route still depends on gateway proxy support; custody is safe
 regardless of whether that UI surface is enabled. Rollout and rollback are
 COUPLED: a gateway without Secret Manager custody (old image, or
 `GW_SECRET_MANAGER_PROJECT` unset outside dev) answers the pod custody routes
-401, so a new-image managed pod fails its startup Claude restore and every
-custom-secret read. Rolling the gateway's custody flag back requires pinning
-the engine image back in the same step.
+401, so a new-image managed pod fails every custom-secret read. Rolling the
+gateway's custody flag back requires pinning the engine image back in the same
+step. The Anthropic credential is NOT part of this custody: the gateway's
+central store is its single custodian and rotator (see
+anthropic-credentials.md) — pods never hold or restore its refresh token.
 
 ---
 
