@@ -18,6 +18,34 @@ export interface AgentActivitySummary {
   runningCount: number;
 }
 
+/** One agent's board rows (`.houston/activity`), the summary-relevant bits. */
+export interface ActivitySummaryInput {
+  status?: string | null;
+  /** Agent-mode id; routine-setup chats never count toward badges. */
+  agent?: string | null;
+}
+
+/**
+ * Summarize one agent's own activity list — the SAME source (and the same
+ * counting rule) as the "Activity N" tab badge in workspace-shell.tsx, used
+ * as the sidebar fallback while the all-conversations aggregate has not
+ * fetched for the current roster key (cold boot, pods still waking).
+ */
+export function summarizeActivities(
+  activities: ActivitySummaryInput[],
+): AgentActivitySummary {
+  const summary: AgentActivitySummary = { needsYouCount: 0, runningCount: 0 };
+  for (const activity of activities) {
+    if (isSetupChatMode(activity.agent)) continue;
+    if (activity.status === "needs_you") {
+      summary.needsYouCount += 1;
+    } else if (activity.status === "running") {
+      summary.runningCount += 1;
+    }
+  }
+  return summary;
+}
+
 export function buildAgentActivitySummaries(
   agents: AgentActivitySummaryInput[],
   conversations: ActivityConversationSummaryInput[],
