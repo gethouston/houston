@@ -34,9 +34,12 @@ export function EngineConnectScreen({
     setBusy(true);
     setError(null);
     try {
-      // Validates reachability (HTTPS + CORS) AND the token (401 throws).
+      // Validates reachability (HTTPS + CORS) AND the token (401 throws). The
+      // probe targets the host's pre-agent connect surface (/setup-runtime/*)
+      // — the host serves no flat /auth/status; the stored config keeps the
+      // bare URL (the app adapter builds its own paths from it).
       await new HoustonEngineClient({
-        baseUrl: url,
+        baseUrl: `${url}/setup-runtime`,
         token: tok || undefined,
       }).authStatus();
       onConnect({ baseUrl: url, token: tok });
