@@ -328,6 +328,7 @@ export function ChatInteractionCard({
         <QuestionStepBody
           disabled={disabled}
           draft={draft}
+          hideFreeText={optionsPresent && step.hideFreeText === true}
           onDraftChange={(value) => setState((s) => setDraft(s, stepId, value))}
           onOption={onOption}
           onSubmit={onSend}
