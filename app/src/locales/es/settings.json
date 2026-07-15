@@ -10,6 +10,15 @@
     "reportBug": "Reportar bug",
     "danger": "Eliminar espacio"
   },
+  "onboardingSegmentReset": {
+    "title": "Segmentación inicial",
+    "description": "Borra el segmento guardado del primer inicio para que Houston pueda preguntarlo otra vez durante el onboarding.",
+    "button": "Reiniciar segmentación",
+    "confirmTitle": "¿Reiniciar la segmentación de inicio?",
+    "confirmDescription": "Esto borra el segmento guardado del primer inicio. Houston te lo volverá a preguntar cuando aparezca el onboarding inicial.",
+    "confirmLabel": "Reiniciar",
+    "toast": "Segmentación reiniciada"
+  },
   "account": {
     "title": "Cuenta",
     "signOut": "Cerrar sesión",

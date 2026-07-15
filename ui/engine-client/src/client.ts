@@ -1000,7 +1000,7 @@ export class HoustonClient {
       `/preferences/${this.seg(key)}`,
     ).then((r) => r.value);
   }
-  setPreference(key: string, value: string): Promise<void> {
+  setPreference(key: string, value: string | null): Promise<void> {
     return this.request("PUT", `/preferences/${this.seg(key)}`, { value });
   }
 

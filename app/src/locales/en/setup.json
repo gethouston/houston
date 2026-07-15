@@ -16,6 +16,27 @@
     "skip": "I'll do this later",
     "dismissError": "We couldn't save that. Please try again."
   },
+  "onboardingSegment": {
+    "eyebrow": "Personalize Houston",
+    "title": "What best describes your work?",
+    "subtitle": "Pick one so Houston can tailor agents, templates, and recommendations for you.",
+    "helper": "You can change this later as Houston learns what helps you.",
+    "skip": "Skip for now",
+    "options": {
+      "marketing": "Marketing",
+      "product": "Product",
+      "legal": "Legal",
+      "engineering": "Engineering",
+      "student": "Student",
+      "design": "Design",
+      "operations": "Operations",
+      "people_hr": "People & HR",
+      "data_science": "Data science",
+      "finance": "Finance",
+      "sales": "Sales",
+      "something_else": "Something else"
+    }
+  },
   "tutorial": {
     "brand": "Houston",
     "nav": {

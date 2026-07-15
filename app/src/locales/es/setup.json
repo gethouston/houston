@@ -16,6 +16,27 @@
     "skip": "Lo haré más tarde",
     "dismissError": "No pudimos guardar eso. Inténtalo de nuevo."
   },
+  "onboardingSegment": {
+    "eyebrow": "Personaliza Houston",
+    "title": "¿Cuál describe mejor tu trabajo?",
+    "subtitle": "Elige una opción para que Houston adapte agentes, plantillas y recomendaciones para ti.",
+    "helper": "Puedes cambiarlo más tarde a medida que Houston aprenda qué te ayuda.",
+    "skip": "Omitir por ahora",
+    "options": {
+      "marketing": "Marketing",
+      "product": "Producto",
+      "legal": "Legal",
+      "engineering": "Ingeniería",
+      "student": "Estudiante",
+      "design": "Diseño",
+      "operations": "Operaciones",
+      "people_hr": "Personas y RR. HH.",
+      "data_science": "Ciencia de datos",
+      "finance": "Finanzas",
+      "sales": "Ventas",
+      "something_else": "Otra cosa"
+    }
+  },
   "tutorial": {
     "brand": "Houston",
     "nav": {
