@@ -28,11 +28,17 @@ test("first-run segment screen persists the choice and does not reappear", async
   await page.getByRole("button", { name: /Operations/ }).click();
   await page.getByRole("button", { name: "Continue" }).click();
 
-  await expect(page.getByRole("button", { name: "Start setup" })).toBeVisible();
+  // Continuing lands on the create-your-assistant flow, which opens directly
+  // on its connect step (the welcome/intro screen was removed).
+  await expect(
+    page.getByRole("heading", { name: "Connect your AI" }),
+  ).toBeVisible();
 
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "What best describes your work?" }),
   ).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Start setup" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Connect your AI" }),
+  ).toBeVisible();
 });
