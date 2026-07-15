@@ -1,7 +1,7 @@
 import { AIBoard } from "@houston-ai/board";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { openAgentHref } from "../../lib/open-href";
+import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import type { Agent } from "../../lib/types";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useUIStore } from "../../stores/ui";
@@ -82,6 +82,7 @@ export function MissionControlArchived({
     onSelectSession: data.setSelectedId,
   });
   const clearSelection = useCallback(() => data.setSelectedId(null), [data]);
+  const openHref = useOpenAgentHref(activeAgent?.folderPath ?? null);
   const handleSendMessage = useMissionControlArchivedSend({
     activeAgent,
     activeAgentDef,
@@ -134,9 +135,7 @@ export function MissionControlArchived({
             />
           }
           onPanelOpenChange={setMissionPanelOpen}
-          onOpenLink={(url) =>
-            activeAgent && openAgentHref(url, activeAgent.folderPath)
-          }
+          onOpenLink={openHref}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           thinkingIndicator={panel.thinkingIndicator}

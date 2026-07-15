@@ -12,7 +12,7 @@ import type { FeedItem } from "@houston-ai/chat";
 import type { Activity } from "@houston-ai/engine-client";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { useConversationFeed } from "../../hooks/use-conversation-vm";
-import { openAgentHref } from "../../lib/open-href";
+import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { type HistoryLoadOptions, tauriChat } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
@@ -55,6 +55,7 @@ export function RoutineSetupChatBoard({
   panelActions,
 }: Props) {
   const path = agent.folderPath;
+  const openHref = useOpenAgentHref(path);
   const queuedLabels = useQueuedMessageLabels();
   const { composerLabels } = useBoardLabels();
   const attachmentValidation = useAttachmentRejectionDialog();
@@ -150,7 +151,7 @@ export function RoutineSetupChatBoard({
         queuedLabels={queuedLabels}
         onLoadHistory={loadHistory}
         onStopSession={send.stopSession}
-        onOpenLink={(url) => openAgentHref(url, path)}
+        onOpenLink={openHref}
         onNotice={(message) => addToast({ title: message })}
         // The ask_user question card that replaces the composer when the
         // turn settles needs_you — the interview IS this card, so dropping

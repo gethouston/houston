@@ -36,7 +36,7 @@ test("non-string children (React nodes) never match a string href → labeled", 
 });
 
 test("relative path the agent dropped (perfil.md) classifies as autolink when shown bare", () => {
-  // openAgentHref resolves non-URL hrefs against the agent dir; classification
+  // useOpenAgentHref resolves non-URL hrefs against the agent dir; classification
   // only cares whether the visible text equals the href.
   assert.equal(classifyMarkdownLink("perfil.md", "perfil.md"), "autolink");
 });
