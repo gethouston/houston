@@ -2,14 +2,13 @@
  * Stateful AI-provider credentials for the fake host — the per-agent-pod
  * provider model the SDK `providers` module and the hosted connect flow exercise
  * (PARITY-SETTINGS §2, §6). Credentials are PER AGENT in hosted mode, so state
- * is keyed by agent id; the flat `/providers` + `/auth/status` routes (the local
- * single-runtime profile) share the {@link FLAT_KEY} slot.
+ * is keyed by agent id; the pre-agent `/setup-runtime/*` connect surface (the
+ * WebApp gate + ConnectView) shares the {@link FLAT_KEY} slot.
  *
- * Every slot seeds with Claude connected + active (what the old static
- * `providersBody`/`authStatusBody` returned, so the WebApp connect gate still
- * clears). Mutations — start/complete/cancel login, api-key, logout, settings —
- * flip the slot so a `GET /providers` + `GET /auth/status` refetch reflects them,
- * exactly as the real runtime does.
+ * Every slot seeds with Claude connected + active, so the WebApp connect gate
+ * clears. Mutations — start/complete/cancel login, api-key, logout, settings —
+ * flip the slot so a providers + auth/status refetch reflects them, exactly as
+ * the real runtime does.
  *
  * Wire types come from the real packages so a contract change breaks the
  * typecheck here instead of silently drifting the mock.
@@ -26,7 +25,7 @@ import type {
 } from "@houston/runtime-client";
 import { CATALOG, SPEC } from "./provider-catalog";
 
-/** The slot the flat (non-agent) `/providers` + `/auth/status` routes read. */
+/** The slot the pre-agent `/setup-runtime/*` connect routes read. */
 export const FLAT_KEY = "__flat__";
 
 interface Slot {
