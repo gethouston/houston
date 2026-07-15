@@ -165,11 +165,26 @@ export async function handle(req: Request): Promise<Response> {
   const segs = path.split("/").filter(Boolean);
   const body = await parseBody(req);
 
-  // --- top-level runtime probe (the WebApp connect gate uses a base-URL client) ---
+  // --- top-level runtime probe (the local single-runtime profile) ---
   if (path === "/health") return json({ status: "ok", version: "e2e" });
   if (path === "/version") return json({ engine: "e2e", protocol: 1 });
   if (path === "/auth/status") return json(authStatusBody());
   if (path === "/providers") return json(providersBody());
+
+  // --- pre-agent connect surface (the host's /setup-runtime/*) ---
+  // The WebApp connect gate + ConnectView probe here BEFORE any agent exists
+  // (packages/host/src/routes/setup-runtime.ts). Same allowlist as the real
+  // route, backed by the flat slot so the seeded Claude clears the gate.
+  if (segs[0] === "setup-runtime") {
+    const rest = segs.slice(1).join("/");
+    const allowed =
+      (method === "GET" && (rest === "providers" || rest === "auth/status")) ||
+      (method === "POST" &&
+        (/^auth\/[^/]+\/login(\/(complete|cancel))?$/.test(rest) ||
+          /^credential\/(capture|api-key|claude-oauth)$/.test(rest)));
+    if (!allowed) return json({ error: { message: "not found" } }, 404);
+    return handleAgents(method, [state.FLAT_KEY, ...segs.slice(1)], req, body);
+  }
 
   // --- misc host surface the UI may touch on boot (kept permissive) ---
   // Deployment capabilities: single-player local by default (the app's boot

@@ -64,6 +64,59 @@ describe("startFakeHost", () => {
     expect(totalModels).toBeGreaterThan(100);
   });
 
+  it("serves the pre-agent connect surface under /setup-runtime", async () => {
+    // Regression: the WebApp connect gate moved from the flat /auth/status to
+    // the host's /setup-runtime/auth/status (pre-agent connect surface); this
+    // route missing hung the e2e global setup on the "Connecting…" screen.
+    const status = await fetch(`${host.url}/setup-runtime/auth/status`);
+    expect(status.status).toBe(200);
+    const auth = (await status.json()) as { activeProvider: string | null };
+    expect(auth.activeProvider).toBe("anthropic");
+
+    const providers = await fetch(`${host.url}/setup-runtime/providers`);
+    expect(providers.status).toBe(200);
+    const list = (await providers.json()) as Array<{
+      id: string;
+      isActive: boolean;
+    }>;
+    expect(list.find((p) => p.id === "anthropic")?.isActive).toBe(true);
+
+    // Only the connect surface is reachable — everything else 404s, like the
+    // real host's allowlist (packages/host/src/routes/setup-runtime.ts).
+    const blocked = await fetch(`${host.url}/setup-runtime/settings`, {
+      method: "PUT",
+    });
+    expect(blocked.status).toBe(404);
+    const noExport = await fetch(`${host.url}/setup-runtime/auth/export`);
+    expect(noExport.status).toBe(404);
+  });
+
+  it("runs the pre-agent login flow against the setup-runtime slot", async () => {
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+    const base = `${host.url}/setup-runtime`;
+
+    // Start a login for a not-yet-connected provider, then complete it.
+    const start = await fetch(`${base}/auth/openai-codex/login`, {
+      method: "POST",
+    });
+    expect(start.status).toBe(200);
+    const complete = await fetch(`${base}/auth/openai-codex/login/complete`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code: "WXYZ-1234" }),
+    });
+    expect(complete.status).toBe(200);
+
+    // The connect landed on the SAME slot the flat routes read (the local
+    // single-runtime profile) — the gate's refetch sees it connected.
+    const auth = (await (await fetch(`${base}/auth/status`)).json()) as {
+      providers: Array<{ provider: string; configured: boolean }>;
+    };
+    expect(
+      auth.providers.find((p) => p.provider === "openai-codex")?.configured,
+    ).toBe(true);
+  });
+
   it("exposes the __test__ reset control endpoint", async () => {
     const res = await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     expect(res.status).toBe(200);
