@@ -5,10 +5,15 @@
  * is keyed by agent id; the pre-agent `/setup-runtime/*` connect surface (the
  * WebApp gate + ConnectView) shares the {@link FLAT_KEY} slot.
  *
- * Every slot seeds with Claude connected + active, so the WebApp connect gate
- * clears. Mutations — start/complete/cancel login, api-key, logout, settings —
- * flip the slot so a providers + auth/status refetch reflects them, exactly as
- * the real runtime does.
+ * Two seeds: per-AGENT slots start with Claude connected + active (chat,
+ * settings, and the AI hub read that), while the {@link FLAT_KEY} setup slot
+ * starts EMPTY — on the real host the pre-agent setup runtime has no credential
+ * until the user connects, and onboarding's "Connect your AI" step auto-advances
+ * past an already-connected provider (`selectOnMount`), so a connected seed
+ * would skip the screen the onboarding specs assert on. Mutations —
+ * start/complete/cancel login, api-key, logout, settings — flip the slot so a
+ * providers + auth/status refetch reflects them, exactly as the real runtime
+ * does.
  *
  * Wire types come from the real packages so a contract change breaks the
  * typecheck here instead of silently drifting the mock.
@@ -37,12 +42,14 @@ interface Slot {
   effort?: string;
 }
 
-function seedSlot(): Slot {
+function seedSlot(connected: boolean): Slot {
   return {
-    configured: new Set<ProviderId>(["anthropic"]),
+    configured: new Set<ProviderId>(connected ? ["anthropic"] : []),
     login: new Map(),
-    activeProvider: "anthropic",
-    activeModel: new Map([["anthropic", "claude-sonnet-4-6"]]),
+    activeProvider: connected ? "anthropic" : null,
+    activeModel: new Map<ProviderId, string>(
+      connected ? [["anthropic", "claude-sonnet-4-6"]] : [],
+    ),
     enterpriseUrl: new Map(),
   };
 }
@@ -52,7 +59,7 @@ let slots = new Map<string, Slot>();
 function slot(agentId: string): Slot {
   let s = slots.get(agentId);
   if (!s) {
-    s = seedSlot();
+    s = seedSlot(agentId !== FLAT_KEY);
     slots.set(agentId, s);
   }
   return s;
