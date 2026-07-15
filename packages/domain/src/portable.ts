@@ -6,6 +6,7 @@ import {
   type Routine,
 } from "@houston/protocol";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import { normalizeRoutines } from "./routines";
 
 /**
  * Pack / unpack a `.houstonagent` — a zip of an agent's shareable content. Pure
@@ -66,10 +67,12 @@ export function packAgent(
     files[CLAUDE_MD] = strToU8(content.claudeMd);
   for (const s of content.skills) files[skillPath(s.slug)] = strToU8(s.body);
   if (content.routines.length) {
-    // A setup chat is machine-local: its activity id means nothing on the
-    // importer's side, so shared routines never carry one.
+    // A setup chat is machine-local (its activity id means nothing on the
+    // importer's side) and `created_by` is the exporter's account identity
+    // (who a fired routine acts as — never valid on another account, and not
+    // ours to publish), so shared routines carry neither.
     const shareable = content.routines.map(
-      ({ setup_activity_id: _local, ...r }) => r,
+      ({ setup_activity_id: _local, created_by: _owner, ...r }) => r,
     );
     files[ROUTINES] = strToU8(JSON.stringify(shareable, null, 2));
   }
@@ -123,9 +126,15 @@ export function unpackAgent(bytes: Uint8Array): PortablePackage {
     manifest,
     ...(claude !== undefined ? { claudeMd: strFromU8(claude) } : {}),
     skills,
-    routines: parseArray<Routine>(routinesRaw).filter(
-      (r) => isRecord(r) && typeof r.id === "string",
-    ),
+    // Run imported routines through the SAME normalization the read path uses:
+    // an entry the store would drop (no identity, malformed trigger, not
+    // exactly one wake mechanism) must not reach the install preview only to
+    // silently vanish on the first read after install. Machine/account-local
+    // keys are stripped defensively too — packs from older builds carry them.
+    routines: normalizeRoutines(
+      parseArray<Routine>(routinesRaw),
+      ROUTINES,
+    ).items.map(({ setup_activity_id: _local, created_by: _owner, ...r }) => r),
     learnings: parseArray<Learning>(learningsRaw).filter(
       (l) => isRecord(l) && typeof l.id === "string",
     ),

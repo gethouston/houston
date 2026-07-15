@@ -321,6 +321,108 @@ test("routines: PATCH switches a cron routine to a trigger wake, clearing the sc
   expect(bad.status).toBe(400);
 });
 
+test("routines: the editor's cron save `{schedule, trigger: null}` keeps the routine alive (regression)", async () => {
+  // The routines editor pairs every cron save with `trigger: null`. This once
+  // deleted the schedule too, persisting a wake-less routine that vanished
+  // from every subsequent list and was purged from disk by the next write.
+  const created = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "Morning brief",
+      prompt: "Summarize the news",
+      schedule: "0 8 * * *",
+    }),
+  });
+  expect(created.status).toBe(201);
+  const routine = (await created.json()) as Routine;
+
+  const patched = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}`,
+    {
+      method: "PATCH",
+      headers: auth("alice"),
+      body: JSON.stringify({
+        name: "Morning brief v2",
+        prompt: "Summarize the news, briefly",
+        schedule: "0 9 * * *",
+        trigger: null,
+      }),
+    },
+  );
+  expect(patched.status).toBe(200);
+  const next = (await patched.json()) as Routine;
+  expect(next.schedule).toBe("0 9 * * *");
+  expect("trigger" in next).toBe(false);
+
+  // The routine is still in the list after the save (it used to vanish here).
+  const list = (await (
+    await fetch(`${base}/agents/${agentId}/routines`, {
+      headers: auth("alice"),
+    })
+  ).json()) as { items: Routine[]; diagnostics: unknown[] };
+  const found = list.items.find((r) => r.id === routine.id);
+  expect(found?.name).toBe("Morning brief v2");
+  expect(found?.schedule).toBe("0 9 * * *");
+  expect(list.diagnostics).toEqual([]);
+
+  // And a LATER unrelated PATCH must not purge it either (the old bug's
+  // cascade: every mutation rewrote the file without normalize-dropped rows).
+  const toggled = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}`,
+    {
+      method: "PATCH",
+      headers: auth("alice"),
+      body: JSON.stringify({ enabled: false }),
+    },
+  );
+  expect(toggled.status).toBe(200);
+  const after = (await (
+    await fetch(`${base}/agents/${agentId}/routines`, {
+      headers: auth("alice"),
+    })
+  ).json()) as { items: Routine[] };
+  expect(after.items.some((r) => r.id === routine.id)).toBe(true);
+});
+
+test("routines: a PATCH that would leave no wake mechanism is rejected (400), never persisted", async () => {
+  const trigger = {
+    toolkit: "gmail",
+    trigger_slug: "GMAIL_NEW_GMAIL_MESSAGE",
+    trigger_config: { labelIds: ["INBOX"] },
+  };
+  const created = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({ name: "On email", prompt: "Triage", trigger }),
+  });
+  expect(created.status).toBe(201);
+  const routine = (await created.json()) as Routine;
+
+  // Clearing the only wake without supplying the other one → 400. Persisting
+  // it would silently lose the routine (normalizeRoutines drops wake-less rows).
+  const cleared = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}`,
+    {
+      method: "PATCH",
+      headers: auth("alice"),
+      body: JSON.stringify({ trigger: null }),
+    },
+  );
+  expect(cleared.status).toBe(400);
+  expect(((await cleared.json()) as { error: string }).error).toContain(
+    "exactly one",
+  );
+
+  // The routine is untouched by the rejected write.
+  const list = (await (
+    await fetch(`${base}/agents/${agentId}/routines`, {
+      headers: auth("alice"),
+    })
+  ).json()) as { items: Routine[] };
+  expect(list.items.find((r) => r.id === routine.id)?.trigger).toEqual(trigger);
+});
+
 test("routines: created_by is server-owned and cannot be spoofed", async () => {
   const created = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
