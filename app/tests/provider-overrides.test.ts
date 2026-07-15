@@ -84,6 +84,10 @@ describe("providerDescription", () => {
       "minimax-cn",
       "zai-coding-cn",
       "kimi-coding",
+      "xiaomi",
+      "xiaomi-token-plan-cn",
+      "xiaomi-token-plan-sgp",
+      "xiaomi-token-plan-ams",
     ];
     for (const id of ids) {
       const desc = providerDescription(id);
