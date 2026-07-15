@@ -1,6 +1,6 @@
 [package]
 name = "houston-engine-server"
-version = "0.4.27"
+version = "0.4.28"
 edition = "2021"
 description = "Houston Engine HTTP+WS server — axum binary speaking the Houston wire protocol"
 license = "MIT"
