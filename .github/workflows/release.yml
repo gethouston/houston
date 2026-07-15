@@ -340,18 +340,21 @@ jobs:
           du -sh app/src-tauri/resources/bin/*
 
           # Sanity: every shippable artifact must be present and the
-          # codex binary must be a fat (universal) Mach-O.
+          # codex-family binaries must be fat (universal) Mach-Os.
           test -x app/src-tauri/resources/bin/codex
+          test -x app/src-tauri/resources/bin/codex-code-mode-host
           test -x app/src-tauri/resources/bin/composio-aarch64/composio
           test -x app/src-tauri/resources/bin/composio-x86_64/composio
           test -f app/src-tauri/resources/bin/cli-deps.json
 
-          LIPO_INFO=$(lipo -info app/src-tauri/resources/bin/codex)
-          echo "$LIPO_INFO"
-          echo "$LIPO_INFO" | grep -q 'arm64' \
-            || { echo "::error::bundled codex missing arm64 slice"; exit 1; }
-          echo "$LIPO_INFO" | grep -q 'x86_64' \
-            || { echo "::error::bundled codex missing x86_64 slice"; exit 1; }
+          for bin in codex codex-code-mode-host; do
+            LIPO_INFO=$(lipo -info "app/src-tauri/resources/bin/$bin")
+            echo "$LIPO_INFO"
+            echo "$LIPO_INFO" | grep -q 'arm64' \
+              || { echo "::error::bundled $bin missing arm64 slice"; exit 1; }
+            echo "$LIPO_INFO" | grep -q 'x86_64' \
+              || { echo "::error::bundled $bin missing x86_64 slice"; exit 1; }
+          done
 
       # Import the Developer ID certificate into a temporary keychain so
       # we can pre-sign the bundled CLI binaries (codex + composio) BEFORE
@@ -407,6 +410,7 @@ jobs:
           set -euo pipefail
           BIN=app/src-tauri/resources/bin
           for f in "$BIN/codex" \
+                   "$BIN/codex-code-mode-host" \
                    "$BIN/composio-aarch64/composio" \
                    "$BIN/composio-x86_64/composio" \
                    "$BIN/gemini-aarch64/gemini" \
@@ -1148,6 +1152,7 @@ jobs:
 
           # Sanity: every Windows artifact must be present.
           test -f app/src-tauri/resources/bin/codex.exe
+          test -f app/src-tauri/resources/bin/codex-code-mode-host.exe
           test -f app/src-tauri/resources/bin/composio-${{ matrix.arch }}/composio.exe
           test -f app/src-tauri/resources/bin/composio-${{ matrix.arch }}/run-helpers-runtime.mjs
           test -f app/src-tauri/resources/bin/composio-${{ matrix.arch }}/acp-adapters/codex/win32-${{ matrix.bun_arch }}/codex-acp.exe

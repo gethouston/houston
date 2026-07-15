@@ -13,6 +13,7 @@ opening a shell.
 | CLI         | License       | Distribution      | Where it lives                                                        |
 |-------------|---------------|-------------------|------------------------------------------------------------------------|
 | codex       | Apache-2.0    | Bundled (universal) | `Houston.app/Contents/Resources/bin/codex` — single Mach-O fat binary |
+| codex-code-mode-host | Apache-2.0 | Bundled (universal) | `Resources/bin/codex-code-mode-host` — code-mode JS host (V8, jitless); codex ≥ 0.144 spawns it as a SIBLING of the `codex` binary for the code-mode tool (GPT-5.6 family). Missing sibling = every code-mode call fails with `failed to spawn code-mode host ... (os error 2)`. Pinned as a `companion` inside cli-deps.json's `codex` entry — shares codex's `version`, cannot drift. |
 | composio    | MIT           | Bundled (per-arch)  | `Resources/bin/composio-aarch64/`, `Resources/bin/composio-x86_64/`   |
 | gemini      | Apache-2.0    | Bundled (per-arch)  | `Resources/bin/gemini-aarch64/gemini`, `Resources/bin/gemini-x86_64/gemini` (Node SEA, single Mach-O each) |
 | claude-code | PROPRIETARY   | Runtime download    | `~/.local/bin/claude`                                                  |
@@ -22,6 +23,7 @@ opening a shell.
 | CLI         | License       | Distribution                       | Where it lives                                                                          |
 |-------------|---------------|------------------------------------|------------------------------------------------------------------------------------------|
 | codex       | Apache-2.0    | Bundled (single arch)              | `<install>\resources\bin\codex.exe` — downloaded + zstd-decoded from upstream            |
+| codex-code-mode-host | Apache-2.0 | Bundled (single arch)       | `<install>\resources\bin\codex-code-mode-host.exe` — same sibling rule as macOS          |
 | composio    | MIT           | **Built from source (fork)**       | `<install>\resources\bin\composio-x86_64\composio.exe`                                   |
 | gemini      | Apache-2.0    | **NOT BUNDLED in v1**              | No upstream Windows binary published by google-gemini/gemini-cli (verified across last 100 releases). Phase 2 will mirror the composio fork-build pattern using upstream's `scripts/build_binary.js` (already has win32 branches via Node SEA + postject). Until then, Gemini-backed agents are macOS-only. |
 | claude-code | PROPRIETARY   | Runtime download                   | `%LOCALAPPDATA%\Programs\claude\claude.exe`                                              |
@@ -86,7 +88,11 @@ bundle it on either OS. Instead the engine downloads + sha256-verifies
 on first launch using a manifest pinned in `cli-deps.json`.
 
 codex is a Rust binary so we `lipo -create` the two arch tarballs into
-one universal binary on macOS. composio is a Bun-bundled JS app whose
+one universal binary on macOS. Its companion `codex-code-mode-host`
+(published under the same `rust-v{version}` release tag since 0.144)
+ships the same way and MUST sit next to `codex` — codex resolves it as
+a sibling of its own executable (env override: `CODEX_CODE_MODE_HOST_PATH`).
+composio is a Bun-bundled JS app whose
 runtime is arch-specific — `lipo` can't combine them, so we ship per-
 arch directories on macOS and a single x64 directory on Windows.
 
@@ -132,7 +138,8 @@ mode arg selects the OS:
 
 1. Downloads each bundled CLI for both arches using URLs from the manifest.
 2. Verifies sha256 against pinned checksums (mismatch is fatal).
-3. `lipo -create`s the two codex slices into a single universal Mach-O.
+3. `lipo -create`s the two codex slices into a single universal Mach-O
+   (same for each codex companion, e.g. `codex-code-mode-host`).
 4. Stages each composio arch under `composio-aarch64/` / `composio-x86_64/`.
 5. Prunes cross-platform `acp-adapters/codex/<plat>/` directories that the
    resolved arch can never execute (~580 MB savings).
@@ -140,9 +147,10 @@ mode arg selects the OS:
 
 ### Windows (`windows-x64` mode)
 
-1. Downloads `codex-x86_64-pc-windows-msvc.exe.zst` from openai/codex,
-   verifies SHA-256, decompresses with `zstd`, stages as
-   `resources/bin/codex.exe`. No lipo step.
+1. Downloads `codex-x86_64-pc-windows-msvc.exe.zst` (and each companion,
+   e.g. `codex-code-mode-host-x86_64-pc-windows-msvc.exe.zst`) from
+   openai/codex, verifies SHA-256, decompresses with `zstd`, stages as
+   `resources/bin/codex.exe` / `codex-code-mode-host.exe`. No lipo step.
 2. Clones the gethouston/composio fork at the pinned commit SHA
    (verified after clone — drift fails the build), runs
    `pnpm install + pnpm exec tsdown + pnpm run build:binary:cross --
@@ -193,7 +201,8 @@ codesign --force --options runtime --timestamp \
   --sign "$APPLE_SIGNING_IDENTITY" "$f"
 ```
 
-on `codex`, `composio-aarch64/composio`, `composio-x86_64/composio`.
+on `codex`, `codex-code-mode-host`, `composio-aarch64/composio`,
+`composio-x86_64/composio`.
 Tauri's later deep sign leaves these alone (it doesn't visit nested
 Resources subdirs), so the pre-applied signature carries through to
 notarization.

@@ -8,6 +8,9 @@
 #
 #   app/src-tauri/resources/bin/
 #     codex                          # universal Mach-O (arm64 + x86_64)
+#     codex-code-mode-host           # universal Mach-O — code-mode JS host;
+#                                    # codex spawns it as a SIBLING binary,
+#                                    # so it must sit next to `codex`
 #     composio-aarch64/              # Apple Silicon Bun bundle
 #       composio
 #       services/
@@ -24,6 +27,7 @@
 #
 #   app/src-tauri/resources/bin/
 #     codex.exe                      # Windows x64 single-arch binary
+#     codex-code-mode-host.exe       # code-mode JS host, sibling of codex.exe
 #     composio-x86_64/               # Bun-compiled Windows bundle
 #       composio.exe
 #       services/
@@ -38,6 +42,10 @@
 #   - codex is a Rust binary — on macOS we `lipo -create` the two slices
 #     into a single fat binary; on Windows there is no lipo equivalent
 #     and we simply stage the per-arch binary alongside the rest.
+#     codex-code-mode-host (codex >= 0.144) ships the same way and MUST
+#     land next to `codex`: codex resolves it as a sibling of its own
+#     executable when the model calls the code-mode tool (GPT-5.6 family);
+#     a missing sibling fails every code-mode call with os error 2.
 #   - composio is a Bun-bundled JavaScript runtime — CANNOT be lipo'd; the
 #     binary contains an arch-specific Bun runtime + sibling .mjs/services
 #     files. Both arches must be shipped side-by-side under a per-arch dir
@@ -215,97 +223,118 @@ prune_acp_adapters() {
 # macOS code path — unchanged from the pre-Windows release pipeline
 # ---------------------------------------------------------------------------
 
+# The codex family: the `codex` CLI itself plus the companion binaries
+# published under the same rust-v{version} release tag (currently
+# codex-code-mode-host, which codex spawns as a SIBLING binary for the
+# code-mode tool). Companions live under `.codex.companions` in
+# cli-deps.json — same `version` field as codex, so they can never drift.
+CODEX_FAMILY=(codex codex-code-mode-host)
+
+# jq lookup for a codex-family binary's url/checksum field.
+#   $1 = binary name, $2 = field (urls|checksums), $3 = platform
+codex_family_field() {
+  local name="$1" field="$2" platform="$3"
+  if [ "$name" = "codex" ]; then
+    jq -r ".codex.${field}[\"$platform\"] // empty" "$DEPS_FILE"
+  else
+    jq -r ".codex.companions[\"$name\"].${field}[\"$platform\"] // empty" "$DEPS_FILE"
+  fi
+}
+
 stage_codex_arch_darwin() {
-  local arch="$1"
+  local name="$1"
+  local arch="$2"
   local platform="darwin-$arch"
   local version url_template expected url tmp extract_dir bin_path
   version=$(jq -r '.codex.version' "$DEPS_FILE")
-  url_template=$(jq -r ".codex.urls[\"$platform\"] // empty" "$DEPS_FILE")
-  expected=$(jq -r ".codex.checksums[\"$platform\"] // empty" "$DEPS_FILE")
+  url_template=$(codex_family_field "$name" urls "$platform")
+  expected=$(codex_family_field "$name" checksums "$platform")
 
   if [ -z "$url_template" ]; then
-    echo "ERROR: cli-deps.json missing codex URL for $platform" >&2
+    echo "ERROR: cli-deps.json missing $name URL for $platform" >&2
     exit 1
   fi
 
   url="${url_template//\{version\}/$version}"
-  echo "FETCH codex v$version ($platform)"
+  echo "FETCH $name v$version ($platform)"
   echo "  URL: $url"
 
   tmp=$(mktemp)
-  download "$url" "$tmp" || { echo "ERROR: codex download failed for $platform" >&2; rm -f "$tmp"; exit 1; }
-  verify_or_print_checksum "$tmp" "$expected" "codex/$platform" || { rm -f "$tmp"; exit 1; }
+  download "$url" "$tmp" || { echo "ERROR: $name download failed for $platform" >&2; rm -f "$tmp"; exit 1; }
+  verify_or_print_checksum "$tmp" "$expected" "$name/$platform" || { rm -f "$tmp"; exit 1; }
 
   extract_dir=$(mktemp -d)
   case "$url" in
     *.tar.gz|*.tgz) tar xzf "$tmp" -C "$extract_dir" ;;
     *.zip)          unzip -q "$tmp" -d "$extract_dir" ;;
-    *)              cp "$tmp" "$extract_dir/codex" ;;
+    *)              cp "$tmp" "$extract_dir/$name" ;;
   esac
   rm -f "$tmp"
 
-  bin_path=$(find_binary "$extract_dir" "codex")
+  bin_path=$(find_binary "$extract_dir" "$name")
   if [ -z "$bin_path" ]; then
-    echo "ERROR: codex binary not found in archive for $platform" >&2
+    echo "ERROR: $name binary not found in archive for $platform" >&2
     find "$extract_dir" -type f | head -20 >&2
     rm -rf "$extract_dir"
     exit 1
   fi
 
-  local stage_dir="$OUT_DIR/.staging/codex"
+  local stage_dir="$OUT_DIR/.staging/$name"
   mkdir -p "$stage_dir"
-  cp "$bin_path" "$stage_dir/codex-$arch"
-  chmod +x "$stage_dir/codex-$arch"
+  cp "$bin_path" "$stage_dir/$name-$arch"
+  chmod +x "$stage_dir/$name-$arch"
   rm -rf "$extract_dir"
 
   # Verify the binary has the expected slice — protects against a
   # mislabelled URL (Apple silicon binary served from x64 URL, etc.).
   local lipo_info
-  lipo_info=$(lipo -info "$stage_dir/codex-$arch" 2>&1 || echo "")
+  lipo_info=$(lipo -info "$stage_dir/$name-$arch" 2>&1 || echo "")
   case "$arch" in
     arm64)
       echo "$lipo_info" | grep -q 'arm64' \
-        || { echo "ERROR: codex-$arch is not an arm64 binary: $lipo_info" >&2; exit 1; } ;;
+        || { echo "ERROR: $name-$arch is not an arm64 binary: $lipo_info" >&2; exit 1; } ;;
     x64)
       echo "$lipo_info" | grep -q 'x86_64' \
-        || { echo "ERROR: codex-$arch is not an x86_64 binary: $lipo_info" >&2; exit 1; } ;;
+        || { echo "ERROR: $name-$arch is not an x86_64 binary: $lipo_info" >&2; exit 1; } ;;
   esac
 
-  echo "  Staged: $stage_dir/codex-$arch"
+  echo "  Staged: $stage_dir/$name-$arch"
 }
 
 lipo_codex_universal_darwin() {
-  local stage_dir="$OUT_DIR/.staging/codex"
-  if [ ! -f "$stage_dir/codex-arm64" ] || [ ! -f "$stage_dir/codex-x64" ]; then
-    echo "ERROR: cannot lipo codex — both arches not staged" >&2
+  local name="$1"
+  local stage_dir="$OUT_DIR/.staging/$name"
+  if [ ! -f "$stage_dir/$name-arm64" ] || [ ! -f "$stage_dir/$name-x64" ]; then
+    echo "ERROR: cannot lipo $name — both arches not staged" >&2
     ls -la "$stage_dir" >&2 || true
     exit 1
   fi
-  echo "LIPO codex universal (arm64 + x86_64)"
+  echo "LIPO $name universal (arm64 + x86_64)"
   lipo -create \
-    "$stage_dir/codex-arm64" \
-    "$stage_dir/codex-x64" \
-    -output "$OUT_DIR/codex"
-  chmod +x "$OUT_DIR/codex"
+    "$stage_dir/$name-arm64" \
+    "$stage_dir/$name-x64" \
+    -output "$OUT_DIR/$name"
+  chmod +x "$OUT_DIR/$name"
   rm -rf "$stage_dir"
   local lipo_info
-  lipo_info=$(lipo -info "$OUT_DIR/codex" 2>&1)
+  lipo_info=$(lipo -info "$OUT_DIR/$name" 2>&1)
   echo "  $lipo_info"
-  echo "  Installed: $OUT_DIR/codex ($(du -sh "$OUT_DIR/codex" | cut -f1))"
+  echo "  Installed: $OUT_DIR/$name ($(du -sh "$OUT_DIR/$name" | cut -f1))"
 }
 
 finalize_codex_single_arch_darwin() {
-  local arch="$1"
-  local stage_dir="$OUT_DIR/.staging/codex"
-  if [ ! -f "$stage_dir/codex-$arch" ]; then
-    echo "ERROR: codex-$arch not staged" >&2
+  local name="$1"
+  local arch="$2"
+  local stage_dir="$OUT_DIR/.staging/$name"
+  if [ ! -f "$stage_dir/$name-$arch" ]; then
+    echo "ERROR: $name-$arch not staged" >&2
     exit 1
   fi
-  echo "FINALIZE codex (single arch: $arch — dev build, NOT shippable)"
-  cp "$stage_dir/codex-$arch" "$OUT_DIR/codex"
-  chmod +x "$OUT_DIR/codex"
+  echo "FINALIZE $name (single arch: $arch — dev build, NOT shippable)"
+  cp "$stage_dir/$name-$arch" "$OUT_DIR/$name"
+  chmod +x "$OUT_DIR/$name"
   rm -rf "$stage_dir"
-  echo "  Installed: $OUT_DIR/codex (single $arch)"
+  echo "  Installed: $OUT_DIR/$name (single $arch)"
 }
 
 fetch_composio_arch_darwin() {
@@ -456,40 +485,41 @@ stage_gemini_arch_darwin() {
 # release — we just download, decompress, and stage at the single
 # location resources/bin/codex.exe (no lipo equivalent on Windows).
 stage_codex_windows() {
-  local arch="$1"
+  local name="$1"
+  local arch="$2"
   local platform="windows-$arch"
   local version url_template expected url tmp out_path
   version=$(jq -r '.codex.version' "$DEPS_FILE")
-  url_template=$(jq -r ".codex.urls[\"$platform\"] // empty" "$DEPS_FILE")
-  expected=$(jq -r ".codex.checksums[\"$platform\"] // empty" "$DEPS_FILE")
+  url_template=$(codex_family_field "$name" urls "$platform")
+  expected=$(codex_family_field "$name" checksums "$platform")
 
   if [ -z "$url_template" ]; then
-    echo "ERROR: cli-deps.json missing codex URL for $platform" >&2
+    echo "ERROR: cli-deps.json missing $name URL for $platform" >&2
     exit 1
   fi
 
   url="${url_template//\{version\}/$version}"
-  echo "FETCH codex v$version ($platform)"
+  echo "FETCH $name v$version ($platform)"
   echo "  URL: $url"
 
   tmp=$(mktemp)
-  download "$url" "$tmp" || { echo "ERROR: codex download failed for $platform" >&2; rm -f "$tmp"; exit 1; }
-  verify_or_print_checksum "$tmp" "$expected" "codex/$platform" || { rm -f "$tmp"; exit 1; }
+  download "$url" "$tmp" || { echo "ERROR: $name download failed for $platform" >&2; rm -f "$tmp"; exit 1; }
+  verify_or_print_checksum "$tmp" "$expected" "$name/$platform" || { rm -f "$tmp"; exit 1; }
 
   if ! command -v zstd >/dev/null 2>&1; then
-    echo "ERROR: zstd is required to decompress the codex Windows artifact" >&2
+    echo "ERROR: zstd is required to decompress the $name Windows artifact" >&2
     echo "  brew install zstd | choco install zstandard" >&2
     rm -f "$tmp"
     exit 1
   fi
 
-  out_path="$OUT_DIR/codex.exe"
+  out_path="$OUT_DIR/$name.exe"
   rm -f "$out_path"
   zstd -d "$tmp" -o "$out_path" >/dev/null 2>&1
   rm -f "$tmp"
 
   if [ ! -s "$out_path" ]; then
-    echo "ERROR: zstd decompression produced empty output for codex/$platform" >&2
+    echo "ERROR: zstd decompression produced empty output for $name/$platform" >&2
     exit 1
   fi
   echo "  Installed: $out_path ($(du -sh "$out_path" | cut -f1))"
@@ -678,6 +708,7 @@ build_composio_windows() {
 # ---------------------------------------------------------------------------
 rm -rf "$OUT_DIR/.staging" \
        "$OUT_DIR/codex" "$OUT_DIR/codex.exe" \
+       "$OUT_DIR/codex-code-mode-host" "$OUT_DIR/codex-code-mode-host.exe" \
        "$OUT_DIR/composio-"* \
        "$OUT_DIR/gemini-"* \
        "$OUT_DIR/cli-deps.json"
@@ -689,20 +720,26 @@ rm -rf "$OUT_DIR/.staging" \
 case "$TARGET_OS" in
   darwin)
     for arch in "${ARCHES[@]}"; do
-      stage_codex_arch_darwin "$arch"
+      for bin in "${CODEX_FAMILY[@]}"; do
+        stage_codex_arch_darwin "$bin" "$arch"
+      done
       fetch_composio_arch_darwin "$arch"
       stage_gemini_arch_darwin "$arch"
     done
 
-    if [ "${#ARCHES[@]}" -eq 2 ]; then
-      lipo_codex_universal_darwin
-    else
-      finalize_codex_single_arch_darwin "${ARCHES[0]}"
-    fi
+    for bin in "${CODEX_FAMILY[@]}"; do
+      if [ "${#ARCHES[@]}" -eq 2 ]; then
+        lipo_codex_universal_darwin "$bin"
+      else
+        finalize_codex_single_arch_darwin "$bin" "${ARCHES[0]}"
+      fi
+    done
     ;;
   windows)
     for arch in "${ARCHES[@]}"; do
-      stage_codex_windows "$arch"
+      for bin in "${CODEX_FAMILY[@]}"; do
+        stage_codex_windows "$bin" "$arch"
+      done
       build_composio_windows "$arch"
       stage_git_bash_windows "$arch"
     done
@@ -730,6 +767,7 @@ missing=()
 case "$TARGET_OS" in
   darwin)
     [ -x "$OUT_DIR/codex" ] || missing+=("codex")
+    [ -x "$OUT_DIR/codex-code-mode-host" ] || missing+=("codex-code-mode-host")
     if [ "${#ARCHES[@]}" -eq 2 ]; then
       [ -x "$OUT_DIR/composio-aarch64/composio" ] || missing+=("composio-aarch64/composio")
       [ -x "$OUT_DIR/composio-x86_64/composio" ]  || missing+=("composio-x86_64/composio")
@@ -739,6 +777,7 @@ case "$TARGET_OS" in
     ;;
   windows)
     [ -f "$OUT_DIR/codex.exe" ] || missing+=("codex.exe")
+    [ -f "$OUT_DIR/codex-code-mode-host.exe" ] || missing+=("codex-code-mode-host.exe")
     # Verify only the arches that were actually requested. Previously
     # this hardcoded composio-x86_64/... paths which made
     # `windows-arm64` (and any future single-arch mode) fail at the
