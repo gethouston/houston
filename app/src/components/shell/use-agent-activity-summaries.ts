@@ -1,5 +1,5 @@
-import { skipToken, useQueries } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import type { Activity } from "../../data/activity";
 import { useAllConversations } from "../../hooks/queries";
 import { queryKeys } from "../../lib/query-keys";
@@ -24,27 +24,51 @@ export function useAgentActivitySummaries(
   const aggregateIsAuthoritative =
     conversations !== undefined && !aggregate.isPlaceholderData;
 
-  // Cache-only subscription to every agent's own board query (skipToken —
-  // fetching stays owned by the per-agent board, so this never wakes a pod).
-  // While the aggregate has not fetched for the current roster key (cold
-  // boot, pods still waking), an agent with restored/live board data gets its
-  // badge from the SAME rows the board and the "Activity N" tab render.
-  const cachedActivities = useQueries({
-    queries: agents.map((agent) => ({
-      queryKey: queryKeys.activity(agent.folderPath),
-      queryFn: skipToken,
-    })),
-    combine: (results) => results.map((r) => r.data as Activity[] | undefined),
+  // Re-render when any agent's own board query (`["activity", path]`) changes
+  // in the cache, WITHOUT attaching query observers: a per-render useQueries
+  // subscription here re-synced its observers on every sidebar render and the
+  // resulting notification churn kept the whole shell re-rendering (the
+  // auto-opened chat panel could no longer be Escape-closed — caught by the
+  // web e2e suite). A raw QueryCache subscription has no options to re-sync,
+  // and it can never trigger a fetch, so it also can't wake a pod.
+  const queryClient = useQueryClient();
+  const activityCacheVersion = useRef(0);
+  const subscribe = useCallback(
+    (onStoreChange: () => void) =>
+      queryClient.getQueryCache().subscribe((event) => {
+        if (event.query.queryKey[0] !== "activity") return;
+        activityCacheVersion.current += 1;
+        onStoreChange();
+      }),
+    [queryClient],
+  );
+  const cacheVersion = useSyncExternalStore(subscribe, () => {
+    return activityCacheVersion.current;
   });
 
   return useMemo(() => {
+    // The version stamp is not read below — it is a dependency so the memo
+    // recomputes when a board query lands/updates in the cache.
+    void cacheVersion;
     const summaries = buildAgentActivitySummaries(agents, conversations ?? []);
     if (!aggregateIsAuthoritative) {
-      agents.forEach((agent, index) => {
-        const activities = cachedActivities[index];
+      // While the aggregate has not fetched for the current roster key (cold
+      // boot, pods still waking), an agent with restored/live board data gets
+      // its badge from the SAME rows the board and the "Activity N" tab
+      // render — cache reads only, never a fetch.
+      for (const agent of agents) {
+        const activities = queryClient.getQueryData<Activity[]>(
+          queryKeys.activity(agent.folderPath),
+        );
         if (activities) summaries[agent.id] = summarizeActivities(activities);
-      });
+      }
     }
     return summaries;
-  }, [agents, conversations, aggregateIsAuthoritative, cachedActivities]);
+  }, [
+    agents,
+    conversations,
+    aggregateIsAuthoritative,
+    queryClient,
+    cacheVersion,
+  ]);
 }
