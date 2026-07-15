@@ -33,8 +33,13 @@ export function WebApp({
   cloud?: boolean;
   onChangeEngine?: () => void;
 }) {
+  // The pre-agent connect surface lives under the host's /setup-runtime/*
+  // (auth/status, providers, the OAuth login routes) — the host serves no flat
+  // /auth/status. The app itself keeps talking to the bare baseUrl through the
+  // engine adapter; only this gate (and ConnectView) speak setup-runtime.
   const client = useMemo(
-    () => new HoustonEngineClient({ baseUrl, token }),
+    () =>
+      new HoustonEngineClient({ baseUrl: `${baseUrl}/setup-runtime`, token }),
     [baseUrl, token],
   );
   const [status, setStatus] = useState<AuthStatus | null>(null);
