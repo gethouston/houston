@@ -214,11 +214,13 @@ The screen state machine (`OnboardingStep` in `tutorial-copy.ts`; first screen i
    `connectEmail` when integrations are available, else straight to `finished`
    (`stepAfterAgentCreated`).
 3. **connectEmail** — connect an email toolkit (`missions/connect-email.tsx`) so
-   the assistant can send on the user's behalf. Three one-click brand action rows
-   (Gmail → Google logo, Outlook → Microsoft logo, "Another provider" → a `Mail`
-   icon that expands an inline input); tapping a brand row kicks off its OAuth
+   the assistant can send on the user's behalf. Two one-click brand action rows
+   (Gmail → Google logo, Outlook → Microsoft logo; the old "Another provider"
+   free-text row fed raw slugs to Composio and mostly failed, so it was removed —
+   other providers connect later from Integrations, which the skip hint points
+   at); tapping a brand row kicks off its OAuth
    immediately (no select-then-Connect two-step), the row's chevron becomes a
-   spinner while in flight (the other rows disable) and the in-flight row itself
+   spinner while in flight (the other row disables) and the in-flight row itself
    turns into a CANCEL control — flipping to an X + "Cancel" on hover, mirroring
    the AI step's Connect pill (`useConnectFlow().cancel`) — and it auto-advances
    the moment the tapped toolkit lands active. If the background create hasn't

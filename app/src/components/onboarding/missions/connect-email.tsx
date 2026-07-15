@@ -1,5 +1,4 @@
-import { Button, ConfirmDialog, Input } from "@houston-ai/core";
-import { Loader2, Mail, X } from "lucide-react";
+import { Button, ConfirmDialog } from "@houston-ai/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -33,15 +32,17 @@ interface ConnectEmailMissionProps {
 }
 
 /**
- * Onboarding: give the agent access to the user's email. Three one-click brand
- * ACTION rows (Gmail, Outlook, another provider) — tap one and the app's own
- * OAuth on the integrations provider starts immediately (platform mode — no
- * Composio account, no sign-in step; see `integrations/model.ts`). No
+ * Onboarding: give the agent access to the user's email. Two one-click brand
+ * ACTION rows (Gmail, Outlook) — tap one and the app's own OAuth on the
+ * integrations provider starts immediately (platform mode — no Composio
+ * account, no sign-in step; see `integrations/model.ts`). No
  * select-then-Connect two-step, no selection state: these are buttons. While a
  * connect is in flight its row becomes a CANCEL control (mirrors the AI step's
- * Connect pill); the others disable. `useConnectFlow` mints the hosted link,
+ * Connect pill); the other disables. `useConnectFlow` mints the hosted link,
  * opens the browser, and polls until the connection turns active; we hand off
- * the moment the tapped toolkit shows up connected.
+ * the moment the tapped toolkit shows up connected. Other providers connect
+ * later from Integrations (the skip hint says so) — a free-text row here fed
+ * raw slugs to Composio and mostly failed, so it was removed.
  */
 export function ConnectEmailMission({
   eyebrow,
@@ -56,8 +57,6 @@ export function ConnectEmailMission({
     toolkit: string;
     label: string;
   } | null>(null);
-  const [expanded, setExpanded] = useState(false);
-  const [other, setOther] = useState("");
   // Once the user has kicked off a connect, keep the detection query enabled
   // regardless of the cached ready flag: `useConnectFlow` invalidates it when
   // its OAuth poll resolves, and we must refetch to see the new connection
@@ -140,25 +139,17 @@ export function ConnectEmailMission({
     cancel();
   }, [cancel]);
 
-  // A brand row: collapse the other-provider input (one action at a time), then
-  // either cancel its own in-flight connect or start one.
+  // A brand row: cancel its own in-flight connect, or start one.
   const onBrandRow = useCallback(
     (toolkit: string, label: string) => {
       if (connectState?.toolkit === toolkit) {
         tryCancel();
         return;
       }
-      setExpanded(false);
       startConnect(toolkit, label);
     },
     [connectState, tryCancel, startConnect],
   );
-
-  const submitOther = useCallback(() => {
-    const name = other.trim();
-    if (!name) return;
-    startConnect(name.toLowerCase(), name);
-  }, [other, startConnect]);
 
   // Always offered (bar an in-flight connect): the route can exist
   // (capabilities) while the gateway is unready or the OAuth hop failed, and a
@@ -204,66 +195,6 @@ export function ConnectEmailMission({
             disabled={disabledExcept("outlook")}
             onClick={() => onBrandRow("outlook", "Outlook")}
           />
-          <EmailActionRow
-            icon={<Mail className="size-4 text-ink-muted" />}
-            label={t("tutorial.missions.connectEmail.other")}
-            busyLabel={busyLabel}
-            cancelLabel={cancelLabel}
-            loading={false}
-            disabled={connecting}
-            onClick={() => setExpanded((v) => !v)}
-          />
-          {expanded && (
-            <div className="flex items-center gap-2">
-              <Input
-                autoFocus
-                value={other}
-                placeholder={t(
-                  "tutorial.missions.connectEmail.otherPlaceholder",
-                )}
-                className="rounded-xl"
-                disabled={connecting}
-                onChange={(e) => setOther(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    submitOther();
-                  }
-                }}
-              />
-              <Button
-                // Fixed min-width so the label swap never nudges the row width.
-                size="sm"
-                variant="secondary"
-                className="group/connect relative min-w-[92px] shrink-0 rounded-full"
-                aria-label={
-                  connecting
-                    ? cancelLabel
-                    : t("tutorial.missions.connectEmail.connect")
-                }
-                disabled={!connecting && !other.trim()}
-                onClick={() => (connecting ? tryCancel() : submitOther())}
-              >
-                {connecting ? (
-                  <>
-                    <span className="flex items-center justify-center gap-1.5 transition-opacity group-hover/connect:opacity-0">
-                      <Loader2
-                        className="size-3.5 animate-spin"
-                        aria-hidden="true"
-                      />
-                      {busyLabel}
-                    </span>
-                    <span className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 transition-opacity group-hover/connect:opacity-100">
-                      <X className="size-3.5" aria-hidden="true" />
-                      {cancelLabel}
-                    </span>
-                  </>
-                ) : (
-                  t("tutorial.missions.connectEmail.connect")
-                )}
-              </Button>
-            </div>
-          )}
         </div>
         {showSkip && (
           <div className="flex items-center justify-center gap-3">
