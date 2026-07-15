@@ -110,6 +110,24 @@ function resolveConfig(): { baseUrl: string; token: string } | null {
   const baseUrl = _env.VITE_HOUSTON_ENGINE_BASE ?? null;
   const token = _env.VITE_HOUSTON_ENGINE_TOKEN ?? null;
   if (baseUrl && token) return { baseUrl, token };
+  // Custom-frontend fallback — mirrors examples/smartbooks/src/lib/config.ts.
+  // Lets the Houston frontend bootstrap from any browser (not just the Tauri
+  // WebView) by reading a JSON-encoded `{baseUrl, token}` from localStorage.
+  // Devs/agents set this from the console or a Connect screen; production
+  // Tauri builds still win via window.__HOUSTON_ENGINE__ above.
+  if (typeof localStorage !== "undefined") {
+    try {
+      const raw = localStorage.getItem("houston.engine");
+      if (raw) {
+        const cfg = JSON.parse(raw);
+        if (cfg?.baseUrl && cfg?.token) {
+          return { baseUrl: cfg.baseUrl, token: cfg.token };
+        }
+      }
+    } catch {
+      /* malformed entry — fall through to null */
+    }
+  }
   return null;
 }
 
