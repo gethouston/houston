@@ -344,26 +344,19 @@ export class ProxyChannel implements RuntimeChannel {
   }
 
   /**
-   * Store a pasted API key centrally for the whole workspace,
-   * then push it into the standing runtime's auth.json so the provider reads as
-   * connected immediately (instead of only after the next turn's serve sync). The
-   * central store is the source of truth — the push is what makes status instant.
-   * A push failure surfaces (the user retries; re-pushing is idempotent), but the
-   * credential is already safely stored.
+   * Store a pasted API key: push it into the standing runtime FIRST — the
+   * runtime live-verifies the key against the provider (verify-api-key.ts) and
+   * rejects one that doesn't authenticate — then store it centrally for the
+   * whole workspace. Order matters: storing before the runtime's verdict left a
+   * garbage key "connected" everywhere (the central store is the source of
+   * truth every future runtime is served from). The runtime's own store is
+   * written by the push, so status reads connected immediately.
    */
   async saveApiKeyCredential(
     ctx: ChannelCtx,
     provider: string,
     apiKey: string,
   ): Promise<void> {
-    await this.opts.credentials.put({
-      workspaceId: ctx.agent.workspaceId,
-      provider,
-      accessToken: apiKey,
-      refreshToken: "",
-      expiresAt: 0,
-      kind: "api_key",
-    });
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     const res = await fetch(
       `${endpoint.baseUrl}/auth/${encodeURIComponent(provider)}/api-key`,
@@ -377,10 +370,23 @@ export class ProxyChannel implements RuntimeChannel {
       },
     );
     if (!res.ok) {
+      const detail = await res
+        .json()
+        .then((b) => (b as { error?: string }).error)
+        .catch(() => undefined);
       throw new Error(
-        `key stored, but the agent runtime did not accept it (${res.status}) — try connecting again`,
+        detail ??
+          `the agent runtime did not accept the key (${res.status}) — try connecting again`,
       );
     }
+    await this.opts.credentials.put({
+      workspaceId: ctx.agent.workspaceId,
+      provider,
+      accessToken: apiKey,
+      refreshToken: "",
+      expiresAt: 0,
+      kind: "api_key",
+    });
   }
 
   /**
