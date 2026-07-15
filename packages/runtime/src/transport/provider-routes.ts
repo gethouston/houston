@@ -8,6 +8,7 @@ import {
 import { listProviderUsage } from "../ai/usage";
 import { exportCredential } from "../auth/export";
 import {
+  assertApiKeyConnectable,
   cancelLogin,
   completeLogin,
   getAuthStatus,
@@ -17,6 +18,7 @@ import {
   startLogin,
 } from "../auth/login";
 import { scrubRefreshTokens, syncServedCredentialSafe } from "../auth/serve";
+import { verifyApiKey } from "../auth/verify-api-key";
 import { refreshAnthropicCredential } from "../backends/claude/credential-status";
 import { writeClaudeOAuthCredentialFile } from "../backends/claude/credentials-file";
 import { claudeLoginConfigDir } from "../backends/claude/paths";
@@ -165,14 +167,30 @@ async function handleClaudeOAuthCredential(ctx: RouteContext) {
   json(ctx.res, 200, { ok: true });
 }
 
+/**
+ * API-key connect: cheap preconditions first (clean 400), then a LIVE
+ * verification request with the candidate key (verify-api-key.ts), and only
+ * then the store. A key the provider rejects is a 401 and never persists —
+ * "connected" must mean the key actually works, not merely that a string was
+ * pasted.
+ */
 async function handleApiKey(ctx: RouteContext, provider: string) {
+  let key: string;
   try {
-    const { key } = await readJson(ctx.req);
-    setApiKey(provider, String(key || ""));
-    json(ctx.res, 200, { ok: true });
+    const body = await readJson(ctx.req);
+    key = assertApiKeyConnectable(provider, String(body.key || ""));
   } catch (e) {
     json(ctx.res, 400, { error: e instanceof Error ? e.message : String(e) });
+    return;
   }
+  try {
+    await verifyApiKey(provider, key);
+  } catch (e) {
+    json(ctx.res, 401, { error: e instanceof Error ? e.message : String(e) });
+    return;
+  }
+  setApiKey(provider, key);
+  json(ctx.res, 200, { ok: true });
 }
 
 async function handleAuthAction(
