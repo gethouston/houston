@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+      Entitlements for bundled CLI binaries that embed a JS engine
+      (codex-code-mode-host embeds V8). Under the hardened runtime,
+      V8's Isolate::Init aborts with a fatal OOM unless the process may
+      allocate JIT / unsigned-executable memory — the host then dies
+      instantly and codex reports "code-mode host closed its stdout".
+      These two keys mirror the entitlements upstream openai/codex signs
+      the binary with; the pre-sign step in release.yml MUST pass this
+      file when re-signing it, or the shipped host is dead on arrival.
+    -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+</dict>
+</plist>

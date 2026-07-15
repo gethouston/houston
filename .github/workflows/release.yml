@@ -409,8 +409,13 @@ jobs:
         run: |
           set -euo pipefail
           BIN=app/src-tauri/resources/bin
+          # codex-code-mode-host embeds V8: re-signing it WITHOUT the JIT
+          # entitlements upstream signs it with makes V8's Isolate::Init
+          # abort (fatal OOM) under the hardened runtime — the host dies
+          # on its first real session and codex logs "code-mode host
+          # closed its stdout". Sign it with the mirrored entitlements
+          # and fail the build if they didn't stick.
           for f in "$BIN/codex" \
-                   "$BIN/codex-code-mode-host" \
                    "$BIN/composio-aarch64/composio" \
                    "$BIN/composio-x86_64/composio" \
                    "$BIN/gemini-aarch64/gemini" \
@@ -420,6 +425,14 @@ jobs:
               --sign "$APPLE_SIGNING_IDENTITY" "$f"
             codesign -dvv "$f" 2>&1 | grep -E '^(Authority|TeamIdentifier|Timestamp|CodeDirectory)' || true
           done
+
+          echo "=== Signing $BIN/codex-code-mode-host (with JIT entitlements) ==="
+          codesign --force --options runtime --timestamp \
+            --entitlements app/src-tauri/entitlements-jit.plist \
+            --sign "$APPLE_SIGNING_IDENTITY" "$BIN/codex-code-mode-host"
+          codesign -dvv "$BIN/codex-code-mode-host" 2>&1 | grep -E '^(Authority|TeamIdentifier|Timestamp|CodeDirectory)' || true
+          codesign -d --entitlements - "$BIN/codex-code-mode-host" 2>/dev/null | grep -q 'allow-jit' \
+            || { echo "::error::codex-code-mode-host signed without allow-jit entitlement — V8 init will abort at runtime"; exit 1; }
 
       # Build the engine sidecar for BOTH macOS architectures BEFORE the
       # Tauri app build.

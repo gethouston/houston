@@ -203,6 +203,19 @@ codesign --force --options runtime --timestamp \
 
 on `codex`, `codex-code-mode-host`, `composio-aarch64/composio`,
 `composio-x86_64/composio`.
+
+**codex-code-mode-host needs JIT entitlements when re-signed.** The host
+embeds V8; under the hardened runtime V8's `Isolate::Init` aborts with a
+fatal OOM unless the process carries `com.apple.security.cs.allow-jit` +
+`com.apple.security.cs.allow-unsigned-executable-memory` (upstream signs
+it with exactly those). A plain `codesign --force --options runtime`
+strips them and the host dies on its first real session — codex then logs
+`code-mode host closed its stdout` and every code-mode call fails. The
+pre-sign step signs this one binary with
+`app/src-tauri/entitlements-jit.plist` and fails the build if the
+entitlement didn't stick. The crash signature to recognize: user crash
+reports for `codex-code-mode-host` with `v8::internal::Heap::SetUp` →
+`FatalProcessOutOfMemory` in the stack.
 Tauri's later deep sign leaves these alone (it doesn't visit nested
 Resources subdirs), so the pre-applied signature carries through to
 notarization.
