@@ -63,7 +63,12 @@ They drive the failure/reactivity scenarios the specs assert against:
 
 ## Modeled surface
 
-- `/health`, `/version`, `/auth/status`, `/providers` — top-level probes.
+- `/health`, `/version`, `/auth/status`, `/providers` — top-level probes (dev
+  conveniences; the real host serves no flat `/auth/status`).
+- `/setup-runtime/*` — the host's pre-agent connect surface (the WebApp gate +
+  ConnectView probe `auth/status` here): `providers`, `auth/status`, the
+  `auth/:provider/login[/complete|/cancel]` chain, and the `credential/*`
+  pushes. Shares the flat provider slot, so logins read back on both.
 - `/v1/capabilities` (single-player `local` profile by default; armable to a
   Teams-shaped set), `/v1/workspaces`, `/v1/integrations`, `/v1/preferences`,
   `/v1/events` (reactivity feed).

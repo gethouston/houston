@@ -64,6 +64,47 @@ describe("startFakeHost", () => {
     expect(totalModels).toBeGreaterThan(100);
   });
 
+  it("serves the pre-agent connect surface at /setup-runtime/*", async () => {
+    // Regression: the WebApp gate probes /setup-runtime/auth/status (the real
+    // host serves no flat /auth/status — commit cfd61df0). The route was
+    // missing here, so global-setup timed out waiting for "Your Agents".
+    const status = await fetch(`${host.url}/setup-runtime/auth/status`);
+    expect(status.status).toBe(200);
+    const auth = (await status.json()) as {
+      providers: Array<{ provider: string; configured: boolean }>;
+      activeProvider: string | null;
+    };
+    expect(auth.activeProvider).toBe("anthropic");
+    expect(
+      auth.providers.find((p) => p.provider === "anthropic")?.configured,
+    ).toBe(true);
+
+    const providers = await fetch(`${host.url}/setup-runtime/providers`);
+    expect(providers.status).toBe(200);
+
+    // The OAuth login chain flips the SAME flat slot the top-level probe reads.
+    const login = await fetch(
+      `${host.url}/setup-runtime/auth/openai-codex/login`,
+      { method: "POST" },
+    );
+    expect(login.status).toBe(200);
+    const complete = await fetch(
+      `${host.url}/setup-runtime/auth/openai-codex/login/complete`,
+      { method: "POST" },
+    );
+    expect(complete.status).toBe(200);
+    const after = (await (await fetch(`${host.url}/auth/status`)).json()) as {
+      providers: Array<{ provider: string; configured: boolean }>;
+    };
+    expect(
+      after.providers.find((p) => p.provider === "openai-codex")?.configured,
+    ).toBe(true);
+
+    // Anything outside the connect surface stays agent-scoped — 404.
+    const outside = await fetch(`${host.url}/setup-runtime/settings`);
+    expect(outside.status).toBe(404);
+  });
+
   it("exposes the __test__ reset control endpoint", async () => {
     const res = await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     expect(res.status).toBe(200);

@@ -20,6 +20,7 @@ import { CORS, json } from "./http";
 import { authStatusBody, handleAgents, providersBody } from "./routes";
 import { handleActionApprovals } from "./routes-action-approvals";
 import { handleUserRoutes } from "./routes-integrations";
+import { handleSetupRuntime } from "./routes-setup-runtime";
 import { handleTeamsRoutes } from "./routes-teams";
 import { sseResponse } from "./sse";
 import type { FakeCapabilities, TeamsSettings } from "./state";
@@ -165,11 +166,16 @@ export async function handle(req: Request): Promise<Response> {
   const segs = path.split("/").filter(Boolean);
   const body = await parseBody(req);
 
-  // --- top-level runtime probe (the WebApp connect gate uses a base-URL client) ---
+  // --- top-level runtime probes (dev conveniences; the real host serves none) ---
   if (path === "/health") return json({ status: "ok", version: "e2e" });
   if (path === "/version") return json({ engine: "e2e", protocol: 1 });
   if (path === "/auth/status") return json(authStatusBody());
   if (path === "/providers") return json(providersBody());
+
+  // --- pre-agent connect surface (the WebApp gate + ConnectView probe here) ---
+  if (segs[0] === "setup-runtime") {
+    return handleSetupRuntime(method, segs.slice(1), req, body);
+  }
 
   // --- misc host surface the UI may touch on boot (kept permissive) ---
   // Deployment capabilities: single-player local by default (the app's boot
