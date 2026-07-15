@@ -97,3 +97,16 @@ describe("providerDescription", () => {
     strictEqual(providerDescription("brand-new-lab"), "");
   });
 });
+
+describe("api-key overrides", () => {
+  it("every api-key override carries the key-dashboard URL", () => {
+    // An api-key connect dialog without `apiKeyUrl` strands the user with no
+    // "Get your API key" button (the Mistral/Z.ai reports): if we curate an
+    // api-key provider at all, we must curate where its key comes from.
+    for (const [id, override] of Object.entries(PROVIDER_OVERRIDES)) {
+      if (override.auth === "oauth" || override.auth === "openaiCompatible")
+        continue;
+      ok(override.apiKeyUrl, `PROVIDER_OVERRIDES["${id}"] needs an apiKeyUrl`);
+    }
+  });
+});

@@ -500,6 +500,41 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://huggingface.co",
     apiKeyUrl: "https://huggingface.co/settings/tokens",
   },
+  mistral: {
+    name: "Mistral",
+    subtitle: "La Plateforme",
+    cost: "Free tier, then pay as you go",
+    installUrl: "https://mistral.ai",
+    apiKeyUrl: "https://console.mistral.ai/api-keys",
+  },
+  xai: {
+    name: "xAI",
+    subtitle: "Grok models",
+    cost: "Pay-as-you-go on your xAI account",
+    installUrl: "https://x.ai",
+    apiKeyUrl: "https://console.x.ai",
+  },
+  zai: {
+    name: "Z.ai",
+    subtitle: "GLM models",
+    cost: "Pay-as-you-go on your Z.ai account",
+    installUrl: "https://z.ai",
+    apiKeyUrl: "https://z.ai/manage-apikey/apikey-list",
+  },
+  nvidia: {
+    name: "NVIDIA",
+    subtitle: "NIM inference",
+    cost: "Free credits, then pay as you go",
+    installUrl: "https://build.nvidia.com",
+    apiKeyUrl: "https://build.nvidia.com/settings/api-keys",
+  },
+  "google-vertex": {
+    name: "Google Vertex AI",
+    subtitle: "Gemini on Google Cloud",
+    cost: "Pay-as-you-go on your Google Cloud account",
+    installUrl: "https://cloud.google.com/vertex-ai",
+    apiKeyUrl: "https://console.cloud.google.com/apis/credentials",
+  },
 };
 
 /**

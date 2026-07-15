@@ -52,36 +52,25 @@ export function syntheticAgent(): Agent {
   };
 }
 
-/** Old desktop provider name -> new engine ProviderId. */
-export function toNewProvider(
-  name: string,
-):
-  | "anthropic"
-  | "openai-codex"
-  | "github-copilot"
-  | "openrouter"
-  | "deepseek"
-  | "google"
-  | "amazon-bedrock"
-  | "minimax"
-  | "opencode"
-  | "opencode-go"
-  | "openai-compatible"
-  | null {
-  if (name === "anthropic") return "anthropic";
-  if (name === "openai" || name === "openai-codex" || name === "codex")
-    return "openai-codex";
-  if (name === "github-copilot") return "github-copilot";
-  if (name === "openrouter") return "openrouter";
-  if (name === "deepseek") return "deepseek";
-  if (name === "google") return "google";
-  if (name === "amazon-bedrock") return "amazon-bedrock";
-  if (name === "minimax") return "minimax";
-  if (name === "opencode") return "opencode";
-  if (name === "opencode-go") return "opencode-go";
-  // Local OpenAI-compatible server — same id on both sides.
-  if (name === "openai-compatible") return "openai-compatible";
-  return null;
+/**
+ * Old desktop provider name -> new engine ProviderId.
+ *
+ * The catalog is OPEN: the frontend hydrates its provider list from the host's
+ * `/v1/catalog` (the full pi-ai set, ~35 providers), so this mapping must NOT
+ * enumerate providers. Only Codex is renamed (display `openai` / legacy `codex`
+ * -> engine `openai-codex`); every other id is the SAME on both sides and passes
+ * through verbatim — an uncurated pi provider (groq, mistral, xai, nvidia,
+ * huggingface, google-vertex, zai, ...) connects, probes, and signs out with its
+ * own id, and the host/runtime remain the validity authority (their routes 400 a
+ * genuinely unknown id). Returning null for anything uncurated used to hard-fail
+ * `setProviderApiKey` with "provider not supported" before any network call
+ * (surfaced as the generic error toast) and silently no-op status/sign-out.
+ * Null only for an empty name, so `if (!pid)` guards keep rejecting it.
+ */
+export function toNewProvider(name: string): string | null {
+  if (!name) return null;
+  if (name === "openai" || name === "codex") return "openai-codex";
+  return name;
 }
 
 /**
@@ -94,8 +83,11 @@ export function toOldProvider(id: string): string {
   return id === "openai-codex" ? "openai" : id;
 }
 
-/** The engine ProviderId values, narrowed from toNewProvider's union. */
-export type NewProviderId = NonNullable<ReturnType<typeof toNewProvider>>;
+/**
+ * An engine ProviderId in the adapter's dialect: any pi-ai provider id (the
+ * catalog is open), post-rename (openai -> openai-codex).
+ */
+export type NewProviderId = string;
 
 /**
  * OpenCode's two gateways — `opencode` (Zen, pay-as-you-go) and `opencode-go`
