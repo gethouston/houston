@@ -151,6 +151,17 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/__test__/action-approvals" && method === "GET") {
     return json(state.approvalsSnapshot());
   }
+  // Connect/disconnect the AI providers the /setup-runtime surface serves.
+  // `{connected:false}` models the desktop first-run (no credential stored
+  // yet) so the onboarding connect step renders its picker instead of
+  // auto-advancing; a spec flips it AFTER the boot gate has probed. reset()
+  // restores the connected seed.
+  if (path === "/__test__/setup-runtime-auth" && method === "POST") {
+    const body = await parseBody(req);
+    const connected = body?.connected !== false;
+    state.setFlatProvidersConnected(connected);
+    return json({ connected });
+  }
   // Flip a pending connection to active (models the OAuth completing).
   if (path === "/__test__/integrations-activate" && method === "POST") {
     const body = await parseBody(req);

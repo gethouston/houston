@@ -25,18 +25,19 @@ import { expect, test } from "./support/fixtures";
  * past the 11-entry seed proves the async `/v1/catalog` hydration reaches the
  * memo after mount.
  *
- * Selector strategy: every provider is unconnected in the harness (no
- * credentials, the status route 404s), so each renders a Connect pill whose
- * accessible name is `Connect {name}` (an aria-label the row sets so each pill
- * reads distinctly). We select by role+name. The search box is selected by its
- * placeholder; the Sections by their translated header text.
+ * Selector strategy: every provider is unconnected in the harness (the
+ * `__test__/setup-runtime-auth` control below empties the setup runtime's
+ * credentials), so each renders a Connect pill whose accessible name is
+ * `Connect {name}` (an aria-label the row sets so each pill reads distinctly).
+ * We select by role+name. The search box is selected by its placeholder; the
+ * Sections by their translated header text.
  *
  * Not covered here: the re-entry strand fix (a connected local OpenAI-compatible
  * provider resolving its model via `active_model` so the step auto-advances
- * instead of stranding). The fake host 404s the status route, so NO provider ever
- * reports connected in this harness and there is no control to seed a custom
- * endpoint's `active_model` — the scenario can't be simulated without a fake-host
- * change out of this task's scope.
+ * instead of stranding). This spec runs with the setup runtime's credentials
+ * emptied, and there is no control to seed a custom endpoint's `active_model` —
+ * the scenario can't be simulated without a fake-host change out of this task's
+ * scope.
  *
  * Reaching first-run: onboarding shows when the v3 host reports ZERO agents, so
  * we delete the seeded agent over the API before boot (no fake-host change).
@@ -61,6 +62,20 @@ test("onboarding connect step shows the curated view, searches, expands, and ope
   // First-run now asks the work-segmentation question before the
   // create-your-assistant flow; this spec is about the connect step, so skip it
   // (the segment flow itself is covered by onboarding-segment.spec.ts).
+  await expect(
+    page.getByRole("button", { name: "Skip for now" }),
+  ).toBeVisible();
+
+  // Empty the setup runtime's credentials NOW — after the boot gate probed
+  // `/setup-runtime/auth/status` (it needs a connected provider to mount the
+  // app), but before the connect step mounts and takes its own first status
+  // snapshot. Models the desktop first-run, where no web gate ran and no
+  // credential exists yet; without this the seeded Claude makes the step's
+  // `selectOnMount` auto-advance to the "Your AI is connected!" screen.
+  await request.post(`${FAKE_HOST_URL}/__test__/setup-runtime-auth`, {
+    data: { connected: false },
+  });
+
   await page.getByRole("button", { name: "Skip for now" }).click();
 
   // Onboarding opens directly on the connect step (the welcome/intro screen

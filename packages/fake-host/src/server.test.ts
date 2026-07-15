@@ -91,6 +91,29 @@ describe("startFakeHost", () => {
     expect(noExport.status).toBe(404);
   });
 
+  it("empties + restores setup-runtime credentials via the test control", async () => {
+    const authUrl = `${host.url}/setup-runtime/auth/status`;
+    const readStatus = async () =>
+      (await (await fetch(authUrl)).json()) as {
+        activeProvider: string | null;
+        providers: Array<{ configured: boolean }>;
+      };
+
+    // Disconnect: models the desktop first-run (no credential stored yet).
+    await fetch(`${host.url}/__test__/setup-runtime-auth`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ connected: false }),
+    });
+    const off = await readStatus();
+    expect(off.activeProvider).toBeNull();
+    expect(off.providers.every((p) => !p.configured)).toBe(true);
+
+    // reset() restores the connected seed (what every other spec relies on).
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+    expect((await readStatus()).activeProvider).toBe("anthropic");
+  });
+
   it("runs the pre-agent login flow against the setup-runtime slot", async () => {
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     const base = `${host.url}/setup-runtime`;

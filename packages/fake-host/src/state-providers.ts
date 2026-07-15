@@ -64,6 +64,24 @@ export function resetProviders(): void {
   slots = new Map();
 }
 
+/** Test control: connect/disconnect the flat slot the `/setup-runtime` surface
+ *  (and the flat routes) serve. `false` models the desktop first-run — no
+ *  credential stored yet, so the onboarding connect step renders its picker
+ *  instead of auto-advancing. `reset()` restores the connected seed. */
+export function setFlatProvidersConnected(connected: boolean): void {
+  if (connected) {
+    slots.set(FLAT_KEY, seedSlot());
+    return;
+  }
+  slots.set(FLAT_KEY, {
+    configured: new Set(),
+    login: new Map(),
+    activeProvider: null,
+    activeModel: new Map(),
+    enterpriseUrl: new Map(),
+  });
+}
+
 /** `GET /providers` (or `/agents/:id/providers`) → the rich `ProviderInfo[]`. */
 export function providerList(agentId: string): ProviderInfo[] {
   const s = slot(agentId);
