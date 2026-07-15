@@ -40,6 +40,23 @@
       "darwin-x64": "bd9748c1cf7a755fdd7b73a90ca944640f7b01113872181db8a5e278902d2331",
       "windows-x64": "8c977e31dc2696e00e9a6c61f7e5d2dbda4b2df544fca4ce3a5a0fed07b71c25",
       "windows-arm64": "7f16480c428a39937690cd3f69ca12552541e4fa790af95cdbeeae105788d711"
+    },
+    "companions": {
+      "codex-code-mode-host": {
+        "$comment": "The code-mode JS host (V8, jitless). codex >= 0.144 spawns it for the code-mode tool (GPT-5.6 family) and resolves it as a SIBLING binary next to the `codex` executable (or via CODEX_CODE_MODE_HOST_PATH). Shipping codex without it makes every code-mode tool call fail with 'failed to spawn code-mode host ... (os error 2)'. Published under the same rust-v{version} release tag as codex; nesting it here (no version field of its own) keeps the two in lockstep by construction — bump-cli.sh clears these checksums together with codex's.",
+        "urls": {
+          "darwin-arm64": "https://github.com/openai/codex/releases/download/rust-v{version}/codex-code-mode-host-aarch64-apple-darwin.tar.gz",
+          "darwin-x64": "https://github.com/openai/codex/releases/download/rust-v{version}/codex-code-mode-host-x86_64-apple-darwin.tar.gz",
+          "windows-x64": "https://github.com/openai/codex/releases/download/rust-v{version}/codex-code-mode-host-x86_64-pc-windows-msvc.exe.zst",
+          "windows-arm64": "https://github.com/openai/codex/releases/download/rust-v{version}/codex-code-mode-host-aarch64-pc-windows-msvc.exe.zst"
+        },
+        "checksums": {
+          "darwin-arm64": "6cf9282430befe541369c7cb2804604a7f0dd9416f3a3241e3676db22022a246",
+          "darwin-x64": "6fd2b21d9737f90d9cd047da717d378e58009c0c069b5ecd4fb86ebcfef52d1f",
+          "windows-x64": "c83182c43fd7dcf1b67f0d01b3152dd32ed75b04a15139a4bb293bb4029a14b2",
+          "windows-arm64": "1520ddd21b8abf6149eac2adbfb0fd4c5cef654113912c340e23394e63199c5e"
+        }
+      }
     }
   },
   "composio": {

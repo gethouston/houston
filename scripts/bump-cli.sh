@@ -31,8 +31,16 @@ OLD_VERSION=$(jq -r --arg cli "$CLI" '.[$cli].version' "$DEPS_FILE")
 # trailing CR makes the output byte-identical on macOS, Linux, and Windows
 # git-bash (and keeps the repo's LF-only rule). On macOS/Linux the perl
 # filter is a no-op (no CR present).
+#
+# Companions (e.g. codex's codex-code-mode-host) share the parent's version
+# field and ship from the same release tag, so their checksums go stale on
+# the same bump — clear them in the same pass.
 jq --arg cli "$CLI" --arg v "$VERSION" \
-  '.[$cli].version = $v | .[$cli].checksums = {}' "$DEPS_FILE" \
+  '.[$cli].version = $v
+   | .[$cli].checksums = {}
+   | (if .[$cli].companions
+      then .[$cli].companions |= with_entries(.value.checksums = {})
+      else . end)' "$DEPS_FILE" \
   | perl -pe 's/\r$//' > tmp.json && mv tmp.json "$DEPS_FILE"
 
 echo "Bumped $CLI: $OLD_VERSION -> $VERSION"

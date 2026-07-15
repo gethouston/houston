@@ -119,11 +119,19 @@ impl<'de> Deserialize<'de> for CodexItem {
                 // stops serde from rejecting the line (HOUSTON-APP-31). Applied
                 // to every field so any future duplicate key is tolerated
                 // rather than discarding the whole event.
+                //
+                // Values deserialize through `Option` because Codex emits
+                // explicit `null` for not-yet-populated fields — every
+                // `command_execution` item.started/item.updated carries
+                // `"exit_code": null` while the command runs. A bare
+                // `next_value()` would type the slot as `i32` and reject the
+                // whole line ("invalid type: null, expected i32",
+                // HOUSTON-APP-4PF); `null` must read as absent instead.
                 macro_rules! keep_first {
                     ($slot:ident) => {{
-                        let value = map.next_value()?;
+                        let value: Option<_> = map.next_value()?;
                         if $slot.is_none() {
-                            $slot = Some(value);
+                            $slot = value;
                         }
                     }};
                 }
@@ -693,6 +701,38 @@ mod tests {
             }
             other => panic!("expected ToolResult, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn parse_command_execution_started_with_null_exit_code() {
+        // Codex 0.144 emits `"exit_code": null` on every command_execution
+        // item.started/item.updated while the command is still running. The
+        // manual Deserialize impl typed the slot as bare `i32`, so the whole
+        // line was rejected ("invalid type: null, expected i32") and the
+        // in-progress tool call never reached the feed
+        // (Sentry HOUSTON-APP-4PF, 55k+ events). Null must read as absent.
+        let mut a = acc();
+        let started = r#"{"type":"item.started","item":{"id":"item_12","type":"command_execution","command":"/bin/zsh -lc \"node -e \\\"JSON.parse(require('fs').readFileSync('.houston/learnings/learnings.json','utf8')); console.log('valid')\\\"\"","aggregated_output":"","exit_code":null,"status":"in_progress"}}"#;
+        let items = parse_codex_event(started, &mut a);
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            FeedItem::ToolCall { name, input } => {
+                assert_eq!(name, "Bash");
+                assert!(input["command"].as_str().unwrap().starts_with("/bin/zsh"));
+            }
+            other => panic!("expected ToolCall, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_item_with_null_fields_is_tolerated() {
+        // Any field Codex sends as an explicit `null` (not just exit_code)
+        // must deserialize as absent rather than poisoning the line.
+        let mut a = acc();
+        let line = r#"{"type":"item.updated","item":{"id":"item_5","type":"command_execution","command":"bash -lc ls","aggregated_output":null,"exit_code":null,"status":null,"text":null}}"#;
+        let items = parse_codex_event(line, &mut a);
+        assert_eq!(items.len(), 1);
+        assert!(matches!(&items[0], FeedItem::ToolCall { name, .. } if name == "Bash"));
     }
 
     #[test]
