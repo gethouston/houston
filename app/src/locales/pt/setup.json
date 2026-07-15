@@ -78,9 +78,6 @@
       "connectEmail": {
         "title": "Dê ao seu agente acesso ao seu e-mail",
         "body": "Escolha seu e-mail para o agente poder enviar por você. Você conecta uma vez, com segurança.",
-        "other": "Outro provedor",
-        "otherPlaceholder": "Qual provedor de e-mail?",
-        "connect": "Conectar",
         "connecting": "Conectando...",
         "cancel": "Cancelar",
         "skipHint": "Não consegue conectar agora? Você pode fazer isso quando quiser em Integrações.",

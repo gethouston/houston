@@ -78,9 +78,6 @@
       "connectEmail": {
         "title": "Give your agent access to your email",
         "body": "Pick your email so your agent can send on your behalf. You connect it once, securely.",
-        "other": "Another provider",
-        "otherPlaceholder": "Which email provider?",
-        "connect": "Connect",
         "connecting": "Connecting...",
         "cancel": "Cancel",
         "skipHint": "Can't connect right now? You can do this anytime from Integrations.",
