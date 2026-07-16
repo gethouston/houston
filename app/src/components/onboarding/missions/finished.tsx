@@ -44,11 +44,8 @@ function fireConfetti() {
 interface FinishedMissionProps {
   /** Which finish this is:
    *  - "sent": the assistant actually sent a real email (the full email path).
-   *  - "ready": the email steps were skipped or the deployment has no
-   *    integrations, so no email was sent — the copy must not claim one.
-   *  The orchestrator reaches this screen three ways and only one of them
-   *  genuinely sent an email, so the payoff copy is variant-driven to stay
-   *  honest. */
+   *  - "ready": the deployment has no integrations, so no email was sent and
+   *    the copy must not claim one. */
   variant: "sent" | "ready";
   /** The one action on this screen: arm the guided tour and jump into the
    *  assistant's Routines surface so the freshly-seeded content is immediately
@@ -57,10 +54,10 @@ interface FinishedMissionProps {
 }
 
 /**
- * The single onboarding payoff screen. Reached three ways — after the assistant
- * sent a real email ("sent"), or after the email detour was skipped / is
- * unavailable ("ready"). It celebrates and offers exactly ONE primary action, no
- * secondary escape hatch (design principle: one obvious action per screen) — an
+ * The single onboarding payoff screen. Reached after the assistant sent a real
+ * email ("sent"), or when the email detour is unavailable ("ready"). It
+ * celebrates and offers exactly ONE primary action, no secondary escape hatch
+ * (design principle: one obvious action per screen) — an
  * inspiring send-off, not a decision. The `variant` keeps the copy truthful: it
  * only claims a real email was sent on the path that actually sent one.
  *

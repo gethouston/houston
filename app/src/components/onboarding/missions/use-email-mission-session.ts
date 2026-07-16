@@ -1,21 +1,18 @@
 import type { FeedItem, QueuedChatMessage } from "@houston-ai/chat";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationVm } from "../../../hooks/use-conversation-vm";
 import { useSessionMessageQueue } from "../../../hooks/use-session-message-queue";
 import { analytics } from "../../../lib/analytics";
 import { createMission } from "../../../lib/create-mission";
-import { logger } from "../../../lib/logger";
-import { tauriAgent, tauriChat } from "../../../lib/tauri";
+import { tauriChat } from "../../../lib/tauri";
 import type { Agent } from "../../../lib/types";
 import {
-  appendSetupSection,
-  stripSetupSection,
-} from "../tutorial-system-prompt";
+  prepareEmailMissionSetup,
+  useEmailSetupCleanup,
+  useEmailSetupCompleted,
+} from "./email-mission-setup";
 import { shouldOfferSkip } from "./email-skip";
-
-/** The agent emits this once the email actually sent. */
-const SETUP_END_RE = /\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]/i;
 
 interface UseEmailMissionSessionArgs {
   agent: Agent;
@@ -36,7 +33,7 @@ export interface EmailMissionSession {
   error: string | null;
   feedItems: FeedItem[];
   sessionKey: string;
-  /** HOU-555 escape hatch: the agent ran, went idle, never confirmed. */
+  /** Available only after the opening message starts the AI conversation. */
   showSkip: boolean;
   onStop: (() => void) | undefined;
   handleSend: () => Promise<void>;
@@ -45,13 +42,6 @@ export interface EmailMissionSession {
   removeQueuedMessage: (id: string) => void;
 }
 
-/**
- * Owns the final onboarding step's session lifecycle: kicking off the agent
- * (append the setup directive to CLAUDE.md, then `createMission`), tracking the
- * feed for the `[TUTORIAL_COMPLETE]` marker to auto-advance, the live composer
- * queue, and stripping the directive on unmount. Presentation-free so the
- * `EmailMission` component stays under the file cap and purely renders.
- */
 export function useEmailMissionSession({
   agent,
   provider,
@@ -69,22 +59,7 @@ export function useEmailMissionSession({
   );
   const [error, setError] = useState<string | null>(null);
 
-  // Strip the setup directive from CLAUDE.md on unmount (idempotent).
-  useEffect(() => {
-    return () => {
-      void (async () => {
-        try {
-          const current = await tauriAgent.readFile(agentPath, "CLAUDE.md");
-          const stripped = stripSetupSection(current);
-          if (stripped !== current) {
-            await tauriAgent.writeFile(agentPath, "CLAUDE.md", stripped);
-          }
-        } catch (e) {
-          logger.warn(`[email-setup] could not strip setup section: ${e}`);
-        }
-      })();
-    };
-  }, [agentPath]);
+  useEmailSetupCleanup(agentPath);
 
   const sessionKeyForHooks = missionSessionKey ?? "";
   // This conversation's reactive state, straight from the SDK conversation VM.
@@ -92,28 +67,14 @@ export function useEmailMissionSession({
   const realFeed = vm?.feed;
   const isActive = vm?.running ?? false;
 
-  // The mission session has gone active at least once (the agent actually ran).
-  // Gates the skip escape hatch so we only offer it after a real attempt.
-  const [hasRun, setHasRun] = useState(false);
-  useEffect(() => {
-    if (isActive) setHasRun(true);
-  }, [isActive]);
+  const setupDone = useEmailSetupCompleted(realFeed);
 
-  const setupDone = useMemo(() => {
-    const items = realFeed ?? [];
-    for (let i = items.length - 1; i >= 0; i--) {
-      const item = items[i];
-      if (item.feed_type !== "assistant_text") continue;
-      if (typeof item.data === "string" && SETUP_END_RE.test(item.data)) {
-        return true;
-      }
-    }
-    return false;
-  }, [realFeed]);
-
-  // Offer the skip escape hatch only when the agent ran, went idle, and never
-  // emitted the completion marker — the "stuck" state from HOU-555.
-  const showSkip = shouldOfferSkip({ hasRun, isActive, setupDone });
+  // The conversation becomes skippable only after its first message creates
+  // a mission session. Until then, the email action is the sole path forward.
+  const showSkip = shouldOfferSkip({
+    hasFirstMessage: missionSessionKey !== null,
+    setupDone,
+  });
 
   // Conversion + auto-advance to the success screen the moment it sends.
   const doneFired = useRef(false);
@@ -133,30 +94,20 @@ export function useEmailMissionSession({
     startedRef.current = true;
     setStarted(true);
     setError(null);
-    // Pre-feed the agent (send to self via the already-connected toolkit). The
-    // directive IS the mission (which toolkit, send to self, the completion
-    // marker) — starting without it would run the agent blind and strand the
-    // user on the skip hatch, so a failed write aborts the kickoff instead of
-    // logging and continuing. The engine call already toasted the real error
-    // via `call()`; the inline error keeps it visible on the card for retry.
+    // A failed setup write aborts the kickoff, so the inline error stays
+    // visible on the card for retry rather than sending the agent blind.
     try {
-      const current = await tauriAgent.readFile(agentPath, "CLAUDE.md");
-      const updated = appendSetupSection(current, {
-        toolkit: emailToolkit,
-        toolkitLabel: emailToolkitLabel,
-        toMyself: true,
+      await prepareEmailMissionSetup({
+        agentPath,
+        emailToolkit,
+        emailToolkitLabel,
       });
-      if (updated !== current) {
-        await tauriAgent.writeFile(agentPath, "CLAUDE.md", updated);
-      }
     } catch (e) {
-      logger.warn(`[email-setup] could not append setup section: ${e}`);
       startedRef.current = false;
       setStarted(false);
       setError(e instanceof Error ? e.message : String(e));
       return;
     }
-    analytics.track("first_message_sent");
     try {
       // The kickoff IS the user-visible message (the session echoes it into the
       // feed), so use the button's text — the directive in CLAUDE.md tells the
@@ -177,6 +128,7 @@ export function useEmailMissionSession({
         },
       );
       setMissionSessionKey(result.sessionKey);
+      analytics.track("first_message_sent");
     } catch (e) {
       startedRef.current = false;
       setStarted(false);
@@ -222,9 +174,9 @@ export function useEmailMissionSession({
 
   const handleStop = useCallback(() => {
     if (!missionSessionKey) return;
-    // A stop failure surfaces via `call()` (toast + report); swallow the
-    // re-throw so the handler never leaks an unhandled rejection.
-    tauriChat.stop(agentPath, missionSessionKey).catch(() => {});
+    void tauriChat.stop(agentPath, missionSessionKey).catch((error) => {
+      setError(error instanceof Error ? error.message : String(error));
+    });
   }, [agentPath, missionSessionKey]);
 
   const isLoading = started && isActive;
