@@ -1,7 +1,7 @@
 import { AIBoard } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { openAgentHref } from "../../lib/open-href";
+import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { buildMissionBoardColumns } from "../mission-board-columns";
@@ -113,12 +113,8 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     (message: string) => addToast({ title: message }),
     [addToast],
   );
-  const handleOpenLink = useCallback(
-    (url: string) => {
-      const path = source.activeAgent?.folderPath;
-      if (path) openAgentHref(url, path);
-    },
-    [source.activeAgent],
+  const handleOpenLink = useOpenAgentHref(
+    source.activeAgent?.folderPath ?? null,
   );
 
   const attachmentValidation = useAttachmentRejectionDialog();

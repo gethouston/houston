@@ -225,6 +225,69 @@ test("connect falls back to the toolkit's own scheme when Composio has no manage
   expect(start.connectionId).toBe("ca_2");
 });
 
+test("connect skips bare custom OAuth and picks a user-collectible scheme (metaads)", async () => {
+  // Meta Ads: no Composio-managed app, schemes [OAUTH2, API_KEY]. A custom
+  // OAUTH2 config with empty credentials can never complete the dance (this
+  // was the "can't connect Meta Ads" bug), so the fallback must skip OAuth
+  // modes and land on API_KEY — the hosted connect page collects the token.
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [] } };
+    }
+    if (url.pathname === "/api/v3/toolkits/metaads") {
+      return {
+        body: {
+          composio_managed_auth_schemes: [],
+          auth_config_details: [{ mode: "OAUTH2" }, { mode: "API_KEY" }],
+        },
+      };
+    }
+    if (url.pathname === "/api/v3/auth_configs" && method === "POST") {
+      return { body: { auth_config: { id: "ac_meta" } } };
+    }
+    if (url.pathname === "/api/v3.1/connected_accounts/link") {
+      return {
+        body: { redirect_url: "https://link", connected_account_id: "ca_3" },
+      };
+    }
+    return { status: 404 };
+  });
+
+  const start = await provider.connect(USER, "metaads");
+  expect(calls[2]?.body).toEqual({
+    toolkit: { slug: "metaads" },
+    auth_config: {
+      type: "use_custom_auth",
+      authScheme: "API_KEY",
+      credentials: {},
+    },
+  });
+  expect(start.connectionId).toBe("ca_3");
+});
+
+test("connect refuses an OAuth-only toolkit with no managed app, naming the remedy", async () => {
+  // OAuth-only + unmanaged: nothing the user can self-serve. The error names
+  // the operator remedy (register a dev OAuth app in the Composio dashboard —
+  // resolveAuthConfig then reuses that config on the next connect).
+  const { provider } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [] } };
+    }
+    if (url.pathname === "/api/v3/toolkits/oauthonly") {
+      return {
+        body: {
+          composio_managed_auth_schemes: [],
+          auth_config_details: [{ mode: "OAUTH2" }],
+        },
+      };
+    }
+    return { status: 404 };
+  });
+  await expect(provider.connect(USER, "oauthonly")).rejects.toThrow(
+    /only offers OAuth.*Composio dashboard/,
+  );
+});
+
 test("connect refuses a toolkit with no connectable auth scheme, loudly", async () => {
   const { provider } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {

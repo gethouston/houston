@@ -6,6 +6,7 @@ import { I18nextProvider } from "react-i18next";
 import App from "./App";
 import { queryClient } from "./lib/query-client";
 import "./styles/globals.css";
+import { AgentFilePreviewHost } from "./components/agent-file-preview-host";
 import { DisclaimerGate } from "./components/shell/disclaimer-gate";
 import { EngineGate } from "./components/shell/engine-gate";
 import { LanguageGate } from "./components/shell/language-gate";
@@ -156,6 +157,10 @@ createRoot(rootElement).render(
                 <LanguageGate>
                   <DisclaimerGate>
                     <App />
+                    {/* Global workspace-file preview (chat file clicks) — a
+                        sibling of App so it overlays every screen, onboarding
+                        included. Mirrored in packages/web/src/app-tree.tsx. */}
+                    <AgentFilePreviewHost />
                   </DisclaimerGate>
                 </LanguageGate>
               </QueryPersistenceProvider>

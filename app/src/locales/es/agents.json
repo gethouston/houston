@@ -167,7 +167,8 @@
       "savedDescription": "{{name}} se guardó en tu computador.",
       "revealAction": "Mostrar en el Explorador de Archivos",
       "revealFailed": "No se pudo mostrar el archivo",
-      "saveFailedTitle": "No se pudo guardar el archivo"
+      "saveFailedTitle": "No se pudo guardar el archivo",
+      "openFailedTitle": "No se pudo abrir el archivo"
     }
   }
 }

@@ -16,7 +16,7 @@ import { useSaveDownload } from "../../hooks/use-save-download";
 import { isCoLocatedEngine, newEngineActive } from "../../lib/engine";
 import { tauriFiles } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
-import { FilePreviewDialog } from "./file-preview-dialog";
+import { FilePreviewDialog } from "../file-preview-dialog";
 
 export default function FilesTab({ agent }: TabProps) {
   const { t } = useTranslation("agents");

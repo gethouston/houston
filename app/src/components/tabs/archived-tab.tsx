@@ -6,8 +6,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity, useDeleteActivity } from "../../hooks/queries";
 import { useConversationFeed } from "../../hooks/use-conversation-vm";
+import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { selectArchived } from "../../lib/mission-selection";
-import { openAgentHref } from "../../lib/open-href";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
@@ -29,6 +29,7 @@ import { useArchivedSendMessage } from "./use-archived-send-message";
 export default function ArchivedTab({ agent, agentDef }: TabProps) {
   const { t } = useTranslation("board");
   const path = agent.folderPath;
+  const openHref = useOpenAgentHref(path);
   const panelContainer = useDetailPanelContainer();
   const { data: rawItems } = useActivity(path);
   const deleteActivity = useDeleteActivity(path);
@@ -137,7 +138,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           onLoadHistory={archivedSearch.loadHistory}
           emptyState={emptyState}
           onPanelOpenChange={setMissionPanelOpen}
-          onOpenLink={(url) => openAgentHref(url, path)}
+          onOpenLink={openHref}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           cardAvatar={<AgentCardAvatar color={agent.color} />}

@@ -60,7 +60,15 @@ interface RawToolkitDetail {
   auth_config_details?: { mode?: string }[];
 }
 
-/** Managed auth when Composio offers it; else the toolkit's own scheme. */
+/** OAuth needs a REGISTERED developer app (client id/secret) behind the auth
+ *  config — an empty custom OAuth config can never complete the dance, it just
+ *  fails at connect time (metaads was the canonical case). Every other scheme
+ *  (API_KEY, BEARER_TOKEN, BASIC…) is collectible from the USER on the hosted
+ *  connect page, so only those are connectable fallbacks. */
+const OAUTH_MODES = new Set(["OAUTH1", "OAUTH1A", "OAUTH2"]);
+
+/** Managed auth when Composio offers it; else the toolkit's first scheme the
+ *  hosted connect page can collect from the user (never bare custom OAuth). */
 async function authConfigSpec(
   http: ComposioHttp,
   toolkit: string,
@@ -71,10 +79,15 @@ async function authConfigSpec(
   if ((detail?.composio_managed_auth_schemes ?? []).length > 0) {
     return { type: "use_composio_managed_auth" };
   }
-  const scheme = detail?.auth_config_details?.find((d) => d.mode)?.mode;
+  const modes = (detail?.auth_config_details ?? []).flatMap((d) =>
+    d.mode ? [d.mode] : [],
+  );
+  const scheme = modes.find((m) => !OAUTH_MODES.has(m.toUpperCase()));
   if (!scheme) {
     throw new Error(
-      `composio: toolkit '${toolkit}' offers no connectable auth scheme`,
+      modes.length > 0
+        ? `composio: toolkit '${toolkit}' only offers OAuth and Composio has no managed app for it — register a developer OAuth app for it in the Composio dashboard, then connecting will reuse that auth config`
+        : `composio: toolkit '${toolkit}' offers no connectable auth scheme`,
     );
   }
   return { type: "use_custom_auth", authScheme: scheme, credentials: {} };

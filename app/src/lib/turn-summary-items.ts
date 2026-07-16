@@ -1,4 +1,5 @@
 import type { FileChangeEntry, ToolEntry } from "@houston-ai/chat";
+import { fileNameOf, toWorkspaceRelative } from "./agent-file-paths";
 
 export type SemanticUpdateKind = "instructions" | "skills" | "learnings";
 export type FileUpdateKind = "created" | "modified";
@@ -46,44 +47,26 @@ function shortName(name: string): string {
   return name.includes("__") ? (name.split("__").pop() ?? name) : name;
 }
 
-/**
- * Path separators on Windows are `\`; on macOS / Linux they're `/`. The
- * engine emits absolute paths in the native separator of the host
- * (`C:\Users\jul\.houston\…\perfil.md` on Windows, `/Users/jul/…` on Mac),
- * so any code that did `path.split("/").pop()` to get a filename
- * returned the WHOLE path on Windows — that's why the "New files"
- * section never rendered correctly and CLAUDE.md / SKILL.md never
- * classified as semantic updates. Use this helper everywhere a
- * separator-aware split is needed.
- */
-function fileNameOf(path: string): string {
-  const segments = path.split(/[\\/]/);
-  return segments[segments.length - 1] || path;
-}
-
-/** Replace `\` with `/` so prefix comparisons work regardless of OS. */
-function toPosixSeparator(path: string): string {
-  return path.replace(/\\/g, "/");
-}
-
-function normalizePath(path: string, agentPath: string): string {
-  const trimmed = toPosixSeparator(path.trim());
-  const root = toPosixSeparator(agentPath);
-  if (trimmed.startsWith(`${root}/`)) return trimmed.slice(root.length + 1);
-  return trimmed;
-}
-
 function classifyPath(
   path: string,
   agentPath: string,
 ): SemanticUpdateKind | null {
-  const relative = normalizePath(path, agentPath).toLowerCase();
+  // Separator handling matters here: the engine emits absolute paths in the
+  // HOST's native separator, so a plain `path.split("/").pop()` returned the
+  // whole path on Windows — the "New files" section never rendered correctly
+  // and CLAUDE.md / SKILL.md never classified as semantic updates. The shared
+  // helpers in agent-file-paths.ts are separator-agnostic.
+  const relative = toWorkspaceRelative(path, {
+    folderPath: agentPath,
+  }).toLowerCase();
   const fileName = fileNameOf(relative);
 
   if (fileName === "claude.md" || fileName === "agents.md")
     return "instructions";
   if (relative === ".houston/learnings/learnings.json") return "learnings";
   if (
+    relative.startsWith(".agents/skills/") ||
+    relative.startsWith(".claude/skills/") ||
     relative.includes("/.agents/skills/") ||
     relative.includes("/.claude/skills/")
   ) {
@@ -173,7 +156,8 @@ export function buildTurnSummaryItems(
 
     if (FILE_TOOLS.has(sn)) {
       const inp = tool.input as Record<string, unknown> | null | undefined;
-      const fp = inp?.file_path as string | undefined;
+      // Claude tools carry `file_path`; pi tools carry `path`.
+      const fp = (inp?.file_path ?? inp?.path) as string | undefined;
       if (fp) addPath(fp, sn === "Write" ? "created" : "modified");
     } else if (sn === "Bash") {
       for (const fp of extractPathsFromBashOutput(tool.result.content)) {

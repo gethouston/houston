@@ -433,6 +433,57 @@ test("applyRoutineUpdate: switching to a trigger clears the schedule (and vice v
   expect("trigger" in backToCron).toBe(false);
 });
 
+test("applyRoutineUpdate: the editor's cron save shape `{schedule, trigger: null}` keeps the schedule", () => {
+  // The routines editor sends `trigger: null` alongside the schedule on EVERY
+  // cron save. Treating that null as "switching to a trigger" deleted the
+  // schedule too, leaving a wake-less routine that normalizeRoutines dropped on
+  // the next read — every edited cron routine vanished from the list and was
+  // purged from disk by the next save.
+  const cron = createRoutine(
+    { name: "N", prompt: "p", schedule: "0 9 * * *" },
+    "r",
+    NOW,
+  );
+  const saved = applyRoutineUpdate(
+    cron,
+    { name: "N2", prompt: "p2", schedule: "0 10 * * *", trigger: null },
+    NOW,
+  );
+  expect(saved.schedule).toBe("0 10 * * *");
+  expect("trigger" in saved).toBe(false);
+  expect(saved.name).toBe("N2");
+  // The result survives a save → load round-trip (nothing for normalize to drop).
+  const { items, diagnostics } = normalizeRoutines([saved], "k");
+  expect(diagnostics).toEqual([]);
+  expect(items).toHaveLength(1);
+});
+
+test("applyRoutineUpdate: `trigger: null` clears only the trigger, never writes the null", () => {
+  const cron = createRoutine(
+    { name: "N", prompt: "p", schedule: "0 9 * * *" },
+    "r",
+    NOW,
+  );
+  const next = applyRoutineUpdate(cron, { trigger: null }, NOW);
+  expect(next.schedule).toBe("0 9 * * *");
+  expect("trigger" in next).toBe(false);
+
+  // Moving a trigger routine back to cron: the null clears the binding while
+  // the schedule in the same update becomes the wake.
+  const trig = createRoutine(
+    { name: "T", prompt: "p", trigger: TRIGGER },
+    "t",
+    NOW,
+  );
+  const back = applyRoutineUpdate(
+    trig,
+    { schedule: "*/5 * * * *", trigger: null },
+    NOW,
+  );
+  expect(back.schedule).toBe("*/5 * * * *");
+  expect("trigger" in back).toBe(false);
+});
+
 test("routine setup chat link: setup_activity_id round-trips create and update (HOU-725)", () => {
   // Without a chat the key is simply absent (legacy shape, no "" noise)…
   const plain = createRoutine(
