@@ -64,7 +64,6 @@ import { useSession } from "../hooks/use-session";
 import { useStoreSkillLocaleMigration } from "../hooks/use-store-skill-locale-migration";
 import { useWelcomeGreetingRevealed } from "../hooks/use-welcome-greeting";
 import { deriveActiveInteraction } from "../lib/active-interaction";
-import { canManageAgentGrants } from "../lib/agent-access";
 import { isWelcomeSessionKey } from "../lib/agent-welcome";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
@@ -971,12 +970,11 @@ export function useAgentChatPanel({
         <IntegrationConnectCard
           toolkit={toolkit}
           agentId={agent.id}
-          autoGrant={canManageAgentGrants(capabilities, agent)}
           onConnected={handleIntegrationConnected}
         />
       );
     },
-    [integrationsEnabled, agent, capabilities, handleIntegrationConnected],
+    [integrationsEnabled, agent, handleIntegrationConnected],
   );
 
   // ── Pending-interaction override (ask_user / request_connection) ──────
@@ -1460,7 +1458,6 @@ export function useAgentChatPanel({
             dismissLabel={api.dismissLabel}
             disabled={api.disabled}
             agentId={agent.id}
-            autoGrant={canManageAgentGrants(capabilities, agent)}
             reason={step.reason}
             revisited={api.revisited}
             onConnected={(_toolkit, appName) => {
@@ -1600,7 +1597,6 @@ export function useAgentChatPanel({
     sendInteractionMessage,
     clearPersistedInteraction,
     dismissActiveInteraction,
-    capabilities,
     queryClient,
     t,
   ]);

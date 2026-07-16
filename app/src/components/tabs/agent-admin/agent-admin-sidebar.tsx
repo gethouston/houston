@@ -1,9 +1,7 @@
 import { Badge, cn } from "@houston-ai/core";
 import {
-  Blocks,
   Brain,
   Cable,
-  Cpu,
   FileText,
   LibraryBig,
   type LucideIcon,
@@ -11,21 +9,15 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLearnings, useSkills } from "../../../hooks/queries";
-import { useAgentSettings } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
-import { useHubCatalog } from "../../../lib/ai-hub/use-hub-catalog";
 import type { Agent } from "../../../lib/types";
 import { type AgentAdminScreen, agentAdminCards } from "./agent-admin-nav.ts";
-import { ceilingValue } from "./agent-admin-row-values.ts";
-import { allowedModelCount } from "./model-allowlist.ts";
 
 const ICONS: Record<AgentAdminScreen, LucideIcon> = {
   instructions: FileText,
   skills: LibraryBig,
   knowledge: Brain,
-  model: Cpu,
   people: Users,
-  integrations: Blocks,
   connect: Cable,
 };
 
@@ -38,9 +30,7 @@ const ROW_TITLES = {
   instructions: "agents:subTabs.instructions",
   skills: "agents:subTabs.skills",
   knowledge: "agentAdmin.rows.knowledge.title",
-  model: "agentAdmin.rows.model.title",
   people: "agentAdmin.rows.people.title",
-  integrations: "agentAdmin.rows.integrations.title",
   connect: "connect:row.title",
 } as const satisfies Record<AgentAdminScreen, string>;
 
@@ -48,8 +38,7 @@ const ROW_TITLES = {
  * The slim settings nav rail for the manager-only Agent Settings tab: one flat
  * list of every row from the pure {@link agentAdminCards} (single-player drops
  * the access rows), in card order, with no visible group separation. Each nav
- * item surfaces its current state inline: skill / note / people counts as
- * bare-number badges, the model + integration ceilings as muted text, so a
+ * item surfaces its skill / note / people counts as bare-number badges, so a
  * manager reads it without opening the section. The selected item is styled
  * like the app sidebar nav (`bg-hover`, aria-current) with no hover-only
  * affordance.
@@ -65,12 +54,9 @@ export function AgentAdminSidebar({
 }) {
   const { t } = useTranslation(["teams", "agents"]);
   const { capabilities } = useCapabilities();
-  const teams = capabilities?.teams === true;
   const path = agent.folderPath;
   const { data: skills } = useSkills(path);
   const { data: learnings } = useLearnings(path);
-  const { data: settings } = useAgentSettings(agent.id, teams);
-  const { catalog } = useHubCatalog();
   // Flatten the gated card model into one flat, in-order row list — the cards
   // still gate which rows show (single-player drops the access rows); the rail
   // renders them as a single sequence with no group separation.
@@ -88,29 +74,6 @@ export function AgentAdminSidebar({
     return undefined;
   };
 
-  // Model / app ceilings render as muted text.
-  const ceilingText = (s: AgentAdminScreen): string | undefined => {
-    if (s === "model") {
-      const v = ceilingValue(settings?.allowedModels);
-      if (!v) return undefined;
-      if (v.kind === "all") return t("agentAdmin.values.allModels");
-      // Count MODELS, not raw ids: one model spans several provider offer ids.
-      // While the catalog is still loading, fall back to the raw id count.
-      const count = catalog
-        ? allowedModelCount(settings?.allowedModels ?? [], catalog.models)
-        : v.count;
-      return t("agentAdmin.values.modelCount", { count });
-    }
-    if (s === "integrations") {
-      const v = ceilingValue(settings?.allowedToolkits);
-      if (!v) return undefined;
-      return v.kind === "all"
-        ? t("agentAdmin.values.allApps")
-        : t("agentAdmin.values.appCount", { count: v.count });
-    }
-    return undefined;
-  };
-
   return (
     <nav
       aria-label={t("agentAdmin.title")}
@@ -121,7 +84,6 @@ export function AgentAdminSidebar({
           const Icon = ICONS[s];
           const active = s === selected;
           const count = badgeCount(s);
-          const text = ceilingText(s);
           return (
             <button
               key={s}
@@ -146,9 +108,6 @@ export function AgentAdminSidebar({
                 >
                   {count}
                 </Badge>
-              )}
-              {text && (
-                <span className="shrink-0 text-xs text-ink-muted">{text}</span>
               )}
             </button>
           );

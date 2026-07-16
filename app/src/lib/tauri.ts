@@ -288,9 +288,8 @@ export const tauriAgents = {
 /**
  * Teams v2: an agent's allowed-toolkit ceiling. `get` reads the agent + org
  * ceilings plus the caller's effective access; `set` (agent-manager only)
- * replaces the agent ceiling (`null` = all allowed, `[]` = none), and the host
- * prunes now-disallowed toolkits from existing grants. Both route through
- * `call()` so failures surface as toasts with a Report-bug affordance.
+ * replaces the agent ceiling (`null` = all allowed, `[]` = none). Both route
+ * through `call()` so failures surface as toasts with a Report-bug affordance.
  */
 export const tauriAgentSettings = {
   get: (agentSlugOrId: string) =>
@@ -1544,16 +1543,6 @@ export const tauriIntegrations = {
   dismissReconnectNotice: () =>
     call("integration_dismiss_reconnect_notice", () =>
       getEngine().dismissIntegrationsReconnectNotice(),
-    ),
-  /** Multiplayer: the integration toolkit slugs granted to an agent. */
-  grants: (agentSlugOrId: string) =>
-    call("agent_integration_grants", () =>
-      getEngine().agentIntegrationGrants(agentSlugOrId),
-    ),
-  /** Multiplayer: replace the integration toolkit slugs granted to an agent. */
-  setGrants: (agentSlugOrId: string, toolkits: string[]) =>
-    call("set_agent_integration_grants", () =>
-      getEngine().setAgentIntegrationGrants(agentSlugOrId, toolkits),
     ),
   /** The actions this agent may run without asking again ("always allow"). */
   actionApprovals: (agentId: string) =>

@@ -4,7 +4,7 @@ import type { BaseCtor } from "./mixin";
 
 export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
   class Teams extends Base {
-    // ---- per-agent assignments + integration grants (multiplayer) ----
+    // ---- per-agent assignments (multiplayer) ----
     async setAgentAssignments(
       agentSlugOrId: string,
       assignments: controlPlane.AgentAssignment[] | string[],
@@ -90,45 +90,19 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
       return controlPlane.computeUsage(this.ctx.cp, days);
     }
 
-    // Grants degrade gracefully: `null` means "this deployment has no grants
-    // model" (the legacy engine path, or a host that 404s the route), which the UI
-    // treats as unsupported rather than a hard failure. A host that serves grants
-    // (the local/self-host TS host, or the cloud gateway) answers with the set.
-    async agentIntegrationGrants(
-      agentSlugOrId: string,
-    ): Promise<string[] | null> {
-      if (!this.ctx.cp) return null;
-      return controlPlane.agentIntegrationGrants(this.ctx.cp, agentSlugOrId);
-    }
-    // Trigger status degrades to `null` (triggers unsupported here) the same way
-    // grants do: no gateway (desktop) or a host that 404s the route → the UI hides
-    // the badge rather than erroring. A gateway that serves triggers answers 200.
+    // Trigger status degrades to `null` (triggers unsupported here): no gateway
+    // (desktop) or a host that 404s the route → the UI hides the badge rather than
+    // erroring. A gateway that serves triggers answers 200.
     async agentTriggerStatus(
       agentId: string,
     ): Promise<controlPlane.TriggerStatusItem[] | null> {
       if (!this.ctx.cp) return null;
       return controlPlane.agentTriggerStatus(this.ctx.cp, agentId);
     }
-    async setAgentIntegrationGrants(
-      agentSlugOrId: string,
-      toolkits: string[],
-    ): Promise<void> {
-      // Grants are cloud-only: off-cloud there is no per-agent grants model, so
-      // this stays a no-op (never a network call) — the guard is preserved.
-      if (!this.ctx.cp) return;
-      // Delegate the WRITE to the SDK (migration wave 2a): its IntegrationsClient
-      // issues the identical `PUT /v1/agents/:id/integration-grants` with body
-      // `{toolkits}` over the SAME shared gateway fetch (bearer + `x-houston-org`)
-      // and does NOT read the response or refetch — byte-identical to the old
-      // `controlPlane.setAgentIntegrationGrants`. The READ (`agentIntegrationGrants`
-      // above) stays on cpFetch: its GET carries `transientRetryFetch`, which the
-      // SDK path lacks, so delegating it would drop that retry resilience.
-      await this.ctx.sdk.integrations.setGrants(agentSlugOrId, toolkits);
-    }
 
     // ---- per-agent action approvals ----
-    // Unlike grants, these are HOST routes that work in BOTH deployments, on
-    // the per-agent DISPATCH surface (`/agents/:id/action-approvals[...]`):
+    // These are HOST routes that work in BOTH deployments, on the per-agent
+    // DISPATCH surface (`/agents/:id/action-approvals[...]`):
     // the local/self-host host serves it directly, and the cloud gateway
     // proxies exactly this surface to the agent's pod (it mounts NO
     // `/v1/agents/*` route for approvals — calling the `/v1` form 404s at the

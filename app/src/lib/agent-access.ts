@@ -61,28 +61,3 @@ export function canManageAssignments(
 ): boolean {
   return isAgentManager(caps, agent);
 }
-
-/** Can this caller read/edit their own per-agent integration grants? */
-export function canManageAgentGrants(
-  caps: Capabilities | null | undefined,
-  agent: Pick<Agent, "assigned">,
-): boolean {
-  if (orgRole(caps) === null) return false;
-  return agent.assigned === true;
-}
-
-/**
- * Can this caller EDIT an agent's integration grants on a grants-serving host?
- * Single-player (no org roles) always can — the sole user owns everything, the
- * same short-circuit the global Integrations page uses; without it a self-host /
- * local sidecar that serves grants would render the agent tab fully read-only.
- * Multiplayer defers to the assignment rule (any assigned user gates their OWN
- * grants, independent of agent-manager authority). Whether the host serves grants
- * at all is a separate concern the caller gates on.
- */
-export function canEditAgentGrants(
-  caps: Capabilities | null | undefined,
-  agent: Pick<Agent, "assigned">,
-): boolean {
-  return !isMultiplayer(caps) || canManageAgentGrants(caps, agent);
-}

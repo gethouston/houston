@@ -19,8 +19,8 @@ import {
   useConnectFlow,
   useConnectionSelection,
 } from "../integrations";
-import { ORGANIZATION_VIEW_ID } from "../organization/id";
-import { useOrgNav } from "../organization/org-nav-store";
+import { PERMISSIONS_VIEW_ID } from "../permissions/id";
+import { usePermissionsNav } from "../permissions/permissions-nav-store";
 import { PageHeader } from "../shell/page-shell";
 import { CatalogPane } from "./catalog-pane";
 import { ConnectedAppDialogs } from "./connected-app-dialogs";
@@ -48,11 +48,11 @@ interface IntegrationsReadyProps {
  * filter. A custom tile in the strip jumps to the Custom tab (its row holds
  * the status / key / remove affordances); a catalog tile opens the detail
  * MODAL (`AppDetailDialog`, the same `CatalogDetailDialog` the browse rows use
- * — never a slideover), the ONE by-app grants lens: view + reconnect +
- * disconnect PLUS the per-agent grant toggles (which agents may use this app).
- * ONE connect flow lives here (connect-only, no auto-grant) and is handed to the
- * catalog, the recovery rows, and the detail modal so closing any of them, or
- * switching tabs, never kills an in-flight OAuth poll.
+ * — never a slideover): view + reconnect + disconnect for that personal
+ * connection. Which agents may use an app is managed in one place (the
+ * Permissions view), never here. ONE connect flow lives here (connect-only) and
+ * is handed to the catalog, the recovery rows, and the detail modal so closing
+ * any of them, or switching tabs, never kills an in-flight OAuth poll.
  *
  * The catalog shows the FULL Houston catalog: on a Teams host, apps outside the
  * workspace allowlist render as visibly locked rows (never silently dropped,
@@ -67,7 +67,7 @@ export function IntegrationsReady({
   const { t } = useTranslation("integrations");
   const [tab, setTab] = useState("catalog");
   const apps = useConnectedApps();
-  const connectFlow = useConnectFlow({ autoGrant: false });
+  const connectFlow = useConnectFlow({});
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const custom = useCustomIntegrations();
   // The workspace app ceiling: only Teams hosts have one. `null` = unrestricted
@@ -82,9 +82,9 @@ export function IntegrationsReady({
 
   // Role-aware signposting for the locked rows. The global page has no agent
   // context, so its `allowlist` IS the org ceiling and every locked app is
-  // org-blocked: only an owner (`canEditOrgSettings`) gets the CTA into the org
-  // Allowed apps section; everyone else keeps the ask-your-admin copy.
-  const requestTab = useOrgNav((s) => s.requestTab);
+  // org-blocked: only an owner (`canEditOrgSettings`) gets the CTA into the
+  // Permissions view; everyone else keeps the ask-your-admin copy.
+  const requestTab = usePermissionsNav((s) => s.requestTab);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const canEditOrg = canEditOrgSettings(capabilities);
   const lockedFix: PermissionsFix = useMemo(
@@ -95,8 +95,8 @@ export function IntegrationsReady({
         canEditOrg,
         canManageAgent: false,
         openOrgApps: () => {
-          requestTab("allowedIntegrations");
-          setViewMode(ORGANIZATION_VIEW_ID);
+          requestTab("agents");
+          setViewMode(PERMISSIONS_VIEW_ID);
         },
         openAgentDetail: () => {},
       }),
@@ -183,7 +183,6 @@ export function IntegrationsReady({
       />
 
       <ConnectedAppDialogs
-        apps={apps}
         selection={selection}
         connectFlow={connectFlow}
         onRemove={(toolkit) => disconnect.mutate(toolkit)}

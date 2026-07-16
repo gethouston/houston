@@ -232,7 +232,7 @@ export async function handle(req: Request): Promise<Response> {
   const approvalRoute = handleActionApprovals(method, segs, body);
   if (approvalRoute) return approvalRoute;
 
-  // --- user-scoped gateway routes (integrations, grants, preferences, locale) ---
+  // --- user-scoped gateway routes (integrations, preferences, locale) ---
   const userRoute = handleUserRoutes(method, segs, body);
   if (userRoute) return userRoute;
 

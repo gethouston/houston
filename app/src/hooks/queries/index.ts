@@ -33,8 +33,6 @@ export {
 export { useInstructions, useSaveInstructions } from "./use-instructions";
 export {
   useAgentActionApprovals,
-  useAgentGrantMutation,
-  useAgentGrants,
   useCustomIntegrations,
   useDisconnectIntegration,
   useIntegrationConnections,

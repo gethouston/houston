@@ -14,9 +14,7 @@ export type AgentAdminScreen =
   | "instructions"
   | "skills"
   | "knowledge"
-  | "model"
   | "people"
-  | "integrations"
   | "connect";
 
 /** Shared props for every Agent Settings section component. */
@@ -36,11 +34,10 @@ export interface AgentAdminCard {
  * caller.
  *
  * - **Configuration** (always): instructions, skills, knowledge.
- * - **Access** (multiplayer only): people with access, allowed integrations,
- *   allowed models — the two governance ceilings sit next to "people". Allowed
- *   models lives here (not Configuration) because the ceiling is a multiplayer
- *   concept: single-player has no ceiling, and its sole user picks a model in the
- *   composer, so single-player never shows a model row at all.
+ * - **Access** (multiplayer only): people with access. The governance ceilings
+ *   (allowed integrations + allowed models) moved OUT of Agent Settings — they
+ *   live in the one Permissions view now — so this card is just "who can use
+ *   this agent".
  * - **Connect** (hosted public API only, `capabilities.apiKeys` — C10): use the
  *   agent from other apps (MCP / A2A / missions REST). Absent on desktop-local,
  *   self-host, and gateways that predate the public API.
@@ -61,7 +58,7 @@ export function agentAdminCards(
   ];
 
   if (isMultiplayer(caps)) {
-    cards.push({ id: "access", rows: ["people", "integrations", "model"] });
+    cards.push({ id: "access", rows: ["people"] });
   }
 
   if (apiKeysSupported(caps ?? null)) {

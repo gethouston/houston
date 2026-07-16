@@ -86,31 +86,9 @@ export async function setAgentModelChoice(
 }
 
 /**
- * The integration toolkit slugs granted to this agent, or `null` when the host
- * does not serve grants (404) — a deployment without per-agent grants (e.g. a
- * managed cloud pod whose gateway owns the policy). Callers treat `null` as
- * "grants unsupported here" and degrade silently; every other error still throws.
- */
-export async function agentIntegrationGrants(
-  cfg: ControlPlaneConfig,
-  agentSlugOrId: string,
-): Promise<string[] | null> {
-  try {
-    const res = await cpFetch(
-      cfg,
-      `/v1/agents/${encodeURIComponent(agentSlugOrId)}/integration-grants`,
-    );
-    return ((await res.json()) as { toolkits: string[] }).toolkits;
-  } catch (err) {
-    if (err instanceof HoustonEngineError && err.status === 404) return null;
-    throw err;
-  }
-}
-
-/**
  * One agent's per-routine trigger status (C9), or `null` when the gateway does
  * not serve triggers (404). Callers treat `null` as "triggers unsupported here"
- * and hide the badge; every other error throws. Mirrors `agentIntegrationGrants`.
+ * and hide the badge; every other error throws.
  */
 export async function agentTriggerStatus(
   cfg: ControlPlaneConfig,

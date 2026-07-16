@@ -45,7 +45,8 @@
         "save": "Save",
         "cancel": "Cancel"
       }
-    }
+    },
+    "permissions": "Permissions"
   },
   "tabActions": {
     "newMission": "New mission",
@@ -129,9 +130,13 @@
         "title": "AI Models",
         "body": "Add providers like Claude and OpenAI. Manage your subscriptions and API keys here."
       },
+      "permissions": {
+        "title": "Permissions",
+        "body": "Choose who can use each agent and what each agent is allowed to use here."
+      },
       "organization": {
         "title": "Admin",
-        "body": "Invite teammates, assign roles, and set workspace policies for allowed integrations and AI models here."
+        "body": "Invite teammates, assign roles, and see activity, usage, and billing here."
       },
       "settings": {
         "title": "Settings",

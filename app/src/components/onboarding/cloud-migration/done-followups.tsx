@@ -134,7 +134,7 @@ export function DoneStepApps({ integrations }: { integrations: string[] }) {
       .map((c) => c.toolkit),
   );
 
-  const flow = useConnectFlow({ autoGrant: false });
+  const flow = useConnectFlow({});
 
   if (integrations.length === 0) return null;
 

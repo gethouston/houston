@@ -14,7 +14,7 @@ import { MemoryVfs } from "../vfs";
  * The account-based Agent Store host routes end to end through the host. The
  * host does NO store network I/O and holds NO store credentials: it gathers the
  * IR and records a token-free pointer. Covers: store-ir maps the selection to an
- * AgentIR (integrations = grants ∪ skill frontmatter), store-ir validates its
+ * AgentIR (integrations = skill frontmatter), store-ir validates its
  * input, and the pointer round-trips through POST/GET/DELETE and NEVER carries a
  * token.
  */

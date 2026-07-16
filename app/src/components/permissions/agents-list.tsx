@@ -6,40 +6,41 @@ import {
   EmptyTitle,
   resolveAgentColor,
 } from "@houston-ai/core";
+import type { OrgMember } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import { memberLabel } from "../organization/org-roster";
+import { formatRelativeTime } from "../organization/org-time";
 import { OrgAgentCard } from "./org-agent-card";
 import { summarizeAgentAccess } from "./org-agents-model";
-import { memberLabel } from "./org-roster";
-import { formatRelativeTime } from "./org-time";
-import type { OrgTabProps } from "./organization-view";
 
 /**
- * Organization > Agents: a grid of the agents the caller can see (owner: every
+ * Permissions > Agents: a grid of the agents the caller can see (owner: every
  * org agent; admin: the ones assigned to them — the agent list query already
  * reflects this). Each tile shows who manages the agent, how many people can
- * use it, and when it was last opened; clicking it drills into the agent's
- * admin detail (its stacked access controls, `onOpenAgent`) — staying inside
- * Admin rather than leaving for the agent chat. Fresh orgs get a "create your
- * first agent" empty state.
+ * use it, and when it was last opened; clicking it drills into that agent's
+ * per-agent card (its integration + model ceilings, `onOpenAgent`). Fresh orgs
+ * get a "create your first agent" empty state.
  *
  * The pinned AI model is intentionally omitted: it lives in each agent's config
  * file, not on the agent-list row, so surfacing it would cost one config fetch
  * per tile. We show managers + access + last-opened, which the list already
  * carries. Last-opened is the caller's own `lastOpenedAt`.
  */
-export default function AgentsTab({
-  ctx,
+export function AgentsList({
+  members,
   onOpenAgent,
-}: OrgTabProps & { onOpenAgent: (agent: Agent) => void }) {
+}: {
+  members: OrgMember[];
+  onOpenAgent: (agent: Agent) => void;
+}) {
   const { t, i18n } = useTranslation("teams");
   const agents = useAgentStore((s) => s.agents);
   const setCreateAgentDialogOpen = useUIStore(
     (s) => s.setCreateAgentDialogOpen,
   );
-  const members = ctx.org.members;
 
   if (agents.length === 0) {
     return (

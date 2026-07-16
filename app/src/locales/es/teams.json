@@ -110,19 +110,16 @@
   },
   "org": {
     "title": "Administración",
-    "subtitle": "Gestiona tu equipo, agentes, políticas y actividad en un solo lugar.",
+    "subtitle": "Gestiona tu equipo, actividad, uso y facturación en un solo lugar.",
     "nav": "Administración",
     "tabs": {
       "people": "Personas",
-      "agents": "Agentes",
-      "allowedIntegrations": "Aplicaciones permitidas",
-      "allowedModels": "Modelos de IA permitidos",
       "activity": "Actividad",
       "usage": "Uso",
       "billing": "Facturación"
     },
     "agentDetail": {
-      "subtitle": "Quién puede usar este agente y qué tiene permitido utilizar.",
+      "subtitle": "Qué tiene permitido utilizar este agente.",
       "openAgent": "Abrir agente",
       "managerOnly": "Solo los Managers de este agente pueden cambiar su acceso."
     },
@@ -145,33 +142,42 @@
     },
     "index": {
       "groups": {
-        "insights": "Estadísticas",
-        "permissions": "Permisos"
+        "insights": "Estadísticas"
       },
       "rows": {
         "people": "Invita compañeros, asigna roles y quita miembros.",
-        "agents": "Cada agente de este espacio de trabajo y quién puede usarlo.",
-        "allowedIntegrations": "Elige qué aplicaciones pueden usar las personas aquí.",
-        "allowedModels": "Elige qué modelos de IA pueden usar los agentes aquí.",
         "activity": "Lo que pasó en este espacio de trabajo, lo más reciente primero.",
         "usage": "Cuántos mensajes envía cada agente y persona.",
         "billing": "Asientos, plan y pago."
       },
       "values": {
         "members_one": "{{count}} miembro",
-        "members_other": "{{count}} miembros",
-        "agents_one": "{{count}} agente",
-        "agents_other": "{{count}} agentes",
-        "allApps": "Todas las aplicaciones",
-        "appsAllowed_one": "{{count}} permitida",
-        "appsAllowed_other": "{{count}} permitidas",
-        "allModels": "Todos los modelos",
-        "modelsAllowed_one": "{{count}} permitido",
-        "modelsAllowed_other": "{{count}} permitidos"
+        "members_other": "{{count}} miembros"
       }
     },
     "loading": "Cargando tu espacio de trabajo...",
     "unavailable": "No pudimos cargar tu espacio de trabajo."
+  },
+  "permissions": {
+    "title": "Permisos",
+    "subtitle": "Elige quién puede usar cada agente y qué tiene permitido utilizar cada agente.",
+    "tabs": {
+      "people": "Personas",
+      "agents": "Agentes"
+    },
+    "people": {
+      "empty": {
+        "title": "Aún no hay personas",
+        "body": "Invita a tu equipo desde la página de Administración para gestionar su acceso aquí."
+      }
+    },
+    "defaults": {
+      "title": "Valores por defecto para cada agente",
+      "subtitle": "Los agentes nuevos pueden usar estas aplicaciones y modelos de IA a menos que los cambies por agente más abajo."
+    },
+    "agents": {
+      "listTitle": "Agentes"
+    }
   },
   "share": {
     "title": "Compartir {{name}}",

@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import {
-  useAgentGrants,
   useDisconnectIntegration,
   useIntegrationConnections,
   useIntegrationToolkits,
@@ -10,7 +9,7 @@ import {
   useAgentSettings,
 } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
-import { canEditAgentGrants, isAgentManager } from "../../../lib/agent-access";
+import { isAgentManager } from "../../../lib/agent-access";
 import { canEditOrgSettings, canSeeMembers } from "../../../lib/org-roles";
 import type { TabProps } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
@@ -26,25 +25,23 @@ import {
   useIntegrationsGate,
 } from "../../integrations";
 import { INTEGRATIONS_VIEW_ID } from "../../integrations-view/id";
-import { ORGANIZATION_VIEW_ID } from "../../organization/id";
-import { useOrgNav } from "../../organization/org-nav-store";
+import { PERMISSIONS_VIEW_ID } from "../../permissions/id";
+import { usePermissionsNav } from "../../permissions/permissions-nav-store";
 import { AgentIntegrationsBody } from "./agent-integrations-body";
 import { agentIntegrationsView } from "./model";
 
 /**
  * The per-agent Integrations tab, a pure CONNECT surface. Sections: the apps
- * this agent can use, the apps a Teams allowlist forbids, and the always-visible
- * "Connect more apps" catalog. Grant activate/deactivate controls have moved to
- * Settings > Connected accounts, so this tab only connects (with `autoGrant` so
- * a brand-new connection auto-activates on this agent), recovers a pending
- * connection, and disconnects. The allowlist editor lives in Agent Settings >
- * Access, so this tab renders identically for members and managers. Behind the
- * shared boot gate; the grant view (multiplayer) and degraded view (host without
- * grant routes) are a discriminated union so the two never mix. On a Teams host
- * the effective allowlist (agent ceiling ∩ org ceiling) filters the browse
- * catalog and splits disallowed connected apps out; non-Teams hosts feature-
- * detect off and render exactly as before. The bottom "manage" link routes to
- * the global Integrations page, which everyone can reach.
+ * this agent can use (connected AND inside the Teams allowlist), the apps a
+ * Teams allowlist forbids (transparency + a role-aware pointer into
+ * Permissions), and the always-visible "Connect more apps" catalog. Permissions
+ * live in exactly one place — the Permissions view — so this tab never edits
+ * them: it only connects (with the agent slug so the gateway enforces the
+ * agent's effective allowlist), recovers a pending connection, and disconnects.
+ * Behind the shared boot gate. On a Teams host the effective allowlist (agent
+ * ceiling ∩ org ceiling) filters the browse catalog and splits disallowed
+ * connected apps out; non-Teams hosts feature-detect off. The bottom "manage"
+ * link routes to the global Integrations page, which everyone can reach.
  */
 export default function IntegrationsTab({ agent }: TabProps) {
   const gate = useIntegrationsGate();
@@ -54,14 +51,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
 
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, ready);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
-  const grantsQuery = useAgentGrants(agent.id, ready);
   const settingsQuery = useAgentSettings(agent.id, ready && teamsEnabled);
-
-  const grants = grantsQuery.data ?? null;
-  const grantsSupported = grants !== null;
-  const canEdit = grantsSupported
-    ? canEditAgentGrants(capabilities, agent)
-    : true;
 
   const settings = settingsQuery.data;
   const allowlist = useMemo(
@@ -69,20 +59,18 @@ export default function IntegrationsTab({ agent }: TabProps) {
     [settings],
   );
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
-  const connectFlow = useConnectFlow({
-    agentId: agent.id,
-    autoGrant: grantsSupported && canEdit,
-  });
+  const connectFlow = useConnectFlow({ agentId: agent.id });
   const setViewMode = useUIStore((s) => s.setViewMode);
   const onManageAll = () => setViewMode(INTEGRATIONS_VIEW_ID);
 
   // Role-aware blocked-state signposting. A blocked app is either outside the ORG
-  // ceiling (owner-fixable, deep-links to the org Allowed apps section) or merely
-  // outside this AGENT ceiling (manager-fixable, deep-links to this agent's Admin
-  // drill-in). The agent-ceiling CTA needs `canSeeMembers` too: a non-admin
-  // manager can't open the Admin dashboard, so it would be a dead link for them.
-  const requestTab = useOrgNav((s) => s.requestTab);
-  const requestAgentDetail = useOrgNav((s) => s.requestAgentDetail);
+  // ceiling (owner-fixable, deep-links to the Permissions view's Agents tab) or
+  // merely outside this AGENT ceiling (manager-fixable, deep-links to this
+  // agent's per-agent Permissions detail). The agent-ceiling CTA needs
+  // `canSeeMembers` too: a non-admin manager can't open the Permissions
+  // dashboard, so it would be a dead link for them.
+  const requestTab = usePermissionsNav((s) => s.requestTab);
+  const requestAgentDetail = usePermissionsNav((s) => s.requestAgentDetail);
   const canEditOrg = canEditOrgSettings(capabilities);
   const canManageAgent =
     isAgentManager(capabilities, agent) && canSeeMembers(capabilities);
@@ -94,12 +82,12 @@ export default function IntegrationsTab({ agent }: TabProps) {
         canEditOrg,
         canManageAgent,
         openOrgApps: () => {
-          requestTab("allowedIntegrations");
-          setViewMode(ORGANIZATION_VIEW_ID);
+          requestTab("agents");
+          setViewMode(PERMISSIONS_VIEW_ID);
         },
         openAgentDetail: () => {
           requestAgentDetail(agent.id);
-          setViewMode(ORGANIZATION_VIEW_ID);
+          setViewMode(PERMISSIONS_VIEW_ID);
         },
       }),
     [
@@ -119,18 +107,14 @@ export default function IntegrationsTab({ agent }: TabProps) {
       agentIntegrationsView({
         connections: connections.data ?? [],
         catalog: catalog.data ?? [],
-        grants,
         allowlist,
       }),
-    [connections.data, catalog.data, grants, allowlist],
+    [connections.data, catalog.data, allowlist],
   );
 
   const bodyLoading =
     ready &&
-    (grantsQuery.isLoading ||
-      connections.isLoading ||
-      catalog.isLoading ||
-      settingsQuery.isLoading);
+    (connections.isLoading || catalog.isLoading || settingsQuery.isLoading);
 
   return (
     <div className="h-full overflow-auto">
@@ -160,7 +144,6 @@ export default function IntegrationsTab({ agent }: TabProps) {
               key={agent.id}
               view={view}
               agentId={agent.id}
-              canEdit={canEdit}
               catalog={catalog.data ?? []}
               allowlist={allowlist}
               connections={connections.data ?? []}

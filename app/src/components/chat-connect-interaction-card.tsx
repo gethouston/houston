@@ -15,10 +15,8 @@ interface ChatConnectInteractionCardProps extends StepChrome {
   stepId: string;
   /** The `#houston_toolkit=<slug>` app the agent asked the user to connect. */
   toolkit: string;
-  /** The agent whose chat hosts the card (multiplayer grant attribution). */
+  /** The agent whose chat hosts the card. */
   agentId: string;
-  /** Multiplayer: auto-grant the fresh connection to this agent (C4). */
-  autoGrant: boolean;
   /** The reason the agent gave for needing this app, rendered as the body's
    *  foreground "why" line beneath the identity row. When absent, it falls back
    *  to a generic "Connect {app} to continue." line. */
@@ -67,7 +65,6 @@ interface ChatConnectInteractionCardProps extends StepChrome {
 export function ChatConnectInteractionCard({
   toolkit,
   agentId,
-  autoGrant,
   reason,
   onConnected,
   onSkip,
@@ -86,7 +83,6 @@ export function ChatConnectInteractionCard({
   const { app, isConnected, connecting, startConnect } = useIntegrationConnect({
     toolkit,
     agentId,
-    autoGrant,
     onConnected,
     autoContinueWhenConnected: !revisited,
   });

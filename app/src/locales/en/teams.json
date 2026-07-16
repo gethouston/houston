@@ -110,19 +110,16 @@
   },
   "org": {
     "title": "Admin",
-    "subtitle": "Manage your team, agents, policies, and activity in one place.",
+    "subtitle": "Manage your team, activity, usage, and billing in one place.",
     "nav": "Admin",
     "tabs": {
       "people": "People",
-      "agents": "Agents",
-      "allowedIntegrations": "Allowed apps",
-      "allowedModels": "Allowed AI models",
       "activity": "Activity",
       "usage": "Usage",
       "billing": "Billing"
     },
     "agentDetail": {
-      "subtitle": "Who can use this agent and what it is allowed to use.",
+      "subtitle": "What this agent is allowed to use.",
       "openAgent": "Open agent",
       "managerOnly": "Only this agent's Managers can change its access."
     },
@@ -145,33 +142,42 @@
     },
     "index": {
       "groups": {
-        "insights": "Insights",
-        "permissions": "Permissions"
+        "insights": "Insights"
       },
       "rows": {
         "people": "Invite teammates, set roles, remove members.",
-        "agents": "Every agent in this workspace and who can use it.",
-        "allowedIntegrations": "Choose which apps people here can use.",
-        "allowedModels": "Choose which AI models agents here can use.",
         "activity": "What happened in this workspace, newest first.",
         "usage": "How much each agent and person is messaging.",
         "billing": "Seats, plan, and payment."
       },
       "values": {
         "members_one": "{{count}} member",
-        "members_other": "{{count}} members",
-        "agents_one": "{{count}} agent",
-        "agents_other": "{{count}} agents",
-        "allApps": "All apps",
-        "appsAllowed_one": "{{count}} allowed",
-        "appsAllowed_other": "{{count}} allowed",
-        "allModels": "All models",
-        "modelsAllowed_one": "{{count}} allowed",
-        "modelsAllowed_other": "{{count}} allowed"
+        "members_other": "{{count}} members"
       }
     },
     "loading": "Loading your workspace...",
     "unavailable": "We couldn't load your workspace."
+  },
+  "permissions": {
+    "title": "Permissions",
+    "subtitle": "Choose who can use each agent, and what each agent is allowed to use.",
+    "tabs": {
+      "people": "People",
+      "agents": "Agents"
+    },
+    "people": {
+      "empty": {
+        "title": "No people yet",
+        "body": "Invite teammates from the Admin page to manage their access here."
+      }
+    },
+    "defaults": {
+      "title": "Defaults for every agent",
+      "subtitle": "New agents can use these apps and AI models unless you change them per agent below."
+    },
+    "agents": {
+      "listTitle": "Agents"
+    }
   },
   "share": {
     "title": "Share {{name}}",

@@ -23,8 +23,6 @@ import {
   RemoteCustomSecretStore,
 } from "../integrations/custom/secrets";
 import { FileCustomIntegrationStore } from "../integrations/custom/store";
-import { FileIntegrationGrantStore } from "../integrations/grant-store";
-import { LocalIntegrationGrants } from "../integrations/grants";
 import { IntegrationRegistry } from "../integrations/registry";
 import { RemoteIntegrationProvider } from "../integrations/remote";
 import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
@@ -412,19 +410,6 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     opts.chatHistoryDbPath && existsSync(opts.chatHistoryDbPath)
   );
 
-  // Per-agent integration grants: single-player parity with the cloud gateway's
-  // multiplayer policy. Wired ONLY when integrations are configured AND this host
-  // is not gateway-fronted — a managed cloud pod (gatewayFronted) leaves it unset
-  // so the gateway in front stays the single owner of grant policy, and the pod
-  // never shadows it (the grant routes 404, the sandbox proxy enforces nothing).
-  // The record lives inside each agent's own dir, so agent deletion removes it.
-  const integrationGrants = !opts.gatewayFronted
-    ? new LocalIntegrationGrants({
-        store: new FileIntegrationGrantStore(opts.workspacesRoot),
-        registry,
-      })
-    : undefined;
-
   // C9 event-driven routines are served ONLY where the Go cloud gateway fronts
   // the deployment (managed cloud): the Go control plane owns trigger
   // reconciliation and the ingress, and the gateway's edge advertises the
@@ -433,9 +418,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   // below via `triggerLock`. Self-host and desktop simply don't get triggers.
 
   // Per-agent action approvals: the execute-time gate the runtime turns into an
-  // approval step on the interaction card. UNLIKE grants this is NOT gated on
-  // gatewayFronted — v1 keeps the approval store pod-side per agent even on
-  // managed cloud pods (the gateway does not own action approvals yet). The
+  // approval step on the interaction card. NOT gated on gatewayFronted — v1 keeps
+  // the approval store pod-side per agent even on managed cloud pods (the gateway
+  // does not own action approvals yet). The
   // record lives inside the agent dir, so agent deletion removes it for free.
   // Known follow-up: per-user approval scoping for Teams lives cloud-side later.
   const actionApprovals = registry
@@ -477,7 +462,6 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     capabilities,
     chatHistoryMigrated,
     integrations,
-    integrationGrants,
     actionApprovals,
     customIntegrations,
     // Every local host has a turn bus, so the internal pod trigger-events route is

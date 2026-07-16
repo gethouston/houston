@@ -48,6 +48,7 @@ import {
   ORGANIZATION_VIEW_ID,
   OrganizationView,
 } from "../organization";
+import { PERMISSIONS_VIEW_ID, PermissionsView } from "../permissions";
 import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
 import { SettingsView } from "../settings/settings-view";
@@ -230,6 +231,8 @@ export function WorkspaceShell({
                     <IntegrationsView />
                   ) : viewMode === STORE_VIEW_ID ? (
                     <StoreView />
+                  ) : viewMode === PERMISSIONS_VIEW_ID && showOrganization ? (
+                    <PermissionsView />
                   ) : viewMode === ORGANIZATION_VIEW_ID && showOrganization ? (
                     <OrganizationView />
                   ) : currentAgent && agentDef && isAgentView ? (
@@ -509,6 +512,12 @@ export function WorkspaceShell({
                 onEnter: () => setViewMode("ai-hub"),
               },
               {
+                title: t("shell:uiTour.steps.permissions.title"),
+                body: t("shell:uiTour.steps.permissions.body"),
+                targetSelector: "[data-tour-target='nav-permissions']",
+                onEnter: () => setViewMode(PERMISSIONS_VIEW_ID),
+              },
+              {
                 title: t("shell:uiTour.steps.organization.title"),
                 body: t("shell:uiTour.steps.organization.body"),
                 targetSelector: "[data-tour-target='nav-organization']",
@@ -573,11 +582,12 @@ export function WorkspaceShell({
                 isVisibleAgentTab(capabilities, currentAgent, "job-description")
               );
             }
-            // The Organization nav item only renders for multiplayer
-            // workspaces — same reasoning, drop the step where the anchor
-            // never exists.
+            // The Organization + Permissions nav items only render for
+            // multiplayer owner/admin — same reasoning, drop the step where the
+            // anchor never exists.
             if (
-              step.targetSelector === "[data-tour-target='nav-organization']"
+              step.targetSelector === "[data-tour-target='nav-organization']" ||
+              step.targetSelector === "[data-tour-target='nav-permissions']"
             ) {
               return showOrganization;
             }

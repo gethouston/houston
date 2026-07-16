@@ -1,9 +1,7 @@
 import { AgentAccessSection } from "../agent-access-section";
 import { AgentAdminConnect } from "./agent-admin-connect";
 import { AgentAdminInstructions } from "./agent-admin-instructions";
-import { AgentAdminIntegrations } from "./agent-admin-integrations";
 import { AgentAdminKnowledge } from "./agent-admin-knowledge";
-import { AgentAdminModel } from "./agent-admin-model";
 import type {
   AgentAdminScreen,
   AgentAdminScreenProps,
@@ -27,10 +25,6 @@ export function AgentAdminScreenView({
       return <AgentAdminSkills agent={agent} />;
     case "knowledge":
       return <AgentAdminKnowledge agent={agent} />;
-    case "model":
-      return <AgentAdminModel agent={agent} />;
-    case "integrations":
-      return <AgentAdminIntegrations agent={agent} />;
     case "connect":
       return <AgentAdminConnect agent={agent} />;
     case "people":
