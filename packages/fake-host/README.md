@@ -63,14 +63,13 @@ They drive the failure/reactivity scenarios the specs assert against:
 
 ## Modeled surface
 
-- `/health`, `/version`, `/auth/status`, `/providers` — top-level probes (dev
-  conveniences; the real host serves no flat `/auth/status`).
+- `/health`, `/version` — top-level probes. The real host serves no flat
+  `/auth/status` or `/providers`, so neither exists here.
 - `/setup-runtime/*` — the host's pre-agent connect surface: `providers`,
   `auth/status`, the `auth/:provider/login[/complete|/cancel]` chain, and the
-  `credential/*` pushes. Deliberately split: `auth/status` reads the CONNECTED
-  flat slot (the WebApp boot gate clears), `providers` reads an EMPTY first-run
-  slot (onboarding's connect step shows a Connect pill per provider). Connect
-  mutations flip both.
+  `credential/*` pushes. Its slot seeds EMPTY (first-run truth): the WebApp
+  boot gate is reachability-only, and onboarding's connect step shows a
+  Connect pill per provider. Connect mutations flip the slot for both reads.
 - `/v1/capabilities` (single-player `local` profile by default; armable to a
   Teams-shaped set), `/v1/workspaces`, `/v1/integrations`, `/v1/preferences`,
   `/v1/events` (reactivity feed).

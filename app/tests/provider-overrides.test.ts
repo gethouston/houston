@@ -84,6 +84,10 @@ describe("providerDescription", () => {
       "minimax-cn",
       "zai-coding-cn",
       "kimi-coding",
+      "xiaomi",
+      "xiaomi-token-plan-cn",
+      "xiaomi-token-plan-sgp",
+      "xiaomi-token-plan-ams",
     ];
     for (const id of ids) {
       const desc = providerDescription(id);
@@ -95,5 +99,18 @@ describe("providerDescription", () => {
 
   it("returns an empty string for a provider we have never described", () => {
     strictEqual(providerDescription("brand-new-lab"), "");
+  });
+});
+
+describe("api-key overrides", () => {
+  it("every api-key override carries the key-dashboard URL", () => {
+    // An api-key connect dialog without `apiKeyUrl` strands the user with no
+    // "Get your API key" button (the Mistral/Z.ai reports): if we curate an
+    // api-key provider at all, we must curate where its key comes from.
+    for (const [id, override] of Object.entries(PROVIDER_OVERRIDES)) {
+      if (override.auth === "oauth" || override.auth === "openaiCompatible")
+        continue;
+      ok(override.apiKeyUrl, `PROVIDER_OVERRIDES["${id}"] needs an apiKeyUrl`);
+    }
   });
 });

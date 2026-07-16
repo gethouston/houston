@@ -11,7 +11,10 @@ import { MemoryWorkspaceStore } from "../store/memory";
 
 /**
  * The user-facing action-approvals routes over real HTTP: ownership, body
- * validation, the always-allow + ticket writes, and the unwired-dep 404.
+ * validation, the always-allow + ticket writes, and the unwired-dep 404 —
+ * on BOTH surfaces: the top-level `/v1/agents/:id/action-approvals/*` and the
+ * per-agent dispatch `/agents/:id/action-approvals/*` (the one the hosted
+ * gateway proxies to a pod, so the shipped clients call it).
  */
 
 const USER = "alice";
@@ -68,6 +71,9 @@ const auth = {
 };
 const url = (base: string, agentId: string, sub = "") =>
   `${base}/v1/agents/${encodeURIComponent(agentId)}/action-approvals${sub}`;
+/** The dispatch-surface form of the same routes (what the shipped clients call). */
+const dispatchUrl = (base: string, agentId: string, sub = "") =>
+  `${base}/agents/${encodeURIComponent(agentId)}/action-approvals${sub}`;
 
 test("GET returns the always list; POST /always appends (deduped)", async () => {
   const { base, agent, stop } = await setup();
@@ -154,6 +160,88 @@ test("unknown agent → 404", async () => {
   try {
     const res = await fetch(url(base, `${ws.id}/Ghost`), { headers: auth });
     expect(res.status).toBe(404);
+  } finally {
+    stop();
+  }
+});
+
+test("dispatch surface serves the same three routes (GET / always / tickets)", async () => {
+  const { base, agent, approvalStore, stop } = await setup();
+  try {
+    const empty = await fetch(dispatchUrl(base, agent.id), { headers: auth });
+    expect(empty.status).toBe(200);
+    expect((await empty.json()).always).toEqual([]);
+
+    const always = await fetch(dispatchUrl(base, agent.id, "/always"), {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ action: "GMAIL_SEND" }),
+    });
+    expect(always.status).toBe(200);
+    expect((await always.json()).always).toEqual(["GMAIL_SEND"]);
+
+    const ticket = await fetch(dispatchUrl(base, agent.id, "/tickets"), {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ hash: "0123456789abcdef" }),
+    });
+    expect(ticket.status).toBe(200);
+    expect((await ticket.json()).ok).toBe(true);
+    const record = await approvalStore.get(agent.id);
+    expect(record.tickets.map((t) => t.hash)).toEqual(["0123456789abcdef"]);
+
+    // Both surfaces read the SAME store.
+    const get = await fetch(url(base, agent.id), { headers: auth });
+    expect((await get.json()).always).toEqual(["GMAIL_SEND"]);
+  } finally {
+    stop();
+  }
+});
+
+test("dispatch surface validates bodies like the /v1 surface", async () => {
+  const { base, agent, stop } = await setup();
+  try {
+    const always = await fetch(dispatchUrl(base, agent.id, "/always"), {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ action: "bad slug!" }),
+    });
+    expect(always.status).toBe(400);
+    const ticket = await fetch(dispatchUrl(base, agent.id, "/tickets"), {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ hash: "SHORT" }),
+    });
+    expect(ticket.status).toBe(400);
+  } finally {
+    stop();
+  }
+});
+
+test("dispatch surface enforces the same ownership check (403)", async () => {
+  const { base, agent, stop } = await setup();
+  try {
+    const res = await fetch(dispatchUrl(base, agent.id), {
+      headers: { Authorization: "Bearer other" },
+    });
+    expect(res.status).toBe(403);
+  } finally {
+    stop();
+  }
+});
+
+test("unwired dep → dispatch requests fall through past the approval routes", async () => {
+  const { base, agent, stop } = await setup({ withApprovals: false });
+  try {
+    // With no approval store the family is not served here; the request keeps
+    // falling toward the runtime channel (none wired in this harness → 503),
+    // never a 200 pretending the write landed.
+    const res = await fetch(dispatchUrl(base, agent.id, "/tickets"), {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ hash: "0123456789abcdef" }),
+    });
+    expect(res.status).toBe(503);
   } finally {
     stop();
   }

@@ -1,78 +1,79 @@
 /**
- * The host's pre-agent connect surface (`/setup-runtime/*`) — mirrors
- * packages/host/src/routes/setup-runtime.ts. Two consumers with OPPOSITE needs
- * share this prefix in the harness, so it deliberately splits its slots:
- *
- *  - `auth/status` (the WebApp boot gate, packages/web/src/new-engine/app.tsx)
- *    reads the CONNECTED {@link state.FLAT_KEY} slot — anthropic active, so the
- *    gate clears and every spec reaches the shell instead of ConnectView.
- *  - `providers` (onboarding's connect step, reached pre-agent through
- *    `setupRuntimeClientFor`) reads the EMPTY {@link state.SETUP_KEY} slot —
- *    first-run truth, every provider renders a Connect pill
- *    (onboarding-connect.spec).
- *
- * Connect mutations (login complete, api-key) flip BOTH slots: on the real host
- * a setup-runtime capture lands on the personal workspace, so the credential is
- * visible everywhere afterward.
+ * The host's pre-agent connect surface (`/setup-runtime/*`) — what the WebApp
+ * connect gate and ConnectView speak BEFORE any agent exists. Mirrors
+ * `packages/host/src/routes/setup-runtime.ts`: only the connect surface is
+ * exposed (providers, auth status, login/complete/cancel, credential capture /
+ * api-key / claude-oauth); anything else under the prefix is a 404, exactly
+ * like the real host. Backed by the same {@link state.FLAT_KEY} slot the old
+ * flat routes used, so the seed (Claude connected + active) clears the gate.
  */
 
+import { parseClaudeOAuthEnvelope } from "@houston/protocol";
 import type { ProviderId } from "@houston/runtime-client";
 import { json } from "./http";
 import * as state from "./state";
 
-/** Dispatch `/setup-runtime/...`. `rest` is the path split AFTER the prefix. */
+const PREFIX = "/setup-runtime";
+const LOGIN = /^auth\/([^/]+)\/login(?:\/(complete|cancel))?$/;
+
+/** Handle a `/setup-runtime/*` request; null when the path isn't ours. */
 export function handleSetupRuntime(
   method: string,
-  rest: string[],
-  req: Request,
+  path: string,
+  url: URL,
   body: Record<string, unknown> | undefined,
-): Response {
-  const sub = rest.join("/");
+): Response | null {
+  if (path !== PREFIX && !path.startsWith(`${PREFIX}/`)) return null;
+  const rest = path.slice(`${PREFIX}/`.length);
 
-  if (method === "GET") {
-    if (sub === "auth/status") return json(state.authStatusFor(state.FLAT_KEY));
-    if (sub === "providers") return json(state.providerList(state.SETUP_KEY));
+  if (method === "GET" && rest === "providers")
+    return json(state.providerList(state.FLAT_KEY));
+  if (method === "GET" && rest === "auth/status")
+    return json(state.authStatusFor(state.FLAT_KEY));
+
+  // Connect-once capture: the real host pulls the setup runtime's credential
+  // into the workspace-central store. Here: mark the provider connected.
+  if (method === "POST" && rest === "credential/capture") {
+    const provider = (
+      typeof body?.provider === "string" ? body.provider : "anthropic"
+    ) as ProviderId;
+    state.completeLogin(state.FLAT_KEY, provider);
+    return json({ ok: true, provider });
   }
 
-  if (method === "POST") {
-    // Connect-once credential pushes: api-key flips both slots connected (the
-    // real host pushes into the setup runtime so `auth/status` reads connected
-    // immediately); capture + claude-oauth are accepted acks.
-    if (sub === "credential/api-key") {
-      const provider = String(body?.provider ?? "") as ProviderId;
-      state.setApiKey(state.FLAT_KEY, provider);
-      state.setApiKey(state.SETUP_KEY, provider);
-      return json({ ok: true });
-    }
-    if (sub === "credential/capture" || sub === "credential/claude-oauth")
-      return json({ ok: true });
-
-    // OAuth login chain: /auth/:provider/login[/complete|/cancel]. Mutations
-    // land on both slots so the login poll (auth/status) and the connect list
-    // (providers) tell the same story.
-    if (rest[0] === "auth" && rest[2] === "login") {
-      const provider = rest[1] as ProviderId;
-      if (rest[3] === "complete") {
-        state.completeLogin(state.FLAT_KEY, provider);
-        state.completeLogin(state.SETUP_KEY, provider);
-        return json({ ok: true });
-      }
-      if (rest[3] === "cancel") {
-        state.cancelLogin(state.FLAT_KEY, provider);
-        state.cancelLogin(state.SETUP_KEY, provider);
-        return json({ ok: true });
-      }
-      if (rest.length === 3) {
-        const enterpriseDomain =
-          new URL(req.url).searchParams.get("enterpriseDomain") ?? undefined;
-        state.startLogin(state.SETUP_KEY, provider, enterpriseDomain);
-        return json(
-          state.startLogin(state.FLAT_KEY, provider, enterpriseDomain),
-        );
-      }
-    }
+  if (method === "POST" && rest === "credential/api-key") {
+    const provider = body?.provider;
+    if (!provider || typeof provider !== "string")
+      return json({ error: "missing 'provider'" }, 400);
+    if (!body?.apiKey || typeof body.apiKey !== "string")
+      return json({ error: "missing 'apiKey'" }, 400);
+    state.setApiKey(state.FLAT_KEY, provider as ProviderId);
+    return json({ ok: true });
   }
 
-  // Everything else stays agent-scoped on the real host — 404, same as it.
+  // Same validation as the real route: a malformed envelope is a clean 400.
+  if (method === "POST" && rest === "credential/claude-oauth") {
+    const parsed = parseClaudeOAuthEnvelope(body ?? {});
+    if (!parsed.ok) return json({ error: parsed.error }, 400);
+    state.completeLogin(state.FLAT_KEY, "anthropic");
+    return json({ ok: true });
+  }
+
+  const login = method === "POST" ? LOGIN.exec(rest) : null;
+  if (login) {
+    const provider = login[1] as ProviderId;
+    if (login[2] === "complete") {
+      state.completeLogin(state.FLAT_KEY, provider);
+      return json({ ok: true });
+    }
+    if (login[2] === "cancel") {
+      state.cancelLogin(state.FLAT_KEY, provider);
+      return json({ ok: true });
+    }
+    const enterpriseDomain =
+      url.searchParams.get("enterpriseDomain") ?? undefined;
+    return json(state.startLogin(state.FLAT_KEY, provider, enterpriseDomain));
+  }
+
   return json({ error: "not found" }, 404);
 }
