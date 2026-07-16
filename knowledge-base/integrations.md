@@ -564,8 +564,10 @@ stepper renders `ChatApprovalInteractionCard`
 (pager + dismiss X) the stepper hands it, so ui/chat stays Composio-unaware. It
 resolves the toolkit to a logo + name for the '(icon) NAME' title WITHOUT any
 connect side effect (no OAuth, no auto-continue — reusing `useIntegrationStatus`
-/ `useIntegrationToolkits` + the shared `AppLogo`), asks "Allow {app} to
-{action}?" (`humanizeActionSlug`) over a muted-key/foreground-value param block,
+/ `useIntegrationToolkits` + the shared `AppLogo`), asks JUST "Allow {app} to
+{action}?" (`humanizeActionSlug`) — the tool's raw params ride the wire but are
+NEVER rendered (non-technical audience; the approval still covers the exact
+call via `paramsHash`) —
 and offers three FOOTER decisions — Always allow (outline, LEFT) / Deny (outline,
 Esc) / Allow once (filled, Enter). `onDecision` writes the store (allow-once →
 `tickets` POST, always-allow → `always` POST) then advances. The composed reply

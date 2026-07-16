@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 26
+version: 27
 
 components:
   - id: agent-avatar
@@ -324,8 +324,8 @@ components:
   - id: interaction-approval-card
     title: Interaction approval card
     purpose: The approval STEP inside the interaction stepper, shown when an integration action needs the user's go-ahead before it runs; asks "Allow {app} to {action}?" and records allow-once / always-allow / deny.
-    anatomy: [app-logo, integration-name, permission-question, param-rows, decided-state, footer-row, always-allow, deny, allow-once, return-key-glyph, decline-esc-hint]
-    states: [frontier, with-params, no-params, decided-allowed, decided-denied, revisited, disabled]
+    anatomy: [app-logo, integration-name, permission-question, decided-state, footer-row, always-allow, deny, allow-once, return-key-glyph, decline-esc-hint]
+    states: [frontier, decided-allowed, decided-denied, revisited, disabled]
     variants: [approval]
     behavior: >-
       An `approval` step (protocol `InteractionStep` kind=approval: `{toolkit,
@@ -339,9 +339,11 @@ components:
       via ui/chat's `renderApproval` prop (ui/chat stays Composio-unaware, exactly
       like renderConnect/renderSignin). The modal TITLE is the '(icon) NAME'
       identity lockup (real brand logo beside the integration name, REGULAR
-      weight); the body leads with the permission question in foreground tone, then
-      the tool's params as a two-column dt/dd block (muted key, foreground value —
-      omitted when there are none). THREE decisions from the FOOTER: Always allow
+      weight); the body is deliberately NON-technical (v27): JUST the permission
+      question in foreground tone ("Allow {app} to {action}?") — the tool's raw
+      params are received on the wire but NEVER rendered (the target user is
+      non-technical; the approval still covers the exact call via paramsHash).
+      THREE decisions from the FOOTER: Always allow
       (outline, pushed LEFT), Deny (outline, Esc), Allow once (filled, Enter,
       return-key glyph). Unlike a connect/signin "Not now" (which merely defers),
       Deny is a real decision the model is TOLD about: resolution writes the store
@@ -357,7 +359,7 @@ components:
       muted "Denied") with NO footer; the pager's forward chevron is onward.
       Autopilot AUTO-APPROVES the gate (the runtime forwards `x-houston-turn-mode:
       auto`), so this card never appears on an auto turn.
-    a11y: the permission question reads as the prominent line under the app-identity title; param rows are a dt/dd description list (muted key, foreground value); the three decisions are labeled footer buttons (Deny carries an Esc keycap hint, Allow once a return-key glyph); a revisited decided step exposes its outcome as text (no color-only), no footer.
+    a11y: the permission question reads as the prominent line under the app-identity title; the three decisions are labeled footer buttons (Deny carries an Esc keycap hint, Allow once a return-key glyph); a revisited decided step exposes its outcome as text (no color-only), no footer.
     since: 21
 
   - id: plan-ready-card

@@ -201,7 +201,8 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   steps through `renderSignin` (the app injects a card on the
   `use-integrations-gate` Google-SSO machinery; already-signed-in auto-advances).
   Approval steps render through `renderApproval` (the app injects
-  `ChatApprovalInteractionCard`): "Allow {app} to {action}?" over a param block,
+  `ChatApprovalInteractionCard`): just "Allow {app} to {action}?" (no param
+  rows — non-technical audience),
   with THREE footer decisions — Always allow / Deny (Esc) / Allow once (Enter).
   Unlike a connect/signin "Not now" (which merely defers), Deny is a real decision
   the model HEARS: the resolution writes the host store (allow-once → a one-shot

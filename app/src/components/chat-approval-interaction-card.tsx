@@ -7,7 +7,6 @@ import {
 import { Button, Kbd } from "@houston-ai/core";
 import { Check, CornerDownLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { ApprovalCardParams } from "./approval-card-params";
 import { AppLogo } from "./integrations";
 import { useIntegrationAppDisplay } from "./use-integration-app-display";
 import { useInteractionStepKeys } from "./use-interaction-step-keys";
@@ -20,12 +19,6 @@ interface ChatApprovalInteractionCardProps extends StepChrome {
   /** The raw Composio action slug, e.g. "GMAIL_SEND_DRAFT", humanized for the
    *  permission question ("send draft"). */
   action: string;
-  /** Display-ready key/values rendered as the card's param rows. */
-  params?: Record<string, string>;
-  /** How many params were dropped past the row cap (present only when > 0); the
-   *  card shows a muted "+N more" line so the user knows the approval covers
-   *  settings the rows don't show. */
-  paramsOmitted?: number;
   /** True when the user walked BACK onto this already-reached step via the pager. */
   revisited: boolean;
   /** The outcome already recorded for this step (walking Back onto a resolved
@@ -46,9 +39,10 @@ interface ChatApprovalInteractionCardProps extends StepChrome {
  *
  * Following the reference "Coworker card" language, the modal TITLE is the app
  * identity lockup — the real brand logo beside the integration NAME at regular
- * weight — over a body that leads with the permission question ("Allow Gmail to
- * send draft?") in foreground tone, then the tool's params as a two-column
- * key/value block (muted label, foreground value).
+ * weight — over a deliberately NON-technical body: just the permission question
+ * ("Allow Gmail to send draft?") in foreground tone. The tool's raw params are
+ * NEVER shown (the target user is non-technical); the approval still covers the
+ * exact call via paramsHash.
  *
  * THREE decisions, all made from the footer:
  *   - "Allow once"    — run this call, ask again next time (Enter).
@@ -70,8 +64,6 @@ interface ChatApprovalInteractionCardProps extends StepChrome {
 export function ChatApprovalInteractionCard({
   toolkit,
   action,
-  params,
-  paramsOmitted,
   revisited,
   outcome,
   onDecision,
@@ -127,7 +119,6 @@ export function ChatApprovalInteractionCard({
               action: humanizeActionSlug(action, toolkit),
             })}
           </p>
-          <ApprovalCardParams params={params} paramsOmitted={paramsOmitted} />
           {decided &&
             (outcome === "denied" ? (
               // Denied: a muted line, no check, no red — a calm decision record.

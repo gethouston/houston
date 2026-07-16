@@ -3,6 +3,16 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v27 - 2026-07-16
+
+`interaction-approval-card` sheds its technical body. The two-column param
+rows (and the "+N more settings" overflow line) are GONE — the wire payload
+still carries `params`/`paramsOmitted`, but no surface renders them; the
+approval keeps covering the exact call via `paramsHash`. Everything else is
+unchanged: the '(icon) NAME' header lockup, the "Allow {app} to {action}?"
+question, the three-decision footer, and the decided states. Anatomy drops
+`param-rows`; states drop `with-params`/`no-params`.
+
 ## v26 - 2026-07-13
 
 New component `provider-usage-card`: a new top-level Usage page (its own

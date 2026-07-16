@@ -59,8 +59,6 @@
     "deniedLine": "I chose not to allow {{action}}. Do not retry it; continue without it.",
     "approvedLineDisplay": "Allowed {{app}} to {{action}}.",
     "deniedLineDisplay": "Did not allow {{app}} to {{action}}.",
-    "approvalMoreParams_one": "And {{count}} more setting",
-    "approvalMoreParams_other": "And {{count}} more settings",
     "signinAppName": "Houston",
     "signinTitle": "Sign in to Houston",
     "signinDescription": "Your accounts stay yours; the agent acts on your behalf.",
