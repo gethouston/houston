@@ -82,6 +82,8 @@
     "notAllowed": {
       "title": "Not allowed for this agent",
       "body": "These apps are connected to your account, but this agent isn't allowed to use them. Ask your admin to enable them for this agent.",
+      "bodyManager": "These apps are connected to your account, but this agent isn't allowed to use them. Enable them in Permissions.",
+      "enableInPermissions": "Enable it in Permissions",
       "badge": "Not allowed"
     }
   },
@@ -124,10 +126,27 @@
       "openAgent": "Open agent",
       "managerOnly": "Only this agent's Managers can change its access."
     },
+    "memberDetail": {
+      "everyone": {
+        "title": "Shared with everyone",
+        "note": "Everyone in the team"
+      },
+      "explicit": {
+        "title": "Agents"
+      },
+      "access": {
+        "none": "No access",
+        "noneHint": "Cannot see or use this agent.",
+        "unknown": "Not visible to you"
+      },
+      "changeAccess": "Change access to {{agent}}",
+      "setReplaceNote": "This changes who can use the agent.",
+      "empty": "There are no agents to show for this person yet."
+    },
     "index": {
       "groups": {
-        "access": "Access",
-        "insights": "Insights"
+        "insights": "Insights",
+        "permissions": "Permissions"
       },
       "rows": {
         "people": "Invite teammates, set roles, remove members.",
@@ -227,7 +246,8 @@
       "you": "(you)",
       "changeRole": "Change role for {{name}}",
       "remove": "Remove",
-      "removeLabel": "Remove {{name}}"
+      "removeLabel": "Remove {{name}}",
+      "openLabel": "Open {{name}}'s agents"
     },
     "removeConfirm": {
       "title": "Remove {{name}}?",

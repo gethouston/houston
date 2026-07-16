@@ -164,6 +164,23 @@ export async function handle(req: Request): Promise<Response> {
     const body = await parseBody(req);
     return json(state.setTeamsSettings((body ?? {}) as Partial<TeamsSettings>));
   }
+  // Arm the per-member access lens (Admin > People drill-in): a multi-member
+  // org roster (`members`) `GET /v1/org` serves, and the agent fleet with
+  // per-agent assignments (`agents`) `GET /agents` serves. Pair with
+  // `/__test__/capabilities` `{multiplayer:true, teams:true, role:"owner"}`.
+  if (path === "/__test__/org" && method === "POST") {
+    const body = await parseBody(req);
+    if (Array.isArray(body?.members)) {
+      state.setOrgMembers(body.members as state.FakeMember[]);
+    }
+    if (Array.isArray(body?.agents)) {
+      state.armAgents(body.agents as state.AgentAccessSeed[]);
+    }
+    return json({
+      members: state.getOrgMembers(),
+      agents: state.listAgents(),
+    });
+  }
   // Read back the action-approval writes the interaction card made: the
   // always-allow slugs AND the "Allow once" ticket hashes (the product tickets
   // route never reads back). Lets an e2e assert Allow once posted the step's hash.

@@ -11,6 +11,7 @@ import {
   type ConnectFlow,
   CustomIntegrationsSection,
   IntegrationDisconnectDialog,
+  type PermissionsFix,
 } from "../../integrations";
 import { CatalogPane } from "../../integrations-view/catalog-pane";
 import { InstalledStrip } from "../../integrations-view/installed-strip";
@@ -39,6 +40,9 @@ interface AgentIntegrationsBodyProps {
   onDisconnect: (toolkit: string) => void;
   /** Navigate to the global Integrations page ("Manage all integrations"). */
   onManageAll: () => void;
+  /** Role-aware "Enable it in Permissions" resolver for policy-blocked apps
+   *  (locked browse rows + the disallowed section); absent = the member view. */
+  permissionsFix?: PermissionsFix;
 }
 
 /**
@@ -68,6 +72,7 @@ export function AgentIntegrationsBody({
   catalogLoading,
   onDisconnect,
   onManageAll,
+  permissionsFix,
 }: AgentIntegrationsBodyProps) {
   const { t } = useTranslation("integrations");
   const [tab, setTab] = useState("catalog");
@@ -103,6 +108,7 @@ export function AgentIntegrationsBody({
           connectFlow={connectFlow}
           onRemoveRecovering={onDisconnect}
           allowlist={allowlist}
+          lockedFix={permissionsFix}
           readOnly={!canEdit}
         >
           <AgentCatalogSections
@@ -110,6 +116,7 @@ export function AgentIntegrationsBody({
             agentId={agentId}
             canEdit={canEdit}
             catalog={catalog}
+            permissionsFix={permissionsFix}
           />
         </CatalogPane>
       ),

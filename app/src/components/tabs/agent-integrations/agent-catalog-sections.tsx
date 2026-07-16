@@ -1,4 +1,5 @@
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
+import type { PermissionsFix } from "../../integrations";
 import { AgentApprovedActionsSection } from "./agent-approved-actions-section";
 import { AgentDisallowedAppsSection } from "./agent-disallowed-apps-section";
 import { AgentUngrantedAppsSection } from "./agent-ungranted-apps-section";
@@ -10,6 +11,9 @@ interface AgentCatalogSectionsProps {
   canEdit: boolean;
   /** The toolkit catalog, so the approved-actions review can resolve app identity. */
   catalog: IntegrationToolkit[];
+  /** Role-aware "Enable it in Permissions" resolver for the disallowed apps;
+   *  absent = the member view (ask-your-admin copy). */
+  permissionsFix?: PermissionsFix;
 }
 
 /**
@@ -26,6 +30,7 @@ export function AgentCatalogSections({
   agentId,
   canEdit,
   catalog,
+  permissionsFix,
 }: AgentCatalogSectionsProps) {
   const available = view.mode === "grants" ? view.availableRows : [];
   const disallowed = view.mode === "grants" ? view.disallowedRows : [];
@@ -39,7 +44,10 @@ export function AgentCatalogSections({
         />
       )}
       {disallowed.length > 0 && (
-        <AgentDisallowedAppsSection rows={disallowed} />
+        <AgentDisallowedAppsSection
+          rows={disallowed}
+          onEnable={permissionsFix}
+        />
       )}
       <AgentApprovedActionsSection agentId={agentId} catalog={catalog} />
     </>

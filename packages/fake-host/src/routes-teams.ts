@@ -13,6 +13,7 @@
 
 import { json } from "./http";
 import * as state from "./state";
+import type { FakeAssignment } from "./state-store";
 
 /** Read a `string[] | null` field from a JSON body, preserving an explicit null. */
 function toolkitList(value: unknown): string[] | null {
@@ -21,6 +22,32 @@ function toolkitList(value: unknown): string[] | null {
     return value as string[];
   }
   return null;
+}
+
+/**
+ * The `PUT /agents/:slug/assignments` body → a normalized assignee roster. The
+ * v2 `{assignments:[{userId,access}]}` wins; the legacy `{userIds:[...]}` maps
+ * each to `access:"user"`. An absent/blank body clears the roster.
+ */
+function assignmentsFromBody(
+  body: Record<string, unknown> | undefined,
+): FakeAssignment[] {
+  const v2 = body?.assignments;
+  if (Array.isArray(v2)) {
+    return v2.flatMap((a) => {
+      const row = a as { userId?: unknown; access?: unknown };
+      if (typeof row.userId !== "string") return [];
+      const access = row.access === "manager" ? "manager" : "user";
+      return [{ userId: row.userId, access }];
+    });
+  }
+  const userIds = body?.userIds;
+  if (Array.isArray(userIds)) {
+    return userIds
+      .filter((u): u is string => typeof u === "string")
+      .map((userId) => ({ userId, access: "user" as const }));
+  }
+  return [];
 }
 
 /** Route a Teams settings request, or return `undefined` to fall through. */
@@ -39,14 +66,35 @@ export function handleTeamsRoutes(
   if (segs[0] === "v1" && segs[1] === "org" && segs.length === 2) {
     if (method !== "GET") return json({ error: "not found" }, 404);
     const role = state.getCapabilities().role ?? "owner";
+    // An armed roster (the per-member access lens) is served verbatim; unarmed
+    // it stays the single-self roster synthesized from the advertised role.
+    const members = state.getOrgMembers() ?? [
+      { userId: "u-self", email: "you@acme.test", role },
+    ];
     return json({
       id: "org-e2e",
       slug: "acme",
       name: "Acme",
       role,
-      members: [{ userId: "u-self", email: "you@acme.test", role }],
+      members,
       invites: [],
     });
+  }
+
+  // /v1/agents/:slug/assignments — set-replace the agent's assignee roster
+  // (Teams v2, owner or manager-admin). Accepts the v2 `{assignments}` body and
+  // the legacy `{userIds}` (mapped to `access:"user"`); mirrors the real gateway.
+  if (
+    segs[0] === "v1" &&
+    segs[1] === "agents" &&
+    segs.length === 4 &&
+    segs[3] === "assignments"
+  ) {
+    if (method !== "PUT") return json({ error: "not found" }, 404);
+    const assignments = assignmentsFromBody(body);
+    const updated = state.setAgentAssignments(segs[2], assignments);
+    if (!updated) return json({ error: "agent not found" }, 404);
+    return json({ ok: true });
   }
 
   // /v1/agents/:slug/settings — the agent ceiling + org ceiling + access.

@@ -70,6 +70,7 @@
     "heading": "Desativados no seu espaço de trabalho",
     "subtitle": "Seu administrador escolheu quais apps podem ser usados aqui. Eles existem no Houston, só estão desativados neste espaço de trabalho.",
     "askAdmin": "Peça ao seu administrador para habilitar {{name}}",
+    "enableInPermissions": "Ative em Permissões",
     "more_one": "{{count}} app a mais desativado no seu espaço de trabalho",
     "more_other": "{{count}} apps a mais desativados no seu espaço de trabalho"
   },

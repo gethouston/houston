@@ -538,6 +538,27 @@ before the partition), never emptiness. `allowlist === null` (single-player, or 
 with no ceiling) → `locked` always empty → no locks ever; the manager's allowlist editor
 (`AppCatalogGrid`) is unchanged.
 
+**Role-aware signposting (Part B).** A locked row is not just informational for a viewer
+who can LIFT the ceiling: `CatalogLockedSection` (and the connected-app `AgentDisallowedAppsSection`)
+take an optional `onEnable?: PermissionsFix` resolver (`integrations/blocked-ceiling.ts`).
+When it returns a thunk for a slug, the ask-your-admin line is REPLACED by an
+`EnableInPermissionsButton` ("Enable it in Permissions", `integrations:locked.enableInPermissions`
+/ `teams:integrations.notAllowed.enableInPermissions`) that deep-links into the Admin
+Permissions area (`setViewMode(ORGANIZATION_VIEW_ID)` + an org-nav request). WHICH ceiling
+decides the destination and the authority: `blockingCeiling(slug, {orgAllowedToolkits, agentAllowedToolkits})`
+returns `"org"` (slug outside the org ceiling → owner-only, deep-links to the org Allowed
+apps section via `requestTab("allowedIntegrations")`) or `"agent"` (inside org, outside the
+agent ceiling → the agent's manager, deep-links to this agent's Admin drill-in via
+`requestAgentDetail`). The resolver (`resolvePermissionsFix`) returns `undefined` — member
+copy, unchanged — whenever the viewer lacks the authority (`canEditOrgSettings` for org,
+`isAgentManager && canSeeMembers` for agent; the `canSeeMembers` guard keeps a non-admin
+manager, who can't open the Admin dashboard, from getting a dead link). The leaf sections
+stay presentational (props only, no store imports); the resolver is BUILT at the surfaces
+that hold the policy data — the global page (`integrations-ready.tsx`, org ceiling only,
+no agent context) and the per-agent tab (`agent-integrations-tab.tsx`, per-slug org-vs-agent
+attribution) — and threaded down through `CatalogPane`/`CategoryCatalog` (`lockedFix`) and
+`AgentCatalogSections` (`permissionsFix`). Pure logic is node-tested in `app/tests/blocked-ceiling.test.ts`.
+
 **Connect flow + pending recovery** — `useConnectFlow` (in the shared module) lives
 on the SURFACE, never inside the picker, so closing the dialog never kills polling.
 It mints the hosted link, opens the browser, polls until active (a `Waker` backs

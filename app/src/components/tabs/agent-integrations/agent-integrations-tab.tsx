@@ -10,19 +10,24 @@ import {
   useAgentSettings,
 } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
-import { canEditAgentGrants } from "../../../lib/agent-access";
+import { canEditAgentGrants, isAgentManager } from "../../../lib/agent-access";
+import { canEditOrgSettings, canSeeMembers } from "../../../lib/org-roles";
 import type { TabProps } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
 import {
   INTEGRATION_PROVIDER,
   LoadingState,
+  type PermissionsFix,
   ReconnectBanner,
+  resolvePermissionsFix,
   SigninState,
   UnavailableState,
   useConnectFlow,
   useIntegrationsGate,
 } from "../../integrations";
 import { INTEGRATIONS_VIEW_ID } from "../../integrations-view/id";
+import { ORGANIZATION_VIEW_ID } from "../../organization/id";
+import { useOrgNav } from "../../organization/org-nav-store";
 import { AgentIntegrationsBody } from "./agent-integrations-body";
 import { agentIntegrationsView } from "./model";
 
@@ -70,6 +75,44 @@ export default function IntegrationsTab({ agent }: TabProps) {
   });
   const setViewMode = useUIStore((s) => s.setViewMode);
   const onManageAll = () => setViewMode(INTEGRATIONS_VIEW_ID);
+
+  // Role-aware blocked-state signposting. A blocked app is either outside the ORG
+  // ceiling (owner-fixable, deep-links to the org Allowed apps section) or merely
+  // outside this AGENT ceiling (manager-fixable, deep-links to this agent's Admin
+  // drill-in). The agent-ceiling CTA needs `canSeeMembers` too: a non-admin
+  // manager can't open the Admin dashboard, so it would be a dead link for them.
+  const requestTab = useOrgNav((s) => s.requestTab);
+  const requestAgentDetail = useOrgNav((s) => s.requestAgentDetail);
+  const canEditOrg = canEditOrgSettings(capabilities);
+  const canManageAgent =
+    isAgentManager(capabilities, agent) && canSeeMembers(capabilities);
+  const permissionsFix = useMemo<PermissionsFix>(
+    () =>
+      resolvePermissionsFix({
+        orgAllowedToolkits: settings?.orgAllowedToolkits ?? null,
+        agentAllowedToolkits: settings?.allowedToolkits ?? null,
+        canEditOrg,
+        canManageAgent,
+        openOrgApps: () => {
+          requestTab("allowedIntegrations");
+          setViewMode(ORGANIZATION_VIEW_ID);
+        },
+        openAgentDetail: () => {
+          requestAgentDetail(agent.id);
+          setViewMode(ORGANIZATION_VIEW_ID);
+        },
+      }),
+    [
+      settings?.orgAllowedToolkits,
+      settings?.allowedToolkits,
+      canEditOrg,
+      canManageAgent,
+      requestTab,
+      requestAgentDetail,
+      setViewMode,
+      agent.id,
+    ],
+  );
 
   const view = useMemo(
     () =>
@@ -125,6 +168,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
               catalogLoading={catalog.isLoading}
               onDisconnect={(toolkit) => disconnect.mutate(toolkit)}
               onManageAll={onManageAll}
+              permissionsFix={permissionsFix}
             />
           </>
         )}

@@ -102,6 +102,22 @@ export interface ComputeUsageSeed {
 /** A caller's effective per-agent access (Teams v2). Mirrors the wire enum. */
 export type AgentAccess = "manager" | "user";
 
+/** An org role (Teams v2). Mirrors the engine-client `OrgRole` wire enum. */
+export type OrgRole = "owner" | "admin" | "user";
+
+/** One agent assignee with a per-person access level (the `AgentAssignment` wire shape). */
+export interface FakeAssignment {
+  userId: string;
+  access: AgentAccess;
+}
+
+/** One org roster member (the `OrgMember` wire shape) `GET /v1/org` serves. */
+export interface FakeMember {
+  userId: string;
+  email?: string;
+  role: OrgRole;
+}
+
 /**
  * The Teams v2 settings the gateway serves at `/v1/agents/:slug/settings` and
  * `/v1/org/settings`: the agent + org integration ceilings (`null` =
@@ -143,6 +159,15 @@ export interface CpAgent {
   workspaceId: string;
   name: string;
   createdAt: number;
+  /**
+   * Teams v2 (multiplayer only). `assignedUserIds: []` = shared with everyone;
+   * `assignments` is the full roster with per-person access; `access` is the
+   * served caller's effective level (owner-first: `manager`). Absent = the
+   * single-player shape (no Teams fields on the wire). Armed by `/__test__/org`.
+   */
+  assignedUserIds?: string[];
+  access?: AgentAccess;
+  assignments?: FakeAssignment[];
 }
 
 export const ACTIVITY_PATH = ".houston/activity/activity.json";
@@ -213,6 +238,12 @@ export interface HostState {
    * empty) = the key-free custom provider is wired and ready.
    */
   customIntegrations: CustomIntegrationSeed[] | null;
+  /**
+   * The org roster `GET /v1/org` serves (Teams v2), armed by `/__test__/org`.
+   * `null` (the default) = the single-self roster synthesized from the advertised
+   * role, preserving the pre-feature behavior; a present array is served verbatim.
+   */
+  orgMembers: FakeMember[] | null;
   /** connectionId -> the acting user's connected account. */
   connections: Map<string, IntegrationConnection>;
   /**
@@ -292,6 +323,7 @@ function freshState(): HostState {
     integrationsMode: "ready",
     agentReadHoldMs: 0,
     customIntegrations: null,
+    orgMembers: null,
     connections,
     // No seeded grants record: the seed agent starts "grants unsupported" (404 →
     // null), so a suite can assert the null→[] distinction by writing one.

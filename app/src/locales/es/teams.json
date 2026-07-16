@@ -82,6 +82,8 @@
     "notAllowed": {
       "title": "No permitida para este agente",
       "body": "Estas aplicaciones están conectadas a tu cuenta, pero este agente no tiene permitido usarlas. Pídele a tu administrador que las habilite para este agente.",
+      "bodyManager": "Estas aplicaciones están conectadas a tu cuenta, pero este agente no tiene permitido usarlas. Actívalas en Permisos.",
+      "enableInPermissions": "Actívala en Permisos",
       "badge": "No permitida"
     }
   },
@@ -124,10 +126,27 @@
       "openAgent": "Abrir agente",
       "managerOnly": "Solo los Managers de este agente pueden cambiar su acceso."
     },
+    "memberDetail": {
+      "everyone": {
+        "title": "Compartido con todos",
+        "note": "Todos en el equipo"
+      },
+      "explicit": {
+        "title": "Agentes"
+      },
+      "access": {
+        "none": "Sin acceso",
+        "noneHint": "No puede ver ni usar este agente.",
+        "unknown": "No visible para ti"
+      },
+      "changeAccess": "Cambiar acceso a {{agent}}",
+      "setReplaceNote": "Esto cambia quién puede usar el agente.",
+      "empty": "Todavía no hay agentes para mostrar para esta persona."
+    },
     "index": {
       "groups": {
-        "access": "Acceso",
-        "insights": "Estadísticas"
+        "insights": "Estadísticas",
+        "permissions": "Permisos"
       },
       "rows": {
         "people": "Invita compañeros, asigna roles y quita miembros.",
@@ -227,7 +246,8 @@
       "you": "(tú)",
       "changeRole": "Cambiar el rol de {{name}}",
       "remove": "Quitar",
-      "removeLabel": "Quitar a {{name}}"
+      "removeLabel": "Quitar a {{name}}",
+      "openLabel": "Abrir los agentes de {{name}}"
     },
     "removeConfirm": {
       "title": "¿Quitar a {{name}}?",
