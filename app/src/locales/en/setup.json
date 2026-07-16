@@ -76,9 +76,7 @@
     "missions": {
       "connect": {
         "title": "Connect your AI",
-        "body": "Choose the AI you already pay for and sign in. You bring your own subscription, so Houston never sees your password or your bill.",
-        "skip": "Skip for now",
-        "skipHint": "You can connect an AI anytime. Your assistant will wait until then."
+        "body": "Choose the AI you already pay for and sign in. You bring your own subscription, so Houston never sees your password or your bill."
       },
       "email": {
         "title": "See your agent in action",
