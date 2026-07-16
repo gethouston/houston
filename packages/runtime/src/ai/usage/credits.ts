@@ -51,18 +51,26 @@ export async function fetchOpenRouterUsage(
   const body = (await res.json()) as {
     data?: { total_credits?: unknown; total_usage?: unknown };
   };
-  const total =
-    typeof body.data?.total_credits === "number" ? body.data.total_credits : 0;
-  const used =
-    typeof body.data?.total_usage === "number" ? body.data.total_usage : 0;
+  const total = body.data?.total_credits;
+  const used = body.data?.total_usage;
+  // A missing/renamed field must read as a probe failure, not a $0 balance.
+  if (typeof total !== "number" || typeof used !== "number") {
+    return {
+      provider,
+      status: "error",
+      windows: [],
+      message: "OpenRouter credits response had no readable balance",
+    };
+  }
   return {
     provider,
     status: "ok",
     windows: [],
+    // OpenRouter credits are denominated in USD.
     credits: {
       remaining: Math.max(0, total - used),
       granted: total,
-      unit: "credits",
+      unit: "USD",
     },
     fetchedAt: new Date().toISOString(),
   };
