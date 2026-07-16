@@ -129,8 +129,9 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
       allowlist: ["gmail"],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
-    // notion is connected + active + ungranted and disallowed → it appears only
-    // in disallowedRows for transparency, never as a usable active row.
+    // notion is connected + active + ungranted and disallowed → the admin block
+    // outranks the ungranted state (precedence), so it appears only in
+    // disallowedRows for transparency, never as an active or turn-on-able row.
     deepStrictEqual(
       view.activeRows.map((r) => r.connection.toolkit),
       ["gmail"],
@@ -139,6 +140,7 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
       view.disallowedRows.map((r) => r.connection.toolkit),
       ["notion"],
     );
+    deepStrictEqual(view.availableRows, []);
   });
 
   it("an empty allowlist disallows every connected app", () => {

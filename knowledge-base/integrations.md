@@ -172,8 +172,19 @@ TWO places so policy is never silently invisible: connected-but-blocked apps und
 `teams:integrations.notAllowed` (the disallowed section, "Not allowed" badge + an
 ask-your-admin line), and NOT-connected blocked apps as **locked rows** in the
 browse catalog (see §3, `integrations:locked.*`). Per-agent GRANT toggles are a
-SEPARATE concept and live in ONE place only — Settings > Connected accounts (§3),
+SEPARATE concept with TWO lenses — by-app in Settings > Connected accounts and
+by-agent on the agent tab's "Connected, but off for this agent" section (§3) —
 never this ceiling editor. Full client surface: `knowledge-base/teams.md`.
+
+### Effective access — the one resolver
+
+`effectiveAccess({toolkit, connections, grants, allowlist})`
+(`app/src/components/integrations/effective-access.ts`, pure, node-tested) is
+THE single answer to "can this agent use this app right now, and if not why":
+`usable | notConnected | notGrantedToAgent | blockedByAdmin`, precedence
+admin-block > not-connected > not-granted. `grants === null` (unsupported host)
+and `allowlist === null` (unrestricted) both read as pass. The agent-tab view
+model classifies every connection through it — no surface re-derives the rule.
 
 ### Local / self-host grants (NEW — desktop + self-host parity)
 `packages/host/src/integrations/grants.ts` (`LocalIntegrationGrants`) +
@@ -440,7 +451,7 @@ Integrations page (now the personal catalog for every member, so the old
 a producer calls `useUIStore.setSettingsSection("connectedAccounts")` + `setViewMode("settings")`;
 `settings-view.tsx` consumes it ONE-SHOT (reads the pending section, then clears it).
 
-**Agent tab (pure connect surface)** — `app/src/components/tabs/agent-integrations/`
+**Agent tab (the by-agent lens)** — `app/src/components/tabs/agent-integrations/`
 (`integrations-tab.tsx` re-exports the orchestrator). The tab body is the SAME
 catalog layout as the global Integrations page, minus the page header (the tab
 label already says Integrations): `agent-integrations-body.tsx` renders the shared
@@ -452,12 +463,19 @@ tab is the SHARED `CatalogPane` (`integrations-view/catalog-pane.tsx`: search +
 A-Z searchable category combobox, recovery rows, the grouped `CategoryCatalog`),
 generalized to plain props (`catalog`/`connections`/`recovering`/`allowlist`/
 `readOnly`/`children`) so both surfaces consume it verbatim — the agent tab passes
-the disallowed-apps section as its `children` and `readOnly` (`!canEditAgentGrants`)
-to strip the recovery rows' actions for Teams viewers. Activate/deactivate GRANT
-affordances stay GONE (grant editing lives only in Settings > Connected accounts);
-the `grants`-mode view is `{activeRows, disallowedRows}` (active rows split into
-strip tiles vs recovery rows by connection status); `degraded` mode (grants `null`)
-treats all connected apps as usable. Recovery **Remove** DISCONNECTS in both modes.
+`AgentCatalogSections` as its `children` and `readOnly` (`!canEditAgentGrants`)
+to strip the recovery rows' actions for Teams viewers. The `grants`-mode view is
+`{activeRows, disallowedRows, availableRows}`, every connection classified through
+the ONE `effectiveAccess` resolver (§2): active rows split into strip tiles vs
+recovery rows by connection status; `availableRows` (connected on the account but
+NOT granted to this agent, `active` status only — pending/errored orphans are
+recovered from the global page) render as the **"Connected, but off for this
+agent"** section (`agent-ungranted-apps-section.tsx`,
+`integrations:agentTab.offForAgent.*`): `AppRow`s with a trailing `Switch` that
+grants via `useAgentGrantMutation` (optimistic — the row migrates to the Installed
+strip); viewers without `canEditAgentGrants` see the rows without the Switch, so
+the state is never invisible. The disallowed section renders below it. `degraded`
+mode (grants `null`) treats all connected apps as usable. Recovery **Remove** DISCONNECTS in both modes.
 Connect still auto-grants to this agent (`useConnectFlow` `autoGrant`). The tab
 count chip excludes locked apps. All lifted view state (tab/search/category/modals)
 lives in the body, remounted per agent via `key={agent.id}`. The bottom link

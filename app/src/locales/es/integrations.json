@@ -106,7 +106,12 @@
     "allAgentsNote": "Todos los agentes pueden usar esta app."
   },
   "agentTab": {
-    "manageAll": "Administrar todas las integraciones"
+    "manageAll": "Administrar todas las integraciones",
+    "offForAgent": {
+      "heading": "Conectada, pero desactivada para este agente",
+      "subtitle": "Estas apps están conectadas a tu cuenta. Activa una para que este agente pueda usarla.",
+      "turnOn": "Activar {{app}} para este agente"
+    }
   },
   "custom": {
     "title": "Integraciones personalizadas",
