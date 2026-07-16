@@ -15,8 +15,8 @@ import {
 
 /**
  * The file-backed action-approval store: round-trip, atomic-write validity,
- * corrupt/missing-file resilience, and agent-id validation — mirrors the
- * grant-store contract but persists the {always, tickets} record.
+ * corrupt/missing-file resilience, and agent-id validation — persisting the
+ * {always, tickets} record.
  */
 
 const roots: string[] = [];

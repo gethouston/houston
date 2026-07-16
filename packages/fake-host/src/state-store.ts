@@ -209,7 +209,7 @@ export interface HostState {
   activitySeq: number;
   /** Monotonic counter for minted routine ids. */
   routineSeq: number;
-  // ── user-scoped gateway state (integrations, grants, preferences) ──
+  // ── user-scoped gateway state (integrations, preferences) ──
   /** Advertised capabilities, armed by `/__test__/capabilities` (Teams e2e). */
   capabilities: FakeCapabilities;
   /** Teams v2 integration/model ceilings, armed by `/__test__/agent-settings`. */
@@ -246,12 +246,6 @@ export interface HostState {
   orgMembers: FakeMember[] | null;
   /** connectionId -> the acting user's connected account. */
   connections: Map<string, IntegrationConnection>;
-  /**
-   * agentId -> granted toolkit slugs. PRESENCE is the record: a missing key
-   * means "no grants record" → GET 404 → the client degrades to `null`; a
-   * present key (even `[]`) means "record exists" → GET `{toolkits}`.
-   */
-  grants: Map<string, string[]>;
   /** Per-user preference key -> value (locale, timezone, …). */
   preferences: Map<string, string>;
   /**
@@ -325,9 +319,6 @@ function freshState(): HostState {
     customIntegrations: null,
     orgMembers: null,
     connections,
-    // No seeded grants record: the seed agent starts "grants unsupported" (404 →
-    // null), so a suite can assert the null→[] distinction by writing one.
-    grants: new Map(),
     preferences: new Map(),
     actionApprovals: new Map(),
     sidebarLayouts: new Map(),

@@ -7,36 +7,32 @@ import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { PageContainer, PageHeader } from "../shell/page-shell";
-import { AgentAccessSection } from "../tabs/agent-access-section";
 import { AgentAdminIntegrations } from "../tabs/agent-admin/agent-admin-integrations";
 import { AgentAdminModel } from "../tabs/agent-admin/agent-admin-model";
 
 /**
- * Admin > Agents fleet drill-in: an org owner/admin manages ONE agent's access
- * controls without leaving the Admin surface. It reuses the very sections the
- * per-agent Agent Settings tab uses — people-with-access, allowed apps, allowed
- * models — each self-loading and Teams-gated internally.
+ * Permissions > Agents per-agent card: an org owner/admin sets what ONE agent is
+ * allowed to use — its integration ceiling and its model ceiling. WHO can use
+ * the agent is the People tab's job, so this card carries no roster (unlike the
+ * old Admin drill-in it was extracted from).
  *
- * The manager-authority gate lives HERE, in the parent, because those sections
- * do NOT self-gate on it (Agent Settings hardcodes them editable and relies on
- * the tab mount to gate). {@link isAgentManager}: owner → any org agent; admin →
+ * The manager-authority gate lives HERE, in the parent, because the sections do
+ * NOT self-gate on it (Agent Settings hardcodes them editable and relies on the
+ * tab mount to gate). {@link isAgentManager}: owner → any org agent; admin →
  * only agents where their effective `access === "manager"`. A visible-but-not-
- * manager admin (assigned as a plain user) gets the access section (which
- * self-shapes to its read-only view) plus a note — never the editable
- * apps/models editors.
+ * manager admin gets a manager-only note instead of the editors.
  *
  * The `agent` is resolved live from the store by the shell (by id, not a
- * snapshot), so a share mutation that reloads the store shows fresh assignments
- * here immediately.
+ * snapshot), so a share mutation that reloads the store shows fresh data here.
  */
-export function AdminAgentDetail({ agent }: { agent: Agent }) {
+export function AgentDetail({ agent }: { agent: Agent }) {
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const canManage = isAgentManager(capabilities, agent);
 
-  // The old card behavior: leave Admin and open the agent's chat.
+  // The old card behavior: leave Permissions and open the agent's chat.
   const openAgent = () => {
     setCurrentAgent(agent);
     setViewMode(DEFAULT_TAB_ID);
@@ -62,22 +58,18 @@ export function AdminAgentDetail({ agent }: { agent: Agent }) {
         />
       </div>
 
-      {/* Each section renders its own heading ("Share this agent", "Which apps
-          can this agent use?", "Which AI models can this agent use?"), so the
-          stack adds spacing only — no block headings, to avoid double-heading. */}
+      {/* Each section renders its own heading ("Which apps can this agent
+          use?", "Which AI models can this agent use?"), so the stack adds
+          spacing only — no block headings, to avoid double-heading. */}
       {canManage ? (
         <div className="space-y-8">
-          <AgentAccessSection agent={agent} />
           <AgentAdminIntegrations agent={agent} />
           <AgentAdminModel agent={agent} />
         </div>
       ) : (
-        <div className="space-y-4">
-          <AgentAccessSection agent={agent} />
-          <p className="text-sm text-ink-muted">
-            {t("org.agentDetail.managerOnly")}
-          </p>
-        </div>
+        <p className="text-sm text-ink-muted">
+          {t("org.agentDetail.managerOnly")}
+        </p>
       )}
     </PageContainer>
   );

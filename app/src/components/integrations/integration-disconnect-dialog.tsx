@@ -1,48 +1,24 @@
 import { ConfirmDialog } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import type { AgentChip } from "./agent-chip";
 import type { AppDisplay } from "./app-display";
 
 /**
- * The confirm-gated disconnect, shared by both surfaces. Same dialog, different
- * stakes — `scope` picks the copy: `agent` (removes the app for your agent) vs
- * `everywhere` (the connection is user-level, so it disappears for ALL agents).
- * When `affectedAgents` is given, the body names how many agents lose access.
+ * The confirm-gated disconnect, shared by both surfaces. A connection is
+ * user-level, so disconnecting removes the app for ALL of the user's agents —
+ * the copy says so plainly. No per-agent chips: which agents may use an app is
+ * managed in one place (the Permissions view), not surfaced here.
  */
 export function IntegrationDisconnectDialog({
   app,
-  scope,
   onClose,
   onConfirm,
-  affectedAgents,
 }: {
   /** The app pending disconnect, or null when the dialog is closed. */
   app: AppDisplay | null;
-  scope: "agent" | "everywhere";
   onClose: () => void;
   onConfirm: (toolkit: string) => void;
-  affectedAgents?: AgentChip[];
 }) {
   const { t } = useTranslation("integrations");
-  const keys =
-    scope === "everywhere"
-      ? ({
-          title: "grants.disconnect.confirmTitle",
-          body: "grants.disconnect.confirmBody",
-          action: "grants.disconnect.confirmAction",
-        } as const)
-      : ({
-          title: "connected.disconnect.confirmTitle",
-          body: "connected.disconnect.confirmBody",
-          action: "connected.disconnect.confirmAction",
-        } as const);
-
-  const affected = affectedAgents?.length
-    ? t("disconnect.affected", { count: affectedAgents.length })
-    : "";
-  const description = [t(keys.body, { name: app?.name ?? "" }), affected]
-    .filter(Boolean)
-    .join(" ");
 
   return (
     <ConfirmDialog
@@ -50,9 +26,11 @@ export function IntegrationDisconnectDialog({
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={t(keys.title, { name: app?.name ?? "" })}
-      description={description}
-      confirmLabel={t(keys.action)}
+      title={t("grants.disconnect.confirmTitle", { name: app?.name ?? "" })}
+      description={t("grants.disconnect.confirmBody", {
+        name: app?.name ?? "",
+      })}
+      confirmLabel={t("grants.disconnect.confirmAction")}
       cancelLabel={t("connected.disconnect.cancel")}
       variant="destructive"
       onConfirm={() => {

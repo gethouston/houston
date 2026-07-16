@@ -45,7 +45,8 @@
         "save": "Guardar",
         "cancel": "Cancelar"
       }
-    }
+    },
+    "permissions": "Permisos"
   },
   "tabActions": {
     "newMission": "Nueva misión",
@@ -129,9 +130,13 @@
         "title": "Modelos de IA",
         "body": "Agrega proveedores como Claude y OpenAI. Gestiona tus suscripciones y llaves de API aquí."
       },
+      "permissions": {
+        "title": "Permisos",
+        "body": "Elige quién puede usar cada agente y qué tiene permitido utilizar cada agente aquí."
+      },
       "organization": {
         "title": "Administración",
-        "body": "Invita a tu equipo, asigna roles y define las políticas del espacio de trabajo para las integraciones y los modelos de IA permitidos aquí."
+        "body": "Invita a tu equipo, asigna roles y consulta la actividad, el uso y la facturación aquí."
       },
       "settings": {
         "title": "Configuración",

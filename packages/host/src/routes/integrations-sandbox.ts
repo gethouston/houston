@@ -2,12 +2,6 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { LocalActionApprovals } from "../integrations/action-approvals";
 import { displayParams, hashActionParams } from "../integrations/approvals";
 import { CUSTOM_ACTION_PREFIX } from "../integrations/custom/provider";
-import {
-  actionInToolkit,
-  filterMatchesToGranted,
-  isActionGranted,
-  type LocalIntegrationGrants,
-} from "../integrations/grants";
 import type { IntegrationProvider } from "../integrations/provider";
 import type { IntegrationRegistry } from "../integrations/registry";
 import { IntegrationSigninRequiredError } from "../integrations/types";
@@ -50,13 +44,6 @@ export async function handleSandboxIntegrations(
     vault: CredentialVault;
     store: WorkspaceStore;
     integrations?: IntegrationDeps;
-    /**
-     * Per-agent grants (LOCAL / self-host only; absent on gateway-fronted pods,
-     * where the gateway already enforced before the request reached here). When
-     * the acting agent HAS a stored record, search is filtered to granted
-     * toolkits and execute of an ungranted toolkit is refused with 403.
-     */
-    integrationGrants?: LocalIntegrationGrants;
     /**
      * Per-agent action-approval policy (LOCAL / self-host + managed pods). When
      * present, execute is gated on user approval unless the turn runs in
@@ -121,13 +108,6 @@ export async function handleSandboxIntegrations(
   const actingUser = header(req, "x-houston-acting-user");
   const acting = actingAs || actingUser ? { actingAs, actingUser } : undefined;
 
-  // The grant set for THIS agent (the sandbox token binds its id). null ⇒ no
-  // record ⇒ backward-compatible pass-through (every connected app). Absent on
-  // gateway-fronted pods, where the gateway already enforced upstream.
-  const granted = deps.integrationGrants
-    ? await deps.integrationGrants.grantedOrNull(claim.agentId)
-    : null;
-
   try {
     if (m[1] === "search") {
       const query = body.query;
@@ -159,9 +139,7 @@ export async function handleSandboxIntegrations(
           failures[0]
         );
       }
-      json(res, 200, {
-        items: granted ? filterMatchesToGranted(items, granted) : items,
-      });
+      json(res, 200, { items });
       return true;
     }
 
@@ -169,11 +147,6 @@ export async function handleSandboxIntegrations(
     const action = body.action;
     if (typeof action !== "string") {
       json(res, 400, { error: "missing 'action'" });
-      return true;
-    }
-    // Grant check before the upstream call — an ungranted toolkit never runs.
-    if (granted && !isActionGranted(action, granted)) {
-      json(res, 403, { error: "toolkit_not_granted" });
       return true;
     }
     const provider = registry.get(
@@ -202,12 +175,7 @@ export async function handleSandboxIntegrations(
             error: "approval required",
             code: "approval_required",
             approval: {
-              toolkit: await resolveToolkit(
-                action,
-                granted,
-                provider,
-                ws.ownerUserId,
-              ),
+              toolkit: await resolveToolkit(action, provider, ws.ownerUserId),
               action,
               params: display.params,
               paramsHash: hash,
@@ -240,6 +208,21 @@ export async function handleSandboxIntegrations(
   }
 }
 
+/**
+ * Does `action` belong to `toolkit`? Composio slugs are `<TOOLKIT>_<REST>` with
+ * the toolkit uppercased VERBATIM, so a multi-word slug keeps its underscores
+ * (`google_maps` → `GOOGLE_MAPS_GET_ROUTE`); match the FULL slug as a prefix up
+ * to an underscore boundary, never the segment before the first `_`. Custom
+ * actions are executor addresses (`tools.<integration>.…`): the toolkit is the
+ * integration segment, matched exactly.
+ */
+function actionInToolkit(action: string, toolkit: string): boolean {
+  const a = action.toLowerCase();
+  const t = toolkit.toLowerCase();
+  if (a.startsWith("tools.")) return a.split(".")[1] === t;
+  return a === t || a.startsWith(`${t}_`);
+}
+
 /** Longest slug in `slugs` whose full-prefix matches `action` (so a multi-word
  *  `google_maps` wins over a shorter `google` that also prefixes the action), or
  *  null when none matches. */
@@ -255,36 +238,29 @@ function longestMatchingSlug(action: string, slugs: string[]): string | null {
 /**
  * Best-effort toolkit slug for the approval card (execute carries only the
  * action slug). Resolution, in order:
- *   1. When the agent HAS a grant record, the LONGEST matching granted slug.
- *   2. Otherwise (no record — the common backward-compat case) the LONGEST
- *      matching slug among the acting user's CONNECTIONS, so a multi-word slug
- *      like `google_maps` is labeled correctly instead of the segment before the
- *      first underscore (`google`). Fault-tolerant: a `listConnections` failure
- *      falls through — the 409 must never fail on this display-only lookup.
- *   3. The segment before the first underscore, lowercased — the last-resort
+ *   1. The LONGEST matching slug among the acting user's CONNECTIONS, so a
+ *      multi-word slug like `google_maps` is labeled correctly instead of the
+ *      segment before the first underscore (`google`). Fault-tolerant: a
+ *      `listConnections` failure falls through — the 409 must never fail on this
+ *      display-only lookup.
+ *   2. The segment before the first underscore, lowercased — the last-resort
  *      fallback (lossy for multi-word slugs). Only the paramsHash + action gate
  *      the call; the toolkit label is display-only.
  * Runs ONLY on the 409 path, never on the happy path.
  */
 async function resolveToolkit(
   action: string,
-  granted: string[] | null,
   provider: IntegrationProvider,
   userId: string,
 ): Promise<string> {
-  if (granted) {
-    const best = longestMatchingSlug(action, granted);
+  try {
+    const connected = (await provider.listConnections(userId)).map(
+      (c) => c.toolkit,
+    );
+    const best = longestMatchingSlug(action, connected);
     if (best) return best;
-  } else {
-    try {
-      const connected = (await provider.listConnections(userId)).map(
-        (c) => c.toolkit,
-      );
-      const best = longestMatchingSlug(action, connected);
-      if (best) return best;
-    } catch {
-      // Display-only lookup — never let it fail the 409; fall through.
-    }
+  } catch {
+    // Display-only lookup — never let it fail the 409; fall through.
   }
   return action.split("_")[0]?.toLowerCase() ?? "";
 }

@@ -81,7 +81,7 @@ export class HoustonSdk {
   readonly missions: ReturnType<typeof createMissionsSearchModule>;
   /** Per-agent AI-provider facade (connect, status, active model). */
   readonly providers: ReturnType<typeof createProvidersModule>;
-  /** Integrations facade (Composio readiness, connections, per-agent grants). */
+  /** Integrations facade (Composio readiness + connections). */
   readonly integrations: ReturnType<typeof createIntegrationsModule>;
   /** Preferences facade (key/value preferences + workspace locale). */
   readonly preferences: ReturnType<typeof createPreferencesModule>;

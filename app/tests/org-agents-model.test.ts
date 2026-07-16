@@ -1,6 +1,6 @@
 import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { summarizeAgentAccess } from "../src/components/organization/org-agents-model.ts";
+import { summarizeAgentAccess } from "../src/components/permissions/org-agents-model.ts";
 
 describe("org agents model", () => {
   it("reads managers + count from the rich assignments list", () => {

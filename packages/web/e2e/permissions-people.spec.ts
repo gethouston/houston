@@ -3,11 +3,11 @@ import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 
 /**
- * Admin > People as a per-person access lens (owner-first). The owner opens
- * Admin > People, clicks a member, and sees that person's agents split into
- * "Shared with everyone" (read-only) and explicit-roster agents (each with the
- * member's current level and an inline control). Changing a member's access
- * (Can use → No access) set-replaces the roster via PUT
+ * Permissions > People as a per-person access lens (owner-first). The owner opens
+ * the Permissions view's People tab, clicks a member, and sees that person's
+ * agents split into "Shared with everyone" (read-only) and explicit-roster
+ * agents (each with the member's current level and an inline control). Changing a
+ * member's access (Can use → No access) set-replaces the roster via PUT
  * `/v1/agents/:slug/assignments`, and a full reload proves it round-tripped to
  * the host, not just the client cache.
  *
@@ -53,13 +53,12 @@ async function armOrg(request: APIRequestContext): Promise<void> {
   });
 }
 
-/** Open Admin > People and drill into Bob's per-member access lens. */
+/** Open Permissions > People and drill into Bob's per-member access lens. */
 async function openBob(page: Page): Promise<void> {
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-organization"]').click();
-  // The admin index row button's accessible name leads with its title; anchor on
-  // it so "People" doesn't collide with other rows' copy.
-  await page.getByRole("button", { name: /^People\b/ }).click();
+  await page.locator('[data-tour-target="nav-permissions"]').click();
+  // People is the default tab; click it anyway so the test is order-independent.
+  await page.getByRole("tab", { name: "People" }).click();
   await page
     .getByRole("button", { name: "Open bob@acme.test's agents" })
     .click();

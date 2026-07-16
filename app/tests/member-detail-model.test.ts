@@ -6,7 +6,7 @@ import {
   memberActionNeedsConfirm,
   memberAgentAccess,
   writeMemberAssignment,
-} from "../src/components/organization/member-detail-model.ts";
+} from "../src/components/permissions/member-detail-model.ts";
 
 const caps = (over: Partial<Capabilities> = {}): Capabilities => ({
   profile: "cloud",

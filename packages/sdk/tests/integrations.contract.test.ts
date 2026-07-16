@@ -2,19 +2,15 @@
  * Integrations contract: the `integrations` view-model reflects the gateway's
  * Composio readiness + catalog + connections, degrades to explicit not-ready
  * states (503 → `unavailable`, provider → `signin`) WITHOUT crashing, drives the
- * connect → poll → active flow, and keeps the grants 404-null vs `[]` distinction
- * end to end (both the typed facade and the bridge `dispatch` path).
+ * connect → poll → active flow (both the typed facade and the bridge `dispatch`
+ * path).
  *
  * The `IntegrationsViewModel` is a cross-platform snapshot, so its shape is
  * pinned here as API.
  */
 
-import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
-import {
-  INTEGRATIONS_SCOPE,
-  IntegrationsCommand,
-  type IntegrationsViewModel,
-} from "@houston/sdk";
+import type { FakeHost } from "@houston/fake-host";
+import { INTEGRATIONS_SCOPE, type IntegrationsViewModel } from "@houston/sdk";
 import {
   afterAll,
   afterEach,
@@ -131,29 +127,5 @@ describe("integrations VM", () => {
     const result = await h.sdk.integrations.disconnect("gmail");
     expect(result.connections).toEqual([]);
     expect(vm()?.connections).toEqual([]);
-  });
-});
-
-describe("integrations grants — 404-null vs [] is preserved end to end", () => {
-  it("an agent with no grants record resolves to null (unsupported)", async () => {
-    expect(await h.sdk.integrations.grants(SEED_AGENT_ID)).toBeNull();
-  });
-
-  it("writing a grant set makes it a real record; [] stays distinct from null", async () => {
-    await h.sdk.integrations.setGrants(SEED_AGENT_ID, ["gmail"]);
-    expect(await h.sdk.integrations.grants(SEED_AGENT_ID)).toEqual(["gmail"]);
-
-    await h.sdk.integrations.setGrants(SEED_AGENT_ID, []);
-    // A record exists now → [], NOT null.
-    expect(await h.sdk.integrations.grants(SEED_AGENT_ID)).toEqual([]);
-  });
-
-  it("routes 404-null through the bridge dispatch path too", async () => {
-    const res = await h.sdk.dispatch({
-      id: "g1",
-      type: IntegrationsCommand.Grants,
-      payload: { agentId: SEED_AGENT_ID },
-    });
-    expect(res).toEqual({ id: "g1", ok: true, value: null });
   });
 });

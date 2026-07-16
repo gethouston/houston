@@ -5,8 +5,6 @@ import {
   useIntegrationConnections,
   useIntegrationStatus,
 } from "../../../hooks/queries";
-import { useCapabilities } from "../../../hooks/use-capabilities";
-import { canManageAgentGrants } from "../../../lib/agent-access";
 import type { Agent } from "../../../lib/types";
 import { GoogleIcon, MicrosoftIcon } from "../../auth/provider-brand-icons";
 import { INTEGRATION_PROVIDER, useConnectFlow } from "../../integrations";
@@ -38,7 +36,6 @@ export function ConnectEmailMission({
   onConnected,
 }: ConnectEmailMissionProps) {
   const { t } = useTranslation("setup");
-  const { capabilities } = useCapabilities();
   const [chosen, setChosen] = useState<{
     toolkit: string;
     label: string;
@@ -51,15 +48,12 @@ export function ConnectEmailMission({
     INTEGRATION_PROVIDER,
     ready || attempted,
   );
-  const autoGrant = canManageAgentGrants(capabilities, agent);
+
   const {
     state: connectState,
     connect,
     cancel,
-  } = useConnectFlow({
-    agentId: agent.id,
-    autoGrant,
-  });
+  } = useConnectFlow({ agentId: agent.id });
   const connecting = connectState !== null;
 
   const handedOff = useRef(false);

@@ -6,19 +6,18 @@ import {
 } from "../../hooks/queries/use-org-settings";
 import { useHubCatalog } from "../../lib/ai-hub/use-hub-catalog";
 import { ModelsAllowlistEditor } from "../ai-hub/models-allowlist-editor";
-import type { OrgTabProps } from "./organization-view";
 
 /**
- * Organization > Allowed AI models: the org-wide model-allowlist ceiling every
- * agent's effective model choice derives from. The owner edits it; an admin
- * sees it read-only per the role matrix v2. This is a policy ceiling only — the
- * gateway is the sole enforcer, so the editor just persists the org setting.
- * The shell gates this view to multiplayer owner/admin, so it never mounts in
+ * Permissions > Agents "Defaults for every agent": the org-wide model-allowlist
+ * ceiling every agent's effective model choice derives from. The owner edits it;
+ * an admin sees it read-only per the role matrix v2. This is a policy ceiling
+ * only — the gateway is the sole enforcer, so the editor just persists the org
+ * setting. The view gates to multiplayer owner/admin, so it never mounts in
  * single-player or for a plain member.
  */
-export default function AllowedModelsTab({ ctx }: OrgTabProps) {
+export function DefaultsModels({ isOwner }: { isOwner: boolean }) {
   const { t } = useTranslation("teams");
-  const readOnly = !ctx.isOwner;
+  const readOnly = !isOwner;
   const orgSettings = useOrgSettings(true);
   const setOrgModels = useSetOrgAllowedModels();
   const { catalog } = useHubCatalog();

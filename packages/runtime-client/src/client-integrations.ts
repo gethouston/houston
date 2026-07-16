@@ -1,16 +1,16 @@
 /**
- * The user-scoped gateway surface: Composio integrations, per-agent integration
- * grants, key/value preferences, and the workspace-locale override. Unlike
+ * The user-scoped gateway surface: Composio integrations, key/value
+ * preferences, and the workspace-locale override. Unlike
  * {@link HoustonEngineClient} (rooted at ONE conversation / agent), these routes
  * are keyed by the caller's verified session `sub` and shared across the user's
  * agents — so they hit the gateway root (`/v1/...`), never `/agents/:id/*`.
  *
  * Both classes share the same {@link Requester} plumbing as the conversation
- * client (base-URL joining, bearer auth, non-2xx → {@link EngineError}), so
+ * client (base-URL joining, bearer auth, non-2xx → an `EngineError`), so
  * there is one way this package talks to the engine.
  */
 
-import { createRequester, EngineError, type Requester } from "./requester";
+import { createRequester, type Requester } from "./requester";
 import type {
   EngineClientConfig,
   IntegrationConnection,
@@ -30,14 +30,14 @@ const COMPOSIO = "composio";
  *  {@link IntegrationsClient.disconnect}. `provider` defaults to composio (the
  *  only provider today, so an omitted value keeps the exact legacy route);
  *  `agent` scopes an OAuth connect to a single agent slug (the gateway's
- *  per-agent grant capture). Both optional and additive — a bare
+ *  per-agent allowlist enforcement). Both optional and additive — a bare
  *  `connect(toolkit)` is byte-for-byte the pre-existing call. */
 export interface IntegrationConnectOptions {
   provider?: string;
   agent?: string;
 }
 
-/** Integrations + per-agent grants (C1/C4). All calls carry the session JWT. */
+/** Integrations (C1). All calls carry the session JWT. */
 export class IntegrationsClient {
   private readonly r: Requester;
 
@@ -142,40 +142,6 @@ export class IntegrationsClient {
       method: "POST",
       headers: JSON_HEADERS,
     });
-  }
-
-  /**
-   * The toolkit slugs granted to `agentSlug`, or `null` when the host does not
-   * serve grants (404 — a deployment without per-agent grants). `null` means
-   * "unsupported, show no per-agent toggles"; `[]` means "record exists, nothing
-   * granted" — the two are DISTINCT. Every other error still throws.
-   */
-  async getIntegrationGrants(agentSlug: string): Promise<string[] | null> {
-    try {
-      return (
-        await this.r.json<{ toolkits: string[] }>(
-          `/v1/agents/${encodeURIComponent(agentSlug)}/integration-grants`,
-        )
-      ).toolkits;
-    } catch (err) {
-      if (err instanceof EngineError && err.status === 404) return null;
-      throw err;
-    }
-  }
-
-  /** Replace the toolkit slugs granted to `agentSlug` (a replace-set). */
-  async putIntegrationGrants(
-    agentSlug: string,
-    toolkits: string[],
-  ): Promise<void> {
-    await this.r.request(
-      `/v1/agents/${encodeURIComponent(agentSlug)}/integration-grants`,
-      {
-        method: "PUT",
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ toolkits }),
-      },
-    );
   }
 }
 

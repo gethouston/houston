@@ -4,9 +4,9 @@ import type { AgentId } from "../domain/types";
 
 /**
  * Shared file-layout helpers for the per-agent integration stores
- * (`grant-store.ts`, `action-approval-store.ts`). Both keep their record INSIDE
- * the agent's own directory so it survives restarts and is removed for free when
- * the agent dir is deleted — one derivation + one atomic write, not two copies.
+ * (`action-approval-store.ts`). The record lives INSIDE the agent's own
+ * directory so it survives restarts and is removed for free when the agent dir
+ * is deleted — one derivation + one atomic write.
  */
 
 /**

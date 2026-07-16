@@ -97,7 +97,7 @@ export const queryKeys = {
   customIntegrations: () => ["custom-integrations"] as const,
 
   // Multiplayer (org). The current user's org + roster is app-scoped (one org
-  // per user); per-agent integration grants are keyed by agent id.
+  // per user).
   org: () => ["org"] as const,
   /** C8 spaces: the caller's spaces + pending invites (`GET /v1/orgs`).
    *  App-scoped — the switcher/team-picker needs the full list in one call. */
@@ -119,7 +119,6 @@ export const queryKeys = {
   /** Per-agent compute usage (engine running time) over a `days` window.
    *  Cloud-only (gated on `capabilities.computeUsage`); keyed by the window. */
   computeUsage: (days: number) => ["compute-usage", days] as const,
-  agentGrants: (agentId: string) => ["agent-grants", agentId] as const,
   /**
    * The actions an agent runs without asking again (the always-allow set from
    * the action-approval gate). Keyed by agent id; the chat card's always-allow
@@ -130,7 +129,7 @@ export const queryKeys = {
   /**
    * Teams v2: an agent's allowed-toolkit settings (agent + org ceilings +
    * caller access). Fetched only on a Teams host; the mutation self-invalidates
-   * this and the agent's grant set (the gateway prunes disallowed grants).
+   * this.
    */
   agentSettings: (agentId: string) => ["agent-settings", agentId] as const,
   orgSettings: () => ["org-settings"] as const,

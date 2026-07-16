@@ -15,9 +15,6 @@
   "reconnectDismiss": "Got it",
   "connected": {
     "disconnect": {
-      "confirmTitle": "Disconnect {{name}}?",
-      "confirmBody": "Your agent will lose access to {{name}}. You can reconnect it anytime.",
-      "confirmAction": "Disconnect",
       "cancel": "Cancel"
     }
   },
@@ -74,13 +71,6 @@
     "more_one": "{{count}} more app turned off in your workspace",
     "more_other": "{{count}} more apps turned off in your workspace"
   },
-  "chips": {
-    "more": "+{{count}}"
-  },
-  "disconnect": {
-    "affected_one": "Used by {{count}} agent",
-    "affected_other": "Used by {{count}} agents"
-  },
   "home": {
     "title": "Integrations",
     "description": "Work with your agents across your favorite tools.",
@@ -98,19 +88,11 @@
     "showAllApps": "Show all {{count}} apps"
   },
   "detail": {
-    "activeOn": "Agents that can use this",
     "reconnect": "Reconnect",
-    "disconnect": "Disconnect",
-    "noAgents": "No agents can use this yet. Turn one on above.",
-    "allAgentsNote": "Every agent can use this app."
+    "disconnect": "Disconnect"
   },
   "agentTab": {
     "manageAll": "Manage all integrations",
-    "offForAgent": {
-      "heading": "Connected, but off for this agent",
-      "subtitle": "These apps are connected to your account. Turn one on to let this agent use it.",
-      "turnOn": "Turn on {{app}} for this agent"
-    },
     "runsWithoutAsking": {
       "heading": "Runs without asking",
       "subtitle": "You allowed this agent to run these app actions without checking with you first. Remove one and Houston will ask again.",

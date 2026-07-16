@@ -8,8 +8,6 @@ import type {
   PortableExportOverrides,
   PortableSelection,
 } from "@houston/protocol";
-import type { AgentId, UserId } from "../domain/types";
-import type { LocalIntegrationGrants } from "../integrations/grants";
 import type { Vfs } from "../vfs";
 import { gatherPortableContent } from "./portable-content";
 
@@ -94,15 +92,9 @@ export function parseStoreIrRequest(
   };
 }
 
-/** Union of the agent's local grant toolkits and each skill's frontmatter integrations. */
-async function collectIntegrations(
-  grants: LocalIntegrationGrants | undefined,
-  agentId: AgentId,
-  userId: UserId,
-  skills: { body: string }[],
-): Promise<string[]> {
+/** The union of each selected skill's frontmatter integrations. */
+function collectIntegrations(skills: { body: string }[]): string[] {
   const out = new Set<string>();
-  if (grants) for (const t of await grants.read(agentId, userId)) out.add(t);
   for (const skill of skills)
     for (const i of parseSkillFrontmatter(skill.body).integrations) out.add(i);
   return [...out];
@@ -111,22 +103,14 @@ async function collectIntegrations(
 /** Gather the selected content, apply anonymize overrides, and assemble the IR. */
 export async function buildStoreIr(
   vfs: Vfs,
-  grants: LocalIntegrationGrants | undefined,
   root: string,
-  agentId: AgentId,
-  userId: UserId,
   request: StoreIrRequest,
 ): Promise<AgentIR> {
   const content = applyOverrides(
     await gatherPortableContent(vfs, root, request.selection),
     request.overrides,
   );
-  const integrations = await collectIntegrations(
-    grants,
-    agentId,
-    userId,
-    content.skills,
-  );
+  const integrations = collectIntegrations(content.skills);
   const provenance: AgentProvenance = {
     createdVia: "houston",
     exporter: "houston-app",

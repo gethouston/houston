@@ -1,8 +1,8 @@
 /**
  * Pure, import-free wire-shape helpers for the per-mission attribution face
  * stacks and the filter-by-person control (hosted Teams). Kept dependency-free
- * (mirrors `grant-set.ts`) so the row->Map translation and id normalization are
- * unit-tested under `node --test` without pulling a live Supabase client.
+ * so the row->Map translation and id normalization are unit-tested under
+ * `node --test` without pulling a live Supabase client.
  */
 
 /**
