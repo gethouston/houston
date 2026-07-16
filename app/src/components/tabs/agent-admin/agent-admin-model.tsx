@@ -25,10 +25,16 @@ import { AgentModelsSection } from "./agent-models-section.tsx";
  *
  * The Access group is multiplayer-only, so single-player never reaches here:
  * single-player has no ceiling and its sole user sets the model in the composer.
- * Only managers / owners reach this tab, so nothing locks here; the gateway is
- * the real enforcer.
+ *
+ * `readOnly` (a non-manager viewing the agent's Permissions tab) disables every
+ * control and hides the "Add models" list via the shared editor's own mode, so a
+ * member sees the model ceiling without a dead affordance. The gateway is the
+ * real enforcer.
  */
-export function AgentAdminModel({ agent }: AgentAdminScreenProps) {
+export function AgentAdminModel({
+  agent,
+  readOnly = false,
+}: AgentAdminScreenProps & { readOnly?: boolean }) {
   const { capabilities } = useCapabilities();
   const teams = capabilities?.teams === true;
   const settingsQuery = useAgentSettings(agent.id, teams);
@@ -36,8 +42,10 @@ export function AgentAdminModel({ agent }: AgentAdminScreenProps) {
   const { catalog } = useHubCatalog();
   const settings = settingsQuery.data;
 
+  // Width belongs to the mounting surface (the Permissions panel's page
+  // column); this body must never re-center itself inside it.
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-6">
+    <div className="w-full">
       {settings && catalog ? (
         // Keyed by agent so the editor's view-only search + lab filters never
         // leak across agents — Agent Settings stays mounted on agent switch.
@@ -46,6 +54,7 @@ export function AgentAdminModel({ agent }: AgentAdminScreenProps) {
           allowedModels={settings.allowedModels}
           models={catalog.models}
           saving={save.isPending}
+          readOnly={readOnly}
           onSave={(next) => save.mutate(next)}
         />
       ) : (

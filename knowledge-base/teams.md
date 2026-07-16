@@ -108,8 +108,8 @@ that also take `Pick<Agent, "access" | "assigned">` live in `agent-access.ts`
   per agent in the composer. The hub is therefore owner/admin-only in Teams; a member
   loses its nav entirely. This also removes a dead affordance: a member's
   provider-connect POST already 403s at the gateway. (There is no org-wide model
-  ceiling; model policy is per agent, in the **Permissions** view's **Agents**
-  tab per-agent drill-in, below.)
+  ceiling; model policy is per agent, in the **Permissions** view's per-agent
+  detail (its AI Models tab), below.)
 - `GRANTABLE_ROLES = ["admin", "user"]` — owner is never handed out from the UI
   (ownership transfer is out of scope for v1).
 
@@ -158,7 +158,8 @@ shell — it loads `GET /org` once, builds the shared `OrgViewContext`
 - **People** (`members-tab.tsx` / `people-roster.tsx`) — roster + pending invites,
   **membership only**: owner mutates (add/remove/re-role, revoke invite); admin sees
   those read-only. The roster row is NO LONGER a drill-in (`onOpenMember` removed) —
-  per-member access moved to the Permissions view's People tab. This is still the ONLY
+  agent access is managed per agent in the Permissions view (each agent's People tab).
+  This is still the ONLY
   membership surface: the old Settings > Members section (and the whole `org` i18n
   namespace it used) was deleted as a duplicate; "members" is no longer a
   `SettingsSectionId`.
@@ -182,8 +183,15 @@ usage; `orgTabIds` only gates billing).
 > are gone. A new agent's effective allowlist is its OWN ceiling (`null` = every
 > app/model, the default). The gateway-side retirement rides a sibling `cloud` PR.
 
-Top-level view labelled **"Permissions"** — everything policy: per-member access
-and per-agent ceilings. `PERMISSIONS_VIEW_ID = "permissions"`
+> **Fully agent-centric (2026-07-16, Felipe: final — supersedes the People/Agents
+> top-level split).** There is NO top-level People tab and NO per-person lens. The
+> view shows the agent list; opening an agent manages WHO can use it and WHAT it can
+> use, across three tabs. The per-PERSON lens (`member-detail*`, `permissions-people-tab`,
+> `permissions-agents-tab`, `permissions-people.spec.ts`) was DELETED.
+
+Top-level view labelled **"Permissions"** — everything policy, FULLY AGENT-CENTRIC:
+pick an agent, then manage who can use it and what it can use.
+`PERMISSIONS_VIEW_ID = "permissions"`
 (`app/src/components/permissions/id.ts`), registered in
 `app/src/lib/top-level-views.ts` (`TOP_LEVEL_VIEWS` + `blockedTopLevelView`, which
 shares the Organization gate exactly). Gated by `canSeeOrganization(caps)`
@@ -194,59 +202,85 @@ Organization item (both inside the `showOrganization` block). Render branch + to
 step (`nav-permissions`) live in `app/src/components/shell/workspace-shell.tsx`.
 
 `permissions-view.tsx` is a shell: it loads `useOrg(true)` once (roster + role), owns
-tab state (`"people" | "agents"`, `PermissionsTab`) + drill-in ids, and renders a
-`PageHeader` ("Permissions") + a **TWO-tab strip** (People | Agents) using
-`@houston-ai/core`'s `Tabs/TabsList/TabsTrigger/TabsContent` (`variant="line"`).
-Drill-ins reuse `../organization/admin-detail-screen` (`AdminDetailScreen` back-bar
-scaffold).
+the drill-in as an `{agentId, tab}` pair (id-not-snapshot so a store reload keeps the
+detail on the live row), and renders a `PageHeader` ("Permissions") + the agent list
+(`agents-list.tsx`) DIRECTLY — no top-level tab strip. The drill-in reuses
+`../organization/admin-detail-screen` (`AdminDetailScreen` back-bar, back label
+"Permissions").
 
 **Deep-linking** — `permissions-nav-store.ts`: zustand `usePermissionsNav` with
-`{ requestedTab: PermissionsTab|null; requestedAgentId: string|null; requestTab;
-requestAgentDetail; clearRequested }`. `requestAgentDetail` also sets
-`requestedTab:"agents"`. The view consumes it one-shot (initial mount + while open)
-and clears it. This is what the role-aware blocked-app CTA deep-links through now
-(see the Integration allowlist ceiling section, Part B).
+`{ requestedAgentId; requestedAgentTab: PermissionsAgentTab|null; requestAgentDetail(agentId, tab?); clearRequested }`.
+The role-aware blocked-app CTA calls `requestAgentDetail(agent.id, "integrations")` so it
+lands straight on that agent's Integrations tab (where the app-enable fix lives); the view
+consumes the request one-shot (initial mount + while open) and clears it (see the
+Integration allowlist ceiling section, Part B).
 
-- **People tab** (`permissions-people-tab.tsx`) — the roster as a READ-ONLY list
-  (role is a static chip; role MANAGEMENT stays in the Admin dashboard's People
-  section). Each row drills into that person's **per-member access lens**
-  (`member-detail.tsx`), the INVERSE of the Share dialog: one PERSON, every agent.
-  `member-detail.tsx`, `member-agent-row.tsx`, and the pure model
-  `member-detail-model.ts` were MOVED here from `organization/` (git mv); their unit
-  test is `app/tests/member-detail-model.test.ts` (import path now
-  `../src/components/permissions/member-detail-model.ts`). The pure inversion is
-  `memberAgentAccess(member, agents, caps)` → `{everyone, explicit}` rows (reusing the
-  Share dialog's `currentAssignments`/`isSharedWithEveryone`): everyone-agents (empty
-  assignee set) are always read-only (v1 never converts an everyone-agent to an explicit
-  roster from here — too destructive for one toggle); explicit agents carry the member's
-  level (`none`/`user`/`manager`/`unknown` — `unknown` when the viewer can't read the
-  roster; owner reads all, owner-first) and `canEdit = isAgentManager(caps, agent)`.
-  Rows the viewer manages get a Manager/Can use/No access dropdown; the rest render
-  read-only. Writes reuse `useShareAgent` + `writeMemberAssignment` (set-replace, never
-  strips the owner) → `setAgentAssignments`; self-edit is confirm-gated via
-  `memberActionNeedsConfirm` (delegates to the dialog's `needsSelfLockoutConfirm`).
-  Manager is disabled for org-role `user` members (`canMemberBeManager`, gateway 400s
-  `manager_requires_admin`). The member lens reuses `share.levels.*` + `org.memberDetail.*`
-  copy and the Share dialog's roster math (`components/tabs/agent-access-model.ts`).
-  The gateway is the sole enforcer; owner sees + edits the full fleet, a non-owner admin
-  only agents they manage. Tested: `app/tests/member-detail-model.test.ts` +
-  e2e `packages/web/e2e/permissions-people.spec.ts` (retargeted to the Permissions view:
-  sidebar `nav-permissions` > People tab > member drill-in; fake host `/__test__/org`
-  arms a multi-member roster + a fleet with per-agent `assignments`, and
-  `PUT /v1/agents/:slug/assignments` set-replaces).
-- **Agents tab** (`permissions-agents-tab.tsx`) — just the agent list
-  (`agents-list.tsx`, moved from `organization/agents-tab.tsx`, takes
-  `{ members, onOpenAgent }`). There is NO "Defaults for every agent" card — policy is
-  per agent only (`defaults-integrations.tsx` / `defaults-models.tsx` were deleted). Each
-  agent drills into `agent-detail.tsx` (moved + TRIMMED from
-  `organization/admin-agent-detail.tsx`): the integration ceiling
-  (`AgentAdminIntegrations`) + model ceiling (`AgentAdminModel`) — the `AgentAccessSection`
-  roster was DROPPED (access is the People tab's job). Still gated on
-  `isAgentManager(caps, agent)` (a non-manager admin gets a manager-only note). Helpers
-  `org-agent-card.tsx` + `org-agents-model.ts` moved along too; `org-roster.ts` +
-  `org-time.ts` stayed in `organization/` and `agents-list.tsx` imports them cross-dir.
-  Tested: e2e `packages/web/e2e/permissions-agents.spec.ts` (agent list + no defaults card +
-  per-agent integration-ceiling round-trip).
+**Agent detail — three tabs** (`agent-detail.tsx`, takes `{ agent, members, initialTab? }`):
+a `PageHeader` (agent avatar + name + "Open agent") over the shared
+**`AgentPermissionsPanel`** (`permissions/agent-permissions-panel.tsx`, `{ agent, members,
+initialTab?, readOnly }`): `@houston-ai/core` `Tabs variant="line"` with
+**People | Integrations | AI Models** (labels `permissions.agentTabs.{people,integrations,models}`;
+`defaultValue = initialTab`, default `"people"`). In the top-level drill-in the whole detail is
+gated on `isAgentManager(caps, agent)` — a visible-but-not-manager admin gets
+`org.agentDetail.managerOnly` instead of the panel, and the panel renders `readOnly={false}`.
+
+**Two fronts, one target — the agent's OWN Permissions tab.** The SAME `AgentPermissionsPanel`
+also mounts as a per-agent workspace tab (`components/tabs/agent-permissions-tab.tsx`, built-in
+`agent-permissions`), so it is visible to **everyone who can open the agent** — read-only when the
+viewer can't manage it — and a user always sees why their agent can or can't use something. It is
+registered in `standard-tabs.ts` (`PERMISSIONS_TAB_ID = "agent-permissions"`) and **`teams`-gated**
+in `visibleAgentTabs` (`caps?.teams === true`), so it never appears on single-player/self-host
+(no ceilings, no roster). The tab id is deliberately NOT `"permissions"`: agent tab ids share the
+`viewMode` string space with top-level view ids, and `PERMISSIONS_VIEW_ID = "permissions"` already
+owns that name (the top-level drill-in), so reusing it would shadow the view in `workspace-shell`.
+(This inverts the `integrations` precedent, where the TAB owns the short name and the VIEW is
+`integrations-home`; here the VIEW owns it, so the tab is prefixed — the least-churn choice, since
+the view id is referenced across many files while the tab is new and unreleased.) The tab fetches
+the roster via `useOrg` and renders `readOnly = !isAgentManager(caps, agent)`; managers get the
+fully editable panel right on the agent.
+
+**Read-only rule.** `readOnly` threads through the panel to every section: People rows drop to
+static level labels with NO control (`agent-person-row.tsx` `readOnly`, plus a muted
+`permissions.agentPeople.readOnlyHint`); the Integrations + AI Models editors use their own
+`readOnly` mode (controls disabled, the "Add" list hidden, a muted `readOnlyNote`). No hover
+gating anywhere. **Roster degradation for a plain member:** the gateway serves `members` only to
+owner/admin (`OrgInfo.members` is absent for org role `user`), so a member's People roster arrives
+empty; rather than a misleading "no people yet" empty state the tab shows the honest viewer line
+`permissions.agentPeople.viewerOnly` ("You can use this agent. Someone who manages it can change
+who has access."). The pure decision is `agentPeopleView(rowCount, readOnly)` in
+`agent-people-model.ts` (`"roster" | "viewerOnly" | "empty"`, unit-tested). An admin who isn't the
+agent's manager still gets the full roster (they can see members) — read-only. The gateway is the
+sole enforcer; `readOnly` only avoids a dead control.
+- **People** (`agent-people-tab.tsx`) — WHO can use THIS agent: every org member is a row
+  (avatar + email + org-role chip) with a **None / Can use / Manager** control
+  (`agent-person-row.tsx`; owner renders static "Owner, always has access"). Read + write
+  reuse the Share dialog's roster math (`components/tabs/agent-access-model.ts`) VERBATIM via
+  the thin pure model `agent-people-model.ts`: `buildAgentPeople` wraps `buildSharePeople`
+  (everyone-agent expands to the whole team, owner is always manager, members off the roster
+  read `none`); `writeAgentPerson` wraps `buildSharePeople`+`applyShareAction` (so an
+  everyone-agent MATERIALIZES into an explicit roster on first edit exactly as the dialog
+  does, and the owner is never stripped); `agentPersonNeedsConfirm` delegates to the dialog's
+  `needsSelfLockoutConfirm`. Writes go through `useShareAgent` (optimistic set-replace
+  `PUT /v1/agents/:slug/assignments`); a self-lockout is confirm-gated. Manager is disabled
+  for org-role `user` members (`canPersonBeManager`, gateway 400s `manager_requires_admin`).
+  Copy: `share.levels.*` + `share.ownerAccess`/`share.you`/`share.selfNote` +
+  `permissions.agentPeople.*` (the None label/hint + `changeAccess` aria). Unit test
+  `app/tests/agent-people-model.test.ts`.
+- **Integrations** — the agent's app ceiling (`AgentAdminIntegrations`, heading "Which apps
+  can this agent use?").
+- **AI Models** — the agent's model ceiling (`AgentAdminModel`, heading "Which AI models can
+  this agent use?").
+
+The agent list is `agents-list.tsx` (`{ members, onOpenAgent }`, rendered by the view with
+no wrapper — the old `permissions-agents-tab.tsx` wrapper was deleted); helpers
+`org-agent-card.tsx` + `org-agents-model.ts` live alongside; `org-roster.ts` + `org-time.ts`
+stay in `organization/` (cross-dir import). NO "Defaults for every agent" card — policy is
+per agent only. Tested: e2e `packages/web/e2e/permissions.spec.ts` (agent list → three-tab
+drill-in; People Can use→No access round-trip; Integrations ceiling round-trip; AI Models
+present; PLUS the agent's OWN `agent-permissions` tab: a manager's editable round-trip and a
+role-`user` member's read-only view + viewer-line degradation) via fake host `/__test__/org`
+(multi-member roster + fleet with per-agent `assignments`/`access`; `/v1/org` omits the roster
+for role `user`, mirroring the gateway) + `PUT /v1/agents/:slug/assignments`/`settings`.
 
 ---
 
@@ -262,11 +296,13 @@ yourself). Render gated by `canManageAssignments`; the gateway is the enforcer.
 Sharing a **personal** agent has no members to assign, so that path opens the
 **share-via-team** pipeline instead (see **Spaces > Share-via-team pipeline**).
 
-The **inverse lens** (one person, every agent) lives in **Permissions > People**'s
-member drill-in (`member-detail.tsx`, moved to `app/src/components/permissions/`) —
-see the Permissions view section above. Both lenses share the roster math in
-`components/tabs/agent-access-model.ts`, so access is never derived two ways;
-the member lens reuses `share.levels.*` copy and adds `org.memberDetail.*`.
+The **roster face** of this dialog (one agent, every org member, with a None / Can use /
+Manager control) lives in **Permissions > agent detail > People** (`agent-people-tab.tsx`)
+— see the Permissions view section above. It shares the roster math in
+`components/tabs/agent-access-model.ts` via `agent-people-model.ts`, so access is never
+derived two ways; it reuses `share.levels.*`/`share.ownerAccess`/`share.you`/`share.selfNote`
+and adds `permissions.agentPeople.*`. (The old INVERSE per-person lens — one person, every
+agent — was deleted.)
 
 ---
 
@@ -484,8 +520,8 @@ hides the "Add models" list, all copy passed in.
   (`agent-admin-model.tsx` → `AgentModelsSection`, a thin wrapper over the shared
   editor). The whole AI-hub catalog is the selectable universe (there is no org-wide
   ceiling to narrow it). Copy under `teams:agentAdmin.models.*`. The per-agent model
-  ceiling ALSO surfaces (via `AgentAdminModel`) in the Permissions Agents-tab per-agent
-  card (`permissions/agent-detail.tsx`), same editor, same wire. (The AI Models hub's
+  ceiling ALSO surfaces (via `AgentAdminModel`) in the Permissions agent detail's AI Models
+  tab (`permissions/agent-detail.tsx`), same editor, same wire. (The AI Models hub's
   old "Workspace policy" tab was removed; the hub now shows only Providers / Models.)
 
 - **Ceiling** — `agent_settings.allowedModels: string[] | null` of provider-native
@@ -567,8 +603,8 @@ on success.
   (`AgentAllowlistSection`, manager-only). The whole catalog is the selectable
   universe (there is no org-wide ceiling to narrow it). Client: `getAgentSettings` /
   `setAgentSettings`. Copy under `teams:integrations.allowlist.*`. The per-agent app
-  ceiling ALSO surfaces (via `AgentAdminIntegrations`) in the Permissions Agents-tab
-  per-agent card (`permissions/agent-detail.tsx`), same editor, same wire.
+  ceiling ALSO surfaces (via `AgentAdminIntegrations`) in the Permissions agent detail's
+  Integrations tab (`permissions/agent-detail.tsx`), same editor, same wire.
 
 The global Integrations page has no ceiling to apply (policy is per agent), so it
 never locks a row — it's the personal catalog for every member. Per-agent GRANT
@@ -598,9 +634,9 @@ The pure split is `browseCatalogView` (`integrations/model.ts`); off Teams
 blocked-state surfaces (the disallowed section AND the locked browse rows) accept an optional
 `PermissionsFix` resolver. A blocked app is always outside the AGENT ceiling (policy is per
 agent only), so when the VIEWER can lift it, the ask-your-admin line is replaced by an
-"Enable it in Permissions" button that deep-links to that agent's Permissions drill-in
-(`requestAgentDetail(agentId)`, `permissions-nav-store.ts`, which also switches to the Agents
-tab) — `PERMISSIONS_VIEW_ID` + a `usePermissionsNav` request. The gate is `canManageAgent`
+"Enable it in Permissions" button that deep-links to that agent's Permissions detail on its
+Integrations tab (`requestAgentDetail(agentId, "integrations")`, `permissions-nav-store.ts`)
+— `PERMISSIONS_VIEW_ID` + a `usePermissionsNav` request. The gate is `canManageAgent`
 (agent-manager AND `canSeeMembers`); members and non-admin managers keep the old copy (the
 resolver returns `undefined`). Authority lives in `integrations/blocked-ceiling.ts`
 (`resolvePermissionsFix`), built at the agent tab and threaded down as props so the leaf
@@ -685,10 +721,18 @@ group were deleted with the org ceilings 2026-07-16), `permissions`, `org`, `sha
 live in the separate `aiHub` namespace.)
 
 The **`permissions.*`** block backs the Permissions view: `title`, `subtitle`,
-`tabs.people` / `tabs.agents`, `people.empty.{title,body}`. (`permissions.defaults.*`
-and `permissions.agents.listTitle` were deleted with the "Defaults for every agent"
-card.) The moved components still REUSE the KEPT `org.memberDetail.*` (the
-member lens) and `org.agentDetail.*` (the per-agent card) keys. Deleted with their
+`agentTabs.{people,integrations,models}` (the three agent-detail tab labels),
+`agentPeople.{none,noneHint,changeAccess,readOnlyHint,viewerOnly,empty.{title,body}}` (the
+per-agent People tab; `readOnlyHint` + `viewerOnly` back the agent-tab read-only view). The
+read-only editors also add `integrations.allowlist.readOnlyNote` + `agentAdmin.models.readOnlyNote`.
+The agent workspace **Permissions tab label** lives in the `agents` namespace like every other tab:
+`agents:tabLabels.agent-permissions` (en "Permissions" / es "Permisos" / pt "Permissões").
+(`permissions.tabs.*`, `permissions.people.*`, `permissions.defaults.*`, and
+`permissions.agents.listTitle` were deleted — with the top-level People/Agents split and
+the "Defaults for every agent" card.) The agent detail REUSES `share.*` copy (levels,
+`ownerAccess`, `you`, `selfNote`, `selfLockout.*`) + `org.agentDetail.*` (the header +
+manager-only note); `org.memberDetail.*` and `people.roster.openLabel` were DELETED with
+the per-person lens. Deleted with their
 removed sections: `org.tabs.{agents,allowedIntegrations,allowedModels}`,
 `org.index.rows.{agents,allowedIntegrations,allowedModels}`, `org.index.groups.permissions`,
 `org.index.values.{agents_*,allApps,appsAllowed_*,allModels,modelsAllowed_*}`. `org.subtitle`

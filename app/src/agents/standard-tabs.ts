@@ -11,6 +11,14 @@ import type { Agent, Capabilities } from "@houston-ai/engine-client";
 import { isAgentManager } from "../lib/agent-access.ts";
 import { isMultiplayer } from "../lib/org-roles.ts";
 
+/**
+ * The agent workspace Permissions tab id. Deliberately NOT "permissions": that
+ * is the top-level view id (`PERMISSIONS_VIEW_ID`), and agent tab ids share the
+ * `viewMode` string space with top-level view ids, so reusing it would shadow the
+ * view. Kept lowercase + stable (a persisted `viewMode` value + the tour anchor).
+ */
+export const PERMISSIONS_TAB_ID = "agent-permissions";
+
 export interface AgentTab {
   /** Tab identifier (also matches the built-in component key in tab-resolver). */
   id: string;
@@ -36,6 +44,18 @@ export const STANDARD_TABS: AgentTab[] = [
   { id: "integrations", label: "Integrations", builtIn: "integrations" },
   { id: "files", label: "Files", builtIn: "files" },
   { id: "archived", label: "Archived", builtIn: "archived" },
+  // Permissions: the People | Integrations | AI Models surface, mounted ON the
+  // agent and visible to EVERYONE who can open it (read-only for non-managers).
+  // Teams-only — hidden on single-player/self-host where there are no ceilings or
+  // roster (see visibleAgentTabs). The id differs from the top-level Permissions
+  // view id (`PERMISSIONS_VIEW_ID = "permissions"`), which shares the `viewMode`
+  // string space, so it does not shadow it — mirrors "integrations" (tab) vs
+  // "integrations-home" (view), but here the VIEW owns the short name.
+  {
+    id: PERMISSIONS_TAB_ID,
+    label: "Permissions",
+    builtIn: PERMISSIONS_TAB_ID,
+  },
   // Agent Settings is the manager/owner-only admin surface, pinned to the far
   // right (after Archived) and hidden from plain members — see visibleAgentTabs.
   {
@@ -69,6 +89,12 @@ export function visibleAgentTabs(
   return STANDARD_TABS.filter((tab) => {
     if (tab.id === "job-description") {
       return !isMultiplayer(caps) || isAgentManager(caps, agent);
+    }
+    // Permissions is Teams-only: on single-player/self-host there are no ceilings
+    // or roster to show, so the tab never appears there. Everyone on a Teams host
+    // sees it (read-only for non-managers) — the read/manage split is inside.
+    if (tab.id === PERMISSIONS_TAB_ID) {
+      return caps?.teams === true;
     }
     return true;
   });

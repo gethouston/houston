@@ -11,6 +11,8 @@ interface AgentAllowlistSectionProps {
   connectedToolkits: string[];
   /** A write is in flight (disables the toggles). */
   saving: boolean;
+  /** View-only viewer (a non-manager): controls disabled, "Add apps" hidden. */
+  readOnly?: boolean;
   /** Persist the next ceiling: `null` = allow all, else the explicit set. */
   onSave: (next: string[] | null) => void;
 }
@@ -28,6 +30,7 @@ export function AgentAllowlistSection({
   catalog,
   connectedToolkits,
   saving,
+  readOnly = false,
   onSave,
 }: AgentAllowlistSectionProps) {
   const { t } = useTranslation("teams");
@@ -38,11 +41,12 @@ export function AgentAllowlistSection({
       allowedToolkits={allowedToolkits}
       seedToolkits={connectedToolkits}
       saving={saving}
-      readOnly={false}
+      readOnly={readOnly}
       onSave={onSave}
       copy={{
         question: t("integrations.allowlist.question"),
         policyHelper: t("integrations.allowlist.policyHelper"),
+        readOnlyNote: t("integrations.allowlist.readOnlyNote"),
         anyLabel: t("integrations.allowlist.anyLabel"),
         anyDesc: t("integrations.allowlist.anyDesc"),
         pickedLabel: t("integrations.allowlist.pickedLabel"),

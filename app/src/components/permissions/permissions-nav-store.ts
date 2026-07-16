@@ -1,38 +1,37 @@
 import { create } from "zustand";
 
-/** Which tab of the Permissions view a deep link targets. */
-export type PermissionsTab = "people" | "agents";
+/** Which tab of an agent's Permissions detail a deep link should open on. */
+export type PermissionsAgentTab = "people" | "integrations" | "models";
 
 /**
- * A one-shot request to open the Permissions view on a specific tab, or on a
- * specific agent's per-agent detail (inside the Agents tab).
+ * A one-shot request to open the Permissions view on a specific agent's detail,
+ * optionally on a specific tab.
  *
- * The view owns its own tab + drill-in state, but deep links arrive from OUTSIDE
+ * The view owns its own drill-in state, but this deep link arrives from OUTSIDE
  * it: the role-aware blocked-app CTA in the agent workspace (a locked/forbidden
- * app a manager CAN enable) sends the user straight into that agent's per-agent
- * card. Rather than lift that state into the shared UI store, this tiny colocated
- * store carries the intent: the caller sets the request then switches `viewMode`
- * to the Permissions view; `PermissionsView` consumes it (initial mount AND while
- * already open) and clears it so a later plain nav lands on the default tab.
+ * app a manager CAN enable) sends the user straight into that agent's detail, on
+ * the Integrations tab where the fix lives. Rather than lift that state into the
+ * shared UI store, this tiny colocated store carries the intent: the caller sets
+ * the request then switches `viewMode` to the Permissions view; `PermissionsView`
+ * consumes it (initial mount AND while already open) and clears it so a later
+ * plain nav lands back on the agent list.
  */
 interface PermissionsNavState {
-  /** The tab to open on the next render, or null for the default (People). */
-  requestedTab: PermissionsTab | null;
-  /**
-   * The agent whose per-agent detail to open on the next render (implies the
-   * Agents tab), or null for none. Consumed alongside `requestedTab`.
-   */
+  /** The agent whose detail to open on the next render, or null for none. */
   requestedAgentId: string | null;
-  /** Ask the view to drill into `agentId` (implies the Agents tab). */
-  requestAgentDetail: (agentId: string) => void;
-  /** Drop the pending request(s) once the view has honored them. */
+  /** The tab to open that detail on (defaults to People when unset). */
+  requestedAgentTab: PermissionsAgentTab | null;
+  /** Ask the view to drill into `agentId`, optionally on a specific tab. */
+  requestAgentDetail: (agentId: string, tab?: PermissionsAgentTab) => void;
+  /** Drop the pending request once the view has honored it. */
   clearRequested: () => void;
 }
 
 export const usePermissionsNav = create<PermissionsNavState>((set) => ({
-  requestedTab: null,
   requestedAgentId: null,
-  requestAgentDetail: (agentId) =>
-    set({ requestedTab: "agents", requestedAgentId: agentId }),
-  clearRequested: () => set({ requestedTab: null, requestedAgentId: null }),
+  requestedAgentTab: null,
+  requestAgentDetail: (agentId, tab) =>
+    set({ requestedAgentId: agentId, requestedAgentTab: tab ?? null }),
+  clearRequested: () =>
+    set({ requestedAgentId: null, requestedAgentTab: null }),
 }));

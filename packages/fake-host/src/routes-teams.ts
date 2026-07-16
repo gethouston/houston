@@ -65,6 +65,12 @@ export function handleTeamsRoutes(
   if (segs[0] === "v1" && segs[1] === "org" && segs.length === 2) {
     if (method !== "GET") return json({ error: "not found" }, 404);
     const role = state.getCapabilities().role ?? "owner";
+    // The real gateway serves the roster (and invites) ONLY to owner/admin; a
+    // plain member (`user`) gets just the identity + role. Mirror that so the
+    // read-only Permissions People tab exercises its honest empty-roster degrade.
+    if (role === "user") {
+      return json({ id: "org-e2e", slug: "acme", name: "Acme", role });
+    }
     // An armed roster (the per-member access lens) is served verbatim; unarmed
     // it stays the single-self roster synthesized from the advertised role.
     const members = state.getOrgMembers() ?? [

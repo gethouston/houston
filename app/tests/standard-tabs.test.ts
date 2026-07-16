@@ -29,7 +29,7 @@ const ids = (caps: Capabilities | null, a: { access?: "manager" | "user" }) =>
   visibleAgentTabs(caps, a).map((tab) => tab.id);
 
 describe("STANDARD_TABS order", () => {
-  it("pins Agent Settings (job-description) to the far right, after archived", () => {
+  it("pins Agent Settings (job-description) to the far right, after Permissions", () => {
     deepStrictEqual(
       STANDARD_TABS.map((tab) => tab.id),
       [
@@ -38,6 +38,7 @@ describe("STANDARD_TABS order", () => {
         "integrations",
         "files",
         "archived",
+        "agent-permissions",
         "job-description",
       ],
     );
@@ -81,6 +82,31 @@ describe("visibleAgentTabs", () => {
   it("always shows the five use-tabs regardless of role", () => {
     const use = ["activity", "routines", "integrations", "files", "archived"];
     deepStrictEqual(ids(multiplayer("user"), agent("user")), use);
+  });
+});
+
+describe("visibleAgentTabs — Permissions tab (Teams only, everyone)", () => {
+  const teams = (role: OrgRole): Capabilities =>
+    caps({ multiplayer: true, teams: true, role });
+
+  it("shows Permissions to every role on a Teams host, regardless of agent access", () => {
+    for (const role of ["owner", "admin", "user"] as const) {
+      for (const access of ["manager", "user", undefined] as const) {
+        strictEqual(
+          ids(teams(role), agent(access)).includes("agent-permissions"),
+          true,
+        );
+      }
+    }
+  });
+
+  it("hides Permissions on single-player and non-Teams multiplayer (no ceilings/roster)", () => {
+    strictEqual(ids(caps(), agent()).includes("agent-permissions"), false);
+    strictEqual(ids(null, agent()).includes("agent-permissions"), false);
+    strictEqual(
+      ids(multiplayer("owner"), agent("manager")).includes("agent-permissions"),
+      false,
+    );
   });
 });
 
