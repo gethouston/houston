@@ -14,8 +14,8 @@ import { expect, test } from "./support/fixtures";
  *    grants surface) → the global Integrations page, visible to EVERY role in
  *    every mode (a plain member keeps its nav). It is the ONE by-app lens:
  *    opening a connected app's detail modal shows "Agents that can use this"
- *    with a per-agent Switch. Settings > Connected accounts is GONE; its
- *    Settings row deep-links to this page;
+ *    with a per-agent Switch. Settings > Connected accounts is GONE (no
+ *    settings row at all; the sidebar nav is the one way in);
  *  - the agent Integrations TAB → a connect surface that ALSO surfaces the
  *    account's connected-but-ungranted apps in a "Connected, but off for this
  *    agent" section, each with an inline Switch that grants the app to THIS

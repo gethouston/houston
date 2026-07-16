@@ -1,7 +1,6 @@
 {
   "title": "Configuración",
   "nav": {
-    "connectedAccounts": "Cuentas conectadas",
     "apiKeys": "Claves de API",
     "workspaceContext": "Contexto del espacio",
     "userContext": "Tu contexto",
@@ -123,7 +122,6 @@
       "support": "Soporte"
     },
     "rows": {
-      "connectedAccounts": "Aplicaciones que conectaste a Houston",
       "apiKeys": "Permite que otras apps y asistentes de IA inicien misiones con tus agentes",
       "workspaceContext": "Lo que cada agente sabe sobre este espacio",
       "userContext": "Lo que cada agente sabe sobre ti",
@@ -132,9 +130,7 @@
       "migration": "Retoma tu mudanza a la nube"
     },
     "values": {
-      "set": "Definido",
-      "appsCount_one": "{{count}} aplicación",
-      "appsCount_other": "{{count}} aplicaciones"
+      "set": "Definido"
     }
   },
   "apiKeys": {

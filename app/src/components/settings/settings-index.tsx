@@ -1,5 +1,4 @@
 import {
-  Blocks,
   Bug,
   CloudUpload,
   FileText,
@@ -8,18 +7,11 @@ import {
   User,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useIntegrationConnections } from "../../hooks/queries";
 import { useWorkspaceContext } from "../../hooks/queries/use-workspace-context";
-import { useCapabilities } from "../../hooks/use-capabilities";
 import { genericErrorDescription } from "../../lib/error-toast";
 import type { SettingsSectionId } from "../../lib/settings-sections";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import {
-  INTEGRATION_PROVIDER,
-  integrationsSupported,
-} from "../integrations/model";
-import { INTEGRATIONS_VIEW_ID } from "../integrations-view/id";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import { AccountSection } from "./sections/account";
 import { AppearanceSection } from "./sections/appearance";
@@ -50,19 +42,6 @@ export function SettingsIndex({
   const agentPath = useAgentStore((s) => s.current?.folderPath);
   const { data: context } = useWorkspaceContext(agentPath);
   const addToast = useUIStore((s) => s.addToast);
-  const setViewMode = useUIStore((s) => s.setViewMode);
-  const { capabilities } = useCapabilities();
-  const integrationsAvailable = integrationsSupported(capabilities);
-  const connections = useIntegrationConnections(
-    INTEGRATION_PROVIDER,
-    integrationsAvailable,
-  );
-  // Only the active connections count as "connected apps"; a pending/errored
-  // OAuth is still recovering. Undefined while the query loads so the row shows
-  // no value rather than a premature "0 apps".
-  const appCount = connections.data?.filter(
-    (c) => c.status === "active",
-  ).length;
 
   const contextValue = (slot: "workspace" | "user") =>
     context?.[slot]?.trim() ? t("settings:index.values.set") : undefined;
@@ -95,22 +74,6 @@ export function SettingsIndex({
           <AppearanceSection />
           <LanguageSection />
           {accountAvailable && <AccountSection />}
-          {integrationsAvailable && (
-            // Connected accounts folded into the global Integrations page (the
-            // ONE by-app lens: connection status + per-agent grants). The row
-            // stays as a deep link there rather than a settings sub-screen.
-            <SettingsRow
-              icon={Blocks}
-              title={t("settings:nav.connectedAccounts")}
-              description={t("settings:index.rows.connectedAccounts")}
-              value={
-                appCount === undefined
-                  ? undefined
-                  : t("settings:index.values.appsCount", { count: appCount })
-              }
-              onClick={() => setViewMode(INTEGRATIONS_VIEW_ID)}
-            />
-          )}
           {apiKeysAvailable && (
             <SettingsRow
               icon={KeyRound}

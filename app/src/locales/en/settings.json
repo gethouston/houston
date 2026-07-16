@@ -1,7 +1,6 @@
 {
   "title": "Settings",
   "nav": {
-    "connectedAccounts": "Connected accounts",
     "apiKeys": "API keys",
     "workspaceContext": "Workspace context",
     "userContext": "Your context",
@@ -123,7 +122,6 @@
       "support": "Support"
     },
     "rows": {
-      "connectedAccounts": "Apps you've connected to Houston",
       "apiKeys": "Let other apps and AI assistants start missions with your agents",
       "workspaceContext": "What every agent knows about this workspace",
       "userContext": "What every agent knows about you",
@@ -132,9 +130,7 @@
       "migration": "Pick up your move to the cloud"
     },
     "values": {
-      "set": "Set",
-      "appsCount_one": "{{count}} app",
-      "appsCount_other": "{{count}} apps"
+      "set": "Set"
     }
   },
   "apiKeys": {
