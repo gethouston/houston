@@ -194,6 +194,18 @@ export interface LocalHost {
   stop(): Promise<void>;
 }
 
+/**
+ * Log callback for the background daemons (store-sync, usage sampler): an
+ * entry WITH an error is a failure → stderr, which the Sentry console capture
+ * turns into an error event; an entry without one is operational logging →
+ * info, a breadcrumb. Routing everything through console.error (the old shape)
+ * made every "[store-sync] hydrated N objects" boot line a Sentry error issue.
+ */
+function severityLog(message: string, err?: unknown): void {
+  if (err === undefined) console.info(message);
+  else console.error(message, err);
+}
+
 export function formatIntegrationsModeLog(
   integrations: LocalHostOptions["integrations"],
 ): string {
@@ -500,7 +512,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     ? new StoreSyncDaemon({
         ...opts.storeSync,
         rootDir: dirname(opts.workspacesRoot),
-        log: (message, err) => console.error(message, err ?? ""),
+        log: severityLog,
       })
     : undefined;
   // Managed pods sample their own busy state (the gateway can only see AWAKE
@@ -529,7 +541,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
             .filter((run) => run.status === "running")
             .map((run) => run.id);
         },
-        log: (message, err) => console.error(message, err ?? ""),
+        log: severityLog,
       })
     : undefined;
   let stopPromise: Promise<void> | undefined;

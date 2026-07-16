@@ -84,12 +84,22 @@ export function resolveEngineSentryConfig(
   if (env.HOUSTON_ORG_SLUG) tags.org_slug = env.HOUSTON_ORG_SLUG;
   if (env.HOUSTON_AGENT_SLUG) tags.agent_slug = env.HOUSTON_AGENT_SLUG;
 
+  const release = env.SENTRY_RELEASE || undefined;
+  // The engine's build, as its own searchable tag: the part after the
+  // release's "@" — `houston-app@0.5.9` → `0.5.9` (desktop), `engine-pod@<sha>`
+  // → the sha (pods). The full release string is only filterable as a whole;
+  // this tag is what "which build hit this?" queries key on.
+  const at = release ? release.indexOf("@") : -1;
+  if (release && at > 0 && at < release.length - 1) {
+    tags.engine_version = release.slice(at + 1);
+  }
+
   return {
     dsn,
     environment:
       env.SENTRY_ENVIRONMENT ||
       (deployment === "dev" ? "development" : "production"),
-    release: env.SENTRY_RELEASE || undefined,
+    release,
     deployment,
     tags,
   };

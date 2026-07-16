@@ -88,6 +88,46 @@ describe("createEngineSentry", () => {
     expect(events[0]?.level).toBe("error");
   });
 
+  it("captureLog: bare-string ERROR carries a synthetic stack at the log site", async () => {
+    const { sentry, events } = testSentry();
+    sentry.captureLog("ERROR", ["stackless failure"]);
+    await sentry.flush();
+
+    const exception = events[0]?.exception?.values?.[0];
+    const frames = exception?.stacktrace?.frames ?? [];
+    expect(frames.length).toBeGreaterThan(0);
+    // The reporter's own frames (captureLog/guarded in client.ts) are trimmed
+    // so the culprit is the code that logged, not the crash reporter.
+    expect(frames[frames.length - 1]?.filename).toMatch(/client\.test\.ts$/);
+    expect(exception?.mechanism?.synthetic).toBe(true);
+  });
+
+  it("captureLog: Node process warnings via console.error stay breadcrumbs", async () => {
+    const { sentry, events } = testSentry();
+    sentry.captureLog("ERROR", [
+      "(node:19) [CLAUDE_SDK_CAN_USE_TOOL_SHADOWED] Warning: canUseTool will not be invoked",
+    ]);
+    await sentry.flush();
+    expect(events).toHaveLength(0);
+
+    sentry.captureLog("ERROR", ["a real failure"]);
+    await sentry.flush();
+    const crumbs = events[0]?.breadcrumbs ?? [];
+    expect(crumbs[0]?.message).toContain("CLAUDE_SDK_CAN_USE_TOOL_SHADOWED");
+    expect(crumbs[0]?.level).toBe("warning");
+  });
+
+  it("stamps os and app-start contexts on every event", async () => {
+    const { sentry, events } = testSentry();
+    sentry.captureException(new Error("ctx check"));
+    await sentry.flush();
+
+    expect(events[0]?.contexts?.os?.name).toBe(process.platform);
+    expect(events[0]?.contexts?.app?.app_start_time).toMatch(
+      /^\d{4}-\d{2}-\d{2}T/,
+    );
+  });
+
   it("captureLog: INFO/WARN are breadcrumbs riding the next event, not events", async () => {
     const { sentry, events } = testSentry();
     sentry.captureLog("INFO", ["booting agent runtime"]);
