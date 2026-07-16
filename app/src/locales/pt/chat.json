@@ -182,6 +182,9 @@
     },
     "modelDescriptions": {
       "gpt-5_5": "O modelo mais avançado da OpenAI.",
+      "gpt-5_6-sol": "O modelo mais recente e avançado da OpenAI.",
+      "gpt-5_6-terra": "Modelo intermediário equilibrado.",
+      "gpt-5_6-luna": "Rápido e econômico para tarefas mais simples.",
       "gpt-5_4": "Modelo forte para programação do dia a dia.",
       "gpt-5_4-mini": "Pequeno, rápido e econômico para tarefas mais simples.",
       "gpt-5_3-codex-spark": "Modelo de programação ultrarrápido.",
@@ -189,7 +192,11 @@
       "claude-sonnet-4-6": "Melhor equilibrio entre velocidade e qualidade.",
       "claude-opus-4-8": "Opus mais recente. Melhor alinhamento e codigo agente que 4.7.",
       "claude-fable-5": "O modelo mais capaz. Consome o dobro de creditos que Opus 4.8.",
-      "claude-opus-4-7": "Modelo anterior. Autonomia de codigo e raciocinio complexo."
+      "claude-opus-4-7": "Modelo anterior. Autonomia de codigo e raciocinio complexo.",
+      "gemini-3_5-flash": "Rápido e capaz. A melhor opção padrão.",
+      "gemini-3_1-flash-lite": "Leve e veloz para tarefas mais simples.",
+      "gemma-4-26b-a4b-it": "Modelo aberto Gemma do Google. Rápido e eficiente.",
+      "gemma-4-31b-it": "Modelo aberto Gemma do Google. Mais capaz."
     }
   },
   "reasoning": {

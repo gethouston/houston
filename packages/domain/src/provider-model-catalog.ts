@@ -70,7 +70,7 @@ export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   "opencode-go": "glm-5.1",
   openrouter: "anthropic/claude-sonnet-4.6",
   deepseek: "deepseek-v4-flash",
-  google: "gemini-3-flash-preview",
+  google: "gemini-3.5-flash",
   "amazon-bedrock": "anthropic.claude-sonnet-4-6",
   minimax: "MiniMax-M3",
   // No catalog default — the model is whatever the user's local server serves.
