@@ -1563,6 +1563,12 @@ export const tauriIntegrations = {
     call("allow_action_always", () =>
       getEngine().allowActionAlways(agentId, action),
     ),
+  /** Remove an action from the agent's "always allow" set (the review UI's
+   *  Remove); returns the new set. */
+  revokeActionAlways: (agentId: string, action: string) =>
+    call("revoke_action_always", () =>
+      getEngine().disallowActionAlways(agentId, action),
+    ),
   /** Approve one pending action once, by its hash (a single-use ticket). */
   addApprovalTicket: (agentId: string, hash: string) =>
     call("add_approval_ticket", () =>

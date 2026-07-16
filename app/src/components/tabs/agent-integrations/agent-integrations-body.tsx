@@ -109,6 +109,7 @@ export function AgentIntegrationsBody({
             view={view}
             agentId={agentId}
             canEdit={canEdit}
+            catalog={catalog}
           />
         </CatalogPane>
       ),

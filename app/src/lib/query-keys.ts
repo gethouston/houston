@@ -121,6 +121,13 @@ export const queryKeys = {
   computeUsage: (days: number) => ["compute-usage", days] as const,
   agentGrants: (agentId: string) => ["agent-grants", agentId] as const,
   /**
+   * The actions an agent runs without asking again (the always-allow set from
+   * the action-approval gate). Keyed by agent id; the chat card's always-allow
+   * write and the review section's revoke both invalidate it so the "Runs
+   * without asking" list stays live. Degrades to `[]` on a host without the gate.
+   */
+  actionApprovals: (agentId: string) => ["action-approvals", agentId] as const,
+  /**
    * Teams v2: an agent's allowed-toolkit settings (agent + org ceilings +
    * caller access). Fetched only on a Teams host; the mutation self-invalidates
    * this and the agent's grant set (the gateway prunes disallowed grants).

@@ -219,3 +219,53 @@ export function useAgentGrantMutation(agentId: string) {
     onSettled: () => qc.invalidateQueries({ queryKey: key }),
   });
 }
+
+/**
+ * The actions this agent runs without asking again (the always-allow set from
+ * the action-approval gate), as a plain `string[]`. The engine-client GET
+ * degrades a 404 to `{ always: [] }`, so on a host without the gate the query
+ * simply resolves empty and the review section hides. Gated on `enabled` so it
+ * stays idle until the integrations tab is ready.
+ */
+export function useAgentActionApprovals(agentId: string, enabled: boolean) {
+  return useQuery<string[]>({
+    queryKey: queryKeys.actionApprovals(agentId),
+    queryFn: async () =>
+      (await tauriIntegrations.actionApprovals(agentId)).always,
+    enabled,
+  });
+}
+
+/**
+ * Revoke ONE always-allow action for this agent (the "Runs without asking"
+ * section's Remove). Optimistically drops the slug (case-insensitive), reverses
+ * ONLY that slug on error (not a whole-set snapshot restore, so overlapping
+ * removes never resurrect each other), and invalidates on settle so the list
+ * re-syncs with the host. No `onError` toast — the `call()` wrapper already
+ * surfaces + reports the failure once.
+ */
+export function useRevokeActionApproval(agentId: string) {
+  const qc = useQueryClient();
+  const key = queryKeys.actionApprovals(agentId);
+  return useMutation({
+    mutationFn: (action: string) =>
+      tauriIntegrations.revokeActionAlways(agentId, action),
+    onMutate: async (action) => {
+      await qc.cancelQueries({ queryKey: key });
+      const a = action.toLowerCase();
+      qc.setQueryData<string[]>(key, (prev) =>
+        (prev ?? []).filter((x) => x.toLowerCase() !== a),
+      );
+    },
+    onError: (_err, action) => {
+      const a = action.toLowerCase();
+      qc.setQueryData<string[]>(key, (prev) => {
+        const list = prev ?? [];
+        return list.some((x) => x.toLowerCase() === a)
+          ? list
+          : [...list, action];
+      });
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}

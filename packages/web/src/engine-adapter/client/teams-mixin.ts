@@ -171,6 +171,25 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
         );
       return (await res.json()) as { always: string[] };
     }
+    async disallowActionAlways(
+      agentSlugOrId: string,
+      action: string,
+    ): Promise<{ always: string[] }> {
+      const res = await this.ctx.authFetch(
+        `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals/always`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        },
+      );
+      if (!res.ok)
+        throw new HoustonEngineError(
+          res.status,
+          await res.json().catch(() => ({})),
+        );
+      return (await res.json()) as { always: string[] };
+    }
     async addActionApprovalTicket(
       agentSlugOrId: string,
       hash: string,

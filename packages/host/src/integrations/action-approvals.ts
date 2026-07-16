@@ -78,6 +78,23 @@ export class LocalActionApprovals {
     });
   }
 
+  /** Remove an action from the always-allow list (case-insensitive match),
+   *  persist, and return the resulting list. A clean miss (the action was not
+   *  present) skips the redundant put and returns the current list unchanged,
+   *  mirroring consumeTicket's clean-miss skip. */
+  async disallowAlways(agentId: AgentId, action: string): Promise<string[]> {
+    return this.serialize(agentId, async () => {
+      const record = await this.store.get(agentId);
+      const a = action.toLowerCase();
+      const kept = record.always.filter((x) => x.toLowerCase() !== a);
+      // Nothing removed → nothing changed on disk; skip the redundant write.
+      if (kept.length === record.always.length) return record.always;
+      const next = this.pruned({ always: kept, tickets: record.tickets });
+      await this.store.put(agentId, next);
+      return next.always;
+    });
+  }
+
   /** Write a one-shot ticket for a params-fingerprint hash (replacing an existing
    *  same-hash ticket's ts), pruning stale tickets, and persist. */
   async addTicket(

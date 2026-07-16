@@ -1542,6 +1542,13 @@ export function useAgentChatPanel({
                       decision,
                       display,
                     });
+                    // Keep the agent tab's "Runs without asking" review live:
+                    // an always-allow just extended the set the section reads.
+                    if (decision === "alwaysAllow") {
+                      queryClient.invalidateQueries({
+                        queryKey: queryKeys.actionApprovals(agent.id),
+                      });
+                    }
                     api.onResolve();
                   })
                   // `call()` toasted; swallow the re-throw and DON'T advance.
@@ -1594,6 +1601,7 @@ export function useAgentChatPanel({
     clearPersistedInteraction,
     dismissActiveInteraction,
     capabilities,
+    queryClient,
     t,
   ]);
 

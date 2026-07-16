@@ -8,9 +8,10 @@
  * writes a one-shot ticket for the params-fingerprint hash. Shapes + validation
  * match the real route exactly.
  *
- *   GET  …/action-approvals          -> {always}
- *   POST …/action-approvals/always    {action} -> {always}
- *   POST …/action-approvals/tickets   {hash}   -> {ok:true}
+ *   GET    …/action-approvals          -> {always}
+ *   POST   …/action-approvals/always    {action} -> {always}
+ *   DELETE …/action-approvals/always    {action} -> {always}  (revoke/review UI)
+ *   POST   …/action-approvals/tickets   {hash}   -> {ok:true}
  *
  * Returns a `Response` when a route matched, or `undefined` to fall through.
  */
@@ -54,6 +55,13 @@ export function handleActionApprovals(
       return json({ error: "missing or invalid 'action'" }, 400);
     }
     return json({ always: state.allowAlways(agentId, action) });
+  }
+  if (sub === "always" && method === "DELETE") {
+    const action = typeof body?.action === "string" ? body.action : "";
+    if (!action || !ACTION.test(action)) {
+      return json({ error: "missing or invalid 'action'" }, 400);
+    }
+    return json({ always: state.disallowAlways(agentId, action) });
   }
   if (sub === "tickets" && method === "POST") {
     const hash = typeof body?.hash === "string" ? body.hash : "";

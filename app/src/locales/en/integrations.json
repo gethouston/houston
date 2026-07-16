@@ -109,6 +109,12 @@
       "heading": "Connected, but off for this agent",
       "subtitle": "These apps are connected to your account. Turn one on to let this agent use it.",
       "turnOn": "Turn on {{app}} for this agent"
+    },
+    "runsWithoutAsking": {
+      "heading": "Runs without asking",
+      "subtitle": "You allowed this agent to run these app actions without checking with you first. Remove one and Houston will ask again.",
+      "remove": "Remove",
+      "removeFor": "Stop {{action}} running without asking"
     }
   },
   "custom": {

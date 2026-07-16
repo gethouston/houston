@@ -284,8 +284,10 @@ action-approvals.ts, approvals.ts}`, mirroring `FileIntegrationGrantStore`.
 never a crash; removed for free on agent deletion). Both file-backed stores share
 the agent-dir path derivation + atomic write via `agent-file.ts`
 (`agentDotHoustonFile` + `atomicWriteJson`), not two copies. `LocalActionApprovals` is the
-policy over it: `isAlways` / `allowAlways` (case-insensitive dedupe), `addTicket` /
-`consumeTicket` (consume-once). Tickets have a **15-minute TTL**
+policy over it: `isAlways` / `allowAlways` (case-insensitive dedupe) /
+`disallowAlways` (case-insensitive REMOVE for the review UI — read→filter→prune→
+put→return next.always, skipping the redundant put on a clean miss like
+`consumeTicket`), `addTicket` / `consumeTicket` (consume-once). Tickets have a **15-minute TTL**
 (`TICKET_TTL_MS`) and are PRUNED on every read/write path, so a stale ticket never
 silently authorizes a later identical call. Every MUTATING op is a read→mutate→
 write across awaits, so they are **serialized per agent** through a promise-chain
@@ -303,12 +305,21 @@ cloud follow-up.
 `canUseAgent`; dep absent → the handler falls through to 404 → client reads
 "unsupported" and degrades without a toast):
 
-- `GET  /v1/agents/:agentId/action-approvals` → `{always}`
-- `POST /v1/agents/:agentId/action-approvals/always`   `{action}` → `{always}`
-- `POST /v1/agents/:agentId/action-approvals/tickets`  `{hash}`   → `{ok:true}`
+- `GET    /v1/agents/:agentId/action-approvals` → `{always}`
+- `POST   /v1/agents/:agentId/action-approvals/always`   `{action}` → `{always}`
+- `DELETE /v1/agents/:agentId/action-approvals/always`   `{action}` → `{always}` (revoke)
+- `POST   /v1/agents/:agentId/action-approvals/tickets`  `{hash}`   → `{ok:true}`
 
-The app calls `tickets` on "Allow once", `always` on "Always allow"; the model
-then re-issues the same execute and the gate lets it through. **The prompt no
+The shared `serve()` core handles all four on BOTH surfaces (the `/v1` wrapper and
+the per-agent dispatch), DELETE validating the slug with the same 400 shape as the
+POST. The engine-client method is `disallowActionAlways` (DELETE with a JSON body,
+no 404-degrade on a mutation), surfaced through `tauriIntegrations.revokeActionAlways`.
+
+The app calls `tickets` on "Allow once", `always` on "Always allow" (the card also
+invalidates `queryKeys.actionApprovals(agentId)` on a successful always-allow so the
+review list below stays live), and DELETE `always` on the agent tab's **Runs without
+asking** review (§3). The model then re-issues the same execute and the gate lets it
+through. **The prompt no
 longer pre-asks** via `ask_user` for connected-app actions (`houston-prompt.ts` +
 the Rust mirror `houston_prompt/base.rs`): "For connected-app actions, do not ask.
 Houston shows its own approval card after your turn, so just call
@@ -481,7 +492,21 @@ agent"** section (`agent-ungranted-apps-section.tsx`,
 `integrations:agentTab.offForAgent.*`): `AppRow`s with a trailing `Switch` that
 grants via `useAgentGrantMutation` (optimistic — the row migrates to the Installed
 strip); viewers without `canEditAgentGrants` see the rows without the Switch, so
-the state is never invisible. The disallowed section renders below it. `degraded`
+the state is never invisible. The disallowed section renders below it, then the
+**"Runs without asking"** review (`agent-approved-actions-section.tsx`,
+`integrations:agentTab.runsWithoutAsking.*`) — the ONE surface that reviews and
+REVOKES the action-approval always-list (§2b), rendered by `AgentCatalogSections`
+below the disallowed section in BOTH grants and degraded modes. It self-gates on
+its own `useAgentActionApprovals(agentId, enabled)` query (`enabled` =
+`integrationsSupported`, the engine-client GET degrades 404→`[]`) and renders
+nothing while the list is empty. Each row resolves the bare action slug to its app
+via the pure `toolkitOfActionSlug(action, catalogSlugs)` (longest catalog-slug
+prefix wins over the first segment, mirroring the host's `resolveToolkit`;
+node-tested in `app/tests/approved-actions-model.test.ts`) fed into
+`useIntegrationAppDisplay` for logo+name, with the HUMANIZED action
+(`humanizeActionSlug`, never the raw slug) as the row text and a visible outline
+**Remove** (not hover-gated) firing `useRevokeActionApproval(agentId)` (optimistic
+remove + targeted rollback + invalidate on settle, no `onError` toast). `degraded`
 mode (grants `null`) treats all connected apps as usable. Recovery **Remove** DISCONNECTS in both modes.
 Connect still auto-grants to this agent (`useConnectFlow` `autoGrant`). The tab
 count chip excludes locked apps. All lifted view state (tab/search/category/modals)

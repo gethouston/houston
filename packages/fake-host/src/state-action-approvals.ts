@@ -38,6 +38,16 @@ export function allowAlways(agentId: string, action: string): string[] {
   return [...rec.always];
 }
 
+/** Remove an action from the always-allow list (case-insensitive) and return
+ *  the resulting list. A clean miss returns the list unchanged. Mirrors the real
+ *  host's `LocalActionApprovals.disallowAlways` for the revoke/review UI. */
+export function disallowAlways(agentId: string, action: string): string[] {
+  const rec = record(agentId);
+  const a = action.toLowerCase();
+  rec.always = rec.always.filter((x) => x.toLowerCase() !== a);
+  return [...rec.always];
+}
+
 /** Write a one-shot ticket for a params-fingerprint hash (replacing an existing
  *  same-hash ticket, so a re-approve stays single-use). */
 export function addTicket(agentId: string, hash: string): void {

@@ -57,6 +57,42 @@ test("allowAlways dedupes case-insensitively and keeps the first casing", async 
   expect(await approvals.isAlways(AGENT, "SLACK_POST")).toBe(false);
 });
 
+test("disallowAlways removes case-insensitively and keeps the others", async () => {
+  const { approvals } = make();
+  await approvals.allowAlways(AGENT, "Gmail_Send");
+  await approvals.allowAlways(AGENT, "SLACK_POST");
+  // A different casing still matches the stored slug.
+  const list = await approvals.disallowAlways(AGENT, "gmail_send");
+  expect(list).toEqual(["SLACK_POST"]);
+  expect(await approvals.isAlways(AGENT, "GMAIL_SEND")).toBe(false);
+  expect(await approvals.isAlways(AGENT, "slack_post")).toBe(true);
+});
+
+test("disallowAlways on an absent action is a clean-miss no-op (no write)", async () => {
+  const store = new SlowStore();
+  const approvals = new LocalActionApprovals({ store });
+  await approvals.allowAlways(AGENT, "GMAIL_SEND");
+  const before = store.puts;
+  const list = await approvals.disallowAlways(AGENT, "SLACK_POST");
+  // The list is returned unchanged and nothing was persisted.
+  expect(list).toEqual(["GMAIL_SEND"]);
+  expect(store.puts).toBe(before);
+});
+
+test("concurrent allow + disallow for one agent serialize (no lost write)", async () => {
+  const store = new SlowStore();
+  const approvals = new LocalActionApprovals({ store });
+  await approvals.allowAlways(AGENT, "GMAIL_SEND");
+  // Fire an add and a remove of DIFFERENT slugs at once: without per-agent
+  // serialization they'd both read the same base record and one write would
+  // clobber the other. Serialized, the final state reflects both.
+  await Promise.all([
+    approvals.allowAlways(AGENT, "SLACK_POST"),
+    approvals.disallowAlways(AGENT, "GMAIL_SEND"),
+  ]);
+  expect(await approvals.always(AGENT)).toEqual(["SLACK_POST"]);
+});
+
 test("a ticket is consumable exactly once", async () => {
   const { approvals } = make();
   await approvals.addTicket(AGENT, HASH);

@@ -23,9 +23,10 @@ import { json, readJson } from "./http";
  * dep → these handlers fall through, which the client reads as
  * "approvals unsupported" and degrades without a toast.
  *
- *   GET  …/action-approvals          -> {always}
- *   POST …/action-approvals/always    {action} -> {always}
- *   POST …/action-approvals/tickets   {hash}   -> {ok:true}
+ *   GET    …/action-approvals          -> {always}
+ *   POST   …/action-approvals/always    {action} -> {always}
+ *   DELETE …/action-approvals/always    {action} -> {always}  (revoke, review UI)
+ *   POST   …/action-approvals/tickets   {hash}   -> {ok:true}
  */
 export interface ActionApprovalsDeps {
   store: WorkspaceStore;
@@ -79,6 +80,16 @@ async function serve(
       return true;
     }
     json(res, 200, { always: await approvals.allowAlways(agentId, action) });
+    return true;
+  }
+
+  if (sub === "always" && method === "DELETE") {
+    const { action } = await readJson(req);
+    if (typeof action !== "string" || !action || !ACTION.test(action)) {
+      json(res, 400, { error: "missing or invalid 'action'" });
+      return true;
+    }
+    json(res, 200, { always: await approvals.disallowAlways(agentId, action) });
     return true;
   }
 
