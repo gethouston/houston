@@ -198,6 +198,14 @@ export interface HostState {
   /** Composio readiness, toggled by the `/__test__/integrations-mode` control. */
   integrationsMode: IntegrationsMode;
   /**
+   * Cold-start hold (ms) on per-agent reads, armed by
+   * `/__test__/hold-agent-reads`. Models the cloud gateway's `ensureAwake`
+   * hold: every `GET /agents/:id/*` stalls this long before answering, the
+   * way an asleep pod's reads stall until it wakes. `0` (the default and the
+   * reset state) answers instantly.
+   */
+  agentReadHoldMs: number;
+  /**
    * Custom integrations (HOU-550), armed by `/__test__/custom-integrations`.
    * `null` (the default) = the host does not serve the feature at all: no
    * `custom` entry in the readiness list and the definitions routes 404 (the
@@ -282,6 +290,7 @@ function freshState(): HostState {
     teamsSettings: { ...DEFAULT_TEAMS_SETTINGS },
     computeUsage: null,
     integrationsMode: "ready",
+    agentReadHoldMs: 0,
     customIntegrations: null,
     connections,
     // No seeded grants record: the seed agent starts "grants unsupported" (404 →
@@ -295,6 +304,11 @@ function freshState(): HostState {
 }
 
 export let state: HostState = freshState();
+
+/** Arm (or clear, with 0) the cold-start hold on per-agent reads. */
+export function setAgentReadHoldMs(ms: number): void {
+  state.agentReadHoldMs = Math.max(0, ms);
+}
 
 /** Restore the seed. Called by the harness before each test. */
 export function reset(): void {

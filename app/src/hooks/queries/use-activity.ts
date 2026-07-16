@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { latestCachedAgentActivities } from "../../lib/all-conversations-cache";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity } from "../../lib/tauri";
 import { useDraftStore } from "../../stores/drafts";
 
 export function useActivity(agentPath: string | undefined) {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: queryKeys.activity(agentPath ?? ""),
     queryFn: () => {
@@ -20,6 +22,22 @@ export function useActivity(agentPath: string | undefined) {
     // until the real data lands lets consumers distinguish "loading"
     // from "loaded and genuinely empty". All call sites already guard
     // reads with `(activities ?? []).map(...)`.
+    //
+    // Cold-open seeding: on a cloud boot this read is held for the whole
+    // pod wake, and the disk-restored `["activity", X]` entry only exists
+    // for agents whose board was open in a session that outlived the wake
+    // plus the persist throttle — often not the very agent being looked
+    // at. Conversations are derived 1:1 from activities, so the freshest
+    // cached conversation rows (per-agent list or the always-swept
+    // aggregate the sidebar badges paint from) ARE this board's missions.
+    // Placeholder semantics keep the contract above: never persisted,
+    // replaced by the held read when the pod answers, and `undefined`
+    // (still loading) when nothing is cached — never a fabricated `[]`.
+    placeholderData: (previousData) =>
+      previousData ??
+      (agentPath
+        ? latestCachedAgentActivities(queryClient, agentPath)
+        : undefined),
   });
 }
 

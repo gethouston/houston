@@ -1,4 +1,60 @@
+import { FAKE_HOST_URL } from "@houston/fake-host";
+import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+
+/**
+ * The persisted query mirror's query-key heads, or null while no mirror
+ * exists. Read via `page.evaluate`, which awaits the returned Promise —
+ * `page.waitForFunction` does NOT (a pending Promise object is truthy), so a
+ * wait built on it resolves instantly and asserts nothing.
+ */
+function persistedMirrorHeads(page: Page): Promise<string[] | null> {
+  return page.evaluate(
+    () =>
+      new Promise<string[] | null>((resolve) => {
+        const open = indexedDB.open("houston-query-cache", 1);
+        open.onsuccess = () => {
+          const request = open.result
+            .transaction("kv", "readonly")
+            .objectStore("kv")
+            .get("houston.list-queries");
+          request.onsuccess = () => {
+            try {
+              const raw = request.result as string | undefined;
+              if (typeof raw !== "string") return resolve(null);
+              const parsed = JSON.parse(raw) as {
+                clientState: { queries: { queryKey: unknown[] }[] };
+              };
+              resolve(
+                parsed.clientState.queries.map((q) => String(q.queryKey[0])),
+              );
+            } catch {
+              resolve(null);
+            }
+          };
+          request.onerror = () => resolve(null);
+        };
+        open.onerror = () => resolve(null);
+      }),
+  );
+}
+
+/** Give the page a JWT-shaped per-user token: the fake host accepts any
+ *  bearer, while the query/transcript caches scope themselves to `e2e-user`
+ *  (the standard non-JWT token deliberately turns persistence off). */
+async function seedUserScopedToken(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const key = "houston.web.engine.new";
+    const config = JSON.parse(localStorage.getItem(key) ?? "{}");
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        ...config,
+        token: "e30.eyJzdWIiOiJlMmUtdXNlciJ9.sig",
+      }),
+    );
+  });
+}
 
 /**
  * The mission board is "files-first": it reads `.houston/activity/activity.json`
@@ -16,41 +72,20 @@ test("renders the seeded missions on the board", async ({ page }) => {
 test("restores cached missions before starting fresh board reads", async ({
   page,
 }) => {
-  // The standard fake-host token is deliberately non-user-scoped, which turns
-  // persistence off. Give this test a JWT-shaped per-user token; the fake host
-  // accepts it, while the cache correctly scopes itself to `e2e-user`.
-  await page.addInitScript(() => {
-    const key = "houston.web.engine.new";
-    const config = JSON.parse(localStorage.getItem(key) ?? "{}");
-    localStorage.setItem(
-      key,
-      JSON.stringify({
-        ...config,
-        token: "e30.eyJzdWIiOiJlMmUtdXNlciJ9.sig",
-      }),
-    );
-  });
+  await seedUserScopedToken(page);
   await page.goto("/");
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
 
-  // Let the async persister commit this populated board, then make its next
-  // IndexedDB read visibly slow. This pins the startup race: no activity read
-  // may start while the older, populated cache is still being restored.
-  await page.waitForFunction(
-    () =>
-      new Promise<boolean>((resolve) => {
-        const open = indexedDB.open("houston-query-cache", 1);
-        open.onsuccess = () => {
-          const request = open.result
-            .transaction("kv", "readonly")
-            .objectStore("kv")
-            .get("houston.list-queries");
-          request.onsuccess = () => resolve(typeof request.result === "string");
-          request.onerror = () => resolve(false);
-        };
-        open.onerror = () => resolve(false);
-      }),
-  );
+  // Let the async persister commit this populated board (the write throttle
+  // lags the fetch by a second or more — wait for the CONTENT, not just the
+  // store), then make its next IndexedDB read visibly slow. This pins the
+  // startup race: no activity read may start while the older, populated cache
+  // is still being restored.
+  await expect
+    .poll(async () => (await persistedMirrorHeads(page)) ?? [], {
+      timeout: 15_000,
+    })
+    .toContain("activity");
   await page.addInitScript(() => {
     const nativeGet = IDBObjectStore.prototype.get;
     IDBObjectStore.prototype.get = function delayedGet(query) {
@@ -91,6 +126,90 @@ test("restores cached missions before starting fresh board reads", async ({
 
   expect(activityReads).toBe(0);
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+});
+
+/**
+ * The cold-open reality check: on a real cloud boot every per-agent read
+ * hangs behind the gateway for the whole pod wake (~seconds), so the ONLY
+ * thing that can paint the board immediately is what's cached locally. The
+ * restore test above can't prove that — its live read answers instantly and
+ * would paint the card even if the restored data never reached the board.
+ *
+ * This models the exact production failure: the per-agent `["activity", X]`
+ * mirror entry is MISSING (it only lands when a session with X's board open
+ * outlives the pod wake plus the persist throttle), while the aggregate the
+ * sidebar badges paint from is present (it's swept every session). The board
+ * must seed its cards from that aggregate instead of showing empty columns
+ * for the whole wake — the badge says 2 missions, the columns must agree.
+ */
+test("paints cached missions immediately while cold-start reads are held", async ({
+  page,
+  request,
+}) => {
+  await seedUserScopedToken(page);
+  await page.goto("/");
+  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+
+  // Let the async persister commit both list surfaces to IndexedDB.
+  await expect
+    .poll(
+      async () => {
+        const heads = (await persistedMirrorHeads(page)) ?? [];
+        return (
+          heads.includes("activity") && heads.includes("all-conversations")
+        );
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+
+  // Drop the per-agent board entries, keeping the aggregate — the mirror a
+  // real cold open typically finds. The app is idle here (no cache events →
+  // no persister rewrites), so the strip sticks until the reload.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open("houston-query-cache", 1);
+        open.onsuccess = () => {
+          const store = open.result
+            .transaction("kv", "readwrite")
+            .objectStore("kv");
+          const get = store.get("houston.list-queries");
+          get.onsuccess = () => {
+            const parsed = JSON.parse(get.result as string) as {
+              clientState: { queries: { queryKey: unknown[] }[] };
+            };
+            parsed.clientState.queries = parsed.clientState.queries.filter(
+              (q) => q.queryKey[0] !== "activity",
+            );
+            const put = store.put(
+              JSON.stringify(parsed),
+              "houston.list-queries",
+            );
+            put.onsuccess = () => resolve();
+            put.onerror = () => reject(put.error);
+          };
+          get.onerror = () => reject(get.error);
+        };
+        open.onerror = () => reject(open.error);
+      }),
+  );
+  const stripped = (await persistedMirrorHeads(page)) ?? [];
+  expect(stripped).toContain("all-conversations");
+  expect(stripped).not.toContain("activity");
+
+  // Cold open: every per-agent read now stalls the way an asleep pod's do.
+  await request.post(`${FAKE_HOST_URL}/__test__/hold-agent-reads`, {
+    data: { ms: 8_000 },
+  });
+  await page.reload();
+
+  // The cards must come from the locally cached aggregate — well before any
+  // held read can answer. 4s of grace for the reload+restore, far under the
+  // 8s hold.
+  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible({
+    timeout: 4_000,
+  });
 });
 
 test("opens a mission's chat when its card is clicked", async ({ page }) => {
