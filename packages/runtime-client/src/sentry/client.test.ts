@@ -88,18 +88,20 @@ describe("createEngineSentry", () => {
     expect(events[0]?.level).toBe("error");
   });
 
-  it("captureLog: bare-string ERROR carries a synthetic stack at the log site", async () => {
+  it("captureLog: bare-string ERROR carries a synthetic thread stack at the log site", async () => {
     const { sentry, events } = testSentry();
     sentry.captureLog("ERROR", ["stackless failure"]);
     await sentry.flush();
 
-    const exception = events[0]?.exception?.values?.[0];
-    const frames = exception?.stacktrace?.frames ?? [];
+    // The stack rides as a thread — NOT an exception — so the issue title
+    // stays the message instead of the top frame's function name.
+    expect(events[0]?.exception).toBeUndefined();
+    expect(events[0]?.message).toBe("stackless failure");
+    const frames = events[0]?.threads?.values?.[0]?.stacktrace?.frames ?? [];
     expect(frames.length).toBeGreaterThan(0);
     // The reporter's own frames (captureLog/guarded in client.ts) are trimmed
-    // so the culprit is the code that logged, not the crash reporter.
+    // so the innermost frame is the code that logged, not the crash reporter.
     expect(frames[frames.length - 1]?.filename).toMatch(/client\.test\.ts$/);
-    expect(exception?.mechanism?.synthetic).toBe(true);
   });
 
   it("captureLog: Node process warnings via console.error stay breadcrumbs", async () => {
