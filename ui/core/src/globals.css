@@ -65,6 +65,8 @@
   --color-action: var(--ht-action);
   --color-action-text: var(--ht-action-text);
   --color-chip: var(--ht-chip);
+  --color-chip-solid: var(--ht-chip-solid);
+  --color-chip-solid-hover: var(--ht-chip-solid-hover);
   --color-chip-text: var(--ht-chip-text);
   --color-chip-subtle: var(--ht-chip-subtle);
   --color-ink-muted: var(--ht-ink-muted);

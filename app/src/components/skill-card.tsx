@@ -23,7 +23,8 @@ interface Props {
  * The single source of truth for "skill card" visual treatment used in
  * the chat empty state and the New Mission picker.
  *
- * Visual contract: `rounded-2xl` card on `bg-chip`, 48px grayscale
+ * Visual contract: `rounded-2xl` card on the SOLID chip fill (`bg-chip-solid`
+ * — the alpha `bg-chip` read see-through over translucent surfaces), 48px grayscale
  * image bubble on the left, title + description stacked on the right and
  * vertically centered.
  */
@@ -45,7 +46,7 @@ export function SkillCard({
       disabled={disabled}
       aria-busy={busy || undefined}
       className={cn(
-        "flex items-center gap-4 rounded-2xl bg-chip p-4 text-left transition-colors duration-200 hover:bg-hover disabled:opacity-50 disabled:cursor-not-allowed w-full",
+        "flex items-center gap-4 rounded-2xl bg-chip-solid p-4 text-left transition-colors duration-200 hover:bg-chip-solid-hover disabled:opacity-50 disabled:cursor-not-allowed w-full",
         className,
       )}
     >
