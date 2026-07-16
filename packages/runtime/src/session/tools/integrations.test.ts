@@ -156,7 +156,7 @@ test("a connectable toolkit-level entry names the slug and teaches request_conne
   expect(text).toContain("request_connection tool");
 });
 
-test("a blocked app sends the user to their admin and never offers request_connection", async () => {
+test("a blocked app points the user at the agent's Permissions tab and never offers request_connection", async () => {
   mockFetch(() => ({
     body: {
       items: [
@@ -172,9 +172,11 @@ test("a blocked app sends the user to their admin and never offers request_conne
   }));
   const out = await run(search, { query: "salesforce" });
   const text = (out.content[0] as { text: string }).text;
-  expect(text).toContain("- salesforce (app, BLOCKED by admin): Salesforce");
-  expect(text).toContain("admin has not enabled these apps");
-  expect(text).toContain("ask their admin");
+  expect(text).toContain("- salesforce (app, TURNED OFF): Salesforce");
+  expect(text).toContain("turned off for this agent");
+  // The new, Permissions-tab-aware copy — never the old "ask your admin".
+  expect(text).toContain("this agent's Permissions tab");
+  expect(text).not.toContain("admin");
   // The guidance explicitly forbids the connect card for a blocked app.
   expect(text).toContain("Do NOT call request_connection");
   // And it never offers to connect it (no "not connected yet" connect prompt).
@@ -400,6 +402,50 @@ test("a 409 (approval_required) queues an approval step and returns a NORMAL ins
       },
     ],
   });
+});
+
+test("a 403 (toolkit_not_allowed) returns Permissions-tab guidance, not a raw error", async () => {
+  // The gateway walls off an execute whose app is outside this agent's
+  // allowlist (turned off in the Permissions tab). The sandbox proxy relays the
+  // 403 body verbatim, so the runtime classifies it by its stable code and
+  // RETURNS guidance — being walled off is a user-fixable state, not a failure.
+  mockFetch(() => ({
+    status: 403,
+    body: {
+      error: "salesforce is not an allowed integration for this agent",
+      code: "toolkit_not_allowed",
+    },
+  }));
+  const holder = newInteractionHolder();
+  const out = await runWithInteractionCapture(holder, () =>
+    run(execute, {
+      action: "SALESFORCE_CREATE_LEAD",
+      params: { name: "Acme" },
+    }),
+  );
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("turned off for this agent");
+  expect(text).toContain("this agent's Permissions tab");
+  // It tells the model NOT to retry, and never to imply Houston lacks the app.
+  expect(text).toContain("Do not retry");
+  expect(text).toContain("never imply Houston lacks the app");
+  expect(text).not.toContain("admin");
+  expect(out.details).toEqual({
+    action: "SALESFORCE_CREATE_LEAD",
+    appTurnedOff: true,
+  });
+  // No interaction card is queued — the fix lives in the Permissions tab.
+  expect(holder.pending).toBeUndefined();
+});
+
+test("a RELAYED upstream 403 (no code) stays a generic error, not the turned-off guidance", async () => {
+  // Symmetric to the transient 503/409 cases: an upstream 403 the proxy relays
+  // verbatim lacks the toolkit_not_allowed code, so it must NOT be read as the
+  // allowlist refusal — it surfaces as a generic error.
+  mockFetch(() => ({ status: 403, body: { error: "forbidden by upstream" } }));
+  await expect(run(execute, { action: "X" })).rejects.toThrow(
+    /integrations execute failed \(403\)/,
+  );
 });
 
 test("a malformed approval payload falls through to the generic error throw", async () => {

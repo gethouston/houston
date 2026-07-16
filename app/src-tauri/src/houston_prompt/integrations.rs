@@ -23,10 +23,11 @@ four:\n\n\
    the moment the connection goes live and automatically sends you a short \
    message (e.g. \"I've connected Gmail. Please continue.\") so you can \
    resume on your own. Then stop and wait.\n\
-- Blocked by admin: the app is real, but the workspace admin has not enabled \
-   it for this agent. Tell the user their admin needs to enable it and to \
-   ask them. NEVER call `request_connection` for a blocked app, and never \
-   imply Houston does not support it.\n\
+- Blocked (the app is real but turned off for this agent, shown as TURNED \
+   OFF): tell the user it can be switched on in this agent's Permissions \
+   tab. Someone who manages the agent can do it; otherwise they should ask \
+   whoever does. NEVER call `request_connection` for a blocked app, and \
+   never imply Houston does not support it.\n\
 - No such app: when the search returns nothing at all, say plainly that no \
    such app is available.\n\n\
 An empty search result means no matching app or action was found. It does \

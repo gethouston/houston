@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 import { houstonSystemPrompt } from "./houston-prompt";
 
@@ -58,6 +60,51 @@ test("integrations guidance teaches the tools + the request_connection card", ()
   // The markdown-link connect hack is gone; the connect card is a tool now.
   expect(p).not.toContain("houston_toolkit");
   expect(p).not.toContain("markdown link");
+});
+
+/**
+ * Collapse whitespace + strip the Rust string-literal escapes (line
+ * continuations `\<nl>`, literal `\n`, escaped quotes `\"`) so a phrase can be
+ * matched across BOTH mirrors regardless of source wrapping/formatting.
+ */
+function norm(s: string): string {
+  return s
+    .replace(/\\\r?\n[ \t]*/g, "") // Rust line continuations
+    .replace(/\\n/g, "") // literal \n escapes
+    .replace(/\\"/g, '"') // escaped quotes
+    .replace(/\s+/g, "");
+}
+
+test("the new blocked speech act lands in BOTH the TS prompt and the Rust mirror", () => {
+  // Guards the sync contract for the CHANGED copy (byte-for-byte parity of the
+  // whole file trips on a pre-existing em-dash/hyphen divergence, so pin the
+  // load-bearing blocked-act strings instead): the app must be described as
+  // turned off for THIS agent, fixable in the agent's Permissions tab, and the
+  // request_connection ban preserved — in both the host prompt and the Rust
+  // `PI_INTEGRATIONS_GUIDANCE` the desktop ships.
+  const rust = readFileSync(
+    fileURLToPath(
+      new URL(
+        "../../../app/src-tauri/src/houston_prompt/integrations.rs",
+        import.meta.url,
+      ),
+    ),
+    "utf8",
+  );
+  const ts = norm(houstonSystemPrompt());
+  const rs = norm(rust);
+  for (const phrase of [
+    "turned off for this agent",
+    "switched on in this agent's Permissions tab",
+    "NEVER call `request_connection` for a blocked app",
+  ]) {
+    const needle = norm(phrase);
+    expect(ts).toContain(needle);
+    expect(rs).toContain(needle);
+  }
+  // The pre-simplification "ask your admin" framing is gone from both.
+  expect(ts).not.toContain(norm("their admin needs to enable"));
+  expect(rs).not.toContain(norm("their admin needs to enable"));
 });
 
 test("blocking questions, choices, and approvals route through the ask_user tool", () => {
