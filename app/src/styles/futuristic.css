@@ -109,41 +109,29 @@ body::before {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
-/* Modal surface (`bg-dialog`). Dark renders identically to the old glass
-   `bg-card` — frosted blur + subtle top sheen so the aurora bleeds through.
-   Light uses the opaque-white `dialog` token, so the blur is a no-op on the
-   solid fill and the sheen is invisible on white: a plain solid-white modal,
-   not a see-through one. */
-.bg-dialog {
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-
+/* Modal surface (`bg-dialog`). SOLID in both themes (the `dialog` token:
+   neutral.800 dark, white light) — no glass, no backdrop-filter. Modals sit
+   over arbitrary content and must never bleed it through; WebView2 in the
+   desktop shell doesn't reliably composite backdrop-filter anyway (the dark
+   "New agent" modal bled the Settings page through, and light washed out
+   too). Only the subtle top sheen remains. */
 [data-theme="dark"] .bg-dialog {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 /* ── 3b. Desktop shell: opaque floating surfaces ────────────────
-   The glass popover/dialog fills are TRANSLUCENT by design and read as
-   solid only through the backdrop-filter blur above. In the Tauri
-   desktop shell, WebView2 does not reliably composite backdrop-filter
+   The glass popover fill is TRANSLUCENT by design and reads as solid
+   only through the backdrop-filter blur above. In the Tauri desktop
+   shell, WebView2 does not reliably composite backdrop-filter
    (GPU/driver dependent — it silently no-ops on affected machines), so
-   the bare alpha fill painted see-through: the dark "New agent" modal
-   over Settings, the routines "…" menu in both themes. `@supports`
-   can't catch this (the property parses fine; compositing is what
-   fails), so the desktop entry stamps `data-desktop` on <html>
-   (lib/desktop-surface.ts) and the FLOATING surfaces — the ones that
-   sit over content and must never bleed it through — fall back to the
-   solid token equivalents. The web build keeps its frosted glass. */
+   the bare alpha fill painted see-through (the routines "…" menu in
+   both themes). `@supports` can't catch this (the property parses
+   fine; compositing is what fails), so the desktop entry stamps
+   `data-desktop` on <html> (lib/desktop-surface.ts) and the popover
+   falls back to the solid token equivalent. The web build keeps its
+   frosted glass. */
 html[data-desktop] .bg-popover {
   background-color: var(--ht-popover-solid);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-html[data-desktop] .bg-dialog {
-  background-color: var(--ht-dialog-solid);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
