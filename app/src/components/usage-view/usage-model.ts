@@ -73,6 +73,34 @@ export function formatResetWhen(
  * balances ("$12.34"), a plain localized number for provider-internal credit
  * units (the caller wraps it in the "left" phrase).
  */
+/**
+ * A localized compact count for the metered token totals ("1.2M", "34.5K"),
+ * so the card's spend line stays glanceable at any magnitude.
+ */
+export function formatTokensAmount(tokens: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Math.max(0, tokens));
+}
+
+/**
+ * A localized short date ("Jun 12") for the instant metering started, or null
+ * when the ledger predates the `since` stamp / carries junk — the card then
+ * omits its "since" note instead of showing "Invalid Date".
+ */
+export function formatMeteredSince(
+  since: string,
+  locale: string,
+): string | null {
+  const t = Date.parse(since);
+  if (Number.isNaN(t)) return null;
+  return new Intl.DateTimeFormat(locale, {
+    month: "short",
+    day: "numeric",
+  }).format(t);
+}
+
 export function formatCreditsAmount(
   credits: NonNullable<ProviderUsage["credits"]>,
   locale: string,

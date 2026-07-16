@@ -219,16 +219,20 @@ describe("credit balances", () => {
 
 describe("listProviderUsage", () => {
   it("fans out per connected provider; one failure never sinks the batch", async () => {
-    const rows = await listProviderUsage(["anthropic", "google", "deepseek"], {
-      anthropic: async () => ({
-        provider: "anthropic",
-        status: "ok" as const,
-        windows: [],
-      }),
-      deepseek: async () => {
-        throw new Error("network down");
+    const rows = await listProviderUsage(
+      ["anthropic", "google", "deepseek"],
+      {
+        anthropic: async () => ({
+          provider: "anthropic",
+          status: "ok" as const,
+          windows: [],
+        }),
+        deepseek: async () => {
+          throw new Error("network down");
+        },
       },
-    });
+      () => null, // nothing metered locally
+    );
     expect(rows).toHaveLength(3);
     expect(rows[0].status).toBe("ok");
     expect(rows[1]).toEqual({
@@ -238,6 +242,33 @@ describe("listProviderUsage", () => {
     });
     expect(rows[2].status).toBe("error");
     expect(rows[2].message).toBe("network down");
+  });
+
+  it("serves the local token ledger for providers with no fetcher", async () => {
+    const spend = {
+      inputTokens: 12_000,
+      outputTokens: 3_400,
+      turns: 7,
+      since: "2026-07-01T00:00:00.000Z",
+    };
+    const rows = await listProviderUsage(
+      ["google", "amazon-bedrock"],
+      {},
+      (provider) => (provider === "google" ? spend : null),
+    );
+    expect(rows[0]).toMatchObject({
+      provider: "google",
+      status: "ok",
+      windows: [],
+      tokens: spend,
+    });
+    expect(rows[0].fetchedAt).toEqual(expect.any(String));
+    // Never metered → still the honest `unsupported` row.
+    expect(rows[1]).toEqual({
+      provider: "amazon-bedrock",
+      status: "unsupported",
+      windows: [],
+    });
   });
 });
 

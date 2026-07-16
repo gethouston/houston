@@ -126,6 +126,23 @@ export interface ProviderUsageCredits {
   unit: "USD" | "credits";
 }
 
+/**
+ * Cumulative token spend metered locally by Houston, for API-key providers
+ * with no account-usage API to probe (Gemini, Bedrock, OpenCode, MiniMax,
+ * custom endpoints). Accumulated from each turn's `TokenUsage` by the
+ * long-lived runtime: `inputTokens` sums every request's full prompt
+ * (cache-inclusive, what the provider bills as input), `outputTokens` sums
+ * generated tokens.
+ */
+export interface ProviderUsageTokens {
+  inputTokens: number;
+  outputTokens: number;
+  /** Turns metered into this row. */
+  turns: number;
+  /** ISO 8601 instant metering started (the first recorded turn). */
+  since: string;
+}
+
 export type ProviderUsageStatus =
   | "ok"
   | "unsupported" // the provider has no usage surface Houston can read
@@ -143,6 +160,8 @@ export interface ProviderUsage {
   status: ProviderUsageStatus;
   windows: ProviderUsageWindow[];
   credits?: ProviderUsageCredits;
+  /** Locally metered token spend, for providers with no usage API to probe. */
+  tokens?: ProviderUsageTokens;
   /** Plan/tier name when the provider reports one (e.g. Codex "pro"). */
   plan?: string;
   /** ISO 8601 instant the row was fetched (`ok` rows only). */
