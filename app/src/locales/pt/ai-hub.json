@@ -157,12 +157,10 @@
     },
     "sections": {
       "subscriptions": {
-        "title": "Assinaturas de IA",
-        "subtitle": "Planos com os quais você entrou e quanto dos limites deles você usou."
+        "title": "Assinaturas de IA"
       },
       "perToken": {
-        "title": "IA por token",
-        "subtitle": "Contas de pagamento por uso, cobradas pelo que você usa."
+        "title": "IA por token"
       }
     },
     "compute": {

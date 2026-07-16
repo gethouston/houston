@@ -157,12 +157,10 @@
     },
     "sections": {
       "subscriptions": {
-        "title": "AI subscriptions",
-        "subtitle": "Plans you signed in with, and how much of their limits you've used."
+        "title": "AI subscriptions"
       },
       "perToken": {
-        "title": "AI per token",
-        "subtitle": "Pay-as-you-go accounts, billed by what you use."
+        "title": "AI per token"
       }
     },
     "compute": {

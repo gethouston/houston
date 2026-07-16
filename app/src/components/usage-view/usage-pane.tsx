@@ -76,9 +76,9 @@ export function UsagePane({
 }
 
 /**
- * One labeled billing section (header + subtitle + card grid). An empty
- * section renders nothing — a user with only one kind of account sees one
- * clean section, not an empty shell.
+ * One labeled billing section (header + card grid). An empty section renders
+ * nothing — a user with only one kind of account sees one clean section, not
+ * an empty shell.
  */
 function UsageSection({
   sectionKey,
@@ -94,9 +94,6 @@ function UsageSection({
       <h2 className="text-sm font-medium text-ink">
         {t(`usage.sections.${sectionKey}.title`)}
       </h2>
-      <p className="text-sm text-ink-muted">
-        {t(`usage.sections.${sectionKey}.subtitle`)}
-      </p>
       <ul className="mt-3 grid gap-3 sm:grid-cols-2">
         {accounts.map((account) => (
           <UsageProviderCard key={account.provider.id} account={account} />
