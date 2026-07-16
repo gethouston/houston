@@ -29,7 +29,8 @@ export function useFileToolRenderer(agentPath: string) {
   const renderToolResult = useCallback(
     (tool: ToolEntry, index: number) => {
       const inp = tool.input as Record<string, unknown> | null | undefined;
-      const filePath = inp?.file_path as string | undefined;
+      // Claude tools carry `file_path`; pi tools carry `path`.
+      const filePath = (inp?.file_path ?? inp?.path) as string | undefined;
       const isError = tool.result?.is_error ?? false;
 
       return (

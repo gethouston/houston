@@ -14,6 +14,7 @@
  */
 
 import App from "@houston/app/App";
+import { AgentFilePreviewHost } from "@houston/app/components/agent-file-preview-host";
 import { DisclaimerGate } from "@houston/app/components/shell/disclaimer-gate";
 import { LanguageGate } from "@houston/app/components/shell/language-gate";
 import { QueryPersistenceProvider } from "@houston/app/components/shell/query-persistence-provider";
@@ -146,6 +147,9 @@ export default function AppTree() {
                 <LanguageGate>
                   <DisclaimerGate>
                     <App />
+                    {/* Global workspace-file preview (chat file clicks) —
+                        mirrors app/src/main.tsx. */}
+                    <AgentFilePreviewHost />
                   </DisclaimerGate>
                 </LanguageGate>
               </I18nextProvider>

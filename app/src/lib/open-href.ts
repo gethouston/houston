@@ -1,41 +1,14 @@
-import { logger } from "./logger";
-import { tauriFiles, tauriSystem } from "./tauri";
-
 /**
- * Open a link the agent emitted in chat. Two shapes land here:
+ * URL-vs-file-path detection for links the agent emits in chat. The click
+ * handling itself lives in `hooks/use-open-agent-file.tsx` (`useOpenAgentHref`);
+ * this stays a pure predicate so non-React code can share it.
  *
- *   1. Absolute URLs — `https://...`, `http://...`, `mailto:...`, `houston://...`,
- *      etc. These go to the system browser via `tauriSystem.openUrl`.
- *
- *   2. Relative or bare paths — e.g. `perfil.md`, `subfolder/output.docx`,
- *      `./report.pdf`. The agent's prompt structure encourages it to drop
- *      these straight after writing a file. They are NOT URLs; calling
- *      `openUrl("perfil.md")` on Windows silently does nothing
- *      (a real user reported "perfil.md pill doesn't open"). Resolve
- *      them against the current agent's working directory via
- *      `tauriFiles.open`, which goes through the engine's
- *      `open_file_in_agent` route and ends up at the OS's
- *      default-app handler.
- *
- * The detection is "does it look like a URL" — anything with a scheme
- * (`<word>:`) or starting with `//` is treated as a URL. Everything
- * else is a path.
+ * Anything with a scheme (`<word>:`) or starting with `//` is a URL.
+ * Everything else is a workspace file path — e.g. `perfil.md`,
+ * `subfolder/output.docx`, `./report.pdf` — which the agent's prompt
+ * structure encourages dropping straight after writing a file.
  */
-export function openAgentHref(href: string, agentPath: string): void {
-  const trimmed = href.trim();
-  if (!trimmed) return;
-  if (looksLikeUrl(trimmed)) {
-    tauriSystem.openUrl(trimmed).catch((e) => {
-      logger.warn(`[open-href] openUrl(${trimmed}) failed: ${e}`);
-    });
-    return;
-  }
-  tauriFiles.open(agentPath, trimmed).catch((e) => {
-    logger.warn(`[open-href] openFile(${trimmed}) failed: ${e}`);
-  });
-}
-
-function looksLikeUrl(value: string): boolean {
+export function looksLikeUrl(value: string): boolean {
   if (value.startsWith("//")) return true;
   // Scheme: a leading run of letters / digits / + - . followed by `:`.
   // Catches http, https, mailto, file, houston (deep-link),

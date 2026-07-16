@@ -9,15 +9,17 @@ import {
 } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSaveDownload } from "../../hooks/use-save-download";
-import { genericErrorDescription } from "../../lib/error-toast";
-import { tauriFiles } from "../../lib/tauri";
+import { useSaveDownload } from "../hooks/use-save-download";
+import { genericErrorDescription } from "../lib/error-toast";
+import { tauriFiles } from "../lib/tauri";
 
 /**
- * In-browser preview for a workspace file (web build). Images, PDFs and
- * text-ish files render inline; everything else (pptx, xlsx, …) gets a
- * "download to open" fallback. Bytes come over the authenticated download
- * route, so nothing here assumes a local filesystem.
+ * In-app preview for a workspace file (web build, cloud pods, remote hosts).
+ * Images, PDFs and text-ish files render inline; everything else (pptx,
+ * xlsx, …) gets a "download to open" fallback. Bytes come over the
+ * authenticated download route, so nothing here assumes a local filesystem.
+ * Opened from the Files tab and from chat file surfaces (file cards, turn
+ * summaries, prose file pills) via `useOpenAgentFile`.
  */
 
 const TEXT_PREVIEW_LIMIT = 256 * 1024;

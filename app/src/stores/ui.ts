@@ -15,6 +15,16 @@ export interface ToastItem {
 
 export type JobDescriptionTarget = "instructions" | "skills" | "learnings";
 
+/** A workspace file queued for the global in-app preview dialog (chat file
+ * cards, turn summaries, prose file pills — HOU: preview files from chat). */
+export interface FilePreviewTarget {
+  /** The agent's `folderPath` (route key / directory, per engine). */
+  agentPath: string;
+  /** Workspace-relative path of the file. */
+  filePath: string;
+  fileName: string;
+}
+
 interface UIState {
   viewMode: string;
   /** A one-shot deep-link consumed by SettingsView on mount: other surfaces set
@@ -93,6 +103,8 @@ interface UIState {
   storeFocusSlug: string | null;
   /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
   sidebarCollapsed: boolean;
+  /** File shown by the global preview dialog, or null when closed. */
+  filePreview: FilePreviewTarget | null;
   setViewMode: (mode: string) => void;
   setSettingsSection: (section: SettingsSectionId | null) => void;
   setAssistantPanelOpen: (open: boolean) => void;
@@ -133,6 +145,7 @@ interface UIState {
   setStoreFocusSlug: (slug: string | null) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
+  setFilePreview: (preview: FilePreviewTarget | null) => void;
 }
 
 let toastCounter = 0;
@@ -175,6 +188,7 @@ export const useUIStore = create<UIState>()(
       importSeedPreview: null,
       storeFocusSlug: null,
       sidebarCollapsed: false,
+      filePreview: null,
 
       setViewMode: (viewMode) => set({ viewMode }),
       setSettingsSection: (settingsSection) => set({ settingsSection }),
@@ -299,6 +313,7 @@ export const useUIStore = create<UIState>()(
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       toggleSidebarCollapsed: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      setFilePreview: (filePreview) => set({ filePreview }),
     }),
     {
       name: "houston-ui",
