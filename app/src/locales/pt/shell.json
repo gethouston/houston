@@ -252,6 +252,7 @@
       "reports": "Toda sexta eu monto um relatório de status da equipe a partir de atualizações e planilhas espalhadas",
       "research": "Preciso de pesquisa de mercado e da concorrência resumida em briefings que eu possa compartilhar"
     },
+    "modelLabel": "Modelo de IA",
     "generateButton": "Projetar meu agente",
     "generatingMessage": "Seu consultor está desenhando o agente...",
     "cancelButton": "Cancelar",

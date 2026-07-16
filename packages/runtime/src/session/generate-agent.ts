@@ -1,4 +1,5 @@
 import type { GenerateAgentResponse } from "@houston/runtime-client";
+import { DEFAULT_REASONING_EFFORT, type PiThinkingLevel } from "../ai/effort";
 import {
   buildActiveCustomModel,
   OPENAI_COMPATIBLE,
@@ -70,6 +71,20 @@ export function resolveGenerateModel(provider?: string, model?: string) {
 }
 
 /**
+ * The generation turn's reasoning level. The create dialog's picker offers no
+ * effort control, so a reasoning-capable model always runs at "medium" (the
+ * same default a chat turn applies when the user chose nothing; pi clamps it
+ * to the model). Non-reasoning models omit the level entirely.
+ */
+export function generateThinkingLevel(
+  model: unknown,
+): PiThinkingLevel | undefined {
+  const reasons =
+    (model as { reasoning?: boolean } | null | undefined)?.reasoning === true;
+  return reasons ? DEFAULT_REASONING_EFFORT : undefined;
+}
+
+/**
  * Generate agent instructions from a plain-language description. `provider` /
  * `model` are pi ids (the adapter migrates legacy ids before calling).
  */
@@ -77,13 +92,15 @@ export async function generateAgentInstructions(
   description: string,
   opts: { provider?: string; model?: string } = {},
 ): Promise<GenerateAgentResponse> {
+  const model = resolveGenerateModel(opts.provider, opts.model);
   const raw = await oneShotText({
     cwd: config.workspaceDir,
-    model: resolveGenerateModel(opts.provider, opts.model),
+    model,
     authStorage,
     modelRegistry,
     systemPrompt: GENERATE_PROMPT,
     prompt: description,
+    thinkingLevel: generateThinkingLevel(model),
   });
   return parseGenerateResult(raw);
 }

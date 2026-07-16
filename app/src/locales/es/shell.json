@@ -252,6 +252,7 @@
       "reports": "Cada viernes armo un informe de estado del equipo a partir de actualizaciones y hojas dispersas",
       "research": "Necesito investigación de mercado y de la competencia resumida en informes que pueda compartir"
     },
+    "modelLabel": "Modelo de IA",
     "generateButton": "Diseñar mi agente",
     "generatingMessage": "Tu consultor está diseñando el agente...",
     "cancelButton": "Cancelar",
