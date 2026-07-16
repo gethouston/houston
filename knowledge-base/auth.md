@@ -3,7 +3,9 @@
 Houston's client sign-in runs on **GCP Identity Platform (Firebase Auth)**,
 project `gethouston`. Five ways in: **Google**, **Apple**, **Microsoft**,
 passwordless **6-digit email code**, and (operators only) **email + password**
-on `/admin`.
+on `/admin`. Apple is per-surface: web popup, desktop GCIP-brokered loopback,
+and **native** on iOS (`SignInWithAppleButton`), where App Store guideline 4.8
+makes it mandatory alongside Google — see "iOS (native app)" below.
 CI-release session tokens live in the macOS Keychain / Windows DPAPI, never
 localStorage or disk. Local dev builds use worktree-scoped browser storage to
 avoid repeated macOS Keychain prompts. Sign-in identifies the user in PostHog and
@@ -160,6 +162,42 @@ decodeIdTokenClaims(idToken) fills uid/email/name → Session (provider: "custom
 The gateway base URL is the engine URL the client already has
 (`auth-gateway.ts` `gatewayUrl()` → `resolveEngine` / `window.__HOUSTON_ENGINE__.baseUrl`;
 a typed throw when none is configured, never a silent no-op).
+
+### iOS (native app) — `houston/mobile/ios/Houston/Core/Auth/`
+
+The iOS app is a **REST GCIP client like the desktop** (the app has a
+zero-third-party-packages policy, so no firebase-ios-sdk). Four ways in, all
+landing on the same `AuthSession` (Firebase ID token = the gateway bearer,
+Keychain-persisted, proactive + on-demand refresh via securetoken):
+
+- **Apple (native)** — SwiftUI `SignInWithAppleButton` →
+  `ASAuthorizationAppleIDCredential.identityToken` + a nonce pair (SHA-256 hex
+  to Apple, raw to GCIP) → `signInWithIdp(apple.com)`
+  (`AuthController+Apple.swift`, `AppleNonce.swift`). Fully native — unlike the
+  web popup / desktop brokered flows above, it needs no Services ID or secret,
+  only the `apple.com` IdP enabled (`cloud/infra/terraform/identity.tf`) and
+  the Sign in with Apple capability on the App ID. Apple returns the user's
+  name only on FIRST authorization — carried into the session as a fallback
+  display name.
+- **Google** — `ASWebAuthenticationSession` + PKCE (S256) against an **iOS-type
+  OAuth client** (public, secret-less; redirect = the reversed-client-ID
+  scheme), token exchange, `id_token` → `signInWithIdp(google.com)`
+  (`OAuthCodeFlow.swift`, `ProviderSpecs.swift`). Deliberately NOT the
+  desktop's installed-app client (that one carries a baked secret).
+- **Microsoft** — same `OAuthCodeFlow`, Entra `common` tenant public client,
+  redirect `houston://auth-callback` (listed under the Azure app's
+  "Mobile and desktop applications").
+- **Email code** — the same gateway OTP contract as desktop/web →
+  `signInWithCustomToken`; identity comes from decoded ID-token claims
+  (`EmailOtpClient.swift`, `IdTokenClaims.swift`).
+
+Google/Microsoft client ids are paste-in constants in `App/Config.swift`;
+while empty those buttons surface the `providerDisabled` copy (never a silent
+no-op). Errors map once to the desktop taxonomy (`IdentityError.swift` mirrors
+`identity/errors.ts`; `AuthErrorCopy.swift` mirrors `auth-errors.ts`; copy
+mirrors `errors:auth.*` in en/es/pt). A legacy Supabase Keychain blob is
+discarded-with-log on load (the `session-store.ts` lesson). Wire shapes are
+pinned by `HoustonTests/Auth/*` against `identity/firebase-rest.ts`.
 
 ### Admin (`/admin`) — email/password + Google popup
 
@@ -386,6 +424,14 @@ the full checklist and open human tasks. In brief:
    `cloud/` gateway build (contract pinned in `identity/otp.ts`).
 6. **Gateway verifier** — issuer/JWKS swap to Firebase is a `cloud` Go change; the
    gateway must accept Firebase tokens before/with the client cutover.
+7. **iOS** — register a Google **iOS** OAuth client in project `gethouston` and
+   paste its id into `mobile/ios/Houston/App/Config.swift`; add
+   `houston://auth-callback` to the Azure app registration's mobile redirect
+   URIs and paste the app id likewise; enable the Sign in with Apple capability
+   on App ID `com.gethouston.Houston` and apply the `apple.com` IdP terraform
+   (`cloud/infra/terraform/identity.tf`); create the App Store Connect app
+   record for TestFlight (`.github/workflows/ios-testflight.yml`, secret
+   `APPLE_TEAM_ID`).
 
 ## What's deliberately out of scope
 

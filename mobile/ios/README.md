@@ -38,9 +38,14 @@ open Houston.xcodeproj
 #    (Settings → Privacy & Security → Developer Mode), select it, and Run.
 ```
 
-`Houston/App/Config.swift` ships the production Supabase project URL and anon
-public key (public by design — RLS-guarded, baked into every client). Point
-them at your own Supabase project only if you run your own gateway.
+`Houston/App/Config.swift` ships the production GCIP (Firebase Auth) API key
+and project id (public by design — access is gated by provider config and the
+gateway allowlist, exactly as the desktop bakes them). Two constants are left
+empty for you to paste after the one-time registrations: the Google **iOS**
+OAuth client id and the Microsoft Entra app (client) id — until then those two
+buttons surface a clear "not available yet" error; Apple and the email code
+work without them. Point the constants at your own Firebase project only if
+you run your own gateway.
 
 ## Layout
 
@@ -51,7 +56,7 @@ mobile/ios/
     App/                   @main app, config, root routing, tab shell
     Core/Runtime/          JavaScriptCore host (JSRuntime + polyfills)
     Core/Bridge/           SdkClient facade, Codable models, transport + native ports
-    Core/Auth/             Supabase auth + SignInView
+    Core/Auth/             GCIP (Firebase) auth: 4 sign-in flows + SignInView
     DesignSystem/          tokens wrapper, Strings, shared styles
     Features/              Agents, AgentMissions, Chat, MissionControl, NewMission,
                            Settings, AIModels, Integrations
@@ -126,6 +131,13 @@ conventions: `knowledge-base/i18n.md` (iOS section).
 - **Signing errors.** `DEVELOPMENT_TEAM` is blank in `project.yml`; set your
   team on the target in Xcode (or export `DEVELOPMENT_TEAM` before
   `xcodegen generate`).
-- **Deep link never returns after Google sign-in.** Confirm the `houston` URL
-  scheme is present in the built app's Info.plist (declared in `project.yml`)
-  and that the Supabase redirect URL matches `Config.authCallbackURL`.
+- **Browser sheet never returns after Google/Microsoft sign-in.** Google's
+  callback scheme is the reversed client id derived from
+  `Config.googleIOSClientID` (no Info.plist entry needed —
+  `ASWebAuthenticationSession` intercepts it); Microsoft redirects to
+  `houston://auth-callback`, which must stay in `project.yml`'s
+  `CFBundleURLTypes` AND in the Azure app registration's mobile redirect URIs.
+- **Sign in with Apple fails with a nonce/config error.** The `apple.com`
+  provider must be enabled in GCIP (terraform: `cloud/infra/terraform/identity.tf`)
+  and the App ID needs the Sign in with Apple capability; the entitlement is
+  already declared in `Houston/Houston.entitlements`.

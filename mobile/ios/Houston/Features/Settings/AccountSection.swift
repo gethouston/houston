@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The Account section: the signed-in user's avatar, name, and email, plus the
 /// Sign out button (PARITY-SETTINGS §1 — sign-out lives here, NO confirm dialog).
-/// Identity comes from the Supabase JWT (`UserProfile`); sign-out calls
+/// Identity comes off the GCIP session (`UserProfile`); sign-out calls
 /// `AuthController.signOut()` via the injected closure.
 struct AccountSection: View {
     @Environment(\.theme) private var theme

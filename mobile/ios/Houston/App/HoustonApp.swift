@@ -9,14 +9,15 @@ import SwiftUI
 ///      restores any stored auth session (which attaches the token).
 ///
 /// All UI decisions live in ``RootView`` / ``RootTabs``; all engine behavior
-/// lives behind ``SdkClient`` (`Core/Bridge/SdkClient.swift`). The Google
-/// sign-in hop uses `ASWebAuthenticationSession` (`Core/Auth/WebAuthSession`),
-/// which captures the `houston://auth-callback` redirect itself — so there is
-/// no app-level `onOpenURL` handler for auth.
+/// lives behind ``SdkClient`` (`Core/Bridge/SdkClient.swift`). The Google and
+/// Microsoft sign-in hops use `ASWebAuthenticationSession`
+/// (`Core/Auth/WebAuthSession`), which captures the OAuth redirect itself — so
+/// there is no app-level `onOpenURL` handler for auth. Apple sign-in is fully
+/// native and the email code flow never leaves the app.
 @main
 struct HoustonApp: App {
-    /// Auth state + Supabase session management. Owns the `SdkClient` token
-    /// seam (`Core/Auth/AuthController.swift`).
+    /// Auth state + GCIP (Firebase) session management. Owns the `SdkClient`
+    /// token seam (`Core/Auth/AuthController.swift`).
     @State private var auth = AuthController.live()
 
     /// Cross-surface "needs you" badge counter (see ``BadgeModel``).
