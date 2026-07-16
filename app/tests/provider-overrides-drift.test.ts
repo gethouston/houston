@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   PROVIDER_ID_RENAME,
   PROVIDER_OVERRIDES,
+  VISIBLE_MODELS,
 } from "../src/lib/provider-overrides.ts";
 
 /**
@@ -56,6 +57,24 @@ describe("PROVIDER_OVERRIDES stay in sync with the shipped pi-ai catalog", () =>
         ok(
           pi.getModel(piId, modelId) != null,
           `PROVIDER_OVERRIDES["${houstonId}"].models["${modelId}"] is an orphan: pi-ai (provider "${piId}") ships no such model. Remove it or fix the id.`,
+        );
+      });
+    }
+  }
+});
+
+describe("VISIBLE_MODELS stay in sync with the shipped pi-ai catalog", () => {
+  // A curated visible id pi doesn't ship is a silent hole in the picker AND the
+  // hub (the model simply never appears); an id typo would hide a model the
+  // curation meant to show. Same real-registry read as the overrides guard.
+  for (const [houstonId, visible] of Object.entries(VISIBLE_MODELS)) {
+    const piId = houstonToPi[houstonId] ?? houstonId;
+
+    for (const modelId of visible) {
+      it(`${houstonId}/${modelId} exists in pi-ai`, () => {
+        ok(
+          pi.getModel(piId, modelId) != null,
+          `VISIBLE_MODELS["${houstonId}"] lists "${modelId}", which pi-ai (provider "${piId}") does not ship. Remove it or fix the id.`,
         );
       });
     }

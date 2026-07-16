@@ -182,6 +182,9 @@
     },
     "modelDescriptions": {
       "gpt-5_5": "OpenAI's frontier model.",
+      "gpt-5_6-sol": "OpenAI's newest frontier model.",
+      "gpt-5_6-terra": "Balanced mid-tier model.",
+      "gpt-5_6-luna": "Fast and cost-efficient for simpler tasks.",
       "gpt-5_4": "Strong model for everyday coding.",
       "gpt-5_4-mini": "Small, fast, and cost-efficient for simpler tasks.",
       "gpt-5_3-codex-spark": "Ultra-fast coding model.",
@@ -189,7 +192,11 @@
       "claude-sonnet-4-6": "Best balance of speed and quality.",
       "claude-opus-4-8": "Latest Opus. Better alignment and agentic coding than 4.7.",
       "claude-fable-5": "Most capable model. Costs 2x more credits than Opus 4.8.",
-      "claude-opus-4-7": "Previous flagship. Strong coding autonomy and complex reasoning."
+      "claude-opus-4-7": "Previous flagship. Strong coding autonomy and complex reasoning.",
+      "gemini-3_5-flash": "Fast and capable. Best default.",
+      "gemini-3_1-flash-lite": "Lightweight and quick for simpler tasks.",
+      "gemma-4-26b-a4b-it": "Google's open Gemma model. Fast and efficient.",
+      "gemma-4-31b-it": "Google's open Gemma model. More capable."
     }
   },
   "reasoning": {

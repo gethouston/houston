@@ -15,6 +15,7 @@
 import type { CatalogModelEntry, ProviderCatalog } from "@houston/protocol";
 import {
   DROP_PI_PROVIDERS,
+  isModelVisible,
   PROVIDER_ID_RENAME,
 } from "../provider-overrides.ts";
 import { normalizeKey } from "./catalog-key.ts";
@@ -53,14 +54,12 @@ function entryToRaw(entry: CatalogModelEntry): RawModel {
  * the picker render exactly the same providers (a coming-soon or otherwise-gated
  * provider in the raw catalog never becomes a hub model the picker can't offer).
  *
- * Every provider carries its FULL pi model list — subscription/OAuth providers
- * included. The hub, the provider modal, and the chat model picker must offer
- * the SAME runnable set: the picker maps the hydrated `PROVIDERS` (pi's full
- * per-provider list, deduped) directly, so filtering OAuth providers down to
- * `PROVIDER_OVERRIDES[id].models` here made the hub show 3 Anthropic models
- * while the chat picker offered 10. The overrides remain presentation-only
- * (labels/descriptions); pi's catalog is the single existence source, and pi
- * ≥0.80 already prunes retired ids upstream.
+ * Model curation: the hub, the provider modal, and the chat model picker must
+ * offer the SAME set, so both apply the ONE shared gate — `isModelVisible`
+ * (`VISIBLE_MODELS` in `provider-overrides.ts`), the same table `buildProvider`
+ * filters the hydrated `PROVIDERS` with. A provider without a `VISIBLE_MODELS`
+ * entry carries its full pi model list. Hidden ids stay runnable on the wire;
+ * pi's catalog remains the single existence source.
  */
 export function piCatalogToCandidates(
   catalog: ProviderCatalog,
@@ -73,6 +72,7 @@ export function piCatalogToCandidates(
     if (visibleIds && !visibleIds.has(providerId)) continue;
     const subscription = provider.auth === "oauth";
     for (const entry of provider.models) {
+      if (!isModelVisible(providerId, entry.id)) continue;
       const raw = entryToRaw(entry);
       candidates.push({
         providerId,

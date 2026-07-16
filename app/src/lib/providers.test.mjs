@@ -94,9 +94,11 @@ const SAMPLE_CATALOG = [
     rm("deepseek-v4-pro", 1000000),
   ]),
   prov("google", "apiKey", [
-    rm("gemini-3-flash-preview", 1048576),
-    rm("gemini-3-pro-preview", 1048576),
-    rm("gemini-2.5-flash", 1048576),
+    rm("gemini-3.5-flash", 1048576),
+    rm("gemini-3.1-flash-lite", 1048576),
+    tm("gemma-4-26b-a4b-it", 131072),
+    tm("gemma-4-31b-it", 131072),
+    // Runnable but NOT in VISIBLE_MODELS.google — hidden from both surfaces.
     rm("gemini-2.5-pro", 1048576),
   ]),
   prov("amazon-bedrock", "apiKey", [
@@ -577,10 +579,34 @@ test("model contextWindow: the Anthropic flagships credit-gate 1M behind a 200k 
   }
   // Gemini via the native google provider is already correct in pi (1,048,576),
   // so it gets NO override — the bar and the engine both divide by the full 1M.
-  assert.deepEqual(getContextWindowConfig("google", "gemini-3-flash-preview"), {
+  assert.deepEqual(getContextWindowConfig("google", "gemini-3.5-flash"), {
     default: 1_048_576,
     max: 1_048_576,
   });
+});
+
+test("VISIBLE_MODELS curation filters the hydrated catalog per provider", () => {
+  // A curated provider hydrates to EXACTLY its visible set (fixture carries the
+  // hidden gemini-2.5-pro), in pi catalog order.
+  assert.deepEqual(
+    getProvider("google").models.map((m) => m.id),
+    [
+      "gemini-3.5-flash",
+      "gemini-3.1-flash-lite",
+      "gemma-4-26b-a4b-it",
+      "gemma-4-31b-it",
+    ],
+  );
+  // A hidden id resolves like any unknown model: not pickable, nulled by
+  // validModelOrNull (curation is presentation-only; the wire still runs it).
+  assert.equal(validModelOrNull("google", "gemini-2.5-pro"), null);
+  // An uncurated provider keeps its full pi list.
+  assert.equal(getProvider("github-copilot").models.length, 7);
+  assert.ok(
+    getProvider("github-copilot").models.some(
+      (m) => m.id === "gemini-3-flash-preview",
+    ),
+  );
 });
 
 test("buildProvider dedupes models that fold to one hub key within a provider", () => {

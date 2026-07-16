@@ -7,6 +7,7 @@ import type { Capabilities } from "@houston-ai/engine-client";
 import { normalizeKey } from "./ai-hub/catalog-key.ts";
 import {
   DROP_PI_PROVIDERS,
+  isModelVisible,
   LOCAL_PROVIDER,
   PROVIDER_ID_RENAME,
   PROVIDER_OVERRIDES,
@@ -190,7 +191,13 @@ function buildProvider(
   finalId: string,
   override: ProviderOverride | undefined,
 ): ProviderInfo {
-  const models: ModelOption[] = dedupeModelEntries(piProvider.models).map(
+  // Curated providers (`VISIBLE_MODELS`) surface only their curated ids; the
+  // AI-hub directory applies the same gate (`piCatalogToCandidates`), so the
+  // picker and the hub always show the identical set.
+  const visibleEntries = piProvider.models.filter((entry) =>
+    isModelVisible(finalId, entry.id),
+  );
+  const models: ModelOption[] = dedupeModelEntries(visibleEntries).map(
     (entry) => {
       const mo = override?.models?.[entry.id];
       const effort =
