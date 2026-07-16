@@ -49,9 +49,68 @@ type LoginState = {
   resolvePaste?: (code: string) => void;
   rejectPaste?: (err: Error) => void;
   abort?: AbortController;
+  /** Abandoned-login expiry (see `armLoginExpiry`); cleared when the flow settles. */
+  timer?: ReturnType<typeof setTimeout>;
 };
 
 const active = new Map<ProviderId, LoginState>();
+
+/**
+ * Overall cap on an in-flight login. An abandoned flow is not just stale UI
+ * state: the browser/loopback flows hold pi's in-process OAuth callback server
+ * bound to the provider's FIXED port (Codex: 1455) until they settle, which
+ * blocks every future sign-in for that provider MACHINE-WIDE — any other
+ * Houston instance, and the desktop relay's own local bind, all need that
+ * exact port. Matches the local client watcher's own 10-minute cap.
+ */
+export const LOGIN_TIMEOUT_MS = 10 * 60_000;
+
+/**
+ * Stable sentinel the frontend localizes for the failure toast. Mirrors
+ * `PROVIDER_LOGIN_TIMEOUT_ERROR` in `@houston-ai/core` (ui/core/src/
+ * provider-login.ts) — the runtime is frontend-agnostic and cannot import ui
+ * packages, so the string is duplicated by value; keep the two in sync.
+ */
+export const LOGIN_TIMEOUT_ERROR = "Login timed out";
+
+function clearLoginExpiry(state: LoginState): void {
+  if (state.timer) clearTimeout(state.timer);
+  state.timer = undefined;
+}
+
+/**
+ * (Re)start the abandoned-login clock. On expiry the flow is torn down exactly
+ * like `cancelLogin` (abort stops device-code pollers; the rejected paste
+ * promise closes the loopback callback server and frees its port) but the
+ * state stays in `active` as an ERROR, like any other failed login, so status
+ * polls surface "Login timed out" instead of silently forgetting the attempt.
+ * Re-armed when `startLogin` reuses an in-flight login, so every connect click
+ * gets the full window.
+ */
+function armLoginExpiry(provider: ProviderId, state: LoginState): void {
+  clearLoginExpiry(state);
+  const timer = setTimeout(() => {
+    // Stand down if the flow settled or was replaced/cancelled meanwhile.
+    if (active.get(provider) !== state) return;
+    if (state.status !== "starting" && state.status !== "awaiting_user") return;
+    // Record the outcome BEFORE aborting: the login promise's rejection
+    // handler sees the abort as a benign unwind and leaves this in place.
+    state.status = "error";
+    state.error = LOGIN_TIMEOUT_ERROR;
+    console.error(
+      `[oauth:${provider}] abandoned login timed out after ${LOGIN_TIMEOUT_MS / 60_000}min — aborting to free the callback port`,
+    );
+    state.abort?.abort();
+    state.rejectPaste?.(new Error(LOGIN_TIMEOUT_ERROR));
+    // The paste promise is dead: drop the hooks so a late completeLogin gets
+    // a loud "no active login" instead of silently resolving into the void.
+    state.resolvePaste = undefined;
+    state.rejectPaste = undefined;
+  }, LOGIN_TIMEOUT_MS);
+  // Bookkeeping only — never hold the process open for it.
+  timer.unref?.();
+  state.timer = timer;
+}
 
 /**
  * Which Codex OAuth flow to run — decided SOLELY by `deviceAuth`. The
@@ -153,6 +212,8 @@ export async function startLogin(
     (existing.status === "starting" || existing.status === "awaiting_user") &&
     existing.info
   ) {
+    // A fresh connect click deserves the full abandonment window.
+    armLoginExpiry(provider, existing);
     return existing.info;
   }
 
@@ -161,6 +222,7 @@ export async function startLogin(
     abort: new AbortController(),
   };
   active.set(provider, state);
+  armLoginExpiry(provider, state);
 
   let resolveInfo!: (i: LoginInfo) => void;
   const infoReady = new Promise<LoginInfo>((r) => (resolveInfo = r));
@@ -230,14 +292,17 @@ export async function startLogin(
 
   void login
     .then(() => {
+      clearLoginExpiry(state);
       state.status = "complete";
       console.log(`[oauth:${provider}] login complete`);
     })
     .catch((e: unknown) => {
+      clearLoginExpiry(state);
       if (state.abort?.signal.aborted) {
-        // User-initiated cancel (cancelLogin already dropped the state from
-        // `active`): the rejection is the flow unwinding, not a failure.
-        console.log(`[oauth:${provider}] login cancelled`);
+        // The flow unwinding after a user-initiated cancel (cancelLogin
+        // already dropped the state from `active`) or the abandoned-login
+        // expiry (which already recorded its error) — not a new failure.
+        console.log(`[oauth:${provider}] login flow closed`);
         return;
       }
       state.status = "error";
@@ -266,6 +331,8 @@ export async function startLogin(
 export function setApiKey(providerId: string, key: string): void {
   const trimmed = assertApiKeyConnectable(providerId, key);
   authStorage.set(providerId, { type: "api_key", key: trimmed });
+  const state = active.get(providerId as ProviderId);
+  if (state) clearLoginExpiry(state);
   active.delete(providerId as ProviderId);
 }
 
@@ -322,6 +389,7 @@ export function cancelLogin(providerId: string): void {
   const state = active.get(providerId);
   if (!state || state.status === "complete") return;
   active.delete(providerId);
+  clearLoginExpiry(state);
   state.abort?.abort();
   state.rejectPaste?.(new Error("login cancelled"));
 }
@@ -337,6 +405,8 @@ export function completeLogin(providerId: string, code: string): void {
 export async function logout(providerId: string): Promise<void> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   authStorage.logout(providerId);
+  const state = active.get(providerId);
+  if (state) clearLoginExpiry(state);
   active.delete(providerId);
   // Anthropic's primary credential is the browser-login one cached in the shared
   // dir (Keychain / file), NOT auth.json — so clear it via `claude auth logout`
