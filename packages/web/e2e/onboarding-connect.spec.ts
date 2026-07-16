@@ -125,3 +125,69 @@ test("onboarding connect step shows the curated view, searches, expands, and ope
   await expect(dialog.getByText(/Paste your OpenRouter API key/)).toBeVisible();
   await expect(dialog.getByPlaceholder("Paste your API key")).toBeVisible();
 });
+
+/**
+ * The connect step's "Skip for now" escape — the permanent-trap fix. Without it a
+ * user whose OAuth can never succeed (port conflict, missing entitlement,
+ * locked-down network) is stranded on the connect step forever, because the
+ * durable `onboarding_pending` flag re-enters onboarding on every launch and the
+ * step used to leave only via a successful connect.
+ *
+ * Skipping must: provision the assistant provider-less (so an agent exists and
+ * `isFirstRun` flips false), clear the pending flag, and drop straight into the
+ * main app shell — bypassing the aiConnected celebration and the email detour.
+ * The re-entry contract is the real assertion here: a reload must NOT drop back
+ * into onboarding (agent exists AND pending cleared).
+ */
+test("onboarding connect step can be skipped, landing in the app and not re-entering on reload", async ({
+  page,
+  request,
+}) => {
+  // Empty the host's agents so App's first-run gate opens onboarding.
+  const agents = (await (
+    await request.get(`${FAKE_HOST_URL}/agents`)
+  ).json()) as { id: string }[];
+  for (const agent of agents) {
+    await request.delete(`${FAKE_HOST_URL}/agents/${agent.id}`);
+  }
+
+  await page.goto("/");
+
+  // Past the work-segmentation question (covered by onboarding-segment.spec.ts)
+  // onto the connect step.
+  await page.getByRole("button", { name: "Skip for now" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Connect your AI" }),
+  ).toBeVisible();
+
+  // The quiet skip affordance states the consequence in plain words — the whole
+  // point is that a non-technical user understands nothing breaks by skipping.
+  await expect(
+    page.getByText(
+      "You can connect an AI anytime. Your assistant will wait until then.",
+    ),
+  ).toBeVisible();
+
+  // Skip the connect step. This provisions the assistant with no provider,
+  // clears the pending flag, and exits onboarding directly to the app.
+  await page.getByRole("button", { name: "Skip for now" }).click();
+
+  // Onboarding closes → the main app shell is visible (its "New agent" control
+  // exists only in the shell, never in the onboarding flow).
+  await expect(
+    page.getByRole("heading", { name: "Connect your AI" }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "New agent" })).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // Re-entry contract: a reload must NOT drop back into onboarding — the agent
+  // now exists (first-run is false) and the pending flag was cleared.
+  await page.reload();
+  await expect(page.getByRole("button", { name: "New agent" })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(
+    page.getByRole("heading", { name: "Connect your AI" }),
+  ).toHaveCount(0);
+});
