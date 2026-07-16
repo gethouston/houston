@@ -4,6 +4,7 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
@@ -81,6 +82,123 @@ export class FileCustomSecretStore implements CustomSecretStore {
     const map = this.read();
     delete map[id];
     this.write(map);
+  }
+
+  /** Migration-only snapshot. Values are copied so callers cannot mutate the store. */
+  entries(): Record<string, string> {
+    return { ...this.read() };
+  }
+
+  /** Remove the legacy file only after every value has reached remote custody. */
+  clear(): void {
+    if (existsSync(this.path)) rmSync(this.path);
+  }
+}
+
+export interface RemoteCustomSecretStoreOptions {
+  baseUrl: string;
+  orgSlug: string;
+  agentSlug: string;
+  podToken: string;
+  legacy?: FileCustomSecretStore;
+  fetchImpl?: typeof fetch;
+  /** How long a resolved value may serve from memory. Test seam; default 60s. */
+  cacheTtlMs?: number;
+}
+
+/**
+ * Managed-cloud adapter. The host resolves values lazily through its scoped
+ * gateway route; the engine pod has no GCP identity or Secret Manager IAM.
+ *
+ * Reads are cached in memory with a short TTL: the executor's credential
+ * provider resolves per request (`has` + `get` are BOTH remote reads), and one
+ * integration call must not cost two gateway→Secret-Manager round trips. The
+ * cache is write-through — this host is the only writer for its agent's
+ * secrets, so the TTL only bounds staleness against a future surface writing
+ * to custody directly.
+ */
+export class RemoteCustomSecretStore implements CustomSecretStore {
+  private readonly baseUrl: string;
+  private readonly fetchImpl: typeof fetch;
+  private readonly cacheTtlMs: number;
+  private readonly cache = new Map<
+    string,
+    { value: string | null; at: number }
+  >();
+
+  constructor(private readonly opts: RemoteCustomSecretStoreOptions) {
+    this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
+    this.fetchImpl = opts.fetchImpl ?? fetch;
+    this.cacheTtlMs = opts.cacheTtlMs ?? 60_000;
+  }
+
+  async get(id: string): Promise<string | null> {
+    const cached = this.cache.get(id);
+    if (cached && Date.now() - cached.at < this.cacheTtlMs) {
+      return cached.value;
+    }
+    const response = await this.fetchImpl(this.url(id), {
+      headers: this.headers(),
+    });
+    if (response.status === 404) {
+      this.cache.set(id, { value: null, at: Date.now() });
+      return null;
+    }
+    if (!response.ok) throw await this.failure(response, "GET", id);
+    const body = (await response.json()) as { value?: unknown };
+    if (typeof body.value !== "string") {
+      throw new Error(`custom secret gateway returned malformed ${id} body`);
+    }
+    this.cache.set(id, { value: body.value, at: Date.now() });
+    return body.value;
+  }
+
+  async set(id: string, value: string): Promise<void> {
+    const response = await this.fetchImpl(this.url(id), {
+      method: "PUT",
+      headers: this.headers({ "content-type": "application/json" }),
+      body: JSON.stringify({ value }),
+    });
+    if (!response.ok) throw await this.failure(response, "PUT", id);
+    this.cache.set(id, { value, at: Date.now() });
+  }
+
+  async delete(id: string): Promise<void> {
+    const response = await this.fetchImpl(this.url(id), {
+      method: "DELETE",
+      headers: this.headers(),
+    });
+    if (!response.ok) throw await this.failure(response, "DELETE", id);
+    this.cache.set(id, { value: null, at: Date.now() });
+  }
+
+  /**
+   * Read every pre-Secret-Manager value after object-store hydration, upload it,
+   * and only then remove the plaintext file. A partial failure leaves the whole
+   * file intact for a safe retry on the next boot.
+   */
+  async migrateLegacy(): Promise<number> {
+    const legacy = this.opts.legacy;
+    if (!legacy) return 0;
+    const entries = Object.entries(legacy.entries());
+    for (const [id, value] of entries) await this.set(id, value);
+    legacy.clear();
+    return entries.length;
+  }
+
+  private url(id: string): string {
+    return `${this.baseUrl}/v1/pod/custom-secrets/${encodeURIComponent(this.opts.orgSlug)}/${encodeURIComponent(this.opts.agentSlug)}/${encodeURIComponent(id)}`;
+  }
+
+  private headers(extra: Record<string, string> = {}): Record<string, string> {
+    return { Authorization: `Bearer ${this.opts.podToken}`, ...extra };
+  }
+
+  private async failure(response: Response, method: string, id: string) {
+    const detail = await response.text().catch(() => "");
+    return new Error(
+      `custom secret gateway ${method} ${id} failed (${response.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`,
+    );
   }
 }
 

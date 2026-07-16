@@ -1,6 +1,6 @@
 {
   "name": "houston-ai",
-  "version": "0.5.0",
+  "version": "0.5.9",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,14 +16,12 @@
     "check:parity": "node scripts/check-parity.mjs",
     "prepare": "husky || true",
     "test": "pnpm -r --if-present --no-bail test",
-    "start": "pnpm install && pnpm dev",
-    "dev": "mprocs",
-    "dev:host": "set -a; [ -f .env.local ] && . ./.env.local; set +a; HOUSTON_HOME=\"$HOME/.dev-houston\" HOUSTON_HOST_TOKEN=devtoken HOUSTON_HOST_PORT=4318 pnpm --filter @houston/host dev",
-    "dev:app": "cd app && VITE_NEW_ENGINE_URL=http://127.0.0.1:4318 VITE_NEW_ENGINE_TOKEN=devtoken VITE_HOSTED_ENGINE_URL= pnpm tauri dev",
-    "dev:cloud": "./scripts/dev-cloud.sh",
-    "dev:cloud:app": "./scripts/dev-cloud.sh --app",
-    "dev:cloud:retain": "./scripts/dev-cloud.sh --retain",
-    "dev:cloud:down": "./scripts/dev-cloud.sh --down",
+    "start": "node scripts/dev/wrong-entry.mjs start",
+    "dev:cloud": "node scripts/dev/wrong-entry.mjs dev:cloud",
+    "dev": "scripts/dev/dev.sh",
+    "dev:down": "scripts/dev/reap.sh",
+    "dev:host": ". scripts/dev/env.sh && HOUSTON_HOME=\"$HOME/.dev-houston\" pnpm --filter @houston/host dev",
+    "dev:app": "scripts/dev/app.sh",
     "ios": "bash mobile/ios/scripts/dev-sim.sh"
   },
   "devDependencies": {

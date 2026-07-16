@@ -12,7 +12,7 @@ export const siteConfig = {
    *  Use `||` (not `??`) and trim: an EMPTY env value must still fall back to a
    *  valid absolute URL, or `new URL(siteConfig.url)` in metadataBase throws. */
   url:
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://store.gethouston.ai",
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://agents.gethouston.ai",
   description:
     "Discover, publish, and one-click install AI agents for Houston. No code, no terminal.",
 } as const;

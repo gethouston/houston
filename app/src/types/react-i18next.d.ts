@@ -21,7 +21,6 @@ import type events from "../locales/en/events.json";
 import type integrations from "../locales/en/integrations.json";
 import type legal from "../locales/en/legal.json";
 import type migration from "../locales/en/migration.json";
-import type org from "../locales/en/org.json";
 import type portable from "../locales/en/portable.json";
 import type providers from "../locales/en/providers.json";
 import type routines from "../locales/en/routines.json";
@@ -29,6 +28,7 @@ import type settings from "../locales/en/settings.json";
 import type setup from "../locales/en/setup.json";
 import type shell from "../locales/en/shell.json";
 import type skills from "../locales/en/skills.json";
+import type store from "../locales/en/store.json";
 import type teams from "../locales/en/teams.json";
 
 declare module "react-i18next" {
@@ -46,6 +46,7 @@ declare module "react-i18next" {
       board: typeof board;
       agents: typeof agents;
       skills: typeof skills;
+      store: typeof store;
       routines: typeof routines;
       providers: typeof providers;
       errors: typeof errors;
@@ -55,7 +56,6 @@ declare module "react-i18next" {
       portable: typeof portable;
       context: typeof context;
       connect: typeof connect;
-      org: typeof org;
       teams: typeof teams;
       agentOnboarding: typeof agentOnboarding;
     };

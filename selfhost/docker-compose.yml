@@ -25,6 +25,10 @@ services:
       # Optional: your own Composio project key (platform-mode integrations).
       # Empty → the host runs with integrations off.
       COMPOSIO_API_KEY: "${COMPOSIO_API_KEY:-}"
+      # Optional: your own Sentry DSN for engine crash reporting (host + the
+      # runtimes it spawns). Empty → crash reporting stays off; nothing is
+      # baked into the self-host image.
+      SENTRY_DSN: "${SENTRY_DSN:-}"
       # Everything else has a sensible default baked into the image; override here
       # only if you know why (e.g. a different in-container port).
     volumes:

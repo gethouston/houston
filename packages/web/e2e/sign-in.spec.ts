@@ -48,6 +48,15 @@ async function submitEmail(
   await page.getByRole("button", { name: "Send code" }).click();
 }
 
+/**
+ * The pin input's REAL `<input>` (input-otp overlays an invisible input on the
+ * six rendered slot boxes). Filling it distributes digits across the slots;
+ * the sixth digit auto-submits via `onComplete`.
+ */
+function codeInput(page: import("@playwright/test").Page) {
+  return page.locator('input[data-slot="input-otp"]');
+}
+
 test.describe("sign-in screen (GCIP)", () => {
   test.beforeEach(async ({ page }) => {
     await mockOtpStart(page);
@@ -58,9 +67,12 @@ test.describe("sign-in screen (GCIP)", () => {
     ).toBeVisible();
   });
 
-  test("renders all three sign-in methods", async ({ page }) => {
+  test("renders all four sign-in methods", async ({ page }) => {
     await expect(
       page.getByRole("button", { name: "Continue with Google" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Continue with Apple" }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Continue with Microsoft" }),
@@ -70,10 +82,28 @@ test.describe("sign-in screen (GCIP)", () => {
     await expect(page.getByRole("button", { name: "Send code" })).toBeVisible();
   });
 
+  test("email and code fields use the pinned dark foreground", async ({
+    page,
+  }) => {
+    const emailInput = page.getByPlaceholder("you@example.com");
+    await emailInput.fill("pilot@example.com");
+    await expect(emailInput).toHaveCSS("color", "rgb(229, 229, 229)");
+
+    await page.getByRole("button", { name: "Send code" }).click();
+    // Three digits only — a sixth would auto-submit and leave the code step.
+    await codeInput(page).fill("123");
+    await expect(
+      page.locator('[data-slot="input-otp-slot"]').first(),
+    ).toHaveText("1");
+    await expect(
+      page.locator('[data-slot="input-otp-slot"]').first(),
+    ).toHaveCSS("color", "rgb(229, 229, 229)");
+  });
+
   test("email entry advances to the 6-digit code screen", async ({ page }) => {
     await submitEmail(page, "pilot@example.com");
-    // The code step: the numeric input + the confirmation copy naming the email.
-    await expect(page.getByPlaceholder("123456")).toBeVisible();
+    // The code step: six pin boxes + the confirmation copy naming the email.
+    await expect(page.locator('[data-slot="input-otp-slot"]')).toHaveCount(6);
     await expect(
       page.getByText("We sent a 6-digit code to pilot@example.com"),
     ).toBeVisible();
@@ -85,20 +115,24 @@ test.describe("sign-in screen (GCIP)", () => {
   test("surfaces a wrong/expired code (otp_invalid_code)", async ({ page }) => {
     await mockOtpVerify(page, 401);
     await submitEmail(page, "pilot@example.com");
-    await page.getByPlaceholder("123456").fill("000000");
-    await page.getByRole("button", { name: "Verify code" }).click();
+    // The sixth digit auto-submits — no button click needed.
+    await codeInput(page).fill("000000");
     await expect(
       page.getByText(
         "That code is wrong or expired. Request a new one and try again.",
       ),
     ).toBeVisible();
+    // The rejected code stays editable and the manual retry stays live.
+    await expect(codeInput(page)).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: "Verify code" }),
+    ).toBeEnabled();
   });
 
   test("surfaces rate limiting (otp_rate_limited)", async ({ page }) => {
     await mockOtpVerify(page, 429);
     await submitEmail(page, "pilot@example.com");
-    await page.getByPlaceholder("123456").fill("000000");
-    await page.getByRole("button", { name: "Verify code" }).click();
+    await codeInput(page).fill("000000");
     await expect(
       page.getByText("Too many attempts. Wait a minute, then try again."),
     ).toBeVisible();

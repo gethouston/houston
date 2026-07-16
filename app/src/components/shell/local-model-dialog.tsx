@@ -9,6 +9,8 @@ import { useTranslation } from "react-i18next";
 import { useLocalModelConnect } from "../../hooks/use-local-model-connect";
 import { osIsTauri } from "../../lib/os-bridge";
 import type { ProviderInfo } from "../../lib/providers";
+import { isTeamWorkspace } from "../../lib/space-id";
+import { useWorkspaceStore } from "../../stores/workspaces";
 import {
   BusyScreen,
   EmptyScreen,
@@ -44,6 +46,8 @@ interface Props {
 export function LocalModelDialog({ provider, onClose, onConnected }: Props) {
   const { t } = useTranslation("providers");
   const desktop = osIsTauri();
+  const currentWorkspace = useWorkspaceStore((state) => state.current);
+  const teamWorkspace = isTeamWorkspace(currentWorkspace?.id ?? "");
   const {
     mode,
     servers,
@@ -52,6 +56,8 @@ export function LocalModelDialog({ provider, onClose, onConnected }: Props) {
     setModel,
     reasoning,
     setReasoning,
+    shared,
+    setShared,
     selectServer,
     runDetect,
     connect,
@@ -60,6 +66,8 @@ export function LocalModelDialog({ provider, onClose, onConnected }: Props) {
   } = useLocalModelConnect({
     active: provider != null,
     desktop,
+    teamWorkspace,
+    workspaceId: currentWorkspace?.id ?? "",
     onConnected,
     onClose,
   });
@@ -104,6 +112,9 @@ export function LocalModelDialog({ provider, onClose, onConnected }: Props) {
             onSelectModel={setModel}
             reasoning={reasoning}
             onReasoningChange={setReasoning}
+            shared={shared}
+            onSharedChange={setShared}
+            teamWorkspace={teamWorkspace}
             onConnect={() => void connect()}
             onManual={goManual}
           />
@@ -124,6 +135,9 @@ export function LocalModelDialog({ provider, onClose, onConnected }: Props) {
             onConnected={onConnected}
             onClose={onClose}
             onBack={desktop ? () => void runDetect() : undefined}
+            shared={shared}
+            onSharedChange={setShared}
+            teamWorkspace={teamWorkspace}
           />
         )}
       </DialogContent>

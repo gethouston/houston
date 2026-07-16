@@ -17,7 +17,7 @@ import {
 } from "./cloud-migration";
 import {
   agentMigrationStatus,
-  fetchSourceAgents,
+  fetchSourceScan,
   type SourceHostHandshake,
 } from "./cloud-migration-transport";
 import { osStartMigrationSourceHost } from "./os-bridge";
@@ -58,11 +58,13 @@ export async function prepareMigration(
   existingAgents: Array<{ id: string; name: string }>,
 ): Promise<PreparedMigration> {
   const source = await osStartMigrationSourceHost();
-  const sourceAgents = await fetchSourceAgents(source);
-  const existing = await probeExistingAgents(existingAgents, sourceAgents);
+  const scan = await fetchSourceScan(source);
+  const existing = await probeExistingAgents(existingAgents, scan.agents);
   return {
     source,
-    tasks: buildMigrationPlan(sourceAgents, existing),
-    integrations: collectIntegrations(sourceAgents),
+    tasks: buildMigrationPlan(scan.agents, existing),
+    // Per-agent records (ancient installs) ∪ the account-level Composio
+    // list (the v0.4.x consumer account) — one deduped, sorted checklist.
+    integrations: collectIntegrations(scan.agents, scan.accountIntegrations),
   };
 }

@@ -46,6 +46,14 @@ export interface AwaitCallbackParams {
    * second cancel could race and free the NEW listener's port.
    */
   abandonLoopback?: () => void;
+  /**
+   * Turn the validated callback payload into the resolved value. Defaults to
+   * {@link parseCallbackUrl} (the authorization `code`); the GCIP-brokered
+   * flows pass {@link parseCallbackQuery} to get the whole query. Must enforce
+   * the CSRF state identically (throw the state-mismatch `IdentityError` so a
+   * stale/foreign callback keeps the attempt waiting).
+   */
+  parsePayload?: (payload: string, expectedState: string) => string;
   /** Override the abandonment timeout (tests only; defaults to 300s). */
   timeoutMs?: number;
 }
@@ -130,8 +138,9 @@ export function awaitLoopbackCallback(
     params
       .listen((payload) => {
         try {
-          const code = parseCallbackUrl(payload, params.expectedState);
-          finish(() => resolve(code));
+          const parse = params.parsePayload ?? parseCallbackUrl;
+          const value = parse(payload, params.expectedState);
+          finish(() => resolve(value));
         } catch (e) {
           // A callback whose CSRF `state` doesn't match THIS attempt is a
           // stale/foreign one (every attempt shares the single `auth://deep-link`

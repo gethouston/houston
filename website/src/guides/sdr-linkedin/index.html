@@ -15,17 +15,16 @@ lang: en
 <link rel="alternate" hreflang="es" href="https://gethouston.ai/guides/es/sdr-linkedin/">
 <link rel="alternate" hreflang="x-default" href="https://gethouston.ai/guides/sdr-linkedin/">
 {% endblock %}
-{% block stylesheets %}
-<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
-{% endblock %}
 {% block inlineStyles %}
 <style>
   :root{
-    --ink:#0d0d0d; --muted:#5d5d5d; --gray6:#676767; --gray7:#424242;
-    --bg:#ffffff; --border:#e5e5e5; --soft:#f6f7f9;
-    --blue:#3b82f6; --indigo:#818cf8; --orange:#f97316; --gold:#eab308; --green:#00a240;
-    --grad:linear-gradient(100deg,#3b82f6 0%,#818cf8 42%,#f97316 100%);
-    --font:'General Sans', ui-sans-serif, -apple-system, system-ui, sans-serif;
+    --ink:rgba(255,255,255,0.92); --muted:rgba(255,255,255,0.6); --gray6:rgba(255,255,255,0.55); --gray7:rgba(255,255,255,0.78);
+    --bg:transparent; --border:rgba(255,255,255,0.12); --soft:rgba(255,255,255,0.06);
+    --blue:#8ab4ff; --indigo:#a5b4fc; --orange:#fdba74; --gold:#fbbf24; --green:#4ade80;
+    --grad:linear-gradient(100deg,#60a5fa 0%,#a5b4fc 42%,#fb923c 100%);
+    --panel:rgba(13,15,24,0.86); --panel-solid:#0b0c13; --code-bg:rgba(8,9,15,0.92);
+    --on-ink:#0d0d0d;
+    --font:ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
     --maxw:820px;
   }
   *{box-sizing:border-box}
@@ -34,35 +33,29 @@ lang: en
     margin:0; font-family:var(--font); color:var(--ink); background:var(--bg);
     line-height:1.6; -webkit-font-smoothing:antialiased;
   }
-  .wash{
-    position:fixed; inset:0; z-index:-1; background:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,130,246,0.10), transparent),
-      radial-gradient(ellipse 60% 40% at 85% 25%, rgba(249,115,22,0.06), transparent),
-      radial-gradient(ellipse 60% 40% at 15% 70%, rgba(129,140,248,0.06), transparent);
-  }
   .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
 
   /* top bar */
   .topbar{
-    position:sticky; top:0; z-index:20; backdrop-filter:saturate(180%) blur(10px);
-    background:rgba(255,255,255,0.82); border-bottom:1px solid var(--border);
+    position:sticky; top:0; z-index:20;
+    background:rgba(11,12,19,0.94); border-bottom:1px solid rgba(255,255,255,0.08);
   }
   .topbar .wrap{display:flex; align-items:center; justify-content:space-between; height:58px}
   .lockup{display:flex; align-items:center; gap:9px; text-decoration:none; color:var(--ink)}
   .mark{width:22px; height:24px}
-  .wordmark{font-weight:600; letter-spacing:-0.02em; font-size:19px}
+  .wordmark{font-family:'General Sans', sans-serif; font-weight:600; letter-spacing:-0.02em; font-size:19px}
   .topbar .tag{font-size:12.5px; color:var(--muted); font-weight:500}
 
   /* hero */
   .hero{padding:64px 0 34px}
   .eyebrow{
     display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600;
-    letter-spacing:.02em; color:var(--gray7); background:#fff; border:1px solid var(--border);
+    letter-spacing:.02em; color:var(--gray7); background:var(--panel); border:1px solid var(--border);
     border-radius:999px; padding:7px 14px; text-transform:uppercase;
   }
   .eyebrow .dot{width:7px; height:7px; border-radius:50%; background:var(--grad)}
   h1{
-    font-weight:700; letter-spacing:-0.035em; line-height:1.05; font-size:52px;
+    font-weight:400; letter-spacing:-0.035em; line-height:1.05; font-size:52px;
     margin:20px 0 0;
   }
   h1 .accent{
@@ -72,7 +65,7 @@ lang: en
   .lede{font-size:19px; color:var(--muted); font-weight:400; margin:18px 0 0; max-width:660px}
   .meta{display:flex; flex-wrap:wrap; gap:10px; margin-top:26px}
   .chip{
-    display:inline-flex; align-items:center; gap:9px; background:#fff; border:1px solid var(--border);
+    display:inline-flex; align-items:center; gap:9px; background:var(--panel); border:1px solid var(--border);
     border-radius:12px; padding:11px 15px; font-size:14px;
   }
   .chip svg{width:17px; height:17px; flex:none}
@@ -91,13 +84,13 @@ lang: en
   .road{display:grid; gap:10px; margin-top:14px}
   .road a{
     display:flex; gap:14px; align-items:center; text-decoration:none; color:var(--ink);
-    background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px 16px;
+    background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px 16px;
     transition:.15s border-color, .15s transform;
   }
-  .road a:hover{border-color:#cfd4dc; transform:translateY(-1px)}
+  .road a:hover{border-color:rgba(255,255,255,0.28); transform:translateY(-1px)}
   .road .n{
     flex:none; width:30px; height:30px; border-radius:9px; font-weight:600; font-size:14px;
-    display:grid; place-items:center; color:#fff; background:var(--ink);
+    display:grid; place-items:center; color:var(--on-ink); background:var(--ink);
   }
   .road .t{font-weight:600}
   .road .d{color:var(--muted); font-size:14px}
@@ -108,7 +101,7 @@ lang: en
   .step-head{display:flex; align-items:flex-start; gap:16px; margin-bottom:6px}
   .badge{
     flex:none; width:46px; height:46px; border-radius:13px; display:grid; place-items:center;
-    background:var(--ink); color:#fff; font-weight:700; font-size:19px; letter-spacing:-0.02em;
+    background:var(--ink); color:var(--on-ink); font-weight:700; font-size:19px; letter-spacing:-0.02em;
   }
   .step-head .est{color:var(--gray6); font-size:13px; font-weight:500; margin-top:3px}
 
@@ -126,14 +119,14 @@ lang: en
   }
   ol.steps>li b{font-weight:600}
   code.ui{
-    background:#f0f2f5; border:1px solid var(--border); border-radius:6px; padding:1px 7px;
+    background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:6px; padding:1px 7px;
     font-family:var(--font); font-weight:600; font-size:.92em; white-space:nowrap;
   }
 
   /* checkpoint */
   .check{
     display:flex; gap:11px; align-items:flex-start; margin:14px 0 4px; padding:12px 15px;
-    background:rgba(0,162,64,0.06); border:1px solid rgba(0,162,64,0.25); border-radius:12px;
+    background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.28); border-radius:12px;
   }
   .check svg{width:20px; height:20px; flex:none; margin-top:1px}
   .check .lbl{font-weight:700; color:var(--green); font-size:12.5px; letter-spacing:.04em; text-transform:uppercase; display:block; margin-bottom:1px}
@@ -144,17 +137,17 @@ lang: en
   .call svg{width:19px; height:19px; flex:none; margin-top:2px}
   .call .lbl{font-weight:700; font-size:12px; letter-spacing:.05em; text-transform:uppercase; display:block; margin-bottom:2px}
   .call p{margin:0}
-  .tip{background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.25)}
+  .tip{background:rgba(138,180,255,0.09); border:1px solid rgba(138,180,255,0.28)}
   .tip .lbl{color:var(--blue)}
-  .warn{background:rgba(249,115,22,0.07); border:1px solid rgba(249,115,22,0.3)}
-  .warn .lbl{color:#c2560c}
+  .warn{background:rgba(253,186,116,0.1); border:1px solid rgba(253,186,116,0.32)}
+  .warn .lbl{color:#fdba74}
   .note{background:var(--soft); border:1px solid var(--border)}
   .note .lbl{color:var(--gray7)}
 
   /* prompt block */
   .prompt{
-    position:relative; background:#0f1115; color:#e8eaed; border-radius:12px; padding:15px 16px;
-    font-size:14.5px; line-height:1.5; margin:12px 0; border:1px solid #1c1f26;
+    position:relative; background:var(--code-bg); color:#e8eaed; border-radius:12px; padding:15px 16px;
+    font-size:14.5px; line-height:1.5; margin:12px 0; border:1px solid rgba(255,255,255,0.1);
   }
   .prompt .pl{display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#8b93a1; font-weight:600; margin-bottom:7px}
   .prompt .txt{font-family:var(--font)}
@@ -164,7 +157,7 @@ lang: en
   /* screenshot placeholder */
   .shot{
     display:flex; gap:14px; align-items:center; margin:16px 0; padding:14px 16px;
-    background:#fff; border:1.5px dashed #c3c9d4; border-radius:14px;
+    background:var(--panel); border:1.5px dashed rgba(255,255,255,0.25); border-radius:14px;
   }
   .shot .cam{
     flex:none; width:40px; height:40px; border-radius:10px; display:grid; place-items:center;
@@ -173,7 +166,7 @@ lang: en
   .shot .cam svg{width:20px; height:20px}
   .shot .num{font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue)}
   figure.shot-real{margin:16px 0}
-  .shot-real img{width:100%; display:block; border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 24px rgba(13,13,13,0.07)}
+  .shot-real img{width:100%; display:block; border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,0.35)}
   .shot-real figcaption{font-size:13px; color:var(--gray6); margin-top:8px}
   .shot-real figcaption .num{font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue); margin-right:8px}
   .shot-real.narrow img{max-width:360px; margin:0 auto}
@@ -186,28 +179,28 @@ lang: en
   ul.plain li{margin:7px 0}
 
   /* troubleshooting */
-  details.ts{border:1px solid var(--border); border-radius:12px; padding:0 16px; margin:10px 0; background:#fff}
+  details.ts{border:1px solid var(--border); border-radius:12px; padding:0 16px; margin:10px 0; background:var(--panel)}
   details.ts+details.ts{margin-top:8px}
   details.ts summary{
     cursor:pointer; list-style:none; padding:15px 0; font-weight:600; font-size:16px;
     display:flex; gap:11px; align-items:flex-start;
   }
   details.ts summary::-webkit-details-marker{display:none}
-  details.ts summary .q{flex:none; width:22px; height:22px; border-radius:6px; background:rgba(249,115,22,0.12); color:#c2560c; font-weight:700; font-size:13px; display:grid; place-items:center; margin-top:1px}
+  details.ts summary .q{flex:none; width:22px; height:22px; border-radius:6px; background:rgba(253,186,116,0.14); color:#fdba74; font-weight:700; font-size:13px; display:grid; place-items:center; margin-top:1px}
   details.ts[open] summary{border-bottom:1px solid var(--border)}
   details.ts .ans{padding:4px 0 16px 33px; color:var(--gray7); font-size:15px}
   details.ts .ans code.ui{white-space:normal}
 
   /* success checklist */
-  .final{background:#fff; border:1px solid var(--border); border-radius:16px; padding:8px 22px 18px}
+  .final{background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:8px 22px 18px}
   .final ul{list-style:none; padding:0; margin:0}
   .final li{display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); font-size:15.5px}
   .final li:last-child{border-bottom:none}
-  .final .box{flex:none; width:22px; height:22px; border-radius:6px; border:2px solid #cfd4dc}
+  .final .box{flex:none; width:22px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,0.28)}
 
   /* footer */
   footer{border-top:1px solid var(--border); padding:40px 0 60px; margin-top:20px}
-  .foot-card{background:var(--ink); color:#fff; border-radius:18px; padding:30px 32px}
+  .foot-card{background:var(--panel); border:1px solid var(--border); color:#fff; border-radius:18px; padding:30px 32px}
   .foot-card h3{margin:0 0 6px; font-size:22px; font-weight:600; letter-spacing:-0.02em}
   .foot-card p{margin:0; color:#c7c9cf; font-size:15px}
   .foot-card .fl{display:flex; align-items:center; gap:9px; margin-top:18px; color:#fff}
@@ -216,23 +209,23 @@ lang: en
 
   a.inline{color:var(--blue); text-decoration:none; font-weight:500; word-break:break-all}
   a.inline:hover{text-decoration:underline}
-  .ph{background:rgba(234,179,8,0.16); border:1px solid rgba(234,179,8,0.5); border-radius:6px; padding:1px 7px; font-weight:600; font-size:.92em; color:#7a5c00; white-space:nowrap}
+  .ph{background:rgba(251,191,36,0.14); border:1px solid rgba(251,191,36,0.4); border-radius:6px; padding:1px 7px; font-weight:600; font-size:.92em; color:#fbbf24; white-space:nowrap}
 
   .stepno{font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--blue); margin:2px 0 2px}
   .subh{font-weight:600; font-size:18px; margin:22px 0 0}
-  .btnlink{display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#fff; border-radius:999px; padding:11px 22px; font-weight:500; font-size:14.5px; text-decoration:none; letter-spacing:-0.01em; margin:8px 0 0}
+  .btnlink{display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:var(--on-ink); border-radius:999px; padding:11px 22px; font-weight:500; font-size:14.5px; text-decoration:none; letter-spacing:-0.01em; margin:8px 0 0}
   .btnlink:hover{opacity:.88}
   .urlnote{display:block; font-size:12.5px; color:var(--gray6); margin-top:7px; word-break:break-all}
-  .prompt .copybtn{position:absolute; top:10px; right:10px; background:#fff; color:var(--ink); border:none; border-radius:999px; padding:6px 15px; font-family:var(--font); font-weight:600; font-size:12.5px; cursor:pointer}
-  .prompt .copybtn.ok{background:var(--green); color:#fff}
+  .prompt .copybtn{position:absolute; top:10px; right:10px; background:#fff; color:#0d0d0d; border:none; border-radius:999px; padding:6px 15px; font-family:var(--font); font-weight:600; font-size:12.5px; cursor:pointer}
+  .prompt .copybtn.ok{background:var(--green); color:#0d0d0d}
   .prompt .pl{padding-right:78px}
   details.ts summary{position:relative; padding-right:32px}
   details.ts summary::after{content:""; position:absolute; right:6px; top:21px; width:8px; height:8px; border-right:2px solid var(--gray6); border-bottom:2px solid var(--gray6); transform:rotate(45deg); transition:.18s transform}
   details.ts[open] summary::after{transform:rotate(-135deg); top:25px}
   .final label{display:flex; gap:12px; align-items:center; cursor:pointer; width:100%}
-  .final input[type=checkbox]{appearance:none; -webkit-appearance:none; flex:none; width:22px; height:22px; border-radius:6px; border:2px solid #cfd4dc; cursor:pointer; margin:0; display:grid; place-items:center; background:#fff; transition:.12s}
+  .final input[type=checkbox]{appearance:none; -webkit-appearance:none; flex:none; width:22px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,0.28); cursor:pointer; margin:0; display:grid; place-items:center; background:rgba(255,255,255,0.06); transition:.12s}
   .final input[type=checkbox]:checked{background:var(--green); border-color:var(--green)}
-  .final input[type=checkbox]:checked::after{content:""; width:10px; height:5px; border-left:2.5px solid #fff; border-bottom:2.5px solid #fff; transform:rotate(-45deg) translate(0,-1px)}
+  .final input[type=checkbox]:checked::after{content:""; width:10px; height:5px; border-left:2.5px solid #0d0d0d; border-bottom:2.5px solid #0d0d0d; transform:rotate(-45deg) translate(0,-1px)}
   .final input[type=checkbox]:checked~span{color:var(--gray6)}
   .foot-card .mark{filter:brightness(0) invert(1)}
 
@@ -240,40 +233,40 @@ lang: en
   figure.mock{margin:16px 0}
   figure.mock figcaption{font-size:13px; color:var(--gray6); margin-top:8px}
   figure.mock figcaption .num{font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue); margin-right:8px}
-  .mk{border:1px solid var(--border); border-radius:14px; overflow:hidden; background:#fff; box-shadow:0 6px 24px rgba(13,13,13,0.07)}
-  .mk-bar{display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); background:#fbfbfc}
+  .mk{border:1px solid var(--border); border-radius:14px; overflow:hidden; background:var(--panel); box-shadow:0 6px 24px rgba(0,0,0,0.35)}
+  .mk-bar{display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); background:rgba(255,255,255,0.05)}
   .mk-dots{display:flex; gap:6px}
   .mk-dots i{width:11px; height:11px; border-radius:50%; display:block}
   .mk-dots i:nth-child(1){background:#ff5f57} .mk-dots i:nth-child(2){background:#febc2e} .mk-dots i:nth-child(3){background:#28c840}
   .mk-app{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:var(--gray7)}
   .mk-app .badge-app{width:18px; height:18px; border-radius:5px; display:grid; place-items:center; color:#fff; font-size:11px; font-weight:800}
-  .mk-url{margin-left:auto; font-size:11.5px; color:var(--gray6); background:#fff; border:1px solid var(--border); border-radius:999px; padding:3px 12px; max-width:52%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .mk-url{margin-left:auto; font-size:11.5px; color:var(--gray6); background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:999px; padding:3px 12px; max-width:52%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   /* sheet */
   .sheet{width:100%; border-collapse:collapse; font-size:11.5px; table-layout:fixed}
-  .sheet th,.sheet td{border:1px solid #e8eaed; padding:7px 9px; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .sheet th,.sheet td{border:1px solid rgba(255,255,255,0.12); padding:7px 9px; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .sheet thead th{background:#0a7a43; color:#fff; font-weight:600; letter-spacing:.01em}
-  .sheet tbody tr:nth-child(even){background:#f6faf7}
-  .sheet td.rownum{width:26px; text-align:center; color:var(--gray6); background:#f6f7f9; font-size:10.5px}
+  .sheet tbody tr:nth-child(even){background:rgba(255,255,255,0.04)}
+  .sheet td.rownum{width:26px; text-align:center; color:var(--gray6); background:rgba(255,255,255,0.06); font-size:10.5px}
   .sheet a.li{color:var(--blue); text-decoration:none}
-  .sheet .em-ok{color:#0a7a43; font-weight:600}
-  .sheet .em-miss{display:inline-block; color:#b98900; background:#fff6e0; border:1px solid #f2dfa0; border-radius:5px; padding:0 6px; font-size:10px; font-weight:600}
-  .sheet .em-search{display:inline-block; color:var(--gray6); background:#f0f2f5; border:1px solid var(--border); border-radius:5px; padding:0 6px; font-size:10px}
-  .mk-tabs{display:flex; align-items:center; gap:0; border-top:1px solid var(--border); background:#fbfbfc; padding:0 6px}
+  .sheet .em-ok{color:#4ade80; font-weight:600}
+  .sheet .em-miss{display:inline-block; color:#fbbf24; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.35); border-radius:5px; padding:0 6px; font-size:10px; font-weight:600}
+  .sheet .em-search{display:inline-block; color:var(--gray6); background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:5px; padding:0 6px; font-size:10px}
+  .mk-tabs{display:flex; align-items:center; gap:0; border-top:1px solid var(--border); background:rgba(255,255,255,0.05); padding:0 6px}
   .mk-tabs .tab{font-size:11px; padding:7px 12px; color:var(--gray6); border-right:1px solid var(--border)}
-  .mk-tabs .tab.on{color:#0a7a43; font-weight:700; border-bottom:2px solid #0a7a43; background:#fff}
+  .mk-tabs .tab.on{color:#4ade80; font-weight:700; border-bottom:2px solid #4ade80; background:rgba(255,255,255,0.08)}
   /* instantly campaign */
   .camp{padding:16px 18px}
   .camp-top{display:flex; align-items:center; gap:12px; margin-bottom:14px}
   .camp-top .cname{font-size:15.5px; font-weight:700; letter-spacing:-0.01em}
-  .pill-paused{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:.03em; color:#b45309; background:#fff6e0; border:1px solid #f2dfa0; border-radius:999px; padding:4px 11px; text-transform:uppercase}
-  .pill-paused .pd{display:flex; gap:2px} .pill-paused .pd b{width:2.5px; height:9px; background:#b45309; display:block; border-radius:1px}
+  .pill-paused{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:.03em; color:#fbbf24; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.35); border-radius:999px; padding:4px 11px; text-transform:uppercase}
+  .pill-paused .pd{display:flex; gap:2px} .pill-paused .pd b{width:2.5px; height:9px; background:#fbbf24; display:block; border-radius:1px}
   .camp-stats{display:flex; gap:0; border:1px solid var(--border); border-radius:11px; overflow:hidden; margin-bottom:16px}
   .camp-stats .st{flex:1; padding:10px 14px; border-right:1px solid var(--border)}
   .camp-stats .st:last-child{border-right:none}
   .camp-stats .st .v{font-size:19px; font-weight:700; letter-spacing:-0.02em}
   .camp-stats .st .k{font-size:11px; color:var(--gray6); margin-top:1px}
   .seq{display:flex; flex-direction:column; gap:9px}
-  .seq .stepe{display:flex; gap:12px; align-items:flex-start; border:1px solid var(--border); border-radius:11px; padding:11px 13px; background:#fff}
+  .seq .stepe{display:flex; gap:12px; align-items:flex-start; border:1px solid var(--border); border-radius:11px; padding:11px 13px; background:rgba(255,255,255,0.04)}
   .seq .stepe .day{flex:none; width:58px; font-size:10.5px; font-weight:700; color:var(--indigo); text-transform:uppercase; letter-spacing:.03em; padding-top:2px}
   .seq .stepe .body{min-width:0}
   .seq .stepe .subj{font-size:13px; font-weight:600; letter-spacing:-0.01em}
@@ -282,120 +275,120 @@ lang: en
 
   /* ---------- requirement cards (Paso 0) ---------- */
   .reqgrid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0 4px}
-  .rq{display:flex; gap:13px; align-items:flex-start; background:#fff; border:1px solid var(--border); border-radius:14px; padding:15px 16px}
+  .rq{display:flex; gap:13px; align-items:flex-start; background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:15px 16px}
   .rq .ic{flex:none; width:40px; height:40px; border-radius:11px; display:grid; place-items:center; background:var(--soft); border:1px solid var(--border)}
   .rq .ic svg{width:21px; height:21px; display:block}
-  .rq .ic.brand{background:#fff}
+  .rq .ic.brand{background:rgba(255,255,255,0.06)}
   .rq h4{margin:0; font-size:15px; font-weight:600; letter-spacing:-0.01em}
   .rq p{margin:3px 0 0; font-size:13px; color:var(--gray6); line-height:1.45}
   .rq .prov{display:flex; gap:8px; margin-top:9px; flex-wrap:wrap}
-  .rq .prov a{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--ink); background:#fff; border:1px solid var(--border); border-radius:999px; padding:5px 11px 5px 8px; text-decoration:none; transition:.15s border-color}
-  .rq .prov a:hover{border-color:#cfd4dc}
+  .rq .prov a{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--ink); background:var(--panel); border:1px solid var(--border); border-radius:999px; padding:5px 11px 5px 8px; text-decoration:none; transition:.15s border-color}
+  .rq .prov a:hover{border-color:rgba(255,255,255,0.28)}
   .rq .prov a .lg{width:16px; height:16px; border-radius:4px; display:grid; place-items:center; flex:none}
   /* have-handy band (links + codes) */
   .haves{display:grid; gap:9px; margin:16px 0 4px}
   .have{display:flex; align-items:center; gap:13px; background:var(--soft); border:1px solid var(--border); border-radius:12px; padding:12px 15px}
-  .have .hic{flex:none; width:32px; height:32px; border-radius:9px; display:grid; place-items:center; background:#fff; border:1px solid var(--border)}
-  .have .hic svg{width:18px; height:18px; display:block}
+  .have .hic{flex:none; width:32px; height:32px; border-radius:9px; display:grid; place-items:center; background:var(--panel); border:1px solid var(--border)}
+  .have .hic svg{width:18px; height:18px; display:block; filter:brightness(0) invert(1)}
   .have .htxt{font-size:14px; min-width:0}
   .have .htxt b{font-weight:600}
   .have .htxt a{color:var(--blue); text-decoration:none; font-weight:600}
   .have .htxt a:hover{text-decoration:underline}
-  .have .code{margin-left:auto; flex:none; font-family:var(--font); font-weight:700; font-size:12.5px; background:#fff; border:1px solid var(--border); border-radius:7px; padding:4px 10px; letter-spacing:.01em; white-space:nowrap}
+  .have .code{margin-left:auto; flex:none; font-family:var(--font); font-weight:700; font-size:12.5px; background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:7px; padding:4px 10px; letter-spacing:.01em; white-space:nowrap}
   @media (max-width:640px){ .reqgrid{grid-template-columns:1fr} .have{flex-wrap:wrap} .have .code{margin-left:46px} }
 
   /* ---------- branded showcase (Houston homepage / Mission Control look) ---------- */
   @property --hbd{syntax:'<angle>'; initial-value:0deg; inherits:false}
   @keyframes hbdspin{to{--hbd:360deg}}
-  .showcase{position:relative; border:1px solid var(--border); border-radius:22px; overflow:hidden; margin:18px 0 6px; background:#fff}
+  .showcase{position:relative; border:1px solid var(--border); border-radius:22px; overflow:hidden; margin:18px 0 6px; background:var(--panel)}
   .showcase .sc-bg{position:absolute; inset:0; pointer-events:none; background:
-    radial-gradient(ellipse 80% 60% at 50% -12%, rgba(59,130,246,0.10), transparent),
-    radial-gradient(ellipse 55% 45% at 90% 25%, rgba(249,115,22,0.07), transparent),
-    radial-gradient(ellipse 55% 50% at 8% 92%, rgba(129,140,248,0.07), transparent)}
+    radial-gradient(ellipse 80% 60% at 50% -12%, rgba(96,165,250,0.12), transparent),
+    radial-gradient(ellipse 55% 45% at 90% 25%, rgba(251,146,60,0.09), transparent),
+    radial-gradient(ellipse 55% 50% at 8% 92%, rgba(165,180,252,0.09), transparent)}
   .sc-inner{position:relative; display:grid; grid-template-columns:0.92fr 1.08fr; gap:26px; padding:24px 26px}
   .sc-lead{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--gray6); margin:0 0 13px}
   .pipe{display:flex; flex-direction:column; gap:11px}
   .pipe .pstep{display:flex; gap:13px; align-items:flex-start}
-  .pipe .pn{flex:none; width:30px; height:30px; border-radius:50%; background:#fff; border:1px solid var(--border); color:var(--gray7); font-weight:600; font-size:13px; display:grid; place-items:center}
-  .pipe .pstep.last .pn{background:var(--ink); color:#fff; border-color:var(--ink)}
+  .pipe .pn{flex:none; width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--gray7); font-weight:600; font-size:13px; display:grid; place-items:center}
+  .pipe .pstep.last .pn{background:var(--ink); color:var(--on-ink); border-color:var(--ink)}
   .pipe .pt{font-size:14.5px; font-weight:600; letter-spacing:-0.01em}
   .pipe .pd{font-size:12.5px; color:var(--gray6); line-height:1.4; margin-top:1px}
-  .mc{position:relative; border-radius:18px; background:#fff; box-shadow:0 10px 30px -12px rgba(13,13,13,0.18); animation:hbdspin 7s linear infinite}
+  .mc{position:relative; border-radius:18px; background:var(--panel-solid); box-shadow:0 10px 30px -12px rgba(0,0,0,0.5); animation:hbdspin 7s linear infinite}
   .mc::before{content:""; position:absolute; inset:0; border-radius:inherit; padding:1.5px;
-    background:conic-gradient(from var(--hbd), #e7e9ee 0deg,#fb923c 46deg,#f97316 92deg,#e7e9ee 146deg,#e7e9ee 212deg,#3b82f6 270deg,#818cf8 318deg,#e7e9ee 360deg);
+    background:conic-gradient(from var(--hbd), rgba(255,255,255,0.18) 0deg,#fb923c 46deg,#f97316 92deg,rgba(255,255,255,0.18) 146deg,rgba(255,255,255,0.18) 212deg,#60a5fa 270deg,#a5b4fc 318deg,rgba(255,255,255,0.18) 360deg);
     -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none}
   .mc-head{display:flex; align-items:center; gap:11px; padding:13px 15px; border-bottom:1px solid var(--border)}
-  .mc-head .hm{width:26px; height:26px; flex:none}
+  .mc-head .hm{width:26px; height:26px; flex:none; filter:brightness(0) invert(1)}
   .mc-head .nm{font-size:14px; font-weight:600; letter-spacing:-0.01em; color:var(--ink)}
   .mc-head .ms{font-size:11.5px; color:var(--gray6); margin-top:1px}
   .mc-head .live{margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:var(--green)}
   .mc-head .live .ld{width:7px; height:7px; border-radius:50%; background:var(--green)}
   .mc-body{padding:13px 15px 15px; display:flex; flex-direction:column; gap:10px}
   .act{display:flex; gap:11px; align-items:flex-start}
-  .act .ai{flex:none; width:18px; height:18px; border-radius:50%; display:grid; place-items:center; margin-top:1px; background:rgba(0,162,64,0.10)}
+  .act .ai{flex:none; width:18px; height:18px; border-radius:50%; display:grid; place-items:center; margin-top:1px; background:rgba(74,222,128,0.12)}
   .act .ai svg{width:11px; height:11px}
   .act .tx{font-size:13px; color:var(--gray7); line-height:1.45}
   .act .tx b{color:var(--ink); font-weight:600}
   .act.pause{background:var(--soft); border:1px solid var(--border); border-radius:11px; padding:10px 12px; margin-top:2px}
-  .act.pause .ai{background:#fff6e0; border:1px solid #f2dfa0}
-  .act.pause .ai .pd2{display:flex; gap:2px} .act.pause .ai .pd2 b{width:2px; height:7px; background:#b45309; display:block; border-radius:1px}
-  .act.pause .tx b{color:#b45309}
+  .act.pause .ai{background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.35)}
+  .act.pause .ai .pd2{display:flex; gap:2px} .act.pause .ai .pd2 b{width:2px; height:7px; background:#fbbf24; display:block; border-radius:1px}
+  .act.pause .tx b{color:#fbbf24}
   @media (max-width:720px){ .sc-inner{grid-template-columns:1fr; gap:20px} }
   @media print{ .mc{animation:none; border:1px solid var(--border); box-shadow:none} .mc::before{display:none !important} }
 
   /* ---------- tool cards (Paso 3) ---------- */
   .toolgrid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0 6px}
-  .toolcard{display:flex; flex-direction:column; background:#fff; border:1px solid var(--border); border-radius:16px; padding:17px 18px 16px}
+  .toolcard{display:flex; flex-direction:column; background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:17px 18px 16px}
   .toolcard .th{display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:28px}
   .toolcard .th .brand{display:flex; align-items:center; gap:8px}
-  .toolcard .th .brand img.wm{height:23px; width:auto; max-width:135px; object-fit:contain; display:block}
-  .toolcard .th .brand img.ic{height:22px; width:22px; object-fit:contain; display:block}
+  .toolcard .th .brand img.wm{height:31px; width:auto; max-width:143px; padding:4px 8px; background:#fff; border-radius:7px; object-fit:contain; display:block}
+  .toolcard .th .brand img.ic{height:28px; width:28px; padding:3px; background:#fff; border-radius:6px; object-fit:contain; display:block}
   .toolcard .th .brand .bn{font-size:16px; font-weight:600; letter-spacing:-0.01em}
   .toolcard .tag{flex:none; font-size:10.5px; font-weight:700; letter-spacing:.02em; padding:3px 10px; border-radius:999px; white-space:nowrap}
-  .tag-gift{background:rgba(249,115,22,.12); color:#c2560c}
-  .tag-free{background:rgba(0,162,64,.11); color:#0a7a43}
+  .tag-gift{background:rgba(253,186,116,.14); color:#fdba74}
+  .tag-free{background:rgba(74,222,128,.12); color:#4ade80}
   .tag-opt{background:var(--soft); color:var(--gray7); border:1px solid var(--border)}
   .toolcard .desc{font-size:14px; color:var(--gray7); margin:13px 0 0; line-height:1.5}
   .toolcard .hint{font-size:12px; color:var(--gray6); margin:7px 0 0; line-height:1.45}
   .toolcard .act{margin-top:auto; padding-top:14px}
-  .toolcard .act a{display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:#fff; background:var(--ink); border-radius:999px; padding:8px 16px; text-decoration:none}
+  .toolcard .act a{display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:var(--on-ink); background:var(--ink); border-radius:999px; padding:8px 16px; text-decoration:none}
   .toolcard .act a:hover{opacity:.9}
   .toolcard .act a svg{width:14px; height:14px}
   @media (max-width:640px){ .toolgrid{grid-template-columns:1fr} }
 
   /* ---------- connection cards (Paso 4) ---------- */
   .conngrid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0 6px}
-  .conn{display:flex; flex-direction:column; background:#fff; border:1px solid var(--border); border-radius:16px; padding:16px 17px}
+  .conn{display:flex; flex-direction:column; background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:16px 17px}
   .conn .ch{display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:24px; margin-bottom:13px}
   .conn .ch .brand{display:flex; align-items:center; gap:8px}
-  .conn .ch .brand img.wm{height:21px; width:auto; max-width:120px; object-fit:contain; display:block}
-  .conn .ch .brand img.ic{height:20px; width:20px; object-fit:contain; display:block}
+  .conn .ch .brand img.wm{height:29px; width:auto; max-width:128px; padding:4px 8px; background:#fff; border-radius:7px; object-fit:contain; display:block}
+  .conn .ch .brand img.ic{height:26px; width:26px; padding:3px; background:#fff; border-radius:6px; object-fit:contain; display:block}
   .conn .ch .brand .bn{font-size:15px; font-weight:600; letter-spacing:-0.01em}
   .conn .method{flex:none; font-size:10px; font-weight:700; letter-spacing:.03em; padding:3px 10px; border-radius:999px; white-space:nowrap}
-  .method-click{background:rgba(59,130,246,.10); color:#1d4ed8}
-  .method-key{background:rgba(129,140,248,.16); color:#4f46e5}
+  .method-click{background:rgba(138,180,255,.14); color:#8ab4ff}
+  .method-key{background:rgba(165,180,252,.16); color:#a5b4fc}
   .path{display:flex; flex-wrap:wrap; align-items:center; gap:6px 6px}
   .path+.path{margin-top:10px}
   .path .lbl2{font-size:10px; font-weight:700; color:var(--gray6); text-transform:uppercase; letter-spacing:.04em; width:100%; margin-bottom:-1px}
-  .path .st{background:#f0f2f5; border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; color:var(--ink); white-space:nowrap}
+  .path .st{background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; color:var(--ink); white-space:nowrap}
   .path .ar{color:var(--gray6); font-size:12px}
   .conn .hint{font-size:12px; color:var(--gray6); margin:12px 0 0; line-height:1.45}
-  .conn .hint b{color:#c2560c; font-weight:600}
+  .conn .hint b{color:#fdba74; font-weight:600}
   @media (max-width:640px){ .conngrid{grid-template-columns:1fr} }
 
   /* flow strip (what you build) */
   .flow{display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin:18px 0 6px}
   .flow .f{
-    background:#fff; border:1px solid var(--border); border-radius:12px; padding:12px 12px 13px;
+    background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px 12px 13px;
     display:flex; flex-direction:column; gap:5px;
   }
-  .flow .f .fn{width:24px; height:24px; border-radius:7px; background:var(--ink); color:#fff; font-weight:700; font-size:12.5px; display:grid; place-items:center}
+  .flow .f .fn{width:24px; height:24px; border-radius:7px; background:var(--ink); color:var(--on-ink); font-weight:700; font-size:12.5px; display:grid; place-items:center}
   .flow .f .ft{font-weight:600; font-size:13.5px; letter-spacing:-0.01em; line-height:1.25}
   .flow .f .fd{color:var(--muted); font-size:11.5px; line-height:1.4}
   .flow .f.dark{background:var(--ink); border-color:var(--ink)}
-  .flow .f.dark .ft{color:#fff}
-  .flow .f.dark .fd{color:#c7c9cf}
-  .flow .f.dark .fn{background:#fff; color:var(--ink)}
+  .flow .f.dark .ft{color:#0d0d0d}
+  .flow .f.dark .fd{color:rgba(13,13,13,0.62)}
+  .flow .f.dark .fn{background:#0d0d0d; color:#fff}
 
   @media (max-width:640px){
     h1{font-size:36px} h2{font-size:24px} .hero{padding:44px 0 24px}
@@ -404,14 +397,20 @@ lang: en
   }
   @page{margin:12mm 11mm 14mm}
   @media print{
+    :root{
+      --ink:#0d0d0d; --muted:#5d5d5d; --gray6:#676767; --gray7:#424242;
+      --bg:#ffffff; --border:#e5e5e5; --soft:#f6f7f9;
+      --blue:#3b82f6; --indigo:#818cf8; --orange:#f97316; --gold:#eab308; --green:#00a240;
+      --panel:#ffffff; --panel-solid:#ffffff; --code-bg:#0f1115; --on-ink:#ffffff;
+    }
     h1{font-size:42px}
     h1 .accent, h2 .accent{
       background:none !important;
       -webkit-background-clip:initial !important; background-clip:initial !important;
       -webkit-text-fill-color:#3b82f6 !important; color:#3b82f6 !important;
     }
-    .wash,.copybtn,figure.shot{display:none} body{background:#fff}
-    .topbar{position:static; background:#fff; backdrop-filter:none}
+    .copybtn,figure.shot{display:none} body{background:#fff}
+    .topbar{position:static; background:#fff}
     .hero{padding-top:34px}
     *{-webkit-print-color-adjust:exact; print-color-adjust:exact}
     .step{break-inside:auto} .step-head{break-after:avoid}
@@ -426,7 +425,7 @@ lang: en
   }
 
   /* ---------- step mode (focus view) ---------- */
-  .glayout{max-width:1150px; margin:0 auto; padding:0 24px; display:grid; grid-template-columns:255px minmax(0,1fr); gap:44px; align-items:start}
+  .glayout{width:min(1150px, calc(100% - 32px)); margin:28px auto 72px; padding:40px 40px 64px; background:rgba(8,10,18,0.66); border:1px solid rgba(255,255,255,0.08); border-radius:20px; display:grid; grid-template-columns:255px minmax(0,1fr); gap:44px; align-items:start}
   .gmain{max-width:var(--maxw); min-width:0}
   .gside{position:sticky; top:84px; padding:18px 0 24px}
   .gside .gs-head{font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--gray6); margin:0 0 10px 2px}
@@ -434,13 +433,13 @@ lang: en
   .gside li.gs-div{border-top:1px solid var(--border); margin:8px 2px}
   .gside button.gs-item{display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:none; border:none; border-radius:10px; padding:8px 10px; cursor:pointer; font-family:var(--font); color:var(--gray7)}
   .gside button.gs-item:hover{background:var(--soft)}
-  .gside .gs-num{flex:none; width:24px; height:24px; border-radius:50%; border:1px solid var(--border); background:#fff; color:var(--gray7); font-weight:600; font-size:12px; display:grid; place-items:center; transition:.15s}
+  .gside .gs-num{flex:none; width:24px; height:24px; border-radius:50%; border:1px solid var(--border); background:var(--panel); color:var(--gray7); font-weight:600; font-size:12px; display:grid; place-items:center; transition:.15s}
   .gside .gs-t{font-size:13.5px; font-weight:500; line-height:1.25}
   .gside .gs-m{display:block; font-size:11.5px; color:var(--gray6); font-weight:400}
-  .gside .gs-item.on{background:#fff; box-shadow:inset 0 0 0 1px var(--border)}
+  .gside .gs-item.on{background:var(--panel); box-shadow:inset 0 0 0 1px var(--border)}
   .gside .gs-item.on .gs-t{font-weight:600; color:var(--ink)}
   .gside .gs-item.on .gs-num{border-color:transparent; background:var(--grad); color:#fff}
-  .gside .gs-item.done .gs-num{border-color:rgba(0,162,64,0.4); background:rgba(0,162,64,0.08); color:var(--green)}
+  .gside .gs-item.done .gs-num{border-color:rgba(74,222,128,0.4); background:rgba(74,222,128,0.1); color:var(--green)}
   .gside .gs-item.done .gs-num::before{content:"✓"; font-size:12px}
   .gside .gs-item.done .gs-num span{display:none}
   .gside .gs-foot{margin-top:14px; padding:0 2px}
@@ -456,8 +455,8 @@ lang: en
   /* step nav buttons */
   .gnav{display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 0 70px}
   .gnav .gprev{background:none; border:1px solid var(--border); color:var(--gray7); border-radius:999px; padding:11px 20px; font-family:var(--font); font-weight:500; font-size:14px; cursor:pointer}
-  .gnav .gprev:hover{border-color:#cfd4dc; color:var(--ink)}
-  .gnav .gnext{margin-left:auto; display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#fff; border:none; border-radius:999px; padding:13px 26px; font-family:var(--font); font-weight:600; font-size:14.5px; cursor:pointer; letter-spacing:-0.01em}
+  .gnav .gprev:hover{border-color:rgba(255,255,255,0.28); color:var(--ink)}
+  .gnav .gnext{margin-left:auto; display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:var(--on-ink); border:none; border-radius:999px; padding:13px 26px; font-family:var(--font); font-weight:600; font-size:14.5px; cursor:pointer; letter-spacing:-0.01em}
   .gnav .gnext:hover{opacity:.88}
   .gnav .gdone-msg{margin-left:auto; font-weight:600; color:var(--green); font-size:15px}
   /* full view: everything visible, no step chrome */
@@ -467,8 +466,8 @@ lang: en
   body.fullview .gprog{display:none}
   body.fullview section[data-pane]{border-top:1px solid var(--border)}
   @media (max-width:920px){
-    .glayout{display:block}
-    .gside{position:sticky; top:64px; z-index:40; background:rgba(255,255,255,0.92); backdrop-filter:blur(10px); margin:0 -24px; padding:10px 24px; border-bottom:1px solid var(--border)}
+    .glayout{display:block; width:calc(100% - 24px); margin-top:12px; padding:8px 18px 48px}
+    .gside{position:sticky; top:64px; z-index:40; background:rgba(11,12,19,0.94); margin:0 -18px; padding:10px 18px; border-bottom:1px solid var(--border)}
     .gside .gs-head, .gside .gs-m, .gside .gs-foot{display:none}
     .gside ul{flex-direction:row; overflow-x:auto; gap:6px; scrollbar-width:none}
     .gside ul::-webkit-scrollbar{display:none}
@@ -479,59 +478,46 @@ lang: en
     .gside .gs-item.on{box-shadow:none; background:var(--soft)}
   }
   @media print{
+    .space-bg, .space-scrim, .space-stars{display:none !important}
+    .glayout{width:auto; margin:0 auto; padding:0 24px; background:none; border:none; border-radius:0}
     .gside, .gnav, .gprog{display:none !important}
     [data-pane]{display:block !important}
     #ruta{display:block !important}
     section[data-pane]{border-top:1px solid var(--border)}
   }
 
-  /* site navigation (mirrors gethouston.ai nav, as in published guides) */
-  body{padding-top:64px}
-  nav.site{position:fixed; top:0; left:0; right:0; z-index:100; height:64px; padding:0 40px;
-    display:flex; align-items:center; justify-content:space-between;
-    background:rgba(255,255,255,0.85); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
-    border-bottom:1px solid rgba(13,13,13,0.08)}
-  nav.site .nav-logo{display:flex; align-items:center; gap:9px; text-decoration:none; color:#0d0d0d;
-    font-weight:600; letter-spacing:-0.02em; font-size:19px}
-  nav.site .nav-logo svg{width:22px; height:24px}
-  nav.site .nav-center{position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:28px; align-items:center}
-  nav.site .nav-center a{font-size:14px; color:#424242; text-decoration:none}
-  nav.site .nav-center a:hover{color:#0d0d0d}
-  nav.site .nav-center a.active{color:#0d0d0d; font-weight:600}
-  nav.site .nav-right{display:flex; align-items:center; gap:12px}
-  nav.site .pdfbtn2{display:inline-flex; align-items:center; gap:7px; background:#0d0d0d; color:#fff;
-    border-radius:999px; padding:8px 16px; font-weight:600; font-size:13px; text-decoration:none}
-  nav.site .pdfbtn2:hover{opacity:.88}
-  nav.site .pdfbtn2 svg{width:14px; height:14px}
+  /* nav utilities (rendered into the shared top menu via navUtilities;
+     the menu itself lives in nav-docs.njk) */
+  .site-nav .pdfbtn2{display:inline-flex; align-items:center; gap:7px; background:transparent;
+    color:rgba(255,255,255,0.92); border:1px solid rgba(255,255,255,0.22);
+    border-radius:999px; padding:7px 15px; font-weight:600; font-size:13px; text-decoration:none;
+    transition:background 0.15s, border-color 0.15s}
+  .site-nav .pdfbtn2:hover{background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.35)}
+  .site-nav .pdfbtn2 svg{width:14px; height:14px}
   /* language picker (shows current language) */
-  nav.site .langdd{position:relative}
-  nav.site .langdd summary{list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
-    font-size:12.5px; font-weight:700; color:#424242; border:1px solid #e5e5e5; border-radius:999px;
+  .site-nav .langdd{position:relative}
+  .site-nav .langdd summary{list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+    font-size:12.5px; font-weight:700; color:rgba(255,255,255,0.78); border:1px solid rgba(255,255,255,0.14); border-radius:999px;
     padding:6px 12px; letter-spacing:.02em}
-  nav.site .langdd summary::-webkit-details-marker{display:none}
-  nav.site .langdd summary:hover{border-color:#cfd4dc; color:#0d0d0d}
-  nav.site .langdd summary svg{width:18px; height:13px; display:block}
-  nav.site .langdd summary .chev{width:7px; height:7px; border-right:1.5px solid #676767; border-bottom:1.5px solid #676767; transform:rotate(45deg); margin-top:-3px}
-  nav.site .langdd[open] summary .chev{transform:rotate(-135deg); margin-top:3px}
-  nav.site .langdd .menu{position:absolute; right:0; top:calc(100% + 8px); background:#fff; border:1px solid #e5e5e5;
-    border-radius:12px; box-shadow:0 8px 24px rgba(13,13,13,0.08); padding:6px; min-width:160px; z-index:200}
-  nav.site .langdd .menu a{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px;
-    font-size:13.5px; color:#424242; text-decoration:none; font-weight:500}
-  nav.site .langdd .menu a svg{width:18px; height:13px; display:block}
-  nav.site .langdd .menu a:hover{background:#f6f7f9; color:#0d0d0d}
-  nav.site .langdd .menu a.on{color:#0d0d0d; font-weight:600}
-  nav.site .langdd .menu a.on::after{content:"✓"; margin-left:auto; font-size:12px; color:#00a240}
-  @media (max-width:940px){ nav.site .nav-center{display:none} }
-  @media (max-width:640px){ nav.site{padding:0 20px} }
-  @media print{
-    nav.site{position:static; background:#fff; backdrop-filter:none; border-bottom:1px solid #e5e5e5}
-    nav.site .nav-center, nav.site .langdd, nav.site .pdfbtn2{display:none !important}
-    body{padding-top:0}
-  }
+  .site-nav .langdd summary::-webkit-details-marker{display:none}
+  .site-nav .langdd summary:hover{border-color:rgba(255,255,255,0.3); color:#fff}
+  .site-nav .langdd summary svg{width:18px; height:13px; display:block}
+  .site-nav .langdd summary .chev{width:7px; height:7px; border-right:1.5px solid rgba(255,255,255,0.55); border-bottom:1.5px solid rgba(255,255,255,0.55); transform:rotate(45deg); margin-top:-3px}
+  .site-nav .langdd[open] summary .chev{transform:rotate(-135deg); margin-top:3px}
+  .site-nav .langdd .menu{position:absolute; right:0; top:calc(100% + 8px); background:var(--panel-solid); border:1px solid rgba(255,255,255,0.14);
+    border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.5); padding:6px; min-width:160px; z-index:200}
+  .site-nav .langdd .menu a{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px;
+    font-size:13.5px; color:rgba(255,255,255,0.78); text-decoration:none; font-weight:500}
+  .site-nav .langdd .menu a svg{width:18px; height:13px; display:block}
+  .site-nav .langdd .menu a:hover{background:rgba(255,255,255,0.1); color:#fff}
+  .site-nav .langdd .menu a.on{color:#fff; font-weight:600}
+  .site-nav .langdd .menu a.on::after{content:"✓"; margin-left:auto; font-size:12px; color:#4ade80}
+  @media (max-width:640px){ .site-nav .pdfbtn2{display:none} }
+  @media print{ .mc-head .hm, .have .hic svg{filter:none} }
 </style>
 {% endblock %}
 {% block body %}
-<div class="wash"></div>
+{% include "space-bg.njk" %}
 
 <!-- inline logo symbol -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="hlogo" viewBox="0 0 412.248 448.898">
@@ -542,20 +528,10 @@ lang: en
 <path d="M370.408,283.292c-6.086,17.577-13.539,33.4-26.392,47.208,26.021-57.679,30.288-124.219,4.132-182.266-6.661-14.783-15.007-27.347-24.809-41.076,5.144.8,12.975.86,16.972,4.164,7.836,6.477,12.518,15.527,17.384,24.5,24.5,45.2,29.763,98.227,12.713,147.465" fill="#161615"/>
 </symbol></svg>
 
-<nav class="site">
-  <a class="nav-logo" href="/"><svg class="mark"><use href="#hlogo"/></svg><span>houston</span></a>
-  <div class="nav-center">
-    <a href="/#agents">Agents</a>
-    <a href="/#features">Features</a>
-    <a class="active" href="/guides/">Guides</a>
-    <a href="/changelog/">Changelog</a>
-    <a href="/startups/">For Startups</a>
-  </div>
-  <div class="nav-right">
-    <details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr1"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr1)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>EN<span class="chev"></span></summary><div class="menu"><a class="on" href="/guides/sdr-linkedin/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a href="/guides/es/sdr-linkedin/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details>
-    <a class="pdfbtn2" href="/guides/downloads/houston-sdr-linkedin-guide-en.pdf" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>Download PDF</a>
-  </div>
-</nav>
+{% set navActive = "guides" %}
+{% set navUtilities %}<details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr1"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr1)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>EN<span class="chev"></span></summary><div class="menu"><a class="on" href="/guides/sdr-linkedin/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a href="/guides/es/sdr-linkedin/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details><a class="pdfbtn2 nav-util" href="/guides/downloads/houston-sdr-linkedin-guide-en.pdf" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>Download PDF</a>{% endset %}
+{% set navDropdownExtra %}<a href="/guides/es/sdr-linkedin/">Español</a><a href="/guides/downloads/houston-sdr-linkedin-guide-en.pdf" download>Download PDF</a>{% endset %}
+{% include "nav-docs.njk" %}
 
 <div class="gprog" id="gprog"></div>
 <div class="glayout" id="top">
@@ -585,19 +561,19 @@ lang: en
     <p class="lede">Follow this guide at your own pace: build your SDR agent in Houston, install the agent or skills, and turn the comments on any LinkedIn post into an outbound campaign ready for your approval.</p>
     <div class="meta">
       <span class="chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
         <span><b>60 to 90 min</b> of setup</span>
       </span>
       <span class="chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z" stroke-linejoin="round"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z" stroke-linejoin="round"/></svg>
         <span>For <b>founders and sales teams</b></span>
       </span>
       <span class="chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4" stroke-linecap="round"/></svg>
         <span>You need a Mac or Windows <b>computer</b></span>
       </span>
       <span class="chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>No technical skills needed</span>
       </span>
     </div>
@@ -630,10 +606,10 @@ lang: en
               <span class="live"><span class="ld"></span>Working</span>
             </div>
             <div class="mc-body">
-              <div class="act"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx">Found <b>1,000 commenters</b> with Apify</span></div>
-              <div class="act"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx">Loaded the leads into <b>Google Sheets</b></span></div>
-              <div class="act"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx">Enriched <b>620 emails</b> with Apollo and Hunter</span></div>
-              <div class="act"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx">Wrote the <b>3-email sequence</b> in your voice</span></div>
+              <div class="act"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx">Found <b>1,000 commenters</b> with Apify</span></div>
+              <div class="act"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx">Loaded the leads into <b>Google Sheets</b></span></div>
+              <div class="act"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx">Enriched <b>620 emails</b> with Apollo and Hunter</span></div>
+              <div class="act"><span class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx">Wrote the <b>3-email sequence</b> in your voice</span></div>
               <div class="act pause"><span class="ai"><span class="pd2"><b></b><b></b></span></span><span class="tx"><b>Campaign paused</b> in Instantly · waiting for your OK to send</span></div>
             </div>
           </div>
@@ -666,7 +642,7 @@ lang: en
       <figcaption><span class="num">Example</span>The Google Sheet the agent builds: every person who commented, with role, company, comment, profile, and verified work email. An empty cell is normal (nobody finds 100%).</figcaption>
     </figure>
     <div class="call warn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
       <div><span class="lbl">Use it responsibly</span><p>This is a lot of power. The agent <b>never sends anything on its own</b>: the campaign always stays paused, waiting for your approval. Keep that guardrail and prospect with judgment.</p></div>
     </div>
   </section>
@@ -680,7 +656,7 @@ lang: en
     <p class="sub">Four things you need and a couple of links on hand. Everything is free and takes minutes to set up.</p>
     <div class="reqgrid">
       <div class="rq">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4" stroke-linecap="round"/></svg></div>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4" stroke-linecap="round"/></svg></div>
         <div><h4>A computer</h4><p>Mac or Windows. Houston doesn't run on phone or tablet.</p></div>
       </div>
       <div class="rq">
@@ -688,16 +664,16 @@ lang: en
         <div><h4>A LinkedIn account</h4><p>Plus a post with comments to test on, yours or someone else's.</p></div>
       </div>
       <div class="rq">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><path d="M12 3l1.7 4.6L18 9l-4.3 1.4L12 15l-1.7-4.6L6 9l4.3-1.4z" stroke-linejoin="round"/><path d="M18.5 15l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" stroke-linejoin="round"/></svg></div>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><path d="M12 3l1.7 4.6L18 9l-4.3 1.4L12 15l-1.7-4.6L6 9l4.3-1.4z" stroke-linejoin="round"/><path d="M18.5 15l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" stroke-linejoin="round"/></svg></div>
         <div><h4>An AI provider</h4><p>Create a free account with either one:</p>
           <div class="prov">
             <a href="https://claude.ai" target="_blank" rel="noopener"><span class="lg" style="background:#d97757;color:#fff;font-weight:800;font-size:10px">✳</span>Anthropic</a>
-            <a href="https://openai.com" target="_blank" rel="noopener"><span class="lg" style="background:#000;color:#fff;font-weight:800;font-size:9px">◉</span>OpenAI</a>
+            <a href="https://openai.com" target="_blank" rel="noopener"><span class="lg" style="background:#fff;color:#000;font-weight:800;font-size:9px">◉</span>OpenAI</a>
           </div>
         </div>
       </div>
       <div class="rq">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#0a7a43" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18" stroke-linecap="round"/></svg></div>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18" stroke-linecap="round"/></svg></div>
         <div><h4>A Google account</h4><p>So the agent can save the leads in Google Sheets.</p></div>
       </div>
     </div>
@@ -717,7 +693,7 @@ lang: en
       </div>
     </div>
     <div class="call note">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.78)" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Are you ready?</span><p>You have your computer on hand, you can open your email, and you have a quiet stretch ahead. Full setup takes 60 to 90 min and your first campaign another 15 to 40 min. You don't have to do it all in one sitting: every step is saved.</p></div>
     </div>
   </section>
@@ -758,7 +734,7 @@ lang: en
       <li><b>Connect your integrations provider (Composio):</b> click <code class="ui">Sign In</code>, sign in with Google or Microsoft, authorize, and come back to Houston.</li>
     </ol>
     <div class="call warn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
       <div><span class="lbl">If you're on Windows</span><p>Windows may show <b>"Windows protected your PC"</b>. That's normal: Houston is in beta on Windows. Click <code class="ui">More info</code> and then <code class="ui">Run anyway</code>.</p></div>
     </div>
     <figure class="shot-real narrow">
@@ -770,7 +746,7 @@ lang: en
       <figcaption><span class="num">Screenshot 3</span>The Houston main screen, now unlocked: your agents in the left column and the mission board (in progress, needs your attention, ready) in the center.</figcaption>
     </figure>
     <div class="check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">You should see</span><p>The Houston main screen unlocked, with the agents column on the left, and your AI provider and Composio connected.</p></div>
     </div>
   </section>
@@ -808,15 +784,15 @@ lang: en
       <li>Give it a name (for example, <i>SDR</i>) and a color, and bring the agent into your space.</li>
     </ol>
     <div class="call warn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
       <div><span class="lbl">Don't unzip the file</span><p>Upload <b>SDR.houstonagent</b> as is, as a single file. If your computer unzips it into several parts, the import fails. Keep it all together.</p></div>
     </div>
     <div class="call note">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.78)" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">Prefer to build it yourself?</span><p>You can also build it by hand: create an agent from the <code class="ui">Sales</code> template and then install the skills pack from GitHub (<code class="ui">Job Description</code> → <code class="ui">Skills</code> → <code class="ui">Add skill</code> → <code class="ui">From GitHub</code> → <a class="inline" href="https://github.com/felipesalinasr/fsr-stack" target="_blank" rel="noopener">github.com/felipesalinasr/fsr-stack</a> → install all). It takes a bit longer; the result is the same.</p></div>
     </div>
     <div class="check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">You should see</span><p>Your new <b>SDR</b> agent in the left column, with its 8 skills and its learnings already loaded.</p></div>
     </div>
   </section>
@@ -860,7 +836,7 @@ lang: en
 
     </div>
     <div class="check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">You should have</span><p>Four accounts created: Apify, Apollo, Instantly, and (optional) Hunter.</p></div>
     </div>
   </section>
@@ -905,11 +881,11 @@ lang: en
       <figcaption><span class="num">Screenshot 7</span>The two Apify results in Integrations. Connect the one on the right: <b>Apify MCP</b> (red box).</figcaption>
     </figure>
     <div class="call note">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.78)" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">With API keys</span><p>Paste them into <b>Integrations</b>, not the chat (there they get exposed in the history), and don't share your screen while you copy them. Lost looking for a key? Ask the agent for help: <i>"help me step by step to find this tool's API key."</i></p></div>
     </div>
     <div class="check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">You should have</span><p>Four integrations in green: <b>Apify MCP</b>, <b>Apollo</b>, <b>Google Sheets</b>, and <b>Instantly</b>. (Hunter connects the same way, or you leave it for later.)</p></div>
     </div>
   </section>
@@ -936,15 +912,15 @@ lang: en
       <li>When it finishes, open the campaign in Instantly: it's <b>paused</b>, with your leads and the 3-email sequence (opener day 0, reminder day 3, close day 6 to 7). Review it, adjust whatever you want, and only then decide whether to send.</li>
     </ol>
     <div class="call note">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.78)" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">What to expect</span><p>Apollo and Hunter find a verified email for <b>50 to 70%</b> of the leads: it's a database, not magic. In practice, 42 commenters yielded 24 emails (57%). An empty cell is normal, not a failure. And each email found uses one Apollo credit.</p></div>
     </div>
     <div class="call warn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
       <div><span class="lbl">Before you send for real</span><p>Loading the campaign is safe: it stays paused. But <b>don't activate it</b> until you have sending emails set up in Instantly (ideally alternate domains warmed up with Warm Up). If you don't have them yet, tell the agent: <i>"I want to try the skill without Instantly for now."</i></p></div>
     </div>
     <div class="check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><span class="lbl">You've done it when</span><p>You have a Google Sheet with every commenter on the post, verified emails for most of the reachable ones, and a 3-email campaign waiting for your approval in Instantly. From a single link.</p></div>
     </div>
   </section>
@@ -1032,7 +1008,7 @@ lang: en
     <div class="showcase">
       <div class="sc-bg"></div>
       <div class="sc-inner" style="grid-template-columns:1fr; gap:0; padding:22px 24px">
-        <div class="mc" style="box-shadow:0 12px 34px -14px rgba(13,13,13,0.22)">
+        <div class="mc" style="box-shadow:0 12px 34px -14px rgba(0,0,0,0.5)">
           <div class="mc-head">
             <svg class="hm" viewBox="0 0 412.248 448.898" aria-hidden="true"><use href="#hlogo"/></svg>
             <div><div class="nm">SDR</div><div class="ms">LinkedIn Comment to Outreach</div></div>

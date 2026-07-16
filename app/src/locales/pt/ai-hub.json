@@ -6,8 +6,7 @@
   },
   "tabs": {
     "providers": "Provedores",
-    "models": "Modelos",
-    "policy": "Política do espaço de trabalho"
+    "models": "Modelos"
   },
   "sections": {
     "connected": "Conectados",
@@ -127,6 +126,63 @@
     },
     "openai-compatible": {
       "description": "Rode modelos no seu próprio computador com Ollama, LM Studio e afins."
+    }
+  },
+  "usage": {
+    "pageTitle": "Uso",
+    "pageSubtitle": "Quanto você já usou de cada conta de IA conectada e quando os limites reiniciam.",
+    "window": {
+      "session": "Limite por sessão",
+      "week": "Limite semanal",
+      "week_opus": "Limite semanal (Opus)",
+      "month": "Limite mensal",
+      "premium": "Solicitações premium",
+      "chat": "Solicitações de chat",
+      "completions": "Preenchimento de código"
+    },
+    "percentUsed": "{{percent}}% usado",
+    "resets": "Reinicia {{when}}",
+    "creditsLeft": "Restam {{amount}}",
+    "tokensUsed": "{{amount}} tokens usados",
+    "tokensSplit": "{{input}} de entrada, {{output}} de saída",
+    "meteredSince": "medido pela Houston desde {{when}}",
+    "noData": "Esta conta não reporta limites no momento.",
+    "notMeteredYet": "Ainda não há uso. A Houston vai começar a medir com a sua próxima mensagem.",
+    "reconnect": "Entre novamente para ver o uso desta conta.",
+    "error": "Não foi possível carregar o uso. Tente de novo em instantes.",
+    "empty": {
+      "title": "Nenhuma conta conectada",
+      "body": "Conecte um provedor de IA para ver quanto dos limites você já usou.",
+      "connect": "Conectar um provedor"
+    },
+    "accounts": {
+      "title": "Contas de IA"
+    },
+    "compute": {
+      "title": "Tempo de atividade",
+      "subtitle": "Quanto tempo seus agentes ficaram funcionando e quantas tarefas realizaram.",
+      "range": {
+        "week": "7 dias",
+        "month": "30 dias",
+        "quarter": "3 meses"
+      },
+      "summary": "Seus agentes funcionaram {{duration}}",
+      "tasks_one": "{{count}} tarefa",
+      "tasks_other": "{{count}} tarefas",
+      "runningNow": "Ativo agora",
+      "byAgent": "Por agente",
+      "duration": {
+        "hm": "{{hours}}h {{minutes}}m",
+        "m": "{{minutes}}m",
+        "underMinute": "<1m",
+        "zero": "0m"
+      },
+      "barLabel": "{{date}}: funcionou {{duration}}, {{tasks}}",
+      "empty": {
+        "title": "Ainda não há tempo de atividade",
+        "body": "Quando seus agentes funcionarem, o tempo deles vai aparecer aqui."
+      },
+      "error": "Não foi possível carregar o tempo de atividade. Tente novamente em instantes."
     }
   },
   "toast": {}

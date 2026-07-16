@@ -115,6 +115,13 @@ export interface Capabilities {
    * that predate the public API. The gateway is the sole enforcer.
    */
   apiKeys?: boolean;
+  /**
+   * Whether this deployment serves per-agent compute analytics — how long each
+   * agent's engine was running (`GET /v1/org/compute-usage`). Gateway-injected,
+   * hosted-cloud only; absent/false on desktop/self-host and on gateways that
+   * predate it. Feature-detect flag only — the gateway is the sole enforcer.
+   */
+  computeUsage?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------
@@ -404,6 +411,33 @@ export interface UsageRow {
   userId: string;
   day: string;
   messages: number;
+}
+
+/**
+ * One compute-usage row from `GET /org/compute-usage`: engine running time for
+ * an (agent, day) tuple. `day` is a `YYYY-MM-DD` UTC date. `awakeMs` is the
+ * wall-clock the agent's engine was up that day (today's row includes the
+ * currently-open stretch up to `ComputeUsage.asOf`); `activeMs` is the subset
+ * spent actually executing turns/routine runs (recorded for later use, not
+ * rendered yet — never sum it with `awakeMs`).
+ */
+export interface ComputeUsageRow {
+  agentSlug: string;
+  day: string;
+  awakeMs: number;
+  activeMs: number;
+  wakes: number;
+  turns: number;
+  routineRuns: number;
+}
+
+/** Response of `GET /org/compute-usage`. Days with no data have no row. */
+export interface ComputeUsage {
+  /** Server clock when the snapshot was taken (RFC 3339). */
+  asOf: string;
+  /** Slugs of agents whose engine is up right now — their "today" still grows. */
+  awakeNow: string[];
+  rows: ComputeUsageRow[];
 }
 
 // ---------- Workspaces ----------
@@ -1005,6 +1039,82 @@ export interface ProviderStatus {
    * can show + select it. Absent for providers whose models live in the catalog.
    */
   activeModel?: string;
+}
+
+/**
+ * Stable rate-limit window identifiers on a provider account, mapped to
+ * translated labels by the frontend: `session` = the short rolling window
+ * (Claude 5h, Codex primary), `week`/`week_opus` = 7-day windows, `month` =
+ * monthly, `premium`/`chat`/`completions` = Copilot's quota lanes.
+ * Mirrors `@houston/protocol`.
+ */
+export type ProviderUsageWindowId =
+  | "session"
+  | "week"
+  | "week_opus"
+  | "month"
+  | "premium"
+  | "chat"
+  | "completions";
+
+/** One rolling rate-limit window on a connected provider account. */
+export interface ProviderUsageWindow {
+  id: ProviderUsageWindowId;
+  /** 0–100, clamped engine-side; never NaN. */
+  usedPercent: number;
+  /** ISO 8601 instant the window resets, when the provider reports one. */
+  resetsAt: string | null;
+  /** Window length in minutes, when the provider reports one (300 = 5h). */
+  windowMinutes?: number;
+}
+
+/** Prepaid balance for API-key providers that expose one. */
+export interface ProviderUsageCredits {
+  remaining: number;
+  /** Total granted, when reported. */
+  granted?: number;
+  unit: "USD" | "credits";
+}
+
+/**
+ * Cumulative token spend metered locally by Houston, for API-key providers
+ * with no account-usage API to probe (Gemini, Bedrock, OpenCode, MiniMax,
+ * custom endpoints). Mirrors `@houston/protocol`.
+ */
+export interface ProviderUsageTokens {
+  inputTokens: number;
+  outputTokens: number;
+  /** Turns metered into this row. */
+  turns: number;
+  /** ISO 8601 instant metering started (the first recorded turn). */
+  since: string;
+}
+
+export type ProviderUsageStatus =
+  | "ok"
+  | "unsupported" // the provider has no usage surface Houston can read
+  | "unauthenticated" // no readable credential for the usage probe
+  | "error"; // the probe failed (network, provider outage, bad payload)
+
+/**
+ * One connected provider account's live usage — rate-limit windows for
+ * subscription providers, a credit balance for prepaid API keys. One row per
+ * CONNECTED provider (`providerUsage()`); unreadable providers report an
+ * honest non-`ok` status instead of being omitted.
+ */
+export interface ProviderUsage {
+  provider: string;
+  status: ProviderUsageStatus;
+  windows: ProviderUsageWindow[];
+  credits?: ProviderUsageCredits;
+  /** Locally metered token spend, for providers with no usage API to probe. */
+  tokens?: ProviderUsageTokens;
+  /** Plan/tier name when the provider reports one (e.g. Codex "pro"). */
+  plan?: string;
+  /** ISO 8601 instant the row was fetched (`ok` rows only). */
+  fetchedAt?: string;
+  /** Human-readable failure detail (`error` rows only; never a secret). */
+  message?: string;
 }
 
 export interface PreferenceValue {
@@ -1640,6 +1750,53 @@ export interface StorePublicationStatus {
   identity?: StorePublishIdentity;
 }
 
+/** One public Agent Store listing, exactly as the catalog API serializes it. */
+export interface StoreCatalogAgent {
+  id: string;
+  /** Null only while a listing is a draft; always set for published agents. */
+  slug: string | null;
+  name: string;
+  tagline: string | null;
+  description: string;
+  icon: { kind: string; value: string } | null;
+  color: string | null;
+  category: string;
+  tags: string[];
+  /** UPPERCASE Composio toolkit slugs the agent uses. */
+  integrations: string[];
+  creator: { displayName: string; url?: string };
+  installsCount: number;
+  publishedAt: string | null;
+  updatedAt: string;
+}
+
+/** One page of the public catalog (page size is server-fixed at 24). */
+export interface StoreCatalogPage {
+  items: StoreCatalogAgent[];
+  hasMore: boolean;
+}
+
+export type StoreCatalogSort = "recent" | "installs";
+
+export interface StoreCatalogQuery {
+  /** Full-text search (websearch syntax). */
+  q?: string;
+  /** A store category slug; omit for all categories. */
+  category?: string;
+  sort?: StoreCatalogSort;
+  /** 1-based. */
+  page?: number;
+}
+
+/** A listing's detail: the summary plus the parts of its IR the app renders. */
+export interface StoreCatalogAgentDetail {
+  agent: StoreCatalogAgent;
+  ir: {
+    skills?: Array<{ slug: string }>;
+    learnings?: unknown[];
+  };
+}
+
 // ── integrations (Composio, platform mode) ───────────────────────────────────
 // User-level: no provider account — the user only connects apps (Gmail, Slack…)
 // via OAuth; Houston's platform key lives server-side, keyed by the user's id.
@@ -1766,6 +1923,11 @@ export interface CustomEndpoint {
   name?: string;
   contextWindow?: number;
   reasoning?: boolean;
+  /**
+   * Share this endpoint with the active organization. Only meaningful when
+   * saving in managed cloud; ignored elsewhere.
+   */
+  shared?: boolean;
   apiKey?: string;
 }
 

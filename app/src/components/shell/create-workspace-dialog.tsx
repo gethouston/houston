@@ -72,10 +72,10 @@ export function CreateAgentDialog() {
   const [model, setModel] = useState<string>(getDefaultModel("anthropic"));
 
   // Reset form on close. On open, load the sticky last-used provider/model —
-  // there is no picker in this flow anymore; the pair silently becomes the new
-  // agent's brain (and the generation brain on the AI path). Reading on open
-  // (not mount) prevents the old "stale workspace default baked into the new
-  // agent's config" bug.
+  // the pair becomes the new agent's brain (and the generation brain on the AI
+  // path, where the ai-assist step shows a picker to change it). Reading on
+  // open (not mount) prevents the old "stale workspace default baked into the
+  // new agent's config" bug.
   useEffect(() => {
     if (!open) {
       setStep(1);
@@ -108,6 +108,16 @@ export function CreateAgentDialog() {
 
   const handleClose = () => {
     setOpen(false);
+  };
+
+  // A pick in the ai-assist step drives the generation turn, becomes the new
+  // agent's brain, and sticks as the next dialog's default. `setLastUsed`
+  // surfaces its own error toast (the `call` wrapper), so the local state —
+  // which is what this create actually uses — is applied regardless.
+  const handleModelChange = (nextProvider: string, nextModel: string) => {
+    setProvider(nextProvider);
+    setModel(nextModel);
+    tauriProvider.setLastUsed(nextProvider, nextModel).catch(() => {});
   };
 
   const handleCreateAgent = async () => {
@@ -257,6 +267,7 @@ export function CreateAgentDialog() {
           <AiAssistStep
             provider={provider}
             model={model}
+            onModelChange={handleModelChange}
             brief={brief}
             onBriefChange={setBrief}
             onBack={() => setStep(1)}

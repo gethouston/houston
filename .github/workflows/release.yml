@@ -73,6 +73,12 @@ permissions:
 # keep engine-release.yml's BUN_VERSION in sync when bumping.
 env:
   BUN_VERSION: "1.3.10"
+  # The frontend `vite build` peaks past Node's default old-space ceiling on
+  # low-RAM runners (the arm64 macOS image sizes the heap at ~2 GB and the
+  # 0.5.7 build OOM'd exactly there; windows-11-arm is similarly tight).
+  # Workflow-wide so every platform's Tauri beforeBuildCommand gets the same
+  # headroom.
+  NODE_OPTIONS: --max-old-space-size=4096
 
 jobs:
   # Lightweight orchestration job that runs before the heavy builds. It
@@ -1504,6 +1510,20 @@ jobs:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+      # linuxdeploy adds a RUNPATH to every dynamic ELF with patchelf. Bun's
+      # standalone executable has an appended JS payload, and that mutation
+      # makes the packaged host segfault before its listening banner. Rebuild
+      # the AppImage from its extracted tree with the pristine sidecar restored.
+      - name: Restore Bun host sidecar after AppImage packaging
+        run: |
+          set -euo pipefail
+          BUNDLE="target/x86_64-unknown-linux-gnu/release/bundle/appimage"
+          APPIMAGE=$(ls -t "$BUNDLE/"*.AppImage 2>/dev/null | head -1 || true)
+          test -f "$APPIMAGE" || { echo "::error::AppImage missing before sidecar repair"; exit 1; }
+          scripts/ci/repair-linux-appimage-sidecar.sh \
+            "$APPIMAGE" \
+            target/host-sidecar/houston-host-x86_64-unknown-linux-gnu
 
       - name: Locate Linux artifact
         id: artifacts-linux

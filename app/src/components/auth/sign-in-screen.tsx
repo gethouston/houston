@@ -1,10 +1,11 @@
 import { Button } from "@houston-ai/core";
-import { ArrowUpRight, Loader2 } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   cancelPendingAuthorize,
   onAuthError,
+  signInWithApple,
   signInWithGoogle,
   signInWithMicrosoft,
 } from "../../lib/auth";
@@ -14,9 +15,13 @@ import { HoustonLogo } from "../shell/experience-card";
 import { SpaceScreen } from "../space/space-screen";
 import { authErrorKey } from "./auth-errors";
 import { EmailSignIn } from "./email-sign-in";
-import { GoogleIcon, MicrosoftIcon } from "./provider-brand-icons";
+import { type Provider, ProviderButtonRow } from "./provider-button-row";
 
-type Provider = "google" | "azure";
+const SIGN_IN_BY_PROVIDER = {
+  google: signInWithGoogle,
+  apple: signInWithApple,
+  azure: signInWithMicrosoft,
+} as const;
 
 const openExternal = (url: string) => () => {
   void tauriSystem.openUrl(url);
@@ -29,8 +34,9 @@ const openExternal = (url: string) => () => {
  * copy product-benefit-focused — the audience is non-technical, so no mention
  * of OAuth / tokens / APIs.
  *
- * Two-panel card: the LEFT panel is the sign-in itself (Google, Microsoft, and
- * passwordless email — the 6-digit code stays fully in-app); the RIGHT panel is
+ * Two-panel card: the LEFT panel is the sign-in itself — Google / Apple /
+ * Microsoft as one row of icon pills, then passwordless email under the
+ * divider (the 6-digit code stays fully in-app); the RIGHT panel is
  * a calm value note on a muted surface. The card is pinned to the DARK palette
  * (data-theme="dark") so the login looks the same in both app themes: dark
  * "Log in" surface, dark value panel, light primary buttons. Wordmark sits
@@ -71,9 +77,7 @@ export function SignInScreen() {
     // opens, so the whole (up-to-300s) round-trip never freezes them.
     const opts = { onBrowserOpened: () => setPending(null) };
     try {
-      await (provider === "azure"
-        ? signInWithMicrosoft(opts)
-        : signInWithGoogle(opts));
+      await SIGN_IN_BY_PROVIDER[provider](opts);
     } catch (e) {
       logger.error(`[auth] ${provider} sign-in failed: ${e}`);
       setError(t(authErrorKey(e)));
@@ -100,39 +104,14 @@ export function SignInScreen() {
             ancestor outside the pin would carry the APP theme's foreground in. */}
         <div
           data-theme="dark"
-          className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-line text-ink shadow-2xl sm:grid-cols-3"
+          className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-[var(--ht-space-glass-border)] text-ink shadow-2xl sm:grid-cols-3"
         >
-          <div className="flex flex-col gap-5 bg-input p-8 sm:col-span-2">
+          {/* The landing page's glass surface (`--ht-space-glass`), so the
+              login card and the marketing site read as one material. */}
+          <div className="flex flex-col gap-5 bg-[var(--ht-space-glass)] p-8 backdrop-blur-md sm:col-span-2">
             <h1 className="text-lg font-medium">Log in</h1>
 
-            <div className="flex flex-col gap-2.5">
-              <Button
-                variant="default"
-                onClick={handleSignIn("google")}
-                disabled={pending !== null}
-                className="h-10 w-full justify-center rounded-full border-none! shadow-none"
-              >
-                {pending === "google" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <GoogleIcon />
-                )}
-                Continue with Google
-              </Button>
-              <Button
-                variant="default"
-                onClick={handleSignIn("azure")}
-                disabled={pending !== null}
-                className="h-10 w-full justify-center rounded-full border-none! shadow-none"
-              >
-                {pending === "azure" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <MicrosoftIcon />
-                )}
-                Continue with Microsoft
-              </Button>
-            </div>
+            <ProviderButtonRow pending={pending} onSignIn={handleSignIn} />
 
             <div className="flex items-center gap-3">
               <div className="h-px flex-1 bg-line" />

@@ -48,38 +48,38 @@ export function EmailActionRow({
       aria-label={loading ? cancelLabel : undefined}
       onClick={onClick}
       className={cn(
-        "group/row flex w-full items-center gap-3 rounded-xl bg-chip px-4 py-3 text-left transition-colors",
+        "group/row flex w-full items-center gap-4 rounded-2xl bg-chip px-5 py-4 text-left transition-colors",
         disabled ? "cursor-not-allowed opacity-50" : "hover:bg-hover",
       )}
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-input">
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-input">
         {icon}
       </span>
       {loading ? (
         <>
-          <span className="min-w-0 flex-1 text-sm font-medium text-ink">
+          <span className="min-w-0 flex-1 text-base font-medium text-ink">
             {/* Resting: "Connecting". Hover: "Cancel" — the click aborts. */}
             <span className="group-hover/row:hidden">{busyLabel}</span>
             <span className="hidden group-hover/row:inline">{cancelLabel}</span>
           </span>
-          <span className="relative size-4 shrink-0 text-ink-muted">
+          <span className="relative size-5 shrink-0 text-ink-muted">
             <Loader2
-              className="size-4 animate-spin transition-opacity group-hover/row:opacity-0"
+              className="size-5 animate-spin transition-opacity group-hover/row:opacity-0"
               aria-hidden="true"
             />
             <X
-              className="absolute inset-0 size-4 opacity-0 transition-opacity group-hover/row:opacity-100"
+              className="absolute inset-0 size-5 opacity-0 transition-opacity group-hover/row:opacity-100"
               aria-hidden="true"
             />
           </span>
         </>
       ) : (
         <>
-          <span className="min-w-0 flex-1 text-sm font-medium text-ink">
+          <span className="min-w-0 flex-1 text-base font-medium text-ink">
             {label}
           </span>
           <ChevronRight
-            className="size-4 shrink-0 text-ink-muted"
+            className="size-5 shrink-0 text-ink-muted"
             aria-hidden="true"
           />
         </>

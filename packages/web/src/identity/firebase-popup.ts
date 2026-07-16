@@ -92,6 +92,15 @@ export function webSignInWithMicrosoft(): Promise<Session | null> {
   return popupSignIn(new OAuthProvider("microsoft.com"));
 }
 
+/** Apple popup sign-in. Resolves `null` on a cancelled popup. Apple returns
+ *  the user's name/email only on the FIRST consent for this Services ID. */
+export function webSignInWithApple(): Promise<Session | null> {
+  const provider = new OAuthProvider("apple.com");
+  provider.addScope("email");
+  provider.addScope("name");
+  return popupSignIn(provider);
+}
+
 /** Exchange a gateway-minted custom token (email-OTP flow) for a session. */
 export async function webSignInWithCustomToken(
   token: string,
@@ -140,6 +149,8 @@ function toAuthProvider(providerId: string | undefined): AuthProvider {
       return "google.com";
     case "microsoft.com":
       return "microsoft.com";
+    case "apple.com":
+      return "apple.com";
     case "password":
       return "password";
     default:

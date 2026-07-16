@@ -90,6 +90,86 @@ export interface ProviderInfo {
   models: string[];
 }
 
+// ── Per-account provider usage (GET /providers/usage) ───────────────────────
+
+/**
+ * Stable rate-limit window identifiers, mapped to translated labels by the
+ * frontend: `session` = the short rolling window (Claude 5h, Codex primary),
+ * `week`/`week_opus` = 7-day windows, `month` = monthly, and
+ * `premium`/`chat`/`completions` = Copilot's quota lanes.
+ */
+export type ProviderUsageWindowId =
+  | "session"
+  | "week"
+  | "week_opus"
+  | "month"
+  | "premium"
+  | "chat"
+  | "completions";
+
+/** One rolling rate-limit window on a connected provider account. */
+export interface ProviderUsageWindow {
+  id: ProviderUsageWindowId;
+  /** 0–100, clamped runtime-side; never NaN. */
+  usedPercent: number;
+  /** ISO 8601 instant the window resets, when the provider reports one. */
+  resetsAt: string | null;
+  /** Window length in minutes, when the provider reports one (300 = 5h). */
+  windowMinutes?: number;
+}
+
+/** Prepaid balance for API-key providers that expose one. */
+export interface ProviderUsageCredits {
+  remaining: number;
+  /** Total granted, when reported. */
+  granted?: number;
+  unit: "USD" | "credits";
+}
+
+/**
+ * Cumulative token spend metered locally by Houston, for API-key providers
+ * with no account-usage API to probe (Gemini, Bedrock, OpenCode, MiniMax,
+ * custom endpoints). Accumulated from each turn's `TokenUsage` by the
+ * long-lived runtime: `inputTokens` sums every request's full prompt
+ * (cache-inclusive, what the provider bills as input), `outputTokens` sums
+ * generated tokens.
+ */
+export interface ProviderUsageTokens {
+  inputTokens: number;
+  outputTokens: number;
+  /** Turns metered into this row. */
+  turns: number;
+  /** ISO 8601 instant metering started (the first recorded turn). */
+  since: string;
+}
+
+export type ProviderUsageStatus =
+  | "ok"
+  | "unsupported" // the provider has no usage surface Houston can read
+  | "unauthenticated" // no readable credential for the usage probe
+  | "error"; // the probe failed (network, provider outage, bad payload)
+
+/**
+ * One connected provider account's live usage — rate-limit windows for
+ * subscription providers, a credit balance for prepaid API keys. One row per
+ * CONNECTED provider; unreadable providers report an honest non-`ok` status
+ * instead of being omitted.
+ */
+export interface ProviderUsage {
+  provider: ProviderId;
+  status: ProviderUsageStatus;
+  windows: ProviderUsageWindow[];
+  credits?: ProviderUsageCredits;
+  /** Locally metered token spend, for providers with no usage API to probe. */
+  tokens?: ProviderUsageTokens;
+  /** Plan/tier name when the provider reports one (e.g. Codex "pro"). */
+  plan?: string;
+  /** ISO 8601 instant the row was fetched (`ok` rows only). */
+  fetchedAt?: string;
+  /** Human-readable failure detail (`error` rows only; never a secret). */
+  message?: string;
+}
+
 /**
  * The OpenAI-compatible (local) endpoint a user connects: a base URL pointing at
  * their own server (Ollama / vLLM / LM Studio) plus the model id it serves. The
@@ -104,6 +184,11 @@ export interface CustomEndpoint {
   contextWindow?: number;
   /** Whether to send `reasoning_effort` (only set for a reasoning-capable model). */
   reasoning?: boolean;
+  /**
+   * Share this endpoint with the active organization. Only meaningful when
+   * saving in managed cloud; ignored by desktop and self-hosted runtimes.
+   */
+  shared?: boolean;
   /** Optional API key; blank for keyless servers. */
   apiKey?: string;
 }

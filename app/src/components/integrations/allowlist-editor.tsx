@@ -42,6 +42,8 @@ export interface AllowlistEditorProps {
   readOnly?: boolean;
   onSave: (next: string[] | null) => void;
   copy: AllowlistEditorCopy;
+  /** Per-toolkit impact line (slug -> preformatted, i18n'd, e.g. "Used by 3 agents"), shown on allowed rows INSTEAD of the app blurb; consumer counts + translates (this stays i18n-agnostic). Absent entry = no meta. */
+  rowMeta?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -61,6 +63,7 @@ export function AllowlistEditor({
   readOnly,
   onSave,
   copy,
+  rowMeta,
 }: AllowlistEditorProps) {
   // View-only category filter shared by the allowed list + "Add apps" catalog.
   const [category, setCategory] = useState("all");
@@ -146,11 +149,12 @@ export function AllowlistEditor({
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {allowedVisible.map((tk) => {
                   const display = appDisplay(tk.slug, tk);
+                  const meta = rowMeta?.get(tk.slug);
                   return (
                     <AppRow
                       key={tk.slug}
                       display={display}
-                      description={display.description}
+                      description={meta ?? display.description}
                       trailing={
                         <Switch
                           aria-label={copy.allowApp(display.name)}

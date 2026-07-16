@@ -7,6 +7,7 @@ import {
   parsePersistedProvisioning,
   probeSaysStillStarting,
   runProvisioningProbe,
+  warmingReadsAnswerEmpty,
 } from "../src/lib/agent-provisioning.ts";
 
 const httpError = (status: number) => Object.assign(new Error("x"), { status });
@@ -158,6 +159,31 @@ describe("parsePersistedProvisioning", () => {
       now,
     );
     deepStrictEqual(parsed[0].pendingSends, [send]);
+  });
+
+  it("round-trips the warming reason across a relaunch", () => {
+    const asleep = { ...fresh, agentId: "a4", reason: "asleep" };
+    const created = { ...fresh, agentId: "a5", reason: "create" };
+    deepStrictEqual(
+      parsePersistedProvisioning(JSON.stringify([asleep, created]), now),
+      [asleep, created],
+    );
+  });
+});
+
+describe("warmingReadsAnswerEmpty", () => {
+  const base = { agentId: "a1", agentPath: "/w/a1", since: 0 };
+
+  it("just-created agents answer reads with 'nothing yet'", () => {
+    strictEqual(warmingReadsAnswerEmpty({ ...base, reason: "create" }), true);
+  });
+
+  it("entries persisted by older builds keep the pre-split behavior", () => {
+    strictEqual(warmingReadsAnswerEmpty(base), true);
+  });
+
+  it("an existing asleep agent's reads ride the hold — an instant empty success would wipe the cached board (HOU-730)", () => {
+    strictEqual(warmingReadsAnswerEmpty({ ...base, reason: "asleep" }), false);
   });
 });
 

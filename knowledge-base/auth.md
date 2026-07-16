@@ -1,10 +1,11 @@
 # Auth (GCP Identity Platform / Firebase Auth, project `gethouston`)
 
 Houston's client sign-in runs on **GCP Identity Platform (Firebase Auth)**,
-project `gethouston`. Four ways in: **Google**, **Microsoft**, passwordless
-**6-digit email code**, and (operators only) **email + password** on `/admin`.
-The **iOS app** adds a fifth, **Sign in with Apple** (native), which App Store
-guideline 4.8 makes mandatory alongside Google — see "iOS (native app)" below.
+project `gethouston`. Five ways in: **Google**, **Apple**, **Microsoft**,
+passwordless **6-digit email code**, and (operators only) **email + password**
+on `/admin`. Apple is per-surface: web popup, desktop GCIP-brokered loopback,
+and **native** on iOS (`SignInWithAppleButton`), where App Store guideline 4.8
+makes it mandatory alongside Google — see "iOS (native app)" below.
 CI-release session tokens live in the macOS Keychain / Windows DPAPI, never
 localStorage or disk. Local dev builds use worktree-scoped browser storage to
 avoid repeated macOS Keychain prompts. Sign-in identifies the user in PostHog and
@@ -41,8 +42,9 @@ provenance did.
 ## Sign-in methods
 
 The UI is `SignInScreen` (`app/src/components/auth/sign-in-screen.tsx`): Google +
-Microsoft buttons over a passwordless email field, on the `SpaceBackground`
-deep-space backdrop (see `knowledge-base/design-system.md`). Copy is
+Apple + Microsoft buttons over a passwordless email field, on the
+`SpaceBackground` backdrop (the landing page's Milky Way photograph — see
+`knowledge-base/design-system.md`). Copy is
 benefit-focused — the audience is non-technical, so no mention of OAuth / tokens /
 APIs. The same screen renders for the app-wide gate (`App.tsx`) and for the
 remote-gateway gate (`HostedEngineGate`). `app/src/components/auth/email-sign-in.tsx`
@@ -95,6 +97,44 @@ matching state, unreadable payload, missing code) or a failure to open the brows
 fallback** — Google/Microsoft reject custom-scheme redirects on direct OAuth, so a
 loopback-bind failure surfaces a typed error for the generic retry UI.
 
+### Apple — web (popup) + desktop (GCIP-BROKERED loopback)
+
+Apple **rejects `127.0.0.1` redirect URIs on direct OAuth**, so the desktop
+can't run the Google/Microsoft loopback+PKCE shape against Apple itself.
+Instead GCIP is the broker (`identity/apple-authorize.ts`):
+
+```
+1. bind the loopback (osStartOauthLoopback → 127.0.0.1:<8975-8978>/auth/callback)
+2. GCIP REST accounts:createAuthUri({ providerId: "apple.com",
+   continueUri: <loopback>, oauthScope: "name email" }) → { authUri, sessionId }
+   (the authorize URL's redirect is GCIP's OWN handler,
+    https://gethouston.firebaseapp.com/__/auth/handler — the Services-ID
+    return URL that also serves the web popup)
+3. open authUri in the system browser → Apple consent → GCIP handler →
+   302 back to the loopback continueUri with the callback params
+4. CSRF: the `state` GCIP embedded in authUri is enforced on the callback
+   (parseCallbackQuery), stale/foreign callbacks are ignored, exactly like PKCE
+5. accounts:signInWithIdp({ requestUri: <full callback URL>, sessionId })
+   → Firebase session (the Apple client secret lives ONLY in the identity
+   project's provider config, never on the client)
+```
+
+Web uses the ordinary popup: `signInWithPopup(new OAuthProvider("apple.com"))`
+with `email` + `name` scopes (`packages/web/src/identity/firebase-popup.ts`).
+Apple returns the user's name/email only on the FIRST consent per Services ID.
+No new baked env vars — everything rides the existing `FIREBASE_*` config.
+
+**One-time human setup:** enable the Apple provider on the identity project
+(Apple Developer: App ID + **Services ID** whose return URL is the GCIP
+handler, team ID, key ID + private key → GCIP console / terraform), and add
+`127.0.0.1` to the project's **authorized domains** so the desktop loopback
+`continueUri` is accepted by `createAuthUri`.
+
+That one-time setup is done, and the button renders UNCONDITIONALLY, exactly
+like Google and Microsoft — no flag (the old Apple sign-in enable gate was
+deleted per the "Features default ON — no dark switches" rule; it kept the
+shipped button invisible for months).
+
 ### Google / Microsoft — web (firebase-js-sdk popup)
 
 `packages/web/src/identity/firebase-popup.ts`: `initializeApp` + `getAuth` +
@@ -130,14 +170,15 @@ zero-third-party-packages policy, so no firebase-ios-sdk). Four ways in, all
 landing on the same `AuthSession` (Firebase ID token = the gateway bearer,
 Keychain-persisted, proactive + on-demand refresh via securetoken):
 
-- **Apple (native, iOS-only)** — SwiftUI `SignInWithAppleButton` →
+- **Apple (native)** — SwiftUI `SignInWithAppleButton` →
   `ASAuthorizationAppleIDCredential.identityToken` + a nonce pair (SHA-256 hex
   to Apple, raw to GCIP) → `signInWithIdp(apple.com)`
-  (`AuthController+Apple.swift`, `AppleNonce.swift`). Requires the `apple.com`
-  IdP enabled in GCIP (`cloud/infra/terraform/identity.tf`) and the Sign in
-  with Apple capability on the App ID; no Services ID / secret for the native
-  flow. Apple returns the user's name only on FIRST authorization — carried
-  into the session as a fallback display name.
+  (`AuthController+Apple.swift`, `AppleNonce.swift`). Fully native — unlike the
+  web popup / desktop brokered flows above, it needs no Services ID or secret,
+  only the `apple.com` IdP enabled (`cloud/infra/terraform/identity.tf`) and
+  the Sign in with Apple capability on the App ID. Apple returns the user's
+  name only on FIRST authorization — carried into the session as a fallback
+  display name.
 - **Google** — `ASWebAuthenticationSession` + PKCE (S256) against an **iOS-type
   OAuth client** (public, secret-less; redirect = the reversed-client-ID
   scheme), token exchange, `id_token` → `signInWithIdp(google.com)`
@@ -181,7 +222,7 @@ is the real gate, enforced gateway-side — the UI just shows the 403/404 reason
 
 `Session = { idToken, refreshToken, uid, email, emailVerified, displayName,
 photoUrl, provider, expiresAt }`, `provider ∈ google.com | microsoft.com |
-password | custom` (`identity/session.ts`).
+apple.com | password | custom` (`identity/session.ts`).
 
 | Piece | Where |
 |---|---|
@@ -376,11 +417,14 @@ the full checklist and open human tasks. In brief:
    non-confidential installed-app secret (baked via env, never a literal).
 3. **Microsoft** — an Azure app registration (`microsoft.com` GCIP provider) whose
    redirect includes the desktop loopback ports; public PKCE client, no secret.
-4. **Email OTP** — the `POST /v1/auth/email-otp/{start,verify}` endpoints are a
+4. **Apple** — Apple Developer App ID + Services ID (return URL = the GCIP
+   handler) + key; enable the `apple.com` provider in GCIP; add `127.0.0.1`
+   to authorized domains (desktop brokered loopback).
+5. **Email OTP** — the `POST /v1/auth/email-otp/{start,verify}` endpoints are a
    `cloud/` gateway build (contract pinned in `identity/otp.ts`).
-5. **Gateway verifier** — issuer/JWKS swap to Firebase is a `cloud` Go change; the
+6. **Gateway verifier** — issuer/JWKS swap to Firebase is a `cloud` Go change; the
    gateway must accept Firebase tokens before/with the client cutover.
-6. **iOS** — register a Google **iOS** OAuth client in project `gethouston` and
+7. **iOS** — register a Google **iOS** OAuth client in project `gethouston` and
    paste its id into `mobile/ios/Houston/App/Config.swift`; add
    `houston://auth-callback` to the Azure app registration's mobile redirect
    URIs and paste the app id likewise; enable the Sign in with Apple capability
@@ -391,8 +435,6 @@ the full checklist and open human tasks. In brief:
 
 ## What's deliberately out of scope
 
-- Apple SSO **on desktop/web**. iOS ships it natively (see the iOS section);
-  the web flow would additionally need an Apple Services ID + private key.
 - Server-side (Rust) emitting PostHog events directly — the frontend covers
   Houston's event surface. **The engine receives no user-id env at spawn today**
   (an earlier note claiming a `HOUSTON_APP_USER_ID` env was passed was inaccurate —

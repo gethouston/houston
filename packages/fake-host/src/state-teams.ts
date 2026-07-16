@@ -11,7 +11,11 @@
  * surface, mirroring how `state-integrations.ts` operates on the shared `state`.
  */
 
-import type { FakeCapabilities, TeamsSettings } from "./state-store";
+import type {
+  ComputeUsageSeed,
+  FakeCapabilities,
+  TeamsSettings,
+} from "./state-store";
 import { state } from "./state-store";
 
 /** The capabilities served at `GET /v1/capabilities`. */
@@ -44,4 +48,21 @@ export function getTeamsSettings(): TeamsSettings {
 export function setTeamsSettings(patch: Partial<TeamsSettings>): TeamsSettings {
   state.teamsSettings = { ...state.teamsSettings, ...patch };
   return state.teamsSettings;
+}
+
+/** The armed compute-usage dataset; `null` = the route 404s (feature off). */
+export function getComputeUsage(): ComputeUsageSeed | null {
+  return state.computeUsage;
+}
+
+/**
+ * Arm (or disarm with `null`) the compute-usage dataset the gateway serves at
+ * `GET /v1/org/compute-usage` (the `/__test__/compute-usage` control). Specs
+ * usually pair it with `/__test__/capabilities` `{ computeUsage: true }`.
+ */
+export function setComputeUsage(
+  seed: ComputeUsageSeed | null,
+): ComputeUsageSeed | null {
+  state.computeUsage = seed;
+  return state.computeUsage;
 }

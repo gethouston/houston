@@ -1,6 +1,6 @@
 {
   "name": "@houston-ai/core",
-  "version": "0.5.0",
+  "version": "0.5.9",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
@@ -19,6 +19,7 @@
     "cmdk": "1.1.1",
     "embla-carousel-react": "8.6.0",
     "framer-motion": "12.42.2",
+    "input-otp": "1.4.2",
     "lucide-react": "0.577.0",
     "next-themes": "0.4.6",
     "radix-ui": "1.6.1",

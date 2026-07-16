@@ -141,6 +141,52 @@ export function toCanonicalProviderId(id: string): string {
 export const DROP_PI_PROVIDERS: ReadonlySet<string> = new Set(["openai"]);
 
 /**
+ * Curated per-provider VISIBLE model sets, keyed by Houston (display) provider
+ * id. A provider WITH an entry surfaces only these pi model ids; a provider
+ * without one shows its full pi catalog. Both model surfaces read this one
+ * table — the chat model picker (via `buildProvider` in `providers.ts`) and the
+ * AI-hub models directory (via `piCatalogToCandidates`) — so the two can never
+ * drift apart. Curation is presentation-only: a hidden id stays runnable on the
+ * wire (an existing conversation pinned to one keeps working); it just can't be
+ * picked anymore.
+ *
+ * Every id here must exist in the shipped pi-ai catalog — the drift guard
+ * (`provider-overrides-drift.test.ts`) rejects orphans.
+ */
+export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
+  openai: new Set([
+    "gpt-5.5",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.3-codex-spark",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+  ]),
+  anthropic: new Set([
+    "claude-sonnet-5",
+    "claude-fable-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
+    "claude-sonnet-4-6",
+  ]),
+  // NOTE: pi-ai ships no plain `gemini-3.1-flash` (only the Lite tier), so the
+  // 3.1 line is represented by Flash Lite here.
+  google: new Set([
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemma-4-26b-a4b-it",
+    "gemma-4-31b-it",
+  ]),
+};
+
+/** Whether `modelId` may surface for `providerId` (a Houston display id). */
+export function isModelVisible(providerId: string, modelId: string): boolean {
+  const visible = VISIBLE_MODELS[providerId];
+  return !visible || visible.has(modelId);
+}
+
+/**
  * The local OpenAI-compatible provider (Ollama / LM Studio / vLLM, direct or via
  * a tunnel). pi-ai has no such provider — the user supplies a base URL + model id
  * at runtime — so it is appended to the hydrated catalog verbatim. Gated by the
@@ -195,16 +241,28 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
         description: "OpenAI's frontier model.",
       },
       "gpt-5.6-sol": {
-        label: "Sol",
+        label: "GPT-5.6 Sol",
         description: "OpenAI's newest frontier model.",
       },
       "gpt-5.6-terra": {
-        label: "Terra",
+        label: "GPT-5.6 Terra",
         description: "Balanced mid-tier model.",
       },
       "gpt-5.6-luna": {
-        label: "Luna",
+        label: "GPT-5.6 Luna",
         description: "Fast and cost-efficient for simpler tasks.",
+      },
+      "gpt-5.3-codex-spark": {
+        label: "GPT-5.3 Codex Spark",
+        description: "Ultra-fast coding model.",
+      },
+      "gpt-5.4": {
+        label: "GPT-5.4",
+        description: "Strong model for everyday coding.",
+      },
+      "gpt-5.4-mini": {
+        label: "GPT-5.4 mini",
+        description: "Small, fast, and cost-efficient for simpler tasks.",
       },
     },
   },
@@ -219,16 +277,25 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     models: {
       "claude-sonnet-5": {
         label: "Sonnet 5",
-        description: "Best balance of speed and quality.",
-      },
-      "claude-opus-4-8": {
-        label: "Opus 4.8",
-        description:
-          "Anthropic's flagship. Strong agentic coding and alignment.",
+        description: "Newest Sonnet. Stronger agentic coding and tool use.",
       },
       "claude-fable-5": {
         label: "Fable 5",
         description: "Most capable model. Costs 2x more credits than Opus 4.8.",
+      },
+      "claude-opus-4-8": {
+        label: "Opus 4.8",
+        description:
+          "Latest Opus. Better alignment and agentic coding than 4.7.",
+      },
+      "claude-opus-4-7": {
+        label: "Opus 4.7",
+        description:
+          "Previous flagship. Strong coding autonomy and complex reasoning.",
+      },
+      "claude-sonnet-4-6": {
+        label: "Sonnet 4.6",
+        description: "Best balance of speed and quality.",
       },
     },
   },
@@ -405,23 +472,23 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Free tier on your Google account",
     installUrl: "https://ai.google.dev",
     apiKeyUrl: "https://aistudio.google.com/apikey",
-    defaultModel: "gemini-3-flash-preview",
+    defaultModel: "gemini-3.5-flash",
     models: {
-      "gemini-3-flash-preview": {
-        label: "Gemini 3 Flash",
+      "gemini-3.5-flash": {
+        label: "Gemini 3.5 Flash",
         description: "Fast and capable. Best default.",
       },
-      "gemini-3-pro-preview": {
-        label: "Gemini 3 Pro",
-        description: "Google's most capable, slower.",
+      "gemini-3.1-flash-lite": {
+        label: "Gemini 3.1 Flash Lite",
+        description: "Lightweight and quick for simpler tasks.",
       },
-      "gemini-2.5-flash": {
-        label: "Gemini 2.5 Flash",
-        description: "Previous fast model.",
+      "gemma-4-26b-a4b-it": {
+        label: "Gemma 4 26B A4B IT",
+        description: "Google's open Gemma model. Fast and efficient.",
       },
-      "gemini-2.5-pro": {
-        label: "Gemini 2.5 Pro",
-        description: "Previous flagship.",
+      "gemma-4-31b-it": {
+        label: "Gemma 4 31B IT",
+        description: "Google's open Gemma model. More capable.",
       },
     },
   },
@@ -500,6 +567,137 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://huggingface.co",
     apiKeyUrl: "https://huggingface.co/settings/tokens",
   },
+  mistral: {
+    name: "Mistral",
+    subtitle: "La Plateforme",
+    cost: "Free tier, then pay as you go",
+    installUrl: "https://mistral.ai",
+    apiKeyUrl: "https://console.mistral.ai/api-keys",
+  },
+  xai: {
+    name: "xAI",
+    subtitle: "Grok models",
+    cost: "Pay-as-you-go on your xAI account",
+    installUrl: "https://x.ai",
+    apiKeyUrl: "https://console.x.ai",
+  },
+  zai: {
+    name: "Z.ai",
+    subtitle: "GLM models",
+    cost: "Pay-as-you-go on your Z.ai account",
+    installUrl: "https://z.ai",
+    apiKeyUrl: "https://z.ai/manage-apikey/apikey-list",
+  },
+  nvidia: {
+    name: "NVIDIA",
+    subtitle: "NIM inference",
+    cost: "Free credits, then pay as you go",
+    installUrl: "https://build.nvidia.com",
+    apiKeyUrl: "https://build.nvidia.com/settings/api-keys",
+  },
+  "google-vertex": {
+    name: "Google Vertex AI",
+    subtitle: "Gemini on Google Cloud",
+    cost: "Pay-as-you-go on your Google Cloud account",
+    installUrl: "https://cloud.google.com/vertex-ai",
+    apiKeyUrl: "https://console.cloud.google.com/apis/credentials",
+  },
+  fireworks: {
+    name: "Fireworks",
+    subtitle: "Serverless open models",
+    cost: "Pay as you go",
+    installUrl: "https://fireworks.ai",
+    apiKeyUrl: "https://app.fireworks.ai/settings/users/api-keys",
+  },
+  together: {
+    name: "Together AI",
+    subtitle: "Open models, hosted",
+    cost: "Pay as you go",
+    installUrl: "https://together.ai",
+    apiKeyUrl: "https://api.together.ai/settings/api-keys",
+  },
+  moonshotai: {
+    name: "Moonshot AI",
+    subtitle: "Kimi models",
+    cost: "Pay as you go",
+    installUrl: "https://platform.moonshot.ai",
+    apiKeyUrl: "https://platform.moonshot.ai/console/api-keys",
+  },
+  "moonshotai-cn": {
+    name: "Moonshot AI (China)",
+    subtitle: "Kimi models, China endpoint",
+    cost: "Pay as you go",
+    installUrl: "https://platform.moonshot.cn",
+    apiKeyUrl: "https://platform.moonshot.cn/console/api-keys",
+  },
+  "kimi-coding": {
+    name: "Kimi For Coding",
+    subtitle: "Kimi coding subscription",
+    cost: "Your Kimi For Coding plan",
+    billing: "subscription",
+    installUrl: "https://www.kimi.com/code",
+    apiKeyUrl: "https://www.kimi.com/code",
+  },
+  "vercel-ai-gateway": {
+    name: "Vercel AI Gateway",
+    subtitle: "Many models, one key",
+    cost: "Pay-as-you-go on your Vercel account",
+    installUrl: "https://vercel.com/ai-gateway",
+    apiKeyUrl: "https://vercel.com/dashboard",
+  },
+  "ant-ling": {
+    name: "Ant Ling",
+    subtitle: "Ling models",
+    cost: "Pay as you go",
+    installUrl: "https://www.ant-ling.com",
+    apiKeyUrl: "https://developer.ant-ling.com",
+  },
+  xiaomi: {
+    name: "Xiaomi MiMo",
+    subtitle: "MiMo models",
+    cost: "Pay as you go",
+    installUrl: "https://platform.xiaomimimo.com",
+    apiKeyUrl: "https://platform.xiaomimimo.com",
+  },
+  "xiaomi-token-plan-cn": {
+    name: "Xiaomi MiMo Token Plan (China)",
+    subtitle: "MiMo on a Token Plan",
+    cost: "Your MiMo Token Plan",
+    billing: "subscription",
+    installUrl: "https://platform.xiaomimimo.com",
+    apiKeyUrl: "https://platform.xiaomimimo.com",
+  },
+  "xiaomi-token-plan-sgp": {
+    name: "Xiaomi MiMo Token Plan (Singapore)",
+    subtitle: "MiMo on a Token Plan",
+    cost: "Your MiMo Token Plan",
+    billing: "subscription",
+    installUrl: "https://platform.xiaomimimo.com",
+    apiKeyUrl: "https://platform.xiaomimimo.com",
+  },
+  "xiaomi-token-plan-ams": {
+    name: "Xiaomi MiMo Token Plan (Amsterdam)",
+    subtitle: "MiMo on a Token Plan",
+    cost: "Your MiMo Token Plan",
+    billing: "subscription",
+    installUrl: "https://platform.xiaomimimo.com",
+    apiKeyUrl: "https://platform.xiaomimimo.com",
+  },
+  "minimax-cn": {
+    name: "MiniMax (China)",
+    subtitle: "China endpoint",
+    cost: "Pay-as-you-go on your MiniMax account",
+    installUrl: "https://platform.minimaxi.com",
+    apiKeyUrl: "https://platform.minimaxi.com",
+  },
+  "zai-coding-cn": {
+    name: "Z.ai Coding (China)",
+    subtitle: "GLM coding plan, China",
+    cost: "Your GLM Coding plan",
+    billing: "subscription",
+    installUrl: "https://open.bigmodel.cn",
+    apiKeyUrl: "https://open.bigmodel.cn/usercenter/apikeys",
+  },
 };
 
 /**
@@ -532,9 +730,11 @@ export const DESCRIPTION_BY_ID: Readonly<Record<string, string>> = {
   "cloudflare-workers-ai": "Open models on Cloudflare's edge network.",
   "azure-openai-responses": "OpenAI models on Microsoft Azure.",
   "google-vertex": "Gemini and more on Google Cloud Vertex AI.",
+  xiaomi: "MiMo models from Xiaomi.",
   // Named regional / subscription variants (reuse the lab's niche).
   "kimi-coding": "Kimi coding subscription from Moonshot AI.",
   "zai-coding": "GLM coding subscription from Z.ai.",
+  "xiaomi-token-plan": "MiMo models on a Token Plan subscription.",
 };
 
 /**

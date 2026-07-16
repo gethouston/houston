@@ -82,6 +82,13 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("multiplayer requires the hosted gateway");
       return controlPlane.orgUsage(this.ctx.cp, days);
     }
+    // Tripwire only: the UI gates the compute section (and its query) on
+    // `capabilities.computeUsage`, which no gateway-less deployment advertises.
+    async computeUsage(days: number): Promise<controlPlane.ComputeUsage> {
+      if (!this.ctx.cp)
+        throw new Error("compute usage requires the hosted gateway");
+      return controlPlane.computeUsage(this.ctx.cp, days);
+    }
 
     // Grants degrade gracefully: `null` means "this deployment has no grants
     // model" (the legacy engine path, or a host that 404s the route), which the UI
@@ -120,16 +127,19 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
     }
 
     // ---- per-agent action approvals ----
-    // Unlike grants, these are HOST routes that work in BOTH deployments: the
-    // local/self-host host and the cloud gateway each serve
-    // `/v1/agents/:id/action-approvals[...]` for the signed-in owner. So they
-    // route through `authFetch` against `baseUrl` (bearer + `x-houston-org`,
-    // live in both) — never cp-gated, or the local approval card would break.
+    // Unlike grants, these are HOST routes that work in BOTH deployments, on
+    // the per-agent DISPATCH surface (`/agents/:id/action-approvals[...]`):
+    // the local/self-host host serves it directly, and the cloud gateway
+    // proxies exactly this surface to the agent's pod (it mounts NO
+    // `/v1/agents/*` route for approvals — calling the `/v1` form 404s at the
+    // gateway and breaks the in-chat approval card). So they route through
+    // `authFetch` against `baseUrl` (bearer + `x-houston-org`, live in both)
+    // — never cp-gated, or the local approval card would break.
     async agentActionApprovals(
       agentSlugOrId: string,
     ): Promise<{ always: string[] }> {
       const res = await this.ctx.authFetch(
-        `${this.ctx.baseUrl}/v1/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals`,
+        `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals`,
       );
       // A host that does not serve the gate answers 404 → nothing pre-approved.
       // The card only shows where the gate exists, so degrade rather than throw
@@ -147,7 +157,7 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
       action: string,
     ): Promise<{ always: string[] }> {
       const res = await this.ctx.authFetch(
-        `${this.ctx.baseUrl}/v1/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals/always`,
+        `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals/always`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -166,7 +176,7 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
       hash: string,
     ): Promise<void> {
       const res = await this.ctx.authFetch(
-        `${this.ctx.baseUrl}/v1/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals/tickets`,
+        `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals/tickets`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

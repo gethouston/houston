@@ -1,5 +1,20 @@
 import { expect, test } from "vitest";
+import { generateThinkingLevel } from "./generate-agent";
 import { buildRoutine, parseGenerateResult } from "./generate-agent-parse";
+
+// --- generateThinkingLevel: the create dialog has no effort control, so a
+// reasoning model is pinned to "medium" and everything else omits the level. ---
+
+test("reasoning models generate at medium effort", () => {
+  expect(generateThinkingLevel({ reasoning: true })).toBe("medium");
+});
+
+test("non-reasoning models omit the thinking level", () => {
+  expect(generateThinkingLevel({ reasoning: false })).toBeUndefined();
+  expect(generateThinkingLevel({})).toBeUndefined();
+  expect(generateThinkingLevel(null)).toBeUndefined();
+  expect(generateThinkingLevel(undefined)).toBeUndefined();
+});
 
 // Ported from the Rust engine's generate_instructions.rs + suggested_routine.rs
 // unit tests, so the TS parser accepts exactly what the Rust one did.

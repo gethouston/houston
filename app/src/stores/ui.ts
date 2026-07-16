@@ -1,3 +1,4 @@
+import type { PortableUploadPreviewResponse } from "@houston-ai/engine-client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { SettingsSectionId } from "../lib/settings-sections";
@@ -8,9 +9,21 @@ export interface ToastItem {
   description?: string;
   variant?: "error" | "success" | "info";
   action?: { label: string; onClick: () => void };
+  /** How many identical firings this toast represents (coalesced repeats). */
+  count?: number;
 }
 
 export type JobDescriptionTarget = "instructions" | "skills" | "learnings";
+
+/** A workspace file queued for the global in-app preview dialog (chat file
+ * cards, turn summaries, prose file pills — HOU: preview files from chat). */
+export interface FilePreviewTarget {
+  /** The agent's `folderPath` (route key / directory, per engine). */
+  agentPath: string;
+  /** Workspace-relative path of the file. */
+  filePath: string;
+  fileName: string;
+}
 
 interface UIState {
   viewMode: string;
@@ -80,8 +93,18 @@ interface UIState {
   shareAgentId: string | null;
   /** Whether the "From a friend" import wizard is open. */
   importFromFriendOpen: boolean;
+  /** A one-shot preview the import wizard adopts on open — set by the Agent
+   * Store's one-click install right before opening the wizard, cleared by the
+   * wizard once applied. Ephemeral, never persisted. */
+  importSeedPreview: PortableUploadPreviewResponse | null;
+  /** A one-shot slug the Agent Store view opens the detail dialog on — set by
+   * "See it in the store" affordances before `setViewMode(STORE_VIEW_ID)`,
+   * cleared by the view once consumed. */
+  storeFocusSlug: string | null;
   /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
   sidebarCollapsed: boolean;
+  /** File shown by the global preview dialog, or null when closed. */
+  filePreview: FilePreviewTarget | null;
   setViewMode: (mode: string) => void;
   setSettingsSection: (section: SettingsSectionId | null) => void;
   setAssistantPanelOpen: (open: boolean) => void;
@@ -118,11 +141,17 @@ interface UIState {
   setUiTourActive: (active: boolean) => void;
   setShareAgentId: (agentId: string | null) => void;
   setImportFromFriendOpen: (open: boolean) => void;
+  setImportSeedPreview: (preview: PortableUploadPreviewResponse | null) => void;
+  setStoreFocusSlug: (slug: string | null) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
+  setFilePreview: (preview: FilePreviewTarget | null) => void;
 }
 
 let toastCounter = 0;
+// Live dismiss timers by toast id, so a coalesced repeat can RESTART its
+// toast's countdown (see addToast) and a manual dismiss cancels it.
+const toastTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export const useUIStore = create<UIState>()(
   persist(
@@ -156,7 +185,10 @@ export const useUIStore = create<UIState>()(
       uiTourActive: false,
       shareAgentId: null,
       importFromFriendOpen: false,
+      importSeedPreview: null,
+      storeFocusSlug: null,
       sidebarCollapsed: false,
+      filePreview: null,
 
       setViewMode: (viewMode) => set({ viewMode }),
       setSettingsSection: (settingsSection) => set({ settingsSection }),
@@ -174,28 +206,54 @@ export const useUIStore = create<UIState>()(
 
       addToast: (toast) =>
         set((s) => {
-          // Error toasts must always render. Dedup hid genuine repeated failures:
-          // clicking "Report bug" after the first failure would silently no-op
-          // because the error toast title+description matched the previous one,
-          // making the button feel broken even when it was firing correctly.
-          if (toast.variant !== "error") {
-            const isDuplicate = s.toasts.some(
-              (t) =>
-                t.title === toast.title && t.description === toast.description,
+          const timeout = toast.action ? 10000 : 5000;
+          const expireAfter = (id: string) => {
+            const prevTimer = toastTimers.get(id);
+            if (prevTimer) clearTimeout(prevTimer);
+            toastTimers.set(
+              id,
+              setTimeout(() => {
+                toastTimers.delete(id);
+                set((prev) => ({
+                  toasts: prev.toasts.filter((t) => t.id !== id),
+                }));
+              }, timeout),
             );
-            if (isDuplicate) return s;
+          };
+
+          // Repeats COALESCE instead of stacking (a repeatedly failing
+          // connect used to wall the screen with identical error boxes): the
+          // existing toast's counter bumps and its dismiss countdown restarts,
+          // so every firing still gives visible feedback AND the toast's
+          // action ("Report bug") stays alive — the two failure modes the old
+          // "never dedupe errors" rule protected against.
+          const existing = s.toasts.find(
+            (t) =>
+              t.title === toast.title &&
+              t.description === toast.description &&
+              (t.variant ?? "info") === (toast.variant ?? "info"),
+          );
+          if (existing) {
+            expireAfter(existing.id);
+            return {
+              toasts: s.toasts.map((t) =>
+                t.id === existing.id ? { ...t, count: (t.count ?? 1) + 1 } : t,
+              ),
+            };
           }
 
           const id = `toast-${++toastCounter}`;
-          const timeout = toast.action ? 10000 : 5000;
-          setTimeout(() => {
-            set((prev) => ({ toasts: prev.toasts.filter((t) => t.id !== id) }));
-          }, timeout);
+          expireAfter(id);
           return { toasts: [...s.toasts, { ...toast, id }] };
         }),
 
       dismissToast: (id) =>
-        set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+        set((s) => {
+          const timer = toastTimers.get(id);
+          if (timer) clearTimeout(timer);
+          toastTimers.delete(id);
+          return { toasts: s.toasts.filter((t) => t.id !== id) };
+        }),
 
       setCreateAgentDialogOpen: (createAgentDialogOpen) =>
         set({ createAgentDialogOpen }),
@@ -250,9 +308,12 @@ export const useUIStore = create<UIState>()(
       setShareAgentId: (shareAgentId) => set({ shareAgentId }),
       setImportFromFriendOpen: (importFromFriendOpen) =>
         set({ importFromFriendOpen }),
+      setImportSeedPreview: (importSeedPreview) => set({ importSeedPreview }),
+      setStoreFocusSlug: (storeFocusSlug) => set({ storeFocusSlug }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       toggleSidebarCollapsed: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      setFilePreview: (filePreview) => set({ filePreview }),
     }),
     {
       name: "houston-ui",

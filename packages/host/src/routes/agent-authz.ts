@@ -1,5 +1,6 @@
 import type { ServerResponse } from "node:http";
 import type { Capabilities } from "@houston/protocol";
+import type { SharedEndpointStore } from "../credentials/remote-shared-endpoint-store";
 import { canUseAgent } from "../domain/access";
 import type {
   Agent,
@@ -8,6 +9,7 @@ import type {
   WorkspaceRuntime,
 } from "../domain/types";
 import type { EventHub } from "../events/hub";
+import type { LocalActionApprovals } from "../integrations/action-approvals";
 import type { LocalIntegrationGrants } from "../integrations/grants";
 import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
@@ -32,6 +34,8 @@ export interface AgentRouteDeps {
   events?: EventHub;
   /** Deployment capabilities; gates local-only routes (OpenAI-compatible connect). */
   capabilities?: Capabilities;
+  /** Managed gateway store for the active organization's shared local endpoint. */
+  sharedEndpoints?: SharedEndpointStore;
   /**
    * The agent's absolute on-disk directory, when this deployment is co-located
    * with the files (local profile). Serialized as `dir` on agent payloads so
@@ -64,6 +68,12 @@ export interface AgentRouteDeps {
    * Absent on managed cloud pods, where the gateway owns grant policy.
    */
   integrationGrants?: LocalIntegrationGrants;
+  /**
+   * Per-agent action approvals (mirrors ControlPlaneDeps.actionApprovals) —
+   * the dispatch-surface routes (`/agents/:id/action-approvals/*`) write here.
+   * Absent → those requests fall through toward the runtime channel (404).
+   */
+  actionApprovals?: LocalActionApprovals;
 }
 
 export const DEFAULT_PATHS = new CloudPaths();

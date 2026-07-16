@@ -1,8 +1,17 @@
 import type { Server } from "node:http";
+import { initEngineSentry } from "@houston/runtime-client/sentry";
 import { config } from "./config";
 import { installRuntimeLogging } from "./observability/logging";
 
-const { logger } = installRuntimeLogging({ dataDir: config.dataDir });
+// Crash reporting (dormant without SENTRY_DSN — inherited from the host that
+// spawned us: the desktop app's injection or the engine-pod image env). Wired
+// as the logger's capture feed, NOT a console wrap — installRuntimeLogging
+// already owns console, so this sees every logged error exactly once.
+const sentry = initEngineSentry("runtime");
+const { logger } = installRuntimeLogging({
+  dataDir: config.dataDir,
+  capture: sentry && ((level, values) => sentry.captureLog(level, values)),
+});
 
 /**
  * Two modes, one binary:
@@ -65,3 +74,26 @@ function shutdown(signal: string) {
 }
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+// A runtime crash must still crash (the host's launcher reaps the exit and
+// respawns on next touch) — but it must reach Sentry AND stderr first.
+// Registering these handlers replaces Node's fatal default, so re-create it:
+// print the stack to stderr (the host forwards our stderr into its logs),
+// log it (file + Sentry via the capture feed), flush, exit non-zero.
+let fatalExiting = false;
+function fatalCrash(kind: string, err: unknown) {
+  const stack = err instanceof Error ? (err.stack ?? String(err)) : String(err);
+  process.stderr.write(`runtime ${kind}: ${stack}\n`);
+  logger.error(`runtime ${kind}:`, err);
+  if (fatalExiting) return;
+  fatalExiting = true;
+  void (async () => {
+    await sentry?.flush();
+    await logger.close();
+    process.exit(1);
+  })();
+}
+process.on("uncaughtException", (err) => fatalCrash("uncaughtException", err));
+process.on("unhandledRejection", (reason) =>
+  fatalCrash("unhandledRejection", reason),
+);

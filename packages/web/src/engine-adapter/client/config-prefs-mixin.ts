@@ -14,13 +14,16 @@ import type { BaseCtor } from "./mixin";
  * device-local copy is invisible to the scheduler: routines then fire in the
  * host's zone while the UI renders the browser's, an hours-off "next run"
  * (HOU-732). Everything else (theme, last_agent_id, recent models, …) is
- * per-device UI state and stays local.
+ * per-device UI state and stays local. `houston_onboarding_segment` is here
+ * too: the segmentation question must survive across the user's devices, not
+ * re-ask on every fresh install.
  */
 const ACCOUNT_PREF_KEYS = new Set([
   "timezone",
   "locale",
   "legal_acceptance",
   "migration_reconnect_dismissed",
+  "houston_onboarding_segment",
 ]);
 
 function readLocalPref(key: string): string | null {

@@ -2,11 +2,17 @@ import { Button } from "@houston-ai/core";
 import confetti from "canvas-confetti";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useIntegrationToolkits } from "../../../hooks/queries";
+import {
+  useIntegrationConnections,
+  useIntegrationToolkits,
+} from "../../../hooks/queries";
 import { appDisplay } from "../../integrations/app-display";
 import { AppRow } from "../../integrations/app-row";
+import { INTEGRATION_PROVIDER } from "../../integrations/model";
+import { useConnectFlow } from "../../integrations/use-connect-flow";
 import { ProviderBrowser } from "../../provider-browser/provider-browser";
 import { useProviderBrowserData } from "../../provider-browser/use-provider-browser-data";
+import { SuccessCheck } from "../success-check";
 import { WizardFrame } from "./wizard-frame";
 
 /**
@@ -69,9 +75,11 @@ function fireConfetti() {
 
 /**
  * The wizard's final beat (HOU-719): a short congrats screen shown after the
- * two setup steps, before closing into the app. Fires the confetti payoff on
- * mount (guarded by the reduced-motion check), then a single "Start building"
- * button hands control back to the caller to close the wizard.
+ * two setup steps, before closing into the app. The celebratory
+ * {@link SuccessCheck} (onboarding's one colour-accent moment) over the space
+ * backdrop, the confetti payoff on mount (guarded by the reduced-motion
+ * check), then a single "Start building" button hands control back to the
+ * caller to close the wizard.
  */
 export function DoneCongrats({ onFinish }: { onFinish: () => void }) {
   const { t } = useTranslation("migration");
@@ -80,10 +88,11 @@ export function DoneCongrats({ onFinish }: { onFinish: () => void }) {
   }, []);
   return (
     <WizardFrame
+      mark={<SuccessCheck />}
       title={t("done.congratsTitle")}
       body={t("done.congratsBody")}
       footer={
-        <Button className="rounded-full px-6" onClick={onFinish}>
+        <Button className="h-11 rounded-full px-6" onClick={onFinish}>
           {t("done.finish")}
         </Button>
       }
@@ -91,16 +100,12 @@ export function DoneCongrats({ onFinish }: { onFinish: () => void }) {
   );
 }
 
-/** TODO(HOU-719): wire real per-app OAuth; today this is a visual placeholder
- *  and the row itself links out to the Apps section for the real flow. */
-function noopConnect() {}
-
 /**
- * Step 2: the apps the legacy agents had connected before, one row per
- * toolkit via the shared `<AppRow>` (real logo, real name, from the
- * Composio toolkit catalog). Connecting for real happens later in the
- * integrations surface; the Connect pill here is a placeholder so the row
- * doesn't read as dead.
+ * Step 2: the apps the legacy account had connected before, one row per
+ * toolkit via the shared `<AppRow>` (real logo, real name, from the Composio
+ * toolkit catalog). Connect is the REAL account-level OAuth hand-off — the
+ * same `useConnectFlow` the Integrations tab runs (mint link, open browser,
+ * poll until active, invalidate, toast failures) with no agent context.
  */
 export function DoneStepApps({ integrations }: { integrations: string[] }) {
   const { t } = useTranslation("migration");
@@ -117,27 +122,50 @@ export function DoneStepApps({ integrations }: { integrations: string[] }) {
     (toolkitCatalog.data ?? []).map((tk) => [tk.slug, tk]),
   );
 
+  // Live account connections, so a toolkit the user already reconnected (or
+  // connects right here) renders as Connected instead of a dead Connect.
+  const connections = useIntegrationConnections(
+    INTEGRATION_PROVIDER,
+    integrations.length > 0,
+  );
+  const activeToolkits = new Set(
+    (connections.data ?? [])
+      .filter((c) => c.status === "active")
+      .map((c) => c.toolkit),
+  );
+
+  const flow = useConnectFlow({ autoGrant: false });
+
   if (integrations.length === 0) return null;
 
   return (
     <ul className="flex flex-col gap-2">
-      {integrations.map((slug) => (
-        <li key={slug}>
-          <AppRow
-            display={appDisplay(slug, bySlug.get(slug))}
-            trailing={
-              <Button
-                variant="secondary"
-                size="sm"
-                className="rounded-full"
-                onClick={noopConnect}
-              >
-                {t("done.connect")}
-              </Button>
-            }
-          />
-        </li>
-      ))}
+      {integrations.map((slug) => {
+        const isConnected = activeToolkits.has(slug);
+        const isBusy = flow.state?.toolkit === slug;
+        return (
+          <li key={slug}>
+            <AppRow
+              display={appDisplay(slug, bySlug.get(slug))}
+              trailing={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full"
+                  disabled={isConnected || flow.state !== null}
+                  onClick={() => void flow.connect(slug)}
+                >
+                  {isConnected
+                    ? t("done.connected")
+                    : isBusy
+                      ? t("done.connecting")
+                      : t("done.connect")}
+                </Button>
+              }
+            />
+          </li>
+        );
+      })}
     </ul>
   );
 }

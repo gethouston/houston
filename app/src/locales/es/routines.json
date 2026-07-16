@@ -3,42 +3,29 @@
   "grid": {
     "loading": "Cargando…",
     "emptyTitle": "Programa y olvídate",
-    "emptyDescription": "Una rutina es tu agente trabajando según un horario, sin que tengas que pedírselo cada vez. Describe una tarea una sola vez y se repite sola, todos los días, cada semana o con la frecuencia que quieras.",
-    "emptyStepsTitle": "Cómo funciona",
-    "emptySteps": [
-      {
-        "title": "Dile qué hacer",
-        "description": "Describe la tarea en lenguaje simple, como se lo dirías a una persona."
-      },
-      {
-        "title": "Elige cuándo se ejecuta",
-        "description": "Elige un horario: cada mañana, cada hora, una vez por semana, lo que te convenga."
-      },
-      {
-        "title": "Revisa preguntando",
-        "description": "No hace falta revisar su trabajo a mano, solo pregunta qué pasó."
-      }
-    ],
-    "newRoutine": "Nueva rutina",
+    "emptyDescription": "Una automatización es tu agente trabajando por su cuenta, sin que tengas que pedírselo cada vez. Describe una tarea una sola vez, elige cuándo debe ocurrir y él se encarga del resto.",
+    "newRoutine": "Nueva automatización",
     "newRoutineWithAi": "Con IA",
     "newRoutineManually": "Manualmente",
-    "createRoutine": "Crear rutina",
-    "draftTitle": "Rutina en creación en el chat",
+    "createRoutine": "Crear automatización",
+    "draftTitle": "Automatización en creación en el chat",
     "draftResume": "Continuar",
     "draftDiscard": "Descartar",
-    "descriptionShort": "Tareas recurrentes que corren en un horario y solo te avisan cuando algo necesita tu atención.",
+    "descriptionShort": "Trabajo que tu agente hace por su cuenta y solo te avisa cuando algo necesita tu atención.",
     "timezoneLabel": "Zona horaria",
-    "timezoneHint": "Todas tus rutinas se ejecutan en esta zona horaria.",
+    "timezoneHint": "Todas tus automatizaciones programadas se ejecutan en esta zona horaria.",
     "timezoneSearchPlaceholder": "Buscar zonas horarias…",
-    "timezoneNoResults": "No se encontraron zonas horarias"
+    "timezoneNoResults": "No se encontraron zonas horarias",
+    "sectionActive": "Activas",
+    "sectionPaused": "Pausadas"
   },
   "setupChat": {
-    "missionTitle": "Configurar una nueva rutina"
+    "missionTitle": "Configurar una nueva automatización"
   },
   "chat": {
-    "newRoutineTitle": "Nueva rutina",
-    "routineLabel": "Rutina: {{name}}",
-    "back": "Volver a rutinas",
+    "newRoutineTitle": "Nueva automatización",
+    "routineLabel": "Automatización: {{name}}",
+    "back": "Volver a automatizaciones",
     "opening": "Abriendo el chat…"
   },
   "row": {
@@ -51,8 +38,8 @@
     "ranMinutes": "hace {n}m",
     "ranHours": "hace {n}h",
     "ranDays": "hace {n}d",
-    "pauseRoutine": "Pausar rutina",
-    "resumeRoutine": "Reanudar rutina",
+    "pauseRoutine": "Pausar automatización",
+    "resumeRoutine": "Reanudar automatización",
     "runNow": "Ejecutar ahora",
     "stopRun": "Detener ejecución",
     "moreActions": "Más acciones",
@@ -68,7 +55,12 @@
     "instructionLabel": "Instrucción",
     "instructionPlaceholder": "¿Qué debe hacer el agente cuando se ejecute?",
     "save": "Guardar",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "whenTitle": "¿Cuándo debe ocurrir?",
+    "whenSchedule": "Según un horario",
+    "whenEvent": "Cuando algo pase",
+    "whenScheduleHint": "Cada mañana, una vez por semana, tú eliges",
+    "whenEventHint": "Un correo nuevo, un mensaje, un cambio en una app"
   },
   "schedule": {
     "presets": {
@@ -170,48 +162,8 @@
     "statusDisconnectedHint": "La cuenta conectada se desconectó.",
     "statusRevokedHint": "Esta app se desactivó para este agente.",
     "rowSummary": "Se activa con un evento en {{app}}",
-    "loadFailed": "No se pudieron cargar los activadores de eventos"
-  },
-  "reactions": {
-    "grid": {
-      "loading": "Cargando…",
-      "emptyTitle": "Reacciona en cuanto pasa",
-      "emptyDescription": "Tu agente reacciona en cuanto pasa algo en tus apps conectadas, como un correo nuevo, un mensaje o un cambio en el código.",
-      "emptyStepsTitle": "Cómo funciona",
-      "emptySteps": [
-        {
-          "title": "Elige qué la activa",
-          "description": "Elige una app y el evento al que reaccionar, como un correo nuevo o un mensaje nuevo."
-        },
-        {
-          "title": "Di qué debe hacer",
-          "description": "Describe la tarea en lenguaje simple, como se lo dirías a una persona."
-        },
-        {
-          "title": "Se ejecuta sola",
-          "description": "No tienes que estar pendiente, tu agente reacciona en cuanto pasa."
-        }
-      ],
-      "newRoutine": "Nueva reacción",
-      "newRoutineWithAi": "Con IA",
-      "newRoutineManually": "Manualmente",
-      "createRoutine": "Crear reacción",
-      "draftTitle": "Reacción en creación en el chat",
-      "draftResume": "Continuar",
-      "draftDiscard": "Descartar",
-      "descriptionShort": "Automatizaciones que se ejecutan en cuanto pasa algo en una de tus apps conectadas.",
-      "timezoneLabel": "Zona horaria",
-      "timezoneHint": "Todas tus rutinas se ejecutan en esta zona horaria.",
-      "timezoneSearchPlaceholder": "Buscar zonas horarias…",
-      "timezoneNoResults": "No se encontraron zonas horarias"
-    },
-    "setupChat": {
-      "missionTitle": "Configurar una nueva reacción"
-    },
-    "chat": {
-      "newTitle": "Nueva reacción",
-      "itemLabel": "Reacción: {{name}}"
-    }
+    "loadFailed": "No se pudieron cargar los activadores de eventos",
+    "connectApp": "Conectar una app"
   },
   "toasts": {
     "timezoneSet": "Zona horaria establecida en {{zone}}",

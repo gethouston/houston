@@ -132,6 +132,9 @@ export function EmailMission({
         kind: "question",
         id: "email-offer",
         question: t("setup:tutorial.missions.email.body"),
+        // No free-text escape row: the single preselected action is the only
+        // answer (typing here would suggest the user can redirect the email).
+        hideFreeText: true,
         options: [
           {
             id: "send",
@@ -201,9 +204,17 @@ export function EmailMission({
                 <ChatInteractionCard
                   steps={offerSteps}
                   labels={interactionLabels}
-                  // Send the real email once the single step is completed. The
-                  // answers are ignored: the mission already knows what to send.
-                  onComplete={() => {
+                  // Completing the lone step ALSO fires on the card's Skip
+                  // (the stepper completes a skipped last step with no
+                  // answers), so route on the answers: picked the option →
+                  // send the real email; skipped → leave onboarding. The
+                  // answer content itself is ignored (the mission already
+                  // knows what to send).
+                  onComplete={(answers) => {
+                    if (answers.length === 0) {
+                      onSkip();
+                      return;
+                    }
                     void session.handleSend();
                   }}
                   // No onDismiss: the tutorial's own skip affordance (below) is

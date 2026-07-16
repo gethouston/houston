@@ -1,12 +1,14 @@
 import { existsSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { basename, dirname, join } from "node:path";
+import { loadRoutineRuns } from "@houston/domain";
 import type { Capabilities } from "@houston/protocol";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
 import { ProxyChannel } from "../channel/proxy";
 import { FileCredentialStore } from "../credentials/file-store";
+import { RemoteSharedEndpointStore } from "../credentials/remote-shared-endpoint-store";
 import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { BusEventHub } from "../events/hub";
@@ -16,7 +18,10 @@ import { ComposioProvider } from "../integrations/composio";
 import { CustomExecutorHost } from "../integrations/custom/executor-host";
 import { CustomIntegrationManager } from "../integrations/custom/manager";
 import { CustomIntegrationProvider } from "../integrations/custom/provider";
-import { FileCustomSecretStore } from "../integrations/custom/secrets";
+import {
+  FileCustomSecretStore,
+  RemoteCustomSecretStore,
+} from "../integrations/custom/secrets";
 import { FileCustomIntegrationStore } from "../integrations/custom/store";
 import { FileIntegrationGrantStore } from "../integrations/grant-store";
 import { LocalIntegrationGrants } from "../integrations/grants";
@@ -27,13 +32,16 @@ import { RuntimeProcessSpawner } from "../launcher/runtime-spawner";
 import { migrateAgentLayouts } from "../migrate/agent-layout";
 import { migrateChatHistory } from "../migrate/chat-history";
 import { LocalPaths } from "../paths";
+import type { ChannelCtx } from "../ports";
 import { forward } from "../proxy/route";
 import { ChannelRoutineFirer } from "../schedule/firer";
 import { Scheduler } from "../schedule/scheduler";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
+import { syncSharedEndpoint } from "../shared-endpoint/sync";
 import { LocalWorkspaceStore } from "../store/local";
 import { StoreSyncDaemon } from "../store-sync";
 import { MemoryTurnBus } from "../turn/bus";
+import { UsageSampler } from "../usage/sampler";
 import { FsVfs } from "../vfs";
 import { FsWatcher } from "../watch/watcher";
 import { formatHostListeningBanner } from "./banner";
@@ -117,6 +125,13 @@ export interface LocalHostOptions {
     agentSlug: string;
     podToken: string;
   };
+  /** Managed-pod organization endpoint gateway. Absent on desktop/self-host. */
+  sharedEndpoints?: {
+    url: string;
+    orgSlug: string;
+    agentSlug: string;
+    podToken: string;
+  };
   /**
    * Integration wiring (platform model):
    *  - `gatewayUrl`: Houston's cloud host; the desktop forwards with the user's
@@ -159,6 +174,17 @@ export interface LocalHostOptions {
     quietMs?: number;
     intervalMs?: number;
     maxHydrateBytes?: number;
+  };
+  /**
+   * Managed-pod active-time reporting: sample this pod's busy state and report
+   * per-day totals to the gateway's compute-usage ingest. Same env quadruple as
+   * `credentials` — absent on desktop/self-host, where no sampler ever runs.
+   */
+  usageReporting?: {
+    url: string;
+    orgSlug: string;
+    agentSlug: string;
+    podToken: string;
   };
 }
 
@@ -204,6 +230,14 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         fallback: fileCredentials,
       })
     : fileCredentials;
+  const sharedEndpoints = opts.sharedEndpoints
+    ? new RemoteSharedEndpointStore({
+        baseUrl: opts.sharedEndpoints.url,
+        orgSlug: opts.sharedEndpoints.orgSlug,
+        agentSlug: opts.sharedEndpoints.agentSlug,
+        podToken: opts.sharedEndpoints.podToken,
+      })
+    : undefined;
   const controlPlaneUrl = `http://127.0.0.1:${opts.port}`;
 
   const spawner =
@@ -239,6 +273,12 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       controlPlaneUrl,
       mintSandboxToken: (a) => vault.sandboxToken(a.workspaceId, a.id),
     },
+    afterSpawn:
+      opts.gatewayFronted && sharedEndpoints
+        ? async (_agent, runtime) => {
+            await syncSharedEndpoint({ store: sharedEndpoints, runtime });
+          }
+        : undefined,
   });
 
   const channel = new ProxyChannel({
@@ -298,9 +338,19 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   const customStore = new FileCustomIntegrationStore(
     join(customDir, "custom-integrations.json"),
   );
-  const customSecrets = new FileCustomSecretStore(
+  const legacyCustomSecrets = new FileCustomSecretStore(
     join(customDir, "custom-integration-secrets.json"),
   );
+  const remoteCustomSecrets = opts.credentials
+    ? new RemoteCustomSecretStore({
+        baseUrl: opts.credentials.url,
+        orgSlug: opts.credentials.orgSlug,
+        agentSlug: opts.credentials.agentSlug,
+        podToken: opts.credentials.podToken,
+        legacy: legacyCustomSecrets,
+      })
+    : undefined;
+  const customSecrets = remoteCustomSecrets ?? legacyCustomSecrets;
   const customExecutor = new CustomExecutorHost(customSecrets, () =>
     customStore.list(),
   );
@@ -406,6 +456,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
     credentials,
+    sharedEndpoints,
     vault,
     vfs,
     paths,
@@ -452,15 +503,67 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         log: (message, err) => console.error(message, err ?? ""),
       })
     : undefined;
+  // Managed pods sample their own busy state (the gateway can only see AWAKE
+  // from outside) and report per-day active totals to the compute-usage ingest.
+  const usageSampler = opts.usageReporting
+    ? new UsageSampler({
+        report: opts.usageReporting,
+        listAgents: async () => {
+          const out: ChannelCtx[] = [];
+          for (const ws of await store.listWorkspaces()) {
+            for (const agent of await store.listAgents(ws.id)) {
+              out.push({ workspace: ws, agent });
+            }
+          }
+          return out;
+        },
+        // The activityStatus busy logic MINUS activeRequests: an open UI tab's
+        // SSE subscription keeps the pod awake but is not the agent working.
+        turnBusy: (ctx) => channel.busy(ctx),
+        runningRoutineRuns: async (ctx) => {
+          const runs = await loadRoutineRuns(
+            vfs,
+            paths.agentRoot(ctx.workspace, ctx.agent),
+          );
+          return runs.items
+            .filter((run) => run.status === "running")
+            .map((run) => run.id);
+        },
+        log: (message, err) => console.error(message, err ?? ""),
+      })
+    : undefined;
   let stopPromise: Promise<void> | undefined;
 
   return {
     server,
     async start() {
+      // Boot-phase stamps. Everything before the listening banner used to be
+      // silent, which made a 15 s managed-pod wake unattributable from logs;
+      // process.uptime() in the first stamp exposes module-eval cost, and the
+      // banner's own timestamp closes the ledger.
+      const bootStamp = (phase: string) =>
+        console.log(
+          `[local-host] boot: ${phase} at +${process.uptime().toFixed(1)}s`,
+        );
+      bootStamp("module eval done");
       // The object store is authoritative in managed server mode. Hydration is
       // readiness-critical and must finish before migrations or HTTP listening;
       // failure propagates so the pod restarts without ever syncing an empty tree.
       await syncDaemon?.hydrate();
+      // Managed cloud: migrate the hydrated plaintext custom-integration file
+      // into Secret Manager before starting the watcher/sync loop. Removing it
+      // after every upload succeeds makes the first sync delete the old GCS
+      // object; a partial failure leaves it intact for a safe boot retry.
+      // Passive hosts (a read-only conversion source) must not mutate custody:
+      // no legacy migration.
+      if (remoteCustomSecrets && !opts.passive) {
+        const migrated = await remoteCustomSecrets.migrateLegacy();
+        if (migrated > 0) {
+          console.log(
+            `[local-host] migrated ${migrated} custom integration secret(s) to remote custody`,
+          );
+        }
+      }
       // One-time, idempotent migration of the pre-v0.4 FLAT `.houston/` layout
       // into the per-type folders the domain reads (ported from the Rust
       // engine's migrate_agent_data). Runs BEFORE the watcher so migrated files
@@ -476,11 +579,13 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           err,
         );
       }
-      // One-time, additive, idempotent migration of the Rust-desktop era's chat
-      // history (SQLite chat_feed) into each agent's `.houston/runtime/`. Runs
-      // BEFORE the watcher so its writes are already on disk when reactivity
-      // turns on, and only when the db is actually present. Never modifies the
-      // db or the existing tree, and a `.migrated` marker makes re-boots no-ops.
+      // Additive, idempotent migration of the Rust-desktop era's chat history
+      // (SQLite chat_feed) into each agent's `.houston/runtime/`. Runs BEFORE
+      // the watcher so its writes are already on disk when reactivity turns
+      // on, and only when the db is actually present. Never modifies the db or
+      // the existing tree; per-conversation existence checks make re-boots
+      // cheap no-ops (deliberately re-scanned every boot — see chat-history.ts
+      // on why a wholesale per-agent marker lost data).
       if (opts.chatHistoryDbPath && existsSync(opts.chatHistoryDbPath)) {
         try {
           migrateChatHistory({
@@ -496,6 +601,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           );
         }
       }
+      bootStamp("hydration + migrations done");
       const bind = opts.bind ?? "127.0.0.1";
       await new Promise<void>((resolve) =>
         server.listen(opts.port, bind, () => resolve()),
@@ -506,6 +612,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         watcher.start();
         syncDaemon?.start();
         scheduler.start();
+        usageSampler?.start();
       }
       console.log(formatIntegrationsModeLog(opts.integrations));
       // The banner the Tauri supervisor parses (mirrors the runtime's contract).
@@ -544,6 +651,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       stopPromise = (async () => {
         scheduler.stop();
         watcher.stop();
+        // Drain the last accrued stretch before the runtimes go down; the
+        // sampler swallows report failures, so this never blocks a shutdown.
+        await usageSampler?.stop();
         // Await actual child exit (bounded): the final sync below must not
         // walk /data while a runtime is still flushing its last writes.
         await launcher.shutdownAllAndWait();

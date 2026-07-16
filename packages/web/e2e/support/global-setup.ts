@@ -28,7 +28,10 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     // Same boot seed the tests use, so we reach the shell instead of the Connect
     // screen and warm the real app-tree chunk the suite exercises.
     await seedPage(page);
-    await page.goto(WEB_URL);
+    // goto's 30s default undermines the 120s warm-up budget below: on a cold
+    // machine vite's on-demand transform of the entry graph alone can hold the
+    // load event past 30s. Same generous ceiling for both.
+    await page.goto(WEB_URL, { timeout: 120_000 });
     // The sidebar header proves the app-tree chunk finished compiling. Generous
     // timeout: this is the one place that absorbs the cold compile.
     await page
@@ -40,7 +43,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     // otherwise pay it inside its assertion budget. Here it reaches SignInScreen.
     const authPage = await browser.newPage();
     await seedPage(authPage);
-    await authPage.goto(AUTH_WEB_URL);
+    await authPage.goto(AUTH_WEB_URL, { timeout: 120_000 });
     await authPage
       .getByRole("button", { name: "Continue with Google" })
       .waitFor({ state: "visible", timeout: 120_000 });

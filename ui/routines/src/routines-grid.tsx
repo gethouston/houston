@@ -26,7 +26,6 @@ import type {
   Routine,
   RoutineEditPatch,
   RoutineRun,
-  RoutineWakeMode,
   TriggerStatusItem,
 } from "./types";
 
@@ -94,9 +93,9 @@ export interface RoutinesGridProps {
   scheduleLabels?: ScheduleLabels;
   /** Trigger (event-driven) copy for the picker and status badge. */
   triggerLabels?: TriggerLabels;
-  /** Wake mechanism the LOCAL new-routine draft authors: "schedule" (default,
-   *  the Routines surface) or "event" (the Reactions surface). */
-  newDraftVariant?: RoutineWakeMode;
+  /** Whether editors offer the event wake ("when something happens in an app").
+   *  True only where the deployment supports event triggers. */
+  allowEventWake?: boolean;
   /** App-wired trigger editor, injected into every row's + the new-draft editor. */
   renderTriggerEditor?: RenderTriggerEditor;
   /** Live provisioning status per event-driven routine, keyed by routine id. */

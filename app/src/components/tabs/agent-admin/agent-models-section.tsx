@@ -23,8 +23,10 @@ interface AgentModelsSectionProps {
  * wrapper over the shared {@link ModelsAllowlistEditor}: it narrows the selectable
  * universe to the org ceiling (a manager can only allow models the org itself
  * allows, mirroring the app allowlist's `orgAllowedToolkits` narrowing) and
- * supplies the `teams` i18n copy; all behavior lives in the editor. Each member
- * then picks their own model from the allowed set in the composer.
+ * supplies the `teams` i18n copy; all behavior lives in the editor. The narrowing
+ * is surfaced, not silent: a quiet footnote counts the models the workspace hides
+ * so a manager knows why the catalog looks shorter. Each member then picks their
+ * own model from the allowed set in the composer.
  */
 export function AgentModelsSection({
   allowedModels,
@@ -44,27 +46,39 @@ export function AgentModelsSection({
     return models.filter((m) => modelChecked(m, org));
   }, [models, orgAllowedModels]);
 
+  // Models the workspace ceiling removes from an otherwise full catalog. The
+  // AI-hub directory is one row per model, so a plain length delta is a distinct
+  // count. Surfaced below the editor when positive.
+  const workspaceHidden = models.length - universe.length;
+
   return (
-    <ModelsAllowlistEditor
-      models={universe}
-      allowedModels={allowedModels}
-      saving={saving}
-      onSave={onSave}
-      copy={{
-        question: t("agentAdmin.models.question"),
-        policyHelper: t("agentAdmin.models.policyHelper"),
-        anyLabel: t("agentAdmin.models.anyLabel"),
-        anyDesc: t("agentAdmin.models.anyDesc"),
-        pickedLabel: t("agentAdmin.models.pickedLabel"),
-        pickedDesc: t("agentAdmin.models.pickedDesc"),
-        allowedHeading: t("agentAdmin.models.allowedHeading"),
-        addHeading: t("agentAdmin.models.addHeading"),
-        allowedEmpty: t("agentAdmin.models.allowedEmpty"),
-        allowedEmptyLab: t("agentAdmin.models.allowedEmptyLab"),
-        searchModels: t("agentAdmin.models.searchModels"),
-        noModels: t("agentAdmin.models.noModels"),
-        allowModel: (name) => t("agentAdmin.models.allowModel", { name }),
-      }}
-    />
+    <>
+      <ModelsAllowlistEditor
+        models={universe}
+        allowedModels={allowedModels}
+        saving={saving}
+        onSave={onSave}
+        copy={{
+          question: t("agentAdmin.models.question"),
+          policyHelper: t("agentAdmin.models.policyHelper"),
+          anyLabel: t("agentAdmin.models.anyLabel"),
+          anyDesc: t("agentAdmin.models.anyDesc"),
+          pickedLabel: t("agentAdmin.models.pickedLabel"),
+          pickedDesc: t("agentAdmin.models.pickedDesc"),
+          allowedHeading: t("agentAdmin.models.allowedHeading"),
+          addHeading: t("agentAdmin.models.addHeading"),
+          allowedEmpty: t("agentAdmin.models.allowedEmpty"),
+          allowedEmptyLab: t("agentAdmin.models.allowedEmptyLab"),
+          searchModels: t("agentAdmin.models.searchModels"),
+          noModels: t("agentAdmin.models.noModels"),
+          allowModel: (name) => t("agentAdmin.models.allowModel", { name }),
+        }}
+      />
+      {workspaceHidden > 0 && (
+        <p className="mt-4 text-xs text-ink-muted">
+          {t("models.orgAllowlist.workspaceOff", { count: workspaceHidden })}
+        </p>
+      )}
+    </>
   );
 }

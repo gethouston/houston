@@ -229,7 +229,7 @@ function readTranscript(agentRoot: string, key: string) {
   };
 }
 
-test("migrates linked conversations into v3 transcripts + a marker", () => {
+test("migrates linked conversations into v3 transcripts", () => {
   const { workspacesRoot, agentRoot, dbPath } = setup();
   const logs: string[] = [];
   const res = migrateChatHistory({
@@ -265,10 +265,6 @@ test("migrates linked conversations into v3 transcripts + a marker", () => {
     .map((m) => m.content);
   expect(bUser).toEqual(["Started on Claude", "Continued on Codex"]);
 
-  // Marker written.
-  const marker = join(agentRoot, ".houston", "runtime", ".migrated");
-  expect(statSync(marker).isFile()).toBe(true);
-
   // Orphan logged, not silently dropped.
   expect(logs.join("\n")).toContain("1 orphan conversation(s)");
 });
@@ -287,9 +283,10 @@ test("the synthesized pi session restores user/assistant TEXT via continueRecent
   const mgr = SessionManager.continueRecent(agentRoot, sessionDir);
   const ctx = mgr.buildSessionContext();
 
-  // user + assistant(final_result) + user + assistant(fallback chunks) = 4 msgs.
-  // NO tool/thinking/file entries leak into the agent's memory.
-  expect(ctx.messages).toHaveLength(4);
+  // user + assistant(final_result) + user + assistant(fallback chunks) + the
+  // imported-history boundary note = 5 msgs. NO tool/thinking/file entries
+  // leak into the agent's memory.
+  expect(ctx.messages).toHaveLength(5);
   const text = JSON.stringify(ctx.messages);
   expect(text).toContain("What's in the zip?");
   expect(text).toContain("It has keys and dotfiles.");
@@ -298,16 +295,27 @@ test("the synthesized pi session restores user/assistant TEXT via continueRecent
   expect(text).not.toContain("unzip");
   expect(text).not.toContain("[tool");
 
-  // Roles alternate user/assistant.
+  // The imported block is closed by the boundary note, as the LAST message —
+  // otherwise a stale imperative in old history reads as pending work (the
+  // "delete all of your routines" incident).
+  const last = ctx.messages[ctx.messages.length - 1] as {
+    role: string;
+    content: string;
+  };
+  expect(last.role).toBe("user");
+  expect(last.content).toContain("[Imported history]");
+
+  // Roles alternate user/assistant, closed by the boundary note.
   expect(ctx.messages.map((m: { role: string }) => m.role)).toEqual([
     "user",
     "assistant",
     "user",
     "assistant",
+    "user",
   ]);
 });
 
-test("a 2nd run is a no-op (marker + per-conversation guard) and writes nothing new", () => {
+test("a 2nd run is a no-op (per-conversation guard) and writes nothing new", () => {
   const { workspacesRoot, agentRoot, dbPath } = setup();
   migrateChatHistory({ workspacesRoot, dbPath });
 
@@ -319,6 +327,51 @@ test("a 2nd run is a no-op (marker + per-conversation guard) and writes nothing 
 
   const after = treeHashes(runtimeRoot);
   expect(after).toEqual(before); // byte-identical runtime tree
+});
+
+test("chats written AFTER an earlier run still migrate on the next boot", () => {
+  // The real-world interleave that once lost data: a TS build boots (migrates,
+  // and in the old design stamped a wholesale per-agent marker), then a
+  // Rust-era build writes NEW chats into the db, then the migration runs again
+  // (e.g. the cloud wizard's source host). The new conversation must migrate.
+  const { workspacesRoot, agentRoot, dbPath } = setup();
+  migrateChatHistory({ workspacesRoot, dbPath });
+
+  // A legacy wholesale marker from an old build must be ignored, not honored.
+  writeFileSync(
+    join(agentRoot, ".houston", "runtime", ".migrated"),
+    "2026-06-26T00:00:00.000Z",
+  );
+
+  // The Rust app appends a new conversation: tracker file + db rows.
+  writeTracker(agentRoot, "anthropic", "activity-LATE", "sid", "sid-LATE");
+  const db = new Database(dbPath, {});
+  const ins = db.query(
+    "INSERT INTO chat_feed (claude_session_id, feed_type, data_json, timestamp) VALUES (?,?,?,?)",
+  );
+  ins.run(
+    "sid-LATE",
+    "user_message",
+    s("Late chat"),
+    "2025-07-01T10:00:00.000Z",
+  );
+  ins.run(
+    "sid-LATE",
+    "final_result",
+    JSON.stringify({ result: "Late reply" }),
+    "2025-07-01T10:00:01.000Z",
+  );
+  db.close();
+
+  const res = migrateChatHistory({ workspacesRoot, dbPath });
+  expect(res.totalMigrated).toBe(1); // only the late conversation
+  expect(res.totalSkipped).toBe(2); // A and B untouched
+
+  const late = readTranscript(agentRoot, "activity-LATE");
+  expect(late.messages.map((m) => m.content)).toEqual([
+    "Late chat",
+    "Late reply",
+  ]);
 });
 
 test("the SOURCE db + agent tree are byte-identical after migration", () => {
@@ -343,7 +396,7 @@ test("the SOURCE db + agent tree are byte-identical after migration", () => {
   void root;
 });
 
-test("an agent with no tracker files is skipped cleanly (no runtime dir, no marker noise)", () => {
+test("an agent with no tracker files is skipped cleanly (nothing written)", () => {
   const root = mkdtempSync(join(tmpdir(), "hmig-empty-"));
   const workspacesRoot = join(root, "workspaces");
   const agentRoot = join(workspacesRoot, "Personal", "Bare");

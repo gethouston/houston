@@ -5,14 +5,18 @@ import {
   Blocks,
   Boxes,
   Building2,
+  Gauge,
   LayoutDashboard,
   Settings,
+  Store,
 } from "lucide-react";
 import { useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { hasSpaces } from "../../lib/org-roles";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
 import { ORGANIZATION_VIEW_ID } from "../organization";
+import { STORE_VIEW_ID } from "../store-view";
+import { USAGE_VIEW_ID } from "../usage-view";
 import { CreateTeamDialog } from "./create-team-dialog";
 
 type ShellT = TFunction<["shell", "common", "portable", "teams"]>;
@@ -21,13 +25,11 @@ type ShellT = TFunction<["shell", "common", "portable", "teams"]>;
  *  optional Organization, Settings). */
 export function buildSidebarNavItems(args: {
   t: ShellT;
-  showIntegrations: boolean;
   showAiModels: boolean;
   showOrganization: boolean;
   setViewMode: (view: string) => void;
 }): SidebarNavItemEntry[] {
-  const { t, showIntegrations, showAiModels, showOrganization, setViewMode } =
-    args;
+  const { t, showAiModels, showOrganization, setViewMode } = args;
   return [
     {
       id: "dashboard",
@@ -36,17 +38,13 @@ export function buildSidebarNavItems(args: {
       onClick: () => setViewMode("dashboard"),
       dataAttrs: { "data-tour-target": "nav-dashboard" },
     },
-    ...(showIntegrations
-      ? [
-          {
-            id: INTEGRATIONS_VIEW_ID,
-            label: t("shell:sidebar.integrations"),
-            icon: <Blocks className="h-4 w-4" />,
-            onClick: () => setViewMode(INTEGRATIONS_VIEW_ID),
-            dataAttrs: { "data-tour-target": "nav-integrations" },
-          },
-        ]
-      : []),
+    {
+      id: INTEGRATIONS_VIEW_ID,
+      label: t("shell:sidebar.integrations"),
+      icon: <Blocks className="h-4 w-4" />,
+      onClick: () => setViewMode(INTEGRATIONS_VIEW_ID),
+      dataAttrs: { "data-tour-target": "nav-integrations" },
+    },
     ...(showAiModels
       ? [
           {
@@ -56,8 +54,24 @@ export function buildSidebarNavItems(args: {
             onClick: () => setViewMode("ai-hub"),
             dataAttrs: { "data-tour-target": "nav-ai-hub" },
           },
+          // Usage reads the same workspace-central provider accounts the hub
+          // manages, so it rides the same Teams gate.
+          {
+            id: USAGE_VIEW_ID,
+            label: t("shell:sidebar.usage"),
+            icon: <Gauge className="h-4 w-4" />,
+            onClick: () => setViewMode(USAGE_VIEW_ID),
+            dataAttrs: { "data-tour-target": "nav-usage" },
+          },
         ]
       : []),
+    {
+      id: STORE_VIEW_ID,
+      label: t("shell:sidebar.agentStore"),
+      icon: <Store className="h-4 w-4" />,
+      onClick: () => setViewMode(STORE_VIEW_ID),
+      dataAttrs: { "data-tour-target": "nav-agent-store" },
+    },
     ...(showOrganization
       ? [
           {

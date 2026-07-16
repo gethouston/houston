@@ -138,25 +138,20 @@ async function probeProvider(id: string): Promise<ServeProbe> {
   }
 }
 
-/**
- * Anthropic is deliberately NOT served through this per-turn auth.json path. A
- * hosted pod materializes the Claude subscription credential as the SDK's own
- * `<CLAUDE_CONFIG_DIR>/.credentials.json` (see backends/claude/credentials-file),
- * and the SDK self-refreshes from the refresh token THERE — pulling an
- * access-only central token per turn (Gate #2 shape) would fight that file and
- * strip the refresh token the pod needs. Every OTHER provider serves here.
- */
-const SERVE_EXCLUDED = new Set<string>(["anthropic"]);
-
 async function runServedSync(): Promise<string[]> {
   if (!serveModeOn()) return [];
+  // Anthropic serves through this same per-turn access-only path (Gate #2) —
+  // the served token rides `CLAUDE_CODE_OAUTH_TOKEN` into the Claude Agent SDK
+  // subprocess (backends/claude/read-token), where the env var outranks any
+  // stale materialized `.credentials.json`, so a recycled pod reconnects from
+  // the central store instead of losing the credential with its emptyDir.
+  // WHETHER anthropic serves is the CONTROL PLANE's call, not ours: a managed
+  // pod's host serves it (the gateway is the single refresher), while the
+  // desktop/self-host host answers a marked 404 so the local keychain flow
+  // stays the one credential holder (routes/credential.ts).
   // Probes are independent — run them in parallel so a hydrating route pays one
   // round-trip, not eleven. The auth.json writes below stay serial.
-  const probes = await Promise.all(
-    PROVIDERS.filter((p) => !SERVE_EXCLUDED.has(p.id)).map((p) =>
-      probeProvider(p.id),
-    ),
-  );
+  const probes = await Promise.all(PROVIDERS.map((p) => probeProvider(p.id)));
   const applied: string[] = [];
   const removed: string[] = [];
   // Provenance gate: an authoritative "not connected" may only remove providers

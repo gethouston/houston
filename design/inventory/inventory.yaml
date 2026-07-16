@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 24
+version: 26
 
 components:
   - id: agent-avatar
@@ -511,7 +511,9 @@ components:
       one-click reconnect on a disconnected account). The toggle enables/disables
       the routine; the leading status icon reflects the live run state. The
       quick-actions menu renames inline and deletes behind a confirm dialog.
-      Authoring the schedule or event trigger is a separate surface.
+      The inline edit panel authors the wake mechanism: where the deployment
+      supports event triggers it offers a plain-language "When should this
+      happen?" choice (schedule / app event); otherwise it is schedule-only.
     a11y: >-
       listitem role; toggle labeled with the routine name; next-run/status as
       text; status never color-alone (icon shape + row text carry it); menu
@@ -592,6 +594,25 @@ components:
       + the AI provider / Good at / Cost / Memory facet comboboxes.
     a11y: single button role; model name + lab as the accessible label; no nested buttons.
     since: 2
+
+  - id: provider-usage-card
+    title: Provider account usage card
+    purpose: One connected AI account's live limits on the top-level Usage page.
+    anatomy: [brand-mark, provider-name, plan-chip, window-meters, credits-line]
+    states: [ok, unsupported, unauthenticated, error]
+    variants: [rate-limit-windows, credit-balance]
+    behavior: >-
+      One card per CONNECTED provider account, paired from the engine's
+      per-account usage rows (GET /providers/usage — each provider's own usage
+      API read with the already-linked credential). The rate-limit-windows
+      variant renders a labeled meter per rolling window (percent used +
+      localized reset note; the bar tints warning at >= 90%); the
+      credit-balance variant shows the remaining prepaid balance. Non-ok rows
+      say so honestly (no usage surface / sign in again / the probe's error)
+      instead of faking an empty meter. Rows refresh on an interval and on the
+      provider connect event.
+    a11y: plain informative content, no interactive parts; percent and reset are text next to the bar, never color alone.
+    since: 26
 
   - id: ai-model-offer-row
     title: AI model offer row

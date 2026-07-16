@@ -1,13 +1,14 @@
 import {
   ExternalLinkIcon,
+  EyeIcon,
   FileCodeIcon,
   FileIcon,
   FileTextIcon,
   ImageIcon,
 } from "lucide-react";
 import type { ComponentType } from "react";
-import { useCallback } from "react";
-import { tauriFiles } from "../lib/tauri";
+import { useOpenAgentFile } from "../hooks/use-open-agent-file";
+import { fileNameOf } from "../lib/agent-file-paths";
 
 type LucideIcon = ComponentType<{ className?: string }>;
 
@@ -71,25 +72,25 @@ interface FileCardProps {
 }
 
 export function FileCard({ filePath, agentPath }: FileCardProps) {
-  const fileName = filePath.split("/").pop() ?? filePath;
+  const fileName = fileNameOf(filePath);
   const ext = fileName.includes(".")
     ? fileName.split(".").pop()?.toLowerCase()
     : undefined;
   const Icon = getFileIcon(ext);
-
-  const handleOpen = useCallback(() => {
-    tauriFiles.open(agentPath, filePath).catch(console.error);
-  }, [agentPath, filePath]);
+  const { openFile, opensLocally } = useOpenAgentFile(agentPath);
+  // The affordance mirrors what the click does: hand off to the OS
+  // (external-link) or open the in-app preview dialog (eye).
+  const ActionIcon = opensLocally ? ExternalLinkIcon : EyeIcon;
 
   return (
     <button
       type="button"
-      onClick={handleOpen}
+      onClick={() => openFile(filePath)}
       className="inline-flex items-center gap-2 rounded-lg border border-line/50 bg-chip px-3 py-2 text-sm hover:bg-hover transition-colors cursor-pointer"
     >
       <Icon className="h-4 w-4 text-ink-muted shrink-0" />
       <span className="truncate max-w-[240px]">{fileName}</span>
-      <ExternalLinkIcon className="h-3.5 w-3.5 text-ink-muted shrink-0 ml-1" />
+      <ActionIcon className="h-3.5 w-3.5 text-ink-muted shrink-0 ml-1" />
     </button>
   );
 }

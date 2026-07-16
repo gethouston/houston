@@ -15,8 +15,8 @@
 import type { CatalogModelEntry, ProviderCatalog } from "@houston/protocol";
 import {
   DROP_PI_PROVIDERS,
+  isModelVisible,
   PROVIDER_ID_RENAME,
-  PROVIDER_OVERRIDES,
 } from "../provider-overrides.ts";
 import { normalizeKey } from "./catalog-key.ts";
 import { detectLab } from "./catalog-lab.ts";
@@ -54,12 +54,12 @@ function entryToRaw(entry: CatalogModelEntry): RawModel {
  * the picker render exactly the same providers (a coming-soon or otherwise-gated
  * provider in the raw catalog never becomes a hub model the picker can't offer).
  *
- * Subscription/OAuth providers (Anthropic, OpenAI/Codex, GitHub Copilot) run
- * ONLY their curated `PROVIDER_OVERRIDES[id].models` set — the plan can't run
- * anything outside it — so pi's full runnable list (pi ships every historical
- * model id it can still talk to, ~24 for Anthropic alone) is filtered down to
- * that curated set here. API-key gateways are unaffected: their full snapshot
- * list is a legitimate "any model this key can run" offer.
+ * Model curation: the hub, the provider modal, and the chat model picker must
+ * offer the SAME set, so both apply the ONE shared gate — `isModelVisible`
+ * (`VISIBLE_MODELS` in `provider-overrides.ts`), the same table `buildProvider`
+ * filters the hydrated `PROVIDERS` with. A provider without a `VISIBLE_MODELS`
+ * entry carries its full pi model list. Hidden ids stay runnable on the wire;
+ * pi's catalog remains the single existence source.
  */
 export function piCatalogToCandidates(
   catalog: ProviderCatalog,
@@ -71,11 +71,8 @@ export function piCatalogToCandidates(
     const providerId = PROVIDER_ID_RENAME[provider.id] ?? provider.id;
     if (visibleIds && !visibleIds.has(providerId)) continue;
     const subscription = provider.auth === "oauth";
-    const curatedIds = subscription
-      ? PROVIDER_OVERRIDES[providerId]?.models
-      : undefined;
     for (const entry of provider.models) {
-      if (curatedIds && !(entry.id in curatedIds)) continue;
+      if (!isModelVisible(providerId, entry.id)) continue;
       const raw = entryToRaw(entry);
       candidates.push({
         providerId,

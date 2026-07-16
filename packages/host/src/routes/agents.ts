@@ -16,6 +16,7 @@ import { AgentNameConflictError } from "../ports";
 import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
+import { handleActionApprovalsDispatch } from "./action-approvals";
 import { stampTurnContributor } from "./activity-attribution";
 import {
   type AgentRouteDeps,
@@ -297,6 +298,24 @@ export async function handleAgents(
       { workspace: authz.workspace, agent: authz.agent },
       provider,
     );
+    if (
+      provider === "openai-compatible" &&
+      deps.gatewayFronted &&
+      deps.sharedEndpoints
+    ) {
+      try {
+        await deps.sharedEndpoints.remove({ ownerOnly: true });
+      } catch (err) {
+        console.error(
+          "[shared-endpoint] owner-only logout cleanup failed:",
+          err,
+        );
+        json(res, 502, {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return true;
+      }
+    }
     json(res, 200, { ok: true });
     return true;
   }
@@ -478,15 +497,41 @@ export async function handleAgents(
         typeof body.contextWindow === "number" ? body.contextWindow : undefined,
       reasoning:
         typeof body.reasoning === "boolean" ? body.reasoning : undefined,
+      shared: body.shared === true ? true : undefined,
       apiKey: typeof body.apiKey === "string" ? body.apiKey : undefined,
     };
+    let endpointSaved = false;
     try {
       await channel.saveCustomEndpoint(
         { workspace: authz.workspace, agent: authz.agent },
         endpoint,
       );
+      endpointSaved = true;
+      if (deps.gatewayFronted && deps.sharedEndpoints) {
+        if (endpoint.shared === true) {
+          await deps.sharedEndpoints.put({
+            baseUrl: endpoint.baseUrl,
+            model: endpoint.model,
+            ...(endpoint.name !== undefined ? { name: endpoint.name } : {}),
+            ...(endpoint.contextWindow !== undefined
+              ? { contextWindow: endpoint.contextWindow }
+              : {}),
+            ...(endpoint.reasoning !== undefined
+              ? { reasoning: endpoint.reasoning }
+              : {}),
+            ...(endpoint.apiKey !== undefined
+              ? { apiKey: endpoint.apiKey }
+              : {}),
+          });
+        } else {
+          await deps.sharedEndpoints.remove({ ownerOnly: true });
+        }
+      }
       json(res, 200, { ok: true });
     } catch (err) {
+      if (endpointSaved && deps.gatewayFronted && deps.sharedEndpoints) {
+        console.error("[shared-endpoint] save synchronization failed:", err);
+      }
       json(res, 502, {
         error: err instanceof Error ? err.message : String(err),
       });
@@ -550,6 +595,21 @@ export async function handleAgents(
       ? (event: HoustonEvent) =>
           deps.events?.emit(authz.workspace.ownerUserId, event)
       : undefined;
+
+    // Action approvals are served by the HOST off its approval store — on this
+    // dispatch surface because it is the one per-agent surface the hosted
+    // gateway proxies to a pod (see routes/action-approvals.ts).
+    if (
+      await handleActionApprovalsDispatch(
+        deps.actionApprovals,
+        agentId,
+        method,
+        rest,
+        req,
+        res,
+      )
+    )
+      return true;
 
     // Typed .houston families + skills are served by the HOST off the workspace
     // vfs — the runtime surface (chat, auth, settings, files) goes to the channel.

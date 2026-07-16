@@ -6,6 +6,7 @@ import {
   type ModelRegistry,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
+import type { PiThinkingLevel } from "../ai/effort";
 
 export interface OneShotOptions {
   cwd: string;
@@ -14,6 +15,9 @@ export interface OneShotOptions {
   modelRegistry: ModelRegistry;
   systemPrompt: string;
   prompt: string;
+  /** Reasoning level for the turn. Omit to leave pi's own default in place
+   *  (settings-dependent), pass one to pin it — pi clamps to the model. */
+  thinkingLevel?: PiThinkingLevel;
 }
 
 /**
@@ -45,6 +49,7 @@ export async function oneShotText(opts: OneShotOptions): Promise<string> {
     sessionManager: SessionManager.inMemory(opts.cwd),
     resourceLoader: loader,
     tools: [],
+    ...(opts.thinkingLevel ? { thinkingLevel: opts.thinkingLevel } : {}),
   });
 
   let text = "";

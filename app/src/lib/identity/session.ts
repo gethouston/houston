@@ -15,12 +15,14 @@ import { identityLog } from "./log.ts";
 export type AuthProvider =
   | "google.com"
   | "microsoft.com"
+  | "apple.com"
   | "password"
   | "custom";
 
 const AUTH_PROVIDERS: readonly AuthProvider[] = [
   "google.com",
   "microsoft.com",
+  "apple.com",
   "password",
   "custom",
 ];

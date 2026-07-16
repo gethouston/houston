@@ -5,7 +5,8 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { isVisibleAgentTab } from "../agents/standard-tabs";
 import { useCapabilities } from "../hooks/use-capabilities";
-import { tauriFiles } from "../lib/tauri";
+import { useOpenAgentFile } from "../hooks/use-open-agent-file";
+import { fileNameOf } from "../lib/agent-file-paths";
 import {
   groupTurnSummaryItems,
   type SemanticUpdateKind,
@@ -27,12 +28,7 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
   const [openUpdates, setOpenUpdates] = useState(false);
   const [openFiles, setOpenFiles] = useState(false);
 
-  const handleOpen = useCallback(
-    (path: string) => {
-      tauriFiles.open(agentPath, path).catch(console.error);
-    },
-    [agentPath],
-  );
+  const { openFile: handleOpen } = useOpenAgentFile(agentPath);
 
   const handleOpenSemantic = useCallback(
     (kind: SemanticUpdateKind) => {
@@ -151,13 +147,6 @@ function semanticIcon(kind: SemanticUpdateKind) {
   if (kind === "instructions") return ScrollText;
   if (kind === "skills") return Play;
   return Lightbulb;
-}
-
-/** Last path segment, separator-agnostic. See `turn-summary-items.ts`
- * for why `.split("/")` alone is wrong on Windows. */
-function fileNameOf(path: string): string {
-  const segments = path.split(/[\\/]/);
-  return segments[segments.length - 1] || path;
 }
 
 function itemIcon(item: TurnSummaryItem) {

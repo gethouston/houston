@@ -82,10 +82,12 @@ export interface NewRoutine {
 export interface RoutineUpdate {
   name?: string;
   prompt?: string;
-  /** Switch to (or edit) a cron wake; clears `trigger` when the routine is saved. */
+  /** Switch to (or edit) a cron wake; a real value clears any `trigger`. */
   schedule?: string;
-  /** Switch to (or edit) an event wake; clears `schedule` when the routine is saved. */
-  trigger?: RoutineTriggerBinding;
+  /** Switch to (or edit) an event wake; a real value clears any `schedule`.
+   *  `null` clears only the trigger (pair with `schedule` to move a routine
+   *  back to a cron wake); omit to leave the wake mechanism unchanged. */
+  trigger?: RoutineTriggerBinding | null;
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;

@@ -159,8 +159,11 @@ test("malformed routine/learning entries are dropped on unpack", () => {
       }),
     ),
     "routines.json": strToU8(
+      // Unpack applies the SAME normalization as the store's read path, so a
+      // "valid" entry here is one normalizeRoutines keeps: identity (id, name,
+      // prompt) plus exactly one wake mechanism.
       JSON.stringify([
-        { id: "ok", name: "R", schedule: "* * * * *" },
+        { id: "ok", name: "R", prompt: "p", schedule: "* * * * *" },
         { junk: true },
       ]),
     ),
@@ -231,4 +234,63 @@ test("packageSeed omits what the package lacks (no empty docs, no CLAUDE.md key)
   const seed = packageSeed({ skills: [], routines: [], learnings: [] });
   expect(seed).toEqual({ seeds: {} });
   expect("claudeMd" in seed).toBe(false);
+});
+
+test("unpack drops an invalid imported routine instead of letting it install-then-vanish", () => {
+  // An entry the store's read path would drop (here: no wake mechanism at all)
+  // must not survive unpack — otherwise it shows in the install preview, gets
+  // seeded to disk, and silently disappears on the first read after install.
+  const wakeLess = {
+    ...createRoutine(
+      { name: "Broken", prompt: "p", schedule: "0 9 * * *" },
+      "r-bad",
+      NOW,
+    ),
+  } as Record<string, unknown>;
+  delete wakeLess.schedule;
+  const bytes = packAgent(
+    {
+      skills: [],
+      learnings: [],
+      routines: [
+        createRoutine(
+          { name: "Good", prompt: "p", schedule: "0 9 * * *" },
+          "r-ok",
+          NOW,
+        ),
+        wakeLess as unknown as Routine,
+      ],
+    },
+    meta,
+    NOW,
+  );
+  const pkg = unpackAgent(bytes);
+  expect(pkg.routines.map((r) => r.id)).toEqual(["r-ok"]);
+  expect(portableInventory(pkg).routines.map((r) => r.id)).toEqual(["r-ok"]);
+});
+
+test("machine/account-local routine keys never cross the share boundary", () => {
+  // `setup_activity_id` points at an activity that only exists on the exporter's
+  // machine; `created_by` is the exporter's account sub (who a fired routine
+  // acts as). Both are stripped at pack AND at unpack (older packs carry them).
+  const local = createRoutine(
+    {
+      name: "Daily",
+      prompt: "check",
+      schedule: "0 9 * * *",
+      setup_activity_id: "act-1",
+    },
+    "r1",
+    NOW,
+    "exporter-sub",
+  );
+  const pkg = unpackAgent(
+    packAgent({ skills: [], learnings: [], routines: [local] }, meta, NOW),
+  );
+  const shared = pkg.routines[0] as unknown as
+    | Record<string, unknown>
+    | undefined;
+  expect(shared?.id).toBe("r1");
+  expect(shared && "setup_activity_id" in shared).toBe(false);
+  expect(shared && "created_by" in shared).toBe(false);
 });

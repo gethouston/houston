@@ -1,0 +1,458 @@
+/* ═══════════════════════════════════════════
+   Houston Guides — Design System
+   Mirrors the Learn / Developers sections,
+   over the landing's space background.
+   ═══════════════════════════════════════════ */
+
+:root {
+  /* Space theme: the page sits over the landing's fixed Milky Way background
+     (space-bg.njk + /assets/space.css). Text is white-on-space, panels are
+     NEAR-OPAQUE dark fills — never backdrop-filter, which re-blurs the moving
+     photo every scroll frame on Gecko (see assets/space.css). */
+  --background: transparent;
+  --foreground: rgba(255, 255, 255, 0.92);
+  --secondary: rgba(255, 255, 255, 0.05);
+  --muted-foreground: rgba(255, 255, 255, 0.6);
+  --border: rgba(255, 255, 255, 0.14);
+  --gray-50: rgba(255, 255, 255, 0.06);
+  --gray-100: rgba(255, 255, 255, 0.1);
+  --gray-200: rgba(255, 255, 255, 0.14);
+  --gray-300: rgba(255, 255, 255, 0.28);
+  --gray-400: rgba(255, 255, 255, 0.4);
+  --gray-500: rgba(255, 255, 255, 0.55);
+  --gray-600: rgba(255, 255, 255, 0.65);
+  --gray-700: rgba(255, 255, 255, 0.78);
+  --gray-900: rgba(255, 255, 255, 0.9);
+  --gray-950: #ffffff;
+  --success: #4ade80;
+  --info: #8ab4ff;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-medium: rgba(255, 255, 255, 0.22);
+  --border-heavy: rgba(255, 255, 255, 0.3);
+  --panel: rgba(13, 15, 24, 0.86);
+  --panel-solid: #0b0c13;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+body {
+  font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,
+    Arial, sans-serif;
+  color: var(--foreground);
+  background: var(--background);
+  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ═══════════════════════════════════════════
+   Layout + content (single column catalog)
+   ═══════════════════════════════════════════ */
+
+.layout {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 48px 32px 120px;
+}
+
+@media (max-width: 900px) {
+  .layout { padding: 32px 24px 80px; }
+}
+
+.content-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-500);
+  margin-bottom: 16px;
+}
+
+.content h1,
+h1 {
+  font-size: clamp(36px, 5vw, 52px);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--gray-950);
+  margin-bottom: 24px;
+}
+
+.lead {
+  font-size: 20px;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+  margin-bottom: 48px;
+  max-width: 660px;
+}
+
+h2 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  color: var(--gray-950);
+  margin-top: 64px;
+  margin-bottom: 8px;
+  scroll-margin-top: 88px;
+}
+
+.section-lede {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--gray-700);
+  margin-bottom: 24px;
+  max-width: 660px;
+}
+
+/* ═══════════════════════════════════════════
+   Workshop guide cards (with thumbnail)
+   ═══════════════════════════════════════════ */
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 24px 0 8px;
+}
+
+@media (max-width: 760px) {
+  .guide-grid { grid-template-columns: 1fr; }
+}
+
+.guide-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background: var(--panel);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.2s, transform 0.15s;
+}
+
+.guide-card:hover {
+  border-color: var(--border-medium);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.guide-card .thumb {
+  aspect-ratio: 2.1;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--gray-50);
+}
+
+.guide-card .thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  display: block;
+}
+
+.guide-card .pad {
+  padding: 20px 24px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.guide-card .kicker {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--info);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.guide-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gray-950);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.guide-card p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+
+.guide-card .metarow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: auto;
+  padding-top: 14px;
+  font-size: 12.5px;
+  color: var(--gray-500);
+  font-weight: 500;
+}
+
+.guide-card .metarow .go {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--gray-950);
+}
+
+/* ═══════════════════════════════════════════
+   Grouped guide (one guide, several chapters)
+   ═══════════════════════════════════════════ */
+
+.guide-group {
+  display: grid;
+  grid-template-columns: 5fr 4fr;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background: var(--panel);
+  overflow: hidden;
+  margin: 24px 0 8px;
+}
+
+@media (max-width: 760px) {
+  .guide-group { grid-template-columns: 1fr; }
+}
+
+.guide-group .intro {
+  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.guide-group .intro .kicker {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--info);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.guide-group .intro h3 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--gray-950);
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.guide-group .intro p {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+
+.guide-group .intro .start {
+  margin-top: auto;
+  padding-top: 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--gray-950);
+}
+
+.guide-group .chapters {
+  list-style: none;
+  border-left: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px;
+  gap: 2px;
+}
+
+@media (max-width: 760px) {
+  .guide-group .chapters { border-left: none; border-top: 1px solid var(--border-light); }
+}
+
+.guide-group .chapters a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 14px;
+  color: var(--gray-700);
+  transition: background 0.15s, color 0.15s;
+}
+
+.guide-group .chapters a:hover {
+  background: var(--gray-100);
+  color: var(--gray-950);
+}
+
+.guide-group .chapters .num {
+  color: var(--gray-400);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  min-width: 18px;
+}
+
+.guide-group .chapters .arrow {
+  margin-left: auto;
+  color: var(--gray-400);
+}
+
+/* ═══════════════════════════════════════════
+   Link cards (changelog / external resources)
+   ═══════════════════════════════════════════ */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin: 24px 0 8px;
+}
+
+@media (max-width: 640px) {
+  .card-grid { grid-template-columns: 1fr; }
+}
+
+.surface-card {
+  display: block;
+  padding: 22px 24px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background: var(--panel);
+  transition: border-color 0.15s, box-shadow 0.2s, transform 0.15s;
+}
+
+.surface-card:hover {
+  border-color: var(--border-medium);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.surface-card .surface-kicker {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--info);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.surface-card .surface-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gray-950);
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+
+.surface-card .surface-desc {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+
+/* ═══════════════════════════════════════════
+   Coming soon cards
+   ═══════════════════════════════════════════ */
+
+.coming-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 24px 0 8px;
+}
+
+@media (max-width: 900px) {
+  .coming-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .coming-grid { grid-template-columns: 1fr; }
+}
+
+.coming-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 22px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background: rgba(13, 15, 24, 0.6);
+}
+
+.coming-card .surface-kicker {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-500);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.coming-card .surface-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-950);
+  letter-spacing: -0.01em;
+}
+
+.coming-card p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+
+.coming-card .skl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.coming-card .skl span {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--gray-600);
+  background: var(--gray-100);
+  border-radius: 9999px;
+  padding: 3.5px 10px;
+}
+
+/* ═══════════════════════════════════════════
+   Buttons + footer (mirror developers)
+   ═══════════════════════════════════════════ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 9999px;
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-primary { background: var(--gray-950); color: #0d0d0d; }
+.btn-primary:hover { background: rgba(255, 255, 255, 0.85); }
+
+.footer {
+  border-top: 1px solid var(--border-light);
+  padding: 32px;
+  text-align: center;
+  color: var(--gray-500);
+  font-size: 13px;
+}

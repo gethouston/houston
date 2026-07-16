@@ -109,19 +109,31 @@ body::before {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
-/* Modal surface (`bg-dialog`). Dark renders identically to the old glass
-   `bg-card` — frosted blur + subtle top sheen so the aurora bleeds through.
-   Light uses the opaque-white `dialog` token, so the blur is a no-op on the
-   solid fill and the sheen is invisible on white: a plain solid-white modal,
-   not a see-through one. */
-.bg-dialog {
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-
+/* Modal surface (`bg-dialog`). SOLID in both themes (the `dialog` token:
+   neutral.800 dark, white light) — no glass, no backdrop-filter. Modals sit
+   over arbitrary content and must never bleed it through; WebView2 in the
+   desktop shell doesn't reliably composite backdrop-filter anyway (the dark
+   "New agent" modal bled the Settings page through, and light washed out
+   too). Only the subtle top sheen remains. */
 [data-theme="dark"] .bg-dialog {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* ── 3b. Desktop shell: opaque floating surfaces ────────────────
+   The glass popover fill is TRANSLUCENT by design and reads as solid
+   only through the backdrop-filter blur above. In the Tauri desktop
+   shell, WebView2 does not reliably composite backdrop-filter
+   (GPU/driver dependent — it silently no-ops on affected machines), so
+   the bare alpha fill painted see-through (the routines "…" menu in
+   both themes). `@supports` can't catch this (the property parses
+   fine; compositing is what fails), so the desktop entry stamps
+   `data-desktop` on <html> (lib/desktop-surface.ts) and the popover
+   falls back to the solid token equivalent. The web build keeps its
+   frosted glass. */
+html[data-desktop] .bg-popover {
+  background-color: var(--ht-popover-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* ── 4. Flat primary button ─────────────────────────────────────
@@ -399,41 +411,3 @@ body {
   }
 }
 
-/* ── 9. Migration loader (HOU-719) ──────────────────────────────
-   The cloud-migration wizard's wait-screen loader: the running-glow
-   rainbow ring (same blue -> indigo -> orange -> yellow hues as the aurora
-   + card-running-glow) spinning around the Houston helmet, a soft
-   breathing glow behind it, and a gentle helmet scale-pulse. Reduced-motion
-   freezes all three (mirrors the aurora-drift guard in section 1). */
-.migration-ring {
-  animation: migration-spin 1.6s linear infinite;
-}
-
-.migration-glow,
-.migration-helmet {
-  animation: migration-breathe 3.2s ease-in-out infinite;
-}
-
-@keyframes migration-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes migration-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.06);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .migration-ring,
-  .migration-glow,
-  .migration-helmet {
-    animation: none;
-  }
-}

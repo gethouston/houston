@@ -1,11 +1,11 @@
 {
   "name": "houston-app",
   "private": true,
-  "version": "0.5.3",
+  "version": "0.5.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "start": "node --env-file-if-exists=../.env.local node_modules/@tauri-apps/cli/tauri.js dev",
+    "start": "node ../scripts/dev/wrong-entry.mjs start",
     "build": "tsgo --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",

@@ -25,7 +25,6 @@ import eventsEn from "../locales/en/events.json";
 import integrationsEn from "../locales/en/integrations.json";
 import legalEn from "../locales/en/legal.json";
 import migrationEn from "../locales/en/migration.json";
-import orgEn from "../locales/en/org.json";
 import portableEn from "../locales/en/portable.json";
 import providersEn from "../locales/en/providers.json";
 import routinesEn from "../locales/en/routines.json";
@@ -33,6 +32,7 @@ import settingsEn from "../locales/en/settings.json";
 import setupEn from "../locales/en/setup.json";
 import shellEn from "../locales/en/shell.json";
 import skillsEn from "../locales/en/skills.json";
+import storeEn from "../locales/en/store.json";
 import teamsEn from "../locales/en/teams.json";
 import agentOnboardingEs from "../locales/es/agent-onboarding.json";
 import agentsEs from "../locales/es/agents.json";
@@ -48,7 +48,6 @@ import eventsEs from "../locales/es/events.json";
 import integrationsEs from "../locales/es/integrations.json";
 import legalEs from "../locales/es/legal.json";
 import migrationEs from "../locales/es/migration.json";
-import orgEs from "../locales/es/org.json";
 import portableEs from "../locales/es/portable.json";
 import providersEs from "../locales/es/providers.json";
 import routinesEs from "../locales/es/routines.json";
@@ -56,6 +55,7 @@ import settingsEs from "../locales/es/settings.json";
 import setupEs from "../locales/es/setup.json";
 import shellEs from "../locales/es/shell.json";
 import skillsEs from "../locales/es/skills.json";
+import storeEs from "../locales/es/store.json";
 import teamsEs from "../locales/es/teams.json";
 import agentOnboardingPt from "../locales/pt/agent-onboarding.json";
 import agentsPt from "../locales/pt/agents.json";
@@ -71,7 +71,6 @@ import eventsPt from "../locales/pt/events.json";
 import integrationsPt from "../locales/pt/integrations.json";
 import legalPt from "../locales/pt/legal.json";
 import migrationPt from "../locales/pt/migration.json";
-import orgPt from "../locales/pt/org.json";
 import portablePt from "../locales/pt/portable.json";
 import providersPt from "../locales/pt/providers.json";
 import routinesPt from "../locales/pt/routines.json";
@@ -79,6 +78,7 @@ import settingsPt from "../locales/pt/settings.json";
 import setupPt from "../locales/pt/setup.json";
 import shellPt from "../locales/pt/shell.json";
 import skillsPt from "../locales/pt/skills.json";
+import storePt from "../locales/pt/store.json";
 import teamsPt from "../locales/pt/teams.json";
 import {
   activeWorkspaceLocale,
@@ -149,9 +149,9 @@ const resources = {
     integrations: integrationsEn,
     migration: migrationEn,
     portable: portableEn,
+    store: storeEn,
     context: contextEn,
     connect: connectEn,
-    org: orgEn,
     teams: teamsEn,
     agentOnboarding: agentOnboardingEn,
   },
@@ -174,9 +174,9 @@ const resources = {
     integrations: integrationsEs,
     migration: migrationEs,
     portable: portableEs,
+    store: storeEs,
     context: contextEs,
     connect: connectEs,
-    org: orgEs,
     teams: teamsEs,
     agentOnboarding: agentOnboardingEs,
   },
@@ -199,9 +199,9 @@ const resources = {
     integrations: integrationsPt,
     migration: migrationPt,
     portable: portablePt,
+    store: storePt,
     context: contextPt,
     connect: connectPt,
-    org: orgPt,
     teams: teamsPt,
     agentOnboarding: agentOnboardingPt,
   },
@@ -243,9 +243,9 @@ void i18n
       "events",
       "migration",
       "portable",
+      "store",
       "context",
       "connect",
-      "org",
       "teams",
       "agentOnboarding",
     ],

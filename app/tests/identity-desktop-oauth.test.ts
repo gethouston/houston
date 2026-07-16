@@ -6,7 +6,10 @@ import {
   cancelPendingAuthorize,
   type DeepLinkListen,
 } from "../src/lib/identity/oauth-attempt.ts";
-import { parseCallbackUrl } from "../src/lib/identity/oauth-callback.ts";
+import {
+  parseCallbackQuery,
+  parseCallbackUrl,
+} from "../src/lib/identity/oauth-callback.ts";
 import {
   base64UrlEncode,
   computeCodeChallenge,
@@ -317,4 +320,31 @@ test("onBrowserOpened fires after openUrl resolves", async () => {
   assert.equal(opened, 1);
   l.emit("houston://auth-callback?code=c&state=s1");
   await p;
+});
+
+test("parseCallbackQuery returns the WHOLE query when state matches (brokered flow)", () => {
+  const query = parseCallbackQuery(
+    "houston://auth-callback?state=st-1&code=c&providerId=apple.com",
+    "st-1",
+  );
+  assert.equal(query, "state=st-1&code=c&providerId=apple.com");
+});
+
+test("parseCallbackQuery enforces CSRF state and provider errors like parseCallbackUrl", () => {
+  assert.throws(
+    () =>
+      parseCallbackQuery("houston://auth-callback?state=other&code=c", "st-1"),
+    (e: unknown) =>
+      e instanceof IdentityError &&
+      e.code === "invalid_idp_response" &&
+      e.rawCode === "state_mismatch",
+  );
+  assert.throws(
+    () =>
+      parseCallbackQuery(
+        "houston://auth-callback?state=st-1&error=access_denied",
+        "st-1",
+      ),
+    (e: unknown) => e instanceof IdentityError && e.rawCode === "access_denied",
+  );
 });

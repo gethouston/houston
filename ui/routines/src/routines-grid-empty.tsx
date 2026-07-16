@@ -1,11 +1,17 @@
 /**
- * RoutinesGridEmpty — the Routines list's first-run empty state: a headline, a
- * three-step "how it works" walkthrough so a first-time visitor isn't left to
- * guess, and the "New routine" CTA. Extracted from RoutinesGrid to keep that
- * file under the size cap; it renders only when there are no routines, no draft
- * chats, and no local new-routine editor open.
+ * RoutinesGridEmpty — the Automations list's first-run empty state, on the
+ * catalog grammar's pure shape: a headline, one explaining paragraph, and the
+ * single filled "New automation" CTA. (The old three-step walkthrough is gone
+ * with the grammar convergence — the editor itself now teaches the wake
+ * choice.) Renders only when there are no automations, no draft chats, and no
+ * local new-automation editor open.
  */
-import { EmptyDescription, EmptyHeader, EmptyTitle } from "@houston-ai/core";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@houston-ai/core";
 import type { ReactNode } from "react";
 import { DEFAULT_GRID_LABELS, type RoutinesGridLabels } from "./labels";
 import { NewRoutineMenu } from "./new-routine-menu";
@@ -29,37 +35,11 @@ export function RoutinesGridEmpty({
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-transparent">
-      <div className="mx-auto max-w-lg flex flex-col items-center gap-6 text-center pt-16 px-6 pb-12">
+      <Empty className="py-16">
         <EmptyHeader>
-          <EmptyTitle>{l.emptyTitle}</EmptyTitle>
+          <EmptyTitle className="text-lg">{l.emptyTitle}</EmptyTitle>
           <EmptyDescription>{l.emptyDescription}</EmptyDescription>
         </EmptyHeader>
-
-        {/* Guided walkthrough: what creating a routine actually involves. */}
-        <div className="w-full text-left">
-          <p className="text-xs font-medium text-ink-muted mb-2 px-1">
-            {l.emptyStepsTitle}
-          </p>
-          <ol className="rounded-xl bg-chip divide-y divide-line/60 overflow-hidden">
-            {l.emptySteps.map((step, i) => (
-              <li
-                key={step.title}
-                className="flex items-start gap-3 px-4 py-3.5"
-              >
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-input text-[11px] font-medium text-ink mt-0.5">
-                  {i + 1}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-ink">{step.title}</p>
-                  <p className="text-xs text-ink-muted mt-0.5">
-                    {step.description}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-
         {hasCreate && (
           <NewRoutineMenu
             onCreateWithAi={onCreateWithAi ?? (() => {})}
@@ -68,7 +48,7 @@ export function RoutinesGridEmpty({
             aiIcon={aiIcon}
           />
         )}
-      </div>
+      </Empty>
     </div>
   );
 }

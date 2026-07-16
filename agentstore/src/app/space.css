@@ -1,0 +1,95 @@
+/*
+ * Full-page space background — the same three fixed layers as the
+ * gethouston.ai landing (ESO Milky Way panorama eso0932a, ESO/S. Brunier,
+ * CC BY 4.0, https://www.eso.org/public/images/eso0932a/): the photo, a
+ * readability scrim, and a sparse star field. Markup lives in
+ * `src/components/space-background.tsx`.
+ *
+ * Deliberately STATIC here (no scroll parallax): the store's components keep
+ * the app dark theme's backdrop-filter glass, and panning a full-bleed fixed
+ * photo underneath blurred glass re-rasterizes every frame (the landing's
+ * hard-won Gecko lesson — see website/src/assets/space.css). A static photo
+ * keeps the look at zero scroll cost.
+ */
+
+/* Dark base so nothing flashes white while the photo decodes. */
+html {
+  background-color: #05060d;
+}
+
+.space-bg,
+.space-scrim,
+.space-stars {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  contain: strict;
+}
+
+.space-bg {
+  z-index: -3;
+  overflow: hidden;
+  background-color: #05060d;
+}
+
+.space-bg picture,
+.space-bg img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 42%;
+  transform: scale(1.16) translate3d(0, 0, 0);
+  transform-origin: center 38%;
+}
+
+/* Readability veil: stronger top/bottom, lighter through the middle so the
+   galactic core still reads as a photograph. The faint fractal-noise film
+   kills gradient banding on the dark ramps. */
+.space-scrim {
+  z-index: -2;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 38%, rgba(5, 6, 13, 0) 40%, rgba(5, 6, 13, 0.55) 100%),
+    linear-gradient(
+      180deg,
+      rgba(5, 6, 13, 0.68) 0%,
+      rgba(5, 6, 13, 0.42) 16%,
+      rgba(5, 6, 13, 0.4) 48%,
+      rgba(5, 6, 13, 0.52) 78%,
+      rgba(5, 6, 13, 0.72) 100%
+    );
+}
+
+.space-scrim::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Sparse foreground stars (two offset fields). */
+.space-stars {
+  z-index: -1;
+}
+
+.space-stars::before,
+.space-stars::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+  background-size: 520px 520px;
+}
+
+.space-stars::before {
+  opacity: 0.7;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520'%3E%3Cg fill='%23ffffff'%3E%3Ccircle cx='40' cy='70' r='0.9' opacity='0.9'/%3E%3Ccircle cx='120' cy='30' r='0.6' opacity='0.5'/%3E%3Ccircle cx='210' cy='110' r='1' opacity='0.85'/%3E%3Ccircle cx='300' cy='60' r='0.5' opacity='0.45'/%3E%3Ccircle cx='380' cy='140' r='0.8' opacity='0.75'/%3E%3Ccircle cx='470' cy='40' r='0.6' opacity='0.55'/%3E%3Ccircle cx='70' cy='200' r='0.7' opacity='0.7'/%3E%3Ccircle cx='170' cy='250' r='0.5' opacity='0.4'/%3E%3Ccircle cx='260' cy='210' r='0.9' opacity='0.8'/%3E%3Ccircle cx='350' cy='280' r='0.6' opacity='0.5'/%3E%3Ccircle cx='440' cy='230' r='1' opacity='0.9'/%3E%3Ccircle cx='30' cy='330' r='0.6' opacity='0.55'/%3E%3Ccircle cx='130' cy='390' r='0.8' opacity='0.7'/%3E%3Ccircle cx='230' cy='350' r='0.5' opacity='0.4'/%3E%3Ccircle cx='320' cy='420' r='0.7' opacity='0.65'/%3E%3Ccircle cx='410' cy='380' r='0.6' opacity='0.5'/%3E%3Ccircle cx='490' cy='450' r='0.9' opacity='0.8'/%3E%3Ccircle cx='90' cy='470' r='0.6' opacity='0.5'/%3E%3Ccircle cx='200' cy='490' r='0.7' opacity='0.6'/%3E%3Ccircle cx='360' cy='500' r='0.5' opacity='0.4'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.space-stars::after {
+  opacity: 0.55;
+  background-position: 210px 130px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520'%3E%3Cg fill='%23ffffff'%3E%3Ccircle cx='95' cy='55' r='0.7' opacity='0.8'/%3E%3Ccircle cx='250' cy='90' r='0.5' opacity='0.5'/%3E%3Ccircle cx='400' cy='45' r='0.8' opacity='0.7'/%3E%3Ccircle cx='150' cy='160' r='0.6' opacity='0.6'/%3E%3Ccircle cx='330' cy='185' r='0.9' opacity='0.85'/%3E%3Ccircle cx='60' cy='260' r='0.6' opacity='0.55'/%3E%3Ccircle cx='210' cy='300' r='0.7' opacity='0.7'/%3E%3Ccircle cx='450' cy='290' r='0.5' opacity='0.5'/%3E%3Ccircle cx='120' cy='420' r='0.8' opacity='0.75'/%3E%3Ccircle cx='290' cy='460' r='0.6' opacity='0.55'/%3E%3Ccircle cx='390' cy='430' r='0.7' opacity='0.65'/%3E%3Ccircle cx='480' cy='150' r='0.6' opacity='0.5'/%3E%3Ccircle cx='30' cy='120' r='0.5' opacity='0.45'/%3E%3Ccircle cx='175' cy='380' r='0.6' opacity='0.6'/%3E%3C/g%3E%3C/svg%3E");
+}

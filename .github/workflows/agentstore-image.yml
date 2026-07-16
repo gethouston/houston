@@ -105,7 +105,7 @@ jobs:
           # (NEXT_PUBLIC_*). Public web identifiers by design, sourced from the
           # same FIREBASE_* repo secrets release.yml already bakes into the
           # desktop/web app — one Firebase project, one place to rotate it.
-          # store.gethouston.ai signs users in against this project.
+          # agents.gethouston.ai signs users in against this project.
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}

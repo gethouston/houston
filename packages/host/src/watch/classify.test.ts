@@ -31,12 +31,12 @@ const cases: [string, string | null, string | null][] = [
     "Work/Sales",
   ],
   [
-    "Work/Sales/.houston/conversations/c1.json",
+    "Work/Sales/.houston/runtime/conversations/c1.json",
     "ConversationsChanged",
     "Work/Sales",
   ],
   [
-    "Work/Sales/.houston/sessions/anthropic/s1.json",
+    "Work/Sales/.houston/runtime/sessions/c1/session.jsonl",
     "ConversationsChanged",
     "Work/Sales",
   ],

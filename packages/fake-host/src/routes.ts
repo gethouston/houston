@@ -20,17 +20,6 @@ import { json, noContent } from "./http";
 import { handleWorkspaceFiles } from "./routes-files";
 import * as state from "./state";
 
-/** Flat (non-agent) provider list — the local single-runtime slot's providers,
- *  seeded with Claude connected + active so the WebApp connect gate clears. */
-export function providersBody() {
-  return state.providerList(state.FLAT_KEY);
-}
-
-/** Flat (non-agent) auth status — the local single-runtime slot. */
-export function authStatusBody() {
-  return state.authStatusFor(state.FLAT_KEY);
-}
-
 /** Canned repo skills for the Add Skills GitHub tab (list-from-repo). A dozen
  *  so the install button reads a two-digit "Install 12" the test can compare
  *  against "Install 0" after a deselect-all. */

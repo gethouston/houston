@@ -20,6 +20,10 @@ export type ChatInteractionStep =
       id: string;
       question: string;
       options?: ChatInteractionOption[];
+      /** Hide the free-text escape row so the option rows are the ONLY way to
+       *  answer. Meaningful only when `options` are present — a free-text-only
+       *  question ignores it (the field IS the answer). */
+      hideFreeText?: boolean;
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }

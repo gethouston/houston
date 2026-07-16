@@ -6,10 +6,9 @@ import {
   Keyboard,
   KeyRound,
   User,
-  Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useIntegrationConnections, useOrg } from "../../hooks/queries";
+import { useIntegrationConnections } from "../../hooks/queries";
 import { useWorkspaceContext } from "../../hooks/queries/use-workspace-context";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { genericErrorDescription } from "../../lib/error-toast";
@@ -29,7 +28,6 @@ import { SettingsCard, SettingsRow } from "./settings-row";
 
 interface SettingsIndexProps {
   accountAvailable: boolean;
-  showMembers: boolean;
   apiKeysAvailable: boolean;
   migrationAvailable: boolean;
   onSelect: (id: SettingsSectionId) => void;
@@ -38,19 +36,17 @@ interface SettingsIndexProps {
 /**
  * The settings landing page. Simple settings (appearance, language, account,
  * delete) are resolved inline as control rows; the heavier
- * ones (context editors, members, shortcuts, bug report) are navigable rows that
- * drill into their own screen. Account and members appear only when applicable.
+ * ones (context editors, shortcuts, bug report) are navigable rows that
+ * drill into their own screen. Account appears only when applicable.
  */
 export function SettingsIndex({
   accountAvailable,
-  showMembers,
   apiKeysAvailable,
   migrationAvailable,
   onSelect,
 }: SettingsIndexProps) {
-  const { t } = useTranslation(["settings", "org"]);
+  const { t } = useTranslation("settings");
   const agentPath = useAgentStore((s) => s.current?.folderPath);
-  const org = useOrg(showMembers);
   const { data: context } = useWorkspaceContext(agentPath);
   const addToast = useUIStore((s) => s.addToast);
   const { capabilities } = useCapabilities();
@@ -66,7 +62,6 @@ export function SettingsIndex({
     (c) => c.status === "active",
   ).length;
 
-  const memberCount = org.data?.members?.length ?? 0;
   const contextValue = (slot: "workspace" | "user") =>
     context?.[slot]?.trim() ? t("settings:index.values.set") : undefined;
 
@@ -109,17 +104,6 @@ export function SettingsIndex({
                   : t("settings:index.values.appsCount", { count: appCount })
               }
               onClick={() => onSelect("connectedAccounts")}
-            />
-          )}
-          {showMembers && (
-            <SettingsRow
-              icon={Users}
-              title={t("org:members.navLabel")}
-              description={t("settings:index.rows.members")}
-              value={t("settings:index.values.membersCount", {
-                count: memberCount,
-              })}
-              onClick={() => onSelect("members")}
             />
           )}
           {apiKeysAvailable && (

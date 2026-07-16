@@ -143,3 +143,55 @@ test("missing prefix hydrates to an empty manifest", async () => {
   const { store, work } = setup();
   expect((await hydrate(store, "ws/none/agent-x", work)).size).toBe(0);
 });
+
+test("hydrate materializes many files faithfully under concurrency", async () => {
+  const { storeRoot, store, work } = setup();
+  const files: Record<string, string> = {};
+  for (let i = 0; i < 60; i++) files[`workspace/f${i}.txt`] = `content-${i}`;
+  seed(storeRoot, PREFIX, files);
+
+  const manifest = await hydrate(store, PREFIX, work, { concurrency: 16 });
+  expect(manifest.size).toBe(60);
+  for (let i = 0; i < 60; i++) {
+    expect(readFileSync(join(work, "workspace", `f${i}.txt`), "utf8")).toBe(
+      `content-${i}`,
+    );
+  }
+});
+
+test("a non-finite concurrency override still hydrates everything", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/a.txt": "a", "workspace/b.txt": "b" });
+  // NaN would size the worker pool to zero and return a successful EMPTY
+  // manifest — the partial-manifest state the hydration latch must prevent.
+  const manifest = await hydrate(store, PREFIX, work, {
+    concurrency: Number.NaN,
+  });
+  expect(manifest.size).toBe(2);
+  expect(readFileSync(join(work, "workspace", "a.txt"), "utf8")).toBe("a");
+});
+
+test("a download failure rejects hydrate with that error, workers stop", async () => {
+  const { storeRoot, store, work } = setup();
+  const files: Record<string, string> = {};
+  for (let i = 0; i < 30; i++) files[`workspace/f${i}.txt`] = `content-${i}`;
+  seed(storeRoot, PREFIX, files);
+
+  let downloads = 0;
+  const flaky = {
+    list: (prefix: string) => store.list(prefix),
+    download: async (key: string, dest: string) => {
+      downloads += 1;
+      if (key.endsWith("f7.txt")) throw new Error("store download exploded");
+      return store.download(key, dest);
+    },
+    upload: (src: string, key: string) => store.upload(src, key),
+    delete: (key: string) => store.delete(key),
+  };
+  await expect(
+    hydrate(flaky, PREFIX, work, { concurrency: 8 }),
+  ).rejects.toThrow("store download exploded");
+  // The failure parks the pool: no worker takes new work afterwards, so at
+  // most the in-flight batch (< concurrency) follows the failing download.
+  expect(downloads).toBeLessThan(30);
+});

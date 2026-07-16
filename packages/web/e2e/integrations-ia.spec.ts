@@ -5,9 +5,13 @@ import { expect, test } from "./support/fixtures";
 /**
  * The integrations permissioning information architecture (the IA end-state).
  * Each concept now has exactly one home:
- *  - POLICY (org-wide app allowlist) → the global Integrations page, which
- *    becomes an owner/admin policy editor on a Teams host and is hidden from
- *    plain members;
+ *  - POLICY (org-wide app allowlist) → the Admin page's "Allowed apps" section
+ *    (the Organization view, sidebar label "Admin"; a settings-style index of
+ *    rows, not a tab strip), an owner/admin surface (owner edits, admin
+ *    read-only). It is NOT the global Integrations page, which is always the
+ *    personal catalog now;
+ *  - CATALOG (the caller's personal connected apps) → the global Integrations
+ *    page, visible to EVERY role in every mode (a plain member keeps its nav);
  *  - ACCOUNTS (the user's connected apps + the per-agent grants surface) →
  *    Settings > Connected accounts;
  *  - the agent Integrations TAB → a pure connect surface (no grant toggles).
@@ -15,9 +19,9 @@ import { expect, test } from "./support/fixtures";
  * The Teams-shaped state single-player can't reach is armed via the fake host's
  * `/__test__/capabilities` (advertise `multiplayer` + `teams` + a `role`) and
  * `/__test__/agent-settings` (the agent/org allowlist ceilings) controls; the
- * `/v1/org/settings` + `/v1/agents/:id/integration-grants` gateway routes back
- * the owner's saves and the per-agent grant toggles. See `@houston/fake-host`
- * README + `knowledge-base/ui-testing.md`.
+ * `/v1/org` view load, the `/v1/org/settings` owner saves, and the
+ * `/v1/agents/:id/integration-grants` per-agent grant toggles are all served by
+ * the fake host. See `@houston/fake-host` README + `knowledge-base/ui-testing.md`.
  */
 
 /** Teams owner: integrations on, multiplayer + Teams, top role. */
@@ -60,9 +64,19 @@ async function seedGrants(
   );
 }
 
-async function openIntegrationsPage(page: Page): Promise<void> {
+/**
+ * Open the Admin (Organization) view and drill into one of its sections. The
+ * Admin page is a settings-style index of self-describing rows (not a tab
+ * strip), so each section is a row BUTTON whose accessible name leads with its
+ * title; clicking it opens the section's detail screen.
+ */
+async function openAdminSection(
+  page: Page,
+  sectionTitle: string,
+): Promise<void> {
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-integrations"]').click();
+  await page.locator('[data-tour-target="nav-organization"]').click();
+  await page.getByRole("button", { name: sectionTitle }).click();
 }
 
 async function openSettings(page: Page): Promise<void> {
@@ -72,15 +86,16 @@ async function openSettings(page: Page): Promise<void> {
 
 // ── 1. Owner policy editor ─────────────────────────────────────────────────
 
-test("Teams owner: the Integrations page is the org allowlist policy editor, and restricting persists", async ({
+test("Teams owner: the Admin page's Allowed apps section is the org allowlist policy editor, and restricting persists", async ({
   page,
   request,
 }) => {
   await armCapabilities(request, OWNER_CAPS);
-  await openIntegrationsPage(page);
+  await openAdminSection(page, "Allowed apps");
 
-  // The page is now the org POLICY question, not the personal connected-apps
-  // grid. The two-mode choice (any app vs a picked set) renders at rest.
+  // The Allowed apps section is the org POLICY question, not the personal
+  // connected-apps grid (that lives on the Integrations page now). The two-mode
+  // choice (any app vs a picked set) renders at rest.
   await expect(
     page.getByRole("heading", {
       name: "Which apps can agents in this workspace use?",
@@ -91,14 +106,17 @@ test("Teams owner: the Integrations page is the org allowlist policy editor, and
     page.getByRole("radio", { name: "Only apps you pick" }),
   ).toBeVisible();
   // Starts unrestricted (org ceiling is null): "Any app" is the checked mode and
-  // no allowed-apps list exists yet.
+  // no allowed list exists yet, so the owner's "Add apps" catalog is absent. (We
+  // key off "Add apps", not the "Allowed apps" list heading, since the detail
+  // screen's own page title is also "Allowed apps".)
   await expect(page.getByRole("radio", { name: "Any app" })).toBeChecked();
-  await expect(page.getByText("Allowed apps")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Add apps" })).toHaveCount(0);
 
   // Owner picks "Only apps you pick" → a PUT /v1/org/settings persists the
-  // ceiling, seeded from the apps already in use, and the allowed list appears.
+  // ceiling, seeded from the apps already in use, and the "Add apps" catalog
+  // (owner-only) appears.
   await page.getByRole("radio", { name: "Only apps you pick" }).click();
-  await expect(page.getByText("Allowed apps")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add apps" })).toBeVisible();
   await expect(
     page.getByRole("radio", { name: "Only apps you pick" }),
   ).toBeChecked();
@@ -107,25 +125,26 @@ test("Teams owner: the Integrations page is the org allowlist policy editor, and
   // the ceiling is still restricted — the save reached the gateway, not just the
   // client cache.
   await page.reload();
-  await page.locator('[data-tour-target="nav-integrations"]').click();
+  await page.locator('[data-tour-target="nav-organization"]').click();
+  await page.getByRole("button", { name: "Allowed apps" }).click();
   await expect(
     page.getByRole("radio", { name: "Only apps you pick" }),
   ).toBeChecked();
-  await expect(page.getByText("Allowed apps")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add apps" })).toBeVisible();
 });
 
 // ── 2. Admin read-only ─────────────────────────────────────────────────────
 
-test("Teams admin: the policy editor is read-only with an owner-only note and no catalog", async ({
+test("Teams admin: the Allowed apps editor is read-only with an owner-only note and no catalog", async ({
   page,
   request,
 }) => {
-  // An admin sees the SAME policy page, but every control is read-only (only the
-  // owner may change the org ceiling). Arm a restricted ceiling so the page has
-  // an allowed list an owner could extend, then confirm the admin cannot.
+  // An admin sees the SAME Allowed apps section, but every control is read-only
+  // (only the owner may change the org ceiling). Arm a restricted ceiling so the
+  // section has an allowed list an owner could extend, then confirm admin cannot.
   await armCapabilities(request, { ...OWNER_CAPS, role: "admin" });
   await armAgentSettings(request, { orgAllowedToolkits: ["gmail"] });
-  await openIntegrationsPage(page);
+  await openAdminSection(page, "Allowed apps");
 
   // The policy question renders, with the owner-only explanation at rest.
   await expect(
@@ -150,27 +169,46 @@ test("Teams admin: the policy editor is read-only with an owner-only note and no
     page.getByRole("radio", { name: "Only apps you pick" }),
   ).toBeChecked();
 
-  // The allowed list shows (read-only), but the "Add apps" catalog an owner uses
-  // to widen the ceiling is absent for an admin.
-  await expect(page.getByText("Allowed apps")).toBeVisible();
-  await expect(page.getByText("Add apps")).toHaveCount(0);
+  // The allowed list shows read-only: the one allowed app (Gmail) renders with
+  // its allow toggle present but disabled — the sole switch on the surface,
+  // since the owner-only "Add apps" catalog is absent for an admin.
+  await expect(page.getByRole("switch")).toHaveCount(1);
+  await expect(page.getByRole("switch")).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Add apps" })).toHaveCount(0);
 });
 
-// ── 3. Plain member: no Integrations nav ───────────────────────────────────
+// ── 3. Plain member: no Admin nav, but the personal catalog stays ──────────
 
-test("Teams member: the Integrations nav item is gone, the rest of the shell stays", async ({
+test("Teams member: no Admin nav, but the Integrations nav opens the personal catalog", async ({
   page,
   request,
 }) => {
-  // A plain member never sees the policy page: the org ceiling is admin-owned
-  // and they manage their own apps from Settings + the agent tab.
+  // A plain member never sees the policy surface: the org ceiling is admin-owned
+  // (the Admin page). But the Integrations nav is now unconditional — a member
+  // keeps it and manages their own apps from the personal catalog.
   await armCapabilities(request, { ...OWNER_CAPS, role: "user" });
   await page.goto("/");
 
+  // No Admin (Organization) entry for a plain member.
   await expect(
-    page.locator('[data-tour-target="nav-integrations"]'),
+    page.locator('[data-tour-target="nav-organization"]'),
   ).toHaveCount(0);
-  // Mission Control and Settings remain — only Integrations is gated off.
+
+  // The Integrations nav IS present for a member now (unconditional), and it
+  // opens the personal catalog — never the org policy question.
+  const integrationsNav = page.locator('[data-tour-target="nav-integrations"]');
+  await expect(integrationsNav).toBeVisible();
+  await integrationsNav.click();
+  await expect(
+    page.getByRole("heading", { name: "Integrations", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Which apps can agents in this workspace use?",
+    }),
+  ).toHaveCount(0);
+
+  // Mission Control and Settings remain too.
   await expect(
     page.locator('[data-tour-target="nav-dashboard"]'),
   ).toBeVisible();
@@ -250,32 +288,33 @@ test("Agent Integrations tab: pure connect surface, no per-agent grant affordanc
   ).toHaveCount(0);
 });
 
-// ── 6. Member manage link → Settings > Connected accounts ──────────────────
+// ── 6. Member manage link → the personal Integrations page ─────────────────
 
-test("Teams member: the agent tab's manage link lands on Settings > Connected accounts", async ({
+test("Teams member: the agent tab's manage link opens the personal Integrations page", async ({
   page,
   request,
 }) => {
-  // For a plain member the global Integrations page is gone, so the agent tab's
-  // bottom link routes to Settings > Connected accounts (labelled for accounts,
-  // not the policy page).
+  // The global Integrations page is now the personal catalog for every role, so
+  // the agent tab's bottom "Manage all integrations" link routes a plain member
+  // straight there (never a policy surface).
   await armCapabilities(request, { ...OWNER_CAPS, role: "user" });
   await page.goto("/");
   await page.locator('[data-tour-target="tab-integrations"]').click();
 
   const manageLink = page.getByRole("button", {
-    name: "Manage your connected apps",
+    name: "Manage all integrations",
   });
   await expect(manageLink).toBeVisible();
   await manageLink.click();
 
-  // The deep-link opens Settings straight onto the Connected accounts section.
+  // It lands on the personal Integrations page (the catalog hero), not the org
+  // policy question.
   await expect(
-    page.getByRole("heading", { name: "Connected accounts" }),
+    page.getByRole("heading", { name: "Integrations", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText(
-      "Apps you've connected. Choose which agents can use each one.",
-    ),
-  ).toBeVisible();
+    page.getByRole("heading", {
+      name: "Which apps can agents in this workspace use?",
+    }),
+  ).toHaveCount(0);
 });

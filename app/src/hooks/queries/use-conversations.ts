@@ -1,4 +1,5 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { latestCachedAllConversations } from "../../lib/all-conversations-cache";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriChat, tauriConversations } from "../../lib/tauri";
 
@@ -14,11 +15,21 @@ export function useConversations(agentPath: string | undefined) {
 }
 
 export function useAllConversations(agentPaths: string[]) {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: queryKeys.allConversations(agentPaths),
     queryFn: () => tauriConversations.listAll(agentPaths),
     enabled: agentPaths.length > 0,
-    placeholderData: keepPreviousData,
+    // keepPreviousData, PLUS the newest disk-restored roster variant: the key
+    // embeds every agent's folderPath, so the IndexedDB-restored entry only
+    // re-attaches on an exact roster match — any drift would blank the sidebar
+    // badges / Mission Control until the live fan-out returns (held for every
+    // asleep pod's wake). See lib/all-conversations-cache.ts.
+    placeholderData: (previousData) =>
+      previousData ??
+      latestCachedAllConversations<
+        Awaited<ReturnType<typeof tauriConversations.listAll>>
+      >(queryClient),
     // Fetched ONCE per key (mount / roster change / engine restart), then kept
     // fresh by single-agent cache patches from the push events stream
     // (use-agent-invalidation.ts patchAllConversations). Never refetched on

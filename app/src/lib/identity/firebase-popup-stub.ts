@@ -43,6 +43,10 @@ export function webSignInWithMicrosoft(): Promise<Session | null> {
   return notOnDesktop();
 }
 
+export function webSignInWithApple(): Promise<Session | null> {
+  return notOnDesktop();
+}
+
 export function webSignInWithCustomToken(
   _token: string,
 ): Promise<Session | null> {

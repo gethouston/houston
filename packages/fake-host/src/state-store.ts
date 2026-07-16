@@ -75,7 +75,29 @@ export interface CustomIntegrationSeed {
 export type FakeCapabilities = Capabilities & {
   teams?: boolean;
   spaces?: boolean;
+  computeUsage?: boolean;
 };
+
+/**
+ * A `GET /v1/org/compute-usage` row — one (agent, UTC day)'s engine running
+ * time. Mirrors `@houston-ai/engine-client`'s `ComputeUsageRow` exactly so the
+ * mock can't drift from the wire.
+ */
+export interface ComputeUsageSeedRow {
+  agentSlug: string;
+  day: string;
+  awakeMs: number;
+  activeMs: number;
+  wakes: number;
+  turns: number;
+  routineRuns: number;
+}
+
+/** The armed compute-usage dataset (`/__test__/compute-usage`). */
+export interface ComputeUsageSeed {
+  rows: ComputeUsageSeedRow[];
+  awakeNow: string[];
+}
 
 /** A caller's effective per-agent access (Teams v2). Mirrors the wire enum. */
 export type AgentAccess = "manager" | "user";
@@ -167,6 +189,12 @@ export interface HostState {
   capabilities: FakeCapabilities;
   /** Teams v2 integration/model ceilings, armed by `/__test__/agent-settings`. */
   teamsSettings: TeamsSettings;
+  /**
+   * Compute usage (running time), armed by `/__test__/compute-usage`. `null`
+   * (the default) = the gateway does not serve the feature: the route 404s,
+   * mirroring desktop/self-host and pre-feature gateways.
+   */
+  computeUsage: ComputeUsageSeed | null;
   /** Composio readiness, toggled by the `/__test__/integrations-mode` control. */
   integrationsMode: IntegrationsMode;
   /**
@@ -252,6 +280,7 @@ function freshState(): HostState {
     routineSeq: 0,
     capabilities: { ...DEFAULT_CAPABILITIES },
     teamsSettings: { ...DEFAULT_TEAMS_SETTINGS },
+    computeUsage: null,
     integrationsMode: "ready",
     customIntegrations: null,
     connections,

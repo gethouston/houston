@@ -8,7 +8,7 @@ import { SpaceScreen } from "../space/space-screen";
 
 /**
  * First-run language flow, styled like the rest of setup. A single beat: the
- * language picker, floated on the shared `SpaceScreen` starfield so it reads as
+ * language picker, floated on the shared `SpaceScreen` space backdrop so it reads as
  * the same continuous space as sign-in and onboarding. Picking a language
  * applies + persists it and advances immediately — no separate Continue button
  * (the whole row is one large, keyboard-operable target, so a click is a
@@ -26,7 +26,7 @@ export function LanguageGate({ children }: { children: ReactNode }) {
     return (
       <SpaceScreen>
         {/* Transparent hold — the SpaceScreen already paints the backdrop, so
-            we don't double-paint a dim overlay on the starfield. Full-size so
+            we don't double-paint a dim overlay on the space backdrop. Full-size so
             the layout doesn't jump when the picker resolves. */}
         <div aria-hidden className="flex flex-1" />
       </SpaceScreen>

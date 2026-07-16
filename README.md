@@ -41,40 +41,33 @@ Houston uses a single TypeScript engine. See `convergence/README.md`.
 
 ### Run the Houston app
 
-**Prerequisites:** [Node 22+](https://nodejs.org), [pnpm 10](https://pnpm.io) (`corepack enable`), and — for the desktop app only — the [Rust toolchain](https://rustup.rs) (Tauri builds a native shell). The browser path needs no Rust. Bun is only needed when compiling the host sidecar binary (`scripts/build-host-sidecar.sh`).
+**Prerequisites:** [Node 22+](https://nodejs.org), [pnpm 10](https://pnpm.io) (`corepack enable`), the [Rust toolchain](https://rustup.rs) (Tauri builds the desktop shell), [Go](https://go.dev) and Docker Desktop (the local cloud stack: gateway, control-plane, Postgres), and the sibling [`gethouston/cloud`](https://github.com/gethouston/cloud) checkout cloned next to this repo. Bun is only needed when compiling the host sidecar binary (`scripts/build-host-sidecar.sh`). Don't audit this list by hand — `pnpm dev` runs a doctor that checks every prerequisite and prints the exact fix for anything missing.
 
 **1. Clone and install.** pnpm owns the whole JS/TS workspace: app, web, UI packages, host, runtime, and supporting packages.
 
 ```bash
 git clone https://github.com/gethouston/houston.git
+git clone https://github.com/gethouston/cloud.git      # sibling checkout
 cd houston
 
 pnpm install
 ```
 
-**2. Configure once.** Copy the shared dev env. The defaults work as-is (host on `127.0.0.1:4318`, dev token `devtoken`):
+**2. Configure once.** Non-secret dev config is committed in `.env.development` — you never touch it. Secrets go in `.env.local`:
 
 ```bash
-cp .env.example .env.local
+cp .env.example .env.local     # then set FIREBASE_API_KEY (ask a teammate)
 ```
 
-**3. Run.** One terminal for the host, one for a frontend:
+**3. Run.** One command, the whole product:
 
 ```bash
-# Terminal 1 — the TypeScript engine (host on :4318; it auto-spawns the agent runtime)
-cd packages/host && pnpm dev
-
-# Terminal 2 — the desktop app (Tauri), wired to that engine
-cd app && pnpm start
+pnpm dev
 ```
 
-Prefer a browser tab? Use this instead of Terminal 2:
+The doctor validates your setup (and prints the feature matrix for this run), then mprocs starts every pane: Postgres, the Go gateway (`:9080`), the control-plane (engines spawn as local processes — no Kubernetes), the local host (`:4318`), the **desktop app** (local profile: terminal, files, local models, no sign-in), and the **web app** (`http://localhost:1430`, cloud profile: real Google sign-in, multiplayer Teams/Spaces).
 
-```bash
-cd packages/web && pnpm dev:host            # http://localhost:1430
-```
-
-On first launch, connect an AI provider. Your workspaces live in `~/.houston/workspaces`.
+To test multiplayer, sign into the web app as user A, then open an incognito window and sign in as user B — share an agent into a team, invite, accept, chat. On first launch, connect an AI provider (or set `ANTHROPIC_API_KEY` in `.env.local` to seed every dev engine). Local-profile workspaces live in `~/.houston/workspaces`; dev cloud engines under `~/.dev-houston-cloud`.
 
 #### Configure providers
 
@@ -84,28 +77,17 @@ Connect model providers from the AI Models screen inside the app. Anthropic and 
 
 Connected apps (Gmail, Slack, and about 1000 more) run in platform mode through [Composio](https://composio.dev). The packaged desktop app forwards these calls through Houston's cloud with your signed-in session, so it holds no provider key. To run integrations fully locally instead, create your own free Composio project and launch the app (or the host, in the dev loop) with `COMPOSIO_API_KEY` set in the environment: the host then talks to Composio directly and no integration call touches Houston's cloud. Leave both unset to run with integrations off. See `.env.example` for the dev wiring.
 
-> The shared `.env.local` holds the host token plus each frontend's host URL and token, so the commands above need no flags. See [`convergence/README.md`](convergence/README.md) for the full local dev loop, including hot reload and watch mode.
+> Committed `.env.development` + secrets-only `.env.local` is the whole env story — the doctor refuses to boot if `.env.local` re-defines a committed key, so no two teammates can run different stacks. See [`convergence/README.md`](convergence/README.md) for hot reload and watch mode.
 
-### Test like the cloud
+### Test like production (Kubernetes)
 
-The loop above runs the **local** engine. To test the managed hosted product — Teams / C8 Spaces, per-agent engine pods, invites, agent moves — exactly as it runs in production, use one command:
-
-```bash
-pnpm dev:cloud
-```
-
-It stands up a [kind](https://kind.sigs.k8s.io/) cluster with the private gateway (built from the sibling `cloud/` checkout) and one engine pod per agent (built from **this** checkout), then runs the web app at `http://localhost:1430` signed in via a real Firebase / GCP Identity Platform ID token — the same JWT the gateway verifies. Requires Docker Desktop, `kind`, `kubectl`, `jq`, and `FIREBASE_API_KEY`/`FIREBASE_AUTH_DOMAIN`/`FIREBASE_PROJECT_ID` in `.env.local` (same project the gateway checks). On success it prints the full C8 test walkthrough (sign in as two users, share an agent into a team, invite + accept, chat, mission board, org dashboard).
+`pnpm dev` already runs the full product, including multiplayer, with engines as local processes. When you need to verify the **Kubernetes-shaped** parts before a release — per-agent pods and PVCs, namespaces, NetworkPolicy, PV-rebind agent moves — run the [kind](https://kind.sigs.k8s.io/) loop from the sibling cloud repo:
 
 ```bash
-pnpm dev:cloud --check     # preflight only — checks tooling/env, prints the plan
-pnpm dev:cloud:app         # same stack, but launch the DESKTOP app (tauri dev) instead of the web tab
-pnpm dev:cloud:retain      # flip agent PVs to Retain (run before an agent move)
-pnpm dev:cloud:down        # tear the cluster down and stop the web server
+make -C ../cloud kind-up      # cluster + gateway + engine pods; see cloud/k8s/kind/README.md
 ```
 
-`dev:cloud:app` points the Tauri shell at the local gateway (`VITE_HOSTED_ENGINE_URL`), which flips it to hosted Google-login mode — the true desktop experience. The web frontend is the same `app/src` codebase in a browser tab, so for multiplayer testing run the desktop app as user A and an incognito web tab (`pnpm dev:cloud`) as user B.
-
-Billing is off unless `GW_STRIPE_*` test keys are set (teams run as free multiplayer orgs); see `cloud/docs/deploy-C8.md` §Stage 2. The gateway loop itself lives in `cloud/k8s/kind/README.md`.
+Billing is off unless `GW_STRIPE_*` test keys are set (teams run as free multiplayer orgs); see `cloud/docs/deploy-C8.md` §Stage 2.
 
 ### Build your first agent
 

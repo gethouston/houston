@@ -16,7 +16,7 @@ interface Section {
  * Agreement step. Renders `children` once the user has accepted the current
  * disclaimer version; otherwise it shows the agreement on the shared
  * `SetupCard` as step 2 of the setup flow (the language pick runs before, in the
- * LanguageGate), floated on the shared `SpaceScreen` starfield so it reads as
+ * LanguageGate), floated on the shared `SpaceScreen` space backdrop so it reads as
  * the same continuous space. Copy lives in `locales/<lang>/legal.json`.
  */
 export function DisclaimerGate({ children }: { children: ReactNode }) {

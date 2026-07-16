@@ -28,8 +28,8 @@ describe("query persist policy", () => {
   it("keeps restorable age and in-memory gc in lockstep", () => {
     // The persister mirrors the in-memory cache: a restored query must stay
     // in memory (gcTime) for as long as it is restorable (maxAge), or the
-    // next persist sweep drops it from disk. setupQueryPersistence uses this
-    // ONE constant for both — the invariant this test pins.
+    // next persist sweep drops it from disk. queryPersistenceOptions uses this
+    // ONE constant for both, the invariant this test pins.
     ok(PERSIST_MAX_AGE_MS >= 24 * 60 * 60 * 1_000);
     equal(PERSISTED_QUERY_PREFIXES.length, 3);
   });

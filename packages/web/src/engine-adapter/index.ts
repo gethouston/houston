@@ -6,6 +6,10 @@
  * Types are reused verbatim from the original package; only the HoustonClient
  * and EngineWebSocket implementations change.
  */
+
+// The public store catalog reads (anonymous, CORS-open) are deployment-shape
+// agnostic, so the adapter serves the ui package's implementation as-is.
+export * from "../../../../ui/engine-client/src/store-catalog";
 export * from "../../../../ui/engine-client/src/types";
 export type { HoustonClientOptions } from "./client";
 export {

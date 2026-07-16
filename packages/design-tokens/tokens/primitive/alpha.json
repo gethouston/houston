@@ -3,6 +3,7 @@
     "alpha": {
       "$type": "color",
       "black-a07": { "$value": "rgba(0, 0, 0, 0.07)" },
+      "black-a10": { "$value": "rgba(0, 0, 0, 0.1)" },
       "ink-a035": { "$value": "rgba(13, 13, 13, 0.035)" },
       "ink-a06": { "$value": "rgba(13, 13, 13, 0.06)" },
       "white-a045": { "$value": "rgba(255, 255, 255, 0.045)" },
@@ -20,7 +21,8 @@
       "neutral-50": { "$value": "rgba(40, 40, 40, 0.5)" },
       "neutral-58": { "$value": "rgba(50, 50, 52, 0.58)" },
       "neutral-85": { "$value": "rgba(34, 34, 34, 0.85)" },
-      "screen-55": { "$value": "rgba(38, 38, 40, 0.55)" }
+      "screen-55": { "$value": "rgba(38, 38, 40, 0.55)" },
+      "space-75": { "$value": "rgba(22, 24, 36, 0.75)" }
     },
     "brand": {
       "$type": "color",

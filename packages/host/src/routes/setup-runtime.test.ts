@@ -39,6 +39,8 @@ class FakeChannel implements RuntimeChannel {
   dispatched: { ctx: ChannelCtx; method: string; rest: string }[] = [];
   captured: { ctx: ChannelCtx; provider?: string }[] = [];
   apiKeys: { ctx: ChannelCtx; provider: string; apiKey: string }[] = [];
+  claudeOAuth: { ctx: ChannelCtx; accessToken: string }[] = [];
+  claudeOAuthError: Error | null = null;
   captureResult: CaptureResult = { ok: true, provider: "openai-codex" };
 
   async dispatch(
@@ -87,7 +89,13 @@ class FakeChannel implements RuntimeChannel {
     _ctx: ChannelCtx,
     _e: CustomEndpoint,
   ): Promise<void> {}
-  async saveClaudeOAuthCredential(): Promise<void> {}
+  async saveClaudeOAuthCredential(
+    ctx: ChannelCtx,
+    cred: { accessToken: string },
+  ): Promise<void> {
+    if (this.claudeOAuthError) throw this.claudeOAuthError;
+    this.claudeOAuth.push({ ctx, accessToken: cred.accessToken });
+  }
   async forgetCredential(): Promise<void> {}
 }
 
@@ -236,6 +244,53 @@ test("credential/api-key stores through the channel and validates its body", asy
       body: JSON.stringify({ provider: "opencode" }),
     });
     expect(missing.status).toBe(400);
+  } finally {
+    stop();
+  }
+});
+
+test("credential/claude-oauth mirrors the per-agent push (validated envelope, personal-workspace scope, channel error → 502)", async () => {
+  const { base, ws, channel, stop } = await setup();
+  try {
+    // The desktop's browser login lands here when NO agent is selected yet
+    // (first-run onboarding, the cloud-migration wizard) — the regression that
+    // used to force the paste flow.
+    const ok = await fetch(`${base}/setup-runtime/credential/claude-oauth`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ claudeAiOauth: { accessToken: "at-1" } }),
+    });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ ok: true });
+    expect(channel.claudeOAuth).toHaveLength(1);
+    expect(channel.claudeOAuth[0]?.accessToken).toBe("at-1");
+    // Central-store scope: the credential must land on the personal workspace
+    // every real agent pod is served from.
+    expect(channel.claudeOAuth[0]?.ctx.agent.workspaceId).toBe(ws.id);
+
+    // Malformed envelope → clean 400 (never a false success) so the desktop
+    // degrades to the paste flow.
+    const bad = await fetch(`${base}/setup-runtime/credential/claude-oauth`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ nope: true }),
+    });
+    expect(bad.status).toBe(400);
+    expect(channel.claudeOAuth).toHaveLength(1);
+
+    // A channel refusal (e.g. the per-turn runtime's explicit gate) surfaces
+    // as 502 with the real reason.
+    channel.claudeOAuthError = new Error("not available here");
+    const refused = await fetch(
+      `${base}/setup-runtime/credential/claude-oauth`,
+      {
+        method: "POST",
+        headers: auth,
+        body: JSON.stringify({ claudeAiOauth: { accessToken: "at-2" } }),
+      },
+    );
+    expect(refused.status).toBe(502);
+    expect(await refused.json()).toEqual({ error: "not available here" });
   } finally {
     stop();
   }

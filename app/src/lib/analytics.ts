@@ -34,6 +34,10 @@ export type AnalyticsEventName =
   // Onboarding
   | "onboarding_started"
   | "onboarding_completed"
+  | "onboarding_segment_screen_viewed"
+  | "onboarding_segment_selected"
+  | "onboarding_segment_continued"
+  | "onboarding_segment_skipped"
   // One-time "reconnect your AI" moment after upgrading from the legacy build.
   | "migration_reconnect_completed"
   // First-run cloud-migration wizard (HOU-719): the cloud desktop build offers
@@ -125,7 +129,9 @@ type AnalyticsProperty =
   | "locale"
   | "step"
   // Cloud migration (payload sizes, where already known)
-  | "bytes";
+  | "bytes"
+  | "selected_segment"
+  | "source_screen";
 
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserIdentity = {
@@ -161,6 +167,8 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "locale",
   "step",
   "bytes",
+  "selected_segment",
+  "source_screen",
 ]);
 
 // Bootstrap PostHog at module load so a configured build can capture errors
@@ -198,9 +206,16 @@ function bootstrap() {
     person_profiles: "identified_only",
     capture_pageview: false,
     capture_pageleave: false,
-    autocapture: false,
-    capture_dead_clicks: false,
-    rageclick: false,
+    // Friction signals ($rageclick / $dead_click) require autocapture. Masking
+    // keeps user content (agent names, email subjects, chat text) out of
+    // PostHog — only element selectors/positions leave the app. Specific
+    // question behind enabling (production-infra.md): where does the v0.5.9
+    // onboarding strand users?
+    autocapture: true,
+    mask_all_text: true,
+    mask_all_element_attributes: true,
+    capture_dead_clicks: true,
+    rageclick: true,
     disable_session_recording: true,
     enable_heatmaps: false,
     advanced_disable_flags: true,
@@ -362,6 +377,20 @@ export const analytics = {
       // users" without a complex insight.
       if (event === "chat_message_sent") {
         posthog.people.set({ is_activated: true });
+      }
+      // Stamp the onboarding answer as a person property so every cohort,
+      // funnel, and breakdown can slice by segment without joining back to
+      // the one-off event. Set on the confirmed answer (Continue), not the
+      // exploratory clicks. Skippers get "skipped" so they form their own
+      // cohort instead of vanishing into "no property".
+      if (
+        event === "onboarding_segment_continued" &&
+        typeof props?.selected_segment === "string"
+      ) {
+        posthog.people.set({ onboarding_segment: props.selected_segment });
+      }
+      if (event === "onboarding_segment_skipped") {
+        posthog.people.set({ onboarding_segment: "skipped" });
       }
     } catch {
       // Analytics unavailable

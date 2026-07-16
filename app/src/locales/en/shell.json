@@ -2,7 +2,9 @@
   "sidebar": {
     "missionControl": "Mission Control",
     "aiModels": "AI Models",
+    "usage": "Usage",
     "integrations": "Integrations",
+    "agentStore": "Agent Store",
     "settings": "Settings",
     "yourAgents": "Your Agents",
     "selectWorkspace": "Select workspace",
@@ -96,8 +98,8 @@
         "body": "The board of every conversation with this agent. Running, needs you, done."
       },
       "tabRoutines": {
-        "title": "Routines",
-        "body": "Your assistant already comes with ready-made routines, like the Morning briefing. Schedule anything else to run in the background here."
+        "title": "Automations",
+        "body": "Your assistant already comes with ready-made automations, like the Morning briefing. Set up anything else to happen on its own here."
       },
       "tabIntegrations": {
         "title": "Integrations",
@@ -108,7 +110,7 @@
         "body": "Docs your assistant can read or share with you. Drop anything here for context."
       },
       "tabArchived": {
-        "title": "Completed",
+        "title": "Archived",
         "body": "Missions this agent has wrapped up. Send a message to reopen one and it comes right back to the active board."
       },
       "tabJobDescription": {
@@ -128,8 +130,8 @@
         "body": "Add providers like Claude and OpenAI. Manage your subscriptions and API keys here."
       },
       "organization": {
-        "title": "Organization",
-        "body": "Invite teammates, assign roles, and manage access here."
+        "title": "Admin",
+        "body": "Invite teammates, assign roles, and set workspace policies for allowed integrations and AI models here."
       },
       "settings": {
         "title": "Settings",
@@ -250,6 +252,7 @@
       "reports": "Every Friday I compile a team status report from scattered updates and sheets",
       "research": "I need market and competitor research summarized into briefs I can share"
     },
+    "modelLabel": "AI model",
     "generateButton": "Design my agent",
     "generatingMessage": "Your consultant is designing the agent...",
     "cancelButton": "Cancel",

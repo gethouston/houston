@@ -39,6 +39,7 @@ import type {
   ComposioStartLinkResponse,
   ComposioStartLoginResponse,
   ComposioStatus,
+  ComputeUsage,
   ConversationEntry,
   CreateAgent,
   CreateAgentResult,
@@ -81,6 +82,7 @@ import type {
   ProjectConfig,
   ProjectFile,
   ProviderStatus,
+  ProviderUsage,
   PushRegisterRequest,
   RemoveWorktreeRequest,
   RenameWorkspace,
@@ -191,7 +193,7 @@ export interface HoustonClientOptions {
 }
 
 /** The public store site (not API) base, for "browse the store" links. */
-const STORE_SITE_URL = "https://store.gethouston.ai";
+const STORE_SITE_URL = "https://agents.gethouston.ai";
 
 /** The machine-local pointer the host keeps for a published agent (no secrets). */
 interface StorePointer {
@@ -999,7 +1001,7 @@ export class HoustonClient {
       `/preferences/${this.seg(key)}`,
     ).then((r) => r.value);
   }
-  setPreference(key: string, value: string): Promise<void> {
+  setPreference(key: string, value: string | null): Promise<void> {
     return this.request("PUT", `/preferences/${this.seg(key)}`, { value });
   }
 
@@ -1007,6 +1009,16 @@ export class HoustonClient {
 
   providerStatus(name: string): Promise<ProviderStatus> {
     return this.request("GET", `/providers/${this.seg(name)}/status`);
+  }
+  /**
+   * Live per-account usage for every CONNECTED provider — rate-limit windows
+   * (Claude 5h/weekly, Codex session/weekly, Copilot quotas) and prepaid
+   * balances, fetched by the engine from each provider's own usage API. One
+   * row per connected provider; a provider with no readable usage surface
+   * answers an honest non-`ok` status rather than being omitted.
+   */
+  providerUsage(): Promise<ProviderUsage[]> {
+    return this.request("GET", "/providers/usage");
   }
   /**
    * Launch the provider's CLI login. `opts.deviceAuth` requests the
@@ -1605,6 +1617,19 @@ export class HoustonClient {
         days: days.toString(),
       })
     ).rows;
+  }
+  /**
+   * Per-agent compute usage (engine running time) over the last `days`, scoped
+   * server-side to the agents the caller can access. Only deployments that
+   * advertise `capabilities.computeUsage` serve it. Host clamps `days` to ≤ 90.
+   */
+  async computeUsage(days: number): Promise<ComputeUsage> {
+    return await this.request<ComputeUsage>(
+      "GET",
+      "/org/compute-usage",
+      undefined,
+      { days: days.toString() },
+    );
   }
   /**
    * The integration toolkit slugs granted to this agent, or `null` when the host

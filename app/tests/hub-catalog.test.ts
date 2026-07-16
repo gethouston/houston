@@ -103,25 +103,45 @@ describe("pricing and subscription flags come from pi", () => {
     strictEqual(opencode?.costOutput, 2);
   });
 
-  it("curates an OAuth provider down to PROVIDER_OVERRIDES.<id>.models", () => {
-    // The fixture's `anthropic` provider also runs the prior-generation
-    // `claude-sonnet-4-6` / `claude-opus-4-7` ids, which have no
-    // PROVIDER_OVERRIDES.anthropic.models entry — the plan can't actually pick
-    // them, so the hub must not offer them (HOU curation gate).
+  it("offers a curated provider EXACTLY its VISIBLE_MODELS set", () => {
+    // The hub must mirror the chat model picker: both apply the shared
+    // `isModelVisible` gate. The fixture's `anthropic` provider also runs
+    // `claude-haiku-4-5`, which is NOT in VISIBLE_MODELS.anthropic — it must
+    // never surface, while the five curated ids all do.
     const ids = new Set<string>();
     for (const model of all.models)
       for (const offer of model.offers)
         if (offer.providerId === "anthropic") ids.add(offer.modelId);
     deepStrictEqual([...ids].sort(), [
       "claude-fable-5",
+      "claude-opus-4-7",
       "claude-opus-4-8",
+      "claude-sonnet-4-6",
       "claude-sonnet-5",
     ]);
-    ok(!ids.has("claude-sonnet-4-6"), "uncurated OAuth model must be filtered");
-    ok(!ids.has("claude-opus-4-7"), "uncurated OAuth model must be filtered");
   });
 
-  it("never curation-gates an API-key gateway", () => {
+  it("hides a curated google model from google while other providers still offer it", () => {
+    // `gemini-3-flash-preview` is in the fixture's google list but NOT in
+    // VISIBLE_MODELS.google — the model survives in the hub only through the
+    // uncurated Copilot / OpenRouter offers.
+    const gemini = all.byKey.get("gemini 3 flash preview");
+    ok(gemini, "expected 'gemini 3 flash preview' via copilot/openrouter");
+    ok(!gemini?.offers.some((o) => o.providerId === "google"));
+    // google's own visible set is exactly the curated one.
+    const ids = new Set<string>();
+    for (const model of all.models)
+      for (const offer of model.offers)
+        if (offer.providerId === "google") ids.add(offer.modelId);
+    deepStrictEqual([...ids].sort(), [
+      "gemini-3.1-flash-lite",
+      "gemini-3.5-flash",
+      "gemma-4-26b-a4b-it",
+      "gemma-4-31b-it",
+    ]);
+  });
+
+  it("keeps an API-key gateway's full list", () => {
     // groq has no PROVIDER_OVERRIDES entry at all, and opencode is api-key —
     // both must expose every pi model they run.
     ok(all.byKey.get("llama 4 scout"));

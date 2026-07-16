@@ -49,6 +49,15 @@ export const queryKeys = {
   capabilities: () => ["capabilities"] as const,
 
   /**
+   * Live per-account provider usage (the AI Hub's Usage tab): rate-limit
+   * windows + prepaid balances from each provider's own usage API. App-scoped
+   * (credentials are workspace-central); refreshed on an interval while the
+   * tab is mounted, and invalidated alongside provider statuses on a connect
+   * so a fresh account shows without a manual refresh.
+   */
+  providerUsage: () => ["provider-usage"] as const,
+
+  /**
    * C9 personal API keys (`GET /v1/keys`). App-scoped (one set per user, not
    * agent-scoped) and hosted-gateway only — the create/revoke mutations
    * self-invalidate this key. The full secret from a mint is NEVER cached here;
@@ -107,6 +116,9 @@ export const queryKeys = {
   /** Teams v2: per-agent/user usage counters over a `days` window. Keyed by the
    *  window so 7- vs 30-day reads don't collide. */
   orgUsage: (days: number) => ["org-usage", days] as const,
+  /** Per-agent compute usage (engine running time) over a `days` window.
+   *  Cloud-only (gated on `capabilities.computeUsage`); keyed by the window. */
+  computeUsage: (days: number) => ["compute-usage", days] as const,
   agentGrants: (agentId: string) => ["agent-grants", agentId] as const,
   /**
    * Teams v2: an agent's allowed-toolkit settings (agent + org ceilings +

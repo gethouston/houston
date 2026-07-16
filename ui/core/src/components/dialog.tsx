@@ -64,10 +64,10 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          // Modal surface token `bg-dialog`: solid white in light mode, and
-          // translucent glass (+ frosted blur & top sheen from futuristic.css)
-          // in dark so the aurora canvas bleeds through. Not `bg-card` (glass
-          // in both modes) nor a flat opaque `bg-input` panel.
+          // Modal surface token `bg-dialog`: SOLID in both modes (white in
+          // light, neutral.800 in dark) — modals sit over arbitrary content
+          // and must never bleed it through. Not `bg-card` (glass in both
+          // modes).
           "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-5 rounded-2xl border border-line/50 bg-dialog p-6 shadow-[0_4px_4px_rgba(0,0,0,0.04),0_4px_80px_8px_rgba(0,0,0,0.04),0_0_1px_rgba(0,0,0,0.62)] dark:shadow-[0_4px_4px_rgba(0,0,0,0.1),0_4px_80px_8px_rgba(0,0,0,0.2),0_0_1px_rgba(255,255,255,0.1)] duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
           className,
         )}

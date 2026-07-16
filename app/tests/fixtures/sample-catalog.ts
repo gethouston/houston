@@ -79,9 +79,10 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
       // Non-vision fixture entry (`leaves a non-vision model without the image
       // modality` reads this one).
       reasoningModel("gpt-5.6-luna", { contextWindow: 372_000 }),
-      // Uncurated: pi still runs the retired 5.4 line, but the curated set
-      // moved on to the 5.6 family — must be filtered out of the hub.
       reasoningModel("gpt-5.4", { contextWindow: 272_000 }),
+      // NOT in VISIBLE_MODELS.openai: pi still runs it, but the curated set
+      // hides it from the picker AND the hub.
+      reasoningModel("gpt-5.2", { contextWindow: 272_000 }),
     ],
     "ChatGPT subscription",
   ),
@@ -92,10 +93,11 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
     }),
     reasoningModel("claude-opus-4-8", { contextWindow: 1_000_000 }),
     reasoningModel("claude-fable-5", { contextWindow: 1_000_000 }),
-    // Uncurated: pi still runs these prior-generation ids, but the curated
-    // set moved on to Sonnet 5 — must be filtered out of the hub.
     reasoningModel("claude-sonnet-4-6", { contextWindow: 200_000 }),
     reasoningModel("claude-opus-4-7", { contextWindow: 1_000_000 }),
+    // NOT in VISIBLE_MODELS.anthropic: runnable, but curated out of both
+    // model surfaces.
+    reasoningModel("claude-haiku-4-5", { contextWindow: 200_000 }),
   ]),
   provider("github-copilot", "oauth", [
     m("gpt-4.1", { contextWindow: 200_000 }),
@@ -136,9 +138,13 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
     reasoningModel("deepseek-v4-pro", { contextWindow: 1_000_000 }),
   ]),
   provider("google", "apiKey", [
+    reasoningModel("gemini-3.5-flash", { contextWindow: 1_048_576 }),
+    reasoningModel("gemini-3.1-flash-lite", { contextWindow: 1_048_576 }),
+    m("gemma-4-26b-a4b-it", { contextWindow: 131_072 }),
+    m("gemma-4-31b-it", { contextWindow: 131_072 }),
+    // NOT in VISIBLE_MODELS.google: pi runs them (and Copilot / OpenRouter
+    // still offer the 3-flash line), but the native google provider hides them.
     reasoningModel("gemini-3-flash-preview", { contextWindow: 1_048_576 }),
-    reasoningModel("gemini-3-pro-preview", { contextWindow: 1_048_576 }),
-    reasoningModel("gemini-2.5-flash", { contextWindow: 1_048_576 }),
     reasoningModel("gemini-2.5-pro", { contextWindow: 1_048_576 }),
   ]),
   provider("amazon-bedrock", "apiKey", [

@@ -97,7 +97,7 @@ ENV NODE_ENV=production \
     HOUSTON_HOME=/data \
     HOUSTON_HOST_BIND=0.0.0.0 \
     HOUSTON_HOST_PORT=4318 \
-    HOUSTON_RUNTIME_COMMAND="node /app/dist/runtime/main.mjs"
+    HOUSTON_RUNTIME_COMMAND="node --enable-source-maps /app/dist/runtime/main.mjs"
 # HOUSTON_HOST_TOKEN is deliberately NOT defaulted: an unset token would leave the
 # host open to anyone who can reach the port. docker-compose.yml requires it.
 
@@ -111,7 +111,10 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 # Exec form → node is PID 1 and gets SIGTERM from `docker stop`; local/main.ts
 # handles it (stops the scheduler/watcher and kills spawned runtimes).
-CMD ["node", "dist/host/main.mjs"]
+# --enable-source-maps applies the bundle's .map so stack traces (incl. Sentry
+# events) show original TS locations. Set per-command, not NODE_OPTIONS, so it
+# never leaks into node processes the agent's own bash tool runs.
+CMD ["node", "--enable-source-maps", "dist/host/main.mjs"]
 
 FROM host-base AS engine-pod
 
@@ -121,5 +124,17 @@ FROM host-base AS engine-pod
 ENV HOUSTON_MANAGED_CLOUD=1 \
     HOUSTON_CODE_EXECUTION=local \
     HOUSTON_EAGER_RUNTIME=1
+
+# Crash reporting for the managed fleet (host + the runtimes it spawns, which
+# inherit this env). The DSN is baked at image build — engine-pod-image.yml
+# passes the repo's SENTRY_DSN secret and engine-pod@<git-sha> as the release.
+# Built without the args (forks, local builds) both stay empty and the engine
+# is dormant: the credential IS the switch. The selfhost target deliberately
+# gets NO DSN — self-hosters set their own SENTRY_DSN env if they want one.
+ARG SENTRY_DSN=""
+ARG SENTRY_RELEASE=""
+ENV SENTRY_DSN=$SENTRY_DSN \
+    SENTRY_RELEASE=$SENTRY_RELEASE \
+    SENTRY_ENVIRONMENT=production
 
 FROM host-base AS selfhost

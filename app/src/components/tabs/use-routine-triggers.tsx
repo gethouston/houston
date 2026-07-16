@@ -9,7 +9,6 @@ import { useTranslation } from "react-i18next";
 import { useIntegrationToolkits } from "../../hooks/queries/use-integrations";
 import { useAgentTriggerStatus } from "../../hooks/queries/use-triggers";
 import { useCapabilities } from "../../hooks/use-capabilities";
-import { canSeeIntegrationsPage } from "../../lib/org-roles";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { INTEGRATION_PROVIDER } from "../integrations/model";
@@ -18,20 +17,16 @@ import { RoutineTriggerEditor } from "./routine-trigger-editor";
 import { toStatusMap, toTriggerSummaries } from "./routine-trigger-maps";
 
 /**
- * Wires the Reactions tab's event-trigger surface (C9): the capability gate, the
- * per-routine status badges, the humanized row summaries, the injected editor
- * body, and the reconnect hand-off to the Integrations surface. Returns exactly
- * the trigger-related props `RoutinesGrid` takes.
- *
- * `enabled` lets a schedule-only caller (the Routines tab) turn the whole
- * surface off so it never fetches trigger status or catalogs; it is ANDed with
- * the deployment's `capabilities.triggers`.
+ * Wires the Automations tab's event-trigger surface (C9): the capability gate,
+ * the per-routine status badges, the humanized row summaries, the injected
+ * editor body, and the reconnect hand-off to the Integrations surface. Returns
+ * exactly the trigger-related props `RoutinesGrid` takes. Where the deployment
+ * has no `capabilities.triggers`, everything is off: no fetches, no editor.
  */
 export function useRoutineTriggers(
   agent: Agent,
   routines: Routine[] | undefined,
   triggerLabels: TriggerLabels,
-  enabled = true,
 ): {
   triggersEnabled: boolean;
   triggerStatuses: Record<string, TriggerStatusItem>;
@@ -41,22 +36,17 @@ export function useRoutineTriggers(
 } {
   const { t } = useTranslation("routines");
   const { capabilities } = useCapabilities();
-  const triggersEnabled = enabled && !!capabilities?.triggers;
+  const triggersEnabled = !!capabilities?.triggers;
 
   const statusQuery = useAgentTriggerStatus(agent.id, triggersEnabled);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, triggersEnabled);
 
   const setViewMode = useUIStore((s) => s.setViewMode);
-  const setSettingsSection = useUIStore((s) => s.setSettingsSection);
   const onReconnectTrigger = useCallback(() => {
-    // Same routing the Integrations tab's "Manage all" uses: the policy page
-    // when the caller can see it, else Settings > Connected accounts.
-    if (canSeeIntegrationsPage(capabilities)) setViewMode(INTEGRATIONS_VIEW_ID);
-    else {
-      setSettingsSection("connectedAccounts");
-      setViewMode("settings");
-    }
-  }, [capabilities, setViewMode, setSettingsSection]);
+    // Same routing the Integrations tab's "Manage all" uses: the global
+    // Integrations page, which everyone can reach.
+    setViewMode(INTEGRATIONS_VIEW_ID);
+  }, [setViewMode]);
 
   const triggerStatuses = useMemo(
     () => toStatusMap(statusQuery.data),
@@ -82,11 +72,14 @@ export function useRoutineTriggers(
               agentId={agent.id}
               value={props.value}
               onChange={props.onChange}
+              // Same navigation as the status badge's Reconnect: the place
+              // where apps get connected.
+              onConnectApp={onReconnectTrigger}
               labels={triggerLabels}
             />
           )
         : undefined,
-    [triggersEnabled, agent.id, triggerLabels],
+    [triggersEnabled, agent.id, triggerLabels, onReconnectTrigger],
   );
 
   return {

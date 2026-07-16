@@ -79,7 +79,7 @@ test("a blocked app shows as a locked row with the ask-admin line, and clicking 
 
   // Slack is outside the ceiling → a locked row under the muted heading, with
   // the ask-your-admin subtitle visible AT REST (no hover gating).
-  await expect(page.getByText("Not enabled by your admin")).toBeVisible();
+  await expect(page.getByText("Turned off in your workspace")).toBeVisible();
   await expect(page.getByText("Ask your admin to enable Slack")).toBeVisible();
 
   // The locked row is non-interactive: no button carries Slack (unlike the
@@ -133,13 +133,17 @@ test("the locked section caps at 8 rows with a +N more line", async ({
   await clearConnections(request);
   await openIntegrationsTab(page);
 
-  await expect(page.getByText("Not enabled by your admin")).toBeVisible();
+  // Target the section heading by role: the overflow "+N more" line below repeats
+  // the "turned off in your workspace" phrase, so a bare text match is ambiguous.
+  await expect(
+    page.getByRole("heading", { name: "Turned off in your workspace" }),
+  ).toBeVisible();
 
   // Exactly 8 locked rows are shown (each carries the ask-admin subtitle)...
   await expect(page.getByText(/^Ask your admin to enable /)).toHaveCount(8);
   // ...and the overflow (14 blocked − 8 shown = 6) folds into the count line.
   await expect(
-    page.getByText("6 more apps your admin hasn't enabled"),
+    page.getByText("6 more apps turned off in your workspace"),
   ).toBeVisible();
 });
 
@@ -157,5 +161,5 @@ test("single-player: the browse catalog renders but no locked section ever appea
     page.getByRole("button").filter({ hasText: "Slack" }).first(),
   ).toBeVisible();
   // No lock treatment anywhere.
-  await expect(page.getByText("Not enabled by your admin")).toHaveCount(0);
+  await expect(page.getByText("Turned off in your workspace")).toHaveCount(0);
 });

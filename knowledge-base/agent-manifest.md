@@ -32,8 +32,9 @@ interface AgentManifest {
 ## Tabs
 
 Every agent renders the same standard tabs in the shell:
-`Activity` (board) / `Routines` / `Reactions` (event-driven automations, present
-only when `capabilities.triggers` is on — see `visibleAgentTabs`) / `Files` /
+`Activity` (board) / `Automations` (tab id `routines`; schedule-driven AND
+event-driven in one list — the wake mechanism is a choice inside the editor,
+gated there by `capabilities.triggers`, never a separate tab) / `Files` /
 `Agent Settings` (tab id `job-description`) / `Integrations`.
 
 This used to be configurable per agent via a `tabs: AgentTab[]` field in `houston.json`, plus an optional `customComponent` pointing at a per-agent `bundle.js`. The flexibility was never used in practice (zero shipped agents had a custom React tab) and caused drift between installed agents and fresh ones whenever the default set changed. The set is now hardcoded in `app/src/agents/standard-tabs.ts` (`STANDARD_TABS`, `DEFAULT_TAB_ID`). Old `tabs` / `defaultTab` fields on installed manifests are ignored by the loader.
@@ -213,11 +214,13 @@ The screen state machine (`OnboardingStep` in `tutorial-copy.ts`; first screen i
    `connectEmail` when integrations are available, else straight to `finished`
    (`stepAfterAgentCreated`).
 3. **connectEmail** — connect an email toolkit (`missions/connect-email.tsx`) so
-   the assistant can send on the user's behalf. Three one-click brand action rows
-   (Gmail → Google logo, Outlook → Microsoft logo, "Another provider" → a `Mail`
-   icon that expands an inline input); tapping a brand row kicks off its OAuth
+   the assistant can send on the user's behalf. Two one-click brand action rows
+   (Gmail → Google logo, Outlook → Microsoft logo; the old "Another provider"
+   free-text row fed raw slugs to Composio and mostly failed, so it was removed —
+   other providers connect later from Integrations, which the skip hint points
+   at); tapping a brand row kicks off its OAuth
    immediately (no select-then-Connect two-step), the row's chevron becomes a
-   spinner while in flight (the other rows disable) and the in-flight row itself
+   spinner while in flight (the other row disables) and the in-flight row itself
    turns into a CANCEL control — flipping to an X + "Cancel" on hover, mirroring
    the AI step's Connect pill (`useConnectFlow().cancel`) — and it auto-advances
    the moment the tapped toolkit lands active. If the background create hasn't
@@ -310,6 +313,7 @@ Engine route: `POST /v1/store/workspaces/install-from-github`. Rust impl: `houst
 |-----------------------------|
 | > Dashboard                 |  all agents overview (Mission Control)
 | > AI models                 |  the AI Hub top-level view (viewMode "ai-hub")
+| > Usage                     |  per-account provider usage (viewMode "usage", same Teams gate as the hub)
 | > Connections               |  workspace-wide integrations
 | > Organization              |  Teams v2 dashboard (owner/admin + multiplayer only)
 |-----------------------------|
@@ -709,7 +713,7 @@ The view is laid out by the shared **`CatalogShell`** (`ui/core`, the same
 grammar as the Integrations page): a consolidated **Connected** strip of
 provider brand tiles OUTSIDE the tabs (`connected-providers-strip.tsx`, a tile
 opens the provider modal — sign-out lives there), then the Providers / Models
-(/ Workspace policy on Teams) tabs with `CatalogCount` chips. The whole page is
+tabs with `CatalogCount` chips. The whole page is
 ONE scroll region (the old fixed-masthead split is gone); while a modal is open
 the scroller flips to `overflow-y-hidden` (Radix only locks `<body>`) with
 `scrollbar-gutter: stable` holding the offset.
@@ -759,6 +763,33 @@ the scroller flips to `overflow-y-hidden` (Radix only locks `<body>`) with
   the provider modal, so both surfaces read identically.
 - **Model detail** (`model-modal.tsx` + `model-offer-row.tsx`): one model's
   per-provider offers ("Get it through" + pricing / subscription).
+
+### Usage page (top-level view)
+
+**Usage** is its own top-level sidebar view (`viewMode "usage"`,
+`app/src/components/usage-view/` — `USAGE_VIEW_ID` in `id.ts`, page in
+`usage-view.tsx`), sharing the hub's Teams gate (`canSeeAiModelsPage`; also in
+`blockedTopLevelView`). One card per CONNECTED account
+(`usage-provider-card.tsx`) with its live limits; the connected set derives
+exactly like the hub's Connected strip (`getConnectProviders` +
+`useProviderConnections` + `groupProviders`), and the empty state's CTA jumps
+to the hub (`setViewMode("ai-hub")`).
+
+Data is the engine's `GET /providers/usage` (wire `ProviderUsage` in
+`packages/protocol`, fetched via `tauriProvider.usage()` → `useProviderUsage`,
+key `providerUsage()`, 60s interval + invalidated on `ProviderLoginComplete`).
+The runtime reads each provider's OWN usage API with the already-linked
+credential (`packages/runtime/src/ai/usage/`): Anthropic's OAuth usage
+endpoint (5h/weekly/Opus windows; token resolved file → macOS Keychain →
+auth.json, mirroring the shell's credential extraction), ChatGPT/Codex
+rate-limit windows (windows classified by LENGTH, not position), Copilot quota
+snapshots (auths with the GitHub token pi stores as `refresh`; enterprise
+domains target `api.<domain>`), OpenRouter credits, and DeepSeek balance.
+Providers with no readable surface answer an honest `unsupported` row — never
+omitted. The pure pairing/format logic (display-id rename + merged-gateway
+matching, reset phrasing via `Intl.RelativeTimeFormat`) is node-tested in
+`app/tests/ai-hub-usage-model.test.ts`; fetcher mapping in
+`packages/runtime/src/ai/usage/usage.test.ts`.
 
 Navigation is the `CatalogShell`'s controlled tab state plus two local modal
 states inside `AiHubView` (`openProvider` / `openModel`; the last value is

@@ -1,4 +1,11 @@
-import { Button, Input } from "@houston-ai/core";
+import {
+  Button,
+  Input,
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  REGEXP_ONLY_DIGITS,
+} from "@houston-ai/core";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,8 +21,10 @@ type Step = "email" | "code";
  * counterpart to the loopback OAuth flow. On success the parent SignInScreen
  * unmounts as soon as the session lands in the query cache.
  *
- * Compact inline shape: a rounded field with a send button on its right, so the
- * email path sits neatly under the OAuth buttons in the sign-in panel.
+ * Compact inline shape: a rounded email field with a send button on its right.
+ * The code step swaps it for a six-box pin input that auto-advances, accepts a
+ * pasted code, and verifies itself on the sixth digit; the arrow button stays
+ * as the retry affordance after a rejected code.
  */
 export function EmailSignIn() {
   const { t } = useTranslation("errors");
@@ -41,8 +50,10 @@ export function EmailSignIn() {
     }
   };
 
-  const verifyCode = async () => {
-    const trimmedCode = code.trim();
+  // Takes the value explicitly so the pin input's `onComplete` can submit the
+  // just-completed code without racing the `code` state update.
+  const verifyCode = async (value: string = code) => {
+    const trimmedCode = value.trim();
     if (!trimmedCode) return;
     setPending(true);
     setError(null);
@@ -87,22 +98,36 @@ export function EmailSignIn() {
     return (
       <form onSubmit={onVerifySubmit} className="flex w-full flex-col gap-2">
         <div className="flex items-center gap-2">
-          <Input
+          <InputOTP
+            maxLength={6}
             value={code}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={setCode}
+            onComplete={(value: string) => void verifyCode(value)}
+            pattern={REGEXP_ONLY_DIGITS}
             inputMode="numeric"
             autoComplete="one-time-code"
-            maxLength={6}
-            placeholder="123456"
             autoFocus
-            className="h-10 flex-1 rounded-full border-ink/40 px-4 text-center tracking-[0.3em]"
-          />
-          <SendButton disabled={pending || code.trim().length === 0} />
+            disabled={pending}
+            containerClassName="flex-1 justify-center"
+          >
+            <InputOTPGroup>
+              {[0, 1, 2, 3, 4, 5].map((index) => (
+                <InputOTPSlot
+                  key={index}
+                  index={index}
+                  className="size-10 border-ink/40"
+                />
+              ))}
+            </InputOTPGroup>
+          </InputOTP>
+          <SendButton disabled={pending || code.trim().length < 6} />
         </div>
-        <p className="text-xs text-ink-muted">
+        {/* pr-12 mirrors the send button + gap on the row above, so the
+            centered copy lines up with the pin boxes, not the full row. */}
+        <p className="pr-12 text-center text-xs text-ink-muted">
           We sent a 6-digit code to {email}.
         </p>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-center gap-4 pr-12">
           <button
             type="button"
             disabled={pending}
@@ -123,7 +148,9 @@ export function EmailSignIn() {
             Use a different email
           </button>
         </div>
-        {error && <p className="text-xs text-danger">{error}</p>}
+        {error && (
+          <p className="pr-12 text-center text-xs text-danger">{error}</p>
+        )}
       </form>
     );
   }

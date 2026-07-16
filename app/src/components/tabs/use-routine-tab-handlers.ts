@@ -16,11 +16,9 @@ import { useUIStore } from "../../stores/ui";
 import { newRoutineInput, routineUpdateFromPatch } from "./routines-tab-model";
 
 /**
- * The mutation wiring shared by the Routines and Reactions tabs (both are
- * filtered views of the one routines list, so create/save/delete/run/timezone
- * behave identically). Extracted so `routine-list-tab.tsx` stays lean and the
- * two tabs never fork this logic. `closeNewDraft` closes the inline "Manually"
- * editor once a create succeeds.
+ * The Automations tab's mutation wiring (create/save/delete/run/timezone).
+ * Extracted so `routines-tab.tsx` stays lean. `closeNewDraft` closes the
+ * inline "Manually" editor once a create succeeds.
  */
 export function useRoutineTabHandlers(agent: Agent, closeNewDraft: () => void) {
   const { t } = useTranslation("routines");

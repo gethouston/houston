@@ -10,7 +10,7 @@ import {
   HoustonAvatar,
   resolveAgentColor,
 } from "@houston-ai/core";
-import { Keyboard, LayoutDashboard, Plus, Settings } from "lucide-react";
+import { Keyboard, LayoutDashboard, Plus, Settings, Store } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
@@ -22,6 +22,7 @@ import { shortcutLabel } from "../lib/shortcuts";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
+import { STORE_VIEW_ID } from "./store-view";
 
 // 28px outer circle so the inner helmet (forced to 20px by cmdk's
 // `[&_[cmdk-item]_svg]:h-5` rule) sits at roughly its native 65%
@@ -164,6 +165,16 @@ export function CommandPalette() {
             <LayoutDashboard />
             <span>{t("shell:palette.actions.missionControl")}</span>
             <CommandShortcut>{shortcutLabel("missionControl")}</CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            onSelect={() => {
+              setViewMode(STORE_VIEW_ID);
+              close();
+            }}
+            value="action agent-store"
+          >
+            <Store />
+            <span>{t("shell:sidebar.agentStore")}</span>
           </CommandItem>
           <CommandItem
             onSelect={() => {

@@ -59,6 +59,7 @@ export class StoreSyncDaemon {
 
   async hydrate(): Promise<void> {
     this.hydrated = false;
+    const startedAt = Date.now();
     await mkdir(this.opts.rootDir, { recursive: true });
     const manifest = await hydrate(this.opts.store, "", this.opts.rootDir, {
       excludes: this.excludes,
@@ -66,6 +67,12 @@ export class StoreSyncDaemon {
     });
     this.manifest = manifest;
     this.hydrated = true;
+    // Hydration gates the pod's readiness probe, so its cost must be visible
+    // in the boot log — a wake-latency regression should point here, not to a
+    // silent gap before the listening banner.
+    this.opts.log(
+      `[store-sync] hydrated ${manifest.size} objects in ${Date.now() - startedAt}ms`,
+    );
   }
 
   start(): void {

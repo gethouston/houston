@@ -3,42 +3,29 @@
   "grid": {
     "loading": "Carregando…",
     "emptyTitle": "Programe e esqueça",
-    "emptyDescription": "Uma rotina é seu agente trabalhando em um horário, sem que você precise pedir toda vez. Descreva uma tarefa uma vez, e ela roda sozinha, todo dia, toda semana, ou com a frequência que você quiser.",
-    "emptyStepsTitle": "Como funciona",
-    "emptySteps": [
-      {
-        "title": "Diga o que fazer",
-        "description": "Descreva a tarefa em linguagem simples, como você diria para uma pessoa."
-      },
-      {
-        "title": "Escolha quando roda",
-        "description": "Escolha um horário: toda manhã, toda hora, uma vez por semana, o que fizer sentido."
-      },
-      {
-        "title": "Revise perguntando",
-        "description": "Não precisa conferir o trabalho na mão, só pergunte o que aconteceu."
-      }
-    ],
-    "newRoutine": "Nova rotina",
+    "emptyDescription": "Uma automação é seu agente trabalhando por conta própria, sem que você precise pedir toda vez. Descreva uma tarefa uma vez, escolha quando ela deve acontecer e ele cuida do resto.",
+    "newRoutine": "Nova automação",
     "newRoutineWithAi": "Com IA",
     "newRoutineManually": "Manualmente",
-    "createRoutine": "Criar rotina",
-    "draftTitle": "Rotina sendo criada no chat",
+    "createRoutine": "Criar automação",
+    "draftTitle": "Automação sendo criada no chat",
     "draftResume": "Continuar",
     "draftDiscard": "Descartar",
-    "descriptionShort": "Tarefas recorrentes que rodam no horário e só te avisam quando algo precisa da sua atenção.",
+    "descriptionShort": "Trabalho que seu agente faz por conta própria e só te avisa quando algo precisa da sua atenção.",
     "timezoneLabel": "Fuso horário",
-    "timezoneHint": "Todas as suas rotinas rodam neste fuso horário.",
+    "timezoneHint": "Todas as suas automações programadas rodam neste fuso horário.",
     "timezoneSearchPlaceholder": "Buscar fusos horários…",
-    "timezoneNoResults": "Nenhum fuso horário encontrado"
+    "timezoneNoResults": "Nenhum fuso horário encontrado",
+    "sectionActive": "Ativas",
+    "sectionPaused": "Pausadas"
   },
   "setupChat": {
-    "missionTitle": "Configurar uma nova rotina"
+    "missionTitle": "Configurar uma nova automação"
   },
   "chat": {
-    "newRoutineTitle": "Nova rotina",
-    "routineLabel": "Rotina: {{name}}",
-    "back": "Voltar para rotinas",
+    "newRoutineTitle": "Nova automação",
+    "routineLabel": "Automação: {{name}}",
+    "back": "Voltar para automações",
     "opening": "Abrindo o chat…"
   },
   "row": {
@@ -51,8 +38,8 @@
     "ranMinutes": "há {n}m",
     "ranHours": "há {n}h",
     "ranDays": "há {n}d",
-    "pauseRoutine": "Pausar rotina",
-    "resumeRoutine": "Retomar rotina",
+    "pauseRoutine": "Pausar automação",
+    "resumeRoutine": "Retomar automação",
     "runNow": "Executar agora",
     "stopRun": "Parar execução",
     "moreActions": "Mais ações",
@@ -68,7 +55,12 @@
     "instructionLabel": "Instrução",
     "instructionPlaceholder": "O que o agente deve fazer quando isso rodar?",
     "save": "Salvar",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "whenTitle": "Quando isso deve acontecer?",
+    "whenSchedule": "Em um horário",
+    "whenEvent": "Quando algo acontecer",
+    "whenScheduleHint": "Toda manhã, uma vez por semana, você escolhe",
+    "whenEventHint": "Um novo email, uma mensagem, uma mudança em um app"
   },
   "schedule": {
     "presets": {
@@ -170,48 +162,8 @@
     "statusDisconnectedHint": "A conta conectada foi desconectada.",
     "statusRevokedHint": "Este app foi desativado para este agente.",
     "rowSummary": "Aciona por um evento em {{app}}",
-    "loadFailed": "Não foi possível carregar os acionadores de eventos"
-  },
-  "reactions": {
-    "grid": {
-      "loading": "Carregando…",
-      "emptyTitle": "Reaja assim que acontece",
-      "emptyDescription": "Seu agente reage assim que algo acontece nos seus apps conectados, como um e-mail novo, uma mensagem ou uma mudança no código.",
-      "emptyStepsTitle": "Como funciona",
-      "emptySteps": [
-        {
-          "title": "Escolha o que aciona",
-          "description": "Escolha um app e o evento para reagir, como um e-mail novo ou uma mensagem nova."
-        },
-        {
-          "title": "Diga o que fazer",
-          "description": "Descreva a tarefa em linguagem simples, como você diria para uma pessoa."
-        },
-        {
-          "title": "Roda sozinha",
-          "description": "Não precisa ficar de olho, seu agente reage assim que acontece."
-        }
-      ],
-      "newRoutine": "Nova reação",
-      "newRoutineWithAi": "Com IA",
-      "newRoutineManually": "Manualmente",
-      "createRoutine": "Criar reação",
-      "draftTitle": "Reação sendo criada no chat",
-      "draftResume": "Continuar",
-      "draftDiscard": "Descartar",
-      "descriptionShort": "Automações que rodam assim que algo acontece em um dos seus apps conectados.",
-      "timezoneLabel": "Fuso horário",
-      "timezoneHint": "Todas as suas rotinas rodam neste fuso horário.",
-      "timezoneSearchPlaceholder": "Buscar fusos horários…",
-      "timezoneNoResults": "Nenhum fuso horário encontrado"
-    },
-    "setupChat": {
-      "missionTitle": "Configurar uma nova reação"
-    },
-    "chat": {
-      "newTitle": "Nova reação",
-      "itemLabel": "Reação: {{name}}"
-    }
+    "loadFailed": "Não foi possível carregar os acionadores de eventos",
+    "connectApp": "Conectar um app"
   },
   "toasts": {
     "timezoneSet": "Fuso horário definido como {{zone}}",

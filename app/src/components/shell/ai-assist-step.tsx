@@ -1,15 +1,25 @@
-import { DialogTitle } from "@houston-ai/core";
+import {
+  cn,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@houston-ai/core";
 import type { SuggestedRoutine } from "@houston-ai/engine-client";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { genericErrorDescription } from "../../lib/error-toast";
 import { tauriAgents } from "../../lib/tauri";
+import { ChatModelSelector } from "../chat-model-selector";
 import { AgentBriefForm } from "./agent-brief-form";
 import { AiStepFooter } from "./ai-step-footer";
 
 interface AiAssistStepProps {
   provider: string;
   model: string;
+  /** Picker changes lift to the dialog: the pair drives this generation turn
+   * AND becomes the created agent's brain. Effort has no control here — the
+   * engine runs reasoning models at its default (medium). */
+  onModelChange: (provider: string, model: string) => void;
   /** The consultant brief lives in the dialog so navigating back from the
    * routine/review steps doesn't wipe the user's typed text. */
   brief: string;
@@ -26,6 +36,7 @@ interface AiAssistStepProps {
 export function AiAssistStep({
   provider,
   model,
+  onModelChange,
   brief,
   onBriefChange,
   onBack,
@@ -77,19 +88,40 @@ export function AiAssistStep({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <DialogTitle className="sr-only">{t("aiAssist.stepTitle")}</DialogTitle>
+      {/* Fixed header, the same pattern as the picker step: the title never
+          scrolls away and renders at the dialog's standard size. The model
+          row sits right under it — the user picks the generation brain
+          before writing the brief. */}
+      <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b border-ink/[0.06]">
+        <div className="max-w-2xl mx-auto w-full space-y-2">
+          <DialogTitle>{t("aiAssist.stepTitle")}</DialogTitle>
+          <DialogDescription>{t("aiAssist.stepDescription")}</DialogDescription>
+          <div className="flex items-center gap-2.5 pt-1">
+            <span className="text-sm text-ink-muted">
+              {t("aiAssist.modelLabel")}
+            </span>
+            {/* ChatModelSelector has no disabled prop; gate interaction while a
+                generation is in flight so the request's brain can't drift. The
+                border gives the bare pill a visible select affordance. */}
+            <div
+              className={cn(
+                "rounded-lg border border-line bg-chip",
+                generating && "pointer-events-none opacity-50",
+              )}
+            >
+              <ChatModelSelector
+                provider={provider}
+                model={model}
+                onSelect={onModelChange}
+                agent={null}
+              />
+            </div>
+          </div>
+        </div>
+      </DialogHeader>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 pt-6">
         <div className="max-w-2xl mx-auto space-y-6">
-          <div>
-            <h2 className="text-base font-semibold">
-              {t("aiAssist.stepTitle")}
-            </h2>
-            <p className="text-sm text-ink-muted">
-              {t("aiAssist.stepDescription")}
-            </p>
-          </div>
-
           <AgentBriefForm
             value={brief}
             onChange={onBriefChange}

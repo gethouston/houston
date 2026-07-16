@@ -22,8 +22,7 @@ import {
 } from "@houston-ai/engine-client";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import type { QueryClient } from "@tanstack/react-query";
-import { persistQueryClient } from "@tanstack/react-query-persist-client";
-import { whenEngineReady } from "./engine";
+import type { PersistQueryClientOptions } from "@tanstack/react-query-persist-client";
 import { logger } from "./logger";
 import {
   isPersistedQueryKey,
@@ -82,43 +81,41 @@ function queryPersistScope(): string | null {
   return conversationCacheScope(engine.baseUrl, engine.token);
 }
 
+export type QueryPersistenceOptions = Omit<
+  PersistQueryClientOptions,
+  "queryClient"
+>;
+
 /**
- * Start list-query persistence once the engine handshake (and, hosted, the
- * signed-in Supabase bearer) is in place. Restores persisted lists into the
- * cache, then mirrors every whitelisted cache change back to disk. No cloud
- * identity (local sidecar, static tokens, tests) → no-op. Never throws — a
- * broken IndexedDB degrades to exactly today's network-only behavior.
+ * Build the provider options after EngineGate has established the hosted user.
+ * The provider owns restore ordering: observers may mount, but their fetches
+ * stay paused until hydration finishes. Cached lists can paint before a cold
+ * pod read, and fresh results cannot be missed before persistence subscribes.
+ * No cloud identity means no persistence.
  */
-export async function setupQueryPersistence(
+export function queryPersistenceOptions(
   queryClient: QueryClient,
-): Promise<void> {
-  try {
-    await whenEngineReady();
-    const scope = queryPersistScope();
-    if (!scope || typeof indexedDB === "undefined") return;
-    // Restored-but-not-yet-observed queries must outlive the in-memory GC for
-    // as long as they are restorable, or the persist mirror drops them from
-    // disk before the user revisits that agent (see query-persist-policy.ts).
-    for (const prefix of PERSISTED_QUERY_PREFIXES) {
-      queryClient.setQueryDefaults([prefix], { gcTime: PERSIST_MAX_AGE_MS });
-    }
-    persistQueryClient({
-      queryClient,
-      persister: createAsyncStoragePersister({
-        storage: idbStorage,
-        key: PERSIST_KEY,
-      }),
-      maxAge: PERSIST_MAX_AGE_MS,
-      buster: scope,
-      dehydrateOptions: {
-        shouldDehydrateQuery: (query) =>
-          query.state.status === "success" &&
-          isPersistedQueryKey(query.queryKey),
-      },
-    });
-  } catch (err) {
-    logger.warn(`[query-persist] disabled — persistence failed: ${err}`);
+): QueryPersistenceOptions | null {
+  const scope = queryPersistScope();
+  if (!scope || typeof indexedDB === "undefined") return null;
+  // Restored-but-not-yet-observed queries must outlive the in-memory GC for
+  // as long as they are restorable, or the persist mirror drops them from
+  // disk before the user revisits that agent (see query-persist-policy.ts).
+  for (const prefix of PERSISTED_QUERY_PREFIXES) {
+    queryClient.setQueryDefaults([prefix], { gcTime: PERSIST_MAX_AGE_MS });
   }
+  return {
+    persister: createAsyncStoragePersister({
+      storage: idbStorage,
+      key: PERSIST_KEY,
+    }),
+    maxAge: PERSIST_MAX_AGE_MS,
+    buster: scope,
+    dehydrateOptions: {
+      shouldDehydrateQuery: (query) =>
+        query.state.status === "success" && isPersistedQueryKey(query.queryKey),
+    },
+  };
 }
 
 /**

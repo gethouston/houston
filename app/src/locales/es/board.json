@@ -11,7 +11,7 @@
     "description": "Este elemento y su historial se eliminarán de forma permanente."
   },
   "tags": {
-    "routine": "Rutina"
+    "routine": "Automatización"
   },
   "people": {
     "label": "Personas en esta misión",
@@ -61,7 +61,7 @@
     "selected_one": "{{count}} seleccionada",
     "selected_other": "{{count}} seleccionadas",
     "moveTo": "Mover a",
-    "archive": "Completar",
+    "archive": "Archivar",
     "delete": "Eliminar",
     "clear": "Quitar selección",
     "cancel": "Cancelar",
@@ -73,10 +73,10 @@
       "action": "Mover"
     },
     "confirmArchive": {
-      "title": "¿Completar misiones?",
-      "description_one": "¿Completar {{count}} misión? Puedes reabrirla desde la pestaña Completadas.",
-      "description_other": "¿Completar {{count}} misiones? Puedes reabrirlas desde la pestaña Completadas.",
-      "action": "Completar"
+      "title": "¿Archivar misiones?",
+      "description_one": "¿Archivar {{count}} misión? Puedes reabrirla desde la pestaña Archivadas.",
+      "description_other": "¿Archivar {{count}} misiones? Puedes reabrirlas desde la pestaña Archivadas.",
+      "action": "Archivar"
     },
     "confirmDelete": {
       "title": "¿Eliminar misiones?",
@@ -90,9 +90,9 @@
     "selectAll": "Seleccionar toda la columna"
   },
   "archived": {
-    "emptyTitle": "No hay misiones completadas",
-    "emptyDescription": "Las misiones completadas aparecen aquí. Responde a una para reactivarla.",
-    "searchPlaceholder": "Buscar misiones completadas"
+    "emptyTitle": "No hay misiones archivadas",
+    "emptyDescription": "Las misiones archivadas aparecen aquí. Responde a una para reactivarla.",
+    "searchPlaceholder": "Buscar misiones archivadas"
   },
   "dnd": {
     "moveError": "No se pudo mover la misión: {{error}}"

@@ -91,10 +91,10 @@
   "suggestReusable": {
     "title": "Guarda esto para la próxima vez",
     "skillTitle": "Guardar como Habilidad",
-    "routineTitle": "Guardar como Rutina",
+    "routineTitle": "Guardar como Automatización",
     "learningTitle": "Recordar esto",
     "saveSkillMessage": "Guarda lo que acabo de hacer como una Habilidad llamada \"{{title}}\".",
-    "saveRoutineMessage": "Configura esto como una Rutina recurrente llamada \"{{title}}\".",
+    "saveRoutineMessage": "Configura esto como una Automatización recurrente llamada \"{{title}}\".",
     "saveLearningMessage": "Recuerda \"{{title}}\" como un aprendizaje para la próxima vez."
   },
   "errors": {
@@ -176,10 +176,15 @@
       "modelsLabel": "Modelos",
       "loading": "Cargando proveedores…",
       "empty": "No se encontraron modelos.",
-      "noProviders": "Aún no hay proveedores conectados."
+      "noProviders": "Aún no hay proveedores conectados.",
+      "hiddenByWorkspace_one": "{{count}} modelo más está desactivado en tu espacio de trabajo",
+      "hiddenByWorkspace_other": "{{count}} modelos más están desactivados en tu espacio de trabajo"
     },
     "modelDescriptions": {
       "gpt-5_5": "El modelo más avanzado de OpenAI.",
+      "gpt-5_6-sol": "El modelo más reciente y avanzado de OpenAI.",
+      "gpt-5_6-terra": "Modelo intermedio equilibrado.",
+      "gpt-5_6-luna": "Rápido y económico para tareas más simples.",
       "gpt-5_4": "Modelo potente para programar a diario.",
       "gpt-5_4-mini": "Pequeño, rápido y económico para tareas más simples.",
       "gpt-5_3-codex-spark": "Modelo de programación ultrarrápido.",
@@ -187,7 +192,11 @@
       "claude-sonnet-4-6": "Mejor equilibrio entre velocidad y calidad.",
       "claude-opus-4-8": "Opus mas reciente. Mejor alineamiento y codigo agente que 4.7.",
       "claude-fable-5": "El modelo mas capaz. Consume el doble de creditos que Opus 4.8.",
-      "claude-opus-4-7": "Modelo anterior. Autonomia de codigo y razonamiento complejo."
+      "claude-opus-4-7": "Modelo anterior. Autonomia de codigo y razonamiento complejo.",
+      "gemini-3_5-flash": "Rápido y capaz. La mejor opción por defecto.",
+      "gemini-3_1-flash-lite": "Ligero y veloz para tareas más simples.",
+      "gemma-4-26b-a4b-it": "Modelo abierto Gemma de Google. Rápido y eficiente.",
+      "gemma-4-31b-it": "Modelo abierto Gemma de Google. Más capaz."
     }
   },
   "reasoning": {

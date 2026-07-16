@@ -31,7 +31,7 @@ declare global {
 /** The public store SITE (not API) base, for "browse the store" links. */
 export const STORE_SITE_URL = (
   (import.meta.env?.VITE_AGENTSTORE_SITE_URL as string | undefined) ??
-  "https://store.gethouston.ai"
+  "https://agents.gethouston.ai"
 ).replace(/\/+$/, "");
 
 const trimSlash = (url: string) => url.replace(/\/+$/, "");

@@ -123,7 +123,6 @@
       "support": "Soporte"
     },
     "rows": {
-      "members": "Personas que pueden usar tus agentes",
       "connectedAccounts": "Aplicaciones que conectaste a Houston",
       "apiKeys": "Permite que otras apps y asistentes de IA inicien misiones con tus agentes",
       "workspaceContext": "Lo que cada agente sabe sobre este espacio",
@@ -134,8 +133,6 @@
     },
     "values": {
       "set": "Definido",
-      "membersCount_one": "{{count}} miembro",
-      "membersCount_other": "{{count}} miembros",
       "appsCount_one": "{{count}} aplicación",
       "appsCount_other": "{{count}} aplicaciones"
     }
@@ -145,8 +142,7 @@
     "subtitle": "Aplicaciones que conectaste. Elige qué agentes pueden usar cada una.",
     "heading": "Tus aplicaciones",
     "empty": "Aún no conectaste ninguna aplicación.",
-    "connectMore": "Conectar más aplicaciones",
-    "connectHint": "Conecta nuevas aplicaciones desde la pestaña Integraciones de cualquier agente."
+    "connectMore": "Conectar más aplicaciones"
   },
   "apiKeys": {
     "title": "Claves de API",

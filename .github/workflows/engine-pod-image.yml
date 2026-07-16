@@ -82,9 +82,15 @@ jobs:
         run: |
           SHA_TAG="${{ env.REGISTRY }}/engine-pod:${{ github.sha }}"
           POC_TAG="${{ env.REGISTRY }}/engine-pod:poc"
+          # SENTRY_DSN bakes crash reporting into the managed fleet (empty on
+          # forks → the engine stays dormant); the release ties events to the
+          # exact image commit. Not a cluster credential — the same DSN ships
+          # inside the public desktop binaries.
           docker build \
             --platform linux/amd64 \
             --target engine-pod \
+            --build-arg "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" \
+            --build-arg "SENTRY_RELEASE=engine-pod@${{ github.sha }}" \
             -f selfhost/Dockerfile \
             -t "$SHA_TAG" -t "$POC_TAG" \
             .

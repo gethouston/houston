@@ -2,7 +2,9 @@
   "sidebar": {
     "missionControl": "Centro de misiones",
     "aiModels": "Modelos de IA",
+    "usage": "Uso",
     "integrations": "Integraciones",
+    "agentStore": "Tienda de agentes",
     "settings": "Configuración",
     "yourAgents": "Tus agentes",
     "selectWorkspace": "Elige un espacio de trabajo",
@@ -96,8 +98,8 @@
         "body": "El tablero de cada conversación con este agente. En marcha, esperando, listas."
       },
       "tabRoutines": {
-        "title": "Rutinas",
-        "body": "Tu asistente ya viene con rutinas listas, como el Resumen matutino. Programa aquí cualquier otra cosa para que corra en segundo plano."
+        "title": "Automatizaciones",
+        "body": "Tu asistente ya viene con automatizaciones listas, como el Resumen matutino. Configura aquí cualquier otra cosa para que ocurra por su cuenta."
       },
       "tabIntegrations": {
         "title": "Integraciones",
@@ -108,7 +110,7 @@
         "body": "Documentos que tu asistente puede leer o compartir contigo. Arrastra lo que quieras para dar contexto."
       },
       "tabArchived": {
-        "title": "Completadas",
+        "title": "Archivadas",
         "body": "Misiones que este agente ya terminó. Envía un mensaje para reabrir una y vuelve directo al tablero activo."
       },
       "tabJobDescription": {
@@ -128,8 +130,8 @@
         "body": "Agrega proveedores como Claude y OpenAI. Gestiona tus suscripciones y llaves de API aquí."
       },
       "organization": {
-        "title": "Organización",
-        "body": "Invita a tu equipo, asigna roles y gestiona el acceso aquí."
+        "title": "Administración",
+        "body": "Invita a tu equipo, asigna roles y define las políticas del espacio de trabajo para las integraciones y los modelos de IA permitidos aquí."
       },
       "settings": {
         "title": "Configuración",
@@ -250,6 +252,7 @@
       "reports": "Cada viernes armo un informe de estado del equipo a partir de actualizaciones y hojas dispersas",
       "research": "Necesito investigación de mercado y de la competencia resumida en informes que pueda compartir"
     },
+    "modelLabel": "Modelo de IA",
     "generateButton": "Diseñar mi agente",
     "generatingMessage": "Tu consultor está diseñando el agente...",
     "cancelButton": "Cancelar",

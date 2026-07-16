@@ -435,7 +435,7 @@ export const MessageResponse = memo(
                   e.preventDefault();
                   onOpen();
                 }}
-                className="text-action underline-offset-4 hover:underline [overflow-wrap:anywhere]"
+                className="text-action underline-offset-4 hover:underline [overflow-wrap:anywhere] group-[.is-user]:text-input group-[.is-user]:underline dark:group-[.is-user]:text-ink"
               >
                 {children}
               </a>

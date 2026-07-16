@@ -1,7 +1,7 @@
 /**
  * Resolve a user-pasted "Install from a link" input into the gateway's public
  * Agent Store IR URL, with an SSRF guard. Accepts either a full share link
- * (`https://store.gethouston.ai/a/<slug>`) or a bare `<slug>`, extracts the
+ * (`https://agents.gethouston.ai/a/<slug>`) or a bare `<slug>`, extracts the
  * slug, and returns the exact `<apiBase>/v1/agentstore/agents/<slug>` URL to
  * fetch (the gateway's public `{agent, ir}` route), or a friendly error the
  * route surfaces verbatim. The fetch always targets the configured gateway API,

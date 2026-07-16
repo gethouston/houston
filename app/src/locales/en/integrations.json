@@ -1,10 +1,5 @@
 {
   "title": "Integrations",
-  "policyPage": {
-    "subtitle": "Choose which apps agents in this workspace can use.",
-    "manageAccounts": "Manage your connected apps",
-    "perAgentNote": "Want tighter limits for one agent? Set them in that agent's settings."
-  },
   "loading": {
     "title": "Loading your integrations",
     "body": "Checking your integrations provider…"
@@ -72,10 +67,11 @@
     "loading": "Loading apps..."
   },
   "locked": {
-    "heading": "Not enabled by your admin",
+    "heading": "Turned off in your workspace",
+    "subtitle": "Your admin picked which apps can be used here. They exist on Houston, they are just off in this workspace.",
     "askAdmin": "Ask your admin to enable {{name}}",
-    "more_one": "{{count}} more app your admin hasn't enabled",
-    "more_other": "{{count}} more apps your admin hasn't enabled"
+    "more_one": "{{count}} more app turned off in your workspace",
+    "more_other": "{{count}} more apps turned off in your workspace"
   },
   "chips": {
     "more": "+{{count}}"

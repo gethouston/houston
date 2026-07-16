@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { apiKeysSupported } from "../../lib/api-keys-model";
-import { canSeeMembers } from "../../lib/org-roles";
 import {
   parseSettingsSection,
   type SettingsSectionId,
@@ -14,7 +13,6 @@ import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAccountAvailable } from "./sections/account";
 import { ApiKeysSection } from "./sections/api-keys";
 import { ConnectedAccountsSection } from "./sections/connected-accounts";
-import { MembersSection } from "./sections/members";
 import { MigrationSection, useMigrationAvailable } from "./sections/migration";
 import { ReportBugSection } from "./sections/report-bug";
 import { ShortcutsSection } from "./sections/shortcuts";
@@ -25,12 +23,11 @@ import {
 import { SettingsIndex } from "./settings-index";
 
 export function SettingsView() {
-  const { t } = useTranslation(["settings", "common", "org"]);
+  const { t } = useTranslation(["settings", "common"]);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const accountAvailable = useAccountAvailable();
   const migrationAvailable = useMigrationAvailable();
   const { capabilities } = useCapabilities();
-  const showMembers = canSeeMembers(capabilities);
   const apiKeysAvailable = apiKeysSupported(capabilities);
   const setSettingsSection = useUIStore((s) => s.setSettingsSection);
   // Consume the one-shot deep-link the moment this view mounts: another surface
@@ -58,7 +55,6 @@ export function SettingsView() {
       <div className="flex-1 overflow-y-auto">
         <SettingsIndex
           accountAvailable={accountAvailable}
-          showMembers={showMembers}
           apiKeysAvailable={apiKeysAvailable}
           migrationAvailable={migrationAvailable}
           onSelect={setActive}
@@ -86,7 +82,6 @@ export function SettingsView() {
           <UserContextSection />
         ) : (
           <div className="mx-auto max-w-xl px-8 pb-10">
-            {active === "members" && <MembersSection />}
             {active === "connectedAccounts" && <ConnectedAccountsSection />}
             {active === "apiKeys" && <ApiKeysSection />}
             {active === "shortcuts" && <ShortcutsSection />}

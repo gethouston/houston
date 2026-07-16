@@ -216,6 +216,17 @@ export async function handleAgentData(
           return true;
         }
         const next = applyRoutineUpdate(current, update, nowIso, createdBy);
+        // The APPLIED result must still hold the exactly-one-wake invariant —
+        // e.g. `{trigger: null}` on a trigger routine clears its only wake.
+        // Persisting such a routine loses it silently: normalizeRoutines drops
+        // it from every read and the next save purges it from disk.
+        const nextWakeErr = wakeMechanismError(
+          next as unknown as Record<string, unknown>,
+        );
+        if (nextWakeErr) {
+          json(res, 400, { error: nextWakeErr });
+          return true;
+        }
         // A PATCH may change the schedule; validate it against the account-wide
         // zone (HOU-470: no per-routine timezone). A trigger routine (or a PATCH
         // that switched to a trigger) has no cron to validate.

@@ -81,9 +81,8 @@
   },
   "tabLabels": {
     "activity": "Actividad",
-    "archived": "Completadas",
-    "routines": "Rutinas",
-    "reactions": "Reacciones",
+    "archived": "Archivadas",
+    "routines": "Automatizaciones",
     "files": "Archivos",
     "job-description": "Configuración del agente",
     "integrations": "Integraciones",
@@ -168,7 +167,8 @@
       "savedDescription": "{{name}} se guardó en tu computador.",
       "revealAction": "Mostrar en el Explorador de Archivos",
       "revealFailed": "No se pudo mostrar el archivo",
-      "saveFailedTitle": "No se pudo guardar el archivo"
+      "saveFailedTitle": "No se pudo guardar el archivo",
+      "openFailedTitle": "No se pudo abrir el archivo"
     }
   }
 }

@@ -11,7 +11,6 @@ import {
 } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
 import { canEditAgentGrants } from "../../../lib/agent-access";
-import { canSeeIntegrationsPage } from "../../../lib/org-roles";
 import type { TabProps } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
 import {
@@ -39,9 +38,8 @@ import { agentIntegrationsView } from "./model";
  * grant routes) are a discriminated union so the two never mix. On a Teams host
  * the effective allowlist (agent ceiling ∩ org ceiling) filters the browse
  * catalog and splits disallowed connected apps out; non-Teams hosts feature-
- * detect off and render exactly as before. The bottom "manage" link routes by
- * role: the global Integrations page when the caller may see it, else Settings >
- * Connected accounts (a Teams plain member, for whom that page is gone).
+ * detect off and render exactly as before. The bottom "manage" link routes to
+ * the global Integrations page, which everyone can reach.
  */
 export default function IntegrationsTab({ agent }: TabProps) {
   const gate = useIntegrationsGate();
@@ -71,14 +69,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
     autoGrant: grantsSupported && canEdit,
   });
   const setViewMode = useUIStore((s) => s.setViewMode);
-  const setSettingsSection = useUIStore((s) => s.setSettingsSection);
-  const canSeePolicyPage = canSeeIntegrationsPage(capabilities);
-  const onManageAll = canSeePolicyPage
-    ? () => setViewMode(INTEGRATIONS_VIEW_ID)
-    : () => {
-        setSettingsSection("connectedAccounts");
-        setViewMode("settings");
-      };
+  const onManageAll = () => setViewMode(INTEGRATIONS_VIEW_ID);
 
   const view = useMemo(
     () =>
@@ -132,7 +123,6 @@ export default function IntegrationsTab({ agent }: TabProps) {
               connectFlow={connectFlow}
               catalogLoading={catalog.isLoading}
               onDisconnect={(toolkit) => disconnect.mutate(toolkit)}
-              canSeePolicyPage={canSeePolicyPage}
               onManageAll={onManageAll}
             />
           </>

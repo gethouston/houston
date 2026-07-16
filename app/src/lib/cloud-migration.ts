@@ -184,14 +184,50 @@ export function isPlausibleMigrationTarget(
   });
 }
 
-/** Union of every source agent's connected toolkit slugs, sorted, for the
- *  "reconnect your apps" checklist on the done screen. */
-export function collectIntegrations(sourceAgents: SourceAgent[]): string[] {
-  const all = new Set<string>();
+/** Union of every source agent's connected toolkit slugs plus the legacy
+ *  account-level list, sorted, for the "reconnect your apps" checklist. */
+export function collectIntegrations(
+  sourceAgents: SourceAgent[],
+  accountIntegrations: string[] = [],
+): string[] {
+  const all = new Set<string>(accountIntegrations);
   for (const a of sourceAgents) {
     for (const slug of a.manifest.integrations) all.add(slug);
   }
   return [...all].sort();
+}
+
+/**
+ * The outcome the done screen persists. A clean run is final ("done"); a run
+ * that left agents behind stamps "skipped", so the wizard stays closed on
+ * relaunch but Settings' "Continue migration" row — which hides only on
+ * "done" (`useMigrationAvailable`) — keeps offering the retry.
+ */
+export function doneScreenOutcome(failedAgents: number): "done" | "skipped" {
+  return failedAgents > 0 ? "skipped" : "done";
+}
+
+/**
+ * Whether the done screen's second step ("Reconnect your apps" + the
+ * leftovers report) has anything to show. Modern legacy installs (v0.4.2x)
+ * connected integrations in PLATFORM mode — account-level in Composio, no
+ * per-agent `.houston/integrations.json` on disk — so the manifest's
+ * integration list is empty for them and the step would render as a bare
+ * shell. Skip it then; but leftovers (failed agents, excluded/rejected
+ * files) must always surface, so any of those keeps the step.
+ */
+export function hasReconnectAppsStep(counts: {
+  integrations: number;
+  failedAgents: number;
+  excludedFiles: number;
+  rejectedFiles: number;
+}): boolean {
+  return (
+    counts.integrations > 0 ||
+    counts.failedAgents > 0 ||
+    counts.excludedFiles > 0 ||
+    counts.rejectedFiles > 0
+  );
 }
 
 // The per-agent progress state machine (pending → … → done | error) lives in

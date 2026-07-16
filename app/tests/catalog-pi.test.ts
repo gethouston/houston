@@ -117,39 +117,46 @@ describe("piCatalogToCandidates maps the pi-ai catalog to merge candidates", () 
   });
 });
 
-describe("piCatalogToCandidates curates subscription providers", () => {
+describe("piCatalogToCandidates applies the shared VISIBLE_MODELS curation", () => {
+  // The hub and the chat model picker must offer the SAME set, so both apply
+  // the ONE `isModelVisible` gate (`VISIBLE_MODELS` in provider-overrides.ts):
+  // a curated provider surfaces only its curated ids, an uncurated provider
+  // keeps its full pi list. Hidden ids stay runnable on the wire.
   const catalog: ProviderCatalog = [
     provider("anthropic", "oauth", [
-      // Curated: a PROVIDER_OVERRIDES.anthropic.models entry.
+      // In VISIBLE_MODELS.anthropic — surfaces.
       entry("claude-sonnet-5"),
-      // Uncurated: pi runs it (an old id like claude-3-opus), but the plan's
-      // curated set doesn't list it — must be filtered out of the hub.
-      entry("claude-3-opus"),
+      // Runnable but NOT in VISIBLE_MODELS.anthropic — hidden.
+      entry("claude-haiku-4-5"),
     ]),
-    provider("groq", "apiKey", [
-      // API-key gateways are NEVER curation-filtered: their full list stands.
-      entry("llama-4-scout"),
+    provider("google", "apiKey", [
+      entry("gemini-3.5-flash"),
+      // Runnable but NOT in VISIBLE_MODELS.google — hidden.
+      entry("gemini-2.5-pro"),
     ]),
+    provider("groq", "apiKey", [entry("llama-4-scout")]),
   ];
   const candidates = piCatalogToCandidates(catalog);
 
-  it("keeps a curated OAuth model", () => {
+  it("keeps a curated provider's visible models", () => {
     ok(
       candidates.some(
         (c) => c.providerId === "anthropic" && c.raw.id === "claude-sonnet-5",
       ),
     );
-  });
-
-  it("drops an OAuth model absent from the curated set", () => {
     ok(
-      !candidates.some(
-        (c) => c.providerId === "anthropic" && c.raw.id === "claude-3-opus",
+      candidates.some(
+        (c) => c.providerId === "google" && c.raw.id === "gemini-3.5-flash",
       ),
     );
   });
 
-  it("never curation-filters an API-key gateway", () => {
+  it("drops a curated provider's hidden models", () => {
+    ok(!candidates.some((c) => c.raw.id === "claude-haiku-4-5"));
+    ok(!candidates.some((c) => c.raw.id === "gemini-2.5-pro"));
+  });
+
+  it("keeps an uncurated provider's full list", () => {
     ok(
       candidates.some(
         (c) => c.providerId === "groq" && c.raw.id === "llama-4-scout",

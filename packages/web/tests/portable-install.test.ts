@@ -31,6 +31,8 @@ const CFG = { baseUrl: "https://gateway.example", token: "tok" };
 const ROUTINE = {
   id: "r1",
   name: "Daily",
+  // Stray key from an older build's pack — HOU-725 removed `description`;
+  // unpack normalizes imported routines, so it must not reach the seed.
   description: "",
   prompt: "check the inbox",
   schedule: "0 9 * * *",
@@ -41,6 +43,8 @@ const ROUTINE = {
   created_at: NOW,
   updated_at: NOW,
 };
+
+const { description: _stray, ...SEEDED_ROUTINE } = ROUTINE;
 
 function archive() {
   return packAgent(
@@ -109,7 +113,7 @@ test("install creates the agent with the package as its seed payload", async () 
   expect(JSON.stringify(body)).not.toContain("Prefers brevity");
   expect(
     JSON.parse(body.seeds?.[".houston/routines/routines.json"] ?? ""),
-  ).toEqual([ROUTINE]);
+  ).toEqual([SEEDED_ROUTINE]);
 
   expect(installed).toEqual({
     agentPath: "abcd1234abcd1234",

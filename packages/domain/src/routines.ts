@@ -184,6 +184,15 @@ export function applyRoutineUpdate(
       ([k, v]) => v !== undefined && k !== "timezone" && k !== "created_by",
     ),
   );
+  // A null wake key means "clear that mechanism" (the client keeps or moves to
+  // the other one — the UI sends `{schedule, trigger: null}` on every cron
+  // save). The null itself must never be written, and clearing one side must
+  // never delete the other: a routine left with neither wake is dropped by
+  // normalizeRoutines on the next read and purged from disk by the next save.
+  const clearsTrigger = defined.trigger === null;
+  const clearsSchedule = defined.schedule === null;
+  if (clearsTrigger) delete defined.trigger;
+  if (clearsSchedule) delete defined.schedule;
   // `...current` preserves `created_by` when no verified actor is known — a
   // client can never reassign a routine's acting identity through the body.
   const next = {
@@ -192,11 +201,14 @@ export function applyRoutineUpdate(
     ...(actorSub ? { created_by: actorSub } : {}),
     updated_at: nowIso,
   } as Routine;
-  // A routine has exactly one wake mechanism, so setting one clears the other:
+  // A routine has exactly one wake mechanism, so SETTING one clears the other:
   // switching a cron routine to an event wake (or back) must not leave both set,
-  // which normalizeRoutines would drop on the next read.
+  // which normalizeRoutines would drop on the next read. Only a real value
+  // switches — a null cleared itself above, not its counterpart.
   if (defined.schedule !== undefined) delete next.trigger;
   if (defined.trigger !== undefined) delete next.schedule;
+  if (clearsTrigger) delete next.trigger;
+  if (clearsSchedule) delete next.schedule;
   return next;
 }
 

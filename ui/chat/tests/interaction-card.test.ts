@@ -264,6 +264,13 @@ describe("skipStep", () => {
     const done = skipStep(initialStepperState(), [SIGNIN]);
     assert.deepEqual(done.completed, []);
   });
+
+  it("skipping a LONE question completes with no answers (a consumer can read [] as decline)", () => {
+    // The onboarding email offer relies on this: its single-step card treats a
+    // zero-answer completion as "the user skipped", not "send the email".
+    const done = skipStep(initialStepperState(), [Q1]);
+    assert.deepEqual(done.completed, []);
+  });
 });
 
 describe("stepper flow: question, signin, connect", () => {

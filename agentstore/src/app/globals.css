@@ -70,12 +70,15 @@
   --color-warning-foreground: var(--ht-warning-fg);
   --color-highlight: var(--ht-highlight);
   --color-highlight-foreground: var(--ht-highlight-fg);
+  /* Typography matches gethouston.ai exactly: system stack for body copy,
+     General Sans (fontshare, loaded in layout.tsx) for display headings and
+     the wordmark. */
   --font-sans:
-    var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji";
-  --font-display:
-    var(--font-space-grotesk), var(--font-inter), ui-sans-serif, system-ui,
+    ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial,
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-display:
+    "General Sans", ui-sans-serif, -apple-system, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
 }
 
 @layer base {
@@ -83,7 +86,9 @@
     border-color: var(--ht-border);
   }
   body {
-    background-color: var(--ht-background);
+    /* Transparent: the fixed space background (space.css, layered behind at
+       negative z-index) is the page ground; html carries the dark base. */
+    background-color: transparent;
     color: var(--ht-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;

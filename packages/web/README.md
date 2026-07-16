@@ -10,26 +10,22 @@ final cutover, but normal convergence work uses host mode.
 ## Modes
 
 - **Host mode**: `VITE_CONTROL_PLANE_URL` is set. `@houston-ai/engine-client` is
-  aliased to `src/engine-adapter`, the app signs in if Supabase env is present,
-  and all domain calls go to the host.
+  aliased to `src/engine-adapter`, the app signs in if Firebase (GCIP) env is
+  present, and all domain calls go to the host.
 - **External new-engine mode**: `VITE_NEW_ENGINE=1` or `VITE_NEW_ENGINE_URL` is
   set. The browser shows the new-engine connect screen unless URL/token are
   pre-seeded.
 - **Legacy mode**: no host/new-engine env. The old connect screen points at a
   Rust `houston-engine` URL + token. Kept only until final cutover.
 
-## Local Host Loop
+## Running in dev
 
-From the repo root:
-
-```bash
-cp .env.example .env.local
-(cd packages/host && pnpm dev)
-pnpm --filter houston-web dev:host     # http://localhost:1430
-```
-
-`dev:host` loads the repo-root `.env.local`, so the browser uses
-`VITE_CONTROL_PLANE_URL` + `VITE_CP_DEV_TOKEN` without flags.
+Run `pnpm dev` from the repo root — the ONE entry point. Its `web` pane serves
+this package on http://localhost:1430 against the local Go gateway (cloud
+profile: real sign-in, multiplayer). See `knowledge-base/dev-loop.md`.
+Do not run this package's `dev` script directly; outside the pane's env it
+boots a differently-configured app, which is the drift `pnpm dev` exists to
+prevent.
 
 ## How It Works
 

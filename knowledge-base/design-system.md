@@ -89,23 +89,31 @@ The owner vocabulary (say these words to direct changes):
 - **Lines & focus**: `line` (hairlines), `line-input` (field borders), `focus`.
 - **Status**: `danger`, `success`, `warning`, `highlight` (each with `-text`).
 - Untouched families: `space-*` (sign-in backdrop), `agent.*` (avatar palette),
-  `sidebar*` (with `-text`/`-hover`/`-line` suffixes).
+  `sidebar*` (with `-text`/`-hover`/`-line`/`-active` suffixes; `sidebar-active`
+  is the selected-row fill, a clear step above hover in both themes).
 
 ### `--ht-space-*` (sign-in backdrop)
 A deliberately **theme-invariant** group — both `color.light.json` and
-`color.dark.json` alias the same `color.space.*` primitives, so the deep-space
+`color.dark.json` alias the same `color.space.*` primitives, so the space
 backdrop reads identically in light and dark. Feeds the shared
 `SpaceScreen` backdrop (see Animation → Space screen backdrop): `--ht-space-canvas`
-`#07080f` (near-black indigo base) · `-canvas-glow` `#101430` (gradient top) ·
-`-nebula-1` `#38346b` (violet mid) / `-nebula-2` `#14384c` (teal accent) — the
-nebula-shader palette + the fallback radial glows · `-nebula-core` `#b8b2e8`
-(near-white violet highlight in the shader) / `-nebula-dust` `#04050c` (dark
-dust-lane tint) · `-star` `#dce2f7` (cool-white starfield) · `-star-warm` `#f6e7cd` (the warm ~10%
-of stars) · `-haze` `#8f9bc9` (the faint painted Milky-Way band) · `-foreground`
-`#ffffff` (pure-white wordmark + logo, currentColor) · `-foreground-muted`
-`#8e96b8` (footer links). The `OrbitLoader` rocket + comet trail reuse
-`-foreground` (pure white, head) and `-star` (cool white, tail) — no dedicated
-comet tokens.
+`#07080f` (near-black indigo base + the photo scrim's only colour, via
+`color-mix`) · `-canvas-glow` `#101430` (decode-gradient top) ·
+`-nebula-1` `#38346b` / `-nebula-core` `#b8b2e8` / `-star-warm` `#f6e7cd` —
+the `SuccessCheck` celebratory gradient · `-star` `#dce2f7` (OrbitLoader ring
++ comet tail) · `-foreground` `#ffffff` (pure-white wordmark + logo,
+currentColor) · `-foreground-muted` `#8e96b8` (footer links, status lines).
+The `OrbitLoader` rocket + comet trail reuse `-foreground` (pure white, head)
+and `-star` (cool white, tail) — no dedicated comet tokens. (`-nebula-2`,
+`-nebula-dust`, `-haze` were deleted with the procedural nebula/starfield —
+see Animation → Space screen backdrop.)
+`--ht-space-glass` `rgba(22,24,36,0.75)` + `-glass-border` (white a10) are the
+**landing page's card material** (the website's `--glass`/`--glass-border`
+hue, deliberately MORE transparent than the landing's 0.92 — the app blurs
+behind the card, the landing can't), worn by every card floating on the space
+backdrop — the sign-in card, `SetupCard onSpace`, the migration wizard's
+panels — with `backdrop-blur-md`, so the app's pre-workspace cards and the
+marketing site read as one material.
 
 ### Borders (opacity)
 5%/15%/15%/25% = light/medium/heavy/xheavy. Use `rgba(13,13,13,X)`.
@@ -219,21 +227,23 @@ Rules: `layout` prop on reordering items. `AnimatePresence mode="popLayout"` for
 ### Space screen backdrop
 `SpaceScreen` (`app/src/components/space/space-screen.tsx`) is the **shared
 full-screen space layout**: the `--ht-space-canvas` base, the `SpaceBackground`
-deep-space backdrop, and a `z-10` content slot on top. The **sign-in screen**
+backdrop, and a `z-10` content slot on top. The **sign-in screen**
 (`components/auth/sign-in-screen.tsx`), the **workspace-loading splash**
-(`components/shell/workspace-loading.tsx`), and the **first-run onboarding flow**
-(`components/onboarding/personal-assistant-onboarding.tsx`) all render inside it,
-so the whole boot experience reads as one continuous space. The sign-in screen
-and each onboarding step float a card **pinned to the DARK palette**
-(`data-theme="dark"`) so the card reads identically in both app themes (dark
-card on the theme-invariant space backdrop). Onboarding wraps ONE `SpaceScreen`
-at the top level so the WebGL nebula never remounts across step transitions;
+(`components/shell/workspace-loading.tsx`), the **first-run onboarding flow**
+(`components/onboarding/personal-assistant-onboarding.tsx`), and the
+**cloud-migration wizard** (`components/onboarding/cloud-migration/`) all
+render inside it, so the whole boot experience reads as one continuous space.
+The sign-in screen and each onboarding step float a card **pinned to the DARK
+palette** (`data-theme="dark"`) so the card reads identically in both app
+themes (dark card on the theme-invariant space backdrop). Onboarding and the
+migration wizard each wrap ONE `SpaceScreen` at the top level so the backdrop
+photo never remounts (and its fade never replays) across step transitions;
 `SetupCard`'s `onSpace` prop is what floats each step's card on it (drops the
 standalone `h-screen`/`bg-chip` backdrop and pins the dark palette). The
 language and disclaimer gates (`shell/language-gate.tsx`,
-`shell/disclaimer-gate.tsx`) now render the SAME way — each wrapped in
-`SpaceScreen` with an `onSpace` `SetupCard` — so the whole pre-workspace flow is
-one continuous starfield, not the old dimmed `bg-chip` backdrop. The
+`shell/disclaimer-gate.tsx`) render the SAME way — each wrapped in
+`SpaceScreen` with an `onSpace` `SetupCard` — so the whole pre-workspace flow
+is one continuous space, not the old dimmed `bg-chip` backdrop. The
 **finished "You're all set" step** is the one deliberate colour accent: a
 celebratory `SuccessCheck` (warm space-nebula gradient fill + expanding ring,
 from the `--ht-space-*` tokens) above a single **"Start building"** CTA;
@@ -242,6 +252,21 @@ status line sit directly on the dark backdrop, using the space-foreground token
 family (`--ht-space-foreground` / `-foreground-muted`, same as the sign-in
 wordmark/footer). The whole space rendering cluster lives in
 **`app/src/components/space/`**.
+
+The **cloud-migration wizard** shares the backdrop two ways: its hero screens
+(offer, progress, congrats) render through `WizardFrame`
+(`cloud-migration/wizard-frame.tsx`) — a centered dark-pinned column floating
+DIRECTLY on the photo (no card, like the loading splash) over a local radial
+text-protection veil (the hero copy sits right on the photo's bright galactic
+core) — while its interactive done-steps (connect AI / reconnect apps) float
+ordinary `onSpace` `SetupCard`s. The progress centerpiece is the shared
+`OrbitLoader` (the rocket in transit, the move made literal); the old
+rainbow-ring `MigrationLoader` + its `futuristic.css` section were deleted.
+**Gotcha (learned the hard way): `text-base` is BOTH a font-size utility and a
+colour utility here** (a `--color-base` token exists), and the colour half
+outranks an arbitrary `text-[var(...)]` class in the generated order — pair
+`text-base` only with NAMED colour utilities (`text-ink…`), or set the colour
+as an inline style.
 
 **`OrbitLoader`** (`space/orbit-loader.tsx` + geometry/trail constants in
 `space/orbit-path.ts`) is the loading centrepiece that replaced the old scaled-up
@@ -261,52 +286,32 @@ branches on framer-motion `useReducedMotion()` → a single static ship parked o
 the ring beside the static core, zero `<animate*>` elements.
 
 `SpaceBackground` (`app/src/components/space/space-background.tsx`) is the
-deep-space layer itself — an `aria-hidden`, `pointer-events-none` absolute layer,
-all colour from the theme-invariant `--ht-space-*` tokens. Three stacked sublayers:
+space layer itself — an `aria-hidden`, `pointer-events-none` absolute layer.
+It is **the landing page's Milky Way photograph** (ESO panorama eso0932a,
+ESO/S. Brunier, CC BY 4.0), the SAME assets the website uses
+(`app/src/assets/space/milkyway-*.{avif,webp,jpg}`, copied from
+`website/src/assets/space/`), so the marketing site and the app's first-run
+experience read as one scene. Three stacked sublayers:
 
-**(1) Base gradient** — a near-black indigo `linear-gradient` (canvas-glow → canvas),
-always present; it is also the base the WebGL fallback draws over.
+**(1) Base gradient** — a near-black indigo `linear-gradient` (canvas-glow →
+canvas), always painted so nothing flashes while the photo decodes.
 
-**(2) Nebula — WebGL fragment shader** (`nebula-gl.tsx` + `nebula-shader.ts` +
-`nebula-noise.ts` + `nebula-program.ts`). A fullscreen GLSL ES 1.00 shader (runs on
-`webgl2`, falls back to `webgl`), no textures, no libs. Technique: **5-octave FBM**
-(lacunarity 2, gain 0.5) with a **double domain warp**
-(`palette(fbm(p + K·fbm(p + K·fbm(p))))`, **K = 2.5**) so it reads as filamentary
-nebula, not cloud; the **inner** warp coordinate drifts with time
-(**0.004 units/s**) so the nebula *morphs in place* — nothing translates. **Ridged
-abs-noise** carves dark dust lanes; a knee-at-0.16 highlight-only tone curve plus a
-per-pixel **hash dither** kill banding (this replaced the old canvas grain — no
-double noise). Brightness is **biased along the Milky-Way diagonal** using the exact
-`starfield-model.ts` geometry (direction `(w, -h)`, screen centre, half-width
-`0.175·diag`) so nebula + star band read as one structure. **Peak luminance is
-clamped to ≤ 0.22** (Rec.709 luma) so the card is always the brightest thing on
-screen. Noise is Stefan Gustavson / Ian McEwan's **public-domain** simplex (NOT a
-Shadertoy port). Palette = six `vec3` uniforms read once from `--ht-space-canvas`,
-`-canvas-glow`, `-nebula-1` (violet mid), `-nebula-2` (teal accent), `-nebula-core`
-(near-white violet highlight), `-nebula-dust` (dark lane tint) — no colour literal
-in code. Perf: internal resolution = css · `min(DPR, 1.5)` · 0.6 (GPU-upscaled);
-**30 fps** cap (skipped rAF ticks); paused on `visibilitychange`; **adaptive
-degrade** — if the draw dispatch stays > 8 ms it drops 5 → 3 octaves, then freezes
-to a static frame. `prefers-reduced-motion` → exactly one frame. If WebGL is
-unavailable or the context is lost (`webglcontextlost`), `NebulaGL` calls back and
-`SpaceBackground` swaps in the **fallback**: two heavily-blurred (130px) barely-there
-`--ht-space-nebula-1/2` radial glows drifting on 78–88s mirrored framer-motion loops
-(the previous implementation, kept as the fallback branch).
+**(2) The photograph** — a `<picture>` with AVIF/WebP/JPEG srcsets at
+1280/1920/2560 widths, `object-cover`, framed at the landing page's
+`center 42%` so the galactic core sits in the upper third behind the card.
+Fades in over 700ms on decode (`motion-reduce:transition-none`).
 
-**(3) Starfield** (`starfield.tsx` + `starfield-model.ts` + `starfield-sprites.ts`),
-the middle layer over the nebula. Magnitude-skewed brightness (`pow(rand, 2.5)` — most
-faint, few bright, radius correlated), colour temperature (~65% cool-white
-`--ht-space-star` / ~25% neutral / ~10% warm `--ht-space-star-warm`), a diagonal
-**Milky-Way band** (~57% of near stars biased into a ~35%-of-diagonal strip at ~2.5×
-density, plus a faint painted `--ht-space-haze` band). A **far depth layer** adds
-~60% more stars (0.2–0.4px, alpha ≤ 0.15, half drift speed) for parallax depth.
-**Bloom** on the brightest ~8% uses one of **three temperature-tinted** sprites
-(white-hot core, tinted outer glare) keyed by the star's temperature bucket. Only
-faint stars twinkle (±15%, 5–12s); drift is near-still (≤0.8px/s). The static layer
-keeps the haze band + corner **vignette** but no longer paints grain (the shader
-dither supersedes it). The draw loop is allocation-free (precomputed `fillStyle` per
-star, twinkle via `globalAlpha`, offscreen sprites `drawImage`d). `prefers-reduced-motion`
-→ a single static frame. Restraint over spectacle — it is a backdrop, never the show.
+**(3) Scrim** — the landing readability veil ported 1:1 (gradient stops a
+touch stronger through the middle, 0.5 vs the landing's 0.4, because the app
+centers text over the galactic core): a radial vignette + 180° gradient whose
+only colour is `--ht-space-canvas` via `color-mix`, plus the same near-invisible
+SVG fractal-noise film (0.025 alpha) against banding on the dark ramps.
+
+**History:** this replaced the procedural WebGL-nebula + canvas-starfield
+system (`nebula-gl/shader/noise/program`, `starfield/-model/-sprites` — deleted;
+in git history if ever needed). The `--ht-space-nebula-2` / `-nebula-dust` /
+`-haze` tokens went with it. Restraint over spectacle — it is a backdrop,
+never the show.
 
 ## Icons
 Lucide React only. 20px standard (`h-5 w-5`), 16px small, 24px large. Stroke 2px (or 1.5px lighter). `currentColor`.

@@ -4,6 +4,8 @@ import {
   buildMigrationPlan,
   chunkPaths,
   collectIntegrations,
+  doneScreenOutcome,
+  hasReconnectAppsStep,
   isPlausibleMigrationTarget,
   type SourceAgent,
   type SourceManifestEntry,
@@ -154,4 +156,64 @@ test("collects the sorted union of toolkit slugs across agents", () => {
     agent("Personal", "Helper", ["slack", "googlecalendar"]),
   ]);
   assert.deepEqual(slugs, ["gmail", "googlecalendar", "slack"]);
+});
+
+test("account-level legacy Composio slugs union into the checklist", () => {
+  // The v0.4.x cohort: no per-agent records, connections only in the
+  // consumer account probed via ~/.composio.
+  assert.deepEqual(collectIntegrations([], ["googledrive", "gmail"]), [
+    "gmail",
+    "googledrive",
+  ]);
+  // Both sources present: dedupe across them.
+  assert.deepEqual(
+    collectIntegrations(
+      [agent("Work", "Sales", ["gmail"])],
+      ["gmail", "slack"],
+    ),
+    ["gmail", "slack"],
+  );
+});
+
+// ── hasReconnectAppsStep ──────────────────────────────────────────────
+
+test("the apps step is skipped when there is nothing to show", () => {
+  // The common v0.4.2x case: platform-mode integrations leave no per-agent
+  // record, and a clean migration has no leftovers → no empty-shell step.
+  assert.equal(
+    hasReconnectAppsStep({
+      integrations: 0,
+      failedAgents: 0,
+      excludedFiles: 0,
+      rejectedFiles: 0,
+    }),
+    false,
+  );
+});
+
+test("the apps step shows for integrations OR any leftover kind", () => {
+  const none = {
+    integrations: 0,
+    failedAgents: 0,
+    excludedFiles: 0,
+    rejectedFiles: 0,
+  };
+  assert.equal(hasReconnectAppsStep({ ...none, integrations: 2 }), true);
+  assert.equal(hasReconnectAppsStep({ ...none, failedAgents: 1 }), true);
+  assert.equal(hasReconnectAppsStep({ ...none, excludedFiles: 1 }), true);
+  assert.equal(hasReconnectAppsStep({ ...none, rejectedFiles: 1 }), true);
+});
+
+// ── doneScreenOutcome ─────────────────────────────────────────────────
+
+test("a clean run stamps done — the wizard and Settings row both retire", () => {
+  assert.equal(doneScreenOutcome(0), "done");
+});
+
+test("a run with failed agents stamps skipped so Settings keeps the retry", () => {
+  // Settings' "Continue migration" hides only on "done" (useMigrationAvailable);
+  // stamping "done" here used to strand Continue-anyway users with no UI path
+  // back to their failed agents.
+  assert.equal(doneScreenOutcome(1), "skipped");
+  assert.equal(doneScreenOutcome(5), "skipped");
 });

@@ -29,6 +29,7 @@ interface StoredEndpoint {
   name?: string;
   contextWindow?: number;
   reasoning?: boolean;
+  orgShared?: boolean;
 }
 
 const endpointFileIn = (dataDir: string) =>
@@ -60,6 +61,35 @@ function save(e: StoredEndpoint): void {
 export function customEndpointConfigured(dataDir?: string): boolean {
   const e = load(dataDir);
   return !!(e.baseUrl && e.model);
+}
+
+export interface CustomEndpointStatus {
+  configured: boolean;
+  orgShared: boolean;
+  endpoint?: OpenAiCompatibleEndpoint;
+}
+
+/** Internal host sync status. Never includes the endpoint API key. */
+export function customEndpointStatus(dataDir?: string): CustomEndpointStatus {
+  const endpoint = load(dataDir);
+  if (!endpoint.baseUrl || !endpoint.model) {
+    return { configured: false, orgShared: false };
+  }
+  return {
+    configured: true,
+    orgShared: endpoint.orgShared === true,
+    endpoint: {
+      baseUrl: endpoint.baseUrl,
+      model: endpoint.model,
+      ...(endpoint.name !== undefined ? { name: endpoint.name } : {}),
+      ...(endpoint.contextWindow !== undefined
+        ? { contextWindow: endpoint.contextWindow }
+        : {}),
+      ...(endpoint.reasoning !== undefined
+        ? { reasoning: endpoint.reasoning }
+        : {}),
+    },
+  };
 }
 
 /** The configured model id, or "" when unset. */
@@ -161,6 +191,8 @@ export interface CustomEndpointInput {
   name?: string;
   contextWindow?: number;
   reasoning?: boolean;
+  /** Internal marker for endpoints hydrated from the organization share. */
+  orgShared?: boolean;
 }
 
 /**
@@ -191,6 +223,7 @@ export function setCustomEndpointConfig(input: CustomEndpointInput): void {
         ? Math.floor(input.contextWindow)
         : undefined,
     reasoning: input.reasoning ?? undefined,
+    orgShared: input.orgShared === true ? true : undefined,
   });
 }
 

@@ -1,11 +1,14 @@
 import { parseClaudeOAuthEnvelope } from "@houston/runtime-client";
+import { customEndpointStatus } from "../ai/openai-compatible";
 import {
   claimActiveProvider,
   listProviders,
   setSettings,
 } from "../ai/providers";
+import { listProviderUsage } from "../ai/usage";
 import { exportCredential } from "../auth/export";
 import {
+  assertApiKeyConnectable,
   cancelLogin,
   completeLogin,
   getAuthStatus,
@@ -15,6 +18,7 @@ import {
   startLogin,
 } from "../auth/login";
 import { scrubRefreshTokens, syncServedCredentialSafe } from "../auth/serve";
+import { verifyApiKey } from "../auth/verify-api-key";
 import { refreshAnthropicCredential } from "../backends/claude/credential-status";
 import { writeClaudeOAuthCredentialFile } from "../backends/claude/credentials-file";
 import { claudeLoginConfigDir } from "../backends/claude/paths";
@@ -30,6 +34,17 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
     // /providers, not /auth/status). listProviders() then reads the fresh cache.
     await refreshAnthropicCredential();
     json(res, 200, listProviders());
+    return true;
+  }
+  // Per-account usage (rate-limit windows / balances) for every CONNECTED
+  // provider, fetched live from each provider's own usage API. Registered
+  // before the generic /providers/* matchers as a literal path.
+  if (method === "GET" && path === "/providers/usage") {
+    await syncServedCredentialSafe("providers-usage");
+    // Warm the anthropic shared-dir probe so a just-connected Claude account
+    // counts as connected on this poll (same rationale as GET /providers).
+    await refreshAnthropicCredential();
+    json(res, 200, await listProviderUsage());
     return true;
   }
   if (method === "PUT" && path === "/settings") {
@@ -75,6 +90,10 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
     await handleOpenAiCompatible(ctx);
     return true;
   }
+  if (method === "GET" && path === "/providers/openai-compatible") {
+    json(res, 200, customEndpointStatus());
+    return true;
+  }
   if (method === "POST" && path === "/auth/anthropic/oauth-credential") {
     await handleClaudeOAuthCredential(ctx);
     return true;
@@ -108,6 +127,7 @@ async function handleOpenAiCompatible(ctx: RouteContext) {
         typeof body.contextWindow === "number" ? body.contextWindow : undefined,
       reasoning:
         typeof body.reasoning === "boolean" ? body.reasoning : undefined,
+      orgShared: body.orgShared === true ? true : undefined,
       apiKey: typeof body.apiKey === "string" ? body.apiKey : undefined,
     });
     json(ctx.res, 200, { ok: true });
@@ -147,14 +167,30 @@ async function handleClaudeOAuthCredential(ctx: RouteContext) {
   json(ctx.res, 200, { ok: true });
 }
 
+/**
+ * API-key connect: cheap preconditions first (clean 400), then a LIVE
+ * verification request with the candidate key (verify-api-key.ts), and only
+ * then the store. A key the provider rejects is a 401 and never persists —
+ * "connected" must mean the key actually works, not merely that a string was
+ * pasted.
+ */
 async function handleApiKey(ctx: RouteContext, provider: string) {
+  let key: string;
   try {
-    const { key } = await readJson(ctx.req);
-    setApiKey(provider, String(key || ""));
-    json(ctx.res, 200, { ok: true });
+    const body = await readJson(ctx.req);
+    key = assertApiKeyConnectable(provider, String(body.key || ""));
   } catch (e) {
     json(ctx.res, 400, { error: e instanceof Error ? e.message : String(e) });
+    return;
   }
+  try {
+    await verifyApiKey(provider, key);
+  } catch (e) {
+    json(ctx.res, 401, { error: e instanceof Error ? e.message : String(e) });
+    return;
+  }
+  setApiKey(provider, key);
+  json(ctx.res, 200, { ok: true });
 }
 
 async function handleAuthAction(

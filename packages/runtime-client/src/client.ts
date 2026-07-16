@@ -11,6 +11,7 @@ import type {
   LoginInfo,
   ProviderId,
   ProviderInfo,
+  ProviderUsage,
   Settings,
   VersionResponse,
   WireFrame,
@@ -115,6 +116,16 @@ export class HoustonEngineClient {
   // --- providers, settings & auth (subscription OAuth) ---
   listProviders() {
     return this.json<ProviderInfo[]>("/providers");
+  }
+  /**
+   * Live per-account usage for every CONNECTED provider — rate-limit windows
+   * (Claude 5h/weekly, Codex session/weekly, Copilot quotas) and prepaid
+   * balances, fetched by the runtime from each provider's own usage API. One
+   * row per connected provider; a provider without a readable usage surface
+   * answers an honest non-`ok` status rather than being omitted.
+   */
+  listProviderUsage() {
+    return this.json<ProviderUsage[]>("/providers/usage");
   }
   setSettings(input: {
     activeProvider?: ProviderId;

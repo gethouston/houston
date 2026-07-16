@@ -15,6 +15,9 @@
   },
   "toast": {
     "signInFailed": "Não foi possível abrir o login de {{provider}}",
+    "engineUnavailable": "O Houston não conseguiu acessar seu espaço de trabalho. Aguarde um instante e tente de novo.",
+    "connectTimedOut": "A conexão não foi concluída a tempo. Tente conectar de novo.",
+    "loginTimedOut": "O login não foi concluído a tempo. Tente de novo.",
     "signOutFailed": "Não foi possível sair de {{provider}}",
     "signInSucceeded": "Conectado a {{provider}}",
     "cancelFailed": "Não foi possível cancelar o login de {{provider}}",
@@ -141,6 +144,10 @@
     "reasoning": {
       "label": "Mostrar o raciocínio do modelo",
       "help": "Ative isto para modelos de raciocínio (eles pensam antes de responder)."
+    },
+    "share": {
+      "label": "Compartilhar com minha equipe",
+      "help": "Os agentes dos seus colegas podem usar este modelo. As solicitações deles são processadas no seu computador enquanto ele estiver online."
     },
     "error": {
       "body": "Algo deu errado ao conectar. Confira se o app ainda está aberto no seu computador e tente de novo.",

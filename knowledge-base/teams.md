@@ -16,6 +16,11 @@ Everything here is **capability-gated**: absent/single-player hosts (desktop,
 self-host, legacy engine) never mount any of it, and the org routes
 404 → the reads degrade to `[]`/`null` silently.
 
+> **Test it locally with `pnpm dev`** — the web pane (:1430) runs the full
+> multiplayer surface against the local Go gateway with real Google sign-in
+> and engines as local processes (`dev-loop.md`). The kind loop is only for
+> pod/PVC/NetworkPolicy fidelity before a release.
+
 ---
 
 ## Feature detection
@@ -92,45 +97,92 @@ that also take `Pick<Agent, "access" | "assigned">` live in `agent-access.ts`
 - `canManageAgentGrants` / `canEditAgentGrants` — per-agent integration grants,
   gated on the caller's own assignment (independent of manager authority; see
   `integrations.md`).
-- `canSeeIntegrationsPage(caps)` — the global Integrations page gate (sidebar nav,
-  render branch, tour step): a Teams **plain member** → false, else true
-  (owner/admin delegate to `canSeeMembers`; non-Teams and single-player → true). A
-  member's account home is instead Settings > Connected accounts.
-- `canSeeAiModelsPage(caps)` — the SAME gate for the global **AI Models hub**
+  (The global **Integrations page** has NO role gate; it's the personal catalog
+  for EVERY member in every mode, and org-blocked apps still render as locked rows.
+  The old `canSeeIntegrationsPage` gate was removed with the Teams policy mode.)
+- `canSeeAiModelsPage(caps)` — the gate for the global **AI Models hub**
   (sidebar nav, render branch, tour step): a Teams **plain member** → false, else
   true. Unlike Composio, AI provider connections are **org-level** (one credential
   per org — whoever connects, every member's agents work; `cloud/docs/contracts/C6`),
   so a member has no per-provider account to house anywhere — they pick their model
-  per agent in the composer. The hub is therefore owner/admin-only in Teams and gains
-  the org model-policy tab; a member loses its nav entirely (mirrors the Integrations
-  gate). This also removes a dead affordance — a member's provider-connect POST
-  already 403s at the gateway.
-- `canEditOrgSettings(caps)` — **owner only**; gates BOTH org policy editors — the
-  app allowlist on the Integrations page AND the model ceiling on the AI Models hub
-  (admins see them read-only). See the allowlist + models ceilings below.
+  per agent in the composer. The hub is therefore owner/admin-only in Teams; a member
+  loses its nav entirely. This also removes a dead affordance: a member's
+  provider-connect POST already 403s at the gateway. (The org model ceiling no longer
+  lives here; it moved to the Admin page's **Allowed AI models** tab, below.)
+- `canEditOrgSettings(caps)` — **owner only**; gates BOTH org policy editors, now the
+  **Allowed apps** and **Allowed AI models** tabs of the Admin page (admins
+  see them read-only). See the allowlist + models ceilings below.
 - `GRANTABLE_ROLES = ["admin", "user"]` — owner is never handed out from the UI
   (ownership transfer is out of scope for v1).
 
 ---
 
-## Organization dashboard
+## Admin page (the org dashboard)
 
-Top-level view `ORGANIZATION_VIEW_ID = "organization"`
+Top-level view labelled **"Admin"** in the UI (`teams:org.nav`/`org.title`;
+"Admin" / "Administración" / "Administração"). The internal id, dir, and gate are
+UNCHANGED: `ORGANIZATION_VIEW_ID = "organization"`
 (`app/src/components/organization/`), rendered only when
 `canSeeOrganization(caps)` (multiplayer owner/admin). The sidebar nav entry and
 the `workspace-shell` render branch both guard on it, so it never mounts for a
 plain member or single-player.
 
-Four tabs (`ORG_TAB_IDS`, order fixed in `org-view-model.ts`):
-**People / Agents / Activity / Usage**. `organization-view.tsx` is a
-shell — it loads `GET /org` once, builds the shared `OrgViewContext`
-(`{org, role, isOwner}`), and each tab owns its own data + UI:
+**Index/detail grammar (settings-page style), NOT a tab strip.** The landing
+screen is `admin-index.tsx`: grouped, self-describing rows (`SettingsCard` /
+`SettingsRow` reused from `components/settings/settings-row.tsx`), each with an
+icon, a title (`teams:org.tabs.<id>`), a one-line description
+(`teams:org.index.rows.<id>`), and an at-a-glance value chip
+(`teams:org.index.values.*`: member/agent counts; "All apps" or "{{count}}
+allowed" from `OrgSettings`). Groups: lead (People, Agents), **Access**
+(Allowed apps, Allowed AI models), **Insights** (Activity, Usage), **Billing**.
+Clicking a row opens its detail screen: a back bar (label `org.title`) + a
+`PageHeader` section heading + the section body at full width. Deep links
+(org-nav-store `requestedTab`, e.g. Billing from the team-status banner) open
+the detail directly; when the visible set drops the active section, the view
+falls back to the index.
+
+Section set (order fixed by `orgTabIds` in `org-view-model.ts`): **People /
+Agents / Activity / Usage**, plus **Allowed apps / Allowed AI models** only on
+a Teams host (`caps.teams`; a host that predates Teams has no `/org/settings`
+route), plus **Billing** conditional last (see the Spaces billing section).
+`organization-view.tsx` is a shell — it loads `GET /org` once, builds the shared
+`OrgViewContext` (`{org, role, isOwner}`), and each section owns its data + UI:
 
 - **People** (`members-tab.tsx`) — roster + pending invites. Owner mutates
-  (add/remove/re-role, revoke invite); admin sees it read-only.
-- **Agents** (`agents-tab.tsx`) — org agents with assignment counts.
+  (add/remove/re-role, revoke invite); admin sees it read-only. This is the ONLY
+  members surface: the old Settings > Members section (and the whole `org` i18n
+  namespace it used) was deleted as a duplicate; "members" is no longer a
+  `SettingsSectionId`.
+- **Agents** (`agents-tab.tsx`) — org agents with assignment counts. Each card
+  drills into an in-Admin agent detail (`admin-agent-detail.tsx`) that reuses
+  the Agent Settings access sections (`AgentAccessSection`,
+  `AgentAdminIntegrations`, `AgentAdminModel`) for the picked agent, resolved
+  live from the agent store by id. The detail gates on
+  `isAgentManager(caps, agent)` itself (those sections do not self-gate); a
+  non-manager admin gets the read-only people view plus a manager-only note.
+  An "Open agent" action preserves the old jump into the agent's chat.
 - **Activity** (`activity-tab.tsx`) — the audit log, paged.
 - **Usage** (`usage-tab.tsx`) — per-agent/user message counters.
+- **Allowed apps** (`allowed-integrations-tab.tsx`; label key
+  `teams:org.tabs.allowedIntegrations`, now "Allowed apps" / "Aplicaciones permitidas" /
+  "Aplicativos permitidos"): the org app-allowlist
+  ceiling, the shared `AllowlistEditor` fed `teams:integrations.orgAllowlist.*` copy
+  (see the allowlist ceiling section). Owner edits, admin read-only
+  (`readOnly = !ctx.isOwner`); data via `useOrgSettings` / `useSetOrgSettings`.
+  OWNER-ONLY per-row impact meta "Used by {{count}} agents"
+  (`teams:integrations.orgAllowlist.usedByAgents_*`), passed to the editor via the new
+  `rowMeta?: ReadonlyMap<string,string>` prop and built from `useAllAgentGrants` +
+  `toolkitAgentIds`. **Honest-scope rule:** only the owner (full org-wide agent
+  visibility) sees the counts; an admin reads the tab with partial agent visibility, so
+  no count is shown and no grants requests fire for them (a partial count presented as a
+  total would lie). "Connected by N people" was deliberately NOT built: no
+  member/admin-readable org-wide connection endpoint exists, so it needs gateway work
+  first.
+- **Allowed AI models** (`allowed-models-tab.tsx`): the org model ceiling, the
+  `ModelsAllowlistEditor` fed `teams:models.orgAllowlist.*` copy (see the models
+  ceiling section). Owner edits, admin read-only; data via `useOrgSettings` /
+  `useSetOrgAllowedModels`. Wire surface `GET/PUT /org/settings` unchanged; the
+  gateway is still the sole enforcer.
 
 ---
 
@@ -328,7 +380,13 @@ configure surfaces are gated:
   but still visible. Single-player / self-host is unchanged: shared config, no
   ceiling. The pure decision + clamp + resting-pin helpers live in
   `app/src/lib/model-selector-lock.ts` (`modelSelectorDecision`, `isModelAllowed`,
-  `resolvePersonalModelPin`); the composer wires them in `use-agent-chat-panel.tsx`.
+  `resolvePersonalModelPin`, and `hiddenModelCount`, the count of DISTINCT blocked
+  models across provider rows); the composer wires them in `use-agent-chat-panel.tsx`.
+  **The picker no longer hides blocked models silently:** when the ceiling narrows the
+  universe it renders a non-interactive footer "N more models are turned off in your
+  workspace" (`chat:modelSelector.picker.hiddenByWorkspace_one/_other`), fed by
+  `hiddenModelCount`. ui/core's `ModelPicker` grew a props-only, i18n-agnostic
+  `footer?: ReactNode` that renders after ConnectMore inside its CommandList.
 - **Integrations tab** gates its edit affordances on `isAgentManager` /
   `canEditAgentGrants`.
 
@@ -350,21 +408,26 @@ the shared presentational `ModelsAllowlistEditor`
 always-visible `AccessChoice` over the AI-hub catalog's `ModelAllowRow`s, `readOnly`
 hides the "Add models" list, all copy passed in.
 
-- **Org ceiling** — the **AI Models hub's "Workspace policy" tab**
-  (`ai-hub/ai-hub-policy.tsx`, a third `AiHubTab` shown when `multiplayer && teams`;
-  the hub itself is owner/admin-only in Teams, see `canSeeAiModelsPage`). Owner-editable,
-  admin READ-ONLY (`canEditOrgSettings` = owner only). Wire: `OrgSettings.allowedModels`;
-  client `getOrgSettings` / `setOrgSettings` (now a **partial patch** — `{allowedToolkits?,
-  allowedModels?}`, matching the gateway). Hook `useSetOrgAllowedModels`
+- **Org ceiling**: the **Admin page's "Allowed AI models" tab**
+  (`organization/allowed-models-tab.tsx`, a thin wrapper over `ModelsAllowlistEditor`).
+  Owner-editable, admin READ-ONLY (`readOnly = !ctx.isOwner`; `canEditOrgSettings` =
+  owner only). Wire: `OrgSettings.allowedModels`; client `getOrgSettings` /
+  `setOrgSettings` (a **partial patch** — `{allowedToolkits?, allowedModels?}`,
+  matching the gateway). Hook `useSetOrgAllowedModels`
   (`hooks/queries/use-org-settings.ts`) — optimistic on `["org-settings"]`, invalidates
   `["agent-settings"]` (an org models change narrows every agent's selectable universe).
-  Copy under `teams:models.orgAllowlist.*` + `aiHub:tabs.policy`.
+  Copy under `teams:models.orgAllowlist.*`. (The AI Models hub's old "Workspace policy"
+  tab was removed; the hub now shows only Providers / Models.)
 - **Per-agent ceiling** — Agent Settings > **Access** > **AI models**
   (`agent-admin-model.tsx` → `AgentModelsSection`, now a thin wrapper over the shared
   editor). It **narrows the selectable universe to the org ceiling** via
   `AgentSettings.orgAllowedModels` (a model is offerable only when an offer is org-allowed,
   the exact `orgAllowedToolkits` treatment the app allowlist uses), so an org-disallowed
-  model is never offered for an agent. Copy under `teams:agentAdmin.models.*`.
+  model is never offered for an agent. Copy under `teams:agentAdmin.models.*`. The
+  manager editor no longer hides the org ceiling silently: `agent-models-section.tsx`
+  renders a quiet footnote "N models are turned off in your workspace"
+  (`teams:models.orgAllowlist.workspaceOff_*`) when the org ceiling narrows the manager's
+  selectable universe.
 
 - **Ceiling** — `agent_settings.allowedModels: string[] | null` of provider-native
   model ids (`null` = all models allowed; a set = restricted; treat `[]` defensively).
@@ -443,18 +506,25 @@ auto-grants on success.
 `AllowlistEditor` (`app/src/components/integrations/allowlist-editor.tsx`), fed
 different copy per ceiling:
 
-- **Org ceiling** — the global **Integrations page** in Teams mode
-  (`integrations-view/integrations-policy.tsx`, reached when
-  `integrationsPageMode(caps) === "policy"`, i.e. `multiplayer && teams`).
-  Owner-editable, admin READ-ONLY (`canEditOrgSettings` = owner only; the
-  `teams:integrations.orgAllowlist.ownerOnly` note explains why). Client:
-  `getOrgSettings` / `setOrgSettings`, consumed by `useOrgSettings` /
-  `useSetOrgSettings` (`app/src/hooks/queries/use-org-settings.ts`, query key
-  `["org-settings"]`). Copy under `teams:integrations.orgAllowlist.*` (+
-  `integrations:policyPage.*`).
+- **Org ceiling**: the **Admin page's "Allowed apps" tab**
+  (`organization/allowed-integrations-tab.tsx`, a thin wrapper over `AllowlistEditor`;
+  label key `teams:org.tabs.allowedIntegrations`). Owner-editable, admin READ-ONLY
+  (`readOnly = !ctx.isOwner`; `canEditOrgSettings` = owner only; the
+  `teams:integrations.orgAllowlist.ownerOnly` note explains why). Owner also sees the
+  per-row "Used by {{count}} agents" meta (`usedByAgents_*`, honest-scope owner-only; see
+  the Admin page section above). Client: `getOrgSettings` / `setOrgSettings`, consumed by
+  `useOrgSettings` / `useSetOrgSettings` (`app/src/hooks/queries/use-org-settings.ts`,
+  query key `["org-settings"]`). Copy under `teams:integrations.orgAllowlist.*` (incl.
+  `perAgentNote`; `pickedDesc` reworded "Everything else shows as turned off, with a note
+  to ask you."). (The global Integrations page no longer has a policy mode; it's the
+  personal catalog for every member, and it now reads the same org ceiling to lock
+  org-blocked apps for every member; see `integrations.md`.)
 - **Per-agent ceiling** — Agent Settings > **Access** > **Apps**
   (`AgentAllowlistSection`, manager-only). Client: `getAgentSettings` /
-  `setAgentSettings`. Copy under `teams:integrations.allowlist.*`.
+  `setAgentSettings`. Copy under `teams:integrations.allowlist.*`. Like the model editor,
+  `agent-allowlist-section.tsx` renders a quiet footnote "N apps are turned off in your
+  workspace" (`teams:integrations.orgAllowlist.workspaceOff_*`) when the org ceiling
+  narrows the manager's universe.
 
 `teams:integrations.orgAllowlist.*` and `teams:integrations.allowlist.*` carry the
 same choice keys (`question` / `anyLabel` / `pickedLabel` / …); `orgAllowlist` adds
@@ -462,15 +532,24 @@ same choice keys (`question` / `anyLabel` / `pickedLabel` / …); `orgAllowlist`
 Settings > Connected accounts (the members' account home), never in either ceiling
 editor.
 
-**Blocked apps stay VISIBLE (never silently absent).** The agent Integrations
-tab shows a ceiling-blocked app in one of two places rather than hiding it: a
-CONNECTED blocked app appears in the disallowed section (`teams:integrations.notAllowed`,
-"Not allowed" badge + an ask-your-admin line), and a NOT-connected blocked app
-appears as a **locked row** in the browse catalog (lock icon + `integrations:locked.askAdmin`
-"Ask your admin to enable {app}", capped preview; see `integrations.md` §3
-"Locked browse rows"). The ceiling editor (`AgentAllowlistSection`) reads as admin
-POLICY via `teams:integrations.allowlist.policyHelper`. Member connect surfaces
-stay account-connection language ("connected to your account"), never "allowed".
+**Design principle: blocked is visible, never silently hidden.** Applied
+product-wide wherever a ceiling narrows a member's world: browse surfaces (the global
+Integrations page + the per-agent tab) ITEMIZE the locked items as rows a member can see
+and search; tight surfaces (the composer model picker, the manager editors) SUMMARIZE the
+remainder with a count footer/footnote instead of a silent gap; and only HONEST data is
+shown (no partial count is ever presented as a total, which is why the owner-only
+`usedByAgents` meta is withheld from admins). The wire surface is unchanged and the
+gateway is still the sole enforcer; these are client-side transparency affordances over
+the effective allowlist.
+
+Concretely on the agent Integrations tab, a ceiling-blocked app shows in one of two places
+rather than hiding: a CONNECTED blocked app appears in the disallowed section
+(`teams:integrations.notAllowed`, "Not allowed" badge + an ask-your-admin line), and a
+NOT-connected blocked app appears as a **locked row** in the browse catalog (lock icon +
+`integrations:locked.askAdmin` "Ask your admin to enable {app}", capped preview; see
+`integrations.md` §3 "Locked browse rows"). The ceiling editor (`AgentAllowlistSection`)
+reads as admin POLICY via `teams:integrations.allowlist.policyHelper`. Member connect
+surfaces stay account-connection language ("connected to your account"), never "allowed".
 The pure split is `browseCatalogView` (`integrations/model.ts`); off Teams
 (`allowlist === null`) nothing is ever locked.
 
@@ -547,7 +626,7 @@ Top-level groups: `agentAdmin` (`groups` incl. the inline `general` card, `rows`
 per-agent `models` ceiling, inline `values`),
 `managedAgent`, `integrations`, `models` (the root `models.orgAllowlist.*` org model
 ceiling, sibling of `integrations.orgAllowlist`), `org`, `share`, `people`,
-`activityTab`, `usageTab`, `agentsTab`. (The AI Models hub's own strings, incl.
-`tabs.policy`, live in the separate `aiHub` namespace.)
+`activityTab`, `usageTab`, `agentsTab`. (The AI Models hub's own strings live in
+the separate `aiHub` namespace.)
 (There is also a separate `org` namespace for pre-v2 org strings.) See
 `i18n.md`.
