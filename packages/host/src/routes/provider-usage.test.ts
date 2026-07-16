@@ -89,7 +89,7 @@ test("relays GitHub's quota payload, authenticating with the central token", asy
   let auth = "";
   const fetchImpl: typeof fetch = async (input, init) => {
     url = String(input);
-    auth = (init?.headers as Record<string, string>).Authorization;
+    auth = (init?.headers as Record<string, string>).Authorization ?? "";
     return new Response(
       JSON.stringify({ copilot_plan: "pro", quota_snapshots: {} }),
       { status: 200 },
