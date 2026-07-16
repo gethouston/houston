@@ -1474,8 +1474,6 @@ export function useAgentChatPanel({
               disabled={api.disabled}
               toolkit={step.toolkit}
               action={step.action}
-              params={step.params}
-              paramsOmitted={step.paramsOmitted}
               revisited={api.revisited}
               outcome={outcome}
               onDecision={(decision) => {

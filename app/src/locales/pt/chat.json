@@ -59,8 +59,6 @@
     "deniedLine": "Escolhi não permitir {{action}}. Não tente de novo; continue sem isso.",
     "approvedLineDisplay": "Você permitiu que o {{app}} fizesse {{action}}.",
     "deniedLineDisplay": "Você não permitiu que o {{app}} fizesse {{action}}.",
-    "approvalMoreParams_one": "E mais {{count}} configuração",
-    "approvalMoreParams_other": "E mais {{count}} configurações",
     "signinAppName": "Houston",
     "signinTitle": "Entre no Houston",
     "signinDescription": "Suas contas continuam sendo suas; o agente age em seu nome.",
