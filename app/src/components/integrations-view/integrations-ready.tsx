@@ -5,22 +5,14 @@ import {
   useCustomIntegrations,
   useDisconnectIntegration,
 } from "../../hooks/queries";
-import { useOrgSettings } from "../../hooks/queries/use-org-settings";
-import { useCapabilities } from "../../hooks/use-capabilities";
-import { canEditOrgSettings } from "../../lib/org-roles";
-import { useUIStore } from "../../stores/ui";
 import {
   CustomIntegrationsSection,
   INTEGRATION_PROVIDER,
-  type PermissionsFix,
   ReconnectBanner,
-  resolvePermissionsFix,
   useConnectedApps,
   useConnectFlow,
   useConnectionSelection,
 } from "../integrations";
-import { PERMISSIONS_VIEW_ID } from "../permissions/id";
-import { usePermissionsNav } from "../permissions/permissions-nav-store";
 import { PageHeader } from "../shell/page-shell";
 import { CatalogPane } from "./catalog-pane";
 import { ConnectedAppDialogs } from "./connected-app-dialogs";
@@ -54,11 +46,10 @@ interface IntegrationsReadyProps {
  * is handed to the catalog, the recovery rows, and the detail modal so closing
  * any of them, or switching tabs, never kills an in-flight OAuth poll.
  *
- * The catalog shows the FULL Houston catalog: on a Teams host, apps outside the
- * workspace allowlist render as visibly locked rows (never silently dropped,
- * including from search results). The gateway is the sole enforcer; this is
- * display only. The org-settings fetch folds into the catalog's loading state
- * so a member never sees an unlocked flash before the allowlist lands.
+ * The catalog shows the FULL Houston catalog. Policy is per agent only (the
+ * org-wide app ceiling was removed), so the global page has no ceiling to apply
+ * and never locks a row — locked browse rows live only on the per-agent
+ * Integrations tab, keyed to that agent's ceiling.
  */
 export function IntegrationsReady({
   reconnectNotice,
@@ -70,38 +61,7 @@ export function IntegrationsReady({
   const connectFlow = useConnectFlow({});
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const custom = useCustomIntegrations();
-  // The workspace app ceiling: only Teams hosts have one. `null` = unrestricted
-  // (no locks). Off Teams the query stays idle, so the allowlist is always null.
-  const { capabilities } = useCapabilities();
-  const teamsEnabled = capabilities?.teams === true;
-  const orgSettings = useOrgSettings(teamsEnabled);
-  const allowlist = teamsEnabled
-    ? (orgSettings.data?.allowedToolkits ?? null)
-    : null;
   const selection = useConnectionSelection(apps);
-
-  // Role-aware signposting for the locked rows. The global page has no agent
-  // context, so its `allowlist` IS the org ceiling and every locked app is
-  // org-blocked: only an owner (`canEditOrgSettings`) gets the CTA into the
-  // Permissions view; everyone else keeps the ask-your-admin copy.
-  const requestTab = usePermissionsNav((s) => s.requestTab);
-  const setViewMode = useUIStore((s) => s.setViewMode);
-  const canEditOrg = canEditOrgSettings(capabilities);
-  const lockedFix: PermissionsFix = useMemo(
-    () =>
-      resolvePermissionsFix({
-        orgAllowedToolkits: allowlist,
-        agentAllowedToolkits: null,
-        canEditOrg,
-        canManageAgent: false,
-        openOrgApps: () => {
-          requestTab("agents");
-          setViewMode(PERMISSIONS_VIEW_ID);
-        },
-        openAgentDetail: () => {},
-      }),
-    [allowlist, canEditOrg, requestTab, setViewMode],
-  );
 
   // `null` = the host doesn't serve custom integrations: no Custom tab (the
   // shell drops the tab chrome), no custom tiles in the strip.
@@ -112,11 +72,6 @@ export function IntegrationsReady({
     const connected = new Set(apps.connData.map((c) => c.toolkit));
     return apps.catalogData.filter((tk) => !connected.has(tk.slug)).length;
   }, [apps.catalogData, apps.connData]);
-  // Fold the allowlist fetch into the catalog's loading state so the locked
-  // zone lands with the catalog, never after an unlocked flash. The page gate
-  // (`useIntegrationsGate`) is separate and stays untouched.
-  const catalogLoading =
-    apps.isLoading || (teamsEnabled && orgSettings.isLoading);
   const tabs: CatalogShellTab[] = [
     {
       value: "catalog",
@@ -127,11 +82,9 @@ export function IntegrationsReady({
           catalog={apps.catalogData}
           connections={apps.connData}
           recovering={apps.recoveringRows}
-          isLoading={catalogLoading}
+          isLoading={apps.isLoading}
           connectFlow={connectFlow}
           onRemoveRecovering={(toolkit) => disconnect.mutate(toolkit)}
-          allowlist={allowlist}
-          lockedFix={lockedFix}
         />
       ),
     },

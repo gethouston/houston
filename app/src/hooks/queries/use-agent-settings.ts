@@ -3,11 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriAgentSettings } from "../../lib/tauri";
 
-export { effectiveAllowlist } from "../../components/tabs/agent-integrations/model";
-
 /**
- * Teams v2 only: this agent's settings — the allowed-toolkit ceilings (agent +
- * org) plus the caller's effective `access`. Gated on the `teams` capability
+ * Teams v2 only: this agent's settings — the allowed-toolkit ceiling (the whole
+ * effective allowlist; policy is per agent only) plus the caller's effective
+ * `access`. Gated on the `teams` capability
  * via `enabled`: a host that predates Teams has no settings route (or the
  * desktop/local engine throws), so the query stays idle there and the
  * Integrations tab renders exactly as it does today. On a Teams host the route

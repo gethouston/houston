@@ -1,11 +1,11 @@
 /**
- * Teams v2 state helpers: the advertised capabilities and the agent/org
- * integration ceilings the gateway serves. These back the Teams-mode arming
+ * Teams v2 state helpers: the advertised capabilities and the per-agent
+ * integration/model ceilings the gateway serves. These back the Teams-mode arming
  * controls (`/__test__/capabilities`, `/__test__/agent-settings`) and the
- * `/v1/agents/:slug/settings` + `/v1/org/settings` gateway routes, so a spec can
- * put the app into a Teams-shaped state (multiplayer + a restrictive allowlist)
- * that single-player alone can't reach — the fixture arming the locked browse
- * rows and, later, the admin policy pages.
+ * `/v1/agents/:slug/settings` gateway route, so a spec can put the app into a
+ * Teams-shaped state (multiplayer + a restrictive allowlist) that single-player
+ * alone can't reach — the fixture arming the locked browse rows and the per-agent
+ * policy pages.
  *
  * The fields live on `HostState` (state-store.ts); this module is the read/write
  * surface, mirroring how `state-integrations.ts` operates on the shared `state`.

@@ -57,19 +57,6 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
         choice,
       );
     }
-    async getOrgSettings(): Promise<controlPlane.OrgSettings> {
-      if (!this.ctx.cp)
-        throw new Error("multiplayer requires the hosted gateway");
-      return controlPlane.getOrgSettings(this.ctx.cp);
-    }
-    async setOrgSettings(settings: {
-      allowedToolkits?: string[] | null;
-      allowedModels?: string[] | null;
-    }): Promise<void> {
-      if (!this.ctx.cp)
-        throw new Error("multiplayer requires the hosted gateway");
-      return controlPlane.setOrgSettings(this.ctx.cp, settings);
-    }
     async orgAudit(
       opts: { before?: number; limit?: number } = {},
     ): Promise<controlPlane.AuditEntry[]> {

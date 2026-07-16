@@ -66,7 +66,6 @@ import type {
   NewRoutine,
   OrgInfo,
   OrgRole,
-  OrgSettings,
   OrgSummary,
   OrgsList,
   PairingCode,
@@ -1509,8 +1508,8 @@ export class HoustonClient {
   }
   /**
    * Read this agent's Teams settings (any assigned caller or owner):
-   * `allowedToolkits` (agent integration ceiling), `orgAllowedToolkits` (org
-   * ceiling it's intersected with), and the caller's effective `access`.
+   * `allowedToolkits` (the agent's integration ceiling — the whole effective
+   * allowlist, policy is per agent only) and the caller's effective `access`.
    */
   getAgentSettings(agentSlugOrId: string): Promise<AgentSettings> {
     return this.request("GET", `/agents/${this.seg(agentSlugOrId)}/settings`);
@@ -1570,22 +1569,6 @@ export class HoustonClient {
       `/agents/${this.seg(agentSlugOrId)}/model-choice`,
       choice,
     );
-  }
-  /** Read the org-wide ceilings — apps + AI models (any member). */
-  getOrgSettings(): Promise<OrgSettings> {
-    return this.request("GET", "/org/settings");
-  }
-  /**
-   * Replace the org-wide ceilings (owner only). A partial patch: pass
-   * `allowedToolkits` (the app ceiling) and/or `allowedModels` (the AI-model
-   * ceiling) — `null` = unrestricted, `[]` = none. Both optional, so a caller can
-   * update one ceiling without touching the other.
-   */
-  async setOrgSettings(settings: {
-    allowedToolkits?: string[] | null;
-    allowedModels?: string[] | null;
-  }): Promise<void> {
-    await this.request("PUT", "/org/settings", settings);
   }
   /**
    * Read the org audit log, newest first (owner org-wide; admin filtered to

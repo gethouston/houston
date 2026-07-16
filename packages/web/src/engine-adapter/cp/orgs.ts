@@ -4,7 +4,6 @@ import type {
   ComputeUsage,
   OrgInfo,
   OrgRole,
-  OrgSettings,
   UsageRow,
 } from "../../../../../ui/engine-client/src/types";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
@@ -52,26 +51,6 @@ export async function setOrgMemberRole(
   await cpFetch(cfg, `/v1/org/members/${encodeURIComponent(userId)}`, {
     method: "PATCH",
     body: JSON.stringify({ role }),
-  });
-}
-
-export async function getOrgSettings(
-  cfg: ControlPlaneConfig,
-): Promise<OrgSettings> {
-  const res = await cpFetch(cfg, "/v1/org/settings");
-  return (await res.json()) as OrgSettings;
-}
-
-export async function setOrgSettings(
-  cfg: ControlPlaneConfig,
-  settings: {
-    allowedToolkits?: string[] | null;
-    allowedModels?: string[] | null;
-  },
-): Promise<void> {
-  await cpFetch(cfg, "/v1/org/settings", {
-    method: "PUT",
-    body: JSON.stringify(settings),
   });
 }
 

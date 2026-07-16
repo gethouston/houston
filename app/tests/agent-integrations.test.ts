@@ -163,7 +163,10 @@ describe("E7 integrations tab source", () => {
   });
 
   it("hands the effective allowlist down so blocked apps render as locked rows", () => {
-    ok(src.includes("effectiveAllowlist"), "still computes the ceiling");
+    ok(
+      src.includes("settings?.allowedToolkits"),
+      "still computes the ceiling (the agent's own allowlist, policy is per agent only)",
+    );
     ok(src.includes("useAgentSettings"), "still reads agent settings");
     ok(src.includes("allowlist={allowlist}"), "hands the ceiling to the body");
     const body = read(

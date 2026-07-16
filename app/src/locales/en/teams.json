@@ -60,52 +60,12 @@
       "allowedEmptyCategory": "No allowed apps in this category yet.",
       "addHeading": "Add apps"
     },
-    "orgAllowlist": {
-      "question": "Which apps can agents in this workspace use?",
-      "policyHelper": "You decide which apps agents here are allowed to use. People still connect their own accounts for each app you allow.",
-      "anyLabel": "Any app",
-      "anyDesc": "Everyone can connect anything in the catalog.",
-      "pickedLabel": "Only apps you pick",
-      "pickedDesc": "Everything else shows as turned off, with a note to ask you.",
-      "allowApp": "Allow {{name}}",
-      "allowedHeading": "Allowed apps",
-      "allowedEmpty": "No apps picked yet. Add apps below.",
-      "allowedEmptyCategory": "No allowed apps in this category yet.",
-      "addHeading": "Add apps",
-      "ownerOnly": "Only the workspace owner can change this.",
-      "perAgentNote": "Want tighter limits for one agent? Set them in that agent's settings.",
-      "usedByAgents_one": "Used by {{count}} agent",
-      "usedByAgents_other": "Used by {{count}} agents",
-      "workspaceOff_one": "{{count}} app is turned off in your workspace",
-      "workspaceOff_other": "{{count}} apps are turned off in your workspace"
-    },
     "notAllowed": {
       "title": "Not allowed for this agent",
       "body": "These apps are connected to your account, but this agent isn't allowed to use them. Ask your admin to enable them for this agent.",
       "bodyManager": "These apps are connected to your account, but this agent isn't allowed to use them. Enable them in Permissions.",
       "enableInPermissions": "Enable it in Permissions",
       "badge": "Not allowed"
-    }
-  },
-  "models": {
-    "orgAllowlist": {
-      "question": "Which models can agents in this workspace use?",
-      "policyHelper": "You decide which AI models agents here can run on. People with access pick their own model from the ones you allow.",
-      "anyLabel": "Any model",
-      "anyDesc": "Everyone can pick any available model.",
-      "pickedLabel": "Only models you pick",
-      "pickedDesc": "Every other model shows as turned off.",
-      "allowModel": "Allow {{name}}",
-      "searchModels": "Search models",
-      "noModels": "No models found",
-      "allowedHeading": "Allowed models",
-      "allowedEmpty": "No models picked yet. Add models below.",
-      "allowedEmptyLab": "No models picked from this lab yet.",
-      "addHeading": "Add models",
-      "ownerOnly": "Only the workspace owner can change this.",
-      "perAgentNote": "Managers can narrow this further for each agent in its settings.",
-      "workspaceOff_one": "{{count}} model is turned off in your workspace",
-      "workspaceOff_other": "{{count}} models are turned off in your workspace"
     }
   },
   "org": {
@@ -170,13 +130,6 @@
         "title": "No people yet",
         "body": "Invite teammates from the Admin page to manage their access here."
       }
-    },
-    "defaults": {
-      "title": "Defaults for every agent",
-      "subtitle": "New agents can use these apps and AI models unless you change them per agent below."
-    },
-    "agents": {
-      "listTitle": "Agents"
     }
   },
   "share": {

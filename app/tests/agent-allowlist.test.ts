@@ -4,10 +4,7 @@ import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
-import {
-  agentIntegrationsView,
-  effectiveAllowlist,
-} from "../src/components/tabs/agent-integrations/model.ts";
+import { agentIntegrationsView } from "../src/components/tabs/agent-integrations/model.ts";
 
 const tk = (slug: string, name: string): IntegrationToolkit => ({
   slug,
@@ -30,62 +27,6 @@ const CATALOG: IntegrationToolkit[] = [
   tk("gmail", "Gmail"),
   tk("notion", "Notion"),
 ];
-
-describe("effectiveAllowlist", () => {
-  it("both ceilings null → unrestricted (null)", () => {
-    strictEqual(
-      effectiveAllowlist({ allowedToolkits: null, orgAllowedToolkits: null }),
-      null,
-    );
-  });
-
-  it("agent null → the org ceiling", () => {
-    deepStrictEqual(
-      effectiveAllowlist({
-        allowedToolkits: null,
-        orgAllowedToolkits: ["gmail", "slack"],
-      }),
-      ["gmail", "slack"],
-    );
-  });
-
-  it("org null → the agent ceiling", () => {
-    deepStrictEqual(
-      effectiveAllowlist({
-        allowedToolkits: ["gmail"],
-        orgAllowedToolkits: null,
-      }),
-      ["gmail"],
-    );
-  });
-
-  it("both set → intersection in agent order", () => {
-    deepStrictEqual(
-      effectiveAllowlist({
-        allowedToolkits: ["gmail", "slack", "notion"],
-        orgAllowedToolkits: ["notion", "gmail", "asana"],
-      }),
-      ["gmail", "notion"],
-    );
-  });
-
-  it("disjoint ceilings → empty (nothing allowed)", () => {
-    deepStrictEqual(
-      effectiveAllowlist({
-        allowedToolkits: ["gmail"],
-        orgAllowedToolkits: ["slack"],
-      }),
-      [],
-    );
-  });
-
-  it("empty agent ceiling → empty regardless of org", () => {
-    deepStrictEqual(
-      effectiveAllowlist({ allowedToolkits: [], orgAllowedToolkits: null }),
-      [],
-    );
-  });
-});
 
 describe("agentIntegrationsView (allowlist overlay)", () => {
   it("no allowlist → nothing disallowed", () => {

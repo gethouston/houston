@@ -4,13 +4,10 @@ import {
   useIntegrationConnections,
   useIntegrationToolkits,
 } from "../../../hooks/queries";
-import {
-  effectiveAllowlist,
-  useAgentSettings,
-} from "../../../hooks/queries/use-agent-settings";
+import { useAgentSettings } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
 import { isAgentManager } from "../../../lib/agent-access";
-import { canEditOrgSettings, canSeeMembers } from "../../../lib/org-roles";
+import { canSeeMembers } from "../../../lib/org-roles";
 import type { TabProps } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
 import {
@@ -54,52 +51,32 @@ export default function IntegrationsTab({ agent }: TabProps) {
   const settingsQuery = useAgentSettings(agent.id, ready && teamsEnabled);
 
   const settings = settingsQuery.data;
-  const allowlist = useMemo(
-    () => (settings ? effectiveAllowlist(settings) : null),
-    [settings],
-  );
+  // The agent's own ceiling is the whole effective allowlist (policy is per
+  // agent only). `null` = unrestricted.
+  const allowlist = settings?.allowedToolkits ?? null;
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const connectFlow = useConnectFlow({ agentId: agent.id });
   const setViewMode = useUIStore((s) => s.setViewMode);
   const onManageAll = () => setViewMode(INTEGRATIONS_VIEW_ID);
 
-  // Role-aware blocked-state signposting. A blocked app is either outside the ORG
-  // ceiling (owner-fixable, deep-links to the Permissions view's Agents tab) or
-  // merely outside this AGENT ceiling (manager-fixable, deep-links to this
-  // agent's per-agent Permissions detail). The agent-ceiling CTA needs
-  // `canSeeMembers` too: a non-admin manager can't open the Permissions
-  // dashboard, so it would be a dead link for them.
-  const requestTab = usePermissionsNav((s) => s.requestTab);
+  // Role-aware blocked-state signposting. A blocked app is always outside this
+  // AGENT ceiling (policy is per agent only), so the fix always deep-links to
+  // this agent's per-agent Permissions detail. The CTA needs `canSeeMembers`
+  // too: a non-admin manager can't open the Permissions dashboard, so it would
+  // be a dead link for them.
   const requestAgentDetail = usePermissionsNav((s) => s.requestAgentDetail);
-  const canEditOrg = canEditOrgSettings(capabilities);
   const canManageAgent =
     isAgentManager(capabilities, agent) && canSeeMembers(capabilities);
   const permissionsFix = useMemo<PermissionsFix>(
     () =>
       resolvePermissionsFix({
-        orgAllowedToolkits: settings?.orgAllowedToolkits ?? null,
-        agentAllowedToolkits: settings?.allowedToolkits ?? null,
-        canEditOrg,
         canManageAgent,
-        openOrgApps: () => {
-          requestTab("agents");
-          setViewMode(PERMISSIONS_VIEW_ID);
-        },
         openAgentDetail: () => {
           requestAgentDetail(agent.id);
           setViewMode(PERMISSIONS_VIEW_ID);
         },
       }),
-    [
-      settings?.orgAllowedToolkits,
-      settings?.allowedToolkits,
-      canEditOrg,
-      canManageAgent,
-      requestTab,
-      requestAgentDetail,
-      setViewMode,
-      agent.id,
-    ],
+    [canManageAgent, requestAgentDetail, setViewMode, agent.id],
   );
 
   const view = useMemo(
