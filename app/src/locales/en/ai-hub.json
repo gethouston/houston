@@ -155,8 +155,15 @@
       "body": "Connect an AI provider to see how much of its limits you've used.",
       "connect": "Connect a provider"
     },
-    "accounts": {
-      "title": "AI accounts"
+    "sections": {
+      "subscriptions": {
+        "title": "AI subscriptions",
+        "subtitle": "Plans you signed in with, and how much of their limits you've used."
+      },
+      "perToken": {
+        "title": "AI per token",
+        "subtitle": "Pay-as-you-go accounts, billed by what you use."
+      }
     },
     "compute": {
       "title": "Running time",

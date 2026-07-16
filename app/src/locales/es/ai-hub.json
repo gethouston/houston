@@ -155,8 +155,15 @@
       "body": "Conecta un proveedor de IA para ver cuánto de sus límites has usado.",
       "connect": "Conectar un proveedor"
     },
-    "accounts": {
-      "title": "Cuentas de IA"
+    "sections": {
+      "subscriptions": {
+        "title": "Suscripciones de IA",
+        "subtitle": "Planes con los que iniciaste sesión y cuánto de sus límites has usado."
+      },
+      "perToken": {
+        "title": "IA por token",
+        "subtitle": "Cuentas de pago por uso, facturadas según lo que usas."
+      }
     },
     "compute": {
       "title": "Tiempo de actividad",
