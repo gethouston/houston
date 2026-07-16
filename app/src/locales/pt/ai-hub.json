@@ -155,8 +155,13 @@
       "body": "Conecte um provedor de IA para ver quanto dos limites você já usou.",
       "connect": "Conectar um provedor"
     },
-    "accounts": {
-      "title": "Contas de IA"
+    "sections": {
+      "subscriptions": {
+        "title": "Assinaturas de IA"
+      },
+      "perToken": {
+        "title": "IA por token"
+      }
     },
     "compute": {
       "title": "Tempo de atividade",

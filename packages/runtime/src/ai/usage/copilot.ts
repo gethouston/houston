@@ -1,5 +1,7 @@
 import type { AuthStorage } from "@earendil-works/pi-coding-agent";
+import { serveModeOn } from "../../auth/serve";
 import { authStorage } from "../../auth/storage";
+import { config } from "../../config";
 import {
   clampPercent,
   type ProviderUsage,
@@ -18,10 +20,27 @@ import {
  * Enterprise credentials pin a company domain (`enterpriseUrl`); the probe
  * then targets `api.<domain>` like pi's own token exchange does.
  *
+ * Under connect-once serve mode (security Gate #2) the runtime's auth.json is
+ * access-only — the GitHub token lives ONLY in the host's central store and is
+ * scrubbed here right after login — so this runtime CANNOT run the probe
+ * itself (the row read "sign in again" forever on a healthy connection). It
+ * instead asks the host's `GET /sandbox/provider-usage`, which runs the same
+ * GitHub call centrally and relays the quota payload (numbers and dates,
+ * never the token) — mapped below exactly like a direct response.
+ *
  * Response: `quota_snapshots.premium_interactions` / `.chat`, each
  * `{entitlement, remaining, percent_remaining, unlimited}`, plus
  * `copilot_plan` and a shared `quota_reset_date`.
  */
+
+/** Mirrored by the host's central probe (packages/host/src/routes/provider-usage.ts). */
+const COPILOT_QUOTA_HEADERS = {
+  Accept: "application/json",
+  "User-Agent": "GitHubCopilotChat/0.35.0",
+  "Editor-Version": "vscode/1.107.0",
+  "Editor-Plugin-Version": "copilot-chat/0.35.0",
+  "X-GitHub-Api-Version": "2025-04-01",
+};
 
 type QuotaSnapshot = {
   entitlement?: unknown;
@@ -64,31 +83,13 @@ function toWindow(
   return { id, usedPercent: usedPercent(q), resetsAt };
 }
 
-/** Fetch the connected Copilot account's quota snapshot. */
-export async function fetchCopilotUsage(
-  fetchImpl: typeof fetch = fetch,
-  store: Pick<AuthStorage, "get"> = authStorage,
-): Promise<ProviderUsage> {
+/**
+ * Map a quota response onto the wire row — shared by both probe paths (the
+ * direct GitHub call and the host relay, which passes GitHub's payload AND its
+ * 401 through unchanged).
+ */
+async function quotaResponseToUsage(res: Response): Promise<ProviderUsage> {
   const provider = "github-copilot";
-  const cred = store.get(provider);
-  const githubToken = cred?.type === "oauth" ? cred.refresh : null;
-  if (!githubToken) return { provider, status: "unauthenticated", windows: [] };
-  const apiHost =
-    cred?.type === "oauth" && typeof cred.enterpriseUrl === "string"
-      ? `api.${cred.enterpriseUrl}`
-      : "api.github.com";
-
-  const res = await fetchImpl(`https://${apiHost}/copilot_internal/user`, {
-    headers: {
-      Authorization: `token ${githubToken}`,
-      Accept: "application/json",
-      "User-Agent": "GitHubCopilotChat/0.35.0",
-      "Editor-Version": "vscode/1.107.0",
-      "Editor-Plugin-Version": "copilot-chat/0.35.0",
-      "X-GitHub-Api-Version": "2025-04-01",
-    },
-    signal: AbortSignal.timeout(15_000),
-  });
   if (res.status === 401 || res.status === 403)
     return { provider, status: "unauthenticated", windows: [] };
   if (!res.ok) {
@@ -124,4 +125,64 @@ export async function fetchCopilotUsage(
       : {}),
     fetchedAt: new Date().toISOString(),
   };
+}
+
+/** Where the host's central probe lives (serve-mode fallback). Injectable. */
+export interface CopilotServeSource {
+  controlPlaneUrl: string;
+  sandboxToken: string;
+}
+
+function configServeSource(): CopilotServeSource | null {
+  return serveModeOn() && config.controlPlaneUrl && config.sandboxToken
+    ? {
+        controlPlaneUrl: config.controlPlaneUrl,
+        sandboxToken: config.sandboxToken,
+      }
+    : null;
+}
+
+/** Fetch the connected Copilot account's quota snapshot. */
+export async function fetchCopilotUsage(
+  fetchImpl: typeof fetch = fetch,
+  store: Pick<AuthStorage, "get"> = authStorage,
+  serve: CopilotServeSource | null = configServeSource(),
+): Promise<ProviderUsage> {
+  const provider = "github-copilot";
+  const cred = store.get(provider);
+  const githubToken = cred?.type === "oauth" ? cred.refresh : null;
+
+  if (githubToken) {
+    const apiHost =
+      cred?.type === "oauth" && typeof cred.enterpriseUrl === "string"
+        ? `api.${cred.enterpriseUrl}`
+        : "api.github.com";
+    return quotaResponseToUsage(
+      await fetchImpl(`https://${apiHost}/copilot_internal/user`, {
+        headers: {
+          Authorization: `token ${githubToken}`,
+          ...COPILOT_QUOTA_HEADERS,
+        },
+        signal: AbortSignal.timeout(15_000),
+      }),
+    );
+  }
+
+  // No GitHub token locally, but a credential IS stored (the served/scrubbed
+  // access-only entry) → the host holds the token; delegate the probe there.
+  // Its marked 404 means the central store has no Copilot connection either.
+  if (serve && cred) {
+    const res = await fetchImpl(
+      `${serve.controlPlaneUrl}/sandbox/provider-usage?provider=${provider}`,
+      {
+        headers: { Authorization: `Bearer ${serve.sandboxToken}` },
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    if (res.status === 404)
+      return { provider, status: "unauthenticated", windows: [] };
+    return quotaResponseToUsage(res);
+  }
+
+  return { provider, status: "unauthenticated", windows: [] };
 }

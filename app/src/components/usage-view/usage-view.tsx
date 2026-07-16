@@ -59,18 +59,11 @@ export function UsageView() {
           subtitle={t("usage.pageSubtitle")}
         />
         {showCompute && <ComputeSection />}
-        <div>
-          {showCompute && (
-            <h2 className="text-sm font-medium text-ink">
-              {t("usage.accounts.title")}
-            </h2>
-          )}
-          <UsagePane
-            providers={connected}
-            ready={connections.ready}
-            onConnect={() => setViewMode("ai-hub")}
-          />
-        </div>
+        <UsagePane
+          providers={connected}
+          ready={connections.ready}
+          onConnect={() => setViewMode("ai-hub")}
+        />
       </PageContainer>
     </div>
   );

@@ -53,6 +53,7 @@ import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
 import { handleMigrationSource } from "./routes/migration-source";
 import { handlePortableAccount } from "./routes/portable";
 import { handlePortableFromStore } from "./routes/portable-from-store";
+import { handleSandboxProviderUsage } from "./routes/provider-usage";
 import { BodyTooLargeError } from "./routes/read-body";
 import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSkillsDirectory } from "./routes/skills-directory";
@@ -253,6 +254,9 @@ async function handle(
 
   // Sandbox-facing credential serve (HMAC sandbox token, not a user JWT).
   if (await handleSandboxCredential(deps, method, path, url, req, res)) return;
+  // Sandbox-facing central usage probe (Copilot quota needs the host-held token).
+  if (await handleSandboxProviderUsage(deps, method, path, url, req, res))
+    return;
   // Runtime-facing integration proxy (HMAC sandbox token, not a user JWT).
   if (await handleSandboxIntegrations(deps, method, path, url, req, res))
     return;
