@@ -264,13 +264,24 @@ export async function startLogin(
  * refresh or scrub.
  */
 export function setApiKey(providerId: string, key: string): void {
+  const trimmed = assertApiKeyConnectable(providerId, key);
+  authStorage.set(providerId, { type: "api_key", key: trimmed });
+  active.delete(providerId as ProviderId);
+}
+
+/**
+ * The cheap, offline preconditions of an API-key connect (known provider,
+ * api-key auth method, non-empty key) — split out so the connect route can
+ * fail fast on these BEFORE spending a live verification request
+ * (`verifyApiKey`). Returns the trimmed key.
+ */
+export function assertApiKeyConnectable(providerId: string, key: string) {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   if (providerAuthMethod(providerId) !== "apiKey")
     throw new Error(`${providerId} does not connect with a pasted API key`);
   const trimmed = key.trim();
   if (!trimmed) throw new Error("missing API key");
-  authStorage.set(providerId, { type: "api_key", key: trimmed });
-  active.delete(providerId as ProviderId);
+  return trimmed;
 }
 
 /**

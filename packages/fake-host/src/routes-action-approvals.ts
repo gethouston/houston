@@ -1,14 +1,16 @@
 /**
  * Per-agent integration action-approval USER routes for the fake host, mirroring
- * the real host `routes/action-approvals.ts` (mounted at `/v1/agents/:id/
- * action-approvals[...]`, authed as the signed-in owner in both deployments).
+ * the real host `routes/action-approvals.ts` — BOTH surfaces: the top-level
+ * `/v1/agents/:id/action-approvals[...]` and the per-agent dispatch
+ * `/agents/:id/action-approvals[...]` (the one the shipped clients call, since
+ * it is the only per-agent surface the hosted gateway proxies to a pod).
  * The interaction card's "Always allow" appends the action slug; "Allow once"
  * writes a one-shot ticket for the params-fingerprint hash. Shapes + validation
  * match the real route exactly.
  *
- *   GET  /v1/agents/:agentId/action-approvals          -> {always}
- *   POST /v1/agents/:agentId/action-approvals/always    {action} -> {always}
- *   POST /v1/agents/:agentId/action-approvals/tickets   {hash}   -> {ok:true}
+ *   GET  …/action-approvals          -> {always}
+ *   POST …/action-approvals/always    {action} -> {always}
+ *   POST …/action-approvals/tickets   {hash}   -> {ok:true}
  *
  * Returns a `Response` when a route matched, or `undefined` to fall through.
  */
@@ -22,24 +24,26 @@ const ACTION = /^[A-Za-z0-9_-]+$/;
 /** A params fingerprint from hashActionParams: sha256 truncated to 16 hex chars. */
 const HASH = /^[a-f0-9]{16}$/;
 
-/** Route `/v1/agents/:agentId/action-approvals[...]`; `segs` is the full path
- *  split (not decoded). */
+/** Route `/v1/agents/:agentId/action-approvals[...]` AND the dispatch form
+ *  `/agents/:agentId/action-approvals[...]`; `segs` is the full path split
+ *  (not decoded). */
 export function handleActionApprovals(
   method: string,
   segs: string[],
   body: Record<string, unknown> | undefined,
 ): Response | undefined {
+  // Normalize the two surfaces to one shape: drop the optional leading "v1".
+  const rel = segs[0] === "v1" ? segs.slice(1) : segs;
   if (
-    segs[0] !== "v1" ||
-    segs[1] !== "agents" ||
-    segs.length < 4 ||
-    segs.length > 5 ||
-    segs[3] !== "action-approvals"
+    rel[0] !== "agents" ||
+    rel.length < 3 ||
+    rel.length > 4 ||
+    rel[2] !== "action-approvals"
   ) {
     return undefined;
   }
-  const agentId = decodeURIComponent(segs[2]);
-  const sub = segs[4]; // undefined | "always" | "tickets"
+  const agentId = decodeURIComponent(rel[1]);
+  const sub = rel[3]; // undefined | "always" | "tickets"
 
   if (!sub && method === "GET") {
     return json({ always: state.alwaysAllowed(agentId) });

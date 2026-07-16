@@ -68,18 +68,21 @@ describe("startFakeHost", () => {
     // Regression: the WebApp connect gate moved from the flat /auth/status to
     // the host's /setup-runtime/auth/status (pre-agent connect surface); this
     // route missing hung the e2e global setup on the "Connecting…" screen.
+    // The setup slot seeds EMPTY (no credential until the user connects), so
+    // onboarding's connect step renders its picker instead of auto-advancing.
     const status = await fetch(`${host.url}/setup-runtime/auth/status`);
     expect(status.status).toBe(200);
     const auth = (await status.json()) as { activeProvider: string | null };
-    expect(auth.activeProvider).toBe("anthropic");
+    expect(auth.activeProvider).toBeNull();
 
     const providers = await fetch(`${host.url}/setup-runtime/providers`);
     expect(providers.status).toBe(200);
     const list = (await providers.json()) as Array<{
       id: string;
-      isActive: boolean;
+      configured: boolean;
     }>;
-    expect(list.find((p) => p.id === "anthropic")?.isActive).toBe(true);
+    expect(list.length).toBeGreaterThan(0);
+    expect(list.every((p) => !p.configured)).toBe(true);
 
     // Only the connect surface is reachable — everything else 404s, like the
     // real host's allowlist (packages/host/src/routes/setup-runtime.ts).
@@ -89,29 +92,6 @@ describe("startFakeHost", () => {
     expect(blocked.status).toBe(404);
     const noExport = await fetch(`${host.url}/setup-runtime/auth/export`);
     expect(noExport.status).toBe(404);
-  });
-
-  it("empties + restores setup-runtime credentials via the test control", async () => {
-    const authUrl = `${host.url}/setup-runtime/auth/status`;
-    const readStatus = async () =>
-      (await (await fetch(authUrl)).json()) as {
-        activeProvider: string | null;
-        providers: Array<{ configured: boolean }>;
-      };
-
-    // Disconnect: models the desktop first-run (no credential stored yet).
-    await fetch(`${host.url}/__test__/setup-runtime-auth`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ connected: false }),
-    });
-    const off = await readStatus();
-    expect(off.activeProvider).toBeNull();
-    expect(off.providers.every((p) => !p.configured)).toBe(true);
-
-    // reset() restores the connected seed (what every other spec relies on).
-    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
-    expect((await readStatus()).activeProvider).toBe("anthropic");
   });
 
   it("runs the pre-agent login flow against the setup-runtime slot", async () => {
@@ -130,14 +110,24 @@ describe("startFakeHost", () => {
     });
     expect(complete.status).toBe(200);
 
-    // The connect landed on the SAME slot the flat routes read (the local
-    // single-runtime profile) — the gate's refetch sees it connected.
+    // The connect landed on the setup slot: the gate's refetch (and the
+    // onboarding step's status snapshot) now sees the provider configured
+    // and active.
     const auth = (await (await fetch(`${base}/auth/status`)).json()) as {
+      activeProvider: string | null;
       providers: Array<{ provider: string; configured: boolean }>;
     };
     expect(
       auth.providers.find((p) => p.provider === "openai-codex")?.configured,
     ).toBe(true);
+    expect(auth.activeProvider).toBe("openai-codex");
+
+    // reset() empties the setup slot again (what onboarding specs rely on).
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+    const after = (await (await fetch(`${base}/auth/status`)).json()) as {
+      activeProvider: string | null;
+    };
+    expect(after.activeProvider).toBeNull();
   });
 
   it("exposes the __test__ reset control endpoint", async () => {

@@ -2,14 +2,18 @@
  * Stateful AI-provider credentials for the fake host — the per-agent-pod
  * provider model the SDK `providers` module and the hosted connect flow exercise
  * (PARITY-SETTINGS §2, §6). Credentials are PER AGENT in hosted mode, so state
- * is keyed by agent id; the flat `/providers` + `/auth/status` routes (the local
- * single-runtime profile) share the {@link FLAT_KEY} slot.
+ * is keyed by agent id; the pre-agent `/setup-runtime/*` connect surface (the
+ * WebApp gate + ConnectView) shares the {@link FLAT_KEY} slot.
  *
- * Every slot seeds with Claude connected + active (what the old static
- * `providersBody`/`authStatusBody` returned, so the WebApp connect gate still
- * clears). Mutations — start/complete/cancel login, api-key, logout, settings —
- * flip the slot so a `GET /providers` + `GET /auth/status` refetch reflects them,
- * exactly as the real runtime does.
+ * Two seeds: per-AGENT slots start with Claude connected + active (chat,
+ * settings, and the AI hub read that), while the {@link FLAT_KEY} setup slot
+ * starts EMPTY — on the real host the pre-agent setup runtime has no credential
+ * until the user connects, and onboarding's "Connect your AI" step auto-advances
+ * past an already-connected provider (`selectOnMount`), so a connected seed
+ * would skip the screen the onboarding specs assert on. Mutations —
+ * start/complete/cancel login, api-key, logout, settings — flip the slot so a
+ * providers + auth/status refetch reflects them, exactly as the real runtime
+ * does.
  *
  * Wire types come from the real packages so a contract change breaks the
  * typecheck here instead of silently drifting the mock.
@@ -26,7 +30,7 @@ import type {
 } from "@houston/runtime-client";
 import { CATALOG, SPEC } from "./provider-catalog";
 
-/** The slot the flat (non-agent) `/providers` + `/auth/status` routes read. */
+/** The slot the pre-agent `/setup-runtime/*` connect routes read. */
 export const FLAT_KEY = "__flat__";
 
 interface Slot {
@@ -38,12 +42,14 @@ interface Slot {
   effort?: string;
 }
 
-function seedSlot(): Slot {
+function seedSlot(connected: boolean): Slot {
   return {
-    configured: new Set<ProviderId>(["anthropic"]),
+    configured: new Set<ProviderId>(connected ? ["anthropic"] : []),
     login: new Map(),
-    activeProvider: "anthropic",
-    activeModel: new Map([["anthropic", "claude-sonnet-4-6"]]),
+    activeProvider: connected ? "anthropic" : null,
+    activeModel: new Map<ProviderId, string>(
+      connected ? [["anthropic", "claude-sonnet-4-6"]] : [],
+    ),
     enterpriseUrl: new Map(),
   };
 }
@@ -53,7 +59,7 @@ let slots = new Map<string, Slot>();
 function slot(agentId: string): Slot {
   let s = slots.get(agentId);
   if (!s) {
-    s = seedSlot();
+    s = seedSlot(agentId !== FLAT_KEY);
     slots.set(agentId, s);
   }
   return s;
@@ -62,24 +68,6 @@ function slot(agentId: string): Slot {
 /** Restore the seed. Wired into the store's `reset()`. */
 export function resetProviders(): void {
   slots = new Map();
-}
-
-/** Test control: connect/disconnect the flat slot the `/setup-runtime` surface
- *  (and the flat routes) serve. `false` models the desktop first-run — no
- *  credential stored yet, so the onboarding connect step renders its picker
- *  instead of auto-advancing. `reset()` restores the connected seed. */
-export function setFlatProvidersConnected(connected: boolean): void {
-  if (connected) {
-    slots.set(FLAT_KEY, seedSlot());
-    return;
-  }
-  slots.set(FLAT_KEY, {
-    configured: new Set(),
-    login: new Map(),
-    activeProvider: null,
-    activeModel: new Map(),
-    enterpriseUrl: new Map(),
-  });
 }
 
 /** `GET /providers` (or `/agents/:id/providers`) → the rich `ProviderInfo[]`. */

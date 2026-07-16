@@ -17,9 +17,10 @@ import {
   turnBoundary,
 } from "./chat-controls";
 import { CORS, json } from "./http";
-import { authStatusBody, handleAgents, providersBody } from "./routes";
+import { handleAgents } from "./routes";
 import { handleActionApprovals } from "./routes-action-approvals";
 import { handleUserRoutes } from "./routes-integrations";
+import { handleSetupRuntime } from "./routes-setup-runtime";
 import { handleTeamsRoutes } from "./routes-teams";
 import { sseResponse } from "./sse";
 import type { FakeCapabilities, TeamsSettings } from "./state";
@@ -151,17 +152,6 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/__test__/action-approvals" && method === "GET") {
     return json(state.approvalsSnapshot());
   }
-  // Connect/disconnect the AI providers the /setup-runtime surface serves.
-  // `{connected:false}` models the desktop first-run (no credential stored
-  // yet) so the onboarding connect step renders its picker instead of
-  // auto-advancing; a spec flips it AFTER the boot gate has probed. reset()
-  // restores the connected seed.
-  if (path === "/__test__/setup-runtime-auth" && method === "POST") {
-    const body = await parseBody(req);
-    const connected = body?.connected !== false;
-    state.setFlatProvidersConnected(connected);
-    return json({ connected });
-  }
   // Flip a pending connection to active (models the OAuth completing).
   if (path === "/__test__/integrations-activate" && method === "POST") {
     const body = await parseBody(req);
@@ -176,26 +166,15 @@ export async function handle(req: Request): Promise<Response> {
   const segs = path.split("/").filter(Boolean);
   const body = await parseBody(req);
 
-  // --- top-level runtime probe (the local single-runtime profile) ---
+  // --- top-level host probes ---
   if (path === "/health") return json({ status: "ok", version: "e2e" });
   if (path === "/version") return json({ engine: "e2e", protocol: 1 });
-  if (path === "/auth/status") return json(authStatusBody());
-  if (path === "/providers") return json(providersBody());
 
-  // --- pre-agent connect surface (the host's /setup-runtime/*) ---
-  // The WebApp connect gate + ConnectView probe here BEFORE any agent exists
-  // (packages/host/src/routes/setup-runtime.ts). Same allowlist as the real
-  // route, backed by the flat slot so the seeded Claude clears the gate.
-  if (segs[0] === "setup-runtime") {
-    const rest = segs.slice(1).join("/");
-    const allowed =
-      (method === "GET" && (rest === "providers" || rest === "auth/status")) ||
-      (method === "POST" &&
-        (/^auth\/[^/]+\/login(\/(complete|cancel))?$/.test(rest) ||
-          /^credential\/(capture|api-key|claude-oauth)$/.test(rest)));
-    if (!allowed) return json({ error: { message: "not found" } }, 404);
-    return handleAgents(method, [state.FLAT_KEY, ...segs.slice(1)], req, body);
-  }
+  // --- pre-agent connect surface (the WebApp gate + ConnectView) ---
+  // The real host serves this ONLY under /setup-runtime/* — no flat
+  // /auth/status or /providers exists there, so none exists here either.
+  const setupRoute = handleSetupRuntime(method, path, url, body);
+  if (setupRoute) return setupRoute;
 
   // --- misc host surface the UI may touch on boot (kept permissive) ---
   // Deployment capabilities: single-player local by default (the app's boot

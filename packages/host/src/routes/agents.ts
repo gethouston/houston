@@ -16,6 +16,7 @@ import { AgentNameConflictError } from "../ports";
 import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
+import { handleActionApprovalsDispatch } from "./action-approvals";
 import { stampTurnContributor } from "./activity-attribution";
 import {
   type AgentRouteDeps,
@@ -594,6 +595,21 @@ export async function handleAgents(
       ? (event: HoustonEvent) =>
           deps.events?.emit(authz.workspace.ownerUserId, event)
       : undefined;
+
+    // Action approvals are served by the HOST off its approval store — on this
+    // dispatch surface because it is the one per-agent surface the hosted
+    // gateway proxies to a pod (see routes/action-approvals.ts).
+    if (
+      await handleActionApprovalsDispatch(
+        deps.actionApprovals,
+        agentId,
+        method,
+        rest,
+        req,
+        res,
+      )
+    )
+      return true;
 
     // Typed .houston families + skills are served by the HOST off the workspace
     // vfs — the runtime surface (chat, auth, settings, files) goes to the channel.

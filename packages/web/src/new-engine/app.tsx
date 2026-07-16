@@ -7,7 +7,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { ConnectView } from "./connect";
 import { ui } from "./styles";
 
 // The full Houston desktop UI. Lazily imported so its module graph (and the
@@ -16,10 +15,12 @@ import { ui } from "./styles";
 const AppTree = lazy(() => import("../app-tree"));
 
 /**
- * Boots the desktop UI on the new engine. First gate: a subscription provider
- * (Claude / Codex) must be connected via OAuth — otherwise chat can't run.
- * Once connected, the real desktop tree mounts and talks to the new engine
- * through the adapter.
+ * Boots the desktop UI on the new engine. The gate is a REACHABILITY check
+ * only: one authStatus probe against the host's pre-agent /setup-runtime
+ * surface proves the URL + token work, then the app tree mounts. Connecting a
+ * provider is owned by the app itself — first-run onboarding's "Connect your
+ * AI" step (curated ProviderBrowser), and the in-app reconnect cards after
+ * that — so an unconnected engine must still boot to the shell.
  */
 export function WebApp({
   baseUrl,
@@ -36,7 +37,7 @@ export function WebApp({
   // The pre-agent connect surface lives under the host's /setup-runtime/*
   // (auth/status, providers, the OAuth login routes) — the host serves no flat
   // /auth/status. The app itself keeps talking to the bare baseUrl through the
-  // engine adapter; only this gate (and ConnectView) speak setup-runtime.
+  // engine adapter; only this gate speaks setup-runtime.
   const client = useMemo(
     () =>
       new HoustonEngineClient({ baseUrl: `${baseUrl}/setup-runtime`, token }),
@@ -106,10 +107,6 @@ export function WebApp({
       </div>
     );
   }
-  if (!status.activeProvider) {
-    return <ConnectView client={client} onConnected={refresh} />;
-  }
-
   return (
     <Suspense
       fallback={
