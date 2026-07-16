@@ -106,6 +106,14 @@ export async function handle(req: Request): Promise<Response> {
       advanced: turnBoundary(String(body?.nextText ?? "next turn")),
     });
   }
+  // Stall every per-agent read (`GET /agents/:id/*`) by `ms` — the cloud
+  // gateway's `ensureAwake` hold: an asleep pod's reads hang until it wakes.
+  // `{ ms: 0 }` (and the per-test reset) answers instantly again.
+  if (path === "/__test__/hold-agent-reads" && method === "POST") {
+    const body = await parseBody(req);
+    state.setAgentReadHoldMs(Number(body?.ms ?? 0));
+    return json({ ms: state.state.agentReadHoldMs });
+  }
   // Toggle Composio readiness: "ready" | "unavailable" (503) | "signin" |
   // "absent" (not registered at all — only the custom provider, when armed).
   if (path === "/__test__/integrations-mode" && method === "POST") {
@@ -217,6 +225,20 @@ export async function handle(req: Request): Promise<Response> {
 
   // --- everything under /agents/* ---
   if (segs[0] === "agents") {
+    // Armed cold-start hold: per-agent READS stall like they do behind the
+    // cloud gateway while a pod wakes. The agent LIST (`GET /agents`) stays
+    // instant — in the real deployment it is a gateway answer, not a pod one.
+    // The runtime-proxy `providers` probes are exempt too: they are not what
+    // this control models, and holding them exhausts the browser's HTTP/1.1
+    // six-connection budget against the dev server, stalling even unheld
+    // boot routes — an artifact the real HTTP/2 gateway doesn't have.
+    if (
+      state.state.agentReadHoldMs > 0 &&
+      method === "GET" &&
+      segs.length > 1 &&
+      segs[2] !== "providers"
+    )
+      await new Promise((r) => setTimeout(r, state.state.agentReadHoldMs));
     return handleAgents(
       method,
       segs.slice(1).map(decodeURIComponent),

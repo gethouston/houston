@@ -40,3 +40,98 @@ export function latestCachedAllConversations<T>(
   }
   return bestData;
 }
+
+/**
+ * A cached conversation row as the board-seeding fallback reads it. Mirrors
+ * `RawConversation` (lib/tauri.ts) structurally — conversations are derived
+ * 1:1 from board activities (`activityToConversation`), so the row carries
+ * everything a mission card renders.
+ */
+interface CachedConversationRow {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  session_key?: string;
+  updated_at?: string;
+  agent_path: string;
+  agent?: string;
+  routine_id?: string;
+}
+
+/** A board activity recovered from a cached conversation row. */
+export interface CachedBoardActivity {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  session_key?: string;
+  updated_at?: string;
+  agent?: string;
+  routine_id?: string;
+}
+
+/**
+ * One agent's board rows, recovered from the freshest cached conversation
+ * list that has any (the per-agent list, or any roster variant of the
+ * aggregate — both restored from disk at boot).
+ *
+ * Why the board needs this: the per-agent `["activity", X]` query is only
+ * fetched while X's board is open AND only reaches the disk mirror when that
+ * session outlives the pod wake plus the persister's write throttle — so on a
+ * cold open it is often absent for the very agent being looked at. The
+ * aggregate, by contrast, is swept every session for every agent (the sidebar
+ * always mounts it): whenever the sidebar can paint its badges, this can
+ * paint the same missions as cards instead of empty columns held for the
+ * whole pod wake.
+ *
+ * Empty is not evidence: rows can be missing because the agent truly has no
+ * missions OR because a cached sweep skipped it, so no-rows returns
+ * `undefined` — preserving the caller's "still loading" state — never `[]`.
+ */
+export function latestCachedAgentActivities(
+  queryClient: QueryClient,
+  agentPath: string,
+): CachedBoardActivity[] | undefined {
+  let bestRows: CachedConversationRow[] | undefined;
+  let bestUpdatedAt = -1;
+  const consider = (
+    rows: CachedConversationRow[] | undefined,
+    updatedAt: number,
+  ) => {
+    if (!rows || rows.length === 0 || updatedAt <= bestUpdatedAt) return;
+    bestUpdatedAt = updatedAt;
+    bestRows = rows;
+  };
+
+  const own = queryClient.getQueryState<CachedConversationRow[]>(
+    queryKeys.conversations(agentPath),
+  );
+  if (own?.status === "success" && own.data)
+    consider(own.data, own.dataUpdatedAt);
+
+  const aggregates = queryClient
+    .getQueryCache()
+    .findAll({ queryKey: queryKeys.allConversations([]) });
+  for (const query of aggregates) {
+    const { status, data, dataUpdatedAt } = query.state;
+    if (status !== "success" || !Array.isArray(data)) continue;
+    consider(
+      (data as CachedConversationRow[]).filter(
+        (row) => row.agent_path === agentPath,
+      ),
+      dataUpdatedAt,
+    );
+  }
+
+  return bestRows?.map((row) => ({
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    status: row.status,
+    session_key: row.session_key,
+    updated_at: row.updated_at,
+    agent: row.agent,
+    routine_id: row.routine_id,
+  }));
+}
