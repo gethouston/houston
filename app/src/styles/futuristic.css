@@ -93,9 +93,10 @@ body::before {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
+/* Popovers/menus are SOLID (the popover token is opaque): no blur —
+   WebView2 doesn't reliably composite backdrop-filter, and a solid fill
+   needs none. Only the 1px top sheen remains. */
 .bg-popover {
-  backdrop-filter: blur(24px) saturate(1.5);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
@@ -109,43 +110,18 @@ body::before {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
-/* Modal surface (`bg-dialog`). Dark renders identically to the old glass
-   `bg-card` — frosted blur + subtle top sheen so the aurora bleeds through.
-   Light uses the opaque-white `dialog` token, so the blur is a no-op on the
-   solid fill and the sheen is invisible on white: a plain solid-white modal,
-   not a see-through one. */
+/* Modal surface (`bg-dialog`). SOLID in both themes (the dialog token is
+   opaque: white light, neutral.800 dark). Floating surfaces that sit over
+   content must never bleed it through — the old glass fills read as solid
+   only through backdrop-filter, which WebView2 does not reliably composite
+   (GPU/driver dependent, silently no-ops), so modals painted see-through on
+   desktop. Solid tokens fix it everywhere; only the top sheen remains. */
 .bg-dialog {
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 [data-theme="dark"] .bg-dialog {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-/* ── 3b. Desktop shell: opaque floating surfaces ────────────────
-   The glass popover/dialog fills are TRANSLUCENT by design and read as
-   solid only through the backdrop-filter blur above. In the Tauri
-   desktop shell, WebView2 does not reliably composite backdrop-filter
-   (GPU/driver dependent — it silently no-ops on affected machines), so
-   the bare alpha fill painted see-through: the dark "New agent" modal
-   over Settings, the routines "…" menu in both themes. `@supports`
-   can't catch this (the property parses fine; compositing is what
-   fails), so the desktop entry stamps `data-desktop` on <html>
-   (lib/desktop-surface.ts) and the FLOATING surfaces — the ones that
-   sit over content and must never bleed it through — fall back to the
-   solid token equivalents. The web build keeps its frosted glass. */
-html[data-desktop] .bg-popover {
-  background-color: var(--ht-popover-solid);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-html[data-desktop] .bg-dialog {
-  background-color: var(--ht-dialog-solid);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 /* ── 4. Flat primary button ─────────────────────────────────────

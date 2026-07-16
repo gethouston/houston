@@ -409,7 +409,7 @@ function BgContextMenu({
         }}
       />
       <div
-        className="fixed z-50 bg-popover/95 backdrop-blur-xl border border-line rounded-lg shadow-lg py-1 min-w-[160px]"
+        className="fixed z-50 bg-popover border border-line rounded-lg shadow-lg py-1 min-w-[160px]"
         style={{ left: position.x, top: position.y }}
       >
         <button
