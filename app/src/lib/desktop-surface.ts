@@ -3,10 +3,11 @@
  * shell (the caller passes `osIsTauri()` — not imported here so this stays
  * loadable outside a webview, e.g. under node:test). futuristic.css keys its
  * opaque floating-surface fallback on this attribute (section 3b): WebView2
- * does not reliably composite backdrop-filter, so the glass popover/dialog
- * fills — solid-looking only through their blur — painted see-through on
- * desktop. A plain browser (the web build, or the dev vite URL opened
- * directly) never gets the attribute and keeps the frosted glass.
+ * does not reliably composite backdrop-filter, so the glass popover fill —
+ * solid-looking only through its blur — painted see-through on desktop.
+ * (Dialogs are solid in both themes now, no fallback needed.) A plain
+ * browser (the web build, or the dev vite URL opened directly) never gets
+ * the attribute and keeps the frosted glass.
  */
 export function markDesktopSurface(
   root: { dataset: { desktop?: string } },

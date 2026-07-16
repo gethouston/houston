@@ -185,52 +185,6 @@
         }
       }
     },
-    "auth.continuePending": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Opening browser..."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abriendo el navegador..."
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abrindo o navegador..."
-          }
-        }
-      }
-    },
-    "auth.retryHint": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wrong browser profile? Just click again to retry."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Perfil de navegador incorrecto? Solo haz clic de nuevo para reintentar."
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Perfil de navegador errado? É só clicar de novo para tentar novamente."
-          }
-        }
-      }
-    },
     "board.columnRunning": {
       "extractionState": "manual",
       "localizations": {
@@ -6390,6 +6344,420 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sessão iniciada"
+          }
+        }
+      }
+    },
+    "auth.continueWithMicrosoft": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue with Microsoft"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar con Microsoft"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar com a Microsoft"
+          }
+        }
+      }
+    },
+    "auth.orDivider": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "or"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "o"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ou"
+          }
+        }
+      }
+    },
+    "auth.emailPlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "you@example.com"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tu@ejemplo.com"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "voce@exemplo.com"
+          }
+        }
+      }
+    },
+    "auth.sendCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send code"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar código"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar código"
+          }
+        }
+      }
+    },
+    "auth.verifyCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verify code"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificar código"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificar código"
+          }
+        }
+      }
+    },
+    "auth.resendCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resend code"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reenviar código"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reenviar código"
+          }
+        }
+      }
+    },
+    "auth.useDifferentEmail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use a different email"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar otro correo"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar outro e-mail"
+          }
+        }
+      }
+    },
+    "auth.errors.invalidCredentials": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That sign-in didn't work. Check your details and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ese inicio de sesión no funcionó. Revisa tus datos e inténtalo de nuevo."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse login não funcionou. Confira seus dados e tente novamente."
+          }
+        }
+      }
+    },
+    "auth.errors.credentialMismatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This email is already linked to a different sign-in method. Use the option you signed up with."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este correo ya está vinculado a otro método de inicio de sesión. Usa la opción con la que te registraste."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este e-mail já está vinculado a outro método de login. Use a opção com que você se cadastrou."
+          }
+        }
+      }
+    },
+    "auth.errors.providerDisabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This sign-in option isn't available yet. Try another one."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta opción de inicio de sesión aún no está disponible. Prueba con otra."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta opção de login ainda não está disponível. Tente outra."
+          }
+        }
+      }
+    },
+    "auth.errors.otpInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That code is wrong or expired. Request a new one and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ese código es incorrecto o expiró. Solicita uno nuevo e inténtalo de nuevo."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse código está incorreto ou expirou. Solicite um novo e tente novamente."
+          }
+        }
+      }
+    },
+    "auth.errors.otpRateLimited": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many attempts. Wait a minute, then try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demasiados intentos. Espera un minuto y vuelve a intentarlo."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muitas tentativas. Espere um minuto e tente novamente."
+          }
+        }
+      }
+    },
+    "auth.errors.network": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can't reach the sign-in service. Check your connection and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No podemos conectarnos al servicio de inicio de sesión. Revisa tu conexión e inténtalo de nuevo."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível conectar ao serviço de login. Verifique sua conexão e tente novamente."
+          }
+        }
+      }
+    },
+    "auth.errors.tooManyAttempts": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many attempts. Wait a few minutes, then try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muitas tentativas. Espere alguns minutos e tente novamente."
+          }
+        }
+      }
+    },
+    "auth.errors.userDisabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This account has been disabled. Contact support."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta cuenta ha sido deshabilitada. Contacta a soporte."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta conta foi desativada. Entre em contato com o suporte."
+          }
+        }
+      }
+    },
+    "auth.errors.configError": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign-in isn't set up correctly. Please contact support."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El inicio de sesión no está configurado correctamente. Contacta a soporte."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O login não está configurado corretamente. Entre em contato com o suporte."
+          }
+        }
+      }
+    },
+    "auth.errors.generic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign-in failed. Please try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El inicio de sesión falló. Inténtalo de nuevo."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O login falhou. Tente novamente."
+          }
+        }
+      }
+    },
+    "auth.codeSentTo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We sent a 6-digit code to %@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviamos un código de 6 dígitos a %@."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviamos um código de 6 dígitos para %@."
           }
         }
       }

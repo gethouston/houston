@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -41,8 +42,12 @@ export class FileCredentialStore implements CredentialStore {
 
   private flush(): void {
     const tmp = `${this.path}.tmp`;
-    writeFileSync(tmp, JSON.stringify([...this.creds.values()], null, 2));
+    writeFileSync(tmp, JSON.stringify([...this.creds.values()], null, 2), {
+      encoding: "utf8",
+      mode: 0o600,
+    });
     renameSync(tmp, this.path); // atomic swap
+    chmodSync(this.path, 0o600);
   }
 
   async get(

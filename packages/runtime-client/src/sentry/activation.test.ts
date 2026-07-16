@@ -110,6 +110,29 @@ describe("resolveEngineSentryConfig", () => {
     });
   });
 
+  it("tags engine_version with the release's version part", () => {
+    const desktop = resolveEngineSentryConfig({
+      SENTRY_DSN: DSN,
+      NODE_ENV: "production",
+      SENTRY_RELEASE: "houston-app@0.5.9",
+    });
+    expect(desktop?.tags.engine_version).toBe("0.5.9");
+
+    const pod = resolveEngineSentryConfig({
+      SENTRY_DSN: DSN,
+      HOUSTON_MANAGED_CLOUD: "1",
+      SENTRY_RELEASE: "engine-pod@21ad5df5c22f",
+    });
+    expect(pod?.tags.engine_version).toBe("21ad5df5c22f");
+
+    const bare = resolveEngineSentryConfig({
+      SENTRY_DSN: DSN,
+      NODE_ENV: "production",
+      SENTRY_RELEASE: "no-at-sign",
+    });
+    expect(bare?.tags.engine_version).toBeUndefined();
+  });
+
   it("omits release when none is injected", () => {
     const config = resolveEngineSentryConfig({
       SENTRY_DSN: DSN,

@@ -4,15 +4,16 @@ import Foundation
 /// `tokenExpired` seam (`SdkClient.events` fatal → refresh → re-attach).
 extension AuthController {
     /// Refresh now using the given session's refresh token. On success adopts
-    /// the new session; on failure drops to signed-out so the user re-auths.
+    /// the refreshed session (profile fields carry over); on failure drops to
+    /// signed-out so the user re-auths.
     @discardableResult
     func refreshNow(using stored: AuthSession) async -> Bool {
         do {
-            let tokens = try await auth.refresh(refreshToken: stored.refreshToken)
-            try await adopt(AuthSession(from: tokens))
+            let tokens = try await gcip.refresh(refreshToken: stored.refreshToken)
+            try await adopt(stored.refreshed(with: tokens))
             return true
         } catch {
-            errorMessage = Self.describe(error)
+            errorMessage = AuthErrorCopy.message(for: error)
             await forceSignOut()
             return false
         }
@@ -33,7 +34,7 @@ extension AuthController {
     }
 
     /// Subscribe to the SDK event stream and react to the fatal `tokenExpired`
-    /// signal (gateway 401 on a lapsed Supabase JWT) by refreshing and
+    /// signal (gateway 401 on a lapsed Firebase ID token) by refreshing and
     /// re-attaching, so existing subscriptions resume (BRIDGE.md §6.6).
     func observeSdkFatal() {
         eventTask = Task { [weak self] in
@@ -46,7 +47,7 @@ extension AuthController {
         }
     }
 
-    /// The SDK reported a fatal token expiry. Refresh the Supabase session and
+    /// The SDK reported a fatal token expiry. Refresh the GCIP session and
     /// re-attach the new token; if we have no session to refresh, sign out.
     func handleTokenExpired() async {
         guard let current = session else {

@@ -40,6 +40,10 @@ targets:
         excludes:
           - "Generated/**"
           - "Info.plist"
+          - "Houston.entitlements"
+      # Apple privacy manifest — bundled as a resource (App Store requirement).
+      - path: Houston/PrivacyInfo.xcprivacy
+        buildPhase: resources
       # Design tokens synced from packages/design-tokens by the pre-build phase.
       - path: Houston/Generated/HoustonTokens.swift
         optional: true
@@ -51,8 +55,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gethouston.Houston
         PRODUCT_NAME: Houston
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_ENTITLEMENTS: Houston/Houston.entitlements
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         TARGETED_DEVICE_FAMILY: "1,2"   # iPhone + iPad
     info:
@@ -74,13 +79,16 @@ targets:
         # per-build export-compliance question.
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
-        # OAuth callback deep link: Supabase redirects to houston://auth-callback.
+        # OAuth callback deep link: the Microsoft flow redirects to
+        # houston://auth-callback (Google uses its reversed-client-ID scheme,
+        # which ASWebAuthenticationSession intercepts without registration;
+        # Apple sign-in is fully native; the email code never leaves the app).
         CFBundleURLTypes:
           - CFBundleURLName: com.gethouston.Houston
             CFBundleURLSchemes:
               - houston
         # App Transport Security: keep the secure default (no arbitrary loads).
-        # The gateway and Supabase are HTTPS, so no exceptions are required.
+        # The gateway and GCIP endpoints are HTTPS, so no exceptions are required.
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: false
     preBuildScripts:

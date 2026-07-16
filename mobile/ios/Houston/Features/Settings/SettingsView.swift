@@ -7,14 +7,15 @@ import SwiftUI
 /// removed to keep Settings short and focused. AI Models and Integrations still
 /// exist in the app; they are simply unreachable from here for now.
 ///
-/// Account identity comes from the Supabase JWT (`UserProfile`); sign-out goes
-/// through ``AuthController``. Appearance is `@AppStorage`-backed and device-local
-/// (``AppearanceRow`` / ``AppearancePreference``), so this view needs no model.
+/// Account identity comes straight off the GCIP session (`UserProfile`);
+/// sign-out goes through ``AuthController``. Appearance is `@AppStorage`-backed
+/// and device-local (``AppearanceRow`` / ``AppearancePreference``), so this
+/// view needs no model.
 struct SettingsView: View {
     @Environment(\.theme) private var theme
     @Environment(AuthController.self) private var auth
 
-    private var profile: UserProfile? { UserProfile.decode(jwt: auth.session?.accessToken) }
+    private var profile: UserProfile? { auth.session.map(UserProfile.init) }
 
     var body: some View {
         NavigationStack {

@@ -7,6 +7,7 @@ import {
   formatResetWhen,
   formatTokensAmount,
   matchUsageToProviders,
+  splitAccountsByBilling,
 } from "../src/components/usage-view/usage-model.ts";
 import type { ProviderInfo } from "../src/lib/providers.ts";
 
@@ -53,6 +54,37 @@ describe("matchUsageToProviders", () => {
   it("keeps a connected card with no engine row (row: null), never drops it", () => {
     const accounts = matchUsageToProviders([card("google")], []);
     deepStrictEqual(accounts, [{ provider: card("google"), row: null }]);
+  });
+});
+
+describe("splitAccountsByBilling", () => {
+  const account = (id: string, auth?: ProviderInfo["auth"]) => ({
+    provider: { ...card(id), ...(auth ? { auth } : {}) },
+    row: null,
+  });
+
+  it("routes OAuth (and auth-less) accounts to subscriptions, key/compatible to per-token", () => {
+    const { subscriptions, perToken } = splitAccountsByBilling([
+      account("anthropic", "oauth"),
+      account("openrouter", "apiKey"),
+      account("openai"),
+      account("ollama", "openaiCompatible"),
+    ]);
+    deepStrictEqual(
+      subscriptions.map((a) => a.provider.id),
+      ["anthropic", "openai"],
+    );
+    deepStrictEqual(
+      perToken.map((a) => a.provider.id),
+      ["openrouter", "ollama"],
+    );
+  });
+
+  it("answers both sections empty for no accounts", () => {
+    deepStrictEqual(splitAccountsByBilling([]), {
+      subscriptions: [],
+      perToken: [],
+    });
   });
 });
 

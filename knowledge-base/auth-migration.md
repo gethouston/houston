@@ -90,8 +90,24 @@ now lives in git).
   retired Supabase `profiles` table) and an account-level migration flag (restores the
   coarse cross-machine "never offer again").
 - **[SHIPPED client-side] Apple SSO** — the client now offers "Continue with
-  Apple" on web (popup) and desktop (GCIP-brokered loopback; Apple rejects
-  `127.0.0.1` redirects, so `createAuthUri`/`signInWithIdp(sessionId)` broker
-  through GCIP's handler — see `knowledge-base/auth.md`). Human config still
-  owed: Apple Developer Services ID + key, GCIP `apple.com` provider enablement
-  (terraform `identity.tf`), and `127.0.0.1` in authorized domains.
+  Apple" on ALL surfaces: web (popup), desktop (GCIP-brokered loopback; Apple
+  rejects `127.0.0.1` redirects, so `createAuthUri`/`signInWithIdp(sessionId)`
+  broker through GCIP's handler), and **native on iOS**
+  (`SignInWithAppleButton` + nonce → `signInWithIdp(apple.com)`, guideline 4.8
+  makes it mandatory next to Google — see `knowledge-base/auth.md`). The
+  `apple.com` IdP enablement is terraform in `cloud/infra/terraform/identity.tf`
+  (client id = the iOS bundle id for the native flow; swap in the Services ID +
+  key-derived secret when wiring the web/desktop flows). Human config still
+  owed: Apple Developer Services ID + key (web/desktop only), the Sign in with
+  Apple capability on App ID `com.gethouston.Houston`, and `127.0.0.1` in
+  authorized domains (desktop broker).
+- **[HIGH — human] iOS registrations** — the iOS app moved to GCIP too
+  (`mobile/ios/Houston/Core/Auth/`, same REST approach as desktop; see
+  `knowledge-base/auth.md` "iOS (native app)"). Outstanding human steps:
+  register a Google **iOS** OAuth client (paste its id into
+  `mobile/ios/Houston/App/Config.swift`), add `houston://auth-callback` to the
+  Azure app's mobile redirect URIs (paste the app id likewise), and create
+  the App Store Connect app record + `APPLE_TEAM_ID` secret for the TestFlight
+  lane (`.github/workflows/ios-testflight.yml`). Until the ids are pasted the
+  Google/Microsoft buttons surface the "not available yet" copy; Apple + the
+  email code work without them.

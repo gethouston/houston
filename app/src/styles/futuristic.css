@@ -110,19 +110,16 @@ body::before {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
-/* Modal surface (`bg-dialog`). SOLID in both themes (the dialog token is
-   opaque: white light, neutral.800 dark). Floating surfaces that sit over
-   content must never bleed it through — the old glass fills read as solid
-   only through backdrop-filter, which WebView2 does not reliably composite
-   (GPU/driver dependent, silently no-ops), so modals painted see-through on
-   desktop. Solid tokens fix it everywhere; only the top sheen remains. */
-.bg-dialog {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-
+/* Modal surface (`bg-dialog`). SOLID in both themes (the `dialog` token:
+   neutral.800 dark, white light) — no glass, no backdrop-filter. Modals sit
+   over arbitrary content and must never bleed it through; WebView2 in the
+   desktop shell doesn't reliably composite backdrop-filter anyway (the dark
+   "New agent" modal bled the Settings page through, and light washed out
+   too). Only the subtle top sheen remains. */
 [data-theme="dark"] .bg-dialog {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
+
 
 /* ── 4. Flat primary button ─────────────────────────────────────
    Deliberately FLAT — no gradients, no bevels, no inset/outer shadows,

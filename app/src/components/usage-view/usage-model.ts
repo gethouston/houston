@@ -47,6 +47,33 @@ export function matchUsageToProviders(
   });
 }
 
+/** The Usage page's two billing sections, both in the caller's card order. */
+export interface AccountUsageSections {
+  /** OAuth plan accounts (Claude, ChatGPT, Copilot): limits that reset. */
+  subscriptions: AccountUsage[];
+  /** API-key / self-hosted accounts: billed (or metered) per token. */
+  perToken: AccountUsage[];
+}
+
+/**
+ * Split the paired accounts into the page's two sections by how the account
+ * bills: subscription OAuth providers (auth absent or "oauth") have plan
+ * windows that reset, everything else (pasted keys, OpenAI-compatible
+ * servers) is pay-per-token — the same `auth` axis the hub's connect flow
+ * branches on, so the two surfaces can never disagree about a provider's kind.
+ */
+export function splitAccountsByBilling(
+  accounts: readonly AccountUsage[],
+): AccountUsageSections {
+  const subscriptions: AccountUsage[] = [];
+  const perToken: AccountUsage[] = [];
+  for (const account of accounts) {
+    const subscription = (account.provider.auth ?? "oauth") === "oauth";
+    (subscription ? subscriptions : perToken).push(account);
+  }
+  return { subscriptions, perToken };
+}
+
 /**
  * A localized "in 2 hours" phrase for a window's reset instant, or null when
  * the instant is absent/past/unparseable (the row then omits its reset note;

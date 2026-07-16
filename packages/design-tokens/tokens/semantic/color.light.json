@@ -18,6 +18,8 @@
     "hover": { "$value": "{color.neutral.100}" },
     "hover-text": { "$value": "{color.neutral.650}" },
     "chip": { "$value": "{color.alpha.ink-a035}" },
+    "chip-solid": { "$value": "{color.neutral.100}" },
+    "chip-solid-hover": { "$value": "{color.neutral.150}" },
     "chip-text": { "$value": "{color.neutral.950}" },
     "chip-subtle": { "$value": "{color.alpha.ink-a035}" },
     "line": { "$value": "{color.brand.border-wash}" },

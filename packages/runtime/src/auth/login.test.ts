@@ -2,13 +2,15 @@ import {
   OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
 } from "@earendil-works/pi-ai/oauth";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import {
   autoPromptAnswer,
   cancelLogin,
   codexLoginMethod,
   getAuthStatus,
   LOCAL_PLACEHOLDER_KEY,
+  LOGIN_TIMEOUT_ERROR,
+  LOGIN_TIMEOUT_MS,
   setApiKey,
   startLogin,
 } from "./login";
@@ -130,4 +132,80 @@ test("LOCAL_PLACEHOLDER_KEY exists for keyless local servers", () => {
   // Ollama/LM Studio ignore the Authorization header, but pi requires SOME key,
   // so a blank key becomes this placeholder.
   expect(LOCAL_PLACEHOLDER_KEY.length).toBeGreaterThan(0);
+});
+
+test("an abandoned login expires: reports 'Login timed out' and frees the flow for a retry", async () => {
+  // An abandoned flow held pi's OAuth callback server bound to the provider's
+  // fixed port (Codex: 1455) FOREVER, blocking every future sign-in for that
+  // provider machine-wide. The expiry tears the flow down like cancelLogin but
+  // records the attempt as a failure so status polls surface it.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    const first = await startLogin("anthropic");
+    expect(first.kind).toBe("auth_code");
+
+    await vi.advanceTimersByTimeAsync(LOGIN_TIMEOUT_MS + 1);
+
+    const row = (await getAuthStatus()).providers.find(
+      (p) => p.provider === "anthropic",
+    );
+    expect(row?.login?.status).toBe("error");
+    expect(row?.login?.error).toBe(LOGIN_TIMEOUT_ERROR);
+
+    // The paste promise was rejected (flow unwound, port freed), so a retry
+    // builds a FRESH login instead of reusing the dead one.
+    const second = await startLogin("anthropic");
+    expect(second).not.toBe(first);
+    cancelLogin("anthropic");
+    await vi.advanceTimersByTimeAsync(100);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("reusing an in-flight login re-arms the abandonment clock", async () => {
+  // A second connect click near the deadline idempotently reuses the live flow
+  // — the user just asked to sign in, so they get the FULL window again, not
+  // the stale remainder of the first click's.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    const first = await startLogin("anthropic");
+    await vi.advanceTimersByTimeAsync(LOGIN_TIMEOUT_MS - 2_000);
+    const again = await startLogin("anthropic");
+    expect(again).toBe(first);
+
+    // Crossing the ORIGINAL deadline must not kill the refreshed flow…
+    await vi.advanceTimersByTimeAsync(4_000);
+    let row = (await getAuthStatus()).providers.find(
+      (p) => p.provider === "anthropic",
+    );
+    expect(row?.login?.status).toBe("awaiting_user");
+
+    // …but the refreshed window still expires on its own schedule.
+    await vi.advanceTimersByTimeAsync(LOGIN_TIMEOUT_MS);
+    row = (await getAuthStatus()).providers.find(
+      (p) => p.provider === "anthropic",
+    );
+    expect(row?.login?.status).toBe("error");
+    expect(row?.login?.error).toBe(LOGIN_TIMEOUT_ERROR);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("a cancelled login's expiry never resurrects an error row", async () => {
+  // Cancel frees the slot (login: null). The expiry firing later must stand
+  // down — not overwrite the clean slate with a phantom timeout error.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    await startLogin("anthropic");
+    cancelLogin("anthropic");
+    await vi.advanceTimersByTimeAsync(LOGIN_TIMEOUT_MS + 1);
+    const row = (await getAuthStatus()).providers.find(
+      (p) => p.provider === "anthropic",
+    );
+    expect(row?.login).toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
 });
