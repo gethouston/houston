@@ -124,6 +124,30 @@ body::before {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
+/* ── 3b. Desktop shell: opaque floating surfaces ────────────────
+   The glass popover/dialog fills are TRANSLUCENT by design and read as
+   solid only through the backdrop-filter blur above. In the Tauri
+   desktop shell, WebView2 does not reliably composite backdrop-filter
+   (GPU/driver dependent — it silently no-ops on affected machines), so
+   the bare alpha fill painted see-through: the dark "New agent" modal
+   over Settings, the routines "…" menu in both themes. `@supports`
+   can't catch this (the property parses fine; compositing is what
+   fails), so the desktop entry stamps `data-desktop` on <html>
+   (lib/desktop-surface.ts) and the FLOATING surfaces — the ones that
+   sit over content and must never bleed it through — fall back to the
+   solid token equivalents. The web build keeps its frosted glass. */
+html[data-desktop] .bg-popover {
+  background-color: var(--ht-popover-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html[data-desktop] .bg-dialog {
+  background-color: var(--ht-dialog-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 /* ── 4. Flat primary button ─────────────────────────────────────
    Deliberately FLAT — no gradients, no bevels, no inset/outer shadows,
    nothing that fakes depth or 3D. Just a plain fill + white text.
