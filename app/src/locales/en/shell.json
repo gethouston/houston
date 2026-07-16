@@ -252,6 +252,7 @@
       "reports": "Every Friday I compile a team status report from scattered updates and sheets",
       "research": "I need market and competitor research summarized into briefs I can share"
     },
+    "modelLabel": "AI model",
     "generateButton": "Design my agent",
     "generatingMessage": "Your consultant is designing the agent...",
     "cancelButton": "Cancel",
