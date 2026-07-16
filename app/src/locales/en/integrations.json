@@ -94,9 +94,7 @@
     "connectApp": "Connect {{name}}",
     "installedTitle": "Installed",
     "otherCategory": "Other",
-    "showAllApps": "Show all {{count}} apps",
-    "usedByNone": "No agents yet",
-    "usedByAll": "All agents"
+    "showAllApps": "Show all {{count}} apps"
   },
   "detail": {
     "activeOn": "Agents that can use this",

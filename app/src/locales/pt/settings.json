@@ -137,13 +137,6 @@
       "appsCount_other": "{{count}} aplicativos"
     }
   },
-  "connectedAccounts": {
-    "title": "Contas conectadas",
-    "subtitle": "Aplicativos que você conectou. Escolha quais agentes podem usar cada um.",
-    "heading": "Seus aplicativos",
-    "empty": "Você ainda não conectou nenhum aplicativo.",
-    "connectMore": "Conectar mais aplicativos"
-  },
   "apiKeys": {
     "title": "Chaves de API",
     "intro": "Outros apps, assistentes de IA e ferramentas de automação podem iniciar missões com seus agentes. Cada conexão precisa de uma chave que você cria aqui. <docs>Leia a documentação para desenvolvedores</docs>.",

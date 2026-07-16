@@ -528,9 +528,9 @@ different copy per ceiling:
 
 `teams:integrations.orgAllowlist.*` and `teams:integrations.allowlist.*` carry the
 same choice keys (`question` / `anyLabel` / `pickedLabel` / …); `orgAllowlist` adds
-`ownerOnly`. Per-agent GRANT toggles are a separate concept and live only in
-Settings > Connected accounts (the members' account home), never in either ceiling
-editor.
+`ownerOnly`. Per-agent GRANT toggles are a separate concept and live only on the
+global Integrations page's app detail modal (the ONE by-app grants lens; the
+Settings row deep-links there), never in either ceiling editor.
 
 **Design principle: blocked is visible, never silently hidden.** Applied
 product-wide wherever a ceiling narrows a member's world: browse surfaces (the global

@@ -15,11 +15,11 @@ interface ToggleVars {
 }
 
 /**
- * Toggle ONE toolkit in ONE agent's grant set, for the Settings > Connected
- * accounts per-app agent list (the one explicit grants surface) where the agent
- * is chosen at click time (so the per-agent `useAgentGrantMutation`, whose agent
- * id is fixed in a closure, cannot be called in a variable-length loop without
- * breaking the rules of hooks).
+ * Toggle ONE toolkit in ONE agent's grant set, for the global Integrations
+ * page's per-app agent list (the one explicit by-app grants surface) where the
+ * agent is chosen at click time (so the per-agent `useAgentGrantMutation`, whose
+ * agent id is fixed in a closure, cannot be called in a variable-length loop
+ * without breaking the rules of hooks).
  *
  * Shares the same replace-set contract and optimistic cache behaviour as
  * `useAgentGrantMutation`, reusing the `grant-set` pure helpers, but carries the

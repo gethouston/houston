@@ -6,7 +6,6 @@
  * component module.
  */
 export const SETTINGS_SECTION_IDS = [
-  "connectedAccounts",
   "apiKeys",
   "workspaceContext",
   "userContext",

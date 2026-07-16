@@ -137,13 +137,6 @@
       "appsCount_other": "{{count}} aplicaciones"
     }
   },
-  "connectedAccounts": {
-    "title": "Cuentas conectadas",
-    "subtitle": "Aplicaciones que conectaste. Elige qué agentes pueden usar cada una.",
-    "heading": "Tus aplicaciones",
-    "empty": "Aún no conectaste ninguna aplicación.",
-    "connectMore": "Conectar más aplicaciones"
-  },
   "apiKeys": {
     "title": "Claves de API",
     "intro": "Otras apps, asistentes de IA y herramientas de automatización pueden iniciar misiones con tus agentes. Cada conexión necesita una clave que creas aquí. <docs>Lee la documentación para desarrolladores</docs>.",

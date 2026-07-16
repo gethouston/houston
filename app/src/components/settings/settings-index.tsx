@@ -19,6 +19,7 @@ import {
   INTEGRATION_PROVIDER,
   integrationsSupported,
 } from "../integrations/model";
+import { INTEGRATIONS_VIEW_ID } from "../integrations-view/id";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import { AccountSection } from "./sections/account";
 import { AppearanceSection } from "./sections/appearance";
@@ -49,6 +50,7 @@ export function SettingsIndex({
   const agentPath = useAgentStore((s) => s.current?.folderPath);
   const { data: context } = useWorkspaceContext(agentPath);
   const addToast = useUIStore((s) => s.addToast);
+  const setViewMode = useUIStore((s) => s.setViewMode);
   const { capabilities } = useCapabilities();
   const integrationsAvailable = integrationsSupported(capabilities);
   const connections = useIntegrationConnections(
@@ -94,6 +96,9 @@ export function SettingsIndex({
           <LanguageSection />
           {accountAvailable && <AccountSection />}
           {integrationsAvailable && (
+            // Connected accounts folded into the global Integrations page (the
+            // ONE by-app lens: connection status + per-agent grants). The row
+            // stays as a deep link there rather than a settings sub-screen.
             <SettingsRow
               icon={Blocks}
               title={t("settings:nav.connectedAccounts")}
@@ -103,7 +108,7 @@ export function SettingsIndex({
                   ? undefined
                   : t("settings:index.values.appsCount", { count: appCount })
               }
-              onClick={() => onSelect("connectedAccounts")}
+              onClick={() => setViewMode(INTEGRATIONS_VIEW_ID)}
             />
           )}
           {apiKeysAvailable && (
