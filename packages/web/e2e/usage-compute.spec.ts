@@ -94,18 +94,21 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
   await expect(page.getByRole("img", { name: /: ran / })).toHaveCount(7);
 
   // Per-agent rows: the seed agent resolves to its display name and wears the
-  // running badge (3h 05m across 13 tasks); the deleted slug humanizes.
-  // Scoped to the compute section: the AI-accounts cards below are also list
-  // items and their not-metered copy contains "Houston", so a page-wide
-  // listitem filter is ambiguous.
-  const compute = page.locator("section", {
-    has: page.getByRole("heading", { name: "Running time" }),
-  });
-  const houston = compute.getByRole("listitem").filter({ hasText: "Houston" });
+  // running badge (3h 05m across 13 tasks); the deleted slug humanizes. Scope
+  // to the compute section — the AI-accounts cards below are also list items
+  // and their "not metered yet" copy mentions Houston by name.
+  const computeSection = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Running time" }) });
+  const houston = computeSection
+    .getByRole("listitem")
+    .filter({ hasText: "Houston" });
   await expect(houston.getByText("Running now")).toBeVisible();
   await expect(houston).toContainText("3h 05m");
   await expect(houston).toContainText("13 tasks");
-  const sales = compute.getByRole("listitem").filter({ hasText: "Sales bot" });
+  const sales = computeSection
+    .getByRole("listitem")
+    .filter({ hasText: "Sales bot" });
   await expect(sales).toContainText("30m");
   await expect(sales).toContainText("1 task");
 
