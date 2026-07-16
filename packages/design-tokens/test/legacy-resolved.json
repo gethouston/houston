@@ -1,4 +1,4 @@
-{
+﻿{
   "light": {
     "ht-hover": "#efefef",
     "ht-hover-text": "#424242",
@@ -23,6 +23,7 @@
     "ht-card-hover": "rgba(255, 255, 255, 0.76)",
     "ht-card-text": "#0d0d0d",
     "ht-dialog": "#ffffff",
+    "ht-dialog-solid": "#ffffff",
     "ht-card-solid": "#ffffff",
     "ht-danger": "#e02e2a",
     "ht-danger-text": "#ffffff",
@@ -33,6 +34,7 @@
     "ht-chip-subtle": "rgba(13, 13, 13, 0.035)",
     "ht-ink-muted": "#8e8e8e",
     "ht-popover": "rgba(255, 255, 255, 0.82)",
+    "ht-popover-solid": "#ffffff",
     "ht-popover-text": "#0d0d0d",
     "ht-action": "#0d0d0d",
     "ht-action-text": "#ffffff",
@@ -81,6 +83,7 @@
     "ht-card-hover": "rgba(50, 50, 52, 0.58)",
     "ht-card-text": "#e5e5e5",
     "ht-dialog": "rgba(40, 40, 40, 0.5)",
+    "ht-dialog-solid": "#1e1e1e",
     "ht-card-solid": "#2c2c2b",
     "ht-danger": "#ef4444",
     "ht-danger-text": "#ffffff",
@@ -91,6 +94,7 @@
     "ht-chip-subtle": "rgba(255, 255, 255, 0.045)",
     "ht-ink-muted": "#9a9a9a",
     "ht-popover": "rgba(34, 34, 34, 0.85)",
+    "ht-popover-solid": "#1e1e1e",
     "ht-popover-text": "#e5e5e5",
     "ht-action": "#e5e5e5",
     "ht-action-text": "#141414",

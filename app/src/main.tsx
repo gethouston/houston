@@ -12,11 +12,13 @@ import { EngineGate } from "./components/shell/engine-gate";
 import { LanguageGate } from "./components/shell/language-gate";
 import { QueryPersistenceProvider } from "./components/shell/query-persistence-provider";
 import { analytics, classifyAnalyticsError } from "./lib/analytics";
+import { markDesktopSurface } from "./lib/desktop-surface";
 import { whenEngineReady } from "./lib/engine";
 import { showErrorToast } from "./lib/error-toast";
 import { installGlobalErrorHandlers } from "./lib/global-error-handlers";
 import i18n from "./lib/i18n";
 import { initFrontendLogging, logger } from "./lib/logger";
+import { osIsTauri } from "./lib/os-bridge";
 import { initSentry } from "./lib/sentry";
 import { installSentrySmokeShortcuts } from "./lib/sentry-smoke";
 import { runStartupAnalytics } from "./lib/startup-analytics";
@@ -46,6 +48,11 @@ initFrontendLogging();
 // can't drift. Must run AFTER initFrontendLogging() so the console.error → log
 // file patch is already in place.
 installGlobalErrorHandlers();
+
+// Desktop marker for the opaque floating-surface CSS fallback (WebView2
+// doesn't reliably composite backdrop-filter — futuristic.css section 3b).
+// Before the first render so no glass surface ever flashes translucent.
+markDesktopSurface(document.documentElement, osIsTauri());
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
