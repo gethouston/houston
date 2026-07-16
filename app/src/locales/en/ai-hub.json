@@ -164,17 +164,16 @@
       }
     },
     "compute": {
-      "title": "Running time",
-      "subtitle": "How long your agents have been running and how many tasks they handled.",
+      "title": "Time worked",
+      "subtitle": "How much time your agents spent working and how many tasks they handled.",
       "range": {
         "week": "7 days",
         "month": "30 days",
         "quarter": "3 months"
       },
-      "summary": "Your agents ran {{duration}}",
+      "summary": "Your agents worked {{duration}}",
       "tasks_one": "{{count}} task",
       "tasks_other": "{{count}} tasks",
-      "runningNow": "Running now",
       "byAgent": "By agent",
       "duration": {
         "hm": "{{hours}}h {{minutes}}m",
@@ -182,12 +181,13 @@
         "underMinute": "<1m",
         "zero": "0m"
       },
-      "barLabel": "{{date}}: ran {{duration}}, {{tasks}}",
+      "barLabel": "{{date}}: worked {{duration}}, {{tasks}}",
       "empty": {
-        "title": "No running time yet",
-        "body": "When your agents run, their time will show here."
+        "title": "No time worked yet",
+        "body": "When your agents work on tasks, their time will show here."
       },
-      "error": "Couldn't load running time right now. Try again in a moment."
+      "error": "Couldn't load your agents' time right now. Try again in a moment.",
+      "online": "Online"
     }
   },
   "toast": {}

@@ -7,23 +7,23 @@ interface ComputeAgentRowProps {
   name: string;
   /** Resolved agent color (semantic hex), for the avatar tint. */
   color?: string;
-  /** Busiest agent's runMs (≥ 1), to scale this row's bar. */
+  /** Busiest agent's workMs (≥ 1), to scale this row's bar. */
   max: number;
   /** This agent's engine is up right now. */
   runningNow: boolean;
-  /** Formatted running time ("3h 12m"). */
+  /** Formatted time worked ("3h 12m"). */
   duration: string;
   /** Formatted task count ("12 tasks"). */
   tasks: string;
-  /** "Running now" badge text. */
+  /** "Online" badge text. */
   runningNowLabel: string;
 }
 
 /**
- * One agent's running time in the Compute section: avatar + name + duration
+ * One agent's time worked in the Compute section: avatar + name + duration
  * and task count + a tokened track bar scaled to the busiest agent (the same
- * shape as the org Usage tab's rows, minus the expandable breakdown — running
- * time is per-agent, not per-person).
+ * shape as the org Usage tab's rows, minus the expandable breakdown — time
+ * worked is per-agent, not per-person).
  */
 export function ComputeAgentRow({
   agent,
@@ -35,7 +35,7 @@ export function ComputeAgentRow({
   tasks,
   runningNowLabel,
 }: ComputeAgentRowProps) {
-  const pct = Math.max(2, Math.round((agent.runMs / max) * 100));
+  const pct = Math.max(2, Math.round((agent.workMs / max) * 100));
   return (
     <li className="flex items-center gap-3 border-b border-line/40 py-3 last:border-0">
       <HoustonAvatar color={color} diameter={28} />
