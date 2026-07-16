@@ -29,6 +29,13 @@ import { CATALOG, SPEC } from "./provider-catalog";
 /** The slot the flat (non-agent) `/providers` + `/auth/status` routes read. */
 export const FLAT_KEY = "__flat__";
 
+/** The hidden setup runtime's provider slot (`/setup-runtime/providers`):
+ *  first-run truth, NOTHING connected — onboarding's connect step renders a
+ *  Connect pill per provider (onboarding-connect.spec). Seeds EMPTY, unlike
+ *  every other slot. The gate's `/setup-runtime/auth/status` keeps reading the
+ *  connected {@link FLAT_KEY} slot so the rest of the suite boots to the shell. */
+export const SETUP_KEY = "__setup__";
+
 interface Slot {
   configured: Set<ProviderId>;
   login: Map<ProviderId, LoginState>;
@@ -50,10 +57,21 @@ function seedSlot(): Slot {
 
 let slots = new Map<string, Slot>();
 
+/** The setup slot's seed: a first-run runtime holds no credentials. */
+function emptySlot(): Slot {
+  return {
+    configured: new Set<ProviderId>(),
+    login: new Map(),
+    activeProvider: null,
+    activeModel: new Map(),
+    enterpriseUrl: new Map(),
+  };
+}
+
 function slot(agentId: string): Slot {
   let s = slots.get(agentId);
   if (!s) {
-    s = seedSlot();
+    s = agentId === SETUP_KEY ? emptySlot() : seedSlot();
     slots.set(agentId, s);
   }
   return s;

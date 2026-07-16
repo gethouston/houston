@@ -79,10 +79,19 @@ describe("startFakeHost", () => {
       auth.providers.find((p) => p.provider === "anthropic")?.configured,
     ).toBe(true);
 
+    // The connect list models FIRST-RUN: nothing connected, so onboarding's
+    // connect step renders a Connect pill per provider (onboarding-connect.spec
+    // asserts "Connect Anthropic" is visible).
     const providers = await fetch(`${host.url}/setup-runtime/providers`);
     expect(providers.status).toBe(200);
+    const list = (await providers.json()) as Array<{
+      id: string;
+      configured: boolean;
+    }>;
+    expect(list.length).toBeGreaterThan(0);
+    expect(list.every((p) => !p.configured)).toBe(true);
 
-    // The OAuth login chain flips the SAME flat slot the top-level probe reads.
+    // The OAuth login chain flips BOTH slots: the flat probe and the connect list.
     const login = await fetch(
       `${host.url}/setup-runtime/auth/openai-codex/login`,
       { method: "POST" },
@@ -99,6 +108,12 @@ describe("startFakeHost", () => {
     expect(
       after.providers.find((p) => p.provider === "openai-codex")?.configured,
     ).toBe(true);
+    const setupAfter = (await (
+      await fetch(`${host.url}/setup-runtime/providers`)
+    ).json()) as Array<{ id: string; configured: boolean }>;
+    expect(setupAfter.find((p) => p.id === "openai-codex")?.configured).toBe(
+      true,
+    );
 
     // Anything outside the connect surface stays agent-scoped — 404.
     const outside = await fetch(`${host.url}/setup-runtime/settings`);
