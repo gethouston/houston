@@ -189,8 +189,17 @@ describe("credit balances", () => {
     expect(row.credits).toEqual({
       remaining: 19.5,
       granted: 25,
-      unit: "credits",
+      unit: "USD",
     });
+  });
+
+  it("openrouter: an unreadable balance is an error, not a $0 balance", async () => {
+    const row = await fetchOpenRouterUsage(
+      jsonResponse({ data: { credits: 25 } }),
+      keyStore,
+    );
+    expect(row.status).toBe("error");
+    expect(row.credits).toBeUndefined();
   });
 
   it("deepseek: parses the string USD balance", async () => {

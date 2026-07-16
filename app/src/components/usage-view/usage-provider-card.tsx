@@ -52,8 +52,10 @@ function CardBody({
   locale: string;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
+  // `unsupported` only ever comes from the never-metered fallback (no usage
+  // API + no ledger row yet), so the honest copy is "not measured yet".
   if (!row || row.status === "unsupported") {
-    return <p className="text-xs text-ink-muted">{t("usage.unsupported")}</p>;
+    return <p className="text-xs text-ink-muted">{t("usage.notMeteredYet")}</p>;
   }
   if (row.status === "unauthenticated") {
     return <p className="text-xs text-ink-muted">{t("usage.reconnect")}</p>;

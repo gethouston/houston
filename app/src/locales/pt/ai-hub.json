@@ -147,7 +147,7 @@
     "tokensSplit": "{{input}} de entrada, {{output}} de saída",
     "meteredSince": "medido pela Houston desde {{when}}",
     "noData": "Esta conta não reporta limites no momento.",
-    "unsupported": "Este provedor ainda não compartilha detalhes de uso.",
+    "notMeteredYet": "Ainda não há uso. A Houston vai começar a medir com a sua próxima mensagem.",
     "reconnect": "Entre novamente para ver o uso desta conta.",
     "error": "Não foi possível carregar o uso. Tente de novo em instantes.",
     "empty": {

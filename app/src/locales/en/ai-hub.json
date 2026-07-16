@@ -147,7 +147,7 @@
     "tokensSplit": "{{input}} in, {{output}} out",
     "meteredSince": "measured by Houston since {{when}}",
     "noData": "This account reports no limits right now.",
-    "unsupported": "This provider doesn't share usage details yet.",
+    "notMeteredYet": "No usage yet. Houston will start measuring with your next message.",
     "reconnect": "Sign in again to see this account's usage.",
     "error": "Couldn't load usage right now. Try again in a moment.",
     "empty": {
