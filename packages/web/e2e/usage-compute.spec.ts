@@ -95,11 +95,17 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
 
   // Per-agent rows: the seed agent resolves to its display name and wears the
   // running badge (3h 05m across 13 tasks); the deleted slug humanizes.
-  const houston = page.getByRole("listitem").filter({ hasText: "Houston" });
+  // Scoped to the compute section: the AI-accounts cards below are also list
+  // items and their not-metered copy contains "Houston", so a page-wide
+  // listitem filter is ambiguous.
+  const compute = page.locator("section", {
+    has: page.getByRole("heading", { name: "Running time" }),
+  });
+  const houston = compute.getByRole("listitem").filter({ hasText: "Houston" });
   await expect(houston.getByText("Running now")).toBeVisible();
   await expect(houston).toContainText("3h 05m");
   await expect(houston).toContainText("13 tasks");
-  const sales = page.getByRole("listitem").filter({ hasText: "Sales bot" });
+  const sales = compute.getByRole("listitem").filter({ hasText: "Sales bot" });
   await expect(sales).toContainText("30m");
   await expect(sales).toContainText("1 task");
 
