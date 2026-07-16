@@ -76,9 +76,7 @@
     "missions": {
       "connect": {
         "title": "Conecte sua IA",
-        "body": "Escolha a IA que você já paga e entre. Você usa sua própria assinatura, então o Houston nunca vê sua senha nem sua fatura.",
-        "skip": "Pular por enquanto",
-        "skipHint": "Você pode conectar uma IA quando quiser. Seu assistente vai esperar até lá."
+        "body": "Escolha a IA que você já paga e entre. Você usa sua própria assinatura, então o Houston nunca vê sua senha nem sua fatura."
       },
       "email": {
         "title": "Veja seu agente em ação",
