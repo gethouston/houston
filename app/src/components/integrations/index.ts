@@ -8,8 +8,6 @@ export {
 export { AppLogo } from "./app-logo";
 export { AppRow } from "./app-row";
 export {
-  type BlockingCeiling,
-  blockingCeiling,
   type PermissionsFix,
   resolvePermissionsFix,
 } from "./blocked-ceiling";

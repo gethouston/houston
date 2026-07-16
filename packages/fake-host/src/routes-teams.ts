@@ -1,14 +1,13 @@
 /**
  * Teams v2 gateway routes for the fake host: the per-agent settings the client
- * reads with `getAgentSettings` (`GET /v1/agents/:slug/settings`) and the org
- * ceiling `getOrgSettings` reads (`GET /v1/org/settings`), plus their manager /
- * owner `PUT` replacers.
+ * reads with `getAgentSettings` (`GET /v1/agents/:slug/settings`) plus its
+ * manager `PUT` replacer.
  *
- * These mirror the closed cloud gateway (C7 Teams v2, `agent_settings` /
- * `org_settings`) — the surface the host repo itself never serves, since the
- * ceiling lives only above the engine. They read/write the single-user Teams
- * settings in state; the wire shapes match `@houston-ai/engine-client`'s
- * `AgentSettings` / `OrgSettings` exactly so the mock can't drift.
+ * These mirror the closed cloud gateway (C7 Teams v2, `agent_settings`) — the
+ * surface the host repo itself never serves, since the ceiling lives only above
+ * the engine. They read/write the single-user Teams settings in state; the wire
+ * shape matches `@houston-ai/engine-client`'s `AgentSettings` exactly so the mock
+ * can't drift.
  */
 
 import { json } from "./http";
@@ -97,7 +96,7 @@ export function handleTeamsRoutes(
     return json({ ok: true });
   }
 
-  // /v1/agents/:slug/settings — the agent ceiling + org ceiling + access.
+  // /v1/agents/:slug/settings — the agent ceiling (whole allowlist) + access.
   if (
     segs[0] === "v1" &&
     segs[1] === "agents" &&
@@ -108,10 +107,8 @@ export function handleTeamsRoutes(
     if (method === "GET") {
       return json({
         allowedToolkits: s.allowedToolkits,
-        orgAllowedToolkits: s.orgAllowedToolkits,
         access: s.access,
         allowedModels: s.allowedModels,
-        orgAllowedModels: s.orgAllowedModels,
       });
     }
     if (method === "PUT") {
@@ -148,37 +145,6 @@ export function handleTeamsRoutes(
       awakeNow: seed.awakeNow,
       rows: seed.rows,
     });
-  }
-
-  // /v1/org/settings — the org-wide app + AI-model ceilings.
-  if (
-    segs[0] === "v1" &&
-    segs[1] === "org" &&
-    segs[2] === "settings" &&
-    segs.length === 3
-  ) {
-    const s = state.getTeamsSettings();
-    if (method === "GET") {
-      return json({
-        allowedToolkits: s.orgAllowedToolkits,
-        allowedModels: s.orgAllowedModels,
-      });
-    }
-    if (method === "PUT") {
-      // Partial patch — change one org ceiling without touching the other.
-      if (body && "allowedToolkits" in body) {
-        state.setTeamsSettings({
-          orgAllowedToolkits: toolkitList(body.allowedToolkits),
-        });
-      }
-      if (body && "allowedModels" in body) {
-        state.setTeamsSettings({
-          orgAllowedModels: toolkitList(body.allowedModels),
-        });
-      }
-      return json({ ok: true });
-    }
-    return json({ error: "not found" }, 404);
   }
 
   return undefined;

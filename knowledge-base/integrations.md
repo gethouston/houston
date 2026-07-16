@@ -141,40 +141,38 @@ legacy grant-enforcement code is being retired in a SEPARATE cloud change
 Desktop/self-host run this open host with NO server-side policy layer — an
 install with a connection can use the app.
 
-### Allowlist CEILINGS are the only policy (Teams v2, C7)
-Two ceilings decide usability: an **org** ceiling (`org_settings`) and a
-per-**agent** ceiling (`agent_settings`):
+### The per-agent allowlist ceiling is the only policy (Teams v2, C7)
+> **Org-wide ceiling REMOVED (2026-07-16, Felipe: overengineering).** The
+> `org_settings` ceiling, the `OrgSettings` wire type + `getOrgSettings`/
+> `setOrgSettings`/`useOrgSettings` chain, and `AgentSettings.orgAllowedToolkits`
+> are gone. Policy is managed ONLY per agent; a new agent defaults to every app.
+> The gateway-side retirement rides a sibling `cloud` PR.
+
+One ceiling decides usability: the per-**agent** ceiling (`agent_settings`):
 
 ```
-effectiveAllowlist = intersect(orgCeiling ?? ALL, agentCeiling ?? ALL)
+effectiveAllowlist = agentCeiling ?? ALL
 ```
 
-`null` = unrestricted (ALL), `[]` = none. When a ceiling **shrinks**, the gateway
+`null` = unrestricted (ALL), `[]` = none. When the ceiling **shrinks**, the gateway
 prunes now-disallowed toolkits from live connections so revocation takes effect
 immediately. A per-agent **connect carries the agent slug**: the gateway checks
-the toolkit against the effective allowlist on a successful OAuth (see
+the toolkit against the allowlist on a successful OAuth (see
 `connectIntegration(provider, toolkit, agent?)`).
 
 **Client + UI.** `getAgentSettings` / `setAgentSettings` read/replace the agent
-ceiling (`allowedToolkits`, plus the read-only `orgAllowedToolkits` it's
-intersected with and the caller's effective `access`; manager-only write).
-`getOrgSettings` / `setOrgSettings` read/replace the org ceiling (owner-only
-write), now consumed by `useOrgSettings` / `useSetOrgSettings`
-(`app/src/hooks/queries/use-org-settings.ts`, query key `["org-settings"]` via
-`queryKeys.orgSettings()`, wired through `tauriOrg.getSettings`/`setSettings`).
-BOTH ceilings render through the SHARED `AllowlistEditor`
-(`components/integrations/allowlist-editor.tsx`, i18n-agnostic `copy` prop):
-- the **org** editor is the Admin page's **Allowed apps** tab
-  (`organization/allowed-integrations-tab.tsx`, Teams owner edits / admin read-only),
-  copy `teams:integrations.orgAllowlist.*` (see `teams.md`);
+ceiling (`allowedToolkits` — the whole effective allowlist — plus the caller's
+effective `access`; manager-only write). The ceiling renders through the SHARED
+`AllowlistEditor` (`components/integrations/allowlist-editor.tsx`, i18n-agnostic
+`copy` prop):
 - the **per-agent** editor is `AgentAllowlistSection`
   (`tabs/agent-integrations/agent-allowlist-section.tsx` — a thin wrapper feeding
-  `AllowlistEditor` the `teams:integrations.allowlist.*` copy, the org-ceiling-narrowed
-  universe, and a connected-apps seed). It is NO LONGER mounted in Agent Settings; the
-  Permissions view mounts it (via `AgentAdminIntegrations`, `AgentAdminModel`) inside a
-  per-agent drill-in. Agent Settings > **Access** now carries only "people with access"
-  (`agentAdminCards`' access card is `["people"]`); the apps + models ceiling rows and
-  their `agent-admin-{integrations,model}` mounts left that tab.
+  `AllowlistEditor` the `teams:integrations.allowlist.*` copy, the WHOLE catalog as the
+  selectable universe, and a connected-apps seed). It is NO LONGER mounted in Agent
+  Settings; the Permissions view mounts it (via `AgentAdminIntegrations`,
+  `AgentAdminModel`) inside a per-agent drill-in. Agent Settings > **Access** now carries
+  only "people with access" (`agentAdminCards`' access card is `["people"]`); the apps +
+  models ceiling rows and their `agent-admin-{integrations,model}` mounts left that tab.
 
 The editor's surface is an always-visible two-option choice (`anyLabel` saves
 `null`, `pickedLabel` saves an explicit set; choice keys `question` /
@@ -525,12 +523,11 @@ allowlist, the browse catalog no longer FILTERS blocked apps out (which read as
 `allowlist` down through `CatalogPane` → `CategoryCatalog`, which calls the pure
 `browseCatalogView` (`integrations/browse-model.ts`) to split the browse set into
 `connectable` (inside the ceiling, grouped into the category sections) and
-`locked` (outside it). BOTH browse surfaces now feed it: the per-agent tab passes the
-agent's effective `allowlist`, and the **global Integrations page** now fetches the org
-app ceiling (`useOrgSettings(teamsEnabled)`, member-readable `GET /org/settings`) and
-passes that `allowlist` into `CatalogPane`, so org-blocked apps render in the SAME locked
-pipeline for EVERY member, search included. Off Teams the page passes `allowlist === null`
-(unchanged). Locked apps render via `CatalogLockedSection`: read-only
+`locked` (outside it). ONLY the per-agent tab feeds it a ceiling — it passes the
+agent's effective `allowlist`. The **global Integrations page** has no ceiling to apply
+(policy is per agent only; the org-wide ceiling was removed 2026-07-16), so it always
+passes `allowlist === null` and never locks a row. Locked apps render via
+`CatalogLockedSection`: read-only
 `AppRow`s with a `Lock` trailing icon and the `integrations:locked.askAdmin`
 subtitle ("Ask your admin to enable {app}", visible at rest — no hover gating),
 under a muted `locked.heading` ("Turned off in your workspace") with a `CatalogCount`
@@ -549,20 +546,17 @@ When it returns a thunk for a slug, the ask-your-admin line is REPLACED by an
 `EnableInPermissionsButton` ("Enable it in Permissions", `integrations:locked.enableInPermissions`
 / `teams:integrations.notAllowed.enableInPermissions`) that deep-links into the top-level
 **Permissions view** (`setViewMode(PERMISSIONS_VIEW_ID)` from `../permissions/id` + a
-`usePermissionsNav` request from `../permissions/permissions-nav-store`). WHICH ceiling
-decides the destination and the authority: `blockingCeiling(slug, {orgAllowedToolkits, agentAllowedToolkits})`
-returns `"org"` (slug outside the org ceiling → owner-only, deep-links to the Permissions
-Agents tab via `requestTab("agents")`) or `"agent"` (inside org, outside the agent ceiling →
-the agent's manager, deep-links to this agent's per-agent Permissions detail via
-`requestAgentDetail(agentId)`). The resolver (`resolvePermissionsFix`) returns `undefined` — member
-copy, unchanged — whenever the viewer lacks the authority (`canEditOrgSettings` for org,
-`isAgentManager && canSeeMembers` for agent; the `canSeeMembers` guard keeps a non-admin
-manager, who can't open the Permissions dashboard, from getting a dead link). The leaf sections
-stay presentational (props only, no store imports); the resolver is BUILT at the surfaces
-that hold the policy data — the global page (`integrations-ready.tsx`, org ceiling only,
-no agent context) and the per-agent tab (`agent-integrations-tab.tsx`, per-slug org-vs-agent
-attribution) — and threaded down through `CatalogPane`/`CategoryCatalog` (`lockedFix`) and
-`AgentCatalogSections` (`permissionsFix`). Pure logic is node-tested in `app/tests/blocked-ceiling.test.ts`.
+`usePermissionsNav` request from `../permissions/permissions-nav-store`). A blocked app is
+always outside the AGENT ceiling (policy is per agent only), so the fix always deep-links to
+this agent's per-agent Permissions detail via `requestAgentDetail(agentId)`. The resolver
+(`resolvePermissionsFix`) returns `undefined` — member copy, unchanged — whenever the viewer
+lacks the authority (`isAgentManager && canSeeMembers`; the `canSeeMembers` guard keeps a
+non-admin manager, who can't open the Permissions dashboard, from getting a dead link). The
+leaf sections stay presentational (props only, no store imports); the resolver is BUILT at
+the per-agent tab (`agent-integrations-tab.tsx`) and threaded down through
+`CatalogPane`/`CategoryCatalog` (`lockedFix`) and `AgentCatalogSections` (`permissionsFix`).
+The global Integrations page never builds a resolver (it has no ceiling and never locks a
+row). Pure logic is node-tested in `app/tests/blocked-ceiling.test.ts`.
 
 **Connect flow + pending recovery** — `useConnectFlow` (in the shared module) lives
 on the SURFACE, never inside the picker, so closing the dialog never kills polling.

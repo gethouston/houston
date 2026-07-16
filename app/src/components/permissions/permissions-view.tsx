@@ -67,7 +67,6 @@ export function PermissionsView() {
     clearRequested();
   }, [requestedTab, requestedAgentId, clearRequested]);
 
-  const isOwner = org?.role === "owner";
   const members = org?.members ?? [];
   const detailMember =
     detailMemberId != null
@@ -130,7 +129,6 @@ export function PermissionsView() {
           </TabsContent>
           <TabsContent value="agents">
             <PermissionsAgentsTab
-              isOwner={isOwner}
               members={members}
               onOpenAgent={(a) => setDetailAgentId(a.id)}
             />

@@ -119,16 +119,15 @@ export interface FakeMember {
 }
 
 /**
- * The Teams v2 settings the gateway serves at `/v1/agents/:slug/settings` and
- * `/v1/org/settings`: the agent + org integration ceilings (`null` =
- * unrestricted, `[]` = none), the agent's AI-model ceiling, and the caller's
- * effective agent access. Seeded unrestricted; armed by `/__test__/agent-settings`.
+ * The Teams v2 settings the gateway serves at `/v1/agents/:slug/settings`: the
+ * agent's integration ceiling (`null` = unrestricted, `[]` = none — the whole
+ * effective allowlist, policy is per agent only), the agent's AI-model ceiling,
+ * and the caller's effective agent access. Seeded unrestricted; armed by
+ * `/__test__/agent-settings`.
  */
 export interface TeamsSettings {
   allowedToolkits: string[] | null;
-  orgAllowedToolkits: string[] | null;
   allowedModels: string[] | null;
-  orgAllowedModels: string[] | null;
   access: AgentAccess;
 }
 
@@ -147,9 +146,7 @@ export const DEFAULT_CAPABILITIES: FakeCapabilities = {
 /** Unrestricted, manager access — no policy until a spec arms one. */
 export const DEFAULT_TEAMS_SETTINGS: TeamsSettings = {
   allowedToolkits: null,
-  orgAllowedToolkits: null,
   allowedModels: null,
-  orgAllowedModels: null,
   access: "manager",
 };
 

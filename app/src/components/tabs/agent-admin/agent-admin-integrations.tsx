@@ -39,7 +39,6 @@ export function AgentAdminIntegrations({ agent }: AgentAdminScreenProps) {
         <AgentAllowlistSection
           key={agent.id}
           allowedToolkits={settings.allowedToolkits}
-          orgAllowedToolkits={settings.orgAllowedToolkits}
           catalog={catalog.data ?? []}
           connectedToolkits={(connections.data ?? []).map((c) => c.toolkit)}
           saving={settingsMutation.isPending}

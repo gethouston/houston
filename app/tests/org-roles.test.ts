@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
 import {
   canCreateAgents,
-  canEditOrgSettings,
   canManageMembers,
   canSeeAiModelsPage,
   canSeeBilling,
@@ -95,21 +94,6 @@ describe("canSeeAiModelsPage", () => {
     strictEqual(canSeeAiModelsPage(teams("owner")), true);
     strictEqual(canSeeAiModelsPage(teams("admin")), true);
     strictEqual(canSeeAiModelsPage(teams("user")), false);
-  });
-});
-
-describe("canEditOrgSettings (C7 org ceiling)", () => {
-  it("owner may edit the org integration policy; admin/user cannot", () => {
-    // Owner-only write per C7 — the gateway 403s a non-owner; admins see the
-    // policy page read-only.
-    strictEqual(canEditOrgSettings(multiplayer("owner")), true);
-    strictEqual(canEditOrgSettings(multiplayer("admin")), false);
-    strictEqual(canEditOrgSettings(multiplayer("user")), false);
-  });
-
-  it("single-player has no org policy to edit", () => {
-    strictEqual(canEditOrgSettings(caps()), false);
-    strictEqual(canEditOrgSettings(null), false);
   });
 });
 
