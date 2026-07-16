@@ -3,7 +3,9 @@ import { describe, it } from "node:test";
 import type { ProviderUsage } from "@houston-ai/engine-client";
 import {
   formatCreditsAmount,
+  formatMeteredSince,
   formatResetWhen,
+  formatTokensAmount,
   matchUsageToProviders,
 } from "../src/components/usage-view/usage-model.ts";
 import type { ProviderInfo } from "../src/lib/providers.ts";
@@ -76,6 +78,28 @@ describe("formatResetWhen", () => {
     strictEqual(formatResetWhen(null, "en", now), null);
     strictEqual(formatResetWhen("2026-07-13T11:00:00Z", "en", now), null);
     strictEqual(formatResetWhen("garbage", "en", now), null);
+  });
+});
+
+describe("formatTokensAmount", () => {
+  it("compacts token counts at any magnitude", () => {
+    strictEqual(formatTokensAmount(950, "en"), "950");
+    strictEqual(formatTokensAmount(34_500, "en"), "34.5K");
+    strictEqual(formatTokensAmount(1_230_000, "en"), "1.2M");
+  });
+
+  it("clamps junk negatives to zero", () => {
+    strictEqual(formatTokensAmount(-3, "en"), "0");
+  });
+});
+
+describe("formatMeteredSince", () => {
+  it("renders a short localized date and null for junk", () => {
+    // Midday UTC so the short date is stable across test-machine timezones
+    // (a midnight instant renders as the previous day west of UTC).
+    strictEqual(formatMeteredSince("2026-07-01T12:00:00.000Z", "en"), "Jul 1");
+    strictEqual(formatMeteredSince("", "en"), null);
+    strictEqual(formatMeteredSince("garbage", "en"), null);
   });
 });
 

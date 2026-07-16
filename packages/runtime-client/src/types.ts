@@ -28,6 +28,7 @@ export type {
   ProviderUsage,
   ProviderUsageCredits,
   ProviderUsageStatus,
+  ProviderUsageTokens,
   ProviderUsageWindow,
   ProviderUsageWindowId,
   Settings,

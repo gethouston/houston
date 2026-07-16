@@ -10,6 +10,7 @@ export type {
   ProviderUsage,
   ProviderUsageCredits,
   ProviderUsageStatus,
+  ProviderUsageTokens,
   ProviderUsageWindow,
   ProviderUsageWindowId,
 } from "@houston/runtime-client";

@@ -1,11 +1,16 @@
 import { Badge, cn } from "@houston-ai/core";
-import type { ProviderUsageWindow } from "@houston-ai/engine-client";
+import type {
+  ProviderUsageTokens,
+  ProviderUsageWindow,
+} from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import { BrandMark } from "../provider-browser/brand-mark";
 import {
   type AccountUsage,
   formatCreditsAmount,
+  formatMeteredSince,
   formatResetWhen,
+  formatTokensAmount,
 } from "./usage-model";
 
 /**
@@ -57,6 +62,7 @@ function CardBody({
     return <p className="text-xs text-ink-muted">{t("usage.error")}</p>;
   }
   const credits = row.credits;
+  const tokens = row.tokens;
   return (
     <div className="flex flex-col gap-3">
       {row.windows.map((w) => (
@@ -69,9 +75,47 @@ function CardBody({
           })}
         </p>
       )}
-      {row.windows.length === 0 && !credits && (
+      {tokens && <MeteredTokens tokens={tokens} locale={locale} t={t} />}
+      {row.windows.length === 0 && !credits && !tokens && (
         <p className="text-xs text-ink-muted">{t("usage.noData")}</p>
       )}
+    </div>
+  );
+}
+
+/**
+ * The locally metered spend line for providers with no usage API: total
+ * tokens headline, then the input/output split and the date Houston started
+ * counting — honest about the source ("measured by Houston"), since the
+ * provider itself reports nothing.
+ */
+function MeteredTokens({
+  tokens,
+  locale,
+  t,
+}: {
+  tokens: ProviderUsageTokens;
+  locale: string;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  const since = formatMeteredSince(tokens.since, locale);
+  return (
+    <div>
+      <p className="text-sm text-ink">
+        {t("usage.tokensUsed", {
+          amount: formatTokensAmount(
+            tokens.inputTokens + tokens.outputTokens,
+            locale,
+          ),
+        })}
+      </p>
+      <p className="mt-0.5 text-xs text-ink-muted">
+        {t("usage.tokensSplit", {
+          input: formatTokensAmount(tokens.inputTokens, locale),
+          output: formatTokensAmount(tokens.outputTokens, locale),
+        })}
+        {since ? ` · ${t("usage.meteredSince", { when: since })}` : ""}
+      </p>
     </div>
   );
 }

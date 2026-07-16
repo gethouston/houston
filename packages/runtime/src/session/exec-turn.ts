@@ -14,6 +14,7 @@ import {
 } from "../ai/openai-compatible";
 import { classifyProviderError } from "../ai/provider-error";
 import { activeEffort, resolveModel } from "../ai/providers";
+import { recordTokenSpend } from "../ai/usage/ledger";
 import { config } from "../config";
 import {
   appendAssistantMessage,
@@ -456,6 +457,11 @@ export async function execTurn(
         providerError || stopped ? undefined : interaction.pending,
       turnId,
     });
+    // Fold this turn's token usage into the local spend ledger — the usage
+    // surface for API-key providers with no account API to probe (Gemini,
+    // Bedrock, OpenCode, custom endpoints). Recorded for every provider; the
+    // usage endpoint decides which rows serve it. Never fails the turn.
+    if (usage) recordTokenSpend(model.provider, usage);
     if (fileChanges)
       publish(id, { type: "file_changes", data: fileChanges, turnId });
     // Skip the clean `done` when the turn failed: the provider_error frame is the
