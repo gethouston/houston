@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useActivity } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
+import { readAgentModelOverrides } from "../../lib/agent-model-overrides";
 import { analytics } from "../../lib/analytics";
 import { createMission } from "../../lib/create-mission";
 import { providerName } from "../../lib/providers";
@@ -92,6 +93,10 @@ export function useRoutineChatSetup(
         title: missionTitle,
         agentMode: mode,
         modeOverride: await readAgentTurnMode(path, tauriConfig.read),
+        // Pin the agent's configured brain onto the kickoff turn — an unpinned
+        // send resolves inside the runtime and lands on the provider default
+        // (Sonnet), not the model the user picked.
+        ...(await readAgentModelOverrides(path, tauriConfig.read)),
         buildPrompt: (activityId) =>
           encodeRoutineSetupMessage(
             activityId,
@@ -129,6 +134,8 @@ export function useRoutineChatSetup(
             title: routine.name,
             agentMode: mode,
             modeOverride: await readAgentTurnMode(path, tauriConfig.read),
+            // Same brain pin as startDraft — see the comment there.
+            ...(await readAgentModelOverrides(path, tauriConfig.read)),
           },
         );
         await Promise.all([
