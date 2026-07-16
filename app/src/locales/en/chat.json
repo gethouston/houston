@@ -147,7 +147,9 @@
     "planner": "Planner",
     "plannerDescription": "Writes a plan for you to approve first. Makes no changes.",
     "autopilot": "Autopilot",
-    "autopilotDescription": "Finishes the task on its own with what it has. No questions asked."
+    "autopilotDescription": "Finishes the task on its own with what it has. No questions asked.",
+    "nextTurnToastTitle": "{{mode}} mode is set",
+    "nextTurnToastBody": "It will apply to your next message. The current reply keeps going."
   },
   "modelSelector": {
     "selectModel": "Select model",
