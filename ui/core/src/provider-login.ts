@@ -9,3 +9,8 @@
 export const PROVIDER_LOGIN_TIMEOUT_ERROR = "Login timed out";
 export const PROVIDER_CONNECT_TIMEOUT_ERROR =
   "Connection timed out. Please try connecting again.";
+/** Substituted by the engine adapter when the runtime reports a typed login
+ *  failure of kind `codex_callback_port_busy` (the Codex OAuth callback port
+ *  preflight), so the app can localize it like the timeouts above. */
+export const PROVIDER_LOGIN_PORT_BUSY_ERROR =
+  "Another app on this computer is using the sign-in port. Close other AI coding tools and try again.";

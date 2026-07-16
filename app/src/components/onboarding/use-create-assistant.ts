@@ -28,8 +28,8 @@ import { buildPersonalAssistantSeeds } from "./personal-assistant-seeds";
  */
 async function refreshAfterCreate(
   ensured: EnsuredWorkspace<Workspace, Agent>,
-  provider: string,
-  model: string,
+  provider: string | undefined,
+  model: string | undefined,
 ): Promise<void> {
   // Persist the account timezone so the seeded morning-briefing routine fires at
   // the user's local 7am, not the cloud pod's UTC 7am. The Routines-tab hook
@@ -40,7 +40,10 @@ async function refreshAfterCreate(
   await seedTimezoneIfUnset().catch((err) =>
     logger.error(`[onboarding] timezone seed failed: ${err}`),
   );
-  await tauriProvider.setLastUsed(provider, model);
+  // Only persist a last-used pick when one was actually made. The connect-step
+  // skip provisions the assistant with no provider (it waits for a connection),
+  // so there is nothing honest to record as "last used".
+  if (provider && model) await tauriProvider.setLastUsed(provider, model);
   if (ensured.createdWorkspace) {
     analytics.track("workspace_created", { provider, source: "onboarding" });
   }
@@ -66,6 +69,11 @@ interface UseCreateAssistantArgs {
  * `create` collapses concurrent / repeated calls onto ONE in-flight operation
  * so first-run can never fire `createWorkspace` twice — a double-clicked
  * Continue or a remount reuses the same promise (HOU-444).
+ *
+ * `create` takes the provider/model OPTIONALLY: the happy path passes the
+ * just-connected pick, but the connect-step skip calls it with neither, so the
+ * assistant is provisioned provider-less (the honest state — it exists and
+ * waits until an AI is connected later from the AI Hub).
  */
 export function useCreateAssistant({
   assistantName,
@@ -73,7 +81,7 @@ export function useCreateAssistant({
 }: UseCreateAssistantArgs): {
   agent: Agent | null;
   creating: boolean;
-  create: (provider: string, model: string) => Promise<Agent>;
+  create: (provider?: string, model?: string) => Promise<Agent>;
 } {
   const { t, i18n } = useTranslation("setup");
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -81,8 +89,8 @@ export function useCreateAssistant({
   const creationRef = useRef<Promise<Agent> | null>(null);
 
   const createWorkspaceAndAssistant = (
-    pickedProvider: string,
-    pickedModel: string,
+    pickedProvider: string | undefined,
+    pickedModel: string | undefined,
   ): Promise<Agent> => {
     if (creationRef.current) return creationRef.current;
 
@@ -132,7 +140,7 @@ export function useCreateAssistant({
     return op;
   };
 
-  const create = async (provider: string, model: string): Promise<Agent> => {
+  const create = async (provider?: string, model?: string): Promise<Agent> => {
     setCreating(true);
     try {
       return await createWorkspaceAndAssistant(provider, model);
