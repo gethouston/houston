@@ -1623,6 +1623,11 @@ export const tauriOrg = {
   /** Per-agent/user usage counters over the last `days` (owner org-wide; admin
    *  their managed agents; plain members 403). */
   usage: (days: number) => call("org_usage", () => getEngine().orgUsage(days)),
+  /** Per-agent compute usage (engine running time) over the last `days`,
+   *  scoped server-side to the agents the caller can access. Cloud-only:
+   *  callers gate on `capabilities.computeUsage`. */
+  computeUsage: (days: number) =>
+    call("org_compute_usage", () => getEngine().computeUsage(days)),
   /** C8 spaces: the caller's spaces + pending invites. Degrades to an empty
    *  result off-spaces (the switcher then shows only the personal workspace). */
   listOrgs: () => call("list_orgs", () => getEngine().listOrgs()),

@@ -140,6 +140,16 @@ export async function handle(req: Request): Promise<Response> {
       state.setCapabilities((body ?? {}) as Partial<FakeCapabilities>),
     );
   }
+  // Arm the compute-usage dataset `GET /v1/org/compute-usage` serves (pair with
+  // `/__test__/capabilities` `{computeUsage:true}`); `{seed:null}` disarms.
+  if (path === "/__test__/compute-usage" && method === "POST") {
+    const body = await parseBody(req);
+    return json({
+      seed: state.setComputeUsage(
+        (body?.seed ?? null) as state.ComputeUsageSeed | null,
+      ),
+    });
+  }
   // Arm the Teams settings the gateway serves at the settings routes below:
   // the agent + org integration ceilings, the model ceiling, and agent access.
   if (path === "/__test__/agent-settings" && method === "POST") {

@@ -115,6 +115,13 @@ export interface Capabilities {
    * that predate the public API. The gateway is the sole enforcer.
    */
   apiKeys?: boolean;
+  /**
+   * Whether this deployment serves per-agent compute analytics — how long each
+   * agent's engine was running (`GET /v1/org/compute-usage`). Gateway-injected,
+   * hosted-cloud only; absent/false on desktop/self-host and on gateways that
+   * predate it. Feature-detect flag only — the gateway is the sole enforcer.
+   */
+  computeUsage?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------
@@ -404,6 +411,33 @@ export interface UsageRow {
   userId: string;
   day: string;
   messages: number;
+}
+
+/**
+ * One compute-usage row from `GET /org/compute-usage`: engine running time for
+ * an (agent, day) tuple. `day` is a `YYYY-MM-DD` UTC date. `awakeMs` is the
+ * wall-clock the agent's engine was up that day (today's row includes the
+ * currently-open stretch up to `ComputeUsage.asOf`); `activeMs` is the subset
+ * spent actually executing turns/routine runs (recorded for later use, not
+ * rendered yet — never sum it with `awakeMs`).
+ */
+export interface ComputeUsageRow {
+  agentSlug: string;
+  day: string;
+  awakeMs: number;
+  activeMs: number;
+  wakes: number;
+  turns: number;
+  routineRuns: number;
+}
+
+/** Response of `GET /org/compute-usage`. Days with no data have no row. */
+export interface ComputeUsage {
+  /** Server clock when the snapshot was taken (RFC 3339). */
+  asOf: string;
+  /** Slugs of agents whose engine is up right now — their "today" still grows. */
+  awakeNow: string[];
+  rows: ComputeUsageRow[];
 }
 
 // ---------- Workspaces ----------

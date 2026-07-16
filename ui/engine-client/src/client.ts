@@ -39,6 +39,7 @@ import type {
   ComposioStartLinkResponse,
   ComposioStartLoginResponse,
   ComposioStatus,
+  ComputeUsage,
   ConversationEntry,
   CreateAgent,
   CreateAgentResult,
@@ -1616,6 +1617,19 @@ export class HoustonClient {
         days: days.toString(),
       })
     ).rows;
+  }
+  /**
+   * Per-agent compute usage (engine running time) over the last `days`, scoped
+   * server-side to the agents the caller can access. Only deployments that
+   * advertise `capabilities.computeUsage` serve it. Host clamps `days` to ≤ 90.
+   */
+  async computeUsage(days: number): Promise<ComputeUsage> {
+    return await this.request<ComputeUsage>(
+      "GET",
+      "/org/compute-usage",
+      undefined,
+      { days: days.toString() },
+    );
   }
   /**
    * The integration toolkit slugs granted to this agent, or `null` when the host

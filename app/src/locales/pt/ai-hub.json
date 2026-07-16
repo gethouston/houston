@@ -151,6 +151,35 @@
       "title": "Nenhuma conta conectada",
       "body": "Conecte um provedor de IA para ver quanto dos limites você já usou.",
       "connect": "Conectar um provedor"
+    },
+    "accounts": {
+      "title": "Contas de IA"
+    },
+    "compute": {
+      "title": "Tempo de atividade",
+      "subtitle": "Quanto tempo seus agentes ficaram funcionando e quantas tarefas realizaram.",
+      "range": {
+        "week": "7 dias",
+        "month": "30 dias",
+        "quarter": "3 meses"
+      },
+      "summary": "Seus agentes funcionaram {{duration}}",
+      "tasks_one": "{{count}} tarefa",
+      "tasks_other": "{{count}} tarefas",
+      "runningNow": "Ativo agora",
+      "byAgent": "Por agente",
+      "duration": {
+        "hm": "{{hours}}h {{minutes}}m",
+        "m": "{{minutes}}m",
+        "underMinute": "<1m",
+        "zero": "0m"
+      },
+      "barLabel": "{{date}}: funcionou {{duration}}, {{tasks}}",
+      "empty": {
+        "title": "Ainda não há tempo de atividade",
+        "body": "Quando seus agentes funcionarem, o tempo deles vai aparecer aqui."
+      },
+      "error": "Não foi possível carregar o tempo de atividade. Tente novamente em instantes."
     }
   },
   "toast": {}

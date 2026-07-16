@@ -1,6 +1,7 @@
 import { existsSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { basename, dirname, join } from "node:path";
+import { loadRoutineRuns } from "@houston/domain";
 import type { Capabilities } from "@houston/protocol";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { SingleUserVerifier } from "../auth/verify";
@@ -28,6 +29,7 @@ import { RuntimeProcessSpawner } from "../launcher/runtime-spawner";
 import { migrateAgentLayouts } from "../migrate/agent-layout";
 import { migrateChatHistory } from "../migrate/chat-history";
 import { LocalPaths } from "../paths";
+import type { ChannelCtx } from "../ports";
 import { forward } from "../proxy/route";
 import { ChannelRoutineFirer } from "../schedule/firer";
 import { Scheduler } from "../schedule/scheduler";
@@ -36,6 +38,7 @@ import { syncSharedEndpoint } from "../shared-endpoint/sync";
 import { LocalWorkspaceStore } from "../store/local";
 import { StoreSyncDaemon } from "../store-sync";
 import { MemoryTurnBus } from "../turn/bus";
+import { UsageSampler } from "../usage/sampler";
 import { FsVfs } from "../vfs";
 import { FsWatcher } from "../watch/watcher";
 import { formatHostListeningBanner } from "./banner";
@@ -168,6 +171,17 @@ export interface LocalHostOptions {
     quietMs?: number;
     intervalMs?: number;
     maxHydrateBytes?: number;
+  };
+  /**
+   * Managed-pod active-time reporting: sample this pod's busy state and report
+   * per-day totals to the gateway's compute-usage ingest. Same env quadruple as
+   * `credentials` — absent on desktop/self-host, where no sampler ever runs.
+   */
+  usageReporting?: {
+    url: string;
+    orgSlug: string;
+    agentSlug: string;
+    podToken: string;
   };
 }
 
@@ -476,6 +490,35 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         log: (message, err) => console.error(message, err ?? ""),
       })
     : undefined;
+  // Managed pods sample their own busy state (the gateway can only see AWAKE
+  // from outside) and report per-day active totals to the compute-usage ingest.
+  const usageSampler = opts.usageReporting
+    ? new UsageSampler({
+        report: opts.usageReporting,
+        listAgents: async () => {
+          const out: ChannelCtx[] = [];
+          for (const ws of await store.listWorkspaces()) {
+            for (const agent of await store.listAgents(ws.id)) {
+              out.push({ workspace: ws, agent });
+            }
+          }
+          return out;
+        },
+        // The activityStatus busy logic MINUS activeRequests: an open UI tab's
+        // SSE subscription keeps the pod awake but is not the agent working.
+        turnBusy: (ctx) => channel.busy(ctx),
+        runningRoutineRuns: async (ctx) => {
+          const runs = await loadRoutineRuns(
+            vfs,
+            paths.agentRoot(ctx.workspace, ctx.agent),
+          );
+          return runs.items
+            .filter((run) => run.status === "running")
+            .map((run) => run.id);
+        },
+        log: (message, err) => console.error(message, err ?? ""),
+      })
+    : undefined;
   let stopPromise: Promise<void> | undefined;
 
   return {
@@ -542,6 +585,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         watcher.start();
         syncDaemon?.start();
         scheduler.start();
+        usageSampler?.start();
       }
       console.log(formatIntegrationsModeLog(opts.integrations));
       // The banner the Tauri supervisor parses (mirrors the runtime's contract).
@@ -580,6 +624,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       stopPromise = (async () => {
         scheduler.stop();
         watcher.stop();
+        // Drain the last accrued stretch before the runtimes go down; the
+        // sampler swallows report failures, so this never blocks a shutdown.
+        await usageSampler?.stop();
         // Await actual child exit (bounded): the final sync below must not
         // walk /data while a runtime is still flushing its last writes.
         await launcher.shutdownAllAndWait();
