@@ -18,7 +18,10 @@ import { ComposioProvider } from "../integrations/composio";
 import { CustomExecutorHost } from "../integrations/custom/executor-host";
 import { CustomIntegrationManager } from "../integrations/custom/manager";
 import { CustomIntegrationProvider } from "../integrations/custom/provider";
-import { FileCustomSecretStore } from "../integrations/custom/secrets";
+import {
+  FileCustomSecretStore,
+  RemoteCustomSecretStore,
+} from "../integrations/custom/secrets";
 import { FileCustomIntegrationStore } from "../integrations/custom/store";
 import { FileIntegrationGrantStore } from "../integrations/grant-store";
 import { LocalIntegrationGrants } from "../integrations/grants";
@@ -335,9 +338,19 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   const customStore = new FileCustomIntegrationStore(
     join(customDir, "custom-integrations.json"),
   );
-  const customSecrets = new FileCustomSecretStore(
+  const legacyCustomSecrets = new FileCustomSecretStore(
     join(customDir, "custom-integration-secrets.json"),
   );
+  const remoteCustomSecrets = opts.credentials
+    ? new RemoteCustomSecretStore({
+        baseUrl: opts.credentials.url,
+        orgSlug: opts.credentials.orgSlug,
+        agentSlug: opts.credentials.agentSlug,
+        podToken: opts.credentials.podToken,
+        legacy: legacyCustomSecrets,
+      })
+    : undefined;
+  const customSecrets = remoteCustomSecrets ?? legacyCustomSecrets;
   const customExecutor = new CustomExecutorHost(customSecrets, () =>
     customStore.list(),
   );
@@ -537,6 +550,20 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       // readiness-critical and must finish before migrations or HTTP listening;
       // failure propagates so the pod restarts without ever syncing an empty tree.
       await syncDaemon?.hydrate();
+      // Managed cloud: migrate the hydrated plaintext custom-integration file
+      // into Secret Manager before starting the watcher/sync loop. Removing it
+      // after every upload succeeds makes the first sync delete the old GCS
+      // object; a partial failure leaves it intact for a safe boot retry.
+      // Passive hosts (a read-only conversion source) must not mutate custody:
+      // no legacy migration.
+      if (remoteCustomSecrets && !opts.passive) {
+        const migrated = await remoteCustomSecrets.migrateLegacy();
+        if (migrated > 0) {
+          console.log(
+            `[local-host] migrated ${migrated} custom integration secret(s) to remote custody`,
+          );
+        }
+      }
       // One-time, idempotent migration of the pre-v0.4 FLAT `.houston/` layout
       // into the per-type folders the domain reads (ported from the Rust
       // engine's migrate_agent_data). Runs BEFORE the watcher so migrated files

@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -45,4 +45,14 @@ test("FileCredentialStore persists across re-open (a login survives a restart)",
   expect((await reopened.get("ws_1", "openai-codex"))?.accountId).toBe(
     "acct-9",
   );
+});
+
+test("FileCredentialStore enforces owner-only permissions", async () => {
+  const path = join(
+    mkdtempSync(join(tmpdir(), "houston-cred-mode-")),
+    "creds.json",
+  );
+  const store = new FileCredentialStore(path);
+  await store.put(cred());
+  expect(statSync(path).mode & 0o777).toBe(0o600);
 });
