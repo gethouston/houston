@@ -29,6 +29,8 @@ export type {
   AuditEntry,
   BillingCheckout,
   BillingSummary,
+  ComputeUsage,
+  ComputeUsageRow,
   CustomIntegrationView,
   IntegrationConnection,
   IntegrationProviderStatus,

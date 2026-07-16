@@ -147,13 +147,42 @@
     "tokensSplit": "{{input}} in, {{output}} out",
     "meteredSince": "measured by Houston since {{when}}",
     "noData": "This account reports no limits right now.",
-    "unsupported": "This provider doesn't share usage details yet.",
+    "notMeteredYet": "No usage yet. Houston will start measuring with your next message.",
     "reconnect": "Sign in again to see this account's usage.",
     "error": "Couldn't load usage right now. Try again in a moment.",
     "empty": {
       "title": "No accounts connected",
       "body": "Connect an AI provider to see how much of its limits you've used.",
       "connect": "Connect a provider"
+    },
+    "accounts": {
+      "title": "AI accounts"
+    },
+    "compute": {
+      "title": "Running time",
+      "subtitle": "How long your agents have been running and how many tasks they handled.",
+      "range": {
+        "week": "7 days",
+        "month": "30 days",
+        "quarter": "3 months"
+      },
+      "summary": "Your agents ran {{duration}}",
+      "tasks_one": "{{count}} task",
+      "tasks_other": "{{count}} tasks",
+      "runningNow": "Running now",
+      "byAgent": "By agent",
+      "duration": {
+        "hm": "{{hours}}h {{minutes}}m",
+        "m": "{{minutes}}m",
+        "underMinute": "<1m",
+        "zero": "0m"
+      },
+      "barLabel": "{{date}}: ran {{duration}}, {{tasks}}",
+      "empty": {
+        "title": "No running time yet",
+        "body": "When your agents run, their time will show here."
+      },
+      "error": "Couldn't load running time right now. Try again in a moment."
     }
   },
   "toast": {}

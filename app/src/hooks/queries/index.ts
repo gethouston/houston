@@ -16,6 +16,7 @@ export {
   useSetAgentAllowedModels,
   useSetAgentSettings,
 } from "./use-agent-settings";
+export { COMPUTE_USAGE_DAYS, useComputeUsage } from "./use-compute-usage";
 export {
   useAllConversations,
   useChatHistory,

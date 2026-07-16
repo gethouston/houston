@@ -116,6 +116,9 @@ export const queryKeys = {
   /** Teams v2: per-agent/user usage counters over a `days` window. Keyed by the
    *  window so 7- vs 30-day reads don't collide. */
   orgUsage: (days: number) => ["org-usage", days] as const,
+  /** Per-agent compute usage (engine running time) over a `days` window.
+   *  Cloud-only (gated on `capabilities.computeUsage`); keyed by the window. */
+  computeUsage: (days: number) => ["compute-usage", days] as const,
   agentGrants: (agentId: string) => ["agent-grants", agentId] as const,
   /**
    * Teams v2: an agent's allowed-toolkit settings (agent + org ceilings +

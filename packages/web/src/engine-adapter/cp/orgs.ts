@@ -1,6 +1,7 @@
 import type {
   AddOrgMemberResult,
   AuditEntry,
+  ComputeUsage,
   OrgInfo,
   OrgRole,
   OrgSettings,
@@ -95,4 +96,15 @@ export async function orgUsage(
     `/v1/org/usage?days=${encodeURIComponent(days.toString())}`,
   );
   return ((await res.json()) as { rows: UsageRow[] }).rows;
+}
+
+export async function computeUsage(
+  cfg: ControlPlaneConfig,
+  days: number,
+): Promise<ComputeUsage> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/org/compute-usage?days=${encodeURIComponent(days.toString())}`,
+  );
+  return (await res.json()) as ComputeUsage;
 }

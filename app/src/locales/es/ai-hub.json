@@ -147,13 +147,42 @@
     "tokensSplit": "{{input}} de entrada, {{output}} de salida",
     "meteredSince": "medido por Houston desde {{when}}",
     "noData": "Esta cuenta no reporta límites por ahora.",
-    "unsupported": "Este proveedor todavía no comparte detalles de uso.",
+    "notMeteredYet": "Aún no hay uso. Houston empezará a medir con tu próximo mensaje.",
     "reconnect": "Inicia sesión de nuevo para ver el uso de esta cuenta.",
     "error": "No pudimos cargar el uso. Intenta de nuevo en un momento.",
     "empty": {
       "title": "No hay cuentas conectadas",
       "body": "Conecta un proveedor de IA para ver cuánto de sus límites has usado.",
       "connect": "Conectar un proveedor"
+    },
+    "accounts": {
+      "title": "Cuentas de IA"
+    },
+    "compute": {
+      "title": "Tiempo de actividad",
+      "subtitle": "Cuánto tiempo han estado funcionando tus agentes y cuántas tareas realizaron.",
+      "range": {
+        "week": "7 días",
+        "month": "30 días",
+        "quarter": "3 meses"
+      },
+      "summary": "Tus agentes funcionaron {{duration}}",
+      "tasks_one": "{{count}} tarea",
+      "tasks_other": "{{count}} tareas",
+      "runningNow": "Activo ahora",
+      "byAgent": "Por agente",
+      "duration": {
+        "hm": "{{hours}}h {{minutes}}m",
+        "m": "{{minutes}}m",
+        "underMinute": "<1m",
+        "zero": "0m"
+      },
+      "barLabel": "{{date}}: funcionó {{duration}}, {{tasks}}",
+      "empty": {
+        "title": "Aún no hay tiempo de actividad",
+        "body": "Cuando tus agentes funcionen, su tiempo aparecerá aquí."
+      },
+      "error": "No se pudo cargar el tiempo de actividad. Intenta de nuevo en un momento."
     }
   },
   "toast": {}

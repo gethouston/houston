@@ -168,6 +168,9 @@ const host = buildLocalHost({
   gatewayFronted: process.env.HOUSTON_MANAGED_CLOUD === "1",
   credentials: remoteGateway,
   sharedEndpoints: remoteGateway,
+  // Active-time reporting rides the same managed-pod gateway quadruple: the
+  // env being present IS the switch (desktop/self-host never set it).
+  usageReporting: remoteGateway,
   // Migration-source spawns (HOU-719): serve + migrate on boot, but never fire
   // routines or churn watch events while the cloud app reads the old tree.
   passive: process.env.HOUSTON_PASSIVE === "1",
