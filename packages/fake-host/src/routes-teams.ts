@@ -83,6 +83,25 @@ export function handleTeamsRoutes(
     return json({ error: "not found" }, 404);
   }
 
+  // /v1/org/compute-usage — per-agent running time (awake/active ms per UTC
+  // day). Served only when a spec armed a dataset via `/__test__/compute-usage`;
+  // unarmed it 404s like a desktop host or a pre-feature gateway. `asOf` is
+  // minted at read time — the wire promises a server clock, not a fixed seed.
+  if (
+    segs[0] === "v1" &&
+    segs[1] === "org" &&
+    segs[2] === "compute-usage" &&
+    segs.length === 3
+  ) {
+    const seed = state.getComputeUsage();
+    if (method !== "GET" || !seed) return json({ error: "not found" }, 404);
+    return json({
+      asOf: new Date().toISOString(),
+      awakeNow: seed.awakeNow,
+      rows: seed.rows,
+    });
+  }
+
   // /v1/org/settings — the org-wide app + AI-model ceilings.
   if (
     segs[0] === "v1" &&

@@ -11,6 +11,8 @@ import {
 import { useUIStore } from "../../stores/ui";
 import { groupProviders } from "../provider-browser/provider-grouping";
 import { PageContainer, PageHeader } from "../shell/page-shell";
+import { ComputeSection } from "./compute-section";
+import { showComputeSection } from "./compute-usage-model";
 import { UsagePane } from "./usage-pane";
 
 /**
@@ -44,6 +46,10 @@ export function UsageView() {
     () => groupProviders(connectProviders, connections.isConnected),
     [connectProviders, connections.isConnected],
   );
+  // Hosted cloud meters how long each agent's engine runs; only gateways that
+  // serve the data advertise it. Mount-gating here also gates the query, so
+  // desktop/self-host never fetch a route that doesn't exist.
+  const showCompute = showComputeSection(capabilities);
 
   return (
     <div className="h-full overflow-y-auto [scrollbar-gutter:stable]">
@@ -52,11 +58,19 @@ export function UsageView() {
           title={t("usage.pageTitle")}
           subtitle={t("usage.pageSubtitle")}
         />
-        <UsagePane
-          providers={connected}
-          ready={connections.ready}
-          onConnect={() => setViewMode("ai-hub")}
-        />
+        {showCompute && <ComputeSection />}
+        <div>
+          {showCompute && (
+            <h2 className="text-sm font-medium text-ink">
+              {t("usage.accounts.title")}
+            </h2>
+          )}
+          <UsagePane
+            providers={connected}
+            ready={connections.ready}
+            onConnect={() => setViewMode("ai-hub")}
+          />
+        </div>
       </PageContainer>
     </div>
   );

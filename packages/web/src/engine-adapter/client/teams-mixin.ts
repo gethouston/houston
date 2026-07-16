@@ -82,6 +82,13 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("multiplayer requires the hosted gateway");
       return controlPlane.orgUsage(this.ctx.cp, days);
     }
+    // Tripwire only: the UI gates the compute section (and its query) on
+    // `capabilities.computeUsage`, which no gateway-less deployment advertises.
+    async computeUsage(days: number): Promise<controlPlane.ComputeUsage> {
+      if (!this.ctx.cp)
+        throw new Error("compute usage requires the hosted gateway");
+      return controlPlane.computeUsage(this.ctx.cp, days);
+    }
 
     // Grants degrade gracefully: `null` means "this deployment has no grants
     // model" (the legacy engine path, or a host that 404s the route), which the UI
