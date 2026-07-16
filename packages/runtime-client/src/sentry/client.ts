@@ -11,6 +11,7 @@ import {
   createStackParser,
   createTransport,
   nodeStackLineParser,
+  parseStackFrames,
   Scope,
   ServerRuntimeClient,
 } from "@sentry/core";
@@ -85,8 +86,12 @@ function isReporterFrame(frame: StackFrame): boolean {
 
 /** Exported for tests. Mutates and returns the event. */
 export function trimReporterFrames<E extends Event>(event: E): E {
-  for (const exception of event.exception?.values ?? []) {
-    const frames = exception.stacktrace?.frames;
+  const stacks = [
+    ...(event.exception?.values ?? []),
+    ...(event.threads?.values ?? []),
+  ];
+  for (const holder of stacks) {
+    const frames = holder.stacktrace?.frames;
     if (!frames) continue;
     let last = frames[frames.length - 1];
     while (frames.length > 1 && last && isReporterFrame(last)) {
@@ -146,6 +151,7 @@ export function createEngineSentry(
   config: EngineSentryConfig,
   transport: (options: BaseTransportOptions) => Transport,
 ): EngineSentry {
+  const stackParser = createStackParser(nodeStackLineParser());
   const client = new ServerRuntimeClient({
     dsn: config.dsn,
     release: config.release,
@@ -155,9 +161,9 @@ export function createEngineSentry(
     runtime: process.versions.bun
       ? { name: "bun", version: process.versions.bun }
       : { name: "node", version: process.versions.node },
-    stackParser: createStackParser(nodeStackLineParser()),
-    // Bare-string ERRORs (message events) get a synthetic stack pointing at
-    // the log site — without it they arrive as bare text, undebuggable.
+    stackParser,
+    // Non-Error throwables passed to captureException still get a synthetic
+    // stack at the capture site instead of arriving stackless.
     attachStacktrace: true,
     integrations: [],
     transport,
@@ -221,15 +227,32 @@ export function createEngineSentry(
         const demoted = level === "ERROR" && NODE_PROCESS_WARNING.test(message);
         if (level === "ERROR" && !demoted) {
           // A real Error in the values gives Sentry a stack to group on; a
-          // bare string ERROR gets a synthetic stack at the log site
-          // (attachStacktrace) and groups on that.
+          // bare string ERROR becomes a message event with a synthetic stack
+          // at the log site. The stack rides as a THREAD, not an exception:
+          // a synthetic exception makes Sentry title the issue by the top
+          // frame's function name ("<anonymous>") — a thread keeps the
+          // message as the title while still showing where it was logged.
           const error = values.find((v) => v instanceof Error);
           if (error) {
             scope.captureException(error, {
               captureContext: { extra: { log_message: message } },
             });
           } else {
-            scope.captureMessage(message, "error");
+            scope.captureEvent({
+              message,
+              level: "error",
+              threads: {
+                values: [
+                  {
+                    stacktrace: {
+                      frames: parseStackFrames(stackParser, new Error(message)),
+                    },
+                    crashed: false,
+                    current: true,
+                  },
+                ],
+              },
+            });
           }
         }
         // Breadcrumb AFTER capture so an ERROR event doesn't carry itself.
