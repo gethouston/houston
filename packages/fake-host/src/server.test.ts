@@ -115,13 +115,23 @@ describe("startFakeHost", () => {
       true,
     );
 
+    // reset() empties the setup slot again (what onboarding specs rely on).
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+    const reseeded = (await (
+      await fetch(`${host.url}/setup-runtime/auth/status`)
+    ).json()) as { activeProvider: string | null };
+    expect(reseeded.activeProvider).toBeNull();
+
     // The real host serves no flat /auth/status — neither does the fake.
     const flat = await fetch(`${host.url}/auth/status`);
     expect(flat.status).toBe(404);
 
-    // Anything outside the connect surface stays agent-scoped — 404.
+    // Anything outside the connect surface stays agent-scoped — 404, like the
+    // real host's allowlist (packages/host/src/routes/setup-runtime.ts).
     const outside = await fetch(`${host.url}/setup-runtime/settings`);
     expect(outside.status).toBe(404);
+    const noExport = await fetch(`${host.url}/setup-runtime/auth/export`);
+    expect(noExport.status).toBe(404);
   });
 
   it("exposes the __test__ reset control endpoint", async () => {

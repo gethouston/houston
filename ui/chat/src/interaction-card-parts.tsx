@@ -18,6 +18,7 @@ export function QuestionStepBody({
   draft,
   placeholder,
   sendLabel,
+  hideFreeText = false,
   skip,
   onOption,
   onDraftChange,
@@ -30,6 +31,9 @@ export function QuestionStepBody({
   draft: string;
   placeholder: string;
   sendLabel: string;
+  /** Drop the free-text escape row: the option rows are the only way to answer
+   *  (the skip button keeps its place, right-aligned on its own row). */
+  hideFreeText?: boolean;
   /** The card-wide decline, rendered OUTSIDE the field at its right so the
    *  input row reads as "type here, or skip" in one glance. */
   skip: {
@@ -60,17 +64,21 @@ export function QuestionStepBody({
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <FreeTextRow
-            disabled={disabled}
-            onChange={onDraftChange}
-            onSubmit={onSubmit}
-            placeholder={placeholder}
-            sendLabel={sendLabel}
-            value={draft}
-          />
-        </div>
+      <div
+        className={cn("flex items-center gap-2", hideFreeText && "justify-end")}
+      >
+        {!hideFreeText && (
+          <div className="min-w-0 flex-1">
+            <FreeTextRow
+              disabled={disabled}
+              onChange={onDraftChange}
+              onSubmit={onSubmit}
+              placeholder={placeholder}
+              sendLabel={sendLabel}
+              value={draft}
+            />
+          </div>
+        )}
         <Button
           className="mt-1.5 gap-1.5 text-ink-muted"
           disabled={skip.disabled}
