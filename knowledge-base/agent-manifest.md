@@ -209,19 +209,7 @@ The screen state machine (`OnboardingStep` in `tutorial-copy.ts`; first screen i
    endpoint, Copilot enterprise). On connect it fires `ai_provider_connected`
    (ref-guarded, once per install), kicks off **silent** workspace + assistant
    provisioning in the background (`useCreateAssistant`, no user-triggered
-   button), and advances to `aiConnected`. It also carries a quiet **"Skip for
-   now"** escape (below the provider browser, mirroring the segment screen's skip
-   idiom) — the permanent-trap fix: a user whose OAuth can never succeed (port
-   conflict, missing entitlement, locked-down network) would otherwise be stranded
-   here forever, because `onboarding_pending` re-enters onboarding on every launch
-   and the step used to leave only via `onConnected`. Skipping provisions the
-   assistant **provider-less** (`create()` with no pick — the honest state: it
-   exists and waits until an AI is connected later from the AI Hub), fires
-   `onboarding_skipped` (`source: "no_provider"`), clears the pending flag, and
-   drops straight into the app — bypassing `aiConnected` and the email detour
-   (both celebrate/extend a connection that never happened). Provision-then-clear
-   ordering keeps the re-entry contract intact: a crash before the clear lands
-   back in onboarding safely.
+   button), and advances to `aiConnected`.
 2. **aiConnected** — a `SetupProgress` success beat; continue advances to
    `connectEmail` when integrations are available, else straight to `finished`
    (`stepAfterAgentCreated`).
@@ -264,8 +252,8 @@ connects, the agent-count first-run signal (`App.tsx`) flips `false` forever
 after that point, so a mid-flow quit would permanently skip the rest of setup.
 The `onboarding_pending` engine preference (`app/src/hooks/use-onboarding-pending.ts`)
 is the resume contract: set on mount, cleared in every terminal path
-(`finishOnboarding`, the connect-step escape `skipConnect`, and the stuck-escape
-`skipOnboarding`); `App.tsx` re-enters onboarding while it is set.
+(`finishOnboarding` and the stuck-escape `skipOnboarding`); `App.tsx` re-enters
+onboarding while it is set.
 
 **The default assistant ships seeded.** Creation writes real capability into the
 new agent's tree via `personal-assistant-seeds.ts` (`buildPersonalAssistantSeeds`
