@@ -27,7 +27,6 @@ import { analytics } from "./lib/analytics";
 import { shouldAllowNativeContextMenu } from "./lib/context-menu";
 import { newEngineActive } from "./lib/engine";
 import { isIdentityConfigured } from "./lib/identity";
-import { ONBOARDING_SEGMENT_SKIPPED } from "./lib/onboarding-segment";
 import {
   clearUser as clearSentryUser,
   setUser as setSentryUser,
@@ -305,9 +304,6 @@ export default function App() {
             saving={onboardingSegment.isSaving}
             onContinue={async (segment) => {
               await onboardingSegment.saveSegment(segment);
-            }}
-            onSkip={async () => {
-              await onboardingSegment.saveSegment(ONBOARDING_SEGMENT_SKIPPED);
             }}
           />
         )

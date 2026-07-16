@@ -8,7 +8,6 @@ import {
   integrationsAvailable,
   isFirstRun,
   isToolkitConnected,
-  shouldOfferConnectSkip,
   shouldOfferTeamInvite,
   stepAfterAgentCreated,
 } from "../src/components/onboarding/missions/onboarding-flow.ts";
@@ -100,16 +99,6 @@ describe("stepAfterAgentCreated", () => {
   it("routes straight to finish when integrations are unavailable", () => {
     strictEqual(stepAfterAgentCreated(caps([])), "finished");
     strictEqual(stepAfterAgentCreated(null), "finished");
-  });
-});
-
-describe("shouldOfferConnectSkip (dead-end escape hatch)", () => {
-  it("offered on the happy path (gateway ready, nothing attempted) — the confirm dialog is the friction", () => {
-    strictEqual(shouldOfferConnectSkip({ connecting: false }), true);
-  });
-
-  it("never offered while a connect flow is in flight", () => {
-    strictEqual(shouldOfferConnectSkip({ connecting: true }), false);
   });
 });
 

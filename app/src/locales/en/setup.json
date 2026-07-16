@@ -19,9 +19,7 @@
   "onboardingSegment": {
     "eyebrow": "Personalize Houston",
     "title": "What best describes your work?",
-    "subtitle": "Pick one so Houston can tailor agents, templates, and recommendations for you.",
-    "helper": "You can change this later as Houston learns what helps you.",
-    "skip": "Skip for now",
+    "subtitle": "Help us tailor Houston.",
     "options": {
       "marketing": "Marketing",
       "product": "Product",
@@ -89,7 +87,7 @@
         "placeholder": "Reply to your agent...",
         "body": "Your agent will send a real email to you, so you can watch it work.",
         "skip": "Skip for now",
-        "skipHint": "Your agent finished but didn't confirm. You can skip and start using Houston."
+        "skipHint": "You can continue in Houston after your first message."
       },
       "aiConnected": {
         "title": "Your AI is connected!",
@@ -101,13 +99,7 @@
         "body": "Pick your email so your agent can send on your behalf. You connect it once, securely.",
         "connecting": "Connecting...",
         "cancel": "Cancel",
-        "skipHint": "Can't connect right now? You can do this anytime from Integrations.",
-        "skip": "Skip for now",
-        "preparing": "Getting your assistant ready...",
-        "skipConfirmTitle": "Skip connecting your email?",
-        "skipConfirmBody": "You can connect it anytime from Integrations. Your agent won't be able to send or read email until you do.",
-        "skipConfirmAction": "Skip for now",
-        "skipConfirmCancel": "Keep connecting"
+        "preparing": "Getting your assistant ready..."
       },
       "emailConnected": {
         "title": "Email connected!",

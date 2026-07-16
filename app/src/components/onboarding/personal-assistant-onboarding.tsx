@@ -49,8 +49,8 @@ export function PersonalAssistantOnboarding({
   // outright failure so a hung create can't strand the user forever.
   const [waitTimedOut, setWaitTimedOut] = useState(false);
   // The assistant actually SENT a real email (only the full email path sets it).
-  // Drives the honest finished-screen variant: skipped/no-integrations finishes
-  // must not claim an email was sent.
+  // Drives the honest finished-screen variant: no-integrations finishes must not
+  // claim an email was sent.
   const [emailSent, setEmailSent] = useState(false);
   // The email toolkit connected in the "give access to your email" step.
   const [emailTool, setEmailTool] = useState<{
@@ -87,7 +87,7 @@ export function PersonalAssistantOnboarding({
   // forever after that point — so quitting mid-flow would permanently skip the
   // rest of setup. The flag is the durable resume contract: SET on mount (below,
   // the flow has begun), CLEARED in every terminal path (`finishOnboarding` and
-  // the `skipOnboarding` escape). App.tsx re-enters onboarding while it's set.
+  // the `skipConversation` exit). App.tsx re-enters onboarding while it's set.
   const { markPending, clearPending } = useOnboardingPending();
 
   // `tutorialActive` pins the orchestrator in front of the workspace shell so
@@ -184,37 +184,20 @@ export function PersonalAssistantOnboarding({
   const missionProvider = provider ?? "anthropic";
   const missionModel = model ?? getDefaultModel(missionProvider);
 
-  // Escape hatch (HOU-555): the final email step auto-advances on a marker the
-  // agent must emit, but some models send the email and never emit it, stranding
-  // the user with no way forward. Let them bail into the app. This is NOT a
-  // completion: it fires `onboarding_skipped` (not `onboarding_completed`) with
-  // the model, so analytics can separate "stuck and skipped" from a normal
-  // finish and surface which models strand users.
-  const skipOnboarding = (fromStep: OnboardingStep) => {
+  // After the first message begins the AI conversation, the user can leave
+  // onboarding and start using Houston. This is not a completion, so analytics
+  // preserves it as a conversation exit instead of a completed email mission.
+  const skipConversation = (fromStep: OnboardingStep) => {
     analytics.track("onboarding_skipped", {
       step: fromStep,
       provider: missionProvider,
       model: missionModel,
-      source: "stuck",
+      source: "conversation",
     });
-    // Terminal path (the stuck-escape): clear the resume flag so the next boot
-    // doesn't drop the user back into onboarding.
+    // Terminal conversation exit: clear the resume flag so the next boot
+    // does not return the user to onboarding.
     void clearPending();
     setTutorialActive(false);
-  };
-
-  // Softer escape for the connect-email dead ends (gateway unready, OAuth
-  // failed): skip ONLY the email steps and land on the finish screen, keeping
-  // the tour hand-off. Fires `onboarding_skipped` so analytics can see the
-  // email detour was abandoned even though `onboarding_completed` follows.
-  const skipEmailSteps = () => {
-    analytics.track("onboarding_skipped", {
-      step: "connectEmail",
-      provider: missionProvider,
-      model: missionModel,
-      source: "stuck",
-    });
-    setStep("finished");
   };
 
   // Flat step eyebrow: "Step 1 of 3". Empty for screens that aren't numbered
@@ -280,7 +263,6 @@ export function PersonalAssistantOnboarding({
               setEmailTool({ toolkit, label });
               setStep("emailConnected");
             }}
-            onSkip={skipEmailSteps}
           />
         ) : createFailed || waitTimedOut ? (
           // Background provisioning failed or hung: recoverable error, not an
@@ -345,7 +327,7 @@ export function PersonalAssistantOnboarding({
             setEmailSent(true);
             setStep("finished");
           }}
-          onSkip={() => skipOnboarding("emailChat")}
+          onSkip={() => skipConversation("emailChat")}
         />
       )}
 
