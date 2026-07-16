@@ -10,11 +10,6 @@ interface ConnectAiMissionProps {
   onBack?: () => void;
   /** Fired with (providerId, model) the instant a provider connects. */
   onConnected: (provider: string, model: string) => void;
-  /** Leave onboarding WITHOUT connecting an AI. A user whose OAuth can't
-   *  succeed (port conflict, missing entitlement, locked-down network) would
-   *  otherwise be trapped here forever, so a quiet escape is mandatory. The
-   *  orchestrator provisions the assistant provider-less and drops into the app. */
-  onSkip: () => void;
 }
 
 /**
@@ -37,7 +32,6 @@ export function ConnectAiMission({
   eyebrow,
   onBack,
   onConnected,
-  onSkip,
 }: ConnectAiMissionProps) {
   const { t } = useTranslation("setup");
   const { providers, connections, catalog } = useProviderBrowserData();
@@ -60,24 +54,6 @@ export function ConnectAiMission({
           selectOnMount
           curated
         />
-      </div>
-
-      {/* Quiet escape from the connect step (the permanent-trap fix). Rendered
-          BELOW the provider browser and outside its scroll area so it never
-          competes with the primary connect action, matching the segment
-          screen's secondary "skip" idiom: a muted hint plus an underlined
-          text button, both always visible (no hover-only affordance). */}
-      <div className="mt-4 flex flex-col items-center gap-1.5 border-t border-ink/10 pt-4 text-center">
-        <p className="text-xs text-ink-muted">
-          {t("tutorial.missions.connect.skipHint")}
-        </p>
-        <button
-          type="button"
-          onClick={onSkip}
-          className="text-xs text-ink-muted underline underline-offset-2 outline-none transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-focus"
-        >
-          {t("tutorial.missions.connect.skip")}
-        </button>
       </div>
     </SetupCard>
   );
