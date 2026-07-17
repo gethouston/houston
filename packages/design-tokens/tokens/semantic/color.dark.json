@@ -10,7 +10,7 @@
     "card-text": { "$value": "{color.neutral.150}" },
     "popover": { "$value": "{color.neutral.800}" },
     "popover-text": { "$value": "{color.neutral.150}" },
-    "dialog": { "$value": "{color.neutral.800}" },
+    "dialog": { "$value": "{color.cool.gutter-dark}" },
     "ink": { "$value": "{color.neutral.150}" },
     "ink-muted": { "$value": "{color.neutral.450}" },
     "action": { "$value": "{color.neutral.150}" },
