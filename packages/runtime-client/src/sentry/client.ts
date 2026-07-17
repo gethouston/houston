@@ -180,6 +180,12 @@ export function createEngineSentry(
     deployment: config.deployment,
     ...config.tags,
   });
+  // Sentry's "users affected" only counts events carrying a `user` — tags
+  // don't. The engine has no end-user identity, but on managed pods the org
+  // IS the customer: stamping it as the user makes "how many customers hit
+  // this?" readable straight off the issue. Desktop/self-host events stay
+  // user-less (no stable identity exists at the engine layer).
+  if (config.tags.org_slug) scope.setUser({ id: config.tags.org_slug });
   // ServerRuntimeClient attaches no contexts on its own (integrations: []).
   // OS tells Windows/macOS/Linux-pod apart; app_start_time separates a
   // boot-path crash from a long-uptime failure at a glance.

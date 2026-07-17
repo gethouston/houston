@@ -10,7 +10,10 @@ import { installRuntimeLogging } from "./observability/logging";
 const sentry = initEngineSentry("runtime");
 const { logger } = installRuntimeLogging({
   dataDir: config.dataDir,
-  capture: sentry && ((level, values) => sentry.captureLog(level, values)),
+  // The method reference, NOT a local arrow: a wrapper defined here would put
+  // a main.ts frame at the top of every synthetic stack, where the reporter's
+  // frame-trimming (which keys on the sentry/logging filenames) can't reach it.
+  capture: sentry?.captureLog,
 });
 
 /**

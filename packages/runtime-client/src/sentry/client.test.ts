@@ -119,6 +119,20 @@ describe("createEngineSentry", () => {
     expect(crumbs[0]?.level).toBe("warning");
   });
 
+  it("stamps the org as the Sentry user on managed pods (users-affected count)", async () => {
+    const { sentry, events } = testSentry();
+    sentry.captureException(new Error("who was hit?"));
+    await sentry.flush();
+    expect(events[0]?.user).toEqual({ id: "acme" });
+  });
+
+  it("leaves events user-less without an org slug (desktop/self-host)", async () => {
+    const { sentry, events } = testSentry({ ...CONFIG, tags: {} });
+    sentry.captureException(new Error("anonymous deployment"));
+    await sentry.flush();
+    expect(events[0]?.user).toBeUndefined();
+  });
+
   it("stamps os and app-start contexts on every event", async () => {
     const { sentry, events } = testSentry();
     sentry.captureException(new Error("ctx check"));
