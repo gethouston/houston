@@ -109,8 +109,8 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
   // 7 daily bars, each self-describing ("Jul 15: worked 2h 05m, 10 tasks").
   await expect(page.getByRole("img", { name: /: worked / })).toHaveCount(7);
 
-  // Per-agent rows: the seed agent resolves to its display name and wears the
-  // online badge (3h 05m across 13 tasks); the deleted slug humanizes. Scope
+  // Per-agent rows: the seed agent resolves to its display name (3h 05m
+  // across 13 tasks); the deleted slug humanizes. Scope
   // to the compute section — the AI-accounts cards below are also list items
   // and their "not metered yet" copy mentions Houston by name.
   const computeSection = page
@@ -119,9 +119,10 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
   const houston = computeSection
     .getByRole("listitem")
     .filter({ hasText: "Houston" });
-  await expect(houston.getByText("Online")).toBeVisible();
   await expect(houston).toContainText("3h 05m");
   await expect(houston).toContainText("13 tasks");
+  // No liveness badge: pod up/idle state is infrastructure the user never sees.
+  await expect(houston.getByText("Online")).toHaveCount(0);
   const sales = computeSection
     .getByRole("listitem")
     .filter({ hasText: "Sales bot" });

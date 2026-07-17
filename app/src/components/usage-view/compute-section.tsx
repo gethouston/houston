@@ -177,10 +177,8 @@ export function ComputeSection() {
                     name={name}
                     color={resolveAgentColor(match?.color)}
                     max={model.maxAgentMs}
-                    runningNow={onlineNow.includes(agent.agentSlug)}
                     duration={formatDuration(t, agent.workMs)}
                     tasks={t("usage.compute.tasks", { count: agent.tasks })}
-                    runningNowLabel={t("usage.compute.online")}
                   />
                 );
               })}
