@@ -187,7 +187,8 @@
         "body": "Cuando tus agentes trabajen en tareas, su tiempo aparecerá aquí."
       },
       "error": "No se pudo cargar el tiempo de tus agentes. Intenta de nuevo en un momento.",
-      "online": "En línea"
+      "online": "En línea",
+      "removedAgent": "Agente eliminado"
     }
   },
   "toast": {}
