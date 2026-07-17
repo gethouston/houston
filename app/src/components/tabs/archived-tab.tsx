@@ -161,6 +161,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           currentUserId={panel.currentUserId}
           authorLabels={panel.authorLabels}
           renderSystemMessage={panel.renderSystemMessage}
+          conversationMap={panel.conversationMap}
           mapFeedItems={panel.mapFeedItems}
           afterMessages={panel.afterMessages}
           isSpecialTool={panel.isSpecialTool}

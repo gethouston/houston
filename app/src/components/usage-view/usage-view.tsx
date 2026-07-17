@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { Tabs, TabsList, TabsTrigger } from "@houston-ai/core";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderConnections } from "../../hooks/use-provider-connections";
@@ -24,10 +25,13 @@ import { UsagePane } from "./usage-pane";
  * can never disagree about what "connected" means. The empty state's CTA
  * jumps to the AI Models hub, where connecting lives.
  */
+type UsagePaneKey = "compute" | "models";
+
 export function UsageView() {
   const { t } = useTranslation("aiHub");
   const connections = useProviderConnections();
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const [pane, setPane] = useState<UsagePaneKey>("compute");
 
   const { capabilities } = useCapabilities();
   const newEngine = newEngineActive();
@@ -58,12 +62,29 @@ export function UsageView() {
           title={t("usage.pageTitle")}
           subtitle={t("usage.pageSubtitle")}
         />
-        {showCompute && <ComputeSection />}
-        <UsagePane
-          providers={connected}
-          ready={connections.ready}
-          onConnect={() => setViewMode("ai-hub")}
-        />
+        {/* The compute/models split only exists where the gateway meters
+            compute; elsewhere the account sections stand alone, untoggled. */}
+        {showCompute && (
+          <Tabs value={pane} onValueChange={(v) => setPane(v as UsagePaneKey)}>
+            <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:min-w-80 sm:self-start">
+              <TabsTrigger value="compute">
+                {t("usage.panes.compute")}
+              </TabsTrigger>
+              <TabsTrigger value="models">
+                {t("usage.panes.models")}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+        {showCompute && pane === "compute" ? (
+          <ComputeSection />
+        ) : (
+          <UsagePane
+            providers={connected}
+            ready={connections.ready}
+            onConnect={() => setViewMode("ai-hub")}
+          />
+        )}
       </PageContainer>
     </div>
   );

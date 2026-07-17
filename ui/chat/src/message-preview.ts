@@ -21,6 +21,7 @@
  */
 
 import { decodeAttachmentMessage } from "./attachment-message.ts";
+import { decodeInteractionAnswersMessage } from "./interaction-answers-message.ts";
 import { decodeSkillMessage } from "./skill-message.ts";
 
 export function messagePreviewText(body: string | null | undefined): string {
@@ -37,6 +38,19 @@ export function messagePreviewText(body: string | null | undefined): string {
 
   const attachment = decodeAttachmentMessage(body);
   if (attachment) return attachment.message.trim();
+
+  // Interaction-answers ride behind an HTML-comment marker followed by the flat
+  // "<question>: <answer>" text the model reads. Decode to a clean one-line
+  // join of the answers so previews never leak the raw marker JSON.
+  const interaction = decodeInteractionAnswersMessage(body);
+  if (interaction) {
+    return interaction.lines
+      .map((line) =>
+        line.question ? `${line.question}: ${line.answer}` : line.answer,
+      )
+      .join("; ")
+      .trim();
+  }
 
   return body;
 }

@@ -83,6 +83,10 @@ export type AnalyticsEventName =
   | "chat_message_sent"
   | "chat_message_received"
   | "mission_created"
+  | "conversation_map_opened"
+  | "conversation_map_closed"
+  | "conversation_map_moment_clicked"
+  | "conversation_map_back_to_latest_clicked"
   // Feature adoption
   | "integration_connected"
   | "integration_disconnected"
@@ -128,6 +132,12 @@ type AnalyticsProperty =
   | "locale"
   | "detected_locale"
   | "step"
+  | "agent_id"
+  | "conversation_id"
+  | "moment_type"
+  | "message_position"
+  | "conversation_length"
+  | "surface"
   // Cloud migration (payload sizes, where already known)
   | "bytes"
   | "selected_segment"
@@ -165,7 +175,14 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "from_version",
   "to_version",
   "locale",
+  "detected_locale",
   "step",
+  "agent_id",
+  "conversation_id",
+  "moment_type",
+  "message_position",
+  "conversation_length",
+  "surface",
   "bytes",
   "selected_segment",
   "source_screen",
@@ -216,8 +233,15 @@ function bootstrap() {
     mask_all_element_attributes: true,
     capture_dead_clicks: true,
     rageclick: true,
-    disable_session_recording: true,
-    enable_heatmaps: false,
+    // Recordings + heatmaps (user-approved 2026-07-16) answer the open
+    // production-infra.md question: where does onboarding strand users?
+    // Both ride the SAME masking as autocapture above — recordings capture
+    // the masked DOM (all text as asterisks), heatmaps only element
+    // selectors/positions — so user content still never leaves the app.
+    // The PostHog project toggles (session_recording_opt_in /
+    // heatmaps_opt_in) must be ON too; either side alone captures nothing.
+    disable_session_recording: false,
+    enable_heatmaps: true,
     advanced_disable_flags: true,
     loaded: (ph) => {
       ph.register({

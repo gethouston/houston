@@ -57,10 +57,12 @@ test("without the computeUsage capability the Usage page shows only the account 
 
   await expect(page.getByRole("heading", { name: "Usage" })).toBeVisible();
   // The compute section is absent; the account sections (the seeded Anthropic
-  // OAuth account lands under "AI subscriptions") stand on their own.
+  // OAuth account lands under "AI subscriptions") stand on their own, with no
+  // compute/models toggle to flip through.
   await expect(page.getByRole("heading", { name: "Time worked" })).toHaveCount(
     0,
   );
+  await expect(page.getByRole("tab", { name: "Compute usage" })).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "AI subscriptions" }),
   ).toBeVisible();
@@ -138,9 +140,21 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
   // ...and the awake-only ghost is not listed at all.
   await expect(page.getByText("1dee000000000000")).toHaveCount(0);
 
-  // The account half keeps its own section heading below the compute section.
+  // The account sections moved behind the "Model usage" half of the pane
+  // toggle: hidden while on compute, one click away, and the toggle flips back.
   await expect(
     page.getByRole("heading", { name: "AI subscriptions" }),
+  ).toHaveCount(0);
+  await page.getByRole("tab", { name: "Model usage" }).click();
+  await expect(
+    page.getByRole("heading", { name: "AI subscriptions" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Time worked" })).toHaveCount(
+    0,
+  );
+  await page.getByRole("tab", { name: "Compute usage" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Time worked" }),
   ).toBeVisible();
 });
 

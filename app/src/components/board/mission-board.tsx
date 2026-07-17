@@ -180,6 +180,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           renderUserMessage={panel.renderUserMessage}
           renderLink={panel.renderLink}
           renderSystemMessage={panel.renderSystemMessage}
+          conversationMap={panel.conversationMap}
           mapFeedItems={panel.mapFeedItems}
           afterMessages={panel.afterMessages}
           isSpecialTool={panel.isSpecialTool}
