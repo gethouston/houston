@@ -79,6 +79,19 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
       row("houston-assistant", 1, 60 * 60_000, 3, 0),
       // A since-deleted agent humanizes from its slug.
       row("sales-bot", 1, 30 * 60_000, 1, 0),
+      // A deleted agent's bare wire id, with real work: labels "Removed agent".
+      row("40e4d673e72e86df", 1, 5 * 60_000, 1, 0),
+      // An awake-but-never-working ghost (e.g. residual zero days): the row
+      // carries only awakeMs, so the by-agent list must not show it at all.
+      {
+        agentSlug: "1dee000000000000",
+        day: day(0),
+        awakeMs: 10 * 60_000,
+        activeMs: 0,
+        wakes: 2,
+        turns: 0,
+        routineRuns: 0,
+      },
     ],
     awakeNow: ["houston-assistant"],
   });
@@ -88,15 +101,16 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
   await expect(
     page.getByRole("heading", { name: "Time worked" }),
   ).toBeVisible();
-  // 2h05 + 1h + 30m = 3h 35m across 14 tasks (10 + 3 + 1).
-  await expect(page.getByText("Your agents worked 3h 35m")).toBeVisible();
-  await expect(page.getByText("14 tasks")).toBeVisible();
+  // 2h05 + 1h + 30m + 5m = 3h 40m across 15 tasks (10 + 3 + 1 + 1); the
+  // awake-only ghost contributes nothing.
+  await expect(page.getByText("Your agents worked 3h 40m")).toBeVisible();
+  await expect(page.getByText("15 tasks")).toBeVisible();
 
   // 7 daily bars, each self-describing ("Jul 15: worked 2h 05m, 10 tasks").
   await expect(page.getByRole("img", { name: /: worked / })).toHaveCount(7);
 
-  // Per-agent rows: the seed agent resolves to its display name and wears the
-  // online badge (3h 05m across 13 tasks); the deleted slug humanizes. Scope
+  // Per-agent rows: the seed agent resolves to its display name (3h 05m
+  // across 13 tasks); the deleted slug humanizes. Scope
   // to the compute section — the AI-accounts cards below are also list items
   // and their "not metered yet" copy mentions Houston by name.
   const computeSection = page
@@ -105,14 +119,24 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
   const houston = computeSection
     .getByRole("listitem")
     .filter({ hasText: "Houston" });
-  await expect(houston.getByText("Online")).toBeVisible();
   await expect(houston).toContainText("3h 05m");
   await expect(houston).toContainText("13 tasks");
+  // No liveness badge: pod up/idle state is infrastructure the user never sees.
+  await expect(houston.getByText("Online")).toHaveCount(0);
   const sales = computeSection
     .getByRole("listitem")
     .filter({ hasText: "Sales bot" });
   await expect(sales).toContainText("30m");
   await expect(sales).toContainText("1 task");
+
+  // The deleted agent's bare wire id reads "Removed agent", never raw hex...
+  const removed = computeSection
+    .getByRole("listitem")
+    .filter({ hasText: "Removed agent" });
+  await expect(removed).toContainText("5m");
+  await expect(page.getByText("40e4d673e72e86df")).toHaveCount(0);
+  // ...and the awake-only ghost is not listed at all.
+  await expect(page.getByText("1dee000000000000")).toHaveCount(0);
 
   // The account half keeps its own section heading below the compute section.
   await expect(

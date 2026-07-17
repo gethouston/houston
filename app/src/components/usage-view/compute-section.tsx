@@ -19,6 +19,7 @@ import {
   bucketCompute,
   type ComputeRange,
   durationParts,
+  isOpaqueSlug,
 } from "./compute-usage-model";
 
 const RANGES: ComputeRange[] = ["week", "month", "quarter"];
@@ -163,17 +164,21 @@ export function ComputeSection() {
                     a.folderPath === agent.agentSlug ||
                     a.id === agent.agentSlug,
                 );
+                // A slug with no matching agent and no words in it is a
+                // deleted agent's wire id — say so instead of showing hex.
+                const name =
+                  !match && isOpaqueSlug(agent.agentSlug)
+                    ? t("usage.compute.removedAgent")
+                    : agentLabel(agent.agentSlug, agents);
                 return (
                   <ComputeAgentRow
                     key={agent.agentSlug}
                     agent={agent}
-                    name={agentLabel(agent.agentSlug, agents)}
+                    name={name}
                     color={resolveAgentColor(match?.color)}
                     max={model.maxAgentMs}
-                    runningNow={onlineNow.includes(agent.agentSlug)}
                     duration={formatDuration(t, agent.workMs)}
                     tasks={t("usage.compute.tasks", { count: agent.tasks })}
-                    runningNowLabel={t("usage.compute.online")}
                   />
                 );
               })}
