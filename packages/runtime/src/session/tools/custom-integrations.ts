@@ -1,5 +1,6 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
+import { assertNotPlanMode } from "../live-mode-gate";
 import {
   makeRequestCredentialTool,
   REQUEST_CREDENTIAL_TOOL_NAME,
@@ -160,6 +161,9 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
       params: AddParams,
       signal: AbortSignal | undefined,
     ) {
+      // Live gate for the mid-turn Mode-pill switch: adding an integration
+      // changes the user's setup — off-limits once they switched to Plan.
+      assertNotPlanMode("add or change the user's integrations");
       const r = await post<AddResponse>(
         "add",
         {

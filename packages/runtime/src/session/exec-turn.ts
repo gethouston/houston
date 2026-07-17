@@ -42,7 +42,7 @@ import {
 import { newInteractionHolder, runWithInteractionCapture } from "./interaction";
 import { switchNeedsCompaction } from "./provider-switch";
 import { createStallWatchdog } from "./stall-watchdog";
-import { runWithTurnMode } from "./turn-mode-context";
+import { runWithTurnMode, type TurnModeRef } from "./turn-mode-context";
 
 /** A turn's pinned provider/model/effort/mode. Absent = keep current/default. */
 export interface TurnPin {
@@ -211,7 +211,12 @@ export async function execTurn(
     const model = resolveModel(pin?.model, pin?.provider);
     // The turn's execution mode: the pin's, else execute. Never inherited from
     // Settings. Routine fire paths pin auto; an actually unpinned turn is execute.
-    const mode = pin?.mode ?? DEFAULT_TURN_MODE;
+    // Held in a MUTABLE ref: a mid-turn Mode-pill switch (`POST
+    // /conversations/:id/mode`) reaches it through `conv.liveMode` and the
+    // running turn's tools adopt the new mode at their next decision point.
+    const liveMode: TurnModeRef = { current: pin?.mode ?? DEFAULT_TURN_MODE };
+    conv.liveMode = liveMode;
+    const mode = liveMode.current;
     const providerChanged = model.provider !== conv.provider;
     const modelChanged = model.id !== conv.model;
     // COMPLIANCE GATE: when this turn's model crosses a BACKEND boundary
@@ -364,7 +369,7 @@ export async function execTurn(
     watchdog.arm();
     try {
       await runWithActingContext(acting, () =>
-        runWithTurnMode(mode, () =>
+        runWithTurnMode(liveMode, () =>
           runWithInteractionCapture(interaction, () =>
             conv.session.prompt(promptText),
           ),
@@ -539,6 +544,9 @@ export async function execTurn(
       });
   } finally {
     conv.turnId = undefined;
+    // Retire the live-mode ref with the turn: a Mode-pill switch between turns
+    // has nothing to apply to (the next turn's pin carries it instead).
+    conv.liveMode = undefined;
     // Clear the stop marker alongside the turn id so it never bleeds into the
     // next turn on this conversation (read above to stamp `stopped`).
     conv.stoppedTurnId = undefined;

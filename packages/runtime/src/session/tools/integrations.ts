@@ -2,6 +2,7 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { recordApproval, recordConnection, recordSignin } from "../interaction";
+import { assertNotAutoMode, assertNotPlanMode } from "../live-mode-gate";
 import { currentTurnMode } from "../turn-mode-context";
 
 /**
@@ -412,6 +413,11 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       params: ExecuteParams,
       signal: AbortSignal | undefined,
     ) {
+      // Live gate for the mid-turn Mode-pill switch: an execute/auto-built turn
+      // may now be running in Plan — acting on the user's apps is off-limits.
+      // The `x-houston-turn-mode: auto` header in post() reads the SAME live
+      // mode, so a mid-turn flip to/from Autopilot re-gates approvals at once.
+      assertNotPlanMode("take real-world actions on the user's connected apps");
       let result: ActionResult;
       try {
         result = await post<ActionResult>(
@@ -489,6 +495,11 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     parameters: ConnectParams,
     executionMode: "sequential",
     async execute(_id: string, params: ConnectParams) {
+      // Live gates for the mid-turn Mode-pill switch: connecting an app both
+      // waits on the user (never in Autopilot) and sets up a real-world
+      // capability (not while planning).
+      assertNotAutoMode("wait for the user to connect an app");
+      assertNotPlanMode("ask the user to connect an app");
       const toolkit = normalizeToolkitSlug(params.toolkit);
       if (!toolkit)
         throw new Error("request_connection needs a non-empty toolkit slug.");

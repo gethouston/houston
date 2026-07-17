@@ -229,7 +229,10 @@ test("sends a follow-up inside an existing mission", async ({ page }) => {
   });
 });
 
-test("navigates a long conversation with the conversation map", async ({
+// Skipped while the conversation map is deliberately hidden (see
+// ui/chat/src/conversation-map-panel.tsx CONVERSATION_MAP_VISIBLE) — the
+// feature stays wired; un-skip when the panel is re-shown.
+test.skip("navigates a long conversation with the conversation map", async ({
   page,
 }) => {
   await page.goto("/");

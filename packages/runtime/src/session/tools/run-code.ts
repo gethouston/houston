@@ -11,6 +11,7 @@ import {
 } from "node:path";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
+import { assertNotPlanMode } from "../live-mode-gate";
 import { RunCodeLimiter, type RunCodeLimits } from "./run-code-limiter";
 
 /**
@@ -116,6 +117,9 @@ export function makeRunCodeTool(opts: RunCodeOptions) {
       params: RunCodeParams,
       signal: AbortSignal | undefined,
     ) {
+      // Live gate for the mid-turn Mode-pill switch: an execute/auto-built turn
+      // may now be running in Plan — no code runs, no files get produced.
+      assertNotPlanMode("run code or produce files");
       // 1. Gather requested input files (missing/escaping paths throw → surfaced
       //    as a tool error, never silently skipped). Declared inputs may be
       //    overwritten by artifacts of the same path (see step 3).

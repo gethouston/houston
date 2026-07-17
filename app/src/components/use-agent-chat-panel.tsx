@@ -131,7 +131,6 @@ import {
 } from "../lib/tauri";
 import {
   DEFAULT_TURN_MODE,
-  modeChangeAppliesNextTurn,
   normalizeTurnMode,
   type TurnMode,
 } from "../lib/turn-mode";
@@ -730,34 +729,34 @@ export function useAgentChatPanel({
     [path, addToast, t],
   );
   const handleModeSelect = useCallback(
-    async (mode: TurnMode, opts?: { silent?: boolean }) => {
+    async (mode: TurnMode) => {
       // Mode is per-agent composer memory (never synced to engine Settings):
       // persist it so the pill reopens where the user left it. Optimistic flip;
-      // the actual plan/execute pin rides each send as `modeOverride`.
+      // each send pins the pick as `modeOverride`.
       //
-      // A pick while a turn is streaming can't touch that turn (its pin was
-      // stamped at send), so say so: a transient toast tells the user the new
-      // mode rides the NEXT message. `silent` is for programmatic flips whose
-      // send carries the mode explicitly (the plan-ready card), where the
-      // note would be a lie.
-      if (
-        !opts?.silent &&
-        modeChangeAppliesNextTurn(turnRunning, turnMode, mode)
-      ) {
+      // A pick while a turn is STREAMING also applies to that turn (Claude
+      // Code's shift+tab): the runtime mutates the executing turn's live-mode
+      // ref, so the agent adopts the new mode at its next tool decision.
+      // `applied: false` (the turn settled while the request flew) is benign —
+      // the next send pins the mode anyway — but a transport failure is
+      // surfaced, with the honest "your next message still gets it" note.
+      setTurnMode(mode);
+      if (turnRunning && path && selectedSessionKey && mode !== turnMode) {
         const modeLabels: Record<TurnMode, string> = {
           execute: t("chat:modeSelector.coworker"),
           plan: t("chat:modeSelector.planner"),
           auto: t("chat:modeSelector.autopilot"),
         };
-        addToast({
-          title: t("chat:modeSelector.nextTurnToastTitle", {
-            mode: modeLabels[mode],
-          }),
-          description: t("chat:modeSelector.nextTurnToastBody"),
-          variant: "info",
+        tauriChat.setLiveTurnMode(path, selectedSessionKey, mode).catch(() => {
+          addToast({
+            title: t("chat:modeSelector.liveApplyFailedTitle", {
+              mode: modeLabels[mode],
+            }),
+            description: t("chat:modeSelector.liveApplyFailedBody"),
+            variant: "error",
+          });
         });
       }
-      setTurnMode(mode);
       try {
         if (path) {
           const cfg = await tauriConfig.read(path);
@@ -771,7 +770,7 @@ export function useAgentChatPanel({
         });
       }
     },
-    [path, addToast, t, turnRunning, turnMode],
+    [path, selectedSessionKey, addToast, t, turnRunning, turnMode],
   );
 
   // Route a composer model / effort pick. In personal (Teams) mode it writes the
@@ -1191,7 +1190,7 @@ export function useAgentChatPanel({
   const startPlan = useCallback(
     (mode: TurnMode, text: string) => {
       if (!path || !selectedSessionKey) return;
-      void handleModeSelect(mode, { silent: true });
+      void handleModeSelect(mode);
       tauriChat
         .send(path, text, selectedSessionKey, {
           providerOverride: effectiveProvider,

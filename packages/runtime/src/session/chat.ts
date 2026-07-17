@@ -1,5 +1,6 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
+import type { TurnMode } from "@houston/protocol";
 import { activeProvider, resolveModel } from "../ai/providers";
 import { syncServedCredentialSafe } from "../auth/serve";
 import { cleanupClaudeConversation } from "../backends/claude/cleanup";
@@ -156,6 +157,24 @@ export async function runTurn(
   } finally {
     conv.pending--;
   }
+}
+
+/**
+ * Apply a Mode-pill switch to a conversation's EXECUTING turn (Claude Code's
+ * shift+tab semantics): mutate the live-mode ref exec-turn parked on the
+ * Conversation, so the running turn's tools adopt the new mode at their next
+ * decision point — an auto flip un-gates integration actions immediately, a
+ * plan flip starts refusing writes with a message that tells the model why.
+ *
+ * Returns whether a live turn actually adopted it: `false` means no turn is
+ * executing (or the conversation isn't cached), which is benign — the client's
+ * next send pins the mode itself, so there is nothing to apply here.
+ */
+export function setLiveTurnMode(id: string, mode: TurnMode): boolean {
+  const conv = conversations.get(id);
+  if (!conv?.liveMode) return false;
+  conv.liveMode.current = mode;
+  return true;
 }
 
 /**

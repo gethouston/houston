@@ -1689,6 +1689,24 @@ export class HoustonClient {
       `/agents/${this.seg(agentSlugOrId)}/conversations/${this.seg(conversationId)}/dismiss-interaction`,
     );
   }
+  /**
+   * Apply a Mode-pill switch to a conversation's EXECUTING turn (Claude Code's
+   * shift+tab semantics): the running turn adopts the new mode at its next tool
+   * decision. `applied: false` is benign — no turn was running, and the next
+   * send pins the mode itself. A runtime passthrough via the host's channel
+   * dispatch, like `dismissInteraction`.
+   */
+  setLiveTurnMode(
+    agentSlugOrId: string,
+    conversationId: string,
+    mode: "execute" | "plan" | "auto",
+  ): Promise<{ ok: boolean; applied: boolean }> {
+    return this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/conversations/${this.seg(conversationId)}/mode`,
+      { mode },
+    );
+  }
 
   // ---------- store ----------
 

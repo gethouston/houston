@@ -23,6 +23,7 @@ import { makeIntegrationTools } from "./tools/integrations";
 import { makePlanReadyTool } from "./tools/plan-ready";
 import { makeRunCodeTool } from "./tools/run-code";
 import { makeSuggestReusableTool } from "./tools/suggest-reusable";
+import type { TurnModeRef } from "./turn-mode-context";
 import type { ProvidedContext } from "./workspace-context";
 
 /**
@@ -182,6 +183,15 @@ export type Conversation = {
    * See `switchModeIfNeeded`.
    */
   mode: TurnMode;
+  /**
+   * The EXECUTING turn's live-mode ref (set by exec-turn for the turn's
+   * duration, cleared when it settles). `POST /conversations/:id/mode` mutates
+   * `liveMode.current` so the running turn's tools adopt the user's mid-turn
+   * Mode-pill switch at their next decision — Claude Code's shift+tab
+   * semantics. Undefined between turns: with no turn running there is nothing
+   * to apply live; the next turn's pin carries the mode instead.
+   */
+  liveMode?: TurnModeRef;
   /**
    * The workspace + user context the session was FIRST built with (HOU-711,
    * cloud). Reused verbatim when a mode/backend switch rebuilds the session, so a

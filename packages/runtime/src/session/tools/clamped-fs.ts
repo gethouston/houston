@@ -17,6 +17,7 @@ import {
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import type { TSchema } from "typebox";
+import { assertNotPlanMode } from "../live-mode-gate";
 import { WorkspaceGuard } from "./fs-guard";
 
 /**
@@ -54,6 +55,23 @@ export const CLAMPED_FILE_TOOL_NAMES = [
 ] as const;
 
 type AnyToolDefinition = ToolDefinition<TSchema, unknown, unknown>;
+
+/**
+ * Live plan-mode gate for the two MUTATING file tools (edit/write): when the
+ * user switches the Mode pill to Plan WHILE the agent works, the running turn
+ * still carries the execute-built toolset, so the gate refuses at execute time
+ * with the switch-to-planning instruction. A session BUILT in plan mode never
+ * exposes edit/write at all, so this only ever fires on a mid-turn switch.
+ */
+function withPlanGate(def: AnyToolDefinition): AnyToolDefinition {
+  return {
+    ...def,
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
+      assertNotPlanMode("create, edit, or delete the user's files");
+      return def.execute(toolCallId, params, signal, onUpdate, ctx);
+    },
+  };
+}
 
 function withClampedPath(
   def: AnyToolDefinition,
@@ -125,13 +143,17 @@ export function makeClampedFileTools(
       guard,
     ),
     withClampedPath(createFindToolDefinition(workspaceDir), guard),
-    withClampedPath(
-      createEditToolDefinition(workspaceDir, { operations: editOps }),
-      guard,
+    withPlanGate(
+      withClampedPath(
+        createEditToolDefinition(workspaceDir, { operations: editOps }),
+        guard,
+      ),
     ),
-    withClampedPath(
-      createWriteToolDefinition(workspaceDir, { operations: writeOps }),
-      guard,
+    withPlanGate(
+      withClampedPath(
+        createWriteToolDefinition(workspaceDir, { operations: writeOps }),
+        guard,
+      ),
     ),
   ];
 }

@@ -13,6 +13,15 @@ interface ConversationMapPanelProps {
   onSelectMoment: (moment: ConversationMoment) => void;
 }
 
+/**
+ * DELIBERATELY HIDDEN (2026-07-17, product call): the conversation map must
+ * not be visible in the chat yet — neither the "View map" trigger nor the
+ * panel. Everything behind it (moment derivation, the IntersectionObserver
+ * tracking, analytics wiring, this panel) is kept intact and compiled so
+ * re-showing it is exactly deleting the early `return null` below.
+ */
+const CONVERSATION_MAP_VISIBLE = false;
+
 export function ConversationMapPanel({
   activeMessageKey,
   labels,
@@ -22,6 +31,7 @@ export function ConversationMapPanel({
   onOpenChange,
   onSelectMoment,
 }: ConversationMapPanelProps) {
+  if (!CONVERSATION_MAP_VISIBLE) return null;
   if (moments.length < 3) return null;
 
   return (
