@@ -8,9 +8,12 @@ interface EmailOfferActionProps {
 }
 
 /**
- * The one deliberate action that starts the live email demonstration. It uses
- * a quiet focus-token halo so the CTA is discoverable without borrowing the
- * animated running glow, which is reserved for work already in progress.
+ * The one deliberate action that starts the live email demonstration — and,
+ * since the reply composer stays hidden until the mission starts, the ONLY
+ * action on the step. It sits directly on the card (no boxed sub-surface,
+ * which read as a detached widget) with a quiet focus-token halo so the CTA
+ * is discoverable without borrowing the animated running glow, which is
+ * reserved for work already in progress.
  */
 export function EmailOfferAction({
   description,
@@ -18,11 +21,8 @@ export function EmailOfferAction({
   onStart,
 }: EmailOfferActionProps) {
   return (
-    <div
-      className="rounded-xl border border-line/60 bg-input p-3"
-      data-onboarding-email-offer
-    >
-      <p className="mb-3 text-sm text-ink">{description}</p>
+    <div data-onboarding-email-offer>
+      <p className="mb-4 text-center text-sm text-ink-muted">{description}</p>
       <div className="relative">
         <span
           aria-hidden
@@ -33,7 +33,7 @@ export function EmailOfferAction({
           className="pointer-events-none absolute -inset-1 rounded-full ring-1 ring-focus/30"
         />
         <Button
-          className="relative h-11 w-full justify-between rounded-full px-4"
+          className="relative h-12 w-full justify-between rounded-full px-5"
           onClick={onStart}
           size="lg"
           type="button"

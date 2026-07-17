@@ -144,6 +144,10 @@ export function EmailMission({
             queuedMessages={session.queuedMessages}
             onRemoveQueuedMessage={session.removeQueuedMessage}
             queuedLabels={queuedLabels}
+            // Until the mission starts, the offer is the ONLY action: the
+            // reply input stays hidden ("replace") so nothing competes with
+            // the one button that kicks off the real email.
+            composerOverrideMode="replace"
             composerOverride={
               session.started ? undefined : (
                 <EmailOfferAction
