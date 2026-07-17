@@ -26,6 +26,7 @@ import type { WorkspacePaths } from "../paths";
 import { hostProvider } from "../providers";
 import type { Vfs } from "../vfs";
 import { handleActivitiesData } from "./agent-data-activities";
+import { withDocLock } from "./doc-lock";
 import { json, readJson } from "./http";
 
 // The cloud-layout root, kept as a convenience for cloud tests + callers that
@@ -188,74 +189,86 @@ export async function handleAgentData(
         json(res, 400, { error: providerErr });
         return true;
       }
-      const { items } = await loadRoutines(vfs, root);
       const routine = createRoutine(
         input,
         crypto.randomUUID(),
         nowIso,
         createdBy,
       );
-      await saveRoutines(vfs, root, upsertById(items, routine));
+      // Load→save under the per-doc lock so concurrent routine writes can't
+      // drop each other's entries (same hazard as activities; see doc-lock.ts).
+      await withDocLock(`${root}#routines`, async () => {
+        const { items } = await loadRoutines(vfs, root);
+        await saveRoutines(vfs, root, upsertById(items, routine));
+      });
       fireChange();
       json(res, 201, routine);
       return true;
     }
     if ((method === "PATCH" || method === "DELETE") && itemId) {
-      const { items } = await loadRoutines(vfs, root);
-      const current = items.find((r) => r.id === itemId);
-      if (!current) {
-        json(res, 404, { error: "routine not found" });
-        return true;
-      }
-      if (method === "PATCH") {
-        const update = await readJson(req);
-        // A PATCH may switch a routine to an event trigger; reject a malformed
-        // binding before it is persisted (normalizeRoutines would drop it).
-        if (update.trigger != null && !isValidTriggerBinding(update.trigger)) {
-          json(res, 400, { error: "invalid 'trigger' binding" });
+      // The whole load→validate→save runs under the doc lock: validation
+      // reads `current`, so re-loading inside the lock is what makes the
+      // final save apply to the list a concurrent writer just produced.
+      return await withDocLock(`${root}#routines`, async () => {
+        const { items } = await loadRoutines(vfs, root);
+        const current = items.find((r) => r.id === itemId);
+        if (!current) {
+          json(res, 404, { error: "routine not found" });
           return true;
         }
-        const next = applyRoutineUpdate(current, update, nowIso, createdBy);
-        // The APPLIED result must still hold the exactly-one-wake invariant —
-        // e.g. `{trigger: null}` on a trigger routine clears its only wake.
-        // Persisting such a routine loses it silently: normalizeRoutines drops
-        // it from every read and the next save purges it from disk.
-        const nextWakeErr = wakeMechanismError(
-          next as unknown as Record<string, unknown>,
-        );
-        if (nextWakeErr) {
-          json(res, 400, { error: nextWakeErr });
-          return true;
-        }
-        // A PATCH may change the schedule; validate it against the account-wide
-        // zone (HOU-470: no per-routine timezone). A trigger routine (or a PATCH
-        // that switched to a trigger) has no cron to validate.
-        if (typeof next.schedule === "string") {
-          const accountTz = await getPreference(
-            vfs,
-            ctx.workspace.id,
-            "timezone",
-          );
-          const scheduleErr = validateSchedule(next.schedule, accountTz);
-          if (scheduleErr) {
-            json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
+        if (method === "PATCH") {
+          const update = await readJson(req);
+          // A PATCH may switch a routine to an event trigger; reject a malformed
+          // binding before it is persisted (normalizeRoutines would drop it).
+          if (
+            update.trigger != null &&
+            !isValidTriggerBinding(update.trigger)
+          ) {
+            json(res, 400, { error: "invalid 'trigger' binding" });
             return true;
           }
+          const next = applyRoutineUpdate(current, update, nowIso, createdBy);
+          // The APPLIED result must still hold the exactly-one-wake invariant —
+          // e.g. `{trigger: null}` on a trigger routine clears its only wake.
+          // Persisting such a routine loses it silently: normalizeRoutines drops
+          // it from every read and the next save purges it from disk.
+          const nextWakeErr = wakeMechanismError(
+            next as unknown as Record<string, unknown>,
+          );
+          if (nextWakeErr) {
+            json(res, 400, { error: nextWakeErr });
+            return true;
+          }
+          // A PATCH may change the schedule; validate it against the account-wide
+          // zone (HOU-470: no per-routine timezone). A trigger routine (or a PATCH
+          // that switched to a trigger) has no cron to validate.
+          if (typeof next.schedule === "string") {
+            const accountTz = await getPreference(
+              vfs,
+              ctx.workspace.id,
+              "timezone",
+            );
+            const scheduleErr = validateSchedule(next.schedule, accountTz);
+            if (scheduleErr) {
+              json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
+              return true;
+            }
+          }
+          const providerErr = pinError(update);
+          if (providerErr) {
+            json(res, 400, { error: providerErr });
+            return true;
+          }
+          await saveRoutines(vfs, root, upsertById(items, next));
+          fireChange();
+          json(res, 200, next);
+        } else {
+          await saveRoutines(vfs, root, removeById(items, itemId).items);
+          fireChange();
+          json(res, 200, { ok: true });
         }
-        const providerErr = pinError(update);
-        if (providerErr) {
-          json(res, 400, { error: providerErr });
-          return true;
-        }
-        await saveRoutines(vfs, root, upsertById(items, next));
-        fireChange();
-        json(res, 200, next);
-      } else {
-        await saveRoutines(vfs, root, removeById(items, itemId).items);
-        fireChange();
-        json(res, 200, { ok: true });
-      }
-      return true;
+        return true;
+      });
     }
   }
 

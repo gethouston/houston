@@ -13,6 +13,7 @@ import type {
   HoustonEvent,
   NewActivity,
 } from "@houston/protocol";
+import { withDocLock } from "./doc-lock";
 import { json, readJson } from "./http";
 
 export async function handleActivitiesData(
@@ -33,6 +34,11 @@ export async function handleActivitiesData(
   const fireChange = () =>
     emit?.({ type: "ActivityChanged", agentPath: agentId });
   const nowIso = new Date().toISOString();
+  // Every mutation below is a load→save over the whole activity doc;
+  // serialize them per agent so concurrent requests can't drop each other's
+  // entries (see doc-lock.ts). Reads stay lock-free.
+  const locked = <T>(fn: () => Promise<T>) =>
+    withDocLock(`${root}#activity`, fn);
 
   if (method === "GET" && !itemId) {
     json(res, 200, await loadActivities(store, root));
@@ -56,46 +62,54 @@ export async function handleActivitiesData(
       json(res, 400, { error: "invalid 'id'" });
       return;
     }
-    const { items } = await loadActivities(store, root);
     const activity = createActivity(
       body as unknown as NewActivity,
       (body.id as string | undefined) ?? crypto.randomUUID(),
       nowIso,
       author ?? undefined,
     );
-    await saveActivities(store, root, upsertById(items, activity));
+    await locked(async () => {
+      const { items } = await loadActivities(store, root);
+      await saveActivities(store, root, upsertById(items, activity));
+    });
     fireChange();
     json(res, 201, activity);
     return;
   }
 
   if (method === "PATCH" && itemId) {
-    const { items } = await loadActivities(store, root);
-    const current = items.find((a) => a.id === itemId);
-    if (!current) {
+    const update = await readJson(req);
+    const next = await locked(async () => {
+      const { items } = await loadActivities(store, root);
+      const current = items.find((a) => a.id === itemId);
+      if (!current) return null;
+      const applied = applyActivityUpdate(
+        current,
+        update,
+        nowIso,
+        author ?? undefined,
+      );
+      await saveActivities(store, root, upsertById(items, applied));
+      return applied;
+    });
+    if (!next) {
       json(res, 404, { error: "activity not found" });
       return;
     }
-    const next = applyActivityUpdate(
-      current,
-      await readJson(req),
-      nowIso,
-      author ?? undefined,
-    );
-    await saveActivities(store, root, upsertById(items, next));
     fireChange();
     json(res, 200, next);
     return;
   }
 
   if (method === "DELETE" && itemId) {
-    const { items } = await loadActivities(store, root);
-    const removed = removeById(items, itemId);
-    if (removed.removed) {
-      await saveActivities(store, root, removed.items);
-      fireChange();
-    }
-    json(res, 200, { ok: true, deleted: removed.removed });
+    const removed = await locked(async () => {
+      const { items } = await loadActivities(store, root);
+      const result = removeById(items, itemId);
+      if (result.removed) await saveActivities(store, root, result.items);
+      return result.removed;
+    });
+    if (removed) fireChange();
+    json(res, 200, { ok: true, deleted: removed });
     return;
   }
 
