@@ -1,4 +1,4 @@
-import { Tabs, TabsList, TabsTrigger } from "@houston-ai/core";
+import { Button, ButtonGroup } from "@houston-ai/core";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
@@ -63,18 +63,25 @@ export function UsageView() {
           subtitle={t("usage.pageSubtitle")}
         />
         {/* The compute/models split only exists where the gateway meters
-            compute; elsewhere the account sections stand alone, untoggled. */}
+            compute; elsewhere the account sections stand alone, untoggled. A
+            segmented button toggle switches between the two panes. */}
         {showCompute && (
-          <Tabs value={pane} onValueChange={(v) => setPane(v as UsagePaneKey)}>
-            <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:min-w-80 sm:self-start">
-              <TabsTrigger value="compute">
-                {t("usage.panes.compute")}
-              </TabsTrigger>
-              <TabsTrigger value="models">
-                {t("usage.panes.models")}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <ButtonGroup className="self-start">
+            <Button
+              variant={pane === "compute" ? "default" : "outline"}
+              aria-pressed={pane === "compute"}
+              onClick={() => setPane("compute")}
+            >
+              {t("usage.panes.compute")}
+            </Button>
+            <Button
+              variant={pane === "models" ? "default" : "outline"}
+              aria-pressed={pane === "models"}
+              onClick={() => setPane("models")}
+            >
+              {t("usage.panes.models")}
+            </Button>
+          </ButtonGroup>
         )}
         {showCompute && pane === "compute" ? (
           <ComputeSection />
