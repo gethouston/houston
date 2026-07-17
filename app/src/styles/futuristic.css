@@ -111,7 +111,8 @@ body::before {
 }
 
 /* Modal surface (`bg-dialog`). SOLID in both themes (the `dialog` token:
-   neutral.800 dark, white light) — no glass, no backdrop-filter. Modals sit
+   cool.gutter-dark dark — the app-background blue-tinted tone — white
+   light) — no glass, no backdrop-filter. Modals sit
    over arbitrary content and must never bleed it through; WebView2 in the
    desktop shell doesn't reliably composite backdrop-filter anyway (the dark
    "New agent" modal bled the Settings page through, and light washed out
