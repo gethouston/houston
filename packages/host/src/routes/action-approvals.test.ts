@@ -120,6 +120,39 @@ test("POST /always validates the action slug", async () => {
   }
 });
 
+test("DELETE /always revokes an action (case-insensitive); validates the slug", async () => {
+  const { base, agent, stop } = await setup();
+  try {
+    const post = (action: string) =>
+      fetch(url(base, agent.id, "/always"), {
+        method: "POST",
+        headers: auth,
+        body: JSON.stringify({ action }),
+      });
+    const del = (body: unknown) =>
+      fetch(url(base, agent.id, "/always"), {
+        method: "DELETE",
+        headers: auth,
+        body: JSON.stringify(body),
+      });
+    await post("GMAIL_SEND");
+    await post("SLACK_POST");
+    // A different casing still matches the stored slug; only it is removed.
+    const removed = await del({ action: "gmail_send" });
+    expect(removed.status).toBe(200);
+    expect((await removed.json()).always).toEqual(["SLACK_POST"]);
+    const get = await fetch(url(base, agent.id), { headers: auth });
+    expect((await get.json()).always).toEqual(["SLACK_POST"]);
+
+    // Same validation as the POST — a bad body is a 400, not a silent no-op.
+    expect((await del({})).status).toBe(400); // missing
+    expect((await del({ action: "" })).status).toBe(400); // empty
+    expect((await del({ action: "bad slug!" })).status).toBe(400); // charset
+  } finally {
+    stop();
+  }
+});
+
 test("POST /tickets writes a one-shot ticket; validates the hash", async () => {
   const { base, agent, approvalStore, stop } = await setup();
   try {
@@ -193,6 +226,70 @@ test("dispatch surface serves the same three routes (GET / always / tickets)", a
     // Both surfaces read the SAME store.
     const get = await fetch(url(base, agent.id), { headers: auth });
     expect((await get.json()).always).toEqual(["GMAIL_SEND"]);
+  } finally {
+    stop();
+  }
+});
+
+test("dispatch surface serves DELETE /always (revoke)", async () => {
+  const { base, agent, stop } = await setup();
+  try {
+    await fetch(dispatchUrl(base, agent.id, "/always"), {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ action: "GMAIL_SEND" }),
+    });
+    const removed = await fetch(dispatchUrl(base, agent.id, "/always"), {
+      method: "DELETE",
+      headers: auth,
+      body: JSON.stringify({ action: "GMAIL_SEND" }),
+    });
+    expect(removed.status).toBe(200);
+    expect((await removed.json()).always).toEqual([]);
+    // The /v1 surface reads the SAME store back as empty.
+    const get = await fetch(url(base, agent.id), { headers: auth });
+    expect((await get.json()).always).toEqual([]);
+
+    // A foreign user cannot revoke on someone else's agent.
+    const foreign = await fetch(dispatchUrl(base, agent.id, "/always"), {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer other",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "GMAIL_SEND" }),
+    });
+    expect(foreign.status).toBe(403);
+  } finally {
+    stop();
+  }
+});
+
+test("DELETE /always on an unknown agent → 404", async () => {
+  const { base, ws, stop } = await setup();
+  try {
+    const res = await fetch(url(base, `${ws.id}/Ghost`, "/always"), {
+      method: "DELETE",
+      headers: auth,
+      body: JSON.stringify({ action: "GMAIL_SEND" }),
+    });
+    expect(res.status).toBe(404);
+  } finally {
+    stop();
+  }
+});
+
+test("unwired dep → DELETE /always falls through past the approval routes", async () => {
+  const { base, agent, stop } = await setup({ withApprovals: false });
+  try {
+    // No approval store → the family is not served here; the request keeps
+    // falling toward the runtime channel (none wired → 503), never a 200.
+    const res = await fetch(dispatchUrl(base, agent.id, "/always"), {
+      method: "DELETE",
+      headers: auth,
+      body: JSON.stringify({ action: "GMAIL_SEND" }),
+    });
+    expect(res.status).toBe(503);
   } finally {
     stop();
   }

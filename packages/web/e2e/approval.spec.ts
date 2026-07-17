@@ -1,4 +1,4 @@
-import { FAKE_HOST_URL } from "@houston/fake-host";
+import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 
@@ -439,6 +439,61 @@ test("composes one visible message from a question then an approval", async ({
   await expect(composed).toContainText("Allowed Gmail to send draft.");
   await expect(composed).not.toContainText("GMAIL_SEND_DRAFT");
   await expect(page.getByText("Allow Gmail to send draft?")).toHaveCount(0);
+});
+
+/**
+ * (7) The revoke stack: the agent Integrations tab's "Runs without asking"
+ * review lists the actions the chat card's "Always allow" blessed, each with a
+ * visible Remove that DELETEs the always-allow so Houston asks again. We seed
+ * the always-allow through the SAME per-agent route the card POSTs to (proving
+ * the card's write shows up here live), open the tab, then Remove one: the
+ * section empties, the host's always list clears, and a reload proves the revoke
+ * reached the host (persistence), not just the client cache.
+ */
+test("the agent tab reviews an always-allowed action and Remove revokes it", async ({
+  page,
+}) => {
+  await page.request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
+    data: { integrations: ["composio"] },
+  });
+  // The card's "Always allow" write landed for this agent (identical route).
+  await page.request.post(
+    `${FAKE_HOST_URL}/v1/agents/${SEED_AGENT_ID}/action-approvals/always`,
+    { data: { action: "GMAIL_SEND_DRAFT" } },
+  );
+
+  await page.goto("/");
+  await page.locator('[data-tour-target="tab-integrations"]').click();
+
+  // The review section shows the app's HUMANIZED action and a visible Remove.
+  await expect(
+    page.getByRole("heading", { name: "Runs without asking" }),
+  ).toBeVisible();
+  const section = page
+    .locator("section")
+    .filter({ hasText: "Runs without asking" });
+  await expect(section.getByText("send draft")).toBeVisible();
+  const remove = section.getByRole("button", {
+    name: /Stop send draft running without asking/,
+  });
+  await expect(remove).toBeVisible();
+
+  await remove.click();
+
+  // The DELETE fired: the host's always list emptied and the section is gone.
+  await expect
+    .poll(async () => (await readApprovals(page)).always, { timeout: 10_000 })
+    .toEqual([]);
+  await expect(
+    page.getByRole("heading", { name: "Runs without asking" }),
+  ).toHaveCount(0);
+
+  // Reload proves the revoke reached the host, not just the client cache.
+  await page.reload();
+  await page.locator('[data-tour-target="tab-integrations"]').click();
+  await expect(
+    page.getByRole("heading", { name: "Runs without asking" }),
+  ).toHaveCount(0);
 });
 
 /**

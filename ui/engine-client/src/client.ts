@@ -1700,6 +1700,21 @@ export class HoustonClient {
       { action },
     );
   }
+  /**
+   * Remove an action from this agent's "always allow" set (the review UI's
+   * Remove); returns the new set. A mutation, so it does NOT degrade a 404 to a
+   * fake empty result (unlike the GET) — a real failure must reach the user.
+   */
+  async disallowActionAlways(
+    agentSlugOrId: string,
+    action: string,
+  ): Promise<{ always: string[] }> {
+    return this.request(
+      "DELETE",
+      `/agents/${this.seg(agentSlugOrId)}/action-approvals/always`,
+      { action },
+    );
+  }
   /** Approve one pending action once, by its `hash` (a single-use ticket). */
   async addActionApprovalTicket(
     agentSlugOrId: string,

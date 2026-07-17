@@ -109,6 +109,12 @@
       "heading": "Conectado, mas desligado para este agente",
       "subtitle": "Estes apps estão conectados à sua conta. Ligue um para que este agente possa usá-lo.",
       "turnOn": "Ligar {{app}} para este agente"
+    },
+    "runsWithoutAsking": {
+      "heading": "Executa sem perguntar",
+      "subtitle": "Você permitiu que este agente execute estas ações de apps sem consultar você antes. Remova uma e o Houston vai perguntar de novo.",
+      "remove": "Remover",
+      "removeFor": "Parar de executar {{action}} sem perguntar"
     }
   },
   "custom": {

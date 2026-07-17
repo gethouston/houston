@@ -32,6 +32,7 @@ export {
 } from "./use-files";
 export { useInstructions, useSaveInstructions } from "./use-instructions";
 export {
+  useAgentActionApprovals,
   useAgentGrantMutation,
   useAgentGrants,
   useCustomIntegrations,
@@ -40,6 +41,7 @@ export {
   useIntegrationStatus,
   useIntegrationToolkits,
   useRemoveCustomIntegration,
+  useRevokeActionApproval,
   useSubmitCustomCredential,
 } from "./use-integrations";
 export {
