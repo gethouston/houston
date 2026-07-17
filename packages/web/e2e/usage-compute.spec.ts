@@ -79,9 +79,9 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
       // Seed agent: resolves to its display name. 2h05m worked today + 1h yesterday.
       row("houston-assistant", 0, 125 * 60_000, 8, 2),
       row("houston-assistant", 1, 60 * 60_000, 3, 0),
-      // A since-deleted agent humanizes from its slug.
+      // A since-deleted agent (not in the sidebar roster): invisible, even
+      // with real work — the user only ever sees agents they actually have.
       row("sales-bot", 1, 30 * 60_000, 1, 0),
-      // A deleted agent's bare wire id, with real work: labels "Removed agent".
       row("40e4d673e72e86df", 1, 5 * 60_000, 1, 0),
       // An awake-but-never-working ghost (e.g. residual zero days): the row
       // carries only awakeMs, so the by-agent list must not show it at all.
@@ -103,16 +103,19 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
   await expect(
     page.getByRole("heading", { name: "Time worked" }),
   ).toBeVisible();
-  // 2h05 + 1h + 30m + 5m = 3h 40m across 15 tasks (10 + 3 + 1 + 1); the
-  // awake-only ghost contributes nothing.
-  await expect(page.getByText("Your agents worked 3h 40m")).toBeVisible();
-  await expect(page.getByText("15 tasks")).toBeVisible();
+  // Only the seed agent counts: 2h05 + 1h = 3h 05m across 13 messages
+  // (10 + 3). Deleted agents and ghosts contribute nothing anywhere.
+  // With only one visible agent the summary equals its row, so scope the
+  // message count to the summary paragraph (strict mode would match both).
+  const summary = page.getByText("Your agents worked 3h 05m");
+  await expect(summary).toBeVisible();
+  await expect(summary).toContainText("13 messages");
 
-  // 7 daily bars, each self-describing ("Jul 15: worked 2h 05m, 10 tasks").
+  // 7 daily bars, each self-describing ("Jul 15: worked 2h 05m, 10 messages").
   await expect(page.getByRole("img", { name: /: worked / })).toHaveCount(7);
 
   // Per-agent rows: the seed agent resolves to its display name (3h 05m
-  // across 13 tasks); the deleted slug humanizes. Scope
+  // across 13 messages). Scope
   // to the compute section — the AI-accounts cards below are also list items
   // and their "not metered yet" copy mentions Houston by name.
   const computeSection = page
@@ -122,22 +125,14 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
     .getByRole("listitem")
     .filter({ hasText: "Houston" });
   await expect(houston).toContainText("3h 05m");
-  await expect(houston).toContainText("13 tasks");
+  await expect(houston).toContainText("13 messages");
   // No liveness badge: pod up/idle state is infrastructure the user never sees.
   await expect(houston.getByText("Online")).toHaveCount(0);
-  const sales = computeSection
-    .getByRole("listitem")
-    .filter({ hasText: "Sales bot" });
-  await expect(sales).toContainText("30m");
-  await expect(sales).toContainText("1 task");
-
-  // The deleted agent's bare wire id reads "Removed agent", never raw hex...
-  const removed = computeSection
-    .getByRole("listitem")
-    .filter({ hasText: "Removed agent" });
-  await expect(removed).toContainText("5m");
+  // Nothing outside the sidebar roster exists on the page — no deleted
+  // agents, no "Removed agent" placeholder, no raw wire ids.
+  await expect(page.getByText("Sales bot")).toHaveCount(0);
+  await expect(page.getByText("Removed agent")).toHaveCount(0);
   await expect(page.getByText("40e4d673e72e86df")).toHaveCount(0);
-  // ...and the awake-only ghost is not listed at all.
   await expect(page.getByText("1dee000000000000")).toHaveCount(0);
 
   // The account sections moved behind the "Model usage" half of the pane
@@ -194,8 +189,6 @@ test("with the capability but no rows the section shows its empty state", async 
   ).toBeVisible();
   await expect(page.getByText("No time worked yet")).toBeVisible();
   await expect(
-    page.getByText(
-      "When your agents work on tasks, their time will show here.",
-    ),
+    page.getByText("When your agents work, their time will show here."),
   ).toBeVisible();
 });

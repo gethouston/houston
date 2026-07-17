@@ -19,7 +19,7 @@ import {
   bucketCompute,
   type ComputeRange,
   durationParts,
-  isOpaqueSlug,
+  onlyKnownAgents,
 } from "./compute-usage-model";
 
 const RANGES: ComputeRange[] = ["week", "month", "quarter"];
@@ -69,9 +69,16 @@ export function ComputeSection() {
   const [range, setRange] = useState<ComputeRange>("week");
   const { data, isLoading, isError } = useComputeUsage(true);
 
+  // The user sees exactly the agents they have (the sidebar roster) — deleted
+  // agents' history and anything a gateway might still leak are dropped before
+  // any number is computed, so the list, chart, and totals always agree.
+  const rows = useMemo(
+    () => onlyKnownAgents(data?.rows ?? [], agents),
+    [data, agents],
+  );
   const model = useMemo(
-    () => bucketCompute(data?.rows ?? [], range, Date.now()),
-    [data, range],
+    () => bucketCompute(rows, range, Date.now()),
+    [rows, range],
   );
   const onlineNow = data?.awakeNow ?? [];
   // Selective direct labels: every nonzero bar on the roomy 7-day view; only
@@ -110,7 +117,7 @@ export function ComputeSection() {
         <p className="py-6 text-sm text-ink-muted">
           {t("usage.compute.error")}
         </p>
-      ) : (data?.rows.length ?? 0) === 0 ? (
+      ) : rows.length === 0 ? (
         <Empty className="mt-2">
           <EmptyTitle>{t("usage.compute.empty.title")}</EmptyTitle>
           <EmptyDescription>{t("usage.compute.empty.body")}</EmptyDescription>
@@ -122,7 +129,7 @@ export function ComputeSection() {
               duration: formatDuration(t, model.totalWorkMs),
             })}
             <span aria-hidden> · </span>
-            {t("usage.compute.tasks", { count: model.totalTasks })}
+            {t("usage.compute.messages", { count: model.totalMessages })}
           </p>
           <ComputeBarChart
             buckets={model.buckets}
@@ -135,7 +142,9 @@ export function ComputeSection() {
                   day: "numeric",
                 }),
                 duration: formatDuration(t, bucket.workMs),
-                tasks: t("usage.compute.tasks", { count: bucket.tasks }),
+                messages: t("usage.compute.messages", {
+                  count: bucket.messages,
+                }),
               })
             }
             axisLabel={(bucket) =>
@@ -159,26 +168,24 @@ export function ComputeSection() {
             </h3>
             <ul className="flex flex-col">
               {model.perAgent.map((agent) => {
+                // Every row survived onlyKnownAgents, so the slug always
+                // resolves to a real sidebar agent.
                 const match = agents.find(
                   (a) =>
                     a.folderPath === agent.agentSlug ||
                     a.id === agent.agentSlug,
                 );
-                // A slug with no matching agent and no words in it is a
-                // deleted agent's wire id — say so instead of showing hex.
-                const name =
-                  !match && isOpaqueSlug(agent.agentSlug)
-                    ? t("usage.compute.removedAgent")
-                    : agentLabel(agent.agentSlug, agents);
                 return (
                   <ComputeAgentRow
                     key={agent.agentSlug}
                     agent={agent}
-                    name={name}
+                    name={agentLabel(agent.agentSlug, agents)}
                     color={resolveAgentColor(match?.color)}
                     max={model.maxAgentMs}
                     duration={formatDuration(t, agent.workMs)}
-                    tasks={t("usage.compute.tasks", { count: agent.tasks })}
+                    messages={t("usage.compute.messages", {
+                      count: agent.messages,
+                    })}
                   />
                 );
               })}

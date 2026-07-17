@@ -4,7 +4,7 @@ import type { ComputeUsageRow } from "@houston-ai/engine-client";
 import {
   bucketCompute,
   durationParts,
-  isOpaqueSlug,
+  onlyKnownAgents,
   showComputeSection,
 } from "../src/components/usage-view/compute-usage-model.ts";
 
@@ -46,7 +46,7 @@ describe("bucketCompute", () => {
       model.buckets.map((b) => b.workMs),
       [0, 0, 0, 0, 0, 0, 3_600_000],
     );
-    strictEqual(model.buckets[6].tasks, 3);
+    strictEqual(model.buckets[6].messages, 3);
   });
 
   it("excludes rows before the range and folds future-dated rows into the last bucket", () => {
@@ -102,11 +102,11 @@ describe("bucketCompute", () => {
       ["big", "a-agent", "b-agent"],
     );
     deepStrictEqual(
-      model.perAgent.map((a) => a.tasks),
+      model.perAgent.map((a) => a.messages),
       [3, 2, 1],
     );
     strictEqual(model.totalWorkMs, 1_000);
-    strictEqual(model.totalTasks, 6);
+    strictEqual(model.totalMessages, 6);
   });
 
   it("floors bar maxima at 1 so empty data never divides by zero", () => {
@@ -137,13 +137,26 @@ describe("bucketCompute", () => {
   });
 });
 
-describe("isOpaqueSlug", () => {
-  it("matches bare wire ids but not nameable slugs", () => {
-    strictEqual(isOpaqueSlug("40e4d673e72e86df"), true);
-    strictEqual(isOpaqueSlug("5e70000000000000"), true);
-    strictEqual(isOpaqueSlug("sales-bot"), false);
-    strictEqual(isOpaqueSlug("deadbeef"), false); // too short to be a wire id
-    strictEqual(isOpaqueSlug("my_agent_2"), false);
+describe("onlyKnownAgents", () => {
+  it("keeps only rows whose slug matches a sidebar agent's id or folderPath", () => {
+    const agents = [
+      { id: "Personal/Assistant", folderPath: "personal-assistant" },
+      { id: "Personal/Scout" },
+    ];
+    const rows = [
+      row("personal-assistant", "2026-07-15", 1_000, 1),
+      row("Personal/Scout", "2026-07-15", 500, 1),
+      row("40e4d673e72e86df", "2026-07-15", 900, 2), // deleted agent
+      row("5e70000000000000", "2026-07-15", 0, 0), // system pod
+    ];
+    deepStrictEqual(
+      onlyKnownAgents(rows, agents).map((r) => r.agentSlug),
+      ["personal-assistant", "Personal/Scout"],
+    );
+  });
+
+  it("returns nothing when the roster is empty", () => {
+    deepStrictEqual(onlyKnownAgents([row("a", "2026-07-15", 1)], []), []);
   });
 });
 

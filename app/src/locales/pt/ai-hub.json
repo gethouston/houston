@@ -169,15 +169,13 @@
     },
     "compute": {
       "title": "Tempo trabalhado",
-      "subtitle": "Quanto tempo seus agentes passaram trabalhando e quantas tarefas realizaram.",
+      "subtitle": "Quanto tempo seus agentes passaram trabalhando e quantas mensagens responderam.",
       "range": {
         "week": "7 dias",
         "month": "30 dias",
         "quarter": "3 meses"
       },
       "summary": "Seus agentes trabalharam {{duration}}",
-      "tasks_one": "{{count}} tarefa",
-      "tasks_other": "{{count}} tarefas",
       "byAgent": "Por agente",
       "duration": {
         "hm": "{{hours}}h {{minutes}}m",
@@ -185,13 +183,14 @@
         "underMinute": "<1m",
         "zero": "0m"
       },
-      "barLabel": "{{date}}: trabalharam {{duration}}, {{tasks}}",
+      "barLabel": "{{date}}: trabalharam {{duration}}, {{messages}}",
       "empty": {
         "title": "Ainda não há tempo trabalhado",
-        "body": "Quando seus agentes trabalharem em tarefas, o tempo deles vai aparecer aqui."
+        "body": "Quando seus agentes trabalharem, o tempo deles vai aparecer aqui."
       },
       "error": "Não foi possível carregar o tempo dos seus agentes. Tente novamente em instantes.",
-      "removedAgent": "Agente removido"
+      "messages_one": "{{count}} mensagem",
+      "messages_other": "{{count}} mensagens"
     }
   },
   "toast": {}
