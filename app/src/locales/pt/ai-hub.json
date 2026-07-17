@@ -131,6 +131,10 @@
   "usage": {
     "pageTitle": "Uso",
     "pageSubtitle": "Quanto você já usou de cada conta de IA conectada e quando os limites reiniciam.",
+    "panes": {
+      "compute": "Uso de computação",
+      "models": "Uso de modelos"
+    },
     "window": {
       "session": "Limite por sessão",
       "week": "Limite semanal",

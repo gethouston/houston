@@ -131,6 +131,10 @@
   "usage": {
     "pageTitle": "Usage",
     "pageSubtitle": "How much of each connected AI account you've used, and when its limits reset.",
+    "panes": {
+      "compute": "Compute usage",
+      "models": "Model usage"
+    },
     "window": {
       "session": "Session limit",
       "week": "Weekly limit",
