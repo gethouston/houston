@@ -405,6 +405,15 @@ export const tauriChat = {
     call<void>("stop_session", async () => {
       await getEngine().cancelSession(agentPath, sessionKey);
     }),
+  /** Apply a Mode-pill switch to the conversation's EXECUTING turn (Claude
+   *  Code's shift+tab): the running turn adopts the new mode at its next tool
+   *  decision. `applied: false` = no turn was running (benign — the next send
+   *  pins the mode itself). */
+  setLiveTurnMode: (
+    agentPath: string,
+    sessionKey: string,
+    mode: "execute" | "plan" | "auto",
+  ) => getEngine().setLiveTurnMode(agentPath, sessionKey, mode),
   /** Retire a conversation's pending interaction (stepper X / abandon): appends
    *  a durable stop marker, like a real Stop — the model learns nothing. */
   dismissInteraction: (agentPath: string, conversationId: string) =>

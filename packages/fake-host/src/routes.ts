@@ -227,6 +227,11 @@ export function handleAgents(
         // the client settles the stuck card itself (the orphan path).
         return json({ ok: true, cancelled: cancelChat(id, cid) });
       }
+      if (action === "mode" && method === "POST") {
+        // Live Mode-pill switch passthrough. No turn ever runs in the fake
+        // host, so it always answers the benign "nothing to apply" shape.
+        return json({ ok: true, applied: false });
+      }
       if (action === "dismiss-interaction" && method === "POST") {
         // Runtime passthrough: append the durable stop marker to the transcript
         // AND retire the bound activity's pending interaction (mirrors the real

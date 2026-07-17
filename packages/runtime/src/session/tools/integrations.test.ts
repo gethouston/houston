@@ -469,18 +469,45 @@ test("a malformed approval payload falls through to the generic error throw", as
 test("the turn-mode header is sent iff the turn is Autopilot", async () => {
   // Inside an "auto" turn, the host is told to run the action un-gated.
   const auto = mockFetch(() => ({ body: { successful: true } }));
-  await runWithTurnMode("auto", () => run(execute, { action: "X" }));
+  await runWithTurnMode({ current: "auto" }, () =>
+    run(execute, { action: "X" }),
+  );
   expect(auto[0]?.headers["x-houston-turn-mode"]).toBe("auto");
 
   // A normal "execute" turn omits the header (the host gates un-approved actions).
   const exec = mockFetch(() => ({ body: { successful: true } }));
-  await runWithTurnMode("execute", () => run(execute, { action: "X" }));
+  await runWithTurnMode({ current: "execute" }, () =>
+    run(execute, { action: "X" }),
+  );
   expect(exec[0]?.headers["x-houston-turn-mode"]).toBeUndefined();
 
   // Outside any turn the header is absent too.
   const bare = mockFetch(() => ({ body: { successful: true } }));
   await run(execute, { action: "X" });
   expect(bare[0]?.headers["x-houston-turn-mode"]).toBeUndefined();
+});
+
+test("live mode gates: a turn switched to Plan refuses execute; Autopilot refuses request_connection", async () => {
+  // The user flipped the Mode pill to Plan while the turn ran: acting on the
+  // user's apps refuses BEFORE any network call, with the planning instruction.
+  const calls = mockFetch(() => ({ body: { successful: true } }));
+  await expect(
+    runWithTurnMode({ current: "plan" }, () => run(execute, { action: "X" })),
+  ).rejects.toThrow(/Plan mode/);
+  expect(calls).toHaveLength(0);
+
+  // A flip to Autopilot mid-turn: waiting on the user to connect an app refuses.
+  await expect(
+    runWithTurnMode({ current: "auto" }, () =>
+      run(requestConnection, { toolkit: "gmail" }),
+    ),
+  ).rejects.toThrow(/Autopilot mode/);
+  // And Plan refuses the connect hand-off too (setup while planning).
+  await expect(
+    runWithTurnMode({ current: "plan" }, () =>
+      run(requestConnection, { toolkit: "gmail" }),
+    ),
+  ).rejects.toThrow(/Plan mode/);
 });
 
 test("C2: attaches the turn's acting-as header inside a turn, and nothing outside one", async () => {

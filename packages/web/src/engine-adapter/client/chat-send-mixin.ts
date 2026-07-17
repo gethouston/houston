@@ -98,6 +98,23 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
       return { cancelled: cancelled === true };
     }
 
+    /**
+     * Apply a Mode-pill switch to a conversation's EXECUTING turn (Claude
+     * Code's shift+tab): the runtime mutates the running turn's live-mode ref
+     * so its tools adopt the new mode at their next decision. `applied: false`
+     * is benign — no turn was running, and the next send pins the mode itself.
+     */
+    async setLiveTurnMode(
+      agentPath: string,
+      conversationId: string,
+      mode: "execute" | "plan" | "auto",
+    ): Promise<{ ok: boolean; applied: boolean }> {
+      const engine = this.ctx.cp
+        ? controlPlane.runtimeClientFor(this.ctx.cp, agentPath)
+        : this.ctx.engine;
+      return engine.setMode(conversationId, mode);
+    }
+
     async dismissInteraction(
       agentPath: string,
       conversationId: string,
