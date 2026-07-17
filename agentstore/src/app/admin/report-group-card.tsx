@@ -1,5 +1,6 @@
 "use client";
 
+import type { AdminReport } from "@houston/agentstore-client";
 import {
   Badge,
   Button,
@@ -9,7 +10,6 @@ import {
   CardTitle,
 } from "@houston-ai/core";
 import { ExternalLink } from "lucide-react";
-import type { AdminReport } from "@/lib/store-admin-client";
 
 const REASON_LABEL: Record<AdminReport["reason"], string> = {
   spam: "Spam",

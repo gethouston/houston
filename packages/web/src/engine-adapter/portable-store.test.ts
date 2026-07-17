@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { StorePublishRequest } from "../../../../ui/engine-client/src/types";
+import { HoustonEngineError } from "./client";
 import type { ControlPlaneConfig } from "./control-plane";
 import {
   getPublication,
@@ -159,6 +160,68 @@ test("getPublication on a never-published agent needs no store call", async () =
     linked: false,
     storeUrl: "https://agents.gethouston.ai",
   });
+});
+
+test("a gateway HTTP failure re-maps to a HoustonEngineError", async () => {
+  // Host gather + pointer routes succeed; the store POST answers non-OK, so
+  // `asEngineError` must translate the SDK's StoreApiError onto the engine
+  // error class publish callers branch on — carrying the same status.
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? "GET").toUpperCase();
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      if (url.endsWith("/agents/A/portable/store-ir")) {
+        return jsonResponse({ ir: { irVersion: "2.0.0", from: body } });
+      }
+      if (
+        url.endsWith("/agents/A/portable/store-publication") &&
+        method === "GET"
+      ) {
+        return jsonResponse({ pointer: null });
+      }
+      if (url.endsWith("/v1/agentstore/agents") && method === "POST") {
+        return jsonResponse({ error: "over_quota" }, 429);
+      }
+      return jsonResponse({ error: "unexpected" }, 500);
+    }),
+  );
+  const err = await publishToStore(cfg, "A", req).then(
+    () => null,
+    (e: unknown) => e,
+  );
+  expect(err).toBeInstanceOf(HoustonEngineError);
+  expect((err as HoustonEngineError).status).toBe(429);
+});
+
+test("a network failure rethrows the underlying cause verbatim (status 0)", async () => {
+  // A thrown fetch surfaces as StoreApiError(status 0, body: cause); the shim's
+  // status-0 branch must re-raise that original cause unchanged, exactly as the
+  // former hand-rolled fetch propagated it.
+  const cause = new Error("connection refused");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? "GET").toUpperCase();
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      if (url.endsWith("/agents/A/portable/store-ir")) {
+        return jsonResponse({ ir: { irVersion: "2.0.0", from: body } });
+      }
+      if (
+        url.endsWith("/agents/A/portable/store-publication") &&
+        method === "GET"
+      ) {
+        return jsonResponse({ pointer: null });
+      }
+      if (url.endsWith("/v1/agentstore/agents") && method === "POST") {
+        throw cause;
+      }
+      return jsonResponse({ error: "unexpected" }, 500);
+    }),
+  );
+  await expect(publishToStore(cfg, "A", req)).rejects.toBe(cause);
 });
 
 test("unpublish PATCHes the gateway and keeps the pointer", async () => {

@@ -27,9 +27,7 @@ The authoritative wire/DB surface is the gateway's contract
 | App UI (browse) | `app/src/components/store-view/` | The in-app Agent Store page (sidebar + ⌘K destination, view id `agent-store`): catalog-family rows over the public API, category chips + search + sort, detail modal, one-click install. |
 
 The tie to `cloud/` is the gateway API + a shared Firebase project; the AgentIR
-contract is a byte-copy relationship, not a runtime import. (The standalone
-`gethouston/theagentlibrary` repo was retired in July 2026 — this store
-supersedes it; they never shared code.)
+contract is a byte-copy relationship, not a runtime import.
 
 ## AgentIR 2.0.0 (the schema of record)
 

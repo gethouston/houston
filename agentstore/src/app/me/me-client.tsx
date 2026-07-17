@@ -1,5 +1,6 @@
 "use client";
 
+import type { AgentPatch, StoreAgentSummary } from "@houston/agentstore-client";
 import {
   Alert,
   AlertDescription,
@@ -10,20 +11,14 @@ import {
 import { AlertTriangle, LogIn } from "lucide-react";
 import * as React from "react";
 import { useSession } from "@/lib/auth/session";
-import {
-  type AgentPatch,
-  type AgentSummary,
-  deleteAgent,
-  listMyAgents,
-  patchAgent,
-} from "@/lib/store-client";
+import { deleteAgent, listMyAgents, patchAgent } from "@/lib/store-client";
 import { MeAgentCard } from "./me-agent-card";
 import { MeEmpty, MeNotice } from "./me-empty";
 
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; agents: AgentSummary[] };
+  | { status: "ready"; agents: StoreAgentSummary[] };
 
 function errorText(err: unknown): string {
   return err instanceof Error ? err.message : "Something went wrong.";

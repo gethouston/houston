@@ -1,3 +1,4 @@
+import { StoreApiError } from "@houston/agentstore-client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getAgentBySlug,
@@ -7,7 +8,6 @@ import {
   listCategories,
   recordInstall,
 } from "./store-api";
-import { StoreApiError } from "./store-api-types";
 
 /** A JSON `Response` factory. */
 function json(body: unknown, status = 200): Response {
@@ -127,8 +127,7 @@ describe("recordInstall", () => {
     expect(JSON.parse(init.body as string)).toEqual({
       target: "claude_skill_zip",
     });
-    const headers = init.headers as Record<string, string>;
-    expect(headers["x-forwarded-for"]).toBe("9.9.9.9");
+    expect(new Headers(init.headers).get("x-forwarded-for")).toBe("9.9.9.9");
     expect(new URL(calledUrl()).pathname).toBe(
       "/v1/agentstore/agents/agent-x/installs",
     );

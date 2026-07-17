@@ -1,17 +1,17 @@
 "use client";
 
+import type { AgentPatch, StoreAgentSummary } from "@houston/agentstore-client";
 import { Badge, Button, ConfirmDialog } from "@houston-ai/core";
 import { ExternalLink, Trash2 } from "lucide-react";
 import * as React from "react";
 import { AgentIcon } from "@/components/agent-icon";
 import { shareUrlForSlug } from "@/lib/site-config";
 import { toDisplayIcon } from "@/lib/store-api-types";
-import type { AgentPatch, AgentSummary } from "@/lib/store-client";
 
 const compact = new Intl.NumberFormat("en", { notation: "compact" });
 
 /** Human label + badge tone for an agent's publish state. */
-function stateBadge(agent: AgentSummary): {
+function stateBadge(agent: StoreAgentSummary): {
   label: string;
   tone: "default" | "secondary" | "outline";
 } {
@@ -23,7 +23,7 @@ function stateBadge(agent: AgentSummary): {
 }
 
 export interface MeAgentCardProps {
-  agent: AgentSummary;
+  agent: StoreAgentSummary;
   categoryLabel?: string;
   /** True while any mutation on this row is in flight. */
   busy: boolean;

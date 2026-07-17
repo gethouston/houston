@@ -57,6 +57,9 @@ importers:
       '@houston-ai/core':
         specifier: workspace:*
         version: link:../ui/core
+      '@houston/agentstore-client':
+        specifier: workspace:*
+        version: link:../packages/agentstore-client
       '@houston/agentstore-contract':
         specifier: workspace:*
         version: link:../packages/agentstore-contract
@@ -254,6 +257,25 @@ importers:
       vite:
         specifier: 6.4.3
         version: 6.4.3(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/agentstore-client:
+    dependencies:
+      '@houston/agentstore-contract':
+        specifier: workspace:*
+        version: link:../agentstore-contract
+    devDependencies:
+      '@types/node':
+        specifier: 22.20.0
+        version: 22.20.0
+      '@typescript/native-preview':
+        specifier: 7.0.0-dev.20260607.1
+        version: 7.0.0-dev.20260607.1
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 3.2.6
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
 
   packages/agentstore-contract:
     dependencies:
@@ -572,6 +594,9 @@ importers:
       '@houston-ai/skills':
         specifier: workspace:*
         version: link:../../ui/skills
+      '@houston/agentstore-client':
+        specifier: workspace:*
+        version: link:../agentstore-client
       '@houston/domain':
         specifier: workspace:*
         version: link:../domain
@@ -817,6 +842,10 @@ importers:
         version: 4.3.2
 
   ui/engine-client:
+    dependencies:
+      '@houston/agentstore-client':
+        specifier: workspace:*
+        version: link:../../packages/agentstore-client
     devDependencies:
       typescript:
         specifier: 5.9.3

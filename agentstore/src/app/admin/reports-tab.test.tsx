@@ -1,5 +1,5 @@
+import type { AdminReport } from "@houston/agentstore-client";
 import { describe, expect, it } from "vitest";
-import type { AdminReport } from "@/lib/store-admin-client";
 import { groupByAgent } from "./reports-tab";
 
 /** A report in the gateway's flat wire shape (no nested agent object). */

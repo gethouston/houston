@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  type StoreAgentSummary,
+  StoreApiError,
+} from "@houston/agentstore-client";
+import {
   Alert,
   AlertDescription,
   AlertTitle,
@@ -13,12 +17,7 @@ import { AlertTriangle } from "lucide-react";
 import * as React from "react";
 import { normalizeCreatorUrl } from "@/lib/agents/creator-url";
 import { shareUrlForSlug } from "@/lib/site-config";
-import {
-  type AgentSummary,
-  listMyAgents,
-  patchAgent,
-  StoreApiError,
-} from "@/lib/store-client";
+import { listMyAgents, patchAgent } from "@/lib/store-client";
 
 /** Friendly message for a publish failure, keyed on the gateway error code. */
 function publishError(err: unknown): string {
@@ -37,7 +36,7 @@ function publishError(err: unknown): string {
 export interface ClaimManageProps {
   /** Mints a fresh bearer per operation (tokens expire between renders). */
   getToken: () => Promise<string | null>;
-  agent: AgentSummary;
+  agent: StoreAgentSummary;
   onPublished: (shareUrl: string) => void;
 }
 

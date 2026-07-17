@@ -88,6 +88,19 @@ describe("fetchStoreCatalog", () => {
         typeof err.body === "object",
     );
   });
+
+  it("re-raises the underlying cause on a network failure (status 0)", async () => {
+    // A thrown fetch surfaces as a status-0 StoreApiError carrying the original
+    // cause; that cause must propagate unchanged (never wrapped as a
+    // StoreCatalogError), exactly as the former plain-fetch code let it bubble.
+    const cause = new Error("connection refused");
+    const fetchImpl = (() => Promise.reject(cause)) as typeof fetch;
+    await rejects(fetchStoreCatalog({}, fetchImpl), (err: unknown) => {
+      ok(!(err instanceof StoreCatalogError));
+      strictEqual(err, cause);
+      return true;
+    });
+  });
 });
 
 describe("fetchStoreAgent", () => {

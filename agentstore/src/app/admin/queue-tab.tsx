@@ -1,5 +1,6 @@
 "use client";
 
+import { type AdminQueueItem, StoreApiError } from "@houston/agentstore-client";
 import {
   Alert,
   AlertDescription,
@@ -13,12 +14,7 @@ import {
 import { Check, ExternalLink, X } from "lucide-react";
 import * as React from "react";
 import { shareUrlForSlug } from "@/lib/site-config";
-import {
-  type AdminQueueItem,
-  actOnQueueItem,
-  listAdminQueue,
-} from "@/lib/store-admin-client";
-import { StoreApiError } from "@/lib/store-client";
+import { actOnQueueItem, listAdminQueue } from "@/lib/store-admin-client";
 
 type Load =
   | { status: "loading" }
