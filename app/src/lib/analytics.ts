@@ -175,6 +175,7 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "from_version",
   "to_version",
   "locale",
+  "detected_locale",
   "step",
   "agent_id",
   "conversation_id",
