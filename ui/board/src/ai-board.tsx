@@ -15,6 +15,7 @@ import type { KanbanCardLabels } from "./kanban-card";
 import { KanbanDetailPanel } from "./kanban-detail-panel";
 import { KanbanList } from "./kanban-list";
 import { type ResolvedSelection, resolvePanelState } from "./panel-state";
+import { shouldDropComposerSend } from "./submit-gate";
 import type { BoardSearchSnippet, KanbanColumn, KanbanItem } from "./types";
 
 export interface NewPanelOptions {
@@ -492,34 +493,52 @@ export function AIBoard({
       : rawActiveFeed;
 
   // Unified send handler: creates conversation on first message, sends follow-ups after
+  const sendInFlightRef = useRef(false);
   const handleSend = useCallback(
     async (text: string, files: File[]) => {
-      const handled = await onComposerSubmit?.({
-        sessionKey: activeSessionKey,
-        text,
-        files,
-        hasMessages: activeFeed.length > 0,
-      });
-      if (handled) {
-        onDraftChange?.(activeDraftKey, "");
+      // A repeated submit (Enter auto-repeat, double click) that lands while
+      // the first send is still creating its conversation has no session key
+      // to route to — letting it through would mint a duplicate mission and
+      // run the same prompt twice (see submit-gate.ts).
+      if (
+        shouldDropComposerSend({
+          activeSessionKey,
+          sendInFlight: sendInFlightRef.current,
+        })
+      ) {
         return;
       }
-      if (activeSessionKey && onSendMessage) {
-        // Keyed off `activeSessionKey` (derived from `selectedId`), not
-        // `selectedItem`: a send fired while the created activity is
-        // still absent from `items` must go to the existing session,
-        // never fall through and create a duplicate conversation.
-        await onSendMessage(activeSessionKey, text, files);
-        onDraftChange?.(activeDraftKey, "");
-      } else if (newPanelOpen && onCreateConversation) {
-        const activityId = await onCreateConversation(text, files);
-        onDraftChange?.(activeDraftKey, "");
-        // Select the new activity so the feed renders. The freshly-created
-        // activity may take a while to appear in `items` (the parent
-        // invalidates the activity query asynchronously; against a warming
-        // engine the row only lands when it wakes) — the panel stays open
-        // regardless, keyed off this selection (see resolvePanelState).
-        setSelectedId(activityId);
+      sendInFlightRef.current = true;
+      try {
+        const handled = await onComposerSubmit?.({
+          sessionKey: activeSessionKey,
+          text,
+          files,
+          hasMessages: activeFeed.length > 0,
+        });
+        if (handled) {
+          onDraftChange?.(activeDraftKey, "");
+          return;
+        }
+        if (activeSessionKey && onSendMessage) {
+          // Keyed off `activeSessionKey` (derived from `selectedId`), not
+          // `selectedItem`: a send fired while the created activity is
+          // still absent from `items` must go to the existing session,
+          // never fall through and create a duplicate conversation.
+          await onSendMessage(activeSessionKey, text, files);
+          onDraftChange?.(activeDraftKey, "");
+        } else if (newPanelOpen && onCreateConversation) {
+          const activityId = await onCreateConversation(text, files);
+          onDraftChange?.(activeDraftKey, "");
+          // Select the new activity so the feed renders. The freshly-created
+          // activity may take a while to appear in `items` (the parent
+          // invalidates the activity query asynchronously; against a warming
+          // engine the row only lands when it wakes) — the panel stays open
+          // regardless, keyed off this selection (see resolvePanelState).
+          setSelectedId(activityId);
+        }
+      } finally {
+        sendInFlightRef.current = false;
       }
     },
     [
