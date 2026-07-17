@@ -46,25 +46,32 @@ export function isLoopbackHostUrl(url: string | undefined): boolean {
  * client's only job is opening the authorize URL in the user's browser. A
  * Tauri desktop pointed at a truly remote host is still a remote client for
  * provider auth (the runtime's localhost callback is on the remote host) and
- * must use the device-code flow — but a `VITE_NEW_ENGINE_URL` at a loopback
- * address IS co-located (the dev two-terminal setup), so it keeps the
- * seamless browser flow, exactly like the packaged host-sidecar build.
+ * must use the device-code flow — but an engine URL at a loopback address IS
+ * co-located, so it keeps the seamless browser flow, exactly like the packaged
+ * host-sidecar build. That applies to BOTH env flags: a loopback
+ * `VITE_NEW_ENGINE_URL` (the dev two-terminal setup) and a loopback
+ * `VITE_HOSTED_ENGINE_URL` (the dev cloud profile's local gateway, whose
+ * "pods" are runtimes on this same machine).
  */
 export function providerLoginUsesDeviceAuthByDefault(
   env: Pick<EngineModeEnv, "VITE_NEW_ENGINE_URL" | "VITE_HOSTED_ENGINE_URL">,
   client: { isTauri: boolean },
 ): boolean {
   if (!client.isTauri) return true;
-  if (env.VITE_HOSTED_ENGINE_URL) return true;
+  if (env.VITE_HOSTED_ENGINE_URL)
+    return !isLoopbackHostUrl(env.VITE_HOSTED_ENGINE_URL);
   if (env.VITE_NEW_ENGINE_URL)
     return !isLoopbackHostUrl(env.VITE_NEW_ENGINE_URL);
   return false;
 }
 
 /** Gate for the desktop Codex/OpenAI zero-code loopback relay: ON only for a
- * REMOTE engine, where pi's own 1455 is in the pod so the desktop's LOCAL 1455
- * can't collide. Co-located/web keep existing flows; collision rationale
- * (#615/#620) is at the relay call sites (codex-loopback.ts). */
+ * TRULY remote engine, where pi's own 1455 is in the pod so the desktop's
+ * LOCAL 1455 can't collide. Co-located/web keep existing flows — including a
+ * loopback hosted gateway (the dev cloud profile), whose runtime binds 1455 on
+ * THIS machine: a relay bind there fails EADDRINUSE and kills the sign-in.
+ * Collision rationale (#615/#620) is at the relay call sites
+ * (codex-loopback.ts). */
 export function codexUsesLoopbackRelay(
   env: Pick<EngineModeEnv, "VITE_NEW_ENGINE_URL" | "VITE_HOSTED_ENGINE_URL">,
   client: { isTauri: boolean },
