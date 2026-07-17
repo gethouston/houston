@@ -232,8 +232,15 @@ function bootstrap() {
     mask_all_element_attributes: true,
     capture_dead_clicks: true,
     rageclick: true,
-    disable_session_recording: true,
-    enable_heatmaps: false,
+    // Recordings + heatmaps (user-approved 2026-07-16) answer the open
+    // production-infra.md question: where does onboarding strand users?
+    // Both ride the SAME masking as autocapture above — recordings capture
+    // the masked DOM (all text as asterisks), heatmaps only element
+    // selectors/positions — so user content still never leaves the app.
+    // The PostHog project toggles (session_recording_opt_in /
+    // heatmaps_opt_in) must be ON too; either side alone captures nothing.
+    disable_session_recording: false,
+    enable_heatmaps: true,
     advanced_disable_flags: true,
     loaded: (ph) => {
       ph.register({
