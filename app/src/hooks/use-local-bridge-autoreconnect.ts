@@ -52,12 +52,18 @@ export function useLocalBridgeAutoReconnect(enabled: boolean): void {
       if (status?.status === "online" || status?.status === "connecting")
         return;
 
-      // Only reconnect if the agent still points at our local-model endpoint;
-      // otherwise the tunnel is stale and reconnecting it would be surprising.
+      // Skip the reconnect only when the engine CONFIRMS the endpoint is gone
+      // (disconnected from another machine/web — the tunnel would be stale).
+      // An unreachable or still-waking engine reports "unknown" (or the probe
+      // fails): reconnect anyway. The saved descriptor only exists while the
+      // endpoint is registered (explicit disconnect deletes it), and the cold
+      // boot right after an app update is exactly when the pod is asleep — a
+      // fabricated "not connected" here silently killed the tunnel for good
+      // (this hook runs once per session).
       const provider = await tauriProvider
         .checkStatus(LOCAL_PROVIDER_ID)
         .catch(() => null);
-      if (!provider || !providerAppearsConnected(provider)) return;
+      if (provider && !providerAppearsConnected(provider)) return;
 
       await reconnectLocalModel().catch(() => {
         // reconnectLocalModel already toasted the real reason (Report-bug).

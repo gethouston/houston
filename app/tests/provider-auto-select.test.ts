@@ -128,4 +128,46 @@ describe("resolveAutoSelect", () => {
       null,
     );
   });
+
+  // "unknown" = the engine was unreachable (cold pod waking after a
+  // relaunch/update). Auto-select needs a CONFIRMED authenticated state: an
+  // unknown probe must never advance onboarding as if the provider connected.
+  function unknown(id: string): ProviderStatus {
+    return {
+      provider: id,
+      cli_installed: true,
+      auth_state: "unknown",
+      authenticated: false,
+      cli_name: "",
+    };
+  }
+
+  it("does not fire for an unknown status on first load, even with selectOnMount", () => {
+    const anthropic = provider("anthropic", "claude-sonnet-4-6");
+    const next: StatusSnapshot = { anthropic: unknown("anthropic") };
+    strictEqual(
+      resolveAutoSelect(null, next, [anthropic], { selectOnMount: true }),
+      null,
+    );
+  });
+
+  it("does not fire on an unauthenticated -> unknown transition", () => {
+    const anthropic = provider("anthropic", "claude-sonnet-4-6");
+    const prev: StatusSnapshot = { anthropic: disconnected("anthropic") };
+    const next: StatusSnapshot = { anthropic: unknown("anthropic") };
+    strictEqual(
+      resolveAutoSelect(prev, next, [anthropic], { selectOnMount: false }),
+      null,
+    );
+  });
+
+  it("fires on an unknown -> authenticated transition (engine woke up connected)", () => {
+    const anthropic = provider("anthropic", "claude-sonnet-4-6");
+    const prev: StatusSnapshot = { anthropic: unknown("anthropic") };
+    const next: StatusSnapshot = { anthropic: connected("anthropic") };
+    deepStrictEqual(
+      resolveAutoSelect(prev, next, [anthropic], { selectOnMount: false }),
+      { providerId: "anthropic", model: "claude-sonnet-4-6" },
+    );
+  });
 });

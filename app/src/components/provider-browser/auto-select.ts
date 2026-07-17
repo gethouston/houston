@@ -12,7 +12,7 @@
 
 import type { ProviderInfo } from "../../lib/providers.ts";
 import type { ProviderStatus } from "../../lib/tauri.ts";
-import { providerAppearsConnected } from "../shell/provider-reconnect-state.ts";
+import { providerIsAuthenticated } from "../shell/provider-reconnect-state.ts";
 
 /** A per-card status snapshot: card id -> merged status (or undefined). */
 export type StatusSnapshot = Record<string, ProviderStatus | undefined>;
@@ -24,7 +24,9 @@ export interface AutoSelection {
 }
 
 function isConnected(status: ProviderStatus | undefined): boolean {
-  return status ? providerAppearsConnected(status) : false;
+  // Confirmed-only: an "unknown" probe (engine unreachable / still waking)
+  // must never auto-advance onboarding as if the provider just connected.
+  return status ? providerIsAuthenticated(status) : false;
 }
 
 /**

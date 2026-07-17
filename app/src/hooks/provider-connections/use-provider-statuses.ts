@@ -11,6 +11,7 @@ import {
   type ProviderStatus,
   tauriProvider,
 } from "../../lib/tauri";
+import { scanIsUnreachable } from "./unreachable-scan";
 
 export interface ProviderStatusState {
   statuses: Record<string, ProviderStatus>;
@@ -72,6 +73,15 @@ export function useProviderStatuses(
       ...new Set(visibleProviders.flatMap((p) => providerGatewayIds(p))),
     ];
     const byId = await tauriProvider.checkAllStatuses(gatewayIds);
+    if (scanIsUnreachable(gatewayIds, byId)) {
+      // The engine was unreachable — the scan carries no information. Keep
+      // painting the last-known snapshot (never overwrite it, or the persisted
+      // cache, with "unknown"s) and skip transition analytics. `probed` still
+      // flips so mount-time decisions proceed on the cached confirmed state.
+      setLoading(false);
+      setProbed(true);
+      return;
+    }
     const next: Record<string, ProviderStatus> = {};
     for (const p of visibleProviders) {
       const merged = mergeGatewayStatus(providerGatewayIds(p), byId);
