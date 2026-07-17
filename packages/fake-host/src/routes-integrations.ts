@@ -1,6 +1,6 @@
 /**
- * User-scoped gateway routes for the fake host: Composio integrations, per-agent
- * integration grants, key/value preferences, and the workspace-locale override.
+ * User-scoped gateway routes for the fake host: Composio integrations,
+ * key/value preferences, and the workspace-locale override.
  *
  * These mirror the cloud gateway (`user-routes.ts` + `integrations-routes.ts`)
  * and the host `account.ts`, keyed by "the acting user" — there is one user in
@@ -116,31 +116,6 @@ function handleIntegrations(
   return handleComposio(method, rest.slice(1), body);
 }
 
-function handleGrants(
-  method: string,
-  agentSlug: string,
-  body: Record<string, unknown> | undefined,
-): Response {
-  if (state.integrationsMode() === "unavailable") return unavailable();
-  if (method === "GET") {
-    const toolkits = state.getGrants(agentSlug);
-    // Missing record → 404 (client degrades to null); a present record (even
-    // []) → `{toolkits}`. This is the null-vs-[] distinction, end to end.
-    return toolkits === undefined
-      ? json({ error: "not found" }, 404)
-      : json({ toolkits });
-  }
-  if (method === "PUT") {
-    const raw = Array.isArray(body?.toolkits) ? body.toolkits : null;
-    if (!raw?.every((t): t is string => typeof t === "string")) {
-      return json({ error: "toolkits must be an array of strings" }, 400);
-    }
-    state.setGrants(agentSlug, raw);
-    return json({ ok: true });
-  }
-  return json({ error: "not found" }, 404);
-}
-
 function handlePreference(
   method: string,
   key: string,
@@ -167,15 +142,6 @@ export function handleUserRoutes(
   // /v1/integrations[/composio/...]
   if (segs[0] === "v1" && segs[1] === "integrations") {
     return handleIntegrations(method, segs, body);
-  }
-  // /v1/agents/:slug/integration-grants
-  if (
-    segs[0] === "v1" &&
-    segs[1] === "agents" &&
-    segs.length === 4 &&
-    segs[3] === "integration-grants"
-  ) {
-    return handleGrants(method, segs[2], body);
   }
   // /v1/preferences/:key
   if (segs[0] === "v1" && segs[1] === "preferences" && segs.length === 3) {

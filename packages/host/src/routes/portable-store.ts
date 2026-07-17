@@ -1,6 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Agent, UserId, Workspace } from "../domain/types";
-import type { LocalIntegrationGrants } from "../integrations/grants";
 import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
 import { json, readJson } from "./http";
@@ -31,8 +30,6 @@ import {
 export interface PortableStoreDeps {
   vfs?: Vfs;
   paths?: WorkspacePaths;
-  /** Local per-agent integration grants (desktop/self-host); absent on cloud pods. */
-  grants?: LocalIntegrationGrants;
 }
 
 export interface PortableStoreCtx {
@@ -65,14 +62,7 @@ export async function handlePortableStore(
     if (method !== "POST") return methodNotAllowed(res);
     const request = parseStoreIrRequest(await readJson(req));
     if (typeof request === "string") return badRequest(res, request);
-    const ir = await buildStoreIr(
-      vfs,
-      deps.grants,
-      root,
-      ctx.agent.id,
-      ctx.userId,
-      request,
-    );
+    const ir = await buildStoreIr(vfs, root, request);
     json(res, 200, { ir });
     return true;
   }

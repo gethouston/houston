@@ -3,20 +3,17 @@
  *
  * Reads: publishes the {@link INTEGRATIONS_SCOPE} view-model — readiness plus
  * the toolkit catalog and the user's connections — republished whole on every
- * refresh. Writes: connect / disconnect / poll / grants flow as commands; the
- * same handlers back both the typed facade and the bridge `dispatch` path.
+ * refresh. Writes: connect / disconnect / poll flow as commands; the same
+ * handlers back both the typed facade and the bridge `dispatch` path.
  *
  * SEAM — user-scoped, NOT per-agent. Integrations are gateway-owned and keyed by
  * the caller's session `sub`, so this module talks to the flat
  * {@link IntegrationsClient} (rooted at the base URL), never `clientFor(agentId)`.
- * Per-agent scoping is ONLY the grants read/write (keyed by agent slug).
  *
  * Degradation is explicit and end-to-end:
  *  - 503 (no key) → VM `{ready:false, reason:"unavailable"}` — the tab never crashes.
  *  - provider `ready:false, reason:"signin"` → VM `{ready:false, reason:"signin"}`.
  *  - a 401 routes through the shared {@link ModuleContext.authExpiry} notifier.
- *  - grants 404 → `null` ("unsupported, no toggles"), distinct from `[]` ("nothing
- *    granted") — carried through untouched.
  */
 
 import {
@@ -30,7 +27,6 @@ import {
   IntegrationsCommand,
   type IntegrationsViewModel,
   requireString,
-  requireStringArray,
   unavailableVm,
 } from "./types";
 import { createIntegrationsWrites, type IntegrationsWrites } from "./writes";
@@ -69,10 +65,6 @@ export interface IntegrationsModule {
   pollConnection(connectionId: string): Promise<IntegrationConnection>;
   /** Disconnect a toolkit everywhere, then refetch the VM. */
   disconnect(toolkit: string): Promise<IntegrationsViewModel>;
-  /** Toolkit slugs granted to `agentId`, or `null` when grants are unsupported. */
-  grants(agentId: string): Promise<string[] | null>;
-  /** Replace `agentId`'s granted toolkit slugs. */
-  setGrants(agentId: string, toolkits: string[]): Promise<void>;
   /** Push the caller's Supabase token to the gateway adapter (`null` on sign-out). */
   setSession(token: string | null): Promise<void>;
   /** Dismiss the one-time "reconnect your integrations" notice (idempotent). */
@@ -165,14 +157,6 @@ export function createIntegrationsModule(
     return refresh();
   }
 
-  function grants(agentId: string): Promise<string[] | null> {
-    return run(() => client.getIntegrationGrants(agentId));
-  }
-
-  async function setGrants(agentId: string, toolkits: string[]): Promise<void> {
-    await run(() => client.putIntegrationGrants(agentId, toolkits));
-  }
-
   ctx.registerCommand(IntegrationsCommand.Refresh, () => refresh());
   ctx.registerCommand(IntegrationsCommand.Connect, (p) =>
     connect(requireString(p, "toolkit")),
@@ -182,12 +166,6 @@ export function createIntegrationsModule(
   );
   ctx.registerCommand(IntegrationsCommand.Disconnect, (p) =>
     disconnect(requireString(p, "toolkit")),
-  );
-  ctx.registerCommand(IntegrationsCommand.Grants, (p) =>
-    grants(requireString(p, "agentId")),
-  );
-  ctx.registerCommand(IntegrationsCommand.SetGrants, (p) =>
-    setGrants(requireString(p, "agentId"), requireStringArray(p, "toolkits")),
   );
 
   // Publish a defined "loading" snapshot asynchronously, so a subscriber reads
@@ -204,8 +182,6 @@ export function createIntegrationsModule(
     connect,
     pollConnection,
     disconnect,
-    grants,
-    setGrants,
     ...createIntegrationsWrites(client, run),
   };
 }

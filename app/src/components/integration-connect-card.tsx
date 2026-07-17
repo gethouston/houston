@@ -9,10 +9,8 @@ import { useIntegrationConnect } from "./use-integration-connect";
 interface IntegrationConnectCardProps {
   /** The raw `#houston_toolkit=<slug>` fragment from the agent's link. */
   toolkit: string;
-  /** The agent whose chat hosts the card (multiplayer grant attribution). */
+  /** The agent whose chat hosts the card. */
   agentId: string;
-  /** Multiplayer: auto-grant a fresh connection to this agent (C4). */
-  autoGrant: boolean;
   /**
    * Fired once when a connection the user started from THIS card lands. The
    * chat panel uses it to nudge the agent ("I've connected X. Please
@@ -34,14 +32,12 @@ interface IntegrationConnectCardProps {
 export function IntegrationConnectCard({
   toolkit,
   agentId,
-  autoGrant,
   onConnected,
 }: IntegrationConnectCardProps) {
   const { t } = useTranslation("chat");
   const { app, isConnected, view, startConnect } = useIntegrationConnect({
     toolkit,
     agentId,
-    autoGrant,
     onConnected,
   });
 

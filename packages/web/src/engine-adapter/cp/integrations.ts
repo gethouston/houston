@@ -53,8 +53,8 @@ export async function integrationConnections(
 // ---- triggers (C9 event-driven routines) ----
 // The trigger catalog the routine editor's picker reads — the events a routine
 // can wake on for one toolkit. Read-only, served by the cloud edge; the
-// per-routine provisioning status lives beside the per-agent grants read
-// (`agentTriggerStatus` in cp/agent-teams.ts).
+// per-routine provisioning status lives in `agentTriggerStatus`
+// (cp/agent-teams.ts).
 
 export async function triggerTypes(
   cfg: ControlPlaneConfig,

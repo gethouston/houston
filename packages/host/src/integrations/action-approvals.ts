@@ -5,9 +5,8 @@ import type {
 } from "./action-approval-store";
 
 /**
- * The action-approval policy over the store (mirrors LocalIntegrationGrants'
- * role for grants). Before an agent's `integration_execute` runs, the sandbox
- * proxy consults this:
+ * The action-approval policy over the store. Before an agent's
+ * `integration_execute` runs, the sandbox proxy consults this:
  *   - `isAlways` → the user blessed this action for any params ("Always allow").
  *   - `consumeTicket` → a fresh one-shot ticket matches this exact call ("Allow
  *     once"); consumed on use so a re-issue of the same call re-asks.

@@ -26,13 +26,10 @@ export function useAgentSettings(agentId: string, enabled: boolean) {
 /**
  * Teams v2, agent-manager only: replace this agent's allowed-toolkit ceiling
  * (`null` = all allowed, `[]` = none). Optimistic — a single manager action, so
- * a whole-value swap with rollback on error is enough (no overlapping-toggle
- * race like the grant set has). The host prunes now-disallowed toolkits from
- * existing grants, so this also invalidates the agent's grant set to reflect the
- * server-side revocation. Carries no `onError` toast: the `tauriAgentSettings.*`
- * wrappers route through `call()`, which surfaces + reports the failure once
- * (adding one here would double-toast); the `onError` below only rolls the
- * optimistic value back.
+ * a whole-value swap with rollback on error is enough. Carries no `onError`
+ * toast: the `tauriAgentSettings.*` wrappers route through `call()`, which
+ * surfaces + reports the failure once (adding one here would double-toast); the
+ * `onError` below only rolls the optimistic value back.
  */
 export function useSetAgentSettings(agentId: string) {
   const qc = useQueryClient();
@@ -53,9 +50,6 @@ export function useSetAgentSettings(agentId: string) {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: key });
-      // Restricting the ceiling prunes grants server-side (contract §5); refresh
-      // this agent's grant set so the revocation shows without a remount.
-      qc.invalidateQueries({ queryKey: queryKeys.agentGrants(agentId) });
     },
   });
 }

@@ -761,7 +761,6 @@ export async function handleAgents(
         {
           vfs: deps.vfs,
           paths,
-          grants: deps.integrationGrants,
         },
         { ...ctx, userId },
         method,

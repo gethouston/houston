@@ -12,6 +12,7 @@ import { avatarUrlFromProfiles } from "../../hooks/queries/user-profiles-map";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSession } from "../../hooks/use-session";
 import { useAgentStore } from "../../stores/agents";
+import { initialsFor, memberLabel } from "../organization/people-tab-model.ts";
 import type { ShareAction } from "../tabs/agent-access-model.ts";
 import { useShareAgent } from "../tabs/use-share-agent";
 import {
@@ -25,7 +26,6 @@ import {
   memberAgentAccess,
   writeMemberAssignment,
 } from "./member-detail-model.ts";
-import { initialsFor, memberLabel } from "./people-tab-model.ts";
 
 /** The explicit-roster row's presentation, decided by member + viewer authority. */
 function explicitKind(member: OrgMember, canEdit: boolean): MemberAgentRowKind {
@@ -34,7 +34,7 @@ function explicitKind(member: OrgMember, canEdit: boolean): MemberAgentRowKind {
 }
 
 /**
- * Admin > People per-member access lens (contract §1): one PERSON, the agents
+ * Permissions > People per-member access lens: one PERSON, the agents
  * they can reach, and (owner-first) a control to change it. The header is the
  * member's identity; the body splits the caller-visible fleet into agents shared
  * with everyone (read-only) and explicit-roster agents (each with the member's

@@ -1,6 +1,3 @@
-export { useAllAgentGrants } from "../../hooks/queries/use-all-agent-grants";
-export { type AgentChip, toAgentChip } from "./agent-chip";
-export { AgentChips } from "./agent-chips";
 export { AllowlistEditor } from "./allowlist-editor";
 export { AppDetailDialog } from "./app-detail-dialog";
 export {
@@ -35,13 +32,11 @@ export {
 } from "./browse-model";
 export { CatalogLockedSection } from "./catalog-locked-section";
 export { ConnectWaitingPanel } from "./connect-waiting-panel";
-export { agentChipsFor } from "./connected-apps-model";
 export {
   type ConnectionStatus,
   ConnectionStatusBadge,
 } from "./connection-status-badge";
 export { CustomIntegrationsSection } from "./custom-integrations-section";
-export { DisconnectAppDialog } from "./disconnect-app-dialog";
 export { EnableInPermissionsButton } from "./enable-in-permissions-button";
 export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
 export {

@@ -49,13 +49,11 @@ import {
 export function useIntegrationConnect({
   toolkit,
   agentId,
-  autoGrant,
   onConnected,
   autoContinueWhenConnected = false,
 }: {
   toolkit: string;
   agentId: string;
-  autoGrant: boolean;
   /**
    * Fired once when a connection the user started from THIS surface lands (or,
    * in stepper mode, once an already-active toolkit resolves — see
@@ -101,10 +99,7 @@ export function useIntegrationConnect({
     logoUrl: catalog.isFetched ? resolved.logoUrl : "",
   };
 
-  const { state: connectState, connect } = useConnectFlow({
-    agentId,
-    autoGrant,
-  });
+  const { state: connectState, connect } = useConnectFlow({ agentId });
   // The nudge fires at most once per surface, and only for a connection the
   // user drove from HERE — a connection landing via the Integrations tab or
   // another card must not make this one speak.

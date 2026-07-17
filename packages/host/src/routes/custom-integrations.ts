@@ -4,7 +4,6 @@ import type {
   CustomIntegrationManager,
 } from "../integrations/custom/manager";
 import { CustomIntegrationError } from "../integrations/custom/types";
-import type { LocalIntegrationGrants } from "../integrations/grants";
 import type { CredentialVault } from "../ports";
 import { bearer, json, readJson } from "./http";
 
@@ -132,7 +131,6 @@ function parseAddInput(
 export async function handleSandboxCustomIntegrations(
   deps: CustomIntegrationDeps & {
     vault: CredentialVault;
-    integrationGrants?: LocalIntegrationGrants;
   },
   method: string,
   path: string,
@@ -176,19 +174,6 @@ export async function handleSandboxCustomIntegrations(
       return true;
     }
     const view = await manager.add(input);
-    // Auto-grant the new integration to the agent that created it (mirrors
-    // the connect card's auto-grant): an agent whose grant record predates
-    // this add would otherwise be filtered away from its own creation. A
-    // record-less agent needs nothing — no record means no filtering yet.
-    if (deps.integrationGrants) {
-      const granted = await deps.integrationGrants.grantedOrNull(claim.agentId);
-      if (granted && !granted.includes(view.slug)) {
-        await deps.integrationGrants.replace(claim.agentId, [
-          ...granted,
-          view.slug,
-        ]);
-      }
-    }
     json(res, 200, view);
     return true;
   } catch (err) {

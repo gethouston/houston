@@ -38,30 +38,19 @@ describe("canSeeOrganization", () => {
 
 describe("ORG_TAB_IDS", () => {
   it("is the always-present sections in display order", () => {
-    strictEqual(ORG_TAB_IDS.join(","), "people,agents,activity,usage");
+    strictEqual(ORG_TAB_IDS.join(","), "people,activity,usage");
   });
 });
 
 describe("orgTabIds", () => {
-  it("appends the policy ceilings only on a Teams host", () => {
+  it("appends billing only when in scope", () => {
     strictEqual(
-      orgTabIds({ policy: true, billing: false }).join(","),
-      "people,agents,activity,usage,allowedIntegrations,allowedModels",
+      orgTabIds({ billing: false }).join(","),
+      "people,activity,usage",
     );
     strictEqual(
-      orgTabIds({ policy: false, billing: false }).join(","),
-      "people,agents,activity,usage",
-    );
-  });
-
-  it("appends billing last, after any policy tabs", () => {
-    strictEqual(
-      orgTabIds({ policy: true, billing: true }).join(","),
-      "people,agents,activity,usage,allowedIntegrations,allowedModels,billing",
-    );
-    strictEqual(
-      orgTabIds({ policy: false, billing: true }).join(","),
-      "people,agents,activity,usage,billing",
+      orgTabIds({ billing: true }).join(","),
+      "people,activity,usage,billing",
     );
   });
 });

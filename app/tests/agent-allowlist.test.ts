@@ -88,13 +88,11 @@ describe("effectiveAllowlist", () => {
 });
 
 describe("agentIntegrationsView (allowlist overlay)", () => {
-  it("no allowlist → nothing disallowed (behaves as before)", () => {
+  it("no allowlist → nothing disallowed", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("slack")],
       catalog: CATALOG,
-      grants: ["gmail", "slack"],
     });
-    if (view.mode !== "grants") throw new Error("unreachable");
     deepStrictEqual(view.disallowedRows, []);
     deepStrictEqual(
       view.activeRows.map((r) => r.connection.toolkit),
@@ -106,11 +104,9 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("slack")],
       catalog: CATALOG,
-      grants: ["gmail", "slack"],
       allowlist: ["gmail"],
     });
-    if (view.mode !== "grants") throw new Error("unreachable");
-    // slack is granted but the ceiling forbids it → not usable, shown as disallowed.
+    // slack is connected but the ceiling forbids it → not usable, shown as disallowed.
     deepStrictEqual(
       view.activeRows.map((r) => r.connection.toolkit),
       ["gmail"],
@@ -121,36 +117,12 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
     );
   });
 
-  it("a disallowed, ungranted app surfaces only as a disallowed row", () => {
-    const view = agentIntegrationsView({
-      connections: [conn("gmail"), conn("notion")],
-      catalog: CATALOG,
-      grants: ["gmail"],
-      allowlist: ["gmail"],
-    });
-    if (view.mode !== "grants") throw new Error("unreachable");
-    // notion is connected + active + ungranted and disallowed → the admin block
-    // outranks the ungranted state (precedence), so it appears only in
-    // disallowedRows for transparency, never as an active or turn-on-able row.
-    deepStrictEqual(
-      view.activeRows.map((r) => r.connection.toolkit),
-      ["gmail"],
-    );
-    deepStrictEqual(
-      view.disallowedRows.map((r) => r.connection.toolkit),
-      ["notion"],
-    );
-    deepStrictEqual(view.availableRows, []);
-  });
-
   it("an empty allowlist disallows every connected app", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("slack")],
       catalog: CATALOG,
-      grants: ["gmail", "slack"],
       allowlist: [],
     });
-    if (view.mode !== "grants") throw new Error("unreachable");
     deepStrictEqual(view.activeRows, []);
     deepStrictEqual(
       view.disallowedRows.map((r) => r.connection.toolkit),
@@ -162,10 +134,8 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
     const view = agentIntegrationsView({
       connections: [conn("slack", "pending"), conn("notion", "error")],
       catalog: CATALOG,
-      grants: [],
       allowlist: ["gmail"],
     });
-    if (view.mode !== "grants") throw new Error("unreachable");
     deepStrictEqual(
       view.disallowedRows.map((r) => r.connection.toolkit),
       ["notion", "slack"],
@@ -178,15 +148,5 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
     );
     strictEqual(byToolkit.get("slack"), "pending");
     strictEqual(byToolkit.get("notion"), "error");
-  });
-
-  it("degraded mode ignores the allowlist entirely", () => {
-    const view = agentIntegrationsView({
-      connections: [conn("gmail"), conn("slack")],
-      catalog: CATALOG,
-      grants: null,
-      allowlist: ["gmail"],
-    });
-    strictEqual(view.mode, "degraded");
   });
 });

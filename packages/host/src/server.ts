@@ -19,7 +19,6 @@ import {
   parseFeedbackPayload,
 } from "./feedback";
 import type { LocalActionApprovals } from "./integrations/action-approvals";
-import type { LocalIntegrationGrants } from "./integrations/grants";
 import type { WorkspacePaths } from "./paths";
 import type {
   CredentialStore,
@@ -44,7 +43,6 @@ import {
 } from "./routes/custom-integrations";
 import { handleEventStream } from "./routes/events-stream";
 import { bearer, json, readJson } from "./routes/http";
-import { handleIntegrationGrants } from "./routes/integration-grants";
 import {
   handleIntegrations,
   type IntegrationDeps,
@@ -137,14 +135,6 @@ export interface ControlPlaneDeps {
    * (client reads that as "unsupported host") and the sandbox setup routes 503.
    */
   customIntegrations?: CustomIntegrationDeps["customIntegrations"];
-  /**
-   * Per-agent integration grants (LOCAL / self-host profile only). Present ONLY
-   * when this host is NOT gateway-fronted — a managed cloud pod leaves it unset so
-   * the gateway that fronts it stays the single owner of grant policy. Absent →
-   * the grant routes 404 (client reads that as "grants unsupported") and the
-   * sandbox proxy enforces nothing.
-   */
-  integrationGrants?: LocalIntegrationGrants;
   /**
    * Per-agent integration action approvals (LOCAL / self-host + managed pods).
    * When present, the sandbox proxy gates each `integration_execute` on user
@@ -329,8 +319,6 @@ async function handle(
   // `/v1/integrations/:provider/*` catch-all would 404 these subpaths.
   if (await handleCustomIntegrations(deps, method, path, req, res)) return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;
-  if (await handleIntegrationGrants(deps, userId, method, path, req, res))
-    return;
   if (await handleActionApprovals(deps, userId, method, path, req, res)) return;
   // Pre-agent provider connect (first-run onboarding): a hidden setup runtime
   // runs the OAuth so the user can connect their AI before any agent exists.

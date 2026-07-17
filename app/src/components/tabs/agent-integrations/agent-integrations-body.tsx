@@ -24,9 +24,8 @@ import {
 
 interface AgentIntegrationsBodyProps {
   view: AgentIntegrationsView;
-  /** This agent's id, for the inline "turn on for this agent" toggle. */
+  /** This agent's id, for the approved-actions review + connect flow. */
   agentId: string;
-  canEdit: boolean;
   /** The full toolkit catalog (drives the category filter + browse list). */
   catalog: IntegrationToolkit[];
   /** The effective Teams allowlist (`null` = unrestricted). Apps outside it show
@@ -55,8 +54,8 @@ interface AgentIntegrationsBodyProps {
  * combobox, recovery rows, the grouped category catalog with Teams locked
  * rows), carrying the agent-only disallowed-apps section as its `children`. A
  * strip tile opens the shared detail modal (view + reconnect + disconnect —
- * grant editing lives in Settings > Connected accounts, so this tab stays a
- * pure connect surface); connect auto-grants to this agent via the surface's
+ * this tab is a pure connect surface, never a permission editor); connecting an
+ * app makes it usable for this agent (connection ∩ allowlist) via the surface's
  * `connectFlow`. Split out of {@link IntegrationsTab} so the parent can
  * remount it per agent with `key={agent.id}` — all lifted view state (tab,
  * search, category, open modals) lives here so none of it crosses agents.
@@ -64,7 +63,6 @@ interface AgentIntegrationsBodyProps {
 export function AgentIntegrationsBody({
   view,
   agentId,
-  canEdit,
   catalog,
   allowlist,
   connections,
@@ -83,7 +81,7 @@ export function AgentIntegrationsBody({
 
   // The agent's usable apps: active ones tile the strip; pending / errored
   // ones surface as recovery rows inside the catalog tab.
-  const usable = view.mode === "grants" ? view.activeRows : view.rows;
+  const usable = view.activeRows;
   const active = useMemo(
     () => usable.filter((r) => r.connection.status === "active"),
     [usable],
@@ -109,12 +107,10 @@ export function AgentIntegrationsBody({
           onRemoveRecovering={onDisconnect}
           allowlist={allowlist}
           lockedFix={permissionsFix}
-          readOnly={!canEdit}
         >
           <AgentCatalogSections
             view={view}
             agentId={agentId}
-            canEdit={canEdit}
             catalog={catalog}
             permissionsFix={permissionsFix}
           />
@@ -189,7 +185,6 @@ export function AgentIntegrationsBody({
 
       <IntegrationDisconnectDialog
         app={disconnectRow?.app ?? null}
-        scope="everywhere"
         onClose={() => setDisconnectRow(null)}
         onConfirm={(toolkit) => {
           onDisconnect(toolkit);

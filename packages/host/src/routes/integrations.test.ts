@@ -7,8 +7,6 @@ import { expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { FakeIntegrationProvider } from "../integrations/fake";
-import { MemoryIntegrationGrantStore } from "../integrations/grant-store";
-import { LocalIntegrationGrants } from "../integrations/grants";
 import { IntegrationRegistry } from "../integrations/registry";
 import { IntegrationUpstreamError } from "../integrations/types";
 import type { TokenVerifier } from "../ports";
@@ -519,7 +517,6 @@ async function setupMulti(providers: FakeIntegrationProvider[]) {
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const vault = new EnvCredentialVault({ secret: "test-secret" });
   const registry = new IntegrationRegistry(providers);
-  const grantStore = new MemoryIntegrationGrantStore();
   const deps: ControlPlaneDeps = {
     verifier,
     store,
@@ -528,10 +525,6 @@ async function setupMulti(providers: FakeIntegrationProvider[]) {
     channels: {},
     capabilities: CAPS,
     integrations: { registry },
-    integrationGrants: new LocalIntegrationGrants({
-      store: grantStore,
-      registry,
-    }),
     corsOrigin: "*",
   };
   const server: Server = createControlPlaneServer(deps);
@@ -543,7 +536,7 @@ async function setupMulti(providers: FakeIntegrationProvider[]) {
     workspaceId: ws.id,
     name: "Assistant",
   });
-  return { base, ws, agent, vault, grantStore, stop: () => server.close() };
+  return { base, ws, agent, vault, stop: () => server.close() };
 }
 
 test("sandbox search with no explicit provider fans out to EVERY registered provider and merges", async () => {
@@ -724,7 +717,7 @@ test("providerForAction: tools.* goes to 'custom' when registered, else the firs
   expect(providerForAction(onlyCustom, "GMAIL_SEND_EMAIL")).toBe("custom");
 });
 
-test("grants filtering still applies over the MERGED multi-provider search", async () => {
+test("merged multi-provider search is NOT filtered per agent (grants removed)", async () => {
   const custom = new FakeIntegrationProvider({
     id: "custom",
     actions: [
@@ -745,12 +738,8 @@ test("grants filtering still applies over the MERGED multi-provider search", asy
       },
     ],
   });
-  const { base, ws, agent, vault, grantStore, stop } = await setupMulti([
-    custom,
-    composio,
-  ]);
+  const { base, ws, agent, vault, stop } = await setupMulti([custom, composio]);
   try {
-    // Both toolkits are CONNECTED; only gmail is granted to this agent.
     for (const [provider, toolkit] of [
       [custom, "acme"],
       [composio, "gmail"],
@@ -758,10 +747,12 @@ test("grants filtering still applies over the MERGED multi-provider search", asy
       const { connectionId } = await provider.connect(USER, toolkit);
       provider.completeConnection(USER, connectionId);
     }
-    await grantStore.put(agent.id, ["gmail"]);
 
     const sb = vault.sandboxToken(ws.id, agent.id);
-    const res = await fetch(`${base}/sandbox/integrations/search`, {
+    // Usability is connection ∩ allowlist (enforced by the cloud gateway, not
+    // this host) — the pod no longer filters search by any per-agent record, so
+    // BOTH connected toolkits' actions surface.
+    const searchRes = await fetch(`${base}/sandbox/integrations/search`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${sb}`,
@@ -769,8 +760,26 @@ test("grants filtering still applies over the MERGED multi-provider search", asy
       },
       body: JSON.stringify({ query: "email" }),
     });
-    const items = (await res.json()).items as { action: string }[];
-    expect(items.map((m) => m.action)).toEqual(["GMAIL_SEND_EMAIL"]);
+    const items = (await searchRes.json()).items as { action: string }[];
+    expect(items.map((m) => m.action).sort()).toEqual([
+      "GMAIL_SEND_EMAIL",
+      "tools.acme.org.default.doThing",
+    ]);
+
+    // ...and execute of a toolkit that the old grant record would have excluded
+    // is NOT 403'd — the pod runs it (no local grant gate anymore).
+    const execRes = await fetch(`${base}/sandbox/integrations/execute`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "tools.acme.org.default.doThing",
+        params: {},
+      }),
+    });
+    expect(execRes.status).toBe(200);
   } finally {
     stop();
   }

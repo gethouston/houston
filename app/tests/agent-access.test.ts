@@ -3,8 +3,6 @@ import { describe, it } from "node:test";
 import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
 import {
   canEditAgentConfig,
-  canEditAgentGrants,
-  canManageAgentGrants,
   canManageAssignments,
   isAgentManager,
 } from "../src/lib/agent-access.ts";
@@ -152,48 +150,5 @@ describe("canManageAssignments (agent-manager semantics)", () => {
     );
     // Single-player never renders the share block, but the gate is permissive.
     strictEqual(canManageAssignments(caps(), { access: undefined }), true);
-  });
-});
-
-describe("canManageAgentGrants (own-grants, assignment semantics)", () => {
-  it("requires multiplayer assignment for every role", () => {
-    strictEqual(
-      canManageAgentGrants(multiplayer("owner"), { assigned: true }),
-      true,
-    );
-    strictEqual(
-      canManageAgentGrants(multiplayer("owner"), { assigned: false }),
-      false,
-    );
-    strictEqual(
-      canManageAgentGrants(multiplayer("admin"), { assigned: true }),
-      true,
-    );
-    strictEqual(
-      canManageAgentGrants(multiplayer("user"), { assigned: true }),
-      true,
-    );
-    strictEqual(canManageAgentGrants(caps(), { assigned: true }), false);
-  });
-});
-
-describe("canEditAgentGrants (own-grants, assignment semantics)", () => {
-  it("single-player can always edit its own agent's grants (regression)", () => {
-    // A self-host / local sidecar serves grants but has no org roles; the tab
-    // must stay editable there, not fall read-only.
-    strictEqual(canEditAgentGrants(caps(), { assigned: true }), true);
-    strictEqual(canEditAgentGrants(caps(), { assigned: false }), true);
-    strictEqual(canEditAgentGrants(null, { assigned: false }), true);
-  });
-
-  it("multiplayer defers to the assignment rule", () => {
-    strictEqual(
-      canEditAgentGrants(multiplayer("admin"), { assigned: true }),
-      true,
-    );
-    strictEqual(
-      canEditAgentGrants(multiplayer("user"), { assigned: false }),
-      false,
-    );
   });
 });

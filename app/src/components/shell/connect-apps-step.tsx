@@ -6,9 +6,6 @@ import {
   useIntegrationStatus,
   useIntegrationToolkits,
 } from "../../hooks/queries";
-import { useCapabilities } from "../../hooks/use-capabilities";
-import { canManageAgentGrants } from "../../lib/agent-access";
-import { useAgentStore } from "../../stores/agents";
 import { INTEGRATION_PROVIDER, useConnectFlow } from "../integrations";
 import { appDisplay } from "../integrations/app-display";
 import { isToolkitConnected } from "../onboarding/missions/onboarding-flow";
@@ -39,7 +36,6 @@ export function ConnectAppsStep({
   onDone,
 }: ConnectAppsStepProps) {
   const { t } = useTranslation("agentOnboarding");
-  const { capabilities } = useCapabilities();
   // Keep the detection + catalog queries enabled once a connect is kicked off,
   // regardless of the cached ready flag: `useConnectFlow` invalidates
   // connections when its OAuth poll resolves and we must refetch to see it.
@@ -55,23 +51,11 @@ export function ConnectAppsStep({
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, enabled);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, enabled);
 
-  // Multiplayer: a connection made from this agent's flow is auto-granted to
-  // it. Read the full agent from the store (the grant rule needs its `assigned`
-  // set); missing (single-player / race) reads as no auto-grant.
-  const storeAgent = useAgentStore((s) =>
-    s.agents.find((a) => a.id === agent.id),
-  );
-  const autoGrant = canManageAgentGrants(capabilities, {
-    assigned: storeAgent?.assigned,
-  });
   const {
     state: connectState,
     connect,
     cancel,
-  } = useConnectFlow({
-    agentId: agent.id,
-    autoGrant,
-  });
+  } = useConnectFlow({ agentId: agent.id });
 
   const bySlug = useMemo(
     () => new Map((catalog.data ?? []).map((tk) => [tk.slug, tk])),

@@ -350,8 +350,8 @@ export interface AgentSettings {
 
 /**
  * A member's chosen AI model for one shared agent (Teams v2). The agent runs on
- * the ACTING user's choice per turn (mirroring per-user integration grants); the
- * gateway clamps it to the agent's `allowedModels` ceiling. `effort` is the
+ * the ACTING user's choice per turn; the gateway clamps it to the agent's
+ * `allowedModels` ceiling. `effort` is the
  * optional reasoning-effort the composer surfaces alongside the model.
  */
 export interface AgentModelChoice {
@@ -389,7 +389,7 @@ export interface OrgSettings {
 
 /**
  * One audit-log entry (Teams v2), newest-first from `GET /org/audit`.
- * `action` is a stable slug (e.g. `agent.rename`, `member.add`, `grants.set`);
+ * `action` is a stable slug (e.g. `agent.rename`, `member.add`, `agent.share`);
  * `subject` is action-specific JSON; `createdAt` is epoch milliseconds.
  */
 export interface AuditEntry {
@@ -1895,7 +1895,7 @@ export interface TriggerType {
  * A trigger routine's live provisioning status (C9). `active` = the Composio
  * instance is provisioned and delivering; `pending` = reconcile in flight;
  * `paused_disconnected` = the connected account was disconnected;
- * `paused_revoked` = the toolkit fell outside the agent's grant/allowlist;
+ * `paused_revoked` = the toolkit fell outside the agent's allowlist;
  * `error` = Composio rejected creation or delivery is failing. A `paused_*` or
  * `error` badge carries a human-readable `detail`.
  */

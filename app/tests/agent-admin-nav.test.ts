@@ -54,15 +54,11 @@ describe("agentAdminCards — card + row visibility", () => {
     }
   });
 
-  it("multiplayer: adds the Access card (people + integrations + model)", () => {
+  it("multiplayer: adds the Access card (people only — ceilings moved to Permissions)", () => {
     for (const role of ["owner", "admin", "user"] as const) {
       const cards = agentAdminCards(multiplayer(role));
       deepStrictEqual(cardIds(cards), ["configuration", "access"]);
-      deepStrictEqual(rowsOf(cards, "access"), [
-        "people",
-        "integrations",
-        "model",
-      ]);
+      deepStrictEqual(rowsOf(cards, "access"), ["people"]);
     }
   });
 

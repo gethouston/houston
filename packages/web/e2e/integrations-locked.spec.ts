@@ -184,8 +184,10 @@ test("owner: a blocked app swaps the ask-admin line for an Enable-in-Permissions
   ).toBeVisible();
   await expect(page.getByText("Ask your admin to enable Slack")).toHaveCount(0);
 
-  // Clicking the CTA deep-links into the Admin Permissions area, leaving the
-  // agent Integrations tab (its locked section is gone).
+  // Clicking the CTA deep-links into the Permissions view, leaving the agent
+  // Integrations tab (its locked section is gone). The org ceiling is unset, so
+  // Slack is AGENT-ceiling blocked → the CTA drills straight into this agent's
+  // per-agent Permissions detail (its apps-ceiling editor).
   await page
     .getByRole("button", { name: "Enable it in Permissions" })
     .first()
@@ -193,6 +195,9 @@ test("owner: a blocked app swaps the ask-admin line for an Enable-in-Permissions
   await expect(
     page.getByRole("heading", { name: "Turned off in your workspace" }),
   ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Which apps can this agent use?" }),
+  ).toBeVisible();
 });
 
 test("single-player: the browse catalog renders but no locked section ever appears", async ({

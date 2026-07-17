@@ -15,9 +15,6 @@
   "reconnectDismiss": "Entendi",
   "connected": {
     "disconnect": {
-      "confirmTitle": "Desconectar {{name}}?",
-      "confirmBody": "Seu agente vai perder o acesso a {{name}}. Você pode reconectar quando quiser.",
-      "confirmAction": "Desconectar",
       "cancel": "Cancelar"
     }
   },
@@ -74,13 +71,6 @@
     "more_one": "{{count}} app a mais desativado no seu espaço de trabalho",
     "more_other": "{{count}} apps a mais desativados no seu espaço de trabalho"
   },
-  "chips": {
-    "more": "+{{count}}"
-  },
-  "disconnect": {
-    "affected_one": "Usado por {{count}} agente",
-    "affected_other": "Usado por {{count}} agentes"
-  },
   "home": {
     "title": "Integrações",
     "description": "Trabalhe com seus agentes nas suas ferramentas favoritas.",
@@ -98,19 +88,11 @@
     "showAllApps": "Ver todos os {{count}} aplicativos"
   },
   "detail": {
-    "activeOn": "Agentes que podem usar",
     "reconnect": "Reconectar",
-    "disconnect": "Desconectar",
-    "noAgents": "Nenhum agente pode usar ainda. Ative um acima.",
-    "allAgentsNote": "Todos os agentes podem usar este app."
+    "disconnect": "Desconectar"
   },
   "agentTab": {
     "manageAll": "Gerenciar todas as integrações",
-    "offForAgent": {
-      "heading": "Conectado, mas desligado para este agente",
-      "subtitle": "Estes apps estão conectados à sua conta. Ligue um para que este agente possa usá-lo.",
-      "turnOn": "Ligar {{app}} para este agente"
-    },
     "runsWithoutAsking": {
       "heading": "Executa sem perguntar",
       "subtitle": "Você permitiu que este agente execute estas ações de apps sem consultar você antes. Remova uma e o Houston vai perguntar de novo.",

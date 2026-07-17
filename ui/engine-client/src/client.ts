@@ -1217,7 +1217,7 @@ export class HoustonClient {
   // User-added API / MCP servers not in the Composio catalog. The host owns
   // persistence; the frontend lists, removes, and provides a secret. The list
   // returns `null` when the host predates the feature (404) so all custom UI
-  // hides, mirroring `agentIntegrationGrants`; every other error throws.
+  // hides, mirroring `agentActionApprovals`; every other error throws.
 
   /** All custom integrations, or `null` when the host does not support the
    *  feature (404 — old build / gateway-fronted pod). */
@@ -1281,7 +1281,7 @@ export class HoustonClient {
    * One agent's per-routine trigger status (C9), or `null` when the host does
    * not serve triggers (404) — a deployment without event-driven routines (e.g.
    * desktop). Callers treat `null` as "triggers unsupported here" and hide the
-   * badge; every other error still throws. Mirrors how `agentIntegrationGrants`
+   * badge; every other error still throws. Mirrors how `agentActionApprovals`
    * degrades on a 404.
    */
   async agentTriggerStatus(
@@ -1342,7 +1342,7 @@ export class HoustonClient {
    * The caller's spaces + pending invites (C8 §Wire surface). Degrades to an
    * empty result on a host that predates spaces (404) — the switcher then shows
    * only the personal workspace, byte-identical to a pre-C8 deployment. Mirrors
-   * how `getAgentModelChoice`/`agentIntegrationGrants` swallow a 404; every other
+   * how `getAgentModelChoice`/`agentActionApprovals` swallow a 404; every other
    * error throws.
    */
   async listOrgs(): Promise<OrgsList> {
@@ -1480,7 +1480,7 @@ export class HoustonClient {
     return this.request("DELETE", `/keys/${this.seg(id)}`);
   }
 
-  // ---------- per-agent assignments + integration grants (multiplayer) ----------
+  // ---------- per-agent assignments (multiplayer) ----------
 
   /**
    * Set who may use this agent, and at what access level (Teams v2).
@@ -1631,40 +1631,6 @@ export class HoustonClient {
       { days: days.toString() },
     );
   }
-  /**
-   * The integration toolkit slugs granted to this agent, or `null` when the host
-   * does not serve grants (404) — a deployment without per-agent grants (e.g. a
-   * managed cloud pod whose gateway owns the policy). Callers treat `null` as
-   * "grants unsupported here" and degrade silently; every other error still
-   * throws. Any host that DOES serve grants answers 200 with the set.
-   */
-  async agentIntegrationGrants(
-    agentSlugOrId: string,
-  ): Promise<string[] | null> {
-    try {
-      return (
-        await this.request<{ toolkits: string[] }>(
-          "GET",
-          `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
-        )
-      ).toolkits;
-    } catch (err) {
-      if (isHoustonEngineError(err) && err.status === 404) return null;
-      throw err;
-    }
-  }
-  /** Replace the integration toolkit slugs granted to this agent. */
-  async setAgentIntegrationGrants(
-    agentSlugOrId: string,
-    toolkits: string[],
-  ): Promise<void> {
-    await this.request(
-      "PUT",
-      `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
-      { toolkits },
-    );
-  }
-
   // ---------- action approvals ----------
 
   /**
@@ -1672,7 +1638,7 @@ export class HoustonClient {
    * set). A host that does not serve the action-approval gate answers 404,
    * which degrades to `{ always: [] }`: the approval card only shows on hosts
    * that DO serve it, so an empty set is the correct "nothing pre-approved"
-   * reading rather than a hard failure (mirrors {@link agentIntegrationGrants}).
+   * reading rather than a hard failure (a 404 → empty degrade).
    * Every other error still throws.
    */
   async agentActionApprovals(

@@ -1,10 +1,9 @@
 /**
- * User-scoped gateway state: Composio integrations, per-agent grants, and
- * key/value preferences. These mirror the cloud gateway's `/v1/integrations/*`,
- * `/v1/agents/:slug/integration-grants`, and `/v1/preferences/:key` surfaces
- * (docs/contracts C1/C4 + gateway `user-routes.ts`) faithfully enough for the
- * SDK's contract tests — including the 503 (unavailable) and signin readiness
- * modes and the grants 404-vs-`[]` distinction.
+ * User-scoped gateway state: Composio integrations and key/value preferences.
+ * These mirror the cloud gateway's `/v1/integrations/*` and `/v1/preferences/:key`
+ * surfaces (docs/contracts C1 + gateway `user-routes.ts`) faithfully enough for
+ * the SDK's contract tests — including the 503 (unavailable) and signin readiness
+ * modes.
  *
  * Wire shapes come from `@houston/runtime-client` so a contract change breaks
  * the typecheck here instead of silently drifting the mock.
@@ -257,16 +256,6 @@ export function disconnect(toolkit: string): void {
   for (const [id, conn] of state.connections) {
     if (conn.toolkit === toolkit) state.connections.delete(id);
   }
-}
-
-/** Grants for an agent, or `undefined` when NO record exists (→ route 404). */
-export function getGrants(agentId: string): string[] | undefined {
-  return state.grants.get(agentId);
-}
-
-/** Replace an agent's grant record (creating it if absent). */
-export function setGrants(agentId: string, toolkits: string[]): void {
-  state.grants.set(agentId, [...toolkits]);
 }
 
 export function getPreference(key: string): string | null {

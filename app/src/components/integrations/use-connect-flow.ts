@@ -1,7 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useAgentGrantMutation } from "../../hooks/queries";
 import { showErrorToast } from "../../lib/error-toast";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
@@ -41,7 +40,8 @@ export interface ConnectFlow {
  * The connect / reconnect hand-off, owned by the SURFACE (not the picker dialog)
  * so closing the dialog never kills polling: mint the hosted link, open the
  * browser, poll until the OAuth finishes, then invalidate connections. In agent
- * context a fresh connection is auto-granted to the current agent.
+ * context the agent slug is forwarded so the gateway enforces the agent's
+ * effective allowlist on connect.
  *
  * The poll's inter-attempt sleep is backed by a `Waker`, so `checkNow()` wakes
  * it immediately and `cancel()` wakes it to observe cancellation on the next
@@ -49,14 +49,10 @@ export interface ConnectFlow {
  * we surface the two outcomes it can't see — a timed-out (abandoned) flow and a
  * provider-side OAuth failure. A cancel is silent by design.
  */
-export function useConnectFlow(opts: {
-  agentId?: string;
-  autoGrant: boolean;
-}): ConnectFlow {
-  const { agentId, autoGrant } = opts;
+export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
+  const { agentId } = opts;
   const { t } = useTranslation("integrations");
   const qc = useQueryClient();
-  const { mutateAsync: mutateGrant } = useAgentGrantMutation(agentId ?? "");
   const [state, setState] = useState<ConnectState>(null);
 
   const cancelledRef = useRef(false);
@@ -97,8 +93,8 @@ export function useConnectFlow(opts: {
       setState({ toolkit, step: "starting" });
       try {
         // Agent context: pass the agent slug so the gateway enforces the
-        // agent's effective allowlist and auto-grants the toolkit on connect
-        // (Teams v2). Undefined on the account-level Integrations page.
+        // agent's effective allowlist on connect (Teams v2). Undefined on the
+        // account-level Integrations page.
         const { redirectUrl, connectionId } = await tauriIntegrations.connect(
           INTEGRATION_PROVIDER,
           toolkit,
@@ -116,17 +112,6 @@ export function useConnectFlow(opts: {
           intervalMs: POLL_INTERVAL_MS,
         });
 
-        // Agent context, connected from this agent → auto-grant so the app lands
-        // as active for it. The grant mutation computes the next set from the
-        // FRESHEST cache at mutate time and no-ops when grants are unsupported;
-        // its failure surfaces via call() but must NOT mask the connection.
-        if (outcome === "active" && autoGrant && agentId) {
-          try {
-            await mutateGrant({ toolkit, op: "add" });
-          } catch {
-            // Surfaced by call(); the connection itself still succeeded.
-          }
-        }
         await invalidateConnections();
 
         if (outcome === "timeout") {
@@ -156,7 +141,7 @@ export function useConnectFlow(opts: {
         if (!unmountedRef.current) setState(null);
       }
     },
-    [agentId, autoGrant, invalidateConnections, mutateGrant, t],
+    [agentId, invalidateConnections, t],
   );
 
   const reopen = useCallback(async () => {

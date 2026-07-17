@@ -8,6 +8,7 @@ import {
   Gauge,
   LayoutDashboard,
   Settings,
+  ShieldCheck,
   Store,
 } from "lucide-react";
 import { useState } from "react";
@@ -15,6 +16,7 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import { hasSpaces } from "../../lib/org-roles";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
 import { ORGANIZATION_VIEW_ID } from "../organization";
+import { PERMISSIONS_VIEW_ID } from "../permissions";
 import { STORE_VIEW_ID } from "../store-view";
 import { USAGE_VIEW_ID } from "../usage-view";
 import { CreateTeamDialog } from "./create-team-dialog";
@@ -74,6 +76,13 @@ export function buildSidebarNavItems(args: {
     },
     ...(showOrganization
       ? [
+          {
+            id: PERMISSIONS_VIEW_ID,
+            label: t("shell:sidebar.permissions"),
+            icon: <ShieldCheck className="h-4 w-4" />,
+            onClick: () => setViewMode(PERMISSIONS_VIEW_ID),
+            dataAttrs: { "data-tour-target": "nav-permissions" },
+          },
           {
             id: ORGANIZATION_VIEW_ID,
             label: t("teams:org.nav"),

@@ -10,7 +10,6 @@ import type {
 } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { LocalActionApprovals } from "../integrations/action-approvals";
-import type { LocalIntegrationGrants } from "../integrations/grants";
 import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
@@ -62,12 +61,6 @@ export interface AgentRouteDeps {
    * defeat idle-sleep wholesale.
    */
   agentRequestCount?: () => number;
-  /**
-   * Local per-agent integration grants (desktop/self-host). The publish flow
-   * reads them to declare, in the published IR, the toolkits the agent uses.
-   * Absent on managed cloud pods, where the gateway owns grant policy.
-   */
-  integrationGrants?: LocalIntegrationGrants;
   /**
    * Per-agent action approvals (mirrors ControlPlaneDeps.actionApprovals) —
    * the dispatch-surface routes (`/agents/:id/action-approvals/*`) write here.

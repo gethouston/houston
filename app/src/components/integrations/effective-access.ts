@@ -4,19 +4,20 @@
  * agent-integrations view model buckets every connection through this, and the
  * exported states name each reason a user might see.
  *
- * Precedence is deliberate (first match wins): an admin ceiling outranks
+ * Usability is now purely connection ∩ effective allowlist — the per-agent
+ * GRANTS layer is gone (permissions live in exactly one place, the Permissions
+ * view). Precedence is deliberate (first match wins): an admin ceiling outranks
  * everything (a blocked app reads as "your admin turned this off", never "not
- * connected"), then a missing connection, then a missing per-agent grant, then
- * usable. Toolkit matching is exact slug equality — slugs are already
- * normalized lowercase across this codebase (see `splitByGrant`), so no
- * case-folding here. DOM-free + dependency-free so it's trivially unit-testable.
+ * connected"), then a missing connection, then usable. Toolkit matching is exact
+ * slug equality — slugs are already normalized lowercase across this codebase
+ * (see `splitByGrant`), so no case-folding here. DOM-free + dependency-free so
+ * it's trivially unit-testable.
  */
 
 /** Why an agent can or cannot use an app, as a discriminated union. */
 export type EffectiveAccess =
   | { state: "usable" }
   | { state: "notConnected" }
-  | { state: "notGrantedToAgent" }
   | { state: "blockedByAdmin" };
 
 /** The bare state tag, for callers that only need the classification. */
@@ -26,20 +27,15 @@ export function effectiveAccess(input: {
   toolkit: string;
   /** Active-or-recovering connections of the acting user (any toolkit). */
   connections: readonly { toolkit: string }[];
-  /** Per-agent grant record; `null` = grants unsupported (treat as granted). */
-  grants: readonly string[] | null;
   /** Effective allowlist (org ∩ agent); `null` = unrestricted. */
   allowlist: readonly string[] | null;
 }): EffectiveAccess {
-  const { toolkit, connections, grants, allowlist } = input;
+  const { toolkit, connections, allowlist } = input;
   if (allowlist !== null && !allowlist.includes(toolkit)) {
     return { state: "blockedByAdmin" };
   }
   if (!connections.some((c) => c.toolkit === toolkit)) {
     return { state: "notConnected" };
-  }
-  if (grants !== null && !grants.includes(toolkit)) {
-    return { state: "notGrantedToAgent" };
   }
   return { state: "usable" };
 }

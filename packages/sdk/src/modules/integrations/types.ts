@@ -51,8 +51,6 @@ export const IntegrationsCommand = {
   Connect: "integrations/connect",
   PollConnection: "integrations/pollConnection",
   Disconnect: "integrations/disconnect",
-  Grants: "integrations/grants",
-  SetGrants: "integrations/setGrants",
 } as const;
 
 export type IntegrationsCommandType =
@@ -83,16 +81,4 @@ export function requireString(payload: unknown, key: string): string {
     throw new Error(`missing '${key}'`);
   }
   return value;
-}
-
-/** A string[] off an untrusted command payload (each item must be a string). */
-export function requireStringArray(payload: unknown, key: string): string[] {
-  const value =
-    typeof payload === "object" && payload !== null
-      ? (payload as Record<string, unknown>)[key]
-      : undefined;
-  if (!Array.isArray(value) || !value.every((v) => typeof v === "string")) {
-    throw new Error(`'${key}' must be an array of strings`);
-  }
-  return value as string[];
 }
