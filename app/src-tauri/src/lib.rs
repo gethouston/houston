@@ -240,19 +240,28 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())
         .setup(move |app| {
-            // Deep-link handler. The only `houston://` URL Houston emits today
-            // is the sign-in success page's "Open Houston" button
-            // (`houston://open`) — purely a focus affordance. The old
-            // `houston://auth-callback` OAuth path is retired: desktop sign-in
-            // now runs entirely over the loopback listener, which forwards the
-            // callback via the `auth://deep-link` event, and OAuth providers
-            // reject custom-scheme redirect URIs anyway. So any deep link just
-            // brings Houston to the front.
+            // Deep-link handler. Two `houston://` URLs matter today:
+            //  - `houston://auth-callback?<query>` — the Apple sign-in return.
+            //    Apple rejects `127.0.0.1` redirects, so Apple's callback comes
+            //    back through the gateway's HTTPS bridge, which deep-links the
+            //    query here; forward it onto the SAME `auth://deep-link` event
+            //    the loopback listener uses (Google/Microsoft still run over
+            //    the loopback — those providers accept it and reject custom
+            //    schemes). CSRF `state` is enforced webview-side, so a forged
+            //    link can never complete a sign-in it didn't start.
+            //  - `houston://open` (the loopback success page's "Open Houston"
+            //    button) and anything else — purely a focus affordance.
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
                 let handle = app.handle().clone();
-                app.deep_link()
-                    .on_open_url(move |_event| window_focus::bring_to_front(&handle));
+                app.deep_link().on_open_url(move |event| {
+                    for url in event.urls() {
+                        if auth::is_auth_callback_deep_link(url.as_str()) {
+                            auth::emit_deep_link(&handle, url.as_str());
+                        }
+                    }
+                    window_focus::bring_to_front(&handle);
+                });
             }
 
             // One-shot loopback listener state (cancel channel for the current

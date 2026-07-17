@@ -7,7 +7,9 @@
 // that file stays a thin sign-in dispatcher.
 
 import { resolveEngine } from "./engine-mode";
-import { IdentityError } from "./identity";
+// Imported from the concrete module (not the ./identity barrel): the barrel
+// pulls in apple-authorize, which imports THIS module for the bridge URL.
+import { IdentityError } from "./identity/errors.ts";
 
 export function gatewayUrl(): string {
   const env = import.meta.env as unknown as Parameters<typeof resolveEngine>[0];
