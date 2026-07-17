@@ -1,8 +1,13 @@
+import { createServer, type Server } from "node:net";
 import {
   OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
 } from "@earendil-works/pi-ai/oauth";
 import { expect, test, vi } from "vitest";
+import {
+  CODEX_OAUTH_CALLBACK_PORT,
+  CodexCallbackPortInUseError,
+} from "./codex-port-preflight";
 import {
   autoPromptAnswer,
   cancelLogin,
@@ -14,6 +19,85 @@ import {
   setApiKey,
   startLogin,
 } from "./login";
+import { authStorage } from "./storage";
+
+/** Occupy the fixed Codex callback port, like a running Codex CLI would. */
+function occupyCodexCallbackPort(): Promise<Server> {
+  return new Promise<Server>((resolve, reject) => {
+    const s = createServer();
+    s.once("error", reject);
+    s.listen(CODEX_OAUTH_CALLBACK_PORT, "127.0.0.1", () => resolve(s));
+  });
+}
+
+/**
+ * Stub pi's AuthStorage.login so no real OAuth/network runs: it resolves the
+ * `info` (via onAuth) so startLogin returns, then hangs until cancelLogin tears
+ * it down. The mock being CALLED is the signal that startLogin got past the
+ * port preflight.
+ */
+function stubPiLogin() {
+  return vi
+    .spyOn(authStorage, "login")
+    .mockImplementation((_provider, opts) => {
+      opts.onAuth({ url: "https://auth.example/codex" });
+      return new Promise<void>(() => {});
+    });
+}
+
+test("openai-codex browser login preflights the callback port and fails fast when it is busy (no pi call, slot free)", async () => {
+  // A real Codex CLI holding 1455 used to leave the user on a 5-min spinner:
+  // pi swallows the bind error. The preflight turns it into an instant,
+  // actionable error BEFORE pi is even invoked, and never wedges the slot.
+  const squatter = await occupyCodexCallbackPort();
+  const piLogin = stubPiLogin();
+  try {
+    const started = Date.now();
+    const err = await startLogin("openai-codex", false).catch(
+      (e: unknown) => e,
+    );
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(err).toBeInstanceOf(CodexCallbackPortInUseError);
+    expect((err as Error).message).toContain("Close other AI coding tools");
+    // Short-circuited BEFORE handing off to pi.
+    expect(piLogin).not.toHaveBeenCalled();
+    // No state was added, so the slot is free for an immediate retry.
+    expect(
+      (await getAuthStatus()).providers.find(
+        (p) => p.provider === "openai-codex",
+      )?.login,
+    ).toBeNull();
+
+    // Release the port; the retry now proceeds PAST the preflight into pi.
+    await new Promise<void>((r) => squatter.close(() => r()));
+    const info = await startLogin("openai-codex", false);
+    expect(info.kind).toBe("url");
+    expect(piLogin).toHaveBeenCalledTimes(1);
+    cancelLogin("openai-codex");
+    await new Promise((r) => setTimeout(r, 50));
+  } finally {
+    piLogin.mockRestore();
+    if (squatter.listening)
+      await new Promise<void>((r) => squatter.close(() => r()));
+  }
+});
+
+test("openai-codex device-code login does NOT preflight the callback port", async () => {
+  // The device-code flow (deviceAuth:true) binds no loopback server, so a
+  // squatter on 1455 must not block it: it goes straight to pi.
+  const squatter = await occupyCodexCallbackPort();
+  const piLogin = stubPiLogin();
+  try {
+    const info = await startLogin("openai-codex", true);
+    expect(info.kind).toBe("url");
+    expect(piLogin).toHaveBeenCalledTimes(1);
+    cancelLogin("openai-codex");
+    await new Promise((r) => setTimeout(r, 50));
+  } finally {
+    piLogin.mockRestore();
+    await new Promise<void>((r) => squatter.close(() => r()));
+  }
+});
 
 test("codexLoginMethod: browser login for any client that can catch/relay the loopback callback", () => {
   // The desktop app sends deviceAuth:false: the user approves in their own

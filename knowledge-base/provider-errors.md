@@ -281,6 +281,45 @@ session cards, so they stay out of the taxonomy table above.
 (Same fix biased the relay's stdout/exit `select!` so a fast-exiting CLI's
 login URL is always drained before its exit is observed — see `login_relay.rs`.)
 
+### Codex sign-in port (1455) already in use — preflight (TS host)
+
+**Symptom (desktop, real users):** a user with the real Codex CLI running — or a
+stray prior login — clicks *Connect OpenAI*, the browser opens, they approve at
+OpenAI, then Houston shows a spinner for ~5 minutes and finally a generic
+timeout toast. No log, no error, no remedy.
+
+**Cause:** the OpenAI/Codex **browser (loopback)** login binds a FIXED loopback
+callback port, `1455`, in pi's host process (pi-ai
+`utils/oauth/openai-codex.ts` → `startLocalOAuthServer`, mirroring its
+hardcoded `REDIRECT_URI = "http://localhost:1455/auth/callback"`). pi attaches
+`.on("error", …)` to that server WITHOUT rethrowing: on `EADDRINUSE` it resolves
+a **stub** whose `waitForCode()` returns null. The browser still opens, the
+redirect lands on whoever holds `1455` (the real Codex CLI), and the flow waits
+for a manual code that never comes — until the 10-min abandonment expiry
+(`LOGIN_TIMEOUT_MS`). pi is an external dependency; its dist can't be patched.
+
+**Fix (`packages/runtime/src/auth/codex-port-preflight.ts`):** BEFORE handing off
+to pi, `startLogin` probes the exact `host:port` pi will bind (`1455`, host
+mirrors pi's `PI_OAUTH_CALLBACK_HOST || 127.0.0.1`) by binding + immediately
+closing a throwaway listener. A bind error throws the typed
+`CodexCallbackPortInUseError` (`kind: "codex_callback_port_busy"`) with a
+non-technical message — *"Another app on this computer is using the sign-in port
+(1455). Close other AI coding tools and try again."* — so the failure is instant
+and actionable, **before any browser opens**. The preflight runs ONLY for the
+`openai-codex` **browser** method (`deviceAuth:false`); the device-code path and
+every other provider bind nothing and are untouched. It runs before any state is
+added to `active`, so a preflight failure never wedges the login slot — an
+immediate retry (once the port is freed) starts clean.
+
+**Surfacing:** the runtime returns the typed error over REST with its `kind`
+(`provider-routes.ts`). The frontend engine adapter
+(`packages/web/src/engine-adapter/client/provider-login-mixin.ts`,
+`surfaceTypedLoginFailure`) routes any `kind`-tagged login-launch failure through
+the normal `ProviderLoginComplete{success:false, error}` channel, so the
+actionable message reaches the existing sign-in toast / reconnect card instead of
+being flattened to a generic "sign-in failed". Untyped failures rethrow
+unchanged.
+
 ## File map
 
 | Layer        | Path                                                                              |

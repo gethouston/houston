@@ -224,6 +224,14 @@ async function handleAuthAction(
     await logout(provider);
     json(ctx.res, 200, { ok: true });
   } catch (e) {
-    json(ctx.res, 400, { error: e instanceof Error ? e.message : String(e) });
+    const error = e instanceof Error ? e.message : String(e);
+    // A typed login error (e.g. the Codex callback port is busy) carries a
+    // stable `kind`; forward it so the frontend can route its actionable
+    // message to the sign-in toast instead of flattening it to a generic one.
+    const kind =
+      e && typeof e === "object" && "kind" in e && typeof e.kind === "string"
+        ? e.kind
+        : undefined;
+    json(ctx.res, 400, kind ? { error, kind } : { error });
   }
 }

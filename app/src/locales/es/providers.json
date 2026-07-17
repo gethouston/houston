@@ -18,6 +18,7 @@
     "engineUnavailable": "Houston no pudo conectarse con tu espacio de trabajo. Espera un momento e intenta de nuevo.",
     "connectTimedOut": "La conexión no se completó a tiempo. Intenta conectarte de nuevo.",
     "loginTimedOut": "El inicio de sesión no se completó a tiempo. Intenta de nuevo.",
+    "signInPortBusy": "Otra aplicación de este computador está usando el puerto de inicio de sesión. Cierra otras herramientas de IA e intenta de nuevo.",
     "signOutFailed": "No se pudo cerrar sesión de {{provider}}",
     "signInSucceeded": "Sesión iniciada en {{provider}}",
     "cancelFailed": "No se pudo cancelar el inicio de sesión de {{provider}}",

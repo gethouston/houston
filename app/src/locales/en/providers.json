@@ -18,6 +18,7 @@
     "engineUnavailable": "Houston couldn't reach your workspace. Give it a moment and try again.",
     "connectTimedOut": "The connection didn't complete in time. Please try connecting again.",
     "loginTimedOut": "The sign-in didn't complete in time. Please try again.",
+    "signInPortBusy": "Another app on this computer is using the sign-in port. Close other AI coding tools and try again.",
     "signOutFailed": "Couldn't sign out of {{provider}}",
     "signInSucceeded": "Signed in to {{provider}}",
     "cancelFailed": "Couldn't cancel {{provider}} sign-in",

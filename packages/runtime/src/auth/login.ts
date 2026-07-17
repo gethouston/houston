@@ -24,6 +24,7 @@ import {
   refreshAnthropicCredential,
 } from "../backends/claude/credential-status";
 import { runAnthropicSetupTokenLogin } from "./anthropic-setup-token";
+import { preflightCodexCallbackPort } from "./codex-port-preflight";
 import { authStorage, providerConnected } from "./storage";
 
 /**
@@ -204,6 +205,21 @@ export async function startLogin(
   if (providerAuthMethod(providerId) !== "oauth")
     throw new Error(`${providerId} does not use OAuth sign-in`);
   const provider = providerId;
+
+  // The OpenAI/Codex browser (loopback) login makes pi bind a FIXED loopback
+  // callback port (1455) in-process — and pi swallows an EADDRINUSE, stranding
+  // the flow (a browser opens, the user approves, the redirect lands on whoever
+  // holds the port, and Houston spins the whole 10-min window). Probe that exact
+  // port FIRST so a real Codex CLI / stray login becomes an instant, actionable
+  // error before any browser opens. Throwing here — BEFORE any state is added to
+  // `active` or the expiry armed — leaves the slot free for an immediate retry.
+  // The device-code path (deviceAuth) and every other provider bind nothing.
+  if (
+    provider === "openai-codex" &&
+    codexLoginMethod({ deviceAuth }) === OPENAI_CODEX_BROWSER_LOGIN_METHOD
+  ) {
+    await preflightCodexCallbackPort();
+  }
 
   // Idempotent: reuse an in-flight login (Anthropic's loopback only binds once).
   const existing = active.get(provider);
