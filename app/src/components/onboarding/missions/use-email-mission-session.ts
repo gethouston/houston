@@ -12,7 +12,7 @@ import {
   useEmailSetupCleanup,
   useEmailSetupCompleted,
 } from "./email-mission-setup";
-import { feedShowsAgentReply, shouldOfferSkip } from "./email-skip";
+import { feedShowsTurnError, shouldOfferSkip } from "./email-skip";
 
 interface UseEmailMissionSessionArgs {
   agent: Agent;
@@ -33,7 +33,7 @@ export interface EmailMissionSession {
   error: string | null;
   feedItems: FeedItem[];
   sessionKey: string;
-  /** Available once the agent has replied (or something errored). */
+  /** Available only when something failed (kickoff or turn error). */
   showSkip: boolean;
   onStop: (() => void) | undefined;
   handleSend: () => Promise<void>;
@@ -69,13 +69,12 @@ export function useEmailMissionSession({
 
   const setupDone = useEmailSetupCompleted(realFeed);
 
-  // The conversation becomes skippable only once the AGENT has replied (the
-  // user's kickoff alone doesn't count) — or once something errored, so a
-  // failure never strands the user. Until then, the email action is the sole
-  // path forward.
+  // The skip escape hatch exists ONLY for failure: a kickoff error or a turn
+  // error in the feed. On the happy path the step auto-advances, so nothing
+  // competes with the running conversation.
   const showSkip = shouldOfferSkip({
-    agentReplied: feedShowsAgentReply((realFeed ?? []) as FeedItem[]),
-    hasError: error !== null,
+    hasError:
+      error !== null || feedShowsTurnError((realFeed ?? []) as FeedItem[]),
     setupDone,
   });
 
