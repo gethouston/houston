@@ -63,6 +63,11 @@ mod tests {
         assert!(prompt.contains("integration_execute"));
         assert!(prompt.contains("request_connection"));
         assert!(prompt.contains("I've connected Gmail. Please continue."));
+        // A blocked (turned-off) app sends the user to the agent's Permissions
+        // tab, not a workspace admin, and never offers the connect card.
+        assert!(prompt.contains("turned off for this agent"));
+        assert!(prompt.contains("switched on in this agent's Permissions tab"));
+        assert!(!prompt.contains("their admin needs to enable"));
         // …the sign-in card joins the same flow, and app powers are never
         // claimed unavailable unless Houston says they are not set up…
         assert!(prompt.contains("a sign-in card joins"));

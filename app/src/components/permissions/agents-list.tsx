@@ -1,5 +1,6 @@
 import {
   Button,
+  CatalogSectionHeader,
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -12,22 +13,19 @@ import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { memberLabel } from "../organization/org-roster";
-import { formatRelativeTime } from "../organization/org-time";
-import { OrgAgentCard } from "./org-agent-card";
+import { PermissionsAgentRow } from "./agent-row";
 import { summarizeAgentAccess } from "./org-agents-model";
 
 /**
- * Permissions > Agents: a grid of the agents the caller can see (owner: every
- * org agent; admin: the ones assigned to them — the agent list query already
- * reflects this). Each tile shows who manages the agent, how many people can
- * use it, and when it was last opened; clicking it drills into that agent's
- * per-agent card (its integration + model ceilings, `onOpenAgent`). Fresh orgs
- * get a "create your first agent" empty state.
+ * The Permissions plane: the agents the caller can see (owner: every org
+ * agent; admin: the ones assigned to them — the agent list query already
+ * reflects this), as flat rows in the app's page language. Each row carries
+ * ONE plain-language summary line — who can use the agent, who manages it —
+ * and opens that agent's permission card (People | Integrations | AI Models).
+ * Fresh orgs get a "create your first agent" empty state.
  *
- * The pinned AI model is intentionally omitted: it lives in each agent's config
- * file, not on the agent-list row, so surfacing it would cost one config fetch
- * per tile. We show managers + access + last-opened, which the list already
- * carries. Last-opened is the caller's own `lastOpenedAt`.
+ * Deliberately NOT here: last-opened (dashboard information, not permission
+ * information) and the pinned model (one config fetch per row).
  */
 export function AgentsList({
   members,
@@ -36,7 +34,7 @@ export function AgentsList({
   members: OrgMember[];
   onOpenAgent: (agent: Agent) => void;
 }) {
-  const { t, i18n } = useTranslation("teams");
+  const { t } = useTranslation("teams");
   const agents = useAgentStore((s) => s.agents);
   const setCreateAgentDialogOpen = useUIStore(
     (s) => s.setCreateAgentDialogOpen,
@@ -60,44 +58,40 @@ export function AgentsList({
   }
 
   return (
-    <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {agents.map((agent) => {
-        const summary = summarizeAgentAccess(agent);
-        const managedBy =
-          summary.managerIds.length > 0
-            ? t("agentsTab.managedBy", {
-                names: summary.managerIds
-                  .map((id) => memberLabel(id, members))
-                  .join(", "),
-              })
-            : null;
-        const access = summary.everyone
-          ? t("agentsTab.access.everyone")
-          : summary.peopleCount !== null
-            ? t("agentsTab.access.people", { count: summary.peopleCount })
-            : t("agentsTab.access.you");
-        const lastOpened = agent.lastOpenedAt
-          ? t("agentsTab.lastOpened", {
-              time: formatRelativeTime(
-                Date.parse(agent.lastOpenedAt),
-                i18n.language,
-              ),
-            })
-          : null;
-
-        return (
-          <OrgAgentCard
-            key={agent.id}
-            name={agent.name}
-            color={resolveAgentColor(agent.color)}
-            managedBy={managedBy}
-            access={access}
-            lastOpened={lastOpened}
-            openLabel={t("agentsTab.open", { name: agent.name })}
-            onOpen={() => onOpenAgent(agent)}
-          />
-        );
-      })}
-    </div>
+    <section>
+      <CatalogSectionHeader
+        title={t("permissions.agentsHeading")}
+        count={agents.length}
+        className="mb-2"
+      />
+      <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
+        {agents.map((agent) => {
+          const summary = summarizeAgentAccess(agent);
+          const access = summary.everyone
+            ? t("agentsTab.access.everyone")
+            : summary.peopleCount !== null
+              ? t("agentsTab.access.people", { count: summary.peopleCount })
+              : t("agentsTab.access.you");
+          const managedBy =
+            summary.managerIds.length > 0
+              ? t("agentsTab.managedBy", {
+                  names: summary.managerIds
+                    .map((id) => memberLabel(id, members))
+                    .join(", "),
+                })
+              : null;
+          return (
+            <PermissionsAgentRow
+              key={agent.id}
+              name={agent.name}
+              color={resolveAgentColor(agent.color)}
+              summary={managedBy ? `${access} · ${managedBy}` : access}
+              openLabel={t("agentsTab.open", { name: agent.name })}
+              onOpen={() => onOpenAgent(agent)}
+            />
+          );
+        })}
+      </div>
+    </section>
   );
 }

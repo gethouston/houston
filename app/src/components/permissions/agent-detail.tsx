@@ -1,4 +1,5 @@
 import { Button, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import type { OrgMember } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCapabilities } from "../../hooks/use-capabilities";
@@ -7,25 +8,35 @@ import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { PageContainer, PageHeader } from "../shell/page-shell";
-import { AgentAdminIntegrations } from "../tabs/agent-admin/agent-admin-integrations";
-import { AgentAdminModel } from "../tabs/agent-admin/agent-admin-model";
+import { AgentPermissionsPanel } from "./agent-permissions-panel";
+import type { PermissionsAgentTab } from "./permissions-nav-store";
 
 /**
- * Permissions > Agents per-agent card: an org owner/admin sets what ONE agent is
- * allowed to use — its integration ceiling and its model ceiling. WHO can use
- * the agent is the People tab's job, so this card carries no roster (unlike the
- * old Admin drill-in it was extracted from).
+ * Permissions agent detail: an org owner/admin manages ONE agent across three
+ * tabs — **People** (who can use it, at what level), **Integrations** (its app
+ * ceiling), and **AI Models** (its model ceiling). The whole product is agent-
+ * centric: pick an agent, then manage who reaches it and what it may reach.
  *
- * The manager-authority gate lives HERE, in the parent, because the sections do
- * NOT self-gate on it (Agent Settings hardcodes them editable and relies on the
- * tab mount to gate). {@link isAgentManager}: owner → any org agent; admin →
- * only agents where their effective `access === "manager"`. A visible-but-not-
- * manager admin gets a manager-only note instead of the editors.
+ * The manager-authority gate lives HERE, in the parent: the top-level drill-in is
+ * owner/admin-only, and a visible-but-not-manager admin gets a manager-only note
+ * instead of the editable panel. {@link isAgentManager}: owner → any org agent;
+ * admin → only agents where their effective `access === "manager"`. (The agent's
+ * OWN Permissions tab reuses the same {@link AgentPermissionsPanel} but shows it
+ * read-only to non-managers rather than hiding it — see `agent-permissions-tab`.)
  *
  * The `agent` is resolved live from the store by the shell (by id, not a
  * snapshot), so a share mutation that reloads the store shows fresh data here.
  */
-export function AgentDetail({ agent }: { agent: Agent }) {
+export function AgentDetail({
+  agent,
+  members,
+  initialTab = "people",
+}: {
+  agent: Agent;
+  members: OrgMember[];
+  /** Tab to open on first mount (a deep link may land on Integrations). */
+  initialTab?: PermissionsAgentTab;
+}) {
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
@@ -58,14 +69,13 @@ export function AgentDetail({ agent }: { agent: Agent }) {
         />
       </div>
 
-      {/* Each section renders its own heading ("Which apps can this agent
-          use?", "Which AI models can this agent use?"), so the stack adds
-          spacing only — no block headings, to avoid double-heading. */}
       {canManage ? (
-        <div className="space-y-8">
-          <AgentAdminIntegrations agent={agent} />
-          <AgentAdminModel agent={agent} />
-        </div>
+        <AgentPermissionsPanel
+          agent={agent}
+          members={members}
+          initialTab={initialTab}
+          readOnly={false}
+        />
       ) : (
         <p className="text-sm text-ink-muted">
           {t("org.agentDetail.managerOnly")}

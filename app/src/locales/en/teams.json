@@ -40,7 +40,8 @@
       "allowedHeading": "Allowed models",
       "allowedEmpty": "No models picked yet. Add models below.",
       "allowedEmptyLab": "No models picked from this lab yet.",
-      "addHeading": "Add models"
+      "addHeading": "Add models",
+      "readOnlyNote": "Someone who manages this agent can change which models it can use."
     },
     "integrations": {
       "unavailable": "Integration limits are not available here."
@@ -58,7 +59,8 @@
       "allowedHeading": "Allowed apps",
       "allowedEmpty": "No apps picked yet. Add apps below.",
       "allowedEmptyCategory": "No allowed apps in this category yet.",
-      "addHeading": "Add apps"
+      "addHeading": "Add apps",
+      "readOnlyNote": "Someone who manages this agent can change which apps it can use."
     },
     "notAllowed": {
       "title": "Not allowed for this agent",
@@ -83,23 +85,6 @@
       "openAgent": "Open agent",
       "managerOnly": "Only this agent's Managers can change its access."
     },
-    "memberDetail": {
-      "everyone": {
-        "title": "Shared with everyone",
-        "note": "Everyone in the team"
-      },
-      "explicit": {
-        "title": "Agents"
-      },
-      "access": {
-        "none": "No access",
-        "noneHint": "Cannot see or use this agent.",
-        "unknown": "Not visible to you"
-      },
-      "changeAccess": "Change access to {{agent}}",
-      "setReplaceNote": "This changes who can use the agent.",
-      "empty": "There are no agents to show for this person yet."
-    },
     "index": {
       "groups": {
         "insights": "Insights"
@@ -120,17 +105,24 @@
   },
   "permissions": {
     "title": "Permissions",
-    "subtitle": "Choose who can use each agent, and what each agent is allowed to use.",
-    "tabs": {
+    "subtitle": "Pick an agent to manage who can use it and what it can use.",
+    "agentTabs": {
       "people": "People",
-      "agents": "Agents"
+      "integrations": "Integrations",
+      "models": "AI Models"
     },
-    "people": {
+    "agentPeople": {
+      "none": "No access",
+      "noneHint": "Cannot use this agent.",
+      "changeAccess": "Change access for {{name}}",
+      "readOnlyHint": "Someone who manages this agent can change who has access.",
+      "viewerOnly": "You can use this agent. Someone who manages it can change who has access.",
       "empty": {
         "title": "No people yet",
         "body": "Invite teammates from the Admin page to manage their access here."
       }
-    }
+    },
+    "agentsHeading": "Agents"
   },
   "share": {
     "title": "Share {{name}}",
@@ -205,8 +197,7 @@
       "you": "(you)",
       "changeRole": "Change role for {{name}}",
       "remove": "Remove",
-      "removeLabel": "Remove {{name}}",
-      "openLabel": "Open {{name}}'s agents"
+      "removeLabel": "Remove {{name}}"
     },
     "removeConfirm": {
       "title": "Remove {{name}}?",
@@ -272,7 +263,6 @@
       "people_other": "{{count}} people",
       "you": "You can use this"
     },
-    "lastOpened": "Opened {{time}}",
     "open": "Open {{name}}"
   },
   "createTeam": {

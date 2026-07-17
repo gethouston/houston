@@ -67,15 +67,17 @@ the agent which of four speech acts to perform:
 - `connected` — the acting user has an active connection: use it.
 - `connectable` — a real toolkit, not connected yet: OFFER to connect
   (`request_connection`).
-- `blocked` — a real toolkit excluded by org/agent admin policy: tell the user to
-  ask their admin; never imply Houston lacks it, never `request_connection`.
-  **Nothing in THIS repo produces `blocked`** — the allowlist ceiling lives solely
-  in the closed cloud gateway (Teams v2, C7). The enum + rendering + prompt exist
-  now so a later gateway change that annotates its `/search` items with `status`
-  lights it up here with zero further work. (Distinct from the browse-catalog **locked
-  rows** in §3: those are a CLIENT-SIDE intersection of the effective allowlist against
-  the ~1000-app catalog, a visible-UI affordance, not this agent-facing search-status
-  enum. The locked rows never set or read `blocked`.)
+- `blocked` — a real toolkit outside this agent's allowlist (turned OFF in the
+  agent's Permissions tab): tell the user it can be switched on there — whoever
+  manages the agent can do it, otherwise they ask whoever does — never imply
+  Houston lacks it, never `request_connection`. Rendered `, TURNED OFF` in the tool
+  list. **`blocked` is produced solely by the closed cloud gateway** (Teams v2,
+  C7), which annotates its `/search` items with `status: "blocked"` for allowlist-
+  excluded toolkits and strips their `inputParams`; nothing in THIS repo emits it
+  (the direct adapter only knows `connected`/`connectable`). (Distinct from the
+  browse-catalog **locked rows** in §3: those are a CLIENT-SIDE intersection of the
+  effective allowlist against the ~1000-app catalog, a visible-UI affordance, not
+  this agent-facing search-status enum. The locked rows never set or read `blocked`.)
 - `unknown` — not a recognized toolkit (reserved; today an unrecognized query is
   simply the EMPTY result).
 
@@ -108,18 +110,30 @@ or unrecognized `status` (today's gateway) derives from the `connected` boolean
 
 **Runtime tool text** (`packages/runtime/src/session/tools/integrations.ts`) is
 status-aware: connected actions as before; `connectable` entries name the exact
-slug and teach `request_connection`; `blocked` tells the user to ask their admin
-and forbids `request_connection`; a genuinely EMPTY result says no such
-app/action exists (a real not-found, NOT a policy block).
+slug and teach `request_connection`; `blocked` (rendered `, TURNED OFF`) tells the
+user to switch the app on in the agent's Permissions tab and forbids
+`request_connection`; a genuinely EMPTY result says no such app/action exists (a
+real not-found, NOT a policy block).
+
+**Execute-time allowlist refusal.** The gateway 403s an out-of-allowlist
+`execute` with `{code:"toolkit_not_allowed"}` (the sole execute gate, C7). The
+sandbox proxy relays that body verbatim (`integrationUpstreamErrorFromResponse` →
+`IntegrationUpstreamError` → `relayIntegrationUpstreamError`, preserving the JSON
+`code`), so `integration_execute` classifies it by its stable `code` — mirroring
+how it classifies `approval_required` (409), never the bare 403 — and RETURNS
+guidance (the app is turned off for this agent; tell the user to enable it in the
+Permissions tab; do not retry until they confirm), never a thrown/raw error.
+Marked `details.appTurnedOff`.
 
 **Prompt contract — the four speech acts.** `packages/host/src/houston-prompt.ts`
 INTEGRATIONS section and its verbatim Rust mirror
 `app/src-tauri/src/houston_prompt/integrations.rs` (`PI_INTEGRATIONS_GUIDANCE`,
 kept in sync) instruct: connected → use it; connectable → briefly offer +
-`request_connection`; blocked → tell the user their admin must enable it (never
-imply Houston lacks it, never `request_connection`); unknown/empty → say plainly
-no such app is available. An empty result never means an app is unsupported —
-trust the reported status.
+`request_connection`; blocked → tell the user it can be switched on in this
+agent's Permissions tab, someone who manages the agent can do it (never imply
+Houston lacks it, never `request_connection`); unknown/empty → say plainly no such
+app is available. An empty result never means an app is unsupported — trust the
+reported status.
 
 ---
 

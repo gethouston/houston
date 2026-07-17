@@ -72,7 +72,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
       resolvePermissionsFix({
         canManageAgent,
         openAgentDetail: () => {
-          requestAgentDetail(agent.id);
+          requestAgentDetail(agent.id, "integrations");
           setViewMode(PERMISSIONS_VIEW_ID);
         },
       }),

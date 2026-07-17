@@ -40,7 +40,8 @@
       "allowedHeading": "Modelos permitidos",
       "allowedEmpty": "Você ainda não escolheu modelos. Adicione modelos abaixo.",
       "allowedEmptyLab": "Você ainda não escolheu modelos deste laboratório.",
-      "addHeading": "Adicionar modelos"
+      "addHeading": "Adicionar modelos",
+      "readOnlyNote": "Alguém que gerencia este agente pode alterar quais modelos ele pode usar."
     },
     "integrations": {
       "unavailable": "Os limites de integrações não estão disponíveis aqui."
@@ -58,7 +59,8 @@
       "allowedHeading": "Apps permitidos",
       "allowedEmpty": "Você ainda não escolheu apps. Adicione apps abaixo.",
       "allowedEmptyCategory": "Ainda não há apps permitidos nesta categoria.",
-      "addHeading": "Adicionar apps"
+      "addHeading": "Adicionar apps",
+      "readOnlyNote": "Alguém que gerencia este agente pode alterar quais apps ele pode usar."
     },
     "notAllowed": {
       "title": "Não permitido para este agente",
@@ -83,23 +85,6 @@
       "openAgent": "Abrir agente",
       "managerOnly": "Apenas os Managers deste agente podem alterar o acesso dele."
     },
-    "memberDetail": {
-      "everyone": {
-        "title": "Compartilhado com todos",
-        "note": "Todos na equipe"
-      },
-      "explicit": {
-        "title": "Agentes"
-      },
-      "access": {
-        "none": "Sem acesso",
-        "noneHint": "Não pode ver nem usar este agente.",
-        "unknown": "Não visível para você"
-      },
-      "changeAccess": "Alterar acesso a {{agent}}",
-      "setReplaceNote": "Isso altera quem pode usar o agente.",
-      "empty": "Ainda não há agentes para mostrar para esta pessoa."
-    },
     "index": {
       "groups": {
         "insights": "Estatísticas"
@@ -120,17 +105,24 @@
   },
   "permissions": {
     "title": "Permissões",
-    "subtitle": "Escolha quem pode usar cada agente e o que cada agente tem permissão para utilizar.",
-    "tabs": {
+    "subtitle": "Escolha um agente para gerenciar quem pode usá-lo e o que ele pode usar.",
+    "agentTabs": {
       "people": "Pessoas",
-      "agents": "Agentes"
+      "integrations": "Integrações",
+      "models": "Modelos de IA"
     },
-    "people": {
+    "agentPeople": {
+      "none": "Sem acesso",
+      "noneHint": "Não pode usar este agente.",
+      "changeAccess": "Alterar acesso de {{name}}",
+      "readOnlyHint": "Alguém que gerencia este agente pode alterar quem tem acesso.",
+      "viewerOnly": "Você pode usar este agente. Alguém que o gerencia pode alterar quem tem acesso.",
       "empty": {
         "title": "Ainda não há pessoas",
         "body": "Convide sua equipe pela página de Administração para gerenciar o acesso delas aqui."
       }
-    }
+    },
+    "agentsHeading": "Agentes"
   },
   "share": {
     "title": "Compartilhar {{name}}",
@@ -205,8 +197,7 @@
       "you": "(você)",
       "changeRole": "Alterar a função de {{name}}",
       "remove": "Remover",
-      "removeLabel": "Remover {{name}}",
-      "openLabel": "Abrir os agentes de {{name}}"
+      "removeLabel": "Remover {{name}}"
     },
     "removeConfirm": {
       "title": "Remover {{name}}?",
@@ -272,7 +263,6 @@
       "people_other": "{{count}} pessoas",
       "you": "Você pode usar"
     },
-    "lastOpened": "Aberto {{time}}",
     "open": "Abrir {{name}}"
   },
   "createTeam": {

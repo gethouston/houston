@@ -159,6 +159,22 @@ class ApprovalRequiredError extends Error {
   }
 }
 
+/**
+ * Thrown by `post()` when the gateway REFUSED an integration `execute` because
+ * the action's app is outside this agent's allowlist (403 "toolkit_not_allowed"
+ * — the app is turned OFF in the agent's Permissions tab). Module-private: the
+ * `execute` tool catches it and RETURNS a normal (non-error) instruction, since
+ * being walled off is an expected policy state the user can fix, not a tool
+ * failure. Classified on the stable `code`, never the bare 403 (a relayed
+ * upstream 403 during an outage carries no such code).
+ */
+class ToolkitNotAllowedError extends Error {
+  constructor() {
+    super("toolkit not allowed");
+    this.name = "ToolkitNotAllowedError";
+  }
+}
+
 export interface IntegrationToolOptions {
   /** The host control-plane base URL (HOUSTON_CONTROL_PLANE_URL). */
   baseUrl: string;
@@ -197,7 +213,7 @@ function statusOf(m: ToolMatch): AppStatus {
 const STATUS_TAG: Record<AppStatus, string> = {
   connected: "",
   connectable: ", NOT CONNECTED",
-  blocked: ", BLOCKED by admin",
+  blocked: ", TURNED OFF",
   unknown: ", not a known app",
 };
 
@@ -276,6 +292,13 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       if (code === "approval_required") {
         const approval = parseApproval(detail);
         if (approval) throw new ApprovalRequiredError(approval);
+      }
+      // toolkit_not_allowed (403): the gateway walled this action off because
+      // its app is outside this agent's allowlist (turned off in the agent's
+      // Permissions tab). A normal, user-fixable policy state — throw the typed
+      // error the execute tool turns into guidance, never a raw failure.
+      if (code === "toolkit_not_allowed") {
+        throw new ToolkitNotAllowedError();
       }
       // signin_required (409): integrations can't act for this user yet (on
       // desktop: they're signed out of Houston, so the gateway has no session to
@@ -356,7 +379,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       const blocked = slugsWith("blocked");
       if (blocked.length > 0) {
         parts.push(
-          `Your workspace admin has not enabled these apps for this agent (${blocked.join(", ")}). Tell the user to ask their admin to enable them. Do NOT call request_connection for these, and do NOT imply Houston lacks them.`,
+          `These apps are turned off for this agent (${blocked.join(", ")}). Tell the user they can be switched on in this agent's Permissions tab (someone who manages the agent can do it; otherwise they should ask whoever does). Do NOT call request_connection for these, and never imply Houston lacks them.`,
         );
       }
       return {
@@ -371,10 +394,11 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
 
   const execute = defineTool<
     typeof ExecuteParams,
-    // Pinned so the success path ({ action }) and the gated path ({ action,
-    // queuedApproval: true }) share ONE details type — `queuedApproval` is
-    // present only when the action was queued for the user's approval.
-    { action: string; queuedApproval?: boolean }
+    // Pinned so the success path ({ action }), the gated path ({ action,
+    // queuedApproval: true }), and the walled-off path ({ action,
+    // appTurnedOff: true }) share ONE details type — the flags are present only
+    // in their respective states.
+    { action: string; queuedApproval?: boolean; appTurnedOff?: boolean }
   >({
     name: "integration_execute",
     label: "Run an app action",
@@ -412,6 +436,22 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
               },
             ],
             details: { action, queuedApproval: true },
+          };
+        }
+        // The gateway walled this action off: its app is outside this agent's
+        // allowlist (turned off in the agent's Permissions tab). NOT a tool
+        // failure — return guidance the model relays to the user, and do not
+        // retry until the user confirms the app is switched on.
+        if (err instanceof ToolkitNotAllowedError) {
+          const action = params.action;
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `This action's app is turned off for this agent, so it can't run. Tell the user it can be switched on in this agent's Permissions tab (someone who manages the agent can do it; otherwise they should ask whoever does). Do not retry this action until the user confirms it's enabled, and never imply Houston lacks the app.`,
+              },
+            ],
+            details: { action, appTurnedOff: true },
           };
         }
         throw err;

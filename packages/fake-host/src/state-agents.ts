@@ -57,14 +57,21 @@ export interface AgentAccessSeed {
   assignments?: FakeAssignment[];
   /** `true` = shared with everyone (empty assignee set = the everyone sentinel). */
   everyone?: boolean;
+  /**
+   * The SERVED caller's effective access on this agent (`GET /agents` `access`).
+   * Defaults to `manager` (the owner/manager lens). Arm `"user"` to serve a
+   * plain member who can only USE the agent — the read-only Permissions tab.
+   */
+  access?: FakeAssignment["access"];
 }
 
 /**
  * Replace the agent fleet with a Teams-shaped set carrying per-agent
  * assignments, so `GET /agents` serves the access fields the per-member lens
- * reads (`assignedUserIds`/`assignments`/`access`). Owner-first: the served
- * caller's `access` is `manager` on every agent. `everyone` agents get the
- * empty-assignee sentinel.
+ * reads (`assignedUserIds`/`assignments`/`access`). The served caller's `access`
+ * defaults to `manager` (the owner/manager lens) and can be armed to `user` for
+ * the plain-member read-only view. `everyone` agents get the empty-assignee
+ * sentinel.
  */
 export function armAgents(seed: AgentAccessSeed[]): CpAgent[] {
   state.agents = seed.map((row) => {
@@ -74,7 +81,7 @@ export function armAgents(seed: AgentAccessSeed[]): CpAgent[] {
       workspaceId: SEED_WORKSPACE_ID,
       name: row.name,
       createdAt: EPOCH,
-      access: "manager",
+      access: row.access ?? "manager",
       assignments,
       assignedUserIds: assignments.map((a) => a.userId),
     };

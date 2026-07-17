@@ -85,6 +85,7 @@
     "routines": "Automations",
     "files": "Files",
     "job-description": "Agent Settings",
+    "agent-permissions": "Permissions",
     "integrations": "Integrations",
     "chat": "Chat",
     "board": "Board",

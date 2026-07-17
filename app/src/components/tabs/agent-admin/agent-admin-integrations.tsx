@@ -19,8 +19,15 @@ import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
  * with the agent settings ceiling + org ceiling, the catalog, and the caller's
  * connections. Feature-detected on the `teams` capability; a host without it
  * shows a graceful note.
+ *
+ * `readOnly` (a non-manager viewing the agent's Permissions tab) disables every
+ * control and hides the "Add apps" catalog via the shared editor's own mode, so
+ * a member sees the app ceiling without a dead affordance.
  */
-export function AgentAdminIntegrations({ agent }: AgentAdminScreenProps) {
+export function AgentAdminIntegrations({
+  agent,
+  readOnly = false,
+}: AgentAdminScreenProps & { readOnly?: boolean }) {
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const teams = capabilities?.teams === true;
@@ -31,8 +38,10 @@ export function AgentAdminIntegrations({ agent }: AgentAdminScreenProps) {
   const settingsMutation = useSetAgentSettings(agent.id);
   const settings = settingsQuery.data;
 
+  // Width belongs to the mounting surface (the Permissions panel's page
+  // column); this body must never re-center itself inside it.
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-6">
+    <div className="w-full">
       {settings ? (
         // Keyed by agent so the editor's view-only category filter never leaks
         // across agents — Agent Settings stays mounted on agent switch.
@@ -42,6 +51,7 @@ export function AgentAdminIntegrations({ agent }: AgentAdminScreenProps) {
           catalog={catalog.data ?? []}
           connectedToolkits={(connections.data ?? []).map((c) => c.toolkit)}
           saving={settingsMutation.isPending}
+          readOnly={readOnly}
           onSave={(next) => settingsMutation.mutate(next)}
         />
       ) : settingsQuery.isLoading ? (

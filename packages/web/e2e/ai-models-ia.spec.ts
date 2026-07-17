@@ -6,7 +6,8 @@ import { expect, test } from "./support/fixtures";
  * The AI-models permissioning information architecture — the model-side twin of
  * `integrations-ia.spec.ts`. Each concept has one home:
  *  - POLICY (the allowed-models ceiling) is PER AGENT only → the Permissions
- *    view's Agents tab, in each agent's per-agent drill-in. The old workspace-wide
+ *    view, in each agent's per-agent drill-in (its AI Models tab). The old
+ *    workspace-wide
  *    "Defaults for every agent" model ceiling was removed as overengineering, and
  *    the AI Models hub's "Workspace policy" tab stays gone — the hub keeps only
  *    Providers / Models. AI provider connections are org-level (C6), so a plain
@@ -34,11 +35,11 @@ async function armCapabilities(
   await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, { data: caps });
 }
 
-/** Open the Permissions view's Agents tab (the per-agent ceilings live here). */
-async function openAgentsTab(page: Page): Promise<void> {
+/** Open the Permissions view (the agent list is the top level; per-agent
+ *  ceilings live in each agent's drill-in). */
+async function openPermissions(page: Page): Promise<void> {
   await page.goto("/");
   await page.locator('[data-tour-target="nav-permissions"]').click();
-  await page.getByRole("tab", { name: "Agents" }).click();
 }
 
 // ── 1. The AI hub dropped the Workspace policy tab ─────────────────────────
@@ -82,14 +83,14 @@ test("Teams member: the AI Models nav item is gone, the rest of the shell stays"
 
 // ── 3. Per-agent model ceiling editor ──────────────────────────────────────
 
-test("Permissions > Agents: a per-agent model ceiling offers the full catalog (no org narrowing)", async ({
+test("Permissions: a per-agent model ceiling offers the full catalog (no org narrowing)", async ({
   page,
   request,
 }) => {
   // Policy is per agent only: a manager narrowing the agent's model ceiling picks
   // from the WHOLE catalog — there is no workspace-wide ceiling to narrow it, so
   // every model (Opus AND Sonnet) is offerable. The per-agent ceilings live in the
-  // Permissions view's Agents-tab drill-in.
+  // Permissions view's per-agent drill-in (its AI Models tab).
   await armCapabilities(request, OWNER_CAPS);
   await request.post(`${FAKE_HOST_URL}/__test__/org`, {
     data: {
@@ -103,8 +104,9 @@ test("Permissions > Agents: a per-agent model ceiling offers the full catalog (n
       ],
     },
   });
-  await openAgentsTab(page);
+  await openPermissions(page);
   await page.getByRole("button", { name: "Open Finance Bot" }).click();
+  await page.getByRole("tab", { name: "AI Models" }).click();
 
   // The per-agent card shows the model ceiling question, starting unrestricted.
   await expect(
