@@ -6,7 +6,7 @@ import {
   type AppDisplay,
   connectionRows,
 } from "../../integrations/app-display.ts";
-import { splitByGrant } from "../../integrations/model.ts";
+import { effectiveAccess } from "../../integrations/effective-access.ts";
 
 /** One connected app resolved for display in this agent's list. */
 export interface AgentAppRow {
@@ -22,11 +22,14 @@ export interface AgentAppRow {
  *                 apps this agent can use; `disallowedRows` are connected apps
  *                 the agent's Teams allowlist ceiling forbids (visible,
  *                 non-connectable, for transparency), empty unless a Teams host
- *                 serves a restrictive allowlist. Connected-but-ungranted
- *                 account apps do NOT appear on this tab: activating an existing
- *                 connection for an agent now lives in Settings > Connected
- *                 accounts. This tab is a pure connect surface (connect with
- *                 auto-grant, recover a pending connection, disconnect).
+ *                 serves a restrictive allowlist. `availableRows` are apps
+ *                 connected on the account but NOT yet granted to this agent
+ *                 (only `active` ones — pending/errored are recovered from the
+ *                 global page): they surface with an inline "turn on for this
+ *                 agent" toggle instead of hiding, so a connected app is never
+ *                 invisible here. Beyond that the tab is a connect surface
+ *                 (connect with auto-grant, recover a pending connection,
+ *                 disconnect).
  *  - `degraded` — grants resolved to `null` (host has no grant routes, e.g.
  *                 single-player). There is no per-agent permission, so every
  *                 connected app is usable by this agent; the list shows them all
@@ -37,6 +40,7 @@ export type AgentIntegrationsView =
       mode: "grants";
       activeRows: AgentAppRow[];
       disallowedRows: AgentAppRow[];
+      availableRows: AgentAppRow[];
     }
   | { mode: "degraded"; rows: AgentAppRow[] };
 
@@ -47,10 +51,11 @@ export type AgentIntegrationsView =
  * connected toolkit outside the allowlist is split into `disallowedRows` and
  * never appears as active — the manager restricted it (the gateway also prunes
  * such grants server-side, so this is defence in depth, not the enforcer).
- * Connected-but-ungranted apps are intentionally absent from the grants view:
- * activating an existing connection for an agent lives in Settings > Connected
- * accounts. Pure so the mode split and row derivation are unit-testable without
- * React.
+ * Every connection is classified through the one {@link effectiveAccess}
+ * resolver — usable → `activeRows`, admin-blocked → `disallowedRows`,
+ * connected-but-ungranted (and `active`) → `availableRows` (the inline
+ * turn-on section). Pure so the mode split and row derivation are unit-testable
+ * without React.
  */
 export function agentIntegrationsView(opts: {
   connections: IntegrationConnection[];
@@ -64,24 +69,38 @@ export function agentIntegrationsView(opts: {
       rows: connectionRows(opts.connections, opts.catalog),
     };
   }
-  const grantedToolkits = new Set(opts.grants);
-  const allowed = opts.allowlist == null ? null : new Set(opts.allowlist);
-  const allowedConns: IntegrationConnection[] = [];
-  const disallowedConns: IntegrationConnection[] = [];
+  const allowlist = opts.allowlist ?? null;
+  const usable: IntegrationConnection[] = [];
+  const disallowed: IntegrationConnection[] = [];
+  const available: IntegrationConnection[] = [];
   for (const c of opts.connections) {
-    (allowed === null || allowed.has(c.toolkit)
-      ? allowedConns
-      : disallowedConns
-    ).push(c);
+    const access = effectiveAccess({
+      toolkit: c.toolkit,
+      connections: opts.connections,
+      grants: opts.grants,
+      allowlist,
+    });
+    switch (access.state) {
+      case "usable":
+        usable.push(c);
+        break;
+      case "blockedByAdmin":
+        disallowed.push(c);
+        break;
+      case "notGrantedToAgent":
+        // Only surface an activatable app the user can act on right now; a
+        // pending/errored ungranted connection is recovered from the global
+        // Integrations page, not turned on for an agent mid-OAuth.
+        if (c.status === "active") available.push(c);
+        break;
+      // `notConnected` is unreachable here — we iterate real connections.
+    }
   }
-  const { granted } = splitByGrant({
-    connections: allowedConns,
-    grants: grantedToolkits,
-  });
   return {
     mode: "grants",
-    activeRows: connectionRows(granted, opts.catalog),
-    disallowedRows: connectionRows(disallowedConns, opts.catalog),
+    activeRows: connectionRows(usable, opts.catalog),
+    disallowedRows: connectionRows(disallowed, opts.catalog),
+    availableRows: connectionRows(available, opts.catalog),
   };
 }
 

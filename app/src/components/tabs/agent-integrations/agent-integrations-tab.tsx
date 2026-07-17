@@ -116,6 +116,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
             <AgentIntegrationsBody
               key={agent.id}
               view={view}
+              agentId={agent.id}
               canEdit={canEdit}
               catalog={catalog.data ?? []}
               allowlist={allowlist}
