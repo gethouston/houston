@@ -172,9 +172,10 @@ TWO places so policy is never silently invisible: connected-but-blocked apps und
 `teams:integrations.notAllowed` (the disallowed section, "Not allowed" badge + an
 ask-your-admin line), and NOT-connected blocked apps as **locked rows** in the
 browse catalog (see §3, `integrations:locked.*`). Per-agent GRANT toggles are a
-SEPARATE concept with TWO lenses — by-app in Settings > Connected accounts and
-by-agent on the agent tab's "Connected, but off for this agent" section (§3) —
-never this ceiling editor. Full client surface: `knowledge-base/teams.md`.
+SEPARATE concept with TWO lenses — by-app in the global Integrations page's
+detail modal and by-agent on the agent tab's "Connected, but off for this agent"
+section (§3) — never this ceiling editor. Full client surface:
+`knowledge-base/teams.md`.
 
 ### Effective access — the one resolver
 
@@ -335,8 +336,8 @@ capability gate the Settings section and the page share.
 plus `editableAgentIds: ReadonlySet<string>` (the per-agent-editability set that
 REPLACED the old `canEdit` boolean, computed from `canEditAgentGrants`) over the
 pure, node-tested helpers `toolkitAgentIds` / `agentChipsFor` /
-`partitionConnections` (`integrations/connected-apps-model.ts`). Both grants
-surfaces (Settings and the personal page's detail modal) read it verbatim. The
+`partitionConnections` (`integrations/connected-apps-model.ts`). The global
+page's detail modal (the one by-app grants surface) reads it verbatim. The
 shared `AllowlistEditor` (`integrations/allowlist-editor.tsx`) is the one
 presentational allowlist editor behind BOTH ceilings (§2).
 
@@ -416,14 +417,19 @@ integrations** tab (§2, `teams.md`).
   connects, disables while another owns the flow — the body stays clickable) is
   the ONLY row-level connect. Copy: `home.connect` /
   `home.connectApp`. Disconnect is scope `everywhere` and names affected
-  agents. EXCEPTION: the `AppDetailDialog` renders its per-agent grant toggles only
-  when an `onToggleAgent` prop is passed, and this page passes NONE — grant editing
-  moved out (to Settings > Connected accounts, below). The presentational pieces
+  agents. This page is THE one by-app grants surface: a connected app's
+  `AppDetailDialog` (opened from the Installed strip tile) DOES pass
+  `onToggleAgent`, so it renders the per-agent grant toggles (a `Switch` per
+  agent via `useAgentGrantToggle`, each row editable per `editableAgentIds`)
+  beside reconnect + disconnect. The detail modal + disconnect dialog + their
+  grant wiring are extracted into `connected-app-dialogs.tsx` (`ConnectedAppDialogs`)
+  so `integrations-ready.tsx` stays within the file-size limit; the page owns the
+  selection + connect flow and hands them in. The presentational pieces
   live in `components/integrations-view/` (`catalog-pane`, `catalog-search-field`,
-  `installed-strip`, `plane-app-row`, `category-catalog`, `recovery-row`); the old
-  two-column `ConnectedAppsList` card grid and the dropdown-filtered
-  `ConnectMoreAppsSection` are no longer on this page (both still serve Settings >
-  Connected accounts and the agent tab respectively).
+  `installed-strip`, `plane-app-row`, `category-catalog`, `recovery-row`,
+  `connected-app-dialogs`); the old two-column `ConnectedAppsList` card grid was
+  DELETED with the Settings fold and the dropdown-filtered `ConnectMoreAppsSection`
+  (agent tab) is gone too.
   The **Custom integrations** tab shares the flat row language
   (`CustomIntegrationRow`: leading letter avatar, transparent-at-rest
   `hover:bg-hover`). Its controls row is its own search (`custom.searchPlaceholder`,
@@ -434,22 +440,23 @@ integrations** tab (§2, `teams.md`).
   (embedded by the page's non-ready states) keeps its own heading + count chip and
   the `custom.empty` paragraph.
 
-**Settings > Connected accounts (all modes)** — the account home for every user,
-`app/src/components/settings/sections/connected-accounts*.tsx`, section id
-`"connectedAccounts"` (`app/src/lib/settings-sections.ts`, parsed by
-`parseSettingsSection`; the store's `settingsSection` deep-link pin is typed
-`SettingsSectionId | null` against it). Gated on `integrationsSupported(capabilities)`; a row in the
-first settings card carries an app count. Contents: recovery callouts, the user's
-connected apps (one-column, agent chips), the disconnect dialog (scope `everywhere`,
-affected agents), and THE one grants surface — `AppDetailDialog` with per-agent
-`Switch`es via `useAgentGrantToggle` (`app/src/hooks/queries/use-agent-grant-toggle.ts`,
-relocated out of `integrations-view/`), each row editable per `editableAgentIds` (from
-`canEditAgentGrants`). The connect-more affordance ALWAYS shows the link to the global
-Integrations page (now the personal catalog for every member, so the old
-`connectAffordance` / `connected-accounts-model.ts` branch and the
-`settings:connectedAccounts.connectHint` key were deleted). **Deep-link contract:**
-a producer calls `useUIStore.setSettingsSection("connectedAccounts")` + `setViewMode("settings")`;
-`settings-view.tsx` consumes it ONE-SHOT (reads the pending section, then clears it).
+**Settings > Connected accounts — FOLDED into the Integrations page.** The
+standalone settings section is GONE (`connected-accounts*.tsx` deleted, the id
+`"connectedAccounts"` removed from `SETTINGS_SECTION_IDS`, so `parseSettingsSection`
+now REJECTS it and a stale deep-link can never land). The global Integrations page
+is the ONE by-app lens — connection status + which agents can use each app — so
+there is no second account home to keep in sync. The first settings card KEEPS its
+row (icon `Blocks`, title `settings:nav.connectedAccounts`, description
+`settings:index.rows.connectedAccounts`, the same live app-count badge
+`settings:index.values.appsCount` from `useIntegrationConnections`), but its
+`onClick` is now a **deep link** — `setViewMode(INTEGRATIONS_VIEW_ID)` — straight to
+the page, not a settings sub-screen (`settings-index.tsx`). The
+`settings:connectedAccounts.*` copy block (`title`/`subtitle`/`heading`/`empty`/
+`connectMore`) and the `home.usedByNone`/`home.usedByAll` chip keys were deleted
+with it. The grants surface itself lives in the page's `AppDetailDialog` (per-agent
+`Switch`es via `useAgentGrantToggle`, `app/src/hooks/queries/use-agent-grant-toggle.ts`,
+each row editable per `editableAgentIds` from `canEditAgentGrants`) — see the global
+page block above.
 
 **Agent tab (the by-agent lens)** — `app/src/components/tabs/agent-integrations/`
 (`integrations-tab.tsx` re-exports the orchestrator). The tab body is the SAME

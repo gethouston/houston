@@ -12,7 +12,6 @@ import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAccountAvailable } from "./sections/account";
 import { ApiKeysSection } from "./sections/api-keys";
-import { ConnectedAccountsSection } from "./sections/connected-accounts";
 import { MigrationSection, useMigrationAvailable } from "./sections/migration";
 import { ReportBugSection } from "./sections/report-bug";
 import { ShortcutsSection } from "./sections/shortcuts";
@@ -31,8 +30,8 @@ export function SettingsView() {
   const apiKeysAvailable = apiKeysSupported(capabilities);
   const setSettingsSection = useUIStore((s) => s.setSettingsSection);
   // Consume the one-shot deep-link the moment this view mounts: another surface
-  // may have pinned a section (e.g. "connectedAccounts") right before switching
-  // to Settings. Read it once for the initial screen...
+  // may have pinned a section (e.g. "apiKeys") right before switching to
+  // Settings. Read it once for the initial screen...
   const [active, setActive] = useState<SettingsSectionId | null>(() =>
     parseSettingsSection(useUIStore.getState().settingsSection),
   );
@@ -82,7 +81,6 @@ export function SettingsView() {
           <UserContextSection />
         ) : (
           <div className="mx-auto max-w-xl px-8 pb-10">
-            {active === "connectedAccounts" && <ConnectedAccountsSection />}
             {active === "apiKeys" && <ApiKeysSection />}
             {active === "shortcuts" && <ShortcutsSection />}
             {active === "reportBug" && <ReportBugSection />}

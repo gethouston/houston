@@ -29,7 +29,6 @@ export {
 } from "./browse-model";
 export { CatalogLockedSection } from "./catalog-locked-section";
 export { ConnectWaitingPanel } from "./connect-waiting-panel";
-export { ConnectedAppsList } from "./connected-apps-list";
 export { agentChipsFor } from "./connected-apps-model";
 export {
   type ConnectionStatus,

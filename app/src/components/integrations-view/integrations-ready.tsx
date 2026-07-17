@@ -8,9 +8,7 @@ import {
 import { useOrgSettings } from "../../hooks/queries/use-org-settings";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import {
-  AppDetailDialog,
   CustomIntegrationsSection,
-  DisconnectAppDialog,
   INTEGRATION_PROVIDER,
   ReconnectBanner,
   useConnectedApps,
@@ -19,6 +17,7 @@ import {
 } from "../integrations";
 import { PageHeader } from "../shell/page-shell";
 import { CatalogPane } from "./catalog-pane";
+import { ConnectedAppDialogs } from "./connected-app-dialogs";
 import { InstalledStrip } from "./installed-strip";
 
 interface IntegrationsReadyProps {
@@ -42,12 +41,12 @@ interface IntegrationsReadyProps {
  * Each tab owns its search; discovery controls live INSIDE the surface they
  * filter. A custom tile in the strip jumps to the Custom tab (its row holds
  * the status / key / remove affordances); a catalog tile opens the detail
- * MODAL ({@link AppDetailDialog}, the same `CatalogDetailDialog` the browse
- * rows use — never a slideover), which is view + reconnect + disconnect only
- * (per-agent access lives in Settings > Connected accounts). ONE connect flow
- * lives here (connect-only, no auto-grant) and is handed to the catalog, the
- * recovery rows, and the detail modal so closing any of them, or switching
- * tabs, never kills an in-flight OAuth poll.
+ * MODAL (`AppDetailDialog`, the same `CatalogDetailDialog` the browse rows use
+ * — never a slideover), the ONE by-app grants lens: view + reconnect +
+ * disconnect PLUS the per-agent grant toggles (which agents may use this app).
+ * ONE connect flow lives here (connect-only, no auto-grant) and is handed to the
+ * catalog, the recovery rows, and the detail modal so closing any of them, or
+ * switching tabs, never kills an in-flight OAuth poll.
  *
  * The catalog shows the FULL Houston catalog: on a Teams host, apps outside the
  * workspace allowlist render as visibly locked rows (never silently dropped,
@@ -73,15 +72,7 @@ export function IntegrationsReady({
   const allowlist = teamsEnabled
     ? (orgSettings.data?.allowedToolkits ?? null)
     : null;
-  const {
-    selectedConn,
-    selectedApp,
-    disconnectApp,
-    openConn,
-    closeConn,
-    requestDisconnect,
-    closeDisconnect,
-  } = useConnectionSelection(apps);
+  const selection = useConnectionSelection(apps);
 
   // `null` = the host doesn't serve custom integrations: no Custom tab (the
   // shell drops the tab chrome), no custom tiles in the strip.
@@ -151,7 +142,7 @@ export function IntegrationsReady({
             <InstalledStrip
               active={apps.activeRows}
               custom={customItems}
-              onOpen={openConn}
+              onOpen={selection.openConn}
               onOpenCustom={() => setTab("custom")}
             />
           ) : undefined
@@ -161,31 +152,11 @@ export function IntegrationsReady({
         onValueChange={setTab}
       />
 
-      {selectedConn && selectedApp && (
-        <AppDetailDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) closeConn();
-          }}
-          display={selectedApp}
-          connection={selectedConn}
-          onReconnect={() => {
-            void connectFlow.connect(selectedConn.toolkit);
-            closeConn();
-          }}
-          onDisconnect={() => requestDisconnect(selectedConn.toolkit)}
-        />
-      )}
-
-      <DisconnectAppDialog
-        app={disconnectApp}
-        grantMap={apps.grantMap}
-        chipById={apps.chipById}
-        onClose={closeDisconnect}
-        onConfirm={(toolkit) => {
-          disconnect.mutate(toolkit);
-          closeDisconnect();
-        }}
+      <ConnectedAppDialogs
+        apps={apps}
+        selection={selection}
+        connectFlow={connectFlow}
+        onRemove={(toolkit) => disconnect.mutate(toolkit)}
       />
     </>
   );

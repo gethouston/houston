@@ -10,17 +10,19 @@ import { expect, test } from "./support/fixtures";
  *    rows, not a tab strip), an owner/admin surface (owner edits, admin
  *    read-only). It is NOT the global Integrations page, which is always the
  *    personal catalog now;
- *  - CATALOG (the caller's personal connected apps) → the global Integrations
- *    page, visible to EVERY role in every mode (a plain member keeps its nav);
- *  - ACCOUNTS (the user's connected apps + the arbitrary-agent grants surface)
- *    → Settings > Connected accounts;
+ *  - CATALOG + ACCOUNTS (the caller's personal connected apps AND the by-app
+ *    grants surface) → the global Integrations page, visible to EVERY role in
+ *    every mode (a plain member keeps its nav). It is the ONE by-app lens:
+ *    opening a connected app's detail modal shows "Agents that can use this"
+ *    with a per-agent Switch. Settings > Connected accounts is GONE; its
+ *    Settings row deep-links to this page;
  *  - the agent Integrations TAB → a connect surface that ALSO surfaces the
  *    account's connected-but-ungranted apps in a "Connected, but off for this
  *    agent" section, each with an inline Switch that grants the app to THIS
  *    agent (turning it on moves it to the Installed strip via a grant PUT).
  *    Browse excludes connected apps, and the tab's app detail dialog carries no
- *    per-agent toggles; editing an ARBITRARY agent's grants still lives in
- *    Settings > Connected accounts.
+ *    per-agent toggles; editing an ARBITRARY agent's grants lives on the global
+ *    Integrations page.
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's
  * `/__test__/capabilities` (advertise `multiplayer` + `teams` + a `role`) and
@@ -85,9 +87,9 @@ async function openAdminSection(
   await page.getByRole("button", { name: sectionTitle }).click();
 }
 
-async function openSettings(page: Page): Promise<void> {
+async function openIntegrations(page: Page): Promise<void> {
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-settings"]').click();
+  await page.locator('[data-tour-target="nav-integrations"]').click();
 }
 
 // ── 1. Owner policy editor ─────────────────────────────────────────────────
@@ -221,32 +223,25 @@ test("Teams member: no Admin nav, but the Integrations nav opens the personal ca
   await expect(page.locator('[data-tour-target="nav-settings"]')).toBeVisible();
 });
 
-// ── 4. Settings > Connected accounts (the one grants surface) ──────────────
+// ── 4. Integrations page: the one by-app grants surface ────────────────────
 
-test("Settings > Connected accounts: a connected app opens the per-agent grant sheet, and toggling round-trips", async ({
+test("Integrations page: an installed app opens the per-agent grant modal, and toggling round-trips", async ({
   page,
   request,
 }) => {
   // Single-player with apps. Seed a grant record so the host reports grants
   // supported (Gmail granted to the seed agent), which lights up the per-agent
-  // Switch inside the detail modal.
+  // Switch inside the detail modal. Connected-accounts folded into this page:
+  // the Installed strip's Gmail tile is the way into the grants surface now.
   await armCapabilities(request, { integrations: ["composio"] });
   await seedGrants(request, ["gmail"]);
-  await openSettings(page);
+  await openIntegrations(page);
 
-  // The Connected accounts row shows on the Settings index; drill into it.
-  await page
-    .getByRole("button", { name: /Connected accounts/ })
-    .first()
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Connected accounts" }),
-  ).toBeVisible();
+  // The seeded (connected) Gmail tiles the Installed strip; browse excludes it,
+  // so its tile is the only Gmail affordance. Open its detail modal.
+  await page.getByRole("button", { name: "Gmail" }).click();
 
-  // The seeded Gmail connection is listed; open its detail modal.
-  await page.getByRole("button", { name: /Gmail/ }).click();
-
-  // The sheet is the ONE grants surface: "Agents that can use this" with a
+  // The modal is the ONE grants surface: "Agents that can use this" with a
   // per-agent Switch, checked because Gmail is granted to the seed agent.
   await expect(page.getByText("Agents that can use this")).toBeVisible();
   const agentSwitch = page.getByRole("switch", { name: "Houston" });
@@ -259,11 +254,11 @@ test("Settings > Connected accounts: a connected app opens the per-agent grant s
   await agentSwitch.click();
   await expect(agentSwitch).toBeChecked();
 
-  // Persistence: close the sheet and re-open it; the last-saved grant is read
+  // Persistence: close the modal and re-open it; the last-saved grant is read
   // back (the switch is still on), proving the toggle hit the host.
   await page.keyboard.press("Escape");
   await expect(page.getByText("Agents that can use this")).toHaveCount(0);
-  await page.getByRole("button", { name: /Gmail/ }).click();
+  await page.getByRole("button", { name: "Gmail" }).click();
   await expect(page.getByRole("switch", { name: "Houston" })).toBeChecked();
 });
 
