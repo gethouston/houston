@@ -86,7 +86,7 @@ export function FilesBrowser(props: FilesBrowserProps) {
 
   return (
     <div
-      className="relative flex h-full flex-col overflow-hidden rounded-xl border border-line bg-input"
+      className="relative flex h-full flex-col overflow-hidden rounded-xl border border-line bg-transparent"
       {...(props.onFilesDropped || props.onMove ? b.dragHandlers : {})}
     >
       <FilesToolbar
@@ -182,7 +182,7 @@ export function FilesBrowser(props: FilesBrowserProps) {
         )}
       </div>
 
-      <div className="flex h-[22px] shrink-0 select-none items-center justify-between rounded-b-xl border-t border-line bg-chip-subtle/40 px-3">
+      <div className="flex h-[22px] shrink-0 select-none items-center justify-between rounded-b-xl border-t border-line px-3">
         <span className="text-[11px] text-ink-muted">
           {b.fileCount} {b.fileCount === 1 ? l.itemSingular : l.itemPlural}
         </span>
