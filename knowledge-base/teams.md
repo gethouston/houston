@@ -107,13 +107,9 @@ that also take `Pick<Agent, "access" | "assigned">` live in `agent-access.ts`
   so a member has no per-provider account to house anywhere — they pick their model
   per agent in the composer. The hub is therefore owner/admin-only in Teams; a member
   loses its nav entirely. This also removes a dead affordance: a member's
-  provider-connect POST already 403s at the gateway. (The org model ceiling no longer
-  lives here; it moved to the **Permissions** view's **Agents** tab, in the
-  "Defaults for every agent" card, below.)
-- `canEditOrgSettings(caps)` — **owner only**; gates BOTH org policy editors, now the
-  two org ceilings in **Permissions > Agents > "Defaults for every agent"** (the
-  app ceiling + the AI-models ceiling; admins see them read-only). See the
-  allowlist + models ceilings below.
+  provider-connect POST already 403s at the gateway. (There is no org-wide model
+  ceiling; model policy is per agent, in the **Permissions** view's **Agents**
+  tab per-agent drill-in, below.)
 - `GRANTABLE_ROLES = ["admin", "user"]` — owner is never handed out from the UI
   (ownership transfer is out of scope for v1).
 
@@ -129,7 +125,7 @@ UNCHANGED: `ORGANIZATION_VIEW_ID = "organization"`
 the `workspace-shell` render branch both guard on it, so it never mounts for a
 plain member or single-player.
 
-**Now membership + insights + billing ONLY.** All policy (per-agent access, org +
+**Now membership + insights + billing ONLY.** All policy (per-agent access and
 per-agent ceilings) moved OUT to the new top-level **Permissions** view (next
 section). The Admin page is what remains: who's in the org, what they're doing,
 and the bill.
@@ -179,8 +175,15 @@ usage; `orgTabIds` only gates billing).
 
 ## Permissions view (the one policy home)
 
-Top-level view labelled **"Permissions"** — everything policy: per-member access,
-per-agent access, and the two org-wide ceilings. `PERMISSIONS_VIEW_ID = "permissions"`
+> **Org-wide ceilings REMOVED (2026-07-16, Felipe: overengineering).** Policy is
+> managed ONLY per agent. There is no org-wide app ceiling and no org-wide model
+> ceiling; the "Defaults for every agent" card, the `OrgSettings` wire type +
+> `getOrgSettings`/`setOrgSettings`/`useOrgSettings` chain, and `canEditOrgSettings`
+> are gone. A new agent's effective allowlist is its OWN ceiling (`null` = every
+> app/model, the default). The gateway-side retirement rides a sibling `cloud` PR.
+
+Top-level view labelled **"Permissions"** — everything policy: per-member access
+and per-agent ceilings. `PERMISSIONS_VIEW_ID = "permissions"`
 (`app/src/components/permissions/id.ts`), registered in
 `app/src/lib/top-level-views.ts` (`TOP_LEVEL_VIEWS` + `blockedTopLevelView`, which
 shares the Organization gate exactly). Gated by `canSeeOrganization(caps)`
@@ -231,25 +234,19 @@ and clears it. This is what the role-aware blocked-app CTA deep-links through no
   sidebar `nav-permissions` > People tab > member drill-in; fake host `/__test__/org`
   arms a multi-member roster + a fleet with per-agent `assignments`, and
   `PUT /v1/agents/:slug/assignments` set-replaces).
-- **Agents tab** (`permissions-agents-tab.tsx`) — first a **"Defaults for every agent"**
-  card = the two org-wide ceilings: the app ceiling (`defaults-integrations.tsx`) + the
-  model ceiling (`defaults-models.tsx`), both owner-editable and admin read-only via an
-  `isOwner` prop derived from `org.role === "owner"` (both MOVED from
-  `organization/allowed-integrations-tab.tsx` / `allowed-models-tab.tsx`). Then the agent
-  list (`agents-list.tsx`, moved from `organization/agents-tab.tsx`, now takes
-  `{ members, onOpenAgent }` instead of `OrgTabProps`). Each agent drills into
-  `agent-detail.tsx` (moved + TRIMMED from `organization/admin-agent-detail.tsx`): it now
-  shows ONLY the integration ceiling (`AgentAdminIntegrations`) + model ceiling
-  (`AgentAdminModel`) — the `AgentAccessSection` roster was DROPPED (access is the People
-  tab's job). Still gated on `isAgentManager(caps, agent)` (a non-manager admin gets a
-  manager-only note). Helpers `org-agent-card.tsx` + `org-agents-model.ts` moved along too;
-  `org-roster.ts` + `org-time.ts` stayed in `organization/` and `agents-list.tsx` imports
-  them cross-dir. Tested: e2e `packages/web/e2e/permissions-agents.spec.ts` (Agents-tab
-  defaults card + agent list + per-agent integration-ceiling round-trip).
-  > **NOTE:** the owner-only "Used by N agents" per-row impact meta was DROPPED from the
-  > moved org app-ceiling editor — its data pipeline (`useAllAgentGrants` hook +
-  > `toolkitAgentIds` helper) was removed tree-wide during a concurrent integrations
-  > refactor, so `defaults-integrations.tsx` no longer passes `rowMeta`.
+- **Agents tab** (`permissions-agents-tab.tsx`) — just the agent list
+  (`agents-list.tsx`, moved from `organization/agents-tab.tsx`, takes
+  `{ members, onOpenAgent }`). There is NO "Defaults for every agent" card — policy is
+  per agent only (`defaults-integrations.tsx` / `defaults-models.tsx` were deleted). Each
+  agent drills into `agent-detail.tsx` (moved + TRIMMED from
+  `organization/admin-agent-detail.tsx`): the integration ceiling
+  (`AgentAdminIntegrations`) + model ceiling (`AgentAdminModel`) — the `AgentAccessSection`
+  roster was DROPPED (access is the People tab's job). Still gated on
+  `isAgentManager(caps, agent)` (a non-manager admin gets a manager-only note). Helpers
+  `org-agent-card.tsx` + `org-agents-model.ts` moved along too; `org-roster.ts` +
+  `org-time.ts` stayed in `organization/` and `agents-list.tsx` imports them cross-dir.
+  Tested: e2e `packages/web/e2e/permissions-agents.spec.ts` (agent list + no defaults card +
+  per-agent integration-ceiling round-trip).
 
 ---
 
@@ -472,39 +469,24 @@ showing a dead control.
 
 The model surface mirrors the integration allowlist: the manager sets a **ceiling**
 (which models the agent may run on), and each member picks their own model **within**
-it. (The E5 org-templates feature that used to live here was removed in E8.)
+it. (The E5 org-templates feature that used to live here was removed in E8. The
+org-wide model ceiling was removed 2026-07-16 as overengineering — policy is per
+agent only; a new agent defaults to every model.)
 
-**Both model ceilings have a frontend home** (mirroring the app-allowlist pair) —
-the shared presentational `ModelsAllowlistEditor`
+**The per-agent model ceiling has one frontend home** — the shared presentational
+`ModelsAllowlistEditor`
 (`app/src/components/ai-hub/models-allowlist-editor.tsx`, the model-side twin of
 `AllowlistEditor`, extracted from the old inline `AgentModelsSection`): an
 always-visible `AccessChoice` over the AI-hub catalog's `ModelAllowRow`s, `readOnly`
 hides the "Add models" list, all copy passed in.
 
-- **Org ceiling**: the **Permissions view's Agents tab**, in the "Defaults for every
-  agent" card (`permissions/defaults-models.tsx`, a thin wrapper over
-  `ModelsAllowlistEditor`; moved from `organization/allowed-models-tab.tsx`).
-  Owner-editable, admin READ-ONLY (`readOnly = !isOwner`, from `org.role === "owner"`;
-  `canEditOrgSettings` = owner only). Wire: `OrgSettings.allowedModels`; client
-  `getOrgSettings` /
-  `setOrgSettings` (a **partial patch** — `{allowedToolkits?, allowedModels?}`,
-  matching the gateway). Hook `useSetOrgAllowedModels`
-  (`hooks/queries/use-org-settings.ts`) — optimistic on `["org-settings"]`, invalidates
-  `["agent-settings"]` (an org models change narrows every agent's selectable universe).
-  Copy under `teams:models.orgAllowlist.*`. (The AI Models hub's old "Workspace policy"
-  tab was removed; the hub now shows only Providers / Models.)
 - **Per-agent ceiling** — Agent Settings > **Access** > **AI models**
-  (`agent-admin-model.tsx` → `AgentModelsSection`, now a thin wrapper over the shared
-  editor). It **narrows the selectable universe to the org ceiling** via
-  `AgentSettings.orgAllowedModels` (a model is offerable only when an offer is org-allowed,
-  the exact `orgAllowedToolkits` treatment the app allowlist uses), so an org-disallowed
-  model is never offered for an agent. Copy under `teams:agentAdmin.models.*`. The
-  manager editor no longer hides the org ceiling silently: `agent-models-section.tsx`
-  renders a quiet footnote "N models are turned off in your workspace"
-  (`teams:models.orgAllowlist.workspaceOff_*`) when the org ceiling narrows the manager's
-  selectable universe. The per-agent model ceiling ALSO surfaces (via `AgentAdminModel`)
-  in the Permissions Agents-tab per-agent card (`permissions/agent-detail.tsx`), same
-  editor, same wire.
+  (`agent-admin-model.tsx` → `AgentModelsSection`, a thin wrapper over the shared
+  editor). The whole AI-hub catalog is the selectable universe (there is no org-wide
+  ceiling to narrow it). Copy under `teams:agentAdmin.models.*`. The per-agent model
+  ceiling ALSO surfaces (via `AgentAdminModel`) in the Permissions Agents-tab per-agent
+  card (`permissions/agent-detail.tsx`), same editor, same wire. (The AI Models hub's
+  old "Workspace policy" tab was removed; the hub now shows only Providers / Models.)
 
 - **Ceiling** — `agent_settings.allowedModels: string[] | null` of provider-native
   model ids (`null` = all models allowed; a set = restricted; treat `[]` defensively).
@@ -534,9 +516,7 @@ hides the "Add models" list, all copy passed in.
 - **Enforcement** — the gateway is the sole enforcer: it clamps every turn to the acting
   user's choice ∩ ceiling and strips any client-supplied model/provider. The client picker
   is convenience only.
-- Types: `AgentSettings.allowedModels` + `AgentSettings.orgAllowedModels?` (the org
-  ceiling the agent set is intersected with), `OrgSettings.allowedModels?` (the org
-  ceiling itself; both optional so pre-ceiling hosts read as `undefined` = null),
+- Types: `AgentSettings.allowedModels` (the agent's whole model ceiling),
   `AgentModelChoice` (`{provider, model, effort?}`),
   `AgentModelChoiceInfo` (`{choice, allowedModels}`).
 - Client: `getAgentModelChoice` (404-degrades to `null` off-Teams) / `setAgentModelChoice`
@@ -573,58 +553,35 @@ hides the "Add models" list, all copy passed in.
 
 ## Integration allowlist ceiling
 
-Members can only connect apps the org + agent allow. See `integrations.md` §2
-for the full model. In short: `effective = orgCeiling ∩ agentCeiling`
-(`null` = all, `[]` = none), grants are pruned when a ceiling shrinks, and a
-per-agent connect carries the agent slug so the gateway checks the allowlist and
-auto-grants on success.
+Members can only connect apps the agent allows. See `integrations.md` §2
+for the full model. In short: `effective = agentCeiling` (`null` = all, `[]` =
+none — the org-wide ceiling was removed 2026-07-16 as overengineering; policy is
+per agent only), grants are pruned when the ceiling shrinks, and a per-agent
+connect carries the agent slug so the gateway checks the allowlist and auto-grants
+on success.
 
-**Both ceilings now have a frontend home** — the shared presentational
-`AllowlistEditor` (`app/src/components/integrations/allowlist-editor.tsx`), fed
-different copy per ceiling:
+**The per-agent ceiling has one frontend home** — the shared presentational
+`AllowlistEditor` (`app/src/components/integrations/allowlist-editor.tsx`):
 
-- **Org ceiling**: the **Permissions view's Agents tab**, in the "Defaults for every
-  agent" card (`permissions/defaults-integrations.tsx`, a thin wrapper over
-  `AllowlistEditor`; moved from `organization/allowed-integrations-tab.tsx`).
-  Owner-editable, admin READ-ONLY (`readOnly = !isOwner`, from `org.role === "owner"`;
-  `canEditOrgSettings` = owner only; the `teams:integrations.orgAllowlist.ownerOnly` note
-  explains why). Client: `getOrgSettings` / `setOrgSettings`, consumed by `useOrgSettings`
-  / `useSetOrgSettings` (`app/src/hooks/queries/use-org-settings.ts`, query key
-  `["org-settings"]`). Copy under `teams:integrations.orgAllowlist.*` (incl. `perAgentNote`;
-  `pickedDesc` reworded "Everything else shows as turned off, with a note to ask you.").
-  > The owner-only per-row "Used by {{count}} agents" meta (`usedByAgents_*`) was DROPPED:
-  > its data pipeline (`useAllAgentGrants` + `toolkitAgentIds`) was removed tree-wide in a
-  > concurrent integrations refactor, so `defaults-integrations.tsx` no longer passes
-  > `rowMeta`.
-
-  (The global Integrations page no longer has a policy mode; it's the personal catalog
-  for every member, and it now reads the same org ceiling to lock org-blocked apps for
-  every member; see `integrations.md`.)
 - **Per-agent ceiling** — Agent Settings > **Access** > **Apps**
-  (`AgentAllowlistSection`, manager-only). Client: `getAgentSettings` /
-  `setAgentSettings`. Copy under `teams:integrations.allowlist.*`. Like the model editor,
-  `agent-allowlist-section.tsx` renders a quiet footnote "N apps are turned off in your
-  workspace" (`teams:integrations.orgAllowlist.workspaceOff_*`) when the org ceiling
-  narrows the manager's universe. The per-agent app ceiling ALSO surfaces (via
-  `AgentAdminIntegrations`) in the Permissions Agents-tab per-agent card
-  (`permissions/agent-detail.tsx`), same editor, same wire.
+  (`AgentAllowlistSection`, manager-only). The whole catalog is the selectable
+  universe (there is no org-wide ceiling to narrow it). Client: `getAgentSettings` /
+  `setAgentSettings`. Copy under `teams:integrations.allowlist.*`. The per-agent app
+  ceiling ALSO surfaces (via `AgentAdminIntegrations`) in the Permissions Agents-tab
+  per-agent card (`permissions/agent-detail.tsx`), same editor, same wire.
 
-`teams:integrations.orgAllowlist.*` and `teams:integrations.allowlist.*` carry the
-same choice keys (`question` / `anyLabel` / `pickedLabel` / …); `orgAllowlist` adds
-`ownerOnly`. Per-agent GRANT toggles are a separate concept and live only on the
-global Integrations page's app detail modal (the ONE by-app grants lens; the
-Settings row deep-links there), never in either ceiling editor.
+The global Integrations page has no ceiling to apply (policy is per agent), so it
+never locks a row — it's the personal catalog for every member. Per-agent GRANT
+toggles are a separate concept and live only on the global Integrations page's app
+detail modal (the ONE by-app grants lens; the Settings row deep-links there), never
+in the ceiling editor.
 
-**Design principle: blocked is visible, never silently hidden.** Applied
-product-wide wherever a ceiling narrows a member's world: browse surfaces (the global
-Integrations page + the per-agent tab) ITEMIZE the locked items as rows a member can see
-and search; tight surfaces (the composer model picker, the manager editors) SUMMARIZE the
-remainder with a count footer/footnote instead of a silent gap; and only HONEST data is
-shown (no partial count is ever presented as a total — the reason the org app ceiling's
-per-row "Used by N agents" meta was never shown to admins, and, once its data pipeline was
-removed tree-wide, dropped entirely). The wire surface is unchanged and the
-gateway is still the sole enforcer; these are client-side transparency affordances over
-the effective allowlist.
+**Design principle: blocked is visible, never silently hidden.** Applied wherever the
+agent ceiling narrows a member's world: the per-agent Integrations tab ITEMIZES the
+locked items as rows a member can see and search; the composer model picker SUMMARIZES
+the remainder with a count footer instead of a silent gap. The wire surface is unchanged
+and the gateway is still the sole enforcer; these are client-side transparency
+affordances over the effective (agent) allowlist.
 
 Concretely on the agent Integrations tab, a ceiling-blocked app shows in one of two places
 rather than hiding: a CONNECTED blocked app appears in the disallowed section
@@ -639,18 +596,15 @@ The pure split is `browseCatalogView` (`integrations/model.ts`); off Teams
 
 **Role-aware signposting (Part B): a fixer sees a deep link, not "ask your admin".** Both
 blocked-state surfaces (the disallowed section AND the locked browse rows) accept an optional
-`PermissionsFix` resolver. When the VIEWER can lift the blocking ceiling, the ask-your-admin
-line is replaced by an "Enable it in Permissions" button that deep-links into the
-**Permissions** view (`PERMISSIONS_VIEW_ID` + a `usePermissionsNav` request). The destination
-follows the ceiling: an app outside the ORG ceiling routes the owner to the Agents-tab
-"Defaults for every agent" card (`requestTab("agents")`); an app merely outside the AGENT
-ceiling routes the agent's manager to that agent's Permissions drill-in
+`PermissionsFix` resolver. A blocked app is always outside the AGENT ceiling (policy is per
+agent only), so when the VIEWER can lift it, the ask-your-admin line is replaced by an
+"Enable it in Permissions" button that deep-links to that agent's Permissions drill-in
 (`requestAgentDetail(agentId)`, `permissions-nav-store.ts`, which also switches to the Agents
-tab). Members and non-admin managers keep exactly the old copy (the resolver returns `undefined`).
-Attribution + authority live in `integrations/blocked-ceiling.ts` (`blockingCeiling`,
-`resolvePermissionsFix`), built at the data-holding surfaces (global page / agent tab) and
-threaded down as props so the leaf sections stay presentational. See `integrations.md`
-§3 for the full wiring.
+tab) — `PERMISSIONS_VIEW_ID` + a `usePermissionsNav` request. The gate is `canManageAgent`
+(agent-manager AND `canSeeMembers`); members and non-admin managers keep the old copy (the
+resolver returns `undefined`). Authority lives in `integrations/blocked-ceiling.ts`
+(`resolvePermissionsFix`), built at the agent tab and threaded down as props so the leaf
+sections stay presentational. See `integrations.md` §3 for the full wiring.
 
 ---
 
@@ -704,16 +658,17 @@ gateway-backed profile source lands, and avatars are absent. i18n:
 
 Wire types in `ui/engine-client/src/types.ts`: `OrgRole`, `OrgMember`,
 `OrgInfo`, `OrgInvite`, `AddOrgMemberResult`, `AgentAccess`, `AgentAssignment`,
-`AgentSettings` (with `allowedModels` + `orgAllowedModels`), `OrgSettings` (with
-`allowedModels`; `setOrgSettings` is a partial patch), `AuditEntry`, `UsageRow`,
+`AgentSettings` (`allowedToolkits` + `allowedModels` — the agent's whole ceilings;
+policy is per agent only, there is no `OrgSettings` type), `AuditEntry`, `UsageRow`,
 `AgentModelChoice` / `AgentModelChoiceInfo`. `Agent` gains multiplayer-only
 `assigned` / `assignedUserIds` / `access` / `assignments`. All hand-maintained
 against the gateway (the server is source of truth). Methods in `client.ts`:
 `getOrg`, `addOrgMember`, `deleteOrgInvite`, `removeOrgMember`, `setOrgMemberRole`,
 `setAgentAssignments` (v2 `{assignments}` or legacy `{userIds}`), `getAgentSettings`
-/ `setAgentSettings`, `getOrgSettings` / `setOrgSettings`, `getAgentModelChoice` /
+/ `setAgentSettings`, `getAgentModelChoice` /
 `setAgentModelChoice`, `orgAudit`, `orgUsage`, and
-`connectIntegration(provider, toolkit, agent?)`.
+`connectIntegration(provider, toolkit, agent?)`. (`getOrgSettings`/`setOrgSettings`
+and the `use-org-settings.ts` hook chain were removed with the org ceilings.)
 
 ---
 
@@ -723,14 +678,16 @@ All Teams copy lives in the `teams` namespace
 (`app/src/locales/{en,es,pt}/teams.json`, registered in `app/src/lib/i18n.ts`).
 Top-level groups: `agentAdmin` (`groups` incl. the inline `general` card, `rows`,
 per-agent `models` ceiling, inline `values`),
-`managedAgent`, `integrations`, `models` (the root `models.orgAllowlist.*` org model
-ceiling, sibling of `integrations.orgAllowlist`), `permissions`, `org`, `share`,
+`managedAgent`, `integrations` (`allowlist` = the per-agent app ceiling +
+`notAllowed`; the org-ceiling `integrations.orgAllowlist` and the whole `models`
+group were deleted with the org ceilings 2026-07-16), `permissions`, `org`, `share`,
 `people`, `activityTab`, `usageTab`, `agentsTab`. (The AI Models hub's own strings
 live in the separate `aiHub` namespace.)
 
-The NEW **`permissions.*`** block backs the Permissions view: `title`, `subtitle`,
-`tabs.people` / `tabs.agents`, `people.empty.{title,body}`, `defaults.{title,subtitle}`,
-`agents.listTitle`. The moved components still REUSE the KEPT `org.memberDetail.*` (the
+The **`permissions.*`** block backs the Permissions view: `title`, `subtitle`,
+`tabs.people` / `tabs.agents`, `people.empty.{title,body}`. (`permissions.defaults.*`
+and `permissions.agents.listTitle` were deleted with the "Defaults for every agent"
+card.) The moved components still REUSE the KEPT `org.memberDetail.*` (the
 member lens) and `org.agentDetail.*` (the per-agent card) keys. Deleted with their
 removed sections: `org.tabs.{agents,allowedIntegrations,allowedModels}`,
 `org.index.rows.{agents,allowedIntegrations,allowedModels}`, `org.index.groups.permissions`,

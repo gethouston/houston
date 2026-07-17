@@ -71,27 +71,6 @@ export function agentIntegrationsView(opts: {
   };
 }
 
-/**
- * The effective integration allowlist for an agent: the agent-level ceiling
- * intersected with the org-wide ceiling, where `null` on either side means
- * "unrestricted" (the whole catalog). Returns `null` when BOTH are unrestricted
- * (nothing to filter); otherwise the concrete set of allowed toolkit slugs
- * (possibly empty = none allowed). Mirrors the gateway's intersection so the UI
- * previews exactly what the server will enforce. Pure + unit-tested.
- */
-export function effectiveAllowlist(settings: {
-  allowedToolkits: string[] | null;
-  orgAllowedToolkits: string[] | null;
-}): string[] | null {
-  const agent = settings.allowedToolkits;
-  const org = settings.orgAllowedToolkits;
-  if (agent === null && org === null) return null;
-  if (agent === null) return org;
-  if (org === null) return agent;
-  const orgSet = new Set(org);
-  return agent.filter((slug) => orgSet.has(slug));
-}
-
 /** How many apps the catalog tab can still offer: not connected and, on a
  *  Teams host, inside the effective allowlist (locked rows don't count) — the
  *  tab trigger's count chip. Pure + node-tested. */

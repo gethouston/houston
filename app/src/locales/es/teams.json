@@ -60,52 +60,12 @@
       "allowedEmptyCategory": "Aún no hay apps permitidas en esta categoría.",
       "addHeading": "Agregar aplicaciones"
     },
-    "orgAllowlist": {
-      "question": "¿Qué aplicaciones pueden usar los agentes de este espacio de trabajo?",
-      "policyHelper": "Tú decides qué aplicaciones pueden usar los agentes aquí. Cada persona conecta sus propias cuentas para cada aplicación que permitas.",
-      "anyLabel": "Cualquier aplicación",
-      "anyDesc": "Todos pueden conectar lo que quieran del catálogo.",
-      "pickedLabel": "Solo las aplicaciones que elijas",
-      "pickedDesc": "Todo lo demás aparece como desactivado, con una nota para pedírtelo.",
-      "allowApp": "Permitir {{name}}",
-      "allowedHeading": "Aplicaciones permitidas",
-      "allowedEmpty": "Aún no elegiste ninguna aplicación. Agrega aplicaciones abajo.",
-      "allowedEmptyCategory": "No hay aplicaciones permitidas en esta categoría todavía.",
-      "addHeading": "Agregar aplicaciones",
-      "ownerOnly": "Solo el propietario del espacio de trabajo puede cambiar esto.",
-      "perAgentNote": "¿Quieres límites más estrictos para un agente? Configúralos en los ajustes de ese agente.",
-      "usedByAgents_one": "Usada por {{count}} agente",
-      "usedByAgents_other": "Usada por {{count}} agentes",
-      "workspaceOff_one": "{{count}} app está desactivada en tu espacio de trabajo",
-      "workspaceOff_other": "{{count}} apps están desactivadas en tu espacio de trabajo"
-    },
     "notAllowed": {
       "title": "No permitida para este agente",
       "body": "Estas aplicaciones están conectadas a tu cuenta, pero este agente no tiene permitido usarlas. Pídele a tu administrador que las habilite para este agente.",
       "bodyManager": "Estas aplicaciones están conectadas a tu cuenta, pero este agente no tiene permitido usarlas. Actívalas en Permisos.",
       "enableInPermissions": "Actívala en Permisos",
       "badge": "No permitida"
-    }
-  },
-  "models": {
-    "orgAllowlist": {
-      "question": "¿Qué modelos pueden usar los agentes de este espacio de trabajo?",
-      "policyHelper": "Tú decides con qué modelos de IA pueden ejecutarse los agentes aquí. Las personas con acceso eligen su propio modelo entre los que permitas.",
-      "anyLabel": "Cualquier modelo",
-      "anyDesc": "Todos pueden elegir cualquier modelo disponible.",
-      "pickedLabel": "Solo los modelos que elijas",
-      "pickedDesc": "Los demás modelos aparecen como desactivados.",
-      "allowModel": "Permitir {{name}}",
-      "searchModels": "Buscar modelos",
-      "noModels": "No se encontraron modelos",
-      "allowedHeading": "Modelos permitidos",
-      "allowedEmpty": "Aún no eliges modelos. Agrega modelos abajo.",
-      "allowedEmptyLab": "Aún no eliges modelos de este laboratorio.",
-      "addHeading": "Agregar modelos",
-      "ownerOnly": "Solo el propietario del espacio de trabajo puede cambiar esto.",
-      "perAgentNote": "Los managers pueden restringir esto aún más para cada agente en su configuración.",
-      "workspaceOff_one": "{{count}} modelo está desactivado en tu espacio de trabajo",
-      "workspaceOff_other": "{{count}} modelos están desactivados en tu espacio de trabajo"
     }
   },
   "org": {
@@ -170,13 +130,6 @@
         "title": "Aún no hay personas",
         "body": "Invita a tu equipo desde la página de Administración para gestionar su acceso aquí."
       }
-    },
-    "defaults": {
-      "title": "Valores por defecto para cada agente",
-      "subtitle": "Los agentes nuevos pueden usar estas aplicaciones y modelos de IA a menos que los cambies por agente más abajo."
-    },
-    "agents": {
-      "listTitle": "Agentes"
     }
   },
   "share": {

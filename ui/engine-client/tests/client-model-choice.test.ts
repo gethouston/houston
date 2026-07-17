@@ -47,7 +47,6 @@ describe("HoustonClient — agent settings allowedModels", () => {
   it("getAgentSettings returns allowedModels alongside the toolkits", async () => {
     const settings = {
       allowedToolkits: ["gmail"],
-      orgAllowedToolkits: null,
       access: "manager",
       allowedModels: ["claude-opus-4-8", "gpt-5.5"],
     };

@@ -40,7 +40,6 @@ export type {
   OrgInviteSummary,
   OrgMember,
   OrgRole,
-  OrgSettings,
   OrgSummary,
   OrgsList,
   TriggerStatusItem,

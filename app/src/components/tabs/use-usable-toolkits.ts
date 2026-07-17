@@ -1,9 +1,6 @@
 import type { TriggerApp } from "@houston-ai/routines";
 import { useMemo } from "react";
-import {
-  effectiveAllowlist,
-  useAgentSettings,
-} from "../../hooks/queries/use-agent-settings";
+import { useAgentSettings } from "../../hooks/queries/use-agent-settings";
 import {
   useIntegrationConnections,
   useIntegrationToolkits,
@@ -36,10 +33,8 @@ export function useUsableToolkits(agentId: string): {
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, enabled);
   const settingsQuery = useAgentSettings(agentId, enabled && teams);
   // `null` = unrestricted (single-player, or Teams with no ceiling) → every
-  // connected app is usable.
-  const allowlist = settingsQuery.data
-    ? effectiveAllowlist(settingsQuery.data)
-    : null;
+  // connected app is usable. The agent's own ceiling is the whole allowlist.
+  const allowlist = settingsQuery.data?.allowedToolkits ?? null;
 
   const apps = useMemo<TriggerApp[]>(() => {
     const bySlug = new Map((catalog.data ?? []).map((tk) => [tk.slug, tk]));

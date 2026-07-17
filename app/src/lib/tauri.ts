@@ -1657,19 +1657,6 @@ export const tauriOrg = {
     call("create_checkout", () => getEngine().createCheckout(interval)),
   /** C8 billing: open the Stripe customer portal (owner only); returns `{url}`. */
   createPortal: () => call("create_portal", () => getEngine().createPortal()),
-  /** Read the org-wide ceilings — apps + AI models (any member). */
-  getSettings: () =>
-    call("get_org_settings", () => getEngine().getOrgSettings()),
-  /**
-   * Replace an org-wide ceiling (owner only). Partial patch: pass
-   * `allowedToolkits` (apps) and/or `allowedModels` (AI models) to change one
-   * without touching the other.
-   */
-  setSettings: (settings: {
-    allowedToolkits?: string[] | null;
-    allowedModels?: string[] | null;
-  }) =>
-    call<void>("set_org_settings", () => getEngine().setOrgSettings(settings)),
 };
 
 /**

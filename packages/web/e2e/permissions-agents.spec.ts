@@ -3,17 +3,18 @@ import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 
 /**
- * Permissions > Agents: the one home for what each agent is ALLOWED to use. The
- * tab opens on the workspace-wide "Defaults for every agent" card (the org app +
- * AI-model ceilings) over the agent list; opening an agent drills into its own
- * per-agent ceilings (integrations + models), and narrowing the app ceiling
- * round-trips to the host via `PUT /v1/agents/:slug/settings`.
+ * Permissions > Agents: the one home for what each agent is ALLOWED to use.
+ * Policy is per agent only (the workspace-wide "Defaults for every agent" card
+ * was removed as overengineering), so the tab is just the agent list; opening an
+ * agent drills into its own per-agent ceilings (integrations + models), and
+ * narrowing the app ceiling round-trips to the host via
+ * `PUT /v1/agents/:slug/settings`.
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's
  * `/__test__/capabilities` (multiplayer + Teams + a `role`) and `/__test__/org`
- * (a roster + an agent fleet). The `/v1/org/settings` and `/v1/agents/:slug/
- * settings` reads/writes are served by the fake host. See `@houston/fake-host`
- * README + `knowledge-base/ui-testing.md`.
+ * (a roster + an agent fleet). The `/v1/agents/:slug/settings` reads/writes are
+ * served by the fake host. See `@houston/fake-host` README +
+ * `knowledge-base/ui-testing.md`.
  */
 
 /** Teams owner: multiplayer + Teams, top role. */
@@ -50,7 +51,7 @@ async function openAgentsTab(page: Page): Promise<void> {
   await page.getByRole("tab", { name: "Agents" }).click();
 }
 
-test("owner: the Agents tab shows the workspace defaults over the agent list", async ({
+test("owner: the Agents tab shows the agent list with no workspace-defaults card", async ({
   page,
   request,
 }) => {
@@ -58,22 +59,17 @@ test("owner: the Agents tab shows the workspace defaults over the agent list", a
   await armOrg(request);
   await openAgentsTab(page);
 
-  // The "Defaults for every agent" card carries BOTH org ceilings.
+  // No workspace-wide "Defaults for every agent" card — policy is per agent only.
   await expect(
     page.getByRole("heading", { name: "Defaults for every agent" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(
     page.getByRole("heading", {
       name: "Which apps can agents in this workspace use?",
     }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", {
-      name: "Which models can agents in this workspace use?",
-    }),
-  ).toBeVisible();
+  ).toHaveCount(0);
 
-  // The agent list renders below, each tile an open action.
+  // The agent list renders, each tile an open action.
   await expect(
     page.getByRole("button", { name: "Open Finance Bot" }),
   ).toBeVisible();

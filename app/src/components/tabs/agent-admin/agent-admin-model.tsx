@@ -44,7 +44,6 @@ export function AgentAdminModel({ agent }: AgentAdminScreenProps) {
         <AgentModelsSection
           key={agent.id}
           allowedModels={settings.allowedModels}
-          orgAllowedModels={settings.orgAllowedModels ?? null}
           models={catalog.models}
           saving={save.isPending}
           onSave={(next) => save.mutate(next)}

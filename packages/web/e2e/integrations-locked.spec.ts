@@ -11,9 +11,10 @@ import { expect, test } from "./support/fixtures";
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's
  * `/__test__/capabilities` (advertise `integrations` + `multiplayer` + `teams`)
- * and `/__test__/agent-settings` (the agent/org allowlist ceilings) controls —
- * the same real wire shapes `getAgentSettings` / the `teams` capability feed the
- * frontend. See `@houston/fake-host` README + `knowledge-base/ui-testing.md`.
+ * and `/__test__/agent-settings` (the agent allowlist ceiling — the whole
+ * effective allowlist, policy is per agent only) controls — the same real wire
+ * shapes `getAgentSettings` / the `teams` capability feed the frontend. See
+ * `@houston/fake-host` README + `knowledge-base/ui-testing.md`.
  */
 
 /**
@@ -43,10 +44,7 @@ async function armCapabilities(
 
 async function armAllowlist(
   request: APIRequestContext,
-  settings: {
-    allowedToolkits: string[] | null;
-    orgAllowedToolkits: string[] | null;
-  },
+  settings: { allowedToolkits: string[] | null },
 ): Promise<void> {
   await request.post(`${FAKE_HOST_URL}/__test__/agent-settings`, {
     data: settings,
@@ -74,10 +72,7 @@ test("a blocked app shows as a locked row with the ask-admin line, and clicking 
   // Admin enabled every app except Slack: Slack is the sole blocked (locked) app.
   const allowlist = SEED_TOOLKIT_SLUGS.filter((s) => s !== "slack");
   await armCapabilities(request, TEAMS_CAPS);
-  await armAllowlist(request, {
-    allowedToolkits: allowlist,
-    orgAllowedToolkits: null,
-  });
+  await armAllowlist(request, { allowedToolkits: allowlist });
   await clearConnections(request);
   await openIntegrationsTab(page);
 
@@ -113,10 +108,7 @@ test("searching for a blocked app shows its locked row, not the empty state", as
 }) => {
   const allowlist = SEED_TOOLKIT_SLUGS.filter((s) => s !== "slack");
   await armCapabilities(request, TEAMS_CAPS);
-  await armAllowlist(request, {
-    allowedToolkits: allowlist,
-    orgAllowedToolkits: null,
-  });
+  await armAllowlist(request, { allowedToolkits: allowlist });
   await clearConnections(request);
   await openIntegrationsTab(page);
 
@@ -136,10 +128,7 @@ test("the locked section caps at 8 rows with a +N more line", async ({
   // Only Gmail allowed → the other 14 seeded apps are blocked. The locked
   // preview caps at 8; the remaining 6 collapse into the "+N more" count line.
   await armCapabilities(request, TEAMS_CAPS);
-  await armAllowlist(request, {
-    allowedToolkits: ["gmail"],
-    orgAllowedToolkits: null,
-  });
+  await armAllowlist(request, { allowedToolkits: ["gmail"] });
   await clearConnections(request);
   await openIntegrationsTab(page);
 
@@ -162,15 +151,12 @@ test("owner: a blocked app swaps the ask-admin line for an Enable-in-Permissions
   request,
 }) => {
   // Same shape as the member mechanics test (Slack the sole blocked app), but the
-  // viewer is an OWNER: the org ceiling is unset, so Slack is agent-ceiling
-  // blocked and the owner (an agent-manager who can open the Admin dashboard)
-  // gets the fix CTA in place of the ask-your-admin line.
+  // viewer is an OWNER: policy is per agent only, so Slack is agent-ceiling
+  // blocked and the owner (an agent-manager who can open the Permissions
+  // dashboard) gets the fix CTA in place of the ask-your-admin line.
   const allowlist = SEED_TOOLKIT_SLUGS.filter((s) => s !== "slack");
   await armCapabilities(request, OWNER_CAPS);
-  await armAllowlist(request, {
-    allowedToolkits: allowlist,
-    orgAllowedToolkits: null,
-  });
+  await armAllowlist(request, { allowedToolkits: allowlist });
   await clearConnections(request);
   await openIntegrationsTab(page);
 
@@ -185,7 +171,7 @@ test("owner: a blocked app swaps the ask-admin line for an Enable-in-Permissions
   await expect(page.getByText("Ask your admin to enable Slack")).toHaveCount(0);
 
   // Clicking the CTA deep-links into the Permissions view, leaving the agent
-  // Integrations tab (its locked section is gone). The org ceiling is unset, so
+  // Integrations tab (its locked section is gone). Policy is per agent only, so
   // Slack is AGENT-ceiling blocked → the CTA drills straight into this agent's
   // per-agent Permissions detail (its apps-ceiling editor).
   await page

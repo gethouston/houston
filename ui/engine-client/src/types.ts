@@ -327,23 +327,18 @@ export interface AgentMoveStatus {
 /**
  * Per-agent settings (Teams v2), from `GET /agents/:slug/settings`.
  * `allowedToolkits` is the agent-level integration ceiling (`null` =
- * unrestricted, `[]` = none); `orgAllowedToolkits` is the org-wide ceiling the
- * agent ceiling is intersected with; `access` is the caller's effective access.
- * `allowedModels` is the manager-set AI-model ceiling: which models a member may
- * pick for this agent (`null` = every model allowed, `[]` = none). Each member's
- * own per-agent pick lives in the separate model-choice surface below; the
- * gateway clamps that pick to this ceiling on every turn. `orgAllowedModels` is
- * the org-wide AI-model ceiling the agent ceiling is intersected with (the same
- * relationship `orgAllowedToolkits` has to `allowedToolkits`); optional so a host
- * predating the org models ceiling is read as `undefined` (treat as `null` =
- * unrestricted).
+ * unrestricted, `[]` = none) and is the WHOLE effective allowlist — policy is
+ * per agent only (org-wide ceilings were removed as overengineering). `access`
+ * is the caller's effective access. `allowedModels` is the manager-set AI-model
+ * ceiling: which models a member may pick for this agent (`null` = every model
+ * allowed, `[]` = none). Each member's own per-agent pick lives in the separate
+ * model-choice surface below; the gateway clamps that pick to this ceiling on
+ * every turn.
  */
 export interface AgentSettings {
   allowedToolkits: string[] | null;
-  orgAllowedToolkits: string[] | null;
   access: AgentAccess;
   allowedModels: string[] | null;
-  orgAllowedModels?: string[] | null;
 }
 
 // ---------- Per-user model choice (multiplayer) ----------
@@ -369,22 +364,6 @@ export interface AgentModelChoice {
 export interface AgentModelChoiceInfo {
   choice: AgentModelChoice | null;
   allowedModels: string[] | null;
-}
-
-/**
- * Org-wide settings (Teams v2), from `GET /org/settings`. `PUT /org/settings` is
- * a partial patch (owner only), so either ceiling can be changed without
- * touching the other.
- */
-export interface OrgSettings {
-  /** Org-wide integration ceiling; `null` = unrestricted, `[]` = none. */
-  allowedToolkits: string[] | null;
-  /**
-   * Org-wide AI-model ceiling: which models any agent in the workspace may run
-   * on (`null` = every model allowed, `[]` = none). Optional so a host predating
-   * the models ceiling is read as `undefined` (treat as `null` = unrestricted).
-   */
-  allowedModels?: string[] | null;
 }
 
 /**

@@ -75,11 +75,10 @@ describe("HoustonClient Teams v2 — setAgentAssignments dual shape", () => {
   });
 });
 
-describe("HoustonClient Teams v2 — agent + org settings", () => {
+describe("HoustonClient Teams v2 — agent settings", () => {
   it("getAgentSettings GETs /agents/:id/settings and returns the body", async () => {
     const settings = {
       allowedToolkits: ["gmail"],
-      orgAllowedToolkits: null,
       access: "manager",
     };
     const { client, calls } = makeClient(settings);
@@ -101,22 +100,6 @@ describe("HoustonClient Teams v2 — agent + org settings", () => {
       "http://127.0.0.1:9999/v1/agents/agent-1/settings",
     );
     deepStrictEqual(calls[0].body, { allowedToolkits: null });
-  });
-
-  it("getOrgSettings GETs /org/settings", async () => {
-    const { client, calls } = makeClient({ allowedToolkits: [] });
-    const got = await client.getOrgSettings();
-    strictEqual(calls[0].method, "GET");
-    strictEqual(calls[0].url, "http://127.0.0.1:9999/v1/org/settings");
-    deepStrictEqual(got, { allowedToolkits: [] });
-  });
-
-  it("setOrgSettings PUTs /org/settings", async () => {
-    const { client, calls } = makeClient();
-    await client.setOrgSettings({ allowedToolkits: ["slack"] });
-    strictEqual(calls[0].method, "PUT");
-    strictEqual(calls[0].url, "http://127.0.0.1:9999/v1/org/settings");
-    deepStrictEqual(calls[0].body, { allowedToolkits: ["slack"] });
   });
 });
 

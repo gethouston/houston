@@ -75,18 +75,6 @@ export function canSeeAiModelsPage(
 }
 
 /**
- * Can this caller EDIT the org-wide policy ceilings (the app-allowlist ceiling
- * AND the AI-model ceiling)? Owner only per C7 — admins see the policy surfaces
- * read-only. A cosmetic gate: the gateway 403s a non-owner write, so this only
- * avoids offering a control that would fail.
- */
-export function canEditOrgSettings(
-  caps: Capabilities | null | undefined,
-): boolean {
-  return orgRole(caps) === "owner";
-}
-
-/**
  * Can this caller MUTATE members (add / remove / change role)? Owner only per
  * C3 — admins see the roster read-only.
  */
