@@ -31,6 +31,12 @@ export interface EngineSentryConfig {
   deployment: EngineDeployment;
   /** Extra event tags (org/agent slugs on managed pods). */
   tags: Record<string, string>;
+  /**
+   * Who is signed in, when the parent process knows: the desktop shell
+   * injects the stored session's identity, the gateway pod spec its org
+   * owner's. Sentry's users-affected count and user search key on this.
+   */
+  user?: { id?: string; email?: string; username?: string };
 }
 
 type Env = Record<string, string | undefined>;
@@ -94,6 +100,11 @@ export function resolveEngineSentryConfig(
     tags.engine_version = release.slice(at + 1);
   }
 
+  const user: EngineSentryConfig["user"] = {};
+  if (env.HOUSTON_USER_ID) user.id = env.HOUSTON_USER_ID;
+  if (env.HOUSTON_USER_EMAIL) user.email = env.HOUSTON_USER_EMAIL;
+  if (env.HOUSTON_USER_NAME) user.username = env.HOUSTON_USER_NAME;
+
   return {
     dsn,
     environment:
@@ -102,5 +113,6 @@ export function resolveEngineSentryConfig(
     release,
     deployment,
     tags,
+    user: Object.keys(user).length ? user : undefined,
   };
 }

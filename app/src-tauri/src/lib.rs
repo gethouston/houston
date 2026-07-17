@@ -133,6 +133,34 @@ fn engine_sentry_env(
     env
 }
 
+/// Env pairs carrying the signed-in user's identity into the engine, parsed
+/// from the persisted session blob the frontend writes to the auth store
+/// (`app/src/lib/identity/session.ts` — uid/email/displayName). The engine
+/// stamps them on its Sentry events so engine crashes are attributable to a
+/// user exactly like renderer crashes already are. Absent or unparseable
+/// session → no identity env (fresh install, signed out, or dev's
+/// localStorage-mode auth). A first-ever sign-in mid-session reaches the
+/// engine on the next launch. Pure for testability.
+fn engine_identity_env(session_json: Option<&str>) -> Vec<(String, String)> {
+    let Some(raw) = session_json else {
+        return Vec::new();
+    };
+    let Ok(session) = serde_json::from_str::<serde_json::Value>(raw) else {
+        return Vec::new();
+    };
+    let mut env = Vec::new();
+    for (key, field) in [
+        ("HOUSTON_USER_ID", "uid"),
+        ("HOUSTON_USER_EMAIL", "email"),
+        ("HOUSTON_USER_NAME", "displayName"),
+    ] {
+        if let Some(value) = session[field].as_str().filter(|v| !v.is_empty()) {
+            env.push((key.to_string(), value.to_string()));
+        }
+    }
+    env
+}
+
 pub fn run() {
     // First-launch DMG guard (macOS only). If we were double-clicked from
     // inside the installer DMG (path under /Volumes/…), show a native
@@ -570,6 +598,14 @@ fn spawn_host_sidecar(
         sentry_release,
         sentry_environment,
     ));
+    // Identity rides only when crash reporting does — same gate, so the
+    // engine's Sentry events name the signed-in user, and a dormant Sentry
+    // means no identity env at all.
+    if sentry_active {
+        host_env.extend(engine_identity_env(
+            auth::stored_session_json().as_deref(),
+        ));
+    }
 
     let cb: Arc<TauriSupervisorCallbacks> = Arc::new(TauriSupervisorCallbacks {
         handle: app.handle().clone(),
@@ -698,7 +734,7 @@ fn migrate_legacy_docs_dir(houston: &std::path::Path) {
 #[cfg(test)]
 mod tests {
     use super::{
-        engine_sentry_env, integrations_host_env, sentry_send_in_dev_enabled,
+        engine_identity_env, engine_sentry_env, integrations_host_env, sentry_send_in_dev_enabled,
         sentry_should_activate,
     };
 
@@ -819,6 +855,40 @@ mod tests {
         // Debug build with a DSN: suppressed by default, active only with opt-in.
         assert!(!sentry_should_activate(false, true, false));
         assert!(sentry_should_activate(false, true, true));
+    }
+
+    #[test]
+    fn engine_identity_env_parses_the_session_blob() {
+        let env = engine_identity_env(Some(
+            r#"{"uid":"abc123","email":"felipe@example.com","displayName":"Felipe","idToken":"x"}"#,
+        ));
+        assert_eq!(
+            env,
+            vec![
+                ("HOUSTON_USER_ID".to_string(), "abc123".to_string()),
+                (
+                    "HOUSTON_USER_EMAIL".to_string(),
+                    "felipe@example.com".to_string()
+                ),
+                ("HOUSTON_USER_NAME".to_string(), "Felipe".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn engine_identity_env_skips_missing_and_null_fields() {
+        let env = engine_identity_env(Some(r#"{"uid":"abc123","displayName":null}"#));
+        assert_eq!(
+            env,
+            vec![("HOUSTON_USER_ID".to_string(), "abc123".to_string())]
+        );
+    }
+
+    #[test]
+    fn engine_identity_env_empty_on_absent_or_garbage_session() {
+        assert!(engine_identity_env(None).is_empty());
+        assert!(engine_identity_env(Some("not json")).is_empty());
+        assert!(engine_identity_env(Some("[]")).is_empty());
     }
 
     #[test]

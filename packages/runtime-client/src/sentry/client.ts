@@ -2,9 +2,7 @@ import { hostname, release as osRelease, platform } from "node:os";
 import { formatWithOptions } from "node:util";
 import type {
   BaseTransportOptions,
-  Event,
   SeverityLevel,
-  StackFrame,
   Transport,
 } from "@sentry/core";
 import {
@@ -20,6 +18,7 @@ import {
   type EngineSentryConfig,
   resolveEngineSentryConfig,
 } from "./activation";
+import { addSourceContext, trimReporterFrames } from "./frames";
 
 /** Levels as the engine's loggers name them (observability/logging.ts). */
 export type LogCaptureLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
@@ -67,40 +66,6 @@ function redactCredentials(message: string): string {
  * breadcrumbs, never fire standalone error events.
  */
 const NODE_PROCESS_WARNING = /^\(node:\d+\)/;
-
-/**
- * With `attachStacktrace` on, a bare-string ERROR's synthetic stack ends inside
- * the reporter itself (the console wrap, captureLog, guarded), which would give
- * every log-site event the same misleading culprit. Trailing frames from these
- * files are popped so the innermost frame is the code that actually logged.
- * Filename-based: both production stacks are source-mapped back to the original
- * `.ts` paths (the sidecar's embedded bun sourcemap, the pod's
- * `--enable-source-maps`); an unmapped stack just stays untrimmed.
- */
-const REPORTER_FRAME =
-  /(?:sentry[/\\](?:client|console-capture))\.(?:m?[jt]s)$|(?:observability[/\\]logging)\.(?:m?[jt]s)$/;
-
-function isReporterFrame(frame: StackFrame): boolean {
-  return !!frame.filename && REPORTER_FRAME.test(frame.filename);
-}
-
-/** Exported for tests. Mutates and returns the event. */
-export function trimReporterFrames<E extends Event>(event: E): E {
-  const stacks = [
-    ...(event.exception?.values ?? []),
-    ...(event.threads?.values ?? []),
-  ];
-  for (const holder of stacks) {
-    const frames = holder.stacktrace?.frames;
-    if (!frames) continue;
-    let last = frames[frames.length - 1];
-    while (frames.length > 1 && last && isReporterFrame(last)) {
-      frames.pop();
-      last = frames[frames.length - 1];
-    }
-  }
-  return event;
-}
 
 /**
  * Plain fetch transport — the one path that works identically on Node 22
@@ -180,6 +145,13 @@ export function createEngineSentry(
     deployment: config.deployment,
     ...config.tags,
   });
+  // Sentry's "users affected" only counts events carrying a `user` — tags
+  // don't. The parent-injected identity (desktop shell / gateway pod spec)
+  // wins; a managed pod without one still counts its org as the affected
+  // "user" so customer impact never reads as zero.
+  const user = { ...config.user };
+  if (!user.id && config.tags.org_slug) user.id = config.tags.org_slug;
+  if (Object.keys(user).length) scope.setUser(user);
   // ServerRuntimeClient attaches no contexts on its own (integrations: []).
   // OS tells Windows/macOS/Linux-pod apart; app_start_time separates a
   // boot-path crash from a long-uptime failure at a glance.
@@ -189,7 +161,10 @@ export function createEngineSentry(
       Date.now() - process.uptime() * 1000,
     ).toISOString(),
   });
+  // Order matters: trim the reporter's plumbing frames first, then inline the
+  // source lines around what remains (no file reads for dropped frames).
   scope.addEventProcessor(trimReporterFrames);
+  scope.addEventProcessor(addSourceContext);
   client.init();
 
   // Re-entrancy guard: capture paths run inside console/log hooks, so anything

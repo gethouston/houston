@@ -210,6 +210,25 @@ mod storage {
     }
 }
 
+/// The release session key the TS session store writes (`auth-storage.ts`
+/// RELEASE_AUTH_STORAGE_KEY). Dev builds keep sessions in localStorage
+/// instead, so a debug shell simply finds nothing here.
+const SESSION_KEY: &str = "houston-auth";
+
+/// Read the persisted session blob, if any — the shell parses the signed-in
+/// user's identity out of it at sidecar spawn (`lib.rs::engine_identity_env`).
+/// A read error is worth a log line (a broken keychain is diagnosable), but
+/// never blocks the boot: identity is an enrichment, not a dependency.
+pub fn stored_session_json() -> Option<String> {
+    match storage::get(SESSION_KEY) {
+        Ok(value) => value,
+        Err(e) => {
+            tracing::warn!("[auth] stored session read failed at boot: {e}");
+            None
+        }
+    }
+}
+
 #[tauri::command(rename_all = "snake_case")]
 pub async fn auth_get_item(key: String) -> Result<Option<String>, String> {
     validate_key(&key)?;

@@ -119,6 +119,49 @@ describe("createEngineSentry", () => {
     expect(crumbs[0]?.level).toBe("warning");
   });
 
+  it("stamps the org as the Sentry user on managed pods (users-affected count)", async () => {
+    const { sentry, events } = testSentry();
+    sentry.captureException(new Error("who was hit?"));
+    await sentry.flush();
+    expect(events[0]?.user).toEqual({ id: "acme" });
+  });
+
+  it("parent-injected identity wins over the org fallback", async () => {
+    const { sentry, events } = testSentry({
+      ...CONFIG,
+      user: { email: "felipe@example.com", username: "Felipe" },
+    });
+    sentry.captureException(new Error("who exactly?"));
+    await sentry.flush();
+    // No explicit id → the org slug still fills it in; email/name ride along.
+    expect(events[0]?.user).toEqual({
+      id: "acme",
+      email: "felipe@example.com",
+      username: "Felipe",
+    });
+  });
+
+  it("inlines the source lines around each stack frame", async () => {
+    const { sentry, events } = testSentry();
+    sentry.captureLog("ERROR", ["where is my snippet"]);
+    await sentry.flush();
+
+    const frames = events[0]?.threads?.values?.[0]?.stacktrace?.frames ?? [];
+    const site = frames[frames.length - 1];
+    // The innermost frame is this test file — its context_line must be the
+    // actual captureLog call above, with surrounding lines on both sides.
+    expect(site?.context_line).toContain("where is my snippet");
+    expect(site?.pre_context?.length).toBeGreaterThan(0);
+    expect(site?.post_context?.length).toBeGreaterThan(0);
+  });
+
+  it("leaves events user-less without an org slug (desktop/self-host)", async () => {
+    const { sentry, events } = testSentry({ ...CONFIG, tags: {} });
+    sentry.captureException(new Error("anonymous deployment"));
+    await sentry.flush();
+    expect(events[0]?.user).toBeUndefined();
+  });
+
   it("stamps os and app-start contexts on every event", async () => {
     const { sentry, events } = testSentry();
     sentry.captureException(new Error("ctx check"));

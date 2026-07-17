@@ -186,11 +186,16 @@ export async function captureException(
  * Email is sent so it's queryable in the Sentry dashboard for B2B triage,
  * matching the PostHog person-property convention. No-op if not init'd.
  */
-export function setUser(user: { id: string; email?: string | null }): void {
+export function setUser(user: {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+}): void {
   if (!initialized) return;
   Sentry.setUser({
     id: user.id,
     email: user.email ?? undefined,
+    username: user.name ?? undefined,
   });
 }
 
