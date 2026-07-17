@@ -7,18 +7,19 @@ import {
   useCreateFolder,
   useDeleteFile,
   useFiles,
-  useMoveFile,
   useRenameFile,
   useUploadFiles,
 } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useFilePreviewLoader } from "../../hooks/use-file-preview-loader";
+import { useMoveWithConflict } from "../../hooks/use-move-with-conflict";
 import { useSaveDownload } from "../../hooks/use-save-download";
 import { isCoLocatedEngine, newEngineActive } from "../../lib/engine";
 import { tauriFiles } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { FilePreviewDialog } from "../file-preview-dialog";
+import { MoveConflictDialog } from "../move-conflict-dialog";
 import { buildBrowserLabels, buildMenuLabels } from "./files-tab-labels";
 
 export default function FilesTab({ agent }: TabProps) {
@@ -52,7 +53,7 @@ export default function FilesTab({ agent }: TabProps) {
   const renameFile = useRenameFile(path);
   const createFolder = useCreateFolder(path);
   const uploadFiles = useUploadFiles(path);
-  const moveFile = useMoveFile(path);
+  const move = useMoveWithConflict(path, files);
 
   // save() surfaces its own success/failure toasts and never rejects; the
   // empty catch below only silences the fetch failure call() already toasted.
@@ -122,13 +123,7 @@ export default function FilesTab({ agent }: TabProps) {
         }
         onMove={
           // Drag-move needs the TS host's move route; the legacy engine has none.
-          newEngineActive()
-            ? (sourcePath, targetFolder) =>
-                moveFile.mutate({
-                  relativePath: sourcePath,
-                  toDir: targetFolder,
-                })
-            : undefined
+          newEngineActive() ? move.requestMove : undefined
         }
         onBrowse={pickFiles}
         emptyTitle={t("files.emptyTitle")}
@@ -163,6 +158,12 @@ export default function FilesTab({ agent }: TabProps) {
         filePath={preview?.path ?? null}
         fileName={preview?.name ?? ""}
         onClose={() => setPreview(null)}
+      />
+      <MoveConflictDialog
+        name={move.pending?.name ?? null}
+        onReplace={() => void move.replace()}
+        onKeepBoth={() => void move.keepBoth()}
+        onCancel={move.cancel}
       />
     </div>
   );
