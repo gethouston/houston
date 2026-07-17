@@ -7,6 +7,7 @@
  * attributed to the real downloader. Published + non-deleted only.
  */
 
+import type { StoreInstallTarget } from "@houston/agentstore-client";
 import {
   defaultExportTarget,
   type ExportResult,
@@ -21,7 +22,6 @@ import {
   corsPreflight,
 } from "@/lib/proxy-headers";
 import { getAgentBySlug, recordInstall } from "@/lib/store-api";
-import type { InstallTarget } from "@/lib/store-api-types";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +41,7 @@ function jsonError(error: string, status: number): Response {
 }
 
 /** Map an export-target id (hyphenated) to the gateway install target. */
-const INSTALL_TARGET_BY_EXPORT: Record<ExportTargetId, InstallTarget> = {
+const INSTALL_TARGET_BY_EXPORT: Record<ExportTargetId, StoreInstallTarget> = {
   "claude-skill-zip": "claude_skill_zip",
   "copy-paste": "copy_paste",
 };

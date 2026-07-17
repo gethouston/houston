@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@houston-ai/core": "workspace:*",
+    "@houston/agentstore-client": "workspace:*",
     "@houston/agentstore-contract": "workspace:*",
     "@houston/design-tokens": "workspace:*",
     "class-variance-authority": "0.7.1",

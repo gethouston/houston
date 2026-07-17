@@ -1,3 +1,4 @@
+import type { StoreCategory } from "@houston/agentstore-client";
 import { Plug } from "lucide-react";
 import {
   buildExploreHref,
@@ -8,7 +9,6 @@ import { CategoryChips } from "@/components/category-chips";
 import { ChipLink } from "@/components/chip";
 import { SearchForm } from "@/components/search-form";
 import type { CatalogIntegration } from "@/lib/agents/integrations";
-import type { StoreCategory } from "@/lib/store-api-types";
 
 const SORTS: { value: ExploreSort; label: string }[] = [
   { value: "recent", label: "Recent" },

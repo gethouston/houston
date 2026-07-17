@@ -1,4 +1,4 @@
-import type { StoreCategory } from "@/lib/store-api-types";
+import type { StoreCategory } from "@houston/agentstore-client";
 import { ChipLink } from "./chip";
 
 export interface CategoryChipsProps {

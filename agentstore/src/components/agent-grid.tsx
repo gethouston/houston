@@ -1,8 +1,8 @@
-import type { AgentSummary } from "@/lib/store-api-types";
+import type { StoreAgentSummary } from "@houston/agentstore-client";
 import { AgentCard } from "./agent-card";
 
 export interface AgentGridProps {
-  agents: AgentSummary[];
+  agents: StoreAgentSummary[];
   /** Maps a category slug to its display label (from the categories table). */
   categoryLabels?: Map<string, string>;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { StoreApiError } from "@houston/agentstore-client";
 import {
   Alert,
   AlertDescription,
@@ -15,7 +16,6 @@ import { Brush, LogIn } from "lucide-react";
 import * as React from "react";
 import { useSession } from "@/lib/auth/session";
 import { runPurge } from "@/lib/store-admin-client";
-import { StoreApiError } from "@/lib/store-client";
 import { QueueTab } from "./queue-tab";
 import { ReportsTab } from "./reports-tab";
 

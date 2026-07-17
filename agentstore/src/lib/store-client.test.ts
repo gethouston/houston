@@ -1,5 +1,5 @@
+import { StoreApiError } from "@houston/agentstore-client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { StoreApiError } from "./store-api-types";
 import {
   claimAgent,
   deleteAgent,
@@ -54,7 +54,7 @@ describe("listMyAgents", () => {
 
 describe("patchAgent", () => {
   it("PATCHes the intent with a JSON content-type", async () => {
-    fetchMock.mockResolvedValue(new Response(null, { status: 200 }));
+    fetchMock.mockResolvedValue(json({ agent: { id: "id-1" } }));
     await patchAgent("t", "id-1", { publish: true });
     expect(lastInit().method).toBe("PATCH");
     expect(lastHeaders().get("content-type")).toBe("application/json");

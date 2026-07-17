@@ -7,6 +7,11 @@
  * source of truth.
  */
 
+import type {
+  StoreAgentDetail,
+  StoreAgentSummary,
+} from "@houston/agentstore-client";
+
 export const PROTOCOL_VERSION = 1 as const;
 
 export type EnvelopeKind = "event" | "req" | "res" | "ping" | "pong";
@@ -1729,52 +1734,24 @@ export interface StorePublicationStatus {
   identity?: StorePublishIdentity;
 }
 
+// The public catalog wire types are the unified Agent Store SDK shapes
+// (`@houston/agentstore-client`), reconciled against the authoritative Go
+// handlers. The historical `StoreCatalog*` names are kept as aliases/re-exports
+// so existing importers (the desktop store-view, the runtime adapter) compile
+// unchanged. `StoreCatalogAgentDetail.ir` widens from the former
+// `{ skills, learnings }` projection to the full `AgentIR` the gateway serves;
+// the app still reads only `ir.skills`/`ir.learnings`.
+export type {
+  StoreCatalogPage,
+  StoreCatalogQuery,
+  StoreCatalogSort,
+} from "@houston/agentstore-client";
+
 /** One public Agent Store listing, exactly as the catalog API serializes it. */
-export interface StoreCatalogAgent {
-  id: string;
-  /** Null only while a listing is a draft; always set for published agents. */
-  slug: string | null;
-  name: string;
-  tagline: string | null;
-  description: string;
-  icon: { kind: string; value: string } | null;
-  color: string | null;
-  category: string;
-  tags: string[];
-  /** UPPERCASE Composio toolkit slugs the agent uses. */
-  integrations: string[];
-  creator: { displayName: string; url?: string };
-  installsCount: number;
-  publishedAt: string | null;
-  updatedAt: string;
-}
+export type StoreCatalogAgent = StoreAgentSummary;
 
-/** One page of the public catalog (page size is server-fixed at 24). */
-export interface StoreCatalogPage {
-  items: StoreCatalogAgent[];
-  hasMore: boolean;
-}
-
-export type StoreCatalogSort = "recent" | "installs";
-
-export interface StoreCatalogQuery {
-  /** Full-text search (websearch syntax). */
-  q?: string;
-  /** A store category slug; omit for all categories. */
-  category?: string;
-  sort?: StoreCatalogSort;
-  /** 1-based. */
-  page?: number;
-}
-
-/** A listing's detail: the summary plus the parts of its IR the app renders. */
-export interface StoreCatalogAgentDetail {
-  agent: StoreCatalogAgent;
-  ir: {
-    skills?: Array<{ slug: string }>;
-    learnings?: unknown[];
-  };
-}
+/** A listing's detail: the summary plus the full published-version IR. */
+export type StoreCatalogAgentDetail = StoreAgentDetail;
 
 // ── integrations (Composio, platform mode) ───────────────────────────────────
 // User-level: no provider account — the user only connects apps (Gmail, Slack…)

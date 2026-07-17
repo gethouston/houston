@@ -3,14 +3,18 @@
  *
  * These routes are anonymous by design (the gateway serves them with
  * `Access-Control-Allow-Origin: *`), so unlike the publish flow there is no
- * bearer and no 401 discipline here: plain `fetch` against the store gateway.
+ * bearer and no 401 discipline here: plain reads against the store gateway.
  * Works signed-out, on every deployment shape.
  *
- * The API base mirrors the publish adapter's resolution: the desktop shell's
- * `window.__HOUSTON_STORE__` target when installed (local-sidecar mode, signed
- * in), else the build-time `VITE_AGENTSTORE_GATEWAY_URL`, else production.
+ * The transport is the shared {@link AgentStoreClient}
+ * (`@houston/agentstore-client`), constructed per call with the resolved
+ * gateway base and the caller-supplied `fetchImpl`. The API base mirrors the
+ * publish adapter's resolution: the desktop shell's `window.__HOUSTON_STORE__`
+ * target when installed (local-sidecar mode, signed in), else the build-time
+ * `VITE_AGENTSTORE_GATEWAY_URL`, else production.
  */
 
+import { AgentStoreClient, StoreApiError } from "@houston/agentstore-client";
 import type {
   StoreCatalogAgentDetail,
   StoreCatalogPage,
@@ -41,6 +45,9 @@ declare global {
 
 const DEFAULT_STORE_GATEWAY = "https://gateway.gethouston.ai";
 
+/** GET reads announce JSON, matching the former plain-fetch requests. */
+const ACCEPT_JSON = { headers: { Accept: "application/json" } };
+
 /** The gateway base the public catalog reads go to. */
 export function storeCatalogApiBase(): string {
   const installed =
@@ -51,39 +58,47 @@ export function storeCatalogApiBase(): string {
   return (installed || built || DEFAULT_STORE_GATEWAY).replace(/\/+$/, "");
 }
 
-async function storeGet<T>(path: string, fetchImpl: typeof fetch): Promise<T> {
-  const res = await fetchImpl(`${storeCatalogApiBase()}${path}`, {
-    headers: { Accept: "application/json" },
-  });
-  if (!res.ok) {
-    throw new StoreCatalogError(res.status, await res.json().catch(() => ({})));
+/** A store client bound to the resolved gateway base and the given fetch. */
+function catalogClient(fetchImpl: typeof fetch): AgentStoreClient {
+  return new AgentStoreClient({ baseUrl: storeCatalogApiBase(), fetchImpl });
+}
+
+/**
+ * Map the SDK's {@link StoreApiError} back onto the structural
+ * {@link StoreCatalogError} this module's callers switch on. A network-level
+ * failure (status `0`) carries no HTTP status, so its original thrown cause is
+ * re-raised unchanged — exactly as the former plain-fetch code let it propagate.
+ */
+function asCatalogError(err: unknown): unknown {
+  if (err instanceof StoreApiError) {
+    if (err.status === 0) return err.body instanceof Error ? err.body : err;
+    return new StoreCatalogError(err.status, err.body);
   }
-  return (await res.json()) as T;
+  return err;
 }
 
 /** One page of published + public listings (server page size 24). */
-export function fetchStoreCatalog(
+export async function fetchStoreCatalog(
   query: StoreCatalogQuery = {},
   fetchImpl: typeof fetch = fetch,
 ): Promise<StoreCatalogPage> {
-  const params = new URLSearchParams();
-  if (query.q?.trim()) params.set("q", query.q.trim());
-  if (query.category) params.set("category", query.category);
-  if (query.sort) params.set("sort", query.sort);
-  if (query.page && query.page > 1) params.set("page", String(query.page));
-  const qs = params.toString();
-  return storeGet(`/v1/agentstore/agents${qs ? `?${qs}` : ""}`, fetchImpl);
+  try {
+    return await catalogClient(fetchImpl).listAgents(query, ACCEPT_JSON);
+  } catch (err) {
+    throw asCatalogError(err);
+  }
 }
 
 /** A listing's summary + renderable IR parts. 404s when not published. */
-export function fetchStoreAgent(
+export async function fetchStoreAgent(
   slug: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<StoreCatalogAgentDetail> {
-  return storeGet(
-    `/v1/agentstore/agents/${encodeURIComponent(slug)}`,
-    fetchImpl,
-  );
+  try {
+    return await catalogClient(fetchImpl).getAgent(slug, ACCEPT_JSON);
+  } catch (err) {
+    throw asCatalogError(err);
+  }
 }
 
 /**
@@ -95,15 +110,9 @@ export async function pingStoreInstall(
   slug: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
-  const res = await fetchImpl(
-    `${storeCatalogApiBase()}/v1/agentstore/agents/${encodeURIComponent(slug)}/installs`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ target: "houston" }),
-    },
-  );
-  if (!res.ok) {
-    throw new StoreCatalogError(res.status, await res.json().catch(() => ({})));
+  try {
+    await catalogClient(fetchImpl).recordInstall(slug, "houston");
+  } catch (err) {
+    throw asCatalogError(err);
   }
 }
