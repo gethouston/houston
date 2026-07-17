@@ -76,6 +76,15 @@ export async function buildClaudeSkillZip(
     zip.file(`${folder}/SKILL.md`, agentSkill, { date: REPRODUCIBLE_DATE });
   }
 
+  // JSZip auto-creates the parent FOLDER entries stamped with the current
+  // wall clock — the per-file `date` option doesn't cover them. Zip DOS
+  // times have 2-second granularity, so two builds straddling a boundary
+  // produced different bytes (the reproducibility test flaked on exactly
+  // this). Pin every entry, folders included.
+  zip.forEach((_, entry) => {
+    entry.date = REPRODUCIBLE_DATE;
+  });
+
   const bytes = await zip.generateAsync({
     type: "uint8array",
     compression: "DEFLATE",
