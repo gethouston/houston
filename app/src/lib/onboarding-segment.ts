@@ -82,3 +82,14 @@ export function createOnboardingSegmentPreference(
     sourceScreen: ONBOARDING_SEGMENT_SOURCE_SCREEN,
   };
 }
+
+/**
+ * Per-user localStorage key for the device-local mirror of the answer. The
+ * engine preference is the source of truth, but in hosted mode it lives on the
+ * user's pod — a pod blip (or a failed write) made the question re-prompt on
+ * the next launch. The mirror is keyed by the signed-in uid so switching
+ * accounts on one machine still asks each user exactly once.
+ */
+export function onboardingSegmentLocalKey(uid: string | null): string {
+  return `houston.onboarding-segment.${uid ?? "local"}`;
+}
