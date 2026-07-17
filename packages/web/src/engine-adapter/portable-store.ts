@@ -18,6 +18,7 @@ import {
   StoreApiError,
 } from "@houston/agentstore-client";
 import type {
+  MyAgent,
   StorePublicationStatus,
   StorePublishRequest,
   StorePublishResponse,
@@ -181,4 +182,55 @@ export async function getPublication(
       tags: item.tags,
     },
   };
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Owner management (the "my agents" panel — account-based, no manage tokens)
+//
+// These act on a store agent by its gateway id, read live off `GET /me/agents`,
+// with no host-side pointer involved. Each re-maps the SDK's StoreApiError onto
+// the adapter's HoustonEngineError via `asEngineError`, exactly like publish.
+// ────────────────────────────────────────────────────────────────────────
+
+/** Every listing the caller owns, in all lifecycle states (`GET /me/agents`). */
+export function listMyStoreAgents(cfg: ControlPlaneConfig): Promise<MyAgent[]> {
+  return asEngineError(() => storeClient(cfg).listMyAgents());
+}
+
+/** Ask an admin to make an owned listing public (`PATCH … {requestPublic}`). */
+export async function requestStorePublic(
+  cfg: ControlPlaneConfig,
+  storeAgentId: string,
+): Promise<void> {
+  await asEngineError(() =>
+    storeClient(cfg).patchAgent(storeAgentId, { requestPublic: true }),
+  );
+}
+
+/** Drop a public listing back to unlisted (`PATCH … {visibility:"unlisted"}`). */
+export async function setStoreVisibilityUnlisted(
+  cfg: ControlPlaneConfig,
+  storeAgentId: string,
+): Promise<void> {
+  await asEngineError(() =>
+    storeClient(cfg).patchAgent(storeAgentId, { visibility: "unlisted" }),
+  );
+}
+
+/** Take an owned listing down by its gateway id (`PATCH … {unpublish}`). */
+export async function unpublishStoreAgentById(
+  cfg: ControlPlaneConfig,
+  storeAgentId: string,
+): Promise<void> {
+  await asEngineError(() =>
+    storeClient(cfg).patchAgent(storeAgentId, { unpublish: true }),
+  );
+}
+
+/** Soft-delete an owned listing by its gateway id (`DELETE /agents/{id}`). */
+export async function deleteStoreAgentById(
+  cfg: ControlPlaneConfig,
+  storeAgentId: string,
+): Promise<void> {
+  await asEngineError(() => storeClient(cfg).deleteAgent(storeAgentId));
 }

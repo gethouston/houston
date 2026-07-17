@@ -22,5 +22,64 @@
     "learnings_one": "Vem com {{count}} aprendizado de uso real",
     "learnings_other": "Vem com {{count}} aprendizados de uso real"
   },
-  "installFailed": "O Houston não conseguiu buscar esse agente na loja. Tente de novo em instantes."
+  "installFailed": "O Houston não conseguiu buscar esse agente na loja. Tente de novo em instantes.",
+  "tabs": {
+    "browse": "Explorar",
+    "myAgents": "Meus agentes"
+  },
+  "allIntegrations": "Todas as integrações",
+  "report": {
+    "open": "Denunciar",
+    "title": "Denunciar este agente",
+    "reasonLabel": "Motivo",
+    "reason": {
+      "spam": "Spam",
+      "malicious": "Malicioso ou inseguro",
+      "impersonation": "Falsidade de identidade",
+      "inappropriate": "Conteúdo inadequado",
+      "other": "Outro motivo"
+    },
+    "detailsLabel": "Detalhes",
+    "detailsPlaceholder": "Conte para nós o que está errado (opcional)",
+    "contactLabel": "Seu e-mail",
+    "contactPlaceholder": "Para podermos dar retorno (opcional)",
+    "submit": "Enviar denúncia",
+    "cancel": "Cancelar",
+    "success": "Obrigado pela denúncia. Nossa equipe vai analisar.",
+    "failed": "Não foi possível enviar sua denúncia. Tente de novo."
+  },
+  "myAgents": {
+    "empty": "Você ainda não publicou nenhum agente.",
+    "signedOut": "Entre para ver os agentes que você publicou.",
+    "signIn": "Entrar",
+    "state": {
+      "draft": "Rascunho",
+      "published": "Publicado",
+      "archived": "Arquivado"
+    },
+    "visibility": {
+      "unlisted": "Não listado",
+      "public": "Público"
+    },
+    "action": {
+      "requestPublic": "Solicitar listagem pública",
+      "requestPublicPending": "Solicitando...",
+      "requestPublicDone": "Em análise",
+      "makeUnlisted": "Tornar não listado",
+      "unpublish": "Remover da loja",
+      "delete": "Excluir",
+      "seeInStore": "Ver na loja"
+    },
+    "confirm": {
+      "deleteTitle": "Excluir este agente?",
+      "deleteBody": "{{name}} será removido da loja definitivamente. Isso não pode ser desfeito.",
+      "deleteConfirm": "Excluir",
+      "cancel": "Cancelar",
+      "unpublishTitle": "Remover este agente da loja?",
+      "unpublishBody": "{{name}} não poderá mais ser instalado pelo link. Você pode publicá-lo de novo depois.",
+      "unpublishConfirm": "Remover"
+    },
+    "actionFailed": "Não foi possível concluir a ação. Tente de novo.",
+    "requestPublicSent": "Listagem pública solicitada. Vamos analisar em breve."
+  }
 }

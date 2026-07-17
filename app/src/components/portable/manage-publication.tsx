@@ -72,6 +72,21 @@ export function ManagePublication({
             {t("publish.manage.remove")}
           </Button>
         </div>
+        <div>
+          <Button
+            variant="ghost"
+            className="rounded-full"
+            disabled={busy}
+            onClick={() => {
+              const ui = useUIStore.getState();
+              ui.setShareAgentId(null);
+              ui.setStoreOwnerTab("my");
+              ui.setViewMode(STORE_VIEW_ID);
+            }}
+          >
+            {t("publish.manage.manageAll")}
+          </Button>
+        </div>
         <p className="text-xs text-muted-foreground">
           {t("publish.manage.updateHint")}
         </p>

@@ -22,5 +22,64 @@
     "learnings_one": "Incluye {{count}} aprendizaje de uso real",
     "learnings_other": "Incluye {{count}} aprendizajes de uso real"
   },
-  "installFailed": "Houston no pudo traer ese agente de la tienda. Intenta de nuevo en un momento."
+  "installFailed": "Houston no pudo traer ese agente de la tienda. Intenta de nuevo en un momento.",
+  "tabs": {
+    "browse": "Explorar",
+    "myAgents": "Mis agentes"
+  },
+  "allIntegrations": "Todas las integraciones",
+  "report": {
+    "open": "Reportar",
+    "title": "Reportar este agente",
+    "reasonLabel": "Motivo",
+    "reason": {
+      "spam": "Spam",
+      "malicious": "Malicioso o inseguro",
+      "impersonation": "Suplantación de identidad",
+      "inappropriate": "Contenido inapropiado",
+      "other": "Otro motivo"
+    },
+    "detailsLabel": "Detalles",
+    "detailsPlaceholder": "Cuéntanos qué está mal (opcional)",
+    "contactLabel": "Tu correo",
+    "contactPlaceholder": "Para poder darte seguimiento (opcional)",
+    "submit": "Enviar reporte",
+    "cancel": "Cancelar",
+    "success": "Gracias por reportarlo. Nuestro equipo lo revisará.",
+    "failed": "No se pudo enviar tu reporte. Inténtalo de nuevo."
+  },
+  "myAgents": {
+    "empty": "Todavía no has publicado ningún agente.",
+    "signedOut": "Inicia sesión para ver los agentes que has publicado.",
+    "signIn": "Iniciar sesión",
+    "state": {
+      "draft": "Borrador",
+      "published": "Publicado",
+      "archived": "Archivado"
+    },
+    "visibility": {
+      "unlisted": "No listado",
+      "public": "Público"
+    },
+    "action": {
+      "requestPublic": "Solicitar listado público",
+      "requestPublicPending": "Solicitando...",
+      "requestPublicDone": "En revisión",
+      "makeUnlisted": "Hacer no listado",
+      "unpublish": "Retirar",
+      "delete": "Eliminar",
+      "seeInStore": "Ver en la tienda"
+    },
+    "confirm": {
+      "deleteTitle": "¿Eliminar este agente?",
+      "deleteBody": "{{name}} se quitará de la tienda de forma permanente. Esto no se puede deshacer.",
+      "deleteConfirm": "Eliminar",
+      "cancel": "Cancelar",
+      "unpublishTitle": "¿Retirar este agente?",
+      "unpublishBody": "{{name}} ya no se podrá instalar desde su enlace. Puedes publicarlo de nuevo más adelante.",
+      "unpublishConfirm": "Retirar"
+    },
+    "actionFailed": "No se pudo completar la acción. Inténtalo de nuevo.",
+    "requestPublicSent": "Listado público solicitado. Lo revisaremos pronto."
+  }
 }

@@ -101,6 +101,10 @@ interface UIState {
    * "See it in the store" affordances before `setViewMode(STORE_VIEW_ID)`,
    * cleared by the view once consumed. */
   storeFocusSlug: string | null;
+  /** A one-shot flag that opens the Agent Store view on its "my agents" tab —
+   * set by "Manage all my agents" affordances before `setViewMode(STORE_VIEW_ID)`,
+   * cleared by the view once consumed. Ephemeral, never persisted. */
+  storeOwnerTab: "my" | null;
   /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
   sidebarCollapsed: boolean;
   /** Files tab layout: Drive-style card grid or Finder-style list. Persisted. */
@@ -145,6 +149,7 @@ interface UIState {
   setImportFromFriendOpen: (open: boolean) => void;
   setImportSeedPreview: (preview: PortableUploadPreviewResponse | null) => void;
   setStoreFocusSlug: (slug: string | null) => void;
+  setStoreOwnerTab: (v: "my" | null) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
   setFilesViewMode: (mode: "grid" | "list") => void;
@@ -190,6 +195,7 @@ export const useUIStore = create<UIState>()(
       importFromFriendOpen: false,
       importSeedPreview: null,
       storeFocusSlug: null,
+      storeOwnerTab: null,
       sidebarCollapsed: false,
       filesViewMode: "grid",
       filePreview: null,
@@ -314,6 +320,7 @@ export const useUIStore = create<UIState>()(
         set({ importFromFriendOpen }),
       setImportSeedPreview: (importSeedPreview) => set({ importSeedPreview }),
       setStoreFocusSlug: (storeFocusSlug) => set({ storeFocusSlug }),
+      setStoreOwnerTab: (storeOwnerTab) => set({ storeOwnerTab }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       toggleSidebarCollapsed: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
