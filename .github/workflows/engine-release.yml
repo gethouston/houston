@@ -38,17 +38,21 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             verify: "--verify"
+            sdk_slug: linux-x64
           - target: aarch64-apple-darwin
             os: macos-latest
             verify: "--verify"
+            sdk_slug: darwin-arm64
           # Cross legs — Bun links its own libc, so same-OS cross-arch compiles,
           # but the binary can't boot on this runner, so no `--verify`.
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             verify: ""
+            sdk_slug: linux-arm64
           - target: x86_64-apple-darwin
             os: macos-latest
             verify: ""
+            sdk_slug: darwin-x64
     steps:
       - uses: actions/checkout@v6
 
@@ -70,6 +74,22 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
+
+      # `pnpm install` resolves only the runner-native Claude SDK platform
+      # package, but build-host-sidecar.sh must embed the TARGET's binary —
+      # cross legs fail without it in the store. Same force-install (and SDK
+      # version pin source) as release.yml's universal-macOS step. Edits only
+      # the runner's checkout; no-op when already present.
+      - name: Force-install the target's Claude SDK platform package
+        run: |
+          set -euo pipefail
+          SDK_VER=$(jq -r '.dependencies["@anthropic-ai/claude-agent-sdk"] // .optionalDependencies["@anthropic-ai/claude-agent-sdk"] // ""' packages/runtime/package.json)
+          if [ -z "$SDK_VER" ] || [ "$SDK_VER" = "null" ]; then
+            echo "ERROR: @anthropic-ai/claude-agent-sdk is not pinned in packages/runtime/package.json (.dependencies or .optionalDependencies)" >&2
+            exit 1
+          fi
+          echo "Claude Agent SDK version pinned by packages/runtime: $SDK_VER"
+          pnpm add -w "@anthropic-ai/claude-agent-sdk-${{ matrix.sdk_slug }}@$SDK_VER" --force
 
       - name: Compile Houston host binary (${{ matrix.target }})
         run: |
