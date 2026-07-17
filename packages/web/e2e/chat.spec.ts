@@ -235,10 +235,17 @@ test("navigates a long conversation with the conversation map", async ({
   await page.goto("/");
   await page.getByText("Plan a trip to Tokyo").click();
 
+  // The fake host starts every conversation empty and the map only appears at
+  // 3+ moments, so two exchanges (4 moments) are needed to unlock the trigger.
   const composer = page.getByPlaceholder("Send a follow-up...");
   await composer.fill("show me the budget");
   await composer.press("Enter");
   await expect(page.getByText(/You said: .show me the budget./)).toBeVisible({
+    timeout: 15_000,
+  });
+  await composer.fill("now the hotels");
+  await composer.press("Enter");
+  await expect(page.getByText(/You said: .now the hotels./)).toBeVisible({
     timeout: 15_000,
   });
 
