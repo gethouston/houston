@@ -12,6 +12,7 @@ import {
 } from "../capabilities";
 import { houstonSystemPrompt } from "../houston-prompt";
 import { installParentWatchdog } from "../parent-watchdog";
+import { isBenignRecursiveWatchRace } from "../watch/watcher-race";
 import { buildLocalHost } from "./host";
 import { runtimeCommand } from "./runtime-command";
 
@@ -197,6 +198,16 @@ const host = buildLocalHost({
 // dropped SSE socket, or a transient fetch. Log loudly and stay up — the user
 // would otherwise see "NetworkError" on the next request.
 process.on("uncaughtException", (err) => {
+  // One narrow demotion: Node's Linux recursive-watcher ENOENT race on a
+  // transient dir (see watch/watcher-race.ts). Warning breadcrumb, not a
+  // Sentry error event; every other uncaught error stays loud.
+  if (isBenignRecursiveWatchRace(err)) {
+    console.warn(
+      "[local-host] transient fs-watch race (ignored):",
+      err.message,
+    );
+    return;
+  }
   console.error("[local-host] uncaughtException (staying up):", err);
 });
 process.on("unhandledRejection", (reason) => {
