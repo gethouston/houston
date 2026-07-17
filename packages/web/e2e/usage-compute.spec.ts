@@ -62,7 +62,9 @@ test("without the computeUsage capability the Usage page shows only the account 
   await expect(page.getByRole("heading", { name: "Time worked" })).toHaveCount(
     0,
   );
-  await expect(page.getByRole("tab", { name: "Compute usage" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Compute usage" })).toHaveCount(
+    0,
+  );
   await expect(
     page.getByRole("heading", { name: "AI subscriptions" }),
   ).toBeVisible();
@@ -145,14 +147,14 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
   await expect(
     page.getByRole("heading", { name: "AI subscriptions" }),
   ).toHaveCount(0);
-  await page.getByRole("tab", { name: "Model usage" }).click();
+  await page.getByRole("button", { name: "Model usage" }).click();
   await expect(
     page.getByRole("heading", { name: "AI subscriptions" }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Time worked" })).toHaveCount(
     0,
   );
-  await page.getByRole("tab", { name: "Compute usage" }).click();
+  await page.getByRole("button", { name: "Compute usage" }).click();
   await expect(
     page.getByRole("heading", { name: "Time worked" }),
   ).toBeVisible();
