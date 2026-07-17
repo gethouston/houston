@@ -133,6 +133,27 @@ describe("resolveEngineSentryConfig", () => {
     expect(bare?.tags.engine_version).toBeUndefined();
   });
 
+  it("carries the parent-injected user identity", () => {
+    const config = resolveEngineSentryConfig({
+      SENTRY_DSN: DSN,
+      NODE_ENV: "production",
+      HOUSTON_USER_ID: "firebase-uid-123",
+      HOUSTON_USER_EMAIL: "felipe@example.com",
+      HOUSTON_USER_NAME: "Felipe",
+    });
+    expect(config?.user).toEqual({
+      id: "firebase-uid-123",
+      email: "felipe@example.com",
+      username: "Felipe",
+    });
+
+    const none = resolveEngineSentryConfig({
+      SENTRY_DSN: DSN,
+      NODE_ENV: "production",
+    });
+    expect(none?.user).toBeUndefined();
+  });
+
   it("omits release when none is injected", () => {
     const config = resolveEngineSentryConfig({
       SENTRY_DSN: DSN,
