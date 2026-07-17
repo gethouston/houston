@@ -12,7 +12,7 @@ import {
   useEmailSetupCleanup,
   useEmailSetupCompleted,
 } from "./email-mission-setup";
-import { shouldOfferSkip } from "./email-skip";
+import { feedShowsTurnError, shouldOfferSkip } from "./email-skip";
 
 interface UseEmailMissionSessionArgs {
   agent: Agent;
@@ -33,7 +33,7 @@ export interface EmailMissionSession {
   error: string | null;
   feedItems: FeedItem[];
   sessionKey: string;
-  /** Available only after the opening message starts the AI conversation. */
+  /** Available only when something failed (kickoff or turn error). */
   showSkip: boolean;
   onStop: (() => void) | undefined;
   handleSend: () => Promise<void>;
@@ -69,10 +69,12 @@ export function useEmailMissionSession({
 
   const setupDone = useEmailSetupCompleted(realFeed);
 
-  // The conversation becomes skippable only after its first message creates
-  // a mission session. Until then, the email action is the sole path forward.
+  // The skip escape hatch exists ONLY for failure: a kickoff error or a turn
+  // error in the feed. On the happy path the step auto-advances, so nothing
+  // competes with the running conversation.
   const showSkip = shouldOfferSkip({
-    hasFirstMessage: missionSessionKey !== null,
+    hasError:
+      error !== null || feedShowsTurnError((realFeed ?? []) as FeedItem[]),
     setupDone,
   });
 
@@ -125,6 +127,9 @@ export function useEmailMissionSession({
           providerOverride: provider,
           modelOverride: model,
           effortOverride: "medium",
+          // Autopilot: the onboarding turn must SEND the email on the first
+          // message, not pause on ask_user/request_connection questions.
+          modeOverride: "auto",
         },
       );
       setMissionSessionKey(result.sessionKey);
@@ -148,6 +153,9 @@ export function useEmailMissionSession({
           providerOverride: provider,
           modelOverride: model,
           effortOverride: "medium",
+          // Follow-ups stay in Autopilot too: the whole onboarding chat runs
+          // without blocking questions.
+          modeOverride: "auto",
           queuedPreview: { text: trimmed },
         });
       } catch (e) {

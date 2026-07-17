@@ -87,7 +87,7 @@
         "placeholder": "Responde a tu agente...",
         "body": "Tu agente te enviará un correo real, para que lo veas funcionar.",
         "skip": "Omitir por ahora",
-        "skipHint": "Puedes continuar en Houston después de tu primer mensaje."
+        "skipHint": "¿Algo salió mal? Puedes continuar en Houston e intentarlo más tarde."
       },
       "aiConnected": {
         "title": "¡Tu IA está conectada!",
@@ -107,7 +107,7 @@
         "cta": "Continuar"
       },
       "finished": {
-        "title": "¡Ya está todo listo!",
+        "title": "¡Revisa tu correo!",
         "body": "Tu asistente personal acaba de demostrar que puede actuar por ti, de verdad.",
         "readyTitle": "¡Ya está todo listo!",
         "readyBody": "Tu asistente personal está listo para ponerse a trabajar por ti.",
