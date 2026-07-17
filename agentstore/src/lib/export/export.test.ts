@@ -79,6 +79,22 @@ describe("claude-skill-zip", () => {
     expect(Buffer.from(a.bytes).equals(Buffer.from(b.bytes))).toBe(true);
   });
 
+  it("pins every entry timestamp, folders included", async () => {
+    // The byte-comparison above only flakes when two builds straddle a
+    // 2-second zip-time boundary; this catches the bug deterministically.
+    // JSZip auto-creates folder entries whose date defaults to NOW — every
+    // entry must carry the fixed reproducible date instead.
+    const { bytes } = await buildClaudeSkillZip(exampleAgentIr);
+    const zip = await JSZip.loadAsync(bytes);
+    const entries = Object.values(zip.files);
+    expect(entries.length).toBeGreaterThan(1); // files AND folder entries
+    for (const entry of entries) {
+      expect
+        .soft(entry.date.toISOString(), entry.name)
+        .toBe("2020-01-01T00:00:00.000Z");
+    }
+  });
+
   it("omits the agent skill when there are no instructions", async () => {
     const ir = { ...exampleAgentIr, instructions: "   " };
     expect(buildAgentSkillMarkdown(ir)).toBeNull();

@@ -4,6 +4,7 @@ import type { ComputeUsageRow } from "@houston-ai/engine-client";
 import {
   bucketCompute,
   durationParts,
+  isOpaqueSlug,
   showComputeSection,
 } from "../src/components/usage-view/compute-usage-model.ts";
 
@@ -112,6 +113,37 @@ describe("bucketCompute", () => {
     const model = bucketCompute([], "week", NOW);
     strictEqual(model.maxBucketMs, 1);
     strictEqual(model.maxAgentMs, 1);
+  });
+
+  it("drops agents with no work and no tasks in range (awake-only ghosts)", () => {
+    const ghost: ComputeUsageRow = {
+      agentSlug: "5e70000000000000",
+      day: "2026-07-15",
+      awakeMs: 600_000, // awake the whole time...
+      activeMs: 0, // ...but never worked
+      wakes: 3,
+      turns: 0,
+      routineRuns: 0,
+    };
+    const model = bucketCompute(
+      [ghost, row("real", "2026-07-15", 1_000, 1)],
+      "week",
+      NOW,
+    );
+    deepStrictEqual(
+      model.perAgent.map((a) => a.agentSlug),
+      ["real"],
+    );
+  });
+});
+
+describe("isOpaqueSlug", () => {
+  it("matches bare wire ids but not nameable slugs", () => {
+    strictEqual(isOpaqueSlug("40e4d673e72e86df"), true);
+    strictEqual(isOpaqueSlug("5e70000000000000"), true);
+    strictEqual(isOpaqueSlug("sales-bot"), false);
+    strictEqual(isOpaqueSlug("deadbeef"), false); // too short to be a wire id
+    strictEqual(isOpaqueSlug("my_agent_2"), false);
   });
 });
 

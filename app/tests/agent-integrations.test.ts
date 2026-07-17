@@ -70,26 +70,29 @@ describe("agentIntegrationsView", () => {
     );
   });
 
-  it("an ungranted active connection appears in no grants-view row", () => {
+  it("an ungranted active connection surfaces in availableRows", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("slack"), conn("notion")],
       catalog: CATALOG,
       grants: ["gmail"],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
-    // Section 1 has only the granted app. Connected-but-ungranted apps are a
-    // Settings > Connected accounts concern now — absent from active AND
-    // disallowed (there is no allowlist here, so nothing is disallowed).
+    // Only the granted app is usable; the connected-but-ungranted active apps
+    // now surface in availableRows (name-sorted) so the user can turn them on
+    // inline, instead of vanishing. No allowlist here → nothing disallowed.
     deepStrictEqual(
       view.activeRows.map((r) => r.connection.toolkit),
       ["gmail"],
     );
-    deepStrictEqual(view.disallowedRows, []);
-    const shown = [...view.activeRows, ...view.disallowedRows].map(
-      (r) => r.connection.toolkit,
+    deepStrictEqual(
+      view.availableRows.map((r) => r.connection.toolkit),
+      ["notion", "slack"],
     );
-    ok(!shown.includes("slack"), "ungranted active slack is not shown");
-    ok(!shown.includes("notion"), "ungranted active notion is not shown");
+    deepStrictEqual(view.disallowedRows, []);
+    ok(
+      !view.activeRows.some((r) => r.connection.toolkit === "slack"),
+      "ungranted slack is not an active row",
+    );
   });
 
   it("ungranted pending/errored connections appear in no grants-view row", () => {
@@ -101,6 +104,9 @@ describe("agentIntegrationsView", () => {
     if (view.mode !== "grants") throw new Error("unreachable");
     deepStrictEqual(view.activeRows, []);
     deepStrictEqual(view.disallowedRows, []);
+    // Only ACTIVE ungranted connections join availableRows; pending / errored
+    // ones stay hidden (recovered from the global Integrations page).
+    deepStrictEqual(view.availableRows, []);
   });
 
   it("grants mode with an empty grant set yields no active rows", () => {
@@ -112,6 +118,11 @@ describe("agentIntegrationsView", () => {
     strictEqual(view.mode, "grants");
     if (view.mode !== "grants") throw new Error("unreachable");
     deepStrictEqual(view.activeRows, []);
+    // The active-but-ungranted connection is turn-on-able.
+    deepStrictEqual(
+      view.availableRows.map((r) => r.connection.toolkit),
+      ["gmail"],
+    );
   });
 
   it("a granted slug with no matching connection is ignored", () => {
@@ -125,6 +136,18 @@ describe("agentIntegrationsView", () => {
       view.activeRows.map((r) => r.connection.toolkit),
       ["gmail"],
     );
+    // The orphan grant (slack, no connection) surfaces nowhere.
+    deepStrictEqual(view.availableRows, []);
+  });
+
+  it("degraded mode has no availableRows bucket", () => {
+    const view = agentIntegrationsView({
+      connections: [conn("gmail")],
+      catalog: CATALOG,
+      grants: null,
+    });
+    if (view.mode !== "degraded") throw new Error("unreachable");
+    strictEqual("availableRows" in view, false);
   });
 
   it("preserves non-active status on granted rows for the recovery UI", () => {

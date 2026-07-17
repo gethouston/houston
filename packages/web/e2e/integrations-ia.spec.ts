@@ -12,9 +12,15 @@ import { expect, test } from "./support/fixtures";
  *    personal catalog now;
  *  - CATALOG (the caller's personal connected apps) → the global Integrations
  *    page, visible to EVERY role in every mode (a plain member keeps its nav);
- *  - ACCOUNTS (the user's connected apps + the per-agent grants surface) →
- *    Settings > Connected accounts;
- *  - the agent Integrations TAB → a pure connect surface (no grant toggles).
+ *  - ACCOUNTS (the user's connected apps + the arbitrary-agent grants surface)
+ *    → Settings > Connected accounts;
+ *  - the agent Integrations TAB → a connect surface that ALSO surfaces the
+ *    account's connected-but-ungranted apps in a "Connected, but off for this
+ *    agent" section, each with an inline Switch that grants the app to THIS
+ *    agent (turning it on moves it to the Installed strip via a grant PUT).
+ *    Browse excludes connected apps, and the tab's app detail dialog carries no
+ *    per-agent toggles; editing an ARBITRARY agent's grants still lives in
+ *    Settings > Connected accounts.
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's
  * `/__test__/capabilities` (advertise `multiplayer` + `teams` + a `role`) and
@@ -261,31 +267,93 @@ test("Settings > Connected accounts: a connected app opens the per-agent grant s
   await expect(page.getByRole("switch", { name: "Houston" })).toBeChecked();
 });
 
-// ── 5. Agent tab is a pure connect surface ─────────────────────────────────
+// ── 5. Agent tab surfaces connected-but-off apps and grants them inline ─────
 
-test("Agent Integrations tab: pure connect surface, no per-agent grant affordances", async ({
+test("Agent Integrations tab: a connected-but-ungranted app shows in the off-for-this-agent section", async ({
   page,
   request,
 }) => {
-  // Grants supported (a record exists), so the OLD tab would have shown
-  // activate/deactivate controls. In the IA end-state those moved to Settings,
-  // leaving the tab a connect-only surface.
+  // Grants supported (an empty record EXISTS, so the host is in grants mode), but
+  // the seeded Gmail connection is NOT granted to this agent — the
+  // connected-but-off case. It must surface in its own section, not hide.
   await armCapabilities(request, { integrations: ["composio"] });
-  await seedGrants(request, ["gmail"]);
+  await seedGrants(request, []);
   await page.goto("/");
   await page.locator('[data-tour-target="tab-integrations"]').click();
 
-  // The connect catalog still renders (search box + a connectable app row)...
+  // The connect catalog still renders (search box + a connectable, not-connected
+  // app row)...
   await expect(page.getByPlaceholder("Search integrations...")).toBeVisible();
   await expect(
     page.getByRole("button").filter({ hasText: "Slack" }).first(),
   ).toBeVisible();
 
-  // ...but NO per-agent grant affordances survive anywhere on the tab.
-  await expect(page.getByText("Activate for this agent")).toHaveCount(0);
+  // ...and the connected-but-off section carries Gmail with its turn-on Switch.
   await expect(
-    page.getByRole("button", { name: /Remove from this agent/ }),
+    page.getByRole("heading", { name: "Connected, but off for this agent" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("switch", { name: "Turn on Gmail for this agent" }),
+  ).toBeVisible();
+
+  // Gmail is connected, so browse excludes it, and (ungranted) the Installed
+  // strip has no Gmail tile — Gmail lives ONLY in the off-section, whose row is a
+  // plain, non-button surface. So no button carries its name anywhere on the tab.
+  await expect(page.getByRole("button", { name: "Gmail" })).toHaveCount(0);
+});
+
+test("Agent Integrations tab: turning on a connected-but-off app grants it and it moves to Installed", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["composio"] });
+  await seedGrants(request, []);
+  await page.goto("/");
+  await page.locator('[data-tour-target="tab-integrations"]').click();
+
+  // Flip the turn-on Switch: the grant PUT round-trips through the host's grant
+  // routes and the optimistic update moves Gmail into the Installed strip (a tile
+  // whose accessible name is the app name)...
+  await page
+    .getByRole("switch", { name: "Turn on Gmail for this agent" })
+    .click();
+  await expect(page.getByRole("button", { name: "Gmail" })).toBeVisible();
+  // ...and with no more off-for-this-agent apps, the section disappears.
+  await expect(
+    page.getByRole("heading", { name: "Connected, but off for this agent" }),
   ).toHaveCount(0);
+
+  // Persistence: a full reload re-reads the grants from the host; Gmail is still
+  // installed and the off-section stays gone — the toggle reached the gateway,
+  // not just the client cache.
+  await page.reload();
+  await page.locator('[data-tour-target="tab-integrations"]').click();
+  await expect(page.getByRole("button", { name: "Gmail" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Connected, but off for this agent" }),
+  ).toHaveCount(0);
+});
+
+test("Agent Integrations tab: the app detail dialog has no per-agent grant toggles", async ({
+  page,
+  request,
+}) => {
+  // Gmail granted → it tiles the Installed strip. Opening its detail dialog on
+  // the tab must NOT expose the per-agent grant block (that lives in Settings),
+  // so the tab never becomes a second grants editor.
+  await armCapabilities(request, { integrations: ["composio"] });
+  await seedGrants(request, ["gmail"]);
+  await page.goto("/");
+  await page.locator('[data-tour-target="tab-integrations"]').click();
+
+  await page.getByRole("button", { name: "Gmail" }).click();
+
+  // The shared detail dialog opens (its Disconnect affordance is present)...
+  await expect(page.getByRole("button", { name: "Disconnect" })).toBeVisible();
+  // ...but the "Agents that can use this" grant block — and any per-agent Switch —
+  // is absent: the tab defers all grant editing to Settings.
+  await expect(page.getByText("Agents that can use this")).toHaveCount(0);
+  await expect(page.getByRole("switch")).toHaveCount(0);
 });
 
 // ── 6. Member manage link → the personal Integrations page ─────────────────

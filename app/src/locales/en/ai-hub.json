@@ -187,7 +187,7 @@
         "body": "When your agents work on tasks, their time will show here."
       },
       "error": "Couldn't load your agents' time right now. Try again in a moment.",
-      "online": "Online"
+      "removedAgent": "Removed agent"
     }
   },
   "toast": {}

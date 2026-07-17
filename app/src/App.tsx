@@ -105,7 +105,11 @@ export default function App() {
     const signupDate = null;
     if (userId && userId !== prevUserIdRef.current) {
       analytics.identifyUser(userId, { email: userEmail, signupDate });
-      setSentryUser({ id: userId, email: userEmail });
+      setSentryUser({
+        id: userId,
+        email: userEmail,
+        name: session?.displayName ?? null,
+      });
       prevUserIdRef.current = userId;
     } else if (!userId && prevUserIdRef.current) {
       analytics.reset();

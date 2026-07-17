@@ -8,9 +8,11 @@ import { COL_GRID } from "./file-row";
 export function NewFolderInput({
   onConfirm,
   onCancel,
+  placeholder = "untitled folder",
 }: {
   onConfirm: (name: string) => void;
   onCancel: () => void;
+  placeholder?: string;
 }) {
   const [value, setValue] = useState("");
   const committed = useRef(false);
@@ -33,7 +35,7 @@ export function NewFolderInput({
 
   return (
     <div
-      className="h-[24px] bg-[#2068d0] rounded-lg items-center"
+      className="h-[24px] items-center rounded-lg bg-action"
       style={{ display: "grid", gridTemplateColumns: COL_GRID }}
     >
       <div className="flex items-center gap-1.5 min-w-0 pl-3">
@@ -48,13 +50,13 @@ export function NewFolderInput({
             if (e.key === "Escape") onCancel();
           }}
           onBlur={commit}
-          placeholder="untitled folder"
-          className="flex-1 text-[13px] bg-transparent text-white outline-none placeholder:text-white/50 min-w-0"
+          placeholder={placeholder}
+          className="min-w-0 flex-1 bg-transparent text-[13px] text-action-text outline-none placeholder:text-action-text/50"
         />
       </div>
       <span />
       <span />
-      <span className="text-[11px] text-white/70 px-2">Folder</span>
+      <span className="px-2 text-[11px] text-action-text/70">Folder</span>
     </div>
   );
 }

@@ -1,173 +1,22 @@
 /**
- * Finder-style file and folder rows.
- * Files: click to select, double-click to open, right-click context menu, draggable.
- * Folders: click to expand/collapse, drop target for moves.
+ * Finder-style file row (list view): click to select, double-click to open,
+ * right-click context menu, inline rename, draggable for moves.
  */
-
 import { cn } from "@houston-ai/core";
-import { useEffect, useRef, useState } from "react";
-import { INTERNAL_DRAG_TYPE, useFolderDropTarget } from "./drop-zone";
-import {
-  DisclosureChevron,
-  FolderIcon,
-  getFileIcon,
-} from "./file-manager-icons";
+import { useState } from "react";
+import { INTERNAL_DRAG_TYPE } from "./drop-zone";
+import { getFileIcon } from "./file-manager-icons";
 import { FileMenu, type FileMenuLabels } from "./file-menu";
-import type { FolderNode } from "./tree";
+import { RenameInput, useInlineRename } from "./inline-rename";
 import type { FileEntry } from "./types";
 import { formatFileManagerDate, formatSize, getKind } from "./utils";
 
-const DEPTH_INDENT = 20;
-const BASE_INDENT = 12;
+export const DEPTH_INDENT = 20;
+export const BASE_INDENT = 12;
 const TRIANGLE_AREA = 16;
 
 /** Column grid shared between header and rows. */
 export const COL_GRID = "1fr 160px 160px 80px 130px";
-
-export function FolderSection({
-  node,
-  depth,
-  selectedPath,
-  onSelect,
-  onOpen,
-  onReveal,
-  onDownload,
-  onDownloadFolder,
-  onDelete,
-  onRename,
-  onFilesDropped,
-  onDragActive,
-  onMove,
-  menuLabels,
-}: {
-  node: FolderNode;
-  depth: number;
-  selectedPath?: string | null;
-  onSelect?: (file: FileEntry) => void;
-  onOpen?: (file: FileEntry) => void;
-  onReveal?: (file: FileEntry) => void;
-  onDownload?: (file: FileEntry) => void;
-  /** Download the folder's subtree (as a zip). Adds a context menu to folder rows. */
-  onDownloadFolder?: (folder: FileEntry) => void;
-  onDelete?: (file: FileEntry) => void;
-  onRename?: (file: FileEntry, newName: string) => void;
-  onFilesDropped?: (files: File[], targetFolder?: string) => void;
-  onDragActive?: (folder: string | null) => void;
-  onMove?: (sourcePath: string, targetFolder: string | null) => void;
-  menuLabels?: FileMenuLabels;
-}) {
-  const [open, setOpen] = useState(true);
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const { isOver, folderHandlers } = useFolderDropTarget();
-
-  useEffect(() => {
-    onDragActive?.(isOver ? node.path : null);
-  }, [isOver, node.path, onDragActive]);
-
-  const padLeft = BASE_INDENT + depth * DEPTH_INDENT;
-  // The menu reuses FileMenu, which speaks FileEntry — implied parent folders
-  // have no listing entry, so synthesize one from the node.
-  const folderEntry: FileEntry = node.entry ?? {
-    path: node.path,
-    name: node.name,
-    extension: "",
-    size: 0,
-    is_directory: true,
-  };
-
-  return (
-    <>
-      <button
-        type="button"
-        draggable={!!onMove}
-        onDragStart={(e) => {
-          e.dataTransfer.setData(INTERNAL_DRAG_TYPE, node.path);
-          e.dataTransfer.effectAllowed = "move";
-          setDragging(true);
-        }}
-        onDragEnd={() => setDragging(false)}
-        onClick={() => setOpen(!open)}
-        onKeyDown={(e) => e.key === "Enter" && setOpen(!open)}
-        onContextMenu={(e) => {
-          if (!onDownloadFolder) return;
-          e.preventDefault();
-          setMenu({ x: e.clientX, y: e.clientY });
-        }}
-        className={cn(
-          "h-[24px] select-none cursor-default items-center w-full text-left",
-          isOver ? "!bg-[rgba(0,122,255,0.12)] !rounded-lg" : "",
-          dragging && "opacity-40",
-        )}
-        style={{ display: "grid", gridTemplateColumns: COL_GRID }}
-        {...folderHandlers}
-      >
-        <div
-          className="flex items-center gap-1.5 min-w-0"
-          style={{ paddingLeft: padLeft }}
-        >
-          <DisclosureChevron open={open} />
-          <FolderIcon />
-          <span className="text-[13px] truncate">{node.name}</span>
-        </div>
-        <span className="text-[11px] text-ink-muted truncate px-2">
-          {formatFileManagerDate(node.entry?.dateModified)}
-        </span>
-        <span className="text-[11px] text-ink-muted truncate px-2">
-          {formatFileManagerDate(node.entry?.dateCreated)}
-        </span>
-        <span className="text-[11px] text-ink-muted text-right px-2">--</span>
-        <span className="text-[11px] text-ink-muted truncate px-2">Folder</span>
-      </button>
-      {menu && (
-        <FileMenu
-          file={folderEntry}
-          position={menu}
-          onClose={() => setMenu(null)}
-          onDownload={onDownloadFolder}
-          labels={menuLabels}
-        />
-      )}
-      {open &&
-        node.children.map((child) =>
-          child.kind === "folder" ? (
-            <FolderSection
-              key={child.path}
-              node={child}
-              depth={depth + 1}
-              selectedPath={selectedPath}
-              onSelect={onSelect}
-              onOpen={onOpen}
-              onReveal={onReveal}
-              onDownload={onDownload}
-              onDownloadFolder={onDownloadFolder}
-              onDelete={onDelete}
-              onRename={onRename}
-              onFilesDropped={onFilesDropped}
-              onDragActive={onDragActive}
-              onMove={onMove}
-              menuLabels={menuLabels}
-            />
-          ) : (
-            <FileRow
-              key={child.entry.path}
-              file={child.entry}
-              depth={depth + 1}
-              selected={selectedPath === child.entry.path}
-              onSelect={onSelect}
-              onOpen={onOpen}
-              onReveal={onReveal}
-              onDownload={onDownload}
-              onDelete={onDelete}
-              onRename={onRename}
-              onMove={onMove}
-              menuLabels={menuLabels}
-            />
-          ),
-        )}
-    </>
-  );
-}
 
 export function FileRow({
   file,
@@ -196,31 +45,13 @@ export function FileRow({
 }) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [renaming, setRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState("");
-  const renameRef = useRef<HTMLInputElement>(null);
+  const rename = useInlineRename(
+    file.name,
+    onRename ? (newName) => onRename(file, newName) : undefined,
+  );
   const padLeft = BASE_INDENT + depth * DEPTH_INDENT + TRIANGLE_AREA;
   const hasMenu = onOpen || onReveal || onDownload || onDelete;
   const sec = selected ? "text-action-text/80" : "text-ink-muted";
-
-  const startRename = () => {
-    if (!onRename) return;
-    setRenameValue(file.name);
-    setRenaming(true);
-    requestAnimationFrame(() => {
-      const input = renameRef.current;
-      if (!input) return;
-      input.focus();
-      const dot = file.name.lastIndexOf(".");
-      input.setSelectionRange(0, dot > 0 ? dot : file.name.length);
-    });
-  };
-
-  const commitRename = () => {
-    const trimmed = renameValue.trim();
-    setRenaming(false);
-    if (trimmed && trimmed !== file.name) onRename?.(file, trimmed);
-  };
 
   return (
     <>
@@ -228,24 +59,24 @@ export function FileRow({
       <div
         role="row"
         tabIndex={0}
-        draggable={!!onMove && !renaming}
+        draggable={!!onMove && !rename.renaming}
         onDragStart={(e) => {
           e.dataTransfer.setData(INTERNAL_DRAG_TYPE, file.path);
           e.dataTransfer.effectAllowed = "move";
           setDragging(true);
         }}
         onDragEnd={() => setDragging(false)}
-        onClick={() => !renaming && onSelect?.(file)}
-        onDoubleClick={() => !renaming && onOpen?.(file)}
+        onClick={() => !rename.renaming && onSelect?.(file)}
+        onDoubleClick={() => !rename.renaming && onOpen?.(file)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && selected && !renaming) {
+          if (e.key === "Enter" && selected && !rename.renaming) {
             e.preventDefault();
-            startRename();
+            rename.start();
           }
-          if (e.key === "Escape" && renaming) setRenaming(false);
+          if (e.key === "Escape" && rename.renaming) rename.cancel();
         }}
         onContextMenu={(e) => {
-          if (!hasMenu || renaming) return;
+          if (!hasMenu || rename.renaming) return;
           e.preventDefault();
           onSelect?.(file);
           setMenu({ x: e.clientX, y: e.clientY });
@@ -253,48 +84,32 @@ export function FileRow({
         data-selected={selected || undefined}
         className={cn(
           "h-[24px] cursor-default select-none items-center outline-none",
-          selected && "!bg-[#2068d0] text-white rounded-lg",
+          selected && "rounded-lg !bg-action text-action-text",
           dragging && "opacity-40",
         )}
         style={{ display: "grid", gridTemplateColumns: COL_GRID }}
       >
         <div
-          className="flex items-center gap-1.5 min-w-0"
+          className="flex min-w-0 items-center gap-1.5"
           style={{ paddingLeft: padLeft }}
         >
           {getFileIcon(file.extension)}
-          {renaming ? (
-            <input
-              ref={renameRef}
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  commitRename();
-                }
-                if (e.key === "Escape") {
-                  e.stopPropagation();
-                  setRenaming(false);
-                }
-              }}
-              onBlur={commitRename}
-              className="flex-1 text-[13px] bg-input text-ink outline-none rounded px-1 -ml-1 min-w-0 border border-[#2068d0] shadow-sm"
-            />
+          {rename.renaming ? (
+            <RenameInput rename={rename} className="-ml-1" />
           ) : (
-            <span className="text-[13px] truncate">{file.name}</span>
+            <span className="truncate text-[13px]">{file.name}</span>
           )}
         </div>
-        <span className={cn("text-[11px] truncate px-2", sec)}>
+        <span className={cn("truncate px-2 text-[11px]", sec)}>
           {formatFileManagerDate(file.dateModified)}
         </span>
-        <span className={cn("text-[11px] truncate px-2", sec)}>
+        <span className={cn("truncate px-2 text-[11px]", sec)}>
           {formatFileManagerDate(file.dateCreated)}
         </span>
-        <span className={cn("text-[11px] text-right px-2", sec)}>
+        <span className={cn("px-2 text-right text-[11px]", sec)}>
           {formatSize(file.size)}
         </span>
-        <span className={cn("text-[11px] truncate px-2", sec)}>
+        <span className={cn("truncate px-2 text-[11px]", sec)}>
           {getKind(file.extension)}
         </span>
       </div>
@@ -304,7 +119,7 @@ export function FileRow({
           position={menu}
           onClose={() => setMenu(null)}
           onOpen={onOpen}
-          onRename={onRename ? startRename : undefined}
+          onRename={onRename ? rename.start : undefined}
           onReveal={onReveal}
           onDownload={onDownload}
           onDelete={onDelete}

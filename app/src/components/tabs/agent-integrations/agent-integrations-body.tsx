@@ -14,7 +14,7 @@ import {
 } from "../../integrations";
 import { CatalogPane } from "../../integrations-view/catalog-pane";
 import { InstalledStrip } from "../../integrations-view/installed-strip";
-import { AgentDisallowedAppsSection } from "./agent-disallowed-apps-section";
+import { AgentCatalogSections } from "./agent-catalog-sections";
 import {
   type AgentAppRow,
   type AgentIntegrationsView,
@@ -23,6 +23,8 @@ import {
 
 interface AgentIntegrationsBodyProps {
   view: AgentIntegrationsView;
+  /** This agent's id, for the inline "turn on for this agent" toggle. */
+  agentId: string;
   canEdit: boolean;
   /** The full toolkit catalog (drives the category filter + browse list). */
   catalog: IntegrationToolkit[];
@@ -57,6 +59,7 @@ interface AgentIntegrationsBodyProps {
  */
 export function AgentIntegrationsBody({
   view,
+  agentId,
   canEdit,
   catalog,
   allowlist,
@@ -84,7 +87,6 @@ export function AgentIntegrationsBody({
     () => usable.filter((r) => r.connection.status !== "active"),
     [usable],
   );
-  const disallowed = view.mode === "grants" ? view.disallowedRows : [];
   const installedCount = active.length + customItems.length;
 
   const tabs: CatalogShellTab[] = [
@@ -103,9 +105,11 @@ export function AgentIntegrationsBody({
           allowlist={allowlist}
           readOnly={!canEdit}
         >
-          {disallowed.length > 0 && (
-            <AgentDisallowedAppsSection rows={disallowed} />
-          )}
+          <AgentCatalogSections
+            view={view}
+            agentId={agentId}
+            canEdit={canEdit}
+          />
         </CatalogPane>
       ),
     },

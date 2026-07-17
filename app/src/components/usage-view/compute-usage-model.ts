@@ -102,9 +102,14 @@ export function bucketCompute(
     agent.tasks += tasks;
   }
 
-  const agents = [...perAgent.values()].sort(
-    (a, b) => b.workMs - a.workMs || a.agentSlug.localeCompare(b.agentSlug),
-  );
+  // Agents with nothing to show in the selected range are pure noise: an
+  // awake-but-never-working engine (rows carry awakeMs we don't render) or a
+  // deleted agent's residual zero days would list as "0m · 0 tasks".
+  const agents = [...perAgent.values()]
+    .filter((agent) => agent.workMs > 0 || agent.tasks > 0)
+    .sort(
+      (a, b) => b.workMs - a.workMs || a.agentSlug.localeCompare(b.agentSlug),
+    );
   return {
     buckets,
     perAgent: agents,
@@ -135,6 +140,15 @@ export function durationParts(ms: number): DurationParts {
     hours: Math.floor(totalMinutes / 60),
     minutes: String(totalMinutes % 60).padStart(2, "0"),
   };
+}
+
+/**
+ * A wire agent slug with no human content (the gateway's 16-hex ids). When it
+ * resolves to no known agent, the view shows "Removed agent" instead of raw
+ * hex — `agentLabel`'s humanizer only helps slugs with real words in them.
+ */
+export function isOpaqueSlug(slug: string): boolean {
+  return /^[0-9a-f]{12,}$/i.test(slug);
 }
 
 /** The section renders only where the gateway advertises the endpoint. */

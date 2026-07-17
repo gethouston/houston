@@ -12,11 +12,14 @@ import {
   useUploadFiles,
 } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { useFilePreviewLoader } from "../../hooks/use-file-preview-loader";
 import { useSaveDownload } from "../../hooks/use-save-download";
 import { isCoLocatedEngine, newEngineActive } from "../../lib/engine";
 import { tauriFiles } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
+import { useUIStore } from "../../stores/ui";
 import { FilePreviewDialog } from "../file-preview-dialog";
+import { buildBrowserLabels, buildMenuLabels } from "./files-tab-labels";
 
 export default function FilesTab({ agent }: TabProps) {
   const { t } = useTranslation("agents");
@@ -38,23 +41,12 @@ export default function FilesTab({ agent }: TabProps) {
     osDir !== undefined;
   const [preview, setPreview] = useState<FileEntry | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const browserLabels = {
-    columnName: t("files.columns.name"),
-    columnDateModified: t("files.columns.dateModified"),
-    columnDateCreated: t("files.columns.dateCreated"),
-    columnSize: t("files.columns.size"),
-    columnKind: t("files.columns.kind"),
-    loading: t("files.loading"),
-    browseFiles: t("files.browseFiles"),
-  };
-  const menuLabels = {
-    open: canUseLocalFiles ? t("files.menu.open") : t("files.menu.preview"),
-    rename: t("files.menu.rename"),
-    reveal: t("files.menu.reveal"),
-    download: t("files.menu.download"),
-    delete: t("files.menu.delete"),
-  };
+  const browserLabels = buildBrowserLabels(t);
+  const menuLabels = buildMenuLabels(t, canUseLocalFiles);
   const path = agent.folderPath;
+  const filesViewMode = useUIStore((s) => s.filesViewMode);
+  const setFilesViewMode = useUIStore((s) => s.setFilesViewMode);
+  const loadPreview = useFilePreviewLoader(path);
   const { data: files, isLoading: loading } = useFiles(path);
   const deleteFile = useDeleteFile(path);
   const renameFile = useRenameFile(path);
@@ -101,6 +93,10 @@ export default function FilesTab({ agent }: TabProps) {
       <FilesBrowser
         files={files ?? []}
         loading={loading}
+        view={filesViewMode}
+        onViewChange={setFilesViewMode}
+        rootLabel={agent.name}
+        loadPreview={loadPreview}
         onOpen={(file) =>
           canUseLocalFiles && osDir
             ? tauriFiles.open(osDir, file.path)

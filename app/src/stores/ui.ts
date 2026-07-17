@@ -103,6 +103,8 @@ interface UIState {
   storeFocusSlug: string | null;
   /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
   sidebarCollapsed: boolean;
+  /** Files tab layout: Drive-style card grid or Finder-style list. Persisted. */
+  filesViewMode: "grid" | "list";
   /** File shown by the global preview dialog, or null when closed. */
   filePreview: FilePreviewTarget | null;
   setViewMode: (mode: string) => void;
@@ -145,6 +147,7 @@ interface UIState {
   setStoreFocusSlug: (slug: string | null) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
+  setFilesViewMode: (mode: "grid" | "list") => void;
   setFilePreview: (preview: FilePreviewTarget | null) => void;
 }
 
@@ -188,6 +191,7 @@ export const useUIStore = create<UIState>()(
       importSeedPreview: null,
       storeFocusSlug: null,
       sidebarCollapsed: false,
+      filesViewMode: "grid",
       filePreview: null,
 
       setViewMode: (viewMode) => set({ viewMode }),
@@ -313,6 +317,7 @@ export const useUIStore = create<UIState>()(
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       toggleSidebarCollapsed: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      setFilesViewMode: (filesViewMode) => set({ filesViewMode }),
       setFilePreview: (filePreview) => set({ filePreview }),
     }),
     {
@@ -320,7 +325,10 @@ export const useUIStore = create<UIState>()(
       // Only durable layout preferences are persisted. Everything else in this
       // store is ephemeral (toasts, registered callbacks, dialog flags) and
       // must NOT survive a reload.
-      partialize: (state) => ({ sidebarCollapsed: state.sidebarCollapsed }),
+      partialize: (state) => ({
+        sidebarCollapsed: state.sidebarCollapsed,
+        filesViewMode: state.filesViewMode,
+      }),
     },
   ),
 );
