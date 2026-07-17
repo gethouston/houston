@@ -16,6 +16,7 @@
     "lucide-react": "0.577.0"
   },
   "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
   }
 }

@@ -1,18 +1,20 @@
 /**
- * Inline new-folder input, styled as a selected folder row.
+ * Inline-create card: a selected-looking folder card whose header is the
+ * name input. Enter/blur commits, Escape cancels.
  */
+import { cn } from "@houston-ai/core";
 import { useEffect, useRef, useState } from "react";
-import { DisclosureChevron, FolderIcon } from "./file-manager-icons";
-import { COL_GRID } from "./file-row";
+import { CardMeta, cardClass, cardPreviewClass } from "./card-chrome";
+import { FolderGlyph } from "./folder-card";
 
-export function NewFolderInput({
+export function NewFolderCard({
   onConfirm,
   onCancel,
-  placeholder = "untitled folder",
+  placeholder,
 }: {
   onConfirm: (name: string) => void;
   onCancel: () => void;
-  placeholder?: string;
+  placeholder: string;
 }) {
   const [value, setValue] = useState("");
   const committed = useRef(false);
@@ -34,13 +36,9 @@ export function NewFolderInput({
   };
 
   return (
-    <div
-      className="h-[24px] items-center rounded-lg bg-action"
-      style={{ display: "grid", gridTemplateColumns: COL_GRID }}
-    >
-      <div className="flex items-center gap-1.5 min-w-0 pl-3">
-        <DisclosureChevron open={false} className="invisible" />
-        <FolderIcon />
+    <div className={cardClass({ selected: true })}>
+      <div className="flex h-10 shrink-0 items-center gap-2 pr-1.5 pl-3">
+        <FolderGlyph small />
         <input
           ref={inputRef}
           value={value}
@@ -51,12 +49,18 @@ export function NewFolderInput({
           }}
           onBlur={commit}
           placeholder={placeholder}
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-action-text outline-none placeholder:text-action-text/50"
+          className="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-muted/60"
         />
       </div>
-      <span />
-      <span />
-      <span className="px-2 text-[11px] text-action-text/70">Folder</span>
+      <div
+        className={cn(
+          cardPreviewClass,
+          "flex items-center justify-center opacity-60",
+        )}
+      >
+        <FolderGlyph />
+      </div>
+      <CardMeta left="" />
     </div>
   );
 }
