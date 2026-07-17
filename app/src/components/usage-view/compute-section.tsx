@@ -19,7 +19,8 @@ import {
   bucketCompute,
   type ComputeRange,
   durationParts,
-  isOpaqueSlug,
+  onlyKnownAgents,
+  withRosterAgents,
 } from "./compute-usage-model";
 
 const RANGES: ComputeRange[] = ["week", "month", "quarter"];
@@ -69,10 +70,24 @@ export function ComputeSection() {
   const [range, setRange] = useState<ComputeRange>("week");
   const { data, isLoading, isError } = useComputeUsage(true);
 
-  const model = useMemo(
-    () => bucketCompute(data?.rows ?? [], range, Date.now()),
-    [data, range],
+  // The user sees exactly the agents they have (the sidebar roster) — deleted
+  // agents' history and anything a gateway might still leak are dropped before
+  // any number is computed, so the list, chart, and totals always agree.
+  const rows = useMemo(
+    () => onlyKnownAgents(data?.rows ?? [], agents),
+    [data, agents],
   );
+  const model = useMemo(
+    () => bucketCompute(rows, range, Date.now()),
+    [rows, range],
+  );
+  // Roster-driven list: a just-created agent appears immediately at
+  // "0m · 0 messages" — the roster updates on creation, no fetch needed.
+  const perAgent = useMemo(
+    () => withRosterAgents(agents, model.perAgent),
+    [agents, model],
+  );
+  const maxAgentMs = Math.max(1, ...perAgent.map((agent) => agent.workMs));
   const onlineNow = data?.awakeNow ?? [];
   // Selective direct labels: every nonzero bar on the roomy 7-day view; only
   // the tallest bar on dense views (the tooltip covers the rest).
@@ -110,7 +125,9 @@ export function ComputeSection() {
         <p className="py-6 text-sm text-ink-muted">
           {t("usage.compute.error")}
         </p>
-      ) : (data?.rows.length ?? 0) === 0 ? (
+      ) : perAgent.length === 0 ? (
+        // Only a roster with no agents at all is empty — agents without data
+        // still render (at zero), so a new agent is visible immediately.
         <Empty className="mt-2">
           <EmptyTitle>{t("usage.compute.empty.title")}</EmptyTitle>
           <EmptyDescription>{t("usage.compute.empty.body")}</EmptyDescription>
@@ -122,7 +139,7 @@ export function ComputeSection() {
               duration: formatDuration(t, model.totalWorkMs),
             })}
             <span aria-hidden> · </span>
-            {t("usage.compute.tasks", { count: model.totalTasks })}
+            {t("usage.compute.messages", { count: model.totalMessages })}
           </p>
           <ComputeBarChart
             buckets={model.buckets}
@@ -135,7 +152,9 @@ export function ComputeSection() {
                   day: "numeric",
                 }),
                 duration: formatDuration(t, bucket.workMs),
-                tasks: t("usage.compute.tasks", { count: bucket.tasks }),
+                messages: t("usage.compute.messages", {
+                  count: bucket.messages,
+                }),
               })
             }
             axisLabel={(bucket) =>
@@ -158,27 +177,25 @@ export function ComputeSection() {
               {t("usage.compute.byAgent")}
             </h3>
             <ul className="flex flex-col">
-              {model.perAgent.map((agent) => {
+              {perAgent.map((agent) => {
+                // Every entry came from the roster (or survived
+                // onlyKnownAgents), so the slug always resolves.
                 const match = agents.find(
                   (a) =>
                     a.folderPath === agent.agentSlug ||
                     a.id === agent.agentSlug,
                 );
-                // A slug with no matching agent and no words in it is a
-                // deleted agent's wire id — say so instead of showing hex.
-                const name =
-                  !match && isOpaqueSlug(agent.agentSlug)
-                    ? t("usage.compute.removedAgent")
-                    : agentLabel(agent.agentSlug, agents);
                 return (
                   <ComputeAgentRow
                     key={agent.agentSlug}
                     agent={agent}
-                    name={name}
+                    name={agentLabel(agent.agentSlug, agents)}
                     color={resolveAgentColor(match?.color)}
-                    max={model.maxAgentMs}
+                    max={maxAgentMs}
                     duration={formatDuration(t, agent.workMs)}
-                    tasks={t("usage.compute.tasks", { count: agent.tasks })}
+                    messages={t("usage.compute.messages", {
+                      count: agent.messages,
+                    })}
                   />
                 );
               })}
