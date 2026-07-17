@@ -149,10 +149,32 @@ route), plus **Billing** conditional last (see the Spaces billing section).
 `OrgViewContext` (`{org, role, isOwner}`), and each section owns its data + UI:
 
 - **People** (`members-tab.tsx`) — roster + pending invites. Owner mutates
-  (add/remove/re-role, revoke invite); admin sees it read-only. This is the ONLY
+  (add/remove/re-role, revoke invite); admin sees those read-only. This is the ONLY
   members surface: the old Settings > Members section (and the whole `org` i18n
   namespace it used) was deleted as a duplicate; "members" is no longer a
-  `SettingsSectionId`.
+  `SettingsSectionId`. **Each roster row is a drill-in** (`onOpenMember`, mirroring
+  Agents' `onOpenAgent`) into the **per-member access lens** (`member-detail.tsx`),
+  the INVERSE of the Share dialog: one PERSON, every agent. The shell holds the
+  drilled-in member as `detailMemberId` (resolved against `org.members` so a roster
+  reload stays live) and renders a back bar (label `org.tabs.people`) + the detail.
+  The pure inversion is `member-detail-model.ts` `memberAgentAccess(member, agents,
+  caps)` → `{everyone, explicit}` rows (reusing the Share dialog's
+  `currentAssignments`/`isSharedWithEveryone`): everyone-agents (empty assignee set)
+  are always read-only (v1 never converts an everyone-agent to an explicit roster
+  from here — too destructive for one toggle); explicit agents carry the member's
+  level (`none`/`user`/`manager`/`unknown` — `unknown` when the viewer can't read
+  the roster; owner reads all, owner-first) and `canEdit = isAgentManager(caps,
+  agent)`. Rows the viewer manages get a Manager/Can use/No access dropdown; the
+  rest render read-only. Writes reuse `useShareAgent` + `writeMemberAssignment`
+  (set-replace, never strips the owner) → `setAgentAssignments`; self-edit is
+  confirm-gated via `memberActionNeedsConfirm` (delegates to the dialog's
+  `needsSelfLockoutConfirm`). Manager is disabled for org-role `user` members
+  (`canMemberBeManager`, gateway 400s `manager_requires_admin`). The gateway is the
+  sole enforcer; owner sees + edits the full fleet, a non-owner admin only agents
+  they manage. Tested: `app/tests/member-detail-model.test.ts` +
+  e2e `packages/web/e2e/permissions-people.spec.ts` (fake host `/__test__/org`
+  arms a multi-member roster + a fleet with per-agent `assignments`, and
+  `PUT /v1/agents/:slug/assignments` set-replaces).
 - **Agents** (`agents-tab.tsx`) — org agents with assignment counts. Each card
   drills into an in-Admin agent detail (`admin-agent-detail.tsx`) that reuses
   the Agent Settings access sections (`AgentAccessSection`,
@@ -197,6 +219,11 @@ yourself). Render gated by `canManageAssignments`; the gateway is the enforcer.
 
 Sharing a **personal** agent has no members to assign, so that path opens the
 **share-via-team** pipeline instead (see **Spaces > Share-via-team pipeline**).
+
+The **inverse lens** (one person, every agent) lives in Admin > People's member
+drill-in — see the People bullet above. Both lenses share the roster math in
+`components/tabs/agent-access-model.ts`, so access is never derived two ways;
+the member lens reuses `share.levels.*` copy and adds `org.memberDetail.*`.
 
 ---
 
@@ -552,6 +579,20 @@ reads as admin POLICY via `teams:integrations.allowlist.policyHelper`. Member co
 surfaces stay account-connection language ("connected to your account"), never "allowed".
 The pure split is `browseCatalogView` (`integrations/model.ts`); off Teams
 (`allowlist === null`) nothing is ever locked.
+
+**Role-aware signposting (Part B): a fixer sees a deep link, not "ask your admin".** Both
+blocked-state surfaces (the disallowed section AND the locked browse rows) accept an optional
+`PermissionsFix` resolver. When the VIEWER can lift the blocking ceiling, the ask-your-admin
+line is replaced by an "Enable it in Permissions" button that deep-links into the Admin
+Permissions area (`ORGANIZATION_VIEW_ID` + an org-nav request). The destination follows the
+ceiling: an app outside the ORG ceiling routes the owner to the org Allowed apps section
+(`requestTab("allowedIntegrations")`); an app merely outside the AGENT ceiling routes the
+agent's manager to that agent's Admin drill-in (`requestAgentDetail`, `org-nav-store.ts`).
+Members and non-admin managers keep exactly the old copy (the resolver returns `undefined`).
+Attribution + authority live in `integrations/blocked-ceiling.ts` (`blockingCeiling`,
+`resolvePermissionsFix`), built at the data-holding surfaces (global page / agent tab) and
+threaded down as props so the leaf sections stay presentational. See `integrations.md`
+§3 for the full wiring.
 
 ---
 

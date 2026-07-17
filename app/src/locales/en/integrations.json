@@ -70,6 +70,7 @@
     "heading": "Turned off in your workspace",
     "subtitle": "Your admin picked which apps can be used here. They exist on Houston, they are just off in this workspace.",
     "askAdmin": "Ask your admin to enable {{name}}",
+    "enableInPermissions": "Enable it in Permissions",
     "more_one": "{{count}} more app turned off in your workspace",
     "more_other": "{{count}} more apps turned off in your workspace"
   },

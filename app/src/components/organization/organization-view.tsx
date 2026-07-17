@@ -1,6 +1,5 @@
-import type { OrgInfo, OrgRole } from "@houston-ai/engine-client";
-import { ChevronLeft } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import type { OrgInfo, OrgMember, OrgRole } from "@houston-ai/engine-client";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { useOrgSettings } from "../../hooks/queries/use-org-settings";
@@ -9,18 +8,14 @@ import { canSeeBillingTab } from "../../lib/org-roles";
 import { isTeamWorkspace } from "../../lib/space-id";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { PageContainer, PageHeader } from "../shell/page-shell";
-import ActivityTab from "./activity-tab";
+import { PageContainer } from "../shell/page-shell";
 import { AdminAgentDetail } from "./admin-agent-detail";
+import { AdminDetailScreen } from "./admin-detail-screen";
 import { AdminIndex } from "./admin-index";
-import AgentsTab from "./agents-tab";
-import AllowedIntegrationsTab from "./allowed-integrations-tab";
-import AllowedModelsTab from "./allowed-models-tab";
-import BillingTab from "./billing-tab";
-import MembersTab from "./members-tab";
+import { AdminSectionDetail } from "./admin-section-detail";
+import { MemberDetail } from "./member-detail";
 import { useOrgNav } from "./org-nav-store";
 import { type OrgTabId, orgTabIds } from "./org-view-model";
-import UsageTab from "./usage-tab";
 
 /**
  * The shared context every Organization section receives. `org` is the loaded
@@ -40,21 +35,6 @@ export interface OrgViewContext {
 export interface OrgTabProps {
   ctx: OrgViewContext;
 }
-
-// Agents is off this map on purpose: it takes an extra `onOpenAgent` prop (the
-// fleet drill-in) that the generic `{ ctx }` contract can't carry, so the shell
-// renders it explicitly. Every OTHER section stays on the generic path.
-const SECTION_COMPONENTS: Record<
-  Exclude<OrgTabId, "agents">,
-  (props: OrgTabProps) => ReactNode
-> = {
-  people: MembersTab,
-  activity: ActivityTab,
-  usage: UsageTab,
-  allowedIntegrations: AllowedIntegrationsTab,
-  allowedModels: AllowedModelsTab,
-  billing: BillingTab,
-};
 
 /**
  * The top-level Admin (Organization) dashboard (Teams v2 + C8 billing). A shell
@@ -79,6 +59,7 @@ export function OrganizationView() {
   const agents = useAgentStore((s) => s.agents);
   const agentCount = agents.length;
   const requestedTab = useOrgNav((s) => s.requestedTab);
+  const requestedAgentId = useOrgNav((s) => s.requestedAgentId);
   const clearRequestedTab = useOrgNav((s) => s.clearRequestedTab);
 
   // The policy sections exist only on a Teams host (no `/org/settings` route on
@@ -106,20 +87,35 @@ export function OrganizationView() {
     ? (agents.find((a) => a.id === detailAgentId) ?? null)
     : null;
 
+  // The member drilled into inside the People section (per-person access lens),
+  // held as an id — not the object — so the roster reloading (a role change)
+  // keeps the detail pointed at the live member; if the id drops out of the
+  // roster the detail falls back to the list.
+  const [detailMemberId, setDetailMemberId] = useState<string | null>(null);
+
   // Leaving the Agents section closes any open drill-in, so re-entering Agents
   // (or any other section) always lands on the grid, never a stale detail.
   useEffect(() => {
     if (active !== "agents") setDetailAgentId(null);
   }, [active]);
 
+  // Same for the People section: leaving it closes the member lens.
+  useEffect(() => {
+    if (active !== "people") setDetailMemberId(null);
+  }, [active]);
+
   // Honor a deep link straight into a section's detail (the C8 team-status
-  // banner routes to Billing), then clear it so a later plain nav to the
-  // dashboard opens the index again.
+  // banner routes to Billing; the blocked-app "Enable it in Permissions" CTA
+  // routes to a specific agent's drill-in), then clear it so a later plain nav
+  // to the dashboard opens the index again.
   useEffect(() => {
     if (requestedTab === null) return;
-    if (visibleIds.includes(requestedTab)) setActive(requestedTab);
+    if (visibleIds.includes(requestedTab)) {
+      setActive(requestedTab);
+      if (requestedAgentId) setDetailAgentId(requestedAgentId);
+    }
     clearRequestedTab();
-  }, [requestedTab, visibleIds, clearRequestedTab]);
+  }, [requestedTab, requestedAgentId, visibleIds, clearRequestedTab]);
 
   // If the visible set drops the active section (e.g. switching out of a team
   // space hides Billing), fall back to the index rather than a blank body.
@@ -129,6 +125,10 @@ export function OrganizationView() {
 
   const ctx: OrgViewContext | null = org
     ? { org, role: org.role, isOwner: org.role === "owner" }
+    : null;
+
+  const detailMember: OrgMember | null = detailMemberId
+    ? (org?.members?.find((m) => m.userId === detailMemberId) ?? null)
     : null;
 
   if (active === null) {
@@ -151,61 +151,43 @@ export function OrganizationView() {
   // to the grid (clears the drill-in) while `active` stays "agents".
   if (active === "agents" && detailAgent) {
     return (
-      <div className="flex h-full flex-col">
-        <div className="shrink-0 px-8 pt-8 pb-2">
-          <button
-            type="button"
-            onClick={() => setDetailAgentId(null)}
-            className="inline-flex cursor-pointer items-center gap-1 text-sm text-ink-muted transition-colors hover:text-ink"
-          >
-            <ChevronLeft className="size-4" />
-            {t("org.tabs.agents")}
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-          <AdminAgentDetail agent={detailAgent} />
-        </div>
-      </div>
+      <AdminDetailScreen
+        backLabel={t("org.tabs.agents")}
+        onBack={() => setDetailAgentId(null)}
+      >
+        <AdminAgentDetail agent={detailAgent} />
+      </AdminDetailScreen>
+    );
+  }
+
+  // Per-person access lens: one member's agents, one level below the People
+  // roster. Its own back bar returns to the roster (clears the drill-in) while
+  // `active` stays "people".
+  if (active === "people" && detailMember) {
+    return (
+      <AdminDetailScreen
+        backLabel={t("org.tabs.people")}
+        onBack={() => setDetailMemberId(null)}
+      >
+        <PageContainer className="pb-10">
+          <MemberDetail member={detailMember} />
+        </PageContainer>
+      </AdminDetailScreen>
     );
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="shrink-0 px-8 pt-8 pb-2">
-        <button
-          type="button"
-          onClick={() => setActive(null)}
-          className="inline-flex cursor-pointer items-center gap-1 text-sm text-ink-muted transition-colors hover:text-ink"
-        >
-          <ChevronLeft className="size-4" />
-          {t("org.title")}
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-        <PageContainer className="pb-10">
-          <PageHeader title={t(`org.tabs.${active}`)} className="mb-6" />
-          {ctx ? (
-            active === "agents" ? (
-              <AgentsTab
-                ctx={ctx}
-                onOpenAgent={(agent) => setDetailAgentId(agent.id)}
-              />
-            ) : (
-              renderSection(active, ctx)
-            )
-          ) : (
-            <p className="py-10 text-sm text-ink-muted">
-              {isLoading ? t("org.loading") : t("org.unavailable")}
-            </p>
-          )}
-        </PageContainer>
-      </div>
-    </div>
+    <AdminDetailScreen
+      backLabel={t("org.title")}
+      onBack={() => setActive(null)}
+    >
+      <AdminSectionDetail
+        active={active}
+        ctx={ctx}
+        isLoading={isLoading}
+        onOpenAgent={(agent) => setDetailAgentId(agent.id)}
+        onOpenMember={(member) => setDetailMemberId(member.userId)}
+      />
+    </AdminDetailScreen>
   );
-}
-
-/** Render a generic (non-agents) section from its shared `{ ctx }` contract. */
-function renderSection(id: Exclude<OrgTabId, "agents">, ctx: OrgViewContext) {
-  const Section = SECTION_COMPONENTS[id];
-  return <Section ctx={ctx} />;
 }

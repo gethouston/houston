@@ -11,6 +11,12 @@ export {
 export { AppLogo } from "./app-logo";
 export { AppRow } from "./app-row";
 export {
+  type BlockingCeiling,
+  blockingCeiling,
+  type PermissionsFix,
+  resolvePermissionsFix,
+} from "./blocked-ceiling";
+export {
   BROWSE_PAGE_SIZE,
   type BrowseCatalogView,
   browseCatalog,
@@ -36,6 +42,7 @@ export {
 } from "./connection-status-badge";
 export { CustomIntegrationsSection } from "./custom-integrations-section";
 export { DisconnectAppDialog } from "./disconnect-app-dialog";
+export { EnableInPermissionsButton } from "./enable-in-permissions-button";
 export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
 export {
   INTEGRATION_PROVIDER,

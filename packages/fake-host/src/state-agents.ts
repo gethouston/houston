@@ -9,6 +9,7 @@ import {
   type CpAgent,
   EPOCH,
   emitDomain,
+  type FakeAssignment,
   fileKey,
   state,
 } from "./state-store";
@@ -44,6 +45,59 @@ export function deleteAgent(id: string): boolean {
   if (state.agents.length === before) return false;
   emitDomain("AgentsChanged");
   return true;
+}
+
+// ---- Teams v2 access (multiplayer) ----
+
+/** One armed Teams agent for the per-member access lens (`/__test__/org`). */
+export interface AgentAccessSeed {
+  id: string;
+  name: string;
+  /** Explicit roster; omit (or an empty array with `everyone`) for org-wide. */
+  assignments?: FakeAssignment[];
+  /** `true` = shared with everyone (empty assignee set = the everyone sentinel). */
+  everyone?: boolean;
+}
+
+/**
+ * Replace the agent fleet with a Teams-shaped set carrying per-agent
+ * assignments, so `GET /agents` serves the access fields the per-member lens
+ * reads (`assignedUserIds`/`assignments`/`access`). Owner-first: the served
+ * caller's `access` is `manager` on every agent. `everyone` agents get the
+ * empty-assignee sentinel.
+ */
+export function armAgents(seed: AgentAccessSeed[]): CpAgent[] {
+  state.agents = seed.map((row) => {
+    const assignments = row.everyone ? [] : (row.assignments ?? []);
+    return {
+      id: row.id,
+      workspaceId: SEED_WORKSPACE_ID,
+      name: row.name,
+      createdAt: EPOCH,
+      access: "manager",
+      assignments,
+      assignedUserIds: assignments.map((a) => a.userId),
+    };
+  });
+  emitDomain("AgentsChanged");
+  return state.agents;
+}
+
+/**
+ * Set-replace one agent's assignee roster (the `PUT /v1/agents/:slug/assignments`
+ * body), mirroring the real gateway. Recomputes `assignedUserIds` so a
+ * subsequent `GET /agents` reflects the write. Returns `null` for an unknown id.
+ */
+export function setAgentAssignments(
+  agentId: string,
+  assignments: FakeAssignment[],
+): CpAgent | null {
+  const agent = state.agents.find((a) => a.id === agentId);
+  if (!agent) return null;
+  agent.assignments = assignments;
+  agent.assignedUserIds = assignments.map((a) => a.userId);
+  emitDomain("AgentsChanged");
+  return agent;
 }
 
 // ---- agent files (.houston/**) ----

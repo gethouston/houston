@@ -177,11 +177,14 @@ describe("agentIntegrationsView", () => {
 
 /**
  * E7 (task B): the allowlist EDITOR left the Integrations tab for Agent
- * Settings > Access, so the tab now renders identically for members and
- * managers. The node runner has no DOM, so these guard the refactor's
- * user-visible contract on the tab source (the repo's React-test idiom):
- * the editor and its write path are gone, while the read-only effective-
- * allowlist FILTERING of the browse catalog stays.
+ * Settings > Access, so the tab renders no editor and no settings WRITE path.
+ * It does, however, read the authority gates for role-aware blocked-state
+ * SIGNPOSTING (Part B): a viewer who can lift a ceiling gets an "Enable it in
+ * Permissions" deep link instead of the ask-your-admin copy. The node runner
+ * has no DOM, so these guard the refactor's user-visible contract on the tab
+ * source (the repo's React-test idiom): the editor and its write path are gone,
+ * while the read-only effective-allowlist FILTERING of the browse catalog and
+ * the role-aware fix resolver stay.
  */
 describe("E7 integrations tab source", () => {
   const src = read(
@@ -193,9 +196,16 @@ describe("E7 integrations tab source", () => {
     ok(!src.includes("agent-allowlist-section"), "editor import removed");
   });
 
-  it("drops the manager-only settings write path", () => {
+  it("drops the settings write path but keeps role-aware signposting", () => {
+    // No editor means no settings MUTATION on this tab...
     ok(!src.includes("useSetAgentSettings"), "settings mutation hook dropped");
-    ok(!src.includes("isAgentManager"), "manager gate no longer needed");
+    // ...but the tab now resolves the role-aware "Enable it in Permissions" CTA,
+    // so it reads authority gates for signposting only, never to render an editor.
+    ok(src.includes("resolvePermissionsFix"), "builds the role-aware fix");
+    ok(
+      src.includes("permissionsFix={permissionsFix}"),
+      "hands the fix to the body",
+    );
   });
 
   it("hands the effective allowlist down so blocked apps render as locked rows", () => {

@@ -14,6 +14,7 @@ import {
   ConnectWaitingPanel,
   categoryLabel,
   groupCatalogByCategory,
+  type PermissionsFix,
   SECTION_PREVIEW_CAP,
   SectionHeader,
   UNCATEGORIZED,
@@ -46,6 +47,7 @@ export function CategoryCatalog({
   query,
   category,
   allowlist = null,
+  lockedFix,
 }: {
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
@@ -55,6 +57,9 @@ export function CategoryCatalog({
   category: string;
   /** The Teams effective allowlist (`null` = unrestricted, no locks ever). */
   allowlist?: string[] | null;
+  /** Role-aware "Enable it in Permissions" resolver for locked rows; absent =
+   *  the read-only member view (ask-your-admin copy). */
+  lockedFix?: PermissionsFix;
 }) {
   const { t } = useTranslation("integrations");
 
@@ -170,7 +175,9 @@ export function CategoryCatalog({
         </div>
       )}
 
-      {locked.length > 0 && <CatalogLockedSection locked={locked} />}
+      {locked.length > 0 && (
+        <CatalogLockedSection locked={locked} onEnable={lockedFix} />
+      )}
 
       <AppInfoDialog
         toolkit={infoToolkit}

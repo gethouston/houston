@@ -7,14 +7,20 @@ import {
 } from "../../hooks/queries";
 import { useOrgSettings } from "../../hooks/queries/use-org-settings";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { canEditOrgSettings } from "../../lib/org-roles";
+import { useUIStore } from "../../stores/ui";
 import {
   CustomIntegrationsSection,
   INTEGRATION_PROVIDER,
+  type PermissionsFix,
   ReconnectBanner,
+  resolvePermissionsFix,
   useConnectedApps,
   useConnectFlow,
   useConnectionSelection,
 } from "../integrations";
+import { ORGANIZATION_VIEW_ID } from "../organization/id";
+import { useOrgNav } from "../organization/org-nav-store";
 import { PageHeader } from "../shell/page-shell";
 import { CatalogPane } from "./catalog-pane";
 import { ConnectedAppDialogs } from "./connected-app-dialogs";
@@ -74,6 +80,29 @@ export function IntegrationsReady({
     : null;
   const selection = useConnectionSelection(apps);
 
+  // Role-aware signposting for the locked rows. The global page has no agent
+  // context, so its `allowlist` IS the org ceiling and every locked app is
+  // org-blocked: only an owner (`canEditOrgSettings`) gets the CTA into the org
+  // Allowed apps section; everyone else keeps the ask-your-admin copy.
+  const requestTab = useOrgNav((s) => s.requestTab);
+  const setViewMode = useUIStore((s) => s.setViewMode);
+  const canEditOrg = canEditOrgSettings(capabilities);
+  const lockedFix: PermissionsFix = useMemo(
+    () =>
+      resolvePermissionsFix({
+        orgAllowedToolkits: allowlist,
+        agentAllowedToolkits: null,
+        canEditOrg,
+        canManageAgent: false,
+        openOrgApps: () => {
+          requestTab("allowedIntegrations");
+          setViewMode(ORGANIZATION_VIEW_ID);
+        },
+        openAgentDetail: () => {},
+      }),
+    [allowlist, canEditOrg, requestTab, setViewMode],
+  );
+
   // `null` = the host doesn't serve custom integrations: no Custom tab (the
   // shell drops the tab chrome), no custom tiles in the strip.
   const customItems = custom.data ?? [];
@@ -102,6 +131,7 @@ export function IntegrationsReady({
           connectFlow={connectFlow}
           onRemoveRecovering={(toolkit) => disconnect.mutate(toolkit)}
           allowlist={allowlist}
+          lockedFix={lockedFix}
         />
       ),
     },

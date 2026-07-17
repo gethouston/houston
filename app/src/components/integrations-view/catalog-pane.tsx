@@ -8,6 +8,7 @@ import {
   type ConnectFlow,
   catalogCategorySlugs,
   categoryLabel,
+  type PermissionsFix,
   type RecoveringAppRow,
   UNCATEGORIZED,
 } from "../integrations";
@@ -36,6 +37,7 @@ export function CatalogPane({
   connectFlow,
   onRemoveRecovering,
   allowlist = null,
+  lockedFix,
   readOnly = false,
   children,
 }: {
@@ -48,6 +50,9 @@ export function CatalogPane({
   onRemoveRecovering: (toolkit: string) => void;
   /** The Teams effective allowlist (`null` = unrestricted, no locks ever). */
   allowlist?: string[] | null;
+  /** Role-aware "Enable it in Permissions" resolver for locked rows (a viewer
+   *  who can lift the ceiling); absent = the read-only member view. */
+  lockedFix?: PermissionsFix;
   /** Viewer without edit rights: recovery rows lose their actions. */
   readOnly?: boolean;
   /** Surface-specific sections between recovery and the catalog. */
@@ -114,6 +119,7 @@ export function CatalogPane({
           query={query}
           category={category}
           allowlist={allowlist}
+          lockedFix={lockedFix}
         />
       )}
     </div>

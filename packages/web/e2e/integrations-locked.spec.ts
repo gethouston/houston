@@ -16,13 +16,23 @@ import { expect, test } from "./support/fixtures";
  * frontend. See `@houston/fake-host` README + `knowledge-base/ui-testing.md`.
  */
 
-/** The realistic Teams team-space capabilities: integrations on, multiplayer + Teams. */
+/**
+ * A plain team MEMBER on a Teams team space: integrations on, multiplayer +
+ * Teams, org role `user`. This is the persona the lock mechanics target — a
+ * member can't lift any ceiling, so a blocked app reads as the read-only
+ * ask-your-admin row. The role-aware CTA is covered separately (an owner), so
+ * these mechanics stay pinned to the member copy.
+ */
 const TEAMS_CAPS = {
   integrations: ["composio"],
   multiplayer: true,
   teams: true,
-  role: "owner",
+  role: "user",
 };
+
+/** The same Teams space seen by an OWNER, who CAN lift the ceiling: blocked apps
+ *  swap the ask-admin line for the "Enable it in Permissions" deep link. */
+const OWNER_CAPS = { ...TEAMS_CAPS, role: "owner" };
 
 async function armCapabilities(
   request: APIRequestContext,
@@ -145,6 +155,44 @@ test("the locked section caps at 8 rows with a +N more line", async ({
   await expect(
     page.getByText("6 more apps turned off in your workspace"),
   ).toBeVisible();
+});
+
+test("owner: a blocked app swaps the ask-admin line for an Enable-in-Permissions deep link", async ({
+  page,
+  request,
+}) => {
+  // Same shape as the member mechanics test (Slack the sole blocked app), but the
+  // viewer is an OWNER: the org ceiling is unset, so Slack is agent-ceiling
+  // blocked and the owner (an agent-manager who can open the Admin dashboard)
+  // gets the fix CTA in place of the ask-your-admin line.
+  const allowlist = SEED_TOOLKIT_SLUGS.filter((s) => s !== "slack");
+  await armCapabilities(request, OWNER_CAPS);
+  await armAllowlist(request, {
+    allowedToolkits: allowlist,
+    orgAllowedToolkits: null,
+  });
+  await clearConnections(request);
+  await openIntegrationsTab(page);
+
+  // The locked section still renders (the app is off), but Slack's row now
+  // carries the CTA, not the ask-admin line.
+  await expect(
+    page.getByRole("heading", { name: "Turned off in your workspace" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Enable it in Permissions" }).first(),
+  ).toBeVisible();
+  await expect(page.getByText("Ask your admin to enable Slack")).toHaveCount(0);
+
+  // Clicking the CTA deep-links into the Admin Permissions area, leaving the
+  // agent Integrations tab (its locked section is gone).
+  await page
+    .getByRole("button", { name: "Enable it in Permissions" })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Turned off in your workspace" }),
+  ).toHaveCount(0);
 });
 
 test("single-player: the browse catalog renders but no locked section ever appears", async ({

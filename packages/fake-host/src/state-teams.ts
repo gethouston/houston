@@ -14,6 +14,7 @@
 import type {
   ComputeUsageSeed,
   FakeCapabilities,
+  FakeMember,
   TeamsSettings,
 } from "./state-store";
 import { state } from "./state-store";
@@ -48,6 +49,23 @@ export function getTeamsSettings(): TeamsSettings {
 export function setTeamsSettings(patch: Partial<TeamsSettings>): TeamsSettings {
   state.teamsSettings = { ...state.teamsSettings, ...patch };
   return state.teamsSettings;
+}
+
+/**
+ * The armed org roster, or `null` (the default) — in which case `GET /v1/org`
+ * synthesizes the single-self roster from the advertised role, preserving the
+ * pre-feature shape. Armed by `/__test__/org` for the per-member access lens.
+ */
+export function getOrgMembers(): FakeMember[] | null {
+  return state.orgMembers;
+}
+
+/** Replace (or disarm with `null`) the org roster `GET /v1/org` serves. */
+export function setOrgMembers(
+  members: FakeMember[] | null,
+): FakeMember[] | null {
+  state.orgMembers = members;
+  return state.orgMembers;
 }
 
 /** The armed compute-usage dataset; `null` = the route 404s (feature off). */

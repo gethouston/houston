@@ -35,9 +35,10 @@ interface AdminIndexProps {
  * self-describing, scannable row.
  *
  * Presentational only: the shell owns loading/gating and passes the visible id
- * set plus each row's value. The lead card (People, Agents) and Insights card
- * always render; Access renders only when the policy sections are visible (a
- * Teams host); Billing only when it is in the visible set.
+ * set plus each row's value. The PERMISSIONS card is the admin home for access
+ * control — People (who can use which agents), Agents (each agent's access +
+ * integration/model ceilings), and, on a Teams host, the two org-wide ceilings.
+ * Insights always renders; Billing only when it is in the visible set.
  */
 export function AdminIndex({
   visibleIds,
@@ -76,7 +77,7 @@ export function AdminIndex({
       />
 
       <div className="space-y-8">
-        <SettingsCard>
+        <SettingsCard title={t("org.index.groups.permissions")}>
           <SettingsRow
             icon={Users}
             title={t("org.tabs.people")}
@@ -95,26 +96,25 @@ export function AdminIndex({
             value={t("org.index.values.agents", { count: agentCount })}
             onClick={() => onSelect("agents")}
           />
+          {showAccess && (
+            <>
+              <SettingsRow
+                icon={Blocks}
+                title={t("org.tabs.allowedIntegrations")}
+                description={t("org.index.rows.allowedIntegrations")}
+                value={appsValue}
+                onClick={() => onSelect("allowedIntegrations")}
+              />
+              <SettingsRow
+                icon={Boxes}
+                title={t("org.tabs.allowedModels")}
+                description={t("org.index.rows.allowedModels")}
+                value={modelsValue}
+                onClick={() => onSelect("allowedModels")}
+              />
+            </>
+          )}
         </SettingsCard>
-
-        {showAccess && (
-          <SettingsCard title={t("org.index.groups.access")}>
-            <SettingsRow
-              icon={Blocks}
-              title={t("org.tabs.allowedIntegrations")}
-              description={t("org.index.rows.allowedIntegrations")}
-              value={appsValue}
-              onClick={() => onSelect("allowedIntegrations")}
-            />
-            <SettingsRow
-              icon={Boxes}
-              title={t("org.tabs.allowedModels")}
-              description={t("org.index.rows.allowedModels")}
-              value={modelsValue}
-              onClick={() => onSelect("allowedModels")}
-            />
-          </SettingsCard>
-        )}
 
         <SettingsCard title={t("org.index.groups.insights")}>
           <SettingsRow
