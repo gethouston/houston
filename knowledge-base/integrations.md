@@ -451,23 +451,20 @@ integrations** tab (§2, `teams.md`).
   (embedded by the page's non-ready states) keeps its own heading + count chip and
   the `custom.empty` paragraph.
 
-**Settings > Connected accounts — FOLDED into the Integrations page.** The
-standalone settings section is GONE (`connected-accounts*.tsx` deleted, the id
-`"connectedAccounts"` removed from `SETTINGS_SECTION_IDS`, so `parseSettingsSection`
-now REJECTS it and a stale deep-link can never land). The global Integrations page
-is the ONE by-app lens — connection status + which agents can use each app — so
-there is no second account home to keep in sync. The first settings card KEEPS its
-row (icon `Blocks`, title `settings:nav.connectedAccounts`, description
-`settings:index.rows.connectedAccounts`, the same live app-count badge
-`settings:index.values.appsCount` from `useIntegrationConnections`), but its
-`onClick` is now a **deep link** — `setViewMode(INTEGRATIONS_VIEW_ID)` — straight to
-the page, not a settings sub-screen (`settings-index.tsx`). The
-`settings:connectedAccounts.*` copy block (`title`/`subtitle`/`heading`/`empty`/
-`connectMore`) and the `home.usedByNone`/`home.usedByAll` chip keys were deleted
-with it. The grants surface itself lives in the page's `AppDetailDialog` (per-agent
-`Switch`es via `useAgentGrantToggle`, `app/src/hooks/queries/use-agent-grant-toggle.ts`,
-each row editable per `editableAgentIds` from `canEditAgentGrants`) — see the global
-page block above.
+**Settings > Connected accounts — REMOVED entirely.** The standalone settings
+section is GONE (`connected-accounts*.tsx` deleted, the id `"connectedAccounts"`
+removed from `SETTINGS_SECTION_IDS`, so `parseSettingsSection` now REJECTS it and
+a stale deep-link can never land), and Settings carries NO integrations row at
+all — a shortcut row duplicating the sidebar's Integrations nav was pure chrome
+(Felipe's call). The global Integrations page is the ONE by-app lens —
+connection status + which agents can use each app — reached only via its sidebar
+nav. The `settings:connectedAccounts.*` copy block, the `nav.connectedAccounts` /
+`index.rows.connectedAccounts` / `index.values.appsCount` row keys, and the
+`home.usedByNone`/`home.usedByAll` chip keys were all deleted. The grants surface
+itself lives in the page's `AppDetailDialog` (per-agent `Switch`es via
+`useAgentGrantToggle`, `app/src/hooks/queries/use-agent-grant-toggle.ts`, each row
+editable per `editableAgentIds` from `canEditAgentGrants`) — see the global page
+block above.
 
 **Agent tab (the by-agent lens)** — `app/src/components/tabs/agent-integrations/`
 (`integrations-tab.tsx` re-exports the orchestrator). The tab body is the SAME
