@@ -31,6 +31,23 @@ export function benignCancelMiss(e: unknown): void {
 }
 
 /**
+ * True iff this provider's login is genuinely DONE — not merely `configured`.
+ * A stale stored credential leaves `configured: true` while the just-launched
+ * OAuth is still `awaiting_user`, and treating that as success completed the
+ * login dialog (and onboarding's "your AI is connected" beat) the instant the
+ * poll first ticked, without the user ever finishing in the browser. A login
+ * counts as complete only when the runtime reports no in-flight login (null)
+ * or its login reached `complete`.
+ */
+export function isProviderLoginComplete(pr: {
+  configured: boolean;
+  login: { status: string } | null;
+}): boolean {
+  if (!pr.configured) return false;
+  return pr.login === null || pr.login.status === "complete";
+}
+
+/**
  * Poll auth status until the in-flight login for `pid` resolves, then emit
  * `ProviderLoginComplete` so the legacy dialog closes and the card flips.
  * Covers all three flows: loopback auto-catch, pasted headless code, and
@@ -52,7 +69,7 @@ export function watchLoginCompletion(
       try {
         const status = await ctx.engine.authStatus();
         const pr = status.providers.find((p) => p.provider === pid);
-        if (pr?.configured) finish(true, null);
+        if (pr && isProviderLoginComplete(pr)) finish(true, null);
         else if (pr?.login?.status === "error")
           finish(false, pr?.login?.error ?? "Login failed");
         else if (Date.now() - startedAt > 10 * 60 * 1000)
@@ -102,15 +119,28 @@ export async function pollProviderConnect(
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 4000));
       if (!ctx.activeLogins.has(key)) return; // cancelled
-      let configured = false;
+      let completed = false;
       try {
         const s = await engine.authStatus();
-        configured =
-          s.providers.find((p) => p.provider === pid)?.configured ?? false;
+        const pr = s.providers.find((p) => p.provider === pid);
+        if (pr?.login?.status === "error") {
+          // The runtime's login flow died (denied consent, provider outage).
+          // Surface it now — waiting out the 5-minute timeout hid the reason.
+          emitEvent("ProviderLoginComplete", {
+            provider: oldProvider,
+            success: false,
+            error: pr.login.error ?? "Login failed",
+          });
+          return;
+        }
+        // NOT bare `configured`: a stale stored credential reports configured
+        // while the just-launched OAuth is still awaiting the user, and that
+        // false success completed onboarding with an AI that never connected.
+        completed = pr ? isProviderLoginComplete(pr) : false;
       } catch {
         /* transient — keep polling */
       }
-      if (configured) {
+      if (completed) {
         // CLAIM (don't set) the active provider: it becomes active only for
         // a first connect on a fresh agent — a connect never moves an agent
         // that already has a provider, so no open chat switches (HOU-695).
@@ -131,6 +161,23 @@ export async function pollProviderConnect(
             await captureSetupCredential(cp, pid);
           }
         } catch (e) {
+          if (!agentId) {
+            // Pre-agent (first-run) the captured credential is the ONLY thing
+            // the agent created next inherits — reporting success here let
+            // onboarding celebrate "your AI is connected" and then fail the
+            // send-email step with "no AI provider". Surface the failure.
+            emitEvent("ProviderLoginComplete", {
+              provider: oldProvider,
+              success: false,
+              error:
+                e instanceof Error
+                  ? e.message
+                  : "Saving the connected AI failed",
+            });
+            return;
+          }
+          // With an agent, the credential already lives in ITS runtime — the
+          // connect works for this agent; only workspace-wide sharing failed.
           console.error("[connect] workspace credential capture failed", e);
         }
         emitEvent("ProviderLoginComplete", {
