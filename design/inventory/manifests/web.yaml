@@ -97,9 +97,10 @@ components:
     notes: >-
       The shared InteractionModal shell + the stepper's renderApproval seam are in
       @houston-ai/chat, but the composed approval card (app-identity resolution,
-      param rows, three-decision footer, keyboard handling) is app/-locked and
-      Composio-coupled, mirroring the app-supplied renderConnect/renderSignin
-      bodies. Extract before mobile can reuse its structure.
+      permission question, three-decision footer, keyboard handling) is
+      app/-locked and Composio-coupled, mirroring the app-supplied
+      renderConnect/renderSignin bodies. Extract before mobile can reuse its
+      structure.
 
   plan-ready-card:
     status: implemented

@@ -59,8 +59,6 @@
     "deniedLine": "Decidí no permitir {{action}}. No lo reintentes; continúa sin eso.",
     "approvedLineDisplay": "Permitiste que {{app}} hiciera {{action}}.",
     "deniedLineDisplay": "No permitiste que {{app}} hiciera {{action}}.",
-    "approvalMoreParams_one": "Y {{count}} ajuste más",
-    "approvalMoreParams_other": "Y {{count}} ajustes más",
     "signinAppName": "Houston",
     "signinTitle": "Inicia sesión en Houston",
     "signinDescription": "Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
@@ -147,7 +145,9 @@
     "planner": "Planificador",
     "plannerDescription": "Primero escribe un plan para que lo apruebes. No hace cambios.",
     "autopilot": "Piloto automático",
-    "autopilotDescription": "Termina la tarea por su cuenta con lo que tiene. No hace preguntas."
+    "autopilotDescription": "Termina la tarea por su cuenta con lo que tiene. No hace preguntas.",
+    "nextTurnToastTitle": "Modo {{mode}} seleccionado",
+    "nextTurnToastBody": "Se aplicará a tu próximo mensaje. La respuesta actual continúa."
   },
   "modelSelector": {
     "selectModel": "Elige un modelo",

@@ -82,6 +82,13 @@ now lives in git).
   client (PKCE) with the `127.0.0.1` loopback ports as authorized redirect URIs; and an
   Azure app registration for the `microsoft.com` provider whose redirect includes those
   loopback ports (public PKCE client, no secret).
+  **CONFIRMED LIVE (2026-07-16):** the Azure app (`78465f4b-…`) has the GCIP handler
+  registered but NOT the desktop loopback URIs — personal (MSA) accounts fail after the
+  account picker with "We're unable to complete your request / invalid_request:
+  redirect_uri is not valid" on `login.live.com`. Fix: Azure Portal → the app →
+  Authentication → **Mobile and desktop applications** → add all four exact URIs
+  `http://127.0.0.1:8975/auth/callback` … `:8978` (login.live.com matches exactly;
+  it does not do Entra's port-agnostic loopback matching).
 - **[HIGH — coord] Gateway verifier.** The issuer/JWKS swap to Firebase is a `cloud`
   Go change + `cloud/INTEGRATION.md`; the gateway must accept Firebase tokens before or
   with the client cutover. The email-OTP `POST /v1/auth/email-otp/{start,verify}`
@@ -90,8 +97,29 @@ now lives in git).
   retired Supabase `profiles` table) and an account-level migration flag (restores the
   coarse cross-machine "never offer again").
 - **[SHIPPED client-side] Apple SSO** — the client now offers "Continue with
-  Apple" on web (popup) and desktop (GCIP-brokered loopback; Apple rejects
-  `127.0.0.1` redirects, so `createAuthUri`/`signInWithIdp(sessionId)` broker
-  through GCIP's handler — see `knowledge-base/auth.md`). Human config still
-  owed: Apple Developer Services ID + key, GCIP `apple.com` provider enablement
-  (terraform `identity.tf`), and `127.0.0.1` in authorized domains.
+  Apple" on ALL surfaces: web (popup), desktop, and **native on iOS**
+  (`SignInWithAppleButton` + nonce → `signInWithIdp(apple.com)`, guideline 4.8
+  makes it mandatory next to Google — see `knowledge-base/auth.md`). The
+  `apple.com` IdP enablement is terraform in `cloud/infra/terraform/identity.tf`
+  (client id = the iOS bundle id for the native flow; swap in the Services ID +
+  key-derived secret when wiring the web/desktop flows).
+  **REWORKED (2026-07-16):** the original desktop design ("GCIP-brokered
+  loopback") never worked — `createAuthUri` passes the `continueUri` verbatim
+  as Apple's `redirect_uri` (it does NOT broker through the handler), and Apple
+  403s any `127.0.0.1` redirect. Desktop now returns through a gateway HTTPS
+  bridge → `houston://auth-callback` deep link (contract pinned in
+  `identity/apple-authorize.ts`). Still owed: **[HIGH — cloud] the gateway
+  `POST /v1/auth/apple/return` bridge endpoint**, the bridge URL added as a
+  Services ID return URL (Apple Developer), the gateway domain in GCIP
+  authorized domains, the Sign in with Apple capability on App ID
+  `com.gethouston.Houston`.
+- **[HIGH — human] iOS registrations** — the iOS app moved to GCIP too
+  (`mobile/ios/Houston/Core/Auth/`, same REST approach as desktop; see
+  `knowledge-base/auth.md` "iOS (native app)"). Outstanding human steps:
+  register a Google **iOS** OAuth client (paste its id into
+  `mobile/ios/Houston/App/Config.swift`), add `houston://auth-callback` to the
+  Azure app's mobile redirect URIs (paste the app id likewise), and create
+  the App Store Connect app record + `APPLE_TEAM_ID` secret for the TestFlight
+  lane (`.github/workflows/ios-testflight.yml`). Until the ids are pasted the
+  Google/Microsoft buttons surface the "not available yet" copy; Apple + the
+  email code work without them.

@@ -28,6 +28,22 @@ export function normalizeTurnMode(value: unknown): TurnMode {
 }
 
 /**
+ * Whether a Mode-pill pick deserves the "applies to your next message" note.
+ * True only when a turn is running AND the pick actually changes the mode:
+ * the in-flight turn keeps the mode it was sent with (the pin rides each send
+ * as `modeOverride`), so a mid-turn change is real but deferred, and the user
+ * needs to hear that. Re-picking the current mode changes nothing, and a pick
+ * with no turn running applies immediately — neither warrants a note.
+ */
+export function modeChangeAppliesNextTurn(
+  turnRunning: boolean,
+  current: TurnMode,
+  next: TurnMode,
+): boolean {
+  return turnRunning && next !== current;
+}
+
+/**
  * The agent's remembered turn mode, for send paths that assemble their own
  * overrides (Mission Control, archived resumes) instead of holding the chat
  * panel's live pill state. A failed config read falls back to

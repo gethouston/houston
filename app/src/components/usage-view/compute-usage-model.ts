@@ -3,9 +3,11 @@ import type { Capabilities, ComputeUsageRow } from "@houston-ai/engine-client";
 /**
  * Pure aggregation for the Compute section (no DOM, no i18n): buckets the
  * gateway's per-(agent, UTC day) rows into the selected range and rolls up
- * per-agent totals. The user sees ONE time metric — running time = `awakeMs`
- * (the engine's up-time); `activeMs` is a recorded subset we deliberately do
- * not render, and tasks (`turns + routineRuns`) is the companion stat.
+ * per-agent totals. The user sees ONE time metric — time worked = `activeMs`
+ * (time the agent actually executed turns/routine runs); `awakeMs` (the
+ * engine's full up-time, idle tail included) rides the wire but is
+ * deliberately never rendered, and tasks (`turns + routineRuns`) is the
+ * companion stat.
  */
 
 export type ComputeRange = "week" | "month" | "quarter";
@@ -15,20 +17,20 @@ export interface ComputeBucket {
   startDay: string;
   /** Days folded into this bucket (1 for daily ranges, 7 for weekly). */
   days: number;
-  runMs: number;
+  workMs: number;
   tasks: number;
 }
 
 export interface ComputeAgentTotals {
   agentSlug: string;
-  runMs: number;
+  workMs: number;
   tasks: number;
 }
 
 export interface ComputeModel {
   buckets: ComputeBucket[];
   perAgent: ComputeAgentTotals[];
-  totalRunMs: number;
+  totalWorkMs: number;
   totalTasks: number;
   /** Busiest bucket/agent, floored at 1 so bar math never divides by zero. */
   maxBucketMs: number;
@@ -74,7 +76,7 @@ export function bucketCompute(
   const buckets: ComputeBucket[] = starts.map((start) => ({
     startDay: dayString(start),
     days: bucketDays,
-    runMs: 0,
+    workMs: 0,
     tasks: 0,
   }));
   const first = starts[0];
@@ -89,27 +91,32 @@ export function bucketCompute(
     // rather than vanishing — the server is the time authority, not us.
     const bucket = buckets[Math.min(index, buckets.length - 1)];
     const tasks = row.turns + row.routineRuns;
-    bucket.runMs += row.awakeMs;
+    bucket.workMs += row.activeMs;
     bucket.tasks += tasks;
     let agent = perAgent.get(row.agentSlug);
     if (!agent) {
-      agent = { agentSlug: row.agentSlug, runMs: 0, tasks: 0 };
+      agent = { agentSlug: row.agentSlug, workMs: 0, tasks: 0 };
       perAgent.set(row.agentSlug, agent);
     }
-    agent.runMs += row.awakeMs;
+    agent.workMs += row.activeMs;
     agent.tasks += tasks;
   }
 
-  const agents = [...perAgent.values()].sort(
-    (a, b) => b.runMs - a.runMs || a.agentSlug.localeCompare(b.agentSlug),
-  );
+  // Agents with nothing to show in the selected range are pure noise: an
+  // awake-but-never-working engine (rows carry awakeMs we don't render) or a
+  // deleted agent's residual zero days would list as "0m · 0 tasks".
+  const agents = [...perAgent.values()]
+    .filter((agent) => agent.workMs > 0 || agent.tasks > 0)
+    .sort(
+      (a, b) => b.workMs - a.workMs || a.agentSlug.localeCompare(b.agentSlug),
+    );
   return {
     buckets,
     perAgent: agents,
-    totalRunMs: agents.reduce((sum, a) => sum + a.runMs, 0),
+    totalWorkMs: agents.reduce((sum, a) => sum + a.workMs, 0),
     totalTasks: agents.reduce((sum, a) => sum + a.tasks, 0),
-    maxBucketMs: Math.max(1, ...buckets.map((b) => b.runMs)),
-    maxAgentMs: Math.max(1, ...agents.map((a) => a.runMs)),
+    maxBucketMs: Math.max(1, ...buckets.map((b) => b.workMs)),
+    maxAgentMs: Math.max(1, ...agents.map((a) => a.workMs)),
   };
 }
 
@@ -133,6 +140,15 @@ export function durationParts(ms: number): DurationParts {
     hours: Math.floor(totalMinutes / 60),
     minutes: String(totalMinutes % 60).padStart(2, "0"),
   };
+}
+
+/**
+ * A wire agent slug with no human content (the gateway's 16-hex ids). When it
+ * resolves to no known agent, the view shows "Removed agent" instead of raw
+ * hex — `agentLabel`'s humanizer only helps slugs with real words in them.
+ */
+export function isOpaqueSlug(slug: string): boolean {
+  return /^[0-9a-f]{12,}$/i.test(slug);
 }
 
 /** The section renders only where the gateway advertises the endpoint. */

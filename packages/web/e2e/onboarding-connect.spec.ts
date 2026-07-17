@@ -58,10 +58,11 @@ test("onboarding connect step shows the curated view, searches, expands, and ope
 
   await page.goto("/");
 
-  // First-run now asks the work-segmentation question before the
-  // create-your-assistant flow; this spec is about the connect step, so skip it
-  // (the segment flow itself is covered by onboarding-segment.spec.ts).
-  await page.getByRole("button", { name: "Skip for now" }).click();
+  // First-run asks the work-segmentation question before the
+  // create-your-assistant flow. The selection is required, so make one
+  // explicit choice before exercising the connect step.
+  await page.getByRole("button", { name: /Operations/ }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
 
   // Onboarding opens directly on the connect step (the welcome/intro screen
   // was removed).

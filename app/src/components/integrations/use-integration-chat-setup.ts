@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity, useAllConversations } from "../../hooks/queries";
+import { readAgentModelOverrides } from "../../lib/agent-model-overrides";
 import { analytics } from "../../lib/analytics";
 import { createMission } from "../../lib/create-mission";
 import { genericErrorDescription } from "../../lib/error-toast";
@@ -139,6 +140,13 @@ export function useIntegrationChatSetup() {
               agent.folderPath,
               tauriConfig.read,
             ),
+            // Pin the agent's configured brain onto the kickoff turn — an
+            // unpinned send resolves inside the runtime and lands on the
+            // provider default (Sonnet), not the model the user picked.
+            ...(await readAgentModelOverrides(
+              agent.folderPath,
+              tauriConfig.read,
+            )),
             buildPrompt: () => encodeIntegrationSetupMessage(),
           },
         );

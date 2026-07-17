@@ -9,7 +9,7 @@
 - iOS data path: Swift → SDK bridge bundle → `@houston/sdk` → `@houston/runtime-client`. iOS does
   NOT use `ui/engine-client` (desktop/web front door).
 - Per-agent URL scoping: `sdk.ts clientFor(agentId)` → `${baseUrl}/agents/<id>/…`; flat calls go to
-  `${baseUrl}/…`. The injected fetch carries the Supabase JWT.
+  `${baseUrl}/…`. The injected fetch carries the Firebase ID token (GCIP).
 - **Provider credentials are per-agent-pod** in hosted mode (`/auth/*`, `/providers`, `/settings`
   are per-agent). There is NO global "connect Claude once".
 - **Integrations are the opposite**: gateway-owned, user-scoped (`caller.sub`), shared across the
@@ -30,7 +30,7 @@ Rows/groups in desktop order (iOS ports all marked ✅):
 | Workspace name | `settings:workspace.title` | rename → engine; toast `settings:toasts.workspaceRenamed` | ✅ |
 | Appearance | `settings:appearance.title` (+ `.light`/`.dark`) | DEVICE-LOCAL theme (no wire) | ✅ local |
 | Language | `settings:nav.language` | en/es/pt; persists `PATCH /workspaces/:id/locale {locale}` + local change; toast `common:language.toastChanged` | ✅ |
-| Account | `settings:account.title`; button `settings:account.signOut` "Sign out"; `.fallbackName` "Signed in" | avatar (`user_metadata.avatar_url`) + name (full_name→name→email) + email; Sign out = signOut(), NO confirm dialog | ✅ sign-out lives here |
+| Account | `settings:account.title`; button `settings:account.signOut` "Sign out"; `.fallbackName` "Signed in" | avatar + name + email straight off the GCIP session (`UserProfile(session:)`; name = provider displayName → email); Sign out = signOut(), NO confirm dialog | ✅ sign-out lives here |
 | Members | `org:members.navLabel` + `settings:index.rows.members` | only when `canSeeMembers(capabilities)` | ⚠ org only |
 | Group "Context" | `settings:index.groups.context` | | ✅ |
 | Workspace context | `settings:nav.workspaceContext` (+ value "Set" `.values.set`) | drill-in editor | ✅ |

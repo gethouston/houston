@@ -4,17 +4,29 @@ import type { ComputeUsageRow } from "@houston-ai/engine-client";
 import {
   bucketCompute,
   durationParts,
+  isOpaqueSlug,
   showComputeSection,
 } from "../src/components/usage-view/compute-usage-model.ts";
 
+// The displayed metric is time worked (`activeMs`); awake time rides the wire
+// but must never leak into the model's numbers, so every row carries a larger
+// awakeMs that the assertions would catch.
 function row(
   agentSlug: string,
   day: string,
-  awakeMs: number,
+  workMs: number,
   turns = 0,
   routineRuns = 0,
 ): ComputeUsageRow {
-  return { agentSlug, day, awakeMs, activeMs: 0, wakes: 1, turns, routineRuns };
+  return {
+    agentSlug,
+    day,
+    awakeMs: workMs * 2 + 1,
+    activeMs: workMs,
+    wakes: 1,
+    turns,
+    routineRuns,
+  };
 }
 
 // A fixed Wednesday noon UTC.
@@ -31,7 +43,7 @@ describe("bucketCompute", () => {
     strictEqual(model.buckets[0].startDay, "2026-07-09");
     strictEqual(model.buckets[6].startDay, "2026-07-15");
     deepStrictEqual(
-      model.buckets.map((b) => b.runMs),
+      model.buckets.map((b) => b.workMs),
       [0, 0, 0, 0, 0, 0, 3_600_000],
     );
     strictEqual(model.buckets[6].tasks, 3);
@@ -46,8 +58,8 @@ describe("bucketCompute", () => {
       "week",
       NOW,
     );
-    strictEqual(model.totalRunMs, 1_000);
-    strictEqual(model.buckets[6].runMs, 1_000);
+    strictEqual(model.totalWorkMs, 1_000);
+    strictEqual(model.buckets[6].workMs, 1_000);
   });
 
   it("uses 30 daily buckets for the month range", () => {
@@ -71,8 +83,8 @@ describe("bucketCompute", () => {
     const last = model.buckets[12];
     strictEqual(last.startDay, "2026-07-13");
     strictEqual(last.days, 7);
-    strictEqual(last.runMs, 123);
-    strictEqual(model.buckets[11].runMs, 7);
+    strictEqual(last.workMs, 123);
+    strictEqual(model.buckets[11].workMs, 7);
   });
 
   it("aggregates per agent, busiest first with slug tie-break", () => {
@@ -93,7 +105,7 @@ describe("bucketCompute", () => {
       model.perAgent.map((a) => a.tasks),
       [3, 2, 1],
     );
-    strictEqual(model.totalRunMs, 1_000);
+    strictEqual(model.totalWorkMs, 1_000);
     strictEqual(model.totalTasks, 6);
   });
 
@@ -101,6 +113,37 @@ describe("bucketCompute", () => {
     const model = bucketCompute([], "week", NOW);
     strictEqual(model.maxBucketMs, 1);
     strictEqual(model.maxAgentMs, 1);
+  });
+
+  it("drops agents with no work and no tasks in range (awake-only ghosts)", () => {
+    const ghost: ComputeUsageRow = {
+      agentSlug: "5e70000000000000",
+      day: "2026-07-15",
+      awakeMs: 600_000, // awake the whole time...
+      activeMs: 0, // ...but never worked
+      wakes: 3,
+      turns: 0,
+      routineRuns: 0,
+    };
+    const model = bucketCompute(
+      [ghost, row("real", "2026-07-15", 1_000, 1)],
+      "week",
+      NOW,
+    );
+    deepStrictEqual(
+      model.perAgent.map((a) => a.agentSlug),
+      ["real"],
+    );
+  });
+});
+
+describe("isOpaqueSlug", () => {
+  it("matches bare wire ids but not nameable slugs", () => {
+    strictEqual(isOpaqueSlug("40e4d673e72e86df"), true);
+    strictEqual(isOpaqueSlug("5e70000000000000"), true);
+    strictEqual(isOpaqueSlug("sales-bot"), false);
+    strictEqual(isOpaqueSlug("deadbeef"), false); // too short to be a wire id
+    strictEqual(isOpaqueSlug("my_agent_2"), false);
   });
 });
 

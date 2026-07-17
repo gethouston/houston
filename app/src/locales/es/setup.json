@@ -19,9 +19,7 @@
   "onboardingSegment": {
     "eyebrow": "Personaliza Houston",
     "title": "¿Cuál describe mejor tu trabajo?",
-    "subtitle": "Elige una opción para que Houston adapte agentes, plantillas y recomendaciones para ti.",
-    "helper": "Puedes cambiarlo más tarde a medida que Houston aprenda qué te ayuda.",
-    "skip": "Omitir por ahora",
+    "subtitle": "Personaliza Houston para tu trabajo.",
     "options": {
       "marketing": "Marketing",
       "product": "Producto",
@@ -89,7 +87,7 @@
         "placeholder": "Responde a tu agente...",
         "body": "Tu agente te enviará un correo real, para que lo veas funcionar.",
         "skip": "Omitir por ahora",
-        "skipHint": "Tu agente terminó pero no confirmó. Puedes omitir y empezar a usar Houston."
+        "skipHint": "Puedes continuar en Houston después de tu primer mensaje."
       },
       "aiConnected": {
         "title": "¡Tu IA está conectada!",
@@ -101,13 +99,7 @@
         "body": "Elige tu correo para que tu agente pueda enviar por ti. Lo conectas una vez, de forma segura.",
         "connecting": "Conectando...",
         "cancel": "Cancelar",
-        "skipHint": "¿No puedes conectar ahora? Puedes hacerlo cuando quieras desde Integraciones.",
-        "skip": "Omitir por ahora",
-        "preparing": "Preparando a tu asistente...",
-        "skipConfirmTitle": "¿Omitir la conexión de tu correo?",
-        "skipConfirmBody": "Puedes conectarlo cuando quieras desde Integraciones. Tu agente no podrá enviar ni leer correo hasta que lo hagas.",
-        "skipConfirmAction": "Omitir por ahora",
-        "skipConfirmCancel": "Seguir conectando"
+        "preparing": "Preparando a tu asistente..."
       },
       "emailConnected": {
         "title": "¡Correo conectado!",

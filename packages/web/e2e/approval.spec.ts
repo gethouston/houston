@@ -8,8 +8,8 @@ import { expect, test } from "./support/fixtures";
  * whose step is `{ kind:"approval", id, toolkit, action, params?, paramsHash }`;
  * the SDK settles the board to `needs_you` and the app shows the shared
  * `InteractionModal` above the composer as a `ChatApprovalInteractionCard` — the
- * app identity lockup header, an "Allow {app} to {action}?" body over
- * muted-label / foreground-value param rows, and a three-way footer:
+ * app identity lockup header, an "Allow {app} to {action}?" body (the raw
+ * params ride the wire but never render), and a three-way footer:
  * "Always allow" (outline, far LEFT), "Deny" (outline + Esc), "Allow once"
  * (filled + return glyph). Enter = Allow once, Esc = Deny.
  *
@@ -46,10 +46,10 @@ async function startMission(page: Page, text: string) {
  *
  * `params` carry the DISPLAY-READY keys the host emits: the sandbox route runs
  * `displayParams`/`humanizeParamKey` before it puts the approval on the wire
- * ("draft_id" -> "Draft id", "to" -> "To"), and the card renders those keys
- * verbatim (its `params` prop is documented "display-ready"). The step is injected
- * straight as a `pendingInteraction` here (bypassing the sandbox route), so it
- * must already be in that humanized display form to mirror production faithfully.
+ * ("draft_id" -> "Draft id", "to" -> "To"). The card no longer renders them
+ * (they're technical detail), but the wire payload shape is unchanged, so the
+ * step injected straight as a `pendingInteraction` here still mirrors
+ * production's humanized display form faithfully.
  */
 const gmailApprovalStep = {
   kind: "approval",
@@ -84,11 +84,12 @@ function approvalCard(page: Page) {
 }
 
 /**
- * (1) The lone approval card renders the full reference lockup: the app NAME in
- * the header, the "Allow Gmail to send draft?" permission question, both param
- * rows (muted label + foreground value), and the three footer buttons. Also the
+ * (1) The lone approval card renders the calm reference lockup: the app NAME in
+ * the header, the "Allow Gmail to send draft?" permission question, and the
+ * three footer buttons — and NO technical param rows (dropped by design; the
+ * wire still carries params, the card never shows them).
  */
-test("renders the approval card with its params and three footer buttons", async ({
+test("renders the approval card with only the permission question and three footer buttons", async ({
   page,
 }) => {
   await armInteraction(page, [gmailApprovalStep]);
@@ -103,12 +104,11 @@ test("renders the approval card with its params and three footer buttons", async
   // inside the permission question).
   await expect(card.getByText("Gmail", { exact: true })).toBeVisible();
 
-  // Both param rows: the muted humanized key AND the foreground value are on
-  // screen (the host humanizes the key before the wire; the card renders it as-is).
-  await expect(card.getByText("Draft id")).toBeVisible();
-  await expect(card.getByText("r-3003489618794597896")).toBeVisible();
-  await expect(card.getByText("To", { exact: true })).toBeVisible();
-  await expect(card.getByText("john@acme.com")).toBeVisible();
+  // The technical param rows are gone by design: the step's params ride the
+  // wire, but neither the humanized keys nor the raw values ever render.
+  await expect(card.getByText("Draft id")).toHaveCount(0);
+  await expect(card.getByText("r-3003489618794597896")).toHaveCount(0);
+  await expect(card.getByText("john@acme.com")).toHaveCount(0);
 
   // The three footer decisions, correct copy.
   await expect(

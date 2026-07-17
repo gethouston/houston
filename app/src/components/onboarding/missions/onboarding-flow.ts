@@ -65,19 +65,6 @@ export function stepAfterAgentCreated(
 }
 
 /**
- * Whether the connect-email screen should offer its "skip for now" escape
- * hatch. Always available (a confirm dialog is the actual friction, see
- * `ConnectEmailMission`) except while a connect flow is in flight — the OAuth
- * hop + poll owns the screen until it resolves.
- */
-export function shouldOfferConnectSkip(opts: {
-  /** A connect flow (OAuth hop + poll) is currently in flight. */
-  connecting: boolean;
-}): boolean {
-  return !opts.connecting;
-}
-
-/**
  * Whether the finish screen offers the "Invite your team" growth card. Only on
  * a deployment that serves C8 Spaces (self-serve team creation) — desktop /
  * self-host / legacy hosts have no team to create, so the card would dead-end.

@@ -1,11 +1,13 @@
 import AuthenticationServices
 import UIKit
 
-/// Thin async wrapper over `ASWebAuthenticationSession` for the Google OAuth hop.
+/// Thin async wrapper over `ASWebAuthenticationSession` for the Google /
+/// Microsoft OAuth hops.
 ///
-/// `prefersEphemeralWebBrowserSession = false` deliberately keeps Google SSO
+/// `prefersEphemeralWebBrowserSession = false` deliberately keeps provider SSO
 /// cookies, so a returning user skips the account chooser. The callback scheme
-/// is Houston's registered custom scheme (`houston`).
+/// is per flow: Google's reversed-client-ID scheme, or Houston's registered
+/// custom scheme (`houston`) for Microsoft.
 @MainActor
 final class WebAuthSession: NSObject, ASWebAuthenticationPresentationContextProviding {
     enum WebAuthError: Error {

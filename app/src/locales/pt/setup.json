@@ -19,9 +19,7 @@
   "onboardingSegment": {
     "eyebrow": "Personalize o Houston",
     "title": "Qual descreve melhor o seu trabalho?",
-    "subtitle": "Escolha uma opção para o Houston adaptar agentes, modelos e recomendações para você.",
-    "helper": "Você pode mudar isso depois conforme o Houston aprende o que ajuda você.",
-    "skip": "Pular por enquanto",
+    "subtitle": "Personalize o Houston agora.",
     "options": {
       "marketing": "Marketing",
       "product": "Produto",
@@ -89,7 +87,7 @@
         "placeholder": "Responda ao seu agente...",
         "body": "Seu agente vai enviar um e-mail de verdade para você, para você vê-lo funcionar.",
         "skip": "Pular por enquanto",
-        "skipHint": "Seu agente terminou, mas não confirmou. Você pode pular e começar a usar o Houston."
+        "skipHint": "Você pode continuar no Houston depois da primeira mensagem."
       },
       "aiConnected": {
         "title": "Sua IA está conectada!",
@@ -101,13 +99,7 @@
         "body": "Escolha seu e-mail para o agente poder enviar por você. Você conecta uma vez, com segurança.",
         "connecting": "Conectando...",
         "cancel": "Cancelar",
-        "skipHint": "Não consegue conectar agora? Você pode fazer isso quando quiser em Integrações.",
-        "skip": "Pular por enquanto",
-        "preparing": "Preparando seu assistente...",
-        "skipConfirmTitle": "Pular a conexão do seu e-mail?",
-        "skipConfirmBody": "Você pode conectar quando quiser em Integrações. Seu agente não vai poder enviar nem ler e-mails até você fazer isso.",
-        "skipConfirmAction": "Pular por enquanto",
-        "skipConfirmCancel": "Continuar conectando"
+        "preparing": "Preparando seu assistente..."
       },
       "emailConnected": {
         "title": "E-mail conectado!",

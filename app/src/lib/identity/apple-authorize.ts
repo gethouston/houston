@@ -1,27 +1,45 @@
-// Desktop Apple sign-in: the GCIP-BROKERED loopback flow.
+// Desktop Apple sign-in: GCIP authorize → gateway HTTPS bridge → `houston://`
+// deep link.
 //
-// Apple rejects `127.0.0.1` redirect URIs on direct OAuth, so the desktop can't
-// run the Google/Microsoft loopback+PKCE shape against Apple itself. Instead
-// GCIP is the broker: `createAuthUri` mints an Apple authorize URL whose
-// redirect is GCIP's OWN handler (`https://<authDomain>/__/auth/handler`, the
-// Services-ID-registered return URL that also serves the web popup), and the
-// handler bounces the browser back to our loopback `continueUri` with the
-// callback params. `signInWithIdpSession` then redeems the pair — the Apple
-// client secret lives only in the identity project's provider config, never on
-// the client.
+// Apple rejects `http://127.0.0.1` redirect URIs outright (HTTP 403 at the
+// authorize endpoint), and GCIP's `createAuthUri` passes the `continueUri` to
+// the provider VERBATIM as `redirect_uri` — it does NOT broker through its own
+// `/__/auth/handler`. So the desktop can never receive Apple's callback on the
+// loopback listener. Instead the `continueUri` is the cloud gateway's Apple
+// return bridge — the pinned contract the gateway implements:
 //
-// CSRF: GCIP embeds a `state` in the authorize URL it mints; we extract it and
-// enforce it on the callback exactly like the PKCE flows (stale/foreign
-// callbacks are ignored, the attempt keeps waiting).
+//   POST {gateway}/v1/auth/apple/return
+//     body: Apple's form_post params (`code`, `state`, and on first consent
+//           `user`) — GCIP always forces `response_mode=form_post` for
+//           apple.com, so the bridge's job is converting that POST into a GET
+//           the app can receive.
+//     response: navigate the browser to
+//           `houston://auth-callback?<the same params re-encoded as a query>`
+//           (a redirect or an interstitial page with a visible "Open Houston"
+//           fallback link — some browsers block cross-scheme redirects on POST
+//           responses). Stateless; the bridge never sees a secret.
+//
+// The OS routes `houston://auth-callback` to the app (deep-link plugin;
+// single-instance forwards secondary argv on Windows/Linux), the Rust shell
+// re-emits it on the same `auth://deep-link` channel the loopback flows use
+// (`app/src-tauri/src/lib.rs`), and the attempt lifecycle + CSRF handling are
+// IDENTICAL to PKCE: the `state` GCIP embedded in the authorize URL it minted
+// is enforced on the callback; stale/foreign callbacks are ignored.
+// `signInWithIdpSession` then redeems (`requestUri` = bridge URL + `?` +
+// callback query, `sessionId`) — the Apple client secret lives only in the
+// identity project's provider config, never on the client.
 //
 // Setup (human, one-time): the Apple provider enabled on the identity project
-// (Services ID + team ID + key), and `127.0.0.1` added to the project's
-// authorized domains so the loopback `continueUri` is accepted.
+// (Services ID + team ID + key), the bridge URL registered as a return URL on
+// the Services ID, and the gateway domain added to the project's authorized
+// domains so `createAuthUri` accepts the `continueUri`.
 
+import { gatewayUrl } from "../auth-gateway";
+import { appleReturnUrl } from "./apple-return.ts";
 import { identityConfig } from "./config.ts";
 import {
   type LoopbackAuthorizeOptions,
-  runBrokeredLoopbackAuthorize,
+  runBrokeredDeepLinkAuthorize,
 } from "./desktop-oauth.ts";
 import { IdentityError } from "./errors.ts";
 import { createAuthUri } from "./firebase-rest.ts";
@@ -30,7 +48,7 @@ import { createAuthUri } from "./firebase-rest.ts";
 const APPLE_SCOPES = "name email";
 
 export interface AppleAuthorizeResult {
-  /** The full loopback callback URL (continueUri + query) for `requestUri`. */
+  /** The full bridge callback URL (bridge URL + query) for `requestUri`. */
   requestUri: string;
   /** The `createAuthUri` session that pairs with the callback. */
   sessionId: string;
@@ -44,12 +62,13 @@ export interface AppleAuthorizeResult {
 export async function authorizeAppleDesktop(
   opts?: LoopbackAuthorizeOptions,
 ): Promise<AppleAuthorizeResult | null> {
+  const bridgeUrl = appleReturnUrl(gatewayUrl());
   let sessionId = "";
-  const result = await runBrokeredLoopbackAuthorize(async (redirectUri) => {
+  const result = await runBrokeredDeepLinkAuthorize(async () => {
     const minted = await createAuthUri({
       apiKey: identityConfig.apiKey,
       providerId: "apple.com",
-      continueUri: redirectUri,
+      continueUri: bridgeUrl,
       oauthScope: APPLE_SCOPES,
     });
     sessionId = minted.sessionId;
@@ -65,7 +84,7 @@ export async function authorizeAppleDesktop(
   }, opts);
   if (!result) return null; // benign cancel
   return {
-    requestUri: `${result.redirectUri}?${result.callbackQuery}`,
+    requestUri: `${bridgeUrl}?${result.callbackQuery}`,
     sessionId,
   };
 }

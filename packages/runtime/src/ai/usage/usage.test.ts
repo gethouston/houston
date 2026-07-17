@@ -175,6 +175,67 @@ describe("fetchCopilotUsage", () => {
     expect(row.status).toBe("ok");
     expect(row.windows).toEqual([]);
   });
+
+  // Serve mode (Gate #2): the runtime's credential is access-only — the GitHub
+  // token was scrubbed after login — so the probe must delegate to the host's
+  // central endpoint instead of reporting "sign in again" forever.
+  const scrubbedStore = {
+    get: () => ({
+      type: "oauth" as const,
+      access: "copilot-session",
+      refresh: "", // scrubbed by POST /auth/scrub-refresh
+      expires: 0,
+    }),
+  };
+  const serve = { controlPlaneUrl: "http://host.test", sandboxToken: "sbx" };
+
+  it("delegates a scrubbed credential to the host's central probe", async () => {
+    let url = "";
+    let auth = "";
+    const fetchImpl: typeof fetch = async (input, init) => {
+      url = String(input);
+      auth = (init?.headers as Record<string, string>).Authorization;
+      return new Response(
+        JSON.stringify({
+          copilot_plan: "pro",
+          quota_reset_date: "2026-08-01",
+          quota_snapshots: {
+            premium_interactions: { percent_remaining: 40 },
+          },
+        }),
+        { status: 200 },
+      );
+    };
+    const row = await fetchCopilotUsage(fetchImpl, scrubbedStore, serve);
+    expect(url).toBe(
+      "http://host.test/sandbox/provider-usage?provider=github-copilot",
+    );
+    expect(auth).toBe("Bearer sbx"); // the sandbox token, never a GitHub one
+    expect(row.status).toBe("ok");
+    expect(row.plan).toBe("pro");
+    expect(row.windows).toEqual([
+      { id: "premium", usedPercent: 60, resetsAt: "2026-08-01T00:00:00.000Z" },
+    ]);
+  });
+
+  it("maps the host's marked 404 and 401 to unauthenticated, 502 to error", async () => {
+    const respond = (status: number) =>
+      fetchCopilotUsage(
+        async () => new Response(JSON.stringify({ error: "x" }), { status }),
+        scrubbedStore,
+        serve,
+      );
+    expect((await respond(404)).status).toBe("unauthenticated");
+    expect((await respond(401)).status).toBe("unauthenticated");
+    const failed = await respond(502);
+    expect(failed.status).toBe("error");
+    expect(failed.message).toContain("502");
+  });
+
+  it("stays unauthenticated when scrubbed with no serve source (no host to ask)", async () => {
+    const row = await fetchCopilotUsage(jsonResponse({}), scrubbedStore, null);
+    expect(row.status).toBe("unauthenticated");
+  });
 });
 
 describe("credit balances", () => {

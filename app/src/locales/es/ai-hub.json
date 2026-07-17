@@ -155,21 +155,25 @@
       "body": "Conecta un proveedor de IA para ver cuánto de sus límites has usado.",
       "connect": "Conectar un proveedor"
     },
-    "accounts": {
-      "title": "Cuentas de IA"
+    "sections": {
+      "subscriptions": {
+        "title": "Suscripciones de IA"
+      },
+      "perToken": {
+        "title": "IA por token"
+      }
     },
     "compute": {
-      "title": "Tiempo de actividad",
-      "subtitle": "Cuánto tiempo han estado funcionando tus agentes y cuántas tareas realizaron.",
+      "title": "Tiempo trabajado",
+      "subtitle": "Cuánto tiempo dedicaron tus agentes a trabajar y cuántas tareas realizaron.",
       "range": {
         "week": "7 días",
         "month": "30 días",
         "quarter": "3 meses"
       },
-      "summary": "Tus agentes funcionaron {{duration}}",
+      "summary": "Tus agentes trabajaron {{duration}}",
       "tasks_one": "{{count}} tarea",
       "tasks_other": "{{count}} tareas",
-      "runningNow": "Activo ahora",
       "byAgent": "Por agente",
       "duration": {
         "hm": "{{hours}}h {{minutes}}m",
@@ -177,12 +181,13 @@
         "underMinute": "<1m",
         "zero": "0m"
       },
-      "barLabel": "{{date}}: funcionó {{duration}}, {{tasks}}",
+      "barLabel": "{{date}}: trabajaron {{duration}}, {{tasks}}",
       "empty": {
-        "title": "Aún no hay tiempo de actividad",
-        "body": "Cuando tus agentes funcionen, su tiempo aparecerá aquí."
+        "title": "Aún no hay tiempo trabajado",
+        "body": "Cuando tus agentes trabajen en tareas, su tiempo aparecerá aquí."
       },
-      "error": "No se pudo cargar el tiempo de actividad. Intenta de nuevo en un momento."
+      "error": "No se pudo cargar el tiempo de tus agentes. Intenta de nuevo en un momento.",
+      "removedAgent": "Agente eliminado"
     }
   },
   "toast": {}

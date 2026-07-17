@@ -1,10 +1,6 @@
-import {
-  ChatInteractionCard,
-  type ChatInteractionStep,
-  ChatPanel,
-} from "@houston-ai/chat";
+import { ChatPanel } from "@houston-ai/chat";
 import { Button, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useFileToolRenderer } from "../../../hooks/use-file-tool-renderer";
 import { tauriSystem } from "../../../lib/tauri";
@@ -12,6 +8,7 @@ import type { Agent } from "../../../lib/types";
 import { useChatDisplayLabels } from "../../use-chat-display-labels";
 import { useQueuedMessageLabels } from "../../use-queued-message-labels";
 import { SetupCard } from "../setup-card";
+import { EmailOfferAction } from "./email-offer-action";
 import { useEmailMissionSession } from "./use-email-mission-session";
 
 /** Strip the completion marker (with optional surrounding bold) from a reply. */
@@ -30,17 +27,15 @@ interface EmailMissionProps {
   onBack: () => void;
   /** Advance to the success screen once the email is sent. */
   onContinue: () => void;
-  /** Escape hatch: leave onboarding and go straight into the app. Shown only
-   *  once the agent ran but never confirmed completion (HOU-555). */
+  /** Leave onboarding after the first message has started the AI conversation. */
   onSkip: () => void;
 }
 
 /**
  * Final onboarding step: the agent sends one real email to the user themselves.
- * The email is already connected (previous step), so this is just a single
- * "Send an email to myself" card; the agent reads the directive from CLAUDE.md
- * and sends. The session lifecycle + auto-advance live in
- * `useEmailMissionSession`; this component only renders the chat surface.
+ * The email is already connected, so this starts with one explicit action. The
+ * session lifecycle + auto-advance live in `useEmailMissionSession`; this
+ * component only renders the chat surface.
  */
 export function EmailMission({
   eyebrow,
@@ -54,19 +49,15 @@ export function EmailMission({
   onContinue,
   onSkip,
 }: EmailMissionProps) {
-  const { t } = useTranslation(["setup", "chat"]);
+  const { t } = useTranslation("setup");
   const [composerText, setComposerText] = useState("");
   const [composerFiles, setComposerFiles] = useState<File[]>([]);
-
-  // The same chat-rendering hooks the real agent chat uses, so the onboarding
-  // chat shows the agent's actual tool calls/results + the proper in-flight
-  // indicator, not just a bare "thinking".
+  const [openLinkError, setOpenLinkError] = useState<string | null>(null);
   const { processLabels, getThinkingMessage, thinkingIndicator } =
     useChatDisplayLabels();
   const { isSpecialTool, renderToolResult, renderTurnSummary } =
     useFileToolRenderer(agent.folderPath);
   const queuedLabels = useQueuedMessageLabels();
-
   const session = useEmailMissionSession({
     agent,
     provider,
@@ -88,8 +79,9 @@ export function EmailMission({
   );
 
   const handleOpenLink = useCallback((url: string) => {
-    // A failed open surfaces via `call()`; swallow the re-throw here.
-    tauriSystem.openUrl(url).catch(() => {});
+    void tauriSystem.openUrl(url).catch((error) => {
+      setOpenLinkError(error instanceof Error ? error.message : String(error));
+    });
   }, []);
 
   const transformContent = useCallback(
@@ -101,68 +93,21 @@ export function EmailMission({
     [],
   );
 
-  // The offer renders through the SAME component chat uses for ask-user
-  // interactions (ChatInteractionCard), so this onboarding step reads exactly
-  // like a real in-chat question. Labels mirror the real consumer
-  // (use-agent-chat-panel.tsx) key-for-key so the two surfaces stay word-
-  // identical.
-  const interactionLabels = useMemo(
-    () => ({
-      placeholder: t("chat:questionCard.placeholder"),
-      escapePlaceholder: t("chat:questionCard.escapePlaceholder"),
-      back: t("chat:questionCard.back"),
-      forward: t("chat:questionCard.forward"),
-      skip: t("chat:interaction.skip"),
-      esc: t("chat:interaction.esc"),
-      dismiss: t("chat:questionCard.dismiss"),
-      recommended: t("chat:interaction.recommended"),
-      progress: (current: number, total: number) =>
-        t("chat:questionCard.progress", { current, total }),
-    }),
-    [t],
-  );
-
-  // ONE question step: the mission body is the prompt, the single preselected
-  // action ("Send an email to myself") is its only option. Completing it hands
-  // off to `session.handleSend`, which sends the real email; the answer content
-  // is ignored (the mission already knows what to send).
-  const offerSteps = useMemo<ChatInteractionStep[]>(
-    () => [
-      {
-        kind: "question",
-        id: "email-offer",
-        question: t("setup:tutorial.missions.email.body"),
-        // No free-text escape row: the single preselected action is the only
-        // answer (typing here would suggest the user can redirect the email).
-        hideFreeText: true,
-        options: [
-          {
-            id: "send",
-            label: t("setup:tutorial.missions.email.offer.option"),
-          },
-        ],
-      },
-    ],
-    [t],
-  );
-
   return (
     <SetupCard
       onSpace
       eyebrow={eyebrow}
-      title={t("setup:tutorial.missions.email.title")}
-      // The mission body now lives IN the offer card as its question prompt (see
-      // `offerSteps`), so no subtitle here — that would just duplicate it.
-      // Back disappears once the mission is running: leaving mid-turn drops the
-      // completion-marker listener while the agent still sends, and returning
-      // would kick off a SECOND session (and a second real email). The HOU-555
-      // skip hatch is the exit for a stuck run.
+      title={t("tutorial.missions.email.title")}
+      // The mission body lives in the offer card, so no subtitle duplicates it.
+      // Back disappears once the mission runs: returning would start a second
+      // session and a second real email. The conversation exit below appears
+      // after its first message instead.
       onBack={session.started ? undefined : onBack}
-      backLabel={t("setup:tutorial.nav.back")}
+      backLabel={t("tutorial.nav.back")}
     >
-      {session.error && (
+      {(session.error || openLinkError) && (
         <p className="mb-3 rounded-xl border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
-          {session.error}
+          {session.error ?? openLinkError}
         </p>
       )}
       <div className="flex min-h-0 flex-1 flex-col">
@@ -183,7 +128,7 @@ export function EmailMission({
             onSend={handleComposerSend}
             onStop={session.onStop}
             isLoading={session.isLoading}
-            placeholder={t("setup:tutorial.missions.email.placeholder")}
+            placeholder={t("tutorial.missions.email.placeholder")}
             processLabels={processLabels}
             getThinkingMessage={getThinkingMessage}
             thinkingIndicator={thinkingIndicator}
@@ -199,37 +144,16 @@ export function EmailMission({
             queuedMessages={session.queuedMessages}
             onRemoveQueuedMessage={session.removeQueuedMessage}
             queuedLabels={queuedLabels}
+            // Until the mission starts, the offer is the ONLY action: the
+            // reply input stays hidden ("replace") so nothing competes with
+            // the one button that kicks off the real email.
+            composerOverrideMode="replace"
             composerOverride={
               session.started ? undefined : (
-                <ChatInteractionCard
-                  steps={offerSteps}
-                  labels={interactionLabels}
-                  // Completing the lone step ALSO fires on the card's Skip
-                  // (the stepper completes a skipped last step with no
-                  // answers), so route on the answers: picked the option →
-                  // send the real email; skipped → leave onboarding. The
-                  // answer content itself is ignored (the mission already
-                  // knows what to send).
-                  onComplete={(answers) => {
-                    if (answers.length === 0) {
-                      onSkip();
-                      return;
-                    }
-                    void session.handleSend();
-                  }}
-                  // No onDismiss: the tutorial's own skip affordance (below) is
-                  // the exit; the card must not offer an ambiguous X that
-                  // abandons onboarding.
-                  //
-                  // renderConnect/renderSignin/renderApproval/renderCredential
-                  // are never reached — this is a question-only sequence (one
-                  // option step), so the stepper never advances to a connect,
-                  // signin, approval, or credential step. They exist only to
-                  // satisfy the card's required props.
-                  renderConnect={() => null}
-                  renderSignin={() => null}
-                  renderApproval={() => null}
-                  renderCredential={() => null}
+                <EmailOfferAction
+                  description={t("tutorial.missions.email.body")}
+                  label={t("tutorial.missions.email.offer.option")}
+                  onStart={() => void session.handleSend()}
                 />
               )
             }
@@ -238,7 +162,7 @@ export function EmailMission({
         {session.showSkip && (
           <div className="flex shrink-0 items-center justify-between gap-3 pt-3">
             <p className="min-w-0 text-xs text-ink-muted">
-              {t("setup:tutorial.missions.email.skipHint")}
+              {t("tutorial.missions.email.skipHint")}
             </p>
             <Button
               type="button"
@@ -247,7 +171,7 @@ export function EmailMission({
               className="shrink-0"
               onClick={onSkip}
             >
-              {t("setup:tutorial.missions.email.skip")}
+              {t("tutorial.missions.email.skip")}
             </Button>
           </div>
         )}

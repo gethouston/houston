@@ -37,7 +37,6 @@ export type AnalyticsEventName =
   | "onboarding_segment_screen_viewed"
   | "onboarding_segment_selected"
   | "onboarding_segment_continued"
-  | "onboarding_segment_skipped"
   // One-time "reconnect your AI" moment after upgrading from the legacy build.
   | "migration_reconnect_completed"
   // First-run cloud-migration wizard (HOU-719): the cloud desktop build offers
@@ -127,6 +126,7 @@ type AnalyticsProperty =
   | "to_version"
   // Onboarding funnel
   | "locale"
+  | "detected_locale"
   | "step"
   // Cloud migration (payload sizes, where already known)
   | "bytes"
@@ -388,9 +388,6 @@ export const analytics = {
         typeof props?.selected_segment === "string"
       ) {
         posthog.people.set({ onboarding_segment: props.selected_segment });
-      }
-      if (event === "onboarding_segment_skipped") {
-        posthog.people.set({ onboarding_segment: "skipped" });
       }
     } catch {
       // Analytics unavailable

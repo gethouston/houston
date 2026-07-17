@@ -81,8 +81,8 @@ The owner vocabulary (say these words to direct changes):
 - **Grounds**: `base` (the app frame the sidebar sits on) → `background` (the
   main pane, light `#fcfcfc`) → `input` (the white `#fff` surface — fields,
   composer, floating cards).
-- **Elevated glass**: `card` / `card-hover` / `card-solid` (solid board card) /
-  `popover` / `dialog`.
+- **Elevated**: `card` / `card-hover` (glass) / `card-solid` (solid board card)
+  / `popover` / `dialog` (both SOLID — floating surfaces never bleed).
 - **Text**: `ink`, `ink-muted` (+ per-surface `card-text`, `popover-text`).
 - **Interactive**: `action`/`action-text` (filled CTA), `hover` (row/menu hover
   fill, light `#efefef`), `chip`/`chip-text` + `chip-subtle` (soft fills).
@@ -380,7 +380,8 @@ glass); the light-gray flip is purely the token value change.
 **Dark mode** — the signature look: a multi-radial **aurora glow** on
 `body::before` (blue/indigo/orange, slow 32s drift, disabled under
 `prefers-reduced-motion`) + translucent **glass** surfaces (`.bg-card`,
-`.bg-popover`, sidebar) with `backdrop-filter` blur.
+sidebar) with `backdrop-filter` blur. FLOATING surfaces (`popover`, `dialog`)
+are NOT glass — they are solid in both themes (see "Modals" below).
 
 **Light mode** — the cool, solid **"Aurora" palette** (no glow mesh — it read as
 "glitter" over solid surfaces): gutter `#eef1f7`, screen `#fbfbfb` (the standard
@@ -388,23 +389,24 @@ light-gray canvas — see "The canvas is the standard main surface" above), card
 `#f4f6fc`, cool blue/indigo border. Clean and futuristic by restraint, not
 decoration.
 
-**Modals: glass in dark, solid white in light.** All modal primitives —
+**Modals and popovers: SOLID in both themes.** All modal primitives —
 `DialogContent` (`ui/core/components/dialog.tsx`), `AlertDialogContent`,
 `SheetContent`, and the AI-Hub `ModalShell` — render on the dedicated
-**`bg-dialog`** surface token, NOT `bg-card` and NOT opaque `bg-layer-2`. In
-**dark** the token is the same translucent glass as `card`
-(`{color.glass.neutral-50}`) with frosted blur + top sheen from futuristic.css,
-so the aurora canvas bleeds through like the kanban columns. In **light** it is
-solid `{color.base.white}` — light mode has no aurora to bleed, so a translucent
-modal just read as see-through (the bug fixed here); the futuristic `.bg-dialog`
-blur becomes a no-op on the opaque fill. The token is separate from `card` on
-purpose: `card` stays glass in both modes for non-modal surfaces, only modals
-go solid in light. Wired: light/dark `dialog` in `tokens/semantic/color.{light,
-dark}.json` → `--ht-dialog` → `@theme --color-dialog` (`ui/core/src/globals.css`)
-→ Tailwind `bg-dialog`; frosted-glass rule + dark sheen in `futuristic.css`.
-The scrims are deliberately light: Dialog overlay `bg-black/25`, Alert/Sheet
-`bg-black/35`. Change the surface centrally in those four primitives — no modal
-should hardcode its own background.
+**`bg-dialog`** surface token; menus/popovers on **`bg-popover`**. Both tokens
+are OPAQUE: white in light, `{color.neutral.800}` (#1e1e1e) in dark. They were
+glass once, but a floating surface that sits over content must never bleed it
+through: the glass fills read as solid only via `backdrop-filter`, which
+WebView2 does not reliably composite (GPU/driver dependent, silently no-ops),
+so desktop modals painted see-through — solid tokens fix it everywhere, web
+included, with no per-platform fallback. Never re-add alpha to these tokens or
+put an opacity modifier (`bg-popover/95`) or `backdrop-blur` on a floating
+surface. The token is separate from `card` on purpose: `card` stays glass for
+NON-floating surfaces (cards over the canvas). Wired: `dialog`/`popover` in
+`tokens/semantic/color.{light,dark}.json` → `--ht-dialog`/`--ht-popover` →
+`@theme` (`ui/core/src/globals.css`) → Tailwind `bg-dialog`/`bg-popover`; the
+top-sheen rules stay in `futuristic.css`. The scrims are deliberately light:
+Dialog overlay `bg-black/25`, Alert/Sheet `bg-black/35`. Change the surface
+centrally in those primitives — no modal should hardcode its own background.
 
 **Primary button** — flat and sober (`[data-variant="default"]:is(button, a)`),
 not a glossy slab. Kanban resting cards use one token, `--ht-card-solid` (`#2c2c2b`

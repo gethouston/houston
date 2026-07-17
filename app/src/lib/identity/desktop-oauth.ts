@@ -126,62 +126,31 @@ export async function runLoopbackAuthorize(
   return { code, redirectUri, codeVerifier };
 }
 
-/** A GCIP-brokered authorize round-trip's redemption inputs. */
+/** A GCIP-brokered authorize round-trip's redemption input. */
 export interface BrokeredAuthorizeResult {
-  /** The full callback query GCIP's handler redirected with (no leading `?`). */
+  /** The full callback query the bridge deep-linked back (no leading `?`). */
   callbackQuery: string;
-  /** The loopback redirect URI the callback landed on (the `continueUri`). */
-  redirectUri: string;
 }
 
 /**
- * Run one GCIP-BROKERED loopback authorize round-trip (Apple). Unlike
- * {@link runLoopbackAuthorize}, the authorize URL is minted by GCIP
- * (`createAuthUri`) AFTER the loopback is bound — GCIP's handler is the
- * provider-registered redirect and it bounces back to our loopback
- * `continueUri` — and the redemption input is the WHOLE callback query (fed to
+ * Run one GCIP-BROKERED authorize round-trip (Apple). Unlike
+ * {@link runLoopbackAuthorize} there is NO loopback listener: Apple rejects
+ * `127.0.0.1` redirects, so the authorize URL minted by GCIP (`createAuthUri`)
+ * redirects to the gateway's HTTPS bridge, which navigates the browser to a
+ * real `houston://auth-callback?<query>` deep link the OS routes to the app —
+ * the Rust shell re-emits it on the same `auth://deep-link` channel the
+ * loopback flows use (see `apple-authorize.ts` for the pinned bridge
+ * contract). The redemption input is the WHOLE callback query (fed to
  * `signInWithIdp` as the `requestUri`), not a PKCE code. CSRF: the `state`
  * GCIP embedded in its authorize URL is extracted by the caller and enforced
  * on the callback exactly like the PKCE flows. Resolves `null` on a benign
  * cancel (superseded / unmount / timeout).
  */
-export async function runBrokeredLoopbackAuthorize(
-  mintAuthorizeUrl: (
-    redirectUri: string,
-  ) => Promise<{ url: string; expectedState: string }>,
+export async function runBrokeredDeepLinkAuthorize(
+  mintAuthorizeUrl: () => Promise<{ url: string; expectedState: string }>,
   opts?: LoopbackAuthorizeOptions,
 ): Promise<BrokeredAuthorizeResult | null> {
-  let redirectUri: string;
-  try {
-    redirectUri = await osStartOauthLoopback();
-  } catch (e) {
-    // Same no-custom-scheme-fallback rationale as runLoopbackAuthorize.
-    throw new IdentityError("unknown", {
-      rawCode: "loopback_bind_failed",
-      cause: e,
-    });
-  }
-
-  const freeLoopback = () => {
-    void osCancelOauthLoopback().catch((e) =>
-      identityLog(
-        "warn",
-        `failed to free loopback port: ${String(e)}`,
-        "identity/desktop-oauth",
-      ),
-    );
-  };
-
-  let minted: { url: string; expectedState: string };
-  try {
-    minted = await mintAuthorizeUrl(redirectUri);
-  } catch (e) {
-    // The GCIP mint failed before any browser opened — free the port now
-    // rather than letting it idle until Rust's 300s self-timeout.
-    freeLoopback();
-    throw e;
-  }
-
+  const minted = await mintAuthorizeUrl();
   const callbackQuery = await awaitLoopbackCallback({
     expectedState: minted.expectedState,
     authorizeUrl: minted.url,
@@ -189,10 +158,10 @@ export async function runBrokeredLoopbackAuthorize(
     openUrl: tauriSystem.openUrl,
     onBrowserOpened: opts?.onBrowserOpened,
     parsePayload: parseCallbackQuery,
-    abandonLoopback: freeLoopback,
+    // No loopback port to free — the callback arrives as an OS deep link.
   });
   if (callbackQuery === null) return null; // benign cancel — no error, no session
-  return { callbackQuery, redirectUri };
+  return { callbackQuery };
 }
 
 /**

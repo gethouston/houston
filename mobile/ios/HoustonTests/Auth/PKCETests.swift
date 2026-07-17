@@ -11,9 +11,9 @@ final class PKCETests: XCTestCase {
         XCTAssertEqual(PKCE.challenge(for: verifier), expected)
     }
 
-    func testChallengeMethodIsLowercaseS256() {
-        // Supabase GoTrue issues and verifies `s256` (lowercase), not `S256`.
-        XCTAssertEqual(PKCE.challengeMethod, "s256")
+    func testChallengeMethodIsCanonicalS256() {
+        // RFC 7636 §4.3 canonical form — Google and Entra both require it.
+        XCTAssertEqual(PKCE.challengeMethod, "S256")
     }
 
     func testVerifierLengthAndAlphabet() {

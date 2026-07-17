@@ -20,13 +20,11 @@ interface SegmentOption {
 
 interface OnboardingSegmentScreenProps {
   onContinue: (segment: OnboardingSegment) => Promise<void>;
-  onSkip: () => Promise<void>;
   saving: boolean;
 }
 
 export function OnboardingSegmentScreen({
   onContinue,
-  onSkip,
   saving,
 }: OnboardingSegmentScreenProps) {
   const { t } = useTranslation(["setup", "common"]);
@@ -64,22 +62,6 @@ export function OnboardingSegmentScreen({
       await onContinue(selected);
       analytics.track("onboarding_segment_continued", {
         selected_segment: selected,
-        source_screen: ONBOARDING_SEGMENT_SOURCE_SCREEN,
-      });
-    } catch (err) {
-      setError(genericErrorDescription("save_onboarding_segment", err));
-    }
-  };
-
-  const skip = async () => {
-    if (saving) return;
-    setError(null);
-    try {
-      await onSkip();
-      // Tracked AFTER the persist succeeds, mirroring `continued`: the event
-      // means "this install left the screen segmented as a skipper", not
-      // "the user clicked skip and maybe saw an error".
-      analytics.track("onboarding_segment_skipped", {
         source_screen: ONBOARDING_SEGMENT_SOURCE_SCREEN,
       });
     } catch (err) {
@@ -125,7 +107,7 @@ export function OnboardingSegmentScreen({
             </p>
           )}
 
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col items-center">
             <Button
               type="button"
               size="lg"
@@ -136,17 +118,6 @@ export function OnboardingSegmentScreen({
               {saving && <Loader2 className="size-4 animate-spin" />}
               {t("common:actions.continue")}
             </Button>
-            <p className="text-xs text-ink-muted">
-              {t("setup:onboardingSegment.helper")}
-            </p>
-            <button
-              type="button"
-              onClick={() => void skip()}
-              disabled={saving}
-              className="text-xs text-ink-muted underline underline-offset-2 transition-colors outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {t("setup:onboardingSegment.skip")}
-            </button>
           </div>
         </div>
       </SetupCard>

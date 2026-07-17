@@ -15,6 +15,9 @@ interface OptionCardProps {
   trailing?: ReactNode;
   /** Extra content revealed inside the row (e.g. a sign-in hint when picked). */
   children?: ReactNode;
+  /** `lg` gives short lists (e.g. the language gate) taller rows + larger
+   *  labels so three options don't float in a mostly-empty card. */
+  size?: "md" | "lg";
 }
 
 /**
@@ -33,6 +36,7 @@ export function OptionCard({
   disabled,
   trailing,
   children,
+  size = "md",
 }: OptionCardProps) {
   // The right-side radio only carries selection when nothing on the left does
   // (the plain label rows). Leading-media rows carry it via their own visuals.
@@ -44,7 +48,8 @@ export function OptionCard({
       disabled={disabled}
       aria-pressed={selected}
       className={cn(
-        "flex w-full flex-col gap-3 rounded-lg border-l-2 py-3 pr-3 pl-3 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
+        "flex w-full flex-col gap-3 rounded-lg border-l-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
+        size === "lg" ? "px-4 py-5" : "py-3 pr-3 pl-3",
         disabled
           ? "cursor-not-allowed border-transparent opacity-50"
           : "border-transparent hover:bg-ink/[0.04]",
@@ -54,7 +59,14 @@ export function OptionCard({
       <div className="flex items-center gap-3">
         {leading && <span className="shrink-0">{leading}</span>}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-ink">{label}</p>
+          <p
+            className={cn(
+              "font-medium text-ink",
+              size === "lg" ? "text-base" : "text-sm",
+            )}
+          >
+            {label}
+          </p>
           {description && (
             <p className="mt-0.5 text-xs text-ink-muted">{description}</p>
           )}

@@ -1,11 +1,16 @@
 import Foundation
+import os
 import Security
+
+private let keychainLog = Logger(subsystem: "ai.gethouston.app", category: "auth")
 
 /// Failures from the Keychain-backed session store. Never swallowed silently —
 /// callers surface these to the user (per the no-silent-failures policy).
+/// A blob that exists but does not DECODE is not an error: it is a legacy
+/// (Supabase-era) or corrupt session, discarded with a log — the desktop
+/// `session-store.ts` lesson.
 enum AuthKeychainError: Error, Equatable {
     case unexpectedStatus(OSStatus)
-    case decodeFailed
 }
 
 /// Stores the Houston `AuthSession` as one JSON generic-password item in the
@@ -42,7 +47,12 @@ struct AuthKeychain {
         guard let data = item as? Data,
               let session = try? JSONDecoder().decode(AuthSession.self, from: data)
         else {
-            throw AuthKeychainError.decodeFailed
+            // A stale pre-Firebase blob (the key is reused) or corrupt JSON:
+            // discard it as signed-out, visibly — never a throw, never accepted.
+            keychainLog.warning(
+                "discarding session blob of unknown shape (legacy or corrupt), treating as signed out")
+            try? clear()
+            return nil
         }
         return session
     }

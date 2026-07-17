@@ -59,8 +59,6 @@
     "deniedLine": "I chose not to allow {{action}}. Do not retry it; continue without it.",
     "approvedLineDisplay": "Allowed {{app}} to {{action}}.",
     "deniedLineDisplay": "Did not allow {{app}} to {{action}}.",
-    "approvalMoreParams_one": "And {{count}} more setting",
-    "approvalMoreParams_other": "And {{count}} more settings",
     "signinAppName": "Houston",
     "signinTitle": "Sign in to Houston",
     "signinDescription": "Your accounts stay yours; the agent acts on your behalf.",
@@ -147,7 +145,9 @@
     "planner": "Planner",
     "plannerDescription": "Writes a plan for you to approve first. Makes no changes.",
     "autopilot": "Autopilot",
-    "autopilotDescription": "Finishes the task on its own with what it has. No questions asked."
+    "autopilotDescription": "Finishes the task on its own with what it has. No questions asked.",
+    "nextTurnToastTitle": "{{mode}} mode is set",
+    "nextTurnToastBody": "It will apply to your next message. The current reply keeps going."
   },
   "modelSelector": {
     "selectModel": "Select model",

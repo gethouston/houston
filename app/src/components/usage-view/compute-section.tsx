@@ -19,6 +19,7 @@ import {
   bucketCompute,
   type ComputeRange,
   durationParts,
+  isOpaqueSlug,
 } from "./compute-usage-model";
 
 const RANGES: ComputeRange[] = ["week", "month", "quarter"];
@@ -56,8 +57,9 @@ function dayLabel(
 }
 
 /**
- * "Running time": how long this user's agents have been up, per day/week, with
- * a per-agent breakdown. Rendered ONLY where the gateway advertises
+ * "Time worked": how long this user's agents actually spent executing tasks,
+ * per day/week, with a per-agent breakdown. The full pod up-time (`awakeMs`)
+ * is deliberately never shown. Rendered ONLY where the gateway advertises
  * `capabilities.computeUsage` (the parent gates mounting, so the query never
  * fires elsewhere). One fetch covers 90 days; range switches re-bucket locally.
  */
@@ -71,7 +73,12 @@ export function ComputeSection() {
     () => bucketCompute(data?.rows ?? [], range, Date.now()),
     [data, range],
   );
-  const runningNow = data?.awakeNow ?? [];
+  const onlineNow = data?.awakeNow ?? [];
+  // Selective direct labels: every nonzero bar on the roomy 7-day view; only
+  // the tallest bar on dense views (the tooltip covers the rest).
+  const tallestIndex = model.buckets.findIndex(
+    (bucket) => bucket.workMs > 0 && bucket.workMs === model.maxBucketMs,
+  );
 
   return (
     <section className="flex flex-col gap-3">
@@ -112,7 +119,7 @@ export function ComputeSection() {
         <>
           <p className="text-sm text-ink-muted">
             {t("usage.compute.summary", {
-              duration: formatDuration(t, model.totalRunMs),
+              duration: formatDuration(t, model.totalWorkMs),
             })}
             <span aria-hidden> · </span>
             {t("usage.compute.tasks", { count: model.totalTasks })}
@@ -120,14 +127,14 @@ export function ComputeSection() {
           <ComputeBarChart
             buckets={model.buckets}
             max={model.maxBucketMs}
-            runningNow={runningNow.length > 0}
+            runningNow={onlineNow.length > 0}
             barLabel={(bucket) =>
               t("usage.compute.barLabel", {
                 date: dayLabel(i18n.language, bucket.startDay, {
                   month: "short",
                   day: "numeric",
                 }),
-                duration: formatDuration(t, bucket.runMs),
+                duration: formatDuration(t, bucket.workMs),
                 tasks: t("usage.compute.tasks", { count: bucket.tasks }),
               })
             }
@@ -140,6 +147,11 @@ export function ComputeSection() {
                   : { month: "short", day: "numeric" },
               )
             }
+            valueLabel={(bucket, index) => {
+              if (bucket.workMs === 0) return null;
+              if (range !== "week" && index !== tallestIndex) return null;
+              return formatDuration(t, bucket.workMs);
+            }}
           />
           <div>
             <h3 className="mb-1 text-sm font-medium text-ink">
@@ -152,17 +164,21 @@ export function ComputeSection() {
                     a.folderPath === agent.agentSlug ||
                     a.id === agent.agentSlug,
                 );
+                // A slug with no matching agent and no words in it is a
+                // deleted agent's wire id — say so instead of showing hex.
+                const name =
+                  !match && isOpaqueSlug(agent.agentSlug)
+                    ? t("usage.compute.removedAgent")
+                    : agentLabel(agent.agentSlug, agents);
                 return (
                   <ComputeAgentRow
                     key={agent.agentSlug}
                     agent={agent}
-                    name={agentLabel(agent.agentSlug, agents)}
+                    name={name}
                     color={resolveAgentColor(match?.color)}
                     max={model.maxAgentMs}
-                    runningNow={runningNow.includes(agent.agentSlug)}
-                    duration={formatDuration(t, agent.runMs)}
+                    duration={formatDuration(t, agent.workMs)}
                     tasks={t("usage.compute.tasks", { count: agent.tasks })}
-                    runningNowLabel={t("usage.compute.runningNow")}
                   />
                 );
               })}

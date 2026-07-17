@@ -11,14 +11,14 @@ final class AuthCallbackTests: XCTestCase {
 
     func testParsesCodeFromCustomSchemeCallback() {
         let result = AuthCallback.parse(url("houston://auth-callback?code=abc123"))
-        XCTAssertEqual(result, .code("abc123"))
+        XCTAssertEqual(result, .code("abc123", state: nil))
     }
 
-    func testCodeWinsAndOtherParamsIgnored() {
+    func testCodeCarriesEchoedState() {
         let result = AuthCallback.parse(
             url("houston://auth-callback?code=xyz&state=foo&extra=1")
         )
-        XCTAssertEqual(result, .code("xyz"))
+        XCTAssertEqual(result, .code("xyz", state: "foo"))
     }
 
     func testParsesErrorWithDescription() {

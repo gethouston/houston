@@ -1,14 +1,17 @@
-import { hostname } from "node:os";
+import { hostname, release as osRelease, platform } from "node:os";
 import { formatWithOptions } from "node:util";
 import type {
   BaseTransportOptions,
+  Event,
   SeverityLevel,
+  StackFrame,
   Transport,
 } from "@sentry/core";
 import {
   createStackParser,
   createTransport,
   nodeStackLineParser,
+  parseStackFrames,
   Scope,
   ServerRuntimeClient,
 } from "@sentry/core";
@@ -55,6 +58,48 @@ function redactCredentials(message: string): string {
     /\b(token|api[_-]?key|authorization|bearer)=\S+/gi,
     "$1=[redacted]",
   );
+}
+
+/**
+ * Node routes `process.emitWarning` output through `console.error` as
+ * `(node:<pid>) [CODE] Warning: …` (e.g. the Claude SDK's CAN_USE_TOOL_SHADOWED
+ * notice). Those are warnings mis-dressed as errors — they must ride as
+ * breadcrumbs, never fire standalone error events.
+ */
+const NODE_PROCESS_WARNING = /^\(node:\d+\)/;
+
+/**
+ * With `attachStacktrace` on, a bare-string ERROR's synthetic stack ends inside
+ * the reporter itself (the console wrap, captureLog, guarded), which would give
+ * every log-site event the same misleading culprit. Trailing frames from these
+ * files are popped so the innermost frame is the code that actually logged.
+ * Filename-based: both production stacks are source-mapped back to the original
+ * `.ts` paths (the sidecar's embedded bun sourcemap, the pod's
+ * `--enable-source-maps`); an unmapped stack just stays untrimmed.
+ */
+const REPORTER_FRAME =
+  /(?:sentry[/\\](?:client|console-capture))\.(?:m?[jt]s)$|(?:observability[/\\]logging)\.(?:m?[jt]s)$/;
+
+function isReporterFrame(frame: StackFrame): boolean {
+  return !!frame.filename && REPORTER_FRAME.test(frame.filename);
+}
+
+/** Exported for tests. Mutates and returns the event. */
+export function trimReporterFrames<E extends Event>(event: E): E {
+  const stacks = [
+    ...(event.exception?.values ?? []),
+    ...(event.threads?.values ?? []),
+  ];
+  for (const holder of stacks) {
+    const frames = holder.stacktrace?.frames;
+    if (!frames) continue;
+    let last = frames[frames.length - 1];
+    while (frames.length > 1 && last && isReporterFrame(last)) {
+      frames.pop();
+      last = frames[frames.length - 1];
+    }
+  }
+  return event;
 }
 
 /**
@@ -106,6 +151,7 @@ export function createEngineSentry(
   config: EngineSentryConfig,
   transport: (options: BaseTransportOptions) => Transport,
 ): EngineSentry {
+  const stackParser = createStackParser(nodeStackLineParser());
   const client = new ServerRuntimeClient({
     dsn: config.dsn,
     release: config.release,
@@ -115,7 +161,10 @@ export function createEngineSentry(
     runtime: process.versions.bun
       ? { name: "bun", version: process.versions.bun }
       : { name: "node", version: process.versions.node },
-    stackParser: createStackParser(nodeStackLineParser()),
+    stackParser,
+    // Non-Error throwables passed to captureException still get a synthetic
+    // stack at the capture site instead of arriving stackless.
+    attachStacktrace: true,
     integrations: [],
     transport,
     maxBreadcrumbs: 100,
@@ -131,6 +180,16 @@ export function createEngineSentry(
     deployment: config.deployment,
     ...config.tags,
   });
+  // ServerRuntimeClient attaches no contexts on its own (integrations: []).
+  // OS tells Windows/macOS/Linux-pod apart; app_start_time separates a
+  // boot-path crash from a long-uptime failure at a glance.
+  scope.setContext("os", { name: platform(), version: osRelease() });
+  scope.setContext("app", {
+    app_start_time: new Date(
+      Date.now() - process.uptime() * 1000,
+    ).toISOString(),
+  });
+  scope.addEventProcessor(trimReporterFrames);
   client.init();
 
   // Re-entrancy guard: capture paths run inside console/log hooks, so anything
@@ -165,21 +224,44 @@ export function createEngineSentry(
             ...(values as [unknown, ...unknown[]]),
           ),
         );
-        if (level === "ERROR") {
+        const demoted = level === "ERROR" && NODE_PROCESS_WARNING.test(message);
+        if (level === "ERROR" && !demoted) {
           // A real Error in the values gives Sentry a stack to group on; a
-          // bare string ERROR still becomes an event, message-grouped.
+          // bare string ERROR becomes a message event with a synthetic stack
+          // at the log site. The stack rides as a THREAD, not an exception:
+          // a synthetic exception makes Sentry title the issue by the top
+          // frame's function name ("<anonymous>") — a thread keeps the
+          // message as the title while still showing where it was logged.
           const error = values.find((v) => v instanceof Error);
           if (error) {
             scope.captureException(error, {
               captureContext: { extra: { log_message: message } },
             });
           } else {
-            scope.captureMessage(message, "error");
+            scope.captureEvent({
+              message,
+              level: "error",
+              threads: {
+                values: [
+                  {
+                    stacktrace: {
+                      frames: parseStackFrames(stackParser, new Error(message)),
+                    },
+                    crashed: false,
+                    current: true,
+                  },
+                ],
+              },
+            });
           }
         }
         // Breadcrumb AFTER capture so an ERROR event doesn't carry itself.
         scope.addBreadcrumb(
-          { category: "log", level: BREADCRUMB_LEVELS[level], message },
+          {
+            category: "log",
+            level: demoted ? "warning" : BREADCRUMB_LEVELS[level],
+            message,
+          },
           100,
         );
       });
