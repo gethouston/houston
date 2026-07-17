@@ -126,14 +126,9 @@ export function bucketCompute(
     agent.messages += messages;
   }
 
-  // Agents with nothing to show in the selected range are pure noise: an
-  // awake-but-never-working engine (rows carry awakeMs we never render) would
-  // list as "0m · 0 messages".
-  const agents = [...perAgent.values()]
-    .filter((agent) => agent.workMs > 0 || agent.messages > 0)
-    .sort(
-      (a, b) => b.workMs - a.workMs || a.agentSlug.localeCompare(b.agentSlug),
-    );
+  const agents = [...perAgent.values()].sort(
+    (a, b) => b.workMs - a.workMs || a.agentSlug.localeCompare(b.agentSlug),
+  );
   return {
     buckets,
     perAgent: agents,
@@ -142,6 +137,33 @@ export function bucketCompute(
     maxBucketMs: Math.max(1, ...buckets.map((b) => b.workMs)),
     maxAgentMs: Math.max(1, ...agents.map((a) => a.workMs)),
   };
+}
+
+/**
+ * The by-agent list is ROSTER-driven: every agent the user has appears the
+ * moment it exists (a just-created agent shows "0m · 0 messages" immediately),
+ * merged with whatever totals the range holds. Busiest first, zeros last in
+ * roster order. `agentSlug` for a row-less agent is its folderPath (the wire
+ * key rows will use once data lands) falling back to its id.
+ */
+export function withRosterAgents(
+  roster: readonly KnownAgentRef[],
+  perAgent: readonly ComputeAgentTotals[],
+): ComputeAgentTotals[] {
+  const bySlug = new Map(perAgent.map((agent) => [agent.agentSlug, agent]));
+  const merged = roster.map((agent) => {
+    const totals =
+      (agent.folderPath ? bySlug.get(agent.folderPath) : undefined) ??
+      bySlug.get(agent.id);
+    return (
+      totals ?? {
+        agentSlug: agent.folderPath ?? agent.id,
+        workMs: 0,
+        messages: 0,
+      }
+    );
+  });
+  return merged.sort((a, b) => b.workMs - a.workMs);
 }
 
 /**

@@ -127,16 +127,36 @@ describe("UsageSampler", () => {
     await sampler.tick();
     state.turnBusy = true;
     state.now += 5_000;
-    await sampler.tick();
+    await sampler.tick(); // rising edge: flushes immediately (request #1)
     await sampler.flush();
     state.now += 5_000;
     await sampler.tick();
     await sampler.flush();
-    expect(state.requests).toHaveLength(2);
+    expect(state.requests).toHaveLength(3);
     expect(body(state, 0).days[0]?.activeMs).toBe(5_000);
     expect(lastDay(state).activeMs).toBe(10_000);
     // Same boot: the gateway GREATEST-upserts on (bootId, day).
     expect(body(state, 0).bootId).toBe(lastBody(state).bootId);
+  });
+
+  it("flushes on busy edges with a floor, so turns surface without waiting for the interval", async () => {
+    const { sampler, state } = build();
+    await sampler.tick();
+    state.turnBusy = true;
+    state.now += 5_000;
+    await sampler.tick(); // rising edge -> immediate report
+    expect(state.requests).toHaveLength(1);
+    expect(lastDay(state).turns).toBe(1);
+    state.now += 5_000;
+    await sampler.tick(); // still busy: no edge, no extra report
+    expect(state.requests).toHaveLength(1);
+    state.turnBusy = false;
+    state.now += 5_000;
+    await sampler.tick(); // falling edge -> the finished turn's time reports
+    expect(state.requests).toHaveLength(2);
+    // The idle tick's own stretch is never credited (the turn ended somewhere
+    // inside it — bounded undercount): 2 busy ticks x 5s.
+    expect(lastDay(state).activeMs).toBe(10_000);
   });
 
   it("keeps the accumulator through rejected and failed reports, logging each failure once", async () => {
@@ -166,7 +186,9 @@ describe("UsageSampler", () => {
     await sampler.stop();
     expect(lastDay(state).activeMs).toBe(5_000);
     await sampler.stop(); // idempotent
-    expect(state.requests).toHaveLength(1);
+    // stop() drains via one edge flush (the final sample sees the rising
+    // edge) plus the terminal flush; a second stop adds nothing.
+    expect(state.requests).toHaveLength(2);
   });
 
   it("never accrues or reports after a failed sample", async () => {

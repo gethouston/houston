@@ -59,6 +59,8 @@ export class UsageSampler {
   private readonly now: () => number;
   private readonly log: (message: string, err?: unknown) => void;
   private lastTickAt = 0;
+  private lastBusy = false;
+  private lastEdgeFlushAt = 0;
   private lastFailure: string | null = null;
   private timers: ReturnType<typeof setInterval>[] = [];
   private stopped = false;
@@ -122,6 +124,17 @@ export class UsageSampler {
       return;
     }
     if (busy && elapsed > 0) this.credit(now - elapsed, now);
+    // Edge-triggered flush: report the moment work starts or finishes so the
+    // app sees new turns within one poll instead of one flush interval. The
+    // periodic flush stays the backstop for long-running work; a floor keeps
+    // rapid-fire turns from turning every edge into a request.
+    if (busy !== this.lastBusy) {
+      this.lastBusy = busy;
+      if (now - this.lastEdgeFlushAt >= this.sampleMs) {
+        this.lastEdgeFlushAt = now;
+        await this.flush();
+      }
+    }
   }
 
   /** Report today's (± yesterday's) cumulative totals. Never throws. */

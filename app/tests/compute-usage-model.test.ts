@@ -6,6 +6,7 @@ import {
   durationParts,
   onlyKnownAgents,
   showComputeSection,
+  withRosterAgents,
 } from "../src/components/usage-view/compute-usage-model.ts";
 
 // The displayed metric is time worked (`activeMs`); awake time rides the wire
@@ -115,9 +116,9 @@ describe("bucketCompute", () => {
     strictEqual(model.maxAgentMs, 1);
   });
 
-  it("drops agents with no work and no tasks in range (awake-only ghosts)", () => {
-    const ghost: ComputeUsageRow = {
-      agentSlug: "5e70000000000000",
+  it("keeps zero-work agents in perAgent (the roster merge decides visibility)", () => {
+    const idle: ComputeUsageRow = {
+      agentSlug: "idle-agent",
       day: "2026-07-15",
       awakeMs: 600_000, // awake the whole time...
       activeMs: 0, // ...but never worked
@@ -126,14 +127,40 @@ describe("bucketCompute", () => {
       routineRuns: 0,
     };
     const model = bucketCompute(
-      [ghost, row("real", "2026-07-15", 1_000, 1)],
+      [idle, row("real", "2026-07-15", 1_000, 1)],
       "week",
       NOW,
     );
     deepStrictEqual(
       model.perAgent.map((a) => a.agentSlug),
-      ["real"],
+      ["real", "idle-agent"],
     );
+  });
+});
+
+describe("withRosterAgents", () => {
+  it("lists every roster agent immediately, zeros for those without data", () => {
+    const merged = withRosterAgents(
+      [
+        { id: "Personal/Fresh", folderPath: "fresh" }, // just created, no rows
+        { id: "Personal/Worker", folderPath: "worker" },
+      ],
+      [{ agentSlug: "worker", workMs: 1_000, messages: 3 }],
+    );
+    deepStrictEqual(merged, [
+      { agentSlug: "worker", workMs: 1_000, messages: 3 },
+      { agentSlug: "fresh", workMs: 0, messages: 0 },
+    ]);
+  });
+
+  it("matches totals by folderPath or id and falls back to id as the slug", () => {
+    const merged = withRosterAgents(
+      [{ id: "Personal/ById" }],
+      [{ agentSlug: "Personal/ById", workMs: 42, messages: 1 }],
+    );
+    deepStrictEqual(merged, [
+      { agentSlug: "Personal/ById", workMs: 42, messages: 1 },
+    ]);
   });
 });
 

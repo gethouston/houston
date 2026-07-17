@@ -174,12 +174,15 @@ test("switching the range changes the bar count without a new fetch", async ({
   await expect(bars).toHaveCount(13);
 });
 
-// ── 4. Armed but no data yet: the honest empty state ───────────────────────
+// ── 4. No data yet: every roster agent is still visible immediately ────────
 
-test("with the capability but no rows the section shows its empty state", async ({
+test("an agent with no usage rows appears immediately at zero", async ({
   page,
   request,
 }) => {
+  // A just-created agent has NO rows on the wire yet — the list is roster-
+  // driven, so it must show up at "0m · 0 messages" without waiting for the
+  // pod to report anything.
   await armComputeUsage(request, { rows: [], awakeNow: [] });
   await page.goto("/");
   await page.locator('[data-tour-target="nav-usage"]').click();
@@ -187,8 +190,13 @@ test("with the capability but no rows the section shows its empty state", async 
   await expect(
     page.getByRole("heading", { name: "Time worked" }),
   ).toBeVisible();
-  await expect(page.getByText("No time worked yet")).toBeVisible();
-  await expect(
-    page.getByText("When your agents work, their time will show here."),
-  ).toBeVisible();
+  const houston = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Time worked" }) })
+    .getByRole("listitem")
+    .filter({ hasText: "Houston" });
+  await expect(houston).toContainText("0m");
+  await expect(houston).toContainText("0 messages");
+  // The empty state is reserved for a roster with no agents at all.
+  await expect(page.getByText("No time worked yet")).toHaveCount(0);
 });
