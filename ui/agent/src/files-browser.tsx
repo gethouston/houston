@@ -1,481 +1,205 @@
 /**
- * FilesBrowser — macOS Finder list-view clone.
- * Column headers with sort, file/folder tree, status bar, drag-and-drop.
+ * FilesBrowser — Drive-style card grid (default) with per-folder breadcrumb
+ * navigation, plus the original Finder-style list view behind a toggle.
+ * Status bar, drag-and-drop, context menus and inline rename in both views.
  */
 
-import { Button, cn } from "@houston-ai/core";
-import { Upload } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { useDropZone } from "./drop-zone";
+import { BgContextMenu } from "./bg-context-menu";
 import type { FileMenuLabels } from "./file-menu";
-import { COL_GRID, FileRow, FolderSection } from "./file-row";
-import { NewFolderInput } from "./new-folder-input";
-import { buildTree } from "./tree";
-import type { FileEntry } from "./types";
-import { type SortDirection, type SortKey, sortTree } from "./utils";
-
-export interface FilesBrowserLabels {
-  columnName?: string;
-  columnDateModified?: string;
-  columnDateCreated?: string;
-  columnSize?: string;
-  columnKind?: string;
-  loading?: string;
-  browseFiles?: string;
-}
-
-const DEFAULT_LABELS: Required<FilesBrowserLabels> = {
-  columnName: "Name",
-  columnDateModified: "Date Modified",
-  columnDateCreated: "Date Created",
-  columnSize: "Size",
-  columnKind: "Kind",
-  loading: "Loading\u2026",
-  browseFiles: "Browse files",
-};
+import {
+  DEFAULT_FILES_BROWSER_LABELS,
+  type FilesBrowserLabels,
+  toColumnLabels,
+  toGridLabels,
+  toSortLabels,
+} from "./files-browser-labels";
+import { FilesEmptyState } from "./files-empty-state";
+import { FilesGrid } from "./files-grid";
+import { FilesListView } from "./files-list-view";
+import { FilesToolbar } from "./files-toolbar";
+import type { FileEntry, FilesViewMode, LoadFilePreview } from "./types";
+import { useFilesBrowser } from "./use-files-browser";
 
 export interface FilesBrowserProps {
   files: FileEntry[];
   loading?: boolean;
   selectedPath?: string | null;
+  /** Controlled view mode; omit to let the browser manage it internally. */
+  view?: FilesViewMode;
+  onViewChange?: (view: FilesViewMode) => void;
+  /** First breadcrumb (the workspace root), e.g. the agent's name. */
+  rootLabel?: string;
+  /** Lazily fetch thumbnail bytes for a visible card (grid view). */
+  loadPreview?: LoadFilePreview;
   onSelect?: (file: FileEntry) => void;
   onOpen?: (file: FileEntry) => void;
   onReveal?: (file: FileEntry) => void;
   /** Save the file to the user's machine (browser builds; desktop uses onOpen/onReveal). */
   onDownload?: (file: FileEntry) => void;
-  /** Save a folder's subtree as a zip. Adds a context menu to folder rows. */
+  /** Save a folder's subtree as a zip. Adds a context menu to folder rows/cards. */
   onDownloadFolder?: (folder: FileEntry) => void;
   onDelete?: (file: FileEntry) => void;
   onFilesDropped?: (files: File[], targetFolder?: string) => void;
   /** Move a file/folder to a new location (null = root) */
   onMove?: (sourcePath: string, targetFolder: string | null) => void;
   onRename?: (file: FileEntry, newName: string) => void;
+  /** Receives the workspace-relative path (grid view creates inside the open folder). */
   onCreateFolder?: (name: string) => void;
   onBrowse?: () => void;
   emptyTitle?: string;
   emptyDescription?: string;
   /** Optional action rendered in the bottom status bar (e.g. "Open in File Manager" link) */
   statusBarAction?: React.ReactNode;
-  /** Overrides for chrome labels (column headers, loading, browse CTA). */
+  /** Overrides for chrome labels (toolbar, columns, loading, browse CTA). */
   labels?: FilesBrowserLabels;
   /** Overrides for the right-click context-menu labels. */
   menuLabels?: FileMenuLabels;
 }
 
-export function FilesBrowser({
-  files,
-  loading,
-  selectedPath: controlledSelected,
-  onSelect,
-  onOpen,
-  onReveal,
-  onDownload,
-  onDownloadFolder,
-  onDelete,
-  onFilesDropped,
-  onMove,
-  onRename,
-  onCreateFolder,
-  onBrowse,
-  emptyTitle = "No files yet",
-  emptyDescription = "When agents create files, they\u2019ll appear here.",
-  statusBarAction,
-  labels,
-  menuLabels,
-}: FilesBrowserProps) {
-  const l = { ...DEFAULT_LABELS, ...labels };
-  // Internal selection state — used when consumer doesn't control selection
-  const [internalSelected, setInternalSelected] = useState<string | null>(null);
-  const selectedPath =
-    controlledSelected !== undefined ? controlledSelected : internalSelected;
-  const handleSelect = useCallback(
-    (file: FileEntry) => {
-      setInternalSelected(file.path);
-      onSelect?.(file);
-    },
-    [onSelect],
-  );
+export function FilesBrowser(props: FilesBrowserProps) {
+  const l = { ...DEFAULT_FILES_BROWSER_LABELS, ...props.labels };
+  const b = useFilesBrowser({
+    files: props.files,
+    loading: props.loading,
+    controlledView: props.view,
+    onViewChange: props.onViewChange,
+    controlledSelected: props.selectedPath,
+    onSelect: props.onSelect,
+    onCreateFolder: props.onCreateFolder,
+    onFilesDropped: props.onFilesDropped,
+    onMove: props.onMove,
+  });
 
-  const [creatingFolder, setCreatingFolder] = useState(false);
-  const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
-
-  const [folderDropTarget, setFolderDropTarget] = useState<string | null>(null);
-  const folderTargetRef = useRef<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [sortDir, setSortDir] = useState<SortDirection>("asc");
-
-  const onDragActive = useCallback((f: string | null) => {
-    setFolderDropTarget(f);
-    folderTargetRef.current = f;
-  }, []);
-
-  // Wrap callbacks so container drops target the hovered folder (or root)
-  const handleDrop = useCallback(
-    (files: File[]) => {
-      onFilesDropped?.(files, folderTargetRef.current ?? undefined);
-    },
-    [onFilesDropped],
-  );
-  const handleMove = useCallback(
-    (src: string) => {
-      onMove?.(src, folderTargetRef.current);
-    },
-    [onMove],
-  );
-  const { isDragging, dragHandlers } = useDropZone(handleDrop, handleMove);
-
-  const isEmpty = !loading && files.length === 0;
-  const isRootTarget = isDragging && folderDropTarget === null;
-
-  const handleSort = useCallback((key: SortKey) => {
-    setSortKey((prev) => {
-      if (prev === key) {
-        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-        return prev;
-      }
-      setSortDir("asc");
-      return key;
-    });
-  }, []);
-
-  const tree = useMemo(() => {
-    if (isEmpty) return null;
-    return sortTree(buildTree(files), sortKey, sortDir);
-  }, [files, isEmpty, sortKey, sortDir]);
-
-  const fileCount = useMemo(() => {
-    if (!tree) return 0;
-    let count = 0;
-    const walk = (children: typeof tree.children) => {
-      for (const c of children) {
-        count++;
-        if (c.kind === "folder") walk(c.children);
-      }
-    };
-    walk(tree.children);
-    return count;
-  }, [tree]);
-
-  if (isEmpty) {
+  if (b.isEmpty) {
     return (
-      <div className="flex-1 flex flex-col items-center pt-[20vh] gap-4 px-8">
-        <div className="space-y-2 text-center max-w-md">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {emptyTitle}
-          </h1>
-          <p className="text-sm text-ink-muted">{emptyDescription}</p>
-        </div>
-        {onBrowse && (
-          <Button variant="default" size="sm" onClick={onBrowse}>
-            <Upload className="size-4 mr-1.5" /> {l.browseFiles}
-          </Button>
-        )}
-      </div>
+      <FilesEmptyState
+        title={props.emptyTitle ?? "No files yet"}
+        description={
+          props.emptyDescription ??
+          "When agents create files, they’ll appear here."
+        }
+        browseLabel={l.browseFiles}
+        onBrowse={props.onBrowse}
+      />
     );
   }
 
   return (
     <div
-      className="relative flex flex-col overflow-hidden bg-input border border-line rounded-xl h-full"
-      {...(onFilesDropped || onMove ? dragHandlers : {})}
+      className="relative flex h-full flex-col overflow-hidden rounded-xl border border-line bg-input"
+      {...(props.onFilesDropped || props.onMove ? b.dragHandlers : {})}
     >
-      <div className="h-[24px] shrink-0 border-b border-line bg-chip-subtle/40 select-none flex items-center rounded-t-xl px-1">
-        <div
-          className="flex-1 min-w-0 items-center h-full"
-          style={{ display: "grid", gridTemplateColumns: COL_GRID }}
-        >
-          <HeaderCell
-            label={l.columnName}
-            col="name"
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={handleSort}
-            className="pl-7"
-          />
-          <HeaderCell
-            label={l.columnDateModified}
-            col="dateModified"
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-          <HeaderCell
-            label={l.columnDateCreated}
-            col="dateCreated"
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-          <HeaderCell
-            label={l.columnSize}
-            col="size"
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-          <HeaderCell
-            label={l.columnKind}
-            col="kind"
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={handleSort}
-            last
-          />
-        </div>
-      </div>
+      <FilesToolbar
+        view={b.view}
+        onViewChange={b.changeView}
+        path={b.resolvedPath}
+        rootLabel={props.rootLabel ?? "Files"}
+        onNavigate={b.navigate}
+        onDragActive={b.onDragActive}
+        sortKey={b.sortKey}
+        sortDir={b.sortDir}
+        onSort={b.handleSort}
+        sortLabels={toSortLabels(l)}
+        viewGridLabel={l.viewGrid}
+        viewListLabel={l.viewList}
+        breadcrumbsLabel={l.breadcrumbs}
+        onNewFolder={
+          props.onCreateFolder ? () => b.setCreatingFolder(true) : undefined
+        }
+        newFolderLabel={l.newFolder}
+      />
 
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: click-to-deselect and right-click-for-context-menu on the file list backdrop are pointer-only affordances; no keyboard equivalent exists for these background gestures */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: click-to-deselect and right-click-for-context-menu on the backdrop are pointer-only affordances; no keyboard equivalent exists for these background gestures */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: same rationale — background click deselection has no keyboard equivalent */}
       <div
-        className="flex-1 flex flex-col overflow-y-auto px-1"
+        className="flex flex-1 flex-col overflow-y-auto"
         style={{
-          backgroundColor: isRootTarget ? "rgba(0,122,255,0.06)" : undefined,
+          backgroundColor: b.isBgDropTarget
+            ? "color-mix(in srgb, var(--ht-focus) 6%, transparent)"
+            : undefined,
         }}
         onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            setInternalSelected(null);
-            setBgMenu(null);
-          }
+          if (e.target === e.currentTarget) b.handleBackgroundInteraction();
         }}
         onContextMenu={(e) => {
-          if (e.target === e.currentTarget && onCreateFolder) {
+          if (e.target === e.currentTarget && props.onCreateFolder) {
             e.preventDefault();
-            setInternalSelected(null);
-            setBgMenu({ x: e.clientX, y: e.clientY });
+            b.handleBackgroundInteraction({ x: e.clientX, y: e.clientY });
           }
         }}
       >
-        {loading ? (
+        {props.loading || !b.tree || !b.currentFolder ? (
           <div className="flex items-center justify-center py-16">
             <p className="text-sm text-ink-muted/50">{l.loading}</p>
           </div>
+        ) : b.view === "grid" ? (
+          <FilesGrid
+            folder={b.currentFolder}
+            selectedPath={b.selectedPath}
+            loadPreview={props.loadPreview}
+            onNavigate={b.navigate}
+            onSelect={b.handleSelect}
+            onOpen={props.onOpen}
+            onReveal={props.onReveal}
+            onDownload={props.onDownload}
+            onDownloadFolder={props.onDownloadFolder}
+            onDelete={props.onDelete}
+            onRename={props.onRename}
+            onMove={props.onMove}
+            onDragActive={b.onDragActive}
+            creatingFolder={b.creatingFolder}
+            onCreateFolder={props.onCreateFolder ? b.createFolderAt : undefined}
+            onCancelCreateFolder={() => b.setCreatingFolder(false)}
+            menuLabels={props.menuLabels}
+            labels={toGridLabels(l)}
+          />
         ) : (
-          <>
-            <div className="shrink-0 [&>:nth-child(even)]:bg-chip-subtle/30 [&>:nth-child(even)]:rounded-lg">
-              {creatingFolder && (
-                <NewFolderInput
-                  onConfirm={(n) => {
-                    onCreateFolder?.(n);
-                    setCreatingFolder(false);
-                  }}
-                  onCancel={() => setCreatingFolder(false)}
-                />
-              )}
-              {tree?.children.map((child) =>
-                child.kind === "folder" ? (
-                  <FolderSection
-                    key={child.path}
-                    node={child}
-                    depth={0}
-                    selectedPath={selectedPath}
-                    onSelect={handleSelect}
-                    onOpen={onOpen}
-                    onReveal={onReveal}
-                    onDownload={onDownload}
-                    onDownloadFolder={onDownloadFolder}
-                    onDelete={onDelete}
-                    onRename={onRename}
-                    onFilesDropped={onFilesDropped}
-                    onDragActive={onDragActive}
-                    onMove={onMove}
-                    menuLabels={menuLabels}
-                  />
-                ) : (
-                  <FileRow
-                    key={child.entry.path}
-                    file={child.entry}
-                    selected={selectedPath === child.entry.path}
-                    onSelect={handleSelect}
-                    onOpen={onOpen}
-                    onReveal={onReveal}
-                    onDownload={onDownload}
-                    onDelete={onDelete}
-                    onRename={onRename}
-                    onMove={onMove}
-                    menuLabels={menuLabels}
-                  />
-                ),
-              )}
-            </div>
-            <FillerStripes
-              startIndex={fileCount}
-              onDeselect={() => {
-                setInternalSelected(null);
-                setBgMenu(null);
-              }}
-              onContextMenu={
-                onCreateFolder
-                  ? (e) => {
-                      e.preventDefault();
-                      setInternalSelected(null);
-                      setBgMenu({ x: e.clientX, y: e.clientY });
-                    }
-                  : undefined
-              }
-            />
-          </>
+          <FilesListView
+            tree={b.tree}
+            fileCount={b.fileCount}
+            sortKey={b.sortKey}
+            sortDir={b.sortDir}
+            onSort={b.handleSort}
+            selectedPath={b.selectedPath}
+            onSelect={b.handleSelect}
+            onOpen={props.onOpen}
+            onReveal={props.onReveal}
+            onDownload={props.onDownload}
+            onDownloadFolder={props.onDownloadFolder}
+            onDelete={props.onDelete}
+            onRename={props.onRename}
+            onFilesDropped={props.onFilesDropped}
+            onDragActive={b.onDragActive}
+            onMove={props.onMove}
+            creatingFolder={b.creatingFolder}
+            onCreateFolder={props.onCreateFolder ? b.createFolderAt : undefined}
+            onCancelCreateFolder={() => b.setCreatingFolder(false)}
+            newFolderPlaceholder={l.newFolderPlaceholder}
+            onBackgroundInteraction={b.handleBackgroundInteraction}
+            columnLabels={toColumnLabels(l)}
+            menuLabels={props.menuLabels}
+          />
         )}
       </div>
 
-      <div className="h-[22px] shrink-0 border-t border-line bg-chip-subtle/40 select-none flex items-center justify-between px-3 rounded-b-xl">
+      <div className="flex h-[22px] shrink-0 select-none items-center justify-between rounded-b-xl border-t border-line bg-chip-subtle/40 px-3">
         <span className="text-[11px] text-ink-muted">
-          {fileCount} {fileCount === 1 ? "item" : "items"}
+          {b.fileCount} {b.fileCount === 1 ? l.itemSingular : l.itemPlural}
         </span>
-        {statusBarAction}
+        {props.statusBarAction}
       </div>
 
-      {bgMenu && (
+      {b.bgMenu && (
         <BgContextMenu
-          position={bgMenu}
+          position={b.bgMenu}
+          label={l.newFolder}
           onNewFolder={() => {
-            setCreatingFolder(true);
-            setBgMenu(null);
+            b.setCreatingFolder(true);
+            b.setBgMenu(null);
           }}
-          onClose={() => setBgMenu(null)}
+          onClose={() => b.setBgMenu(null)}
         />
       )}
     </div>
-  );
-}
-
-/** Fills remaining vertical space with real rounded stripe divs. */
-function FillerStripes({
-  startIndex,
-  onDeselect,
-  onContextMenu,
-}: {
-  startIndex: number;
-  onDeselect: () => void;
-  onContextMenu?: (e: React.MouseEvent) => void;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const update = () => {
-      const h = el.clientHeight;
-      setCount(Math.ceil(h / 24));
-    };
-    update();
-    const obs = new ResizeObserver(update);
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  return (
-    <div ref={containerRef} className="flex-1 min-h-0">
-      {Array.from({ length: count }, (_, i) => {
-        const rowIndex = startIndex + i;
-        return (
-          // biome-ignore lint/a11y/noStaticElementInteractions: decorative filler stripe; click-to-deselect and right-click-for-context-menu are pointer-only background gestures with no keyboard equivalent
-          // biome-ignore lint/a11y/useKeyWithClickEvents: same rationale as noStaticElementInteractions above
-          <div
-            key={`filler-${rowIndex}`}
-            className={cn(
-              "h-[24px]",
-              rowIndex % 2 === 1 && "bg-chip-subtle/30 rounded-lg",
-            )}
-            onClick={onDeselect}
-            onContextMenu={onContextMenu}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function BgContextMenu({
-  position,
-  onNewFolder,
-  onClose,
-}: {
-  position: { x: number; y: number };
-  onNewFolder: () => void;
-  onClose: () => void;
-}) {
-  return createPortal(
-    <>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: full-screen backdrop that closes the context menu on pointer interaction; no keyboard role applies */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop dismiss is a pointer-only pattern; Escape key is handled at the document level by the menu itself */}
-      <div
-        className="fixed inset-0 z-50"
-        onClick={onClose}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          onClose();
-        }}
-      />
-      <div
-        className="fixed z-50 bg-popover/95 backdrop-blur-xl border border-line rounded-lg shadow-lg py-1 min-w-[160px]"
-        style={{ left: position.x, top: position.y }}
-      >
-        <button
-          type="button"
-          onClick={onNewFolder}
-          className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-action hover:text-action-text rounded-md mx-0.5"
-          style={{ width: "calc(100% - 4px)" }}
-        >
-          New Folder
-        </button>
-      </div>
-    </>,
-    document.body,
-  );
-}
-
-function HeaderCell({
-  label,
-  col,
-  sortKey,
-  sortDir,
-  onSort,
-  className,
-  last,
-}: {
-  label: string;
-  col: SortKey;
-  sortKey: SortKey;
-  sortDir: SortDirection;
-  onSort: (key: SortKey) => void;
-  className?: string;
-  last?: boolean;
-}) {
-  const active = sortKey === col;
-  return (
-    <button
-      type="button"
-      onClick={() => onSort(col)}
-      className={cn(
-        "flex items-center justify-between h-full px-2 text-[11px] font-medium text-ink-muted hover:bg-chip-subtle transition-colors",
-        !last && "border-r border-line",
-        className,
-      )}
-    >
-      <span className="truncate">{label}</span>
-      {active && (
-        <svg
-          className="size-[8px] shrink-0"
-          viewBox="0 0 8 6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          role="img"
-          aria-label={
-            sortDir === "asc" ? "sorted ascending" : "sorted descending"
-          }
-        >
-          {sortDir === "asc" ? (
-            <path d="M1 4.5L4 1.5L7 4.5" />
-          ) : (
-            <path d="M1 1.5L4 4.5L7 1.5" />
-          )}
-        </svg>
-      )}
-    </button>
   );
 }

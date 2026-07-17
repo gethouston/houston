@@ -1,27 +1,27 @@
 /**
- * Finder-style file row (list view): click to select, double-click to open,
- * right-click context menu, inline rename, draggable for moves.
+ * Drive-style file card: type icon + name header, lazy thumbnail body,
+ * date meta row. Click selects, double-click opens, kebab or right-click
+ * opens the context menu, drag to move.
  */
-import { cn } from "@houston-ai/core";
 import { useState } from "react";
+import {
+  CardMeta,
+  cardClass,
+  cardPreviewClass,
+  KebabButton,
+} from "./card-chrome";
 import { INTERNAL_DRAG_TYPE } from "./drop-zone";
-import { getFileIcon } from "./file-manager-icons";
+import { CardPreview } from "./file-card-preview";
 import { FileMenu, type FileMenuLabels } from "./file-menu";
+import { FileTypeIcon } from "./file-type-icons";
 import { RenameInput, useInlineRename } from "./inline-rename";
-import type { FileEntry } from "./types";
-import { formatFileManagerDate, formatSize, getKind } from "./utils";
+import type { FileEntry, LoadFilePreview } from "./types";
+import { formatFileManagerDate } from "./utils";
 
-export const DEPTH_INDENT = 20;
-export const BASE_INDENT = 12;
-const TRIANGLE_AREA = 16;
-
-/** Column grid shared between header and rows. */
-export const COL_GRID = "1fr 160px 160px 80px 130px";
-
-export function FileRow({
+export function FileCard({
   file,
-  depth = 0,
   selected,
+  loadPreview,
   onSelect,
   onOpen,
   onReveal,
@@ -30,10 +30,11 @@ export function FileRow({
   onRename,
   onMove,
   menuLabels,
+  menuButtonLabel,
 }: {
   file: FileEntry;
-  depth?: number;
   selected?: boolean;
+  loadPreview?: LoadFilePreview;
   onSelect?: (file: FileEntry) => void;
   onOpen?: (file: FileEntry) => void;
   onReveal?: (file: FileEntry) => void;
@@ -42,6 +43,7 @@ export function FileRow({
   onRename?: (file: FileEntry, newName: string) => void;
   onMove?: (sourcePath: string, targetFolder: string | null) => void;
   menuLabels?: FileMenuLabels;
+  menuButtonLabel?: string;
 }) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -49,15 +51,13 @@ export function FileRow({
     file.name,
     onRename ? (newName) => onRename(file, newName) : undefined,
   );
-  const padLeft = BASE_INDENT + depth * DEPTH_INDENT + TRIANGLE_AREA;
-  const hasMenu = onOpen || onReveal || onDownload || onDelete;
-  const sec = selected ? "text-action-text/80" : "text-ink-muted";
+  const hasMenu = onOpen || onReveal || onDownload || onDelete || onRename;
 
   return (
     <>
-      {/* biome-ignore lint/a11y/useSemanticElements: CSS grid layout — <tr> would break column sizing; role="row" is correct ARIA but the element must stay a div */}
+      {/* biome-ignore lint/a11y/useSemanticElements: a native <button> cannot wrap the kebab button or the rename input; role=button + tabIndex keeps the card keyboard-reachable */}
       <div
-        role="row"
+        role="button"
         tabIndex={0}
         draggable={!!onMove && !rename.renaming}
         onDragStart={(e) => {
@@ -82,36 +82,34 @@ export function FileRow({
           setMenu({ x: e.clientX, y: e.clientY });
         }}
         data-selected={selected || undefined}
-        className={cn(
-          "h-[24px] cursor-default select-none items-center outline-none",
-          selected && "rounded-lg !bg-action text-action-text",
-          dragging && "opacity-40",
-        )}
-        style={{ display: "grid", gridTemplateColumns: COL_GRID }}
+        className={cardClass({ selected, dragging })}
       >
-        <div
-          className="flex min-w-0 items-center gap-1.5"
-          style={{ paddingLeft: padLeft }}
-        >
-          {getFileIcon(file.extension)}
+        <div className="flex h-10 shrink-0 items-center gap-2 pr-1.5 pl-3">
+          <FileTypeIcon extension={file.extension} />
           {rename.renaming ? (
-            <RenameInput rename={rename} className="-ml-1" />
+            <RenameInput rename={rename} />
           ) : (
-            <span className="truncate text-[13px]">{file.name}</span>
+            <span
+              className="min-w-0 flex-1 truncate text-[13px]"
+              title={file.name}
+            >
+              {file.name}
+            </span>
+          )}
+          {hasMenu && (
+            <KebabButton
+              label={menuButtonLabel}
+              onOpen={(position) => {
+                onSelect?.(file);
+                setMenu(position);
+              }}
+            />
           )}
         </div>
-        <span className={cn("truncate px-2 text-[11px]", sec)}>
-          {formatFileManagerDate(file.dateModified)}
-        </span>
-        <span className={cn("truncate px-2 text-[11px]", sec)}>
-          {formatFileManagerDate(file.dateCreated)}
-        </span>
-        <span className={cn("px-2 text-right text-[11px]", sec)}>
-          {formatSize(file.size)}
-        </span>
-        <span className={cn("truncate px-2 text-[11px]", sec)}>
-          {getKind(file.extension)}
-        </span>
+        <div className={cardPreviewClass}>
+          <CardPreview file={file} loadPreview={loadPreview} />
+        </div>
+        <CardMeta left={formatFileManagerDate(file.dateModified)} />
       </div>
       {menu && (
         <FileMenu

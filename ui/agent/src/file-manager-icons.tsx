@@ -5,6 +5,7 @@
 
 import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
+import { fileCategory } from "./file-type";
 
 const IC = "size-4 shrink-0";
 
@@ -191,52 +192,22 @@ export function DisclosureChevron({
   );
 }
 
-// --- Extension mapping ---
-
-const IMAGE_EXT = new Set([
-  "png",
-  "jpg",
-  "jpeg",
-  "gif",
-  "svg",
-  "webp",
-  "ico",
-  "bmp",
-  "tiff",
-  "heic",
-]);
-const CODE_EXT = new Set([
-  "js",
-  "ts",
-  "tsx",
-  "jsx",
-  "rs",
-  "py",
-  "go",
-  "rb",
-  "sh",
-  "c",
-  "cpp",
-  "h",
-  "java",
-  "swift",
-  "kt",
-  "html",
-  "css",
-  "scss",
-  "vue",
-  "svelte",
-]);
-const SHEET_EXT = new Set(["xlsx", "xls", "csv", "numbers", "ods"]);
-const ARCHIVE_EXT = new Set(["zip", "gz", "tar", "7z", "rar", "dmg", "iso"]);
+// --- Extension mapping (classification shared with the grid view) ---
 
 /** Return the appropriate Finder-style icon for a file extension. */
 export function getFileIcon(extension: string): ReactNode {
-  const ext = extension.toLowerCase();
-  if (ext === "pdf") return <PdfIcon />;
-  if (IMAGE_EXT.has(ext)) return <ImageDocIcon />;
-  if (CODE_EXT.has(ext)) return <CodeDocIcon />;
-  if (SHEET_EXT.has(ext)) return <SheetDocIcon />;
-  if (ARCHIVE_EXT.has(ext)) return <ArchiveDocIcon />;
-  return <DocumentIcon />;
+  switch (fileCategory(extension)) {
+    case "pdf":
+      return <PdfIcon />;
+    case "image":
+      return <ImageDocIcon />;
+    case "code":
+      return <CodeDocIcon />;
+    case "sheet":
+      return <SheetDocIcon />;
+    case "archive":
+      return <ArchiveDocIcon />;
+    default:
+      return <DocumentIcon />;
+  }
 }
