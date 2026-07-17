@@ -63,6 +63,20 @@ describe("deriveConversationMoments", () => {
     equal(moments.length, 0);
   });
 
+  it("decodes an interaction-answers marker into a clean preview", () => {
+    const body =
+      '<!--houston:interaction-answers {"lines":[{"question":"To whom?","answer":"john@example.com"},{"question":"Saying what?","answer":"Running late"}]}-->\n\nTo whom?: john@example.com\nSaying what?: Running late';
+    const moments = deriveConversationMoments([
+      message({ key: "user-0", from: "user", content: body }),
+    ]);
+
+    equal(moments.length, 1);
+    equal(
+      moments[0].preview,
+      "To whom?: john@example.com; Saying what?: Running late",
+    );
+  });
+
   it("uses an ASCII ellipsis when truncating a long preview", () => {
     const moments = deriveConversationMoments([
       message({ key: "long", content: "x".repeat(120) }),

@@ -42,7 +42,7 @@ export function ConversationMapPanel({
       {open && (
         <aside
           aria-label={labels.title}
-          className="absolute inset-y-0 right-0 z-20 flex w-full flex-col border-l bg-background shadow-xl md:w-72"
+          className="absolute right-4 top-3 z-20 flex max-h-[70%] w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border bg-background/80 shadow-xl backdrop-blur-md md:w-72"
         >
           <div className="flex items-center justify-between border-b px-4 py-3">
             <h2 className="font-medium text-sm">{labels.title}</h2>

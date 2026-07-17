@@ -1,4 +1,5 @@
 import type { ChatMessage } from "./feed-to-messages";
+import { messagePreviewText } from "./message-preview.ts";
 
 export type ConversationMomentType =
   | "user"
@@ -48,7 +49,10 @@ function momentTypeFor(message: ChatMessage): ConversationMomentType | null {
 }
 
 function previewFor(content: string): string {
-  const normalized = content.replace(/\s+/g, " ").trim();
+  // Decode Skill / attachment / interaction-answers markers so the map never
+  // leaks raw marker JSON; plain assistant/user text passes through unchanged.
+  const decoded = messagePreviewText(content);
+  const normalized = decoded.replace(/\s+/g, " ").trim();
   if (normalized.length <= PREVIEW_LENGTH) return normalized;
   return `${normalized.slice(0, PREVIEW_LENGTH - 3)}...`;
 }

@@ -46,7 +46,6 @@ export function ChatMessages({
   authorLabels,
   conversationMap,
 }: ChatMessagesProps) {
-  const [mapOpen, setMapOpen] = useState(false);
   const [highlightedMessageKey, setHighlightedMessageKey] = useState<
     string | null
   >(null);
@@ -70,10 +69,6 @@ export function ChatMessages({
   );
 
   useEffect(() => {
-    if (moments.length < 3) setMapOpen(false);
-  }, [moments.length]);
-
-  useEffect(() => {
     if (!highlightedMessageKey) return;
     const timeout = window.setTimeout(
       () => setHighlightedMessageKey(null),
@@ -94,9 +89,7 @@ export function ChatMessages({
     <Conversation className="flex-1 min-h-0">
       <ConversationAutoScroll status={status} />
       <ConversationTopFade />
-      <ConversationContent
-        className={mapOpen ? "max-w-3xl mx-auto md:mr-72" : "max-w-3xl mx-auto"}
-      >
+      <ConversationContent className="max-w-3xl mx-auto">
         {displayItems.map((item) => (
           <ChatMessageItem
             authorLabels={authorLabels}
@@ -141,10 +134,7 @@ export function ChatMessages({
         onBackToLatest={conversationMap?.onBackToLatest}
         onMomentClick={conversationMap?.onMomentClick}
         onMomentHighlight={setHighlightedMessageKey}
-        onOpenChange={(open, conversationLength) => {
-          setMapOpen(open);
-          conversationMap?.onOpenChange?.(open, conversationLength);
-        }}
+        onOpenChange={conversationMap?.onOpenChange}
       />
       <ConversationScrollButton />
     </Conversation>
