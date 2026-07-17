@@ -91,13 +91,25 @@ test("providerStatus delegates to the batch (one fetch, correct entry)", async (
   expect(status.provider).toBe("anthropic");
 });
 
-test("an unreachable runtime reports every card not-connected without throwing", async () => {
+test("an unreachable runtime reports every card UNKNOWN without throwing", async () => {
+  // Never a fabricated "unauthenticated": a cold pod waking after an app
+  // relaunch/update must not flip connected providers to "Connect" or block
+  // the local-model tunnel auto-reconnect (which skips only on a CONFIRMED
+  // signed-out state).
   listProviders.mockRejectedValue(new Error("sandbox unreachable"));
 
   const statuses = await client().providerStatuses(["anthropic", "opencode"]);
 
+  expect(statuses.map((s) => s.authState)).toEqual(["unknown", "unknown"]);
+});
+
+test("a reachable runtime still gives a confirmed unauthenticated for absent providers", async () => {
+  listProviders.mockResolvedValue([{ id: "anthropic", configured: true }]);
+
+  const statuses = await client().providerStatuses(["anthropic", "opencode"]);
+
   expect(statuses.map((s) => s.authState)).toEqual([
-    "unauthenticated",
+    "authenticated",
     "unauthenticated",
   ]);
 });
