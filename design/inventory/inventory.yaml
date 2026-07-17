@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 27
+version: 28
 
 components:
   - id: agent-avatar
@@ -183,11 +183,14 @@ components:
     title: Composer
     purpose: The signature message-input surface -- text, attachments, send/stop.
     anatomy: [leading-attach, textarea, footer-slot, queued-list, trailing-send-stop]
-    states: [ready, submitted, streaming, has-attachments, drag-over, disabled]
+    states: [ready, submitted, streaming, has-attachments, drag-over, disabled, replaced-by-override]
     variants: [single-line, multiline-expanded]
     behavior: >-
       Send is gated on non-empty text/attachments; while streaming the trailing
-      button becomes Stop. Queued messages show when sending mid-turn.
+      button becomes Stop. Queued messages show when sending mid-turn. A host
+      surface may pass an override card that renders above the input (default)
+      or replaces it outright while present (replaced-by-override) when that
+      card is the only intended action, e.g. onboarding's one-button offer.
     a11y: labeled textarea; send/stop button state-labeled; drop zone announced.
     since: 1
 

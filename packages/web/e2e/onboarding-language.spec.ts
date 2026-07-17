@@ -13,10 +13,12 @@ import { expect, test } from "./support/fixtures";
  *
  *   1. the picker floats on the shared SpaceScreen space backdrop (same as
  *      sign-in and the rest of onboarding — the landing page's Milky Way
- *      photograph painted behind the card), and
- *   2. picking a language ADVANCES IMMEDIATELY — there is no Continue button, so
- *      a single click both persists the choice and moves past the gate. This is
- *      the regression guard for the dead-end where clicking a language did
+ *      photograph painted behind the card),
+ *   2. the OS-detected locale arrives PRESELECTED with a Continue button to
+ *      confirm it (the common case is one click), and
+ *   3. clicking any language row ADVANCES IMMEDIATELY — a single click both
+ *      persists the choice and moves past the gate, no Continue required. This
+ *      is the regression guard for the dead-end where clicking a language did
  *      nothing because the (best-effort) preference write was awaited-then-
  *      swallowed before the flow could advance.
  */
@@ -27,7 +29,7 @@ const ACCEPTED_DISCLAIMER = JSON.stringify({
   acceptedAt: "2024-01-01T00:00:00.000Z",
 });
 
-test("first-run language gate: space backdrop, and a single click advances (no Continue)", async ({
+test("first-run language gate: space backdrop, preselected Continue, and a single row click advances", async ({
   page,
 }) => {
   // Seed the engine + the later gates, but NOT the locale, so the LanguageGate
@@ -73,12 +75,14 @@ test("first-run language gate: space backdrop, and a single click advances (no C
   // The shared space backdrop paints behind the card (the Milky Way photo).
   expect(await page.locator('img[src*="milkyway"]').count()).toBeGreaterThan(0);
 
-  // No Continue button — the row itself is the action.
+  // The OS-detected locale (en in CI) arrives preselected, with a Continue
+  // button to confirm it in one click.
   await expect(
     page.getByRole("button", { name: /Continue|Continuar/ }),
-  ).toHaveCount(0);
+  ).toBeVisible();
 
-  // A single click on a language advances past the gate.
+  // But the rows are still actions themselves: a single click on a language
+  // advances past the gate without touching Continue.
   await page.getByText("Español", { exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Choose your language" }),

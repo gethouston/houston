@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
+import {
+  APPLE_RETURN_PATH,
+  appleReturnUrl,
+} from "../src/lib/identity/apple-return.ts";
 import { IdentityError } from "../src/lib/identity/errors.ts";
 import {
   awaitLoopbackCallback,
@@ -328,6 +332,18 @@ test("parseCallbackQuery returns the WHOLE query when state matches (brokered fl
     "st-1",
   );
   assert.equal(query, "state=st-1&code=c&providerId=apple.com");
+});
+
+test("appleReturnUrl joins the gateway base and the pinned bridge path", () => {
+  assert.equal(
+    appleReturnUrl("https://engine.gethouston.ai"),
+    `https://engine.gethouston.ai${APPLE_RETURN_PATH}`,
+  );
+  // Trailing slashes on the gateway base never double up.
+  assert.equal(
+    appleReturnUrl("https://engine.gethouston.ai//"),
+    `https://engine.gethouston.ai${APPLE_RETURN_PATH}`,
+  );
 });
 
 test("parseCallbackQuery enforces CSRF state and provider errors like parseCallbackUrl", () => {

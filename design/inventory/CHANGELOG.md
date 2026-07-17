@@ -3,6 +3,15 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v28 - 2026-07-16
+
+`composer` gains a `replaced-by-override` state: the existing override card
+(previously always rendered ABOVE the input, both visible) can now REPLACE the
+input while present (`composerOverrideMode="replace"` on ChatPanel). Used by
+onboarding's watch-your-agent step, where the "send an email to myself" offer
+is the only intended action and a live reply input competed with it. Default
+behavior is unchanged ("above": typing abandons the pending card).
+
 ## v27 - 2026-07-16
 
 `interaction-approval-card` sheds its technical body. The two-column param

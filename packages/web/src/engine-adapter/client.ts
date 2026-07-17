@@ -18,6 +18,7 @@
  */
 export type { HoustonClientOptions } from "./client/context";
 export { HoustonEngineError, isHoustonEngineError } from "./client/errors";
+export { isProviderLoginComplete } from "./client/provider-login-poll";
 
 import { ActivitiesMixin } from "./client/activities-mixin";
 import { AgentFilesMixin } from "./client/agent-files-mixin";

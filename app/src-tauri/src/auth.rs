@@ -237,6 +237,17 @@ pub fn emit_deep_link(handle: &AppHandle, url: &str) {
     }
 }
 
+/// True iff a real OS deep link is the OAuth-callback shape the identity layer
+/// consumes (`houston://auth-callback?...`) — the Apple bridge's return path.
+/// Everything else (`houston://open`, unknown paths) stays a focus affordance
+/// only, so an arbitrary link can never inject noise onto the auth channel.
+pub fn is_auth_callback_deep_link(url: &str) -> bool {
+    match url.strip_prefix("houston://auth-callback") {
+        Some(rest) => rest.is_empty() || rest.starts_with('?') || rest.starts_with('/'),
+        None => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,6 +259,22 @@ mod tests {
         assert!(validate_key("a\\b").is_err());
         assert!(validate_key("a\0b").is_err());
         assert!(validate_key("").is_err());
+    }
+
+    #[test]
+    fn auth_callback_deep_links_are_recognized() {
+        assert!(is_auth_callback_deep_link(
+            "houston://auth-callback?code=c&state=s"
+        ));
+        assert!(is_auth_callback_deep_link("houston://auth-callback"));
+        assert!(is_auth_callback_deep_link("houston://auth-callback/"));
+    }
+
+    #[test]
+    fn non_callback_deep_links_are_ignored() {
+        assert!(!is_auth_callback_deep_link("houston://open"));
+        assert!(!is_auth_callback_deep_link("houston://auth-callbackevil?x=1"));
+        assert!(!is_auth_callback_deep_link("https://gethouston.ai/auth-callback"));
     }
 
     #[test]

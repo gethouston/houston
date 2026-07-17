@@ -126,6 +126,7 @@ type AnalyticsProperty =
   | "to_version"
   // Onboarding funnel
   | "locale"
+  | "detected_locale"
   | "step"
   // Cloud migration (payload sizes, where already known)
   | "bytes"

@@ -92,6 +92,11 @@ export interface ChatPanelProps {
   onOpenLink?: (url: string) => void;
   renderLink?: ChatMessagesProps["renderLink"];
   composerOverride?: ReactNode;
+  /** How `composerOverride` composes with the input. `"above"` (default) keeps
+   *  the input usable below the card so typing abandons the pending
+   *  interaction; `"replace"` hides the input entirely while the override is
+   *  present — for surfaces whose override is the ONLY intended action. */
+  composerOverrideMode?: "above" | "replace";
   composerLabels?: ChatComposerLabels;
   /** Prop-driven dictation control for the composer. Omit to hide the mic
    *  affordance entirely (e.g. the web build with no speech capture). */

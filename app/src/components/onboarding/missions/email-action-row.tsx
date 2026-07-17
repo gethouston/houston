@@ -19,7 +19,7 @@ interface EmailActionRowProps {
 
 /**
  * A one-click brand action row for the connect-email step. Reads as a real
- * button (filled `bg-chip` row + a recessed `bg-input` media tile +
+ * button (filled `bg-chip` row + the brand mark floating directly on it +
  * label + a trailing "go" chevron), rhyming with the AI step's provider rows.
  *
  * Three states:
@@ -48,11 +48,13 @@ export function EmailActionRow({
       aria-label={loading ? cancelLabel : undefined}
       onClick={onClick}
       className={cn(
-        "group/row flex w-full items-center gap-4 rounded-2xl bg-chip px-5 py-4 text-left transition-colors",
+        "group/row flex w-full items-center gap-4 rounded-2xl bg-chip px-6 py-6 text-left transition-colors",
         disabled ? "cursor-not-allowed opacity-50" : "hover:bg-hover",
       )}
     >
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-input">
+      {/* The brand mark floats directly on the row — no recessed tile behind
+          it (the dark box read as a second surface inside the card). */}
+      <span className="flex size-11 shrink-0 items-center justify-center">
         {icon}
       </span>
       {loading ? (
