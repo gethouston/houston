@@ -12,7 +12,7 @@ import {
   useEmailSetupCleanup,
   useEmailSetupCompleted,
 } from "./email-mission-setup";
-import { shouldOfferSkip } from "./email-skip";
+import { feedShowsAgentReply, shouldOfferSkip } from "./email-skip";
 
 interface UseEmailMissionSessionArgs {
   agent: Agent;
@@ -33,7 +33,7 @@ export interface EmailMissionSession {
   error: string | null;
   feedItems: FeedItem[];
   sessionKey: string;
-  /** Available only after the opening message starts the AI conversation. */
+  /** Available once the agent has replied (or something errored). */
   showSkip: boolean;
   onStop: (() => void) | undefined;
   handleSend: () => Promise<void>;
@@ -69,10 +69,13 @@ export function useEmailMissionSession({
 
   const setupDone = useEmailSetupCompleted(realFeed);
 
-  // The conversation becomes skippable only after its first message creates
-  // a mission session. Until then, the email action is the sole path forward.
+  // The conversation becomes skippable only once the AGENT has replied (the
+  // user's kickoff alone doesn't count) — or once something errored, so a
+  // failure never strands the user. Until then, the email action is the sole
+  // path forward.
   const showSkip = shouldOfferSkip({
-    hasFirstMessage: missionSessionKey !== null,
+    agentReplied: feedShowsAgentReply((realFeed ?? []) as FeedItem[]),
+    hasError: error !== null,
     setupDone,
   });
 
@@ -125,6 +128,9 @@ export function useEmailMissionSession({
           providerOverride: provider,
           modelOverride: model,
           effortOverride: "medium",
+          // Autopilot: the onboarding turn must SEND the email on the first
+          // message, not pause on ask_user/request_connection questions.
+          modeOverride: "auto",
         },
       );
       setMissionSessionKey(result.sessionKey);
@@ -148,6 +154,9 @@ export function useEmailMissionSession({
           providerOverride: provider,
           modelOverride: model,
           effortOverride: "medium",
+          // Follow-ups stay in Autopilot too: the whole onboarding chat runs
+          // without blocking questions.
+          modeOverride: "auto",
           queuedPreview: { text: trimmed },
         });
       } catch (e) {

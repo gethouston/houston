@@ -27,7 +27,7 @@ interface EmailMissionProps {
   onBack: () => void;
   /** Advance to the success screen once the email is sent. */
   onContinue: () => void;
-  /** Leave onboarding after the first message has started the AI conversation. */
+  /** Leave onboarding once the agent has replied (or the mission errored). */
   onSkip: () => void;
 }
 
@@ -101,7 +101,7 @@ export function EmailMission({
       // The mission body lives in the offer card, so no subtitle duplicates it.
       // Back disappears once the mission runs: returning would start a second
       // session and a second real email. The conversation exit below appears
-      // after its first message instead.
+      // once the agent replies (or errors) instead.
       onBack={session.started ? undefined : onBack}
       backLabel={t("tutorial.nav.back")}
     >
