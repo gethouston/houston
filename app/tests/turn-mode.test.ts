@@ -2,6 +2,7 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   DEFAULT_TURN_MODE,
+  modeChangeAppliesNextTurn,
   normalizeTurnMode,
   readAgentTurnMode,
 } from "../src/lib/turn-mode.ts";
@@ -35,6 +36,27 @@ describe("normalizeTurnMode", () => {
 
   it("defaults to plan (fresh agents open in Planner)", () => {
     strictEqual(DEFAULT_TURN_MODE, "plan");
+  });
+});
+
+// A Mode-pill pick can't touch the in-flight turn (its pin was stamped at
+// send), so the composer shows an "applies to your next message" toast — but
+// ONLY when a turn is actually running and the pick changes the mode.
+describe("modeChangeAppliesNextTurn", () => {
+  it("announces a real change while a turn is running", () => {
+    strictEqual(modeChangeAppliesNextTurn(true, "execute", "plan"), true);
+    strictEqual(modeChangeAppliesNextTurn(true, "plan", "auto"), true);
+    strictEqual(modeChangeAppliesNextTurn(true, "auto", "execute"), true);
+  });
+
+  it("stays quiet when no turn is running (the pick applies immediately)", () => {
+    strictEqual(modeChangeAppliesNextTurn(false, "execute", "plan"), false);
+    strictEqual(modeChangeAppliesNextTurn(false, "plan", "auto"), false);
+  });
+
+  it("stays quiet when the pick re-selects the current mode", () => {
+    strictEqual(modeChangeAppliesNextTurn(true, "plan", "plan"), false);
+    strictEqual(modeChangeAppliesNextTurn(false, "auto", "auto"), false);
   });
 });
 

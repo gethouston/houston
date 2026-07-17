@@ -132,6 +132,7 @@ import {
 } from "../lib/tauri";
 import {
   DEFAULT_TURN_MODE,
+  modeChangeAppliesNextTurn,
   normalizeTurnMode,
   type TurnMode,
 } from "../lib/turn-mode";
@@ -435,6 +436,9 @@ export function useAgentChatPanel({
   // the card) and `pendingInteraction` is the live source the derivation
   // prefers over the persisted activity fallback.
   const conversationVm = useConversationVm(path, selectedSessionKey);
+  // Plain boolean so callbacks can depend on "is a turn running" without
+  // re-creating on every VM tick (the VM reference churns while streaming).
+  const turnRunning = conversationVm?.running ?? false;
 
   // Whether the open conversation already has turns. Once it does, the chat's
   // provider is frozen (see resolveEffectiveProvider): a provider that logs out
@@ -671,10 +675,33 @@ export function useAgentChatPanel({
     [path, addToast, t],
   );
   const handleModeSelect = useCallback(
-    async (mode: TurnMode) => {
+    async (mode: TurnMode, opts?: { silent?: boolean }) => {
       // Mode is per-agent composer memory (never synced to engine Settings):
       // persist it so the pill reopens where the user left it. Optimistic flip;
       // the actual plan/execute pin rides each send as `modeOverride`.
+      //
+      // A pick while a turn is streaming can't touch that turn (its pin was
+      // stamped at send), so say so: a transient toast tells the user the new
+      // mode rides the NEXT message. `silent` is for programmatic flips whose
+      // send carries the mode explicitly (the plan-ready card), where the
+      // note would be a lie.
+      if (
+        !opts?.silent &&
+        modeChangeAppliesNextTurn(turnRunning, turnMode, mode)
+      ) {
+        const modeLabels: Record<TurnMode, string> = {
+          execute: t("chat:modeSelector.coworker"),
+          plan: t("chat:modeSelector.planner"),
+          auto: t("chat:modeSelector.autopilot"),
+        };
+        addToast({
+          title: t("chat:modeSelector.nextTurnToastTitle", {
+            mode: modeLabels[mode],
+          }),
+          description: t("chat:modeSelector.nextTurnToastBody"),
+          variant: "info",
+        });
+      }
       setTurnMode(mode);
       try {
         if (path) {
@@ -689,7 +716,7 @@ export function useAgentChatPanel({
         });
       }
     },
-    [path, addToast, t],
+    [path, addToast, t, turnRunning, turnMode],
   );
 
   // Route a composer model / effort pick. In personal (Teams) mode it writes the
@@ -958,7 +985,7 @@ export function useAgentChatPanel({
   // one (reload / observer). Gated on `running` so a fresh turn's composer wins
   // and the card disappears the instant the user answers.
   const activeInteraction = deriveActiveInteraction({
-    running: conversationVm?.running ?? false,
+    running: turnRunning,
     live: conversationVm?.pendingInteraction,
     persisted: selectedActivity?.pending_interaction,
   });
@@ -1110,7 +1137,7 @@ export function useAgentChatPanel({
   const startPlan = useCallback(
     (mode: TurnMode, text: string) => {
       if (!path || !selectedSessionKey) return;
-      void handleModeSelect(mode);
+      void handleModeSelect(mode, { silent: true });
       tauriChat
         .send(path, text, selectedSessionKey, {
           providerOverride: effectiveProvider,
