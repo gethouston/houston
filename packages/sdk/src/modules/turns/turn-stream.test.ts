@@ -1701,7 +1701,8 @@ test("dispose clears an armed pre-settled poll — teardown leaves nothing pendi
     presettledPollMs: 20,
   });
 
-  // Arm the poll: send accepted + a fresh idle sync are its two triggers.
+  // Arm the poll: an accepted send is its trigger (a fresh idle sync only
+  // reinforces it).
   sink.sendAccepted();
   sink.onFrame(sync(false, "", 0));
   // Tear down BEFORE the 20ms timer would fire.
@@ -1710,5 +1711,153 @@ test("dispose clears an armed pre-settled poll — teardown leaves nothing pendi
 
   // The timer was cleared: history was never reloaded, nothing settled.
   expect(historyCalls).toBe(0);
+  expect(sink.settled).toBe(false);
+});
+
+// THE STUCK-CHAT REGRESSION: a turn that fails instantly (fail-before-execute,
+// a disconnected local model) publishes its terminal error and clears the pod's
+// replay buffer before our subscription attaches; a flaky SSE hop can then
+// deliver NO frame at all. With the poll gated on a fresh idle sync this hung
+// until the ~6-minute reconnect budget. Now an accepted send alone arms the
+// conclusive poll, which settles from the persisted providerError reply.
+test("accepted send with ZERO frames delivered still settles from history (stuck-chat fix)", async () => {
+  const { items, sessionStatuses, output } = makeOutput();
+  const sink = new TurnSink({
+    agentPath: "Houston/Bo",
+    sessionKey: "activity-zero-frames",
+    output,
+    mode: "turn",
+    nonce: "n",
+    prompt: "everything is okey?",
+    stop: () => {},
+    reloadHistory: async (): Promise<ChatMessage[]> => [
+      { role: "user", content: "everything is okey?", ts: 1 },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        providerError: {
+          kind: "unknown",
+          provider: "openai-compatible",
+          raw_excerpt: "No local model configured.",
+        },
+      },
+    ],
+    historyGuard: (messages) =>
+      messages.filter((m) => m.role === "user").at(-1)?.content ===
+      "everything is okey?",
+    presettledPollMs: 20,
+  });
+
+  sink.sendAccepted();
+  // No onFrame — the subscription delivered nothing at all.
+  await waitFor(() => sink.settled);
+
+  expect(sink.settled).toBe(true);
+  expect(sessionStatuses.at(-1)).toBe("error");
+  expect(items.some((i) => i.feed_type === "provider_error")).toBe(true);
+});
+
+// The poll must NOT false-settle a turn that is genuinely still running: with
+// no reply persisted yet, the conclusive poll finds nothing and re-arms.
+test("accepted send that is still running does not false-settle from the poll", async () => {
+  let historyCalls = 0;
+  const { output } = makeOutput();
+  const sink = new TurnSink({
+    agentPath: "Houston/Bo",
+    sessionKey: "activity-still-running",
+    output,
+    mode: "turn",
+    nonce: "n",
+    prompt: "slow one",
+    stop: () => {},
+    reloadHistory: async (): Promise<ChatMessage[]> => {
+      historyCalls++;
+      // History ends on the user prompt — no reply yet (the turn is running).
+      return [{ role: "user", content: "slow one", ts: 1 }];
+    },
+    historyGuard: (messages) =>
+      messages.filter((m) => m.role === "user").at(-1)?.content === "slow one",
+    presettledPollMs: 15,
+  });
+
+  sink.sendAccepted();
+  // Let the poll fire a couple of times against a reply-less history.
+  await new Promise((r) => setTimeout(r, 80));
+
+  expect(sink.settled).toBe(false);
+  expect(historyCalls).toBeGreaterThan(0); // it polled, but never settled
+  sink.dispose();
+});
+
+// A turn that fails BEFORE executing may reach us ERROR-FIRST: an older
+// runtime's pre-execution failure path (e.g. a pinned local model whose
+// endpoint was disconnected) published only the stamped `error` frame — no
+// nonce echo — so the sink had no adopted id, classified the error as foreign,
+// and dropped it: the spinner never settled, no error rendered, no reconnect
+// card. Once the send is ACCEPTED, a stamped terminal frame with no adopted id
+// is ours (the one-turn-per-conversation gate).
+test("an accepted send adopts a stamped error-first frame (failed turn settles, never spins)", () => {
+  const { items, sessionStatuses, output } = makeOutput();
+  const sink = new TurnSink({
+    agentPath: "Houston/Bo",
+    sessionKey: "activity-error-first",
+    output,
+    mode: "turn",
+    nonce: "n",
+    prompt: "good",
+    stop: () => {},
+    reloadHistory: async () => [],
+    historyGuard: () => false,
+    presettledPollMs: 10_000,
+  });
+
+  sink.sendAccepted();
+  sink.onFrame(sync(false, "", 0));
+  sink.onFrame({
+    type: "error",
+    data: { message: "No local model configured." },
+    turnId: "t-fail",
+    seq: 1,
+  });
+  sink.dispose();
+
+  expect(sink.settled).toBe(true);
+  expect(sessionStatuses.at(-1)).toBe("error");
+  // The message reaches the feed — this is what the reconnect-card pattern scans.
+  expect(
+    items.some(
+      (i) =>
+        typeof i.data === "string" &&
+        i.data.includes("No local model configured"),
+    ),
+  ).toBe(true);
+});
+
+test("a stamped error BEFORE the send is accepted stays foreign (replay tail is never adopted)", () => {
+  const { output } = makeOutput();
+  const sink = new TurnSink({
+    agentPath: "Houston/Bo",
+    sessionKey: "activity-error-preaccept",
+    output,
+    mode: "turn",
+    nonce: "n",
+    prompt: "good",
+    stop: () => {},
+    reloadHistory: async () => [],
+    historyGuard: () => false,
+    presettledPollMs: 10_000,
+  });
+
+  // No sendAccepted: a stamped error in the pre-send replay tail belongs to a
+  // PREVIOUS turn — adopting it would wrongly fail the turn we haven't sent.
+  sink.onFrame({
+    type: "error",
+    data: { message: "stale failure from an earlier turn" },
+    turnId: "t-old",
+    seq: 1,
+  });
+  sink.dispose();
+
   expect(sink.settled).toBe(false);
 });

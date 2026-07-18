@@ -16,6 +16,10 @@
 export interface ProviderConnection {
   cli_installed: boolean;
   authenticated: boolean;
+  /** Tri-state probe result. "unknown" = the engine was unreachable (a cold
+   *  pod still waking): not confirmable either way. Optional so legacy
+   *  callers that only carry the boolean keep working. */
+  auth_state?: "authenticated" | "unauthenticated" | "unknown";
 }
 
 /**
@@ -41,6 +45,11 @@ export function providerPickerState(
   isLoading: boolean,
 ): ProviderPickerState {
   if (status) {
+    // An "unknown" probe (engine unreachable, cold pod waking) is not a
+    // confirmed disconnect: keep the neutral "checking" state instead of
+    // collapsing every provider to "Not connected" (the #342 flicker, now
+    // reachable in cloud builds whenever the pod is waking).
+    if (status.auth_state === "unknown") return "checking";
     return status.cli_installed && status.authenticated
       ? "connected"
       : "disconnected";

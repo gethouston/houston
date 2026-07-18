@@ -86,18 +86,17 @@ export function providerErrorRetryText(
 }
 
 /**
- * Whether a feed item is the persisted inline reconnect card for THIS chat's
- * provider — the signal that the store-driven (auto-dismissing) card must not
- * also render. An empty provider on the card counts as this chat's: it means
- * NO provider was connected at all, which necessarily includes this one.
+ * Whether a feed item is a persisted inline reconnect card — the signal that
+ * the store-driven (auto-dismissing) card must not also render. One reconnect
+ * surface per chat, and the inline card wins REGARDLESS of which provider it
+ * names: it carries the provider that actually failed (stamped by the runtime
+ * on the turn), which is truer than the chat-provider resolution chain — a
+ * stale activity record once resolved a Jan (openai-compatible) chat to
+ * "anthropic" and rendered a second, WRONG-provider store card next to the
+ * correct inline one.
  */
-export function isInlineAuthCardForChat(
-  item: FeedItem,
-  chatProvider: string,
-): boolean {
+export function isInlineAuthCard(item: FeedItem): boolean {
   return (
-    item.feed_type === "provider_error" &&
-    item.data.kind === "unauthenticated" &&
-    (item.data.provider === chatProvider || item.data.provider === "")
+    item.feed_type === "provider_error" && item.data.kind === "unauthenticated"
   );
 }

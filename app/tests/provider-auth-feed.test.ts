@@ -32,6 +32,19 @@ describe("isProviderAuthMessage", () => {
     strictEqual(isProviderAuthMessage("Your session expired"), true);
   });
 
+  it("recognizes the runtime's disconnected-local-model refusal (surfaces the reconnect card)", () => {
+    // Verbatim from runtime ai/openai-compatible.ts: a chat pinned to the
+    // local provider whose endpoint was disconnected in Settings fails every
+    // send with this message and NO AuthRequired event — the feed pattern is
+    // the only card trigger.
+    strictEqual(
+      isProviderAuthMessage(
+        "No local model configured. Set a base URL and model for the OpenAI-compatible provider.",
+      ),
+      true,
+    );
+  });
+
   it("does not flag ordinary assistant text as an auth problem", () => {
     strictEqual(
       isProviderAuthMessage("Sure! Here is how to connect your database."),

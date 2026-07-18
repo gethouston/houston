@@ -355,6 +355,8 @@
     "networkUnreachable": {
       "title": "No se puede conectar con {{provider}}",
       "body": "Houston no pudo conectarse a la API de {{provider}}. Verifica tu conexión y vuelve a intentar.",
+      "localTitle": "No se puede conectar con tu modelo local",
+      "localBody": "Houston no pudo conectarse al modelo en tu computador. Asegúrate de que la aplicación del modelo esté abierta y su servidor en ejecución, y vuelve a intentar.",
       "retry": "Reintentar",
       "checkStatus": "Ver página de estado"
     },

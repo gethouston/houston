@@ -31,10 +31,12 @@ import { CheckCircle2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { subscribeHoustonEvents } from "../../../lib/events";
+import { getProvider } from "../../../lib/providers";
 import { tauriProvider } from "../../../lib/tauri";
 import { useUIStore } from "../../../stores/ui";
 import { RowCard } from "../../cards/row-card";
 import { RowCardButton } from "../../cards/row-card-button";
+import { LocalModelDialog } from "../local-model-dialog";
 import { ProviderGlyph } from "../provider-logos";
 import {
   type AuthCardButton,
@@ -57,6 +59,7 @@ export function UnauthenticatedCard({
   const [launching, setLaunching] = useState(false);
   const [failureDetail, setFailureDetail] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [showCustomDialog, setShowCustomDialog] = useState(false);
   const relaunchingRef = useRef(false);
   // The auto-resend must fire ONCE per card — a second fire (the provider can
   // complete several logins while the chat stays open) would double-send.
@@ -102,6 +105,17 @@ export function UnauthenticatedCard({
 
   const reconnect = async () => {
     if (launching) return;
+    // A local OpenAI-compatible server has no OAuth flow — reconnect by
+    // re-connecting the local model in its dialog, not launchLogin (which
+    // would throw "does not use OAuth sign-in" and dead-end the card). A
+    // successful connect fires the same `ProviderLoginComplete` event
+    // (`setProviderCustomEndpoint`), so the auto-resume above still runs.
+    if (error.provider === "openai-compatible") {
+      setFailureDetail(null);
+      setShowCustomDialog(true);
+      setPhase("waiting");
+      return;
+    }
     setLaunching(true);
     relaunchingRef.current = true;
     setFailureDetail(null);
@@ -118,6 +132,12 @@ export function UnauthenticatedCard({
   };
 
   const cancelSignIn = async () => {
+    // Local model: nothing engine-side to cancel — close the dialog and re-arm.
+    if (error.provider === "openai-compatible") {
+      setShowCustomDialog(false);
+      setPhase("idle");
+      return;
+    }
     try {
       await tauriProvider.cancelLogin(error.provider);
     } finally {
@@ -172,6 +192,20 @@ export function UnauthenticatedCard({
         title={t(pres.titleKey, { provider })}
         description={t(pres.bodyKey, { provider, detail: failureDetail ?? "" })}
         action={renderButton(pres.button)}
+      />
+
+      {/* The local model's reconnect surface: the same guided dialog the AI
+          Models section opens. A successful connect fires
+          ProviderLoginComplete, which flips this card to done and auto-resumes
+          the task; closing without connecting re-arms the button. */}
+      <LocalModelDialog
+        provider={
+          showCustomDialog ? (getProvider(error.provider) ?? null) : null
+        }
+        onClose={() => {
+          setShowCustomDialog(false);
+          setPhase((p) => (p === "waiting" ? "idle" : p));
+        }}
       />
     </div>
   );

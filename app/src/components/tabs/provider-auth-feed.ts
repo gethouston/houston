@@ -23,6 +23,14 @@ const AUTH_PATTERNS = [
   // ONLY signal that the chat's provider was logged out — recognizing it here
   // is what surfaces the in-chat reconnect card on the new stack.
   "no provider connected",
+  // The runtime refuses a turn pinned to the OpenAI-compatible provider whose
+  // endpoint was disconnected with a verbatim "No local model configured. Set
+  // a base URL and model for the OpenAI-compatible provider." (runtime
+  // `ai/openai-compatible.ts`). Same situation as "no provider connected":
+  // no AuthRequired event fires, so this feed message is the only signal —
+  // recognizing it is what surfaces the in-chat reconnect card (which routes
+  // openai-compatible to the local-model dialog, not OAuth).
+  "no local model configured",
 ] as const;
 
 /**

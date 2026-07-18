@@ -11,6 +11,7 @@ process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-chat-"));
 process.env.HOUSTON_WORKSPACE_DIR = process.env.HOUSTON_DATA_DIR;
 const { runTurn } = await import("./chat");
 const { getHistory } = await import("../store/conversations");
+const { subscribe } = await import("./bus");
 
 /**
  * A turn that fails BEFORE executing (a pin naming an unknown provider — a
@@ -37,4 +38,69 @@ test("a turn failing before execution persists the user message + typed provider
   expect(
     (assistant?.providerError as { raw_excerpt?: string }).raw_excerpt,
   ).toContain("unknown provider: gemini-cli");
+});
+
+/**
+ * A NOT-CONNECTED failure (disconnected local model / no provider) is typed
+ * `unauthenticated`, not `unknown`: the typed card is the full reconnect
+ * surface — correct provider label, the provider's own reconnect flow, and the
+ * automatic task resume on reconnect. `undelivered_prompt` carries the turn's
+ * text because the model never received it (the failure precedes the session).
+ */
+test("a disconnected-local-model failure persists a typed unauthenticated error with the undelivered prompt", async () => {
+  await runTurn("conv-fail-3", "everything is okey?", undefined, {
+    provider: "openai-compatible",
+  });
+
+  const history = getHistory("conv-fail-3");
+  const assistant = history?.messages.at(-1);
+  expect(assistant?.providerError).toMatchObject({
+    kind: "unauthenticated",
+    provider: "openai-compatible",
+    cause: "no_credentials",
+    undelivered_prompt: "everything is okey?",
+  });
+  expect((assistant?.providerError as { message?: string }).message).toContain(
+    "No local model configured",
+  );
+});
+
+/**
+ * The failure must be RENDERABLE by a live turn stream, not just persisted:
+ * the client sink adopts its turnId from the nonce-stamped `user` echo, and a
+ * stamped `error` frame with no adopted id classifies as foreign and is
+ * dropped — the turn then spins forever with no error and no reconnect card
+ * (the disconnected-local-model repro). So the pre-execution failure path
+ * publishes the SAME echo-then-error sequence as a normal turn, sharing one
+ * turnId, echo first.
+ */
+test("a turn failing before execution publishes the nonce-stamped echo before the error", async () => {
+  const frames: { type: string; turnId?: string; nonce?: string }[] = [];
+  const unsub = subscribe("conv-fail-2", (f) => {
+    frames.push({
+      type: f.type,
+      turnId: f.turnId,
+      nonce: (f.data as { nonce?: string })?.nonce,
+    });
+  });
+  try {
+    await runTurn("conv-fail-2", "hello", "nonce-123", {
+      provider: "openai-compatible",
+    });
+  } finally {
+    unsub();
+  }
+
+  const user = frames.find((f) => f.type === "user");
+  const error = frames.find((f) => f.type === "error");
+  expect(user).toBeDefined();
+  expect(error).toBeDefined();
+  // The echo carries OUR nonce (the sink's adoption key) and the error is
+  // stamped with the SAME turnId, in echo-then-error order.
+  expect(user?.nonce).toBe("nonce-123");
+  expect(user?.turnId).toBeDefined();
+  expect(error?.turnId).toBe(user?.turnId);
+  expect(frames.indexOf(user as never)).toBeLessThan(
+    frames.indexOf(error as never),
+  );
 });

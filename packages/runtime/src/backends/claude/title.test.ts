@@ -36,6 +36,30 @@ function capturingQuery(): {
   return { query, env: () => captured };
 }
 
+test("titleWithClaude carries the title instruction in the PROMPT itself", async () => {
+  // The CLI has been observed running its claude_code preset despite a custom
+  // string systemPrompt — the model then ANSWERED the excerpt and the first
+  // line of the answer became the board title. The instruction must ride the
+  // prompt so the reply is a title whichever system prompt the CLI honors.
+  let prompt = "";
+  const query: ClaudeQuery = (req) => {
+    prompt = String(req.prompt);
+    return (async function* () {})();
+  };
+
+  await titleWithClaude({
+    excerpt: "user: do you have image capabilities?",
+    titlePrompt: "You generate conversation titles.",
+    workspaceDir: "/ws",
+    readToken: () => undefined,
+    query,
+  });
+
+  expect(prompt).toContain("You generate conversation titles.");
+  expect(prompt).toContain("user: do you have image capabilities?");
+  expect(prompt).toContain("Reply with ONLY the title.");
+});
+
 test("titleWithClaude scrubs a stale API key when an OAuth token is connected", async () => {
   process.env.ANTHROPIC_API_KEY = "stale-host-key";
   const oauth: ClaudeToken = { kind: "oauth-token", value: "sk-ant-oat01-x" };

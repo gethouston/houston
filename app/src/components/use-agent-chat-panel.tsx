@@ -158,7 +158,7 @@ import { SelectedSkillChip } from "./selected-skill-chip";
 import { ProviderErrorCard } from "./shell/provider-error-card";
 import {
   continuesTaskAfterReconnect,
-  isInlineAuthCardForChat,
+  isInlineAuthCard,
   providerErrorRetryText,
   reconnectContinueText,
   resendsOriginalPrompt,
@@ -1843,14 +1843,13 @@ export function useAgentChatPanel({
       // narrated by the standard in-flight indicator — deriveStatus treats
       // the parked trailing user bubble as "submitted" (HOU-713).
       // The persisted inline `UnauthenticatedCard` (a provider_error feed item)
-      // is the stable reconnect surface. When it's already present for THIS
-      // chat's provider, don't also render the store-driven card — it flickers
-      // (auto-dismisses) when the provider's auth probe is unreliable, e.g.
-      // codex reporting "authenticated" off a stale ~/.codex/auth.json after a
-      // server-side session kill. One card, and it stays put.
-      const hasInlineAuthCard = feedItems.some((it) =>
-        isInlineAuthCardForChat(it, effectiveProvider),
-      );
+      // is the stable reconnect surface. When one is present, don't also
+      // render the store-driven card — it flickers (auto-dismisses) when the
+      // provider's auth probe is unreliable, and when the chat-provider
+      // resolution disagrees with the provider the turn ACTUALLY failed on
+      // (a stale activity record) it would name the wrong provider outright.
+      // One card per chat, and the inline one carries the true provider.
+      const hasInlineAuthCard = feedItems.some(isInlineAuthCard);
       if (hasInlineAuthCard) return null;
       const signalKey = providerAuthSignalKey(feedItems);
       // Always hand the card THIS chat's provider so it can match the global
