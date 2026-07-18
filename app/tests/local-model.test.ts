@@ -2,6 +2,7 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   appDisplayName,
+  buildDirectEndpoint,
   buildLocalEndpoint,
   connectableServers,
   type DetectedServer,
@@ -142,6 +143,38 @@ describe("local-model helpers", () => {
       }).baseUrl,
       "https://sub.relay.example.com/v1",
     );
+  });
+
+  // The no-relay path (dev, desktop-local engine, self-host): the detected
+  // server registers directly, no tunnel and no proxy key.
+  it("builds a direct endpoint from the detected origin with no apiKey", () => {
+    const endpoint = buildDirectEndpoint({
+      server: server({ baseUrl: "http://127.0.0.1:1234" }),
+      model: "qwen",
+      name: "LM Studio · qwen",
+    });
+    deepStrictEqual(endpoint, {
+      baseUrl: "http://127.0.0.1:1234/v1",
+      model: "qwen",
+      name: "LM Studio · qwen",
+    });
+    strictEqual("apiKey" in endpoint, false);
+  });
+
+  it("direct endpoint strips a trailing slash and carries the toggles only when on", () => {
+    const base = {
+      server: server({ baseUrl: "http://127.0.0.1:11434/" }),
+      model: "m",
+      name: "n",
+    };
+    strictEqual(buildDirectEndpoint(base).baseUrl, "http://127.0.0.1:11434/v1");
+    strictEqual("reasoning" in buildDirectEndpoint(base), false);
+    strictEqual("shared" in buildDirectEndpoint(base), false);
+    strictEqual(
+      buildDirectEndpoint({ ...base, reasoning: true }).reasoning,
+      true,
+    );
+    strictEqual(buildDirectEndpoint({ ...base, shared: true }).shared, true);
   });
 
   it("maps tunnel credentials to reconnect args (relay coords + token only)", () => {

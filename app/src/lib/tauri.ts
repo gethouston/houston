@@ -1408,12 +1408,14 @@ export const tauriProvider = {
   /**
    * Mint a relay credential for the guided "connect a local model" flow: the
    * gateway issues a short-lived tunnel token the desktop's frpc sidecar uses to
-   * expose the user's local model server to their CLOUD agent. Hosted + new
-   * engine only. A failure toasts the real reason with a Report-bug affordance
-   * (default `call` surfacing); the guided dialog also shows a calm retry state.
+   * expose the user's local model server to their CLOUD agent. Resolves `null`
+   * when the deployment has no relay at all (no gateway / tunnels route absent /
+   * relay unconfigured) — the flow then registers the detected server directly.
+   * A real failure toasts the reason with a Report-bug affordance (default
+   * `call` surfacing); the guided dialog also shows a calm retry state.
    */
   getTunnelCredentials: () =>
-    call<import("@houston-ai/engine-client").TunnelCredentials>(
+    call<import("@houston-ai/engine-client").TunnelCredentials | null>(
       "get_tunnel_credentials",
       () => getEngine().getTunnelCredentials(),
     ),
