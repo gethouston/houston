@@ -40,6 +40,7 @@
       "submit": "Create skill",
       "submitting": "Creating...",
       "errorTitleRequired": "Give your skill a title.",
+      "errorDescriptionRequired": "A description is required. Add one line saying what this skill does.",
       "errorBodyRequired": "Add at least one instruction step.",
       "errorSlugTaken": "A skill with this name already exists."
     }
