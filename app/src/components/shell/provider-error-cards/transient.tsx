@@ -104,12 +104,24 @@ export function NetworkUnreachableCard({
 }) {
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
+  // The local (OpenAI-compatible) provider is the user's own machine, not a
+  // provider API: "check your internet" is the wrong remedy. Name the real
+  // one — the model app stopped or its server is off.
+  const local = error.provider === "openai-compatible";
   return (
     <div className="w-full px-1 py-2">
       <RowCard
         media={<WifiOffIcon className="size-5" />}
-        title={t("providerError.networkUnreachable.title", { provider })}
-        description={t("providerError.networkUnreachable.body", { provider })}
+        title={
+          local
+            ? t("providerError.networkUnreachable.localTitle")
+            : t("providerError.networkUnreachable.title", { provider })
+        }
+        description={
+          local
+            ? t("providerError.networkUnreachable.localBody")
+            : t("providerError.networkUnreachable.body", { provider })
+        }
         action={
           <>
             {onRetry && (

@@ -340,6 +340,8 @@
     "networkUnreachable": {
       "title": "Não foi possível alcançar o {{provider}}",
       "body": "O Houston não conseguiu acessar a API do {{provider}}. Verifique sua internet e tente de novo.",
+      "localTitle": "Não foi possível alcançar seu modelo local",
+      "localBody": "O Houston não conseguiu acessar o modelo no seu computador. Verifique se o aplicativo do modelo está aberto e com o servidor em execução, depois tente de novo.",
       "retry": "Tentar de novo",
       "checkStatus": "Ver página de status"
     },

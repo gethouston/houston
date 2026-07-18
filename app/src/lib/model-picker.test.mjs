@@ -23,6 +23,38 @@ test("providerPickerState: missing status is 'checking' only while loading", () 
   assert.equal(providerPickerState(undefined, false), "disconnected");
 });
 
+test("providerPickerState: an 'unknown' probe (engine unreachable) is 'checking', never 'disconnected'", () => {
+  // A cold pod waking after a relaunch/update answers every status probe with
+  // auth_state "unknown". That is not a confirmed disconnect: collapsing to
+  // "Not connected" is the #342 flicker all over again.
+  const unknown = {
+    cli_installed: true,
+    authenticated: false,
+    auth_state: "unknown",
+  };
+  assert.equal(providerPickerState(unknown, false), "checking");
+  assert.equal(providerPickerState(unknown, true), "checking");
+  // Confirmed states keep their meaning when auth_state is present.
+  assert.equal(
+    providerPickerState(
+      { cli_installed: true, authenticated: true, auth_state: "authenticated" },
+      false,
+    ),
+    "connected",
+  );
+  assert.equal(
+    providerPickerState(
+      {
+        cli_installed: true,
+        authenticated: false,
+        auth_state: "unauthenticated",
+      },
+      false,
+    ),
+    "disconnected",
+  );
+});
+
 test("pickerModelRows: a catalogued provider shows its catalog, ignoring the runtime model", () => {
   const catalog = [
     { id: "claude-sonnet-4-6", label: "Sonnet 4.6", description: "Balanced." },

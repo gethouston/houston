@@ -355,6 +355,8 @@
     "networkUnreachable": {
       "title": "Cannot reach {{provider}}",
       "body": "Houston could not reach the {{provider}} API. Check your internet, then try again.",
+      "localTitle": "Cannot reach your local model",
+      "localBody": "Houston could not reach the model on your computer. Make sure the model app is open and its server is running, then try again.",
       "retry": "Try again",
       "checkStatus": "Check status page"
     },
