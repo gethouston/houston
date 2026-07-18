@@ -167,6 +167,11 @@ const host = buildLocalHost({
   // x-houston-acting-as); relay that header to the runtime so integration
   // calls act as the driving user. Desktop/self-host stay direct → false.
   gatewayFronted: process.env.HOUSTON_MANAGED_CLOUD === "1",
+  // Dev launcher only (scripts/dev/control-plane.sh): its managed-cloud "pods"
+  // are processes on the developer's machine, so their egress reaches loopback
+  // and the public-HTTPS endpoint validation must not apply. Real pods never
+  // set this — their NetworkPolicy is what the validation models.
+  loopbackEgress: process.env.HOUSTON_LOOPBACK_EGRESS === "1",
   credentials: remoteGateway,
   sharedEndpoints: remoteGateway,
   // Active-time reporting rides the same managed-pod gateway quadruple: the

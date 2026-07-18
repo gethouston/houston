@@ -12,6 +12,10 @@ wait_pg
 export CP_DEV_DATA_DIR="${CP_DEV_DATA_DIR:-$HOME/.dev-houston-cloud}"
 # The engine command mirrors the engine-pod image (selfhost/Dockerfile): the
 # host's local main with the managed-cloud profile, eager runtime included.
-export CP_DEV_ENGINE_CMD="${CP_DEV_ENGINE_CMD:-HOUSTON_EAGER_RUNTIME=1 pnpm --dir '$HOUSTON_DEV_ROOT' --filter @houston/host dev}"
+# HOUSTON_LOOPBACK_EGRESS: dev pods run on THIS machine, so — unlike a real
+# pod behind its NetworkPolicy — they can reach a local model server on
+# 127.0.0.1; without it the managed-cloud endpoint validation blocks
+# connecting a local model in dev entirely.
+export CP_DEV_ENGINE_CMD="${CP_DEV_ENGINE_CMD:-HOUSTON_EAGER_RUNTIME=1 HOUSTON_LOOPBACK_EGRESS=1 pnpm --dir '$HOUSTON_DEV_ROOT' --filter @houston/host dev}"
 cd "$CLOUD_DIR"
 exec go run ./cmd/control-plane

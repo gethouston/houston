@@ -106,6 +106,7 @@ let server: Server | null = null;
 async function setup(
   capabilities: Capabilities,
   gatewayFronted = false,
+  loopbackEgress = false,
 ): Promise<{
   base: string;
   agentId: string;
@@ -124,6 +125,7 @@ async function setup(
     vfs: new MemoryVfs(),
     capabilities,
     gatewayFronted,
+    loopbackEgress,
     sharedEndpoints,
   };
   server = createControlPlaneServer(deps);
@@ -349,6 +351,20 @@ test.each([
   const res = await connect(base, agentId, { baseUrl, model: "m" });
   expect(res.status).toBe(400);
   expect(channel.saved).toHaveLength(0);
+});
+
+test("dev launcher (gatewayFronted + loopbackEgress) accepts localhost — its pods run on the dev machine", async () => {
+  const { base, agentId, channel } = await setup(
+    MANAGED_CLOUD_CAPS,
+    true,
+    true,
+  );
+  const res = await connect(base, agentId, {
+    baseUrl: "http://localhost:11434/v1",
+    model: "llama3.1",
+  });
+  expect(res.status).toBe(200);
+  expect(channel.saved).toHaveLength(1);
 });
 
 test("localhost IS accepted when NOT managed cloud (desktop/self-host)", async () => {
