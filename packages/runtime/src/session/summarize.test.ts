@@ -15,6 +15,7 @@ import {
   dispatchTitle,
   generateTitle,
   titleFromText,
+  titlePlan,
 } from "./summarize";
 
 /**
@@ -63,6 +64,39 @@ test("dispatchTitle routes every other provider to the pi runner — Claude is N
     expect(pi).toHaveBeenCalledWith("excerpt");
     expect(claude).not.toHaveBeenCalled();
   }
+});
+
+test("titlePlan routes a live conversation to ITS provider, not the active one", () => {
+  // A local-model chat titles on the local model even when the agent's active
+  // provider is anthropic — dispatching on the active provider burned a full
+  // Claude one-shot to title a chat Claude never ran.
+  const plan = titlePlan(
+    { provider: "openai-compatible", model: "Jan-v3.5-4B-Q4_K_XL" },
+    "anthropic",
+  );
+  expect(plan.provider).toBe("openai-compatible");
+  expect(plan.resolvePin).toEqual({
+    provider: "openai-compatible",
+    model: "Jan-v3.5-4B-Q4_K_XL",
+  });
+  expect(plan.claudeModelId).toBeUndefined();
+});
+
+test("titlePlan keeps an anthropic conversation on the Claude runner with ITS model", () => {
+  const plan = titlePlan(
+    { provider: "anthropic", model: "claude-sonnet-4-6" },
+    "openai-codex",
+  );
+  expect(plan.provider).toBe("anthropic");
+  expect(plan.claudeModelId).toBe("claude-sonnet-4-6");
+  expect(plan.resolvePin).toBeUndefined();
+});
+
+test("titlePlan falls back to the active provider when the session is not cached", () => {
+  const plan = titlePlan(undefined, "anthropic");
+  expect(plan.provider).toBe("anthropic");
+  expect(plan.claudeModelId).toBeUndefined();
+  expect(plan.resolvePin).toBeUndefined();
 });
 
 test("generateTitle runs a faux turn and returns a single trimmed line", async () => {

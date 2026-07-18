@@ -100,7 +100,17 @@ export async function syncSharedEndpoint(
       runtimeStatus(opts.runtime, fetchImpl),
     ]);
     if (!shared) {
-      if (status.orgShared) await clearRuntime(opts.runtime, fetchImpl);
+      if (status.orgShared) {
+        // Loud on purpose: this clear LOGS OUT the runtime's openai-compatible
+        // provider (wiping custom-endpoint.json). It must only ever remove an
+        // org-hydrated endpoint after the share was withdrawn — if an endpoint
+        // vanishes and this line isn't in the log, the wipe came through the
+        // logout route instead (see the runtime's [auth] logout line).
+        console.log(
+          "[shared-endpoint] org share gone → clearing this runtime's org-hydrated endpoint",
+        );
+        await clearRuntime(opts.runtime, fetchImpl);
+      }
       return;
     }
     if (status.configured && !status.orgShared) return;

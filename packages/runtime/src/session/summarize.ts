@@ -10,6 +10,7 @@ import { readAnthropicToken } from "../backends/claude/read-token";
 import { titleWithClaude } from "../backends/claude/title";
 import { config } from "../config";
 import { getHistory, renameConversation } from "../store/conversations";
+import { conversations } from "./conversation-cache";
 import { oneShotText } from "./one-shot";
 
 const errMessage = (err: unknown): string =>
@@ -74,13 +75,44 @@ export function dispatchTitle(
     : runners.pi(excerpt);
 }
 
+/**
+ * How to route ONE conversation's title. Titles run on the CONVERSATION's own
+ * provider when its session is live (it just ran a turn — the moment titles
+ * are requested). Dispatching on the agent-wide active provider titled a
+ * local-model chat through a full Claude one-shot: a different backend the
+ * chat never picked, burning a real Anthropic call (and failing outright when
+ * that provider was the disconnected one). Only when the session is no longer
+ * cached does the active provider decide. Pure, so the routing is unit-tested.
+ */
+export function titlePlan(
+  conv: { provider: string; model: string } | undefined,
+  active: string | null,
+): {
+  provider: string | null;
+  /** Claude model to title with (anthropic conversations only). */
+  claudeModelId?: string;
+  /** Model pin the pi runner must resolve (non-anthropic conversations). */
+  resolvePin?: { provider: string; model: string };
+} {
+  if (!conv) return { provider: active };
+  if (conv.provider === "anthropic")
+    return { provider: "anthropic", claudeModelId: conv.model };
+  return {
+    provider: conv.provider,
+    resolvePin: { provider: conv.provider, model: conv.model },
+  };
+}
+
 /** The concrete runners bound to this workspace's config/credentials. */
-function titleRunners(model?: unknown): {
+function titleRunners(
+  model?: unknown,
+  claudeModelId?: string,
+): {
   claude: TitleRunner;
   pi: TitleRunner;
 } {
   return {
-    claude: (excerpt) => claudeTitle(excerpt),
+    claude: (excerpt) => claudeTitle(excerpt, claudeModelId),
     pi: (excerpt) =>
       generateTitle({
         cwd: config.workspaceDir,
@@ -98,14 +130,14 @@ function titleRunners(model?: unknown): {
  * (the caller truncates) rather than reroute an anthropic title onto pi's client
  * — that reroute is precisely what the compliance gate forbids.
  */
-async function claudeTitle(excerpt: string): Promise<string> {
+async function claudeTitle(excerpt: string, modelId?: string): Promise<string> {
   try {
     return await titleWithClaude({
       excerpt,
       titlePrompt: TITLE_PROMPT,
       workspaceDir: config.workspaceDir,
       readToken: () => readAnthropicToken(authStorage),
-      modelId: resolveModel().id,
+      modelId: modelId ?? resolveModel().id,
     });
   } catch (err) {
     if (err instanceof ClaudeBackendUnavailableError) {
@@ -152,10 +184,30 @@ export async function summarizeTitle(
   const history = getHistory(id);
   if (!history || history.messages.length === 0) return null;
 
-  const title = await dispatchTitle(
+  const conv = conversations.get(id);
+  const plan = titlePlan(
+    conv ? { provider: conv.provider, model: conv.model } : undefined,
     activeProvider(),
+  );
+  let runnerModel = model;
+  if (!model && plan.resolvePin) {
+    try {
+      runnerModel = resolveModel(
+        plan.resolvePin.model,
+        plan.resolvePin.provider,
+      );
+    } catch {
+      // The chat's provider is disconnected (e.g. its local endpoint is
+      // gone): no title rather than silently rerouting onto a provider the
+      // chat never chose — the caller falls back to truncation.
+      return null;
+    }
+  }
+
+  const title = await dispatchTitle(
+    plan.provider,
     buildExcerpt(history.messages),
-    titleRunners(model),
+    titleRunners(runnerModel, plan.claudeModelId),
   );
   if (!title) return null;
   renameConversation(id, title);
