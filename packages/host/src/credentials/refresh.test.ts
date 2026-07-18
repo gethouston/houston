@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { isApiKeyCredential, type WorkspaceCredential } from "../ports";
-import { isExpiring, refreshCredential } from "./refresh";
+import { isExpiring, RefreshRejectedError, refreshCredential } from "./refresh";
 
 /**
  * The connect-once refresher is OAuth-only. An API-key credential never expires
@@ -50,6 +50,53 @@ test("isExpiring is true for an already-expired oauth token", () => {
       expiresAt: 1, // long past
     }),
   ).toBe(true);
+});
+
+test("a 401 from the token endpoint throws RefreshRejectedError (terminal)", async () => {
+  // The OAuth server's own verdict on the refresh token (invalid_grant /
+  // refresh_token_invalidated) must be distinguishable from a transient
+  // failure — the serve route disconnects on it instead of retrying forever.
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({ error: { code: "refresh_token_invalidated" } }),
+      { status: 401 },
+    )) as typeof fetch;
+  try {
+    await expect(
+      refreshCredential({
+        workspaceId: "ws_1",
+        provider: "openai-codex",
+        accessToken: "at",
+        refreshToken: "rt.dead",
+        expiresAt: 1,
+      }),
+    ).rejects.toBeInstanceOf(RefreshRejectedError);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("a 5xx from the token endpoint is NOT a terminal rejection", async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response("upstream sad", { status: 503 })) as typeof fetch;
+  try {
+    const err = await refreshCredential({
+      workspaceId: "ws_1",
+      provider: "openai-codex",
+      accessToken: "at",
+      refreshToken: "rt",
+      expiresAt: 1,
+    }).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(Error);
+    expect(err).not.toBeInstanceOf(RefreshRejectedError);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });
 
 test("refreshCredential mints a fresh GitHub Copilot token from the stored GitHub token", async () => {

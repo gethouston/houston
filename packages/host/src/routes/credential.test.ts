@@ -102,6 +102,62 @@ test("serves the existing token when refresh has no config (no 500)", async () =
   expect(r.out.body.kind).toBe("oauth");
 });
 
+test("a terminally-rejected refresh disconnects the credential (marked 404)", async () => {
+  // The token endpoint's 401 (refresh_token_invalidated — session ended
+  // server-side) never heals on retry. Before the fix this logged + served the
+  // expired token on EVERY serve, forever, while turns failed with "No API
+  // key" and the provider still read as connected.
+  const credentials = new MemoryCredentialStore();
+  await credentials.put({
+    workspaceId: "w1",
+    provider: "openai-codex",
+    accessToken: "expired-AT",
+    refreshToken: "rt.dead",
+    expiresAt: 1,
+  });
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({ error: { code: "refresh_token_invalidated" } }),
+      { status: 401 },
+    )) as typeof fetch;
+  try {
+    const r = mockRes();
+    expect(await call(credentials, "openai-codex", r)).toBe(true);
+    expect(r.out.status).toBe(404);
+    expect(r.out.headers?.["x-houston-not-connected"]).toBe("1");
+    // The dead credential is gone: the next serve answers "not connected"
+    // without another doomed refresh attempt.
+    expect(await credentials.get("w1", "openai-codex")).toBeNull();
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("a transient refresh failure keeps serving the existing token", async () => {
+  const credentials = new MemoryCredentialStore();
+  await credentials.put({
+    workspaceId: "w1",
+    provider: "openai-codex",
+    accessToken: "maybe-still-good-AT",
+    refreshToken: "rt.fine",
+    expiresAt: 1,
+  });
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response("upstream sad", { status: 503 })) as typeof fetch;
+  try {
+    const r = mockRes();
+    expect(await call(credentials, "openai-codex", r)).toBe(true);
+    expect(r.out.status).toBe(200);
+    expect(r.out.body.access).toBe("maybe-still-good-AT");
+    // A blip must not sign the workspace out.
+    expect(await credentials.get("w1", "openai-codex")).not.toBeNull();
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test("serves an api-key credential as kind=api_key without refreshing", async () => {
   const credentials = new MemoryCredentialStore();
   await credentials.put({
