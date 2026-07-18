@@ -19,6 +19,11 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  canSubmitScratchForm,
+  needsDescriptionNudge,
+  toSlug,
+} from "./add-skill-dialog-scratch-model";
 
 export interface ScratchViewLabels {
   titleLabel?: string;
@@ -34,6 +39,7 @@ export interface ScratchViewLabels {
   submit?: string;
   submitting?: string;
   errorTitleRequired?: string;
+  errorDescriptionRequired?: string;
   errorBodyRequired?: string;
   errorSlugTaken?: string;
 }
@@ -54,6 +60,8 @@ const DEFAULT_LABELS: Required<ScratchViewLabels> = {
   submit: "Create skill",
   submitting: "Creating...",
   errorTitleRequired: "Give your skill a title.",
+  errorDescriptionRequired:
+    "A description is required. Add one line saying what this skill does.",
   errorBodyRequired: "Add at least one instruction step.",
   errorSlugTaken: "A skill with this name already exists.",
 };
@@ -85,6 +93,7 @@ export function ScratchView({
   const l = { ...DEFAULT_LABELS, ...labels };
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [descriptionTouched, setDescriptionTouched] = useState(false);
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -94,6 +103,7 @@ export function ScratchView({
   useEffect(() => {
     setTitle("");
     setDescription("");
+    setDescriptionTouched(false);
     setBody("");
     setError(null);
     // Defer focus past the dialog's mount animation so the cursor
@@ -105,16 +115,25 @@ export function ScratchView({
   const slugTaken =
     slug.length > 0 && installedSkillNames?.has(slug.toLowerCase()) === true;
 
+  const descriptionMissing = needsDescriptionNudge(
+    { title, description, body },
+    descriptionTouched,
+  );
+
   const canSubmit =
-    title.trim().length > 0 &&
-    body.trim().length > 0 &&
-    !slugTaken &&
+    canSubmitScratchForm({ title, description, body }, slugTaken) &&
     !submitting;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setError(l.errorTitleRequired);
+      return;
+    }
+    if (!description.trim()) {
+      // The inline message under the field carries the explanation.
+      setDescriptionTouched(true);
+      setError(null);
       return;
     }
     if (!body.trim()) {
@@ -173,15 +192,21 @@ export function ScratchView({
           />
         </Field>
 
-        <Field label={l.descriptionLabel} hint={l.descriptionHint}>
+        <Field
+          label={l.descriptionLabel}
+          hint={l.descriptionHint}
+          error={descriptionMissing ? l.errorDescriptionRequired : null}
+        >
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            onBlur={() => setDescriptionTouched(true)}
             placeholder={l.descriptionPlaceholder}
             className={inputClass}
             autoComplete="off"
             maxLength={200}
+            aria-invalid={descriptionMissing || undefined}
           />
         </Field>
 
@@ -223,11 +248,13 @@ const inputClass = cn(
 function Field({
   label,
   hint,
+  error,
   suffix,
   children,
 }: {
   label: string;
   hint?: string;
+  error?: string | null;
   suffix?: React.ReactNode;
   children: React.ReactElement<{ id?: string }>;
 }) {
@@ -241,22 +268,13 @@ function Field({
         {suffix}
       </div>
       {cloneElement(children, { id })}
-      {hint && <p className="text-[11px] text-ink-muted/70 mt-1">{hint}</p>}
+      {error ? (
+        <p role="alert" className="text-xs text-red-600 mt-1">
+          {error}
+        </p>
+      ) : (
+        hint && <p className="text-[11px] text-ink-muted/70 mt-1">{hint}</p>
+      )}
     </div>
   );
-}
-
-/**
- * Convert a free-form title ("Draft a contract") into a kebab-case slug
- * Houston stores on disk ("draft-a-contract"). Strips non-ASCII, collapses
- * runs of separators, trims leading/trailing dashes.
- */
-function toSlug(input: string): string {
-  return input
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 64);
 }

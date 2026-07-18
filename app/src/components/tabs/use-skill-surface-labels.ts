@@ -68,6 +68,7 @@ export function useSkillDialogLabels() {
       submit: t("addDialog.scratch.submit"),
       submitting: t("addDialog.scratch.submitting"),
       errorTitleRequired: t("addDialog.scratch.errorTitleRequired"),
+      errorDescriptionRequired: t("addDialog.scratch.errorDescriptionRequired"),
       errorBodyRequired: t("addDialog.scratch.errorBodyRequired"),
       errorSlugTaken: t("addDialog.scratch.errorSlugTaken"),
     },
