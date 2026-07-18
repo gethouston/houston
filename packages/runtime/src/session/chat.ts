@@ -116,15 +116,34 @@ export async function runTurn(
       data: { content: text, ts: Date.now(), nonce },
       turnId,
     });
+    // A NOT-CONNECTED failure is typed `unauthenticated`, not `unknown`: the
+    // typed card is the full reconnect surface (correct provider label, the
+    // provider's own reconnect flow — the local-model dialog for
+    // openai-compatible — and the automatic task resume once the reconnect
+    // completes). `undelivered_prompt` carries the turn's text because the
+    // model never received it: the failure precedes the session, so neither
+    // the live context nor a rebuild ever sees this message (HOU-718) — only
+    // the UI transcript above does.
+    const message = errMessage(err);
+    const notConnected =
+      /no local model configured|no provider connected/i.test(message);
     appendAssistantMessage(id, "", {
-      providerError: {
-        kind: "unknown",
-        provider: pin?.provider ?? "unknown",
-        raw_excerpt: errMessage(err),
-      },
+      providerError: notConnected
+        ? {
+            kind: "unauthenticated",
+            provider: pin?.provider ?? "",
+            cause: "no_credentials",
+            message,
+            undelivered_prompt: text,
+          }
+        : {
+            kind: "unknown",
+            provider: pin?.provider ?? "unknown",
+            raw_excerpt: message,
+          },
       turnId,
     });
-    publish(id, { type: "error", data: { message: errMessage(err) }, turnId });
+    publish(id, { type: "error", data: { message }, turnId });
     return;
   }
 

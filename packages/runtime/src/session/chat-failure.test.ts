@@ -41,6 +41,31 @@ test("a turn failing before execution persists the user message + typed provider
 });
 
 /**
+ * A NOT-CONNECTED failure (disconnected local model / no provider) is typed
+ * `unauthenticated`, not `unknown`: the typed card is the full reconnect
+ * surface — correct provider label, the provider's own reconnect flow, and the
+ * automatic task resume on reconnect. `undelivered_prompt` carries the turn's
+ * text because the model never received it (the failure precedes the session).
+ */
+test("a disconnected-local-model failure persists a typed unauthenticated error with the undelivered prompt", async () => {
+  await runTurn("conv-fail-3", "everything is okey?", undefined, {
+    provider: "openai-compatible",
+  });
+
+  const history = getHistory("conv-fail-3");
+  const assistant = history?.messages.at(-1);
+  expect(assistant?.providerError).toMatchObject({
+    kind: "unauthenticated",
+    provider: "openai-compatible",
+    cause: "no_credentials",
+    undelivered_prompt: "everything is okey?",
+  });
+  expect((assistant?.providerError as { message?: string }).message).toContain(
+    "No local model configured",
+  );
+});
+
+/**
  * The failure must be RENDERABLE by a live turn stream, not just persisted:
  * the client sink adopts its turnId from the nonce-stamped `user` echo, and a
  * stamped `error` frame with no adopted id classifies as foreign and is

@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import type { FeedItem, ProviderError } from "@houston-ai/chat";
 import {
   continuesTaskAfterReconnect,
-  isInlineAuthCardForChat,
+  isInlineAuthCard,
   providerErrorRetryText,
   reconnectContinueText,
   resendsOriginalPrompt,
@@ -157,37 +157,32 @@ describe("providerErrorRetryText", () => {
   });
 });
 
-describe("isInlineAuthCardForChat", () => {
+describe("isInlineAuthCard", () => {
   const item = (data: ProviderError): FeedItem => ({
     feed_type: "provider_error",
     data,
   });
 
-  it("matches this chat's provider and the provider-less refusal", () => {
+  it("matches any persisted unauthenticated card, regardless of provider", () => {
+    strictEqual(isInlineAuthCard(item(notConnectedCard)), true);
     strictEqual(
-      isInlineAuthCardForChat(
-        item({ ...notConnectedCard, provider: "openai" }),
-        "openai",
-      ),
+      isInlineAuthCard(item({ ...notConnectedCard, provider: "openai" })),
       true,
     );
-    // Empty provider = NOTHING was connected, which includes this chat's.
+    // The inline card carries the provider the turn ACTUALLY failed on — a
+    // stale chat-provider resolution must never let a second (wrong-provider)
+    // store card render next to it, so the match is provider-agnostic.
     strictEqual(
-      isInlineAuthCardForChat(item(notConnectedCard), "openai"),
+      isInlineAuthCard(
+        item({ ...notConnectedCard, provider: "openai-compatible" }),
+      ),
       true,
     );
   });
 
-  it("never matches a foreign provider's card or other kinds", () => {
+  it("never matches other kinds or non-provider-error items", () => {
     strictEqual(
-      isInlineAuthCardForChat(
-        item({ ...notConnectedCard, provider: "anthropic" }),
-        "openai",
-      ),
-      false,
-    );
-    strictEqual(
-      isInlineAuthCardForChat(
+      isInlineAuthCard(
         item({
           kind: "rate_limited",
           provider: "openai",
@@ -195,15 +190,14 @@ describe("isInlineAuthCardForChat", () => {
           retry_after_seconds: null,
           message: "slow down",
         }),
-        "openai",
       ),
       false,
     );
     strictEqual(
-      isInlineAuthCardForChat(
-        { feed_type: "system_message", data: "hello" } as FeedItem,
-        "openai",
-      ),
+      isInlineAuthCard({
+        feed_type: "system_message",
+        data: "hello",
+      } as FeedItem),
       false,
     );
   });
