@@ -1314,13 +1314,19 @@ export const tauriProvider = {
                 // the client only opens the URL. A truly remote engine (hosted
                 // cloud, a VPS, or the HOU-621 runtime `remote` choice with no
                 // baked env — hence the isRemoteEngine() OR) must use device
-                // code instead. A LOOPBACK `VITE_NEW_ENGINE_URL` (the dev
-                // two-terminal setup) is co-located despite being URL-configured,
-                // so it keeps the browser flow like the packaged host-sidecar
-                // build.
+                // code instead. A LOOPBACK engine URL is co-located despite
+                // being URL-configured — `VITE_NEW_ENGINE_URL` (the dev
+                // two-terminal setup) and `VITE_HOSTED_ENGINE_URL` (the dev
+                // cloud profile's local gateway) alike — so it keeps the
+                // browser flow like the packaged host-sidecar build.
                 (isRemoteEngine() &&
                   !isLoopbackHostUrl(
                     import.meta.env?.VITE_NEW_ENGINE_URL as string | undefined,
+                  ) &&
+                  !isLoopbackHostUrl(
+                    import.meta.env?.VITE_HOSTED_ENGINE_URL as
+                      | string
+                      | undefined,
                   )) ||
                 providerLoginUsesDeviceAuthByDefault(
                   (import.meta.env ?? {}) as {
