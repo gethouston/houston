@@ -1765,17 +1765,22 @@ export function useAgentChatPanel({
               // nudge (the transcript filters its bubble, see
               // `mapFeedItems`). Both fire automatically on reconnect;
               // other failures keep the generic visible retry prompt.
-              const text = continuesTaskAfterReconnect(providerError)
-                ? encodeAutoContinueMessage(
-                    reconnectContinueText(
-                      providerError,
-                      t("chat:providerError.reconnectedContinue"),
-                    ),
-                  )
+              const continues = continuesTaskAfterReconnect(providerError);
+              const continueText = reconnectContinueText(
+                providerError,
+                t("chat:providerError.reconnectedContinue"),
+              );
+              const text = continues
+                ? encodeAutoContinueMessage(continueText)
                 : providerErrorRetryText(
                     providerError,
                     t("chat:toolRuntimeError.retryPrompt"),
                   );
+              // The reconnect resume fires WITHOUT the user typing, so it is an
+              // `autoResume` send: if the conversation shows a running turn it
+              // is held at most once (several mounted cards can fire the same
+              // resume) and dropped when redundant — and its queued bubble
+              // shows the human text, never the auto-continue marker.
               await tauriChat.send(path, text, selectedSessionKey, {
                 providerOverride: effectiveProvider,
                 modelOverride: effectiveModel,
@@ -1784,6 +1789,8 @@ export function useAgentChatPanel({
                 // A refused not-connected send left its prompt's bubble in
                 // the feed already — resending it must not add a second one.
                 suppressUserBubble: resendsOriginalPrompt(providerError),
+                autoResume: providerError.kind === "unauthenticated",
+                ...(continues ? { queuedPreview: { text: continueText } } : {}),
               });
             }}
             // "Pick another model" pops the MODEL picker (not the Skills picker);

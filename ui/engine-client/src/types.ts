@@ -1279,6 +1279,16 @@ export interface SessionStartRequest {
    * are no per-send fields for them.)
    */
   queuedPreview?: { text: string; attachmentNames?: string[] };
+  /**
+   * This send is Houston resuming the conversation on the user's behalf after
+   * an out-of-band completion (a provider reconnect) — not something the user
+   * typed. The adapter's send queue treats it specially: at most ONE is held
+   * per conversation (several reconnect surfaces can fire the same resume),
+   * and a held one is dropped rather than flushed when it would be redundant —
+   * the user queued their own follow-up, or the turn that just settled was
+   * itself a resume.
+   */
+  autoResume?: boolean;
 }
 
 export interface SessionStartResponse {

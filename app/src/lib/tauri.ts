@@ -365,6 +365,9 @@ export const tauriChat = {
       suppressUserBubble?: boolean;
       /** Queue display (user's words + attachment names) if the send is held (see SessionStartRequest). */
       queuedPreview?: { text: string; attachmentNames?: string[] };
+      /** Houston resuming after an out-of-band completion, not user-typed —
+       *  deduped/droppable in the send queue (see SessionStartRequest). */
+      autoResume?: boolean;
       /**
        * What the user's bubble renders when it must differ from `prompt` — a
        * hidden setup-mission directive or appended attachment paths. The engine
@@ -391,6 +394,7 @@ export const tauriChat = {
         suppressUserBubble: opts?.suppressUserBubble,
         queuedPreview: opts?.queuedPreview,
         displayText: opts?.displayText,
+        autoResume: opts?.autoResume,
       });
       return res.sessionKey;
     }),
