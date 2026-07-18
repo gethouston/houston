@@ -11,6 +11,7 @@ process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-chat-"));
 process.env.HOUSTON_WORKSPACE_DIR = process.env.HOUSTON_DATA_DIR;
 const { runTurn } = await import("./chat");
 const { getHistory } = await import("../store/conversations");
+const { subscribe } = await import("./bus");
 
 /**
  * A turn that fails BEFORE executing (a pin naming an unknown provider — a
@@ -37,4 +38,44 @@ test("a turn failing before execution persists the user message + typed provider
   expect(
     (assistant?.providerError as { raw_excerpt?: string }).raw_excerpt,
   ).toContain("unknown provider: gemini-cli");
+});
+
+/**
+ * The failure must be RENDERABLE by a live turn stream, not just persisted:
+ * the client sink adopts its turnId from the nonce-stamped `user` echo, and a
+ * stamped `error` frame with no adopted id classifies as foreign and is
+ * dropped — the turn then spins forever with no error and no reconnect card
+ * (the disconnected-local-model repro). So the pre-execution failure path
+ * publishes the SAME echo-then-error sequence as a normal turn, sharing one
+ * turnId, echo first.
+ */
+test("a turn failing before execution publishes the nonce-stamped echo before the error", async () => {
+  const frames: { type: string; turnId?: string; nonce?: string }[] = [];
+  const unsub = subscribe("conv-fail-2", (f) => {
+    frames.push({
+      type: f.type,
+      turnId: f.turnId,
+      nonce: (f.data as { nonce?: string })?.nonce,
+    });
+  });
+  try {
+    await runTurn("conv-fail-2", "hello", "nonce-123", {
+      provider: "openai-compatible",
+    });
+  } finally {
+    unsub();
+  }
+
+  const user = frames.find((f) => f.type === "user");
+  const error = frames.find((f) => f.type === "error");
+  expect(user).toBeDefined();
+  expect(error).toBeDefined();
+  // The echo carries OUR nonce (the sink's adoption key) and the error is
+  // stamped with the SAME turnId, in echo-then-error order.
+  expect(user?.nonce).toBe("nonce-123");
+  expect(user?.turnId).toBeDefined();
+  expect(error?.turnId).toBe(user?.turnId);
+  expect(frames.indexOf(user as never)).toBeLessThan(
+    frames.indexOf(error as never),
+  );
 });

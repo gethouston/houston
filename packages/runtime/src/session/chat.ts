@@ -106,6 +106,16 @@ export async function runTurn(
     // reader (a routine's reconcile) errors its run with the real message
     // instead of finding no reply and timing out vague.
     appendUserMessage(id, text, { turnId, displayText });
+    // Publish the nonce-stamped `user` echo BEFORE the error, exactly like a
+    // normal turn (recordUserTurn): the client sink adopts its turnId from
+    // this echo, and a stamped `error` frame arriving with no adopted id
+    // classifies as FOREIGN and is dropped — the turn then spins forever with
+    // no error and no reconnect card (the disconnected-local-model repro).
+    publish(id, {
+      type: "user",
+      data: { content: text, ts: Date.now(), nonce },
+      turnId,
+    });
     appendAssistantMessage(id, "", {
       providerError: {
         kind: "unknown",

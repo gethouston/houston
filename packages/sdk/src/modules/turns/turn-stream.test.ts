@@ -1712,3 +1712,75 @@ test("dispose clears an armed pre-settled poll — teardown leaves nothing pendi
   expect(historyCalls).toBe(0);
   expect(sink.settled).toBe(false);
 });
+
+// A turn that fails BEFORE executing may reach us ERROR-FIRST: an older
+// runtime's pre-execution failure path (e.g. a pinned local model whose
+// endpoint was disconnected) published only the stamped `error` frame — no
+// nonce echo — so the sink had no adopted id, classified the error as foreign,
+// and dropped it: the spinner never settled, no error rendered, no reconnect
+// card. Once the send is ACCEPTED, a stamped terminal frame with no adopted id
+// is ours (the one-turn-per-conversation gate).
+test("an accepted send adopts a stamped error-first frame (failed turn settles, never spins)", () => {
+  const { items, sessionStatuses, output } = makeOutput();
+  const sink = new TurnSink({
+    agentPath: "Houston/Bo",
+    sessionKey: "activity-error-first",
+    output,
+    mode: "turn",
+    nonce: "n",
+    prompt: "good",
+    stop: () => {},
+    reloadHistory: async () => [],
+    historyGuard: () => false,
+    presettledPollMs: 10_000,
+  });
+
+  sink.sendAccepted();
+  sink.onFrame(sync(false, "", 0));
+  sink.onFrame({
+    type: "error",
+    data: { message: "No local model configured." },
+    turnId: "t-fail",
+    seq: 1,
+  });
+  sink.dispose();
+
+  expect(sink.settled).toBe(true);
+  expect(sessionStatuses.at(-1)).toBe("error");
+  // The message reaches the feed — this is what the reconnect-card pattern scans.
+  expect(
+    items.some(
+      (i) =>
+        typeof i.data === "string" &&
+        i.data.includes("No local model configured"),
+    ),
+  ).toBe(true);
+});
+
+test("a stamped error BEFORE the send is accepted stays foreign (replay tail is never adopted)", () => {
+  const { output } = makeOutput();
+  const sink = new TurnSink({
+    agentPath: "Houston/Bo",
+    sessionKey: "activity-error-preaccept",
+    output,
+    mode: "turn",
+    nonce: "n",
+    prompt: "good",
+    stop: () => {},
+    reloadHistory: async () => [],
+    historyGuard: () => false,
+    presettledPollMs: 10_000,
+  });
+
+  // No sendAccepted: a stamped error in the pre-send replay tail belongs to a
+  // PREVIOUS turn — adopting it would wrongly fail the turn we haven't sent.
+  sink.onFrame({
+    type: "error",
+    data: { message: "stale failure from an earlier turn" },
+    turnId: "t-old",
+    seq: 1,
+  });
+  sink.dispose();
+
+  expect(sink.settled).toBe(false);
+});

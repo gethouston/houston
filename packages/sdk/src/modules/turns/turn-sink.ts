@@ -117,6 +117,22 @@ export class TurnSink {
     }
     switch (classifyFrame(this.turnId, ev.turnId)) {
       case "foreign":
+        // Narrow adoption for a stamped TERMINAL frame with no adopted id
+        // after our send was ACCEPTED: a turn that fails before executing
+        // (e.g. a pinned local model whose endpoint was disconnected) may
+        // reach us error-first on a server that doesn't echo the user
+        // message on that path. The one-turn-per-conversation gate makes it
+        // ours in that state — dropping it stranded the turn spinning
+        // forever with no error and no reconnect card. Same rationale as
+        // `classifyRunningSync`'s `adopt`.
+        if (
+          (ev.type === "error" || ev.type === "done") &&
+          this.accepted &&
+          this.turnId === undefined
+        ) {
+          this.turnId = ev.turnId;
+          break;
+        }
         return; // another turn's frame — never fold it into ours
       case "boundary":
         // A new turn owns the stream: OUR turn is over and its terminal frame
