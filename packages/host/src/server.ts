@@ -161,6 +161,10 @@ export interface ControlPlaneDeps {
    * untrusted client input and is ignored.
    */
   gatewayFronted?: boolean;
+  /** Gateway-fronted but the egress still reaches loopback (the dev launcher's
+   *  on-machine "pods"): skips the managed-cloud public-HTTPS endpoint
+   *  validation. See AgentRouteDeps.loopbackEgress. */
+  loopbackEgress?: boolean;
   /**
    * Live /agents/* request count (createControlPlaneServer wires it; see the
    * AgentRouteDeps.agentRequestCount doc for why it exists and why it is

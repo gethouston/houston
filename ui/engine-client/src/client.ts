@@ -1115,7 +1115,7 @@ export class HoustonClient {
    * `openaiCompatible` capability, so this is never hit here. Reject loudly
    * rather than pretend (no silent failure).
    */
-  getTunnelCredentials(): Promise<TunnelCredentials> {
+  getTunnelCredentials(): Promise<TunnelCredentials | null> {
     return Promise.reject(
       new Error(
         "Connecting a local model to a cloud agent requires the new engine.",

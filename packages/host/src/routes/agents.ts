@@ -476,8 +476,10 @@ export async function handleAgents(
     // NetworkPolicy drops private/loopback/link-local and the metadata IP. Reject
     // an unreachable endpoint at save time with an actionable reason rather than
     // failing every turn opaquely. Desktop/self-host (not gateway-fronted) keep
-    // accepting localhost, so they skip this check entirely.
-    if (deps.gatewayFronted) {
+    // accepting localhost, so they skip this check entirely — as does the dev
+    // launcher (loopbackEgress), whose "pods" run on the developer's machine
+    // and genuinely reach a local model server.
+    if (deps.gatewayFronted && !deps.loopbackEgress) {
       const check = checkPublicHttpsEndpoint(parsedUrl);
       if (!check.ok) {
         json(res, 400, { error: check.reason });

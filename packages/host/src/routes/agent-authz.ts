@@ -50,6 +50,16 @@ export interface AgentRouteDeps {
    */
   gatewayFronted?: boolean;
   /**
+   * True when this deployment's egress can reach loopback/private addresses
+   * even though it is gateway-fronted. Only the DEV LAUNCHER sets it: its
+   * "pods" are processes on the developer's machine, so the managed-cloud
+   * public-HTTPS-:443 endpoint validation would enforce a NetworkPolicy that
+   * does not exist there — and block connecting a local model in `pnpm dev`
+   * entirely. Real managed pods never set this; the validation models their
+   * actual egress.
+   */
+  loopbackEgress?: boolean;
+  /**
    * How many /agents/* requests this server currently holds open, the asking
    * /activity probe included (server.ts counts them; the reader subtracts
    * itself). Long-lived per-agent SSE streams — a turn reply, a conversation
