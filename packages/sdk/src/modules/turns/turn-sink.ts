@@ -177,6 +177,10 @@ export class TurnSink {
       // we saw it and arm the pre-settled poll, which settles conclusively from
       // history if no stream evidence follows.
       if (this.o.mode === "observer") {
+        // Server-confirmed idle: reconcile any output whose state still says
+        // "running" — a stream torn down without a settle (client teardown)
+        // leaves the VM stale, and nothing else ever corrects it.
+        this.o.output.confirmIdle?.(this.o.agentPath, this.o.sessionKey);
         this.o.stop();
       } else {
         this.sawFreshIdleSync = true;
@@ -187,7 +191,10 @@ export class TurnSink {
       // complete once a turn ends — settle from it, not from partial text.
       this.settleFromHistorySoon();
     } else {
-      this.o.stop(); // observer that never saw the turn run: nothing to settle
+      // Observer that never saw the turn run: nothing to settle, but the sync
+      // confirms the conversation is idle — reconcile stale state (as above).
+      this.o.output.confirmIdle?.(this.o.agentPath, this.o.sessionKey);
+      this.o.stop();
     }
   }
 

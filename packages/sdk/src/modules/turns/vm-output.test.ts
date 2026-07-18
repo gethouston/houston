@@ -387,3 +387,25 @@ test("the same session key on two agents never collides (agent-qualified scope)"
   expect(ada.feed).toHaveLength(1);
   expect(ada.feed[0]?.data).toBe("ada's");
 });
+
+test("confirmIdle clears a STALE running flag (stream died without a settle)", () => {
+  const { vm, snap } = harness();
+  vm.sessionStatus("a", "c1", "running");
+  expect(snap().running).toBe(true);
+
+  // The stream was torn down externally (client teardown settles nothing);
+  // an observer later attaches and the server confirms the conversation idle.
+  vm.confirmIdle("a", "c1");
+  expect(snap().running).toBe(false);
+  expect(snap().sessionStatus).toBe("idle");
+});
+
+test("confirmIdle leaves a settled conversation untouched", () => {
+  const { vm, snap } = harness();
+  vm.sessionStatus("a", "c1", "running");
+  vm.sessionStatus("a", "c1", "error");
+
+  vm.confirmIdle("a", "c1");
+  // The terminal truth stays — only a stale "running" is reconciled.
+  expect(snap().sessionStatus).toBe("error");
+});

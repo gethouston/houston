@@ -96,6 +96,8 @@ function makeOutput() {
   // The interaction each board persist carried (parallel to `board`): null on
   // the "running" start-clear, the captured interaction (or null) on settle.
   const boardInteractions: Array<PendingInteraction | null | undefined> = [];
+  // Conversations the observer confirmed idle (the stale-running reconcile).
+  const idleConfirms: string[] = [];
   const output: FeedOutput = {
     pushFeedItem: (_a, _s, item) => {
       items.push(item as Item);
@@ -107,8 +109,18 @@ function makeOutput() {
       board.push(status);
       boardInteractions.push(pendingInteraction);
     },
+    confirmIdle: (_a, s) => {
+      idleConfirms.push(s);
+    },
   };
-  return { items, sessionStatuses, board, boardInteractions, output };
+  return {
+    items,
+    sessionStatuses,
+    board,
+    boardInteractions,
+    idleConfirms,
+    output,
+  };
 }
 
 async function waitFor(cond: () => boolean, ms = 2_000): Promise<void> {
@@ -497,7 +509,7 @@ test("observer mode closes silently on an idle conversation", async () => {
       o.onEvent(sync(false, "", 3));
     },
   ]);
-  const { items, sessionStatuses, board, output } = makeOutput();
+  const { items, sessionStatuses, board, idleConfirms, output } = makeOutput();
 
   observeConversation(
     engine,
@@ -515,6 +527,11 @@ test("observer mode closes silently on an idle conversation", async () => {
   expect(items).toEqual([]);
   expect(sessionStatuses).toEqual([]);
   expect(board).toEqual([]); // nothing persisted for an idle attach
+  // The server-confirmed idle reconciles any output whose state still says
+  // "running" — a stream torn down without a settle leaves the VM stale, and
+  // this attach is the only correction point (the reconnect auto-continue
+  // wedged behind exactly that stale flag).
+  expect(idleConfirms).toEqual(["activity-idle"]);
 });
 
 test("a turn we send supersedes an active observer — no double subscription", async () => {

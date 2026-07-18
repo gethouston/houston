@@ -67,6 +67,15 @@ export interface FeedOutput {
     status: BoardStatus,
     pendingInteraction?: PendingInteraction | null,
   ): Promise<void>;
+  /**
+   * The server confirmed this conversation is IDLE (an observer attached and
+   * its sync reported no turn in flight). Lets an output reconcile state that
+   * says otherwise — a `running` VM whose stream was torn down without a settle
+   * (client teardown keeps live state by design) would otherwise stay "running"
+   * forever, wedging everything keyed on it (the send queue, the spinner).
+   * Optional and additive: outputs with no such state simply omit it.
+   */
+  confirmIdle?(agentPath: string, sessionKey: string): void;
 }
 
 /**
@@ -103,5 +112,9 @@ export class MultiplexFeedOutput implements FeedOutput {
         o.persistBoardStatus(agentPath, sessionKey, status, pendingInteraction),
       ),
     );
+  }
+
+  confirmIdle(agentPath: string, sessionKey: string): void {
+    for (const o of this.outputs) o.confirmIdle?.(agentPath, sessionKey);
   }
 }
