@@ -1,5 +1,6 @@
 import { dueAt, getPreference, loadRoutines } from "@houston/domain";
 import type { Routine } from "@houston/protocol";
+import { TurnFireError } from "../channel/fire-error";
 import type { Agent, Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
@@ -169,6 +170,16 @@ export class Scheduler {
       // Expected when the previous run is still in flight — the instant is
       // skipped (its dedup lock is already burned), not an error.
       if (err instanceof RoutineBusyError) return;
+      // A routine firing while the workspace has no provider connected is an
+      // expected user state, not an engine fault (HOUSTON-APP-4XM): the run is
+      // already recorded errored with the real reason (user-visible in the
+      // routine's history), so a warning breadcrumb suffices here.
+      if (err instanceof TurnFireError && err.code === "no_provider") {
+        console.warn(
+          `[scheduler] routine ${routine.id} skipped: ${err.message}`,
+        );
+        return;
+      }
       console.error(
         `[scheduler] routine ${routine.id} fire failed:`,
         err instanceof Error ? err.message : err,

@@ -1,8 +1,29 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import { classifyText, mapSdkError } from "./errors";
 
+let consoleError: ReturnType<typeof vi.spyOn>;
+let consoleWarn: ReturnType<typeof vi.spyOn>;
+
 beforeEach(() => {
-  vi.spyOn(console, "error").mockImplementation(() => {});
+  consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+  consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+});
+
+test("expected external kinds log as warnings; auth and unknown stay errors", () => {
+  mapSdkError("rate_limit", { message: "429 slow down", model: "m" });
+  mapSdkError("overloaded", { message: "529 overloaded", model: "m" });
+  expect(consoleWarn).toHaveBeenCalledTimes(2);
+  expect(consoleError).not.toHaveBeenCalled();
+
+  mapSdkError("authentication_failed", { message: "401 expired", model: "m" });
+  expect(consoleError).toHaveBeenCalledOnce();
+});
+
+test("a fall-through enum logs exactly once (via the text classifier)", () => {
+  mapSdkError("unknown", { message: "something odd", model: null });
+  expect(consoleError.mock.calls.length + consoleWarn.mock.calls.length).toBe(
+    1,
+  );
 });
 
 test("authentication_failed → unauthenticated, cause read from the message text", () => {
@@ -148,8 +169,16 @@ test("classifyText passes provider + status through the shared classifier", () =
   });
 });
 
-test("the verbatim provider text is logged before it is reduced to a card", () => {
-  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+test("the verbatim provider text is logged once it is reduced to a card", () => {
+  // An expected external kind (rate_limited) logs as a warning breadcrumb —
+  // the verbatim provider text must still be in the line.
   mapSdkError("rate_limit", { message: "429 slow down", model: "m" });
-  expect(spy).toHaveBeenCalledWith(expect.stringContaining("429 slow down"));
+  expect(consoleWarn).toHaveBeenCalledWith(
+    expect.stringContaining("429 slow down"),
+  );
+  // A bug-signaling kind keeps the verbatim text on the error path.
+  mapSdkError("authentication_failed", { message: "401 expired", model: "m" });
+  expect(consoleError).toHaveBeenCalledWith(
+    expect.stringContaining("401 expired"),
+  );
 });

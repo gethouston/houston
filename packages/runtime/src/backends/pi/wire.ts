@@ -6,6 +6,7 @@ import {
   type WireEvent,
 } from "@houston/runtime-client";
 import { classifyProviderError } from "../../ai/provider-error";
+import { logProviderError } from "../../ai/provider-error-log";
 
 /**
  * Normalize pi's per-message `Usage` into our provider-agnostic `TokenUsage`.
@@ -118,27 +119,22 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
         msg.stopReason === "error" &&
         msg.errorMessage
       ) {
-        // Log the provider's VERBATIM failure text before it's reduced to a typed
-        // card. The classifier collapses it into "unauthenticated" / "rate_limited"
-        // / etc., but the raw reason (an opencode.ai 401 body, an entitlement 403,
-        // a misclassified non-auth error) is otherwise never recorded — leaving
-        // production provider failures undiagnosable from the engine logs.
-        console.error(
-          `[provider_error] provider=${msg.provider} model=${
-            msg.model ?? "?"
-          } status=${diagnosticStatus(msg.diagnostics) ?? "?"} :: ${
-            msg.errorMessage
-          }`,
-        );
-        return {
-          type: "provider_error",
-          data: classifyProviderError({
-            provider: msg.provider,
-            model: msg.model ?? null,
-            message: msg.errorMessage,
-            status: diagnosticStatus(msg.diagnostics),
-          }),
-        };
+        // Log the provider's VERBATIM failure text once it's reduced to a typed
+        // card (severity follows the classified kind — an expected 429/503 is a
+        // warning breadcrumb, not a Sentry error). The classifier collapses it
+        // into "unauthenticated" / "rate_limited" / etc., but the raw reason (an
+        // opencode.ai 401 body, an entitlement 403, a misclassified non-auth
+        // error) is otherwise never recorded — leaving production provider
+        // failures undiagnosable from the engine logs.
+        const status = diagnosticStatus(msg.diagnostics);
+        const classified = classifyProviderError({
+          provider: msg.provider,
+          model: msg.model ?? null,
+          message: msg.errorMessage,
+          status,
+        });
+        logProviderError(classified, { model: msg.model ?? null, status });
+        return { type: "provider_error", data: classified };
       }
       // Otherwise its usage carries the latest request's context size = the
       // current context fill. Only an assistant message carries `usage`; other
