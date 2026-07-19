@@ -175,6 +175,10 @@ test("a no-provider 409 fire records the errored run but logs a warning, not an 
   try {
     s.start();
     await s.tick(DUE);
+    // Expected user state (nothing connected) → warning breadcrumb, no Sentry
+    // event. Asserted BEFORE mockRestore — restoring resets recorded calls.
+    expect(warn).toHaveBeenCalledOnce();
+    expect(error).not.toHaveBeenCalled();
   } finally {
     warn.mockRestore();
     error.mockRestore();
@@ -187,9 +191,6 @@ test("a no-provider 409 fire records the errored run but logs a warning, not an 
   );
   expect(items).toHaveLength(1);
   expect((items[0] as RoutineRun).status).toBe("error");
-  // Expected user state (nothing connected) → warning breadcrumb, no Sentry event.
-  expect(warn).toHaveBeenCalledOnce();
-  expect(error).not.toHaveBeenCalled();
 });
 
 test("the workspace timezone preference re-times routines (account-wide zone)", async () => {
