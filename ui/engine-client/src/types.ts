@@ -69,6 +69,14 @@ export interface VersionResponse {
    * field (treat as `false`).
    */
   chatHistoryMigrated?: boolean;
+  /**
+   * Present ONLY when the answering gateway enforces an app-version floor for
+   * the requesting channel (read from `X-Houston-App-Version`): the minimum
+   * app semver that channel must run. `/v1/version` is exempt from the floor's
+   * 426, so this is how an app below the floor can warn/act BEFORE being
+   * locked out. Local hosts and floor-less gateways omit it.
+   */
+  minAppVersion?: string;
 }
 
 export interface Capabilities {

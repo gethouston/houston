@@ -1,5 +1,6 @@
 import { HoustonEngineError } from "../client/errors";
 import { refreshLiveToken } from "../session-refresh";
+import { appVersionHeader, noteUpgradeRequired } from "../update-floor";
 
 /**
  * Control-plane mode for the web adapter.
@@ -64,13 +65,23 @@ export function gatewayAuthFetch(
       // the bearer. Absent → the gateway resolves the personal org.
       const org = getOrg?.();
       if (org) headers.set("x-houston-org", org);
+      // App-update floor: identify the build (`<semver>+<channel>`) on every
+      // gateway request so the gateway can enforce a per-channel minimum
+      // version. Read live off the desktop-installed global — absent (web,
+      // tests) means no header; the gateway fails open on a missing header
+      // and the local sidecar ignores it.
+      const appVersion = appVersionHeader();
+      if (appVersion) headers.set("X-Houston-App-Version", appVersion);
       return fetch(input, { ...init, headers });
     };
+    // Every returned response passes noteUpgradeRequired: a gateway that
+    // enforces the version floor answers ANY request with 426, and the desktop
+    // shell must learn about it from whichever call happens to hit it first.
     const res = await send(liveToken(fallbackToken));
-    if (res.status !== 401) return res;
+    if (res.status !== 401) return noteUpgradeRequired(res);
     const fresh = await refreshLiveToken();
     if (!fresh) return res;
-    return send(fresh);
+    return noteUpgradeRequired(await send(fresh));
   };
 }
 

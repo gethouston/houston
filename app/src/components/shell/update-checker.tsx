@@ -3,13 +3,36 @@ import { useTranslation } from "react-i18next";
 import houstonBlack from "../../assets/houston-black.svg";
 import houstonWhite from "../../assets/houston-icon-white.svg";
 import { useUpdateChecker } from "../../hooks/use-update-checker";
+import { isHostedGatewayEngine } from "../../lib/engine";
 import { selectUpdateNotes } from "../../lib/update-details";
 import { UpdateNotes } from "./update-notes";
+import { UpdateRequired } from "./update-required";
 
 export function UpdateChecker() {
   const { t, i18n } = useTranslation("shell");
-  const { status, installAndRelaunch, relaunchInstalledApp, dismiss } =
-    useUpdateChecker();
+  const {
+    status,
+    required,
+    installAndRelaunch,
+    relaunchInstalledApp,
+    dismiss,
+  } = useUpdateChecker();
+
+  // Hard floor: the hosted gateway refused this build, so gateway calls are
+  // failing 426 — replace the dismissible card with the blocking screen.
+  // Scoped to hosted-gateway builds: on a local/sidecar build every feature is
+  // served by the co-located host (the gateway is never on the request path),
+  // so even a stray floor signal must not lock the user out of local work.
+  if (required && isHostedGatewayEngine()) {
+    return (
+      <UpdateRequired
+        required={required}
+        status={status}
+        onInstall={installAndRelaunch}
+        onRelaunch={relaunchInstalledApp}
+      />
+    );
+  }
 
   if (status.state === "idle") return null;
 

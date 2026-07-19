@@ -224,6 +224,14 @@
     "retryAction": "Tentar de novo",
     "dismissAction": "Dispensar atualização por enquanto"
   },
+  "updateRequired": {
+    "cardLabel": "Atualização do Houston obrigatória",
+    "title": "Atualização obrigatória",
+    "description": "É necessário o Houston {{minVersion}} ou mais recente para continuar usando o Houston Cloud. Você está na v{{currentVersion}}.",
+    "descriptionNoVersion": "É necessária uma versão mais recente do Houston para continuar usando o Houston Cloud. Você está na v{{currentVersion}}.",
+    "downloadAction": "Baixar a atualização",
+    "checkAction": "Buscar atualizações"
+  },
   "store": {
     "searchPlaceholder": "Buscar na biblioteca...",
     "noResults": "Nenhum agente corresponde à sua busca"
