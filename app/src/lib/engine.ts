@@ -4,6 +4,11 @@ import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
 import { pullEngineHandshakeWithRetry } from "./engine-handshake";
 import { isLoopbackHostUrl, resolveEngine } from "./engine-mode";
 import { installEngineLifecycleListeners } from "./engine-tauri-events";
+import {
+  appUpdateChannel,
+  currentAppVersion,
+  installUpdateFloorBridge,
+} from "./update-floor";
 
 declare global {
   interface Window {
@@ -86,6 +91,20 @@ const REMOTE_HOST_MODE = Boolean(STATIC_HOST_URL || HOSTED_ENGINE_URL);
 // delivery paths. HOU-546.
 if (typeof window !== "undefined") {
   (window as unknown as { __HOUSTON_CP__?: boolean }).__HOUSTON_CP__ = true;
+}
+
+// App-update floor: bake this build's identity (`<semver>+<channel>`) and the
+// 426 forwarder onto the window globals the shared adapter transport reads
+// (`__HOUSTON_SESSION_REFRESH__` idiom — the adapter can't import desktop
+// code). At module load, before any client is constructed, so the very first
+// gateway request already carries `X-Houston-App-Version`. The channel rides
+// the same env flags RESOLVED above is built from: a baked hosted gateway ⇒
+// `cloud`, everything else (sidecar, dev, external host) ⇒ `local`.
+if (typeof window !== "undefined") {
+  installUpdateFloorBridge({
+    version: currentAppVersion(),
+    channel: appUpdateChannel(_env),
+  });
 }
 
 function resolveConfig(): { baseUrl: string; token: string } | null {

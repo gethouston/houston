@@ -224,6 +224,14 @@
     "retryAction": "Try again",
     "dismissAction": "Dismiss update for now"
   },
+  "updateRequired": {
+    "cardLabel": "Houston update required",
+    "title": "Update required",
+    "description": "Houston {{minVersion}} or newer is required to keep using Houston Cloud. You're on v{{currentVersion}}.",
+    "descriptionNoVersion": "A newer version of Houston is required to keep using Houston Cloud. You're on v{{currentVersion}}.",
+    "downloadAction": "Download the update",
+    "checkAction": "Check for updates"
+  },
   "store": {
     "searchPlaceholder": "Search the library...",
     "noResults": "No agents match your search"
