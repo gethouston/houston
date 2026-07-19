@@ -158,10 +158,24 @@ export async function syncBack(
   for (const rel of await walkFiles(dir, dir)) {
     if (excluded(rel, excludes)) continue;
     const abs = join(dir, ...rel.split("/"));
-    const fileStat = await stat(abs);
-    if (!fileStat.isFile()) continue;
-    totalBytes += fileStat.size;
-    const hash = sha256(await readFile(abs));
+    // The agent keeps writing during a sync pass, so a walked file may vanish
+    // before it is read (runtime session files are rewritten constantly). A
+    // vanished file is indistinguishable from one deleted before the walk:
+    // leave it out of the next manifest and let the delete pass reconcile the
+    // store, instead of aborting the whole pass mid-upload.
+    let buf: Buffer;
+    let size: number;
+    try {
+      const fileStat = await stat(abs);
+      if (!fileStat.isFile()) continue;
+      size = fileStat.size;
+      buf = await readFile(abs);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw err;
+    }
+    totalBytes += size;
+    const hash = sha256(buf);
     nextManifest.set(rel, hash);
     if (manifest.get(rel) !== hash) {
       await store.upload(abs, prefix ? posix.join(prefix, rel) : rel);

@@ -123,6 +123,44 @@ test("an unchanged workspace uploads nothing and remains in the manifest", async
   expect(result.manifest).toEqual(manifest);
 });
 
+test("a file deleted mid-walk is reconciled as deleted, not a failed sync", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, {
+    "workspace/a.txt": "a",
+    "workspace/b.txt": "b",
+    "workspace/c.txt": "c",
+  });
+  const manifest = await hydrate(store, PREFIX, work);
+  for (const name of ["a.txt", "b.txt", "c.txt"]) {
+    writeFileSync(join(work, "workspace", name), `changed-${name}`);
+  }
+  // The first upload deletes every other local file — whichever file the walk
+  // visits first, the rest vanish between the walk and their stat/read, the
+  // exact race an agent rewriting session files during a sync pass produces.
+  let firstUpload = true;
+  const racing = {
+    list: (prefix: string) => store.list(prefix),
+    download: (key: string, dest: string) => store.download(key, dest),
+    upload: (src: string, key: string) => {
+      if (firstUpload) {
+        firstUpload = false;
+        for (const name of ["a.txt", "b.txt", "c.txt"]) {
+          const abs = join(work, "workspace", name);
+          if (abs !== src) rmSync(abs);
+        }
+      }
+      return store.upload(src, key);
+    },
+    delete: (key: string) => store.delete(key),
+  };
+  const result = await syncBack(racing, PREFIX, work, manifest);
+  expect(result.uploaded.length).toBe(1);
+  expect(result.deleted.length).toBe(2);
+  expect(result.manifest.size).toBe(1);
+  const remaining = await store.list(PREFIX);
+  expect(remaining.length).toBe(1);
+});
+
 test("symlinks created locally are never persisted", async () => {
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
