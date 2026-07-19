@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -87,6 +87,7 @@ test("propagates response details and rejects malformed success bodies", async (
     baseUrl: "https://store.test/base",
     token: "token",
     fetchImpl: async () => new Response("gateway exploded", { status: 503 }),
+    retryDelaysMs: [0, 0],
   });
   await expect(failed.list("workspace")).rejects.toThrow(
     "object store GET manifest failed (503): gateway exploded",
@@ -107,4 +108,110 @@ test("tolerates delete 404", async () => {
     fetchImpl: async () => new Response("missing", { status: 404 }),
   });
   await expect(store.delete("missing.txt")).resolves.toBeUndefined();
+});
+
+const flaky = (
+  failures: Array<Error | Response>,
+  then: () => Response,
+): { fetchImpl: typeof fetch; calls: () => number } => {
+  let calls = 0;
+  return {
+    fetchImpl: async () => {
+      calls += 1;
+      const failure = failures.shift();
+      if (failure === undefined) return then();
+      if (failure instanceof Error) throw failure;
+      return failure;
+    },
+    calls: () => calls,
+  };
+};
+
+const retryStore = (fetchImpl: typeof fetch) =>
+  new HttpObjectStore({
+    baseUrl: "https://store.test/base",
+    token: "token",
+    fetchImpl,
+    retryDelaysMs: [0, 0],
+  });
+
+test("retries a thrown network error and succeeds", async () => {
+  const { fetchImpl, calls } = flaky([new TypeError("fetch failed")], () =>
+    Response.json({ objects: [metadata("a.txt", 1)] }),
+  );
+  expect(await retryStore(fetchImpl).list("")).toEqual(["a.txt"]);
+  expect(calls()).toBe(2);
+});
+
+test("retries a 503 response and succeeds", async () => {
+  const { fetchImpl, calls } = flaky(
+    [new Response("gateway restarting", { status: 503 })],
+    () => Response.json({ objects: [] }),
+  );
+  expect(await retryStore(fetchImpl).list("")).toEqual([]);
+  expect(calls()).toBe(2);
+});
+
+test("does not retry deterministic statuses", async () => {
+  for (const status of [400, 401, 404, 500]) {
+    const { fetchImpl, calls } = flaky(
+      [],
+      () => new Response("nope", { status }),
+    );
+    await expect(retryStore(fetchImpl).list("")).rejects.toThrow(
+      `object store GET manifest failed (${status})`,
+    );
+    expect(calls()).toBe(1);
+  }
+});
+
+test("rethrows the last error once retries are exhausted", async () => {
+  const { fetchImpl, calls } = flaky(
+    [
+      new TypeError("fetch failed"),
+      new TypeError("fetch failed"),
+      new TypeError("fetch failed again"),
+    ],
+    () => Response.json({ objects: [] }),
+  );
+  await expect(retryStore(fetchImpl).list("")).rejects.toThrow(
+    "fetch failed again",
+  );
+  expect(calls()).toBe(3);
+});
+
+test("retries upload and delete through transient failures", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "http-object-store-retry-"));
+  const source = join(dir, "source.txt");
+  writeFileSync(source, "hello");
+
+  const put = flaky([new TypeError("fetch failed")], () =>
+    Response.json(metadata("file.txt", 5)),
+  );
+  await expect(
+    retryStore(put.fetchImpl).upload(source, "file.txt"),
+  ).resolves.toBeUndefined();
+  expect(put.calls()).toBe(2);
+
+  const del = flaky(
+    [new Response("bad gateway", { status: 502 })],
+    () => new Response(null, { status: 204 }),
+  );
+  await expect(
+    retryStore(del.fetchImpl).delete("file.txt"),
+  ).resolves.toBeUndefined();
+  expect(del.calls()).toBe(2);
+});
+
+test("retries download and still writes the file atomically", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "http-object-store-retry-dl-"));
+  const destination = join(dir, "nested", "dest.txt");
+  const { fetchImpl, calls } = flaky(
+    [new Response("unavailable", { status: 503 })],
+    () => new Response("payload"),
+  );
+  await retryStore(fetchImpl).download("file.txt", destination);
+  expect(readFileSync(destination, "utf8")).toBe("payload");
+  expect(calls()).toBe(2);
+  expect(readdirSync(join(dir, "nested"))).toEqual(["dest.txt"]);
 });

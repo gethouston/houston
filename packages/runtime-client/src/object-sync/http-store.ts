@@ -6,12 +6,15 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import type { ObjectStore } from "./object-store";
+import { fetchWithRetry } from "./retry";
 
 export interface HttpObjectStoreOptions {
   /** Full agent-scoped base URL ending in `/v1/pod/store/<org>/<agent>`. */
   baseUrl: string;
   token: string;
   fetchImpl?: typeof fetch;
+  /** One delay per retry of a transient failure; override to speed up tests. */
+  retryDelaysMs?: number[];
 }
 
 interface ObjectMetadata {
@@ -30,16 +33,18 @@ export class HttpObjectStore implements ObjectStore {
   private readonly baseUrl: string;
   private readonly token: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly retryDelaysMs: number[] | undefined;
 
   constructor(opts: HttpObjectStoreOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
     this.token = opts.token;
     this.fetchImpl = opts.fetchImpl ?? fetch;
+    this.retryDelaysMs = opts.retryDelaysMs;
   }
 
   async list(prefix: string): Promise<string[]> {
     const query = prefix ? `?prefix=${encodeURIComponent(prefix)}` : "";
-    const res = await this.fetchImpl(`${this.baseUrl}/manifest${query}`, {
+    const res = await this.fetch(`${this.baseUrl}/manifest${query}`, {
       headers: this.authHeaders(),
     });
     if (!res.ok) throw await this.responseError(res, "GET", "manifest");
@@ -53,7 +58,7 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   async download(key: string, destFile: string): Promise<void> {
-    const res = await this.fetchImpl(this.objectUrl(key), {
+    const res = await this.fetch(this.objectUrl(key), {
       headers: this.authHeaders(),
     });
     if (!res.ok) throw await this.responseError(res, "GET", key);
@@ -76,7 +81,7 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   async upload(srcFile: string, key: string): Promise<void> {
-    const res = await this.fetchImpl(this.objectUrl(key), {
+    const res = await this.fetch(this.objectUrl(key), {
       method: "PUT",
       headers: this.authHeaders(),
       body: await readFile(srcFile),
@@ -89,13 +94,24 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   async delete(key: string): Promise<void> {
-    const res = await this.fetchImpl(this.objectUrl(key), {
+    const res = await this.fetch(this.objectUrl(key), {
       method: "DELETE",
       headers: this.authHeaders(),
     });
     if (!res.ok && res.status !== 404) {
       throw await this.responseError(res, "DELETE", key);
     }
+  }
+
+  /**
+   * All four operations are safe to re-issue: GETs are read-only and PUT /
+   * DELETE of a single object are idempotent, so transient gateway failures
+   * retry here instead of failing readiness-gating hydration or sync-back.
+   */
+  private fetch(url: string, init?: RequestInit): Promise<Response> {
+    return fetchWithRetry(this.fetchImpl, url, init, {
+      delaysMs: this.retryDelaysMs,
+    });
   }
 
   private objectUrl(key: string): string {
