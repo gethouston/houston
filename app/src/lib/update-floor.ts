@@ -14,8 +14,10 @@
  * The adapter must not import desktop code (it is bundled into the web app
  * too), so both directions ride window globals — the `__HOUSTON_SESSION_REFRESH__`
  * idiom. `installUpdateFloorBridge` (called from `engine.ts` at module load,
- * before any client is built) installs them; the web build never does, so web
- * requests carry no header and can never trip the blocking screen.
+ * before any client is built) installs them — gated on `osIsTauri()`, because
+ * the web bundle loads `engine.ts` too and a browser tab must never identify
+ * as an app build: web requests carry no header (which would force CORS
+ * preflights) and can never trip the blocking screen.
  */
 
 import { resolveEngine } from "./engine-mode.ts";

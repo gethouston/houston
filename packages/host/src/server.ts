@@ -193,7 +193,13 @@ export interface ControlPlaneDeps {
 
 function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", deps.corsOrigin || "*");
-  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  // X-Houston-App-Version: the desktop app's update-floor identity header
+  // (app-update floor) — sent by its shared gateway transport to this host
+  // too, so the preflight must allow it even though the host ignores it.
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Authorization, Content-Type, X-Houston-App-Version",
+  );
   res.setHeader(
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, PATCH, DELETE, OPTIONS",

@@ -10,10 +10,13 @@
  * `__HOUSTON_SESSION_REFRESH__` — because this adapter is bundled into the web
  * app too and must not import desktop code: the desktop shell
  * (`app/src/lib/update-floor.ts` via `engine.ts`) installs the header value and
- * the 426 forwarder; the web build installs neither, so web requests carry no
- * header and can never trip the blocking update screen. The local sidecar host
- * ignores the unknown header, so a shared transport sending it there is
- * harmless.
+ * the 426 forwarder, gated on `osIsTauri()` — the web bundle loads the same
+ * shell module, so the gate (not bundle separation) is what keeps a browser
+ * tab from ever sending the header or tripping the blocking update screen.
+ * That matters beyond scope hygiene: the custom header makes every fetch
+ * CORS-preflighted, so each target that may receive it (gateway, engine host,
+ * fake host) must allow it explicitly — a browser client sending it to a host
+ * that doesn't would lose ALL requests, not just the header.
  */
 
 declare global {
