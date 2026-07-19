@@ -72,6 +72,18 @@ function result(
   } as unknown as SDKMessage;
 }
 
+function assistantUsage(
+  usage: unknown,
+  over: Record<string, unknown> = {},
+): SDKMessage {
+  return {
+    type: "assistant",
+    message: { role: "assistant", model: "m", content: [], usage },
+    parent_tool_use_id: null,
+    ...over,
+  } as unknown as SDKMessage;
+}
+
 function collect(msgs: SDKMessage[]): { events: WireEvent[]; ctx: number[] } {
   const ctx: number[] = [];
   const t = createStreamTranslator({ onContextTokens: (n) => ctx.push(n) });
@@ -212,6 +224,92 @@ test("a success result yields a usage frame and updates context tokens", () => {
     },
   ]);
   expect(ctx).toEqual([450]);
+});
+
+test("an agentic turn's usage frame is the LAST request's usage, never the result's turn aggregate", () => {
+  // Two API requests (a tool round-trip): the context is re-sent each time, so
+  // the result's aggregate (~sum of both) reads far above the real fill. The
+  // frame + context tokens must follow the per-request numbers.
+  const { events, ctx } = collect([
+    assistantUsage({
+      input_tokens: 1_000,
+      output_tokens: 50,
+      cache_read_input_tokens: 30_000,
+      cache_creation_input_tokens: 2_000,
+    }),
+    assistantUsage({
+      input_tokens: 500,
+      output_tokens: 40,
+      cache_read_input_tokens: 33_000,
+      cache_creation_input_tokens: 1_000,
+    }),
+    result({
+      input_tokens: 1_500,
+      output_tokens: 90,
+      cache_read_input_tokens: 63_000,
+      cache_creation_input_tokens: 3_000,
+    }),
+  ]);
+  expect(events).toEqual([
+    {
+      type: "usage",
+      data: {
+        context_tokens: 34_500,
+        output_tokens: 40,
+        cached_tokens: 33_000,
+      },
+    },
+  ]);
+  expect(ctx).toEqual([33_000, 34_500, 34_500]);
+});
+
+test("subagent and errored assistant usage never count toward the context fill", () => {
+  const sub = assistantUsage(
+    { input_tokens: 400_000, output_tokens: 10, cache_read_input_tokens: 0 },
+    { parent_tool_use_id: "task-1" },
+  );
+  const errored = assistantUsage(
+    { input_tokens: 500_000, output_tokens: 0 },
+    { error: "overloaded" },
+  );
+  const { events, ctx } = collect([
+    sub,
+    errored,
+    result({ input_tokens: 100, output_tokens: 5 }),
+  ]);
+  // The errored assistant emits its provider_error; the usage frame falls back
+  // to the result (one clean request never happened this turn).
+  expect(events.filter((e) => e.type === "usage")).toEqual([
+    {
+      type: "usage",
+      data: { context_tokens: 100, output_tokens: 5, cached_tokens: 0 },
+    },
+  ]);
+  expect(ctx).toEqual([100]);
+});
+
+test("a compact_boundary after the last request re-anchors the turn's usage frame", () => {
+  const boundary = {
+    type: "system",
+    subtype: "compact_boundary",
+    compact_metadata: { trigger: "auto", pre_tokens: 900, post_tokens: 120 },
+  } as unknown as SDKMessage;
+  const { events, ctx } = collect([
+    assistantUsage({
+      input_tokens: 800,
+      output_tokens: 30,
+      cache_read_input_tokens: 100,
+    }),
+    boundary,
+    result({ input_tokens: 800, output_tokens: 30 }),
+  ]);
+  expect(events).toEqual([
+    {
+      type: "usage",
+      data: { context_tokens: 120, output_tokens: 30, cached_tokens: 0 },
+    },
+  ]);
+  expect(ctx).toEqual([900, 120, 120]);
 });
 
 test("an error result classifies to a provider_error (with usage first when present)", () => {
