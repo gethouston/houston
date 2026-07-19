@@ -12,10 +12,11 @@ import {
 } from "../auth/acting";
 import { checkPublicHttpsEndpoint } from "../custom-endpoint-validation";
 import type { Agent, UserId, Workspace } from "../domain/types";
-import { AgentNameConflictError } from "../ports";
+import { AgentNameConflictError, type RuntimeChannel } from "../ports";
 import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
+import type { Vfs } from "../vfs";
 import { handleActionApprovalsDispatch } from "./action-approvals";
 import { stampTurnContributor } from "./activity-attribution";
 import {
@@ -47,6 +48,30 @@ function withAgentDir(deps: AgentRouteDeps, ws: Workspace, agent: Agent) {
   return deps.agentDir ? { ...agent, dir: deps.agentDir(ws, agent) } : agent;
 }
 
+/**
+ * One agent's turn/routine busy inputs — the shared core of the per-agent
+ * probe below and the pod-level `GET /activity` aggregate. The caller resolves
+ * the channel and the vfs first (the two probes answer their absence
+ * differently: 503 per-agent, conservative busy at pod level).
+ */
+async function agentBusyInputs(
+  deps: AgentRouteDeps,
+  vfs: Vfs,
+  channel: RuntimeChannel,
+  ctx: { workspace: Workspace; agent: Agent },
+): Promise<{ turnBusy: boolean; runningRoutineRuns: number }> {
+  const paths = deps.paths ?? DEFAULT_PATHS;
+  const runs = await loadRoutineRuns(
+    vfs,
+    paths.agentRoot(ctx.workspace, ctx.agent),
+  );
+  const runningRoutineRuns = runs.items.filter(
+    (run) => run.status === "running",
+  ).length;
+  const turnBusy = await channel.busy(ctx);
+  return { turnBusy, runningRoutineRuns };
+}
+
 async function activityStatus(
   deps: AgentRouteDeps,
   ctx: { workspace: Workspace; agent: Agent },
@@ -55,15 +80,12 @@ async function activityStatus(
   if (!channel) return null;
   if (!deps.vfs) return { error: "agent data not configured" as const };
 
-  const paths = deps.paths ?? DEFAULT_PATHS;
-  const runs = await loadRoutineRuns(
+  const { turnBusy, runningRoutineRuns } = await agentBusyInputs(
+    deps,
     deps.vfs,
-    paths.agentRoot(ctx.workspace, ctx.agent),
+    channel,
+    ctx,
   );
-  const runningRoutineRuns = runs.items.filter(
-    (run) => run.status === "running",
-  ).length;
-  const turnBusy = await channel.busy(ctx);
   const runtime = channel.runtimeStatus
     ? await channel.runtimeStatus(ctx)
     : "unknown";
@@ -80,6 +102,57 @@ async function activityStatus(
     runtime,
     runningRoutineRuns,
     activeRequests,
+  };
+}
+
+/**
+ * Pod-level busy aggregate for `GET /activity` (server.ts): every agent in
+ * every workspace on this host — engine pods are single-tenant, so the
+ * store-wide enumeration IS the pod's population. The control plane's
+ * pre-roll probe (same parsing rule as the waker's idle sweep) treats
+ * anything but a literal `busy: false` as busy, so `false` must mean
+ * provably idle: an agent whose workspace has no channel wired, whose vfs is
+ * unconfigured, or that throws while probed counts as busy rather than
+ * failing the whole answer.
+ */
+export async function podActivityStatus(deps: AgentRouteDeps): Promise<{
+  busy: boolean;
+  activeRequests: number;
+  runningRoutineRuns: number;
+  busyAgents: number;
+}> {
+  // The counter is pod-global (server.ts counts /agents/*-prefixed requests),
+  // so read it ONCE — and unlike the per-agent probe above, /activity is not
+  // under /agents/, so it never counts itself: no self-subtraction here.
+  const activeRequests = deps.agentRequestCount ? deps.agentRequestCount() : 0;
+  let runningRoutineRuns = 0;
+  let busyAgents = 0;
+  for (const workspace of await deps.store.listWorkspaces()) {
+    const channel = channelFor(deps, workspace);
+    for (const agent of await deps.store.listAgents(workspace.id)) {
+      if (!channel || !deps.vfs) {
+        busyAgents++;
+        continue;
+      }
+      try {
+        const { turnBusy, runningRoutineRuns: running } = await agentBusyInputs(
+          deps,
+          deps.vfs,
+          channel,
+          { workspace, agent },
+        );
+        runningRoutineRuns += running;
+        if (turnBusy || running > 0) busyAgents++;
+      } catch {
+        busyAgents++; // an unprobeable agent must not read as idle
+      }
+    }
+  }
+  return {
+    busy: busyAgents > 0 || activeRequests > 0,
+    activeRequests,
+    runningRoutineRuns,
+    busyAgents,
   };
 }
 

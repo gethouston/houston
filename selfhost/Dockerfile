@@ -137,4 +137,11 @@ ENV SENTRY_DSN=$SENTRY_DSN \
     SENTRY_RELEASE=$SENTRY_RELEASE \
     SENTRY_ENVIRONMENT=production
 
+# The git commit this image was built from, served on /v1/version as `build`
+# so the cloud update manager can tell exactly what a pod is running. Baked by
+# engine-pod-image.yml; forks/local builds leave it empty → the host serves
+# null. The selfhost target deliberately gets none, same stance as Sentry.
+ARG BUILD_SHA=""
+ENV BUILD_SHA=$BUILD_SHA
+
 FROM host-base AS selfhost
