@@ -7,6 +7,7 @@
  * zustand driver stays thin and this stays independently exercisable.
  */
 
+import { seedTimezoneIfUnset } from "../hooks/use-timezone-preference";
 import {
   buildMigrationPlan,
   collectIntegrations,
@@ -57,6 +58,18 @@ async function probeExistingAgents(
 export async function prepareMigration(
   existingAgents: Array<{ id: string; name: string }>,
 ): Promise<PreparedMigration> {
+  // Seed the account timezone BEFORE any agent is created: the gateway
+  // stamps the creating user's zone onto each pod at provision, and a pod
+  // born without one gets restarted by the control plane's TZ reconcile on
+  // its first sweep after the zone appears — observed mass-restarting all of
+  // a user's pods MID-MIGRATION, killing the in-flight imports. Best-effort:
+  // a failed seed only means those pods start in UTC and reconcile later
+  // (the persist failure itself already surfaced via the engine-call toast).
+  try {
+    await seedTimezoneIfUnset();
+  } catch (err) {
+    console.error("[migration] timezone seed failed, pods start in UTC:", err);
+  }
   const source = await osStartMigrationSourceHost();
   const scan = await fetchSourceScan(source);
   const existing = await probeExistingAgents(existingAgents, scan.agents);
