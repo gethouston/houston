@@ -10,6 +10,7 @@ import { join } from "node:path";
 import {
   LocalDirStore,
   type ObjectStore,
+  ObjectTooLargeError,
 } from "@houston/runtime-client/object-sync";
 import { expect, test } from "vitest";
 import { StoreSyncDaemon } from "./daemon";
@@ -248,4 +249,42 @@ test("final sync warns when the tree is past 80% of the cap", async () => {
   daemon.start();
   await daemon.stop(); // final sync sees 900/1000 bytes
   expect(logs.some((m) => m.includes("hydration cap"))).toBe(true);
+});
+
+test("an over-cap file logs an err-less breadcrumb once and never blocks other files", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "store-sync-remote-"));
+  const localRoot = mkdtempSync(join(tmpdir(), "store-sync-local-"));
+  const inner = new LocalDirStore(remoteRoot);
+  const capped: ObjectStore = {
+    list: (prefix) => inner.list(prefix),
+    download: (key, dest) => inner.download(key, dest),
+    upload: (src, key) => {
+      if (key.endsWith("huge.mp4"))
+        return Promise.reject(
+          new ObjectTooLargeError(key, `object store PUT ${key} failed (413)`),
+        );
+      return inner.upload(src, key);
+    },
+    delete: (key) => inner.delete(key),
+  };
+  const logs: Array<{ message: string; err?: unknown }> = [];
+  const daemon = new StoreSyncDaemon({
+    store: capped,
+    rootDir: localRoot,
+    quietMs: 20,
+    intervalMs: 60_000,
+    log: (message, err) => logs.push({ message, err }),
+  });
+  await daemon.hydrate();
+  writeFileSync(join(localRoot, "huge.mp4"), "H".repeat(64));
+  writeFileSync(join(localRoot, "notes.txt"), "notes");
+  await daemon.stop(); // stop() runs the final sync pass
+
+  // The other file persisted, the skip logged WITHOUT an err (breadcrumb, not
+  // a Sentry error), and no "sync failed" error was recorded.
+  expect(readFileSync(join(remoteRoot, "notes.txt"), "utf8")).toBe("notes");
+  const skips = logs.filter((l) => l.message.includes("per-object cap"));
+  expect(skips).toHaveLength(1);
+  expect(skips[0]?.err).toBeUndefined();
+  expect(logs.some((l) => l.message.includes("sync failed"))).toBe(false);
 });

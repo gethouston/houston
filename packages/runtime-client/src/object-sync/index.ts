@@ -12,4 +12,4 @@ export {
   syncBack,
 } from "./hydrate";
 export type { ObjectStore } from "./object-store";
-export { LocalDirStore } from "./object-store";
+export { LocalDirStore, ObjectTooLargeError } from "./object-store";

@@ -3,6 +3,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -10,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { excluded, hydrate, syncBack } from "./hydrate";
-import { LocalDirStore } from "./object-store";
+import { LocalDirStore, ObjectTooLargeError } from "./object-store";
 
 /**
  * The hydrate-to-sync loop pins faithful materialization, content diffing,
@@ -232,4 +233,59 @@ test("a download failure rejects hydrate with that error, workers stop", async (
   // The failure parks the pool: no worker takes new work afterwards, so at
   // most the in-flight batch (< concurrency) follows the failing download.
   expect(downloads).toBeLessThan(30);
+});
+
+test("an over-cap rejection skips that file, syncs the rest, and completes the delete pass", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/old.txt": "old" });
+  const manifest = await hydrate(store, PREFIX, work);
+  writeFileSync(join(work, "workspace", "huge.mp4"), "H".repeat(64));
+  writeFileSync(join(work, "workspace", "notes.txt"), "notes");
+  rmSync(join(work, "workspace", "old.txt"));
+  const capped = {
+    list: (prefix: string) => store.list(prefix),
+    download: (key: string, dest: string) => store.download(key, dest),
+    upload: (src: string, key: string) => {
+      // The cap is on SIZE, not identity: the shrunken re-write must go through.
+      if (statSync(src).size > 32)
+        return Promise.reject(
+          new ObjectTooLargeError(key, `object store PUT ${key} failed (413)`),
+        );
+      return store.upload(src, key);
+    },
+    delete: (key: string) => store.delete(key),
+  };
+
+  const result = await syncBack(capped, PREFIX, work, manifest);
+  // The rest of the pass survived the rejection: other uploads AND deletes ran.
+  expect(result.uploaded).toEqual(["workspace/notes.txt"]);
+  expect(result.deleted).toEqual(["workspace/old.txt"]);
+  expect(result.skipped).toHaveLength(1);
+  expect(result.skipped[0]?.key).toBe("workspace/huge.mp4");
+  // The skip is remembered at the file's hash: an UNCHANGED file is not
+  // re-attempted next pass (a deterministic 413 can never heal on retry)...
+  expect(result.manifest.has("workspace/huge.mp4")).toBe(true);
+  const again = await syncBack(capped, PREFIX, work, result.manifest);
+  expect(again.skipped).toEqual([]);
+  expect(again.uploaded).toEqual([]);
+  // ...but a CHANGED file is (it may now fit under the cap).
+  writeFileSync(join(work, "workspace", "huge.mp4"), "h");
+  const changed = await syncBack(capped, PREFIX, work, again.manifest);
+  expect(changed.uploaded).toEqual(["workspace/huge.mp4"]);
+});
+
+test("a non-cap upload failure still aborts the pass (data loss stays loud)", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, {});
+  const manifest = await hydrate(store, PREFIX, work);
+  writeFileSync(join(work, "workspace-fail.txt"), "x");
+  const failing = {
+    list: (prefix: string) => store.list(prefix),
+    download: (key: string, dest: string) => store.download(key, dest),
+    upload: () => Promise.reject(new Error("object store PUT failed (500)")),
+    delete: (key: string) => store.delete(key),
+  };
+  await expect(syncBack(failing, PREFIX, work, manifest)).rejects.toThrow(
+    "500",
+  );
 });

@@ -5,7 +5,7 @@ import { dirname } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
-import type { ObjectStore } from "./object-store";
+import { type ObjectStore, ObjectTooLargeError } from "./object-store";
 import { fetchWithRetry } from "./retry";
 
 export interface HttpObjectStoreOptions {
@@ -151,10 +151,13 @@ export class HttpObjectStore implements ObjectStore {
     key: string,
   ): Promise<Error> {
     const body = await res.text();
-    return new Error(
-      `object store ${method} ${key} failed (${res.status})${
-        body ? `: ${body.slice(0, 200)}` : ""
-      }`,
-    );
+    const message = `object store ${method} ${key} failed (${res.status})${
+      body ? `: ${body.slice(0, 200)}` : ""
+    }`;
+    // 413 is the gateway's per-object cap (GW_BLOB_MAX_OBJECT_MB) — a
+    // deterministic verdict on these bytes, typed so syncBack can skip the
+    // object instead of aborting the whole pass on it forever.
+    if (res.status === 413) return new ObjectTooLargeError(key, message);
+    return new Error(message);
   }
 }

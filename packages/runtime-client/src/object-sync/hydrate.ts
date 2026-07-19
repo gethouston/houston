@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, posix, relative, sep } from "node:path";
-import type { ObjectStore } from "./object-store";
+import { type ObjectStore, ObjectTooLargeError } from "./object-store";
 
 /**
  * Durable engine state is materialized into a local cache, then synchronized
@@ -132,6 +132,13 @@ export interface SyncResult {
   deleted: string[];
   manifest: HydrateManifest;
   /**
+   * Files the store REJECTED as over its per-object cap (typed 413). They stay
+   * local-only: recorded in the manifest at their current hash so the pass
+   * completes and the upload is re-attempted only when the file changes —
+   * never as an every-tick retry of a deterministic verdict.
+   */
+  skipped: { key: string; reason: string }[];
+  /**
    * Total bytes of every synced (non-excluded) file — the size the NEXT
    * hydration must swallow. Callers compare it against their hydrate cap and
    * warn while the agent is writing, not when a later wake fails.
@@ -142,7 +149,9 @@ export interface SyncResult {
 /**
  * Upload new or changed files and remove previously observed objects whose
  * local files vanished. Errors propagate because a failed sync is data loss
- * that the owning lifecycle must surface or retry.
+ * that the owning lifecycle must surface or retry — except the store's typed
+ * over-cap rejection, which is deterministic for these exact bytes and is
+ * reported via `skipped` instead of blocking every other file's persistence.
  */
 export async function syncBack(
   store: ObjectStore,
@@ -153,6 +162,7 @@ export async function syncBack(
 ): Promise<SyncResult> {
   const excludes = opts.excludes ?? DEFAULT_EXCLUDES;
   const uploaded: string[] = [];
+  const skipped: { key: string; reason: string }[] = [];
   const nextManifest: HydrateManifest = new Map();
   let totalBytes = 0;
   for (const rel of await walkFiles(dir, dir)) {
@@ -178,8 +188,18 @@ export async function syncBack(
     const hash = sha256(buf);
     nextManifest.set(rel, hash);
     if (manifest.get(rel) !== hash) {
-      await store.upload(abs, prefix ? posix.join(prefix, rel) : rel);
-      uploaded.push(rel);
+      try {
+        await store.upload(abs, prefix ? posix.join(prefix, rel) : rel);
+        uploaded.push(rel);
+      } catch (err) {
+        if (!(err instanceof ObjectTooLargeError)) throw err;
+        // Deterministic per-object verdict: the hash is already in
+        // nextManifest, so the skip is remembered and only a CHANGED file is
+        // re-attempted. The object simply stays pod-local (absent from the
+        // next hydration) — the cap's intended semantics, not data the pass
+        // was still going to write.
+        skipped.push({ key: rel, reason: err.message });
+      }
     }
   }
   const deleted: string[] = [];
@@ -189,5 +209,5 @@ export async function syncBack(
       deleted.push(rel);
     }
   }
-  return { uploaded, deleted, manifest: nextManifest, totalBytes };
+  return { uploaded, deleted, skipped, manifest: nextManifest, totalBytes };
 }

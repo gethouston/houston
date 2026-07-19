@@ -16,6 +16,23 @@ export interface ObjectStore {
   delete(key: string): Promise<void>;
 }
 
+/**
+ * The store's deterministic verdict that ONE object exceeds its per-object cap
+ * (the gateway's 413 over GW_BLOB_MAX_OBJECT_MB). Unlike a transient failure,
+ * re-uploading the same bytes can never succeed — syncBack skips the object
+ * and keeps the pass alive instead of letting one oversized file block every
+ * other file's persistence (HOUSTON-APP-4Y7). Adapters raise it from upload.
+ */
+export class ObjectTooLargeError extends Error {
+  constructor(
+    readonly key: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ObjectTooLargeError";
+  }
+}
+
 export class LocalDirStore implements ObjectStore {
   private readonly resolvedRoot: string;
 
