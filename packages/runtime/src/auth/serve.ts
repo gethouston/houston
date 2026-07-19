@@ -9,6 +9,7 @@ import {
   scrubRefreshTokensAt,
   writeServedProvidersAt,
 } from "./auth-file";
+import { logServeProbeFailure, noteServeProbeOk } from "./serve-log";
 import { authStorage } from "./storage";
 
 /**
@@ -161,6 +162,7 @@ async function runServedSync(): Promise<string[]> {
   const manifest = new Set(readServedProvidersAt(servedManifestPathFor()));
   let manifestDirty = false;
   for (const probe of probes) {
+    if (probe.state !== "error") noteServeProbeOk(probe.id);
     if (probe.state === "served") {
       applyServedCredential(authPathFor(), probe.cred);
       applied.push(probe.id);
@@ -176,7 +178,9 @@ async function runServedSync(): Promise<string[]> {
       manifest.delete(probe.id);
       manifestDirty = true;
     } else if (probe.state === "error") {
-      console.error(`[serve] credential ${probe.id}: ${probe.detail}`);
+      // Dedup lives in serve-log.ts: every turn and hydrating route re-probes,
+      // so a persistent gateway failure must not emit one Sentry error each.
+      logServeProbeFailure(probe.id, probe.detail);
     }
   }
   if (manifestDirty)

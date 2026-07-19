@@ -187,8 +187,12 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
   const pinnedProvider =
     typeof provider === "string" && provider ? provider : undefined;
   if (!(await ensureProviderForTurn()) && !pinnedProvider) {
+    // `code` is the machine-readable half: the host's scheduler reads it to
+    // demote a routine firing into this expected user state (nothing connected
+    // yet) to a warning instead of a Sentry error (HOUSTON-APP-4XM).
     json(ctx.res, 409, {
       error: "No provider connected. Connect an AI provider first.",
+      code: "no_provider",
     });
     return;
   }

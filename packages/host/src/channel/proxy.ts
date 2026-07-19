@@ -11,6 +11,7 @@ import type {
   TurnPin,
 } from "../ports";
 import { MAX_JSON_BYTES, readBody } from "../routes/read-body";
+import { errorCodeFrom, TurnFireError } from "./fire-error";
 
 /**
  * Forwards one authorized request to a standing runtime and streams the reply
@@ -149,8 +150,11 @@ export class ProxyChannel implements RuntimeChannel {
       },
     );
     if (!res.ok) {
-      throw new Error(
-        `runtime ${res.status}: ${await res.text().catch(() => "")}`,
+      const body = await res.text().catch(() => "");
+      throw new TurnFireError(
+        `runtime ${res.status}: ${body}`,
+        res.status,
+        errorCodeFrom(body),
       );
     }
   }

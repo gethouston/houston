@@ -5,7 +5,8 @@ import {
   setPreference,
 } from "@houston/domain";
 import type { Routine, RoutineRun } from "@houston/protocol";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
+import { TurnFireError } from "../channel/fire-error";
 import { CloudPaths } from "../paths";
 import { workspaceRoot } from "../routes/agent-data";
 import { MemoryWorkspaceStore } from "../store/memory";
@@ -25,10 +26,11 @@ const ENABLED = "0 14 * * *"; // 14:00 UTC daily
 /** A capturing firer; optionally throws to exercise the error path. */
 class CaptureFirer implements RoutineFirer {
   jobs: FiringJob[] = [];
-  constructor(private readonly throwMessage?: string) {}
+  constructor(private readonly throwWith?: string | Error) {}
   async fire(job: FiringJob): Promise<void> {
     this.jobs.push(job);
-    if (this.throwMessage) throw new Error(this.throwMessage);
+    if (this.throwWith instanceof Error) throw this.throwWith;
+    if (this.throwWith) throw new Error(this.throwWith);
   }
 }
 
@@ -156,6 +158,38 @@ test("a fire failure marks the run errored — never stuck running, never silent
   expect(run.status).toBe("error");
   expect(run.summary).toContain("runtime unreachable");
   expect(run.completed_at).toBeTruthy();
+});
+
+test("a no-provider 409 fire records the errored run but logs a warning, not an error", async () => {
+  const env = await setup([routine({ schedule: ENABLED })]);
+  const firer = new CaptureFirer(
+    new TurnFireError(
+      'runtime 409: {"error":"No provider connected."}',
+      409,
+      "no_provider",
+    ),
+  );
+  const s = makeScheduler(env, firer);
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    s.start();
+    await s.tick(DUE);
+  } finally {
+    warn.mockRestore();
+    error.mockRestore();
+  }
+
+  // The run record still carries the real reason — user-visible, never silent.
+  const { items } = await loadRoutineRuns(
+    env.vfs,
+    workspaceRoot(env.ws, env.agent),
+  );
+  expect(items).toHaveLength(1);
+  expect((items[0] as RoutineRun).status).toBe("error");
+  // Expected user state (nothing connected) → warning breadcrumb, no Sentry event.
+  expect(warn).toHaveBeenCalledOnce();
+  expect(error).not.toHaveBeenCalled();
 });
 
 test("the workspace timezone preference re-times routines (account-wide zone)", async () => {
