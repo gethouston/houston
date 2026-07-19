@@ -216,6 +216,15 @@ process.on("uncaughtException", (err) => {
   console.error("[local-host] uncaughtException (staying up):", err);
 });
 process.on("unhandledRejection", (reason) => {
+  // Same benign-race demotion as above: Node's promise-based watcher
+  // internals can surface the ENOENT as a rejection instead of a throw.
+  if (isBenignRecursiveWatchRace(reason)) {
+    console.warn(
+      "[local-host] transient fs-watch race (ignored):",
+      (reason as Error).message,
+    );
+    return;
+  }
   console.error("[local-host] unhandledRejection (staying up):", reason);
 });
 

@@ -6,6 +6,7 @@ import {
   type ObjectStore,
   syncBack,
 } from "@houston/runtime-client/object-sync";
+import { isBenignRecursiveWatchRace } from "../watch/watcher-race";
 
 const DEFAULT_QUIET_MS = 3_000;
 const DEFAULT_INTERVAL_MS = 300_000;
@@ -86,6 +87,14 @@ export class StoreSyncDaemon {
         this.markDirty(),
       );
       this.watcher.on("error", (err) => {
+        // The Linux recursive-watcher ENOENT race on a transient dir (see
+        // watch/watcher-race.ts) is harmless AND recoverable — the watcher
+        // keeps serving events, so closing it here would silently degrade
+        // reactivity to periodic-only over noise. Log-and-keep instead.
+        if (isBenignRecursiveWatchRace(err)) {
+          this.opts.log("[store-sync] transient fs-watch race (watcher kept)");
+          return;
+        }
         this.opts.log(
           "[store-sync] filesystem watcher failed; using periodic sync",
           err,
