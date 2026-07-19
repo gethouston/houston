@@ -1,5 +1,9 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import { clipToolResult, type WireEvent } from "@houston/runtime-client";
+import {
+  clipToolResult,
+  type TokenUsage,
+  type WireEvent,
+} from "@houston/runtime-client";
 import { classifyText, mapSdkError } from "./errors";
 import {
   type EventLike,
@@ -37,6 +41,13 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
   // At most one provider_error per turn: an errored assistant message and an
   // error result can both describe the same failure — never double-terminal.
   let emittedError = false;
+  // The newest PER-REQUEST usage seen this turn (main thread only). This — not
+  // the result message's turn-cumulative aggregate — is what sizes the context
+  // window: each tool round-trip re-sends the whole context (mostly cache
+  // reads), so the aggregate over an agentic turn reads ~N× the real fill and
+  // once made a 3-message Claude chat report a full 1M window. Mirrors pi,
+  // whose turn_end usage is the final assistant message's own request.
+  let lastRequestUsage: TokenUsage | null = null;
 
   function translate(msg: SDKMessage): WireEvent[] {
     switch (msg.type) {
@@ -54,7 +65,19 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
       case "system":
         if (msg.subtype === "compact_boundary") {
           const post = msg.compact_metadata?.post_tokens;
-          if (typeof post === "number") cb.onContextTokens(post);
+          if (typeof post === "number") {
+            cb.onContextTokens(post);
+            // The compaction just shrank the context: a request usage seen
+            // BEFORE the boundary no longer describes the fill, so re-anchor
+            // it — else a boundary arriving as the turn's last signal would
+            // resurrect the pre-compaction fill on the result's usage frame.
+            if (lastRequestUsage)
+              lastRequestUsage = {
+                ...lastRequestUsage,
+                context_tokens: post,
+                cached_tokens: 0,
+              };
+          }
         }
         return [];
       default:
@@ -124,6 +147,19 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
   }
 
   function onAssistant(msg: AssistantMsg): WireEvent[] {
+    // Per-request usage: each assistant message carries ITS API call's usage,
+    // whose input + cache reads/writes = the context size of that request —
+    // the live fill. Track the newest one so the turn's usage frame reports
+    // the real window occupancy. Skipped for subagent messages (a subagent
+    // fills its OWN context, not this conversation's) and for errored
+    // responses (pi likewise only trusts clean assistant usage).
+    if (!msg.error && msg.parent_tool_use_id === null) {
+      const requestUsage = normalizeUsage(msg.message?.usage);
+      if (requestUsage) {
+        lastRequestUsage = requestUsage;
+        cb.onContextTokens(requestUsage.context_tokens);
+      }
+    }
     if (!msg.error || emittedError) return [];
     emittedError = true;
     const content = msg.message?.content;
@@ -149,7 +185,11 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
 
   function onResult(msg: ResultMsg): WireEvent[] {
     const out: WireEvent[] = [];
-    const usage = normalizeUsage(msg.usage);
+    // The turn's usage frame is the LAST request's usage (the current context
+    // fill — pi parity), never the result's turn-cumulative aggregate. The
+    // aggregate is only the fallback when no assistant usage arrived, where
+    // the two coincide (a turn of exactly one request).
+    const usage = lastRequestUsage ?? normalizeUsage(msg.usage);
     if (usage) {
       out.push({ type: "usage", data: usage });
       cb.onContextTokens(usage.context_tokens);
