@@ -5,6 +5,10 @@ import {
   type ServerResponse,
 } from "node:http";
 import { type Capabilities, PROTOCOL_VERSION } from "@houston/protocol";
+// Build-time constant: esbuild inlines the JSON import into the bundle (and
+// vitest/tsx resolve it the same way), so the served version can never drift
+// from the package.json that shipped it.
+import { version as HOST_VERSION } from "../package.json";
 import type { SharedEndpointStore } from "./credentials/remote-shared-endpoint-store";
 import type {
   Agent,
@@ -33,7 +37,7 @@ import {
   type AgentConfigsDeps,
   handleAgentConfigs,
 } from "./routes/agent-configs";
-import { handleAgents } from "./routes/agents";
+import { handleAgents, podActivityStatus } from "./routes/agents";
 import { handleCatalog } from "./routes/catalog";
 import { handleSandboxCredential } from "./routes/credential";
 import {
@@ -232,8 +236,14 @@ async function handle(
   if (method === "GET" && path === "/v1/version") {
     return json(res, 200, {
       engine: "houston-host",
+      // The host package's semver — bumped when something meaningful ships,
+      // so the cloud update manager can compare pods against the current release.
+      version: HOST_VERSION,
       protocol: PROTOCOL_VERSION,
-      build: null,
+      // The exact git commit this image was built from (engine-pod-image.yml
+      // bakes BUILD_SHA into the engine-pod target); null on builds that don't
+      // set it (self-host, local dev).
+      build: process.env.BUILD_SHA || null,
       chatHistoryMigrated: deps.chatHistoryMigrated ?? false,
     });
   }
@@ -269,6 +279,16 @@ async function handle(
     return handleEventStream(deps.events, userId, res, (cb) =>
       req.on("close", cb),
     );
+  }
+
+  // Pod-level busy probe: one answer for the whole host, so the control
+  // plane can tell whether this pod is safe to restart (busy-aware engine
+  // rolls) without enumerating agents — the waker's idle sweep stays on the
+  // per-agent route. Deliberately NOT under /agents/ — the agentRequests
+  // counter below counts only that prefix, so this probe never counts itself
+  // (no self-subtraction, unlike the per-agent route).
+  if (method === "GET" && path === "/activity") {
+    return json(res, 200, await podActivityStatus(deps));
   }
 
   if (

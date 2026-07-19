@@ -91,6 +91,7 @@ jobs:
             --target engine-pod \
             --build-arg "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" \
             --build-arg "SENTRY_RELEASE=engine-pod@${{ github.sha }}" \
+            --build-arg "BUILD_SHA=${{ github.sha }}" \
             -f selfhost/Dockerfile \
             -t "$SHA_TAG" -t "$POC_TAG" \
             .
