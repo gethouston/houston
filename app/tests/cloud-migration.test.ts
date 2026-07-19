@@ -217,3 +217,31 @@ test("a run with failed agents stamps skipped so Settings keeps the retry", () =
   assert.equal(doneScreenOutcome(1), "skipped");
   assert.equal(doneScreenOutcome(5), "skipped");
 });
+
+// ── initialProgress file accounting ───────────────────────────────────
+
+test("initialProgress carries the manifest's file total for the live counter", () => {
+  const entries: SourceManifestEntry[] = [
+    { path: "CLAUDE.md", size: 10, kind: "core" },
+    { path: "notes/a.md", size: 10, kind: "file" },
+    { path: "notes/b.md", size: 10, kind: "file" },
+  ];
+  const src = agent("Work", "Sales");
+  src.manifest.entries = entries;
+  const p = initialProgress(buildMigrationPlan([src], [])[0]);
+  assert.equal(p.filesTotal, 3);
+  assert.equal(p.filesDone, 0);
+  assert.deepEqual(p.currentPaths, []);
+});
+
+test("an already-done task starts with every file counted as moved", () => {
+  const src = agent("Work", "Sales");
+  src.manifest.entries = [{ path: "CLAUDE.md", size: 10, kind: "core" }];
+  const plan = buildMigrationPlan(
+    [src],
+    [{ name: "Sales", importedSource: { workspace: "Work", agent: "Sales" } }],
+  );
+  const p = initialProgress(plan[0]);
+  assert.equal(p.step, "done");
+  assert.equal(p.filesDone, p.filesTotal);
+});

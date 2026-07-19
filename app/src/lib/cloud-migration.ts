@@ -129,10 +129,13 @@ export function buildMigrationPlan(
 
 /**
  * Per-request budget of RAW (pre-zip) bytes. The gateway caps a compressed
- * import request at 64 MB; 48 MB of raw input stays safely under it even for
- * incompressible content.
+ * import request at 64 MB, but the binding constraint is reliability, not the
+ * cap: each chunk is one long-lived POST on an end-user uplink, and a dropped
+ * connection costs the whole request. 16 MB keeps every attempt short (and the
+ * per-agent file counter moving) while staying far under the gateway cap even
+ * for incompressible content.
  */
-export const MAX_CHUNK_RAW_BYTES = 48 * 1024 * 1024;
+export const MAX_CHUNK_RAW_BYTES = 16 * 1024 * 1024;
 
 export interface UploadChunk {
   paths: string[];

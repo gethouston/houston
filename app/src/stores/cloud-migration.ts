@@ -2,8 +2,10 @@
  * Wizard driver state for the first-run cloud migration (HOU-719).
  *
  * Owns the screen (offer → progress → done), the task list, and per-agent
- * progress; runs the agents SEQUENTIALLY (one warm-up + upload at a time so a
- * big install doesn't stampede the gateway). Pure logic lives in
+ * progress; runs the agents through a bounded-concurrency pool
+ * (`lib/cloud-migration-pool.ts`) so every agent migrates independently — a
+ * failed or slow agent never blocks the rest — while the cap keeps a big
+ * install from stampeding the gateway. Pure logic lives in
  * `lib/cloud-migration.ts`, the prepare phase in `lib/cloud-migration-prepare.ts`,
  * per-task I/O in `lib/cloud-migration-runner.ts`.
  *
@@ -16,6 +18,10 @@ import { create } from "zustand";
 import { analytics } from "../lib/analytics";
 import type { MigrationTask } from "../lib/cloud-migration";
 import { isMigrationDemo, runDemoMigration } from "../lib/cloud-migration-demo";
+import {
+  MIGRATION_CONCURRENCY,
+  runWithConcurrency,
+} from "../lib/cloud-migration-pool";
 import { prepareMigration } from "../lib/cloud-migration-prepare";
 import {
   type AgentMigrationProgress,
@@ -59,11 +65,12 @@ interface CloudMigrationState {
   /** Leave remaining failures behind and move on to the done screen. */
   continueAnyway: () => void;
   /** True once the user bailed out of a running migration ("Migrate later").
-   *  The run loop breaks after the current task; the source host is stopped. */
+   *  Pool workers stop picking up NEW agents (in-flight ones finish); the
+   *  source host is stopped. */
   deferred: boolean;
   /** Bail out of an in-progress migration (it was taking too long). Stops the
-   *  source host and breaks the run loop; the migration stays resumable from
-   *  Settings (already-migrated agents are skipped on the next run). */
+   *  source host and the pool's new pickups; the migration stays resumable
+   *  from Settings (already-migrated agents are skipped on the next run). */
   deferMigration: () => void;
 }
 
@@ -200,11 +207,14 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
           agent_count: tasks.length,
           bytes: tasks.reduce((n, t) => n + t.manifest.totalBytes, 0),
         });
-        for (const task of tasks) {
-          if (get().deferred) break; // user chose "Migrate later"
-          if (get().progress[task.sourceId]?.step === "done") continue;
-          await runTask(task, false);
-        }
+        // Bounded parallel run: agents are independent (each `runTask` parks
+        // its own failure), so one bad agent can't hold the rest hostage.
+        await runWithConcurrency(
+          tasks.filter((t) => get().progress[t.sourceId]?.step !== "done"),
+          MIGRATION_CONCURRENCY,
+          (task) => runTask(task, false),
+          () => get().deferred, // "Migrate later" stops NEW pickups only
+        );
         if (!get().deferred) await settleIfAllDone();
       },
 
@@ -234,8 +244,8 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
 
       deferMigration: () => {
         set(() => ({ deferred: true }));
-        // Stop the passive source host now; the run loop breaks after the
-        // task in flight. Best-effort — never blocks the user leaving.
+        // Stop the passive source host now; pool workers stop picking up new
+        // agents. Best-effort — never blocks the user leaving.
         void osStopMigrationSourceHost().catch((err: unknown) =>
           reportError(
             "cloud_migration_defer_stop",

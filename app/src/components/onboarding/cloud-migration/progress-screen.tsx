@@ -1,91 +1,10 @@
-import { AsyncButton, Button, cn } from "@houston-ai/core";
-import type { TFunction } from "i18next";
-import { Check, CircleAlert, Loader2 } from "lucide-react";
+import { AsyncButton, Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import type { MigrationTask } from "../../../lib/cloud-migration";
-import type { AgentMigrationProgress } from "../../../lib/cloud-migration-progress";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
 import { OrbitLoader } from "../../space/orbit-loader";
+import { AgentRow, RUNNING_STEPS } from "./agent-row";
 import { MigrationStatusCycle } from "./status-cycle";
 import { WizardFrame } from "./wizard-frame";
-
-function stepLabel(
-  t: TFunction<"migration">,
-  p: AgentMigrationProgress,
-): string {
-  switch (p.step) {
-    case "pending":
-      return t("progress.step.pending");
-    case "creating":
-      return t("progress.step.creating");
-    case "warming":
-      return t("progress.step.warming");
-    case "uploading":
-      return t("progress.step.uploading", {
-        current: Math.max(p.chunkIndex, 1),
-        total: Math.max(p.chunkCount, 1),
-      });
-    case "finalizing":
-      return t("progress.step.finalizing");
-    case "done":
-      return t("progress.step.done");
-    case "error":
-      return t("progress.step.error");
-  }
-}
-
-const RUNNING: ReadonlySet<AgentMigrationProgress["step"]> = new Set([
-  "creating",
-  "warming",
-  "uploading",
-  "finalizing",
-]);
-
-function AgentRow({
-  task,
-  progress,
-  onRetry,
-}: {
-  task: MigrationTask;
-  progress: AgentMigrationProgress;
-  onRetry: () => Promise<void>;
-}) {
-  const { t } = useTranslation("migration");
-  const running = RUNNING.has(progress.step);
-  return (
-    <div className="flex items-center gap-3 rounded-xl bg-chip px-4 py-3">
-      <span className="shrink-0">
-        {progress.step === "done" ? (
-          <Check className="size-4 text-ink" />
-        ) : progress.step === "error" ? (
-          <CircleAlert className="size-4 text-danger" />
-        ) : (
-          <Loader2
-            className={cn("size-4 text-ink-muted", running && "animate-spin")}
-          />
-        )}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{task.targetName}</p>
-        <p className="truncate text-xs text-ink-muted">
-          {progress.step === "error" && progress.errorMessage
-            ? progress.errorMessage
-            : stepLabel(t, progress)}
-        </p>
-      </div>
-      {progress.step === "error" && (
-        <AsyncButton
-          variant="outline"
-          size="sm"
-          className="shrink-0 rounded-full"
-          onClick={() => onRetry()}
-        >
-          {t("progress.retry")}
-        </AsyncButton>
-      )}
-    </div>
-  );
-}
 
 /** The quiet "Migrate later" escape hatch — the same `onDefer` everywhere:
  *  while the run is still going AND on every error state, so a user stuck on
@@ -105,11 +24,11 @@ function DeferButton({ onDefer }: { onDefer: () => void }) {
 }
 
 /**
- * Live migration wait screen (HOU-719 redesign): the shared {@link OrbitLoader}
- * (the rocket in transit — the move made literal) over a status line that
- * cycles through the real phases, directly on the space backdrop, so the wait
- * feels alive without exposing per-agent plumbing. Falls back to a per-agent
- * list panel only when something needs the user's attention (a failed agent).
+ * Live migration wait screen (HOU-719): the shared {@link OrbitLoader} (the
+ * rocket in transit — the move made literal) over the per-agent panel. Every
+ * agent's row is live for the whole run — step, the server-confirmed file
+ * counter, and the file names in flight — so the user can watch the move
+ * happen and see exactly which agents landed and which need a retry.
  */
 export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
   const { t } = useTranslation("migration");
@@ -126,16 +45,9 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
 
   const done = tasks.filter((x) => progress[x.sourceId]?.step === "done");
   const anyRunning = tasks.some((x) =>
-    RUNNING.has(progress[x.sourceId]?.step ?? "pending"),
+    RUNNING_STEPS.has(progress[x.sourceId]?.step ?? "pending"),
   );
   const anyError = tasks.some((x) => progress[x.sourceId]?.step === "error");
-
-  const phrases = [
-    t("progress.phaseAssistants"),
-    t("progress.phaseConversations"),
-    t("progress.phaseFiles"),
-    t("progress.phaseCloud"),
-  ];
 
   const waiting = !startError && !anyError;
 
@@ -177,33 +89,33 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
           </div>
         ) : backingUp ? (
           <MigrationStatusCycle phrases={[t("progress.backingUp")]} />
-        ) : preparing ? (
+        ) : preparing || tasks.length === 0 ? (
           <MigrationStatusCycle phrases={[t("progress.preparing")]} />
-        ) : anyError ? (
-          <div className="flex w-full flex-col gap-3 rounded-2xl border border-[var(--ht-space-glass-border)] bg-[var(--ht-space-glass)] p-6 text-ink shadow-2xl backdrop-blur-md">
-            <p className="text-center text-xs text-ink-muted">
-              {t("progress.overall", {
-                done: done.length,
-                total: tasks.length,
-              })}
-            </p>
-            <div className="flex max-h-[44vh] flex-col gap-2 overflow-y-auto">
-              {tasks.map((task) => (
-                <AgentRow
-                  key={task.sourceId}
-                  task={task}
-                  progress={progress[task.sourceId]}
-                  onRetry={() => retryTask(task.sourceId)}
-                />
-              ))}
-            </div>
-          </div>
         ) : (
           <>
-            <MigrationStatusCycle phrases={phrases} />
-            <p className="text-xs text-[var(--ht-space-foreground-muted)] opacity-80">
-              {t("progress.keepOpen")}
-            </p>
+            <div className="flex w-full flex-col gap-3 rounded-2xl border border-[var(--ht-space-glass-border)] bg-[var(--ht-space-glass)] p-6 text-ink shadow-2xl backdrop-blur-md">
+              <p className="text-center text-xs text-ink-muted">
+                {t("progress.overall", {
+                  done: done.length,
+                  total: tasks.length,
+                })}
+              </p>
+              <div className="flex max-h-[44vh] flex-col gap-2 overflow-y-auto">
+                {tasks.map((task) => (
+                  <AgentRow
+                    key={task.sourceId}
+                    task={task}
+                    progress={progress[task.sourceId]}
+                    onRetry={() => retryTask(task.sourceId)}
+                  />
+                ))}
+              </div>
+            </div>
+            {anyRunning && (
+              <p className="text-xs text-[var(--ht-space-foreground-muted)] opacity-80">
+                {t("progress.keepOpen")}
+              </p>
+            )}
           </>
         )}
       </div>

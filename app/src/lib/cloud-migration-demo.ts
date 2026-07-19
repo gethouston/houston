@@ -43,8 +43,24 @@ export const DEMO_DETECTION: LegacyDetection = {
   agentDirCount: 3,
 };
 
-const manifest = (totalBytes: number, integrations: string[]) => ({
-  entries: [],
+/** Believable per-agent files so the live counter and file line have data. */
+const demoEntries = (agent: string, count: number) =>
+  Array.from({ length: count }, (_, i) => ({
+    path:
+      i === 0
+        ? "CLAUDE.md"
+        : `notes/${agent.toLowerCase().replaceAll(" ", "-")}-${i}.md`,
+    size: 20_000 + i * 1_500,
+    kind: (i < 3 ? "core" : "file") as "core" | "file",
+  }));
+
+const manifest = (
+  agent: string,
+  fileCount: number,
+  totalBytes: number,
+  integrations: string[],
+) => ({
+  entries: demoEntries(agent, fileCount),
   excluded: [],
   integrations,
   totalBytes,
@@ -53,6 +69,7 @@ const manifest = (totalBytes: number, integrations: string[]) => ({
 const task = (
   workspace: string,
   agent: string,
+  fileCount: number,
   bytes: number,
   integrations: string[],
 ): MigrationTask => ({
@@ -61,16 +78,16 @@ const task = (
   agent,
   targetName: agent,
   alreadyDone: false,
-  manifest: manifest(bytes, integrations),
+  manifest: manifest(agent, fileCount, bytes, integrations),
 });
 
 export const DEMO_TASKS: MigrationTask[] = [
-  task("Personal", "Personal Assistant", 2_400_000, [
+  task("Personal", "Personal Assistant", 24, 2_400_000, [
     "gmail",
     "googlecalendar",
   ]),
-  task("Personal", "Inbox Helper", 900_000, ["gmail", "slack"]),
-  task("Work", "Trip Planner", 1_500_000, ["googlecalendar"]),
+  task("Personal", "Inbox Helper", 9, 900_000, ["gmail", "slack"]),
+  task("Work", "Trip Planner", 15, 1_500_000, ["googlecalendar"]),
 ];
 
 export const DEMO_INTEGRATIONS = ["gmail", "googlecalendar", "slack"];
@@ -109,21 +126,33 @@ export async function runDemoMigration(
   await sleep(750);
   set(() => ({ preparing: false }));
 
-  for (const t of DEMO_TASKS) {
+  // Staggered-parallel like the real pool: rows advance simultaneously, with
+  // the live file counter and the cycling file line both fed real data.
+  const runOne = async (t: (typeof DEMO_TASKS)[number], stagger: number) => {
+    await sleep(stagger);
     patch(t.sourceId, { step: "creating" });
     await sleep(500);
     patch(t.sourceId, { step: "warming" });
     await sleep(650);
-    patch(t.sourceId, { step: "uploading", chunkIndex: 1, chunkCount: 3 });
-    await sleep(500);
-    patch(t.sourceId, { chunkIndex: 2 });
-    await sleep(500);
-    patch(t.sourceId, { chunkIndex: 3 });
-    await sleep(400);
-    patch(t.sourceId, { step: "finalizing" });
+    const paths = t.manifest.entries.map((e) => e.path);
+    const chunkCount = 3;
+    const per = Math.ceil(paths.length / chunkCount);
+    patch(t.sourceId, { step: "uploading", chunkIndex: 0, chunkCount });
+    for (let i = 0; i < chunkCount; i++) {
+      patch(t.sourceId, {
+        chunkIndex: i + 1,
+        currentPaths: paths.slice(i * per, (i + 1) * per),
+      });
+      await sleep(500);
+      patch(t.sourceId, {
+        filesDone: Math.min((i + 1) * per, paths.length),
+      });
+    }
+    patch(t.sourceId, { step: "finalizing", currentPaths: [] });
     await sleep(400);
     patch(t.sourceId, { step: "done" });
-    await sleep(250);
-  }
+  };
+  await Promise.all(DEMO_TASKS.map((t, i) => runOne(t, i * 350)));
+  await sleep(250);
   set(() => ({ screen: "done" }));
 }

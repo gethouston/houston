@@ -119,9 +119,16 @@ export async function runMigrationTask(
     step: "uploading",
     chunkIndex: 0,
     chunkCount: chunks.length,
+    // A retry re-counts from zero — the server re-reports every file.
+    filesDone: 0,
+    currentPaths: [],
   });
   for (let i = 0; i < chunks.length; i++) {
-    deps.patchProgress({ step: "uploading", chunkIndex: i + 1 });
+    deps.patchProgress({
+      step: "uploading",
+      chunkIndex: i + 1,
+      currentPaths: chunks[i].paths,
+    });
     await step("uploading", async () => {
       const zip = await exportSourceZip(
         deps.source,
@@ -137,11 +144,14 @@ export async function runMigrationTask(
       counts.sessionsRebuilt = counts.sessionsRebuilt || result.sessionsRebuilt;
       // Rejected paths surface on the done summary — never swallowed.
       rejected.push(...result.rejected);
+      // Live counter = files the SERVER confirmed landed (written or already
+      // there), never a client-side guess of what an upload will contain.
+      deps.patchProgress({ filesDone: counts.written + counts.skipped });
     });
   }
 
   // 4. Stamp the marker so a later run resumes instead of re-importing.
-  deps.patchProgress({ step: "finalizing", rejected });
+  deps.patchProgress({ step: "finalizing", rejected, currentPaths: [] });
   await step("finalizing", () =>
     completeAgentMigration(
       agentId,

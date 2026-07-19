@@ -12,12 +12,19 @@ function prefersReducedMotion(): boolean {
 }
 
 /**
- * The progress screen's cycling status line: fades between phase phrases
- * every ~2.6s so a long wait still shows movement second to second (the same
+ * The progress screen's cycling status line: fades between phrases every
+ * ~2.6s so a long wait still shows movement second to second (the same
  * "AI working, never a dead screen" principle as everywhere else in the
- * app). Reduced-motion shows the first phrase only, no cycling.
+ * app). Also reused inside each agent row to cycle the file names riding the
+ * upload in flight. Reduced-motion shows the first phrase only, no cycling.
  */
-export function MigrationStatusCycle({ phrases }: { phrases: string[] }) {
+export function MigrationStatusCycle({
+  phrases,
+  className = "text-sm text-[var(--ht-space-foreground-muted)]",
+}: {
+  phrases: string[];
+  className?: string;
+}) {
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);
 
@@ -39,10 +46,10 @@ export function MigrationStatusCycle({ phrases }: { phrases: string[] }) {
 
   return (
     <p
-      className="min-h-[1.25em] text-sm text-[var(--ht-space-foreground-muted)] transition-opacity duration-300"
+      className={`min-h-[1.25em] transition-opacity duration-300 ${className}`}
       style={{ opacity: visible ? 1 : 0 }}
     >
-      {phrases[index]}
+      {phrases[index % Math.max(phrases.length, 1)]}
     </p>
   );
 }

@@ -17,6 +17,7 @@
 
 import type { SourceAgent } from "./cloud-migration";
 import type { MigrationCounts } from "./cloud-migration-progress";
+import { sendWithRetry } from "./cloud-migration-retry";
 
 export interface SourceHostHandshake {
   baseUrl: string;
@@ -85,20 +86,26 @@ export async function fetchSourceScan(
   };
 }
 
-/** Zip the given paths of one legacy agent on the source host. */
+/** Zip the given paths of one legacy agent on the source host. Idempotent
+ *  (a pure read), so transport blips retry; loopback rarely needs it. */
 export async function exportSourceZip(
   src: SourceHostHandshake,
   sourceAgentId: string,
   paths: string[],
 ): Promise<ArrayBuffer> {
-  const res = await sourceFetch(
-    src,
-    `/agents/${encodeURIComponent(sourceAgentId)}/migration/export`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paths }),
-    },
+  const res = await sendWithRetry(
+    (signal) =>
+      sourceFetch(
+        src,
+        `/agents/${encodeURIComponent(sourceAgentId)}/migration/export`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paths }),
+          signal,
+        },
+      ),
+    { timeoutMs: 180_000 },
   );
   if (!res.ok) await throwHttpError("migration export", res);
   return await res.arrayBuffer();
@@ -132,38 +139,53 @@ async function gatewayFetch(
 }
 
 /** Upload one raw zip chunk into a cloud agent. `overwrite` on retries so a
- *  re-sent chunk lands cleanly over a partial first attempt. */
+ *  re-sent chunk lands cleanly over a partial first attempt.
+ *
+ *  The single most fragile request of the run (large body, end-user uplink,
+ *  a pod that may be mid-wake), so it rides the retry harness: dropped
+ *  connections, the gateway's truncated-body 400, 5xx, and hung attempts all
+ *  re-send. Safe because the import is skip-existing idempotent — a re-POST
+ *  of a partially landed chunk resumes instead of duplicating. */
 export async function importAgentZip(
   agentId: string,
   zip: ArrayBuffer,
   opts?: { overwrite?: boolean },
 ): Promise<ImportResult> {
   const query = opts?.overwrite ? "?overwrite=1" : "";
-  const res = await gatewayFetch(
-    `/agents/${encodeURIComponent(agentId)}/migration/import${query}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/zip" },
-      body: zip,
-    },
+  const res = await sendWithRetry((signal) =>
+    gatewayFetch(
+      `/agents/${encodeURIComponent(agentId)}/migration/import${query}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/zip" },
+        body: zip,
+        signal,
+      },
+    ),
   );
   if (!res.ok) await throwHttpError("migration import", res);
   return (await res.json()) as ImportResult;
 }
 
-/** Stamp the import marker once every chunk of an agent has landed. */
+/** Stamp the import marker once every chunk of an agent has landed. An
+ *  idempotent overwrite of one marker file, so it retries freely. */
 export async function completeAgentMigration(
   agentId: string,
   source: { workspace: string; agent: string },
   counts: MigrationCounts,
 ): Promise<void> {
-  const res = await gatewayFetch(
-    `/agents/${encodeURIComponent(agentId)}/migration/complete`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source, counts }),
-    },
+  const res = await sendWithRetry(
+    (signal) =>
+      gatewayFetch(
+        `/agents/${encodeURIComponent(agentId)}/migration/complete`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source, counts }),
+          signal,
+        },
+      ),
+    { timeoutMs: 60_000 },
   );
   if (!res.ok) await throwHttpError("migration complete", res);
 }
