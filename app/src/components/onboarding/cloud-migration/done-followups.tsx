@@ -1,5 +1,6 @@
 import { Button } from "@houston-ai/core";
 import confetti from "canvas-confetti";
+import { Check } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,14 +18,21 @@ import { WizardFrame } from "./wizard-frame";
 
 /**
  * Step 1 of the done-screen's two-step setup (HOU-719 redesign): reconnect
- * the AI. Reuses the SAME `<ProviderBrowser>` the migration-reconnect moment
- * and onboarding use — it owns the OAuth launch, dialogs, polling, and
- * failure toasts. The browser is ALWAYS mounted (each provider shows its own
- * Connect / connected state inline) — we deliberately do NOT collapse it to a
- * one-line "connected" confirmation on mount, because that hid the provider
- * cards whenever a provider happened to be pre-connected (e.g. a dev machine
- * with shared credentials); the step is titled "Connect your AI", so the
- * cards must always be visible.
+ * the AI. Reuses the SAME `<ProviderBrowser>` in the SAME `curated` mode as
+ * onboarding's "Connect your AI" step (missions/connect-ai.tsx) — the featured
+ * providers split into Subscription / API-key sections with a "see all" chip —
+ * so the two screens read as one flow. It owns the OAuth launch, dialogs,
+ * polling, and failure toasts.
+ *
+ * Two deliberate departures from onboarding: we pass NEITHER `onSelect` nor
+ * `selectOnMount`. The migration step must not auto-advance — the user
+ * continues via the Continue button — and a pre-connected provider (e.g. a dev
+ * machine with shared credentials) must stay VISIBLE rather than collapse the
+ * step to a one-line "connected" confirmation; the step is titled "Connect
+ * your AI", so the cards must always show. Curated mode keeps pre-connected
+ * providers on their cards (their connected state renders inline within the
+ * sections), and the browser handles the missing `onSelect` cleanly — the
+ * auto-select watcher and the local-connect dialog both no-op without it.
  */
 export function DoneStepAi() {
   const { providers, connections, catalog } = useProviderBrowserData();
@@ -33,7 +41,7 @@ export function DoneStepAi() {
       providers={providers}
       connections={connections}
       catalog={catalog}
-      showFilters={false}
+      curated
     />
   );
 }
@@ -139,7 +147,7 @@ export function DoneStepApps({ integrations }: { integrations: string[] }) {
   if (integrations.length === 0) return null;
 
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {integrations.map((slug) => {
         const isConnected = activeToolkits.has(slug);
         const isBusy = flow.state?.toolkit === slug;
@@ -148,19 +156,25 @@ export function DoneStepApps({ integrations }: { integrations: string[] }) {
             <AppRow
               display={appDisplay(slug, bySlug.get(slug))}
               trailing={
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="rounded-full"
-                  disabled={isConnected || flow.state !== null}
-                  onClick={() => void flow.connect(slug)}
-                >
-                  {isConnected
-                    ? t("done.connected")
-                    : isBusy
-                      ? t("done.connecting")
-                      : t("done.connect")}
-                </Button>
+                isConnected ? (
+                  // Completed treatment, not a dimmed disabled button: a success
+                  // check + label reads as "done", so the row settles instead of
+                  // offering a dead action (design-system success token, no fill).
+                  <span className="inline-flex items-center gap-1.5 pr-1 text-xs font-medium text-success">
+                    <Check className="size-4" strokeWidth={2.5} />
+                    {t("done.connected")}
+                  </span>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="rounded-full"
+                    disabled={flow.state !== null}
+                    onClick={() => void flow.connect(slug)}
+                  >
+                    {isBusy ? t("done.connecting") : t("done.connect")}
+                  </Button>
+                )
               }
             />
           </li>
