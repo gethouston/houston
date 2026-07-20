@@ -484,6 +484,14 @@ export const analytics = {
     try {
       const email = cleanEmail(identity?.email);
       posthog.alias(userId);
+      // alias() is REFUSED by PostHog when the Firebase UID already belongs to
+      // an identified person (gateway server-side events use the UID as their
+      // distinct_id, and any previous install already aliased it) — which
+      // silently splits one human into one person per install. The special
+      // $merge_dangerously event is the only mechanism that merges two
+      // ALREADY-IDENTIFIED persons, so send it too: idempotent when the
+      // persons are already one, decisive when they are not.
+      posthog.capture("$merge_dangerously", { alias: userId });
       posthog.setPersonProperties(
         {
           firebase_uid: userId,
