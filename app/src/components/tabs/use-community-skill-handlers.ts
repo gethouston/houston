@@ -2,6 +2,7 @@ import { type CommunitySkill, classifySkillError } from "@houston-ai/skills";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useInstallCommunitySkill } from "../../hooks/queries";
+import { analytics } from "../../lib/analytics";
 import { tauriSkills } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 
@@ -35,11 +36,16 @@ export function useCommunitySkillHandlers(agentPath: string) {
   const handleInstallCommunity = useCallback(
     async (skill: CommunitySkill, signal?: AbortSignal) => {
       try {
-        return await installCommunity.mutateAsync({
+        const result = await installCommunity.mutateAsync({
           source: skill.source,
           skillId: skill.skillId,
           signal,
         });
+        analytics.track("skill_installed", {
+          skill_slug: skill.skillId,
+          source: "community",
+        });
+        return result;
       } catch (err) {
         // No-silent-failures: the marketplace card only re-enables its install
         // button on failure, so surface the real reason as a visible toast.

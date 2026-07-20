@@ -11,12 +11,13 @@ import {
   resolveAgentColor,
 } from "@houston-ai/core";
 import { Keyboard, LayoutDashboard, Plus, Settings, Store } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 import { useAllConversations } from "../hooks/queries";
 import { useSidebarLayout } from "../hooks/use-sidebar-layout";
 import { flatSidebarOrder } from "../lib/agent-order";
+import { analytics } from "../lib/analytics";
 import { isSetupChatMode } from "../lib/integration-chat-setup";
 import { shortcutLabel } from "../lib/shortcuts";
 import { useAgentStore } from "../stores/agents";
@@ -51,6 +52,9 @@ export function CommandPalette() {
   const { t } = useTranslation(["shell", "dashboard"]);
   const open = useUIStore((s) => s.paletteOpen);
   const setOpen = useUIStore((s) => s.setPaletteOpen);
+  useEffect(() => {
+    if (open) analytics.track("command_palette_opened");
+  }, [open]);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setActivityPanelId = useUIStore((s) => s.setActivityPanelId);
   const setCheatsheetOpen = useUIStore((s) => s.setCheatsheetOpen);

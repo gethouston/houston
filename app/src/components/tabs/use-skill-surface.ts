@@ -14,6 +14,7 @@ import {
   useSkillDetail,
   useSkills,
 } from "../../hooks/queries";
+import { analytics } from "../../lib/analytics";
 import { isMissingSkillError } from "../../lib/missing-skill";
 import { queryKeys } from "../../lib/query-keys";
 import { useUIStore } from "../../stores/ui";
@@ -114,14 +115,25 @@ export function useSkillSurface(agentPath: string) {
   );
 
   const handleInstallFromRepo = useCallback(
-    async (source: string, skills: RepoSkill[]) =>
-      installFromRepo.mutateAsync({ source, skills }),
+    async (source: string, skills: RepoSkill[]) => {
+      const result = await installFromRepo.mutateAsync({ source, skills });
+      for (const s of skills)
+        analytics.track("skill_installed", {
+          skill_slug: s.name,
+          source: "repo",
+        });
+      return result;
+    },
     [installFromRepo],
   );
 
   const handleCreateFromScratch = useCallback(
     async (input: { name: string; description: string; content: string }) => {
       await createSkill.mutateAsync(input);
+      analytics.track("skill_installed", {
+        skill_slug: input.name,
+        source: "scratch",
+      });
       return input.name;
     },
     [createSkill],

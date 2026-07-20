@@ -92,12 +92,25 @@ export type AnalyticsEventName =
   | "integration_disconnected"
   | "custom_integration_started"
   | "skill_used"
+  // A skill landed in the agent (carries `skill_slug` + `source`:
+  // community / repo / scratch) — adoption of the skills surface itself,
+  // distinct from `skill_used` (execution in chat).
+  | "skill_installed"
   | "routine_scheduled"
   | "routine_executed"
   | "routine_chat_setup_started"
   | "tab_opened"
   | "file_attached"
   | "mobile_paired"
+  // Fires once per search session (empty → non-empty query), not per
+  // keystroke. `surface` says which search box (missions, archived, ...).
+  | "search_performed"
+  | "command_palette_opened"
+  // A dictation capture produced a non-empty transcript the user kept.
+  | "dictation_used"
+  // The user changed the app language from Settings (carries `locale`).
+  // Distinct from onboarding_language_selected (first-run pick).
+  | "language_changed"
   // Update lifecycle (closes the symbolication-coverage feedback loop)
   | "update_offered"
   | "update_accepted"

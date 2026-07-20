@@ -128,7 +128,11 @@ export function createMissionWhileWarming(
     });
   }
 
-  analytics.track("mission_created", { agent_mode: opts.agentMode });
+  analytics.track("mission_created", {
+    agent_mode: opts.agentMode,
+    provider: opts.providerOverride,
+    model: opts.modelOverride,
+  });
 
   return {
     conversationId,
