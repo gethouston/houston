@@ -176,6 +176,7 @@ export default async function AgentDetailPage({ params }: PageParams) {
           <div className="rounded-2xl border bg-card p-5 shadow-sm">
             <InstallPanel
               agentName={identity.name}
+              slug={slug}
               instructions={instructions}
               skillZipUrl={urls.skillZipUrl}
               copyPasteUrl={urls.copyPasteUrl}

@@ -1,22 +1,24 @@
 "use client";
 
+import { Button } from "@houston-ai/core";
+import { Download, FileText, Globe, Rocket } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@houston-ai/core";
-import { Download, FileText, Rocket } from "lucide-react";
+  buildStoreInstallDeepLink,
+  buildWebAppInstallUrl,
+} from "@/lib/houston-launch";
 import { CopyButton } from "./copy-button";
 
 /** Where a visitor without the app goes to get it. */
-const HOUSTON_DOWNLOAD_URL = "https://gethouston.ai";
+const HOUSTON_DOWNLOAD_URL = "https://gethouston.ai/#download";
+
+/** How long we wait for Houston to take focus before offering a fallback. */
+const LAUNCH_FALLBACK_MS = 1500;
 
 export interface InstallPanelProps {
   agentName: string;
+  /** Agent Store slug, used to build the "Open in Houston" deep link. */
+  slug: string;
   /** Pre-built, server-rendered copy-paste install instructions. */
   instructions: string;
   /** Absolute URL to the Claude Skill .zip (target=claude-skill-zip). */
@@ -32,13 +34,15 @@ export interface InstallPanelProps {
  *   1. PRIMARY  copy install instructions for the visitor's own AI assistant.
  *   2. Download the Claude Skill .zip.
  *   3. Download the universal copy-paste markdown.
- *   4. Open in Houston, a dialog with the share link + the three steps.
+ *   4. Open in Houston, a one-click deep link that seeds the desktop import
+ *      wizard, with a non-destructive fallback for visitors without the app.
  *
  * The instructions text is composed on the server and passed in, so this stays a
  * thin interaction shell.
  */
 export function InstallPanel({
   agentName,
+  slug,
   instructions,
   skillZipUrl,
   copyPasteUrl,
@@ -82,70 +86,110 @@ export function InstallPanel({
         </a>
       </Button>
 
-      <OpenInHoustonDialog agentName={agentName} shareUrl={shareUrl} />
+      <OpenInHouston agentName={agentName} slug={slug} shareUrl={shareUrl} />
     </div>
   );
 }
 
-function OpenInHoustonDialog({
+function OpenInHouston({
   agentName,
+  slug,
   shareUrl,
 }: {
   agentName: string;
+  slug: string;
   shareUrl: string;
 }) {
+  const [showFallback, setShowFallback] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      cleanupRef.current?.();
+    };
+  }, []);
+
+  function openInHouston() {
+    const deepLink = buildStoreInstallDeepLink(slug);
+    if (!deepLink) return;
+
+    // A repeat click supersedes the previous attempt entirely.
+    cleanupRef.current?.();
+
+    // If Houston opens, the browser tab loses focus or is hidden. Track that so
+    // a user who already has the app never sees the "don't have it?" fallback.
+    let launched = false;
+    const markLaunched = () => {
+      launched = true;
+    };
+    window.addEventListener("blur", markLaunched, { once: true });
+    document.addEventListener("visibilitychange", markLaunched, { once: true });
+
+    // A hidden iframe navigates to the custom scheme without a top-level
+    // "unknown protocol" error page when Houston is not installed.
+    if (iframeRef.current) iframeRef.current.src = deepLink;
+
+    const timer = window.setTimeout(() => {
+      cleanupRef.current?.();
+      if (!launched && document.visibilityState === "visible") {
+        setShowFallback(true);
+      }
+    }, LAUNCH_FALLBACK_MS);
+
+    cleanupRef.current = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("blur", markLaunched);
+      document.removeEventListener("visibilitychange", markLaunched);
+      cleanupRef.current = null;
+    };
+  }
+
+  const webUrl = buildWebAppInstallUrl(slug);
+
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="lg" className="w-full">
-          <Rocket aria-hidden className="size-4" />
-          Open in Houston
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Open {agentName} in Houston</DialogTitle>
-          <DialogDescription>
-            Houston is the free desktop app for running agents like this one.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="flex flex-col gap-2">
+      <Button
+        variant="outline"
+        size="lg"
+        className="w-full"
+        onClick={openInHouston}
+      >
+        <Rocket aria-hidden className="size-4" />
+        Open in Houston
+      </Button>
+      <iframe ref={iframeRef} title="Open in Houston" className="hidden" />
 
-        <ol className="flex flex-col gap-3 text-sm">
-          <Step n={1}>
-            Open Houston on your computer. Do not have it yet? Download it
-            below.
-          </Step>
-          <Step n={2}>Go to Add agent, then choose Install from a link.</Step>
-          <Step n={3}>Paste the link below and follow the steps.</Step>
-        </ol>
+      {showFallback && (
+        <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
+          <p className="text-sm text-muted-foreground">
+            Do not have Houston yet?
+          </p>
+          <Button asChild variant="outline" size="lg" className="w-full">
+            <a href={HOUSTON_DOWNLOAD_URL} target="_blank" rel="noreferrer">
+              <Download aria-hidden className="size-4" />
+              Download Houston
+            </a>
+          </Button>
+          {webUrl && (
+            <Button asChild variant="outline" size="lg" className="w-full">
+              <a href={webUrl}>
+                <Globe aria-hidden className="size-4" />
+                Open in Houston Web
+              </a>
+            </Button>
+          )}
+        </div>
+      )}
 
-        <CopyButton
-          value={shareUrl}
-          label="Copy share link"
-          copiedLabel="Copied to clipboard"
-          size="lg"
-          className="w-full"
-          aria-label={`Copy the share link for ${agentName}`}
-        />
-
-        <Button asChild variant="outline" size="lg" className="w-full">
-          <a href={HOUSTON_DOWNLOAD_URL} target="_blank" rel="noreferrer">
-            <Download aria-hidden className="size-4" />
-            Download Houston
-          </a>
-        </Button>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function Step({ n, children }: { n: number; children: React.ReactNode }) {
-  return (
-    <li className="flex items-start gap-3">
-      <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-        {n}
-      </span>
-      <span className="text-muted-foreground">{children}</span>
-    </li>
+      <CopyButton
+        value={shareUrl}
+        label="Copy share link"
+        copiedLabel="Copied to clipboard"
+        variant="ghost"
+        className="w-full"
+        aria-label={`Copy the share link for ${agentName}`}
+      />
+    </div>
   );
 }
