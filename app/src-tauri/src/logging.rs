@@ -15,6 +15,11 @@ static GUARD: OnceLock<WorkerGuard> = OnceLock::new();
 ///   - `sentry_tracing::layer()` → INFO+ events become Sentry breadcrumbs;
 ///     ERROR events become standalone Sentry events. No-op if `sentry::init`
 ///     hasn't been called (e.g. empty SENTRY_DSN), so safe to always include.
+///     Exception: `tauri_plugin_updater` ERRORs stay breadcrumbs — the plugin
+///     logs one on every failed background update poll (machine offline,
+///     GitHub down, channel manifest not yet published), and the frontend
+///     already owns that failure (30-min retry, update-floor fallback URL,
+///     install-error card), so a standalone Sentry event per poll is noise.
 ///
 /// Result: when a Rust panic or explicit `tracing::error!` lands in Sentry,
 /// the last ~100 INFO/WARN log lines auto-attach as breadcrumbs — the
@@ -52,8 +57,25 @@ pub fn init(data_dir: &Path) {
     tracing_subscriber::registry()
         .with(filter)
         .with(fmt_layer)
-        .with(sentry_tracing::layer())
+        .with(sentry_tracing::layer().event_filter(|metadata| {
+            if demote_error_to_breadcrumb(metadata.target()) {
+                sentry_tracing::EventFilter::Breadcrumb
+            } else {
+                sentry_tracing::default_event_filter(metadata)
+            }
+        }))
         .init();
+}
+
+/// Targets whose ERROR logs must NOT become standalone Sentry events.
+///
+/// `tauri_plugin_updater` fires `log::error!` on every unsuccessful update
+/// check — including the expected ones (offline, GitHub unreachable, the
+/// cloud channel's `cloud-latest` manifest not published yet). The check
+/// failure is fully handled in `use-update-checker.ts`, so Sentry only needs
+/// the breadcrumb trail, not an event per 30-min poll.
+fn demote_error_to_breadcrumb(target: &str) -> bool {
+    target.starts_with("tauri_plugin_updater")
 }
 
 fn logs_dir() -> PathBuf {
@@ -144,6 +166,21 @@ fn tail_file(path: &Path, n: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn updater_plugin_errors_are_demoted_to_breadcrumbs() {
+        assert!(demote_error_to_breadcrumb("tauri_plugin_updater::updater"));
+        assert!(demote_error_to_breadcrumb("tauri_plugin_updater"));
+    }
+
+    #[test]
+    fn app_errors_still_become_sentry_events() {
+        assert!(!demote_error_to_breadcrumb("houston_app"));
+        assert!(!demote_error_to_breadcrumb(
+            "houston_app::engine_supervisor"
+        ));
+        assert!(!demote_error_to_breadcrumb("tauri_plugin_sentry"));
+    }
 
     #[test]
     fn latest_log_matching_uses_newest_rotated_backend_log() {
