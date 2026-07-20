@@ -13,9 +13,8 @@
  * open), and its on-demand preview fetch.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PoweredByVercelBadge } from "./powered-by-vercel-badge";
-import { classifySkillError } from "./skill-error-kinds";
 import { SkillMarketplaceGrid } from "./skill-marketplace-grid";
 import {
   DEFAULT_SKILL_MARKETPLACE_SECTION_LABELS,
@@ -23,21 +22,11 @@ import {
 } from "./skill-marketplace-section-labels";
 import { SkillMarketplaceShelves } from "./skill-marketplace-shelves";
 import { CATEGORY_ALL, showsShelves } from "./skill-marketplace-state-model";
-import {
-  SkillPreviewModal,
-  type SkillPreviewState,
-} from "./skill-preview-modal";
+import { SkillPreviewModal } from "./skill-preview-modal";
 import type { CommunitySkill, CommunitySkillPreview } from "./types";
 import { useSkillMarketplaceShelves } from "./use-skill-marketplace-shelves";
 import { useSkillMarketplaceState } from "./use-skill-marketplace-state";
-
-const EMPTY_PREVIEW: CommunitySkillPreview = {
-  title: null,
-  description: "",
-  image: null,
-  category: null,
-  tags: [],
-};
+import { useSkillPreview } from "./use-skill-preview";
 
 export interface SkillMarketplaceSectionProps {
   /** Whether the section is the active page/tab; drives fetch-on-mount and
@@ -57,6 +46,14 @@ export interface SkillMarketplaceSectionProps {
   ) => Promise<CommunitySkillPreview>;
   /** Lowercase set of slugs already installed locally. */
   installedSkillNames?: Set<string>;
+  /**
+   * Controlled search query. When provided the section renders no search box of
+   * its own and mirrors this value, so a page can drive it from one shared
+   * field over multiple sections. Omit for the self-contained behavior (the
+   * section owns its own search box + query).
+   */
+  query?: string;
+  onQueryChange?: (q: string) => void;
   labels?: SkillMarketplaceSectionLabels;
 }
 
@@ -66,6 +63,8 @@ export function SkillMarketplaceSection({
   onInstall,
   onPreview,
   installedSkillNames,
+  query: controlledQuery,
+  onQueryChange,
   labels,
 }: SkillMarketplaceSectionProps) {
   const l = { ...DEFAULT_SKILL_MARKETPLACE_SECTION_LABELS, ...labels };
@@ -88,12 +87,15 @@ export function SkillMarketplaceSection({
 
   // Search / install flow. An empty search box plus a selected category runs
   // that category's full result list through the same search machinery.
+  const controlled = controlledQuery !== undefined;
   const { query, setQuery, phase, installState, install } =
     useSkillMarketplaceState({
       open: active,
       onSearch,
       onInstall,
       categoryQuery,
+      query: controlledQuery,
+      onQueryChange,
     });
 
   const shelvesData = useSkillMarketplaceShelves({
@@ -102,48 +104,12 @@ export function SkillMarketplaceSection({
     onSearch,
   });
 
-  const [detailSkill, setDetailSkill] = useState<CommunitySkill | null>(null);
-  const [preview, setPreview] = useState<SkillPreviewState>({
-    status: "loading",
-  });
-  const previewAbortRef = useRef<AbortController | null>(null);
-
-  const openInfo = useCallback(
-    (skill: CommunitySkill) => {
-      previewAbortRef.current?.abort();
-      setDetailSkill(skill);
-      if (!onPreview) {
-        // No rich-preview fetcher: open a lightweight modal that reads
-        // "No description provided" rather than leaving the row click dead.
-        setPreview({ status: "loaded", preview: EMPTY_PREVIEW });
-        return;
-      }
-      setPreview({ status: "loading" });
-      const controller = new AbortController();
-      previewAbortRef.current = controller;
-      onPreview(skill, controller.signal)
-        .then((p) => {
-          if (controller.signal.aborted) return;
-          setPreview({ status: "loaded", preview: p });
-        })
-        .catch((err) => {
-          if (controller.signal.aborted) return;
-          if (classifySkillError(err) === "aborted") return;
-          setPreview({ status: "error" });
-        });
-    },
-    [onPreview],
+  // The detail modal's open skill + its on-demand preview fetch (abandoned when
+  // the section goes inactive) live in the shared hook.
+  const { detailSkill, preview, openInfo, closeDetail } = useSkillPreview(
+    active,
+    onPreview,
   );
-
-  const closeDetail = useCallback(() => {
-    previewAbortRef.current?.abort();
-    setDetailSkill(null);
-  }, []);
-
-  // Leaving the section abandons any open detail + in-flight preview fetch.
-  useEffect(() => {
-    if (!active) closeDetail();
-  }, [active, closeDetail]);
 
   const detailSlug = detailSkill
     ? (detailSkill.skillId || detailSkill.name).toLowerCase()
@@ -180,10 +146,16 @@ export function SkillMarketplaceSection({
 
   return (
     <div>
-      {l.heading && (
+      {(l.heading || l.subheading || l.poweredByVercel) && (
         <div className="mb-3">
-          <p className="text-sm font-medium text-ink">{l.heading}</p>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
+          {l.heading && (
+            <p className="text-sm font-medium text-ink">{l.heading}</p>
+          )}
+          <div
+            className={`flex flex-wrap items-center gap-x-2 text-xs text-ink-muted${
+              l.heading ? " mt-0.5" : ""
+            }`}
+          >
             {l.subheading && <span>{l.subheading}</span>}
             <PoweredByVercelBadge label={l.poweredByVercel} />
           </div>
@@ -202,6 +174,7 @@ export function SkillMarketplaceSection({
         onInstall={install}
         onOpenDetail={openInfo}
         shelvesSlot={shelvesSlot}
+        hideSearch={controlled}
         labels={l}
       />
 
