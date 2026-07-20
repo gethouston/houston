@@ -1,9 +1,15 @@
-import { CatalogShell, type CatalogShellTab, cn } from "@houston-ai/core";
-import { useMemo, useRef, useState } from "react";
+import {
+  CatalogSearchField,
+  CatalogShell,
+  type CatalogShellTab,
+  cn,
+} from "@houston-ai/core";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderConnections } from "../../hooks/use-provider-connections";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types";
+import { searchModels } from "../../lib/ai-hub/search";
 import { useHubCatalog } from "../../lib/ai-hub/use-hub-catalog";
 import { newEngineActive } from "../../lib/engine";
 import { osIsTauri } from "../../lib/os-bridge";
@@ -12,25 +18,26 @@ import {
   getConnectProviders,
   type ProviderInfo,
 } from "../../lib/providers";
-import { ProviderConnectionDialogs } from "../provider-browser/provider-connection-dialogs";
+import { searchProviders } from "../provider-browser/provider-filtering";
 import { groupProviders } from "../provider-browser/provider-grouping";
 import { PageContainer } from "../shell/page-shell";
 import { ConnectedProvidersStrip } from "./connected-providers-strip";
 import { HubHero } from "./hub-hero";
+import { HubModalStack } from "./hub-modal-stack";
 import { HubSkeleton } from "./hub-skeleton";
 import { ModelDirectory } from "./model-directory";
-import { ModelModal } from "./model-modal";
-import { ProviderModal } from "./provider-modal";
 import { ProvidersPane } from "./providers-pane";
 
 /**
  * The AI models hub: a top-level marketplace surface in the shared
  * {@link CatalogShell} grammar (the same layout as the Integrations page) —
- * the hero, then the consolidated **Connected** strip of provider brand tiles
- * OUTSIDE the tabs (a tile opens that provider's modal), then the discovery
- * tabs with live count chips: **Providers** ({@link ProvidersPane}: the
- * not-yet-connected catalog) and **Models** (the cross-provider directory).
- * A provider row/tile or model row opens a centered MODAL (`ProviderModal` /
+ * the hero, then ONE search field over everything, the consolidated
+ * **Connected** strip of provider rows OUTSIDE the tabs (a row opens that
+ * provider's modal), then the **Available** discovery tabs with live count
+ * chips: **Providers** ({@link ProvidersPane}: the not-yet-connected catalog)
+ * and **Models** (the cross-provider directory). The one query narrows the
+ * Connected strip and both tabs' content at once.
+ * A provider row or model row opens a centered MODAL (`ProviderModal` /
  * `ModelModal`); the connect-dialog stack renders once here for every surface
  * underneath. (Workspace model policy lives on the Admin page.)
  */
@@ -39,6 +46,9 @@ export function AiHubView() {
   const { catalog, isLoading } = useHubCatalog();
   const connections = useProviderConnections();
   const [tab, setTab] = useState("providers");
+  // The page's ONE search field, above everything: it narrows the Connected
+  // strip AND both discovery tabs' content.
+  const [query, setQuery] = useState("");
   const [openProvider, setOpenProvider] = useState<ProviderInfo | null>(null);
   const [openModel, setOpenModel] = useState<CatalogModel | null>(null);
 
@@ -65,6 +75,23 @@ export function AiHubView() {
     [connectProviders, connections.isConnected],
   );
 
+  // The page query narrows both provider sections; `searching` uncaps the
+  // Connected strip's preview and switches the count chips to shown-count.
+  const searching = query.trim() !== "";
+  const connectedMatches = useMemo(
+    () => searchProviders(connected, query),
+    [connected, query],
+  );
+  const availableMatches = useMemo(
+    () => searchProviders(available, query),
+    [available, query],
+  );
+  // Models tab chip: models matching the page query (facets narrow further).
+  const modelMatches = useMemo(
+    () => (catalog ? searchModels(catalog.models, query) : []),
+    [catalog, query],
+  );
+
   // While a modal is up, freeze the page scroller behind it. Radix's scroll
   // lock only locks <body>; this inner region kept its own live scrollbar,
   // which sat next to the modal's as a second, draggable vertical scroll.
@@ -72,24 +99,20 @@ export function AiHubView() {
   // keeps the gutter reserved and the scroll offset holds.
   const modalOpen = openProvider !== null || openModel !== null;
 
-  // Retain the last provider/model while a modal animates out so Radix keeps it
-  // mounted through the exit transition instead of snapping to empty.
-  const lastProvider = useRef<ProviderInfo | null>(null);
-  if (openProvider) lastProvider.current = openProvider;
-  const providerForModal = openProvider ?? lastProvider.current;
-  const lastModel = useRef<CatalogModel | null>(null);
-  if (openModel) lastModel.current = openModel;
-  const modelForModal = openModel ?? lastModel.current;
-
   const tabs: CatalogShellTab[] | null = catalog
     ? [
         {
           value: "providers",
           label: t("tabs.providers"),
-          count: connections.ready ? available.length : undefined,
+          count: connections.ready
+            ? searching
+              ? availableMatches.length
+              : available.length
+            : undefined,
           content: (
             <ProvidersPane
               providers={available}
+              query={query}
               connections={connections}
               catalog={catalog}
               onOpen={setOpenProvider}
@@ -99,10 +122,11 @@ export function AiHubView() {
         {
           value: "models",
           label: t("tabs.models"),
-          count: catalog.modelCount,
+          count: searching ? modelMatches.length : catalog.modelCount,
           content: (
             <ModelDirectory
               catalog={catalog}
+              query={query}
               onOpenModel={(key) => {
                 const model = catalog.byKey.get(key);
                 if (model) setOpenModel(model);
@@ -127,12 +151,27 @@ export function AiHubView() {
           <>
             <HubHero modelCount={catalog.modelCount} />
             <CatalogShell
+              controls={
+                <CatalogSearchField
+                  value={query}
+                  onChange={setQuery}
+                  label={t("search.placeholder")}
+                />
+              }
               installedTitle={t("sections.connected")}
-              installedCount={connections.ready ? connected.length : undefined}
+              installedCount={
+                connections.ready
+                  ? searching
+                    ? connectedMatches.length
+                    : connected.length
+                  : undefined
+              }
+              availableTitle={t("sections.available")}
               installed={
-                connections.ready && connected.length > 0 ? (
+                connections.ready && connectedMatches.length > 0 ? (
                   <ConnectedProvidersStrip
-                    providers={connected}
+                    providers={connectedMatches}
+                    searching={searching}
                     onOpen={setOpenProvider}
                   />
                 ) : undefined
@@ -145,33 +184,16 @@ export function AiHubView() {
         )}
       </PageContainer>
 
-      {providerForModal && catalog && (
-        <ProviderModal
-          provider={providerForModal}
-          open={openProvider != null}
-          connections={connections}
+      {catalog && (
+        <HubModalStack
           catalog={catalog}
-          onClose={() => setOpenProvider(null)}
-          onOpenModel={(key) => {
-            setOpenProvider(null);
-            const model = catalog.byKey.get(key);
-            if (model) setOpenModel(model);
-          }}
-        />
-      )}
-      {modelForModal && (
-        <ModelModal
-          model={modelForModal}
-          open={openModel != null}
           connections={connections}
-          onClose={() => setOpenModel(null)}
-          onOpenProvider={(provider) => {
-            setOpenModel(null);
-            setOpenProvider(provider);
-          }}
+          openProvider={openProvider}
+          setOpenProvider={setOpenProvider}
+          openModel={openModel}
+          setOpenModel={setOpenModel}
         />
       )}
-      <ProviderConnectionDialogs {...connections.dialogProps} />
     </div>
   );
 }

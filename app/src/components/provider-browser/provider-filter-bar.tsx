@@ -6,9 +6,8 @@
  * state lives in the parent.
  */
 
-import { cn } from "@houston-ai/core";
+import { cn, useStuckOnScroll } from "@houston-ai/core";
 import type { Dispatch, SetStateAction } from "react";
-import { useStuckOnScroll } from "../../hooks/use-stuck-on-scroll";
 import type { ProviderQuickFilter } from "./provider-filtering";
 import { ProviderFilters } from "./provider-filters";
 

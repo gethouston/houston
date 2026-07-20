@@ -2,8 +2,10 @@ import type { IntegrationToolkit } from "@houston-ai/engine-client";
 
 /**
  * The catalog-BROWSE pure layer: query filtering, A-Z ordering, Teams-allowlist
- * partitioning, category grouping and the first-paint caps. Split from `model.ts`
- * (provider/support/poll) so every surface applies the same rules. All pure.
+ * partitioning, category metadata and the first-paint caps. Split from `model.ts`
+ * (provider/support/poll) so every surface applies the same rules; the section
+ * grouping + curated Featured spotlight live beside it in `browse-sections.ts`.
+ * All pure.
  */
 
 /** Page size for the browse grid's "Load more" (catalog holds ~1000 apps). */
@@ -12,9 +14,9 @@ export const BROWSE_PAGE_SIZE = 100;
 /**
  * Whether a toolkit matches an ALREADY-normalised (trimmed, lowercased) search
  * query: a case-insensitive substring over name, slug, and description. `""`
- * matches everything.
+ * matches everything. Shared across the browse family (also `browse-sections`).
  */
-function matchesQuery(t: IntegrationToolkit, query: string): boolean {
+export function matchesQuery(t: IntegrationToolkit, query: string): boolean {
   if (!query) return true;
   return (
     t.name.toLowerCase().includes(query) ||
@@ -23,8 +25,12 @@ function matchesQuery(t: IntegrationToolkit, query: string): boolean {
   );
 }
 
-/** A-Z by app name, case-insensitive. The one ordering every browse list uses. */
-function byNameAsc(a: IntegrationToolkit, b: IntegrationToolkit): number {
+/** A-Z by app name, case-insensitive. The one ordering every browse list uses
+ *  (shared across the browse family, also `browse-sections`). */
+export function byNameAsc(
+  a: IntegrationToolkit,
+  b: IntegrationToolkit,
+): number {
   return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
 }
 
@@ -147,78 +153,3 @@ export function categoryListView(args: {
 
 /** The section slug for toolkits with no category, sorted after every real one. */
 export const UNCATEGORIZED = "__uncategorized";
-
-/**
- * Bounds the row count at first paint: each browse section renders at most this
- * many rows until the user expands it, and every section expands independently.
- */
-export const SECTION_PREVIEW_CAP = 6;
-
-/** One category's slice: `category` is the primary slug (or {@link UNCATEGORIZED}),
- * `connectable` the section's apps A-Z by name. */
-export interface CatalogSection {
-  category: string;
-  connectable: IntegrationToolkit[];
-}
-
-/**
- * Group the browse catalog into category sections for the "plane" page: exclude
- * already-`connected` apps, apply {@link browseCatalog}'s search filter, then
- * bucket each toolkit by its PRIMARY category (`categories[0]`; missing/empty/falsy
- * collapses to {@link UNCATEGORIZED}) so a multi-category app lands in one section.
- * Apps sort A-Z within a section; sections order by app count DESC, tie-breaking on
- * `categoryLabel` ascending, {@link UNCATEGORIZED} pinned last. Empty sections drop.
- */
-export function groupCatalogByCategory(opts: {
-  catalog: IntegrationToolkit[];
-  query: string;
-  connected: ReadonlySet<string>;
-  /** Narrow to ONE primary-category slug ("all" = every section). */
-  category?: string;
-}): CatalogSection[] {
-  const q = opts.query.trim().toLowerCase();
-  const only = opts.category && opts.category !== "all" ? opts.category : null;
-  const buckets = new Map<string, IntegrationToolkit[]>();
-  for (const t of opts.catalog) {
-    if (opts.connected.has(t.slug)) continue;
-    if (!matchesQuery(t, q)) continue;
-    const category = t.categories?.[0] || UNCATEGORIZED;
-    if (only && category !== only) continue;
-    const bucket = buckets.get(category);
-    if (bucket) bucket.push(t);
-    else buckets.set(category, [t]);
-  }
-  const sections: CatalogSection[] = [];
-  for (const [category, connectable] of buckets) {
-    connectable.sort(byNameAsc);
-    sections.push({ category, connectable });
-  }
-  return sections.sort((a, b) => {
-    if (a.category === UNCATEGORIZED) return 1;
-    if (b.category === UNCATEGORIZED) return -1;
-    const bySize = b.connectable.length - a.connectable.length;
-    if (bySize !== 0) return bySize;
-    return categoryLabel(a.category).localeCompare(categoryLabel(b.category));
-  });
-}
-
-/**
- * The primary-category slugs present in the browse catalog (connected apps
- * excluded), sorted A-Z by display label with {@link UNCATEGORIZED} pinned
- * last — the option set for the category filter beside the search field. The
- * dropdown orders alphabetically (a user LOOKS UP a category by name there)
- * even though the page's sections order by size. The consumer prepends its
- * "all" entry and labels {@link UNCATEGORIZED} itself.
- */
-export function catalogCategorySlugs(opts: {
-  catalog: IntegrationToolkit[];
-  connected: ReadonlySet<string>;
-}): string[] {
-  return groupCatalogByCategory({ ...opts, query: "" })
-    .map((s) => s.category)
-    .sort((a, b) => {
-      if (a === UNCATEGORIZED) return 1;
-      if (b === UNCATEGORIZED) return -1;
-      return categoryLabel(a).localeCompare(categoryLabel(b));
-    });
-}

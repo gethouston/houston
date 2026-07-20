@@ -74,16 +74,19 @@
   "home": {
     "title": "Integrations",
     "description": "Work with your agents across your favorite tools.",
+    "descriptionCount": "Work with your agents across {{count, number}} of your favorite tools.",
     "tabs": {
       "catalog": "Integrations",
       "custom": "Custom integrations"
     },
-    "searchPlaceholder": "Search integrations...",
+    "searchPlaceholder": "Search integrations",
     "allCategories": "All categories",
     "categoryFilter": "Filter by category",
     "connect": "Connect",
     "connectApp": "Connect {{name}}",
     "installedTitle": "Installed",
+    "availableTitle": "Available",
+    "featured": "Featured",
     "otherCategory": "Other",
     "showAllApps": "Show all {{count}} apps"
   },
