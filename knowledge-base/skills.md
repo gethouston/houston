@@ -82,7 +82,7 @@ Step-by-step instructions Claude follows when the Skill runs.
 1. **Engine** parses SKILL.md frontmatter via `serde_yml` (`engine/houston-skills/src/format.rs`). Unknown fields are silently ignored — old skills with `icon:` / `starter_prompt:` still parse.
 2. Engine returns the full `SkillSummaryResponse` on `GET /v1/skills`.
 3. **App** (`useSkills` query → `tauri.ts` → `engine-client`) maps the snake/camel-case wire shape back to app's `SkillSummary`.
-4. **Skill cards** use `app/src/components/skill-card.tsx` across the chat empty state and the New Mission picker. Keep these in sync by reusing the component, not recreating card markup. (The per-agent Skills tab no longer uses `SkillCard`: its installed skills are tiles in the catalog strip — see "Add Skills UI" below.) **First-party store skills ship fully translated** (en/es/pt SKILL.md trees; a Spanish workspace seeds Spanish skills, the agent runs the Spanish procedure, editing is in Spanish). Display names come from the frontmatter `title:` field via `skillDisplayTitle` (accents the ASCII slug can't carry), falling back to `humanize(slug)`. See `knowledge-base/i18n.md` § "Store skills are translated at the CONTENT level".
+4. **Skill cards** use `app/src/components/skill-card.tsx` across the chat empty state and the New Mission picker. Keep these in sync by reusing the component, not recreating card markup. (The per-agent Skills tab no longer uses `SkillCard`: its installed skills are rows in the catalog strip — see "Add Skills UI" below.) **First-party store skills ship fully translated** (en/es/pt SKILL.md trees; a Spanish workspace seeds Spanish skills, the agent runs the Spanish procedure, editing is in Spanish). Display names come from the frontmatter `title:` field via `skillDisplayTitle` (accents the ASCII slug can't carry), falling back to `humanize(slug)`. See `knowledge-base/i18n.md` § "Store skills are translated at the CONTENT level".
 5. **`useAgentChatPanel`** (`app/src/components/use-agent-chat-panel.tsx`) — single source of truth for the per-agent panel UX. Owns:
    - skill discovery (featured cards on empty state)
    - selected Skill chip above the composer
@@ -96,19 +96,28 @@ Step-by-step instructions Claude follows when the Skill runs.
 ## Add Skills UI — the catalog-grammar Skills surface
 
 The agent's Skills section (`app/src/components/tabs/skills-content.tsx`) is
-the shared **catalog layout** (the ui/core `CatalogShell`, same grammar as the
-Integrations surfaces and the AI hub, no page header — the nav label carries
-it): the consolidated **Your skills** strip of installed-skill TILES (with a
-count chip) OUTSIDE two discovery tabs — **Store** (`skills:tabs.store`, the
-skills.sh marketplace) and **Custom skills** (`skills:tabs.custom`, currently a
-pure EMPTY STATE: `tabs.customEmptyTitle` + `tabs.customEmptyDescription` + the
-filled **Add skill** CTA that opens the GitHub / From-scratch `AddSkillDialog`;
-its real behavior is TBD). Read-only mode (managed agent, non-manager) yields
-ZERO tabs — the shell then renders only the strip. The Skills.sh store is
-`SkillMarketplaceSection` (`ui/skills/`), mounted as the Store tab's content
-when the marketplace handlers are wired; it fetches its shelves feed on mount.
-Its own header ("Discover skills" / subheading + the `PoweredByVercelBadge`
-inline on the subheading line) sits above its search box + category dropdown.
+the shared **catalog layout** (the ui/core `CatalogShell`, same two-section grammar
+as the Integrations surfaces and the AI hub, no page header — the nav label carries
+it): ONE top `CatalogSearchField` (`grid.searchSkills`) — the page's single query,
+owned by `skills-content.tsx` — over the consolidated **Your skills** section
+(`grid.yourSkillsHeading`, an `lg` `CatalogSectionHeader` + count chip; installed-skill
+ROWS, not tiles) and the **Available** section (`grid.availableHeading`) holding two
+discovery tabs — **Store** (`skills:tabs.store`, the skills.sh marketplace) and
+**Custom skills** (`skills:tabs.custom`, currently a pure EMPTY STATE:
+`tabs.customEmptyTitle` + `tabs.customEmptyDescription` + the filled **Add skill** CTA
+that opens the GitHub / From-scratch `AddSkillDialog`; its real behavior is TBD).
+The one page query filters the strip AND the store: `useInstalledSkillsStrip(skills,
+onEditSkill, query)` narrows the rows via `filterInstalledSkills` (a case-insensitive
+substring over display title + slug) and OMITS the whole Your-skills section when it
+matches none; `skill-discovery-tabs.tsx` forwards the same `query`/`onQueryChange`
+down into `SkillMarketplaceSection`, which is now CONTROLLED (`query`/`onQueryChange`
++ `hideSearch` — its own "Discover skills" heading and search box are suppressed under
+the shared Available header, its publisher filter chips kept). The old per-strip
+`grid.searchYourSkills` / `grid.noMatchingSkills` keys are GONE. Read-only mode
+(managed agent, non-manager) yields ZERO tabs — the shell then renders only the strip.
+The Skills.sh store is `SkillMarketplaceSection` (`ui/skills/`), mounted as the Store
+tab's content when the marketplace handlers are wired; it fetches its shelves feed on
+mount.
 
 The section composes `SkillMarketplaceGrid` + `SkillMarketplaceRow` +
 `SkillPreviewModal` (all in `ui/skills/`). `SkillMarketplaceRow` is the shared
@@ -121,16 +130,34 @@ Add pill and the separate info button are gone. Publisher-derived filter chips
 (skills.sh has no real categories, so `topPublishers` derives them from the
 `owner/repo` source) render in search mode only.
 
-### Installed skills — strip tiles with an edit modal (no separate detail screen)
+### Installed skills — strip rows with an edit modal (no separate detail screen)
 
 The per-agent Skills section (`app/src/components/tabs/agent-admin/agent-admin-skills.tsx`
-→ `SkillsContent`) renders the installed list as TILES in the consolidated
-strip (`app/src/components/tabs/installed-skill-tile.tsx`, the shared
-`CatalogTile`): the skill image (resolved via `resolveSkillImageUrl` in
-`app/src/lib/skill-image.ts`, shared with `SkillIcon`) or a `skillMonogram`
-letter box when it has none, labeled with the display title. A tile click opens
-the edit modal — the skill's ONE detail surface. The old `InstalledSkillRow`
-(pen/trash row) was DELETED with this convergence.
+→ `SkillsContent`) renders the installed list as a two-column `CatalogGrid` of
+`CatalogRow`s in the consolidated strip (`app/src/components/tabs/installed-skills-strip.tsx`,
+the `useInstalledSkillsStrip` hook) — the SAME row grammar as the Store/browse
+list: the skill's own `SkillIcon` (image resolved via `resolveSkillImageUrl` in
+`app/src/lib/skill-image.ts`, or a `skillMonogram` letter box when it has none),
+the always-visible display title, a one-line description, and a quiet trailing
+`ChevronRight` marking each row as an open-affordance (the shared convention with
+the installed integrations + connected providers strips). A row click opens the
+edit modal — the skill's ONE detail surface. At rest the grid caps to the shared
+`CATALOG_INSTALLED_PREVIEW_CAP` (6) rows behind a `CatalogShowMore` "Show all N"
+expander (`grid.showAllSkills`) so a well-stocked strip never buries the discovery
+tabs; an active search drops the cap and shows every match uncapped. That
+preview / expander split and the `filterInstalledSkills` search filter are the
+shared node-safe `app/src/lib/installed-preview.ts` (the generic
+`installedPreview<T>` helper the integrations + providers strips also use, cap
+injected; `filterInstalledSkills` re-exported from `installed-skills-strip.tsx`).
+The old
+`installed-skill-tile.tsx` icon-tile composition and the earlier
+`InstalledSkillRow` (pen/trash row) were both DELETED with this convergence. To
+hold the 200-line file law `SkillsContent`
+stays a thin orchestrator delegating to three siblings in `tabs/`:
+`installed-skills-strip.tsx` (the `useInstalledSkillsStrip` hook: sort + search
++ the strip node), `skill-discovery-tabs.tsx` (`useSkillDiscoveryTabs`: the
+Store + Custom tab array), and `skill-editor-dialogs.tsx` (`SkillEditorDialogs`:
+the edit modal + delete-confirm handshake).
 
 Editing happens in `SkillEditModal` (`ui/skills/src/skill-edit-modal.tsx`), a
 `Dialog`/`DialogContent` overlay mirroring `SkillPreviewModal` (`sm:max-w-2xl`,

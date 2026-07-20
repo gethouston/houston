@@ -3,6 +3,82 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v31 - 2026-07-20
+
+The catalog shell's two-section grammar gets three refinements, all in the shared
+CatalogShell composition (no new component, no `since` change; the surfaces stay
+app/-locked, web `partial`).
+
+The `controls` row is now STICKY: it pins to the top of the surface's scroll
+container so the search field (plus the Integrations category combobox) stays
+reachable through a long catalog, sitting transparent at rest and fading in an
+opaque `popover` fill with a rounded bottom only while rows pass BEHIND it. The
+scroll-stuck detection is the generic `useStuckOnScroll` hook, hoisted into
+`@houston-ai/core` (`hooks/use-stuck-on-scroll.ts`) as the single source of truth
+— the shell and the app's provider filter bar both consume it, and the app's
+former copy (`app/src/hooks/use-stuck-on-scroll.ts`) is deleted.
+
+The Installed section (Connected on the AI hub, Your skills on Skills) is now a
+quiet CONTAINED panel — a rounded, hairline-bordered `card` surface — so "yours"
+reads as its own thing above the flat "available" browse below. The
+InstalledSkeleton and the "Show all N" expander sit inside the panel padding with
+no doubled framing.
+
+The Integrations category sections now order MAINSTREAM-FIRST: a curated
+`CATEGORY_PRIORITY` list floats the everyday categories ahead of the long tail,
+with Featured pinned first, the remaining non-curated categories by size DESC, and
+Uncategorized last (the category dropdown stays A-Z). The available count chip now
+accepts a preformatted STRING for catalogs whose true total isn't cheaply known —
+the Skills store chip reads `"9000+"` rather than a live count.
+
+## v30 - 2026-07-20
+
+The catalog surfaces adopt a two-section grammar. ONE search field — plus, on
+Integrations, a category combobox — sits on top via the shell's new `controls`
+row and filters everything below it, over two titled sections: Installed
+(Connected on the AI hub, Your skills on Skills) and Available. Each section
+carries an `lg` CatalogSectionHeader with a live count chip (the shown count
+while filtering, the total at rest). A section is OMITTED entirely when the
+active filter matches nothing in it, so a heading never sits over an empty list.
+The preview cap stays 6 rows behind a "Show all N" expander at rest and shows
+every match uncapped while filtering.
+
+This retires the per-strip installed search field added in v29 — there is no
+"above 8 installed items" threshold anymore — and unifies each pane's own
+internal search box into the one page query: the Integrations CatalogPane is now
+controlled (query + category props), and the AI Models directory drops its search
+box (the provider modal keeps its local one). All four surfaces (global
+Integrations, per-agent Integrations, AI Models hub, Skills) read identically.
+
+`ai-model-row` behavior updated: the directory-grid-row variant's control row is
+now the facet comboboxes alone (free-text search is the AI hub's one page field);
+the provider-modal-list-row variant keeps its own search box + facets. `skill-row`
+and `ai-provider-card` keep their v29 CatalogRow strips, now driven by the page
+query rather than a per-strip field. No new component and no `since` change; the
+compositions stay app/-locked (web `partial`).
+
+## v29 - 2026-07-20
+
+The catalog "Installed" strips converge onto the shared CatalogRow grammar. The
+Integrations, AI Models, and Skills surfaces previously rendered their installed
+items as compact icon TILES (the ui/core `CatalogTile`); they now render the SAME
+`CatalogRow` used by their browse grids — a full-width row with name, description,
+and a quiet trailing chevron — laid out in the responsive two-column `CatalogGrid`.
+`CatalogTile` is DELETED from `@houston-ai/core` (no compat re-export). Each strip
+gains a preview cap of 6 rows behind a "Show all N" expander (CatalogShowMore) at
+rest, and, above 8 installed items, an installed search field that filters the
+strip in place. Integrations additionally gain a Featured section and a
+total-count subtitle on the strip header.
+
+`skill-row` restructured: `installed-tile` variant becomes `installed-row` (the
+installed strip is now CatalogRow grammar behind the Show-all expander, a row
+opening the edit modal); anatomy/a11y drop the tile framing. `ai-provider-card`'s
+Connected strip likewise moves from a tile strip to the CatalogRow strip (quiet
+trailing chevron, preview cap + Show-all expander). No new component and no `since`
+change; web stays `partial` for both (`installed-skills-strip.tsx`,
+`connected-providers-strip.tsx`, `installed-strip.tsx` are app/-locked). Manifest
+refs updated (CatalogTile -> CatalogShowMore).
+
 ## v28 - 2026-07-16
 
 `composer` gains a `replaced-by-override` state: the existing override card
