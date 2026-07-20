@@ -8,6 +8,7 @@ import { isFirstRun } from "./components/onboarding/missions/onboarding-flow";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
 import { OnboardingSegmentScreen } from "./components/onboarding/segment-screen";
 import { ClaudeBrowserLogin } from "./components/shell/claude-browser-login";
+import { MigrateToCloudOffer } from "./components/shell/migrate-to-cloud";
 import { ProviderLoginFallback } from "./components/shell/provider-login-fallback";
 import { WorkspaceLoading } from "./components/shell/workspace-loading";
 import { WorkspaceShell } from "./components/shell/workspace-shell";
@@ -304,6 +305,10 @@ export default function App() {
 
   return (
     <CloudMigrationGate>
+      {/* Legacy→cloud upgrade offer: local builds only (renders null on
+          cloud), overlays every shell state including onboarding — a fresh
+          install of an old download should meet the offer immediately. */}
+      <MigrateToCloudOffer />
       {segmentPending ? (
         onboardingSegment.isLoading ? (
           <WorkspaceLoading />

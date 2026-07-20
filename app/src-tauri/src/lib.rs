@@ -416,6 +416,8 @@ pub fn run() {
             commands::save_file::save_download,
             commands::update::current_app_bundle_path,
             commands::update::relaunch_app_from_path,
+            commands::update::install_cloud_migration,
+            commands::update::fetch_migration_policy,
             // Hidden Sentry smoke command for native stack verification.
             commands::diagnostics::sentry_native_stack_smoke_test,
             // Logging (writes to local log files).

@@ -5,6 +5,7 @@ import {
   Blocks,
   Boxes,
   Building2,
+  CloudUpload,
   Gauge,
   LayoutDashboard,
   Settings,
@@ -13,7 +14,10 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { isHostedGatewayEngine } from "../../lib/engine";
 import { hasSpaces } from "../../lib/org-roles";
+import { osIsTauri } from "../../lib/os-bridge";
+import { useMigrateToCloudStore } from "../../stores/migrate-to-cloud";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
 import { ORGANIZATION_VIEW_ID } from "../organization";
 import { PERMISSIONS_VIEW_ID } from "../permissions";
@@ -89,6 +93,20 @@ export function buildSidebarNavItems(args: {
             icon: <Building2 className="h-4 w-4" />,
             onClick: () => setViewMode(ORGANIZATION_VIEW_ID),
             dataAttrs: { "data-tour-target": "nav-organization" },
+          },
+        ]
+      : []),
+    // Local (sidecar) builds only: the always-available way back into the
+    // legacy→cloud upgrade offer, so dismissing the launch modal never
+    // strands anyone. Opens the same modal — no separate surface to design.
+    ...(!isHostedGatewayEngine() && osIsTauri()
+      ? [
+          {
+            id: "migrate-to-cloud",
+            label: t("shell:sidebar.migrateToCloud"),
+            icon: <CloudUpload className="h-4 w-4" />,
+            onClick: () => useMigrateToCloudStore.getState().open("sidebar"),
+            dataAttrs: { "data-tour-target": "nav-migrate-to-cloud" },
           },
         ]
       : []),

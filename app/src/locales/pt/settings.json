@@ -127,7 +127,8 @@
       "userContext": "O que todo agente sabe sobre você",
       "shortcuts": "Use o Houston sem o mouse",
       "reportBug": "Algo quebrou? Conte para nós",
-      "migration": "Retome sua mudança para a nuvem"
+      "migration": "Retome sua mudança para a nuvem",
+      "migrateToCloud": "Atualize este app para o Houston Cloud"
     },
     "values": {
       "set": "Definido"
@@ -175,5 +176,8 @@
       "confirm": "Revogar",
       "cancel": "Cancelar"
     }
+  },
+  "migrateToCloud": {
+    "title": "Migrar para a nuvem"
   }
 }

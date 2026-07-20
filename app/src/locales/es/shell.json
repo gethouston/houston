@@ -46,7 +46,8 @@
         "cancel": "Cancelar"
       }
     },
-    "permissions": "Permisos"
+    "permissions": "Permisos",
+    "migrateToCloud": "Migrar a la nube"
   },
   "tabActions": {
     "newMission": "Nueva misión",
@@ -231,6 +232,16 @@
     "descriptionNoVersion": "Se necesita una versión más reciente de Houston para seguir usando Houston Cloud. Estás en v{{currentVersion}}.",
     "downloadAction": "Descargar la actualización",
     "checkAction": "Buscar actualizaciones"
+  },
+  "migrateToCloud": {
+    "cardLabel": "Actualiza a Houston Cloud",
+    "title": "Actualiza a Houston Cloud",
+    "description": "Houston se muda a la nube: tus agentes siguen trabajando aunque tu computadora esté apagada. Houston Cloud está en beta temprana; tus agentes y datos se importan automáticamente, y después de actualizar deberás iniciar sesión y reconectar tus integraciones.",
+    "anytimeNote": "No hace falta decidir ahora: puedes iniciar la actualización cuando quieras desde “Migrar a la nube” en la barra lateral.",
+    "installAction": "Actualizar ahora",
+    "ready": "La actualización está instalada; relanza la app para abrir Houston Cloud.",
+    "error": "No se pudo instalar la actualización. Revisa tu conexión e inténtalo de nuevo.",
+    "closeLabel": "Ahora no"
   },
   "store": {
     "searchPlaceholder": "Buscar en la biblioteca...",

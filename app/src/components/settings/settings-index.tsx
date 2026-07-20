@@ -8,9 +8,12 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useWorkspaceContext } from "../../hooks/queries/use-workspace-context";
+import { isHostedGatewayEngine } from "../../lib/engine";
 import { genericErrorDescription } from "../../lib/error-toast";
+import { osIsTauri } from "../../lib/os-bridge";
 import type { SettingsSectionId } from "../../lib/settings-sections";
 import { useAgentStore } from "../../stores/agents";
+import { useMigrateToCloudStore } from "../../stores/migrate-to-cloud";
 import { useUIStore } from "../../stores/ui";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import { AccountSection } from "./sections/account";
@@ -120,6 +123,17 @@ export function SettingsIndex({
               title={t("settings:migration.title")}
               description={t("settings:index.rows.migration")}
               onClick={() => onSelect("migration")}
+            />
+          )}
+          {/* Local (sidecar) builds: reopen the legacy→cloud upgrade offer.
+              The cloud-build counterpart above re-runs the DATA import; this
+              one installs the cloud APP — mutually exclusive gates. */}
+          {!isHostedGatewayEngine() && osIsTauri() && (
+            <SettingsRow
+              icon={CloudUpload}
+              title={t("settings:migrateToCloud.title")}
+              description={t("settings:index.rows.migrateToCloud")}
+              onClick={() => useMigrateToCloudStore.getState().open("settings")}
             />
           )}
         </SettingsCard>

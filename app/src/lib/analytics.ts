@@ -133,6 +133,10 @@ export type AnalyticsEventName =
   | "update_offered"
   | "update_accepted"
   | "update_dismissed"
+  | "migrate_to_cloud_offered"
+  | "migrate_to_cloud_accepted"
+  | "migrate_to_cloud_dismissed"
+  | "migrate_to_cloud_installed"
   // Gateway app-update floor tripped → blocking update screen shown
   | "update_required"
   // Reliability

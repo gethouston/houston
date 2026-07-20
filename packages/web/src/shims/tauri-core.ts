@@ -247,6 +247,11 @@ export async function invoke<T = unknown>(
     case "open_file":
     case "current_app_bundle_path":
     case "relaunch_app_from_path":
+    // The legacy→cloud migration offer is desktop-only (it swaps the
+    // installed app bundle); the offer UI gates on osIsTauri() so neither
+    // command runs on web.
+    case "install_cloud_migration":
+    case "fetch_migration_policy":
     case "sentry_native_stack_smoke_test":
       return notAvailable(cmd);
 

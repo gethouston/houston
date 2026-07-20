@@ -127,7 +127,8 @@
       "userContext": "What every agent knows about you",
       "shortcuts": "Run Houston without the mouse",
       "reportBug": "Something broke? Tell us",
-      "migration": "Pick up your move to the cloud"
+      "migration": "Pick up your move to the cloud",
+      "migrateToCloud": "Upgrade this app to Houston Cloud"
     },
     "values": {
       "set": "Set"
@@ -175,5 +176,8 @@
       "confirm": "Revoke",
       "cancel": "Cancel"
     }
+  },
+  "migrateToCloud": {
+    "title": "Migrate to cloud"
   }
 }

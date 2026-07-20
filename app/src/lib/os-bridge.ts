@@ -237,6 +237,39 @@ export function osRelaunchAppFromPath(appPath: string): Promise<void> {
   return invoke<void>("relaunch_app_from_path", { app_path: appPath });
 }
 
+/** Progress tick for {@link osInstallCloudMigration} downloads. */
+export interface CloudMigrationProgress {
+  downloaded: number;
+  total: number | null;
+}
+
+/** Download + install the CLOUD build over this local install (cross-channel
+ *  updater run against the cloud manifest; signature-verified). Capture
+ *  {@link osCurrentAppBundlePath} BEFORE calling, then relaunch with
+ *  {@link osRelaunchAppFromPath} — same choreography as the normal updater. */
+export function osInstallCloudMigration(): Promise<void> {
+  return invoke<void>("install_cloud_migration");
+}
+
+/** Subscribe to `cloud-migration-progress` ticks emitted while
+ *  {@link osInstallCloudMigration} runs. Mirrors {@link onDictationModelProgress}. */
+export function onCloudMigrationProgress(
+  handler: (progress: CloudMigrationProgress) => void,
+): Promise<UnlistenFn> {
+  return listen<CloudMigrationProgress>("cloud-migration-progress", (ev) =>
+    handler(ev.payload),
+  );
+}
+
+/** Remote migration policy for the legacy→cloud offer: "required" makes the
+ *  offer non-dismissible; anything else (including fetch failure) is
+ *  "optional". Resolved Rust-side to dodge webview CORS. */
+export function osFetchMigrationPolicy(): Promise<"optional" | "required"> {
+  return invoke<string>("fetch_migration_policy").then((mode) =>
+    mode === "required" ? "required" : "optional",
+  );
+}
+
 /** Append a line to `~/Library/Application Support/houston/logs/frontend.log`. */
 export function osWriteFrontendLog(
   level: "error" | "warn" | "info" | "debug",

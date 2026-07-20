@@ -46,7 +46,8 @@
         "cancel": "Cancel"
       }
     },
-    "permissions": "Permissions"
+    "permissions": "Permissions",
+    "migrateToCloud": "Migrate to cloud"
   },
   "tabActions": {
     "newMission": "New mission",
@@ -231,6 +232,16 @@
     "descriptionNoVersion": "A newer version of Houston is required to keep using Houston Cloud. You're on v{{currentVersion}}.",
     "downloadAction": "Download the update",
     "checkAction": "Check for updates"
+  },
+  "migrateToCloud": {
+    "cardLabel": "Upgrade to Houston Cloud",
+    "title": "Upgrade to Houston Cloud",
+    "description": "Houston is moving to the cloud: your agents keep working even when your computer is off. Houston Cloud is in early beta. Your agents and data are imported automatically, and you'll sign in and reconnect your integrations after the upgrade.",
+    "anytimeNote": "No need to decide now. You can start the upgrade anytime from “Migrate to cloud” in the sidebar.",
+    "installAction": "Upgrade now",
+    "ready": "The upgrade is installed. Relaunch to open Houston Cloud.",
+    "error": "The upgrade couldn't be installed. Check your connection and try again.",
+    "closeLabel": "Not now"
   },
   "store": {
     "searchPlaceholder": "Search the library...",
