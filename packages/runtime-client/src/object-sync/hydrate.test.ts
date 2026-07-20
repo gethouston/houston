@@ -289,3 +289,37 @@ test("a non-cap upload failure still aborts the pass (data loss stays loud)", as
     "500",
   );
 });
+
+test("a large file round-trips: streamed hash agrees across syncBack and hydrate", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, {});
+  const manifest = await hydrate(store, PREFIX, work);
+  mkdirSync(join(work, "workspace"), { recursive: true });
+  // Over the 16 MiB streaming threshold — both the sync-back hash and the
+  // re-hydration hash take the streamed path and must agree with each other.
+  writeFileSync(
+    join(work, "workspace", "big.bin"),
+    "B".repeat(17 * 1024 * 1024),
+  );
+  const result = await syncBack(store, PREFIX, work, manifest);
+  expect(result.uploaded).toEqual(["workspace/big.bin"]);
+  expect(result.totalBytes).toBe(17 * 1024 * 1024);
+
+  // Unchanged → the next pass re-hashes (streamed) and must NOT re-upload.
+  const again = await syncBack(store, PREFIX, work, result.manifest);
+  expect(again.uploaded).toEqual([]);
+
+  // A fresh hydration (streamed hash of the downloaded copy) produces the
+  // same manifest entry, so the first sync after a wake is also a no-op.
+  const rehydrated = await hydrate(
+    store,
+    PREFIX,
+    mkdtempSync(join(tmpdir(), "houston-rehyd-")),
+    {
+      maxBytes: 64 * 1024 * 1024,
+    },
+  );
+  expect(rehydrated.get("workspace/big.bin")).toBe(
+    result.manifest.get("workspace/big.bin"),
+  );
+});

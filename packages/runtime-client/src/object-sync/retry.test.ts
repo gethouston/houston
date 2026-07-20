@@ -47,3 +47,21 @@ test("an empty delay list disables retries entirely", async () => {
   ).rejects.toThrow("fetch failed");
   expect(calls).toBe(1);
 });
+
+test("the body factory is called once per attempt, so retries send a fresh body", async () => {
+  const bodies: string[] = [];
+  let calls = 0;
+  const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
+    bodies.push(String(init?.body));
+    calls += 1;
+    return new Response(null, { status: calls < 3 ? 503 : 200 });
+  }) as unknown as typeof fetch;
+  let n = 0;
+  const res = await fetchWithRetry(fetchImpl, "https://x.test/o", undefined, {
+    delaysMs: [0, 0],
+    sleep: async () => {},
+    body: () => `body-${++n}`,
+  });
+  expect(res.status).toBe(200);
+  expect(bodies).toEqual(["body-1", "body-2", "body-3"]);
+});

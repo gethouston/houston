@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, posix, relative, sep } from "node:path";
 import { type ObjectStore, ObjectTooLargeError } from "./object-store";
@@ -15,6 +16,18 @@ export type HydrateManifest = Map<string, string>; // rel path -> sha256
 export const DEFAULT_EXCLUDES = ["data/auth.json"];
 
 const sha256 = (buf: Buffer) => createHash("sha256").update(buf).digest("hex");
+
+/**
+ * Mirrors http-store's STREAM_UPLOAD_THRESHOLD_BYTES: the same files that are
+ * too big to buffer for upload are too big to buffer for hashing.
+ */
+const STREAM_HASH_THRESHOLD_BYTES = 16 * 1024 * 1024;
+
+async function streamSha256(abs: string): Promise<string> {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(abs)) hash.update(chunk as Buffer);
+  return hash.digest("hex");
+}
 
 const norm = (rel: string) => rel.split(sep).join("/");
 
@@ -91,14 +104,21 @@ export async function hydrate(
       try {
         const dest = join(destDir, ...rel.split("/"));
         await store.download(key, dest);
-        const buf = await readFile(dest);
-        total += buf.byteLength;
+        // Size from stat, hash streamed for large files: wake-hydrating a
+        // multi-GiB object must not buffer it in heap just to digest it.
+        const { size } = await stat(dest);
+        total += size;
         if (total > maxBytes) {
           throw new Error(
             `workspace exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB hydration limit`,
           );
         }
-        manifest.set(rel, sha256(buf));
+        manifest.set(
+          rel,
+          size >= STREAM_HASH_THRESHOLD_BYTES
+            ? await streamSha256(dest)
+            : sha256(await readFile(dest)),
+        );
       } catch (err) {
         if (!failed) {
           failed = true;
@@ -173,19 +193,24 @@ export async function syncBack(
     // vanished file is indistinguishable from one deleted before the walk:
     // leave it out of the next manifest and let the delete pass reconcile the
     // store, instead of aborting the whole pass mid-upload.
-    let buf: Buffer;
+    let hash: string;
     let size: number;
     try {
       const fileStat = await stat(abs);
       if (!fileStat.isFile()) continue;
       size = fileStat.size;
-      buf = await readFile(abs);
+      // Large files hash as a stream: reading a multi-GiB video into one heap
+      // Buffer would spike the host past its pod memory limit for a digest
+      // that only ever consumes 64 KiB at a time.
+      hash =
+        size >= STREAM_HASH_THRESHOLD_BYTES
+          ? await streamSha256(abs)
+          : sha256(await readFile(abs));
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === "ENOENT") continue;
       throw err;
     }
     totalBytes += size;
-    const hash = sha256(buf);
     nextManifest.set(rel, hash);
     if (manifest.get(rel) !== hash) {
       try {
