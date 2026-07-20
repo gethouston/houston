@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderConnections } from "../../hooks/use-provider-connections";
+import { analytics } from "../../lib/analytics";
 import { newEngineActive } from "../../lib/engine";
 import { osIsTauri } from "../../lib/os-bridge";
 import {
@@ -31,7 +32,11 @@ export function UsageView() {
   const { t } = useTranslation("aiHub");
   const connections = useProviderConnections();
   const setViewMode = useUIStore((s) => s.setViewMode);
-  const [pane, setPane] = useState<UsagePaneKey>("compute");
+  const [pane, setPaneState] = useState<UsagePaneKey>("compute");
+  const setPane = (next: UsagePaneKey) => {
+    setPaneState(next);
+    analytics.track("tab_opened", { tab_name: `usage:${next}` });
+  };
 
   const { capabilities } = useCapabilities();
   const newEngine = newEngineActive();

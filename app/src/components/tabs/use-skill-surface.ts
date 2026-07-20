@@ -96,6 +96,7 @@ export function useSkillSurface(agentPath: string) {
     async (content: string) => {
       if (!editingSkillName) return;
       await saveSkill.mutateAsync({ name: editingSkillName, content });
+      analytics.track("skill_edited", { skill_slug: editingSkillName });
       setEditingSkillName(null);
     },
     [editingSkillName, saveSkill],
@@ -104,6 +105,7 @@ export function useSkillSurface(agentPath: string) {
   const handleSkillDelete = useCallback(
     async (name: string) => {
       await deleteSkill.mutateAsync(name);
+      analytics.track("skill_deleted", { skill_slug: name });
       setEditingSkillName((prev) => (prev === name ? null : prev));
     },
     [deleteSkill],
