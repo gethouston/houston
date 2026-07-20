@@ -8,7 +8,8 @@
     "provider": "Provedor de IA",
     "phone": "Conectar celular",
     "shortcuts": "Atalhos de teclado",
-    "reportBug": "Reportar bug"
+    "reportBug": "Reportar bug",
+    "migrateToCloud": "Migrar para a nuvem"
   },
   "account": {
     "title": "Conta",
@@ -103,5 +104,10 @@
     "providerSwitched": "Mudou para {{provider}} ({{model}})",
     "versionCopied": "Versão copiada",
     "versionCopyFailed": "Não foi possível copiar a versão"
+  },
+  "migrateToCloud": {
+    "title": "Migrar para a nuvem",
+    "description": "Atualize este app para o Houston Cloud. Seus agentes e dados são importados automaticamente; depois você fará login e reconectará suas integrações.",
+    "button": "Abrir a atualização"
   }
 }

@@ -21,7 +21,8 @@
     "needsYouCount_one": "{{count}} issue needs you",
     "needsYouCount_other": "{{count}} issues need you",
     "runningCount_one": "{{count}} issue running",
-    "runningCount_other": "{{count}} issues running"
+    "runningCount_other": "{{count}} issues running",
+    "migrateToCloud": "Migrate to cloud"
   },
   "tabActions": {
     "newMission": "New mission",
@@ -169,6 +170,16 @@
     "relaunchAction": "Relaunch Houston",
     "retryAction": "Try again",
     "dismissAction": "Dismiss update for now"
+  },
+  "migrateToCloud": {
+    "cardLabel": "Upgrade to Houston Cloud",
+    "title": "Upgrade to Houston Cloud",
+    "description": "Houston is moving to the cloud: your agents keep working even when your computer is off. Houston Cloud is in early beta. Your agents and data are imported automatically, and you'll sign in and reconnect your integrations after the upgrade.",
+    "anytimeNote": "No need to decide now. You can start the upgrade anytime from “Migrate to cloud” in the sidebar.",
+    "installAction": "Upgrade now",
+    "ready": "The upgrade is installed. Relaunch to open Houston Cloud.",
+    "error": "The upgrade couldn't be installed. Check your connection and try again.",
+    "closeLabel": "Not now"
   },
   "store": {
     "searchPlaceholder": "Search the store...",

@@ -79,6 +79,11 @@ export type AnalyticsEventName =
   | "update_offered"
   | "update_accepted"
   | "update_dismissed"
+  // Legacy→cloud migration offer (the final feature of this line)
+  | "migrate_to_cloud_offered"
+  | "migrate_to_cloud_accepted"
+  | "migrate_to_cloud_dismissed"
+  | "migrate_to_cloud_installed"
   // Reliability
   | "session_completed"
   | "session_failed"

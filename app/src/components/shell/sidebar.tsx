@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, Blend, Settings } from "lucide-react";
+import { LayoutDashboard, Blend, CloudUpload, Settings } from "lucide-react";
 import { ConfirmDialog } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAgentStore } from "../../stores/agents";
+import { useMigrateToCloudStore } from "../../stores/migrate-to-cloud";
 import { useUIStore } from "../../stores/ui";
 import { UpdateChecker } from "./update-checker";
 import { UserMenu } from "./user-menu";
@@ -128,6 +129,15 @@ export function Sidebar({ children }: { children: ReactNode }) {
             icon: <Blend className="h-4 w-4" />,
             onClick: () => setViewMode("connections"),
             dataAttrs: { "data-tour-target": "nav-connections" },
+          },
+          // The always-available way back into the legacy→cloud upgrade
+          // offer, so dismissing the launch modal never strands anyone.
+          // Opens the same modal — not a view, so no isTopLevel entry.
+          {
+            id: "migrate-to-cloud",
+            label: t("shell:sidebar.migrateToCloud"),
+            icon: <CloudUpload className="h-4 w-4" />,
+            onClick: () => useMigrateToCloudStore.getState().open("sidebar"),
           },
           {
             id: "settings",

@@ -21,7 +21,8 @@
     "needsYouCount_one": "{{count}} asunto necesita tu atención",
     "needsYouCount_other": "{{count}} asuntos necesitan tu atención",
     "runningCount_one": "{{count}} asunto en curso",
-    "runningCount_other": "{{count}} asuntos en curso"
+    "runningCount_other": "{{count}} asuntos en curso",
+    "migrateToCloud": "Migrar a la nube"
   },
   "tabActions": {
     "newMission": "Nueva misión",
@@ -169,6 +170,16 @@
     "relaunchAction": "Reiniciar Houston",
     "retryAction": "Intentar otra vez",
     "dismissAction": "Descartar actualización por ahora"
+  },
+  "migrateToCloud": {
+    "cardLabel": "Actualiza a Houston Cloud",
+    "title": "Actualiza a Houston Cloud",
+    "description": "Houston se muda a la nube: tus agentes siguen trabajando aunque tu computadora esté apagada. Houston Cloud está en beta temprana; tus agentes y datos se importan automáticamente, y después de actualizar deberás iniciar sesión y reconectar tus integraciones.",
+    "anytimeNote": "No hace falta decidir ahora: puedes iniciar la actualización cuando quieras desde “Migrar a la nube” en la barra lateral.",
+    "installAction": "Actualizar ahora",
+    "ready": "La actualización está instalada; relanza la app para abrir Houston Cloud.",
+    "error": "No se pudo instalar la actualización. Revisa tu conexión e inténtalo de nuevo.",
+    "closeLabel": "Ahora no"
   },
   "store": {
     "searchPlaceholder": "Buscar en la tienda...",

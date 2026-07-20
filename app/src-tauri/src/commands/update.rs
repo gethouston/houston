@@ -6,6 +6,99 @@
 //! asks this module to open that path after install.
 
 use std::path::{Path, PathBuf};
+use tauri::{AppHandle, Emitter};
+use tauri_plugin_updater::UpdaterExt;
+
+/// The CLOUD channel's rolling updater manifest (kept current by houston's
+/// cloud-updater-manifest.yml on every published cloud-v* release). This
+/// build's baked endpoint is the LOCAL feed (latest.json); migration
+/// deliberately crosses channels, so the endpoint is overridden here — the
+/// JS `check()` cannot do that (no `endpoints` in CheckOptions).
+const CLOUD_MANIFEST_URL: &str =
+    "https://github.com/gethouston/houston/releases/download/cloud-latest/latest-cloud.json";
+
+/// Remote migration policy: `{"mode":"optional"}` or `{"mode":"required"}`.
+/// Lives as an asset on the fixed `migration-policy` release so the mode can
+/// be flipped later with one `gh release upload --clobber` — this line ships
+/// no further builds, so any future behavior change must ride a remote value
+/// baked in today. Absent/unreachable/malformed ⇒ optional (fail-open).
+const MIGRATION_POLICY_URL: &str =
+    "https://github.com/gethouston/houston/releases/download/migration-policy/migration-policy.json";
+
+/// Progress channel for the cloud-migration download.
+const MIGRATION_PROGRESS_EVENT: &str = "cloud-migration-progress";
+
+#[derive(Clone, serde::Serialize)]
+struct MigrationProgress {
+    downloaded: u64,
+    total: Option<u64>,
+}
+
+/// Download and install the CLOUD build over this local install, using the
+/// updater plugin against the cloud manifest. The version comparator is
+/// forced to `true`: the two channels are versioned independently (this line
+/// sits at 0.4.x below cloud's 0.5.x, which also keeps the Windows MSI
+/// upgrade guard permissive). Signature verification still applies — the
+/// builder inherits the tauri.conf pubkey, which is shared by both channels.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn install_cloud_migration(app: AppHandle) -> Result<(), String> {
+    let url = tauri::Url::parse(CLOUD_MANIFEST_URL).map_err(|e| e.to_string())?;
+    let updater = app
+        .updater_builder()
+        .endpoints(vec![url])
+        .map_err(|e| format!("cloud migration: endpoint rejected: {e}"))?
+        .version_comparator(|_current, _remote| true)
+        .build()
+        .map_err(|e| format!("cloud migration: updater build failed: {e}"))?;
+
+    let update = updater
+        .check()
+        .await
+        .map_err(|e| format!("cloud migration: manifest check failed: {e}"))?
+        .ok_or_else(|| "cloud migration: no cloud build available".to_string())?;
+
+    let mut downloaded: u64 = 0;
+    let progress_app = app.clone();
+    update
+        .download_and_install(
+            move |chunk, total| {
+                downloaded += chunk as u64;
+                let _ = progress_app.emit(
+                    MIGRATION_PROGRESS_EVENT,
+                    MigrationProgress { downloaded, total },
+                );
+            },
+            || {},
+        )
+        .await
+        .map_err(|e| format!("cloud migration: install failed: {e}"))?;
+    Ok(())
+}
+
+/// Fetch the remote migration policy mode. Always resolves — every failure
+/// path degrades to "optional" so a network outage can never lock a user
+/// into a forced migration they can't evaluate.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn fetch_migration_policy() -> Result<String, String> {
+    let mode = async {
+        let resp = reqwest::Client::new()
+            .get(MIGRATION_POLICY_URL)
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await
+            .ok()?;
+        if !resp.status().is_success() {
+            return None;
+        }
+        let body: serde_json::Value = resp.json().await.ok()?;
+        match body.get("mode")?.as_str()? {
+            "required" => Some("required".to_string()),
+            _ => Some("optional".to_string()),
+        }
+    }
+    .await;
+    Ok(mode.unwrap_or_else(|| "optional".to_string()))
+}
 
 #[tauri::command(rename_all = "snake_case")]
 pub fn current_app_bundle_path() -> Result<String, String> {
