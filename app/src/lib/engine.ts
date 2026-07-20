@@ -38,6 +38,12 @@ declare global {
      *  `sentry.ts` + `analytics.ts` to tag their `environment`. Undefined on the
      *  desktop (which derives environment from `import.meta.env.DEV` instead). */
     __HOUSTON_DEPLOY_ENV__?: "production" | "preview" | "development";
+    /** Which deployment this client belongs to, injected by the web entry
+     *  (packages/web main.tsx) because ONE web bundle serves both the managed
+     *  cloud and the self-host Connect screen. Read by `sentry.ts` for the
+     *  `deployment` tag; undefined on the desktop, which derives it from its
+     *  build-time engine target (see `sentry-deployment.ts`). */
+    __HOUSTON_DEPLOYMENT__?: "managed-cloud" | "desktop" | "selfhost";
   }
 }
 

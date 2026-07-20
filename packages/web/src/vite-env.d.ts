@@ -38,6 +38,10 @@ interface Window {
    *  Sentry/PostHog init can tag `environment` on ONE bundle served from both
    *  the preview and production sites (see src/deploy-environment.ts). */
   __HOUSTON_DEPLOY_ENV__?: "production" | "preview" | "development";
+  /** Which deployment this tab belongs to (Sentry `deployment` tag): the
+   *  managed cloud when a control plane is baked in, else a self-host
+   *  connection. Set by main.tsx before the app graph loads. */
+  __HOUSTON_DEPLOYMENT__?: "managed-cloud" | "desktop" | "selfhost";
   /** Hosted-session refresher: mints a fresh Supabase access token on a
    *  gateway 401 so the adapter can replay the request (HOU-687). */
   __HOUSTON_SESSION_REFRESH__?: () => Promise<string | null>;
