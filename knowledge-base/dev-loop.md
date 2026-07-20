@@ -57,6 +57,28 @@ teammates can run different stacks by accident. It ends with a feature matrix
 saying exactly what this run enables — a feature that is off says so loudly,
 it never silently disappears.
 
+## `pnpm dev:staging` — desktop against REMOTE staging (not the local loop)
+
+`pnpm dev:staging` (`scripts/dev/staging.sh`) is a **separate tool**, not part
+of the `pnpm dev` loop. It runs ONLY the desktop app (Tauri) as a client of a
+**remote** Houston Cloud staging environment — no local Postgres, gateway,
+control-plane, host or web pane. The gateway, per-agent engines and sign-in
+all live in staging; the desktop is the production "Houston Cloud desktop"
+shape (hosted-oauth: real sign-in, multiplayer in the window) pointed at the
+staging gateway instead of localhost.
+
+Env is a **single self-contained, gitignored file**, NOT the two-file model:
+`.env.staging` holds the real staging URLs + credentials (create it by hand;
+there is no committed template — ask a teammate for the values).
+
+`.env.development` is deliberately **not** loaded (it is all-localhost — its
+`VITE_NEW_ENGINE_URL=http://127.0.0.1:4318` would pin the desktop to a local
+host that isn't running). Required keys: `VITE_CONTROL_PLANE_URL` (the staging
+gateway → mapped to `VITE_HOSTED_ENGINE_URL`), `FIREBASE_API_KEY`, and
+`GOOGLE_DESKTOP_CLIENT_ID`(+`_SECRET`) — the script fails fast, by name, if any
+is missing. Provider sign-in uses the device-code flow (the runtime's loopback
+callback lives on the remote pod, see `engine-mode.ts`).
+
 ## Engines as processes (the dev-launcher substrate)
 
 The control-plane's dev launcher (`cloud/internal/cpdev`) runs the SAME
