@@ -16,19 +16,23 @@ export {
   type BrowseCatalogView,
   browseCatalog,
   browseCatalogView,
-  type CatalogSection,
   type CategoryListView,
-  catalogCategorySlugs,
   categoriesOf,
   categoryLabel,
   categoryListView,
-  groupCatalogByCategory,
   LOCKED_PREVIEW_CAP,
-  SECTION_PREVIEW_CAP,
   toolkitsInCategory,
   UNCATEGORIZED,
 } from "./browse-model";
+export {
+  type CatalogSection,
+  catalogCategorySlugs,
+  FEATURED,
+  groupCatalogByCategory,
+  SECTION_PREVIEW_CAP,
+} from "./browse-sections";
 export { CatalogLockedSection } from "./catalog-locked-section";
+export { CATEGORY_PRIORITY } from "./category-priority";
 export { ConnectWaitingPanel } from "./connect-waiting-panel";
 export {
   type ConnectionStatus,

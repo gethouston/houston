@@ -1,14 +1,4 @@
-import {
-  Button,
-  CatalogShell,
-  type CatalogShellTab,
-  ConfirmDialog,
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-  Spinner,
-} from "@houston-ai/core";
+import { CatalogSearchField, CatalogShell, Spinner } from "@houston-ai/core";
 import type {
   CommunitySkill,
   CommunitySkillPreview,
@@ -16,39 +6,34 @@ import type {
   RepoSkill,
   SkillEditModalLabels,
 } from "@houston-ai/skills";
-import {
-  AddSkillDialog,
-  SkillEditModal,
-  SkillMarketplaceSection,
-} from "@houston-ai/skills";
-import { Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { AddSkillDialog } from "@houston-ai/skills";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { skillDisplayTitle } from "../../lib/humanize-skill-name";
-import { resolveSkillImageUrl } from "../../lib/skill-image";
 import type { SkillSummary } from "../../lib/types";
-import { InstalledSkillTile } from "./installed-skill-tile";
+import { useInstalledSkillsStrip } from "./installed-skills-strip";
+import { useSkillDiscoveryTabs } from "./skill-discovery-tabs";
 import {
-  useSkillDialogLabels,
-  useSkillMarketplaceSectionLabels,
-} from "./use-skill-surface-labels";
+  type DeleteConfirmLabels,
+  SkillEditorDialogs,
+} from "./skill-editor-dialogs";
+import { useSkillDialogLabels } from "./use-skill-surface-labels";
 
-interface DeleteConfirmLabels {
-  title: (name: string) => string;
-  description: string;
-  confirmLabel: string;
-}
+/** Approximate size of the skills.sh store, shown verbatim on the Available chip
+ * (the store is async with no cheap total, so we label the ballpark). */
+const SKILL_STORE_SIZE_LABEL = "9000+";
 
 /**
  * The Skills tab body in the shared catalog grammar (the same layout as the
  * Integrations surfaces, minus a page header — the tab label carries that):
- * the consolidated **Your skills** strip of installed-skill tiles OUTSIDE the
- * tabs (a tile opens the edit modal, whose footer carries the delete), then
- * two discovery tabs via {@link CatalogShell} — **Store** (the skills.sh
- * marketplace section, with its own search + category controls) and **Custom
- * skills** (an empty state for now: the explanation + the Add CTA opening the
- * GitHub / From-scratch dialog). Read-only mode (managed agent, non-manager)
- * drops the tabs entirely and keeps just the strip.
+ * ONE search field on top drives everything, over the consolidated **Your
+ * skills** strip of installed-skill tiles (a tile opens the edit modal, whose
+ * footer carries the delete), then the **Available** discovery area via
+ * {@link CatalogShell} — the **Store** tab (the skills.sh marketplace, its
+ * category picker kept) and **Custom skills** (an empty state for now: the
+ * explanation + the Add CTA opening the GitHub / From-scratch dialog). The one
+ * query filters the strip AND the store; a strip with no matches is dropped.
+ * Read-only mode (managed agent, non-manager) drops the tabs entirely and keeps
+ * just the strip.
  */
 export function SkillsContent({
   skills,
@@ -110,13 +95,14 @@ export function SkillsContent({
 }) {
   const { t } = useTranslation("skills");
   const dialogLabels = useSkillDialogLabels();
-  const marketplaceLabels = useSkillMarketplaceSectionLabels();
   const [tab, setTab] = useState("store");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<SkillSummary | null>(null);
-  const sorted = useMemo(
-    () => [...skills].sort((a, b) => a.name.localeCompare(b.name)),
-    [skills],
+  // The ONE page search: it filters the installed strip AND drives the Store.
+  const [query, setQuery] = useState("");
+  const { sorted, installedCount, installed } = useInstalledSkillsStrip(
+    skills,
+    onEditSkill,
+    query,
   );
   const editingSkill = sorted.find((s) => s.name === editingSkillName) ?? null;
   const addDialogProps =
@@ -128,6 +114,23 @@ export function SkillsContent({
           installedSkillNames,
         }
       : null;
+  const tabs = useSkillDiscoveryTabs({
+    showCustom: addDialogProps !== null,
+    onAddClick: () => setDialogOpen(true),
+    query,
+    onQueryChange: setQuery,
+    // Read-only mode never offers the Store either: no community callbacks.
+    onSearch: readOnly ? undefined : onSearch,
+    onInstallCommunity: readOnly ? undefined : onInstallCommunity,
+    onPreviewCommunity,
+    installedSkillNames,
+  });
+
+  // Read-only surfaces render zero tabs, so an active search that matches no
+  // installed skill would leave nothing at all under the search box — a blank
+  // void. This note keeps the search field anchored to a visible result.
+  const noInstalledMatches =
+    tabs.length === 0 && query.trim() !== "" && installedCount === 0;
 
   if (loading && sorted.length === 0) {
     return (
@@ -138,88 +141,36 @@ export function SkillsContent({
     );
   }
 
-  const installed = sorted.length > 0 && (
-    <div className="flex flex-wrap gap-3">
-      {sorted.map((skill) => (
-        <InstalledSkillTile
-          key={skill.name}
-          displayName={skillDisplayTitle(skill)}
-          imageUrl={resolveSkillImageUrl(skill.image)}
-          onOpen={() => onEditSkill(skill.name)}
-        />
-      ))}
-    </div>
-  );
-
-  const tabs: CatalogShellTab[] = [
-    ...(!readOnly && onSearch && onInstallCommunity
-      ? [
-          {
-            value: "store",
-            label: t("tabs.store"),
-            content: (
-              <SkillMarketplaceSection
-                onSearch={onSearch}
-                onInstall={onInstallCommunity}
-                onPreview={onPreviewCommunity}
-                installedSkillNames={installedSkillNames}
-                labels={marketplaceLabels}
-              />
-            ),
-          },
-        ]
-      : []),
-    ...(addDialogProps
-      ? [
-          {
-            value: "custom",
-            label: t("tabs.custom"),
-            content: (
-              <Empty className="py-16">
-                <EmptyHeader>
-                  <EmptyTitle className="text-lg">
-                    {t("tabs.customEmptyTitle")}
-                  </EmptyTitle>
-                  <EmptyDescription>
-                    {t("tabs.customEmptyDescription")}
-                  </EmptyDescription>
-                </EmptyHeader>
-                <Button type="button" onClick={() => setDialogOpen(true)}>
-                  <Plus className="size-4" />
-                  {t("grid.addSkill")}
-                </Button>
-              </Empty>
-            ),
-          },
-        ]
-      : []),
-  ];
-
-  // The delete mutation surfaces its own error toast via the `call` wrapper, so
-  // the row action stays quiet on failure; catch here only to keep the
-  // fire-and-forget confirm from becoming an unhandled rejection.
-  const confirmDelete = () => {
-    const skill = pendingDelete;
-    setPendingDelete(null);
-    if (skill)
-      void onDeleteSkill(skill.name).catch(() => {
-        // Error already surfaced to the user by the delete mutation's `call`
-        // toast; swallow here only to avoid an unhandled promise rejection.
-      });
-  };
-
   return (
     <>
       {/* Read-only mode yields zero tabs: the shell then renders only the
           installed strip (or nothing at all when there are no skills). */}
       <CatalogShell
+        controls={
+          (tabs.length > 0 || sorted.length > 0) && (
+            <CatalogSearchField
+              value={query}
+              onChange={setQuery}
+              label={t("grid.searchSkills")}
+            />
+          )
+        }
         installedTitle={t("grid.yourSkillsHeading")}
-        installedCount={sorted.length}
-        installed={installed || undefined}
+        installedCount={installedCount}
+        installed={installed}
+        availableTitle={t("grid.availableHeading")}
+        // The store-size label belongs to the Store tab only; on Custom the
+        // chip would contradict the visible content.
+        availableCount={tab === "store" ? SKILL_STORE_SIZE_LABEL : undefined}
         tabs={tabs}
         value={tab}
         onValueChange={setTab}
       />
+      {noInstalledMatches && (
+        <p className="text-[13px] text-ink-muted">
+          {t("grid.noMatchingSkills")}
+        </p>
+      )}
       {addDialogProps && (
         <AddSkillDialog
           open={dialogOpen}
@@ -228,38 +179,15 @@ export function SkillsContent({
           labels={dialogLabels}
         />
       )}
-      <SkillEditModal
-        open={editingSkill !== null}
-        onOpenChange={(o) => {
-          if (!o) onCloseEdit();
-        }}
-        displayName={editingSkill ? skillDisplayTitle(editingSkill) : ""}
-        description={editingSkill?.description ?? ""}
-        editor={editorState}
-        onSave={onSaveEditing}
-        onDelete={
-          readOnly || !editingSkill
-            ? undefined
-            : () => {
-                setPendingDelete(editingSkill);
-                onCloseEdit();
-              }
-        }
-        labels={editModalLabels}
-      />
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        onOpenChange={(o) => {
-          if (!o) setPendingDelete(null);
-        }}
-        title={
-          pendingDelete
-            ? deleteConfirm.title(skillDisplayTitle(pendingDelete))
-            : ""
-        }
-        description={deleteConfirm.description}
-        confirmLabel={deleteConfirm.confirmLabel}
-        onConfirm={confirmDelete}
+      <SkillEditorDialogs
+        editingSkill={editingSkill}
+        editorState={editorState}
+        readOnly={readOnly}
+        onCloseEdit={onCloseEdit}
+        onSaveEditing={onSaveEditing}
+        onDeleteSkill={onDeleteSkill}
+        editModalLabels={editModalLabels}
+        deleteConfirm={deleteConfirm}
       />
     </>
   );

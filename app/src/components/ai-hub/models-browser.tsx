@@ -1,21 +1,20 @@
 /**
- * The reusable model browser: a control stack (a full-width pill search box on
- * its own row, then the "AI provider" / "Good at" / "Cost" / "Memory" facet
- * comboboxes together on a second row, wrapping as a unit on narrow widths so
- * the search box never strands a lone combobox on its own line) above the
- * {@link ModelCardRow} list in the shared catalog grammar. The directory
- * (`ModelDirectory`) renders it as the responsive two-column `CatalogGrid`
- * (`layout="grid"`); the provider modal keeps a single column (`"list"`,
- * the default — the grid's breakpoint is viewport-based and would cramp two
- * columns into the dialog). Each row opens the model modal via `onOpenModel`;
- * the list caps at one page with a quiet "Show more" pill and shows the shared
- * Empty treatment when every filter + the search rule out everything. Owns all
- * filter state + filtering.
+ * The reusable model browser: the {@link ModelFacets} row (the "AI provider" /
+ * "Good at" / "Cost" / "Memory" comboboxes) above the {@link ModelCardRow} list
+ * in the shared catalog grammar. Free-text search is EITHER controlled by the
+ * page (`query` passed in — the model directory, whose single search field lives
+ * up in the page header) OR owned locally as a pill search box (the provider
+ * modal, an isolated surface). The directory renders the list as the responsive
+ * two-column `CatalogGrid` (`layout="grid"`); the modal keeps a single column
+ * (`"list"`, the default — the grid's breakpoint is viewport-based and would
+ * cramp two columns into the dialog). Each row opens the model modal via
+ * `onOpenModel`; the list caps at one page with a quiet "Show more" pill and
+ * shows the shared Empty treatment when every filter + the search rule out
+ * everything. Owns all filter state + filtering.
  *
  * The "AI provider" combobox lists only the labs present in the passed `models`
- * and hides itself when they are all one lab (a single useless option); the
- * other three facets always show. Callers pass an already-scoped `models` set +
- * `onOpenModel`.
+ * and hides itself when they are all one lab; the other three facets always
+ * show. Callers pass an already-scoped `models` set + `onOpenModel`.
  */
 
 import {
@@ -31,10 +30,7 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
 import { filterModels, searchModels } from "../../lib/ai-hub/search.ts";
-import {
-  FilterCombobox,
-  type FilterOption,
-} from "../shell/filter-combobox.tsx";
+import type { FilterOption } from "../shell/filter-combobox.tsx";
 import {
   type CostBucket,
   cheapestInput,
@@ -48,24 +44,32 @@ import {
 } from "./facets.ts";
 import { fewModels, labName, roundedModelCount } from "./format.ts";
 import { ModelCardRow } from "./model-card-row.tsx";
+import { ModelFacets } from "./model-facets.tsx";
 
 const PAGE = 60;
 
 export function ModelsBrowser({
   models,
   onOpenModel,
+  query: controlledQuery,
   layout = "list",
   className,
 }: {
   models: CatalogModel[];
   onOpenModel: (key: string) => void;
+  /** When set, search is controlled by the page (the directory's header field)
+   *  and the browser hides its own search box; when omitted, the browser owns
+   *  a local pill search box (the provider modal). */
+  query?: string;
   /** `"grid"` = the responsive two-column catalog grid (the directory);
    *  `"list"` = one column (the provider modal's narrow dialog). */
   layout?: "list" | "grid";
   className?: string;
 }) {
   const { t } = useTranslation("aiHub");
-  const [query, setQuery] = useState("");
+  const controlled = controlledQuery !== undefined;
+  const [internalQuery, setInternalQuery] = useState("");
+  const query = controlled ? controlledQuery : internalQuery;
   const [provider, setProvider] = useState<ProviderValue>("all");
   const [goodAt, setGoodAt] = useState<GoodAt>("all");
   const [cost, setCost] = useState<CostBucket>("all");
@@ -112,65 +116,30 @@ export function ModelsBrowser({
   return (
     <div className={cn("flex flex-col gap-4", className)}>
       <div className="flex flex-col gap-2">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={searchPlaceholder}
-            className="h-9 w-full rounded-full border border-line bg-input pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {labs.length > 1 && (
-            <FilterCombobox
-              ariaLabel={t("directory.filters.provider")}
-              allLabel={t("directory.filters.allProviders")}
-              searchPlaceholder={t("directory.filters.searchProviders")}
-              emptyText={t("directory.filters.noProviders")}
-              searchable
-              options={labOptions}
-              value={provider}
-              onChange={(next) => setProvider(next as ProviderValue)}
+        {!controlled && (
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
+            <input
+              type="text"
+              value={internalQuery}
+              onChange={(e) => setInternalQuery(e.target.value)}
+              placeholder={searchPlaceholder}
+              className="h-9 w-full rounded-full border border-line bg-input pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
             />
-          )}
-          <FilterCombobox
-            ariaLabel={t("directory.filters.goodAt")}
-            allLabel={t("directory.filters.allSpecialties")}
-            options={[
-              { value: "reasoning", label: t("directory.filters.reasoning") },
-              { value: "images", label: t("directory.filters.images") },
-              { value: "budget", label: t("directory.filters.budget") },
-            ]}
-            value={goodAt}
-            onChange={(next) => setGoodAt(next as GoodAt)}
-          />
-          <FilterCombobox
-            ariaLabel={t("directory.filters.cost")}
-            allLabel={t("directory.filters.costAll")}
-            options={[
-              { value: "free", label: t("directory.filters.costFree") },
-              { value: "low", label: t("directory.filters.costLow") },
-              { value: "mid", label: t("directory.filters.costMid") },
-              { value: "high", label: t("directory.filters.costHigh") },
-            ]}
-            value={cost}
-            onChange={(next) => setCost(next as CostBucket)}
-          />
-          <FilterCombobox
-            ariaLabel={t("directory.filters.memory")}
-            allLabel={t("directory.filters.memoryAll")}
-            options={[
-              { value: "small", label: t("directory.filters.memorySmall") },
-              { value: "mid", label: t("directory.filters.memoryMid") },
-              { value: "long", label: t("directory.filters.memoryLong") },
-            ]}
-            value={memory}
-            onChange={(next) => setMemory(next as MemoryBucket)}
-          />
-        </div>
+          </div>
+        )}
+
+        <ModelFacets
+          labOptions={labOptions}
+          provider={provider}
+          setProvider={setProvider}
+          goodAt={goodAt}
+          setGoodAt={setGoodAt}
+          cost={cost}
+          setCost={setCost}
+          memory={memory}
+          setMemory={setMemory}
+        />
       </div>
 
       {results.length === 0 ? (

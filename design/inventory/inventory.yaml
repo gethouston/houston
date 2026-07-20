@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 28
+version: 31
 
 components:
   - id: agent-avatar
@@ -527,18 +527,20 @@ components:
 
   - id: skill-row
     title: Skill row
-    purpose: A skill in the Skills surface -- an installed tile or a community catalog row.
+    purpose: A skill in the Skills surface -- an installed row or a community catalog row.
     anatomy: [icon, name, description, install-or-check]
     states: [available, installed, installing, error, editing]
-    variants: [installed-tile, community-catalog-row]
+    variants: [installed-row, community-catalog-row]
     behavior: >-
       Community rows ride the shared catalog grammar (CatalogRow): the row body
       opens the skill's info modal, a ghost round + installs (spinner while in
-      flight, a quiet check once installed). Installed skills are tiles in the
-      consolidated strip above the Store / Custom skills tabs (CatalogShell);
-      a tile opens the edit modal, whose footer carries Save/Cancel and the
-      destructive Delete (confirm-gated). No separate skill-detail surface.
-    a11y: tile/row are single labeled buttons beside a labeled install button, never nested; install state conveyed as text.
+      flight, a quiet check once installed). Installed skills are the same
+      CatalogRow grammar in the consolidated strip above the Store / Custom
+      skills tabs (CatalogShell), capped to a preview behind a "Show all"
+      expander at rest; a row opens the edit modal, whose footer carries
+      Save/Cancel and the destructive Delete (confirm-gated). No separate
+      skill-detail surface.
+    a11y: rows are single labeled buttons beside a labeled install button, never nested; install state conveyed as text.
     since: 1
 
   - id: empty-state
@@ -576,11 +578,12 @@ components:
       shared catalog grammar (CatalogRow): the row BODY opens the provider
       detail modal, a ghost round + connects (a Cancel pill while that connect
       is in flight), and connected providers leave the grid for the
-      consolidated Connected tile strip above the tabs (CatalogShell). The
-      connect-flow-card variant (onboarding / migration / workspace setup)
-      keeps the static card with a trailing Connect / Sign out action; nothing
-      hover-only in either variant.
-    a11y: two sibling buttons, never nested (row body + labeled install); Connect/+ carries the provider name; connected shown as dot + label or a labeled tile, not color alone.
+      consolidated Connected row strip above the tabs (CatalogShell) -- the same
+      CatalogRow grammar with a quiet trailing chevron, capped to a preview
+      behind a "Show all" expander at rest. The connect-flow-card variant
+      (onboarding / migration / workspace setup) keeps the static card with a
+      trailing Connect / Sign out action; nothing hover-only in either variant.
+    a11y: two sibling buttons, never nested (row body + labeled install); Connect/+ carries the provider name; connected shown as dot + label or a labeled row, not color alone.
     since: 2
 
   - id: ai-model-row
@@ -595,8 +598,10 @@ components:
       The whole row is one button that opens the model detail modal (models
       install via a provider offer inside it, so the row carries no +). The
       directory renders the responsive two-column CatalogGrid; the provider
-      modal keeps a single column. Both sit under a control row of a search box
-      + the AI provider / Good at / Cost / Memory facet comboboxes.
+      modal keeps a single column. The directory sits under a control row of the
+      AI provider / Good at / Cost / Memory facet comboboxes alone (free-text
+      search is the AI hub's ONE page-level field, threaded in as the query); the
+      provider modal keeps its own local search box above the same facets.
     a11y: single button role; model name + lab as the accessible label; no nested buttons.
     since: 2
 

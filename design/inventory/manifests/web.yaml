@@ -140,10 +140,10 @@ components:
 
   skill-row:
     status: partial
-    ref: "ui/skills skill-marketplace-row.tsx + app/src/components/tabs/installed-skill-tile.tsx"
+    ref: "ui/skills skill-marketplace-row.tsx + app/src/components/tabs/installed-skills-strip.tsx"
     notes: >-
       Rides the shared ui/ catalog family (CatalogRow / CatalogAddButton /
-      CatalogTile / CatalogShell); the skills composition itself is split
+      CatalogShowMore / CatalogShell); the skills composition itself is split
       between ui/skills and app/. Extract the surface before mobile.
 
   empty-state:

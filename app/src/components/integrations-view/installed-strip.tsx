@@ -1,67 +1,149 @@
-import { CatalogTile } from "@houston-ai/core";
+import {
+  CATALOG_INSTALLED_PREVIEW_CAP,
+  CatalogGrid,
+  CatalogRow,
+  CatalogShowMore,
+} from "@houston-ai/core";
 import type {
   CustomIntegrationView,
   IntegrationConnection,
 } from "@houston-ai/engine-client";
-import { type AppDisplay, AppLogo } from "../integrations";
+import { ChevronRight } from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  type InstalledRow,
+  installedPreview,
+} from "../../lib/installed-preview";
+import { AppLogo } from "../integrations";
 
-/** The minimal row shape a tile needs — both the global page's `ActiveAppRow`
- *  and the agent tab's usable rows satisfy it. */
-export interface InstalledTileRow {
-  connection: IntegrationConnection;
-  app: AppDisplay;
+/** One installed item, flattened to the props {@link CatalogRow} needs so the
+ *  preview cap can slice a single list spanning both active apps and custom
+ *  integrations in display order. */
+interface InstalledItem {
+  key: string;
+  icon: ReactNode;
+  title: string;
+  description: string;
+  onClick: () => void;
 }
 
 /**
- * The CONSOLIDATED "Installed" strip: everything the user already has — active
- * catalog connections AND custom integrations — as icon TILES only, the
- * reference's "Installed" strip. It sits above the source tabs (identity, not
- * discovery), so it never changes when the user switches tabs and stays
- * unfiltered by either tab's search. No names, no chrome — the art IS the tile
- * (shared {@link CatalogTile}; custom integrations get their letter avatar);
- * hover paints the quiet `hover` fill and the name fades in beneath. A catalog
- * tile opens that connection's detail sheet; a custom tile jumps to the Custom
- * integrations tab, where its row (status, key, remove) lives.
+ * The CONSOLIDATED "Installed" section: everything the user already has — active
+ * catalog connections AND custom integrations — as the SAME flat rows the
+ * browse catalog uses ({@link CatalogRow}: brand art via {@link AppLogo}, name +
+ * one-line description, a quiet trailing chevron). It sits above the source tabs
+ * (identity, not discovery), so it never changes when the user switches tabs,
+ * and the tabs' own searches never touch it. The parent may narrow WHICH rows
+ * render via the section's own "Installed" search — it hands us the already-
+ * filtered rows, so this component stays a pure renderer. A catalog row opens
+ * that connection's detail modal; a custom row jumps to the Custom integrations
+ * tab, where its row (status, key, remove) lives.
+ *
+ * At rest the section caps to {@link CATALOG_INSTALLED_PREVIEW_CAP} rows behind
+ * a quiet "Show all N" expander, so a well-stocked section never buries the
+ * discovery tabs; while the surface's shared query or category filter is active
+ * (`searching`) every match renders uncapped — filtering IS the act of looking
+ * past the preview. The parent omits the whole section (heading included) when
+ * the filter leaves nothing installed, so this component always has rows to
+ * render.
  */
 export function InstalledStrip({
   active,
   custom,
   onOpen,
   onOpenCustom,
+  searching = false,
 }: {
-  active: readonly InstalledTileRow[];
+  active: readonly InstalledRow[];
   custom: CustomIntegrationView[];
   onOpen: (connection: IntegrationConnection) => void;
   onOpenCustom: (integration: CustomIntegrationView) => void;
+  /** True while the surface's shared query or category is narrowing the rows:
+   *  show every match uncapped. At rest (the default) the section caps to a
+   *  preview. */
+  searching?: boolean;
 }) {
+  const { t } = useTranslation("integrations");
+  const [expanded, setExpanded] = useState(false);
+
+  const items: InstalledItem[] = [
+    ...active.map((row) => ({
+      key: row.connection.connectionId,
+      icon: <AppLogo display={row.app} size="lg" className="rounded-lg" />,
+      title: row.app.name,
+      description: row.app.description,
+      onClick: () => onOpen(row.connection),
+    })),
+    ...custom.map((integration) => ({
+      key: integration.slug,
+      icon: (
+        <AppLogo
+          display={{
+            toolkit: integration.slug,
+            name: integration.name,
+            description: "",
+            logoUrl: "",
+          }}
+          size="lg"
+          className="rounded-lg"
+        />
+      ),
+      title: integration.name,
+      description: t(
+        integration.kind === "mcp" ? "custom.badge.mcp" : "custom.badge.api",
+      ),
+      onClick: () => onOpenCustom(integration),
+    })),
+  ];
+
+  const { visible, showExpander } = installedPreview(items, {
+    searching,
+    expanded,
+    cap: CATALOG_INSTALLED_PREVIEW_CAP,
+  });
+
   return (
-    <div className="flex flex-wrap gap-3">
-      {active.map((row) => (
-        <CatalogTile
-          key={row.connection.connectionId}
-          label={row.app.name}
-          onClick={() => onOpen(row.connection)}
-        >
-          <AppLogo display={row.app} size="lg" className="rounded-lg" />
-        </CatalogTile>
-      ))}
-      {custom.map((integration) => (
-        <CatalogTile
-          key={integration.slug}
-          label={integration.name}
-          onClick={() => onOpenCustom(integration)}
-        >
-          <AppLogo
-            display={{
-              toolkit: integration.slug,
-              name: integration.name,
-              description: "",
-              logoUrl: "",
-            }}
-            size="lg"
-            className="rounded-lg"
+    <div>
+      <CatalogGrid>
+        {visible.map((item) => (
+          <CatalogRow
+            key={item.key}
+            icon={item.icon}
+            title={item.title}
+            description={item.description}
+            onClick={item.onClick}
+            trailing={
+              <ChevronRight
+                aria-hidden
+                className="size-4 shrink-0 text-ink-muted"
+              />
+            }
           />
-        </CatalogTile>
+        ))}
+      </CatalogGrid>
+      {showExpander && (
+        <CatalogShowMore onClick={() => setExpanded(true)}>
+          {t("home.showAllApps", { count: items.length })}
+        </CatalogShowMore>
+      )}
+    </div>
+  );
+}
+
+/** A row placeholder while the connections settle. Mirrors the installed row
+ *  shape (a two-column grid of icon + two text lines). Decorative only. */
+export function InstalledSkeleton() {
+  return (
+    <div aria-hidden className="grid grid-cols-1 gap-1 lg:grid-cols-2">
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+          <div className="size-10 shrink-0 animate-pulse rounded-lg bg-chip" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="h-3.5 w-24 animate-pulse rounded bg-chip" />
+            <div className="h-3 w-36 animate-pulse rounded bg-chip" />
+          </div>
+        </div>
       ))}
     </div>
   );

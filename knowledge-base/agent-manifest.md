@@ -710,23 +710,29 @@ replaced the old Settings → AI provider section. It is a provider/model
 marketplace, not a settings pane. Entry: `app/src/components/ai-hub/ai-hub-view.tsx`
 (`AiHubView`), rendered by `workspace-shell.tsx` like any other top-level view.
 The view is laid out by the shared **`CatalogShell`** (`ui/core`, the same
-grammar as the Integrations page): a consolidated **Connected** strip of
-provider brand tiles OUTSIDE the tabs (`connected-providers-strip.tsx`, a tile
-opens the provider modal — sign-out lives there), then the Providers / Models
-tabs with `CatalogCount` chips. The whole page is
+two-section grammar as the Integrations page): ONE top page search field
+(`ai-hub-view.tsx` owns the `query`, `search.placeholder`) over the consolidated
+**Connected** section (an `lg` header + count chip — the shown count while
+filtering, the total at rest; provider `CatalogRow`s OUTSIDE the tabs via
+`connected-providers-strip.tsx`, a row opens the provider modal where sign-out
+lives — the section is OMITTED when the query matches no connected provider), then
+the **Available** section header over the Providers / Models tabs with
+`CatalogCount` chips. The one query narrows the Connected strip AND both tabs'
+content at once. The whole page is
 ONE scroll region (the old fixed-masthead split is gone); while a modal is open
 the scroller flips to `overflow-y-hidden` (Radix only locks `<body>`) with
 `scrollbar-gutter: stable` holding the offset.
 
 **Four surfaces, one view:**
-- **Providers tab** — `ai-hub/providers-pane.tsx`, the catalog grammar: a
-  controls row (search + the two Subscription/Pay-as-you-go toggle buttons,
-  `provider-browser/provider-filters.tsx`, single-select — click the active one
-  to clear back to "all") over a two-column grid of flat `CatalogRow`s (brand
+- **Providers tab** — `ai-hub/providers-pane.tsx`, the catalog grammar:
+  CONTROLLED by the page query (the `query` prop; the pane owns no search of its
+  own), its controls row is just the two Subscription/Pay-as-you-go billing toggle
+  buttons (single-select — click the active one to clear back to "all") over a
+  two-column grid of flat `CatalogRow`s (brand
   mark, name, live model count · cost prose). The row BODY opens the provider
   modal; the ghost `+` (`CatalogAddButton`) connects directly, flipping to a
   Cancel pill while that provider's OAuth is in flight. Only NOT-connected
-  providers browse here — connected ones are strip tiles. The filter is
+  providers browse here — connected ones are strip rows. The filter is
   driven by BILLING (`providerBilling()` in `provider-grouping.ts`), not by
   how the provider authenticates: it defaults from `auth` (oauth ->
   subscription, apiKey -> payg) but `PROVIDER_OVERRIDES[id].billing` overrides
@@ -751,8 +757,12 @@ the scroller flips to `overflow-y-hidden` (Radix only locks `<body>`) with
   offer inside the modal) in the responsive two-column `CatalogGrid`
   (`layout="grid"`; the provider modal passes the default `"list"` = one
   column, since the grid's lg: breakpoint is viewport-based and would cramp
-  the dialog), above a control row of a pill search box + four facet
-  comboboxes — AI provider (self-hides at one lab), Good at, Cost, Memory. The comboboxes are the shared
+  the dialog), above a control row of four facet
+  comboboxes — AI provider (self-hides at one lab), Good at, Cost, Memory. Free-text
+  search is the hub's ONE page field, threaded into the directory as the `query`
+  prop (`model-facets.tsx` holds the facet row); the provider modal, which reuses
+  the same `ModelsBrowser` but passes NO `query`, keeps its OWN local pill search
+  box. The comboboxes are the shared
   `ai-hub/filter-combobox.tsx` (Popover + cmdk, optional in-dropdown search),
   which the teams allowed-models editor's `agent-admin/lab-filter.tsx` also
   reuses. Cost/Memory buckets are the pure `costBucket` / `memoryBucket` in

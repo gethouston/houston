@@ -389,9 +389,9 @@ narrows its Allowed list (pure VIEW filter composing with the text search; "All
 categories" resets). The personal global page
 uses the SAME `FilterCombobox` (forced `searchable`, so the long category list gets
 the in-dropdown search) inside its Integrations tab, with options from
-`catalogCategorySlugs` (`browse-model.ts`) — A-Z by label, `UNCATEGORIZED` pinned
+`catalogCategorySlugs` (`browse-sections.ts`) — A-Z by label, `UNCATEGORIZED` pinned
 last (the dropdown is a lookup-by-name surface, so it orders alphabetically even
-though the page's sections order by size). Pure helpers in `integrations/model.ts` (node-tested):
+though the page's sections order mainstream-first, then by size). Pure helpers in `integrations/model.ts` (node-tested):
 `categoriesOf` (options), `categoryLabel` (slug → "Developer tools"),
 `toolkitsInCategory(catalog, category)` (slug set, `null` for "all"), and
 `categoryListView` (mirrors the models editor's `allowedListView` — picks a
@@ -416,28 +416,85 @@ integrations** tab (§2, `teams.md`).
 - **The page** — the flat "plane"
   (`integrations-ready.tsx`, reference: the ChatGPT Plugins page), laid out by the
   generic **`CatalogShell`** (`ui/core/src/components/catalog-shell.tsx`, part of the
-  catalog family — reuse it wherever a surface wants "one consolidated Installed
-  strip above per-source discovery tabs"). A `PageHeader` hero (title +
-  `home.description` subtitle), then the shell:
+  catalog family — reuse it wherever a surface wants "ONE top `controls` row over an
+  Installed section and an Available section", each rendered under an `lg`
+  `CatalogSectionHeader` (`size="lg"`) with a live `CatalogCount` chip). A
+  `PageHeader` hero (title + `home.description` subtitle, whose count reads the FULL
+  catalog size via `home.descriptionCount`), then the shell:
+  (0) the ONE **controls** row (`catalog-controls.tsx` → `CatalogControls`): a
+  `CatalogSearchField` (`home.searchPlaceholder`) + the searchable A-Z category
+  `FilterCombobox`. It sits ABOVE both sections and its query + category narrow the
+  Installed strip AND the Integrations tab together. The surface owns that state in
+  the shared `use-catalog-surface.ts` hook (`useCatalogSurface` → `tab`, `query`,
+  `category`, `filtering`, `shown`, `installedCount`, `availableCount`), used verbatim
+  by the global page and the per-agent tab so the two-section wiring lives in ONE
+  place; a parent that remounts per agent (`key={agent.id}`) gets per-agent state for
+  free.
   (1) the CONSOLIDATED **Installed** strip, OUTSIDE the tabs (identity, not
   discovery — it never changes with the tab): active catalog connections AND custom
-  integrations as icon TILES (`InstalledStrip`; custom tiles get letter avatars). A
-  catalog tile opens `AppDetailDialog`; a custom tile jumps to the Custom tab. Its
-  header carries a `CatalogCount` chip (`installedCount`).
-  (2) two discovery tabs (`home.tabs.*`, each trigger with a `CatalogCount` badge):
-  **Integrations** (`catalog-pane.tsx`: a controls row — `CatalogSearchField flex-1`
-  + the searchable A-Z `FilterCombobox` — then `RecoveryRow`s and the grouped
-  `CategoryCatalog`; count = connectable apps) and **Custom integrations**
-  (`CustomIntegrationsSection variant="tab"`; count = the custom list). Search and
-  category state are LOCAL to each tab; the connect flow lives on the PAGE so
+  integrations as a two-column `CatalogGrid` of `CatalogRow`s (`InstalledStrip`) —
+  the SAME row grammar as the browse catalog: brand art via `AppLogo` (custom rows
+  get letter avatars), the always-visible name, a one-line description (the app
+  description or a localized custom-kind badge), and a quiet trailing `ChevronRight`
+  marking each row as an open-affordance (the shared convention with the connected
+  providers + installed skills strips). A catalog row opens `AppDetailDialog`; a
+  custom row jumps to the Custom tab. At rest the grid caps to the shared
+  `CATALOG_INSTALLED_PREVIEW_CAP` (6) rows behind a quiet `CatalogShowMore`
+  "Show all N" expander (`home.showAllApps`) so a well-stocked strip never buries
+  the discovery tabs; while the shared filter is active (`filtering`) every match
+  renders uncapped — filtering IS looking past the preview. That preview /
+  expander split is the ONE shared pure helper `installedPreview<T>(items, {
+  searching, expanded, cap })` (`app/src/lib/installed-preview.ts`) all three
+  installed strips call (integrations, skills, connected providers); the cap is
+  injected (not imported) so the module stays free of the `@houston-ai/core` JSX
+  barrel and testable under `node --test`. The strip has NO search of its own: the
+  ONE top controls row filters it. The `lg` section header carries a `CatalogCount`
+  chip (`installedCount` — the SHOWN count while filtering, the total at rest). The
+  shared query + category narrow the rows via the pure `filterInstalledBy(active,
+  custom, catalog, { query, category })` (node-safe `lib/installed-preview.ts` —
+  category narrows first via `toolkitsInCategory`, then delegates to `filterInstalled`
+  for the substring query; custom integrations carry no category so any active
+  category excludes them). When that filter leaves NOTHING installed the whole
+  Installed section is OMITTED (the shell drops it — no heading over an empty list),
+  so the strip only ever renders with rows.
+  (2) the **Available** section (`home.availableTitle`) under its own `lg`
+  `CatalogSectionHeader`, whose `availableCount` chip = the connectable apps matching
+  the shared filter (via `browseCatalogView`, respecting a Teams allowlist), over two
+  discovery tabs (`home.tabs.*`, each trigger with a `CatalogCount` badge):
+  **Integrations** (the CONTROLLED `catalog-pane.tsx`: it takes `query` + `category`
+  props from the page — its own controls row moved UP into `CatalogControls` — and
+  renders `RecoveryRow`s + the grouped `CategoryCatalog`; the tab's own count chip
+  stays the UNFILTERED connectable total) and **Custom integrations**
+  (`CustomIntegrationsSection variant="tab"`; count = the custom list, and it KEEPS
+  its own internal search). The connect flow lives on the PAGE so
   switching tabs never kills an in-flight OAuth poll. When the host doesn't serve
   custom integrations (`useCustomIntegrations` → `null`) the shell has ONE tab and
   drops the tab chrome entirely.
   `CategoryCatalog` groups the connectable catalog (connected toolkits EXCLUDED) by
-  primary category into flat two-column `PlaneAppRow`s, sections ordered by size via
-  the pure `groupCatalogByCategory` (`browse-model.ts`); each section header carries
-  its count chip (`CatalogSectionHeader` `count` — the chevron accent is GONE from
-  the section-header idiom). Each row is the split `CatalogRow`
+  primary category into flat two-column `PlaneAppRow`s, sections ordered MAINSTREAM-FIRST
+  then by size via the pure `groupCatalogByCategory` (`browse-sections.ts`, split from
+  `browse-model.ts` to hold the file-size line — the filter/allowlist half stays in
+  `browse-model.ts`, the section-grouping + Featured half moved out; the curated ordering
+  list is a further split into `category-priority.ts`; all re-export through the barrel so
+  consumers import unchanged). Section order for our NON-technical audience: the curated
+  `CATEGORY_PRIORITY` categories (`category-priority.ts` — Felipe's hand-picked order:
+  social-media-accounts, file-management-and-storage, spreadsheets, team-chat,
+  team-collaboration, productivity, ai-meeting-assistants, ads-and-conversion, notes,
+  signatures; matched via `categoryRank`'s spelling-insensitive normalization, `&`→"and",
+  non-alphanumerics dropped; `developer-tools`/AI deliberately ABSENT) come first in that
+  order (only those present), then every remaining category by app-count DESC (label
+  tiebreak), `UNCATEGORIZED` pinned last — so a small curated section leads a huge
+  "Developer tools" instead of the raw size ranking floating dev/AI apps up. Each section header carries its count chip
+  (`CatalogSectionHeader` `count` — the chevron accent is GONE from the section-header
+  idiom). At REST ONLY (no search query AND no single-category narrowing) a curated
+  **Featured** spotlight (`FEATURED = "__featured"`, an ordered `FEATURED_SLUGS` list
+  of everyday apps — gmail, calendar, drive, notion, slack…) is pinned FIRST above the
+  category sections, so a first-time user meets familiar apps instead of
+  "Developer tools"; it renders under `t("home.featured")`. Featured apps still appear
+  in their own category sections too (a spotlight, not a move), already-connected apps
+  drop out, and `FEATURED` never leaks into `catalogCategorySlugs` (the dropdown
+  options). A search or a category pick suppresses it (the curated list would fight a
+  deliberate narrowing). Each row is the split `CatalogRow`
   (`ui/core/src/components/catalog-row.tsx`): the row BODY opens the app's
   "more info" modal (`app-info-dialog.tsx` over the generic `CatalogDetailDialog` —
   art, name, category `Badge` chips, the FULL description, a Connect CTA), while
@@ -449,15 +506,17 @@ integrations** tab (§2, `teams.md`).
   `home.connectApp`. Disconnect is scope `everywhere` (a user-level connection
   disappears for ALL agents); the confirm names no agents (chip plumbing removed).
   This page is a PERSONAL-CONNECTIONS surface only: a connected app's
-  `AppDetailDialog` (opened from the Installed strip tile) shows info + reconnect +
+  `AppDetailDialog` (opened from the Installed strip row) shows info + reconnect +
   disconnect, with NO per-agent grant toggles — which agents may use an app is
   managed in the Permissions view. The detail modal + disconnect dialog are
   extracted into `connected-app-dialogs.tsx` (`ConnectedAppDialogs`) so
   `integrations-ready.tsx` stays within the file-size limit; the page owns the
   selection + connect flow and hands them in. The presentational pieces
-  live in `components/integrations-view/` (`catalog-pane`, `catalog-search-field`,
+  live in `components/integrations-view/` (`catalog-controls`, `catalog-pane`,
   `installed-strip`, `plane-app-row`, `category-catalog`, `recovery-row`,
-  `connected-app-dialogs`); the old two-column `ConnectedAppsList` card grid was
+  `connected-app-dialogs`, `use-catalog-surface`); the old per-strip
+  `catalog-search-field.tsx` + `use-installed-search.ts` were DELETED when the search
+  moved to the ONE top controls row. The old two-column `ConnectedAppsList` card grid was
   DELETED with the Settings fold and the dropdown-filtered `ConnectMoreAppsSection`
   (agent tab) is gone too.
   The **Custom integrations** tab shares the flat row language
@@ -487,19 +546,30 @@ use an app is managed in the Permissions view (§2) — see the global page bloc
 (`integrations-tab.tsx` re-exports the orchestrator). The tab body is the SAME
 catalog layout as the global Integrations page, minus the page header (the tab
 label already says Integrations): `agent-integrations-body.tsx` renders the shared
-`CatalogShell` — the consolidated Installed strip (the agent's usable ACTIVE apps
-+ the user's custom integrations; a tile opens `AppDetailDialog`, whose Disconnect
-confirms via `IntegrationDisconnectDialog` scope `everywhere`; a custom tile jumps
-to the Custom tab) above the Integrations / Custom integrations tabs. The catalog
-tab is the SHARED `CatalogPane` (`integrations-view/catalog-pane.tsx`: search +
-A-Z searchable category combobox, recovery rows, the grouped `CategoryCatalog`),
-generalized to plain props (`catalog`/`connections`/`recovering`/`allowlist`/
-`readOnly`/`children`) so both surfaces consume it verbatim — the agent tab passes
+`CatalogShell` — the ONE top `CatalogControls` row over the Installed section (the
+agent's usable ACTIVE apps + the user's custom integrations; a row opens
+`AppDetailDialog`, whose Disconnect confirms via `IntegrationDisconnectDialog` scope
+`everywhere`; a custom row jumps to the Custom tab) and the Available section's
+Integrations / Custom integrations tabs. It carries the SAME two-section grammar as
+the global page and shares the ONE `useCatalogSurface(...)` hook
+(`integrations-view/use-catalog-surface.ts` — owns `tab` / `query` / `category` /
+`filtering` / `shown` / `installedCount` / `availableCount`, the shared query +
+category filtering the Installed strip via `filterInstalledBy` and the Available
+count via `browseCatalogView`); passing `allowlist` narrows only the available count
+(locked apps never count). The strip has no search of its own, its `lg` header count
+follows the shared filter, and it is OMITTED when the filter leaves nothing
+installed. State lives in the hook, so this tab's `key={agent.id}` remount keeps it
+naturally per-agent. The catalog
+tab is the SHARED CONTROLLED `CatalogPane` (`integrations-view/catalog-pane.tsx`:
+takes `query` + `category` props from the page, recovery rows, the grouped
+`CategoryCatalog`),
+generalized to plain props (`catalog`/`connections`/`query`/`category`/`recovering`/
+`allowlist`/`readOnly`/`children`) so both surfaces consume it verbatim — the agent tab passes
 `AgentCatalogSections` as its `children`. The view is a flat
 `{activeRows, disallowedRows}` (`agentIntegrationsView`, no more grants/degraded
 mode split), every connection classified through the ONE `effectiveAccess`
 resolver (§2): **usable = connection ∩ effective allowlist**. Active rows split
-into strip tiles vs recovery rows by connection status; connected apps outside the
+into strip rows vs recovery rows by connection status; connected apps outside the
 allowlist go to `disallowedRows`. The old **"Connected, but off for this agent"**
 grant section (`agent-ungranted-apps-section.tsx`, `useAgentGrantMutation`,
 `integrations:agentTab.offForAgent.*`) and the `availableRows` bucket are GONE —

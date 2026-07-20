@@ -408,6 +408,26 @@ top-sheen rules stay in `futuristic.css`. The scrims are deliberately light:
 Dialog overlay `bg-black/25`, Alert/Sheet `bg-black/35`. Change the surface
 centrally in those primitives — no modal should hardcode its own background.
 
+**Scroll-stuck pinned controls** — a bar that pins to the top of its scroll
+container (a catalog's search + filters row, a provider grid's filter bar) sits
+`sticky top-0 z-20` and is TRANSPARENT at rest, fading in the opaque `bg-popover`
+fill + a `rounded-b-2xl` bottom ONLY once rows scroll BEHIND it. The stuck state
+is detected by the generic **`useStuckOnScroll`** hook — ONE source of truth in
+`@houston-ai/core` (`ui/core/src/hooks/use-stuck-on-scroll.ts`): drop the returned
+`sentinelRef` on a zero-height marker at the bar's natural top and the `stuck`
+flag flips true once that sentinel scrolls past the nearest scrollable ancestor's
+top edge (it walks up to find that ancestor, so no scroll ref is threaded in).
+Shared by `CatalogShell`'s controls row and the app's `ProviderFilterBar` — never
+re-copy it locally. For sticky to work, no ancestor between the bar and its scroll
+container may add `overflow`/`transform`/`filter`/`contain` (each would clip or
+re-anchor the stick).
+
+**Contained "Installed" panel** — in the catalog shell's two-section grammar the
+Installed section (yours) is a quiet CONTAINED panel — `rounded-2xl border
+border-line bg-card p-4` — so it reads as its own thing above the flat Available
+browse below. Its skeleton and "Show all N" expander sit inside the panel padding
+with no doubled framing.
+
 **Primary button** — flat and sober (`[data-variant="default"]:is(button, a)`),
 not a glossy slab. Kanban resting cards use one token, `--ht-card-solid` (`#2c2c2b`
 dark / white light), unified across resting + running + needs-you.

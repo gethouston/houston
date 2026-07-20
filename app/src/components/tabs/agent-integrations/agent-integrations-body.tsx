@@ -7,15 +7,16 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCustomIntegrations } from "../../../hooks/queries";
 import {
-  AppDetailDialog,
   type ConnectFlow,
   CustomIntegrationsSection,
-  IntegrationDisconnectDialog,
   type PermissionsFix,
 } from "../../integrations";
+import { CatalogControls } from "../../integrations-view/catalog-controls";
 import { CatalogPane } from "../../integrations-view/catalog-pane";
 import { InstalledStrip } from "../../integrations-view/installed-strip";
+import { useCatalogSurface } from "../../integrations-view/use-catalog-surface";
 import { AgentCatalogSections } from "./agent-catalog-sections";
+import { AgentIntegrationsChrome } from "./agent-integrations-chrome";
 import {
   type AgentAppRow,
   type AgentIntegrationsView,
@@ -50,15 +51,15 @@ interface AgentIntegrationsBodyProps {
  * already says Integrations): the consolidated Installed strip (this agent's
  * usable apps + the custom integrations) OUTSIDE the tabs, then the
  * Integrations / Custom integrations tabs via the shared {@link CatalogShell}.
- * The catalog tab is the shared {@link CatalogPane} (search + A-Z category
- * combobox, recovery rows, the grouped category catalog with Teams locked
- * rows), carrying the agent-only disallowed-apps section as its `children`. A
- * strip tile opens the shared detail modal (view + reconnect + disconnect —
- * this tab is a pure connect surface, never a permission editor); connecting an
- * app makes it usable for this agent (connection ∩ allowlist) via the surface's
- * `connectFlow`. Split out of {@link IntegrationsTab} so the parent can
- * remount it per agent with `key={agent.id}` — all lifted view state (tab,
- * search, category, open modals) lives here so none of it crosses agents.
+ * ONE search + category controls row ({@link CatalogControls}) above both
+ * sections filters the Installed strip and the catalog tab together. The catalog
+ * tab is the shared {@link CatalogPane} (recovery rows, the grouped category
+ * catalog with Teams locked rows), carrying the agent-only disallowed-apps
+ * section as its `children`; a strip row opens the shared detail modal (view +
+ * reconnect + disconnect, a pure connect surface, never a permission editor).
+ * Connecting an app makes it usable for this agent (connection ∩ allowlist) via
+ * `connectFlow`. Split out so the parent remounts it per agent (`key={agent.id}`),
+ * keeping lifted state (tab, search, category, modals) from crossing agents.
  */
 export function AgentIntegrationsBody({
   view,
@@ -73,24 +74,40 @@ export function AgentIntegrationsBody({
   permissionsFix,
 }: AgentIntegrationsBodyProps) {
   const { t } = useTranslation("integrations");
-  const [tab, setTab] = useState("catalog");
   const [detailRow, setDetailRow] = useState<AgentAppRow | null>(null);
   const [disconnectRow, setDisconnectRow] = useState<AgentAppRow | null>(null);
   const custom = useCustomIntegrations();
   const customItems = custom.data ?? [];
 
-  // The agent's usable apps: active ones tile the strip; pending / errored
-  // ones surface as recovery rows inside the catalog tab.
-  const usable = view.activeRows;
+  // Active rows fill the strip; pending/errored ones become catalog recovery rows.
   const active = useMemo(
-    () => usable.filter((r) => r.connection.status === "active"),
-    [usable],
+    () => view.activeRows.filter((r) => r.connection.status === "active"),
+    [view.activeRows],
   );
   const recovering = useMemo(
-    () => usable.filter((r) => r.connection.status !== "active"),
-    [usable],
+    () => view.activeRows.filter((r) => r.connection.status !== "active"),
+    [view.activeRows],
   );
-  const installedCount = active.length + customItems.length;
+  // The ONE controls row's shared state (per-agent via remount): query +
+  // category narrow the strip and the available count together.
+  const {
+    tab,
+    setTab,
+    query,
+    setQuery,
+    category,
+    setCategory,
+    filtering,
+    shown,
+    installedCount,
+    availableCount,
+  } = useCatalogSurface({
+    active,
+    custom: customItems,
+    catalog,
+    connections,
+    allowlist,
+  });
 
   const tabs: CatalogShellTab[] = [
     {
@@ -101,6 +118,8 @@ export function AgentIntegrationsBody({
         <CatalogPane
           catalog={catalog}
           connections={connections}
+          query={query}
+          category={category}
           recovering={recovering}
           isLoading={catalogLoading}
           connectFlow={connectFlow}
@@ -128,17 +147,27 @@ export function AgentIntegrationsBody({
         ]
       : []),
   ];
-
   return (
     <>
       <CatalogShell
+        controls={
+          <CatalogControls
+            catalog={catalog}
+            connections={connections}
+            query={query}
+            onQueryChange={setQuery}
+            category={category}
+            onCategoryChange={setCategory}
+          />
+        }
         installedTitle={t("home.installedTitle")}
         installedCount={installedCount}
         installed={
           installedCount > 0 ? (
             <InstalledStrip
-              active={active}
-              custom={customItems}
+              active={shown.active}
+              custom={shown.custom}
+              searching={filtering}
               onOpen={(connection) => {
                 const row = active.find(
                   (r) => r.connection.connectionId === connection.connectionId,
@@ -149,47 +178,22 @@ export function AgentIntegrationsBody({
             />
           ) : undefined
         }
+        availableTitle={t("home.availableTitle")}
+        // >1 tab: the tab chips carry the counts (no duplicate header chip).
+        availableCount={tabs.length > 1 ? undefined : availableCount}
         tabs={tabs}
         value={tab}
         onValueChange={setTab}
       />
 
-      <div className="mt-8 flex justify-center">
-        <button
-          type="button"
-          onClick={onManageAll}
-          className="text-xs text-ink-muted underline underline-offset-4 decoration-dotted transition-colors hover:text-ink"
-        >
-          {t("agentTab.manageAll")}
-        </button>
-      </div>
-
-      {detailRow && (
-        <AppDetailDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setDetailRow(null);
-          }}
-          display={detailRow.app}
-          connection={detailRow.connection}
-          onReconnect={() => {
-            void connectFlow.connect(detailRow.connection.toolkit);
-            setDetailRow(null);
-          }}
-          onDisconnect={() => {
-            setDisconnectRow(detailRow);
-            setDetailRow(null);
-          }}
-        />
-      )}
-
-      <IntegrationDisconnectDialog
-        app={disconnectRow?.app ?? null}
-        onClose={() => setDisconnectRow(null)}
-        onConfirm={(toolkit) => {
-          onDisconnect(toolkit);
-          setDisconnectRow(null);
-        }}
+      <AgentIntegrationsChrome
+        onManageAll={onManageAll}
+        detailRow={detailRow}
+        disconnectRow={disconnectRow}
+        setDetailRow={setDetailRow}
+        setDisconnectRow={setDisconnectRow}
+        connectFlow={connectFlow}
+        onDisconnect={onDisconnect}
       />
     </>
   );

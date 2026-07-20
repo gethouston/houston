@@ -6,7 +6,11 @@
   "grid": {
     "loading": "Carregando skills...",
     "addSkill": "Adicionar skill",
-    "yourSkillsHeading": "Suas skills"
+    "yourSkillsHeading": "Suas skills",
+    "availableHeading": "Disponíveis",
+    "searchSkills": "Buscar skills",
+    "noMatchingSkills": "Nenhuma skill corresponde à sua busca",
+    "showAllSkills": "Ver todas as {{count}} skills"
   },
   "addDialog": {
     "title": "Adicionar skills",

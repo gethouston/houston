@@ -14,6 +14,10 @@
     "subscription": "Subscription",
     "apiKey": "API key"
   },
+  "search": {
+    "placeholder": "Search AI models and providers",
+    "showAll": "Show all {{count}} providers"
+  },
   "card": {
     "connect": "Connect",
     "connectName": "Connect {{name}}",

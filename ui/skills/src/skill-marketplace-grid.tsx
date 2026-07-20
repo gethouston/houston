@@ -84,6 +84,9 @@ export interface SkillMarketplaceGridProps {
    * typing a query or picking a category hands back to the search grid.
    */
   shelvesSlot?: ReactNode;
+  /** Hide the built-in search input (the page drives search from a shared field
+   *  and passes the query in via `query`). The category picker still renders. */
+  hideSearch?: boolean;
   labels?: SkillMarketplaceGridLabels;
 }
 
@@ -99,6 +102,7 @@ export function SkillMarketplaceGrid({
   onInstall,
   onOpenDetail,
   shelvesSlot,
+  hideSearch = false,
   labels,
 }: SkillMarketplaceGridProps) {
   const l = resolveLabels(labels);
@@ -127,29 +131,33 @@ export function SkillMarketplaceGrid({
 
   return (
     <div>
-      <div className="mb-3 flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
-            placeholder={l.searchPlaceholder}
-            className="h-9 w-full rounded-full border border-line bg-input pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
-          />
+      {(!hideSearch || categoryOptions.length > 0) && (
+        <div className="mb-3 flex gap-2">
+          {!hideSearch && (
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => onQueryChange(e.target.value)}
+                placeholder={l.searchPlaceholder}
+                className="h-9 w-full rounded-full border border-line bg-input pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
+              />
+            </div>
+          )}
+          {categoryOptions.length > 0 && (
+            <SkillCategorySelect
+              options={categoryOptions}
+              value={category}
+              onChange={onCategoryChange}
+              labels={{
+                allCategories: l.allCategories,
+                ariaLabel: l.categoryAria,
+              }}
+            />
+          )}
         </div>
-        {categoryOptions.length > 0 && (
-          <SkillCategorySelect
-            options={categoryOptions}
-            value={category}
-            onChange={onCategoryChange}
-            labels={{
-              allCategories: l.allCategories,
-              ariaLabel: l.categoryAria,
-            }}
-          />
-        )}
-      </div>
+      )}
 
       {browsing ? (
         shelvesSlot
