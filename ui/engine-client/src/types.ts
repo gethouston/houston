@@ -1759,10 +1759,17 @@ export interface StorePublicationStatus {
 // unchanged. `StoreCatalogAgentDetail.ir` widens from the former
 // `{ skills, learnings }` projection to the full `AgentIR` the gateway serves;
 // the app still reads only `ir.skills`/`ir.learnings`.
+// Owner + moderation wire shapes reused by the store-view surfaces: the "my
+// agents" manage panel (`MyAgent`), the abuse-report dialog (`ReportInput` /
+// `ReportReason`), and the browse filter's category vocabulary (`StoreCategory`).
 export type {
+  MyAgent,
+  ReportInput,
+  ReportReason,
   StoreCatalogPage,
   StoreCatalogQuery,
   StoreCatalogSort,
+  StoreCategory,
 } from "@houston/agentstore-client";
 
 /** One public Agent Store listing, exactly as the catalog API serializes it. */

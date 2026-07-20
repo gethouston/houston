@@ -2,12 +2,17 @@ import { Badge, Button, CatalogDetailDialog, Spinner } from "@houston-ai/core";
 import type { StoreCatalogAgent } from "@houston-ai/engine-client";
 import { fetchStoreAgent } from "@houston-ai/engine-client";
 import { useQuery } from "@tanstack/react-query";
+import { FlagIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { reportError } from "../../lib/error-toast";
 import {
   isStoreCategory,
   storeCategoryLabelKey,
 } from "../../lib/store-categories";
+import { AppLogo, appDisplay, useToolkitBySlug } from "../integrations";
 import { StoreAgentIcon } from "./store-agent-icon";
+import { StoreReportDialog } from "./store-report-dialog";
 
 /**
  * A listing's "more info" modal — the catalog family's detail surface. The
@@ -28,6 +33,7 @@ export function StoreDetailDialog({
 }) {
   const { t } = useTranslation("store");
   const { t: tPortable } = useTranslation("portable");
+  const [reportOpen, setReportOpen] = useState(false);
   const slug = agent?.slug ?? null;
 
   const detail = useQuery({
@@ -36,6 +42,20 @@ export function StoreDetailDialog({
     enabled: slug !== null,
     staleTime: 60_000,
   });
+
+  // The IR enrichment degrades gracefully (skills/learnings just don't render),
+  // so a toast would be noise, but the failure must still reach Sentry: a
+  // user-initiated fetch never fails silently. Same path as the sibling
+  // category fetch in store-filters.tsx.
+  useEffect(() => {
+    if (detail.error) {
+      reportError(
+        "store_detail",
+        `store agent detail fetch failed (${slug})`,
+        detail.error,
+      );
+    }
+  }, [detail.error, slug]);
 
   if (!agent || !slug) return null;
 
@@ -46,73 +66,119 @@ export function StoreDetailDialog({
     : agent.category;
 
   return (
-    <CatalogDetailDialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-      icon={<StoreAgentIcon agent={agent} />}
-      title={agent.name}
-      tags={
-        <>
-          <Badge variant="secondary">{categoryLabel}</Badge>
-          {agent.tags.map((tag) => (
-            <Badge key={tag} variant="outline">
-              {tag}
-            </Badge>
-          ))}
-        </>
-      }
-      description={agent.description}
-      action={
-        <Button
-          onClick={() => onInstall(slug)}
-          disabled={installing}
-          className="rounded-full"
-        >
-          {installing && <Spinner className="size-4" />}
-          {t("install")}
-        </Button>
-      }
-    >
-      <div className="space-y-3 text-sm">
-        <p className="text-ink-muted">
-          {t("detail.by", { name: agent.creator.displayName })}
-          {" · "}
-          {t("installs", { count: agent.installsCount })}
-        </p>
-        {skills.length > 0 && (
-          <div>
-            <p className="mb-1.5 font-medium text-ink">{t("detail.skills")}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {skills.map((skill) => (
-                <Badge key={skill.slug} variant="outline">
-                  {skill.slug}
-                </Badge>
-              ))}
-            </div>
+    <>
+      <CatalogDetailDialog
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+        icon={<StoreAgentIcon agent={agent} />}
+        title={agent.name}
+        tags={
+          <>
+            <Badge variant="secondary">{categoryLabel}</Badge>
+            {agent.tags.map((tag) => (
+              <Badge key={tag} variant="outline">
+                {tag}
+              </Badge>
+            ))}
+          </>
+        }
+        description={agent.description}
+        action={
+          <div className="flex w-full items-center justify-between gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setReportOpen(true)}
+              className="text-ink-muted"
+            >
+              <FlagIcon className="size-4" />
+              {t("report.open")}
+            </Button>
+            <Button
+              onClick={() => onInstall(slug)}
+              disabled={installing}
+              className="rounded-full"
+            >
+              {installing && <Spinner className="size-4" />}
+              {t("install")}
+            </Button>
           </div>
-        )}
-        {agent.integrations.length > 0 && (
-          <div>
-            <p className="mb-1.5 font-medium text-ink">
-              {t("detail.integrations")}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {agent.integrations.map((toolkit) => (
-                <Badge key={toolkit} variant="outline">
-                  {toolkit.toLowerCase()}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-        {learnings.length > 0 && (
+        }
+      >
+        <div className="space-y-3 text-sm">
           <p className="text-ink-muted">
-            {t("detail.learnings", { count: learnings.length })}
+            {t("detail.by", { name: agent.creator.displayName })}
+            {" · "}
+            {t("installs", { count: agent.installsCount })}
           </p>
-        )}
-      </div>
-    </CatalogDetailDialog>
+          {skills.length > 0 && (
+            <div>
+              <p className="mb-1.5 font-medium text-ink">
+                {t("detail.skills")}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {skills.map((skill) => (
+                  <Badge key={skill.slug} variant="outline">
+                    {skill.slug}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {agent.integrations.length > 0 && (
+            <div>
+              <p className="mb-1.5 font-medium text-ink">
+                {t("detail.integrations")}
+              </p>
+              <IntegrationBadges toolkits={agent.integrations} />
+            </div>
+          )}
+          {learnings.length > 0 && (
+            <p className="text-ink-muted">
+              {t("detail.learnings", { count: learnings.length })}
+            </p>
+          )}
+        </div>
+      </CatalogDetailDialog>
+      {slug && (
+        <StoreReportDialog
+          slug={slug}
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * The "works with" apps, resolved to real names and logos through the Composio
+ * toolkit catalog (the same `appDisplay` path the Integrations tab uses) so the
+ * detail dialog never shows a machine slug. While the catalog hasn't loaded, or
+ * on a deployment with no integration provider wired, `appDisplay` degrades to
+ * a favicon guess and the slug as its name.
+ */
+function IntegrationBadges({ toolkits }: { toolkits: string[] }) {
+  const bySlug = useToolkitBySlug();
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {toolkits.map((toolkit) => {
+        const slug = toolkit.toLowerCase();
+        const display = appDisplay(slug, bySlug.get(slug));
+        return (
+          <Badge
+            key={toolkit}
+            variant="outline"
+            className="gap-1.5 py-0.5 pl-1"
+          >
+            <AppLogo display={display} size="sm" className="size-4" />
+            {display.name}
+          </Badge>
+        );
+      })}
+    </div>
   );
 }

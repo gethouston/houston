@@ -16,9 +16,11 @@
 
 import { AgentStoreClient, StoreApiError } from "@houston/agentstore-client";
 import type {
+  ReportInput,
   StoreCatalogAgentDetail,
   StoreCatalogPage,
   StoreCatalogQuery,
+  StoreCategory,
 } from "./types.ts";
 
 /**
@@ -96,6 +98,34 @@ export async function fetchStoreAgent(
 ): Promise<StoreCatalogAgentDetail> {
   try {
     return await catalogClient(fetchImpl).getAgent(slug, ACCEPT_JSON);
+  } catch (err) {
+    throw asCatalogError(err);
+  }
+}
+
+/** The controlled category vocabulary for the browse filter chips (anonymous). */
+export async function fetchStoreCategories(
+  fetchImpl: typeof fetch = fetch,
+): Promise<StoreCategory[]> {
+  try {
+    return await catalogClient(fetchImpl).listCategories(ACCEPT_JSON);
+  } catch (err) {
+    throw asCatalogError(err);
+  }
+}
+
+/**
+ * File an anonymous abuse report against a published listing. The gateway
+ * rate-limits these (5/min/IP); a rejection surfaces as a {@link StoreCatalogError}
+ * the caller toasts.
+ */
+export async function reportStoreAgent(
+  slug: string,
+  input: ReportInput,
+  fetchImpl: typeof fetch = fetch,
+): Promise<void> {
+  try {
+    await catalogClient(fetchImpl).reportAgent(slug, input);
   } catch (err) {
     throw asCatalogError(err);
   }

@@ -1,5 +1,4 @@
 import { prettifyToolkit } from "@houston-ai/chat";
-import { useIntegrationStatus, useIntegrationToolkits } from "../hooks/queries";
 import {
   findCatalogToolkit,
   normalizeToolkitSlug,
@@ -7,7 +6,7 @@ import {
 import {
   type AppDisplay,
   appDisplay,
-  INTEGRATION_PROVIDER,
+  useReadyToolkitCatalog,
 } from "./integrations";
 
 /**
@@ -20,10 +19,7 @@ import {
  * meanwhile).
  */
 export function useIntegrationAppDisplay(toolkit: string): AppDisplay {
-  const status = useIntegrationStatus();
-  const ready = !!status.data?.find((p) => p.provider === INTEGRATION_PROVIDER)
-    ?.ready;
-  const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
+  const catalog = useReadyToolkitCatalog();
   const slug = normalizeToolkitSlug(toolkit);
   const resolved = appDisplay(slug, findCatalogToolkit(catalog.data, toolkit));
   return {

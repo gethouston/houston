@@ -62,6 +62,7 @@ import type {
   IntegrationProviderStatus,
   IntegrationToolkit,
   ListWorktreesRequest,
+  MyAgent,
   NewActivity,
   NewRoutine,
   OrgInfo,
@@ -2292,6 +2293,60 @@ export class HoustonClient {
         tags: item.tags ?? [],
       },
     };
+  }
+
+  // ---------- Agent Store owner management (the "my agents" panel) ----------
+  //
+  // Act on a listing by its gateway id against the `/agentstore` API with the
+  // caller's own bearer (same surface the publish methods above use). Reads live
+  // off `GET /me/agents`; no host-side pointer is involved.
+
+  /** Every listing the caller owns, in all lifecycle states (`GET /me/agents`). */
+  listMyStoreAgents(): Promise<MyAgent[]> {
+    return this.request<{ items: MyAgent[] }>(
+      "GET",
+      "/agentstore/me/agents",
+    ).then((r) => r.items);
+  }
+  /** Ask an admin to make an owned listing public (`PATCH … {requestPublic}`). */
+  async requestStorePublic(storeAgentId: string): Promise<void> {
+    await this.request(
+      "PATCH",
+      `/agentstore/agents/${this.seg(storeAgentId)}`,
+      { requestPublic: true },
+      undefined,
+      undefined,
+      false,
+    );
+  }
+  /** Drop a public listing back to unlisted (`PATCH … {visibility:"unlisted"}`). */
+  async setStoreVisibilityUnlisted(storeAgentId: string): Promise<void> {
+    await this.request(
+      "PATCH",
+      `/agentstore/agents/${this.seg(storeAgentId)}`,
+      { visibility: "unlisted" },
+      undefined,
+      undefined,
+      false,
+    );
+  }
+  /** Take an owned listing down by its gateway id (`PATCH … {unpublish}`). */
+  async unpublishStoreAgentById(storeAgentId: string): Promise<void> {
+    await this.request(
+      "PATCH",
+      `/agentstore/agents/${this.seg(storeAgentId)}`,
+      { unpublish: true },
+      undefined,
+      undefined,
+      false,
+    );
+  }
+  /** Soft-delete an owned listing by its gateway id (`DELETE /agents/{id}`). */
+  async deleteStoreAgentById(storeAgentId: string): Promise<void> {
+    await this.request(
+      "DELETE",
+      `/agentstore/agents/${this.seg(storeAgentId)}`,
+    );
   }
 
   // ---------- WebSocket access (see ws.ts) ----------

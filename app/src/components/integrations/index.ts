@@ -69,3 +69,7 @@ export {
   type IntegrationsGate,
   useIntegrationsGate,
 } from "./use-integrations-gate";
+export {
+  useReadyToolkitCatalog,
+  useToolkitBySlug,
+} from "./use-toolkit-catalog";

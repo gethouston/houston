@@ -3,7 +3,9 @@ import { describe, it } from "node:test";
 import {
   fetchStoreAgent,
   fetchStoreCatalog,
+  fetchStoreCategories,
   pingStoreInstall,
+  reportStoreAgent,
   StoreCatalogError,
   storeCatalogApiBase,
 } from "../src/store-catalog.ts";
@@ -108,6 +110,85 @@ describe("fetchStoreAgent", () => {
     const { calls, fetchImpl } = capture({ agent: {}, ir: {} });
     await fetchStoreAgent("inbox-helper", fetchImpl);
     strictEqual(calls[0].url, `${BASE}/v1/agentstore/agents/inbox-helper`);
+  });
+});
+
+describe("fetchStoreCategories", () => {
+  it("GETs /categories and unwraps the items array", async () => {
+    const cats = [
+      { slug: "productivity", name: "Productivity" },
+      { slug: "research", name: "Research" },
+    ];
+    const { calls, fetchImpl } = capture({ items: cats });
+    deepStrictEqual(await fetchStoreCategories(fetchImpl), cats);
+    strictEqual(calls[0].url, `${BASE}/v1/agentstore/categories`);
+  });
+
+  it("throws a status-carrying StoreCatalogError on a failed read", async () => {
+    const fetchImpl = (() =>
+      Promise.resolve(jsonResponse({ error: "boom" }, 500))) as typeof fetch;
+    await rejects(
+      fetchStoreCategories(fetchImpl),
+      (err: unknown) => err instanceof StoreCatalogError && err.status === 500,
+    );
+  });
+
+  it("re-raises the underlying cause on a network failure (status 0)", async () => {
+    const cause = new Error("connection refused");
+    const fetchImpl = (() => Promise.reject(cause)) as typeof fetch;
+    await rejects(fetchStoreCategories(fetchImpl), (err: unknown) => {
+      ok(!(err instanceof StoreCatalogError));
+      strictEqual(err, cause);
+      return true;
+    });
+  });
+});
+
+describe("reportStoreAgent", () => {
+  it("POSTs the report body to the agent's reports route", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const fetchImpl = ((url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return Promise.resolve(new Response(null, { status: 201 }));
+    }) as typeof fetch;
+    await reportStoreAgent(
+      "inbox-helper",
+      { reason: "spam", details: "unsolicited" },
+      fetchImpl,
+    );
+    strictEqual(
+      calls[0].url,
+      `${BASE}/v1/agentstore/agents/inbox-helper/reports`,
+    );
+    strictEqual(calls[0].init?.method, "POST");
+    deepStrictEqual(JSON.parse(String(calls[0].init?.body)), {
+      reason: "spam",
+      details: "unsolicited",
+    });
+  });
+
+  it("throws a status-carrying StoreCatalogError on HTTP error", async () => {
+    const fetchImpl = (() =>
+      Promise.resolve(
+        jsonResponse({ error: "rate_limited" }, 429),
+      )) as typeof fetch;
+    await rejects(
+      reportStoreAgent("inbox-helper", { reason: "other" }, fetchImpl),
+      (err: unknown) => err instanceof StoreCatalogError && err.status === 429,
+    );
+  });
+
+  it("re-raises the underlying cause on a network failure (status 0)", async () => {
+    const cause = new Error("connection refused");
+    const fetchImpl = (() => Promise.reject(cause)) as typeof fetch;
+    await rejects(
+      reportStoreAgent("inbox-helper", { reason: "spam" }, fetchImpl),
+      (err: unknown) => {
+        ok(!(err instanceof StoreCatalogError));
+        strictEqual(err, cause);
+        return true;
+      },
+    );
   });
 });
 

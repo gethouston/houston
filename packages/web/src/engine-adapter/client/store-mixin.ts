@@ -1,4 +1,5 @@
 import type {
+  MyAgent,
   StorePublicationStatus,
   StorePublishRequest,
   StorePublishResponse,
@@ -45,6 +46,38 @@ export function StoreMixin<TBase extends BaseCtor>(Base: TBase) {
       if (!this.ctx.cp)
         throw new Error("Publishing an agent needs a connected host.");
       return portableStore.getPublication(this.ctx.cp, agentPath);
+    }
+
+    // ---- Owner management (the "my agents" panel) ----
+    // Act on a listing by its gateway id, read live off `GET /me/agents`. Same
+    // connected-host guard as the publish flow above.
+    async listMyStoreAgents(): Promise<MyAgent[]> {
+      if (!this.ctx.cp)
+        throw new Error("Managing your agents needs a connected host.");
+      return portableStore.listMyStoreAgents(this.ctx.cp);
+    }
+    async requestStorePublic(storeAgentId: string): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("Managing your agents needs a connected host.");
+      return portableStore.requestStorePublic(this.ctx.cp, storeAgentId);
+    }
+    async setStoreVisibilityUnlisted(storeAgentId: string): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("Managing your agents needs a connected host.");
+      return portableStore.setStoreVisibilityUnlisted(
+        this.ctx.cp,
+        storeAgentId,
+      );
+    }
+    async unpublishStoreAgentById(storeAgentId: string): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("Managing your agents needs a connected host.");
+      return portableStore.unpublishStoreAgentById(this.ctx.cp, storeAgentId);
+    }
+    async deleteStoreAgentById(storeAgentId: string): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("Managing your agents needs a connected host.");
+      return portableStore.deleteStoreAgentById(this.ctx.cp, storeAgentId);
     }
   }
   return Store;
