@@ -11,6 +11,20 @@
 # gethouston/cloud repo (.github/workflows/roll-engine.yml there), triggered by
 # the repository_dispatch fired below. That handoff is the trust boundary.
 #
+# Two triggers, two audiences:
+#   - push to main (paths-filtered in "Determine whether to build" below):
+#     continuous build → dispatches engine-pod-published →
+#     cloud/roll-engine-staging.yml rolls staging.
+#   - push of ANY tag (unconditional, no path filter — a tag means "ship
+#     this", and combining paths with a tags trigger is unreliable in GitHub
+#     Actions, since a tag push often carries no commit list to diff against):
+#     dispatches engine-pod-published-prod → cloud/roll-engine.yml rolls prod.
+# The path-relevance check for the main-branch case moved from the `on:`
+# trigger into the "Determine whether to build" step below, since GitHub
+# Actions applies one `paths:` filter to the whole push trigger regardless of
+# which ref pattern (branches vs tags) matched — it can't be tag-exempt at
+# the trigger level.
+#
 # Publishes two tags per build:
 #   engine-pod:<git-sha>  — immutable, by-digest reference used for the roll.
 #   engine-pod:poc        — moving pointer to the latest POC build (convenience).
@@ -32,16 +46,7 @@ name: Engine Pod Image
 on:
   push:
     branches: [main]
-    paths:
-      - "selfhost/Dockerfile"
-      - "packages/protocol/**"
-      - "packages/runtime-client/**"
-      - "packages/domain/**"
-      - "packages/runtime/**"
-      - "packages/host/**"
-      - "ui/agent-schemas/**"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/engine-pod-image.yml"
+    tags: ["*"]
   workflow_dispatch:
 
 concurrency:
@@ -65,20 +70,61 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Any tag or a manual dispatch always builds (a tag IS the release
+      # decision). A push to main only builds when it touched a relevant path
+      # — this replaces the old trigger-level `paths:` filter, which can't
+      # apply to branch pushes only once the trigger also matches tags.
+      #
+      # Diffs github.event.before (main's tip BEFORE this push) against the
+      # new HEAD, NOT just HEAD^ — a single push can carry several commits
+      # (e.g. a non-squash merge), and diffing only the last commit against
+      # its immediate parent would miss relevant paths touched by an EARLIER
+      # commit in the same push. `before` isn't guaranteed to be present in
+      # the shallow clone actions/checkout leaves behind, so it's fetched on
+      # demand; if that fetch fails (or before is the all-zeros SHA GitHub
+      # sends for a branch's first-ever push), fail open and build anyway —
+      # a wasted build is cheap, a silently skipped release isn't.
+      - name: Determine whether to build
+        id: gate
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BASE="${{ github.event.before }}"
+          BUILD=true
+          if [ -n "$BASE" ] && [ "$BASE" != "0000000000000000000000000000000000000000" ] \
+              && git fetch --depth=1 origin "$BASE" 2>/dev/null; then
+            if git diff --name-only "$BASE" "${{ github.sha }}" -- \
+                selfhost/Dockerfile packages/protocol packages/runtime-client \
+                packages/domain packages/runtime packages/host ui/agent-schemas \
+                pnpm-lock.yaml .github/workflows/engine-pod-image.yml | grep -q .; then
+              BUILD=true
+            else
+              BUILD=false
+            fi
+          fi
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+
       - name: Auth to GCP
+        if: steps.gate.outputs.build == 'true'
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
           service_account: github-deploy-engine@gethouston.iam.gserviceaccount.com
 
       - name: Set up gcloud
+        if: steps.gate.outputs.build == 'true'
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker for Artifact Registry
+        if: steps.gate.outputs.build == 'true'
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
       - name: Build & push engine-pod
         id: build
+        if: steps.gate.outputs.build == 'true'
         run: |
           SHA_TAG="${{ env.REGISTRY }}/engine-pod:${{ github.sha }}"
           POC_TAG="${{ env.REGISTRY }}/engine-pod:poc"
@@ -103,6 +149,7 @@ jobs:
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
       - name: Published tags
+        if: steps.gate.outputs.build == 'true'
         run: |
           echo "Published:"
           echo "  ${{ env.REGISTRY }}/engine-pod:${{ github.sha }}"
@@ -110,16 +157,20 @@ jobs:
           echo "  digest ${{ steps.build.outputs.digest }}"
 
       # Notify cloud that a new engine-pod image is ready — cloud owns the
-      # cluster credentials and performs the actual roll. Only on main: a
-      # workflow_dispatch on a debug branch just publishes the image.
+      # cluster credentials and performs the actual roll. A tag push notifies
+      # prod (engine-pod-published-prod); a push to main notifies staging
+      # (engine-pod-published, unchanged). A workflow_dispatch on a debug
+      # branch/no ref just publishes the image, same as before.
       - name: Notify cloud repo
-        if: github.ref == 'refs/heads/main'
+        if: steps.gate.outputs.build == 'true' && (github.ref_type == 'tag' || github.ref == 'refs/heads/main')
         env:
           GH_TOKEN: ${{ secrets.CLOUD_DISPATCH_TOKEN }}
         run: |
           IMAGE="${{ env.REGISTRY }}/engine-pod@${{ steps.build.outputs.digest }}"
+          EVENT_TYPE="engine-pod-published"
+          [ "${{ github.ref_type }}" = "tag" ] && EVENT_TYPE="engine-pod-published-prod"
           gh api repos/gethouston/cloud/dispatches \
-            -f event_type='engine-pod-published' \
+            -f event_type="$EVENT_TYPE" \
             -F "client_payload[digest]=${{ steps.build.outputs.digest }}" \
             -F "client_payload[image]=$IMAGE" \
             -F "client_payload[sha]=${{ github.sha }}" \
