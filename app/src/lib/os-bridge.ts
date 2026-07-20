@@ -161,6 +161,15 @@ export function osCancelClaudeLogin(): Promise<void> {
   return invoke<void>("cancel_claude_login");
 }
 
+/** Drain the cold-start `houston://store/install` deep link the Rust shell
+ * stashed before the webview was ready (returns the raw URL and clears the
+ * stash, so a later read gets null). Resolves null when nothing is pending.
+ * Desktop only — a plain browser has no native stash. */
+export function osTakePendingStoreDeepLink(): Promise<string | null> {
+  if (!isTauri()) return Promise.resolve(null);
+  return invoke<string | null>("take_pending_store_deep_link");
+}
+
 /** Pull the Houston window to the front. Used when a flow finishes in the
  * user's browser (e.g. a Composio integration connection lands) and we want
  * the app to surface itself — the same snap-back the sign-in loopback does.

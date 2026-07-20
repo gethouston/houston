@@ -189,6 +189,12 @@ export async function invoke<T = unknown>(
       // the tunnel-vs-direct pill rule correct: a connected openai-compatible
       // endpoint on web reads as normally connected, not as a bridge.
       return null as T;
+    case "take_pending_store_deep_link":
+      // The web build reads the store-install target from the `?install=<slug>`
+      // query param directly (there is no native deep-link stash), so this
+      // cold-start drain has nothing to return. `osTakePendingStoreDeepLink`
+      // already short-circuits to null off-Tauri; this keeps shim parity intact.
+      return null as T;
     case "detect_legacy_houston":
       // A browser tab has no local `~/.houston` tree to migrate — "nothing
       // found" is the honest answer and keeps the cloud-migration wizard

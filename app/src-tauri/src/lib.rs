@@ -14,6 +14,7 @@ mod logging;
 mod loopback_util;
 mod notification;
 mod oauth_loopback;
+mod store_deep_link;
 mod window_focus;
 
 use engine_supervisor::{
@@ -279,6 +280,14 @@ pub fn run() {
             //    link can never complete a sign-in it didn't start.
             //  - `houston://open` (the loopback success page's "Open Houston"
             //    button) and anything else — purely a focus affordance.
+            //  - `houston://store/install?slug=<slug>` — the Agent Store "Open in
+            //    Houston" button. Forwarded onto the disjoint `store://deep-link`
+            //    event (and stashed for cold-start pull) to seed the import wizard
+            //    preview; never touches the auth channel and never auto-installs.
+            //
+            // Managed BEFORE `on_open_url` is wired so a launch-by-deep-link URL
+            // that arrives immediately has somewhere to land.
+            app.manage(store_deep_link::PendingStoreDeepLinkState::default());
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
                 let handle = app.handle().clone();
@@ -286,6 +295,12 @@ pub fn run() {
                     for url in event.urls() {
                         if auth::is_auth_callback_deep_link(url.as_str()) {
                             auth::emit_deep_link(&handle, url.as_str());
+                        } else if store_deep_link::is_store_install_deep_link(url.as_str()) {
+                            store_deep_link::stash_and_emit(
+                                &handle,
+                                &handle.state::<store_deep_link::PendingStoreDeepLinkState>(),
+                                url.as_str(),
+                            );
                         }
                     }
                     window_focus::bring_to_front(&handle);
@@ -415,6 +430,9 @@ pub fn run() {
             bug_report::report_bug,
             // Engine handshake pull (race-free fallback for `EngineGate`).
             get_engine_handshake,
+            // Cold-start pull for a `houston://store/install` deep link whose
+            // event fired before the webview's listener registered.
+            store_deep_link::take_pending_store_deep_link,
             // Keychain-backed storage for the identity session (GCIP/Firebase).
             auth::auth_get_item,
             auth::auth_set_item,
