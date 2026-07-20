@@ -3,6 +3,7 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { useOnboardingCompleted } from "../../hooks/use-onboarding-completed";
 import { useOnboardingPending } from "../../hooks/use-onboarding-pending";
 import { analytics } from "../../lib/analytics";
 import { genericErrorDescription } from "../../lib/error-toast";
@@ -90,6 +91,12 @@ export function PersonalAssistantOnboarding({
   // the `skipConversation` exit). App.tsx re-enters onboarding while it's set.
   const { markPending, clearPending } = useOnboardingPending();
 
+  // Durable "onboarding is behind us" flag, set on every terminal path below
+  // (finish + skip) alongside the pending clear. Once set, a later zero-agent
+  // workspace reads as emptied — not a fresh install — so App.tsx keeps the
+  // user in the shell instead of re-entering onboarding.
+  const { markCompleted } = useOnboardingCompleted();
+
   // `tutorialActive` pins the orchestrator in front of the workspace shell so
   // the workspace-create event in the create step doesn't unmount us.
   useEffect(() => {
@@ -141,6 +148,7 @@ export function PersonalAssistantOnboarding({
       source: "tour",
     });
     void clearPending();
+    void markCompleted();
     setUiTourActive(true);
     setTutorialActive(false);
   };
@@ -195,8 +203,9 @@ export function PersonalAssistantOnboarding({
       source: "conversation",
     });
     // Terminal conversation exit: clear the resume flag so the next boot
-    // does not return the user to onboarding.
+    // does not return the user to onboarding, and mark onboarding completed.
     void clearPending();
+    void markCompleted();
     setTutorialActive(false);
   };
 

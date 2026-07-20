@@ -4,7 +4,10 @@ import { useEffect, useRef } from "react";
 import { SignInScreen } from "./components/auth/sign-in-screen";
 import { CloudMigrationGate } from "./components/onboarding/cloud-migration/cloud-migration-gate";
 import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
-import { isFirstRun } from "./components/onboarding/missions/onboarding-flow";
+import {
+  isFirstRun,
+  onboardingRoute,
+} from "./components/onboarding/missions/onboarding-flow";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
 import { OnboardingSegmentScreen } from "./components/onboarding/segment-screen";
 import { ClaudeBrowserLogin } from "./components/shell/claude-browser-login";
@@ -18,6 +21,7 @@ import { useHoustonInit } from "./hooks/use-houston-init";
 import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync";
 import { useLocalBridgeAutoReconnect } from "./hooks/use-local-bridge-autoreconnect";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
+import { useOnboardingCompleted } from "./hooks/use-onboarding-completed";
 import { useOnboardingPending } from "./hooks/use-onboarding-pending";
 import { useOnboardingSegment } from "./hooks/use-onboarding-segment";
 import { useProviderCatalog } from "./hooks/use-provider-catalog";
@@ -204,6 +208,38 @@ export default function App() {
   const { isPending: onboardingPending, isLoading: onboardingPendingLoading } =
     useOnboardingPending();
 
+  // Durable "already onboarded" flag (HOU-732). `isFirstRun` reads a zero-agent
+  // workspace, which can't tell a fresh install from an emptied one — deleting
+  // every agent, or finishing the migration wizard with zero cloud agents,
+  // would wrongly re-enter onboarding. This flag is what distinguishes them:
+  // set on every onboarding terminal path and on a "done" migration, and
+  // backfilled here for existing active users. Its load joins the splash gate so
+  // a returning agent-less user never flashes into onboarding during boot.
+  const {
+    isCompleted: onboardingCompleted,
+    isLoading: onboardingCompletedLoading,
+    markCompleted,
+  } = useOnboardingCompleted();
+
+  // Backfill: any existing user who already has agents predates the flag, so
+  // stamp them completed once on boot. This upgrades-only (never clears), so a
+  // fresh install with zero agents stays uncompleted and onboarding is
+  // unchanged. Gated on the fetch having settled so we don't write redundantly.
+  useEffect(() => {
+    if (
+      agents.length > 0 &&
+      !onboardingCompletedLoading &&
+      !onboardingCompleted
+    ) {
+      void markCompleted();
+    }
+  }, [
+    agents.length,
+    onboardingCompletedLoading,
+    onboardingCompleted,
+    markCompleted,
+  ]);
+
   const mappedToasts: Toast[] = toasts.map((t) => {
     const base = t.description ? `${t.title} ${t.description}` : t.title;
     return {
@@ -259,6 +295,7 @@ export default function App() {
     wsLoading ||
     capabilitiesLoading ||
     onboardingPendingLoading ||
+    onboardingCompletedLoading ||
     (newEngineActive() && !agentsLoaded)
   ) {
     return <WorkspaceLoading />;
@@ -290,21 +327,27 @@ export default function App() {
   // is the CO-LOCATED upgrade moment (workspaces migrated in place, no
   // provider connected) — see useMigrationReconnect for its trigger.
 
-  // The segmentation question (HOU onboarding-segment) gates entry into the
-  // create-your-assistant flow on a genuine first run, same population as the
-  // tutorial below, but NOT the interrupted-onboarding resume (already
-  // segmented on their first pass through). Answered once and persisted in
-  // engine prefs; an existing, already-segmented user falls straight through.
-  const segmentPending =
-    firstRun &&
-    !onboardingPending &&
-    canCreateAgents &&
-    !capabilitiesError &&
-    (onboardingSegment.isLoading || !onboardingSegment.preference);
+  // The first-run gate (HOU-732), decided by a pure function so its four
+  // behaviors are unit-tested: fresh install shows segmentation then the
+  // create-your-assistant flow; an interrupted flow resumes via
+  // `onboarding_pending`; a completed user (migration done, or an emptied
+  // workspace) lands in the shell. The segmentation question is answered once
+  // and persisted in engine prefs — `segmentAnswered` folds its load + saved
+  // value so a first-run user still splashes while it resolves.
+  const segmentAnswered =
+    !onboardingSegment.isLoading && Boolean(onboardingSegment.preference);
+  const firstRunRoute = onboardingRoute({
+    firstRun,
+    onboardingPending,
+    onboardingCompleted,
+    canCreateAgents,
+    capabilitiesError,
+    segmentAnswered,
+  });
 
   return (
     <CloudMigrationGate>
-      {segmentPending ? (
+      {firstRunRoute === "segment" ? (
         onboardingSegment.isLoading ? (
           <WorkspaceLoading />
         ) : (
@@ -315,9 +358,7 @@ export default function App() {
             }}
           />
         )
-      ) : (firstRun || onboardingPending) &&
-        canCreateAgents &&
-        !capabilitiesError ? (
+      ) : firstRunRoute === "onboarding" ? (
         <PersonalAssistantOnboarding
           toasts={mappedToasts}
           onDismissToast={dismissToast}
