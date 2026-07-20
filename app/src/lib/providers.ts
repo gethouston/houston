@@ -12,6 +12,7 @@ import {
   PROVIDER_ID_RENAME,
   PROVIDER_OVERRIDES,
   type ProviderOverride,
+  REGIONAL_SUFFIX,
 } from "./provider-overrides.ts";
 
 /**
@@ -249,10 +250,22 @@ function buildProvider(
  * concept of.
  */
 function buildCatalog(catalog: ProviderCatalog): ProviderInfo[] {
+  // Ids present after drops/renames, so the regional filter below can tell a
+  // duplicate deployment apart from a provider whose ONLY deployment is
+  // regional (which stays visible rather than vanishing entirely).
+  const finalIds = new Set(
+    catalog
+      .filter((p) => !DROP_PI_PROVIDERS.has(p.id))
+      .map((p) => PROVIDER_ID_RENAME[p.id] ?? p.id),
+  );
   const built: ProviderInfo[] = [];
   for (const piProvider of catalog) {
     if (DROP_PI_PROVIDERS.has(piProvider.id)) continue;
     const finalId = PROVIDER_ID_RENAME[piProvider.id] ?? piProvider.id;
+    // Regional duplicates (…-cn / -sgp / -ams) of a provider that also ships
+    // its standard deployment are hidden — one card per provider.
+    const parent = finalId.replace(REGIONAL_SUFFIX, "");
+    if (parent !== finalId && finalIds.has(parent)) continue;
     built.push(buildProvider(piProvider, finalId, PROVIDER_OVERRIDES[finalId]));
   }
   built.push({ ...LOCAL_PROVIDER });

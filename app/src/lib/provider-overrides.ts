@@ -223,8 +223,13 @@ export const FEATURED_PROVIDER_IDS = [
   "openai-compatible",
 ] as const;
 
-/** Regional-deployment id suffixes (China / Singapore / Amsterdam). */
-const REGIONAL_SUFFIX = /-(cn|sgp|ams)$/;
+/**
+ * Regional-deployment id suffixes (China / Singapore / Amsterdam). Providers
+ * carrying one are hidden from the catalog whenever their standard (unsuffixed)
+ * deployment also ships — one card per provider, no regional duplicates (see
+ * `buildCatalog`).
+ */
+export const REGIONAL_SUFFIX = /-(cn|sgp|ams)$/;
 
 export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   openai: {
@@ -658,45 +663,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Pay as you go",
     installUrl: "https://platform.xiaomimimo.com",
     apiKeyUrl: "https://platform.xiaomimimo.com",
-  },
-  "xiaomi-token-plan-cn": {
-    name: "Xiaomi MiMo Token Plan (China)",
-    subtitle: "MiMo on a Token Plan",
-    cost: "Your MiMo Token Plan",
-    billing: "subscription",
-    installUrl: "https://platform.xiaomimimo.com",
-    apiKeyUrl: "https://platform.xiaomimimo.com",
-  },
-  "xiaomi-token-plan-sgp": {
-    name: "Xiaomi MiMo Token Plan (Singapore)",
-    subtitle: "MiMo on a Token Plan",
-    cost: "Your MiMo Token Plan",
-    billing: "subscription",
-    installUrl: "https://platform.xiaomimimo.com",
-    apiKeyUrl: "https://platform.xiaomimimo.com",
-  },
-  "xiaomi-token-plan-ams": {
-    name: "Xiaomi MiMo Token Plan (Amsterdam)",
-    subtitle: "MiMo on a Token Plan",
-    cost: "Your MiMo Token Plan",
-    billing: "subscription",
-    installUrl: "https://platform.xiaomimimo.com",
-    apiKeyUrl: "https://platform.xiaomimimo.com",
-  },
-  "minimax-cn": {
-    name: "MiniMax (China)",
-    subtitle: "China endpoint",
-    cost: "Pay-as-you-go on your MiniMax account",
-    installUrl: "https://platform.minimaxi.com",
-    apiKeyUrl: "https://platform.minimaxi.com",
-  },
-  "zai-coding-cn": {
-    name: "Z.ai Coding (China)",
-    subtitle: "GLM coding plan, China",
-    cost: "Your GLM Coding plan",
-    billing: "subscription",
-    installUrl: "https://open.bigmodel.cn",
-    apiKeyUrl: "https://open.bigmodel.cn/usercenter/apikeys",
   },
 };
 
