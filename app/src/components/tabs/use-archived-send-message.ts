@@ -56,7 +56,10 @@ export function useArchivedSendMessage({
           modelOverride: effectiveModel,
           modeOverride: await readAgentTurnMode(agentPath, tauriConfig.read),
         });
-        analytics.track("chat_message_sent");
+        analytics.track("chat_message_sent", {
+          provider: effectiveProvider,
+          model: effectiveModel,
+        });
         for (const f of files) {
           analytics.track("file_attached", { file_kind: classifyFileKind(f) });
         }

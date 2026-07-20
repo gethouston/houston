@@ -11,6 +11,7 @@ import type { DictationControl, DictationLabels } from "@houston-ai/chat";
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useUIStore } from "../../stores/ui";
+import { analytics } from "../analytics";
 import { showErrorToast } from "../error-toast";
 import { osTranscribeAudio } from "../os-bridge";
 import { dictationReducer, INITIAL_DICTATION_STATE } from "./dictation-reducer";
@@ -88,7 +89,10 @@ export function useDictation({
         const wav = await session.stop();
         const text = await osTranscribeAudio(wav, langHintRef.current);
         dispatch({ type: "transcribeSettled" });
-        if (text.trim()) onTranscriptRef.current(text.trim());
+        if (text.trim()) {
+          analytics.track("dictation_used");
+          onTranscriptRef.current(text.trim());
+        }
       } catch (err) {
         dispatch({ type: "transcribeSettled" });
         if (errorText(err) === "model-not-ready") void reopen();

@@ -10,6 +10,7 @@ import {
   useUpdateRoutine,
 } from "../../hooks/queries";
 import { useTimezonePreference } from "../../hooks/use-timezone-preference";
+import { analytics } from "../../lib/analytics";
 import { genericErrorDescription } from "../../lib/error-toast";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
@@ -38,6 +39,7 @@ export function useRoutineTabHandlers(agent: Agent, closeNewDraft: () => void) {
     async (patch: RoutineEditPatch) => {
       try {
         await createRoutine.mutateAsync(newRoutineInput(patch));
+        analytics.track("routine_scheduled", { source: "manual" });
         closeNewDraft();
         return true;
       } catch {
@@ -54,6 +56,10 @@ export function useRoutineTabHandlers(agent: Agent, closeNewDraft: () => void) {
         await updateRoutine.mutateAsync({
           routineId,
           updates: routineUpdateFromPatch(patch),
+        });
+        analytics.track("routine_scheduled", {
+          source: "edit",
+          routine_id: routineId,
         });
         return true;
       } catch {

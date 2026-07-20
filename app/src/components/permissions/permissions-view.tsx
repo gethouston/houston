@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
+import { analytics } from "../../lib/analytics";
 import { useAgentStore } from "../../stores/agents";
 import { AdminDetailScreen } from "../organization/admin-detail-screen";
 import { PageContainer, PageHeader } from "../shell/page-shell";
@@ -40,6 +41,16 @@ export function PermissionsView() {
     agentId: string;
     tab: PermissionsAgentTab;
   } | null>(null);
+
+  // One event per agent drill-in, keyed like the global view switches (the
+  // opening tab rides along: permissions:people / integrations / models).
+  useEffect(() => {
+    if (detail !== null)
+      analytics.track("tab_opened", {
+        tab_name: `permissions:${detail.tab}`,
+        agent_id: detail.agentId,
+      });
+  }, [detail]);
 
   // Honor a one-shot deep link (the blocked-app "Enable it in Permissions" CTA),
   // then clear it so a later plain nav lands back on the agent list.

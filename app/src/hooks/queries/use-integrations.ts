@@ -1,6 +1,7 @@
 import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { integrationsSupported } from "../../components/integrations/model";
+import { analytics } from "../../lib/analytics";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations } from "../../lib/tauri";
 import { useCapabilities } from "../use-capabilities";
@@ -76,10 +77,14 @@ export function useDisconnectIntegration(provider: string) {
   return useMutation({
     mutationFn: (toolkit: string) =>
       tauriIntegrations.disconnect(provider, toolkit),
-    onSuccess: () =>
+    onSuccess: (_data, toolkit) => {
+      analytics.track("integration_disconnected", {
+        integration_slug: toolkit,
+      });
       qc.invalidateQueries({
         queryKey: queryKeys.integrationConnections(provider),
-      }),
+      });
+    },
   });
 }
 

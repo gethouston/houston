@@ -1,6 +1,7 @@
 import { pingStoreInstall } from "@houston-ai/engine-client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { analytics } from "../../lib/analytics";
 import { getEngine } from "../../lib/engine";
 import { reportError } from "../../lib/error-toast";
 import { useUIStore } from "../../stores/ui";
@@ -30,6 +31,7 @@ export function useStoreInstall() {
       pingStoreInstall(slug).catch((err: unknown) => {
         reportError("store_install_ping", `install ping failed (${slug})`, err);
       });
+      analytics.track("agent_installed_from_store", { agent_slug: slug });
       return true;
     } catch (err) {
       reportError("store_install", `store install failed (${slug})`, err);

@@ -14,6 +14,7 @@ import {
   useSkillDetail,
   useSkills,
 } from "../../hooks/queries";
+import { analytics } from "../../lib/analytics";
 import { isMissingSkillError } from "../../lib/missing-skill";
 import { queryKeys } from "../../lib/query-keys";
 import { useUIStore } from "../../stores/ui";
@@ -95,6 +96,7 @@ export function useSkillSurface(agentPath: string) {
     async (content: string) => {
       if (!editingSkillName) return;
       await saveSkill.mutateAsync({ name: editingSkillName, content });
+      analytics.track("skill_edited", { skill_slug: editingSkillName });
       setEditingSkillName(null);
     },
     [editingSkillName, saveSkill],
@@ -103,6 +105,7 @@ export function useSkillSurface(agentPath: string) {
   const handleSkillDelete = useCallback(
     async (name: string) => {
       await deleteSkill.mutateAsync(name);
+      analytics.track("skill_deleted", { skill_slug: name });
       setEditingSkillName((prev) => (prev === name ? null : prev));
     },
     [deleteSkill],
@@ -114,14 +117,25 @@ export function useSkillSurface(agentPath: string) {
   );
 
   const handleInstallFromRepo = useCallback(
-    async (source: string, skills: RepoSkill[]) =>
-      installFromRepo.mutateAsync({ source, skills }),
+    async (source: string, skills: RepoSkill[]) => {
+      const result = await installFromRepo.mutateAsync({ source, skills });
+      for (const s of skills)
+        analytics.track("skill_installed", {
+          skill_slug: s.name,
+          source: "repo",
+        });
+      return result;
+    },
     [installFromRepo],
   );
 
   const handleCreateFromScratch = useCallback(
     async (input: { name: string; description: string; content: string }) => {
       await createSkill.mutateAsync(input);
+      analytics.track("skill_installed", {
+        skill_slug: input.name,
+        source: "scratch",
+      });
       return input.name;
     },
     [createSkill],

@@ -1,5 +1,6 @@
 import type { OrgRole } from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { analytics } from "../../lib/analytics";
 import { queryKeys } from "../../lib/query-keys";
 import { type EngineCallOptions, tauriOrg } from "../../lib/tauri";
 
@@ -43,7 +44,10 @@ export function useAddMember() {
       role: OrgRole;
       options?: EngineCallOptions;
     }) => tauriOrg.addMember(email, role, options),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.org() }),
+    onSuccess: (_data, { role }) => {
+      analytics.track("org_member_added", { role });
+      qc.invalidateQueries({ queryKey: queryKeys.org() });
+    },
   });
 }
 
@@ -57,7 +61,10 @@ export function useDeleteInvite() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (inviteId: string) => tauriOrg.deleteInvite(inviteId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.org() }),
+    onSuccess: () => {
+      analytics.track("org_invite_revoked");
+      qc.invalidateQueries({ queryKey: queryKeys.org() });
+    },
   });
 }
 
@@ -65,7 +72,10 @@ export function useRemoveMember() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (userId: string) => tauriOrg.removeMember(userId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.org() }),
+    onSuccess: () => {
+      analytics.track("org_member_removed");
+      qc.invalidateQueries({ queryKey: queryKeys.org() });
+    },
   });
 }
 
@@ -74,6 +84,9 @@ export function useSetMemberRole() {
   return useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: OrgRole }) =>
       tauriOrg.setMemberRole(userId, role),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.org() }),
+    onSuccess: (_data, { role }) => {
+      analytics.track("org_role_changed", { role });
+      qc.invalidateQueries({ queryKey: queryKeys.org() });
+    },
   });
 }
