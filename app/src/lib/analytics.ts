@@ -14,6 +14,10 @@ const APP_VERSION =
   typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
 
 const ACTIVE_DATE_KEY = "analytics:last_active_date";
+// The FIRST Firebase UID this install merged its person with ($merge_dangerously
+// guard): a different account signing in later on the same machine must NOT
+// merge, or two humans chain into one person irreversibly.
+const MERGED_UID_KEY = "analytics:merged_firebase_uid";
 const FIRST_INSTALL_VERSION_KEY = "analytics:first_install_version";
 const FIRST_INSTALL_DATE_KEY = "analytics:first_install_date";
 
@@ -489,9 +493,20 @@ export const analytics = {
       // distinct_id, and any previous install already aliased it) — which
       // silently splits one human into one person per install. The special
       // $merge_dangerously event is the only mechanism that merges two
-      // ALREADY-IDENTIFIED persons, so send it too: idempotent when the
-      // persons are already one, decisive when they are not.
-      posthog.capture("$merge_dangerously", { alias: userId });
+      // ALREADY-IDENTIFIED persons, so send it too — but ONLY for the FIRST
+      // account this install ever merged with. On a shared machine a second
+      // account's merge would chain two humans into one person forever
+      // (the install person already IS account A when account B signs in),
+      // so the install remembers its first merged UID and never merges with
+      // a different one. Fire-and-forget: preference I/O must not block
+      // sign-in, and a read failure safely skips the merge.
+      void (async () => {
+        const prev = await tauriPreferences.get(MERGED_UID_KEY).catch(() => "");
+        if (prev && prev !== userId) return; // multi-account install: never chain
+        posthog.capture("$merge_dangerously", { alias: userId });
+        if (!prev)
+          await tauriPreferences.set(MERGED_UID_KEY, userId).catch(() => {});
+      })();
       posthog.setPersonProperties(
         {
           firebase_uid: userId,
