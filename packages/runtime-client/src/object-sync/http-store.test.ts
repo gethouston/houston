@@ -2,7 +2,8 @@ import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { HttpObjectStore } from "./http-store";
+import { HttpObjectStore, STREAM_UPLOAD_THRESHOLD_BYTES } from "./http-store";
+import { ObjectTooLargeError } from "./object-store";
 
 const metadata = (key: string, size: number) => ({
   key,
@@ -214,4 +215,81 @@ test("retries download and still writes the file atomically", async () => {
   expect(readFileSync(destination, "utf8")).toBe("payload");
   expect(calls()).toBe(2);
   expect(readdirSync(join(dir, "nested"))).toEqual(["dest.txt"]);
+});
+
+test("a 413 PUT surfaces as the typed ObjectTooLargeError, with no retry", async () => {
+  let calls = 0;
+  const fetchImpl: typeof fetch = async () => {
+    calls += 1;
+    return Response.json({ error: "object too large" }, { status: 413 });
+  };
+  const store = new HttpObjectStore({
+    baseUrl: "https://gw.test/v1/pod/store/o/a",
+    token: "pod-token",
+    fetchImpl,
+    retryDelaysMs: [0, 0],
+  });
+  const dir = mkdtempSync(join(tmpdir(), "houston-store-413-"));
+  writeFileSync(join(dir, "huge.mp4"), "H".repeat(32));
+
+  const err = await store
+    .upload(join(dir, "huge.mp4"), "work/huge.mp4")
+    .then(() => null)
+    .catch((e: unknown) => e);
+  expect(err).toBeInstanceOf(ObjectTooLargeError);
+  expect((err as ObjectTooLargeError).key).toBe("work/huge.mp4");
+  expect(String(err)).toContain("failed (413)");
+  // 413 is deterministic — the retry layer must not re-send the body.
+  expect(calls).toBe(1);
+});
+
+test("a large file uploads as a per-attempt stream, never one heap buffer", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "houston-store-stream-"));
+  const big = join(dir, "big.mp4");
+  writeFileSync(big, "V".repeat(STREAM_UPLOAD_THRESHOLD_BYTES));
+  const received: number[] = [];
+  let calls = 0;
+  const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
+    calls += 1;
+    expect((init as { duplex?: string }).duplex).toBe("half");
+    expect(init?.body).toBeInstanceOf(ReadableStream);
+    // Drain the stream — a retried attempt must deliver the FULL body again,
+    // which only works if each attempt opened a fresh stream.
+    let bytes = 0;
+    for await (const chunk of init?.body as ReadableStream<Uint8Array>) {
+      bytes += chunk.byteLength;
+    }
+    received.push(bytes);
+    if (calls === 1) return Response.json({ error: "bad gw" }, { status: 503 });
+    return Response.json(metadata("work/big.mp4", bytes));
+  }) as unknown as typeof fetch;
+  const store = new HttpObjectStore({
+    baseUrl: "https://gw.test/v1/pod/store/o/a",
+    token: "pod-token",
+    fetchImpl,
+    retryDelaysMs: [0],
+  });
+
+  await store.upload(big, "work/big.mp4");
+  expect(received).toEqual([
+    STREAM_UPLOAD_THRESHOLD_BYTES,
+    STREAM_UPLOAD_THRESHOLD_BYTES,
+  ]);
+});
+
+test("a small file still uploads as a single buffered body", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "houston-store-small-"));
+  writeFileSync(join(dir, "notes.txt"), "small");
+  let body: unknown;
+  const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
+    body = init?.body;
+    return Response.json(metadata("notes.txt", 5));
+  }) as unknown as typeof fetch;
+  const store = new HttpObjectStore({
+    baseUrl: "https://gw.test/v1/pod/store/o/a",
+    token: "pod-token",
+    fetchImpl,
+  });
+  await store.upload(join(dir, "notes.txt"), "notes.txt");
+  expect(Buffer.isBuffer(body)).toBe(true);
 });
