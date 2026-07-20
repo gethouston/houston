@@ -31,6 +31,13 @@ const env =
   (import.meta as { env?: Record<string, string | undefined> }).env ?? {};
 const controlPlaneUrl = env.VITE_CONTROL_PLANE_URL || "";
 
+// Same contract as the deploy environment above, for the Sentry `deployment`
+// tag: ONE web bundle serves the managed cloud (a baked control plane) and the
+// self-host Connect screen, so only this entry knows which one a tab is. The
+// shared Sentry init reads it (app/src/lib/sentry-deployment.ts) — set it
+// before the app graph loads.
+window.__HOUSTON_DEPLOYMENT__ = controlPlaneUrl ? "managed-cloud" : "selfhost";
+
 if (controlPlaneUrl && window.location.pathname.startsWith("/admin")) {
   // Operator dashboard (served at /admin by nginx try_files): pods-per-user + GCP
   // spend. Its own GCIP (Firebase) sign-in + control-plane /admin/* calls; the
