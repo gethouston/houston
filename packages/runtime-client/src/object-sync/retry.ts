@@ -17,6 +17,13 @@ export interface FetchRetryOptions {
   delaysMs?: number[];
   /** Injectable so tests can observe waits without real timers. */
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * Per-attempt body factory for streaming uploads: a ReadableStream body is
+   * consumed by the attempt that sends it, so a retry must open a FRESH stream
+   * — a reused one would send an empty or locked body. Buffer bodies don't
+   * need this and stay on `init.body`.
+   */
+  body?: () => BodyInit;
 }
 
 const realSleep = (ms: number) =>
@@ -33,7 +40,8 @@ export async function fetchWithRetry(
   for (let attempt = 0; ; attempt += 1) {
     const lastAttempt = attempt >= delays.length;
     try {
-      const res = await fetchImpl(url, init);
+      const attemptInit = opts.body ? { ...init, body: opts.body() } : init;
+      const res = await fetchImpl(url, attemptInit);
       if (lastAttempt || !TRANSIENT_STATUSES.has(res.status)) return res;
     } catch (err) {
       if (lastAttempt) throw err;
