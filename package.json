@@ -21,6 +21,7 @@
     "dev": "scripts/dev/dev.sh",
     "dev:staging": "scripts/dev/staging.sh",
     "dev:down": "scripts/dev/reap.sh",
+    "dev:reset": "scripts/dev/reset-local.sh",
     "dev:host": ". scripts/dev/env.sh && HOUSTON_HOME=\"$HOME/.dev-houston\" pnpm --filter @houston/host dev",
     "dev:app": "scripts/dev/app.sh",
     "ios": "bash mobile/ios/scripts/dev-sim.sh"

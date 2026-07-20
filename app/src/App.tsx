@@ -31,6 +31,7 @@ import { analytics } from "./lib/analytics";
 import { shouldAllowNativeContextMenu } from "./lib/context-menu";
 import { newEngineActive } from "./lib/engine";
 import { isIdentityConfigured } from "./lib/identity";
+import { logger } from "./lib/logger";
 import {
   clearUser as clearSentryUser,
   setUser as setSentryUser,
@@ -41,6 +42,15 @@ import { tauriSystem } from "./lib/tauri";
 import { useAgentStore } from "./stores/agents";
 import { useUIStore } from "./stores/ui";
 import { useWorkspaceStore } from "./stores/workspaces";
+
+// Render-time first-run route logging, deduped at module scope so it needs no
+// hook (it must run below App's conditional early returns).
+let lastFirstRunRouteLine = "";
+function logFirstRunRoute(line: string): void {
+  if (line === lastFirstRunRouteLine) return;
+  lastFirstRunRouteLine = line;
+  logger.info(line);
+}
 
 export default function App() {
   const authConfigured = isIdentityConfigured();
@@ -344,6 +354,17 @@ export default function App() {
     capabilitiesError,
     segmentAnswered,
   });
+
+  // The route inputs, in the frontend log: "why did this boot land where it
+  // did" is unanswerable after the fact without them (a mis-routed first run
+  // looks identical to a returning user once the shell is up). Hook-free
+  // (module-level dedupe) — this sits below the loading/auth early returns,
+  // where a useEffect would violate the Rules of Hooks.
+  logFirstRunRoute(
+    `[first-run] route=${firstRunRoute} firstRun=${firstRun} agents=${agents.length} ` +
+      `completed=${onboardingCompleted} pending=${onboardingPending} ` +
+      `canCreate=${canCreateAgents} capErr=${capabilitiesError} segmentAnswered=${segmentAnswered}`,
+  );
 
   return (
     <CloudMigrationGate>
