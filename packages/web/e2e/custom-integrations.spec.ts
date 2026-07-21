@@ -108,9 +108,10 @@ test("ready mode lists a pending custom integration and the enter-key flow activ
   await openIntegrationsPage(page);
 
   // The consolidated Installed strip (OUTSIDE the tabs) carries the custom
-  // integration as a tile alongside the catalog connections.
+  // integration as a tile (name + its API/MCP badge) alongside the catalog
+  // connections.
   await expect(
-    page.getByRole("button", { name: "Acme CRM", exact: true }),
+    page.getByRole("button", { name: "Acme CRM API" }),
   ).toBeVisible();
 
   // Its row (status + actions) lives in the Custom integrations tab.

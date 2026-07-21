@@ -36,9 +36,10 @@ test("the browse page groups the catalog into category sections with an installe
   await armCapabilities(request, { integrations: ["composio"] });
   await openIntegrationsPage(page);
 
-  // The Installed strip carries the one active connection as a tile.
+  // The Installed strip carries the one active connection as a tile (a catalog
+  // row: name + one-line description).
   await expect(page.getByRole("heading", { name: "Installed" })).toBeVisible();
-  const gmailTile = page.getByRole("button", { name: "Gmail", exact: true });
+  const gmailTile = page.getByRole("button").filter({ hasText: "Gmail" });
   await expect(gmailTile).toBeVisible();
 
   // The catalog is grouped into flat category sections — every seeded category
@@ -55,9 +56,11 @@ test("the browse page groups the catalog into category sections with an installe
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Sales" })).toBeVisible();
 
-  // A connectable app renders as a flat row (name + one-line description).
+  // A connectable app renders as a flat row (name + one-line description). Slack
+  // is an everyday app, so at rest it appears in BOTH the curated Featured
+  // spotlight and its Communication section — take the first.
   await expect(
-    page.getByRole("button", { name: /Slack Team messaging/ }),
+    page.getByRole("button", { name: /Slack Team messaging/ }).first(),
   ).toBeVisible();
 
   // Gmail is connected, so it appears ONCE — the installed tile — and never as
@@ -77,7 +80,7 @@ test("searching filters the category sections live", async ({
     page.getByRole("heading", { name: "Productivity" }),
   ).toBeVisible();
 
-  const search = page.getByRole("textbox", { name: "Search integrations..." });
+  const search = page.getByRole("textbox", { name: "Search integrations" });
   await search.fill("slack");
 
   // Only the section holding Slack (Communication) survives; the Slack row
@@ -106,8 +109,9 @@ test("clicking a row's + starts the connect flow", async ({
   await armCapabilities(request, { integrations: ["composio"] });
   await openIntegrationsPage(page);
 
-  // The filled + at the row's right edge is the install affordance.
-  const slackAdd = page.getByRole("button", { name: "Connect Slack" });
+  // The filled + at the row's right edge is the install affordance. Slack is
+  // featured AND in its category section, so take the first + it renders.
+  const slackAdd = page.getByRole("button", { name: "Connect Slack" }).first();
   await expect(slackAdd).toBeVisible();
   await slackAdd.click();
 
@@ -141,7 +145,12 @@ test("clicking a row's body opens the more-info modal, and its CTA connects", as
   await openIntegrationsPage(page);
 
   // The row body (name + description) opens the detail modal, not a connect.
-  await page.getByRole("button", { name: /Slack Team messaging/ }).click();
+  // Slack is featured AND in its category section — either row body opens the
+  // same modal, so take the first.
+  await page
+    .getByRole("button", { name: /Slack Team messaging/ })
+    .first()
+    .click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("Slack", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Team messaging")).toBeVisible();
@@ -163,7 +172,7 @@ test("an installed tile opens the app detail modal", async ({
   await armCapabilities(request, { integrations: ["composio"] });
   await openIntegrationsPage(page);
 
-  await page.getByRole("button", { name: "Gmail", exact: true }).click();
+  await page.getByRole("button").filter({ hasText: "Gmail" }).click();
 
   // The detail modal is the view + reconnect + disconnect surface.
   await expect(page.getByRole("heading", { name: "Gmail" })).toBeVisible();
