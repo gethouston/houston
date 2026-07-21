@@ -32,10 +32,27 @@ interface AgentManifest {
 ## Tabs
 
 Every agent renders the same standard tabs in the shell:
-`Activity` (board) / `Automations` (tab id `routines`; schedule-driven AND
-event-driven in one list — the wake mechanism is a choice inside the editor,
-gated there by `capabilities.triggers`, never a separate tab) / `Files` /
-`Agent Settings` (tab id `job-description`) / `Integrations`.
+`Activity` (board) / `Routines` (tab id `routines`; schedule-driven AND
+event-driven in one list — the wake mechanism is a choice made while creating a
+routine, never a separate tab) / `Files` / `Agent Settings`
+(tab id `job-description`) / `Integrations`.
+
+**Routines are created chat-first (no manual editor, no Dialog wizard).**
+Starting a new routine opens a scripted **in-chat intake** (`app/src/components/
+tabs/automation-intake/`, cards that look exactly like the agent's real
+`ask_user` cards but run locally with zero model calls): a fork ("from scratch"
+vs "from a template"), then — where the deployment can fire event triggers — a
+wake question (schedule / app event / webhook). An app-event pick only chooses
+the APP (and connects it inline); WHAT happens in it is decided in plain words
+in the AI setup chat that takes over the same view. Skipping any question hands
+off to a full AI interview. There is no form editor and no modal wizard. Each
+row carries an enable/disable toggle, a three-dot menu (Run now / Stop run,
+Delete), and — for a schedule routine — an inline, always-visible schedule-edit
+popover; everything else about a routine is changed by asking the agent in its
+setup chat. The setup chat opens in the **shell-level mission panel** on the
+right (a resizable split view, the SAME panel the Activity board uses, wired
+through `useShellDetailPanel`); nothing selected centers the list as a single
+column. Library surface: `@houston-ai/routines` (`ui/routines/README.md`).
 
 This used to be configurable per agent via a `tabs: AgentTab[]` field in `houston.json`, plus an optional `customComponent` pointing at a per-agent `bundle.js`. The flexibility was never used in practice (zero shipped agents had a custom React tab) and caused drift between installed agents and fresh ones whenever the default set changed. The set is now hardcoded in `app/src/agents/standard-tabs.ts` (`STANDARD_TABS`, `DEFAULT_TAB_ID`). Old `tabs` / `defaultTab` fields on installed manifests are ignored by the loader.
 

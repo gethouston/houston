@@ -993,6 +993,16 @@ export const tauriRoutines = {
     call<void>("sync_routine_scheduler", () =>
       getEngine().syncRoutineScheduler(agentPath),
     ),
+  /**
+   * Mint (or rotate) a routine's incoming-webhook key: the one-time reveal
+   * (`url` + `secret` + `key_prefix`), or `null` where webhook keys are
+   * unsupported (desktop/self-host — only the hosted gateway serves them).
+   * Calling again ROTATES: the old secret stops working.
+   */
+  mintWebhookKey: (agentPath: string, routineId: string) =>
+    call("mint_routine_webhook_key", () =>
+      getEngine().mintRoutineWebhookKey(agentPath, routineId),
+    ),
 };
 
 export const tauriActivity = {

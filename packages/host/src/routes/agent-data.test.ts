@@ -61,6 +61,10 @@ const deps = (): ControlPlaneDeps => ({
   },
   vfs,
   capabilities: CAPS,
+  // A trigger-capable deployment (Houston Cloud): the write gate lets trigger
+  // bindings through here — the no-backend rejection is covered in
+  // trigger-gating.test.ts.
+  triggersEnabled: true,
 });
 
 let server: Server;
@@ -276,6 +280,51 @@ test("routines: a trigger routine is created without a schedule; both/neither wa
       name: "Bad binding",
       prompt: "x",
       trigger: { toolkit: "gmail" },
+    }),
+  });
+  expect(malformed.status).toBe(400);
+});
+
+test("routines: a webhook trigger routine is created and its binding round-trips; a malformed webhook is rejected", async () => {
+  // Minted key_prefix stamped later; created without one (status pending).
+  const created = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "On webhook",
+      prompt: "Handle it",
+      trigger: { kind: "webhook" },
+    }),
+  });
+  expect(created.status).toBe(201);
+  const routine = (await created.json()) as Routine;
+  expect(routine.trigger).toEqual({ kind: "webhook" });
+  expect("schedule" in routine).toBe(false);
+
+  // A webhook binding carrying the display-only prefix round-trips intact.
+  const withPrefix = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "On webhook 2",
+      prompt: "Handle it",
+      trigger: { kind: "webhook", key_prefix: "wh_abc123" },
+    }),
+  });
+  expect(withPrefix.status).toBe(201);
+  expect((await withPrefix.json()).trigger).toEqual({
+    kind: "webhook",
+    key_prefix: "wh_abc123",
+  });
+
+  // A malformed webhook binding (non-string key_prefix) → 400.
+  const malformed = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "Bad webhook",
+      prompt: "x",
+      trigger: { kind: "webhook", key_prefix: 9 },
     }),
   });
   expect(malformed.status).toBe(400);

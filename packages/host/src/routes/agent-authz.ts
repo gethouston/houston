@@ -77,6 +77,17 @@ export interface AgentRouteDeps {
    * Absent → those requests fall through toward the runtime channel (404).
    */
   actionApprovals?: LocalActionApprovals;
+  /**
+   * Whether this deployment can fire event-driven routines: a trigger backend
+   * (a Composio project key + a public webhook URL) exists, so a routine's
+   * `trigger` binding can actually wake. True on Houston Cloud only; false on
+   * desktop and self-host (absent = false). Gates the routine write path
+   * (reject a trigger binding where it could never fire) and the trigger-status
+   * route (report those routines as a hard error instead of fabricating health).
+   * Distinct from the CLIENT-facing `capabilities.triggers`, which the managed
+   * gateway advertises at its edge and this host never sets on itself.
+   */
+  triggersEnabled?: boolean;
 }
 
 export const DEFAULT_PATHS = new CloudPaths();

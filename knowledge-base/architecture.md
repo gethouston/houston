@@ -308,6 +308,56 @@ path that forgets `modeOverride` silently degrades to `execute`. The routine
 firer pins `auto` itself. Per-turn cloud workspaces drop chat-body pins entirely;
 that's pre-existing and not specific to plan mode.
 
+## Routines (scheduled + event-driven work)
+
+A **Routine** is automatic work the agent runs later: on a cron `schedule` OR on
+a `trigger` (an external-app event), exactly one of the two. Wire type + the
+trigger union: `packages/protocol/src/domain/routine.ts`; on-disk shape +
+`.houston/routines/routines.json` discipline: `knowledge-base/files-first.md`;
+the trigger backend + UI intake: `knowledge-base/integrations.md`.
+
+**`save_routine` is the ONLY write path the agent has.** The product prompt USED
+to tell the agent to write `.houston/routines/routines.json` wholesale with file
+tools. Each setup chat is isolated and only knows its own routine, so creating
+task #2 overwrote the file with a one-element array — deleting task #1. The
+runtime tool `save_routine` (`packages/runtime/src/session/tools/save-routine.ts`,
+`SAVE_ROUTINE_TOOL_NAME`) replaces that: it POSTs to the host's merge-safe sandbox
+route (`/sandbox/routines/save`) carrying only the per-sandbox HMAC token, and the
+host does a read-modify-write (`loadRoutines → create/apply → upsertById →
+saveRoutines`, `packages/host/src/routes/routine-write.ts` — the ONE blessed write
+path shared by the authenticated agent-data route and the sandbox route). The
+**prompt forbids the direct write**: `houston-prompt-routines.ts` states "NEVER
+write, edit, or run a command that changes `.houston/routines/routines.json`… use
+the `save_routine` tool — it is the ONLY way to save one" (reading it to check
+what exists is allowed). The tool passes `id` to update in place or omits it to
+create, and stamps `setup_activity_id` to link the routine to its setup chat. The
+host gates the write: exactly-one-wake (both/neither rejected), a valid cron, a
+known provider pin, and — where the deployment has no trigger backend — refusal of
+any `trigger` binding with a plain-language reason the agent relays.
+
+**Trigger union (`kind`-discriminated, additive).** `RoutineTriggerBinding =
+ComposioTriggerBinding | WebhookTriggerBinding`. `kind` is OPTIONAL and absent
+means **Composio** (`{toolkit, trigger_slug, trigger_config, connected_account_id?}`),
+so every routine written before webhook wakes existed deserializes unchanged (no
+migration); `kind: "webhook"` is the incoming-webhook binding (`{key_prefix?}` —
+display-only, the URL + secret are gateway-minted and never in routine data). Both
+wake a run through the same fire path as cron.
+
+**Trigger-status route (honest where there is no backend).** `GET
+/v1/agents/:agentId/trigger-status` (`packages/host/src/routes/trigger-status.ts`)
+is served by THIS TS host ONLY as the no-backend answer: on a deployment that
+cannot fire triggers (`triggersEnabled === false`) it returns one `{routine_id,
+status:"error", detail}` per trigger-bound routine (detail: event triggers aren't
+available here) and `[]` when none. Where triggers CAN fire it returns `false`
+(falls through) — the route NEVER fabricates a status the real backend (the Go
+gateway edge on managed cloud) owns.
+
+**Setup chats pin `execute`; fire paths pin `auto`.** A routine's SETUP chat runs
+as **Coworker** (`modeOverride: "execute"`, `use-routine-chat-setup.ts`) because
+the interview needs blocking `ask_user` cards. A routine's FIRED run pins
+**Autopilot** (`auto`) so scheduled/triggered work never waits on the user — see
+"Turn modes" above (unchanged).
+
 ## Current gap to vision
 
 | Goal | Status |

@@ -1,7 +1,5 @@
 // Routine types — mirrors Houston's new file-backed Routine model.
 
-import type { ReactNode } from "react";
-
 /**
  * Whether a routine's runs share one chat or each start a fresh one.
  * `"shared"` (the default) keeps one chat per routine; `"per_run"` surfaces
@@ -10,12 +8,14 @@ import type { ReactNode } from "react";
 export type RoutineChatMode = "shared" | "per_run";
 
 /**
- * An event binding that wakes a routine on an external Composio trigger instead
- * of a cron `schedule` (C9 event-driven routines). Mirrors the engine-client
- * `RoutineTriggerBinding`; kept as its own type here so `ui/` stays free of
- * app/engine imports. Exactly one of `schedule`/`trigger` is set on a routine.
+ * A routine's Composio trigger binding. Mirrors the engine-client
+ * `ComposioTriggerBinding`; kept as its own type here so `ui/` stays free of
+ * app/engine imports. The `kind` discriminant is optional for backward
+ * compatibility — absent means Composio (the original, pre-webhook shape).
  */
-export interface RoutineTriggerBinding {
+export interface ComposioTriggerBinding {
+  /** Discriminant. Absent means Composio. */
+  kind?: "composio";
   /** Composio toolkit slug, e.g. "gmail". */
   toolkit: string;
   /** Trigger type slug, e.g. "GMAIL_NEW_GMAIL_MESSAGE". */
@@ -25,6 +25,29 @@ export interface RoutineTriggerBinding {
   /** Pinned only when the user has more than one connected account for the toolkit. */
   connected_account_id?: string;
 }
+
+/**
+ * A routine's incoming-webhook binding: any external system that POSTs to the
+ * routine's minted URL wakes it. The URL + secret are minted separately and
+ * never live in routine data; `key_prefix` is a display-only "wh_xxxxxxxx" label
+ * stamped after minting. Absent `key_prefix` = not minted yet.
+ */
+export interface WebhookTriggerBinding {
+  /** Discriminant — REQUIRED (absent would read as Composio). */
+  kind: "webhook";
+  /** Display-only "wh_xxxxxxxx" label; the secret is never stored here. */
+  key_prefix?: string;
+}
+
+/**
+ * An event binding that wakes a routine instead of a cron `schedule` (C9
+ * event-driven routines). Exactly one of `schedule`/`trigger` is set on a
+ * routine. Discriminated on `kind`: absent or "composio" =>
+ * `ComposioTriggerBinding`, "webhook" => `WebhookTriggerBinding`.
+ */
+export type RoutineTriggerBinding =
+  | ComposioTriggerBinding
+  | WebhookTriggerBinding;
 
 export interface Routine {
   id: string;
@@ -82,9 +105,9 @@ export interface RoutineRun {
 
 /**
  * Form shape used by the "new agent" onboarding wizard's AI-suggested starter
- * routine (`AiRoutineStep`). The Routines tab itself no longer uses this
- * shape — editing an existing routine there patches `name`/`schedule`/`prompt`
- * directly (see `RoutineRow`'s inline edit panel).
+ * routine (`AiRoutineStep`) and the app-owned creation stepper's ScheduleBuilder.
+ * The Routines tab itself is chat-first — routines are created and changed by
+ * asking the agent, not by editing this shape in a grid.
  */
 export interface RoutineFormData {
   name: string;
@@ -135,22 +158,6 @@ export type RoutineWake =
   | { mode: "event"; trigger: RoutineTriggerBinding };
 
 /**
- * One entry in a toolkit's trigger catalog: an event a routine can wake on.
- * `type` splits latency classes: `webhook` is near-realtime, `poll` carries
- * minutes of inherent delay (surfaced in the UI copy). `config` is the JSON
- * schema for the instance filters the user fills in. Opaque to `ui/` beyond the
- * pure schema→fields mapper in `trigger-config-schema.ts`.
- */
-export interface TriggerType {
-  slug: string;
-  name: string;
-  description?: string;
-  type: "poll" | "webhook";
-  config: Record<string, unknown>;
-  payload?: Record<string, unknown>;
-}
-
-/**
  * A trigger routine's live provisioning status. `active` = delivering;
  * `pending` = reconcile in flight; `paused_disconnected` = the connected account
  * was disconnected (offer Reconnect); `paused_revoked` = the toolkit fell outside
@@ -185,23 +192,10 @@ export interface TriggerApp {
   accounts: TriggerAppAccount[];
 }
 
-/** The wake mechanism the routine editor commits on Save. */
+/** A composed "create/update a routine" input: a name, a prompt, and the wake
+ *  mechanism the app-owned stepper collected (a cron schedule or an event). */
 export interface RoutineEditPatch {
   name: string;
   prompt: string;
   wake: RoutineWake;
 }
-
-/**
- * Props the routine editor hands the app-injected trigger editor slot: the
- * current binding (or null) and a change callback carrying the binding plus
- * whether it is complete/valid (so the editor can gate Save without re-deriving
- * the config schema).
- */
-export interface TriggerEditorSlotProps {
-  value: RoutineTriggerBinding | null;
-  onChange: (binding: RoutineTriggerBinding | null, valid: boolean) => void;
-}
-
-/** Renders the app-wired trigger editor (picker + config form) into the editor. */
-export type RenderTriggerEditor = (props: TriggerEditorSlotProps) => ReactNode;

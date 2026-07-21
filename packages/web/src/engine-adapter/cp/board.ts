@@ -3,7 +3,9 @@ import type {
   ActivityUpdate,
   Routine,
   RoutineRun,
+  WebhookKeyReveal,
 } from "../../../../../ui/engine-client/src/types";
+import { HoustonEngineError } from "../client/errors";
 import { agentPath, type ControlPlaneConfig, cpFetch } from "./fetch";
 
 export async function listActivities(
@@ -114,4 +116,28 @@ export async function cancelRoutineRun(
     { method: "POST" },
   );
   return (await res.json()) as RoutineRun;
+}
+
+/**
+ * Mint (or rotate) a routine's incoming-webhook key, or `null` when the gateway
+ * does not serve webhook keys (404). Calling again ROTATES: the old secret is
+ * invalidated. Callers treat `null` as "webhook keys unsupported here"; every
+ * other error throws. Mirrors `agentTriggerStatus`'s 404 degrade.
+ */
+export async function mintRoutineWebhookKey(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  routineId: string,
+): Promise<WebhookKeyReveal | null> {
+  try {
+    const res = await cpFetch(
+      cfg,
+      `${agentPath(agentId)}/routines/${encodeURIComponent(routineId)}/webhook-key`,
+      { method: "POST" },
+    );
+    return (await res.json()) as WebhookKeyReveal;
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404) return null;
+    throw err;
+  }
 }

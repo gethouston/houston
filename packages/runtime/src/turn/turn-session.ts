@@ -136,6 +136,10 @@ export async function runPiTurn(
     const toolSelection = buildToolSelection({
       codeExecution: config.codeExecution === "remote" ? "remote" : "disabled",
       integrations: false,
+      // The retired stateless per-turn cloud runtime has no sandbox routine
+      // route wired (it syncs the whole workspace prefix), so save_routine is
+      // off here — the standing per-agent pods run in server mode with it on.
+      saveRoutine: false,
     });
     const sandbox = toolSelection.includeRunCode
       ? makeRunCodeTool({

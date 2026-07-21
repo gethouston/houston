@@ -1,10 +1,9 @@
 /**
- * The routine chat's actual AIBoard mount, split out of
- * `routine-setup-chat.tsx` to keep that file focused on layout/chrome. Always
- * rendered inside a `hidden` wrapper by the caller: the list never shows,
- * only the portaled detail panel (into the chat view's own local container)
- * is visible — full page, since this is the entire tab content while a chat
- * is open (no more side-by-side editor).
+ * The routine chat's actual AIBoard mount, split out of `routine-setup-chat.tsx`
+ * to keep that file focused on layout/chrome. Rendered inside a `hidden` wrapper
+ * by the caller: the board's own list never shows, only its portaled detail
+ * panel (into the shell-level panel container) — it fills the big right-hand
+ * panel, the SAME one the Activity mission board opens, for a routine's chat.
  */
 import type { KanbanItem } from "@houston-ai/board";
 import { AIBoard } from "@houston-ai/board";
@@ -23,17 +22,23 @@ import { useBoardSendQueue } from "../board/use-board-send-queue";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useQueuedMessageLabels } from "../use-queued-message-labels";
+import { setupChatItem } from "./routines-tab-model";
 
 const noop = () => {};
 
 interface Props extends TabProps {
   activity: Activity;
   sessionKey: string | null;
-  /** The chat view's own local container (never the app-wide mission panel). */
-  panelContainer: HTMLDivElement | null;
-  /** The Back button, rendered to the left of the agent avatar — the ONE
-   *  header this chat has (no second header stacked above it). */
-  panelLeading: ReactNode;
+  /** The shell-level panel node this board portals its detail panel into — the
+   *  SAME app-wide panel the Activity mission board opens (one shared UI path). */
+  panelContainer: HTMLElement | null;
+  /** Leading slot before the agent avatar (the integration chat's Back button).
+   *  Omit for none — the routines split deselects via the close X instead. */
+  panelLeading?: ReactNode;
+  /** Deselect handler: when supplied, the panel shows its close X and clicking
+   *  it deselects the item (closing the pane). Omit for a non-dismissable
+   *  companion (the integration chat exits via its own chrome). */
+  onPanelClose?: () => void;
   /** Overrides the panel's auto "Mission: {title}" line (routines pass
    *  "Routine: {name}"). Omit to keep the default "Mission: {title}" — the
    *  custom-integration setup chat reuses this board and IS a mission, so it
@@ -53,6 +58,7 @@ export function RoutineSetupChatBoard({
   panelLeading,
   missionLabel,
   panelActions,
+  onPanelClose,
 }: Props) {
   const path = agent.folderPath;
   const openHref = useOpenAgentHref(path);
@@ -66,6 +72,10 @@ export function RoutineSetupChatBoard({
     agentDef,
     selectedSessionKey: sessionKey,
     onSelectSession: noop,
+    // The setup chat's kickoff turn runs Coworker (execute) — the interview
+    // needs ask_user and must never open read-only in Planner — so the live
+    // composer opens on Coworker too. The user can still switch modes here.
+    initialTurnMode: "execute",
   });
   const overrides = useMemo(
     () => ({
@@ -112,21 +122,18 @@ export function RoutineSetupChatBoard({
   const keyForSession = useCallback(() => sessionKey ?? "", [sessionKey]);
 
   const items: KanbanItem[] = useMemo(
-    () => [
-      {
-        id: activity.id,
-        title: activity.title,
-        description: "",
-        status: activity.status,
-        updatedAt: activity.updated_at ?? new Date().toISOString(),
-        group: agent.name,
-        metadata: sessionKey ? { sessionKey } : {},
-      },
-    ],
+    () => [setupChatItem(activity, agent.name, sessionKey)],
     [activity, agent.name, sessionKey],
   );
 
   const running = activity.status === "running";
+
+  // The panel's close X clears the board's selection (`onSelect(null)`) — route
+  // that to deselect (non-null selects, from the hidden card, are ignored).
+  const handlePanelSelect = useCallback(
+    (id: string | null) => id === null && onPanelClose?.(),
+    [onPanelClose],
+  );
 
   return (
     <>
@@ -134,13 +141,13 @@ export function RoutineSetupChatBoard({
         layout="list"
         items={items}
         selectedId={activity.id}
-        onSelect={noop}
+        onSelect={onPanelClose ? handlePanelSelect : noop}
         panelContainer={panelContainer}
-        // The chat is the entire tab content while open (HOU-725 rebuild):
-        // clicking app chrome must not dismiss it — the tab's own Back
-        // button is the only way out.
+        // Clicks on app chrome or the persistent list must NOT dismiss the pane;
+        // only the close X (or Escape) deselects it. The X shows only when a
+        // deselect handler is wired (`onPanelClose`).
         disableOutsideClose
-        hidePanelClose
+        hidePanelClose={onPanelClose ? undefined : true}
         feedItems={feedItems}
         isLoading={send.effectiveLoading}
         sessionKeyFor={keyForSession}

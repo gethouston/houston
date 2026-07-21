@@ -4,12 +4,17 @@
 export type RoutineChatMode = "shared" | "per_run";
 
 /**
- * Binds a routine to an external event (a Composio trigger) as its wake
- * mechanism instead of a cron schedule. User intent only — no Composio instance
- * ids live here; the gateway/host reconciler owns the actual trigger instance
- * keyed by the routine id. A routine has EXACTLY ONE of `schedule` or `trigger`.
+ * Binds a routine to a Composio trigger as its wake mechanism. User intent
+ * only — no Composio instance ids live here; the gateway/host reconciler owns
+ * the actual trigger instance keyed by the routine id.
+ *
+ * The `kind` discriminant is OPTIONAL for backward compatibility: a binding with
+ * no `kind` is a Composio binding, so every routine written before webhook wakes
+ * existed deserializes unchanged (no migration).
  */
-export interface RoutineTriggerBinding {
+export interface ComposioTriggerBinding {
+  /** Discriminant. Absent means Composio (the original, pre-webhook shape). */
+  kind?: "composio";
   /** Composio toolkit slug, e.g. "gmail". */
   toolkit: string;
   /** Composio trigger-type slug, e.g. "GMAIL_NEW_GMAIL_MESSAGE". */
@@ -19,6 +24,32 @@ export interface RoutineTriggerBinding {
   /** Pinned when the user has >1 connected account for the toolkit. */
   connected_account_id?: string;
 }
+
+/**
+ * Binds a routine to an incoming webhook: any external system that POSTs to the
+ * routine's minted URL wakes it. The URL + secret are minted by the gateway (a
+ * hosted-cloud-only backend) and NEVER live in routine data — the secret is
+ * shown to the user exactly once at mint time. `key_prefix` is a display-only
+ * label ("wh_xxxxxxxx") stamped after minting so the UI can show that a key
+ * exists; a webhook binding with no `key_prefix` has not been minted yet.
+ */
+export interface WebhookTriggerBinding {
+  /** Discriminant — REQUIRED (absent would deserialize as Composio). */
+  kind: "webhook";
+  /** Display-only "wh_xxxxxxxx" label of the minted key. The secret itself
+   *  never appears in routine data. Absent until a key is minted. */
+  key_prefix?: string;
+}
+
+/**
+ * A routine's external-event wake binding, instead of a cron schedule. A routine
+ * has EXACTLY ONE of `schedule` or `trigger`. Discriminated on `kind`: absent or
+ * "composio" => {@link ComposioTriggerBinding}, "webhook" =>
+ * {@link WebhookTriggerBinding}.
+ */
+export type RoutineTriggerBinding =
+  | ComposioTriggerBinding
+  | WebhookTriggerBinding;
 
 export interface Routine {
   id: string;

@@ -126,8 +126,8 @@ describe("automation chat setup message", () => {
         "friendly framing INTO the question",
         "come back to this same chat",
         "A turn that ends without an ask_user call is a mistake",
-        "exactly ONE question per ask_user call",
-        "Never batch",
+        "BATCH the questions",
+        "as FEW ask_user calls as possible",
         "one ongoing chat",
         "fresh chat",
         "needs their attention",
@@ -359,7 +359,7 @@ describe("automation chat setup message", () => {
       { id: "anthropic", name: "Claude" },
     ]);
     for (const needle of [
-      'automation "Morning brief"',
+      'routine "Morning brief"',
       "exactly one short, friendly line",
       "do not call ask_user",
       "end your turn after that single line",

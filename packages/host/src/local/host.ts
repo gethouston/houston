@@ -166,6 +166,16 @@ export interface LocalHostOptions {
    * untrusted client input — leave this false (the default) and it is dropped.
    */
   gatewayFronted?: boolean;
+  /**
+   * Whether this deployment can fire event-driven routines: a trigger backend
+   * (a Composio project key + a public webhook URL) exists, so a routine's
+   * `trigger` binding can actually wake. True on Houston Cloud only; false
+   * (default) on desktop and self-host, which carry no trigger backend. Drives
+   * the routine write gate and the trigger-status route (and the product prompt,
+   * built in local/main.ts). Distinct from the CLIENT-facing
+   * `capabilities.triggers`, advertised by the managed gateway at its edge.
+   */
+  triggersEnabled?: boolean;
   /** Gateway-fronted but the egress still reaches loopback (dev launcher
    *  only): skips the managed-cloud public-HTTPS endpoint validation. */
   loopbackEgress?: boolean;
@@ -476,6 +486,10 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // `created_by` (C2 — the sub the gateway re-authorizes at fire time);
     // the desktop ignores the header and keeps stamping the local owner.
     gatewayFronted: opts.gatewayFronted ?? false,
+    // Event-driven routines fire only where a trigger backend exists (Houston
+    // Cloud). Off on desktop/self-host: the write gate refuses trigger bindings
+    // and the trigger-status route reports them as unable to wake.
+    triggersEnabled: opts.triggersEnabled ?? false,
     loopbackEgress: opts.loopbackEgress ?? false,
     // The desktop shell reveals/opens agent folders in the OS file manager;
     // give it the REAL directory (the agent id is a route key, not a path).

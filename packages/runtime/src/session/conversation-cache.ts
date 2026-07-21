@@ -22,6 +22,7 @@ import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
 import { makePlanReadyTool } from "./tools/plan-ready";
 import { makeRunCodeTool } from "./tools/run-code";
+import { makeSaveRoutineTool } from "./tools/save-routine";
 import { makeSuggestReusableTool } from "./tools/suggest-reusable";
 import type { TurnModeRef } from "./turn-mode-context";
 import type { ProvidedContext } from "./workspace-context";
@@ -81,9 +82,25 @@ const customIntegrationTools =
       })
     : [];
 
+// Whether this runtime can reach its host with a sandbox token (server mode:
+// local desktop + standing pods). Gates the host-proxying tools below.
+const hostReachable = Boolean(config.controlPlaneUrl && config.sandboxToken);
+
+// The merge-safe scheduled-task write tool: proxies to /sandbox/routines/save so
+// the agent never overwrites routines.json wholesale. Same reachability gate as
+// the integration tools, but NOT tied to a Composio key — scheduled tasks exist
+// on every deployment.
+const saveRoutineTool = hostReachable
+  ? makeSaveRoutineTool({
+      baseUrl: config.controlPlaneUrl,
+      sandboxToken: config.sandboxToken,
+    })
+  : null;
+
 const toolSelection = buildToolSelection({
   codeExecution: config.codeExecution,
   integrations: integrationTools.length > 0,
+  saveRoutine: hostReachable,
 });
 const runCodeTool = toolSelection.includeRunCode
   ? makeRunCodeTool({
@@ -115,6 +132,7 @@ const piBackend = createPiBackend({
     planReadyTool,
     suggestReusableTool,
     ...(runCodeTool ? [runCodeTool] : []),
+    ...(saveRoutineTool ? [saveRoutineTool] : []),
     ...integrationTools,
     ...customIntegrationTools,
   ],

@@ -6,6 +6,7 @@ import type {
   RoutineUpdate,
   SaveSkillRequest,
   SkillDetail,
+  WebhookKeyReveal,
 } from "../../../../../ui/engine-client/src/types";
 import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
@@ -93,6 +94,22 @@ export function RoutinesSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
       );
       emitLocalEcho("RoutineRunsChanged", { agentPath });
       return run;
+    }
+    /**
+     * Mint (or rotate) a routine's incoming-webhook key. Degrades to `null` when
+     * webhook keys are unsupported here: no gateway (standalone web/desktop) or a
+     * gateway that 404s the route. Calling again ROTATES the old secret away.
+     */
+    async mintRoutineWebhookKey(
+      agentPath: string,
+      routineId: string,
+    ): Promise<WebhookKeyReveal | null> {
+      if (!this.ctx.cp) return null;
+      return controlPlane.mintRoutineWebhookKey(
+        this.ctx.cp,
+        agentPath,
+        routineId,
+      );
     }
     async createSkill(req: CreateSkillRequest): Promise<void> {
       if (!this.ctx.cp) return;

@@ -23,7 +23,7 @@ test("a server-emitted domain event triggers a client refetch", async ({
   await page.goto("/");
   await page.locator('[data-tour-target="tab-routines"]').click();
   await expect(
-    page.getByRole("button", { name: "New automation" }).first(),
+    page.getByRole("button", { name: "New routine" }).first(),
   ).toBeVisible();
 
   // Let the mount-time fetches settle, then take the baseline.

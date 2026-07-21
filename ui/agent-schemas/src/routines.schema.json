@@ -28,27 +28,49 @@
       },
       "trigger": {
         "type": "object",
-        "required": ["toolkit", "trigger_slug", "trigger_config"],
-        "properties": {
-          "toolkit": {
-            "type": "string",
-            "description": "Connected app that emits the event (e.g. 'gmail')."
+        "description": "External event that wakes this routine. Omit when 'schedule' is set. Either a Composio trigger (kind absent or 'composio') or an incoming webhook (kind 'webhook').",
+        "oneOf": [
+          {
+            "required": ["toolkit", "trigger_slug", "trigger_config"],
+            "properties": {
+              "kind": {
+                "const": "composio",
+                "description": "Discriminant. Omit for a Composio trigger (the default)."
+              },
+              "toolkit": {
+                "type": "string",
+                "description": "Connected app that emits the event (e.g. 'gmail')."
+              },
+              "trigger_slug": {
+                "type": "string",
+                "description": "Event type slug (e.g. 'GMAIL_NEW_GMAIL_MESSAGE')."
+              },
+              "trigger_config": {
+                "type": "object",
+                "description": "Event filters, validated against the event type's config schema."
+              },
+              "connected_account_id": {
+                "type": "string",
+                "description": "Pins one account when the user connected the app more than once; otherwise omit."
+              }
+            },
+            "additionalProperties": false
           },
-          "trigger_slug": {
-            "type": "string",
-            "description": "Event type slug (e.g. 'GMAIL_NEW_GMAIL_MESSAGE')."
-          },
-          "trigger_config": {
-            "type": "object",
-            "description": "Event filters, validated against the event type's config schema."
-          },
-          "connected_account_id": {
-            "type": "string",
-            "description": "Pins one account when the user connected the app more than once; otherwise omit."
+          {
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "const": "webhook",
+                "description": "Discriminant marking an incoming-webhook wake."
+              },
+              "key_prefix": {
+                "type": "string",
+                "description": "Display-only 'wh_xxxxxxxx' label of the minted key. Stamped after minting; the secret itself is never stored here. Absent until a key is minted."
+              }
+            },
+            "additionalProperties": false
           }
-        },
-        "additionalProperties": false,
-        "description": "External event that wakes this routine. Omit when 'schedule' is set."
+        ]
       },
       "enabled": { "type": "boolean" },
       "suppress_when_silent": {

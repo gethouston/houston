@@ -104,6 +104,34 @@ path and the recovery itself *wiped* every routine — exactly the data loss it
 was meant to prevent. Reset is the last resort, for genuinely unrecoverable
 bytes only.
 
+**`routines.json` has ONE blessed write path — never a wholesale agent write.**
+Each routine's setup chat is isolated and only knows its own routine. The prompt
+USED to tell the agent to write `.houston/routines/routines.json` wholesale with
+file tools, so creating routine #2 overwrote the file with a one-element array —
+**deleting routine #1** (same class of silent data loss as HOU-436/HOU-494, but
+from the AGENT, not a corrupt reader). Fix: the agent now saves ONLY through the
+`save_routine` runtime tool, which posts to the host's merge-safe route
+(`packages/host/src/routes/routine-write.ts`: `loadRoutines → create/apply →
+upsertById → saveRoutines` — read-modify-write, so a second save never clobbers
+the first). The product prompt (`packages/host/src/houston-prompt-routines.ts`)
+FORBIDS the direct write ("NEVER write, edit, or run a command that changes
+`.houston/routines/routines.json`… use the `save_routine` tool — it is the ONLY
+way to save one"); reading the file to check what exists is still allowed. The
+frontend's own writes (form toggle, inline schedule edit, delete) go through the
+same host route, so both writers stay merge-safe.
+
+Each routine carries EXACTLY ONE wake mechanism — a cron `schedule` OR a
+`trigger`. The trigger is a `kind`-discriminated union
+(`ui/agent-schemas/src/routines.schema.json`,
+`packages/protocol/src/domain/routine.ts`): `kind` **absent** = a Composio binding
+(`{toolkit, trigger_slug, trigger_config, connected_account_id?}`), so routines
+written before webhook wakes existed load unchanged (no migration);
+`{kind:"webhook", key_prefix?}` = an incoming-webhook binding (the URL + secret are
+gateway-minted and NEVER stored here; `key_prefix` is a display-only "wh_xxxxxxxx"
+label). `normalizeRoutines` drops any entry that has both wakes or neither, so the
+host validates the exactly-one invariant BEFORE writing (a wake-less write would
+vanish on the next read).
+
 ## Schemas
 Authoritative. Live in `ui/agent-schemas/src/*.schema.json`. `packages/domain` seeds them into each agent's `.houston/<type>/<type>.schema.json` on create. Prompts instruct the model to read the schema before writing a data file.
 

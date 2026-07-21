@@ -99,8 +99,8 @@
         "body": "El tablero de cada conversación con este agente. En marcha, esperando, listas."
       },
       "tabRoutines": {
-        "title": "Automatizaciones",
-        "body": "Tu asistente ya viene con automatizaciones listas, como el Resumen matutino. Configura aquí cualquier otra cosa para que ocurra por su cuenta."
+        "title": "Rutinas",
+        "body": "Tu asistente ya viene con rutinas listas, como el Resumen matutino. Configura aquí cualquier otra cosa para que ocurra por su cuenta."
       },
       "tabIntegrations": {
         "title": "Integraciones",
