@@ -7,7 +7,7 @@
     "benefit2": "Routines keep running",
     "benefit3": "Nothing left behind",
     "freeNote": "Free, and it takes just a couple of minutes.",
-    "start": "Move my data",
+    "start": "Migrate Now",
     "migrateLater": "Migrate later"
   },
   "progress": {
@@ -17,6 +17,7 @@
     "phaseFiles": "Packing up your files and skills",
     "phaseCloud": "Setting up your cloud",
     "keepOpen": "Keep Houston open until it finishes.",
+    "playCaption": "While you wait, defend the galaxy.",
     "backingUp": "Backing up your data on this computer.",
     "preparing": "Getting your data ready. This can take a few minutes.",
     "startFailed": "We couldn't start the move, so nothing was changed. You can try again.",
@@ -50,6 +51,7 @@
     "back": "Back",
     "connect": "Connect",
     "connecting": "Connecting…",
+    "cancel": "Cancel",
     "connected": "Connected",
     "finish": "Start building",
     "congratsTitle": "You're all set",

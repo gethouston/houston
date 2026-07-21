@@ -1,11 +1,17 @@
 import { AsyncButton, Button, cn } from "@houston-ai/core";
+import { useReducedMotion } from "framer-motion";
 import type { TFunction } from "i18next";
 import { Check, CircleAlert, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { MigrationTask } from "../../../lib/cloud-migration";
-import type { AgentMigrationProgress } from "../../../lib/cloud-migration-progress";
+import {
+  type AgentMigrationProgress,
+  computeOverallProgress,
+} from "../../../lib/cloud-migration-progress";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
 import { OrbitLoader } from "../../space/orbit-loader";
+import { MigrationProgressBar } from "./migration-progress-bar";
+import { SpaceInvaders } from "./space-invaders";
 import { MigrationStatusCycle } from "./status-cycle";
 import { WizardFrame } from "./wizard-frame";
 
@@ -113,6 +119,7 @@ function DeferButton({ onDefer }: { onDefer: () => void }) {
  */
 export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
   const { t } = useTranslation("migration");
+  const reduce = useReducedMotion() ?? false;
   const {
     preparing,
     backingUp,
@@ -168,7 +175,7 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
     >
       <div className="flex flex-col items-center gap-3 text-center">
         {startError ? (
-          <div className="flex w-full max-w-md flex-col items-center gap-3 self-center rounded-2xl border border-[var(--ht-space-glass-border)] bg-[var(--ht-space-glass)] p-6 text-ink shadow-2xl backdrop-blur-md">
+          <div className="flex w-full max-w-md flex-col items-center gap-3 self-center rounded-2xl border border-line bg-card p-6 text-ink shadow-2xl backdrop-blur-md">
             <p className="text-sm">{t("progress.startFailed")}</p>
             <p className="text-xs text-ink-muted">{startError}</p>
             <AsyncButton className="rounded-full" onClick={() => start()}>
@@ -180,7 +187,7 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
         ) : preparing ? (
           <MigrationStatusCycle phrases={[t("progress.preparing")]} />
         ) : anyError ? (
-          <div className="flex w-full flex-col gap-3 rounded-2xl border border-[var(--ht-space-glass-border)] bg-[var(--ht-space-glass)] p-6 text-ink shadow-2xl backdrop-blur-md">
+          <div className="flex w-full flex-col gap-3 rounded-2xl border border-line bg-card p-6 text-ink shadow-2xl backdrop-blur-md">
             <p className="text-center text-xs text-ink-muted">
               {t("progress.overall", {
                 done: done.length,
@@ -199,12 +206,37 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
             </div>
           </div>
         ) : (
-          <>
-            <MigrationStatusCycle phrases={phrases} />
-            <p className="text-xs text-[var(--ht-space-foreground-muted)] opacity-80">
-              {t("progress.keepOpen")}
-            </p>
-          </>
+          <div className="flex w-full flex-col items-center gap-5">
+            <div className="flex w-full max-w-xs flex-col items-center gap-3">
+              <MigrationStatusCycle phrases={phrases} />
+              {/* The bar is the one palette-driven element in this on-photo
+                  column. Pin it to the dark palette so its track + fill resolve
+                  to the white space family (like the rocket and the game),
+                  not the light-mode CTA ink that would vanish on the dark
+                  photo. The `[data-theme="dark"]` token block carries no
+                  light-guard, so this re-resolves cleanly inside WizardFrame's
+                  light pin. */}
+              <div data-theme="dark" className="w-full">
+                <MigrationProgressBar
+                  fraction={computeOverallProgress(tasks, progress)}
+                />
+              </div>
+              <p className="text-xs text-[var(--ht-space-foreground-muted)] opacity-80">
+                {t("progress.keepOpen")}
+              </p>
+            </div>
+            {/* The roomy wait is a chance to play: a tiny Space Invaders under
+                the bar (subtle, card-width). It self-nulls under reduced motion,
+                so the invitation is gated on the same signal to never orphan. */}
+            {!reduce && (
+              <div className="mt-2 flex w-full max-w-xs flex-col items-center gap-2">
+                <p className="text-xs text-[var(--ht-space-foreground-muted)] opacity-70">
+                  {t("progress.playCaption")}
+                </p>
+                <SpaceInvaders />
+              </div>
+            )}
+          </div>
         )}
       </div>
     </WizardFrame>

@@ -7,7 +7,7 @@
     "benefit2": "Las rutinas no se detienen",
     "benefit3": "Nada se queda atrás",
     "freeNote": "Es gratis y toma solo un par de minutos.",
-    "start": "Mover mis datos",
+    "start": "Migrar ahora",
     "migrateLater": "Migrar después"
   },
   "progress": {
@@ -17,6 +17,7 @@
     "phaseFiles": "Empacando tus archivos y habilidades",
     "phaseCloud": "Preparando tu nube",
     "keepOpen": "Mantén Houston abierto hasta que termine.",
+    "playCaption": "Mientras esperas, defiende la galaxia.",
     "backingUp": "Haciendo una copia de seguridad de tus datos en este computador.",
     "preparing": "Preparando tus datos. Esto puede tomar unos minutos.",
     "startFailed": "No pudimos iniciar la mudanza, así que no se cambió nada. Puedes intentar de nuevo.",
@@ -50,6 +51,7 @@
     "back": "Atrás",
     "connect": "Conectar",
     "connecting": "Conectando…",
+    "cancel": "Cancelar",
     "connected": "Conectado",
     "finish": "Empezar a crear",
     "congratsTitle": "Todo listo",
