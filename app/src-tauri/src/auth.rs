@@ -14,8 +14,16 @@
 //!   swallowed by the JS storage adapter) so every Windows user was forced to
 //!   re-sign-in on every app open. DPAPI's `CryptProtectData` has no
 //!   such limit and still binds the ciphertext to the Windows user.
-//! - **Other Unix**: `keyring` falls through to whatever backend the
-//!   user has (libsecret, KWallet, etc.). Not officially supported.
+//! - **Linux / other Unix**: the desktop's **Secret Service**
+//!   (gnome-keyring / KWallet over D-Bus, `keyring` with
+//!   `sync-secret-service`) is the primary store. When no daemon is
+//!   reachable (headless boxes, minimal WMs) we fall back to a plain
+//!   0600 file under the per-user data dir — persistence beats failing
+//!   the whole sign-in flow. NOTE: without a Linux keyring feature the
+//!   `keyring` crate silently compiles an in-memory mock (writes vanish,
+//!   reads always miss) — that shipped in AppImages ≤0.5.20 and forced a
+//!   fresh sign-in on every launch. The Cargo.toml features and this
+//!   fallback exist so it can never happen again.
 //!
 //! The storage is identity-provider-agnostic: `auth_get_item` /
 //! `auth_set_item` / `auth_remove_item` round-trip an opaque session JSON blob
@@ -176,8 +184,8 @@ mod storage {
 }
 
 #[cfg(not(target_os = "windows"))]
-mod storage {
-    //! macOS Keychain / generic libsecret storage via the `keyring` crate.
+mod keyring_store {
+    //! macOS Keychain / Linux Secret Service via the `keyring` crate.
 
     use super::SERVICE;
     use keyring::Entry;
@@ -207,6 +215,131 @@ mod storage {
             Ok(_) | Err(keyring::Error::NoEntry) => Ok(()),
             Err(err) => Err(format!("keyring delete({key}): {err}")),
         }
+    }
+}
+
+#[cfg(target_os = "macos")]
+mod storage {
+    //! macOS: Keychain only. It is always present; no fallback needed.
+    pub use super::keyring_store::{get, remove, set};
+}
+
+/// Plain-file session storage — the Linux fallback when no Secret Service
+/// daemon is reachable. Dir-parameterized so the round-trip is unit-testable
+/// on every Unix; the Linux `storage` module binds it to the real data dir.
+/// Files are 0600 in `<data_local_dir>/com.houston.app/auth/<key>.auth`
+/// (same layout as the Windows DPAPI store, minus DPAPI — Linux has no
+/// user-bound encryption primitive without a keyring daemon, and a
+/// mode-0600 file is the accepted fallback posture for CLI/desktop tokens).
+#[cfg(all(unix, any(test, not(target_os = "macos"))))]
+mod file_store {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    use std::path::{Path, PathBuf};
+
+    fn file_for(dir: &Path, key: &str) -> PathBuf {
+        dir.join(format!("{key}.auth"))
+    }
+
+    pub fn get(dir: &Path, key: &str) -> Result<Option<String>, String> {
+        let path = file_for(dir, key);
+        match std::fs::read_to_string(&path) {
+            Ok(v) => Ok(Some(v)),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(format!("read {}: {e}", path.display())),
+        }
+    }
+
+    pub fn set(dir: &Path, key: &str, value: &str) -> Result<(), String> {
+        std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+        let path = file_for(dir, key);
+        // Write 0600 to a temp file and atomic-rename into place, so a crash
+        // mid-write never leaves a truncated blob and the file is never
+        // readable by other users, even transiently.
+        let tmp = path.with_extension("auth.tmp");
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&tmp)
+            .map_err(|e| format!("open {}: {e}", tmp.display()))?;
+        f.write_all(value.as_bytes())
+            .and_then(|()| f.sync_all())
+            .map_err(|e| format!("write {}: {e}", tmp.display()))?;
+        drop(f);
+        std::fs::rename(&tmp, &path)
+            .map_err(|e| format!("rename {} -> {}: {e}", tmp.display(), path.display()))
+    }
+
+    pub fn remove(dir: &Path, key: &str) -> Result<(), String> {
+        let path = file_for(dir, key);
+        match std::fs::remove_file(&path) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(format!("remove {}: {e}", path.display())),
+        }
+    }
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+mod storage {
+    //! Linux (and other non-mac Unix): Secret Service first, file fallback.
+    //!
+    //! Read: keyring hit wins; a keyring miss or error falls through to the
+    //! file (covering sessions written while the daemon was unavailable).
+    //! Write: keyring first; on success the fallback file is deleted so it
+    //! can never serve a stale session; on failure the file takes the write
+    //! (logged loudly — this is the documented boot/storage-path exception
+    //! to no-silent-failures: the user-visible flow still succeeds).
+    //! Remove: both stores; a keyring error is logged but does not block
+    //! sign-out for file-fallback users with no reachable daemon.
+
+    use super::{file_store, keyring_store};
+    use std::path::PathBuf;
+
+    fn auth_dir() -> Result<PathBuf, String> {
+        let base = dirs::data_local_dir().ok_or_else(|| "no XDG data dir".to_string())?;
+        Ok(base.join("com.houston.app").join("auth"))
+    }
+
+    pub fn get(key: &str) -> Result<Option<String>, String> {
+        match keyring_store::get(key) {
+            Ok(Some(v)) => Ok(Some(v)),
+            Ok(None) => file_store::get(&auth_dir()?, key),
+            Err(e) => {
+                tracing::warn!("[auth] secret service get failed, trying file fallback: {e}");
+                file_store::get(&auth_dir()?, key)
+            }
+        }
+    }
+
+    pub fn set(key: &str, value: &str) -> Result<(), String> {
+        match keyring_store::set(key, value) {
+            Ok(()) => {
+                // The keyring copy is now canonical; drop any stale fallback
+                // file. Cleanup only — the write itself already succeeded.
+                if let Err(e) = auth_dir().and_then(|d| file_store::remove(&d, key)) {
+                    tracing::warn!("[auth] fallback file cleanup after keyring set failed: {e}");
+                }
+                Ok(())
+            }
+            Err(e) => {
+                tracing::warn!("[auth] secret service set failed, using file fallback: {e}");
+                file_store::set(&auth_dir()?, key, value)
+            }
+        }
+    }
+
+    pub fn remove(key: &str) -> Result<(), String> {
+        let keyring_result = keyring_store::remove(key);
+        file_store::remove(&auth_dir()?, key)?;
+        if let Err(e) = keyring_result {
+            // No reachable daemon ⇒ nothing persisted there anyway; a real
+            // daemon error is worth the log line but must not wedge sign-out.
+            tracing::warn!("[auth] secret service delete failed (file store cleared): {e}");
+        }
+        Ok(())
     }
 }
 
@@ -294,6 +427,42 @@ mod tests {
         assert!(!is_auth_callback_deep_link("houston://open"));
         assert!(!is_auth_callback_deep_link("houston://auth-callbackevil?x=1"));
         assert!(!is_auth_callback_deep_link("https://gethouston.ai/auth-callback"));
+    }
+
+    /// Round-trip + permission contract of the Linux fallback file store
+    /// (runs on every Unix — the store is dir-parameterized).
+    #[cfg(unix)]
+    #[test]
+    fn file_store_round_trip_and_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("houston-auth-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+
+        assert_eq!(file_store::get(&dir, "houston-auth").unwrap(), None);
+
+        file_store::set(&dir, "houston-auth", "blob-1").unwrap();
+        assert_eq!(
+            file_store::get(&dir, "houston-auth").unwrap().as_deref(),
+            Some("blob-1")
+        );
+        let mode = std::fs::metadata(dir.join("houston-auth.auth"))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, 0o600, "session file must be user-only");
+
+        file_store::set(&dir, "houston-auth", "blob-2").unwrap();
+        assert_eq!(
+            file_store::get(&dir, "houston-auth").unwrap().as_deref(),
+            Some("blob-2")
+        );
+
+        file_store::remove(&dir, "houston-auth").unwrap();
+        assert_eq!(file_store::get(&dir, "houston-auth").unwrap(), None);
+        // Idempotent on missing.
+        file_store::remove(&dir, "houston-auth").unwrap();
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

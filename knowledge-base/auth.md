@@ -236,11 +236,11 @@ apple.com | password | custom` (`identity/session.ts`).
 
 | Piece | Where |
 |---|---|
-| Session JSON blob | CI releases: Keychain service `com.houston.app.auth`, key `houston-auth` (Windows: DPAPI file) |
+| Session JSON blob | CI releases: Keychain service `com.houston.app.auth`, key `houston-auth` (Windows: DPAPI file; Linux: Secret Service, falling back to a 0600 file under `~/.local/share/com.houston.app/auth/` when no daemon is reachable) |
 | PKCE code verifier | **In memory** for the flow — desktop owns both ends of the loopback, so no Keychain round-trip |
 | Storage adapter | `identity/session-store.ts` → os-bridge `osAuthGetItem/SetItem/RemoveItem` → Tauri `auth_*` cmds (`app/src-tauri/src/auth.rs`) |
 | Local dev storage | Browser storage, worktree-scoped key `houston-auth-local-<hash>` |
-| Rust dep | `keyring = "3"` (`apple-native` + `windows-native`) |
+| Rust dep | `keyring = "3"` (`apple-native` + `windows-native` + `sync-secret-service`/`crypto-rust`/`vendored` for Linux — WITHOUT a Linux feature the crate silently compiles an in-memory mock and sessions vanish on quit, which shipped in AppImages ≤0.5.20) |
 
 `session-store.ts` reuses the `houston-auth` key, so an upgrading user may have a
 stale **Supabase** blob under it — `deserializeSession` treats any non-Firebase

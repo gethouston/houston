@@ -180,6 +180,12 @@ impl EngineSubprocess {
         ] {
             cmd.env_remove(key);
         }
+        // Undo the AppImage runtime's env mutations (Linux, no-op elsewhere):
+        // the engine and everything it forks — the sibling `claude` binary,
+        // agent shell commands — live outside the bundle's library world, so
+        // the mount-scoped LD_LIBRARY_PATH / GTK / GIO exports must not leak
+        // into them (appimage_env.rs).
+        crate::appimage_env::sanitize_std_command(&mut cmd);
         // The runtime spawns the bundled Claude Code CLI for chat turns, and
         // on Windows that CLI refuses to start without a resolvable shell.
         // Repair the env BEFORE the caller-provided pairs so an explicit
