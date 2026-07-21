@@ -52,10 +52,6 @@ export function WizardFrame({
           </h1>
         </div>
         {body && (
-          // `text-base` is BOTH a font-size and a colour utility here
-          // (`--color-base` exists), so it is paired with a NAMED colour
-          // utility (`text-ink-muted`), which wins the colour while text-base
-          // keeps the 1rem size — the design-system-documented safe pattern.
           <p className="max-w-lg text-pretty text-base leading-relaxed text-ink-muted">
             {body}
           </p>

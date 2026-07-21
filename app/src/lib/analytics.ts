@@ -134,10 +134,13 @@ export type AnalyticsEventName =
   | "org_member_removed"
   | "org_role_changed"
   | "org_invite_revoked"
-  // Update lifecycle (closes the symbolication-coverage feedback loop)
+  // Update lifecycle (closes the symbolication-coverage feedback loop).
+  // Updates are forced: update_forced marks the blocking surface appearing
+  // (`source`: launch | countdown) and update_accepted the install starting
+  // (`source`: user | countdown | launch — click vs timer vs launch-auto).
   | "update_offered"
+  | "update_forced"
   | "update_accepted"
-  | "update_dismissed"
   // Gateway app-update floor tripped → blocking update screen shown
   | "update_required"
   // Reliability

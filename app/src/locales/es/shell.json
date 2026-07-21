@@ -208,9 +208,6 @@
     }
   },
   "updateChecker": {
-    "cardLabel": "Actualización de Houston disponible",
-    "title": "¡Houston, tenemos una actualización!",
-    "availableDescription": "La versión {{version}} está lista. Estás en v{{currentVersion}}.",
     "downloading": "Descargando e instalando la actualización...",
     "downloadingProgress": "Descargando e instalando... {{progress}}%",
     "ready": "Actualización instalada. Reinicia Houston para terminar.",
@@ -221,8 +218,17 @@
     "primaryAction": "Actualizar y reiniciar",
     "installingAction": "Instalando actualización...",
     "relaunchAction": "Reiniciar Houston",
-    "retryAction": "Intentar otra vez",
-    "dismissAction": "Descartar actualización por ahora"
+    "retryAction": "Intentar otra vez"
+  },
+  "updateForced": {
+    "cardLabel": "Actualización de Houston en curso",
+    "launchTitle": "Actualizando Houston",
+    "launchDescription": "Houston se está actualizando a la versión {{version}}. La aplicación se reiniciará en un momento.",
+    "countdownTitle": "¡Houston, tenemos una actualización!",
+    "countdownDescription_one": "La versión {{version}} se instalará en {{count}} segundo.",
+    "countdownDescription_other": "La versión {{version}} se instalará en {{count}} segundos.",
+    "reassurance": "Tus agentes siguen trabajando en segundo plano y tus chats y configuraciones quedan guardados. Vas a retomar justo donde lo dejaste.",
+    "updateNowAction": "Actualizar ahora"
   },
   "updateRequired": {
     "cardLabel": "Actualización de Houston requerida",
