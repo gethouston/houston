@@ -12,7 +12,11 @@ import {
 } from "../auth/acting";
 import { checkPublicHttpsEndpoint } from "../custom-endpoint-validation";
 import type { Agent, UserId, Workspace } from "../domain/types";
-import { AgentNameConflictError, type RuntimeChannel } from "../ports";
+import {
+  AgentNameConflictError,
+  ApiKeyRejectedError,
+  type RuntimeChannel,
+} from "../ports";
 import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
@@ -38,6 +42,7 @@ import { handlePortableStore } from "./portable-store";
 import { handleRoutineRuns } from "./routine-runs";
 import { handleSkills } from "./skills";
 import { handleSkillsRemote } from "./skills-remote";
+import { handleTriggerStatus } from "./trigger-status";
 
 // The deps bag + authz helpers moved to agent-authz.ts (shared with
 // routine-runs.ts); re-exported so existing importers keep working.
@@ -434,8 +439,13 @@ export async function handleAgents(
       );
       json(res, 200, { ok: true, provider });
     } catch (err) {
+      // Forward the runtime's typed verification reason so the connect
+      // dialog can show actionable copy (bad key vs restricted key vs outage).
       json(res, 502, {
         error: err instanceof Error ? err.message : String(err),
+        ...(err instanceof ApiKeyRejectedError && err.reason
+          ? { reason: err.reason }
+          : {}),
       });
     }
     return true;
@@ -719,6 +729,22 @@ export async function handleAgents(
         emit,
         routineActor,
         actingAuthor ?? undefined,
+        deps.triggersEnabled ?? false,
+      )
+    )
+      return true;
+    // Per-routine trigger health. On a deployment without a trigger backend this
+    // reports every trigger-bound routine as a hard error (it can never wake);
+    // where triggers CAN fire it steps aside for the real backend.
+    if (
+      await handleTriggerStatus(
+        deps.vfs,
+        paths,
+        ctx,
+        method,
+        rest,
+        res,
+        deps.triggersEnabled ?? false,
       )
     )
       return true;

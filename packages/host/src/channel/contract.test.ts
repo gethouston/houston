@@ -4,7 +4,12 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
 import { FakeLauncher } from "../launcher/fake";
-import type { ChannelCtx, RuntimeChannel, WorkspaceCredential } from "../ports";
+import {
+  ApiKeyRejectedError,
+  type ChannelCtx,
+  type RuntimeChannel,
+  type WorkspaceCredential,
+} from "../ports";
 import { forward } from "../proxy/route";
 import { ConnectManager } from "../turn/connect";
 import type { TurnDeps } from "../turn/deps";
@@ -187,6 +192,8 @@ let proxyConnected = false; // flips when connect() succeeds (export exposes a c
 let proxyCustomEndpointBody: unknown = null;
 /** Last body the fake runtime received on POST /auth/anthropic/oauth-credential. */
 let proxyClaudeOAuthBody: unknown = null;
+/** When set, the fake runtime rejects /auth/:provider/api-key with this reply. */
+let proxyApiKeyRejection: { status: number; body: unknown } | null = null;
 
 beforeAll(async () => {
   proxyRuntime = createServer((req, res) => {
@@ -237,7 +244,11 @@ beforeAll(async () => {
     }
     if (path === "/auth/scrub-refresh") return reply(200, { ok: true });
     // API-key connect pushes the pasted key into the standing runtime.
-    if (path.match(/^\/auth\/[^/]+\/api-key$/)) return reply(200, { ok: true });
+    if (path.match(/^\/auth\/[^/]+\/api-key$/)) {
+      return proxyApiKeyRejection
+        ? reply(proxyApiKeyRejection.status, proxyApiKeyRejection.body)
+        : reply(200, { ok: true });
+    }
     if (path === "/providers")
       return reply(200, [{ id: "openai-codex", configured: proxyConnected }]);
     if (path.match(/^\/conversations\/[^/]+\/messages$/))
@@ -254,6 +265,7 @@ afterAll(() => proxyRuntime.close());
 
 function makeProxyFixture(): ChannelFixture {
   proxyConnected = false; // each fixture starts disconnected
+  proxyApiKeyRejection = null;
   const credentials = new MemoryCredentialStore();
   const launcher = new FakeLauncher({ baseUrl: proxyRuntimeUrl, token: "sbx" });
   const proxy: RuntimeProxy = { forward };
@@ -346,6 +358,44 @@ function makeTurnFixture(): ChannelFixture {
 
 runRuntimeChannelContract("ProxyChannel", makeProxyFixture);
 runRuntimeChannelContract("TurnChannel", makeTurnFixture);
+
+// The runtime's live key verification can REFUSE a pasted key; the typed
+// `reason` on its 401 body must survive the proxy hop so the route (and from
+// there the connect dialog) can show actionable copy — and a refused key must
+// never land in the central store.
+describe("saveApiKeyCredential rejection (ProxyChannel)", () => {
+  test("forwards the runtime's message + typed reason, stores nothing", async () => {
+    const { channel, credentials } = makeProxyFixture();
+    proxyApiKeyRejection = {
+      status: 401,
+      body: {
+        error:
+          "this google API key is blocked by its own settings: enable the API",
+        reason: "key_restricted",
+      },
+    };
+    const err = await channel
+      .saveApiKeyCredential(ctx, "google", "AIza-restricted")
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiKeyRejectedError);
+    expect((err as ApiKeyRejectedError).reason).toBe("key_restricted");
+    expect((err as ApiKeyRejectedError).message).toContain(
+      "blocked by its own settings",
+    );
+    expect(await credentials.get(ws.id, "google")).toBeNull();
+  });
+
+  test("a reason-less rejection still surfaces the runtime's message", async () => {
+    const { channel } = makeProxyFixture();
+    proxyApiKeyRejection = { status: 401, body: { error: "nope" } };
+    const err = await channel
+      .saveApiKeyCredential(ctx, "openrouter", "sk-bad")
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiKeyRejectedError);
+    expect((err as ApiKeyRejectedError).reason).toBeUndefined();
+    expect((err as ApiKeyRejectedError).message).toBe("nope");
+  });
+});
 
 // saveCustomEndpoint is the ONE asymmetric channel op (not part of the shared
 // contract): the standing runtime is POSTed the endpoint live; the per-turn

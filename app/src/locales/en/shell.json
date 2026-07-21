@@ -99,8 +99,8 @@
         "body": "The board of every conversation with this agent. Running, needs you, done."
       },
       "tabRoutines": {
-        "title": "Automations",
-        "body": "Your assistant already comes with ready-made automations, like the Morning briefing. Set up anything else to happen on its own here."
+        "title": "Routines",
+        "body": "Your assistant already comes with ready-made routines, like the Morning briefing. Set up anything else to happen on its own here."
       },
       "tabIntegrations": {
         "title": "Integrations",
@@ -208,9 +208,6 @@
     }
   },
   "updateChecker": {
-    "cardLabel": "Houston update available",
-    "title": "Houston, we have an update!",
-    "availableDescription": "Version {{version}} is ready. You're on v{{currentVersion}}.",
     "downloading": "Downloading and installing update...",
     "downloadingProgress": "Downloading and installing... {{progress}}%",
     "ready": "Update installed. Relaunch Houston to finish.",
@@ -221,8 +218,17 @@
     "primaryAction": "Update and relaunch",
     "installingAction": "Installing update...",
     "relaunchAction": "Relaunch Houston",
-    "retryAction": "Try again",
-    "dismissAction": "Dismiss update for now"
+    "retryAction": "Try again"
+  },
+  "updateForced": {
+    "cardLabel": "Houston update in progress",
+    "launchTitle": "Upgrading Houston",
+    "launchDescription": "Houston is updating to version {{version}}. The app will restart in a moment.",
+    "countdownTitle": "Houston, we have an update!",
+    "countdownDescription_one": "Version {{version}} will install in {{count}} second.",
+    "countdownDescription_other": "Version {{version}} will install in {{count}} seconds.",
+    "reassurance": "Your agents keep working in the background, and your chats and settings are saved. You'll pick up right where you left off.",
+    "updateNowAction": "Update now"
   },
   "updateRequired": {
     "cardLabel": "Houston update required",

@@ -1,11 +1,18 @@
 import { AsyncButton, Button, cn } from "@houston-ai/core";
+import { useReducedMotion } from "framer-motion";
 import type { TFunction } from "i18next";
 import { Check, CircleAlert, Loader2 } from "lucide-react";
+import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import type { MigrationTask } from "../../../lib/cloud-migration";
-import type { AgentMigrationProgress } from "../../../lib/cloud-migration-progress";
+import {
+  type AgentMigrationProgress,
+  computeOverallProgress,
+} from "../../../lib/cloud-migration-progress";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
 import { OrbitLoader } from "../../space/orbit-loader";
+import { MigrationProgressBar } from "./migration-progress-bar";
+import { SpaceInvaders } from "./space-invaders";
 import { MigrationStatusCycle } from "./status-cycle";
 import { WizardFrame } from "./wizard-frame";
 
@@ -40,6 +47,15 @@ const RUNNING: ReadonlySet<AgentMigrationProgress["step"]> = new Set([
   "uploading",
   "finalizing",
 ]);
+
+// The OrbitLoader draws entirely from --ht-space-foreground/-star (white tones
+// tuned for the space photo). On the light wizard those would vanish, so for
+// this one usage we remap them to ink — a dark rocket + core on the light page.
+// The workspace-loading splash keeps the white-on-space loader untouched.
+const ORBIT_INK_VARS: CSSProperties = {
+  "--ht-space-foreground": "var(--ht-ink)",
+  "--ht-space-star": "var(--ht-ink-muted)",
+} as CSSProperties;
 
 function AgentRow({
   task,
@@ -97,7 +113,7 @@ function DeferButton({ onDefer }: { onDefer: () => void }) {
     <button
       type="button"
       onClick={onDefer}
-      className="rounded-full px-3 py-1 text-xs text-[var(--ht-space-foreground-muted)] transition-colors hover:text-[var(--ht-space-foreground)]"
+      className="rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
     >
       {t("progress.migrateLater")}
     </button>
@@ -106,13 +122,14 @@ function DeferButton({ onDefer }: { onDefer: () => void }) {
 
 /**
  * Live migration wait screen (HOU-719 redesign): the shared {@link OrbitLoader}
- * (the rocket in transit — the move made literal) over a status line that
- * cycles through the real phases, directly on the space backdrop, so the wait
+ * (the rocket in transit — the move made literal, remapped to ink for the light
+ * page) over a status line that cycles through the real phases, so the wait
  * feels alive without exposing per-agent plumbing. Falls back to a per-agent
  * list panel only when something needs the user's attention (a failed agent).
  */
 export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
   const { t } = useTranslation("migration");
+  const reduce = useReducedMotion() ?? false;
   const {
     preparing,
     backingUp,
@@ -138,10 +155,27 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
   ];
 
   const waiting = !startError && !anyError;
+  // Backup and prepare have no measurable fraction (prepare stays true through
+  // the backup; branch on backingUp first for its copy). The progress bar runs
+  // in indeterminate mode until the real per-agent upload begins, then flips to
+  // the true fraction — one persistent bar instance across all three so it
+  // continues smoothly and never jumps backward.
+  const indeterminate = backingUp || preparing;
+  const statusPhrases = backingUp
+    ? [t("progress.backingUp")]
+    : preparing
+      ? [t("progress.preparing")]
+      : phrases;
 
   return (
     <WizardFrame
-      mark={waiting ? <OrbitLoader /> : undefined}
+      mark={
+        waiting ? (
+          <div style={ORBIT_INK_VARS}>
+            <OrbitLoader />
+          </div>
+        ) : undefined
+      }
       title={t("progress.title")}
       footer={
         startError ? (
@@ -168,19 +202,15 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
     >
       <div className="flex flex-col items-center gap-3 text-center">
         {startError ? (
-          <div className="flex w-full max-w-md flex-col items-center gap-3 self-center rounded-2xl border border-[var(--ht-space-glass-border)] bg-[var(--ht-space-glass)] p-6 text-ink shadow-2xl backdrop-blur-md">
+          <div className="flex w-full max-w-md flex-col items-center gap-3 self-center rounded-2xl border border-line bg-card p-6 text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
             <p className="text-sm">{t("progress.startFailed")}</p>
             <p className="text-xs text-ink-muted">{startError}</p>
             <AsyncButton className="rounded-full" onClick={() => start()}>
               {t("progress.retry")}
             </AsyncButton>
           </div>
-        ) : backingUp ? (
-          <MigrationStatusCycle phrases={[t("progress.backingUp")]} />
-        ) : preparing ? (
-          <MigrationStatusCycle phrases={[t("progress.preparing")]} />
         ) : anyError ? (
-          <div className="flex w-full flex-col gap-3 rounded-2xl border border-[var(--ht-space-glass-border)] bg-[var(--ht-space-glass)] p-6 text-ink shadow-2xl backdrop-blur-md">
+          <div className="flex w-full flex-col gap-3 rounded-2xl border border-line bg-card p-6 text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
             <p className="text-center text-xs text-ink-muted">
               {t("progress.overall", {
                 done: done.length,
@@ -199,12 +229,37 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
             </div>
           </div>
         ) : (
-          <>
-            <MigrationStatusCycle phrases={phrases} />
-            <p className="text-xs text-[var(--ht-space-foreground-muted)] opacity-80">
-              {t("progress.keepOpen")}
-            </p>
-          </>
+          // One shared block for backup → prepare → upload: the status line and
+          // the progress bar keep a single instance across all three phases, so
+          // the indeterminate creep hands off to the real fraction without a
+          // remount (and never a jump backward). The game stays out of the
+          // backup/prepare wait — it only joins once real upload is underway.
+          <div className="flex w-full flex-col items-center gap-5">
+            <div className="flex w-full max-w-xs flex-col items-center gap-3">
+              <MigrationStatusCycle phrases={statusPhrases} />
+              <MigrationProgressBar
+                fraction={
+                  indeterminate ? null : computeOverallProgress(tasks, progress)
+                }
+              />
+              {!indeterminate && (
+                <p className="text-xs text-ink-muted">
+                  {t("progress.keepOpen")}
+                </p>
+              )}
+            </div>
+            {/* The roomy wait is a chance to play: a tiny Space Invaders under
+                the bar (subtle, card-width). It self-nulls under reduced motion,
+                so the invitation is gated on the same signal to never orphan. */}
+            {!indeterminate && !reduce && (
+              <div className="mt-2 flex w-full max-w-xs flex-col items-center gap-2">
+                <p className="text-xs text-ink-muted">
+                  {t("progress.playCaption")}
+                </p>
+                <SpaceInvaders />
+              </div>
+            )}
+          </div>
         )}
       </div>
     </WizardFrame>

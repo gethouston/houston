@@ -125,6 +125,12 @@ const houstonHome = process.env.HOUSTON_HOME || join(homedir(), ".houston");
 const hostTokenEnv = process.env.HOUSTON_HOST_TOKEN;
 const hostToken = hostTokenEnv || randomBytes(32).toString("hex");
 const remoteGateway = await remoteCredentialConfig(hostTokenEnv);
+// Event-driven routines fire only where a trigger backend exists (a Composio
+// project key + a public webhook URL) — that is Houston Cloud, i.e. a managed
+// pod. Desktop and self-host carry no trigger backend. This one fact drives the
+// product prompt (event wakes advertised only when true), the routine write
+// gate, and the trigger-status route.
+const triggersEnabled = process.env.HOUSTON_MANAGED_CLOUD === "1";
 const host = buildLocalHost({
   workspacesRoot:
     process.env.HOUSTON_WORKSPACES_ROOT || join(houstonHome, "workspaces"),
@@ -157,12 +163,17 @@ const host = buildLocalHost({
   // start overlaps the pod wake instead of the user's first message.
   eagerRuntime: process.env.HOUSTON_EAGER_RUNTIME === "1",
   // The real Tauri app hands over its own product prompt; this is the built-in
-  // default so the agent knows how to create Skills/Routines/learnings.
-  systemPrompt: process.env.HOUSTON_APP_SYSTEM_PROMPT || houstonSystemPrompt(),
+  // default so the agent knows how to create Skills/Routines/learnings. The
+  // Routines section advertises event wakes only where triggers can fire.
+  systemPrompt:
+    process.env.HOUSTON_APP_SYSTEM_PROMPT ||
+    houstonSystemPrompt({ triggers: triggersEnabled }),
   capabilities:
     process.env.HOUSTON_MANAGED_CLOUD === "1"
       ? MANAGED_CLOUD_CAPABILITIES
       : LOCAL_CAPABILITIES,
+  // A trigger backend exists only on managed cloud (see `triggersEnabled`).
+  triggersEnabled,
   // Managed pods sit behind the gateway (it enforces the pod token and mints
   // x-houston-acting-as); relay that header to the runtime so integration
   // calls act as the driving user. Desktop/self-host stay direct → false.

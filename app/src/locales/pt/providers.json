@@ -19,6 +19,7 @@
     "connectTimedOut": "A conexão não foi concluída a tempo. Tente conectar de novo.",
     "loginTimedOut": "O login não foi concluído a tempo. Tente de novo.",
     "signInPortBusy": "Outro aplicativo deste computador está usando a porta de login. Feche outras ferramentas de IA e tente de novo.",
+    "copilotNoAccess": "Sua conta do GitHub ainda não tem acesso ao Copilot. Ative o GitHub Copilot em github.com (o plano gratuito funciona) e tente conectar de novo.",
     "signOutFailed": "Não foi possível sair de {{provider}}",
     "signInSucceeded": "Conectado a {{provider}}",
     "cancelFailed": "Não foi possível cancelar o login de {{provider}}",
@@ -67,7 +68,10 @@
     "hide": "Ocultar chave",
     "save": "Conectar",
     "saving": "Conectando...",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "errorInvalidKey": "{{name}} não aceitou esta chave. Confira e cole de novo.",
+    "errorKeyRestricted": "Esta chave está bloqueada pelas configurações da sua conta {{name}}. Crie uma chave nova sem restrições usando o botão acima e cole aqui.",
+    "errorProviderUnavailable": "Não conseguimos acessar {{name}} para verificar sua chave, então nada foi salvo. Tente de novo em instantes."
   },
   "copilot": {
     "title": "Conectar GitHub Copilot",

@@ -1,73 +1,65 @@
-import type {
-  NewRoutine,
-  Routine,
-  RoutineUpdate,
-} from "@houston-ai/engine-client";
-import type { RoutineEditPatch, RoutineRun } from "@houston-ai/routines";
+import type { KanbanItem } from "@houston-ai/board";
+import type { Activity, Routine } from "@houston-ai/engine-client";
+import type { RoutineRun } from "@houston-ai/routines";
 
 /**
- * Routines-tab view state: the list, an existing routine's full-page chat,
- * or a draft chat for a not-yet-created routine (keyed by its own activity
- * id — a person can have several drafts going, each independently resumable).
+ * Routines-tab selection state: which item, if any, owns the right-hand chat
+ * pane. The list is now ALWAYS visible (email-client split) — this is the
+ * cursor into it, not a full-page view swap:
+ * - `null` — nothing selected; the list runs full width, no pane.
+ * - `intake` — the pre-model create flow (chat surface + locally-driven intake
+ *   cards floating over it), before any model call.
+ * - `routine` — an existing routine's chat.
+ * - `draft` — a not-yet-created routine's chat, keyed by its own activity id (a
+ *   person can have several drafts going, each independently selectable).
+ *   `activityId` null = the draft chat is still being created (calm surface).
  */
-export type View =
-  | { type: "grid" }
-  | { type: "chat"; routineId: string }
-  /** activityId null = the draft chat is still being created (show loading). */
-  | { type: "chat-draft"; activityId: string | null };
-
-/**
- * Fill an inline-editor patch out to a full `NewRoutine`: a manually-created
- * routine is silent-by-default (only pings on attention), shares one ongoing
- * chat, and starts with no integrations. Its wake mechanism is exactly one of a
- * cron `schedule` or an event `trigger` (C9), discriminated by the patch's wake.
- */
-export function newRoutineInput(patch: RoutineEditPatch): NewRoutine {
-  const base = {
-    name: patch.name,
-    prompt: patch.prompt,
-    suppress_when_silent: true,
-    chat_mode: "shared" as const,
-    integrations: [],
-  };
-  return patch.wake.mode === "event"
-    ? { ...base, trigger: patch.wake.trigger }
-    : { ...base, schedule: patch.wake.schedule };
-}
-
-/**
- * Map an editor patch to a `RoutineUpdate`. Switching to an event wake sends the
- * `trigger`; switching to (or keeping) a schedule sends the cron AND clears any
- * `trigger` (`null`) so the server's exactly-one invariant holds either way.
- */
-export function routineUpdateFromPatch(patch: RoutineEditPatch): RoutineUpdate {
-  const base = { name: patch.name, prompt: patch.prompt };
-  return patch.wake.mode === "event"
-    ? { ...base, trigger: patch.wake.trigger }
-    : { ...base, schedule: patch.wake.schedule, trigger: null };
-}
+export type Selection =
+  | { kind: "intake" }
+  | { kind: "routine"; routineId: string }
+  | { kind: "draft"; activityId: string | null };
 
 /**
  * Adopt the freshly-created draft id, but only if the user is still waiting on
- * the pending null-draft (a functional setView guard): a failed start (no id)
- * falls back to the grid, and a user who already navigated away is left alone.
+ * the pending null-draft (a functional setState guard): a failed start (no id)
+ * clears the selection, and a user who already moved on is left alone.
  */
-export function adoptDraft(current: View, activityId: string | null): View {
-  if (current.type !== "chat-draft" || current.activityId !== null) {
+export function adoptDraft(
+  current: Selection | null,
+  activityId: string | null,
+): Selection | null {
+  if (current?.kind !== "draft" || current.activityId !== null) {
     return current;
   }
-  return activityId ? { type: "chat-draft", activityId } : { type: "grid" };
+  return activityId ? { kind: "draft", activityId } : null;
 }
 
 /**
- * Guard a routine chat back to the grid, but only if the user is still on that
- * same routine's chat — a slow failed `startForRoutine` must never yank a user
- * who has since navigated elsewhere.
+ * Clear the selection, but only if the user is still on that same routine's
+ * chat — a slow failed `startForRoutine` must never deselect a user who has
+ * since selected something else.
  */
-export function backToGridIfOn(current: View, routineId: string): View {
-  return current.type === "chat" && current.routineId === routineId
-    ? { type: "grid" }
+export function deselectIfOn(
+  current: Selection | null,
+  routineId: string,
+): Selection | null {
+  return current?.kind === "routine" && current.routineId === routineId
+    ? null
     : current;
+}
+
+/**
+ * Row re-click toggles selection off. Selecting an already-selected routine
+ * deselects it (the pane closes); selecting any other routine — or nothing
+ * selected — selects it.
+ */
+export function toggleRoutine(
+  current: Selection | null,
+  routineId: string,
+): Selection | null {
+  return current?.kind === "routine" && current.routineId === routineId
+    ? null
+    : { kind: "routine", routineId };
 }
 
 /** Enough of the chat-setup hook for the pure resolvers below. */
@@ -88,14 +80,14 @@ export function claimedRoutineId(
 
 /** What the notification deep-link effect should do with a pending activity id. */
 export type PendingResolution =
-  | { action: "open"; view: View }
+  | { action: "open"; selection: Selection }
   | { action: "clear" }
   | { action: "wait" };
 
 /**
- * Resolve a one-shot notification activity id to a navigation. A claimed
+ * Resolve a one-shot notification activity id (#401) to a selection. A claimed
  * routine wins; else an unclaimed draft; else, once BOTH data sources have
- * loaded and nothing matched, clear the stale/foreign id (never navigate);
+ * loaded and nothing matched, clear the stale/foreign id (never select);
  * otherwise keep waiting for the data to arrive.
  */
 export function resolvePendingActivity(
@@ -105,15 +97,39 @@ export function resolvePendingActivity(
 ): PendingResolution {
   const claimed = claimedRoutineId(pendingId, routines, chatSetup);
   if (claimed)
-    return { action: "open", view: { type: "chat", routineId: claimed } };
+    return {
+      action: "open",
+      selection: { kind: "routine", routineId: claimed },
+    };
   if (chatSetup.draftActivities.some((a) => a.id === pendingId)) {
     return {
       action: "open",
-      view: { type: "chat-draft", activityId: pendingId },
+      selection: { kind: "draft", activityId: pendingId },
     };
   }
   const loaded = routines !== undefined && chatSetup.activitiesLoaded;
   return loaded ? { action: "clear" } : { action: "wait" };
+}
+
+/**
+ * The single board card the setup chat mounts. The board renders only its
+ * portaled detail panel (its list stays hidden), so this item just carries the
+ * activity's identity/status for the panel header.
+ */
+export function setupChatItem(
+  activity: Activity,
+  group: string,
+  sessionKey: string | null,
+): KanbanItem {
+  return {
+    id: activity.id,
+    title: activity.title,
+    description: "",
+    status: activity.status,
+    updatedAt: activity.updated_at ?? new Date().toISOString(),
+    group,
+    metadata: sessionKey ? { sessionKey } : {},
+  };
 }
 
 /** Most recent run per routine id, keyed by `routine_id`. */

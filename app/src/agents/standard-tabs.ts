@@ -38,7 +38,7 @@ export const STANDARD_TABS: AgentTab[] = [
   // choice inside the editor, gated there by `capabilities.triggers`, so the
   // tab set never varies by deployment. The id stays "routines" — it's a
   // persisted viewMode value and the tour target.
-  { id: "routines", label: "Automations", builtIn: "routines" },
+  { id: "routines", label: "Routines", builtIn: "routines" },
   // Integrations (Composio, platform mode) are served by the Houston host's
   // /v1/integrations routes — present in every build.
   { id: "integrations", label: "Integrations", builtIn: "integrations" },

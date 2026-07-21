@@ -42,6 +42,50 @@ export function isFirstRun(opts: {
 }
 
 /**
+ * Which top-level screen the first-run gate should render (HOU-732).
+ *
+ * `isFirstRun` reports first-run from a zero-agent workspace and so cannot tell
+ * a never-onboarded install apart from one whose agents were all deleted (or a
+ * user who just finished the cloud-migration wizard with zero cloud agents).
+ * The durable `onboarding_completed` flag closes that gap: once set, a first-run
+ * signal is treated as an emptied workspace, and the user stays in the app.
+ *
+ * - `"segment"` — the segmentation question that precedes the create flow. Only
+ *   on a genuine, uncompleted first run that isn't an interrupted-onboarding
+ *   resume, and only until the segment has been answered.
+ * - `"onboarding"` — the create-your-assistant flow: a fresh uncompleted first
+ *   run, or a resume of one interrupted mid-flight (`onboarding_pending`).
+ * - `"app"` — everything else (returning users, emptied workspaces, and any
+ *   deployment where the user can't create agents).
+ *
+ * Pure so the four gating behaviors are unit-testable without a live host.
+ */
+export function onboardingRoute(opts: {
+  /** Zero-agent (v3) / zero-workspace (legacy) first-run signal. */
+  firstRun: boolean;
+  /** Interrupted first-run onboarding is mid-flight (`onboarding_pending`). */
+  onboardingPending: boolean;
+  /** This install has finished onboarding before (`onboarding_completed`). */
+  onboardingCompleted: boolean;
+  /** Deployment lets this user create agents (single-player / owner-admin). */
+  canCreateAgents: boolean;
+  /** Capability fetch failed — fail closed into the shell, never onboarding. */
+  capabilitiesError: boolean;
+  /** The segmentation question has resolved with a saved answer. */
+  segmentAnswered: boolean;
+}): "segment" | "onboarding" | "app" {
+  if (!opts.canCreateAgents || opts.capabilitiesError) return "app";
+  // A genuine first run only if this install hasn't completed onboarding — a
+  // completed user with zero agents emptied their workspace, they didn't reset.
+  const firstRunOnboarding = opts.firstRun && !opts.onboardingCompleted;
+  if (firstRunOnboarding && !opts.onboardingPending && !opts.segmentAnswered) {
+    return "segment";
+  }
+  if (firstRunOnboarding || opts.onboardingPending) return "onboarding";
+  return "app";
+}
+
+/**
  * Whether this deployment can run the email-connect detour: the integrations
  * provider we drive (`composio`) is advertised. Null capabilities (legacy Rust
  * engine, or still loading) read as unavailable — never guess a route the host

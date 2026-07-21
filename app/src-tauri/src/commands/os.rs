@@ -66,13 +66,17 @@ if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     }
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
     {
-        // Linux: zenity is the lowest-common-denominator GTK picker.
-        let output = Command::new("zenity")
-            .args([
-                "--file-selection",
-                "--directory",
-                "--title=Select your project directory",
-            ])
+        // Linux: zenity is the lowest-common-denominator GTK picker. The
+        // system zenity must not inherit the AppImage's library env (see
+        // appimage_env.rs) or it can crash before showing the dialog.
+        let mut cmd = Command::new("zenity");
+        cmd.args([
+            "--file-selection",
+            "--directory",
+            "--title=Select your project directory",
+        ]);
+        crate::appimage_env::sanitize_tokio_command(&mut cmd);
+        let output = cmd
             .output()
             .await
             .map_err(|e| format!("Failed to open folder picker (install zenity): {e}"))?;
@@ -153,9 +157,13 @@ fn spawn_default_open(target: &str) -> Result<(), String> {
     }
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
     {
-        std::process::Command::new("xdg-open")
-            .arg(target)
-            .spawn()
+        // The default browser must not inherit the AppImage's LD_LIBRARY_PATH
+        // / GTK module env — under it the browser loads the bundle's libraries
+        // and crashes before showing the OAuth consent page (appimage_env.rs).
+        let mut cmd = std::process::Command::new("xdg-open");
+        cmd.arg(target);
+        crate::appimage_env::sanitize_std_command(&mut cmd);
+        cmd.spawn()
             .map(|_| ())
             .map_err(|e| format!("Failed to open (install xdg-utils): {e}"))
     }
@@ -253,10 +261,9 @@ fn reveal_in_file_manager(path: &Path) -> Result<(), String> {
         // No portable "select" verb on Linux — fall back to opening the
         // parent directory. Better than failing.
         let parent = path.parent().unwrap_or(path);
-        std::process::Command::new("xdg-open")
-            .arg(parent)
-            .spawn()
-            .map(|_| ())
-            .map_err(|e| e.to_string())
+        let mut cmd = std::process::Command::new("xdg-open");
+        cmd.arg(parent);
+        crate::appimage_env::sanitize_std_command(&mut cmd);
+        cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
     }
 }

@@ -100,26 +100,19 @@ export interface ScheduleLabels {
   summary: ScheduleSummaryLabels;
 }
 
-/** RoutinesGrid empty state + meta row. */
+/** RoutinesGrid empty state + list-pane chrome. */
 export interface RoutinesGridLabels {
   loading: string;
+  /** Empty state — a short headline over the text-only hint. Creation happens
+   *  in the app-owned pane header, so there is no button here. */
   emptyTitle: string;
   emptyDescription: string;
-  descriptionShort: string;
-  /** Section headers over the split list (catalog grammar, with count chips).
-   *  The Active header only renders when a Paused section exists. */
-  sectionActive: string;
-  sectionPaused: string;
-  /** "New routine" split-button trigger + its two menu entries. */
-  newRoutine: string;
-  newRoutineWithAi: string;
-  newRoutineManually: string;
-  /** A routine still being set up in chat, not created yet. */
+  /** Accessible name for the selectable list (the listbox container). */
+  listLabel: string;
+  /** A routine still being set up in chat, not created yet. Clicking its row
+   *  resumes it, so the only explicit action left is discard. */
   draftTitle: string;
-  draftResume: string;
   draftDiscard: string;
-  /** Save button on the local new-routine editor. */
-  createRoutine: string;
   /** Accessible name for the account-wide timezone picker. */
   timezoneLabel: string;
   /** One-line hint that the timezone applies to every routine. */
@@ -131,55 +124,37 @@ export interface RoutinesGridLabels {
 }
 
 /**
- * RoutineRow meta + its inline edit panel (name/schedule/instruction) and
- * three-dot menu (run/stop, edit, delete). `{relative}`/`{time}`/`{n}` tokens
- * on the dynamic entries; `{name}` on `deleteTitle`.
+ * RoutineRow labels + its controls. Rows are a compact, selectable list:
+ * clicking a row opens the routine's chat; the switch, the three-dot menu
+ * (run/stop, delete), and the inline schedule editor are the only other
+ * actions. The next-run time now shows as the pure relative string (from
+ * `NextFireLabels`), so the row carries no "Next …"/last-run copy of its own.
+ * `{name}` on `deleteTitle`.
  */
 export interface RoutineRowLabels {
   untitled: string;
-  next: string;
-  noNextRun: string;
-  paused: string;
-  waiting: string;
-  justRan: string;
-  ranMinutes: string;
-  ranHours: string;
-  ranDays: string;
   pauseRoutine: string;
   resumeRoutine: string;
+  /** Accessible name for the row's own click target — opening the routine's chat. */
+  openChat: string;
+  /** Accessible name for the inline schedule-summary edit affordance. */
+  editSchedule: string;
+  /** Commit the inline schedule edit (popover footer). */
+  save: string;
+  /** Dismiss the inline schedule edit without saving (popover footer). */
+  cancel: string;
   /** Three-dot menu trigger. */
   moreActions: string;
   /** Fire the routine immediately (menu, when no run is in flight). */
   runNow: string;
   /** Stop the in-flight run (menu, while a run is running). */
   stopRun: string;
-  /** Opens the inline edit panel (name/schedule/instruction). */
-  editManually: string;
-  /** Opens the routine's chat to change it by asking instead. */
-  editWithAi: string;
   delete: string;
   /** Delete confirm dialog. `{name}` on the title. */
   deleteTitle: string;
   deleteDescription: string;
   deleteConfirm: string;
   deleteCancel: string;
-  /** Inline edit panel fields. */
-  nameLabel: string;
-  namePlaceholder: string;
-  /** The wake-mechanism choice ("When should this happen?") shown when the
-   *  deployment supports event triggers; plain human copy, never "trigger".
-   *  Each option card carries a label and a one-line example hint. */
-  whenTitle: string;
-  whenSchedule: string;
-  whenScheduleHint: string;
-  whenEvent: string;
-  whenEventHint: string;
-  /** The prompt sent to the agent when the routine fires — framed to the
-   *  user as an instruction, not a technical "prompt". */
-  instructionLabel: string;
-  instructionPlaceholder: string;
-  save: string;
-  cancel: string;
 }
 
 /** Human copy for each live trigger status (C9). Never technical. */
@@ -192,36 +167,23 @@ export interface TriggerStatusLabels {
 }
 
 /**
- * Everything the event-trigger surface says: the wake-mechanism choice, the app
- * + event picker, the generated config form's chrome (incl. the JSON fallback),
- * and the status badge. All human, never "webhook"/"schema"/"instance".
+ * What an event-trigger routine says once it exists: the plain-language "wakes
+ * on an event" summary fallback and the live status badge (incl. its one-click
+ * recovery). All human, never "webhook"/"schema"/"instance". Picking the app and
+ * choosing the exact event now happen in the setup chat, not a wizard form, so
+ * this carries no picker/config-form copy.
  */
 export interface TriggerLabels {
   /** Generic "wakes on an event" fallback, shown when an event-driven routine
    *  has no humanized event summary yet. */
   wakeEvent: string;
-  /** App + event picker. */
-  chooseApp: string;
-  chooseEvent: string;
-  changeApp: string;
-  /** Shown when the agent has no connected apps to build a trigger on. */
-  noApps: string;
-  /** CTA under the no-apps empty state — jumps to the Integrations surface. */
-  connectApp: string;
-  loadingEvents: string;
-  noEvents: string;
-  /** Subtle latency hint under a poll-type event ("checks every few minutes"). */
-  pollHint: string;
-  /** Account select label, shown only when a toolkit has more than one account. */
-  accountLabel: string;
-  /** Generated config form. */
-  detailsTitle: string;
-  /** Fallback: a labeled JSON textarea when the schema is not modelable. */
-  rawJsonLabel: string;
-  rawJsonHint: string;
-  rawJsonInvalid: string;
   /** Status badge + its one-click recovery. */
   status: TriggerStatusLabels;
+  /** Muted chip shown while a trigger routine has no status data yet — never a
+   *  healthy look. Never reads as "off" either; the status is simply unknown. */
+  statusUnknown: string;
+  /** Idle line for an active trigger routine that has not fired yet (no runs). */
+  waitingFirstEvent: string;
   reconnect: string;
   statusDisconnectedHint: string;
   statusRevokedHint: string;

@@ -1,12 +1,90 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  DEFAULT_GRID_LABELS,
   DEFAULT_NEXT_FIRE_LABELS,
+  DEFAULT_ROW_LABELS,
   interp,
   type ScheduleSummaryLabels,
 } from "../src/labels.ts";
 import { describeNextFire } from "../src/next-fire.ts";
 import { cronSummary, presetSummary } from "../src/schedule-summary.ts";
+
+describe("chat-first label contract", () => {
+  it("row labels carry the Open chat affordance", () => {
+    assert.equal(DEFAULT_ROW_LABELS.openChat, "Open chat");
+  });
+  it("carries the inline schedule-edit labels", () => {
+    assert.equal(DEFAULT_ROW_LABELS.editSchedule, "Edit schedule");
+    assert.equal(DEFAULT_ROW_LABELS.save, "Save");
+    assert.equal(DEFAULT_ROW_LABELS.cancel, "Cancel");
+  });
+  it("drops the removed manual-authoring row labels", () => {
+    const keys = Object.keys(DEFAULT_ROW_LABELS);
+    // `save`/`cancel` are back for the inline schedule editor's popover footer,
+    // so they are intentionally NOT in this removed set anymore.
+    for (const gone of [
+      "editManually",
+      "editWithAi",
+      "nameLabel",
+      "instructionLabel",
+      "whenTitle",
+    ]) {
+      assert.equal(keys.includes(gone), false, `row.${gone} should be removed`);
+    }
+  });
+  it("drops the removed create-button grid labels", () => {
+    const keys = Object.keys(DEFAULT_GRID_LABELS);
+    for (const gone of [
+      "newRoutine",
+      "newRoutineWithAi",
+      "newRoutineManually",
+      "createRoutine",
+    ]) {
+      assert.equal(
+        keys.includes(gone),
+        false,
+        `grid.${gone} should be removed`,
+      );
+    }
+  });
+  it("drops the row's next-run / last-run copy (compact list shows the raw relative)", () => {
+    const keys = Object.keys(DEFAULT_ROW_LABELS);
+    for (const gone of [
+      "next",
+      "noNextRun",
+      "paused",
+      "waiting",
+      "justRan",
+      "ranMinutes",
+      "ranHours",
+      "ranDays",
+    ]) {
+      assert.equal(keys.includes(gone), false, `row.${gone} should be removed`);
+    }
+  });
+  it("drops the in-grid sections/description/resume grid labels (pane chrome is app-owned)", () => {
+    const keys = Object.keys(DEFAULT_GRID_LABELS);
+    for (const gone of [
+      "descriptionShort",
+      "sectionActive",
+      "sectionPaused",
+      "draftResume",
+    ]) {
+      assert.equal(
+        keys.includes(gone),
+        false,
+        `grid.${gone} should be removed`,
+      );
+    }
+  });
+  it("names the selectable list for assistive tech", () => {
+    assert.equal(DEFAULT_GRID_LABELS.listLabel, "Routines");
+  });
+  it("keeps a button-free empty-state hint (the action is a separate slot)", () => {
+    assert.doesNotMatch(DEFAULT_GRID_LABELS.emptyDescription, /button|above/i);
+  });
+});
 
 describe("interp", () => {
   it("fills single-brace tokens", () => {

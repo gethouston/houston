@@ -1,10 +1,10 @@
 /**
- * Finder-style list view (extracted from FilesBrowser): sortable column
- * headers, tree rows, filler stripes. The grid view lives in files-grid.tsx.
+ * Flat list view: quiet sortable column headers over the tree rows. The grid
+ * view lives in files-grid.tsx.
  */
 import type { FileMenuLabels } from "./file-menu";
 import { COL_GRID, FileRow } from "./file-row";
-import { FillerStripes, HeaderCell } from "./files-list-chrome";
+import { HeaderCell } from "./files-list-chrome";
 import { FolderSection } from "./folder-section";
 import { NewFolderInput } from "./new-folder-input";
 import type { FolderNode } from "./tree";
@@ -21,7 +21,6 @@ export interface FilesListColumnLabels {
 
 export function FilesListView({
   tree,
-  fileCount,
   sortKey,
   sortDir,
   onSort,
@@ -40,12 +39,10 @@ export function FilesListView({
   onCreateFolder,
   onCancelCreateFolder,
   newFolderPlaceholder,
-  onBackgroundInteraction,
   columnLabels,
   menuLabels,
 }: {
   tree: FolderNode;
-  fileCount: number;
   sortKey: SortKey;
   sortDir: SortDirection;
   onSort: (key: SortKey) => void;
@@ -64,14 +61,12 @@ export function FilesListView({
   onCreateFolder?: (name: string) => void;
   onCancelCreateFolder: () => void;
   newFolderPlaceholder: string;
-  /** Background click deselects; background right-click opens the New Folder menu. */
-  onBackgroundInteraction: (menuPosition?: { x: number; y: number }) => void;
   columnLabels: FilesListColumnLabels;
   menuLabels?: FileMenuLabels;
 }) {
   return (
     <>
-      <div className="h-[24px] shrink-0 select-none items-center border-b border-line bg-chip-subtle/40 px-1">
+      <div className="h-8 shrink-0 select-none items-center border-b border-line">
         <div
           className="h-full min-w-0 items-center"
           style={{ display: "grid", gridTemplateColumns: COL_GRID }}
@@ -111,11 +106,10 @@ export function FilesListView({
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={onSort}
-            last
           />
         </div>
       </div>
-      <div className="shrink-0 px-1 [&>:nth-child(even)]:rounded-lg [&>:nth-child(even)]:bg-chip-subtle/30">
+      <div className="shrink-0 pt-1">
         {creatingFolder && onCreateFolder && (
           <NewFolderInput
             onConfirm={onCreateFolder}
@@ -159,18 +153,6 @@ export function FilesListView({
           ),
         )}
       </div>
-      <FillerStripes
-        startIndex={fileCount}
-        onDeselect={() => onBackgroundInteraction()}
-        onContextMenu={
-          onCreateFolder
-            ? (e) => {
-                e.preventDefault();
-                onBackgroundInteraction({ x: e.clientX, y: e.clientY });
-              }
-            : undefined
-        }
-      />
     </>
   );
 }

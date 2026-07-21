@@ -1,37 +1,31 @@
 /**
- * RoutinesGridEmpty — the Automations list's first-run empty state, on the
- * catalog grammar's pure shape: a headline, one explaining paragraph, and the
- * single filled "New automation" CTA. (The old three-step walkthrough is gone
- * with the grammar convergence — the editor itself now teaches the wake
- * choice.) Renders only when there are no automations, no draft chats, and no
- * local new-automation editor open.
+ * RoutinesGridEmpty — the list's first-run empty state: a short headline, a
+ * one-line hint, and the app-supplied primary action (the "New routine" button
+ * lives HERE when the list is empty, not in the tab header). Renders only when
+ * there are no routines and no draft chats.
  */
+
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
 } from "@houston-ai/core";
 import type { ReactNode } from "react";
 import { DEFAULT_GRID_LABELS, type RoutinesGridLabels } from "./labels";
-import { NewRoutineMenu } from "./new-routine-menu";
 
 export interface RoutinesGridEmptyProps {
   labels?: RoutinesGridLabels;
-  /** Icon for the "With AI" entry — app supplies the brand mark. */
-  aiIcon?: ReactNode;
-  onCreateWithAi?: () => void;
-  onCreateManually?: () => void;
+  /** The primary create action, supplied by the app (ui/ stays app-agnostic). */
+  action?: ReactNode;
 }
 
 export function RoutinesGridEmpty({
   labels = DEFAULT_GRID_LABELS,
-  aiIcon,
-  onCreateWithAi,
-  onCreateManually,
+  action,
 }: RoutinesGridEmptyProps) {
   const l = labels;
-  const hasCreate = onCreateWithAi || onCreateManually;
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-transparent">
@@ -40,14 +34,7 @@ export function RoutinesGridEmpty({
           <EmptyTitle className="text-lg">{l.emptyTitle}</EmptyTitle>
           <EmptyDescription>{l.emptyDescription}</EmptyDescription>
         </EmptyHeader>
-        {hasCreate && (
-          <NewRoutineMenu
-            onCreateWithAi={onCreateWithAi ?? (() => {})}
-            onCreateManually={onCreateManually ?? (() => {})}
-            labels={labels}
-            aiIcon={aiIcon}
-          />
-        )}
+        {action ? <EmptyContent>{action}</EmptyContent> : null}
       </Empty>
     </div>
   );

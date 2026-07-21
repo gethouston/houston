@@ -31,6 +31,24 @@ export class AgentNameConflictError extends Error {
   }
 }
 
+/**
+ * A pasted API key the runtime's live verification refused
+ * (`saveApiKeyCredential`). `reason` is the runtime's typed verdict
+ * (`ApiKeyVerifyReason`: invalid_key / key_restricted / provider_unavailable),
+ * forwarded on the route's error body so the connect dialog can show
+ * actionable copy instead of a generic failure; undefined when the runtime
+ * predates typed reasons.
+ */
+export class ApiKeyRejectedError extends Error {
+  constructor(
+    message: string,
+    public readonly reason?: string,
+  ) {
+    super(message);
+    this.name = "ApiKeyRejectedError";
+  }
+}
+
 /** Persistence for workspaces + agents. Impls: MemoryWorkspaceStore, PgWorkspaceStore. */
 export interface WorkspaceStore {
   /** The user's personal workspace, creating it on first access (lazy provisioning). */

@@ -48,6 +48,9 @@ export interface ChatInputProps {
   queuedLabels?: QueuedMessageLabels;
   /** Enables submit even when text/files are empty. */
   canSendEmpty?: boolean;
+  /** Locks the whole composer inert (textarea, attach, submit) and dims it —
+   *  no typing, no send. Used while an interaction owns the turn. */
+  disabled?: boolean;
   labels?: ChatComposerLabels;
   /** Prop-driven dictation affordance. Omit to hide the mic (web build). */
   dictation?: DictationControl;

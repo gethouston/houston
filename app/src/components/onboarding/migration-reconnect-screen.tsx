@@ -4,7 +4,7 @@ import { genericErrorDescription } from "../../lib/error-toast";
 import { useUIStore } from "../../stores/ui";
 import { ProviderBrowser } from "../provider-browser/provider-browser";
 import { useProviderBrowserData } from "../provider-browser/use-provider-browser-data";
-import { SpaceScreen } from "../space/space-screen";
+import { FirstRunScreen } from "./first-run-screen";
 import { SetupCard } from "./setup-card";
 
 interface MigrationReconnectScreenProps {
@@ -55,9 +55,8 @@ export function MigrationReconnectScreen({
   };
 
   return (
-    <SpaceScreen>
+    <FirstRunScreen>
       <SetupCard
-        onSpace
         title={t("migrationReconnect.title")}
         subtitle={t("migrationReconnect.body")}
         helper={
@@ -80,6 +79,6 @@ export function MigrationReconnectScreen({
           />
         </div>
       </SetupCard>
-    </SpaceScreen>
+    </FirstRunScreen>
   );
 }

@@ -70,6 +70,12 @@ const PASSTHROUGH_ENV_VARS: ReadonlySet<string> = new Set(
     "TMPDIR",
     "TMP",
     "TEMP",
+    // Windows shell override (non-secret, a filesystem path): the CLI refuses
+    // to start on Windows without Git Bash or PowerShell, and the desktop
+    // shell repairs this var into our own env at spawn (app/src-tauri
+    // shell_env.rs). Dropping it here would make sign-in work but every turn
+    // fail on machines that need the override.
+    "CLAUDE_CODE_GIT_BASH_PATH",
     // Windows process bootstrap — Node and child processes fail to start without
     // these on native Windows.
     "SYSTEMROOT",

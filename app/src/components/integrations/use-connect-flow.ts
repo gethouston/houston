@@ -5,36 +5,27 @@ import { showErrorToast } from "../../lib/error-toast";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
 import {
+  beginFlow,
+  type ConnectFlow,
+  type ConnectStep,
+  cancelAllFlows,
+  cancelFlow,
+  createRegistry,
+  endFlow,
+  type FlowRegistry,
+  flowRedirectUrl,
+  wakeFlow,
+} from "./connect-flow-registry";
+import {
   createWaker,
   INTEGRATION_PROVIDER,
   POLL_INTERVAL_MS,
-  type PollOutcome,
   pollConnectionUntilActive,
-  type Waker,
 } from "./model";
 
-/** Which toolkit is connecting, and whether the browser hand-off has started. */
-export type ConnectState = {
-  toolkit: string;
-  step: "starting" | "waiting";
-} | null;
-
-export interface ConnectFlow {
-  state: ConnectState;
-  /**
-   * Resolves with the poll outcome so callers can react to a LANDED
-   * connection (the chat connect card nudges the agent on "active"); `null`
-   * when the flow failed before/while polling (already surfaced via `call()`)
-   * or when another connect already owns the flow.
-   */
-  connect: (toolkit: string) => Promise<PollOutcome | null>;
-  /** Reopen the SAME OAuth page (the user closed the tab too early). */
-  reopen: () => Promise<void>;
-  /** Wake the poll loop to check the connection right now. */
-  checkNow: () => void;
-  /** Stop the loop with no toast; the pending recovery UI is the way back. */
-  cancel: () => void;
-}
+// The public flow contract (`ConnectStep`, `ConnectFlow`) lives with the
+// registry it describes; re-exported here so existing importers are unchanged.
+export type { ConnectFlow, ConnectStep } from "./connect-flow-registry";
 
 /**
  * The connect / reconnect hand-off, owned by the SURFACE (not the picker dialog)
@@ -43,31 +34,52 @@ export interface ConnectFlow {
  * context the agent slug is forwarded so the gateway enforces the agent's
  * effective allowlist on connect.
  *
- * The poll's inter-attempt sleep is backed by a `Waker`, so `checkNow()` wakes
- * it immediately and `cancel()` wakes it to observe cancellation on the next
- * tick. Every engine call routes through `call()` (toasts + reports failures);
- * we surface the two outcomes it can't see — a timed-out (abandoned) flow and a
- * provider-side OAuth failure. A cancel is silent by design.
+ * Flows are PER TOOLKIT and concurrent. Each live connect owns one registry
+ * entry ({@link FlowRegistry}) holding its `Waker`, cancel flag, and redirect
+ * URL, plus one key in the mirrored `states` React state; its `finally` frees
+ * only its own slug. `checkNow`/`reopen`/`cancel` address exactly one toolkit,
+ * so cancelling app A never stops app B, and surface unmount cancels ALL flows.
+ *
+ * The poll's inter-attempt sleep is backed by a per-flow `Waker`, so
+ * `checkNow(slug)` wakes it immediately and `cancel(slug)` wakes it to observe
+ * cancellation on the next tick. Every engine call routes through `call()`
+ * (toasts + reports failures); we surface the two outcomes it can't see — a
+ * timed-out (abandoned) flow and a provider-side OAuth failure. A cancel is
+ * silent by design.
  */
 export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
   const { agentId } = opts;
   const { t } = useTranslation("integrations");
   const qc = useQueryClient();
-  const [state, setState] = useState<ConnectState>(null);
+  const [states, setStates] = useState<Record<string, ConnectStep>>({});
 
-  const cancelledRef = useRef(false);
   const unmountedRef = useRef(false);
-  const wakerRef = useRef<Waker | null>(null);
-  const redirectUrlRef = useRef<string | null>(null);
+  const registryRef = useRef<FlowRegistry | null>(null);
+  if (registryRef.current === null) registryRef.current = createRegistry();
+  const registry = registryRef.current;
 
   useEffect(() => {
     unmountedRef.current = false;
     return () => {
-      // Surface unmount cancels the loop (leave the tab), same as before.
+      // Surface unmount cancels every loop (leave the tab), same as before.
       unmountedRef.current = true;
-      cancelledRef.current = true;
-      wakerRef.current?.wake();
+      cancelAllFlows(registry);
     };
+  }, [registry]);
+
+  // Mirror one slug's step into React state (or clear it), skipping post-unmount
+  // updates and no-op writes so the mirror never re-renders needlessly.
+  const setStep = useCallback((toolkit: string, step: ConnectStep | null) => {
+    if (unmountedRef.current) return;
+    setStates((prev) => {
+      if (step === null) {
+        if (!(toolkit in prev)) return prev;
+        const { [toolkit]: _dropped, ...rest } = prev;
+        return rest;
+      }
+      if (prev[toolkit] === step) return prev;
+      return { ...prev, [toolkit]: step };
+    });
   }, []);
 
   const invalidateConnections = useCallback(
@@ -80,17 +92,16 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
 
   const connect = useCallback(
     async (toolkit: string) => {
-      // Single flight: a flow already owns the single-slot refs (waker /
-      // redirect url) and the poll loop. Starting a second connect — e.g. the
-      // detail sheet's Reconnect over a still-running picker connect — would
-      // overwrite those refs and leave the first loop polling invisibly. The
-      // picker + callouts disable their buttons on `state`, but this guard is
-      // the real enforcement for every entry point.
-      if (wakerRef.current) return null;
-      cancelledRef.current = false;
+      // Per-slug single flight: a live flow for THIS toolkit already owns its
+      // registry entry (waker / redirect url) and poll loop. Starting a second
+      // connect for the same app — e.g. the detail sheet's Reconnect over a
+      // still-running picker connect — would overwrite them and leave the first
+      // loop polling invisibly. A DIFFERENT toolkit gets its own entry and runs
+      // concurrently. This guard is the real enforcement for every entry point.
       const waker = createWaker();
-      wakerRef.current = waker;
-      setState({ toolkit, step: "starting" });
+      const entry = beginFlow(registry, toolkit, waker);
+      if (entry === null) return null;
+      setStep(toolkit, "starting");
       try {
         // Agent context: pass the agent slug so the gateway enforces the
         // agent's effective allowlist on connect (Teams v2). Undefined on the
@@ -100,15 +111,19 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
           toolkit,
           agentId,
         );
-        redirectUrlRef.current = redirectUrl;
+        entry.redirectUrl = redirectUrl;
+        // A cancel that landed while the link was still minting ("starting")
+        // must NOT go on to pop the OAuth tab. Bail before opening the browser,
+        // returning the same silent "cancelled" outcome the poll loop yields.
+        if (entry.cancelled) return "cancelled";
         await tauriSystem.openUrl(redirectUrl);
-        if (!unmountedRef.current) setState({ toolkit, step: "waiting" });
+        setStep(toolkit, "waiting");
 
         const outcome = await pollConnectionUntilActive({
           poll: () =>
             tauriIntegrations.connection(INTEGRATION_PROVIDER, connectionId),
           sleep: (ms) => waker.wait(ms),
-          isCancelled: () => cancelledRef.current,
+          isCancelled: () => entry.cancelled,
           intervalMs: POLL_INTERVAL_MS,
         });
 
@@ -137,27 +152,34 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
         // re-throw so the click handler never leaks an unhandled rejection.
         return null;
       } finally {
-        wakerRef.current = null;
-        if (!unmountedRef.current) setState(null);
+        endFlow(registry, toolkit);
+        setStep(toolkit, null);
       }
     },
-    [agentId, invalidateConnections, t],
+    [agentId, invalidateConnections, registry, setStep, t],
   );
 
-  const reopen = useCallback(async () => {
-    if (redirectUrlRef.current) {
-      await tauriSystem.openUrl(redirectUrlRef.current);
-    }
-  }, []);
+  const reopen = useCallback(
+    async (toolkit: string) => {
+      const url = flowRedirectUrl(registry, toolkit);
+      if (url) await tauriSystem.openUrl(url);
+    },
+    [registry],
+  );
 
-  const checkNow = useCallback(() => {
-    wakerRef.current?.wake();
-  }, []);
+  const checkNow = useCallback(
+    async (toolkit: string) => {
+      wakeFlow(registry, toolkit);
+    },
+    [registry],
+  );
 
-  const cancel = useCallback(() => {
-    cancelledRef.current = true;
-    wakerRef.current?.wake();
-  }, []);
+  const cancel = useCallback(
+    (toolkit: string) => {
+      cancelFlow(registry, toolkit);
+    },
+    [registry],
+  );
 
-  return { state, connect, reopen, checkNow, cancel };
+  return { states, connect, reopen, checkNow, cancel };
 }

@@ -88,6 +88,7 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
     new Set([
       "ask_user",
       "suggest_reusable",
+      "save_routine",
       "integration_search",
       "integration_execute",
       "request_connection",
@@ -100,6 +101,7 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
     new Set([
       "mcp__houston__ask_user",
       "mcp__houston__suggest_reusable",
+      "mcp__houston__save_routine",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
       "mcp__houston__request_connection",
@@ -156,6 +158,28 @@ test("suggest_reusable is bridged for execute/auto but stripped from plan", () =
   );
 });
 
+test("save_routine is bridged for execute/auto but stripped from plan", () => {
+  // save_routine reaches the host with the SAME sandbox token the integration
+  // tools use (built ⟺ integrations gate open). Same reach as suggest_reusable:
+  // execute + auto, never plan.
+  expect(build(INTEGRATIONS).tools.map((t) => t.name)).toContain(
+    "save_routine",
+  );
+  expect(build(INTEGRATIONS, "execute").tools.map((t) => t.name)).toContain(
+    "save_routine",
+  );
+  expect(build(INTEGRATIONS, "auto").tools.map((t) => t.name)).toContain(
+    "save_routine",
+  );
+  expect(build(INTEGRATIONS, "plan").tools.map((t) => t.name)).not.toContain(
+    "save_routine",
+  );
+  // Never built when the host is unreachable (integrations gate closed).
+  expect(build(undefined).tools.map((t) => t.name)).not.toContain(
+    "save_routine",
+  );
+});
+
 test("auto mode keeps the integration + suggest_reusable tools but drops the blocking tools", () => {
   const { tools, mcp } = build(INTEGRATIONS, "auto");
   // Autopilot never waits on the user: ask_user + request_connection are gone
@@ -166,6 +190,7 @@ test("auto mode keeps the integration + suggest_reusable tools but drops the blo
   expect(new Set(tools.map((t) => t.name))).toEqual(
     new Set([
       "suggest_reusable",
+      "save_routine",
       "integration_search",
       "integration_execute",
       "custom_integration_detect",
@@ -176,6 +201,7 @@ test("auto mode keeps the integration + suggest_reusable tools but drops the blo
   expect(new Set(mcp.allowedTools)).toEqual(
     new Set([
       "mcp__houston__suggest_reusable",
+      "mcp__houston__save_routine",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
       "mcp__houston__custom_integration_detect",

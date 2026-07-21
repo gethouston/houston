@@ -245,3 +245,13 @@ export function advanceCredential(
 ): Transition {
   return advance(state, steps);
 }
+
+/** Advance past a custom step once the app's renderer reports it done. Like
+ *  every non-question step it contributes no ChatInteractionAnswer; the machine
+ *  just moves the cursor and completes if the custom step was the last one. */
+export function advanceCustom(
+  state: StepperState,
+  steps: ChatInteractionStep[],
+): Transition {
+  return advance(state, steps);
+}

@@ -8,6 +8,7 @@ import {
   integrationsAvailable,
   isFirstRun,
   isToolkitConnected,
+  onboardingRoute,
   shouldOfferTeamInvite,
   stepAfterAgentCreated,
 } from "../src/components/onboarding/missions/onboarding-flow.ts";
@@ -99,6 +100,70 @@ describe("stepAfterAgentCreated", () => {
   it("routes straight to finish when integrations are unavailable", () => {
     strictEqual(stepAfterAgentCreated(caps([])), "finished");
     strictEqual(stepAfterAgentCreated(null), "finished");
+  });
+});
+
+describe("onboardingRoute (HOU-732 first-run gate)", () => {
+  // Defaults: a genuine, uncompleted first run that can create agents and has
+  // not yet answered segmentation. Each test overrides only what it exercises.
+  const base = {
+    firstRun: true,
+    onboardingPending: false,
+    onboardingCompleted: false,
+    canCreateAgents: true,
+    capabilitiesError: false,
+    segmentAnswered: false,
+  };
+
+  it("fresh install: segmentation first, then the create flow once answered", () => {
+    strictEqual(onboardingRoute(base), "segment");
+    strictEqual(
+      onboardingRoute({ ...base, segmentAnswered: true }),
+      "onboarding",
+    );
+  });
+
+  it("interrupted onboarding resumes via the pending flag (skips segment)", () => {
+    // Mid-flight the assistant exists, so firstRun is false; the pending flag is
+    // what re-enters onboarding, and a resume never re-asks segmentation.
+    strictEqual(
+      onboardingRoute({
+        ...base,
+        firstRun: false,
+        onboardingPending: true,
+        segmentAnswered: false,
+      }),
+      "onboarding",
+    );
+  });
+
+  it("migration done: a completed user with zero agents lands in the app", () => {
+    // firstRun is true (zero cloud agents) but the flag marks them onboarded, so
+    // they must not be dragged back into the create flow or segmentation.
+    strictEqual(onboardingRoute({ ...base, onboardingCompleted: true }), "app");
+  });
+
+  it("delete-all-agents: a completed user stays in the app, not onboarding", () => {
+    strictEqual(
+      onboardingRoute({
+        ...base,
+        onboardingCompleted: true,
+        segmentAnswered: true,
+      }),
+      "app",
+    );
+  });
+
+  it("can't create agents (multiplayer user) → straight to the app", () => {
+    strictEqual(onboardingRoute({ ...base, canCreateAgents: false }), "app");
+  });
+
+  it("capabilities fetch error fails closed into the app", () => {
+    strictEqual(onboardingRoute({ ...base, capabilitiesError: true }), "app");
+  });
+
+  it("not a first run and nothing pending → the app", () => {
+    strictEqual(onboardingRoute({ ...base, firstRun: false }), "app");
   });
 });
 

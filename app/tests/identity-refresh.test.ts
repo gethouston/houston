@@ -129,6 +129,21 @@ test("refreshNow signs out on a disabled account (USER_DISABLED is terminal)", a
   assert.equal(await loadSession(), null);
 });
 
+test("refreshNow signs out on a deleted account (USER_NOT_FOUND is terminal)", async () => {
+  await seedSession();
+  const { refreshNow } = await import("../src/lib/identity/refresh.ts");
+  const { loadSession } = await import("../src/lib/identity/session-store.ts");
+
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ error: { message: "USER_NOT_FOUND" } }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    })) as typeof fetch;
+
+  assert.equal(await refreshNow(), null);
+  assert.equal(await loadSession(), null);
+});
+
 test("refreshNow returns null when there is no stored session", async () => {
   const { refreshNow } = await import("../src/lib/identity/refresh.ts");
   let calls = 0;

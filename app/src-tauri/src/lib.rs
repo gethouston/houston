@@ -1,3 +1,4 @@
+mod appimage_env;
 mod auth;
 mod bug_report;
 mod child_guard;
@@ -14,6 +15,7 @@ mod logging;
 mod loopback_util;
 mod notification;
 mod oauth_loopback;
+mod shell_env;
 mod store_deep_link;
 mod window_focus;
 
@@ -291,6 +293,26 @@ pub fn run() {
             // Managed BEFORE `on_open_url` is wired so a launch-by-deep-link URL
             // that arrives immediately has somewhere to land.
             app.manage(store_deep_link::PendingStoreDeepLinkState::default());
+            // Linux: OS deep-link routing needs an installed .desktop handler
+            // declaring `x-scheme-handler/houston`. Package installs get one
+            // from the bundle, but an AppImage is never installed — without
+            // this runtime registration (which writes
+            // `~/.local/share/applications/houston-app-handler.desktop`
+            // pointing at the AppImage path) `houston://auth-callback` never
+            // reaches the app and Apple sign-in cannot complete. macOS
+            // (Info.plist) and Windows (MSI registry) register at install
+            // time. Failure is a warn, not a crash: Google/Microsoft/email
+            // sign-in don't depend on the scheme.
+            #[cfg(target_os = "linux")]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                if let Err(e) = app.deep_link().register_all() {
+                    tracing::warn!(
+                        "[deep-link] runtime houston:// registration failed — \
+                         Apple sign-in and store links won't reach this install: {e}"
+                    );
+                }
+            }
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
                 let handle = app.handle().clone();

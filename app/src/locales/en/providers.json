@@ -19,6 +19,7 @@
     "connectTimedOut": "The connection didn't complete in time. Please try connecting again.",
     "loginTimedOut": "The sign-in didn't complete in time. Please try again.",
     "signInPortBusy": "Another app on this computer is using the sign-in port. Close other AI coding tools and try again.",
+    "copilotNoAccess": "Your GitHub account doesn't have Copilot access yet. Enable GitHub Copilot on github.com (the Free plan works), then try connecting again.",
     "signOutFailed": "Couldn't sign out of {{provider}}",
     "signInSucceeded": "Signed in to {{provider}}",
     "cancelFailed": "Couldn't cancel {{provider}} sign-in",
@@ -67,7 +68,10 @@
     "hide": "Hide key",
     "save": "Connect",
     "saving": "Connecting...",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "errorInvalidKey": "{{name}} didn't accept this key. Check it and paste it again.",
+    "errorKeyRestricted": "This key is blocked by settings in your {{name}} account. Create a new key without restrictions using the button above, then paste it here.",
+    "errorProviderUnavailable": "We couldn't reach {{name}} to check your key, so nothing was saved. Please try again in a moment."
   },
   "copilot": {
     "title": "Connect GitHub Copilot",

@@ -993,6 +993,16 @@ export const tauriRoutines = {
     call<void>("sync_routine_scheduler", () =>
       getEngine().syncRoutineScheduler(agentPath),
     ),
+  /**
+   * Mint (or rotate) a routine's incoming-webhook key: the one-time reveal
+   * (`url` + `secret` + `key_prefix`), or `null` where webhook keys are
+   * unsupported (desktop/self-host — only the hosted gateway serves them).
+   * Calling again ROTATES: the old secret stops working.
+   */
+  mintWebhookKey: (agentPath: string, routineId: string) =>
+    call("mint_routine_webhook_key", () =>
+      getEngine().mintRoutineWebhookKey(agentPath, routineId),
+    ),
 };
 
 export const tauriActivity = {
@@ -1396,8 +1406,15 @@ export const tauriProvider = {
    * `newEngineActive()`.
    */
   setApiKey: (provider: string, apiKey: string) =>
-    call<void>("set_provider_api_key", () =>
-      getEngine().setProviderApiKey(provider, apiKey),
+    call<void>(
+      "set_provider_api_key",
+      () => getEngine().setProviderApiKey(provider, apiKey),
+      undefined,
+      // The connect dialog surfaces the failure inline with the engine's typed
+      // reason (bad key / restricted key / provider outage) — a red bug toast
+      // on top double-surfaces a user-fixable state. Capture stays on so
+      // verification failures keep reaching Sentry.
+      { toast: false },
     ),
   /**
    * Connect an OpenAI-compatible (local / BYO model) server: a base URL + model

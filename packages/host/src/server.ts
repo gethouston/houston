@@ -57,6 +57,7 @@ import { handlePortableAccount } from "./routes/portable";
 import { handlePortableFromStore } from "./routes/portable-from-store";
 import { handleSandboxProviderUsage } from "./routes/provider-usage";
 import { BodyTooLargeError } from "./routes/read-body";
+import { handleSandboxRoutines } from "./routes/routines-sandbox";
 import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSkillsDirectory } from "./routes/skills-directory";
 import { handleTriggerEvents } from "./routes/trigger-events";
@@ -183,6 +184,15 @@ export interface ControlPlaneDeps {
    */
   triggerLock?: TriggerEventLock;
   /**
+   * Whether this deployment can fire event-driven routines (a trigger backend —
+   * a Composio project key + a public webhook URL — exists). True on Houston
+   * Cloud only; false on desktop/self-host. Threaded to the routine write gate
+   * and the trigger-status route (see AgentRouteDeps.triggersEnabled). Distinct
+   * from `capabilities.triggers`, which the managed gateway advertises at its
+   * edge and this host never sets on itself.
+   */
+  triggersEnabled?: boolean;
+  /**
    * Agent Store gateway API base ("install from a link" fetches a shared
    * agent's IR from it). Absent → the route falls back to the
    * `HOUSTON_AGENTSTORE_API_URL` config default.
@@ -273,6 +283,9 @@ async function handle(
   // Runtime-facing custom-integration setup (detect/add; HMAC sandbox token).
   if (await handleSandboxCustomIntegrations(deps, method, path, url, req, res))
     return;
+  // Runtime-facing scheduled-task save (merge-safe; HMAC sandbox token). The
+  // agent's save_routine tool calls this instead of writing routines.json.
+  if (await handleSandboxRoutines(deps, method, path, url, req, res)) return;
 
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);

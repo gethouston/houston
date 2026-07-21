@@ -89,10 +89,10 @@
   "suggestReusable": {
     "title": "Salve isto para a próxima vez",
     "skillTitle": "Salvar como Habilidade",
-    "routineTitle": "Salvar como Automação",
+    "routineTitle": "Salvar como rotina",
     "learningTitle": "Lembrar disto",
     "saveSkillMessage": "Salve o que acabei de fazer como uma Habilidade chamada \"{{title}}\".",
-    "saveRoutineMessage": "Configure isto como uma Automação recorrente chamada \"{{title}}\".",
+    "saveRoutineMessage": "Configure isto como uma rotina recorrente chamada \"{{title}}\".",
     "saveLearningMessage": "Lembre \"{{title}}\" como um aprendizado para a próxima vez."
   },
   "errors": {

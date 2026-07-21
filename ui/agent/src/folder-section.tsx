@@ -95,8 +95,8 @@ export function FolderSection({
           setMenu({ x: e.clientX, y: e.clientY });
         }}
         className={cn(
-          "h-[24px] w-full cursor-default select-none items-center text-left outline-none",
-          isOver && "!rounded-lg !bg-focus/15",
+          "h-8 w-full cursor-default select-none items-center rounded-lg text-left outline-none transition-colors hover:bg-hover",
+          isOver && "!bg-focus/15",
           dragging && "opacity-40",
         )}
         style={{ display: "grid", gridTemplateColumns: COL_GRID }}

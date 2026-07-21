@@ -99,7 +99,11 @@ export function useIntegrationConnect({
     logoUrl: catalog.isFetched ? resolved.logoUrl : "",
   };
 
-  const { state: connectState, connect } = useConnectFlow({ agentId });
+  const { states, connect } = useConnectFlow({ agentId });
+  // This surface is scoped to ONE toolkit, so it is "connecting" only while its
+  // own slug's flow runs — a concurrent connect for a different app never lights
+  // this card.
+  const connecting = slug in states;
   // The nudge fires at most once per surface, and only for a connection the
   // user drove from HERE — a connection landing via the Integrations tab or
   // another card must not make this one speak.
@@ -148,8 +152,8 @@ export function useIntegrationConnect({
   return {
     app,
     isConnected,
-    connecting: connectState !== null,
-    view: deriveConnectCardView(isConnected, connectState !== null),
+    connecting,
+    view: deriveConnectCardView(isConnected, connecting),
     startConnect,
   };
 }

@@ -11,6 +11,7 @@ import {
   type CloudMigrationOutcome,
   cloudMigrationGateState,
 } from "./cloud-migration-trigger";
+import { useOnboardingCompleted } from "./use-onboarding-completed";
 import { useSession } from "./use-session";
 
 const STORAGE_PREFIX = "houston.cloudMigration.";
@@ -59,6 +60,7 @@ export function useCloudMigration(): CloudMigrationTrigger {
   const userId = session?.uid ?? null;
   const remoteGateway = isHostedGatewayEngine();
   const isTauri = osIsTauri();
+  const { markCompleted } = useOnboardingCompleted();
 
   const [outcome, setOutcome] = useState<CloudMigrationOutcome | null>(() =>
     userId ? readOutcome(userId) : null,
@@ -101,9 +103,15 @@ export function useCloudMigration(): CloudMigrationTrigger {
           );
         }
       }
+      // A completed migration IS onboarding: the user just moved their agents
+      // into the cloud, so they must land in the shell, never the create flow.
+      // Only "done" — a user who DECLINES with no agents still needs onboarding.
+      // Fires on both the stamp (applyNow:false) and the final apply; markCompleted
+      // is idempotent.
+      if (value === "done") void markCompleted();
       if (opts?.applyNow !== false) setOutcome(value);
     },
-    [userId],
+    [userId, markCompleted],
   );
 
   // Dev-only: force the wizard open with stub data so it can be tested in

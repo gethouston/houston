@@ -23,11 +23,14 @@ test("the prompt carries the interaction gates + Houston context", () => {
 test("routine guidance maps recurring requests to routines + names the file", () => {
   const p = houstonSystemPrompt();
   expect(p).toContain("## How-To Guidance: Routines");
-  expect(p).toContain('explicitly says "routine"');
+  expect(p).toContain('explicitly says "scheduled task"');
   expect(p).toContain(
     "Ask for approval before creating, enabling, or changing a Routine",
   );
-  // The actionable bit the agent was missing: where routines are persisted.
+  // The merge-safe save path: the agent MUST use save_routine and MUST NOT write
+  // routines.json wholesale (the isolated-setup-chat overwrite bug).
+  expect(p).toContain("save_routine");
+  expect(p).toContain("NEVER write, edit, or run a command that changes");
   expect(p).toContain(".houston/routines/routines.json");
 });
 
@@ -143,4 +146,30 @@ test("the guidance is provider-agnostic and CLI-free (Composio CLI cut in the co
   const p = houstonSystemPrompt();
   expect(p).not.toContain("Composio");
   expect(p).not.toContain("composio link");
+});
+
+test("event wakes are advertised only where a trigger backend can fire them", () => {
+  const withTriggers = houstonSystemPrompt({ triggers: true });
+  // Both variants keep the routine identity + the merge-safe save_routine path.
+  expect(withTriggers).toContain("## How-To Guidance: Routines");
+  expect(withTriggers).toContain("save_routine");
+  expect(withTriggers).toContain(".houston/routines/routines.json");
+  // The ON variant describes the event wake mechanism.
+  expect(withTriggers).toContain("on an EVENT in a connected app");
+  expect(withTriggers).toContain("a `schedule` or a `trigger`, never both");
+
+  const scheduleOnly = houstonSystemPrompt({ triggers: false });
+  expect(scheduleOnly).toContain("## How-To Guidance: Routines");
+  expect(scheduleOnly).toContain("save_routine");
+  expect(scheduleOnly).toContain(".houston/routines/routines.json");
+  // The OFF variant never advertises an event wake it cannot fire, and steers
+  // an event-wake request to Houston Cloud (never naming the provider).
+  expect(scheduleOnly).not.toContain("on an EVENT in a connected app");
+  expect(scheduleOnly).not.toContain("`trigger`");
+  expect(scheduleOnly).toContain("need Houston Cloud");
+  expect(scheduleOnly).not.toContain("Composio");
+});
+
+test("the default prompt is schedule-only (the built-in default serves desktop/self-host)", () => {
+  expect(houstonSystemPrompt()).toBe(houstonSystemPrompt({ triggers: false }));
 });

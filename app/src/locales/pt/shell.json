@@ -99,8 +99,8 @@
         "body": "O painel de cada conversa com este agente. Rodando, precisando de você, prontas."
       },
       "tabRoutines": {
-        "title": "Automações",
-        "body": "Seu assistente já vem com automações prontas, como o Resumo matinal. Configure aqui qualquer outra coisa para acontecer por conta própria."
+        "title": "Rotinas",
+        "body": "Seu assistente já vem com rotinas prontas, como o Resumo matinal. Configure aqui qualquer outra coisa para acontecer por conta própria."
       },
       "tabIntegrations": {
         "title": "Integrações",
@@ -208,9 +208,6 @@
     }
   },
   "updateChecker": {
-    "cardLabel": "Atualização do Houston disponível",
-    "title": "Houston, temos uma atualização!",
-    "availableDescription": "A versão {{version}} está pronta. Você está na v{{currentVersion}}.",
     "downloading": "Baixando e instalando a atualização...",
     "downloadingProgress": "Baixando e instalando... {{progress}}%",
     "ready": "Atualização instalada. Reinicie o Houston para concluir.",
@@ -221,8 +218,17 @@
     "primaryAction": "Atualizar e reiniciar",
     "installingAction": "Instalando atualização...",
     "relaunchAction": "Reiniciar Houston",
-    "retryAction": "Tentar de novo",
-    "dismissAction": "Dispensar atualização por enquanto"
+    "retryAction": "Tentar de novo"
+  },
+  "updateForced": {
+    "cardLabel": "Atualização do Houston em andamento",
+    "launchTitle": "Atualizando o Houston",
+    "launchDescription": "O Houston está sendo atualizado para a versão {{version}}. O aplicativo vai reiniciar em instantes.",
+    "countdownTitle": "Houston, temos uma atualização!",
+    "countdownDescription_one": "A versão {{version}} será instalada em {{count}} segundo.",
+    "countdownDescription_other": "A versão {{version}} será instalada em {{count}} segundos.",
+    "reassurance": "Seus agentes continuam trabalhando em segundo plano e seus chats e configurações ficam salvos. Você vai retomar de onde parou.",
+    "updateNowAction": "Atualizar agora"
   },
   "updateRequired": {
     "cardLabel": "Atualização do Houston obrigatória",

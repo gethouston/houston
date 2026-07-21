@@ -120,6 +120,7 @@ import type {
   UpdateProvider,
   UsageRow,
   VersionResponse,
+  WebhookKeyReveal,
   Workspace,
   WorkspaceContext,
   WorktreeInfo,
@@ -1299,6 +1300,29 @@ export class HoustonClient {
           `/agents/${this.seg(agentId)}/trigger-status`,
         )
       ).items;
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
+  }
+
+  /**
+   * Mint (or rotate) a routine's incoming-webhook key. Returns the one-time
+   * reveal (`url` + `secret` + `key_prefix`), or `null` when the host does not
+   * serve webhook keys (404) — a deployment without a webhook backend (e.g.
+   * desktop/self-host). Calling again ROTATES: the old secret is invalidated.
+   * Only the gateway serves this route; the TS host 404s it. Mirrors how
+   * `agentTriggerStatus` degrades on a 404.
+   */
+  async mintRoutineWebhookKey(
+    agentId: string,
+    routineId: string,
+  ): Promise<WebhookKeyReveal | null> {
+    try {
+      return await this.request<WebhookKeyReveal>(
+        "POST",
+        `/agents/${this.seg(agentId)}/routines/${this.seg(routineId)}/webhook-key`,
+      );
     } catch (err) {
       if (isHoustonEngineError(err) && err.status === 404) return null;
       throw err;

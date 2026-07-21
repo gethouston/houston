@@ -1,0 +1,52 @@
+<script>
+  // Resolve direct installer URLs (Mac DMG + Windows MSIs) from GitHub
+  // releases. The current app ships as prereleases tagged `cloud-vX.Y.Z`,
+  // which the `releases/latest` endpoint never returns — it only serves the
+  // newest stable tag, i.e. the legacy app kept for users still migrating.
+  // So we list recent releases and pick the highest cloud version that
+  // carries installers (the `cloud-latest` tag holds only the updater
+  // manifest, no installers, and is skipped by the tag pattern). Shared by
+  // the home-page download modals and the early-access page; each caller
+  // applies its own fallback when a URL comes back null or the fetch fails
+  // (e.g. an api.github.com rate-limit — 60/hr per IP, shared by everyone
+  // behind a NAT).
+  window.houstonInstallerUrls = function () {
+    function version(rel) {
+      var m = /^cloud-v(\d+)\.(\d+)\.(\d+)$/.exec((rel && rel.tag_name) || '');
+      return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+    }
+    function hasInstallers(rel) {
+      return (rel.assets || []).some(function (a) { return /\.(dmg|msi)$/.test(a.name); });
+    }
+    function isNewer(a, b) {
+      return a[0] !== b[0] ? a[0] > b[0] : a[1] !== b[1] ? a[1] > b[1] : a[2] > b[2];
+    }
+    function latestCloudRelease(releases) {
+      var best = null;
+      var bestVersion = null;
+      (Array.isArray(releases) ? releases : []).forEach(function (rel) {
+        var v = version(rel);
+        if (!v || !hasInstallers(rel)) return;
+        if (!bestVersion || isNewer(v, bestVersion)) {
+          best = rel;
+          bestVersion = v;
+        }
+      });
+      return best;
+    }
+    return fetch('https://api.github.com/repos/gethouston/houston/releases?per_page=30')
+      .then(function (r) { return r.json(); })
+      .then(function (releases) {
+        var assets = (latestCloudRelease(releases) || {}).assets || [];
+        function urlOf(pattern) {
+          var asset = assets.find(function (a) { return pattern.test(a.name); });
+          return asset ? asset.browser_download_url : null;
+        }
+        return {
+          dmg: urlOf(/\.dmg$/),
+          winX64: urlOf(/_x64.*\.msi$/),
+          winArm64: urlOf(/_arm64.*\.msi$/)
+        };
+      });
+  };
+</script>

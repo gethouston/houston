@@ -59,7 +59,7 @@ export {
 } from "./states";
 export {
   type ConnectFlow,
-  type ConnectState,
+  type ConnectStep,
   useConnectFlow,
 } from "./use-connect-flow";
 export {

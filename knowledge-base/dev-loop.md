@@ -20,6 +20,16 @@ marker (`~/.houston-dev/stack.marker`), a signature sweep for orphans, and a
 port backstop that only touches recognizably-Houston processes. A foreign
 process on one of our ports is left alone and hard-fails the doctor by name.
 
+**From-zero testing: `pnpm dev:reset`** (`scripts/dev/reset-local.sh`) resets
+the LOCAL environment so the next `pnpm dev` boots like a fresh install: stops
+the stack, drops the `houston-dev-pg` volume (the dev gateway's users/orgs/
+agents/prefs), and clears `~/Library/WebKit/houston-app` — the dev app's
+WKWebView container (device-local prefs like `onboarding_completed`, the dev
+session; note it's named after the productName, NOT `com.houston.app`).
+`--with-data` also removes `~/.houston`; keep it when testing the
+cloud-migration flow (it is the migration source). Never touches prod/staging —
+the hosted test account's reset is cloud's `make reset-test-user`.
+
 | Pane | What | Port |
 |------|------|------|
 | `pg` | Postgres 16 in Docker (data persists in the `houston-dev-pg` volume; container recreated each boot) | 5433 |

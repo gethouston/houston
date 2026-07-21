@@ -24,8 +24,12 @@ export interface PortableInventory {
     name: string;
     /** Cron wake; absent on trigger routines (exactly one of schedule/trigger). */
     schedule?: string;
-    /** Event wake; absent on cron routines. */
-    trigger?: { toolkit: string; trigger_slug: string };
+    /** Event wake; absent on cron routines. Discriminated on `kind`: a Composio
+     *  trigger (kind absent/"composio") carries its toolkit + slug; a webhook
+     *  wake carries only `kind` (its URL/secret never live in shareable data). */
+    trigger?:
+      | { kind?: "composio"; toolkit: string; trigger_slug: string }
+      | { kind: "webhook" };
   }[];
   learnings: { id: string; text: string }[];
 }

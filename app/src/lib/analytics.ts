@@ -107,6 +107,11 @@ export type AnalyticsEventName =
   | "routine_scheduled"
   | "routine_executed"
   | "routine_chat_setup_started"
+  // Create-intake funnel: the locally-driven question cards (before any model
+  // call) either resolved into a draft (`source`: custom flow / template pick /
+  // composer escape hatch; `template_id` when a template) or were dismissed.
+  | "routine_intake_completed"
+  | "routine_intake_dismissed"
   | "tab_opened"
   | "file_attached"
   | "mobile_paired"
@@ -129,10 +134,13 @@ export type AnalyticsEventName =
   | "org_member_removed"
   | "org_role_changed"
   | "org_invite_revoked"
-  // Update lifecycle (closes the symbolication-coverage feedback loop)
+  // Update lifecycle (closes the symbolication-coverage feedback loop).
+  // Updates are forced: update_forced marks the blocking surface appearing
+  // (`source`: launch | countdown) and update_accepted the install starting
+  // (`source`: user | countdown | launch — click vs timer vs launch-auto).
   | "update_offered"
+  | "update_forced"
   | "update_accepted"
-  | "update_dismissed"
   // Gateway app-update floor tripped → blocking update screen shown
   | "update_required"
   // Reliability
@@ -156,6 +164,8 @@ type AnalyticsProperty =
   | "integration_slug"
   | "skill_slug"
   | "routine_id"
+  | "wake_kind"
+  | "template_id"
   | "agent_slug"
   | "tab_name"
   | "file_kind"
@@ -206,6 +216,8 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "integration_slug",
   "skill_slug",
   "routine_id",
+  "wake_kind",
+  "template_id",
   "agent_slug",
   "tab_name",
   "file_kind",
@@ -452,6 +464,24 @@ export const analytics = {
       ) {
         posthog.people.set({ onboarding_segment: props.selected_segment });
       }
+    } catch {
+      // Analytics unavailable
+    }
+  },
+
+  /**
+   * PostHog LLM-observability event, one per finished model turn. Bypasses
+   * the AnalyticsEventName/ALLOWED_PROPS whitelist deliberately: `$ai_*`
+   * names are PostHog's canonical LLM schema (the AI Usage dashboard reads
+   * them), and the payload is built EXCLUSIVELY by `buildAiGenerationProps`
+   * (app/src/lib/ai-generation.ts), whose input type structurally excludes
+   * prompt/response content — only model, tokens, latency, and cost leave
+   * the app.
+   */
+  trackAiGeneration: (props: Record<string, string | number | boolean>) => {
+    if (!KEY) return;
+    try {
+      posthog.capture("$ai_generation", props);
     } catch {
       // Analytics unavailable
     }

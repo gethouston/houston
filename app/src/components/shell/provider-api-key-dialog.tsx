@@ -10,7 +10,10 @@ import {
 import { ExternalLink, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { reportError } from "../../lib/error-toast";
+import {
+  type ApiKeyConnectReason,
+  apiKeyConnectReason,
+} from "../../lib/api-key-connect-error";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
 
@@ -39,6 +42,18 @@ interface Props {
   provider: ProviderInfo | null;
   onClose: () => void;
 }
+
+/** Verification verdicts (from the engine's typed `reason`) → inline copy. */
+const REASON_COPY: Record<
+  ApiKeyConnectReason,
+  | "apiKey.errorInvalidKey"
+  | "apiKey.errorKeyRestricted"
+  | "apiKey.errorProviderUnavailable"
+> = {
+  invalid_key: "apiKey.errorInvalidKey",
+  key_restricted: "apiKey.errorKeyRestricted",
+  provider_unavailable: "apiKey.errorProviderUnavailable",
+};
 
 export function ProviderApiKeyDialog({ provider, onClose }: Props) {
   const { t } = useTranslation("providers");
@@ -75,13 +90,20 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
       // toasts. Close here so the dialog doesn't linger over the connected state.
       onClose();
     } catch (err) {
-      // Show the provider's REAL reason inline (a generic "something went
-      // wrong" turned every QA failure into an undiagnosable "failed to
-      // connect"), and still capture to Sentry + the frontend log.
-      const detail = verifyFailureDetail(err);
-      console.error(`[provider_api_key_submit] ${detail}`);
-      reportError("provider_api_key_submit", detail, err);
-      setError(t("apiKey.verifyFailed", { detail }));
+      // The engine sends a typed verdict with the failure (bad key, key
+      // blocked by its own settings, provider unreachable) — show the matching
+      // actionable copy. A reason-less failure (transport error, older host)
+      // shows the host's REAL sentence instead of generic copy, which turned
+      // every provider-QA failure into an undiagnosable "failed to connect".
+      // Sentry capture already happened in the tauri call wrapper.
+      const reason = apiKeyConnectReason(err);
+      if (reason) {
+        setError(t(REASON_COPY[reason], { name: provider.name }));
+      } else {
+        const detail = verifyFailureDetail(err);
+        console.error(`[provider_api_key_submit] ${detail}`);
+        setError(t("apiKey.verifyFailed", { detail }));
+      }
       setSubmitting(false);
     }
   };

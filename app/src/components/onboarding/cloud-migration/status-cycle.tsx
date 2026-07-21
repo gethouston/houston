@@ -39,7 +39,7 @@ export function MigrationStatusCycle({ phrases }: { phrases: string[] }) {
 
   return (
     <p
-      className="min-h-[1.25em] text-sm text-[var(--ht-space-foreground-muted)] transition-opacity duration-300"
+      className="min-h-[1.25em] text-sm text-ink-muted transition-opacity duration-300"
       style={{ opacity: visible ? 1 : 0 }}
     >
       {phrases[index]}

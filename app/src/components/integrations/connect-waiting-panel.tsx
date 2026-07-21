@@ -11,9 +11,12 @@ import type { ConnectFlow } from "./use-connect-flow";
  */
 export function ConnectWaitingPanel({
   appName,
+  toolkit,
   connectFlow,
 }: {
   appName: string;
+  /** The toolkit this panel is recovering, so its actions address that flow. */
+  toolkit: string;
   connectFlow: ConnectFlow;
 }) {
   const { t } = useTranslation("integrations");
@@ -33,21 +36,21 @@ export function ConnectWaitingPanel({
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => connectFlow.checkNow()}
+          onClick={() => void connectFlow.checkNow(toolkit)}
           className="inline-flex h-7 items-center rounded-full bg-action px-3 text-xs font-medium text-action-text transition-colors hover:bg-action/90"
         >
           {t("waiting.check")}
         </button>
         <button
           type="button"
-          onClick={() => void connectFlow.reopen()}
+          onClick={() => void connectFlow.reopen(toolkit)}
           className="inline-flex h-7 items-center rounded-full border border-line bg-input px-3 text-xs font-medium text-ink transition-colors hover:bg-chip"
         >
           {t("waiting.reopen")}
         </button>
         <button
           type="button"
-          onClick={() => connectFlow.cancel()}
+          onClick={() => connectFlow.cancel(toolkit)}
           className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium text-ink-muted transition-colors hover:bg-chip"
         >
           {t("waiting.cancel")}

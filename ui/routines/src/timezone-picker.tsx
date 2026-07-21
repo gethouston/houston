@@ -7,8 +7,10 @@
  * opening a small Popover whose Command lets the user type keywords ("tokyo",
  * "new york", "gmt+5") to narrow ~400 zones. See HOU-496.
  *
- * The card framing (gray panel, title + hint row) is kept so the control still
- * reads as "this one zone governs every routine below".
+ * Two variants share one trigger + popover: `"card"` keeps the gray panel with
+ * its title + hint row (so the control reads as "this one zone governs every
+ * routine below"); `"bare"` drops all card chrome and renders just the trigger
+ * button, sized to sit inline in a toolbar.
  */
 
 import {
@@ -57,6 +59,11 @@ export interface TimezonePickerProps {
   searchPlaceholder: string;
   /** Shown when no zone matches the query. */
   noResults: string;
+  /**
+   * `"card"` (default) wraps the trigger in the titled gray panel; `"bare"`
+   * renders only the trigger button for inline/toolbar placement.
+   */
+  variant?: "card" | "bare";
   className?: string;
 }
 
@@ -67,6 +74,7 @@ export function TimezonePicker({
   hint,
   searchPlaceholder,
   noResults,
+  variant = "card",
   className,
 }: TimezonePickerProps) {
   const [open, setOpen] = useState(false);
@@ -97,6 +105,81 @@ export function TimezonePicker({
     setOpen(false);
   };
 
+  const isBare = variant === "bare";
+
+  const picker = (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`${label}: ${currentName}`}
+          className={cn(
+            "flex items-center gap-2 rounded-lg border border-line/20 bg-input px-3 py-2",
+            "text-sm text-ink cursor-pointer transition-shadow duration-200",
+            "hover:border-line/40 focus:outline-none focus:shadow-sm",
+            isBare ? "w-auto max-w-[16rem]" : "w-full",
+            isBare && className,
+          )}
+        >
+          <Globe
+            className="size-3.5 text-ink-muted shrink-0"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+          <span className="flex-1 min-w-0 truncate text-left">
+            {current?.display ?? accountTimezone}
+          </span>
+          {current?.offset && (
+            <span className="text-xs text-ink-muted shrink-0">
+              {current.offset}
+            </span>
+          )}
+          <ChevronDown
+            className="size-3.5 text-ink-muted shrink-0"
+            aria-hidden
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className={cn(
+          "p-0",
+          // A bare trigger is narrow, so pin the list to a readable fixed width
+          // instead of matching the trigger.
+          isBare ? "w-72" : "w-(--radix-popover-trigger-width)",
+        )}
+      >
+        <Command filter={filterZones}>
+          <CommandInput placeholder={searchPlaceholder} />
+          <CommandList>
+            <CommandEmpty>{noResults}</CommandEmpty>
+            {zones.map((zone) => (
+              <CommandItem
+                key={zone.id}
+                value={zone.id}
+                keywords={zone.keywords}
+                onSelect={() => handleSelect(zone.id)}
+              >
+                <span className="flex-1 min-w-0 truncate">{zone.display}</span>
+                {zone.offset && (
+                  <span className="text-xs text-ink-muted shrink-0">
+                    {zone.offset}
+                  </span>
+                )}
+                {zone.id === accountTimezone && (
+                  <Check className="size-4 shrink-0" />
+                )}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+
+  // Bare: just the trigger + popover, for inline/toolbar placement.
+  if (isBare) return picker;
+
   return (
     <section className={cn("rounded-xl bg-chip px-5 py-4", className)}>
       {/* Title + hint share one row so the card stays short. */}
@@ -108,69 +191,7 @@ export function TimezonePicker({
           {hint}
         </span>
       </div>
-
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-label={`${label}: ${currentName}`}
-            className={cn(
-              "w-full flex items-center gap-2 rounded-lg border border-line/20 bg-input px-3 py-2",
-              "text-sm text-ink cursor-pointer transition-shadow duration-200",
-              "hover:border-line/40 focus:outline-none focus:shadow-sm",
-            )}
-          >
-            <Globe
-              className="size-3.5 text-ink-muted shrink-0"
-              strokeWidth={1.75}
-              aria-hidden
-            />
-            <span className="flex-1 min-w-0 truncate text-left">
-              {current?.display ?? accountTimezone}
-            </span>
-            {current?.offset && (
-              <span className="text-xs text-ink-muted shrink-0">
-                {current.offset}
-              </span>
-            )}
-            <ChevronDown
-              className="size-3.5 text-ink-muted shrink-0"
-              aria-hidden
-            />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="start"
-          className="w-(--radix-popover-trigger-width) p-0"
-        >
-          <Command filter={filterZones}>
-            <CommandInput placeholder={searchPlaceholder} />
-            <CommandList>
-              <CommandEmpty>{noResults}</CommandEmpty>
-              {zones.map((zone) => (
-                <CommandItem
-                  key={zone.id}
-                  value={zone.id}
-                  keywords={zone.keywords}
-                  onSelect={() => handleSelect(zone.id)}
-                >
-                  <span className="flex-1 min-w-0 truncate">
-                    {zone.display}
-                  </span>
-                  {zone.offset && (
-                    <span className="text-xs text-ink-muted shrink-0">
-                      {zone.offset}
-                    </span>
-                  )}
-                  {zone.id === accountTimezone && (
-                    <Check className="size-4 shrink-0" />
-                  )}
-                </CommandItem>
-              ))}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+      {picker}
     </section>
   );
 }

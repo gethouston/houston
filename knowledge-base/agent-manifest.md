@@ -32,10 +32,27 @@ interface AgentManifest {
 ## Tabs
 
 Every agent renders the same standard tabs in the shell:
-`Activity` (board) / `Automations` (tab id `routines`; schedule-driven AND
-event-driven in one list — the wake mechanism is a choice inside the editor,
-gated there by `capabilities.triggers`, never a separate tab) / `Files` /
-`Agent Settings` (tab id `job-description`) / `Integrations`.
+`Activity` (board) / `Routines` (tab id `routines`; schedule-driven AND
+event-driven in one list — the wake mechanism is a choice made while creating a
+routine, never a separate tab) / `Files` / `Agent Settings`
+(tab id `job-description`) / `Integrations`.
+
+**Routines are created chat-first (no manual editor, no Dialog wizard).**
+Starting a new routine opens a scripted **in-chat intake** (`app/src/components/
+tabs/automation-intake/`, cards that look exactly like the agent's real
+`ask_user` cards but run locally with zero model calls): a fork ("from scratch"
+vs "from a template"), then — where the deployment can fire event triggers — a
+wake question (schedule / app event / webhook). An app-event pick only chooses
+the APP (and connects it inline); WHAT happens in it is decided in plain words
+in the AI setup chat that takes over the same view. Skipping any question hands
+off to a full AI interview. There is no form editor and no modal wizard. Each
+row carries an enable/disable toggle, a three-dot menu (Run now / Stop run,
+Delete), and — for a schedule routine — an inline, always-visible schedule-edit
+popover; everything else about a routine is changed by asking the agent in its
+setup chat. The setup chat opens in the **shell-level mission panel** on the
+right (a resizable split view, the SAME panel the Activity board uses, wired
+through `useShellDetailPanel`); nothing selected centers the list as a single
+column. Library surface: `@houston-ai/routines` (`ui/routines/README.md`).
 
 This used to be configurable per agent via a `tabs: AgentTab[]` field in `houston.json`, plus an optional `customComponent` pointing at a per-agent `bundle.js`. The flexibility was never used in practice (zero shipped agents had a custom React tab) and caused drift between installed agents and fresh ones whenever the default set changed. The set is now hardcoded in `app/src/agents/standard-tabs.ts` (`STANDARD_TABS`, `DEFAULT_TAB_ID`). Old `tabs` / `defaultTab` fields on installed manifests are ignored by the loader.
 
@@ -254,6 +271,21 @@ The `onboarding_pending` engine preference (`app/src/hooks/use-onboarding-pendin
 is the resume contract: set on mount, cleared in every terminal path
 (`finishOnboarding` and the stuck-escape `skipOnboarding`); `App.tsx` re-enters
 onboarding while it is set.
+
+**Never re-onboard a real user.** The zero-agent first-run signal can't tell a
+fresh install from an emptied workspace (all agents deleted) or a
+just-finished cloud migration, so the durable `onboarding_completed` engine
+preference (`app/src/hooks/use-onboarding-completed.ts`, upgrade-only, uid-keyed
+localStorage mirror + try/catch fallback like the segment pref — a pod-pref
+blip must never re-onboard anyone) records "this install has onboarded".
+It is set in both onboarding terminal paths, on cloud-migration outcome
+`"done"` (`use-cloud-migration.ts::persistOutcome` — `"skipped"` deliberately
+not: a declining zero-agent user still needs onboarding), and backfilled on
+boot for anyone with ≥1 agent. Routing is the pure `onboardingRoute()`
+(`onboarding-flow.ts`, unit-tested in `app/tests/onboarding-flow.test.ts`):
+`"segment"` / `"onboarding"` only on an uncompleted first run (or an
+`onboarding_pending` resume); a completed zero-agent user lands in
+`WorkspaceShell`'s empty state.
 
 **The default assistant ships seeded.** Creation writes real capability into the
 new agent's tree via `personal-assistant-seeds.ts` (`buildPersonalAssistantSeeds`

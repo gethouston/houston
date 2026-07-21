@@ -3,13 +3,14 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { useOnboardingCompleted } from "../../hooks/use-onboarding-completed";
 import { useOnboardingPending } from "../../hooks/use-onboarding-pending";
 import { analytics } from "../../lib/analytics";
 import { genericErrorDescription } from "../../lib/error-toast";
 import { getDefaultModel } from "../../lib/providers";
 import { stepPosition } from "../../lib/setup-steps";
 import { useUIStore } from "../../stores/ui";
-import { SpaceScreen } from "../space/space-screen";
+import { FirstRunScreen } from "./first-run-screen";
 import { ConnectAiMission } from "./missions/connect-ai";
 import { ConnectEmailMission } from "./missions/connect-email";
 import { EmailMission } from "./missions/email";
@@ -90,6 +91,12 @@ export function PersonalAssistantOnboarding({
   // the `skipConversation` exit). App.tsx re-enters onboarding while it's set.
   const { markPending, clearPending } = useOnboardingPending();
 
+  // Durable "onboarding is behind us" flag, set on every terminal path below
+  // (finish + skip) alongside the pending clear. Once set, a later zero-agent
+  // workspace reads as emptied — not a fresh install — so App.tsx keeps the
+  // user in the shell instead of re-entering onboarding.
+  const { markCompleted } = useOnboardingCompleted();
+
   // `tutorialActive` pins the orchestrator in front of the workspace shell so
   // the workspace-create event in the create step doesn't unmount us.
   useEffect(() => {
@@ -141,6 +148,7 @@ export function PersonalAssistantOnboarding({
       source: "tour",
     });
     void clearPending();
+    void markCompleted();
     setUiTourActive(true);
     setTutorialActive(false);
   };
@@ -195,8 +203,9 @@ export function PersonalAssistantOnboarding({
       source: "conversation",
     });
     // Terminal conversation exit: clear the resume flag so the next boot
-    // does not return the user to onboarding.
+    // does not return the user to onboarding, and mark onboarding completed.
     void clearPending();
+    void markCompleted();
     setTutorialActive(false);
   };
 
@@ -211,12 +220,11 @@ export function PersonalAssistantOnboarding({
     });
   };
 
-  // One SpaceScreen at the top level (not per-step) so the backdrop photo mounts
-  // once and never re-fades on a step transition. Every step's SetupCard floats
-  // on it via `onSpace`, so onboarding reads as the same continuous space as
-  // sign-in and the workspace-loading splash.
+  // One FirstRunScreen at the top level (not per-step) so the grey background is
+  // painted once and every step's white SetupCard floats on it, reading as the
+  // same continuous flow as sign-in and the rest of first-run.
   return (
-    <SpaceScreen>
+    <FirstRunScreen>
       {step === "connect" && (
         <ConnectAiMission
           eyebrow={stepEyebrow("connect")}
@@ -270,7 +278,6 @@ export function PersonalAssistantOnboarding({
           // (disabled while a retry is in flight); Back returns to the AI picker
           // so they can also choose a different provider.
           <SetupCard
-            onSpace
             eyebrow={stepEyebrow("connectEmail")}
             title={t("setup:tutorial.errors.title")}
             subtitle={t("setup:tutorial.errors.body")}
@@ -290,7 +297,7 @@ export function PersonalAssistantOnboarding({
           // provisioning resolved. Hold on a light loading state and advance
           // automatically the instant the agent record lands. Keep the step
           // eyebrow so "Step 2 of 3" doesn't vanish during the wait.
-          <SetupCard onSpace eyebrow={stepEyebrow("connectEmail")}>
+          <SetupCard eyebrow={stepEyebrow("connectEmail")}>
             <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
               <Loader2 className="size-6 animate-spin text-ink-muted" />
               <p className="text-sm text-ink-muted">
@@ -339,6 +346,6 @@ export function PersonalAssistantOnboarding({
       )}
 
       <ToastContainer toasts={toasts} onDismiss={onDismissToast} />
-    </SpaceScreen>
+    </FirstRunScreen>
   );
 }

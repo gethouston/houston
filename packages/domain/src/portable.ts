@@ -155,10 +155,13 @@ export function portableInventory(pkg: PortablePackage): PortableInventory {
       ...(r.schedule ? { schedule: r.schedule } : {}),
       ...(r.trigger
         ? {
-            trigger: {
-              toolkit: r.trigger.toolkit,
-              trigger_slug: r.trigger.trigger_slug,
-            },
+            trigger:
+              r.trigger.kind === "webhook"
+                ? { kind: "webhook" as const }
+                : {
+                    toolkit: r.trigger.toolkit,
+                    trigger_slug: r.trigger.trigger_slug,
+                  },
           }
         : {}),
     })),

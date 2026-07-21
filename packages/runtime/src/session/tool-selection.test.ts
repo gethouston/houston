@@ -81,6 +81,40 @@ describe("buildToolSelection", () => {
       "request_credential",
     ]);
   });
+
+  test("save_routine is added when the host is reachable, off by default", () => {
+    const off = buildToolSelection({
+      codeExecution: "disabled",
+      integrations: false,
+    });
+    expect(off.toolNames).not.toContain("save_routine");
+
+    const on = buildToolSelection({
+      codeExecution: "disabled",
+      integrations: false,
+      saveRoutine: true,
+    });
+    // Reachability, NOT a Composio key: on even with integrations off.
+    expect(on.toolNames).toEqual([
+      ...CLAMPED_FILE_TOOL_NAMES,
+      "ask_user",
+      "suggest_reusable",
+      "save_routine",
+    ]);
+  });
+
+  test("save_routine reaches execute and auto but never plan", () => {
+    const on = buildToolSelection({
+      codeExecution: "disabled",
+      integrations: false,
+      saveRoutine: true,
+    });
+    expect(toolNamesForMode("execute", on.toolNames)).toContain("save_routine");
+    expect(toolNamesForMode("auto", on.toolNames)).toContain("save_routine");
+    expect(toolNamesForMode("plan", on.toolNames)).not.toContain(
+      "save_routine",
+    );
+  });
 });
 
 describe("planToolNames", () => {
