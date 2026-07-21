@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, Blend, CloudUpload, Settings } from "lucide-react";
+import { LayoutDashboard, Blend, Rocket, Settings } from "lucide-react";
 import { ConfirmDialog } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -136,7 +136,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
           {
             id: "migrate-to-cloud",
             label: t("shell:sidebar.migrateToCloud"),
-            icon: <CloudUpload className="h-4 w-4" />,
+            icon: <Rocket className="h-4 w-4" />,
             onClick: () => useMigrateToCloudStore.getState().open("sidebar"),
           },
           {

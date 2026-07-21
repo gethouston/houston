@@ -1,14 +1,16 @@
-import { AlertCircle, CloudUpload, Loader2, RotateCw, X } from "lucide-react";
+import { AlertCircle, Loader2, X } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import houstonBlack from "../../assets/houston-black.svg";
-import houstonWhite from "../../assets/houston-icon-white.svg";
+import astroJpg from "../../assets/space/astro-960.jpg";
+import astroWebp from "../../assets/space/astro-960.webp";
 import { osIsTauri } from "../../lib/os-bridge";
 import { useMigrateToCloudStore } from "../../stores/migrate-to-cloud";
+import { MigrateToCloudPitch } from "./migrate-to-cloud-pitch";
 
 /**
- * The legacy→cloud upgrade offer: an announcement-style modal (hero header,
- * centered copy, single pill CTA) — the final feature of this release line.
+ * The legacy→cloud upgrade offer: an announcement-style modal (astronaut
+ * side panel, benefit bullets, single pill CTA) — the final feature of this
+ * release line.
  * It greets every packaged launch; the X only hides it for the session, and
  * the sidebar's "Migrate to cloud" entry reopens it, which the copy itself
  * points at so nobody feels rushed. A remote policy of "required" removes
@@ -67,7 +69,35 @@ export function MigrateToCloudOffer() {
       aria-live={downloading ? "polite" : "assertive"}
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4"
     >
-      <div className="relative w-[480px] max-w-full overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-[0_16px_60px_rgba(0,0,0,0.16)]">
+      {/* Borderless on purpose: any hairline reads as a gap between the
+          full-bleed image and the card edge. The shadow alone separates the
+          card from the scrim. Split layout: the copy grew past what a top
+          hero carries well, so the vertical astronaut takes a side column
+          and the text keeps a comfortable measure beside it. */}
+      <div className="relative flex w-[820px] max-w-full overflow-hidden rounded-2xl bg-card text-card-foreground shadow-[0_16px_60px_rgba(0,0,0,0.16)]">
+        {/* bg-primary underlay: any subpixel sliver the cover-crop leaves at
+            the card's rounded edge reads as space-dark, never white. */}
+        <div className="relative w-[400px] shrink-0 self-stretch bg-primary">
+          <picture className="absolute inset-0 block">
+            <source type="image/webp" srcSet={astroWebp} />
+            <img
+              src={astroJpg}
+              alt=""
+              aria-hidden="true"
+              width={960}
+              height={1440}
+              decoding="async"
+              className="block h-full w-full object-cover"
+            />
+          </picture>
+          {/* Seam blend: a whisper of shadow where the photo meets the card,
+              so the edge reads composed instead of cut. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 right-0 w-12 bg-gradient-to-r from-transparent to-black/20"
+          />
+        </div>
+
         {dismissible && (
           <button
             type="button"
@@ -78,25 +108,10 @@ export function MigrateToCloudOffer() {
             <X className="size-4" />
           </button>
         )}
-        {/* Theme-aware Houston mark on the plain card surface — no band. */}
-        <div className="flex items-center justify-center pt-10">
-          <img
-            src={houstonBlack}
-            alt=""
-            aria-hidden="true"
-            className="houston-update-logo-light size-14 object-contain"
-          />
-          <img
-            src={houstonWhite}
-            alt=""
-            aria-hidden="true"
-            className="houston-update-logo-dark hidden size-14 object-contain"
-          />
-        </div>
 
-        <div className="p-6 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <h2 className="text-lg font-semibold leading-tight">
+        <div className="flex-1 px-8 pb-8 pt-7 text-left">
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-semibold leading-tight tracking-tight">
               {t("migrateToCloud.title")}
             </h2>
             {error && (
@@ -104,19 +119,15 @@ export function MigrateToCloudOffer() {
             )}
           </div>
           {statusMessage ? (
-            <p className="mx-auto mt-2 max-w-[380px] text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {statusMessage}
             </p>
           ) : (
-            <div className="mx-auto mt-3 max-w-[380px] space-y-2 text-sm leading-relaxed text-muted-foreground">
-              <p>{t("migrateToCloud.intro")}</p>
-              <p>{t("migrateToCloud.beta")}</p>
-              <p>{t("migrateToCloud.details")}</p>
-            </div>
+            <MigrateToCloudPitch />
           )}
 
           {downloading && (
-            <div className="mx-auto mt-4 h-1.5 max-w-[380px] overflow-hidden rounded-full bg-muted">
+            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
               <div
                 className={`h-full rounded-full bg-primary transition-[width] duration-200 ${progress === null ? "animate-pulse" : ""}`}
                 style={{ width: `${progress ?? 35}%` }}
@@ -124,19 +135,20 @@ export function MigrateToCloudOffer() {
             </div>
           )}
 
+          {/* Above the CTA on purpose: the pill button closes the card. */}
+          {dismissible && (
+            <p className="mt-4 text-xs leading-snug text-muted-foreground">
+              {t("migrateToCloud.anytimeNote")}
+            </p>
+          )}
+
           <button
             type="button"
             onClick={ready ? () => void relaunch() : () => void install()}
             disabled={downloading}
-            className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-70"
+            className="mt-6 inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-70"
           >
-            {downloading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : ready ? (
-              <RotateCw className="size-4" />
-            ) : (
-              <CloudUpload className="size-4" />
-            )}
+            {downloading && <Loader2 className="size-4 animate-spin" />}
             {downloading
               ? t("updateChecker.installingAction")
               : ready
@@ -145,12 +157,6 @@ export function MigrateToCloudOffer() {
                   ? t("updateChecker.retryAction")
                   : t("migrateToCloud.installAction")}
           </button>
-
-          {dismissible && (
-            <p className="mx-auto mt-4 max-w-[380px] text-xs leading-snug text-muted-foreground">
-              {t("migrateToCloud.anytimeNote")}
-            </p>
-          )}
         </div>
       </div>
     </div>
