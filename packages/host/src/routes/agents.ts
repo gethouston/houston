@@ -12,7 +12,11 @@ import {
 } from "../auth/acting";
 import { checkPublicHttpsEndpoint } from "../custom-endpoint-validation";
 import type { Agent, UserId, Workspace } from "../domain/types";
-import { AgentNameConflictError, type RuntimeChannel } from "../ports";
+import {
+  AgentNameConflictError,
+  ApiKeyRejectedError,
+  type RuntimeChannel,
+} from "../ports";
 import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
@@ -435,8 +439,13 @@ export async function handleAgents(
       );
       json(res, 200, { ok: true, provider });
     } catch (err) {
+      // Forward the runtime's typed verification reason so the connect
+      // dialog can show actionable copy (bad key vs restricted key vs outage).
       json(res, 502, {
         error: err instanceof Error ? err.message : String(err),
+        ...(err instanceof ApiKeyRejectedError && err.reason
+          ? { reason: err.reason }
+          : {}),
       });
     }
     return true;

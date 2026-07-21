@@ -66,7 +66,10 @@
     "hide": "Hide key",
     "save": "Connect",
     "saving": "Connecting...",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "errorInvalidKey": "{{name}} didn't accept this key. Check it and paste it again.",
+    "errorKeyRestricted": "This key is blocked by settings in your {{name}} account. Create a new key without restrictions using the button above, then paste it here.",
+    "errorProviderUnavailable": "We couldn't reach {{name}} to check your key, so nothing was saved. Please try again in a moment."
   },
   "copilot": {
     "title": "Connect GitHub Copilot",
