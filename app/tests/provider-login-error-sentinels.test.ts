@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 // barrel's extension-less sibling imports don't resolve under bare node:test.
 import {
   PROVIDER_CONNECT_TIMEOUT_ERROR,
+  PROVIDER_COPILOT_NO_ACCESS_ERROR,
   PROVIDER_LOGIN_PORT_BUSY_ERROR,
   PROVIDER_LOGIN_TIMEOUT_ERROR,
 } from "../../ui/core/src/provider-login.ts";
@@ -20,6 +21,7 @@ const SENTINEL_TO_KEY: Record<string, string> = {
   [PROVIDER_CONNECT_TIMEOUT_ERROR]: "connectTimedOut",
   [PROVIDER_LOGIN_TIMEOUT_ERROR]: "loginTimedOut",
   [PROVIDER_LOGIN_PORT_BUSY_ERROR]: "signInPortBusy",
+  [PROVIDER_COPILOT_NO_ACCESS_ERROR]: "copilotNoAccess",
 };
 
 describe("provider login error sentinels", () => {
@@ -27,6 +29,20 @@ describe("provider login error sentinels", () => {
     join(import.meta.dirname, "../src/lib/provider-login-error.ts"),
     "utf8",
   );
+
+  it("the runtime mirrors the Copilot no-access sentinel by value", () => {
+    // The runtime is frontend-agnostic and cannot import @houston-ai/core, so
+    // COPILOT_NO_ACCESS_ERROR (packages/runtime/src/auth/login.ts) duplicates
+    // this sentinel by value; drift breaks the toast's value-match silently.
+    const runtime = readFileSync(
+      join(import.meta.dirname, "../../packages/runtime/src/auth/login.ts"),
+      "utf8",
+    );
+    ok(
+      runtime.includes(PROVIDER_COPILOT_NO_ACCESS_ERROR),
+      "packages/runtime/src/auth/login.ts must contain the exact sentinel string",
+    );
+  });
 
   for (const [sentinel, key] of Object.entries(SENTINEL_TO_KEY)) {
     it(`maps the "${key}" sentinel in provider-login-error.ts`, () => {

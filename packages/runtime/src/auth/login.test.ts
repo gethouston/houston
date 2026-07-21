@@ -10,12 +10,14 @@ import {
 } from "./codex-port-preflight";
 import {
   autoPromptAnswer,
+  COPILOT_NO_ACCESS_ERROR,
   cancelLogin,
   codexLoginMethod,
   getAuthStatus,
   LOCAL_PLACEHOLDER_KEY,
   LOGIN_TIMEOUT_ERROR,
   LOGIN_TIMEOUT_MS,
+  loginFailureMessage,
   setApiKey,
   startLogin,
 } from "./login";
@@ -274,6 +276,54 @@ test("reusing an in-flight login re-arms the abandonment clock", async () => {
     expect(row?.login?.error).toBe(LOGIN_TIMEOUT_ERROR);
   } finally {
     vi.useRealTimers();
+  }
+});
+
+// GitHub's real 403 for an account with no Copilot subscription (device flow
+// SUCCEEDED; the copilot_internal token exchange refused). Synthetic handle —
+// the body always carries the signed-in user's, which must never reach a toast.
+const NO_ACCESS_403 =
+  '403 Forbidden: {"error_details":{"message":"No access to GitHub Copilot found. You are currently logged in as octocat.","notification_id":"no_copilot_access","title":"Sign up for GitHub Copilot","url":"https://github.com/github-copilot/signup?editor={EDITOR}"},"message":"Resource not accessible by integration","can_signup_for_limited":true}';
+
+test("loginFailureMessage: copilot no_copilot_access collapses to the friendly sentinel, everything else passes through", () => {
+  expect(loginFailureMessage("github-copilot", NO_ACCESS_403)).toBe(
+    COPILOT_NO_ACCESS_ERROR,
+  );
+  // An unrelated Copilot failure keeps its real message (beta policy).
+  expect(
+    loginFailureMessage("github-copilot", "Device flow failed: expired_token"),
+  ).toBe("Device flow failed: expired_token");
+  // Another provider never matches, even with a lookalike body.
+  expect(loginFailureMessage("openai-codex", NO_ACCESS_403)).toBe(
+    NO_ACCESS_403,
+  );
+});
+
+test("github-copilot: a no-Copilot-subscription 403 surfaces the sentinel in auth status, never the raw GitHub body", async () => {
+  // The user authorized the device flow, then GitHub's token exchange answered
+  // 403 no_copilot_access. The raw JSON (with the user's GitHub handle) used to
+  // land verbatim in the failure toast; status must now carry the sentinel.
+  const piLogin = vi
+    .spyOn(authStorage, "login")
+    .mockImplementation((_provider, opts) => {
+      opts.onDeviceCode?.({
+        userCode: "ABCD-1234",
+        verificationUri: "https://github.com/login/device",
+      });
+      return Promise.reject(new Error(NO_ACCESS_403));
+    });
+  try {
+    const info = await startLogin("github-copilot", true);
+    expect(info.kind).toBe("device_code");
+    await new Promise((r) => setTimeout(r, 20));
+    const row = (await getAuthStatus()).providers.find(
+      (p) => p.provider === "github-copilot",
+    );
+    expect(row?.login?.status).toBe("error");
+    expect(row?.login?.error).toBe(COPILOT_NO_ACCESS_ERROR);
+  } finally {
+    piLogin.mockRestore();
+    cancelLogin("github-copilot");
   }
 });
 
