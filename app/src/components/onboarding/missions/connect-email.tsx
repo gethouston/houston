@@ -96,7 +96,7 @@ export function ConnectEmailMission({
   // just connected it here (`chosen`) OR it was ALREADY connected when the step
   // opened (a returning user). Gate on `connections.data` being resolved: an
   // empty array is "resolved, none connected"; `undefined` is still loading, and
-  // advancing then would flash-skip the step before we know the truth.
+  // advancing then would flash past the step before we know the truth.
   useEffect(() => {
     if (handedOff.current || !connections.data) return;
     const active =
