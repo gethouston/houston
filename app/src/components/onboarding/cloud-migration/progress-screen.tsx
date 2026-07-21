@@ -155,6 +155,17 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
   ];
 
   const waiting = !startError && !anyError;
+  // Backup and prepare have no measurable fraction (prepare stays true through
+  // the backup; branch on backingUp first for its copy). The progress bar runs
+  // in indeterminate mode until the real per-agent upload begins, then flips to
+  // the true fraction — one persistent bar instance across all three so it
+  // continues smoothly and never jumps backward.
+  const indeterminate = backingUp || preparing;
+  const statusPhrases = backingUp
+    ? [t("progress.backingUp")]
+    : preparing
+      ? [t("progress.preparing")]
+      : phrases;
 
   return (
     <WizardFrame
@@ -198,10 +209,6 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
               {t("progress.retry")}
             </AsyncButton>
           </div>
-        ) : backingUp ? (
-          <MigrationStatusCycle phrases={[t("progress.backingUp")]} />
-        ) : preparing ? (
-          <MigrationStatusCycle phrases={[t("progress.preparing")]} />
         ) : anyError ? (
           <div className="flex w-full flex-col gap-3 rounded-2xl border border-line bg-card p-6 text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
             <p className="text-center text-xs text-ink-muted">
@@ -222,18 +229,29 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
             </div>
           </div>
         ) : (
+          // One shared block for backup → prepare → upload: the status line and
+          // the progress bar keep a single instance across all three phases, so
+          // the indeterminate creep hands off to the real fraction without a
+          // remount (and never a jump backward). The game stays out of the
+          // backup/prepare wait — it only joins once real upload is underway.
           <div className="flex w-full flex-col items-center gap-5">
             <div className="flex w-full max-w-xs flex-col items-center gap-3">
-              <MigrationStatusCycle phrases={phrases} />
+              <MigrationStatusCycle phrases={statusPhrases} />
               <MigrationProgressBar
-                fraction={computeOverallProgress(tasks, progress)}
+                fraction={
+                  indeterminate ? null : computeOverallProgress(tasks, progress)
+                }
               />
-              <p className="text-xs text-ink-muted">{t("progress.keepOpen")}</p>
+              {!indeterminate && (
+                <p className="text-xs text-ink-muted">
+                  {t("progress.keepOpen")}
+                </p>
+              )}
             </div>
             {/* The roomy wait is a chance to play: a tiny Space Invaders under
                 the bar (subtle, card-width). It self-nulls under reduced motion,
                 so the invitation is gated on the same signal to never orphan. */}
-            {!reduce && (
+            {!indeterminate && !reduce && (
               <div className="mt-2 flex w-full max-w-xs flex-col items-center gap-2">
                 <p className="text-xs text-ink-muted">
                   {t("progress.playCaption")}
