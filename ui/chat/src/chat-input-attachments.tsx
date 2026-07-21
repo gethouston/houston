@@ -56,12 +56,16 @@ interface ChatInputAttachButtonProps {
    *  inside the menu and close the popover. */
   attachMenu?: ReactNode | ((api: AttachMenuApi) => ReactNode);
   ariaLabel?: string;
+  /** Locks the button inert (keyboard focus survives the composer's
+   *  pointer-events lock, so the button must opt out on its own). */
+  disabled?: boolean;
 }
 
 export function ChatInputAttachButton({
   onOpenFilePicker,
   attachMenu,
   ariaLabel = "Attach files",
+  disabled = false,
 }: ChatInputAttachButtonProps) {
   const [open, setOpen] = useState(false);
 
@@ -69,7 +73,8 @@ export function ChatInputAttachButton({
     <button
       type="button"
       onClick={attachMenu ? undefined : onOpenFilePicker}
-      className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-hover transition-colors"
+      disabled={disabled}
+      className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-hover transition-colors disabled:pointer-events-none"
       aria-label={ariaLabel}
     >
       <Plus className="size-5" />

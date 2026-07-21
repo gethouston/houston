@@ -4,12 +4,13 @@ import { useTranslation } from "react-i18next";
 import {
   useIntegrationConnections,
   useIntegrationStatus,
+  useIntegrationToolkits,
 } from "../../../hooks/queries";
 import type { Agent } from "../../../lib/types";
-import { GoogleIcon, MicrosoftIcon } from "../../auth/provider-brand-icons";
 import { INTEGRATION_PROVIDER, useConnectFlow } from "../../integrations";
+import { type AppDisplay, fallbackLogo } from "../../integrations/app-display";
 import { SetupCard } from "../setup-card";
-import { EmailActionRow } from "./email-action-row";
+import { EmailProviderRow } from "./email-provider-row";
 import { isToolkitConnected } from "./onboarding-flow";
 
 /** Ignore a second click immediately after OAuth begins. */
@@ -47,6 +48,24 @@ export function ConnectEmailMission({
   const connections = useIntegrationConnections(
     INTEGRATION_PROVIDER,
     ready || attempted,
+  );
+
+  // Real app logos from the toolkit catalog (the hook self-gates on the
+  // provider being registered, so it stays idle where Composio is absent).
+  const toolkits = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
+  const displayFor = useCallback(
+    (toolkit: string, name: string): AppDisplay => {
+      const logoUrl = (toolkits.data ?? []).find(
+        (tk) => tk.slug === toolkit,
+      )?.logoUrl;
+      return {
+        toolkit,
+        name,
+        description: "",
+        logoUrl: logoUrl || fallbackLogo(toolkit),
+      };
+    },
+    [toolkits.data],
   );
 
   const { states, connect, cancel } = useConnectFlow({ agentId: agent.id });
@@ -88,19 +107,12 @@ export function ConnectEmailMission({
     [cancel],
   );
 
-  const onBrandRow = useCallback(
-    (toolkit: string, label: string) => {
-      if (toolkit in states) {
-        tryCancel(toolkit);
-        return;
-      }
-      startConnect(toolkit, label);
-    },
-    [states, tryCancel, startConnect],
-  );
-
-  const busyLabel = t("tutorial.missions.connectEmail.connecting");
-  const cancelLabel = t("tutorial.missions.connectEmail.cancel");
+  const labels = {
+    connect: t("tutorial.missions.connectEmail.connect"),
+    connecting: t("tutorial.missions.connectEmail.connecting"),
+    cancel: t("tutorial.missions.connectEmail.cancel"),
+    connected: t("tutorial.missions.connectEmail.connected"),
+  };
   const isLoading = (toolkit: string) => toolkit in states;
   const disabledExcept = (toolkit: string) =>
     connecting && !(toolkit in states);
@@ -114,24 +126,24 @@ export function ConnectEmailMission({
       backLabel={t("tutorial.nav.back")}
     >
       <div className="flex flex-1 flex-col items-center justify-center">
-        <div className="flex w-full max-w-md flex-col gap-3">
-          <EmailActionRow
-            icon={<GoogleIcon />}
-            label="Gmail"
-            busyLabel={busyLabel}
-            cancelLabel={cancelLabel}
+        <div className="flex w-full max-w-md flex-col gap-2">
+          <EmailProviderRow
+            display={displayFor("gmail", "Gmail")}
+            connected={isToolkitConnected(connections.data, "gmail")}
             loading={isLoading("gmail")}
             disabled={disabledExcept("gmail")}
-            onClick={() => onBrandRow("gmail", "Gmail")}
+            labels={labels}
+            onConnect={() => startConnect("gmail", "Gmail")}
+            onCancel={() => tryCancel("gmail")}
           />
-          <EmailActionRow
-            icon={<MicrosoftIcon />}
-            label="Outlook"
-            busyLabel={busyLabel}
-            cancelLabel={cancelLabel}
+          <EmailProviderRow
+            display={displayFor("outlook", "Outlook")}
+            connected={isToolkitConnected(connections.data, "outlook")}
             loading={isLoading("outlook")}
             disabled={disabledExcept("outlook")}
-            onClick={() => onBrandRow("outlook", "Outlook")}
+            labels={labels}
+            onConnect={() => startConnect("outlook", "Outlook")}
+            onCancel={() => tryCancel("outlook")}
           />
         </div>
       </div>

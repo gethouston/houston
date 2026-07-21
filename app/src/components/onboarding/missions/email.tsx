@@ -84,6 +84,13 @@ export function EmailMission({
     });
   }, []);
 
+  // Lock the composer for the whole live-email moment: from the instant the
+  // offer fires (`started`) through the send-and-wait, so nothing competes with
+  // the one real email. It releases when the interaction ends — the happy path
+  // auto-advances (this unmounts) and a failure flips `showSkip`, where typing
+  // is allowed again so the user can retry or read the skip hint.
+  const composerLocked = session.started && !session.showSkip;
+
   const transformContent = useCallback(
     (content: string) => ({
       content: SETUP_END_RE.test(content)
@@ -143,6 +150,7 @@ export function EmailMission({
             queuedMessages={session.queuedMessages}
             onRemoveQueuedMessage={session.removeQueuedMessage}
             queuedLabels={queuedLabels}
+            composerDisabled={composerLocked}
             // Until the mission starts, the offer is the ONLY action: the
             // reply input stays hidden ("replace") so nothing competes with
             // the one button that kicks off the real email.

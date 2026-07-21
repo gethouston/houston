@@ -247,10 +247,15 @@ the space/galaxy look is OUT for first-run.
   `bg-action` value panel; ink is normal `text-ink` (the last-sign-in hint on
   `text-ink-muted`, the provider halo on `--ht-focus`, both retuned for white).
 - **Language gate** (`shell/language-gate.tsx`) offers each language as a plain
-  `Button` — the OS-detected one filled (recommended), the rest secondary — and
-  a single click applies + advances (no separate Continue).
-- The **cloud-migration wizard** (`components/onboarding/cloud-migration/`) uses
-  `WizardFrame` (card-less hero, ink copy, no veil) for offer/progress/congrats
+  gray `Button` (`variant="secondary"`, none pre-selected — the OS locale only
+  picks the copy language) and a single click applies + advances (no separate
+  Continue). The sign-in provider pills are the same gray secondary; the email
+  submit is the card's single filled action.
+- The **cloud-migration wizard** (`components/onboarding/cloud-migration/`): the
+  OFFER is a PR-1003-style split card (`offer-screen.tsx` + `offer-pitch.tsx` —
+  820px elevated white card, astro side image with seam-blend gradient,
+  "What you get" icon tiles, full-width pill CTA); progress/congrats keep
+  `WizardFrame` (card-less hero, ink copy, no veil)
   and `SetupCard`s for the done-steps; `MigrationProgressBar` (normal `bg-chip`
   track + `bg-action` fill), `SpaceInvaders` (paints `text-ink`), the status
   cycle, and `WizardBadge` (the `onPhoto` variant was removed) all render on

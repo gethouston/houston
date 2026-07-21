@@ -81,7 +81,7 @@
       "email": {
         "title": "See your agent in action",
         "offer": {
-          "option": "Send an email to myself"
+          "option": "Send me a hello email"
         },
         "chip": "Send an email for me",
         "placeholder": "Reply to your agent...",
@@ -97,8 +97,10 @@
       "connectEmail": {
         "title": "Give your agent access to your email",
         "body": "Pick your email so your agent can send on your behalf. You connect it once, securely.",
+        "connect": "Connect",
         "connecting": "Connecting...",
         "cancel": "Cancel",
+        "connected": "Connected",
         "preparing": "Getting your assistant ready..."
       },
       "emailConnected": {

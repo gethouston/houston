@@ -1,3 +1,4 @@
+import { cn } from "@houston-ai/core";
 import { useCallback, useEffect } from "react";
 import type { PromptInputMessage } from "./ai-elements/prompt-input";
 import {
@@ -40,6 +41,7 @@ export function ChatInput({
   onRemoveQueuedMessage,
   queuedLabels,
   canSendEmpty = false,
+  disabled = false,
   labels,
   dictation,
 }: ChatInputProps) {
@@ -86,6 +88,7 @@ export function ChatInput({
 
   const handleSubmit = useCallback(
     async (message: PromptInputMessage) => {
+      if (disabled) return;
       const trimmed = message.text?.trim();
       if (!trimmed && files.length === 0 && !canSendEmpty) return;
       await onSend(trimmed ?? "", files);
@@ -98,6 +101,7 @@ export function ChatInput({
       onSend,
       files,
       canSendEmpty,
+      disabled,
       isTextControlled,
       isFilesControlled,
       setText,
@@ -133,7 +137,13 @@ export function ChatInput({
 
   return (
     <div className="shrink-0 px-4 pb-6 pt-2">
-      <div className="max-w-3xl mx-auto relative">
+      <div
+        className={cn(
+          "max-w-3xl mx-auto relative transition-opacity",
+          disabled && "pointer-events-none opacity-60",
+        )}
+        aria-disabled={disabled || undefined}
+      >
         <ChatInputAttachments
           fileInputRef={fileInputRef}
           files={files}
@@ -155,6 +165,7 @@ export function ChatInput({
           <ChatInputAttachButton
             onOpenFilePicker={openFilePicker}
             attachMenu={attachMenu}
+            disabled={disabled}
           />
 
           <PromptInputBody>
@@ -167,6 +178,7 @@ export function ChatInput({
                 onPaste={handlePaste}
                 value={text}
                 placeholder={placeholder}
+                disabled={disabled}
               />
             )}
           </PromptInputBody>
@@ -176,6 +188,7 @@ export function ChatInput({
             hasContent={hasContent}
             onStop={onStop}
             dictation={dictation}
+            disabled={disabled}
           />
         </PromptInput>
 
