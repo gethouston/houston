@@ -1406,8 +1406,15 @@ export const tauriProvider = {
    * `newEngineActive()`.
    */
   setApiKey: (provider: string, apiKey: string) =>
-    call<void>("set_provider_api_key", () =>
-      getEngine().setProviderApiKey(provider, apiKey),
+    call<void>(
+      "set_provider_api_key",
+      () => getEngine().setProviderApiKey(provider, apiKey),
+      undefined,
+      // The connect dialog surfaces the failure inline with the engine's typed
+      // reason (bad key / restricted key / provider outage) — a red bug toast
+      // on top double-surfaces a user-fixable state. Capture stays on so
+      // verification failures keep reaching Sentry.
+      { toast: false },
     ),
   /**
    * Connect an OpenAI-compatible (local / BYO model) server: a base URL + model

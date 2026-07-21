@@ -66,7 +66,10 @@
     "hide": "Ocultar clave",
     "save": "Conectar",
     "saving": "Conectando...",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "errorInvalidKey": "{{name}} no aceptó esta clave. Revísala y pégala de nuevo.",
+    "errorKeyRestricted": "Esta clave está bloqueada por la configuración de tu cuenta de {{name}}. Crea una clave nueva sin restricciones con el botón de arriba y pégala aquí.",
+    "errorProviderUnavailable": "No pudimos conectar con {{name}} para verificar tu clave, así que no se guardó nada. Inténtalo de nuevo en un momento."
   },
   "copilot": {
     "title": "Conectar GitHub Copilot",

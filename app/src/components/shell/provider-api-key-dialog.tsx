@@ -10,6 +10,10 @@ import {
 import { ExternalLink, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  type ApiKeyConnectReason,
+  apiKeyConnectReason,
+} from "../../lib/api-key-connect-error";
 import { genericErrorDescription } from "../../lib/error-toast";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
@@ -29,6 +33,18 @@ interface Props {
   provider: ProviderInfo | null;
   onClose: () => void;
 }
+
+/** Verification verdicts (from the engine's typed `reason`) → inline copy. */
+const REASON_COPY: Record<
+  ApiKeyConnectReason,
+  | "apiKey.errorInvalidKey"
+  | "apiKey.errorKeyRestricted"
+  | "apiKey.errorProviderUnavailable"
+> = {
+  invalid_key: "apiKey.errorInvalidKey",
+  key_restricted: "apiKey.errorKeyRestricted",
+  provider_unavailable: "apiKey.errorProviderUnavailable",
+};
 
 export function ProviderApiKeyDialog({ provider, onClose }: Props) {
   const { t } = useTranslation("providers");
@@ -65,7 +81,16 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
       // toasts. Close here so the dialog doesn't linger over the connected state.
       onClose();
     } catch (err) {
-      setError(genericErrorDescription("provider_api_key_submit", err));
+      // The engine sends a typed verdict with the failure (bad key, key
+      // blocked by its own settings, provider unreachable) — show the matching
+      // actionable copy; only a reason-less failure falls back to the generic
+      // line. Sentry capture already happened in the tauri call wrapper.
+      const reason = apiKeyConnectReason(err);
+      setError(
+        reason
+          ? t(REASON_COPY[reason], { name: provider.name })
+          : genericErrorDescription("provider_api_key_submit", err),
+      );
       setSubmitting(false);
     }
   };

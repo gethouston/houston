@@ -1,7 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { parseClaudeOAuthEnvelope } from "@houston/protocol";
 import type { Agent, UserId, WorkspaceRuntime } from "../domain/types";
-import type { RuntimeChannel, WorkspaceStore } from "../ports";
+import {
+  ApiKeyRejectedError,
+  type RuntimeChannel,
+  type WorkspaceStore,
+} from "../ports";
 import { json, readJson } from "./http";
 
 /**
@@ -110,8 +114,19 @@ export async function handleSetupRuntime(
       json(res, 400, { error: "missing 'apiKey'" });
       return true;
     }
-    await channel.saveApiKeyCredential(ctx, provider, apiKey);
-    json(res, 200, { ok: true });
+    try {
+      await channel.saveApiKeyCredential(ctx, provider, apiKey);
+      json(res, 200, { ok: true });
+    } catch (err) {
+      // Mirror the per-agent route: the runtime's typed verification reason
+      // rides the body so the connect dialog can show actionable copy.
+      json(res, 502, {
+        error: err instanceof Error ? err.message : String(err),
+        ...(err instanceof ApiKeyRejectedError && err.reason
+          ? { reason: err.reason }
+          : {}),
+      });
+    }
     return true;
   }
 

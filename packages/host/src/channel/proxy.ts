@@ -1,14 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ClaudeOAuthCredential, CustomEndpoint } from "@houston/protocol";
-import type {
-  CaptureResult,
-  ChannelCtx,
-  CredentialStore,
-  ForwardRequest,
-  RuntimeChannel,
-  RuntimeEndpoint,
-  RuntimeLauncher,
-  TurnPin,
+import {
+  ApiKeyRejectedError,
+  type CaptureResult,
+  type ChannelCtx,
+  type CredentialStore,
+  type ForwardRequest,
+  type RuntimeChannel,
+  type RuntimeEndpoint,
+  type RuntimeLauncher,
+  type TurnPin,
 } from "../ports";
 import { MAX_JSON_BYTES, readBody } from "../routes/read-body";
 import { errorCodeFrom, TurnFireError } from "./fire-error";
@@ -374,13 +375,16 @@ export class ProxyChannel implements RuntimeChannel {
       },
     );
     if (!res.ok) {
-      const detail = await res
-        .json()
-        .then((b) => (b as { error?: string }).error)
-        .catch(() => undefined);
-      throw new Error(
-        detail ??
+      const body = (await res.json().catch(() => undefined)) as
+        | { error?: string; reason?: string }
+        | undefined;
+      // The runtime's typed verification reason (invalid_key / key_restricted /
+      // provider_unavailable) must survive to the connect dialog's copy — keep
+      // it on the error so the route can put it back on the wire.
+      throw new ApiKeyRejectedError(
+        body?.error ??
           `the agent runtime did not accept the key (${res.status}) — try connecting again`,
+        body?.reason,
       );
     }
     await this.opts.credentials.put({

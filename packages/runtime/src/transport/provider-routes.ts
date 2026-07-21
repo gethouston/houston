@@ -18,7 +18,7 @@ import {
   startLogin,
 } from "../auth/login";
 import { scrubRefreshTokens, syncServedCredentialSafe } from "../auth/serve";
-import { verifyApiKey } from "../auth/verify-api-key";
+import { ApiKeyVerifyError, verifyApiKey } from "../auth/verify-api-key";
 import { refreshAnthropicCredential } from "../backends/claude/credential-status";
 import { writeClaudeOAuthCredentialFile } from "../backends/claude/credentials-file";
 import { claudeLoginConfigDir } from "../backends/claude/paths";
@@ -186,7 +186,12 @@ async function handleApiKey(ctx: RouteContext, provider: string) {
   try {
     await verifyApiKey(provider, key);
   } catch (e) {
-    json(ctx.res, 401, { error: e instanceof Error ? e.message : String(e) });
+    // `reason` rides the body to the connect dialog, which maps it to
+    // actionable copy (bad key vs restricted key vs provider outage).
+    json(ctx.res, 401, {
+      error: e instanceof Error ? e.message : String(e),
+      ...(e instanceof ApiKeyVerifyError ? { reason: e.reason } : {}),
+    });
     return;
   }
   setApiKey(provider, key);
