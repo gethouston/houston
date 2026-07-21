@@ -11,6 +11,7 @@
 
 import {
   PROVIDER_CONNECT_TIMEOUT_ERROR,
+  PROVIDER_COPILOT_NO_ACCESS_ERROR,
   PROVIDER_LOGIN_PORT_BUSY_ERROR,
   PROVIDER_LOGIN_TIMEOUT_ERROR,
 } from "@houston-ai/core";
@@ -41,5 +42,7 @@ export function localizedProviderLoginError(error: string): string {
     return i18n.t("providers:toast.loginTimedOut");
   if (error === PROVIDER_LOGIN_PORT_BUSY_ERROR)
     return i18n.t("providers:toast.signInPortBusy");
+  if (error === PROVIDER_COPILOT_NO_ACCESS_ERROR)
+    return i18n.t("providers:toast.copilotNoAccess");
   return error;
 }

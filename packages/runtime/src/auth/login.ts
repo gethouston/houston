@@ -74,6 +74,35 @@ export const LOGIN_TIMEOUT_MS = 10 * 60_000;
  */
 export const LOGIN_TIMEOUT_ERROR = "Login timed out";
 
+/**
+ * Stable sentinel for a GitHub account that finished the device flow but has
+ * no Copilot subscription: GitHub's token exchange answers 403
+ * `no_copilot_access` (with `can_signup_for_limited: true` — the user can
+ * enable Copilot Free themselves). The raw body is a JSON blob that includes
+ * the user's GitHub handle, so it must never reach the toast. Mirrors
+ * `PROVIDER_COPILOT_NO_ACCESS_ERROR` in `@houston-ai/core` (ui/core/src/
+ * provider-login.ts) — duplicated by value like LOGIN_TIMEOUT_ERROR above;
+ * keep the two in sync.
+ */
+export const COPILOT_NO_ACCESS_ERROR =
+  "Your GitHub account doesn't have Copilot access yet. Enable GitHub Copilot on github.com (the Free plan works), then try connecting again.";
+
+/**
+ * Collapse a provider login failure to a stable sentinel where the raw
+ * message is unfit for the failure toast; every other message passes through
+ * verbatim (beta policy: the real reason, never a generic swallow). The raw
+ * text is still logged by the caller for the bug-report log tail.
+ */
+export function loginFailureMessage(provider: ProviderId, raw: string): string {
+  if (
+    provider === "github-copilot" &&
+    (raw.includes("no_copilot_access") ||
+      raw.includes("No access to GitHub Copilot"))
+  )
+    return COPILOT_NO_ACCESS_ERROR;
+  return raw;
+}
+
 function clearLoginExpiry(state: LoginState): void {
   if (state.timer) clearTimeout(state.timer);
   state.timer = undefined;
@@ -322,8 +351,9 @@ export async function startLogin(
         return;
       }
       state.status = "error";
-      state.error = e instanceof Error ? e.message : String(e);
-      console.error(`[oauth:${provider}] failed:`, state.error);
+      const raw = e instanceof Error ? e.message : String(e);
+      state.error = loginFailureMessage(provider, raw);
+      console.error(`[oauth:${provider}] failed:`, raw);
     });
 
   return Promise.race([

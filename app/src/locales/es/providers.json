@@ -19,6 +19,7 @@
     "connectTimedOut": "La conexión no se completó a tiempo. Intenta conectarte de nuevo.",
     "loginTimedOut": "El inicio de sesión no se completó a tiempo. Intenta de nuevo.",
     "signInPortBusy": "Otra aplicación de este computador está usando el puerto de inicio de sesión. Cierra otras herramientas de IA e intenta de nuevo.",
+    "copilotNoAccess": "Tu cuenta de GitHub todavía no tiene acceso a Copilot. Activa GitHub Copilot en github.com (el plan gratuito sirve) y vuelve a intentar la conexión.",
     "signOutFailed": "No se pudo cerrar sesión de {{provider}}",
     "signInSucceeded": "Sesión iniciada en {{provider}}",
     "cancelFailed": "No se pudo cancelar el inicio de sesión de {{provider}}",
