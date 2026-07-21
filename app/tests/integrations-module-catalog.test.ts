@@ -126,6 +126,48 @@ describe("browseCatalog (new module)", () => {
   });
 });
 
+describe("browseCatalog no-auth admission (ready to use)", () => {
+  const NOAUTH_CATALOG: IntegrationToolkit[] = [
+    ...CATALOG,
+    { ...tk("weathermap", "Weathermap", ["utilities"]), noAuth: true },
+    { ...tk("test_app", "Test App", ["developer-tools"]), noAuth: true },
+  ];
+
+  it("admits only CURATED no-auth apps, and only on the un-narrowed view", () => {
+    const all = browseCatalog({
+      catalog: NOAUTH_CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(),
+    }).map((t) => t.slug);
+    // weathermap is curated (READY_SLUGS) → in; test_app is not → out.
+    strictEqual(all.includes("weathermap"), true);
+    strictEqual(all.includes("test_app"), false);
+  });
+
+  it("drops no-auth apps under a category narrow (they render only in the Ready section)", () => {
+    const utilities = browseCatalog({
+      catalog: NOAUTH_CATALOG,
+      query: "",
+      category: "utilities",
+      connected: new Set(),
+    });
+    deepStrictEqual(utilities, []);
+  });
+
+  it("locks a ready app a Teams allowlist walls off, like any other app", () => {
+    const { connectable, locked } = browseCatalogView({
+      catalog: NOAUTH_CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(),
+      allowlist: ["gmail"],
+    });
+    strictEqual(connectable.map((t) => t.slug).includes("weathermap"), false);
+    strictEqual(locked.map((t) => t.slug).includes("weathermap"), true);
+  });
+});
+
 describe("browseCatalogView (allowlist partition)", () => {
   it("single-player (allowlist null) → everything connectable, nothing locked", () => {
     const view = browseCatalogView({

@@ -68,13 +68,16 @@ export interface IntegrationProviderStatus {
   reconnect?: boolean;
 }
 
-/** A connectable app in the Composio catalog. `logoUrl` is a REMOTE image. */
+/** An app in the Composio catalog. `logoUrl` is a REMOTE image. */
 export interface IntegrationToolkit {
   slug: string;
   name: string;
   description?: string;
   logoUrl?: string;
   categories?: string[];
+  /** No-auth app (web search, weather…): nothing to connect, its tools work
+   *  as-is — the UI renders it "ready to use", never a Connect button. */
+  noAuth?: boolean;
 }
 
 /** One of the acting user's connected accounts for a toolkit. */

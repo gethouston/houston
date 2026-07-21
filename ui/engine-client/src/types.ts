@@ -1837,6 +1837,9 @@ export interface IntegrationToolkit {
   description?: string;
   logoUrl?: string;
   categories?: string[];
+  /** No-auth app (web search, weather…): nothing to connect, its tools work
+   *  as-is — the UI renders it "ready to use", never a Connect button. */
+  noAuth?: boolean;
 }
 export interface IntegrationConnection {
   toolkit: string;

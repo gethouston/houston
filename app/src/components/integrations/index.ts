@@ -29,6 +29,7 @@ export {
   catalogCategorySlugs,
   FEATURED,
   groupCatalogByCategory,
+  READY,
   SECTION_PREVIEW_CAP,
 } from "./browse-sections";
 export { CatalogLockedSection } from "./catalog-locked-section";

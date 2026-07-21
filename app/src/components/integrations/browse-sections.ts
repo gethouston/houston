@@ -2,7 +2,9 @@ import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import {
   byNameAsc,
   categoryLabel,
+  isReadyToolkit,
   matchesQuery,
+  READY_SLUGS,
   UNCATEGORIZED,
 } from "./browse-model.ts";
 import { categoryRank } from "./category-priority.ts";
@@ -18,6 +20,11 @@ import { categoryRank } from "./category-priority.ts";
 /** The section slug for the curated "Featured" spotlight, pinned FIRST on the
  * at-rest landing view (before any search or category narrowing). */
 export const FEATURED = "__featured";
+
+/** The section slug for the curated "Ready to use" no-auth apps (web search,
+ * weather…): nothing to connect — their tools work as-is, so the rows carry a
+ * ready badge instead of the `+`. Pinned right after {@link FEATURED}. */
+export const READY = "__ready";
 
 /**
  * The curated, ORDERED everyday-app spotlight for our non-technical audience —
@@ -64,6 +71,27 @@ function featuredToolkits(
     if (tk && !connected.has(tk.slug)) featured.push(tk);
   }
   return featured;
+}
+
+/**
+ * The catalog's "Ready to use" apps: the curated no-auth set
+ * ({@link READY_SLUGS} order — curated, NOT A-Z), narrowed by the search query
+ * so searching "weather" still finds them. Unlike Featured these apps have NO
+ * other home: {@link groupCatalogByCategory} keeps every no-auth app out of the
+ * category buckets (a bucket row would grow a Connect `+` that can only fail).
+ */
+function readyToolkits(
+  catalog: IntegrationToolkit[],
+  query: string,
+): IntegrationToolkit[] {
+  const bySlug = new Map<string, IntegrationToolkit>();
+  for (const t of catalog) bySlug.set(t.slug.toLowerCase(), t);
+  const ready: IntegrationToolkit[] = [];
+  for (const slug of READY_SLUGS) {
+    const tk = bySlug.get(slug);
+    if (tk && isReadyToolkit(tk) && matchesQuery(tk, query)) ready.push(tk);
+  }
+  return ready;
 }
 
 /**
@@ -118,6 +146,10 @@ export function groupCatalogByCategory(opts: {
   const buckets = new Map<string, IntegrationToolkit[]>();
   for (const t of opts.catalog) {
     if (opts.connected.has(t.slug)) continue;
+    // No-auth apps never join a category bucket — a bucket row carries the
+    // Connect `+`, and connecting a no-auth app can only fail (there is no
+    // account). The curated ones surface in the pinned READY section instead.
+    if (t.noAuth) continue;
     if (!matchesQuery(t, q)) continue;
     let category: string;
     if (only) {
@@ -161,6 +193,17 @@ export function groupCatalogByCategory(opts: {
       sections.unshift({ category: FEATURED, connectable: featured });
     }
   }
+  // Ready to use: pinned after Featured. Unlike Featured it SURVIVES a search
+  // (these apps have no category-section home, so the query must find them
+  // here); a category pick still hides it — ready apps belong to no category
+  // section by design.
+  if (!only) {
+    const ready = readyToolkits(opts.catalog, q);
+    if (ready.length > 0) {
+      const at = sections[0]?.category === FEATURED ? 1 : 0;
+      sections.splice(at, 0, { category: READY, connectable: ready });
+    }
+  }
   return sections;
 }
 
@@ -179,7 +222,7 @@ export function catalogCategorySlugs(opts: {
 }): string[] {
   return groupCatalogByCategory({ ...opts, query: "" })
     .map((s) => s.category)
-    .filter((c) => c !== FEATURED)
+    .filter((c) => c !== FEATURED && c !== READY)
     .sort((a, b) => {
       if (a === UNCATEGORIZED) return 1;
       if (b === UNCATEGORIZED) return -1;

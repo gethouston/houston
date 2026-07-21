@@ -91,16 +91,17 @@ test("listToolkits maps the catalog and sends the platform key", async () => {
   expect(calls[0]?.path).toBe("/api/v3/toolkits?limit=1000");
 });
 
-test("listToolkits drops no_auth toolkits — nothing to connect", async () => {
-  // Composio's catalog includes toolkits with no auth at all (its own
-  // meta-toolkit, hackernews…). A Connect button on those can only produce
-  // the Auth_Config_NoAuthApp 400 seen in prod — they never enter the catalog.
+test("listToolkits keeps no_auth toolkits, flagged — ready to use, never connectable", async () => {
+  // Composio's catalog includes toolkits with no auth at all (web search,
+  // hackernews…). A Connect button on those can only produce the
+  // Auth_Config_NoAuthApp 400 seen in prod — so they stay in the catalog but
+  // carry noAuth, and the UI renders them "ready to use" instead.
   const { provider } = harness((url) => {
     if (url.pathname === "/api/v3/toolkits") {
       return {
         body: {
           items: [
-            { slug: "composio", name: "Composio", no_auth: true },
+            { slug: "composio_search", name: "Search", no_auth: true },
             { slug: "gmail", name: "Gmail" },
             { slug: "hackernews", name: "Hackernews", no_auth: true },
           ],
@@ -109,7 +110,12 @@ test("listToolkits drops no_auth toolkits — nothing to connect", async () => {
     }
     return { status: 404 };
   });
-  expect((await provider.listToolkits()).map((t) => t.slug)).toEqual(["gmail"]);
+  const toolkits = await provider.listToolkits();
+  expect(toolkits.map((t) => [t.slug, t.noAuth])).toEqual([
+    ["composio_search", true],
+    ["gmail", undefined],
+    ["hackernews", true],
+  ]);
 });
 
 test("listConnections scopes by user_ids and maps statuses", async () => {
@@ -664,6 +670,58 @@ test("with nothing connected, global discovery marks matches connectable (HOU-67
   ]);
   // No scoped query when nothing is connected — just the global one.
   expect(calls.some((c) => c.path.includes("toolkit_slug"))).toBe(false);
+});
+
+test("search stamps no-auth toolkit matches connected — usable now, never a connect offer", async () => {
+  // A no-auth app (web search, weather…) needs no connection: its tools work
+  // as-is, and a request_connection can only end in the toolkit_no_auth 400.
+  // Both its action matches AND its catalog toolkit-entry must read connected.
+  const { provider } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts")
+      return { body: { items: [] } };
+    if (url.pathname === "/api/v3/toolkits")
+      return {
+        body: {
+          items: [
+            { slug: "weathermap", name: "Weathermap", no_auth: true },
+            { slug: "gmail", name: "Gmail" },
+          ],
+        },
+      };
+    if (url.searchParams.get("query") === "weathermap forecast")
+      return {
+        body: {
+          items: [
+            {
+              slug: "WEATHERMAP_WEATHER",
+              toolkit: { slug: "weathermap" },
+              description: "Current weather",
+            },
+          ],
+        },
+      };
+    return { body: { items: [] } };
+  });
+  // An action match on a no-auth toolkit → connected.
+  expect(
+    (await provider.search(USER, "weathermap forecast")).map((t) => [
+      t.action,
+      t.connected,
+      t.status,
+    ]),
+  ).toEqual([["WEATHERMAP_WEATHER", true, "connected"]]);
+  // A catalog-resolved toolkit entry (no action scored) → also connected,
+  // while a normal unconnected app stays connectable.
+  expect(
+    (await provider.search(USER, "use weathermap and gmail")).map((t) => [
+      t.toolkit,
+      t.connected,
+      t.status,
+    ]),
+  ).toEqual([
+    ["weathermap", true, "connected"],
+    ["gmail", false, "connectable"],
+  ]);
 });
 
 test("execute posts user_id + arguments and maps success and failure", async () => {

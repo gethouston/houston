@@ -87,6 +87,9 @@
     "installedTitle": "Instaladas",
     "availableTitle": "Disponíveis",
     "featured": "Destaques",
+    "readyToUse": "Prontas para usar",
+    "readyBadge": "Pronta",
+    "noConnectionNeeded": "Não precisa de conexão, funciona imediatamente",
     "otherCategory": "Outras",
     "showAllApps": "Ver todos os {{count}} aplicativos"
   },

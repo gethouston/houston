@@ -12,6 +12,29 @@ import type { IntegrationToolkit } from "@houston-ai/engine-client";
 export const BROWSE_PAGE_SIZE = 100;
 
 /**
+ * The curated, ORDERED no-auth apps we surface as "Ready to use": they need no
+ * account — their tools work as-is (verified live against Composio). Lowercase
+ * slugs; order here IS the display order. The catalog's other no-auth toolkits
+ * (test apps, Composio's own meta-toolkit…) are hidden everywhere: they can
+ * never be connected, and none of them is worth a consumer catalog row.
+ *
+ * Lives in the model layer (not beside FEATURED_SLUGS in browse-sections)
+ * because {@link browseCatalog} — the base filter every browse surface shares —
+ * needs it to admit exactly these no-auth apps and no others.
+ */
+export const READY_SLUGS: readonly string[] = [
+  "composio_search",
+  "weathermap",
+  "hackernews",
+  "text_to_pdf",
+];
+
+/** A curated no-auth app — shown as "Ready to use", never connectable. */
+export function isReadyToolkit(t: IntegrationToolkit): boolean {
+  return t.noAuth === true && READY_SLUGS.includes(t.slug.toLowerCase());
+}
+
+/**
  * Whether a toolkit matches an ALREADY-normalised (trimmed, lowercased) search
  * query: a case-insensitive substring over name, slug, and description. `""`
  * matches everything. Shared across the browse family (also `browse-sections`).
@@ -47,7 +70,15 @@ export function browseCatalog(opts: {
   category: string;
   connected: ReadonlySet<string>;
 }): IntegrationToolkit[] {
-  let filtered = opts.catalog.filter((t) => !opts.connected.has(t.slug));
+  // No-auth apps: only the curated "Ready to use" set is browsable, and only
+  // on the un-narrowed view (they render solely in the pinned Ready section,
+  // which a category pick hides) — so every consumer's counts, sections, and
+  // allowlist partition agree on the same set of rows.
+  let filtered = opts.catalog.filter(
+    (t) =>
+      !opts.connected.has(t.slug) &&
+      (!t.noAuth || (opts.category === "all" && isReadyToolkit(t))),
+  );
   if (opts.category !== "all") {
     filtered = filtered.filter((t) =>
       (t.categories ?? []).includes(opts.category),

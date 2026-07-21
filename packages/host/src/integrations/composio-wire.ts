@@ -54,6 +54,7 @@ export function mapToolkit(t: RawToolkit): Toolkit {
     name: t.name ?? t.slug ?? "",
     description: t.meta?.description ?? t.description,
     logoUrl: t.meta?.logo ?? t.logo_url,
+    ...(t.no_auth ? { noAuth: true } : {}),
     // Prefer the category `id` (kebab-case, e.g. "developer-tools") — the UI's
     // categoryLabel() turns it into a display label. Fall back to name, then to
     // the top-level field for any provider shape that populates it.

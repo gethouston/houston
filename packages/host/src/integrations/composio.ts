@@ -88,12 +88,12 @@ export class ComposioProvider implements IntegrationProvider {
         query: { limit: "1000" },
       },
     );
-    // The catalog is "what can the user CONNECT". no_auth toolkits (Composio's
-    // own meta-toolkit, hackernews…) have no account to connect — offering
-    // them a Connect button mints a doomed auth-config POST (Composio 400s
-    // with Auth_Config_NoAuthApp, seen in prod). Filtering here also keeps
-    // search's catalog resolution from offering them as connectable.
-    return (body?.items ?? []).filter((t) => !t.no_auth).map(mapToolkit);
+    // no_auth toolkits (web search, weather…) stay in the catalog but carry
+    // the flag: there is no account to connect (creating an auth config 400s
+    // upstream — Auth_Config_NoAuthApp, seen in prod), yet their tools work
+    // as-is. The UI renders them "ready to use" instead of connectable, and
+    // search stamps their matches `connected` (see composio-search.ts).
+    return (body?.items ?? []).map(mapToolkit);
   }
 
   async listToolkits(): Promise<Toolkit[]> {

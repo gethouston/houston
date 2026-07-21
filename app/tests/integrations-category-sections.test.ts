@@ -9,6 +9,7 @@ import {
   catalogCategorySlugs,
   FEATURED,
   groupCatalogByCategory,
+  READY,
 } from "../src/components/integrations/browse-sections.ts";
 
 const tk = (
@@ -34,11 +35,15 @@ const shape = (
   sections: { category: string; connectable: IntegrationToolkit[] }[],
 ) => sections.map((s) => [s.category, s.connectable.map((t) => t.slug)]);
 
-/** The category grid alone — the {@link FEATURED} spotlight (asserted on its
- *  own below) is orthogonal to how the size-ranked category buckets form. */
+/** The category grid alone — the {@link FEATURED} and {@link READY} pinned
+ *  sections (asserted on their own below) are orthogonal to how the
+ *  size-ranked category buckets form. */
 const categoryShape = (
   sections: { category: string; connectable: IntegrationToolkit[] }[],
-) => shape(sections.filter((s) => s.category !== FEATURED));
+) =>
+  shape(
+    sections.filter((s) => s.category !== FEATURED && s.category !== READY),
+  );
 
 describe("groupCatalogByCategory (new module)", () => {
   it("groups by PRIMARY category and orders sections by size desc", () => {
@@ -436,6 +441,98 @@ describe("groupCatalogByCategory mainstream-first priority ordering", () => {
       }),
       ["communication", "productivity", "sales"],
     );
+  });
+});
+
+describe("groupCatalogByCategory ready-to-use (no-auth) apps", () => {
+  // Curated ready apps (READY_SLUGS) + one uncurated no-auth toolkit that must
+  // never surface anywhere (there is nothing to connect AND it is not worth a
+  // consumer catalog row).
+  const READY_CATALOG: IntegrationToolkit[] = [
+    ...CATALOG,
+    { ...tk("weathermap", "Weathermap", ["utilities"]), noAuth: true },
+    {
+      ...tk("composio_search", "Composio Search", ["ai-agents"]),
+      noAuth: true,
+    },
+    { ...tk("test_app", "Test App", ["developer-tools"]), noAuth: true },
+  ];
+  const readySlugs = (
+    sections: { category: string; connectable: IntegrationToolkit[] }[],
+  ) =>
+    sections.find((s) => s.category === READY)?.connectable.map((t) => t.slug);
+
+  it("pins Ready right after Featured at rest, in curated READY_SLUGS order", () => {
+    const sections = groupCatalogByCategory({
+      catalog: READY_CATALOG,
+      query: "",
+      connected: new Set(),
+    });
+    deepStrictEqual(sections[0].category, FEATURED);
+    deepStrictEqual(sections[1].category, READY);
+    // READY_SLUGS order (composio_search first), not A-Z.
+    deepStrictEqual(
+      sections[1].connectable.map((t) => t.slug),
+      ["composio_search", "weathermap"],
+    );
+  });
+
+  it("keeps every no-auth app out of the category buckets (no Connect row anywhere)", () => {
+    const sections = groupCatalogByCategory({
+      catalog: READY_CATALOG,
+      query: "",
+      connected: new Set(),
+    });
+    const bucketSlugs = sections
+      .filter((s) => s.category !== READY && s.category !== FEATURED)
+      .flatMap((s) => s.connectable.map((t) => t.slug));
+    deepStrictEqual(
+      bucketSlugs.some((s) =>
+        ["weathermap", "composio_search", "test_app"].includes(s),
+      ),
+      false,
+    );
+  });
+
+  it("survives a search query — ready apps have no other section to be found in", () => {
+    const sections = groupCatalogByCategory({
+      catalog: READY_CATALOG,
+      query: "weather",
+      connected: new Set(),
+    });
+    deepStrictEqual(shape(sections), [[READY, ["weathermap"]]]);
+  });
+
+  it("hides Ready when narrowed to a single category", () => {
+    const sections = groupCatalogByCategory({
+      catalog: READY_CATALOG,
+      query: "",
+      connected: new Set(),
+      category: "utilities",
+    });
+    deepStrictEqual(readySlugs(sections), undefined);
+    // And the no-auth app does not sneak into the narrowed section either.
+    deepStrictEqual(shape(sections), []);
+  });
+
+  it("never surfaces an uncurated no-auth toolkit", () => {
+    const sections = groupCatalogByCategory({
+      catalog: READY_CATALOG,
+      query: "test app",
+      connected: new Set(),
+    });
+    deepStrictEqual(shape(sections), []);
+  });
+
+  it("never leaks READY into the category dropdown options", () => {
+    const slugs = catalogCategorySlugs({
+      catalog: READY_CATALOG,
+      connected: new Set(),
+    });
+    deepStrictEqual(slugs.includes(READY), false);
+    // The hidden no-auth apps' categories don't create phantom options either.
+    deepStrictEqual(slugs.includes("utilities"), false);
+    deepStrictEqual(slugs.includes("ai-agents"), false);
   });
 });
 
