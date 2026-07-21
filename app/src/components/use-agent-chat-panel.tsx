@@ -190,6 +190,13 @@ interface UseAgentChatPanelArgs {
   /** New-conversation draft scope — must match the board's `useBoardDrafts`
    *  scope so dictation lands in the composer the user sees (HOU-730). */
   draftScope?: string;
+  /** Seeds the composer's turn mode for THIS surface and suppresses the
+   *  per-agent config mode from overwriting it, so the surface opens on the
+   *  given mode and keeps it until the user changes it in-session. The routine
+   *  setup chat passes `"execute"` (Coworker) — its kickoff turn runs Coworker,
+   *  so the live composer must match. Omit to keep today's behavior exactly
+   *  (seed the global default, then load the agent's remembered mode). */
+  initialTurnMode?: TurnMode;
 }
 
 interface AgentChatPanelProps {
@@ -249,6 +256,7 @@ export function useAgentChatPanel({
   selectedSessionKey,
   onSelectSession,
   draftScope,
+  initialTurnMode,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
   const { t, i18n } = useTranslation(["board", "chat", "teams"]);
   const { processLabels, getThinkingMessage, thinkingIndicator } =
@@ -390,13 +398,20 @@ export function useAgentChatPanel({
   const [agentEffort, setAgentEffort] = useState<string | null>(null);
   // Composer "Mode" pin (execute/plan). Loaded from config as memory only; the
   // send path forwards it as `modeOverride`. Unknown/legacy values → execute.
-  const [turnMode, setTurnMode] = useState<TurnMode>(DEFAULT_TURN_MODE);
+  //
+  // `initialTurnMode` (when a surface passes one) seeds this AND wins over the
+  // per-agent config, so the surface opens on that mode and holds it until the
+  // user changes it in-session (the setup chat opens on Coworker). Absent, the
+  // behavior is unchanged: the global default, then the agent's remembered mode.
+  const [turnMode, setTurnMode] = useState<TurnMode>(
+    initialTurnMode ?? DEFAULT_TURN_MODE,
+  );
   useEffect(() => {
     if (!path) {
       setAgentProvider(null);
       setAgentModel(null);
       setAgentEffort(null);
-      setTurnMode(DEFAULT_TURN_MODE);
+      setTurnMode(initialTurnMode ?? DEFAULT_TURN_MODE);
       return;
     }
     tauriConfig
@@ -405,10 +420,10 @@ export function useAgentChatPanel({
         setAgentProvider((cfg.provider as string) ?? null);
         setAgentModel(normalizeLegacyModel((cfg.model as string) ?? null));
         setAgentEffort((cfg.effort as string) ?? null);
-        setTurnMode(normalizeTurnMode(cfg.mode));
+        setTurnMode(initialTurnMode ?? normalizeTurnMode(cfg.mode));
       })
       .catch(() => {});
-  }, [path]);
+  }, [path, initialTurnMode]);
 
   // Last-used provider preference (`default_provider`, written by setLastUsed
   // on every provider pick). The fallback when neither the activity nor the

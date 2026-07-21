@@ -14,6 +14,7 @@ import { docKey, schemaKey, seedSchemas } from "./layout";
 import {
   applyRoutineUpdate,
   createRoutine,
+  isValidTriggerBinding,
   loadRoutines,
   normalizeRoutines,
   saveRoutines,
@@ -373,6 +374,116 @@ test("normalizeRoutines: a malformed trigger object is dropped + diagnosed", () 
   expect(diagnostics).toHaveLength(2);
   expect(diagnostics[0]?.message).toContain("malformed trigger");
   expect(diagnostics[1]?.message).toContain("malformed trigger");
+});
+
+test("isValidTriggerBinding: kind discriminant — webhook, composio, junk", () => {
+  // Composio: kind absent (legacy) or explicit "composio", both valid.
+  expect(isValidTriggerBinding(TRIGGER)).toBe(true);
+  expect(isValidTriggerBinding({ ...TRIGGER, kind: "composio" })).toBe(true);
+  // Webhook: kind alone is valid (no key yet); key_prefix as a string is valid.
+  expect(isValidTriggerBinding({ kind: "webhook" })).toBe(true);
+  expect(
+    isValidTriggerBinding({ kind: "webhook", key_prefix: "wh_abc123" }),
+  ).toBe(true);
+  // Webhook with a non-string key_prefix is malformed.
+  expect(isValidTriggerBinding({ kind: "webhook", key_prefix: 7 })).toBe(false);
+  // A webhook binding does NOT need Composio fields; junk (no kind, no
+  // Composio identity) is still invalid.
+  expect(isValidTriggerBinding({ toolkit: "gmail" })).toBe(false);
+  expect(isValidTriggerBinding({})).toBe(false);
+  expect(isValidTriggerBinding(null)).toBe(false);
+});
+
+test("normalizeRoutines: a webhook trigger routine survives normalize", () => {
+  const { items, diagnostics } = normalizeRoutines(
+    [
+      {
+        id: "w1",
+        name: "Hook",
+        prompt: "p",
+        trigger: { kind: "webhook", key_prefix: "wh_abc123" },
+      },
+    ],
+    "k",
+  );
+  expect(diagnostics).toEqual([]);
+  expect(items).toHaveLength(1);
+  expect(items[0]?.trigger).toEqual({
+    kind: "webhook",
+    key_prefix: "wh_abc123",
+  });
+  expect("schedule" in (items[0] ?? {})).toBe(false);
+});
+
+test("normalizeRoutines: a webhook routine with no key yet still survives", () => {
+  const { items, diagnostics } = normalizeRoutines(
+    [{ id: "w2", name: "Unminted", prompt: "p", trigger: { kind: "webhook" } }],
+    "k",
+  );
+  expect(diagnostics).toEqual([]);
+  expect(items[0]?.trigger).toEqual({ kind: "webhook" });
+});
+
+test("normalizeRoutines: a malformed webhook trigger is dropped + diagnosed", () => {
+  const { items, diagnostics } = normalizeRoutines(
+    [
+      {
+        id: "wbad",
+        name: "Bad",
+        prompt: "p",
+        trigger: { kind: "webhook", key_prefix: 9 },
+      },
+    ],
+    "k",
+  );
+  expect(items).toEqual([]);
+  expect(diagnostics).toHaveLength(1);
+  expect(diagnostics[0]?.message).toContain("malformed trigger");
+});
+
+test("normalizeRoutines: a webhook routine with BOTH schedule and trigger is dropped", () => {
+  const { items, diagnostics } = normalizeRoutines(
+    [
+      {
+        id: "wboth",
+        name: "Ambiguous",
+        prompt: "p",
+        schedule: "0 9 * * *",
+        trigger: { kind: "webhook" },
+      },
+    ],
+    "k",
+  );
+  expect(items).toEqual([]);
+  expect(diagnostics[0]?.message).toContain("exactly one of schedule/trigger");
+});
+
+test("webhook routine round-trips through save → load preserving the binding", async () => {
+  const store = memStore();
+  const { items } = normalizeRoutines(
+    [
+      {
+        id: "w1",
+        name: "Hook",
+        prompt: "p",
+        trigger: { kind: "webhook", key_prefix: "wh_abc123" },
+        enabled: true,
+        suppress_when_silent: false,
+        chat_mode: "shared",
+        integrations: [],
+        created_at: NOW,
+        updated_at: NOW,
+      },
+    ],
+    "k",
+  );
+  await saveRoutines(store, ROOT, items);
+  const reloaded = await loadRoutines(store, ROOT);
+  expect(reloaded.diagnostics).toEqual([]);
+  expect(reloaded.items[0]?.trigger).toEqual({
+    kind: "webhook",
+    key_prefix: "wh_abc123",
+  });
 });
 
 test("trigger routine round-trips through save → load preserving the trigger field", async () => {

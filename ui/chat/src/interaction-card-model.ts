@@ -45,7 +45,12 @@ export type ChatInteractionStep =
     }
   // HOU-550: enter a custom integration's API key in a secure field (the secret
   // never lands in the transcript). `toolkit` is the custom integration's slug.
-  | { kind: "credential"; id: string; toolkit: string; reason?: string };
+  | { kind: "credential"; id: string; toolkit: string; reason?: string }
+  // A generic app-driven step: ui/chat owns none of its content. The renderer
+  // (`renderCustom`) supplies the whole InteractionModal body — the card only
+  // walks the stepper past it (contributing no answer). `title` is a short
+  // fallback label; the renderer owns the modal's real title.
+  | { kind: "custom"; id: string; title: string };
 
 /** One completed question answer handed to `onComplete`, in step order. */
 export interface ChatInteractionAnswer {

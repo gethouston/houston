@@ -1,66 +1,123 @@
 {
   "loading": "Loading…",
+  "listTitle": "Routines",
+  "wizard": {
+    "wakeTitle": "When should this run?",
+    "scheduleOptionTitle": "On a schedule",
+    "eventOptionTitle": "When something happens in an app",
+    "triggerDescription": "Pick the app to watch. You'll say what should happen in it in the chat.",
+    "build": "Create it with your agent",
+    "webhookOptionTitle": "From an external app",
+    "webhookTitle": "Wake it from a web address",
+    "webhookDescription": "You'll get a unique web address that wakes this routine whenever anything calls it."
+  },
+  "intake": {
+    "startTitle": "How do you want to start?",
+    "startKnow": "From scratch",
+    "startTemplate": "Start from a template",
+    "scheduleTitle": "When should it run?",
+    "scheduleOptions": {
+      "weekdayMorning": "Every weekday morning",
+      "onceADay": "Once a day",
+      "fridayAfternoon": "Every Friday afternoon",
+      "everyHour": "Every hour"
+    },
+    "templatePickTitle": "Pick a template to start from",
+    "templates": {
+      "morningBriefing": {
+        "name": "Morning briefing",
+        "description": "A weekday summary of your day ahead",
+        "intent": "Every weekday morning, send me a short briefing of my day ahead: what is on my calendar, anything urgent, and what I should focus on."
+      },
+      "weeklyReview": {
+        "name": "Weekly review",
+        "description": "A Friday recap of your week",
+        "intent": "Every Friday afternoon, give me a recap of the week: what got done, what is still open, and what is coming up next week."
+      },
+      "deadlineReminders": {
+        "name": "Deadline reminders",
+        "description": "A daily nudge before things are due",
+        "intent": "Each day, remind me about upcoming deadlines and anything due soon, so nothing slips through the cracks."
+      },
+      "inboxTriage": {
+        "name": "Inbox triage",
+        "description": "Summarize new emails as they arrive",
+        "intent": "When a new email arrives, summarize it for me and flag anything that needs my attention."
+      },
+      "newsDigest": {
+        "name": "News digest",
+        "description": "A morning roundup of news you care about",
+        "intent": "Every morning, put together a short digest of the latest news on the topics I care about."
+      }
+    }
+  },
+  "triggerStep": {
+    "title": "Pick an app",
+    "searchPlaceholder": "Search apps",
+    "connectedHeader": "Connected",
+    "connectableHeader": "Connect a new app",
+    "notConnected": "Not connected",
+    "searchToConnect": "Search to connect a new app",
+    "noMatches": "No apps match your search",
+    "noConnectable": "No other apps to connect",
+    "connectReason": "Connect {{app}} to watch it for events",
+    "connectKeyReason": "Add your {{app}} key to watch it for events",
+    "connect": "Connect",
+    "connecting": "Connecting",
+    "saveKey": "Save key",
+    "savingKey": "Saving",
+    "back": "Choose another app",
+    "change": "Change",
+    "selectedHint": "You'll say what should happen in {{app}} in the chat.",
+    "accountLabel": "Which account?",
+    "accountPlaceholder": "Choose an account",
+    "catalogError": "Couldn't load this app's events. Check your connection and try again.",
+    "retry": "Retry",
+    "loadingCatalog": "Getting {{app}} ready…"
+  },
   "grid": {
     "loading": "Loading…",
-    "emptyTitle": "Set it and forget it",
-    "emptyDescription": "An automation is your agent working on its own, without you asking each time. Describe a task once, choose when it should happen, and it takes care of the rest.",
-    "newRoutine": "New automation",
-    "newRoutineWithAi": "With AI",
-    "newRoutineManually": "Manually",
-    "createRoutine": "Create automation",
-    "draftTitle": "Automation being created in chat",
-    "draftResume": "Resume",
+    "emptyTitle": "No routines yet",
+    "emptyDescription": "Create your first one and Houston will take care of the rest.",
+    "listLabel": "Routines",
+    "draftTitle": "Routine being created in chat",
     "draftDiscard": "Discard",
-    "descriptionShort": "Work your agent does on its own, pinging you only when something needs attention.",
     "timezoneLabel": "Timezone",
-    "timezoneHint": "All your scheduled automations run in this timezone.",
+    "timezoneHint": "All your routines run in this timezone.",
     "timezoneSearchPlaceholder": "Search timezones…",
-    "timezoneNoResults": "No timezones found",
-    "sectionActive": "Active",
-    "sectionPaused": "Paused"
+    "timezoneNoResults": "No timezones found"
   },
   "setupChat": {
-    "missionTitle": "Set up a new automation"
+    "missionTitle": "Set up a new routine"
   },
   "chat": {
-    "newRoutineTitle": "New automation",
-    "routineLabel": "Automation: {{name}}",
-    "back": "Back to automations",
-    "opening": "Opening chat…"
+    "newRoutineTitle": "New routine",
+    "intakePlaceholder": "Describe what you'd like to automate…",
+    "routineLabel": "Routine: {{name}}",
+    "close": "Close",
+    "opening": "Opening chat…",
+    "activation": {
+      "checking": "Checking your trigger…",
+      "activating": "Activating…",
+      "active": "Trigger active"
+    }
   },
   "row": {
     "untitled": "Untitled",
-    "next": "Next {relative}",
-    "noNextRun": "No next run",
-    "paused": "Paused",
-    "waiting": "Waiting · resumes at {time}",
-    "justRan": "just ran",
-    "ranMinutes": "ran {n}m ago",
-    "ranHours": "ran {n}h ago",
-    "ranDays": "ran {n}d ago",
-    "pauseRoutine": "Pause automation",
-    "resumeRoutine": "Resume automation",
+    "pauseRoutine": "Pause routine",
+    "resumeRoutine": "Resume routine",
+    "openChat": "Open chat",
+    "editSchedule": "Edit schedule",
+    "save": "Save",
+    "cancel": "Cancel",
     "runNow": "Run now",
     "stopRun": "Stop run",
     "moreActions": "More actions",
-    "editManually": "Edit manually",
-    "editWithAi": "Edit with AI",
     "delete": "Delete",
     "deleteTitle": "Delete {name}?",
     "deleteDescription": "This can't be undone. Its chat history stays untouched.",
     "deleteConfirm": "Delete",
-    "deleteCancel": "Cancel",
-    "nameLabel": "Name",
-    "namePlaceholder": "e.g. Morning standup",
-    "instructionLabel": "Instruction",
-    "instructionPlaceholder": "What should the agent do when this runs?",
-    "save": "Save",
-    "cancel": "Cancel",
-    "whenTitle": "When should this happen?",
-    "whenSchedule": "On a schedule",
-    "whenEvent": "When something happens",
-    "whenScheduleHint": "Every morning, once a week, you choose",
-    "whenEventHint": "A new email, a message, a change in an app"
+    "deleteCancel": "Cancel"
   },
   "schedule": {
     "presets": {
@@ -88,13 +145,7 @@
     "repeatEvery": "Repeat every",
     "enterNumber": "Enter a number",
     "pickDay": "Pick at least one day",
-    "onTheseDays": "On these days",
     "weekdaysLabel": "On these days",
-    "shortcuts": {
-      "everyDay": "Every day",
-      "weekdays": "Weekdays",
-      "weekends": "Weekends"
-    },
     "weekdayShortcuts": {
       "everyDay": "Every day",
       "weekdays": "Weekdays",
@@ -120,7 +171,6 @@
       "everyDay": "Runs every day at {time}",
       "everyNDays": "Runs every {n} days at {time}",
       "weekly": "Runs every {day} at {time}",
-      "everyWeekOnDays": "Runs every week on {days} at {time}",
       "weeklyOnDays": "Runs every week on {days} at {time}",
       "monthly": "Runs on the {ordinal} of every month at {time}",
       "everyNMonths": "Runs on the {ordinal} of every {months} months at {time}"
@@ -139,18 +189,6 @@
   },
   "trigger": {
     "wakeEvent": "When something happens",
-    "chooseApp": "Which app should wake it?",
-    "chooseEvent": "What should wake it?",
-    "changeApp": "Change app",
-    "noApps": "Connect an app first to have a routine wake on events.",
-    "loadingEvents": "Loading events…",
-    "noEvents": "This app has no events to wake on yet.",
-    "pollHint": "Checks every few minutes",
-    "accountLabel": "Account",
-    "detailsTitle": "Details",
-    "rawJsonLabel": "Advanced settings",
-    "rawJsonHint": "Enter this event's settings as JSON.",
-    "rawJsonInvalid": "This needs to be valid JSON.",
     "status": {
       "active": "Active",
       "pending": "Setting up…",
@@ -158,16 +196,43 @@
       "paused_revoked": "Access turned off",
       "error": "Needs attention"
     },
+    "statusUnknown": "Verifying trigger…",
+    "waitingFirstEvent": "Active. Waiting for the first event.",
     "reconnect": "Reconnect",
     "statusDisconnectedHint": "The connected account was disconnected.",
     "statusRevokedHint": "This app was turned off for this agent.",
     "rowSummary": "Wakes on an event in {{app}}",
     "loadFailed": "Couldn't load event triggers",
-    "connectApp": "Connect an app"
+    "webhookRowSummary": "When its webhook address is called"
   },
   "toasts": {
     "timezoneSet": "Timezone set to {{zone}}",
     "timezoneError": "Couldn't update the timezone",
     "discardError": "Couldn't discard the draft"
+  },
+  "webhook": {
+    "createAddress": "Create webhook address",
+    "active": "Webhook active",
+    "rotate": "New key",
+    "unsupportedTitle": "Update needed",
+    "unsupportedBody": "Creating a webhook address needs the latest version of Houston.",
+    "dialog": {
+      "title": "Your webhook address",
+      "subtitle": "Send a request to this address to wake the routine.",
+      "urlLabel": "Web address",
+      "secretLabel": "Secret key",
+      "warning": "Save the secret key now. It will not be shown again.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Could not copy",
+      "done": "Done",
+      "close": "Close"
+    },
+    "rotateConfirm": {
+      "title": "Create a new key?",
+      "body": "This creates a new secret key and turns off the old one. Anything using the old key stops working until you update it.",
+      "confirm": "Create new key",
+      "cancel": "Cancel"
+    }
   }
 }

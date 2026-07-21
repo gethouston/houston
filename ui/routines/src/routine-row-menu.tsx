@@ -1,10 +1,10 @@
 /**
  * RoutineRowMenu — the row's three-dot quick-actions menu: Run now / Stop run
- * (the row offers whichever fits the current run state), Edit manually (opens
- * the row's inline name/schedule/instruction panel), Edit with AI (opens the
- * routine's chat), and Delete (confirmed in a dialog, like the board's mission
- * cards). Always visible (never hover-gated); rows aren't clickable themselves,
- * so this menu is the only way in.
+ * (the row offers whichever fits the current run state) and Delete (confirmed in
+ * a dialog, like the board's mission cards). Always visible (never hover-gated).
+ * Opening a routine's chat and enabling/disabling it live on the row itself
+ * (row click / "Open chat" affordance + the switch), so they are not repeated
+ * here — this menu is only the run controls and the destructive action.
  */
 import {
   Button,
@@ -15,15 +15,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@houston-ai/core";
-import {
-  MoreHorizontal,
-  Pencil,
-  Play,
-  Square,
-  Trash2,
-  Wand2,
-} from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { MoreHorizontal, Play, Square, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { DEFAULT_ROW_LABELS, interp, type RoutineRowLabels } from "./labels";
 
 export interface RoutineRowMenuProps {
@@ -34,31 +27,20 @@ export interface RoutineRowMenuProps {
   onRunNow?: () => void;
   /** Stop the in-flight run. */
   onStopRun?: () => void;
-  /** Open the row's inline edit panel. */
-  onEditManually?: () => void;
-  /** Open the routine's chat to change it by asking instead. */
-  onEditWithAi?: () => void;
   /** Delete the routine — called only after the dialog confirms. */
   onDelete?: () => void;
   labels?: RoutineRowLabels;
-  /** Icon for the "Edit with AI" entry. App supplies the real brand mark
-   *  (`ui/` stays brand-agnostic per the library boundary); a generic
-   *  wand is the standalone-caller default. */
-  aiIcon?: ReactNode;
 }
 
 export function RoutineRowMenu({
   name,
   onRunNow,
   onStopRun,
-  onEditManually,
-  onEditWithAi,
   onDelete,
   labels = DEFAULT_ROW_LABELS,
-  aiIcon = <Wand2 className="size-3.5" />,
 }: RoutineRowMenuProps) {
   const [confirming, setConfirming] = useState(false);
-  const hasPrior = onRunNow || onStopRun || onEditManually || onEditWithAi;
+  const hasPrior = onRunNow || onStopRun;
 
   return (
     <>
@@ -69,6 +51,7 @@ export function RoutineRowMenu({
             size="icon-sm"
             className="text-ink-muted/60 hover:text-ink"
             aria-label={labels.moreActions}
+            onClick={(e) => e.stopPropagation()}
           >
             <MoreHorizontal className="size-4" />
           </Button>
@@ -84,18 +67,6 @@ export function RoutineRowMenu({
             <DropdownMenuItem onClick={onStopRun}>
               <Square className="size-3.5" />
               {labels.stopRun}
-            </DropdownMenuItem>
-          )}
-          {onEditManually && (
-            <DropdownMenuItem onClick={onEditManually}>
-              <Pencil className="size-3.5" />
-              {labels.editManually}
-            </DropdownMenuItem>
-          )}
-          {onEditWithAi && (
-            <DropdownMenuItem onClick={onEditWithAi}>
-              {aiIcon}
-              {labels.editWithAi}
             </DropdownMenuItem>
           )}
           {onDelete && (

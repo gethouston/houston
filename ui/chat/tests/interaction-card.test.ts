@@ -4,6 +4,7 @@ import {
   advanceApproval,
   advanceConnect,
   advanceCredential,
+  advanceCustom,
   advanceSignin,
   answerWithOption,
   answerWithText,
@@ -65,6 +66,12 @@ const CREDENTIAL: ChatInteractionStep = {
   id: "k1",
   toolkit: "acme",
   reason: "to reach the Acme API",
+};
+
+const CUSTOM: ChatInteractionStep = {
+  kind: "custom",
+  id: "x1",
+  title: "Pick a template",
 };
 
 describe("hasSelectableOptions", () => {
@@ -328,6 +335,35 @@ describe("advanceCredential", () => {
   it("contributes no answer for a credential-only sequence", () => {
     const done = advanceCredential(initialStepperState(), [CREDENTIAL]);
     assert.deepEqual(done.completed, []);
+  });
+});
+
+describe("advanceCustom", () => {
+  it("advances a non-terminal custom step to the next step", () => {
+    const t = advanceCustom(initialStepperState(), [CUSTOM, Q2]);
+    assert.equal(t.completed, undefined);
+    assert.equal(t.state.current, 1);
+    assert.equal(t.state.reached, 1); // frontier advanced (Back/Forward work)
+  });
+
+  it("completes when the custom step is the last step", () => {
+    const s = setDraft(initialStepperState(), "q2", "hi");
+    const afterQ = answerWithText(s, [Q2, CUSTOM]).state; // -> custom (last)
+    const done = advanceCustom(afterQ, [Q2, CUSTOM]);
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "hi" },
+    ]);
+  });
+
+  it("contributes no answer for a custom-only sequence", () => {
+    const done = advanceCustom(initialStepperState(), [CUSTOM]);
+    assert.deepEqual(done.completed, []);
+  });
+});
+
+describe("optionLabel on a custom step", () => {
+  it("returns null (custom steps carry no options)", () => {
+    assert.equal(optionLabel(CUSTOM, "o1"), null);
   });
 });
 

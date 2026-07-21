@@ -99,8 +99,8 @@
         "body": "O painel de cada conversa com este agente. Rodando, precisando de você, prontas."
       },
       "tabRoutines": {
-        "title": "Automações",
-        "body": "Seu assistente já vem com automações prontas, como o Resumo matinal. Configure aqui qualquer outra coisa para acontecer por conta própria."
+        "title": "Rotinas",
+        "body": "Seu assistente já vem com rotinas prontas, como o Resumo matinal. Configure aqui qualquer outra coisa para acontecer por conta própria."
       },
       "tabIntegrations": {
         "title": "Integrações",

@@ -714,15 +714,42 @@ export type RoutineChatMode = "shared" | "per_run";
  * `trigger_config` is the instance filter object, validated server-side against
  * the trigger type's config JSON-schema. `connected_account_id` is pinned only
  * when the user has more than one connected account for the toolkit; absent, the
- * reconciler resolves the single active one. Exactly one of `schedule` /
- * `trigger` is set on a routine (enforced server-side).
+ * reconciler resolves the single active one. The `kind` discriminant is optional
+ * for backward compatibility: absent means Composio (the original shape).
  */
-export interface RoutineTriggerBinding {
+export interface ComposioTriggerBinding {
+  /** Discriminant. Absent means Composio (the pre-webhook shape). */
+  kind?: "composio";
   toolkit: string;
   trigger_slug: string;
   trigger_config: Record<string, unknown>;
   connected_account_id?: string;
 }
+
+/**
+ * An event binding that wakes a routine when an external system POSTs to the
+ * routine's minted webhook URL (hosted-cloud-only backend). The URL + secret are
+ * minted separately (see `mintRoutineWebhookKey`) and NEVER live in routine data;
+ * `key_prefix` is a display-only "wh_xxxxxxxx" label stamped after minting so the
+ * UI can show a key exists. Absent `key_prefix` = not minted yet (status pending).
+ */
+export interface WebhookTriggerBinding {
+  /** Discriminant — REQUIRED (absent would read as Composio). */
+  kind: "webhook";
+  /** Display-only "wh_xxxxxxxx" label of the minted key; the secret is never
+   *  stored here. Absent until a key is minted. */
+  key_prefix?: string;
+}
+
+/**
+ * A routine's external-event wake binding, instead of a cron `schedule`. Exactly
+ * one of `schedule` / `trigger` is set (enforced server-side). Discriminated on
+ * `kind`: absent or "composio" => {@link ComposioTriggerBinding}, "webhook" =>
+ * {@link WebhookTriggerBinding}.
+ */
+export type RoutineTriggerBinding =
+  | ComposioTriggerBinding
+  | WebhookTriggerBinding;
 
 export interface Routine {
   id: string;
@@ -1890,6 +1917,20 @@ export interface TriggerStatusItem {
   routine_id: string;
   status: TriggerStatusState;
   detail?: string;
+}
+
+/**
+ * The one-time reveal from minting (or rotating) a routine's incoming-webhook
+ * key: `POST /v1/agents/:slug/routines/:id/webhook-key`. `url` is the public
+ * ingress the external system POSTs to; `secret` is shown to the user EXACTLY
+ * once and never stored in routine data; `key_prefix` is the display-only
+ * "wh_xxxxxxxx" label the UI persists onto the routine's webhook binding.
+ * Calling again rotates: the old secret is invalidated.
+ */
+export interface WebhookKeyReveal {
+  url: string;
+  secret: string;
+  key_prefix: string;
 }
 
 // ── OpenAI-compatible (local) provider ───────────────────────────────────────

@@ -6,7 +6,7 @@ import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { buildMissionBoardColumns } from "../mission-board-columns";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
-import { useDetailPanelContainer } from "../shell/detail-panel-context";
+import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useQueuedMessageLabels } from "../use-queued-message-labels";
 import type { BoardSource } from "./board-source";
@@ -25,8 +25,7 @@ import { useBoardSendQueue } from "./use-board-send-queue";
  */
 export function MissionBoard({ source }: { source: BoardSource }) {
   const { t } = useTranslation(["dashboard", "board"]);
-  const panelContainer = useDetailPanelContainer();
-  const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
+  const { panelContainer, setPanelOpen } = useShellDetailPanel();
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const addToast = useUIStore((s) => s.addToast);
   const queuedLabels = useQueuedMessageLabels();
@@ -145,7 +144,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           onPanelCloserReady={handleCloserReady}
           emptyState={source.emptyState}
           panelContainer={panelContainer}
-          onPanelOpenChange={setMissionPanelOpen}
+          onPanelOpenChange={setPanelOpen}
           onStopSession={source.stopSession}
           drafts={drafts}
           onDraftChange={onDraftChange}

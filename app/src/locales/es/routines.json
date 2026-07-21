@@ -1,66 +1,123 @@
 {
   "loading": "Cargando…",
+  "listTitle": "Rutinas",
+  "wizard": {
+    "wakeTitle": "¿Cuándo debe ejecutarse esto?",
+    "scheduleOptionTitle": "Según un horario",
+    "eventOptionTitle": "Cuando algo pase en una app",
+    "triggerDescription": "Elige la app que quieres vigilar. Dirás en el chat qué debe pasar en ella.",
+    "build": "Créala con tu agente",
+    "webhookOptionTitle": "Desde una app externa",
+    "webhookTitle": "Actívala desde una dirección web",
+    "webhookDescription": "Obtendrás una dirección web única que activa esta rutina cada vez que algo la llame."
+  },
+  "intake": {
+    "startTitle": "¿Cómo quieres empezar?",
+    "startKnow": "Desde cero",
+    "startTemplate": "Empezar desde una plantilla",
+    "scheduleTitle": "¿Cuándo debe ejecutarse?",
+    "scheduleOptions": {
+      "weekdayMorning": "Cada mañana de día laboral",
+      "onceADay": "Una vez al día",
+      "fridayAfternoon": "Cada viernes por la tarde",
+      "everyHour": "Cada hora"
+    },
+    "templatePickTitle": "Elige una plantilla para empezar",
+    "templates": {
+      "morningBriefing": {
+        "name": "Resumen matutino",
+        "description": "Un resumen de tu día entre semana",
+        "intent": "Cada mañana de día laboral, envíame un resumen breve de mi día: qué tengo en el calendario, qué es urgente y en qué debería concentrarme."
+      },
+      "weeklyReview": {
+        "name": "Repaso semanal",
+        "description": "Un repaso de tu semana los viernes",
+        "intent": "Cada viernes por la tarde, dame un repaso de la semana: qué se completó, qué sigue pendiente y qué viene la próxima semana."
+      },
+      "deadlineReminders": {
+        "name": "Recordatorios de plazos",
+        "description": "Un aviso diario antes de los vencimientos",
+        "intent": "Cada día, recuérdame los plazos próximos y lo que vence pronto, para que nada se me escape."
+      },
+      "inboxTriage": {
+        "name": "Organización del correo",
+        "description": "Resume los correos nuevos a medida que llegan",
+        "intent": "Cuando llegue un correo nuevo, resúmelo para mí y marca lo que necesite mi atención."
+      },
+      "newsDigest": {
+        "name": "Resumen de noticias",
+        "description": "Un resumen matutino de las noticias que te interesan",
+        "intent": "Cada mañana, prepara un resumen breve de las últimas noticias sobre los temas que me interesan."
+      }
+    }
+  },
+  "triggerStep": {
+    "title": "Elige una app",
+    "searchPlaceholder": "Buscar apps",
+    "connectedHeader": "Conectadas",
+    "connectableHeader": "Conectar una nueva app",
+    "notConnected": "Sin conectar",
+    "searchToConnect": "Busca para conectar una nueva app",
+    "noMatches": "Ninguna app coincide con tu búsqueda",
+    "noConnectable": "No hay otras apps para conectar",
+    "connectReason": "Conecta {{app}} para vigilar sus eventos",
+    "connectKeyReason": "Agrega tu clave de {{app}} para vigilar sus eventos",
+    "connect": "Conectar",
+    "connecting": "Conectando",
+    "saveKey": "Guardar clave",
+    "savingKey": "Guardando",
+    "back": "Elegir otra app",
+    "change": "Cambiar",
+    "selectedHint": "Dirás qué debe pasar en {{app}} en el chat.",
+    "accountLabel": "¿Qué cuenta?",
+    "accountPlaceholder": "Elige una cuenta",
+    "catalogError": "No se pudieron cargar los eventos de esta app. Revisa tu conexión e inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "loadingCatalog": "Preparando {{app}}…"
+  },
   "grid": {
     "loading": "Cargando…",
-    "emptyTitle": "Programa y olvídate",
-    "emptyDescription": "Una automatización es tu agente trabajando por su cuenta, sin que tengas que pedírselo cada vez. Describe una tarea una sola vez, elige cuándo debe ocurrir y él se encarga del resto.",
-    "newRoutine": "Nueva automatización",
-    "newRoutineWithAi": "Con IA",
-    "newRoutineManually": "Manualmente",
-    "createRoutine": "Crear automatización",
-    "draftTitle": "Automatización en creación en el chat",
-    "draftResume": "Continuar",
+    "emptyTitle": "Aún no hay rutinas",
+    "emptyDescription": "Crea la primera y Houston se encarga del resto.",
+    "listLabel": "Rutinas",
+    "draftTitle": "Rutina en creación en el chat",
     "draftDiscard": "Descartar",
-    "descriptionShort": "Trabajo que tu agente hace por su cuenta y solo te avisa cuando algo necesita tu atención.",
     "timezoneLabel": "Zona horaria",
-    "timezoneHint": "Todas tus automatizaciones programadas se ejecutan en esta zona horaria.",
+    "timezoneHint": "Todas tus rutinas se ejecutan en esta zona horaria.",
     "timezoneSearchPlaceholder": "Buscar zonas horarias…",
-    "timezoneNoResults": "No se encontraron zonas horarias",
-    "sectionActive": "Activas",
-    "sectionPaused": "Pausadas"
+    "timezoneNoResults": "No se encontraron zonas horarias"
   },
   "setupChat": {
-    "missionTitle": "Configurar una nueva automatización"
+    "missionTitle": "Configurar una nueva rutina"
   },
   "chat": {
-    "newRoutineTitle": "Nueva automatización",
-    "routineLabel": "Automatización: {{name}}",
-    "back": "Volver a automatizaciones",
-    "opening": "Abriendo el chat…"
+    "newRoutineTitle": "Nueva rutina",
+    "intakePlaceholder": "Describe lo que quieres automatizar…",
+    "routineLabel": "Rutina: {{name}}",
+    "close": "Cerrar",
+    "opening": "Abriendo el chat…",
+    "activation": {
+      "checking": "Verificando tu evento…",
+      "activating": "Activando…",
+      "active": "Evento activo"
+    }
   },
   "row": {
     "untitled": "Sin título",
-    "next": "Próxima {relative}",
-    "noNextRun": "Sin próxima ejecución",
-    "paused": "En pausa",
-    "waiting": "En espera · se reanuda a las {time}",
-    "justRan": "recién ejecutada",
-    "ranMinutes": "hace {n}m",
-    "ranHours": "hace {n}h",
-    "ranDays": "hace {n}d",
-    "pauseRoutine": "Pausar automatización",
-    "resumeRoutine": "Reanudar automatización",
+    "pauseRoutine": "Pausar rutina",
+    "resumeRoutine": "Reanudar rutina",
+    "openChat": "Abrir chat",
+    "editSchedule": "Editar horario",
+    "save": "Guardar",
+    "cancel": "Cancelar",
     "runNow": "Ejecutar ahora",
     "stopRun": "Detener ejecución",
     "moreActions": "Más acciones",
-    "editManually": "Editar manualmente",
-    "editWithAi": "Editar con IA",
     "delete": "Eliminar",
     "deleteTitle": "¿Eliminar {name}?",
     "deleteDescription": "Esto no se puede deshacer. Su historial de chat no se ve afectado.",
     "deleteConfirm": "Eliminar",
-    "deleteCancel": "Cancelar",
-    "nameLabel": "Nombre",
-    "namePlaceholder": "p. ej. Reunión matutina",
-    "instructionLabel": "Instrucción",
-    "instructionPlaceholder": "¿Qué debe hacer el agente cuando se ejecute?",
-    "save": "Guardar",
-    "cancel": "Cancelar",
-    "whenTitle": "¿Cuándo debe ocurrir?",
-    "whenSchedule": "Según un horario",
-    "whenEvent": "Cuando algo pase",
-    "whenScheduleHint": "Cada mañana, una vez por semana, tú eliges",
-    "whenEventHint": "Un correo nuevo, un mensaje, un cambio en una app"
+    "deleteCancel": "Cancelar"
   },
   "schedule": {
     "presets": {
@@ -88,13 +145,7 @@
     "repeatEvery": "Repetir cada",
     "enterNumber": "Ingresa un número",
     "pickDay": "Elige al menos un día",
-    "onTheseDays": "En estos días",
     "weekdaysLabel": "En estos días",
-    "shortcuts": {
-      "everyDay": "Todos los días",
-      "weekdays": "Días laborables",
-      "weekends": "Fines de semana"
-    },
     "weekdayShortcuts": {
       "everyDay": "Todos los días",
       "weekdays": "Días laborables",
@@ -120,7 +171,6 @@
       "everyDay": "Se ejecuta todos los días a las {time}",
       "everyNDays": "Se ejecuta cada {n} días a las {time}",
       "weekly": "Se ejecuta cada {day} a las {time}",
-      "everyWeekOnDays": "Se ejecuta cada semana los {days} a las {time}",
       "weeklyOnDays": "Se ejecuta cada semana los {days} a las {time}",
       "monthly": "Se ejecuta el día {n} de cada mes a las {time}",
       "everyNMonths": "Se ejecuta el día {n} de cada {months} meses a las {time}"
@@ -139,18 +189,6 @@
   },
   "trigger": {
     "wakeEvent": "Cuando pasa algo",
-    "chooseApp": "¿Qué app debe activarla?",
-    "chooseEvent": "¿Qué debe activarla?",
-    "changeApp": "Cambiar app",
-    "noApps": "Conecta una app primero para que una rutina se active con eventos.",
-    "loadingEvents": "Cargando eventos…",
-    "noEvents": "Esta app todavía no tiene eventos con los que activarse.",
-    "pollHint": "Revisa cada pocos minutos",
-    "accountLabel": "Cuenta",
-    "detailsTitle": "Detalles",
-    "rawJsonLabel": "Configuración avanzada",
-    "rawJsonHint": "Escribe la configuración de este evento como JSON.",
-    "rawJsonInvalid": "Esto debe ser un JSON válido.",
     "status": {
       "active": "Activa",
       "pending": "Configurando…",
@@ -158,16 +196,43 @@
       "paused_revoked": "Acceso desactivado",
       "error": "Requiere atención"
     },
+    "statusUnknown": "Verificando el disparador…",
+    "waitingFirstEvent": "Activa. Esperando el primer evento.",
     "reconnect": "Reconectar",
     "statusDisconnectedHint": "La cuenta conectada se desconectó.",
     "statusRevokedHint": "Esta app se desactivó para este agente.",
     "rowSummary": "Se activa con un evento en {{app}}",
     "loadFailed": "No se pudieron cargar los activadores de eventos",
-    "connectApp": "Conectar una app"
+    "webhookRowSummary": "Se activa cuando llaman a su dirección de webhook"
   },
   "toasts": {
     "timezoneSet": "Zona horaria establecida en {{zone}}",
     "timezoneError": "No se pudo actualizar la zona horaria",
     "discardError": "No se pudo descartar el borrador"
+  },
+  "webhook": {
+    "createAddress": "Crear dirección de webhook",
+    "active": "Webhook activo",
+    "rotate": "Nueva clave",
+    "unsupportedTitle": "Actualización necesaria",
+    "unsupportedBody": "Crear una dirección de webhook necesita la última versión de Houston.",
+    "dialog": {
+      "title": "Tu dirección de webhook",
+      "subtitle": "Envía una solicitud a esta dirección para activar la rutina.",
+      "urlLabel": "Dirección web",
+      "secretLabel": "Clave secreta",
+      "warning": "Guarda la clave secreta ahora. No se volverá a mostrar.",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "copyFailed": "No se pudo copiar",
+      "done": "Listo",
+      "close": "Cerrar"
+    },
+    "rotateConfirm": {
+      "title": "¿Crear una nueva clave?",
+      "body": "Esto crea una nueva clave secreta y desactiva la anterior. Todo lo que use la clave anterior dejará de funcionar hasta que lo actualices.",
+      "confirm": "Crear nueva clave",
+      "cancel": "Cancelar"
+    }
   }
 }

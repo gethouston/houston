@@ -37,6 +37,7 @@ import { handlePortableStore } from "./portable-store";
 import { handleRoutineRuns } from "./routine-runs";
 import { handleSkills } from "./skills";
 import { handleSkillsRemote } from "./skills-remote";
+import { handleTriggerStatus } from "./trigger-status";
 
 // The deps bag + authz helpers moved to agent-authz.ts (shared with
 // routine-runs.ts); re-exported so existing importers keep working.
@@ -644,6 +645,22 @@ export async function handleAgents(
         emit,
         routineActor,
         actingAuthor ?? undefined,
+        deps.triggersEnabled ?? false,
+      )
+    )
+      return true;
+    // Per-routine trigger health. On a deployment without a trigger backend this
+    // reports every trigger-bound routine as a hard error (it can never wake);
+    // where triggers CAN fire it steps aside for the real backend.
+    if (
+      await handleTriggerStatus(
+        deps.vfs,
+        paths,
+        ctx,
+        method,
+        rest,
+        res,
+        deps.triggersEnabled ?? false,
       )
     )
       return true;

@@ -5,6 +5,7 @@ import {
   advanceApproval,
   advanceConnect,
   advanceCredential,
+  advanceCustom,
   advanceSignin,
   answerWithOption,
   answerWithText,
@@ -39,6 +40,7 @@ type ConnectStep = Extract<ChatInteractionStep, { kind: "connect" }>;
 type SigninStep = Extract<ChatInteractionStep, { kind: "signin" }>;
 type ApprovalStep = Extract<ChatInteractionStep, { kind: "approval" }>;
 type CredentialStep = Extract<ChatInteractionStep, { kind: "credential" }>;
+type CustomStep = Extract<ChatInteractionStep, { kind: "custom" }>;
 
 /** The chrome the shared {@link InteractionModal} needs, handed to a
  *  signin/connect body so it renders the SAME modal shell as a question step:
@@ -52,9 +54,9 @@ export interface StepChrome {
 }
 
 export interface ChatInteractionCardProps {
-  /** The ordered interaction steps: question steps, then at most one signin
-   *  step, then connect steps, then credential steps, then approval steps
-   *  (>=1 total). */
+  /** The ordered interaction steps (>=1 total). Any mix of step kinds in any
+   *  order — the stepper walks them front to back exactly as given; no kind is
+   *  required to precede another. */
   steps: ChatInteractionStep[];
   /** Receives every question answer, in step order, once the last step is done. */
   onComplete: (answers: ChatInteractionAnswer[]) => void;
@@ -93,6 +95,16 @@ export interface ChatInteractionCardProps {
   renderCredential: (
     step: CredentialStep,
     api: StepFooterApi & StepChrome & { onSaved: () => void },
+  ) => ReactNode;
+  /** Renders a custom step as its OWN {@link InteractionModal} (see
+   *  {@link renderConnect}): a fully app-supplied body wired with the {@link
+   *  StepChrome} this stepper hands it. ui/chat owns none of the content — the
+   *  renderer owns the modal's title, body, and footer. Call `api.onDone` to
+   *  advance past the step. Optional; when a custom step is present but no
+   *  `renderCustom` is supplied, the card renders defensively nothing. */
+  renderCustom?: (
+    step: CustomStep,
+    api: StepFooterApi & StepChrome & { onDone: () => void },
   ) => ReactNode;
   /** Dismisses the WHOLE interaction sequence. When omitted, the header shows no
    *  dismiss (X) button. */
@@ -142,8 +154,8 @@ export interface StepFooterApi {
 
 /**
  * The in-chat surface shown when the agent pauses to gather what it needs before
- * continuing: a stepper that walks the user through ONE step at a time, in order
- * (questions, then signin, then connects, then approvals), each rendered in the
+ * continuing: a stepper that walks the user through ONE step at a time, front to
+ * back in the order the steps are given (any mix of kinds), each rendered in the
  * shared {@link InteractionModal} shell. The shell owns the chrome (surface,
  * header row, footer row); the stepper decides what fills the title / body /
  * footer for the current step.
@@ -171,6 +183,7 @@ export function ChatInteractionCard({
   renderSignin,
   renderApproval,
   renderCredential,
+  renderCustom,
   onDismiss,
   disabled = false,
   labels,
@@ -271,6 +284,10 @@ export function ChatInteractionCard({
     apply(advanceCredential(state, steps));
   }, [apply, state, steps]);
 
+  const onDone = useCallback(() => {
+    apply(advanceCustom(state, steps));
+  }, [apply, state, steps]);
+
   if (!step) return null;
 
   // The pager chevrons ARE the step navigation for every kind: back walks to the
@@ -308,6 +325,14 @@ export function ChatInteractionCard({
   }
   if (step.kind === "credential") {
     return renderCredential(step, { ...footerApi, ...chrome, onSaved });
+  }
+  if (step.kind === "custom") {
+    // ui/chat owns none of the content; a missing renderCustom means the app
+    // shipped a custom step without wiring its renderer, so render nothing
+    // rather than crash.
+    return renderCustom
+      ? renderCustom(step, { ...footerApi, ...chrome, onDone })
+      : null;
   }
 
   const optionsPresent = hasSelectableOptions(step.options);

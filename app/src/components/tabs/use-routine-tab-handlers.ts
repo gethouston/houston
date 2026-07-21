@@ -1,9 +1,7 @@
-import type { RoutineEditPatch } from "@houston-ai/routines";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useCancelRoutineRun,
-  useCreateRoutine,
   useDeleteRoutine,
   useRunRoutineNow,
   useUpdateActivity,
@@ -13,55 +11,23 @@ import { useTimezonePreference } from "../../hooks/use-timezone-preference";
 import { genericErrorDescription } from "../../lib/error-toast";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
-import { newRoutineInput, routineUpdateFromPatch } from "./routines-tab-model";
 
 /**
- * The Automations tab's mutation wiring (create/save/delete/run/timezone).
- * Extracted so `routines-tab.tsx` stays lean. `closeNewDraft` closes the
- * inline "Manually" editor once a create succeeds.
+ * The Automations tab's mutation wiring (toggle/delete/run/discard/timezone).
+ * Extracted so `routines-tab.tsx` stays lean. Routine creation and editing are
+ * chat-first now (the stepper + setup chat), so there is no manual-editor save.
  */
-export function useRoutineTabHandlers(agent: Agent, closeNewDraft: () => void) {
+export function useRoutineTabHandlers(agent: Agent) {
   const { t } = useTranslation("routines");
   const path = agent.folderPath;
   const tz = useTimezonePreference();
   const addToast = useUIStore((s) => s.addToast);
 
-  const createRoutine = useCreateRoutine(path);
   const updateRoutine = useUpdateRoutine(path);
   const deleteRoutine = useDeleteRoutine(path);
   const updateActivity = useUpdateActivity(path);
   const runNow = useRunRoutineNow(path);
   const cancelRun = useCancelRoutineRun(path);
-
-  // Save the LOCAL "Manually" editor. Nothing is written until this resolves.
-  const handleNewDraftSave = useCallback(
-    async (patch: RoutineEditPatch) => {
-      try {
-        await createRoutine.mutateAsync(newRoutineInput(patch));
-        closeNewDraft();
-        return true;
-      } catch {
-        return false; // tauriRoutines.create routes through call(), already toasted
-      }
-    },
-    [createRoutine, closeNewDraft],
-  );
-
-  // update toasts via call(); the catch returns false to keep the editor open.
-  const handleSaveRoutine = useCallback(
-    async (routineId: string, patch: RoutineEditPatch) => {
-      try {
-        await updateRoutine.mutateAsync({
-          routineId,
-          updates: routineUpdateFromPatch(patch),
-        });
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    [updateRoutine],
-  );
 
   const handleDiscardDraft = useCallback(
     async (activityId: string) => {
@@ -105,8 +71,6 @@ export function useRoutineTabHandlers(agent: Agent, closeNewDraft: () => void) {
     deleteRoutine,
     runNow,
     cancelRun,
-    handleNewDraftSave,
-    handleSaveRoutine,
     handleDiscardDraft,
     handleTimezoneChange,
   };

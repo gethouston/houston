@@ -1,16 +1,22 @@
 /**
- * RoutineRow — a single full-width row in the routines list.
+ * RoutineRow — one compact, selectable row in the Scheduled list pane.
  *
- * Visual: hairline-divided rows, generous height, state as a leading icon
- * (clock waiting, pulsing bolt running — see RoutineRowStatus). Switch + a
- * three-dot quick-actions menu (run/stop, edit manually / edit with AI, delete)
- * on the right. Rows are NOT clickable — the menu is the only way in, so a stray
- * click never triggers navigation. "Edit manually" expands the RoutineRowEdit
- * panel right here in the list; "Edit with AI" opens the routine's chat instead.
- * The row decides which run control to offer the menu based on lastRun's status.
+ * The list/chat split makes the model visible: each routine IS a chat,
+ * and the row is the way into it. The whole row is the click target (a
+ * `role="option"` element that opens the task's chat on click/Enter/Space and
+ * carries an unmistakable selected state), rhyming with the Activity list rows.
+ * Interactive controls (the switch, the kebab, the inline schedule pencil, a
+ * trigger's Reconnect) stop click/keydown from bubbling so operating them never
+ * opens the chat.
+ *
+ * One aligned grid per row: the identity icon (clock for a schedule, the app's
+ * logo for a trigger via `leadingIcon`, run state as a ring) | a min-w-0 title
+ * over ONE muted summary line (the schedule summary — editable inline — or a
+ * trigger's status chip + event, never a third line) | a compact trailing slot
+ * (the next-run relative time, the enable switch, the kebab).
  */
-import { cn, Switch } from "@houston-ai/core";
-import { type ReactNode, useState } from "react";
+import { cn } from "@houston-ai/core";
+import type { ReactNode } from "react";
 import {
   DEFAULT_NEXT_FIRE_LABELS,
   DEFAULT_ROW_LABELS,
@@ -23,19 +29,11 @@ import {
   type ScheduleSummaryLabels,
   type TriggerLabels,
 } from "./labels";
-import { RoutineRowEdit } from "./routine-row-edit";
-import { RoutineRowMenu } from "./routine-row-menu";
-import { RoutineRowMeta } from "./routine-row-meta";
+import { describeNextFire, nextFire } from "./next-fire";
+import { RoutineRowControls } from "./routine-row-controls";
 import { RoutineRowStatus } from "./routine-row-status";
-import { cronSummary } from "./schedule-summary";
-import { TriggerStatusBadge } from "./trigger-status-badge";
-import type {
-  RenderTriggerEditor,
-  Routine,
-  RoutineEditPatch,
-  RoutineRun,
-  TriggerStatusItem,
-} from "./types";
+import { RoutineRowSummary } from "./routine-row-summary";
+import type { Routine, RoutineRun, TriggerStatusItem } from "./types";
 import { useNow } from "./use-now";
 
 export interface RoutineRowProps {
@@ -43,37 +41,36 @@ export interface RoutineRowProps {
   lastRun?: RoutineRun;
   /** The account-wide IANA timezone every routine fires in. */
   accountTimezone: string;
+  /** Marks the row whose chat is open in the right pane (selected state). */
+  selected?: boolean;
+  /** Open the routine's chat — fired by a row click. */
+  onOpenChat?: () => void;
   onToggle?: (enabled: boolean) => void;
-  /** Save the inline edit panel (name/instruction + wake mechanism). Resolves
-   *  true on success (the panel closes) or false (it stays open for a retry). */
-  onSave?: (patch: RoutineEditPatch) => Promise<boolean>;
-  /** Open the routine's chat to change it by asking instead. */
-  onEditWithAi?: () => void;
-  /** Delete the routine — the row confirms first. */
+  /** Delete the routine — the menu confirms first. */
   onDelete?: () => void;
   /** Fire the routine immediately — offered only when no run is in flight. */
   onRunNow?: () => void;
   /** Stop the in-flight run — offered only while one is running. */
   onStopRun?: () => void;
-  /** Icon for the menu's "Edit with AI" entry — app supplies the brand mark. */
-  aiIcon?: ReactNode;
+  /** The leading IDENTITY icon slot: the triggering app's logo for a trigger
+   *  routine (`ui/` cannot resolve logos); absent or `null` falls back to a
+   *  clock for a schedule, a bell for a trigger. */
+  leadingIcon?: (routine: Routine) => ReactNode;
+  /** Edit a schedule routine's cron inline. Supplied + a schedule present turns
+   *  the summary line into an always-visible edit affordance. */
+  onScheduleChange?: (routineId: string, cron: string) => void;
   /** Localized row labels. English defaults so standalone callers still work. */
   labels?: RoutineRowLabels;
+  /** Schedule-builder labels, threaded to the inline schedule editor. */
+  scheduleLabels?: ScheduleLabels;
   /** Schedule-summary + next-run labels, threaded to the cron/time formatters. */
   scheduleSummaryLabels?: ScheduleSummaryLabels;
   nextFireLabels?: NextFireLabels;
-  /** Full schedule-builder labels, for the inline edit panel's picker. */
-  scheduleLabels?: ScheduleLabels;
-  /** Trigger (event-driven) copy for the picker and status badge. */
+  /** Trigger (event-driven) copy for the row summary and status badge. */
   triggerLabels?: TriggerLabels;
-  /** Whether the edit panel offers the event wake — true only where the
-   *  deployment supports event triggers. */
-  allowEventWake?: boolean;
-  /** App-wired trigger editor injected into the inline edit panel's event side. */
-  renderTriggerEditor?: RenderTriggerEditor;
   /** Live provisioning status for an event-driven routine (badge + reconnect). */
   triggerStatus?: TriggerStatusItem;
-  /** Human summary of a trigger routine's event, shown instead of the cron line. */
+  /** Human summary of a trigger routine's event, shown after the status chip. */
   triggerSummary?: string;
   /** Reconnect the disconnected account behind a `paused_disconnected` routine. */
   onReconnectTrigger?: () => void;
@@ -85,147 +82,116 @@ export function RoutineRow({
   routine,
   lastRun,
   accountTimezone,
+  selected = false,
+  onOpenChat,
   onToggle,
-  onSave,
-  onEditWithAi,
   onDelete,
   onRunNow,
   onStopRun,
-  aiIcon,
+  leadingIcon,
+  onScheduleChange,
   labels = DEFAULT_ROW_LABELS,
+  scheduleLabels = DEFAULT_SCHEDULE_LABELS,
   scheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
-  scheduleLabels = DEFAULT_SCHEDULE_LABELS,
   triggerLabels = DEFAULT_TRIGGER_LABELS,
-  allowEventWake = false,
-  renderTriggerEditor,
   triggerStatus,
   triggerSummary,
   onReconnectTrigger,
   locale = "en-US",
 }: RoutineRowProps) {
   const now = useNow(60_000);
-  const [expanded, setExpanded] = useState(false);
   const isRunning = lastRun?.status === "running";
   const isPaused = isRunning && !!lastRun?.paused_until;
-
-  // Offer exactly one run control: Stop while a run is in flight, otherwise
-  // Run now. The grid passes both handlers; the row gates which is live.
-  const runNow = !isRunning ? onRunNow : undefined;
+  const identityIcon = leadingIcon?.(routine);
+  // Offer exactly one run control: Stop while running, else Run now.
+  const runNow = isRunning ? undefined : onRunNow;
   const stopRun = isRunning ? onStopRun : undefined;
-  const hasMenu = runNow || stopRun || onSave || onEditWithAi || onDelete;
+
+  // The compact trailing next-run time is the pure relative string; the chat
+  // header carries the absolute time and last-run detail.
+  const next =
+    routine.enabled && routine.schedule
+      ? nextFire(routine.schedule, accountTimezone, now)
+      : null;
+  const nextRelative = next
+    ? describeNextFire(next, accountTimezone, now, nextFireLabels, locale)
+        .relative
+    : null;
 
   return (
-    // Catalog-grammar row: transparent at rest, the `hover` fill sweeping the
-    // full row; while the inline editor is open the row + panel share one
-    // `chip` card so they read as a single surface.
     <div
       data-testid="routine-row"
+      role="option"
+      aria-selected={selected}
+      aria-label={onOpenChat ? labels.openChat : undefined}
+      tabIndex={onOpenChat ? 0 : undefined}
+      onClick={() => onOpenChat?.()}
+      onKeyDown={(e) => {
+        // Only the row itself opens the chat on Enter/Space; key events from a
+        // focused inner control bubble here but carry a different target.
+        if (
+          onOpenChat &&
+          e.target === e.currentTarget &&
+          (e.key === "Enter" || e.key === " ")
+        ) {
+          e.preventDefault();
+          onOpenChat();
+        }
+      }}
       className={cn(
-        "rounded-xl transition-colors",
-        expanded ? "bg-chip" : "hover:bg-hover",
-        !routine.enabled && !expanded && "opacity-55 hover:opacity-100",
+        "flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors",
+        onOpenChat &&
+          "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-focus",
+        selected
+          ? "border-transparent bg-hover shadow-sm"
+          : "border-line bg-card hover:bg-hover/40",
+        !routine.enabled && !selected && "opacity-60",
       )}
     >
-      <div className="flex items-center gap-3 px-3 py-2.5">
-        {/* Leading state icon — clock while waiting, pulsing bolt mid-run,
-            amber pause while a run sleeps on a usage-limit window. */}
-        <RoutineRowStatus
+      {/* Leading identity icon (clock / app logo), run state as a ring. */}
+      <RoutineRowStatus
+        routine={routine}
+        lastRun={lastRun}
+        isPaused={isPaused}
+        identityIcon={identityIcon}
+      />
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-medium leading-tight text-ink">
+          {routine.name || labels.untitled}
+        </p>
+        <RoutineRowSummary
           routine={routine}
           lastRun={lastRun}
-          isPaused={isPaused}
-        />
-
-        {/* Title + meta column */}
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-ink truncate leading-tight">
-            {routine.name || labels.untitled}
-          </p>
-          <p className="text-xs text-ink-muted truncate mt-0.5">
-            {routine.trigger
-              ? (triggerSummary ?? triggerLabels.wakeEvent)
-              : cronSummary(
-                  routine.schedule ?? "",
-                  scheduleSummaryLabels,
-                  locale,
-                )}
-          </p>
-          {routine.trigger && triggerStatus && (
-            <TriggerStatusBadge
-              status={triggerStatus}
-              onReconnect={onReconnectTrigger}
-              labels={triggerLabels}
-              className="mt-1"
-            />
-          )}
-        </div>
-
-        {/* Right meta column: next run + last run */}
-        <RoutineRowMeta
-          routine={routine}
-          lastRun={lastRun}
-          accountTimezone={accountTimezone}
-          now={now}
-          isPaused={isPaused}
-          labels={labels}
-          nextFireLabels={nextFireLabels}
-          locale={locale}
-        />
-
-        {/* Trailing controls */}
-        {(onToggle || hasMenu) && (
-          <div className="shrink-0 flex items-center gap-1">
-            {onToggle && (
-              <Switch
-                checked={routine.enabled}
-                onCheckedChange={(checked) => onToggle(checked)}
-                aria-label={
-                  routine.enabled ? labels.pauseRoutine : labels.resumeRoutine
-                }
-              />
-            )}
-            {hasMenu && (
-              <RoutineRowMenu
-                name={routine.name || labels.untitled}
-                onRunNow={runNow}
-                onStopRun={stopRun}
-                onEditManually={onSave ? () => setExpanded(true) : undefined}
-                onEditWithAi={onEditWithAi}
-                onDelete={onDelete}
-                labels={labels}
-                aiIcon={aiIcon}
-              />
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Inline edit panel — mounted only while open, so cancel + reopen starts
-          fresh from the routine's current values. */}
-      {expanded && onSave && (
-        <RoutineRowEdit
-          initial={{
-            name: routine.name,
-            prompt: routine.prompt,
-            schedule: routine.schedule,
-            trigger: routine.trigger ?? null,
-          }}
-          onSave={async (patch) => {
-            const ok = (await onSave?.(patch)) ?? false;
-            if (ok) setExpanded(false);
-            return ok;
-          }}
-          onCancel={() => setExpanded(false)}
-          allowEventWake={allowEventWake}
-          renderTriggerEditor={renderTriggerEditor}
-          triggerStatus={triggerStatus}
-          onReconnectTrigger={onReconnectTrigger}
+          onScheduleChange={onScheduleChange}
           labels={labels}
           scheduleLabels={scheduleLabels}
+          scheduleSummaryLabels={scheduleSummaryLabels}
           triggerLabels={triggerLabels}
+          triggerStatus={triggerStatus}
+          triggerSummary={triggerSummary}
+          onReconnectTrigger={onReconnectTrigger}
           locale={locale}
         />
-      )}
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1">
+        {nextRelative && (
+          <span className="hidden whitespace-nowrap text-xs tabular-nums text-ink-muted sm:inline">
+            {nextRelative}
+          </span>
+        )}
+        <RoutineRowControls
+          name={routine.name || labels.untitled}
+          enabled={routine.enabled}
+          labels={labels}
+          onToggle={onToggle}
+          runNow={runNow}
+          stopRun={stopRun}
+          onDelete={onDelete}
+        />
+      </div>
     </div>
   );
 }

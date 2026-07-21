@@ -793,10 +793,15 @@ desktop keep the capability off until a Go-based story exists for them; the UI
 hides the event option wherever `triggers` is absent.
 
 **Domain shape (protocol, additive).** `RoutineTriggerBinding`
-(`packages/protocol/src/domain/routine.ts`): `{toolkit, trigger_slug,
-trigger_config, connected_account_id?}` — user intent only, no Composio instance
-ids in the doc. `Routine.trigger?` added, `Routine.schedule?` now optional;
-EXACTLY ONE of the two is set. `dueAt()` returns null when `schedule` is absent
+(`packages/protocol/src/domain/routine.ts`) is a **`kind`-discriminated union**,
+`ComposioTriggerBinding | WebhookTriggerBinding`. `kind` is OPTIONAL and ABSENT
+means Composio — `{toolkit, trigger_slug, trigger_config, connected_account_id?}`,
+user intent only, no Composio instance ids in the doc — so every routine written
+before webhook wakes existed deserializes unchanged (no migration).
+`kind: "webhook"` is the incoming-webhook binding, `{key_prefix?}` (display-only
+"wh_xxxxxxxx" label; the URL + secret are gateway-minted and NEVER live in routine
+data — see the webhook wake source below). `Routine.trigger?` added,
+`Routine.schedule?` now optional; EXACTLY ONE of the two is set. `dueAt()` returns null when `schedule` is absent
 (`packages/domain/src/schedule.ts`), so the cron scanner skips trigger routines
 by construction. `routineTriggerPrompt(routine, events)` (same file) frames the
 batch of events as UNTRUSTED third-party data (structured `<event>` delimiters +
@@ -820,51 +825,89 @@ ONE run per routine through the same `fireRoutineRun` / `RoutineFirer` as cron
 locks and returns `busy` so the redelivery re-fires. Always mounted — every local
 host has a turn bus, wired as `triggerLock` in `local/host.ts`.
 
-### Capability + status (served by the Go edge, not this host)
+### Capability + status (Go edge advertises; the TS host is honest about no-backend)
 
 - **Capability**: `triggers` reaches the UI from `/v1/capabilities` served by the
   **Go edge** on managed cloud. The TS host NEVER adds it — a pod/self-host/
   desktop stays byte-identical to the nominal profile (absent = off).
-- **trigger-types / trigger-status**: `GET /v1/integrations/composio/trigger-types
-  ?toolkit=` and `GET /v1/agents/:slug/trigger-status` are served by the **Go
-  edge**; the engine-client (`ui/engine-client`) `triggerTypes` /
-  `agentTriggerStatus` call those gateway routes. A pod/self-host serves neither —
-  outside managed cloud the UI never advertises triggers, so it never calls them.
+- **trigger-types**: `GET /v1/integrations/composio/trigger-types?toolkit=` is
+  served by the **Go edge**; engine-client `triggerTypes` calls it.
+- **trigger-status**: the **Go edge** serves the live Composio provisioning health
+  on managed cloud. Separately, THIS TS host serves `GET
+  /v1/agents/:agentId/trigger-status` as an HONEST no-backend answer
+  (`routes/trigger-status.ts`, wired in `routes/agents.ts` dispatch): on a
+  deployment that cannot fire triggers (`triggersEnabled === false` — desktop/
+  self-host) it returns `{items}` with one `{routine_id, status:"error", detail}`
+  per trigger-bound routine (detail: "Event triggers are not available on this
+  device…"), and `[]` when none. When triggers CAN fire it returns `false` (falls
+  through) so it never fabricates a status the real backend owns. This closed the
+  bug where a desktop trigger routine 404'd → null → the UI showed nothing.
+- **`triggersEnabled` (host deployment fact, NOT `capabilities.triggers`)**: a
+  boolean threaded `local/main.ts` (`HOUSTON_MANAGED_CLOUD==="1"`) →
+  `LocalHostOptions` → `ControlPlaneDeps`/`AgentRouteDeps`. Drives THREE things:
+  the trigger-status route above, the **routine write gate**, and the **product
+  prompt**. It is separate from the client-facing `capabilities.triggers` (which
+  the TS host never sets on itself) precisely so the write gate does NOT wrongly
+  reject trigger writes on managed-cloud pods, where triggers DO fire.
+- **Write gate** (`routes/agent-data.ts`): a routine POST/PATCH whose result
+  carries a `trigger` binding is rejected `400 {error:"Event triggers are not
+  available here. Give this automation a schedule instead."}` when
+  `triggersEnabled` is false. Schedules pass untouched; existing on-disk trigger
+  routines still LOAD and LIST (reads are ungated) — they just get the error
+  status above and can be PATCHed to a schedule to escape.
+- **Product prompt** (`houston-prompt.ts` + `houston-prompt-routines.ts`):
+  `houstonSystemPrompt({triggers})` advertises event wakes ONLY when triggers can
+  fire; the schedule-only variant tells the agent an event wake needs Houston
+  Cloud and to offer a schedule instead.
 
-### UI surfaces — the Automations tab (merged, no Reactions tab)
+### Webhook wake source (gateway ingress + one-time mint)
 
-Event-driven automations live in the ONE **Automations** tab (tab id stays
-`routines` — it's a persisted viewMode value; label en "Automations", es
-"Automatizaciones", pt "Automações") together with schedule-driven ones. The
-old Reactions tab was merged away: the schedule/event split is an engineering
-distinction, not a user distinction, so the tab set never varies by deployment
-and the wake mechanism is a choice INSIDE the editor. The domain model stays
-ONE `routines.json` list; the tab (`app/src/components/tabs/routines-tab.tsx`)
-renders it unfiltered, with per-row sentence summaries ("Runs every day at
-9:00" vs "Wakes on an event in Gmail"). The list sits on the shared catalog
-grammar (inventory v24/v25): flat hover-fill rows, Active / Paused sections
-with `CatalogSectionHeader` count chips, a pure empty state (title +
-description + one filled CTA).
+A `kind: "webhook"` binding wakes a routine whenever any external system POSTs to
+the routine's own minted URL. This is a **hosted-cloud-only backend**: the Go
+gateway owns the public ingress and the mint. `POST /v1/agents/:slug/routines/:id/
+webhook-key` returns a `WebhookKeyReveal` `{url, secret, key_prefix}` shown to the
+user EXACTLY once (revealed in `webhook-key-dialog.tsx`, held only in the chip's
+local state, never the query cache or routine data). Only `key_prefix` (the
+display-only "wh_xxxxxxxx" label) is stamped back onto the routine's binding so
+the UI can show a key exists; absent `key_prefix` = not minted yet. The gateway is
+the sole owner of ingress, verification, and mint — this TS host carries no
+webhook code. Full cross-repo contract: `cloud/docs/contracts/C9-triggers.md`.
 
-`RoutineRowEdit` owns the wake choice: a plain-language "When should this
-happen?" toggle ("On a schedule" / "When something happens in an app"),
-rendered only when `allowEventWake` (from `capabilities.triggers`) AND the
-app-injected trigger editor are present; otherwise it is schedule-only with no
-choice shown. An existing event routine opens on its event side; switching to
-schedule on save clears the trigger (`routineUpdateFromPatch` sends
-`trigger: null`, preserving the server's exactly-one invariant). `ui/` cannot
-reach app data, so the app injects the editor as a slot —
-`RoutineTriggerEditor` (`app/src/components/tabs/routine-trigger-editor.tsx`)
-owns the pick-an-app → pick-an-event → fill-the-details flow over
-`TriggerPicker` / `TriggerConfigForm` (the config form is generated from the
-trigger type's JSON-schema); usable apps are the agent's connections ∩ effective
-allowlist (`use-usable-toolkits`). The live `TriggerStatusBadge` renders above
-it; a `paused_disconnected` routine offers one-click reconnect. Creation:
-"With AI" (ONE setup-chat kickoff, `routine-chat-prompts.ts`, which offers the
-event wake only when `capabilities.triggers` is on) or "Manually" (inline
-draft card, starts on the schedule side). Setup chats all carry
-`ROUTINE_SETUP_AGENT_MODE`; the legacy `REACTION_SETUP_AGENT_MODE =
-"houston:reaction-setup"` sentinel is recognized forever (pre-merge chats are
-user data) but never written. Read queries: `useTriggerTypes` /
-trigger-status in `app/src/hooks/queries/use-triggers.ts`, gated on the
-`triggers` capability so a desktop build never fetches.
+### UI surfaces — the Routines tab (chat-first, one merged list)
+
+Schedule-driven and event-driven routines live in the ONE **Routines** tab (tab
+id stays `routines` — a persisted viewMode value; label en "Routines", es
+"Rutinas", pt "Rotinas").
+The schedule/event split is an engineering distinction, not a user one, so the tab
+set never varies by deployment and the wake mechanism is a choice made **while
+creating** a routine, not a form field on the row. The domain model stays ONE
+`routines.json` list; the tab (`app/src/components/tabs/routines-tab.tsx`) renders
+it via `@houston-ai/routines` `RoutinesGrid`, with per-row sentence summaries and
+Active / Paused sections. Each row is **chat-first**: clicking it opens the
+routine's setup chat in the shell-level mission panel (split view, via
+`useShellDetailPanel`); the row itself carries only an enable/disable toggle, a
+three-dot menu (Run now / Stop run, Delete), and — for a schedule routine — an
+inline schedule-edit popover (`ScheduleBuilder`). There is **no manual form
+editor and no Dialog wizard**; the deleted `RoutineRowEdit` / `RoutineTriggerEditor`
+/ `TriggerPicker` / `TriggerConfigForm` are gone.
+
+Creation runs through the scripted **in-chat intake**
+(`app/src/components/tabs/automation-intake/`) — cards that look exactly like the
+agent's real `ask_user` cards but run locally with zero model calls: a fork
+("from scratch" / "from a template"), then (only where `capabilities.triggers` is
+on) a wake question (schedule / app event / webhook). The app-event card
+(`intake-trigger-card.tsx`) has the user pick **only the APP** — usable apps are
+the agent's connections ∩ effective allowlist (`use-usable-toolkits`), and an
+unconnected app connects **inline** in the card (`connect-inline.tsx`). WHAT event
+in that app should wake it is decided later, in plain words, in the AI setup chat;
+the chosen app's event catalog is embedded into that chat's kickoff prompt
+(`routine-chat-handoff-wake.ts` `wakeSaveRule`, an internal `<event_catalog>` the
+agent copies a `slug` from verbatim). Skipping any intake question hands off to a
+full AI interview from scratch. The setup-chat kickoff is
+`routine-chat-prompts.ts` (offering the event wake only when triggers are on);
+setup chats carry `ROUTINE_SETUP_AGENT_MODE` and run as Coworker (`execute`). The
+live per-routine health block (`RoutineTriggerStatus` / `TriggerStatusBadge`)
+renders for every trigger-bound routine, offering one-click reconnect on a
+disconnected state. Read queries: `useTriggerTypes` / trigger-status in
+`app/src/hooks/queries/use-triggers.ts`, gated on the `triggers` capability so a
+desktop build never fetches the catalog.

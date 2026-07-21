@@ -16,17 +16,30 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 /**
- * A trigger binding is well-formed when it carries the two identifying strings
- * and an object config. `connected_account_id` is optional (pinned only when the
- * user has more than one account for the toolkit). Exported so the write path
- * (routes) rejects a malformed binding up front rather than persisting one that
- * `normalizeRoutines` would silently drop on the next read.
+ * A trigger binding is well-formed. Discriminated on `kind`:
+ *  - `"webhook"` — an incoming-webhook wake. Valid iff `key_prefix` is absent or
+ *    a string (display-only "wh_xxxxxxxx" label; the secret never lives here).
+ *    No Composio fields are required — the gateway mints the URL out of band.
+ *  - absent / `"composio"` — a Composio trigger. Valid iff it carries the two
+ *    identifying strings and an object config. `connected_account_id` is optional
+ *    (pinned only when the user has more than one account for the toolkit).
+ *
+ * A missing `kind` reads as Composio, so every pre-webhook binding validates
+ * unchanged (no migration). Exported so the write path (routes) rejects a
+ * malformed binding up front rather than persisting one that `normalizeRoutines`
+ * would silently drop on the next read.
  */
-export const isValidTriggerBinding = (v: unknown): boolean =>
-  isRecord(v) &&
-  typeof v.toolkit === "string" &&
-  typeof v.trigger_slug === "string" &&
-  isRecord(v.trigger_config);
+export const isValidTriggerBinding = (v: unknown): boolean => {
+  if (!isRecord(v)) return false;
+  if (v.kind === "webhook") {
+    return v.key_prefix === undefined || typeof v.key_prefix === "string";
+  }
+  return (
+    typeof v.toolkit === "string" &&
+    typeof v.trigger_slug === "string" &&
+    isRecord(v.trigger_config)
+  );
+};
 
 /**
  * Normalize raw routines: defaults per the schema; entries without identity or

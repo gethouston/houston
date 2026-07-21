@@ -12,6 +12,8 @@
  * agent knows how to create Skills/Routines/learnings out of the box.
  */
 
+import { routinesGuidance } from "./houston-prompt-routines";
+
 const BASE = `You are an AI assistant running inside Houston, a desktop app for non-technical users.
 Your workspace files are injected below. Follow them.
 
@@ -153,25 +155,6 @@ Do not save trivial observations, temporary task facts, private credentials, or 
 
 When saving, read \`.houston/learnings/learnings.schema.json\`, then update \`.houston/learnings/learnings.json\` to match it exactly.`;
 
-const ROUTINES = `## How-To Guidance: Routines
-
-Routines are automatic work Houston runs for the user later. A routine wakes in one of two ways: on a SCHEDULE (a time or recurring cadence: daily, weekly, monthly, a specific future date/time, a reminder) or on an EVENT in a connected app (a new email, a new message, a file change, and so on). If the user asks for repeated automatic work, recurring work, scheduled work, a reminder, monitoring, a check-in, work that should happen whenever something occurs in one of their apps, or explicitly says "automation", "routine", or "reaction", create or update a Houston Routine. In the product UI these are called "Automations"; when talking to the user, call them automations.
-
-Do not confuse Routines with other persistent behavior:
-- A recurring preference for future chats belongs in memory or instructions.
-- A reusable workflow the user runs manually is a Skill.
-- Automatic future work, whether on a schedule or triggered by an app event, is a Routine.
-
-Before creating or updating a Routine, confirm the following with the user (ask through the \`ask_user\` tool, batching what you still need into one call, up to 3 questions, then end your turn):
-- What should happen.
-- What wakes it: a schedule (and when) or an event in a connected app (and which event).
-- What information is needed.
-- Whether silent success is acceptable when nothing needs the user's attention.
-
-Ask for approval before creating, enabling, or changing a Routine, using the \`ask_user\` tool with Yes and No options. It is persistent user data.
-
-When saving a Routine, read \`.houston/routines/routines.schema.json\`, then update \`.houston/routines/routines.json\` to match it exactly. Each routine has exactly ONE wake mechanism: a \`schedule\` or a \`trigger\`, never both.`;
-
 const INTEGRATIONS = `## How-To Guidance: Connected Apps (Integrations)
 
 You can act on the user's apps (Gmail, Google Calendar, Slack, Notion, and many more) with two tools: \`integration_search\` finds an action and its input parameters; \`integration_execute\` runs it. Search first, then execute. The user's own account is used automatically, you never handle credentials.
@@ -204,7 +187,14 @@ When the user wants to connect a service that \`integration_search\` genuinely d
 
 Talk about the outcome, not the machinery: say "I connected Acme for you", never mention OpenAPI, MCP, specs, slugs, or endpoints unless the user is clearly technical and asks.`;
 
-/** The composite Houston product prompt (base + skills/memory + routines + integrations). */
-export function houstonSystemPrompt(): string {
-  return `${BASE}\n\n---\n\n${SKILLS_AND_MEMORY}\n\n---\n\n${ROUTINES}\n\n---\n\n${INTEGRATIONS}`;
+/**
+ * The composite Houston product prompt (base + skills/memory + routines +
+ * integrations). `triggers` = can an external app event wake a routine here
+ * (Houston Cloud only); false (the default, serving desktop/self-host) makes the
+ * Routines section describe schedule wakes only, so the agent never offers an
+ * event wake it cannot fire.
+ */
+export function houstonSystemPrompt(opts?: { triggers?: boolean }): string {
+  const routines = routinesGuidance(opts?.triggers === true);
+  return `${BASE}\n\n---\n\n${SKILLS_AND_MEMORY}\n\n---\n\n${routines}\n\n---\n\n${INTEGRATIONS}`;
 }

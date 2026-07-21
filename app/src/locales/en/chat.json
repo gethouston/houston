@@ -89,10 +89,10 @@
   "suggestReusable": {
     "title": "Save this for next time",
     "skillTitle": "Save as a Skill",
-    "routineTitle": "Save as an Automation",
+    "routineTitle": "Save as a routine",
     "learningTitle": "Remember this",
     "saveSkillMessage": "Save what I just did as a Skill called \"{{title}}\".",
-    "saveRoutineMessage": "Set this up as a recurring Automation called \"{{title}}\".",
+    "saveRoutineMessage": "Set this up as a recurring routine called \"{{title}}\".",
     "saveLearningMessage": "Remember \"{{title}}\" as a learning for next time."
   },
   "errors": {

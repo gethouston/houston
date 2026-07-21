@@ -3,12 +3,13 @@
  * and the top-level gating (loading spinner, empty state) and delegates the
  * populated view to RoutinesGridList, keeping each file under the size cap.
  *
- * The parent tab already labels this surface "Routines", so it skips a
- * redundant page header. Timezone is an account-wide setting (one zone for
- * every routine), so its picker lives on the list, not inside each editor.
- *
- * "New routine → Manually" opens a LOCAL, uncommitted draft editor as the first
- * card in the list (`newDraft`) — nothing is written until Save succeeds.
+ * The tab is chat-first: routines are created and changed by asking the agent,
+ * so the grid itself never edits a routine. This is the LEFT pane of the
+ * Scheduled split — a persistent, selectable list beside the selected task's
+ * chat. A row click opens (selects) that routine's chat; the grid otherwise
+ * only enables/disables, runs/stops, and deletes routines, plus lists
+ * in-construction draft chats. The pane header (title + create) and the
+ * timezone footer are app-owned chrome around this list.
  */
 import type { ReactNode } from "react";
 import type {
@@ -21,24 +22,11 @@ import type {
 import { DEFAULT_GRID_LABELS, type RoutinesGridLabels } from "./labels";
 import { RoutinesGridEmpty } from "./routines-grid-empty";
 import { RoutinesGridList } from "./routines-grid-list";
-import type {
-  RenderTriggerEditor,
-  Routine,
-  RoutineEditPatch,
-  RoutineRun,
-  TriggerStatusItem,
-} from "./types";
+import type { Routine, RoutineRun, TriggerStatusItem } from "./types";
 
 /** Minimal shape for a "routine in construction" chat — ui/ stays app-agnostic. */
 export interface RoutineDraft {
   id: string;
-}
-
-/** A local, uncommitted new-routine editor rendered as the list's first card.
- *  Nothing is written to disk until `onSave` resolves true. */
-export interface RoutinesGridNewDraft {
-  onSave: (patch: RoutineEditPatch) => Promise<boolean>;
-  onCancel: () => void;
 }
 
 export interface RoutinesGridProps {
@@ -48,27 +36,17 @@ export interface RoutinesGridProps {
   /** Chats still building a routine that hasn't been created yet — a person
    *  can have several going at once. Each shows as its own resumable row. */
   draftActivities?: RoutineDraft[];
-  /** When set, a local new-routine editor renders as the list's first card. */
-  newDraft?: RoutinesGridNewDraft | null;
   /** The account-wide IANA timezone every routine fires in. */
   accountTimezone: string;
-  /**
-   * Persist a new account-wide timezone. Changing it re-times every routine.
-   * Omit it (standalone callers) and the timezone bar is hidden.
-   */
-  onTimezoneChange?: (tz: string) => void;
+  /** The routine whose chat is open in the right pane — its row is selected. */
+  selectedRoutineId?: string | null;
+  /** The draft whose chat is open in the right pane — its row is selected. */
+  selectedDraftId?: string | null;
   loading?: boolean;
-  onCreateWithAi?: () => void;
-  onCreateManually?: () => void;
+  /** Open a routine's chat — fired by a row click and its "Open chat"
+   *  affordance. Changing a routine happens by asking the agent there. */
+  onOpenChat?: (routineId: string) => void;
   onToggle?: (routineId: string, enabled: boolean) => void;
-  /** Save a row's inline edit (name/instruction + wake mechanism). Resolves true
-   *  on success (the panel closes) or false (it stays open). */
-  onSaveRoutine?: (
-    routineId: string,
-    patch: RoutineEditPatch,
-  ) => Promise<boolean>;
-  /** Open a routine's chat to change it by asking instead. */
-  onEditWithAi?: (routineId: string) => void;
   onDeleteRoutine?: (routineId: string) => void;
   /** Fire a routine immediately. */
   onRunNow?: (routineId: string) => void;
@@ -76,9 +54,13 @@ export interface RoutinesGridProps {
   onStopRun?: (routineId: string, runId: string) => void;
   onResumeDraft?: (activityId: string) => void;
   onDiscardDraft?: (activityId: string) => void;
-  /** Icon for "With AI" / "Edit with AI" menu entries — app supplies the
-   *  brand mark (`ui/` stays brand-agnostic per the library boundary). */
-  aiIcon?: ReactNode;
+  /** The per-row leading IDENTITY icon slot: the app returns the triggering
+   *  app's logo for a trigger routine (`ui/` cannot resolve logos); absent or
+   *  `null` falls back to a clock for a schedule, a bell for a trigger. */
+  leadingIcon?: (routine: Routine) => ReactNode;
+  /** Edit a schedule routine's cron inline. When supplied, a schedule routine's
+   *  summary line becomes an always-visible edit affordance (popover builder). */
+  onScheduleChange?: (routineId: string, cron: string) => void;
   /**
    * Localized labels. English defaults so existing callers still work.
    * Consumers pass `t()` results for localization — `ui/` stays i18n-agnostic
@@ -87,17 +69,12 @@ export interface RoutinesGridProps {
   labels?: RoutinesGridLabels;
   /** Row-level labels + schedule/next-run formatter labels, threaded to rows. */
   rowLabels?: RoutineRowLabels;
+  /** Schedule-builder labels, threaded to the inline schedule editor in a row. */
+  scheduleLabels?: ScheduleLabels;
   scheduleSummaryLabels?: ScheduleSummaryLabels;
   nextFireLabels?: NextFireLabels;
-  /** Full schedule-builder labels, for each row's inline edit panel. */
-  scheduleLabels?: ScheduleLabels;
-  /** Trigger (event-driven) copy for the picker and status badge. */
+  /** Trigger (event-driven) copy for the row summary and status badge. */
   triggerLabels?: TriggerLabels;
-  /** Whether editors offer the event wake ("when something happens in an app").
-   *  True only where the deployment supports event triggers. */
-  allowEventWake?: boolean;
-  /** App-wired trigger editor, injected into every row's + the new-draft editor. */
-  renderTriggerEditor?: RenderTriggerEditor;
   /** Live provisioning status per event-driven routine, keyed by routine id. */
   triggerStatuses?: Record<string, TriggerStatusItem>;
   /** Human event summary per trigger routine (shown instead of the cron line). */
@@ -106,18 +83,17 @@ export interface RoutinesGridProps {
   onReconnectTrigger?: (routineId: string) => void;
   /** BCP-47 locale for day names + time formatting in row summaries. */
   locale?: string;
+  /** Primary create action shown inside the empty state (the app moves its
+   *  "New routine" button here when the list is empty). */
+  emptyAction?: ReactNode;
 }
 
 export function RoutinesGrid(props: RoutinesGridProps) {
   const {
     routines,
     draftActivities = [],
-    newDraft,
     loading,
     labels = DEFAULT_GRID_LABELS,
-    aiIcon,
-    onCreateWithAi,
-    onCreateManually,
   } = props;
 
   // Sort: enabled first, then alphabetical.
@@ -134,17 +110,9 @@ export function RoutinesGrid(props: RoutinesGridProps) {
     );
   }
 
-  // Empty state only when there's genuinely nothing to show. An open new-routine
-  // editor (newDraft) keeps the populated view so the editor card can render.
-  if (sorted.length === 0 && draftActivities.length === 0 && !newDraft) {
-    return (
-      <RoutinesGridEmpty
-        labels={labels}
-        aiIcon={aiIcon}
-        onCreateWithAi={onCreateWithAi}
-        onCreateManually={onCreateManually}
-      />
-    );
+  // Empty state only when there's genuinely nothing to show.
+  if (sorted.length === 0 && draftActivities.length === 0) {
+    return <RoutinesGridEmpty labels={labels} action={props.emptyAction} />;
   }
 
   return <RoutinesGridList {...props} sorted={sorted} />;

@@ -45,6 +45,7 @@ export type {
   TriggerStatusItem,
   TriggerType,
   UsageRow,
+  WebhookKeyReveal,
 } from "../../../../ui/engine-client/src/types";
 
 export * from "./cp/agent-color";

@@ -1,71 +1,23 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
-  applyRoutineUpdate,
-  canonicalProviderId,
-  createRoutine,
-  getPreference,
-  isValidTriggerBinding,
   loadConfig,
   loadLearnings,
   loadRoutineRuns,
-  loadRoutines,
-  removeById,
   saveConfig,
   saveLearnings,
-  saveRoutines,
-  upsertById,
-  validateSchedule,
 } from "@houston/domain";
-import type {
-  ActivityContributor,
-  HoustonEvent,
-  NewRoutine,
-} from "@houston/protocol";
+import type { ActivityContributor, HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
-import { hostProvider } from "../providers";
 import type { Vfs } from "../vfs";
 import { handleActivitiesData } from "./agent-data-activities";
+import { handleRoutinesData } from "./agent-data-routines";
 import { json, readJson } from "./http";
 
 // The cloud-layout root, kept as a convenience for cloud tests + callers that
 // don't carry a WorkspacePaths instance. Production handlers use the injected
 // `paths` so the local profile gets its own layout. See paths.ts.
 export { workspaceRoot } from "../paths";
-
-/**
- * Reject a provider pin naming a provider this host has never heard of —
- * otherwise the typo saves and every fired run errors. Validated through the
- * SAME canonical mapping the fire path uses (routinePin), so a Rust-era alias
- * ("claude", "codex") that still lives in a migrated routines.json round-trips
- * through an edit without a spurious 400. Model ids are validated at dispatch
- * (the catalog is the runtime's).
- */
-const pinError = (body: Record<string, unknown>): string | null => {
-  if (typeof body.provider !== "string" || !body.provider) return null;
-  const canonical = canonicalProviderId(body.provider);
-  return canonical && hostProvider(canonical)
-    ? null
-    : `unknown provider: ${body.provider}`;
-};
-
-/**
- * A routine has EXACTLY ONE wake mechanism: a cron `schedule` or an event
- * `trigger`. Reject "both" or "neither" (normalizeRoutines drops such an entry
- * on the next read, which would silently lose the write) and a malformed trigger
- * binding, so the caller learns immediately. Returns the reason, else null.
- */
-const wakeMechanismError = (body: Record<string, unknown>): string | null => {
-  const hasSchedule = typeof body.schedule === "string" && body.schedule !== "";
-  const hasTrigger = body.trigger != null;
-  if (hasSchedule === hasTrigger) {
-    return "a routine needs exactly one of 'schedule' or 'trigger'";
-  }
-  if (hasTrigger && !isValidTriggerBinding(body.trigger)) {
-    return "invalid 'trigger' binding";
-  }
-  return null;
-};
 
 /** Each typed family's reactivity event — emitted after a successful mutation. */
 const FAMILY_EVENT: Record<string, (agentPath: string) => HoustonEvent> = {
@@ -107,6 +59,11 @@ export async function handleAgentData(
   // `createdBy` above). Null/absent off the gateway, keeping single-player
   // activity.json byte-identical.
   author?: ActivityContributor,
+  // Whether this deployment can fire event-driven routines (a trigger backend
+  // exists — Houston Cloud only). When false, a routine write carrying a
+  // `trigger` binding is rejected: it could never wake here (a schedule can).
+  // Reads still list existing trigger routines; the gate applies to writes only.
+  triggersEnabled = false,
 ): Promise<boolean> {
   const m = rest.match(
     /^(activities|routines|routine_runs|config|learnings)(?:\/([^/]+))?$/,
@@ -145,118 +102,20 @@ export async function handleAgentData(
   }
 
   if (family === "routines") {
-    if (method === "GET" && !itemId) {
-      json(res, 200, await loadRoutines(vfs, root));
+    if (
+      await handleRoutinesData(
+        vfs,
+        root,
+        ctx.workspace.id,
+        method,
+        itemId,
+        req,
+        res,
+        fireChange,
+        { triggersEnabled, nowIso, createdBy },
+      )
+    )
       return true;
-    }
-    if (method === "POST" && !itemId) {
-      const body = await readJson(req);
-      for (const field of ["name", "prompt"]) {
-        if (!body[field] || typeof body[field] !== "string") {
-          json(res, 400, { error: `missing '${field}'` });
-          return true;
-        }
-      }
-      // Exactly one wake mechanism (a cron schedule OR an event trigger).
-      const wakeErr = wakeMechanismError(body);
-      if (wakeErr) {
-        json(res, 400, { error: wakeErr });
-        return true;
-      }
-      // The checks above proved name/prompt are non-empty strings and exactly
-      // one wake mechanism is present.
-      const input = body as unknown as NewRoutine;
-      // Reject a bad cron NOW (schedule routines only) — otherwise the routine
-      // saves and silently never fires (the scheduler would skip it forever,
-      // with no signal to the user). Validate against the single account-wide
-      // zone (HOU-470): there is no per-routine timezone, so a stray
-      // body.timezone is not honored. Trigger routines have no cron to check.
-      if (typeof input.schedule === "string") {
-        const accountTz = await getPreference(
-          vfs,
-          ctx.workspace.id,
-          "timezone",
-        );
-        const scheduleErr = validateSchedule(input.schedule, accountTz);
-        if (scheduleErr) {
-          json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
-          return true;
-        }
-      }
-      const providerErr = pinError(body);
-      if (providerErr) {
-        json(res, 400, { error: providerErr });
-        return true;
-      }
-      const { items } = await loadRoutines(vfs, root);
-      const routine = createRoutine(
-        input,
-        crypto.randomUUID(),
-        nowIso,
-        createdBy,
-      );
-      await saveRoutines(vfs, root, upsertById(items, routine));
-      fireChange();
-      json(res, 201, routine);
-      return true;
-    }
-    if ((method === "PATCH" || method === "DELETE") && itemId) {
-      const { items } = await loadRoutines(vfs, root);
-      const current = items.find((r) => r.id === itemId);
-      if (!current) {
-        json(res, 404, { error: "routine not found" });
-        return true;
-      }
-      if (method === "PATCH") {
-        const update = await readJson(req);
-        // A PATCH may switch a routine to an event trigger; reject a malformed
-        // binding before it is persisted (normalizeRoutines would drop it).
-        if (update.trigger != null && !isValidTriggerBinding(update.trigger)) {
-          json(res, 400, { error: "invalid 'trigger' binding" });
-          return true;
-        }
-        const next = applyRoutineUpdate(current, update, nowIso, createdBy);
-        // The APPLIED result must still hold the exactly-one-wake invariant —
-        // e.g. `{trigger: null}` on a trigger routine clears its only wake.
-        // Persisting such a routine loses it silently: normalizeRoutines drops
-        // it from every read and the next save purges it from disk.
-        const nextWakeErr = wakeMechanismError(
-          next as unknown as Record<string, unknown>,
-        );
-        if (nextWakeErr) {
-          json(res, 400, { error: nextWakeErr });
-          return true;
-        }
-        // A PATCH may change the schedule; validate it against the account-wide
-        // zone (HOU-470: no per-routine timezone). A trigger routine (or a PATCH
-        // that switched to a trigger) has no cron to validate.
-        if (typeof next.schedule === "string") {
-          const accountTz = await getPreference(
-            vfs,
-            ctx.workspace.id,
-            "timezone",
-          );
-          const scheduleErr = validateSchedule(next.schedule, accountTz);
-          if (scheduleErr) {
-            json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
-            return true;
-          }
-        }
-        const providerErr = pinError(update);
-        if (providerErr) {
-          json(res, 400, { error: providerErr });
-          return true;
-        }
-        await saveRoutines(vfs, root, upsertById(items, next));
-        fireChange();
-        json(res, 200, next);
-      } else {
-        await saveRoutines(vfs, root, removeById(items, itemId).items);
-        fireChange();
-        json(res, 200, { ok: true });
-      }
-      return true;
-    }
   }
 
   if (family === "routine_runs" && method === "GET" && !itemId) {

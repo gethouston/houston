@@ -7,6 +7,7 @@ import {
   REQUEST_CONNECTION_TOOL_NAME,
 } from "./tools/integrations";
 import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
+import { SAVE_ROUTINE_TOOL_NAME } from "./tools/save-routine";
 import { SUGGEST_REUSABLE_TOOL_NAME } from "./tools/suggest-reusable";
 
 export type CodeExecutionMode = "local" | "remote" | "disabled";
@@ -14,6 +15,15 @@ export type CodeExecutionMode = "local" | "remote" | "disabled";
 export interface ToolSelectionInput {
   codeExecution: CodeExecutionMode;
   integrations: boolean;
+  /**
+   * Whether this runtime can reach its host with a sandbox token (the SAME
+   * reachability the integration tools need, but NOT gated on a Composio key —
+   * scheduled tasks work on every deployment). Adds `save_routine`, the
+   * merge-safe way to persist a scheduled task instead of writing routines.json.
+   * Optional: absent/false leaves the tool off (the agent falls back to nothing —
+   * it must never write routines.json wholesale), on where the host is reachable.
+   */
+  saveRoutine?: boolean;
 }
 
 export interface ToolSelection {
@@ -132,6 +142,11 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
       // (the plan allowlist) doesn't list it, so `planToolNames` filters it out;
       // and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES, so auto keeps it.
       SUGGEST_REUSABLE_TOOL_NAME,
+      // save_routine reaches execute AND auto (it never blocks the turn) but not
+      // plan (plan is read-only): PLAN_MODE_TOOL_NAMES omits it so planToolNames
+      // filters it out, and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto
+      // keeps it — the same reach as suggest_reusable.
+      ...(input.saveRoutine ? [SAVE_ROUTINE_TOOL_NAME] : []),
       ...executable,
       ...(input.integrations
         ? [...INTEGRATION_TOOL_NAMES, ...CUSTOM_INTEGRATION_TOOL_NAMES]
