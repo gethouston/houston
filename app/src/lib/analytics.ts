@@ -467,6 +467,24 @@ export const analytics = {
   },
 
   /**
+   * PostHog LLM-observability event, one per finished model turn. Bypasses
+   * the AnalyticsEventName/ALLOWED_PROPS whitelist deliberately: `$ai_*`
+   * names are PostHog's canonical LLM schema (the AI Usage dashboard reads
+   * them), and the payload is built EXCLUSIVELY by `buildAiGenerationProps`
+   * (app/src/lib/ai-generation.ts), whose input type structurally excludes
+   * prompt/response content — only model, tokens, latency, and cost leave
+   * the app.
+   */
+  trackAiGeneration: (props: Record<string, string | number | boolean>) => {
+    if (!KEY) return;
+    try {
+      posthog.capture("$ai_generation", props);
+    } catch {
+      // Analytics unavailable
+    }
+  },
+
+  /**
    * Tie the signed-in user's Firebase identity to their PostHog person.
    * Call on sign-in. Does two complementary things:
    *
