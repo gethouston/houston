@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@houston-ai/core": "workspace:*",
+    "@houston/agentstore-client": "workspace:*",
     "@houston/agentstore-contract": "workspace:*",
     "@houston/design-tokens": "workspace:*",
     "class-variance-authority": "0.7.1",
@@ -31,6 +32,7 @@
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
+    "jsdom": "29.1.1",
     "tailwindcss": "4.3.2",
     "typescript": "6.0.3",
     "vitest": "3.2.6"

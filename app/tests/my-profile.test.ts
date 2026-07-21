@@ -123,6 +123,61 @@ describe("resolveMyProfile — name precedence", () => {
   });
 });
 
+describe("resolveMyProfile — store creator profile face", () => {
+  it("defaults to no handle and unverified when there is no store profile", () => {
+    const me = resolveMyProfile({
+      userId: "u1",
+      email: "a@b.co",
+      metadata: {},
+      profile: null,
+    });
+    strictEqual(me.handle, null);
+    strictEqual(me.verified, false);
+  });
+
+  it("surfaces the handle and verification from the store profile", () => {
+    const me = resolveMyProfile({
+      userId: "u1",
+      email: "a@b.co",
+      metadata: {},
+      profile: null,
+      storeProfile: {
+        handle: "ana",
+        avatarUrl: null,
+        verified: true,
+      },
+    });
+    strictEqual(me.handle, "ana");
+    strictEqual(me.verified, true);
+  });
+
+  it("the store avatar wins over both the uploaded and provider photos", () => {
+    const me = resolveMyProfile({
+      userId: "u1",
+      email: "a@b.co",
+      metadata: { avatar_url: "https://google/photo.jpg" },
+      profile: { userId: "u1", name: "Ana", avatarUrl: "https://cdn/up.png" },
+      storeProfile: {
+        handle: "ana",
+        avatarUrl: "https://cdn/store.webp",
+        verified: false,
+      },
+    });
+    strictEqual(me.avatarUrl, "https://cdn/store.webp");
+  });
+
+  it("falls back through the prior avatar chain when the store avatar is null", () => {
+    const me = resolveMyProfile({
+      userId: "u1",
+      email: "a@b.co",
+      metadata: { avatar_url: "https://google/photo.jpg" },
+      profile: { userId: "u1", name: "Ana", avatarUrl: null },
+      storeProfile: { handle: "ana", avatarUrl: null, verified: false },
+    });
+    strictEqual(me.avatarUrl, "https://google/photo.jpg");
+  });
+});
+
 describe("avatarUrlFromProfiles — teammate row face resolution", () => {
   const profiles = new Map<string, UserProfile>([
     ["u1", { userId: "u1", name: "Ana", avatarUrl: "https://cdn/ana.png" }],

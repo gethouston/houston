@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import type { Capabilities } from "@houston/protocol";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { afterAll, beforeAll, expect, test, vi } from "vitest";
+import { version as HOST_VERSION } from "../package.json";
 import { SingleUserVerifier } from "./auth/verify";
 import { ProxyChannel, type RuntimeProxy } from "./channel/proxy";
 import { MemoryCredentialStore } from "./credentials/store";
@@ -647,6 +648,31 @@ test("/v1/version and /v1/capabilities are public and serve the v3 contract", as
   expect(caps.profile).toBe("cloud");
   expect(caps.codeExecution).toBe("remote-sandbox");
   expect(caps.providers).toEqual(["openai-codex"]);
+});
+
+test("/v1/version serves the package semver and the baked build SHA (null when unbaked)", async () => {
+  // Unset/empty BUILD_SHA both read as "not baked" → build is null, never "".
+  vi.stubEnv("BUILD_SHA", "");
+  try {
+    const bare = (await (await fetch(`${base}/v1/version`)).json()) as {
+      version: string;
+      build: string | null;
+    };
+    expect(bare.version).toBe(HOST_VERSION);
+    expect(bare.build).toBeNull();
+
+    // The engine-pod image bakes the git sha (engine-pod-image.yml); the env
+    // is read per request, so the stub is visible without a server restart.
+    vi.stubEnv("BUILD_SHA", "deadbeefcafe");
+    const baked = (await (await fetch(`${base}/v1/version`)).json()) as {
+      version: string;
+      build: string | null;
+    };
+    expect(baked.version).toBe(HOST_VERSION);
+    expect(baked.build).toBe("deadbeefcafe");
+  } finally {
+    vi.unstubAllEnvs();
+  }
 });
 
 test("SingleUserVerifier: the boot token resolves to the owner; anything else is 401", async () => {

@@ -1,5 +1,10 @@
+"use client";
+
 import { cn } from "@houston-ai/core";
 import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import type * as React from "react";
+import { resolveSearchTarget } from "@/lib/search-routing";
 
 export interface SearchFormProps {
   /** Prefill value (the current query on /explore). */
@@ -14,9 +19,10 @@ export interface SearchFormProps {
 }
 
 /**
- * A plain GET form that submits `?q=` to /explore. No client JS: it works with
- * the keyboard and without hydration, and every result URL stays shareable and
- * crawlable.
+ * The catalog search box. It degrades to a plain GET form to /explore (works with
+ * the keyboard and without hydration), and enhances with JS so a leading `@handle`
+ * jumps to that creator's page instead of a full-text search. Every result URL
+ * stays shareable and crawlable.
  */
 export function SearchForm({
   defaultValue,
@@ -25,10 +31,24 @@ export function SearchForm({
   className,
   size = "md",
 }: SearchFormProps) {
+  const router = useRouter();
   const large = size === "lg";
+
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    const value = new FormData(event.currentTarget).get("q");
+    if (typeof value !== "string") return;
+    event.preventDefault();
+    router.push(resolveSearchTarget(value));
+  }
+
   return (
     <search className={cn("relative block w-full", className)}>
-      <form action="/explore" method="get" className="relative w-full">
+      <form
+        action="/explore"
+        method="get"
+        onSubmit={onSubmit}
+        className="relative w-full"
+      >
         <label htmlFor="agent-search" className="sr-only">
           {label}
         </label>

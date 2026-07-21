@@ -1,5 +1,6 @@
 import type { AgentSettings } from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { analytics } from "../../lib/analytics";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriAgentSettings } from "../../lib/tauri";
 
@@ -75,6 +76,12 @@ export function useSetAgentAllowedModels(agentId: string) {
         qc.setQueryData<AgentSettings>(key, { ...prev, allowedModels });
       }
       return { prev };
+    },
+    onSuccess: (_data, allowedModels) => {
+      analytics.track("models_allowlist_updated", {
+        agent_id: agentId,
+        source: allowedModels === null ? "any" : "picked",
+      });
     },
     onError: (_err, _next, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);

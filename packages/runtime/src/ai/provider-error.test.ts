@@ -64,6 +64,33 @@ test("pi prompt-time 'No API key found' → unauthenticated / no_credentials (HO
   if (err.kind === "unauthenticated") expect(err.cause).toBe("no_credentials");
 });
 
+test("runtime 'No local model configured' → unauthenticated / no_credentials", () => {
+  // buildActiveCustomModel's guard, thrown from execTurn's resolveModel on a
+  // CACHED conversation whose custom endpoint was disconnected mid-chat. The
+  // typed classification is what routes the reconnect card (local-model
+  // dialog) + the undelivered-prompt auto-resume; `unknown` rendered only the
+  // generic error card.
+  const err = classifyProviderError({
+    provider: "openai-compatible",
+    model: "Jan-v3.5-4B-Q4_K_XL",
+    message:
+      "No local model configured. Set a base URL and model for the OpenAI-compatible provider.",
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("no_credentials");
+});
+
+test("runtime 'No provider connected' → unauthenticated / no_credentials", () => {
+  // resolveModel's connect guard — same cached-conversation path as above.
+  const err = classifyProviderError({
+    provider: "",
+    model: null,
+    message: "No provider connected. Connect an AI provider first.",
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("no_credentials");
+});
+
 test("pi prompt-time OAuth guard ('Authentication failed … Run /login') → unauthenticated / token_expired", () => {
   // pi's OAuth flavor of the same prompt-time guard.
   const err = classifyProviderError({

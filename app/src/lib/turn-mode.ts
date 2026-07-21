@@ -8,7 +8,10 @@
  * tools (ask_user, request_connection) so the agent finishes the task with
  * what it has instead of pausing to ask, then reports back. An UNPINNED turn
  * is always `execute`, so `plan`/`auto` only take effect on sends that forward
- * the pin as `modeOverride`.
+ * the pin as `modeOverride`. A pick while a turn is RUNNING additionally
+ * applies to that turn live (`tauriChat.setLiveTurnMode` — Claude Code's
+ * shift+tab semantics): the runtime's executing turn adopts it at its next
+ * tool decision.
  *
  * The user's last pick is remembered per-agent in `.houston/config` (composer
  * memory only — never synced to engine Settings), so unknown/legacy values on
@@ -25,22 +28,6 @@ export function normalizeTurnMode(value: unknown): TurnMode {
   if (value === "auto") return "auto";
   if (value === "execute") return "execute";
   return DEFAULT_TURN_MODE;
-}
-
-/**
- * Whether a Mode-pill pick deserves the "applies to your next message" note.
- * True only when a turn is running AND the pick actually changes the mode:
- * the in-flight turn keeps the mode it was sent with (the pin rides each send
- * as `modeOverride`), so a mid-turn change is real but deferred, and the user
- * needs to hear that. Re-picking the current mode changes nothing, and a pick
- * with no turn running applies immediately — neither warrants a note.
- */
-export function modeChangeAppliesNextTurn(
-  turnRunning: boolean,
-  current: TurnMode,
-  next: TurnMode,
-): boolean {
-  return turnRunning && next !== current;
 }
 
 /**

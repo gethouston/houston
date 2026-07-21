@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { providerAppearsConnected } from "../components/shell/provider-reconnect-state";
+import {
+  providerAppearsConnected,
+  providerIsAuthenticated,
+} from "../components/shell/provider-reconnect-state";
 import { useCopilotConnect } from "../components/shell/use-copilot-connect";
 import { newEngineActive } from "../lib/engine";
 import { osIsTauri } from "../lib/os-bridge";
@@ -95,7 +98,9 @@ export function useProviderConnections(): ProviderConnections {
   useEffect(() => {
     if (!pending) return;
     const status = statuses[pending.id];
-    if (status && providerAppearsConnected(status)) {
+    // Confirmed-only: an "unknown" probe (engine unreachable mid-poll) must
+    // not clear a pending connect as if it had completed.
+    if (status && providerIsAuthenticated(status)) {
       setPending(null);
     }
   }, [pending, statuses]);

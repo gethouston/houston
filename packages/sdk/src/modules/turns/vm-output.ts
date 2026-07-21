@@ -366,6 +366,21 @@ export class ConversationVmOutput implements FeedOutput {
     this.publish(agentPath, sessionKey, s);
   }
 
+  /**
+   * The server confirmed this conversation is idle. A VM still saying
+   * "running" is STALE — its stream died without a settle (external teardown
+   * keeps live state by design) — so clear the flag; a settled/idle VM is
+   * left untouched (the truth is already terminal, and re-publishing would
+   * churn subscribers for nothing).
+   */
+  confirmIdle(agentPath: string, sessionKey: string): void {
+    const s = this.state(agentPath, sessionKey);
+    if (s.sessionStatus !== "running") return;
+    s.sessionStatus = "idle";
+    s.streaming.clear();
+    this.publish(agentPath, sessionKey, s);
+  }
+
   /** Replace the conversation's queued-message list (the send queue's seam). */
   setQueued(
     agentPath: string,

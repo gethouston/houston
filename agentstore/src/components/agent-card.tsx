@@ -1,8 +1,10 @@
+import type { StoreAgentSummary } from "@houston/agentstore-client";
 import { Badge, cn } from "@houston-ai/core";
 import { Download } from "lucide-react";
 import Link from "next/link";
-import { type AgentSummary, toDisplayIcon } from "@/lib/store-api-types";
+import { toDisplayIcon } from "@/lib/store-api-types";
 import { AgentIcon } from "./agent-icon";
+import { CreatorChip } from "./creator-chip";
 
 const compactNumber = new Intl.NumberFormat("en", { notation: "compact" });
 
@@ -13,7 +15,7 @@ function labelFromSlug(slug: string): string {
 }
 
 export interface AgentCardProps {
-  agent: AgentSummary;
+  agent: StoreAgentSummary;
   /** Human category label; falls back to a prettified slug. */
   categoryLabel?: string;
 }
@@ -46,9 +48,7 @@ export function AgentCard({ agent, categoryLabel }: AgentCardProps) {
             <h3 className="truncate font-display text-base font-semibold text-card-foreground">
               {agent.name}
             </h3>
-            <p className="truncate text-sm text-muted-foreground">
-              By {agent.creator.displayName}
-            </p>
+            <CreatorChip creator={agent.creator} className="mt-0.5 text-sm" />
           </div>
         </div>
 

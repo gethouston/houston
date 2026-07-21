@@ -87,7 +87,7 @@
         "placeholder": "Responda ao seu agente...",
         "body": "Seu agente vai enviar um e-mail de verdade para você, para você vê-lo funcionar.",
         "skip": "Pular por enquanto",
-        "skipHint": "Você pode continuar no Houston depois da primeira mensagem."
+        "skipHint": "Algo deu errado? Você pode continuar no Houston e tentar de novo mais tarde."
       },
       "aiConnected": {
         "title": "Sua IA está conectada!",
@@ -107,7 +107,7 @@
         "cta": "Continuar"
       },
       "finished": {
-        "title": "Tudo pronto!",
+        "title": "Confira seu e-mail!",
         "body": "Seu assistente pessoal acabou de provar que pode agir por você, de verdade.",
         "readyTitle": "Tudo pronto!",
         "readyBody": "Seu assistente pessoal está pronto para trabalhar por você.",

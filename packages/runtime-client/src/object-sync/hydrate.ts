@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, posix, relative, sep } from "node:path";
-import type { ObjectStore } from "./object-store";
+import { type ObjectStore, ObjectTooLargeError } from "./object-store";
 
 /**
  * Durable engine state is materialized into a local cache, then synchronized
@@ -15,6 +16,18 @@ export type HydrateManifest = Map<string, string>; // rel path -> sha256
 export const DEFAULT_EXCLUDES = ["data/auth.json"];
 
 const sha256 = (buf: Buffer) => createHash("sha256").update(buf).digest("hex");
+
+/**
+ * Mirrors http-store's STREAM_UPLOAD_THRESHOLD_BYTES: the same files that are
+ * too big to buffer for upload are too big to buffer for hashing.
+ */
+const STREAM_HASH_THRESHOLD_BYTES = 16 * 1024 * 1024;
+
+async function streamSha256(abs: string): Promise<string> {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(abs)) hash.update(chunk as Buffer);
+  return hash.digest("hex");
+}
 
 const norm = (rel: string) => rel.split(sep).join("/");
 
@@ -91,14 +104,21 @@ export async function hydrate(
       try {
         const dest = join(destDir, ...rel.split("/"));
         await store.download(key, dest);
-        const buf = await readFile(dest);
-        total += buf.byteLength;
+        // Size from stat, hash streamed for large files: wake-hydrating a
+        // multi-GiB object must not buffer it in heap just to digest it.
+        const { size } = await stat(dest);
+        total += size;
         if (total > maxBytes) {
           throw new Error(
             `workspace exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB hydration limit`,
           );
         }
-        manifest.set(rel, sha256(buf));
+        manifest.set(
+          rel,
+          size >= STREAM_HASH_THRESHOLD_BYTES
+            ? await streamSha256(dest)
+            : sha256(await readFile(dest)),
+        );
       } catch (err) {
         if (!failed) {
           failed = true;
@@ -132,6 +152,13 @@ export interface SyncResult {
   deleted: string[];
   manifest: HydrateManifest;
   /**
+   * Files the store REJECTED as over its per-object cap (typed 413). They stay
+   * local-only: recorded in the manifest at their current hash so the pass
+   * completes and the upload is re-attempted only when the file changes —
+   * never as an every-tick retry of a deterministic verdict.
+   */
+  skipped: { key: string; reason: string }[];
+  /**
    * Total bytes of every synced (non-excluded) file — the size the NEXT
    * hydration must swallow. Callers compare it against their hydrate cap and
    * warn while the agent is writing, not when a later wake fails.
@@ -142,7 +169,9 @@ export interface SyncResult {
 /**
  * Upload new or changed files and remove previously observed objects whose
  * local files vanished. Errors propagate because a failed sync is data loss
- * that the owning lifecycle must surface or retry.
+ * that the owning lifecycle must surface or retry — except the store's typed
+ * over-cap rejection, which is deterministic for these exact bytes and is
+ * reported via `skipped` instead of blocking every other file's persistence.
  */
 export async function syncBack(
   store: ObjectStore,
@@ -153,19 +182,49 @@ export async function syncBack(
 ): Promise<SyncResult> {
   const excludes = opts.excludes ?? DEFAULT_EXCLUDES;
   const uploaded: string[] = [];
+  const skipped: { key: string; reason: string }[] = [];
   const nextManifest: HydrateManifest = new Map();
   let totalBytes = 0;
   for (const rel of await walkFiles(dir, dir)) {
     if (excluded(rel, excludes)) continue;
     const abs = join(dir, ...rel.split("/"));
-    const fileStat = await stat(abs);
-    if (!fileStat.isFile()) continue;
-    totalBytes += fileStat.size;
-    const hash = sha256(await readFile(abs));
+    // The agent keeps writing during a sync pass, so a walked file may vanish
+    // before it is read (runtime session files are rewritten constantly). A
+    // vanished file is indistinguishable from one deleted before the walk:
+    // leave it out of the next manifest and let the delete pass reconcile the
+    // store, instead of aborting the whole pass mid-upload.
+    let hash: string;
+    let size: number;
+    try {
+      const fileStat = await stat(abs);
+      if (!fileStat.isFile()) continue;
+      size = fileStat.size;
+      // Large files hash as a stream: reading a multi-GiB video into one heap
+      // Buffer would spike the host past its pod memory limit for a digest
+      // that only ever consumes 64 KiB at a time.
+      hash =
+        size >= STREAM_HASH_THRESHOLD_BYTES
+          ? await streamSha256(abs)
+          : sha256(await readFile(abs));
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw err;
+    }
+    totalBytes += size;
     nextManifest.set(rel, hash);
     if (manifest.get(rel) !== hash) {
-      await store.upload(abs, prefix ? posix.join(prefix, rel) : rel);
-      uploaded.push(rel);
+      try {
+        await store.upload(abs, prefix ? posix.join(prefix, rel) : rel);
+        uploaded.push(rel);
+      } catch (err) {
+        if (!(err instanceof ObjectTooLargeError)) throw err;
+        // Deterministic per-object verdict: the hash is already in
+        // nextManifest, so the skip is remembered and only a CHANGED file is
+        // re-attempted. The object simply stays pod-local (absent from the
+        // next hydration) — the cap's intended semantics, not data the pass
+        // was still going to write.
+        skipped.push({ key: rel, reason: err.message });
+      }
     }
   }
   const deleted: string[] = [];
@@ -175,5 +234,5 @@ export async function syncBack(
       deleted.push(rel);
     }
   }
-  return { uploaded, deleted, manifest: nextManifest, totalBytes };
+  return { uploaded, deleted, skipped, manifest: nextManifest, totalBytes };
 }

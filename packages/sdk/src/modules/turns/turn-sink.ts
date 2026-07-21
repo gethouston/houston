@@ -39,10 +39,9 @@ export class TurnSink {
   private sawRunning = false;
   private sawSync = false;
   private settling = false;
-  /** Turn mode: the send was accepted — gates resync turn-id adoption. */
+  /** Turn mode: the send was accepted — gates resync turn-id adoption, and is
+   *  the pre-settled poll's arming trigger. */
   private accepted = false;
-  /** Turn mode: a FRESH idle sync was seen — half the pre-settled poll trigger. */
-  private sawFreshIdleSync = false;
   /** The pre-settled poll timer, live only while armed (see `maybeArmPresettlePoll`). */
   private presettleTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -117,6 +116,22 @@ export class TurnSink {
     }
     switch (classifyFrame(this.turnId, ev.turnId)) {
       case "foreign":
+        // Narrow adoption for a stamped TERMINAL frame with no adopted id
+        // after our send was ACCEPTED: a turn that fails before executing
+        // (e.g. a pinned local model whose endpoint was disconnected) may
+        // reach us error-first on a server that doesn't echo the user
+        // message on that path. The one-turn-per-conversation gate makes it
+        // ours in that state — dropping it stranded the turn spinning
+        // forever with no error and no reconnect card. Same rationale as
+        // `classifyRunningSync`'s `adopt`.
+        if (
+          (ev.type === "error" || ev.type === "done") &&
+          this.accepted &&
+          this.turnId === undefined
+        ) {
+          this.turnId = ev.turnId;
+          break;
+        }
         return; // another turn's frame — never fold it into ours
       case "boundary":
         // A new turn owns the stream: OUR turn is over and its terminal frame
@@ -177,9 +192,14 @@ export class TurnSink {
       // we saw it and arm the pre-settled poll, which settles conclusively from
       // history if no stream evidence follows.
       if (this.o.mode === "observer") {
+        // Server-confirmed idle: reconcile any output whose state still says
+        // "running" — a stream torn down without a settle (client teardown)
+        // leaves the VM stale, and nothing else ever corrects it.
+        this.o.output.confirmIdle?.(this.o.agentPath, this.o.sessionKey);
         this.o.stop();
       } else {
-        this.sawFreshIdleSync = true;
+        // A fresh idle sync in turn mode: the turn may have completed before we
+        // attached. Reinforce the poll (already armed by an accepted send).
         this.maybeArmPresettlePoll();
       }
     } else if (this.o.mode === "turn" || this.sawRunning) {
@@ -187,7 +207,10 @@ export class TurnSink {
       // complete once a turn ends — settle from it, not from partial text.
       this.settleFromHistorySoon();
     } else {
-      this.o.stop(); // observer that never saw the turn run: nothing to settle
+      // Observer that never saw the turn run: nothing to settle, but the sync
+      // confirms the conversation is idle — reconcile stale state (as above).
+      this.o.output.confirmIdle?.(this.o.agentPath, this.o.sessionKey);
+      this.o.stop();
     }
   }
 
@@ -302,14 +325,23 @@ export class TurnSink {
   }
 
   /**
-   * Arm the pre-settled poll when BOTH triggers hold — a fresh idle sync was
-   * seen AND the send is accepted — and no evidence/settle already closed the
-   * question. Idempotent: a second call while armed is a no-op. Absent
-   * `presettledPollMs` (observer mode) disables the poll entirely.
+   * Arm the pre-settled poll once the send is ACCEPTED — the poll is the
+   * backstop that settles a turn whose terminal frame we never received on the
+   * stream. It used to also require a fresh idle sync, but that left a hole: a
+   * turn that fails INSTANTLY (fail-before-execute — a disconnected local
+   * model) has its terminal frame published and the replay buffer cleared
+   * before our subscription attaches, and a flaky SSE hop can then deliver NO
+   * frame at all — no sync, so the poll never armed and the turn spun until the
+   * ~6-minute reconnect budget gave up. Arming on acceptance alone closes that:
+   * the poll is CONCLUSIVE-ONLY (`presettleFromHistory` settles solely on a real
+   * reply for our turnId, or a guard-accepted trailing reply), so a turn that is
+   * genuinely still running finds no reply and simply re-arms — and a running
+   * sync cancels the poll outright (`markRunning`), so a normal turn never
+   * pays for it. Idempotent; disabled in observer mode (no `presettledPollMs`).
    */
   private maybeArmPresettlePoll(): void {
     if (this.o.presettledPollMs === undefined) return;
-    if (!this.accepted || !this.sawFreshIdleSync) return;
+    if (!this.accepted) return;
     if (this.sawRunning || this.settling || this.s.settled) return;
     if (this.presettleTimer !== undefined) return;
     this.presettleTimer = setTimeout(() => {

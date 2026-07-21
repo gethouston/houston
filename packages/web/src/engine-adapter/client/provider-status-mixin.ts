@@ -31,13 +31,20 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
         string,
         { configured?: boolean; activeModel?: string }
       >();
+      // "unauthenticated" is only ever a CONFIRMED answer from the engine. An
+      // unreachable engine (cold pod still waking after a relaunch/update, a
+      // network drop) reports "unknown" instead: fabricating "unauthenticated"
+      // flips every provider card to Connect and blocks the local-model tunnel
+      // auto-reconnect, for connections that are still registered server-side.
+      let reachable = false;
       try {
         const engine = this.ctx.providerEngine();
         if (engine) {
           for (const p of await engine.listProviders()) byId.set(p.id, p);
+          reachable = true;
         }
       } catch {
-        /* sandbox unreachable / no agent selected → all report not-connected */
+        /* engine unreachable → every card reports "unknown" below */
       }
       return names.map((name) => {
         const pid = toNewProvider(name);
@@ -45,7 +52,11 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
         return {
           provider: name,
           cliInstalled: true,
-          authState: p?.configured ? "authenticated" : "unauthenticated",
+          authState: reachable
+            ? p?.configured
+              ? "authenticated"
+              : "unauthenticated"
+            : "unknown",
           cliName: name,
           installSource: "managed",
           cliPath: null,

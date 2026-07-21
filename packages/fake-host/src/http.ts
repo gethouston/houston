@@ -2,7 +2,8 @@
 export const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
-  "Access-Control-Allow-Headers": "Authorization,Content-Type,Accept",
+  "Access-Control-Allow-Headers":
+    "Authorization,Content-Type,Accept,X-Houston-App-Version",
 };
 
 export function json(data: unknown, status = 200): Response {

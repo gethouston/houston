@@ -7,6 +7,11 @@
  * source of truth.
  */
 
+import type {
+  StoreAgentDetail,
+  StoreAgentSummary,
+} from "@houston/agentstore-client";
+
 export const PROTOCOL_VERSION = 1 as const;
 
 export type EnvelopeKind = "event" | "req" | "res" | "ping" | "pong";
@@ -64,6 +69,14 @@ export interface VersionResponse {
    * field (treat as `false`).
    */
   chatHistoryMigrated?: boolean;
+  /**
+   * Present ONLY when the answering gateway enforces an app-version floor for
+   * the requesting channel (read from `X-Houston-App-Version`): the minimum
+   * app semver that channel must run. `/v1/version` is exempt from the floor's
+   * 426, so this is how an app below the floor can warn/act BEFORE being
+   * locked out. Local hosts and floor-less gateways omit it.
+   */
+  minAppVersion?: string;
 }
 
 export interface Capabilities {
@@ -1301,6 +1314,16 @@ export interface SessionStartRequest {
    * are no per-send fields for them.)
    */
   queuedPreview?: { text: string; attachmentNames?: string[] };
+  /**
+   * This send is Houston resuming the conversation on the user's behalf after
+   * an out-of-band completion (a provider reconnect) — not something the user
+   * typed. The adapter's send queue treats it specially: at most ONE is held
+   * per conversation (several reconnect surfaces can fire the same resume),
+   * and a held one is dropped rather than flushed when it would be redundant —
+   * the user queued their own follow-up, or the turn that just settled was
+   * itself a resume.
+   */
+  autoResume?: boolean;
 }
 
 export interface SessionStartResponse {
@@ -1756,52 +1779,41 @@ export interface StorePublicationStatus {
   identity?: StorePublishIdentity;
 }
 
+// The public catalog wire types are the unified Agent Store SDK shapes
+// (`@houston/agentstore-client`), reconciled against the authoritative Go
+// handlers. The historical `StoreCatalog*` names are kept as aliases/re-exports
+// so existing importers (the desktop store-view, the runtime adapter) compile
+// unchanged. `StoreCatalogAgentDetail.ir` widens from the former
+// `{ skills, learnings }` projection to the full `AgentIR` the gateway serves;
+// the app still reads only `ir.skills`/`ir.learnings`.
+// Owner + moderation wire shapes reused by the store-view surfaces: the "my
+// agents" manage panel (`MyAgent`), the abuse-report dialog (`ReportInput` /
+// `ReportReason`), and the browse filter's category vocabulary (`StoreCategory`).
+// Creator-profile shapes back the "publish as @handle" identity, its public
+// creator page, avatar upload, and the per-day install analytics panel.
+export type {
+  AvatarUploadResult,
+  CreatorAnalytics,
+  CreatorInstallRow,
+  CreatorLinks,
+  CreatorProfile,
+  CreatorProfilePatch,
+  HandleAvailability,
+  MyAgent,
+  ReportInput,
+  ReportReason,
+  StoreCatalogPage,
+  StoreCatalogQuery,
+  StoreCatalogSort,
+  StoreCategory,
+  StoreCreatorPage,
+} from "@houston/agentstore-client";
+
 /** One public Agent Store listing, exactly as the catalog API serializes it. */
-export interface StoreCatalogAgent {
-  id: string;
-  /** Null only while a listing is a draft; always set for published agents. */
-  slug: string | null;
-  name: string;
-  tagline: string | null;
-  description: string;
-  icon: { kind: string; value: string } | null;
-  color: string | null;
-  category: string;
-  tags: string[];
-  /** UPPERCASE Composio toolkit slugs the agent uses. */
-  integrations: string[];
-  creator: { displayName: string; url?: string };
-  installsCount: number;
-  publishedAt: string | null;
-  updatedAt: string;
-}
+export type StoreCatalogAgent = StoreAgentSummary;
 
-/** One page of the public catalog (page size is server-fixed at 24). */
-export interface StoreCatalogPage {
-  items: StoreCatalogAgent[];
-  hasMore: boolean;
-}
-
-export type StoreCatalogSort = "recent" | "installs";
-
-export interface StoreCatalogQuery {
-  /** Full-text search (websearch syntax). */
-  q?: string;
-  /** A store category slug; omit for all categories. */
-  category?: string;
-  sort?: StoreCatalogSort;
-  /** 1-based. */
-  page?: number;
-}
-
-/** A listing's detail: the summary plus the parts of its IR the app renders. */
-export interface StoreCatalogAgentDetail {
-  agent: StoreCatalogAgent;
-  ir: {
-    skills?: Array<{ slug: string }>;
-    learnings?: unknown[];
-  };
-}
+/** A listing's detail: the summary plus the full published-version IR. */
+export type StoreCatalogAgentDetail = StoreAgentDetail;
 
 // ── integrations (Composio, platform mode) ───────────────────────────────────
 // User-level: no provider account — the user only connects apps (Gmail, Slack…)

@@ -27,8 +27,18 @@ frame. With the many glass panels on this page that capped scroll at ~30 fps.
 The glass panels therefore carry **no `backdrop-filter`** — they use near-opaque
 dark fills (`--glass` / `--glass-strong` ≈ 0.92–0.95 alpha) instead. Over the
 dark scrimmed photo the frosted look is visually identical (verified with
-before/after screenshots, desktop + mobile). The only kept blur is the transient
-`.dl-overlay` modal, which sits over a now-static background.
+before/after screenshots, desktop + mobile).
+
+The `.dl-overlay` download modal was the last holdout ("static background, so
+the blur is cheap") and it, too, is now blur-free (plain `rgba(0,0,0,0.6)`
+scrim). Two reasons, found when users reported the modal open felt glitchy:
+(a) `backdrop-filter` ignores the element's own `opacity`, so during the
+overlay's 0.2 s opacity fade the full-screen blur snapped in at 100 % on the
+first frame while the tint faded — a visible pop; (b) rasterizing a
+full-viewport blur during the fade janked the animation itself. Measured
+(5× open cycles, rAF deltas): Chromium 4× throttle 45 fps / 27 jank frames →
+108 fps / 0; Firefox 39 fps / 30 jank (worst frame 117 ms) → 114 fps / 0.
+**The landing page now has zero `backdrop-filter` anywhere.** Keep it that way.
 
 ## Hero mockup aurora — faithful colours, but static and blur-free
 

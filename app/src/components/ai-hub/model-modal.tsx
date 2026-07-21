@@ -8,10 +8,11 @@
  */
 
 import { X } from "lucide-react";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
+import { analytics } from "../../lib/analytics.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
 import { BrandMark } from "../provider-browser/brand-mark.tsx";
 import { connectCardByGatewayId } from "../provider-browser/provider-grouping.ts";
@@ -41,6 +42,9 @@ export function ModelModal({
   onOpenProvider?: (provider: ProviderInfo) => void;
 }) {
   const { t, i18n } = useTranslation("aiHub");
+  useEffect(() => {
+    if (open) analytics.track("model_viewed", { model: model.key });
+  }, [open, model.key]);
 
   // An offer's gateway id resolves to the card that connects it (the merged
   // OpenCode account stands in for both its gateways) via the shared reverse map.

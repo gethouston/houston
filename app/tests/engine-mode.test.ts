@@ -52,6 +52,16 @@ describe("providerLoginUsesDeviceAuthByDefault", () => {
     );
   });
 
+  it("uses browser loopback for a LOOPBACK hosted gateway (dev cloud profile)", () => {
+    strictEqual(
+      providerLoginUsesDeviceAuthByDefault(
+        { VITE_HOSTED_ENGINE_URL: "http://localhost:9080" },
+        { isTauri: true },
+      ),
+      false,
+    );
+  });
+
   it("uses device code for browser clients", () => {
     strictEqual(
       providerLoginUsesDeviceAuthByDefault({}, { isTauri: false }),
@@ -118,6 +128,16 @@ describe("codexUsesLoopbackRelay (B2 truth table)", () => {
         { isTauri: true },
       ),
       true,
+    );
+  });
+
+  it("relay OFF for a LOOPBACK hosted gateway (dev cloud profile — pi's 1455 is on THIS machine)", () => {
+    strictEqual(
+      codexUsesLoopbackRelay(
+        { VITE_HOSTED_ENGINE_URL: "http://localhost:9080" },
+        { isTauri: true },
+      ),
+      false,
     );
   });
 

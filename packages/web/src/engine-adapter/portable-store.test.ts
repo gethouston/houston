@@ -1,10 +1,16 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { StorePublishRequest } from "../../../../ui/engine-client/src/types";
+import { HoustonEngineError } from "./client";
 import type { ControlPlaneConfig } from "./control-plane";
 import {
+  deleteStoreAgentById,
   getPublication,
+  listMyStoreAgents,
   publishToStore,
+  requestStorePublic,
+  setStoreVisibilityUnlisted,
   unpublishFromStore,
+  unpublishStoreAgentById,
 } from "./portable-store";
 
 /**
@@ -75,6 +81,9 @@ beforeEach(() => {
       }
       if (url.includes("/v1/agentstore/agents/S1") && method === "PATCH") {
         return jsonResponse({ ok: true });
+      }
+      if (url.includes("/v1/agentstore/agents/S1") && method === "DELETE") {
+        return new Response(null, { status: 204 });
       }
       if (url.endsWith("/v1/agentstore/me/agents")) {
         return jsonResponse({
@@ -161,6 +170,68 @@ test("getPublication on a never-published agent needs no store call", async () =
   });
 });
 
+test("a gateway HTTP failure re-maps to a HoustonEngineError", async () => {
+  // Host gather + pointer routes succeed; the store POST answers non-OK, so
+  // `asEngineError` must translate the SDK's StoreApiError onto the engine
+  // error class publish callers branch on — carrying the same status.
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? "GET").toUpperCase();
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      if (url.endsWith("/agents/A/portable/store-ir")) {
+        return jsonResponse({ ir: { irVersion: "2.0.0", from: body } });
+      }
+      if (
+        url.endsWith("/agents/A/portable/store-publication") &&
+        method === "GET"
+      ) {
+        return jsonResponse({ pointer: null });
+      }
+      if (url.endsWith("/v1/agentstore/agents") && method === "POST") {
+        return jsonResponse({ error: "over_quota" }, 429);
+      }
+      return jsonResponse({ error: "unexpected" }, 500);
+    }),
+  );
+  const err = await publishToStore(cfg, "A", req).then(
+    () => null,
+    (e: unknown) => e,
+  );
+  expect(err).toBeInstanceOf(HoustonEngineError);
+  expect((err as HoustonEngineError).status).toBe(429);
+});
+
+test("a network failure rethrows the underlying cause verbatim (status 0)", async () => {
+  // A thrown fetch surfaces as StoreApiError(status 0, body: cause); the shim's
+  // status-0 branch must re-raise that original cause unchanged, exactly as the
+  // former hand-rolled fetch propagated it.
+  const cause = new Error("connection refused");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? "GET").toUpperCase();
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      if (url.endsWith("/agents/A/portable/store-ir")) {
+        return jsonResponse({ ir: { irVersion: "2.0.0", from: body } });
+      }
+      if (
+        url.endsWith("/agents/A/portable/store-publication") &&
+        method === "GET"
+      ) {
+        return jsonResponse({ pointer: null });
+      }
+      if (url.endsWith("/v1/agentstore/agents") && method === "POST") {
+        throw cause;
+      }
+      return jsonResponse({ error: "unexpected" }, 500);
+    }),
+  );
+  await expect(publishToStore(cfg, "A", req)).rejects.toBe(cause);
+});
+
 test("unpublish PATCHes the gateway and keeps the pointer", async () => {
   pointer = {
     storeAgentId: "S1",
@@ -173,4 +244,51 @@ test("unpublish PATCHes the gateway and keeps the pointer", async () => {
   const patch = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
   expect((patch?.body as { unpublish: boolean }).unpublish).toBe(true);
   expect(pointer).not.toBeNull();
+});
+
+// ── Owner management (the "my agents" panel) ──────────────────────────────
+
+test("listMyStoreAgents reads the live listing off /me/agents", async () => {
+  const agents = await listMyStoreAgents(cfg);
+  expect(agents).toHaveLength(1);
+  expect(agents[0]?.id).toBe("S1");
+  expect(agents[0]?.state).toBe("published");
+});
+
+test("requestStorePublic PATCHes {requestPublic:true} by store id", async () => {
+  await requestStorePublic(cfg, "S1");
+  const patch = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
+  expect(patch?.url).toContain("/v1/agentstore/agents/S1");
+  expect((patch?.body as { requestPublic: boolean }).requestPublic).toBe(true);
+});
+
+test("setStoreVisibilityUnlisted PATCHes {visibility:'unlisted'}", async () => {
+  await setStoreVisibilityUnlisted(cfg, "S1");
+  const patch = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
+  expect((patch?.body as { visibility: string }).visibility).toBe("unlisted");
+});
+
+test("unpublishStoreAgentById PATCHes {unpublish:true} by store id", async () => {
+  await unpublishStoreAgentById(cfg, "S1");
+  const patch = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
+  expect((patch?.body as { unpublish: boolean }).unpublish).toBe(true);
+});
+
+test("deleteStoreAgentById DELETEs the store agent by id", async () => {
+  await deleteStoreAgentById(cfg, "S1");
+  const del = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
+  expect(del?.url).toContain("/v1/agentstore/agents/S1");
+});
+
+test("an owner-action HTTP failure re-maps to a HoustonEngineError", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => jsonResponse({ error: "forbidden" }, 403)),
+  );
+  const err = await requestStorePublic(cfg, "S1").then(
+    () => null,
+    (e: unknown) => e,
+  );
+  expect(err).toBeInstanceOf(HoustonEngineError);
+  expect((err as HoustonEngineError).status).toBe(403);
 });

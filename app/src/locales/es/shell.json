@@ -224,6 +224,14 @@
     "retryAction": "Intentar otra vez",
     "dismissAction": "Descartar actualización por ahora"
   },
+  "updateRequired": {
+    "cardLabel": "Actualización de Houston requerida",
+    "title": "Actualización requerida",
+    "description": "Se necesita Houston {{minVersion}} o más reciente para seguir usando Houston Cloud. Estás en v{{currentVersion}}.",
+    "descriptionNoVersion": "Se necesita una versión más reciente de Houston para seguir usando Houston Cloud. Estás en v{{currentVersion}}.",
+    "downloadAction": "Descargar la actualización",
+    "checkAction": "Buscar actualizaciones"
+  },
   "store": {
     "searchPlaceholder": "Buscar en la biblioteca...",
     "noResults": "Ningún agente coincide con tu búsqueda"
@@ -355,6 +363,8 @@
     "networkUnreachable": {
       "title": "No se puede conectar con {{provider}}",
       "body": "Houston no pudo conectarse a la API de {{provider}}. Verifica tu conexión y vuelve a intentar.",
+      "localTitle": "No se puede conectar con tu modelo local",
+      "localBody": "Houston no pudo conectarse al modelo en tu computador. Asegúrate de que la aplicación del modelo esté abierta y su servidor en ejecución, y vuelve a intentar.",
       "retry": "Reintentar",
       "checkStatus": "Ver página de estado"
     },

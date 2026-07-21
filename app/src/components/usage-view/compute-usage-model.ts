@@ -6,8 +6,8 @@ import type { Capabilities, ComputeUsageRow } from "@houston-ai/engine-client";
  * per-agent totals. The user sees ONE time metric — time worked = `activeMs`
  * (time the agent actually executed turns/routine runs); `awakeMs` (the
  * engine's full up-time, idle tail included) rides the wire but is
- * deliberately never rendered, and tasks (`turns + routineRuns`) is the
- * companion stat.
+ * deliberately never rendered. The companion stat is messages: turns plus
+ * routine runs, i.e. every exchange the agent handled.
  */
 
 export type ComputeRange = "week" | "month" | "quarter";
@@ -18,20 +18,20 @@ export interface ComputeBucket {
   /** Days folded into this bucket (1 for daily ranges, 7 for weekly). */
   days: number;
   workMs: number;
-  tasks: number;
+  messages: number;
 }
 
 export interface ComputeAgentTotals {
   agentSlug: string;
   workMs: number;
-  tasks: number;
+  messages: number;
 }
 
 export interface ComputeModel {
   buckets: ComputeBucket[];
   perAgent: ComputeAgentTotals[];
   totalWorkMs: number;
-  totalTasks: number;
+  totalMessages: number;
   /** Busiest bucket/agent, floored at 1 so bar math never divides by zero. */
   maxBucketMs: number;
   maxAgentMs: number;
@@ -41,6 +41,30 @@ const DAY_MS = 86_400_000;
 
 const dayString = (ts: number) => new Date(ts).toISOString().slice(0, 10);
 const dayStart = (day: string) => Date.parse(`${day}T00:00:00Z`);
+
+/** The slug/id shape the agent store exposes for matching wire rows. */
+export interface KnownAgentRef {
+  id: string;
+  folderPath?: string;
+}
+
+/**
+ * Keep only rows belonging to agents the user actually has (the sidebar's
+ * roster). Everything else — deleted agents' history, any system pod an
+ * unpatched gateway still serves — must not exist for the user: not in the
+ * list, not in the chart, not in the totals.
+ */
+export function onlyKnownAgents(
+  rows: readonly ComputeUsageRow[],
+  agents: readonly KnownAgentRef[],
+): ComputeUsageRow[] {
+  const known = new Set<string>();
+  for (const agent of agents) {
+    known.add(agent.id);
+    if (agent.folderPath) known.add(agent.folderPath);
+  }
+  return rows.filter((row) => known.has(row.agentSlug));
+}
 
 /** Monday of the UTC week containing `ts` (ISO weeks, like the gateway's days). */
 function weekStart(ts: number): number {
@@ -77,7 +101,7 @@ export function bucketCompute(
     startDay: dayString(start),
     days: bucketDays,
     workMs: 0,
-    tasks: 0,
+    messages: 0,
   }));
   const first = starts[0];
   const spanMs = bucketDays * DAY_MS;
@@ -90,34 +114,56 @@ export function bucketCompute(
     // Rows dated past "now"'s bucket (clock skew) fold into the last bar
     // rather than vanishing — the server is the time authority, not us.
     const bucket = buckets[Math.min(index, buckets.length - 1)];
-    const tasks = row.turns + row.routineRuns;
+    const messages = row.turns + row.routineRuns;
     bucket.workMs += row.activeMs;
-    bucket.tasks += tasks;
+    bucket.messages += messages;
     let agent = perAgent.get(row.agentSlug);
     if (!agent) {
-      agent = { agentSlug: row.agentSlug, workMs: 0, tasks: 0 };
+      agent = { agentSlug: row.agentSlug, workMs: 0, messages: 0 };
       perAgent.set(row.agentSlug, agent);
     }
     agent.workMs += row.activeMs;
-    agent.tasks += tasks;
+    agent.messages += messages;
   }
 
-  // Agents with nothing to show in the selected range are pure noise: an
-  // awake-but-never-working engine (rows carry awakeMs we don't render) or a
-  // deleted agent's residual zero days would list as "0m · 0 tasks".
-  const agents = [...perAgent.values()]
-    .filter((agent) => agent.workMs > 0 || agent.tasks > 0)
-    .sort(
-      (a, b) => b.workMs - a.workMs || a.agentSlug.localeCompare(b.agentSlug),
-    );
+  const agents = [...perAgent.values()].sort(
+    (a, b) => b.workMs - a.workMs || a.agentSlug.localeCompare(b.agentSlug),
+  );
   return {
     buckets,
     perAgent: agents,
     totalWorkMs: agents.reduce((sum, a) => sum + a.workMs, 0),
-    totalTasks: agents.reduce((sum, a) => sum + a.tasks, 0),
+    totalMessages: agents.reduce((sum, a) => sum + a.messages, 0),
     maxBucketMs: Math.max(1, ...buckets.map((b) => b.workMs)),
     maxAgentMs: Math.max(1, ...agents.map((a) => a.workMs)),
   };
+}
+
+/**
+ * The by-agent list is ROSTER-driven: every agent the user has appears the
+ * moment it exists (a just-created agent shows "0m · 0 messages" immediately),
+ * merged with whatever totals the range holds. Busiest first, zeros last in
+ * roster order. `agentSlug` for a row-less agent is its folderPath (the wire
+ * key rows will use once data lands) falling back to its id.
+ */
+export function withRosterAgents(
+  roster: readonly KnownAgentRef[],
+  perAgent: readonly ComputeAgentTotals[],
+): ComputeAgentTotals[] {
+  const bySlug = new Map(perAgent.map((agent) => [agent.agentSlug, agent]));
+  const merged = roster.map((agent) => {
+    const totals =
+      (agent.folderPath ? bySlug.get(agent.folderPath) : undefined) ??
+      bySlug.get(agent.id);
+    return (
+      totals ?? {
+        agentSlug: agent.folderPath ?? agent.id,
+        workMs: 0,
+        messages: 0,
+      }
+    );
+  });
+  return merged.sort((a, b) => b.workMs - a.workMs);
 }
 
 /**
@@ -140,15 +186,6 @@ export function durationParts(ms: number): DurationParts {
     hours: Math.floor(totalMinutes / 60),
     minutes: String(totalMinutes % 60).padStart(2, "0"),
   };
-}
-
-/**
- * A wire agent slug with no human content (the gateway's 16-hex ids). When it
- * resolves to no known agent, the view shows "Removed agent" instead of raw
- * hex — `agentLabel`'s humanizer only helps slugs with real words in them.
- */
-export function isOpaqueSlug(slug: string): boolean {
-  return /^[0-9a-f]{12,}$/i.test(slug);
 }
 
 /** The section renders only where the gateway advertises the endpoint. */

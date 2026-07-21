@@ -4,6 +4,8 @@ import type { Api, KnownProvider, Model } from "@earendil-works/pi-ai";
 // instantiated registry we don't otherwise carry here).
 import { getModels, getProviders } from "@earendil-works/pi-ai/compat";
 import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
+// Side effect: backports Kimi K3 into the 0.80.6 catalog (delete with the pi bump).
+import "./kimi-k3-catalog-patch";
 
 /**
  * pi-ai is the model-catalog source of truth. These predicates read its LIVE

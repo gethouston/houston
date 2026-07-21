@@ -1,13 +1,14 @@
+"use client";
+
 /**
- * Scroll-aware sticky chrome for the AI-hub tabs. A sticky bar sits transparent
- * at rest and only fades in its frosted `bg-popover` fill once rows scroll
- * BEHIND it. Return a `sentinelRef` to place at the bar's natural top (a
- * zero-height marker) and the `stuck` flag: it flips true once the sentinel
- * scrolls up past the enclosing scroll container's top edge. Self-contained — it
- * walks up to find the nearest scrollable ancestor, so every mount (the Models
- * tab, the Providers tab, the provider modal's body) works without threading a
- * scroll ref. Shared by `ModelsBrowser` and `ProviderList` so both pinned bars
- * behave identically.
+ * Scroll-aware sticky chrome. A sticky bar sits transparent at rest and only
+ * fades in its opaque fill once rows scroll BEHIND it. Place the returned
+ * `sentinelRef` on a zero-height marker at the bar's natural top; the `stuck`
+ * flag flips true once that sentinel scrolls up past the enclosing scroll
+ * container's top edge. Self-contained — it walks up to find the nearest
+ * scrollable ancestor, so every mount works without threading a scroll ref.
+ * Generic and surface-agnostic: shared by the catalog shell's pinned controls
+ * and the provider browser's filter bar so their pinned bars behave identically.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -20,7 +21,7 @@ export function useStuckOnScroll() {
     if (!sentinel) return;
     let scroller = sentinel.parentElement;
     while (scroller) {
-      const overflowY = getComputedStyle(scroller).overflowY;
+      const { overflowY } = getComputedStyle(scroller);
       if (overflowY === "auto" || overflowY === "scroll") break;
       scroller = scroller.parentElement;
     }

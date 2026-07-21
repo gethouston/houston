@@ -28,9 +28,12 @@ export function useComputeUsage(enabled: boolean) {
     queryKey: queryKeys.computeUsage(COMPUTE_USAGE_DAYS),
     queryFn: () => tauriOrg.computeUsage(COMPUTE_USAGE_DAYS),
     enabled,
-    staleTime: 60_000,
+    staleTime: 20_000,
+    // The pod flushes its report on every turn start/end (edge-triggered), so
+    // a 30s poll while an agent is up keeps fresh numbers visible within
+    // seconds of work happening; idle agents relax to a 5-minute tick.
     refetchInterval: (query) =>
-      (query.state.data?.awakeNow.length ?? 0) > 0 ? 60_000 : 5 * 60_000,
+      (query.state.data?.awakeNow.length ?? 0) > 0 ? 30_000 : 5 * 60_000,
     refetchOnWindowFocus: true,
   });
 }

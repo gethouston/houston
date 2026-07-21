@@ -42,7 +42,9 @@ export function CatalogRow({
   return (
     <div
       className={cn(
-        "flex w-full items-center rounded-xl transition-colors hover:bg-hover focus-within:bg-hover",
+        // scroll-mt clears the catalog surfaces' sticky controls bar, so a
+        // keyboard-focused row scrolled into view never parks hidden under it.
+        "flex w-full scroll-mt-16 items-center rounded-xl transition-colors hover:bg-hover focus-within:bg-hover",
         className,
       )}
     >

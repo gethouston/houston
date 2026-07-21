@@ -1,5 +1,6 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
+import type { TurnMode } from "@houston/protocol";
 import { activeProvider, resolveModel } from "../ai/providers";
 import { syncServedCredentialSafe } from "../auth/serve";
 import { cleanupClaudeConversation } from "../backends/claude/cleanup";
@@ -105,15 +106,44 @@ export async function runTurn(
     // reader (a routine's reconcile) errors its run with the real message
     // instead of finding no reply and timing out vague.
     appendUserMessage(id, text, { turnId, displayText });
-    appendAssistantMessage(id, "", {
-      providerError: {
-        kind: "unknown",
-        provider: pin?.provider ?? "unknown",
-        raw_excerpt: errMessage(err),
-      },
+    // Publish the nonce-stamped `user` echo BEFORE the error, exactly like a
+    // normal turn (recordUserTurn): the client sink adopts its turnId from
+    // this echo, and a stamped `error` frame arriving with no adopted id
+    // classifies as FOREIGN and is dropped — the turn then spins forever with
+    // no error and no reconnect card (the disconnected-local-model repro).
+    publish(id, {
+      type: "user",
+      data: { content: text, ts: Date.now(), nonce },
       turnId,
     });
-    publish(id, { type: "error", data: { message: errMessage(err) }, turnId });
+    // A NOT-CONNECTED failure is typed `unauthenticated`, not `unknown`: the
+    // typed card is the full reconnect surface (correct provider label, the
+    // provider's own reconnect flow — the local-model dialog for
+    // openai-compatible — and the automatic task resume once the reconnect
+    // completes). `undelivered_prompt` carries the turn's text because the
+    // model never received it: the failure precedes the session, so neither
+    // the live context nor a rebuild ever sees this message (HOU-718) — only
+    // the UI transcript above does.
+    const message = errMessage(err);
+    const notConnected =
+      /no local model configured|no provider connected/i.test(message);
+    appendAssistantMessage(id, "", {
+      providerError: notConnected
+        ? {
+            kind: "unauthenticated",
+            provider: pin?.provider ?? "",
+            cause: "no_credentials",
+            message,
+            undelivered_prompt: text,
+          }
+        : {
+            kind: "unknown",
+            provider: pin?.provider ?? "unknown",
+            raw_excerpt: message,
+          },
+      turnId,
+    });
+    publish(id, { type: "error", data: { message }, turnId });
     return;
   }
 
@@ -156,6 +186,24 @@ export async function runTurn(
   } finally {
     conv.pending--;
   }
+}
+
+/**
+ * Apply a Mode-pill switch to a conversation's EXECUTING turn (Claude Code's
+ * shift+tab semantics): mutate the live-mode ref exec-turn parked on the
+ * Conversation, so the running turn's tools adopt the new mode at their next
+ * decision point — an auto flip un-gates integration actions immediately, a
+ * plan flip starts refusing writes with a message that tells the model why.
+ *
+ * Returns whether a live turn actually adopted it: `false` means no turn is
+ * executing (or the conversation isn't cached), which is benign — the client's
+ * next send pins the mode itself, so there is nothing to apply here.
+ */
+export function setLiveTurnMode(id: string, mode: TurnMode): boolean {
+  const conv = conversations.get(id);
+  if (!conv?.liveMode) return false;
+  conv.liveMode.current = mode;
+  return true;
 }
 
 /**

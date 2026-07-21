@@ -55,8 +55,22 @@ const INVALID_KEY_PATTERNS = [
  * `formatNoApiKeyFoundMessage`: "No API key found for <provider>.\n\nUse /login
  * …"), it never arrives as an errored AssistantMessage, so the exec-turn /
  * turn-session catch is where this classification happens (HOU-718).
+ *
+ * The runtime's OWN not-connected guards belong here too: `resolveModel` /
+ * `buildActiveCustomModel` throw "No provider connected. …" and "No local model
+ * configured. …" BEFORE any session exists. On a brand-new conversation
+ * chat.ts's getConversation catch types them directly, but on a CACHED
+ * conversation the throw happens inside execTurn (resolveModel re-runs every
+ * turn) and lands in ITS catch — which classifies through this function. Without
+ * these patterns that path degraded to `unknown` (generic error card, no
+ * reconnect flow, no undelivered-prompt auto-resume) the moment the SECOND
+ * message of a chat hit a disconnected local model.
  */
-const NO_CREDENTIALS_PATTERNS = ["no api key found"];
+const NO_CREDENTIALS_PATTERNS = [
+  "no api key found",
+  "no provider connected",
+  "no local model configured",
+];
 
 /**
  * The gateway rejected the REQUESTED MODEL itself (not the credential): GitHub

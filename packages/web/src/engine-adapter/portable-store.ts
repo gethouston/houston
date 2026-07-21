@@ -3,13 +3,22 @@
  *
  * The host is credential-free: it gathers the IR (`portable/store-ir`) and
  * records a token-free pointer (`portable/store-publication`) — those calls live
- * in `portable-store-pointer.ts`. The APP owns the network: it POSTs the IR to
- * the gateway `/v1/agentstore` API with the user's OWN bearer via
- * `storeAuthFetch` (which targets the store gateway even when the engine is a
- * local sidecar). Pure request-body mapping lives in `portable-map.ts`.
+ * in `portable-store-pointer.ts`. The APP owns the network: it drives the gateway
+ * `/v1/agentstore` API through the shared {@link AgentStoreClient}, with the
+ * user's OWN bearer + the 401-refresh/replay discipline riding the injected
+ * `storeAuthFetch` seam (which targets the store gateway even when the engine is
+ * a local sidecar). Pure request-body mapping lives in `portable-map.ts`.
  */
 
+import {
+  type AgentPatch,
+  AgentStoreClient,
+  type CreateAgentRequest,
+  type CreateAgentResponse,
+  StoreApiError,
+} from "@houston/agentstore-client";
 import type {
+  MyAgent,
   StorePublicationStatus,
   StorePublishRequest,
   StorePublishResponse,
@@ -27,35 +36,40 @@ import {
 } from "./portable-store-pointer";
 import { STORE_SITE_URL, storeApiBase, storeAuthFetch } from "./store-gateway";
 
-/** The subset of a `me/agents` item the manage view needs (see the wire contract). */
-interface StoreMeAgent {
-  id: string;
-  slug: string | null;
-  name: string;
-  tagline?: string | null;
-  description?: string | null;
-  category?: string | null;
-  tags?: string[];
-  state: string;
+/**
+ * The store-gateway client for the publish flow. Authorization is owned by the
+ * injected {@link storeAuthFetch}: it sets the final `Authorization` header from
+ * the live session bearer and carries the single 401 refresh/replay, overriding
+ * whatever the client sends. `getToken` mirrors that seam's bearer resolution so
+ * the client's own pre-flight auth guard passes exactly when a request would be
+ * sent (the value itself is superseded by the fetch seam).
+ */
+export function storeClient(cfg: ControlPlaneConfig): AgentStoreClient {
+  return new AgentStoreClient({
+    baseUrl: storeApiBase(cfg),
+    fetchImpl: storeAuthFetch(cfg.token),
+    getToken: () =>
+      (typeof window !== "undefined" && window.__HOUSTON_STORE__?.token) ||
+      cfg.token,
+  });
 }
 
-/** A store gateway call with the user's own bearer; non-2xx surfaces verbatim. */
-async function storeFetch(
-  cfg: ControlPlaneConfig,
-  path: string,
-  init?: RequestInit,
-): Promise<Response> {
-  const res = await storeAuthFetch(cfg.token)(`${storeApiBase(cfg)}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
-  if (!res.ok) {
-    throw new HoustonEngineError(
-      res.status,
-      await res.json().catch(() => ({})),
-    );
+/**
+ * Run a store-client call, re-mapping the SDK's {@link StoreApiError} onto the
+ * adapter's {@link HoustonEngineError} so publish callers keep branching on the
+ * one engine-error class. A network-level failure (status `0`) rethrows its
+ * underlying cause verbatim — exactly as the hand-rolled `fetch` propagated it.
+ */
+export async function asEngineError<T>(op: () => Promise<T>): Promise<T> {
+  try {
+    return await op();
+  } catch (err) {
+    if (err instanceof StoreApiError) {
+      if (err.status === 0) throw err.body;
+      throw new HoustonEngineError(err.status, err.body);
+    }
+    throw err;
   }
-  return res;
 }
 
 /** Publish the agent to the store; returns the public share URL. */
@@ -66,13 +80,17 @@ export async function publishToStore(
 ): Promise<StorePublishResponse> {
   const ir = await gatherStoreIr(cfg, agentId, req);
   const existing = await readPointer(cfg, agentId);
+  const client = storeClient(cfg);
   // A kept pointer (e.g. left by an unpublish) re-publishes the SAME store agent
   // so a re-publish never duplicates the listing.
   if (existing) {
-    await storeFetch(
-      cfg,
-      `/v1/agentstore/agents/${encodeURIComponent(existing.storeAgentId)}`,
-      { method: "PATCH", body: JSON.stringify({ ir, publish: true }) },
+    // The single-intent `AgentPatch` union does not model the combined
+    // {ir, publish} body the gateway applies in order; the wire is unchanged.
+    await asEngineError(() =>
+      client.patchAgent(existing.storeAgentId, {
+        ir,
+        publish: true,
+      } as AgentPatch),
     );
     await writePointer(cfg, agentId, existing);
     return {
@@ -81,15 +99,9 @@ export async function publishToStore(
       storeAgentId: existing.storeAgentId,
     };
   }
-  const res = await storeFetch(cfg, "/v1/agentstore/agents", {
-    method: "POST",
-    body: JSON.stringify({ ir, publish: true }),
-  });
-  const created = (await res.json()) as {
-    agentId: string;
-    slug: string;
-    shareUrl: string;
-  };
+  const created = (await asEngineError(() =>
+    client.createAgent({ ir, publish: true } as CreateAgentRequest),
+  )) as Required<CreateAgentResponse>;
   const pointer: StorePointer = {
     storeAgentId: created.agentId,
     slug: created.slug,
@@ -115,13 +127,12 @@ export async function updatePublication(
     throw new HoustonEngineError(404, { error: "this agent is not published" });
   }
   const ir = await gatherStoreIr(cfg, agentId, req);
-  await storeFetch(
-    cfg,
-    `/v1/agentstore/agents/${encodeURIComponent(pointer.storeAgentId)}`,
-    {
-      method: "PATCH",
-      body: JSON.stringify({ ir, identity: req.identity }),
-    },
+  // Combined {ir, identity} patch — see the note in `publishToStore`.
+  await asEngineError(() =>
+    storeClient(cfg).patchAgent(pointer.storeAgentId, {
+      ir,
+      identity: req.identity,
+    } as AgentPatch),
   );
   return { shareUrl: pointer.shareUrl, slug: pointer.slug };
 }
@@ -133,10 +144,8 @@ export async function unpublishFromStore(
 ): Promise<StoreUnpublishResponse> {
   const pointer = await readPointer(cfg, agentId);
   if (!pointer) return { ok: true };
-  await storeFetch(
-    cfg,
-    `/v1/agentstore/agents/${encodeURIComponent(pointer.storeAgentId)}`,
-    { method: "PATCH", body: JSON.stringify({ unpublish: true }) },
+  await asEngineError(() =>
+    storeClient(cfg).patchAgent(pointer.storeAgentId, { unpublish: true }),
   );
   return { ok: true };
 }
@@ -150,8 +159,7 @@ export async function getPublication(
   if (!pointer) {
     return { published: false, linked: false, storeUrl: STORE_SITE_URL };
   }
-  const res = await storeFetch(cfg, "/v1/agentstore/me/agents");
-  const { items } = (await res.json()) as { items: StoreMeAgent[] };
+  const items = await asEngineError(() => storeClient(cfg).listMyAgents());
   const item = items.find((a) => a.id === pointer.storeAgentId);
   if (!item) {
     // The store agent is gone (deleted upstream) — drop the stale pointer.
@@ -168,10 +176,61 @@ export async function getPublication(
     storeUrl: STORE_SITE_URL,
     identity: {
       name: item.name,
-      description: item.description ?? "",
+      description: item.description,
       ...(item.tagline ? { tagline: item.tagline } : {}),
-      category: item.category ?? "",
-      tags: item.tags ?? [],
+      category: item.category,
+      tags: item.tags,
     },
   };
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Owner management (the "my agents" panel — account-based, no manage tokens)
+//
+// These act on a store agent by its gateway id, read live off `GET /me/agents`,
+// with no host-side pointer involved. Each re-maps the SDK's StoreApiError onto
+// the adapter's HoustonEngineError via `asEngineError`, exactly like publish.
+// ────────────────────────────────────────────────────────────────────────
+
+/** Every listing the caller owns, in all lifecycle states (`GET /me/agents`). */
+export function listMyStoreAgents(cfg: ControlPlaneConfig): Promise<MyAgent[]> {
+  return asEngineError(() => storeClient(cfg).listMyAgents());
+}
+
+/** Ask an admin to make an owned listing public (`PATCH … {requestPublic}`). */
+export async function requestStorePublic(
+  cfg: ControlPlaneConfig,
+  storeAgentId: string,
+): Promise<void> {
+  await asEngineError(() =>
+    storeClient(cfg).patchAgent(storeAgentId, { requestPublic: true }),
+  );
+}
+
+/** Drop a public listing back to unlisted (`PATCH … {visibility:"unlisted"}`). */
+export async function setStoreVisibilityUnlisted(
+  cfg: ControlPlaneConfig,
+  storeAgentId: string,
+): Promise<void> {
+  await asEngineError(() =>
+    storeClient(cfg).patchAgent(storeAgentId, { visibility: "unlisted" }),
+  );
+}
+
+/** Take an owned listing down by its gateway id (`PATCH … {unpublish}`). */
+export async function unpublishStoreAgentById(
+  cfg: ControlPlaneConfig,
+  storeAgentId: string,
+): Promise<void> {
+  await asEngineError(() =>
+    storeClient(cfg).patchAgent(storeAgentId, { unpublish: true }),
+  );
+}
+
+/** Soft-delete an owned listing by its gateway id (`DELETE /agents/{id}`). */
+export async function deleteStoreAgentById(
+  cfg: ControlPlaneConfig,
+  storeAgentId: string,
+): Promise<void> {
+  await asEngineError(() => storeClient(cfg).deleteAgent(storeAgentId));
 }

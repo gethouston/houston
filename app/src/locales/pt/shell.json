@@ -224,6 +224,14 @@
     "retryAction": "Tentar de novo",
     "dismissAction": "Dispensar atualização por enquanto"
   },
+  "updateRequired": {
+    "cardLabel": "Atualização do Houston obrigatória",
+    "title": "Atualização obrigatória",
+    "description": "É necessário o Houston {{minVersion}} ou mais recente para continuar usando o Houston Cloud. Você está na v{{currentVersion}}.",
+    "descriptionNoVersion": "É necessária uma versão mais recente do Houston para continuar usando o Houston Cloud. Você está na v{{currentVersion}}.",
+    "downloadAction": "Baixar a atualização",
+    "checkAction": "Buscar atualizações"
+  },
   "store": {
     "searchPlaceholder": "Buscar na biblioteca...",
     "noResults": "Nenhum agente corresponde à sua busca"
@@ -340,6 +348,8 @@
     "networkUnreachable": {
       "title": "Não foi possível alcançar o {{provider}}",
       "body": "O Houston não conseguiu acessar a API do {{provider}}. Verifique sua internet e tente de novo.",
+      "localTitle": "Não foi possível alcançar seu modelo local",
+      "localBody": "O Houston não conseguiu acessar o modelo no seu computador. Verifique se o aplicativo do modelo está aberto e com o servidor em execução, depois tente de novo.",
       "retry": "Tentar de novo",
       "checkStatus": "Ver página de status"
     },

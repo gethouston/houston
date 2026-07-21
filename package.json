@@ -19,6 +19,7 @@
     "start": "node scripts/dev/wrong-entry.mjs start",
     "dev:cloud": "node scripts/dev/wrong-entry.mjs dev:cloud",
     "dev": "scripts/dev/dev.sh",
+    "dev:staging": "scripts/dev/staging.sh",
     "dev:down": "scripts/dev/reap.sh",
     "dev:host": ". scripts/dev/env.sh && HOUSTON_HOME=\"$HOME/.dev-houston\" pnpm --filter @houston/host dev",
     "dev:app": "scripts/dev/app.sh",

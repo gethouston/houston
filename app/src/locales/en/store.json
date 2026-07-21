@@ -22,5 +22,130 @@
     "learnings_one": "Comes with {{count}} learning from real use",
     "learnings_other": "Comes with {{count}} learnings from real use"
   },
-  "installFailed": "Houston could not fetch that agent from the store. Try again in a moment."
+  "installFailed": "Houston could not fetch that agent from the store. Try again in a moment.",
+  "tabs": {
+    "browse": "Browse",
+    "myAgents": "My agents"
+  },
+  "allIntegrations": "All integrations",
+  "report": {
+    "open": "Report",
+    "title": "Report this agent",
+    "reasonLabel": "Reason",
+    "reason": {
+      "spam": "Spam",
+      "malicious": "Malicious or unsafe",
+      "impersonation": "Impersonation",
+      "inappropriate": "Inappropriate content",
+      "other": "Something else"
+    },
+    "detailsLabel": "Details",
+    "detailsPlaceholder": "Tell us what is wrong (optional)",
+    "contactLabel": "Your email",
+    "contactPlaceholder": "So we can follow up (optional)",
+    "submit": "Send report",
+    "cancel": "Cancel",
+    "success": "Thanks for the report. Our team will take a look.",
+    "failed": "Your report could not be sent. Please try again."
+  },
+  "myAgents": {
+    "empty": "You have not published any agents yet.",
+    "signedOut": "Sign in to see the agents you have published.",
+    "signIn": "Sign in",
+    "state": {
+      "draft": "Draft",
+      "published": "Published",
+      "archived": "Archived"
+    },
+    "visibility": {
+      "unlisted": "Unlisted",
+      "public": "Public"
+    },
+    "action": {
+      "requestPublic": "Request public listing",
+      "requestPublicPending": "Requesting...",
+      "requestPublicDone": "Pending review",
+      "makeUnlisted": "Make unlisted",
+      "unpublish": "Unpublish",
+      "delete": "Delete",
+      "seeInStore": "See in store"
+    },
+    "confirm": {
+      "deleteTitle": "Delete this agent?",
+      "deleteBody": "{{name}} will be removed from the store for good. This cannot be undone.",
+      "deleteConfirm": "Delete",
+      "cancel": "Cancel",
+      "unpublishTitle": "Unpublish this agent?",
+      "unpublishBody": "{{name}} will no longer be installable from its link. You can publish it again later.",
+      "unpublishConfirm": "Unpublish"
+    },
+    "actionFailed": "That action could not be completed. Please try again.",
+    "requestPublicSent": "Public listing requested. We will review it soon."
+  },
+  "profile": {
+    "edit": "Edit profile",
+    "title": "Your creator profile",
+    "claimTitle": "Claim your @handle",
+    "handleLabel": "Handle",
+    "handlePlaceholder": "yourname",
+    "handleHint": "Lowercase letters, numbers and underscores. This is your public @handle.",
+    "handleAvailable": "That handle is available.",
+    "handleTaken": "That handle is already taken.",
+    "handleReserved": "That handle is reserved.",
+    "handleInvalid": "Use 2 to 30 lowercase letters, numbers or underscores.",
+    "handleChecking": "Checking...",
+    "handleChangeTooSoon": "You changed your handle recently. Try again later.",
+    "displayNameLabel": "Display name",
+    "bioLabel": "Bio",
+    "bioPlaceholder": "Tell people what you build.",
+    "avatarLabel": "Profile photo",
+    "avatarChange": "Change photo",
+    "avatarRemove": "Remove photo",
+    "avatarUploading": "Uploading...",
+    "avatarTooLarge": "That image is too large. Pick one under 2 MB.",
+    "avatarBadType": "Use a PNG, JPEG or WebP image.",
+    "avatarClaimHint": "Save your profile first to add a photo.",
+    "socials": {
+      "x": "X",
+      "youtube": "YouTube",
+      "tiktok": "TikTok",
+      "instagram": "Instagram",
+      "github": "GitHub",
+      "linkedin": "LinkedIn",
+      "website": "Website",
+      "hint": "Add links to your profiles so people can find you."
+    },
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Profile saved",
+    "saveFailed": "Your profile could not be saved. Please try again.",
+    "cancel": "Cancel",
+    "claimCta": "Claim your handle",
+    "claimBody": "Pick a public @handle so people can find every agent you publish in one place."
+  },
+  "creator": {
+    "by": "By {{name}}",
+    "viewProfile": "View profile",
+    "verified": "Verified",
+    "agents_one": "{{count}} agent",
+    "agents_other": "{{count}} agents",
+    "noAgents": "No public agents yet.",
+    "back": "Back",
+    "notFound": "We could not find that creator.",
+    "loadFailed": "This profile could not be loaded. Please try again.",
+    "report": "Report creator"
+  },
+  "analytics": {
+    "title": "Installs",
+    "range": {
+      "7d": "7 days",
+      "30d": "30 days",
+      "90d": "90 days"
+    },
+    "totalInstalls_one": "{{count}} install",
+    "totalInstalls_other": "{{count}} installs",
+    "empty": "No installs yet in this period.",
+    "loadFailed": "Your analytics could not be loaded. Please try again.",
+    "barLabel": "{{day}}: {{count}}"
+  }
 }

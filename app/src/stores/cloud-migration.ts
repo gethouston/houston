@@ -147,6 +147,7 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
           await runDemoMigration(set);
           return;
         }
+        analytics.track("cloud_migration_accepted");
         set(() => ({
           screen: "progress",
           preparing: true,
@@ -169,6 +170,7 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
             backingUp: false,
             startError: message,
           }));
+          analytics.track("cloud_migration_failed", { step: "backup" });
           reportError("cloud_migration_backup", message, err);
           return;
         }
@@ -193,6 +195,7 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           set(() => ({ preparing: false, startError: message }));
+          analytics.track("cloud_migration_failed", { step: "prepare" });
           reportError("cloud_migration_start", message, err);
           return;
         }

@@ -31,11 +31,11 @@ test("opens the AI hub, browses providers and models via modals", async ({
   );
 
   // The consolidated Connected strip sits OUTSIDE the tabs: the seeded
-  // Anthropic connection is a brand tile, not a row in the browse grid.
+  // Anthropic connection is a brand tile (name + its subscription subtitle),
+  // not a row in the browse grid.
   await expect(page.getByRole("heading", { name: "Connected" })).toBeVisible();
   const anthropicTile = page.getByRole("button", {
-    name: "Anthropic",
-    exact: true,
+    name: "Anthropic Your Claude subscription",
   });
   await expect(anthropicTile).toBeVisible();
 
@@ -56,17 +56,21 @@ test("opens the AI hub, browses providers and models via modals", async ({
     page.getByRole("button", { name: /^Connect / }).first(),
   ).toBeVisible();
 
-  // Switch to the Models directory: a pill search box + the facet comboboxes
-  // (the "Good at" facet always shows) above the catalog-grammar row grid.
+  // Switch to the Models directory: the ONE page-level search (shared across
+  // both tabs) plus the facet comboboxes (the "Good at" facet always shows)
+  // above the catalog-grammar row grid.
   await page.getByRole("tab", { name: /Models/ }).click();
-  const search = page.getByPlaceholder(/Search( \d+\+)? models/);
+  const search = page.getByPlaceholder("Search AI models and providers");
   await expect(search).toBeVisible();
   await expect(page.getByRole("button", { name: "Good at" })).toBeVisible();
   await search.fill("claude");
 
   // A model row (name + lab, whole row is the button) opens the model MODAL:
-  // its specs + the "Get it through" list of providers that offer it.
+  // its specs + the "Get it through" list of providers that offer it. Scope to
+  // the Models tabpanel so the shared search's now-filtered Connected strip
+  // (Anthropic also matches "claude") can't shadow the model row.
   await page
+    .getByRole("tabpanel")
     .getByRole("button", { name: /Claude/i })
     .first()
     .click();
@@ -77,5 +81,7 @@ test("opens the AI hub, browses providers and models via modals", async ({
   // Escape returns to the directory (the search box is back).
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
-  await expect(page.getByPlaceholder(/Search( \d+\+)? models/)).toBeVisible();
+  await expect(
+    page.getByPlaceholder("Search AI models and providers"),
+  ).toBeVisible();
 });

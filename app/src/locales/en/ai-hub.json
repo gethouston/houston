@@ -14,6 +14,10 @@
     "subscription": "Subscription",
     "apiKey": "API key"
   },
+  "search": {
+    "placeholder": "Search AI models and providers",
+    "showAll": "Show all {{count}} providers"
+  },
   "card": {
     "connect": "Connect",
     "connectName": "Connect {{name}}",
@@ -169,15 +173,13 @@
     },
     "compute": {
       "title": "Time worked",
-      "subtitle": "How much time your agents spent working and how many tasks they handled.",
+      "subtitle": "How much time your agents spent working and how many messages they answered.",
       "range": {
         "week": "7 days",
         "month": "30 days",
         "quarter": "3 months"
       },
       "summary": "Your agents worked {{duration}}",
-      "tasks_one": "{{count}} task",
-      "tasks_other": "{{count}} tasks",
       "byAgent": "By agent",
       "duration": {
         "hm": "{{hours}}h {{minutes}}m",
@@ -185,13 +187,14 @@
         "underMinute": "<1m",
         "zero": "0m"
       },
-      "barLabel": "{{date}}: worked {{duration}}, {{tasks}}",
+      "barLabel": "{{date}}: worked {{duration}}, {{messages}}",
       "empty": {
         "title": "No time worked yet",
-        "body": "When your agents work on tasks, their time will show here."
+        "body": "When your agents work, their time will show here."
       },
       "error": "Couldn't load your agents' time right now. Try again in a moment.",
-      "removedAgent": "Removed agent"
+      "messages_one": "{{count}} message",
+      "messages_other": "{{count}} messages"
     }
   },
   "toast": {}

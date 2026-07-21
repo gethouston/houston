@@ -49,6 +49,12 @@ export type AnalyticsEventName =
   | "cloud_migration_completed"
   | "cloud_migration_skipped"
   | "cloud_migration_deferred"
+  // The user clicked "Move my data" on the offer (before backup/prepare —
+  // closes the gap between _offered and _backup_done).
+  | "cloud_migration_accepted"
+  // The wizard died BEFORE any per-agent task ran (`step`: backup | prepare).
+  // Per-agent upload failures stay on cloud_migration_agent_failed.
+  | "cloud_migration_failed"
   // Onboarding funnel (acquisition→activation) — one event per step the user
   // actually clears, so a single PostHog funnel can show where first-run drops
   // off (broken down by `app_os` for Mac vs Windows). Action-first: where a
@@ -92,6 +98,12 @@ export type AnalyticsEventName =
   | "integration_disconnected"
   | "custom_integration_started"
   | "skill_used"
+  // A skill landed in the agent (carries `skill_slug` + `source`:
+  // community / repo / scratch) — adoption of the skills surface itself,
+  // distinct from `skill_used` (execution in chat).
+  | "skill_installed"
+  | "skill_edited"
+  | "skill_deleted"
   | "routine_scheduled"
   | "routine_executed"
   | "routine_chat_setup_started"
@@ -103,10 +115,31 @@ export type AnalyticsEventName =
   | "tab_opened"
   | "file_attached"
   | "mobile_paired"
+  // Fires once per search session (empty → non-empty query), not per
+  // keystroke. `surface` says which search box (missions, archived, ...).
+  | "search_performed"
+  | "command_palette_opened"
+  // A dictation capture produced a non-empty transcript the user kept.
+  | "dictation_used"
+  // The user changed the app language from Settings (carries `locale`).
+  // Distinct from onboarding_language_selected (first-run pick).
+  | "language_changed"
+  // AI hub: the model modal was opened (`model` = catalog key).
+  | "model_viewed"
+  // A model-ceiling write landed (`agent_id`, `source`: any | picked).
+  | "models_allowlist_updated"
+  // Organization dashboard membership actions (client-side UI counterparts of
+  // the gateway's server-side team_* events; `role` where it applies).
+  | "org_member_added"
+  | "org_member_removed"
+  | "org_role_changed"
+  | "org_invite_revoked"
   // Update lifecycle (closes the symbolication-coverage feedback loop)
   | "update_offered"
   | "update_accepted"
   | "update_dismissed"
+  // Gateway app-update floor tripped → blocking update screen shown
+  | "update_required"
   // Reliability
   | "session_completed"
   | "session_failed"
@@ -135,6 +168,8 @@ type AnalyticsProperty =
   | "file_kind"
   | "from_version"
   | "to_version"
+  // The gateway's enforced app-version floor (update_required)
+  | "min_version"
   // Onboarding funnel
   | "locale"
   | "detected_locale"
@@ -148,7 +183,9 @@ type AnalyticsProperty =
   // Cloud migration (payload sizes, where already known)
   | "bytes"
   | "selected_segment"
-  | "source_screen";
+  | "source_screen"
+  // Org membership role (org_member_added / org_role_changed)
+  | "role";
 
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserIdentity = {
@@ -183,6 +220,7 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "file_kind",
   "from_version",
   "to_version",
+  "min_version",
   "locale",
   "detected_locale",
   "step",
@@ -195,6 +233,7 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "bytes",
   "selected_segment",
   "source_screen",
+  "role",
 ]);
 
 // Bootstrap PostHog at module load so a configured build can capture errors

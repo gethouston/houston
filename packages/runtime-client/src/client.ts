@@ -249,6 +249,22 @@ export class HoustonEngineClient {
     );
   }
   /**
+   * Apply a Mode-pill switch to the conversation's EXECUTING turn (Claude
+   * Code's shift+tab semantics): the running turn's tools adopt the new mode at
+   * their next decision point. `applied: false` is benign — no turn was
+   * running, and the next send pins the mode itself.
+   */
+  setMode(id: string, mode: "execute" | "plan" | "auto") {
+    return this.json<{ ok: boolean; applied: boolean }>(
+      `/conversations/${encodeURIComponent(id)}/mode`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      },
+    );
+  }
+  /**
    * Append the durable stop marker to retire a pending interaction (the stepper
    * X / abandon). Answers 409 if a turn is running — the card is never shown
    * mid-turn, so a race means the user should Stop instead.

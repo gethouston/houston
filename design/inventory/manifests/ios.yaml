@@ -263,3 +263,6 @@ components:
   interaction-answers-message:
     status: not-started
     notes: Structured question/answer user bubble from a completed interaction sequence; not in mobile v1.
+  verified-badge:
+    status: not-started
+    notes: Verified-creator glyph; the creator-profiles store surface is not in mobile v1.

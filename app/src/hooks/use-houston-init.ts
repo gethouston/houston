@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
+import { providerAppearsConnected } from "../components/shell/provider-reconnect-state";
 import { analytics } from "../lib/analytics";
 import { tauriPreferences, tauriProvider, tauriRoutines } from "../lib/tauri";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
@@ -87,7 +88,10 @@ export function useHoustonInit() {
         const defaultProv = await tauriProvider.getDefault();
         if (defaultProv) {
           const status = await tauriProvider.checkStatus(defaultProv);
-          setClaudeAvailable(status.cli_installed && status.authenticated);
+          // appears-connected (not confirmed-authenticated): an "unknown"
+          // probe against a still-waking pod must not degrade first-load
+          // gating for a provider that is in fact connected server-side.
+          setClaudeAvailable(providerAppearsConnected(status));
         } else {
           // No provider configured — track as activation drop-off signal
           analytics.track("provider_not_configured");

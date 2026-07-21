@@ -1,29 +1,33 @@
 /**
- * Server-side client for the Houston gateway's PUBLIC Agent Store API. Called
- * only from server components (home, explore, agent page, sitemap) and the two
- * server route handlers (bundle, install-instructions). Never imported by client
- * code — it reads the private `AGENTSTORE_GATEWAY_URL` and sends no credentials
- * (all routes here are public/anonymous).
+ * Server-side facade over the Agent Store SDK for the gateway's PUBLIC catalog
+ * API. Called only from server components (home, explore, agent page, sitemap)
+ * and the server route handlers (bundle, install-instructions, ir). Never
+ * imported by client code — it reads the private `AGENTSTORE_GATEWAY_URL` and
+ * sends no credentials (all routes here are public/anonymous).
  *
- * Caching is explicit per call: catalog + agent reads use `next.revalidate = 60`,
- * the category list uses a long revalidate (it is a static Go list), and the
- * install write is uncacheable. No route relies on the fetch default.
+ * This module owns only the server-specific concerns: which gateway origin to
+ * hit, and the explicit per-call `next.revalidate` caching (60s catalog + agent
+ * reads, 3600s categories; the install write is uncacheable). All HTTP and error
+ * plumbing lives in `@houston/agentstore-client`.
  *
  * SERVER ONLY: reads the private `AGENTSTORE_GATEWAY_URL` (undefined in the
  * browser) and is imported exclusively by server components + route handlers.
  */
-import type { AgentIR } from "@houston/agentstore-contract";
 import {
-  type AgentDetail,
-  type AgentSummary,
-  type CatalogPage,
-  type InstallTarget,
-  type ListAgentsParams,
-  STORE_API_PREFIX,
+  AgentStoreClient,
+  type StoreAgentDetail,
+  type StoreAgentSummary,
+  StoreApiError,
+  type StoreCatalogPage,
+  type StoreCatalogQuery,
+  type StoreCatalogSort,
   type StoreCategory,
-  serverGatewayBase,
-  toStoreApiError,
-} from "./store-api-types";
+  type StoreCreatorPage,
+  type StoreInstallTarget,
+  type StoreRequestOptions,
+} from "@houston/agentstore-client";
+import type { AgentIR } from "@houston/agentstore-contract";
+import { serverGatewayBase } from "./store-api-types";
 
 /** Revalidate window (seconds) for catalog + agent-page reads. */
 const CATALOG_REVALIDATE = 60;
@@ -32,46 +36,72 @@ const CATEGORIES_REVALIDATE = 3600;
 /** Hard cap on sitemap enumeration so a huge catalog cannot fan out unbounded. */
 const SITEMAP_MAX_PAGES = 50;
 
-/** Absolute URL for a store API path (already prefixed by the caller). */
-function apiUrl(path: string): string {
-  return `${serverGatewayBase()}${STORE_API_PREFIX}${path}`;
+/**
+ * A fresh SDK client bound to the private server gateway origin. Read per call
+ * so a `next build` with no env still succeeds; the base is only needed at
+ * request time.
+ */
+function client(): AgentStoreClient {
+  return new AgentStoreClient({ baseUrl: serverGatewayBase() });
 }
 
-/** GET a JSON resource with an explicit revalidate window, mapping errors. */
-async function getJson<T>(path: string, revalidate: number): Promise<T> {
-  const res = await fetch(apiUrl(path), { next: { revalidate } });
-  if (!res.ok) throw await toStoreApiError(res);
-  return (await res.json()) as T;
+/** Per-call Next caching options for a read with the given revalidate window. */
+function revalidate(seconds: number): StoreRequestOptions {
+  return { init: { next: { revalidate: seconds } } };
 }
 
-/** Encode catalog list params into a query string, dropping empty values. */
-function catalogQuery(params: ListAgentsParams): string {
-  const qs = new URLSearchParams();
-  if (params.q?.trim()) qs.set("q", params.q.trim());
-  if (params.category?.trim()) qs.set("category", params.category.trim());
-  if (params.integration?.trim())
-    qs.set("integration", params.integration.trim().toUpperCase());
-  if (params.sort === "installs") qs.set("sort", "installs");
-  if (params.page && params.page > 1) qs.set("page", String(params.page));
-  const query = qs.toString();
-  return query ? `?${query}` : "";
+/**
+ * Normalize catalog params to the gateway's expectations: UPPERCASE the
+ * integration toolkit slug, and omit the default `recent` sort so it never
+ * appears in the query string.
+ */
+function toCatalogQuery(params: StoreCatalogQuery): StoreCatalogQuery {
+  const integration = params.integration?.trim();
+  return {
+    q: params.q,
+    category: params.category,
+    integration: integration ? integration.toUpperCase() : undefined,
+    sort: params.sort === "installs" ? "installs" : undefined,
+    page: params.page,
+  };
 }
 
 /** One page of published, public agents for the browsable catalog. */
-export function listAgents(params: ListAgentsParams): Promise<CatalogPage> {
-  return getJson<CatalogPage>(
-    `/agents${catalogQuery(params)}`,
-    CATALOG_REVALIDATE,
+export function listAgents(
+  params: StoreCatalogQuery,
+): Promise<StoreCatalogPage> {
+  return client().listAgents(
+    toCatalogQuery(params),
+    revalidate(CATALOG_REVALIDATE),
   );
 }
 
 /** The controlled category vocabulary for the filter/chips rows. */
-export async function listCategories(): Promise<StoreCategory[]> {
-  const { items } = await getJson<{ items: StoreCategory[] }>(
-    "/categories",
-    CATEGORIES_REVALIDATE,
-  );
-  return items;
+export function listCategories(): Promise<StoreCategory[]> {
+  return client().listCategories(revalidate(CATEGORIES_REVALIDATE));
+}
+
+/**
+ * A creator's public page: their profile plus one page of their public agents.
+ * Returns null on 404 (no such handle) so the page can `notFound()`; any other
+ * failure throws so a gateway outage is a real error rather than a silent miss.
+ */
+export async function getCreator(
+  handle: string,
+  query: { page?: number; sort?: StoreCatalogSort } = {},
+): Promise<StoreCreatorPage | null> {
+  const clean = handle.trim();
+  if (!clean) return null;
+  try {
+    return await client().getCreator(
+      clean,
+      query,
+      revalidate(CATALOG_REVALIDATE),
+    );
+  } catch (err) {
+    if (err instanceof StoreApiError && err.status === 404) return null;
+    throw err;
+  }
 }
 
 /**
@@ -81,30 +111,54 @@ export async function listCategories(): Promise<StoreCategory[]> {
  */
 export async function getAgentBySlug(
   slug: string,
-): Promise<AgentDetail | null> {
+): Promise<StoreAgentDetail | null> {
   const clean = slug.trim();
   if (!clean) return null;
-  const res = await fetch(apiUrl(`/agents/${encodeURIComponent(clean)}`), {
-    next: { revalidate: CATALOG_REVALIDATE },
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw await toStoreApiError(res);
-  return (await res.json()) as AgentDetail;
+  try {
+    return await client().getAgent(clean, revalidate(CATALOG_REVALIDATE));
+  } catch (err) {
+    if (err instanceof StoreApiError && err.status === 404) return null;
+    throw err;
+  }
 }
 
 /**
- * Every public slug, newest first, for the sitemap. The gateway paginates the
- * catalog (24/page), so this walks pages until `hasMore` is false or the page cap
- * is hit — the cap bounds a hostile/huge catalog to a predictable request count.
+ * Walk the public catalog page by page (24/page), invoking `visit` for each
+ * agent, until `hasMore` is false or the page cap is hit — the cap bounds a
+ * hostile/huge catalog to a predictable request count. Shared by the sitemap
+ * enumerations so they never diverge on how far they crawl.
  */
-export async function listAllPublicSlugs(): Promise<string[]> {
-  const slugs: string[] = [];
+async function walkPublicCatalog(
+  visit: (agent: StoreAgentSummary) => void,
+): Promise<void> {
   for (let page = 1; page <= SITEMAP_MAX_PAGES; page++) {
     const { items, hasMore } = await listAgents({ sort: "recent", page });
-    for (const agent of items) if (agent.slug) slugs.push(agent.slug);
+    for (const agent of items) visit(agent);
     if (!hasMore) break;
   }
+}
+
+/** Every public slug, newest first, for the sitemap. */
+export async function listAllPublicSlugs(): Promise<string[]> {
+  const slugs: string[] = [];
+  await walkPublicCatalog((agent) => {
+    if (agent.slug) slugs.push(agent.slug);
+  });
   return slugs;
+}
+
+/**
+ * Every distinct creator handle credited on a public agent, for the sitemap's
+ * creator pages. A creator with no public agent is intentionally omitted (there
+ * would be nothing to crawl on their page); one walk of the same catalog.
+ */
+export async function listAllPublicCreatorHandles(): Promise<string[]> {
+  const handles = new Set<string>();
+  await walkPublicCatalog((agent) => {
+    const handle = agent.creator.handle;
+    if (handle) handles.add(handle);
+  });
+  return [...handles];
 }
 
 /**
@@ -116,23 +170,15 @@ export async function listAllPublicSlugs(): Promise<string[]> {
  */
 export async function recordInstall(
   slug: string,
-  target: InstallTarget,
+  target: StoreInstallTarget,
   opts: { clientIp?: string } = {},
 ): Promise<void> {
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-  };
+  const headers: Record<string, string> = {};
   if (opts.clientIp) headers["x-forwarded-for"] = opts.clientIp;
-  const res = await fetch(
-    apiUrl(`/agents/${encodeURIComponent(slug)}/installs`),
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ target }),
-      cache: "no-store",
-    },
-  );
-  if (!res.ok) throw await toStoreApiError(res);
+  await client().recordInstall(slug, target, {
+    headers,
+    init: { cache: "no-store" },
+  });
 }
 
 /** Fetch just the IR of a published agent (thin proxy target). Null on 404. */
@@ -140,5 +186,3 @@ export async function getAgentIr(slug: string): Promise<AgentIR | null> {
   const detail = await getAgentBySlug(slug);
   return detail ? detail.ir : null;
 }
-
-export type { AgentDetail, AgentIR, AgentSummary, CatalogPage, StoreCategory };

@@ -195,7 +195,10 @@
       "creatorNamePlaceholder": "How you want to be credited",
       "creatorUrlLabel": "Link",
       "creatorUrlPlaceholder": "https://your-site.com",
-      "requiredMark": "(required)"
+      "requiredMark": "(required)",
+      "publishingAs": "Publishing as @{{handle}}",
+      "claimHandleCta": "Claim your @handle",
+      "editProfile": "Edit profile"
     },
     "categories": {
       "writing": "Writing & Content",
@@ -231,7 +234,8 @@
       "removeConfirmBody": "{{name}} will no longer be installable from its link. You can publish it again later.",
       "removeConfirm": "Remove",
       "removeCancel": "Keep it up",
-      "seeInStore": "See it in the store"
+      "seeInStore": "See it in the store",
+      "manageAll": "Manage all my agents"
     },
     "errors": {
       "generic": "Something went wrong. Please try again.",

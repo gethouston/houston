@@ -9,7 +9,7 @@ import { cn } from "../utils";
  * surface that lists installable/openable things (integrations, skills, AI
  * providers and models): chevroned section headings over a responsive
  * two-column grid of transparent rows that fill with the `hover` tone, plus
- * the icon-tile strip and the rounded search field.
+ * the rounded search field.
  *
  * Deliberately domain-blind: rows take an `icon` node (the consumer owns brand
  * art vs letter avatars vs glyphs), a title + one-line description, and a
@@ -18,12 +18,14 @@ import { cn } from "../utils";
  */
 
 /** The quiet count chip the catalog family shares (section headers, shell
- *  tabs): a small muted pill carrying how many items live in that group. */
+ *  tabs): a small muted pill carrying how many items live in that group. A
+ *  string is rendered verbatim — a preformatted display label (e.g. `"9000+"`)
+ *  for catalogs whose true total isn't cheaply known. */
 export function CatalogCount({
   count,
   className,
 }: {
-  count: number;
+  count: number | string;
   className?: string;
 }) {
   return (
@@ -38,29 +40,40 @@ export function CatalogCount({
   );
 }
 
-/** A section label — small heading with an optional trailing count chip. A
- *  plain `<h2>`, no fake affordance. Sits directly under the page's h1 so
- *  headings never skip a level. */
+/** A section label — heading with an optional trailing count chip. No fake
+ *  affordance. `size="lg"` marks the page's top-level sections (Installed /
+ *  Available), sitting directly under the page's h1; the default `sm` is for the
+ *  sub-groupings inside them (categories / Featured). Renders `<h2>` by default;
+ *  pass `as="h3"` for an sm sub-group nested UNDER an lg section header so the
+ *  document outline never skips a level (page h1 → section h2 → sub-group h3). */
 export function CatalogSectionHeader({
   title,
   count,
+  size = "sm",
+  as: Tag = "h2",
   className,
 }: {
   title: string;
-  /** How many items the section holds; omit to hide the chip. */
-  count?: number;
+  /** How many items the section holds; omit to hide the chip. A string is a
+   *  preformatted display label (e.g. `"9000+"`) for a total not cheaply known. */
+  count?: number | string;
+  size?: "sm" | "lg";
+  /** Heading level. Default `h2`; use `h3` when nested under an lg section
+   *  header so screen-reader outlines don't skip a level. */
+  as?: "h2" | "h3";
   className?: string;
 }) {
   return (
-    <h2
+    <Tag
       className={cn(
-        "flex items-center gap-2 text-sm font-medium text-ink",
+        "flex items-center gap-2 text-ink",
+        size === "lg" ? "text-base font-semibold" : "text-sm font-medium",
         className,
       )}
     >
       {title}
       {count != null && <CatalogCount count={count} />}
-    </h2>
+    </Tag>
   );
 }
 
@@ -76,50 +89,6 @@ export function CatalogGrid({
     <div className={cn("grid grid-cols-1 gap-1 lg:grid-cols-2", className)}>
       {children}
     </div>
-  );
-}
-
-/** An icon tile for the "Installed" strip: a 48px icon box whose content IS
- *  the art — no border, no chrome. Hover paints the SAME `hover` fill as the
- *  catalog rows on the icon box, and the tile's `label` fades in beneath it
- *  (space is reserved, so nothing reflows). `aria-label` pins the accessible
- *  name to exactly the label — the icon's own alt text stays out of it. */
-export function CatalogTile({
-  label,
-  className,
-  children,
-  ...rest
-}: ComponentPropsWithoutRef<"button"> & { label: string }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      className={cn(
-        // pb reserves the label line; the label itself is absolutely positioned
-        // and centered so a long name shows IN FULL, overflowing the tile's
-        // width without truncation and without shifting neighboring tiles.
-        "group relative flex w-14 flex-col items-center pb-5 outline-none",
-        className,
-      )}
-      {...rest}
-    >
-      <span
-        className={cn(
-          "flex size-12 items-center justify-center rounded-xl transition-colors",
-          "group-hover:bg-hover group-focus-visible:bg-hover group-focus-visible:ring-2 group-focus-visible:ring-focus/40",
-        )}
-      >
-        {children}
-      </span>
-      <span
-        className={cn(
-          "-translate-x-1/2 absolute top-[52px] left-1/2 whitespace-nowrap text-[12px] text-ink-muted leading-4 opacity-0 transition-opacity",
-          "group-hover:opacity-100 group-focus-visible:opacity-100",
-        )}
-      >
-        {label}
-      </span>
-    </button>
   );
 }
 

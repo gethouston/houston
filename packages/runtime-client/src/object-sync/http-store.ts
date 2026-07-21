@@ -1,17 +1,30 @@
 import { randomUUID } from "node:crypto";
-import { createWriteStream } from "node:fs";
-import { mkdir, readFile, rename, rm } from "node:fs/promises";
+import { createReadStream, createWriteStream } from "node:fs";
+import { mkdir, readFile, rename, rm, stat } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
-import type { ObjectStore } from "./object-store";
+import { type ObjectStore, ObjectTooLargeError } from "./object-store";
+import { type FetchRetryOptions, fetchWithRetry } from "./retry";
+
+/**
+ * Files at or above this size PUT as a stream from disk instead of a single
+ * in-heap Buffer — an agent-rendered multi-GiB video must never materialize in
+ * the host process's memory (the pod's limit is a fraction of that). Below it,
+ * the buffered path stays: the delta sync's bread and butter is many small
+ * files, where one read beats stream setup and keeps the body trivially
+ * reusable across retries.
+ */
+export const STREAM_UPLOAD_THRESHOLD_BYTES = 16 * 1024 * 1024;
 
 export interface HttpObjectStoreOptions {
   /** Full agent-scoped base URL ending in `/v1/pod/store/<org>/<agent>`. */
   baseUrl: string;
   token: string;
   fetchImpl?: typeof fetch;
+  /** One delay per retry of a transient failure; override to speed up tests. */
+  retryDelaysMs?: number[];
 }
 
 interface ObjectMetadata {
@@ -30,16 +43,18 @@ export class HttpObjectStore implements ObjectStore {
   private readonly baseUrl: string;
   private readonly token: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly retryDelaysMs: number[] | undefined;
 
   constructor(opts: HttpObjectStoreOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
     this.token = opts.token;
     this.fetchImpl = opts.fetchImpl ?? fetch;
+    this.retryDelaysMs = opts.retryDelaysMs;
   }
 
   async list(prefix: string): Promise<string[]> {
     const query = prefix ? `?prefix=${encodeURIComponent(prefix)}` : "";
-    const res = await this.fetchImpl(`${this.baseUrl}/manifest${query}`, {
+    const res = await this.fetch(`${this.baseUrl}/manifest${query}`, {
       headers: this.authHeaders(),
     });
     if (!res.ok) throw await this.responseError(res, "GET", "manifest");
@@ -53,7 +68,7 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   async download(key: string, destFile: string): Promise<void> {
-    const res = await this.fetchImpl(this.objectUrl(key), {
+    const res = await this.fetch(this.objectUrl(key), {
       headers: this.authHeaders(),
     });
     if (!res.ok) throw await this.responseError(res, "GET", key);
@@ -76,11 +91,32 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   async upload(srcFile: string, key: string): Promise<void> {
-    const res = await this.fetchImpl(this.objectUrl(key), {
-      method: "PUT",
-      headers: this.authHeaders(),
-      body: await readFile(srcFile),
-    });
+    const { size } = await stat(srcFile);
+    const url = this.objectUrl(key);
+    // Large files stream from disk per attempt (a consumed stream cannot be
+    // re-sent, so the retry layer opens a fresh one). No content-length header:
+    // a stream body goes chunked, and the store's GCS writer already picks its
+    // default resumable chunking for unsized bodies — exactly right for files
+    // this size. The gateway's MaxBytesReader still enforces the object cap.
+    const res =
+      size >= STREAM_UPLOAD_THRESHOLD_BYTES
+        ? await this.fetch(
+            url,
+            {
+              method: "PUT",
+              headers: this.authHeaders(),
+              duplex: "half",
+            } as RequestInit,
+            {
+              body: () =>
+                Readable.toWeb(createReadStream(srcFile)) as ReadableStream,
+            },
+          )
+        : await this.fetch(url, {
+            method: "PUT",
+            headers: this.authHeaders(),
+            body: await readFile(srcFile),
+          });
     if (!res.ok) throw await this.responseError(res, "PUT", key);
     const body: unknown = await res.json();
     if (!this.isObjectMetadata(body)) {
@@ -89,13 +125,29 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   async delete(key: string): Promise<void> {
-    const res = await this.fetchImpl(this.objectUrl(key), {
+    const res = await this.fetch(this.objectUrl(key), {
       method: "DELETE",
       headers: this.authHeaders(),
     });
     if (!res.ok && res.status !== 404) {
       throw await this.responseError(res, "DELETE", key);
     }
+  }
+
+  /**
+   * All four operations are safe to re-issue: GETs are read-only and PUT /
+   * DELETE of a single object are idempotent, so transient gateway failures
+   * retry here instead of failing readiness-gating hydration or sync-back.
+   */
+  private fetch(
+    url: string,
+    init?: RequestInit,
+    extra?: Pick<FetchRetryOptions, "body">,
+  ): Promise<Response> {
+    return fetchWithRetry(this.fetchImpl, url, init, {
+      delaysMs: this.retryDelaysMs,
+      ...extra,
+    });
   }
 
   private objectUrl(key: string): string {
@@ -135,10 +187,13 @@ export class HttpObjectStore implements ObjectStore {
     key: string,
   ): Promise<Error> {
     const body = await res.text();
-    return new Error(
-      `object store ${method} ${key} failed (${res.status})${
-        body ? `: ${body.slice(0, 200)}` : ""
-      }`,
-    );
+    const message = `object store ${method} ${key} failed (${res.status})${
+      body ? `: ${body.slice(0, 200)}` : ""
+    }`;
+    // 413 is the gateway's per-object cap (GW_BLOB_MAX_OBJECT_MB) — a
+    // deterministic verdict on these bytes, typed so syncBack can skip the
+    // object instead of aborting the whole pass on it forever.
+    if (res.status === 413) return new ObjectTooLargeError(key, message);
+    return new Error(message);
   }
 }

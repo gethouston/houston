@@ -1,16 +1,15 @@
 "use client";
 
+import {
+  type StoreAgentSummary,
+  StoreApiError,
+} from "@houston/agentstore-client";
 import { Button, Spinner } from "@houston-ai/core";
 import { LogIn } from "lucide-react";
 import * as React from "react";
 import { useSession } from "@/lib/auth/session";
 import { shareUrlForSlug } from "@/lib/site-config";
-import {
-  type AgentSummary,
-  claimAgent,
-  listMyAgents,
-  StoreApiError,
-} from "@/lib/store-client";
+import { claimAgent, listMyAgents } from "@/lib/store-client";
 import { ClaimManage } from "./claim-manage";
 import { ClaimNotice, ClaimSuccess } from "./claim-notices";
 
@@ -27,7 +26,7 @@ type ViewState =
   | { status: "signed-out" }
   | { status: "claiming" }
   | { status: "error"; message: string }
-  | { status: "ready"; agent: AgentSummary }
+  | { status: "ready"; agent: StoreAgentSummary }
   | { status: "success"; shareUrl: string };
 
 function readParams(): ClaimParams | null {

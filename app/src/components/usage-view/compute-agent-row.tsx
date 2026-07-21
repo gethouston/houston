@@ -11,13 +11,13 @@ interface ComputeAgentRowProps {
   max: number;
   /** Formatted time worked ("3h 12m"). */
   duration: string;
-  /** Formatted task count ("12 tasks"). */
-  tasks: string;
+  /** Formatted message count ("12 messages"). */
+  messages: string;
 }
 
 /**
  * One agent's time worked in the Compute section: avatar + name + duration
- * and task count + a tokened track bar scaled to the busiest agent (the same
+ * and message count + a tokened track bar scaled to the busiest agent (the same
  * shape as the org Usage tab's rows, minus the expandable breakdown — time
  * worked is per-agent, not per-person). Deliberately no liveness badge: the
  * pod's up/idle state is infrastructure the user never needs to see.
@@ -28,7 +28,7 @@ export function ComputeAgentRow({
   color,
   max,
   duration,
-  tasks,
+  messages,
 }: ComputeAgentRowProps) {
   const pct = Math.max(2, Math.round((agent.workMs / max) * 100));
   return (
@@ -40,7 +40,7 @@ export function ComputeAgentRow({
           <span className="shrink-0 text-sm text-ink-muted">
             {duration}
             <span aria-hidden> · </span>
-            {tasks}
+            {messages}
           </span>
         </div>
         <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-chip">

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { analytics } from "../../lib/analytics";
 import { canSeeBillingTab } from "../../lib/org-roles";
 import { isTeamWorkspace } from "../../lib/space-id";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -65,6 +66,13 @@ export function OrganizationView() {
   // `null` = the index; a section id = its detail screen. Sections start on the
   // index so the admin lands on the scannable overview, not a section body.
   const [active, setActive] = useState<OrgTabId | null>(null);
+
+  // One event per section detail opened (index → detail), keyed like the
+  // global view switches so a single tab_name breakdown covers everything.
+  useEffect(() => {
+    if (active !== null)
+      analytics.track("tab_opened", { tab_name: `org:${active}` });
+  }, [active]);
 
   // Honor a deep link straight into a section's detail (the C8 team-status
   // banner routes to Billing), then clear it so a later plain nav to the

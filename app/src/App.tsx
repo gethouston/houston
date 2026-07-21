@@ -32,6 +32,7 @@ import {
   setUser as setSentryUser,
 } from "./lib/sentry";
 import { useStoreGatewaySession } from "./lib/store-gateway-session";
+import { useStoreInstallDeepLink } from "./lib/store-install-deeplink";
 import { tauriSystem } from "./lib/tauri";
 import { useAgentStore } from "./stores/agents";
 import { useUIStore } from "./stores/ui";
@@ -50,6 +51,9 @@ export default function App() {
   // Fetch the host's pi-ai catalog once and hydrate the PROVIDERS cache app-wide,
   // so every provider/model surface renders the real runnable set from load.
   useProviderCatalog();
+  // Turn an `houston://store/install` deep link (desktop) or `?install=<slug>`
+  // web param into a seeded import wizard once the shell is live.
+  useStoreInstallDeepLink();
 
   // NOTE: install identity, `install_created`, `session_started`, and theme
   // load run in <StartupEffects> at the top of the tree (main.tsx), NOT here.

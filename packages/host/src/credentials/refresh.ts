@@ -20,6 +20,22 @@ const OAUTH: Record<string, { tokenUrl: string; clientId: string }> = {
 };
 
 /**
+ * The token endpoint's verdict on the refresh token itself (HTTP 400/401:
+ * `invalid_grant`, `refresh_token_invalidated`, ...). Unlike a network blip or
+ * a 5xx, this never heals on retry — the credential is dead until the user
+ * reconnects the provider.
+ */
+export class RefreshRejectedError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "RefreshRejectedError";
+  }
+}
+
+/**
  * True if the access token is within `skewMs` of expiry (or already expired). An
  * API-key credential never expires, so it is never "expiring".
  */
@@ -84,9 +100,10 @@ export async function refreshCredential(
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(
-      `OAuth refresh failed (${res.status}) for ${cred.provider}: ${body.slice(0, 200)}`,
-    );
+    const message = `OAuth refresh failed (${res.status}) for ${cred.provider}: ${body.slice(0, 200)}`;
+    if (res.status === 400 || res.status === 401)
+      throw new RefreshRejectedError(message, res.status);
+    throw new Error(message);
   }
   const json = (await res.json()) as {
     access_token?: string;

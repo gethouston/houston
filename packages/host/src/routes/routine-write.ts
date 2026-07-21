@@ -12,6 +12,7 @@ import {
 import type { NewRoutine, Routine, RoutineUpdate } from "@houston/protocol";
 import { hostProvider } from "../providers";
 import type { Vfs } from "../vfs";
+import { withDocLock } from "./doc-lock";
 
 /**
  * The merge-safe routine write path, shared by the authenticated agent-data
@@ -116,15 +117,19 @@ export async function createRoutineChecked(
   const providerErr = providerPinError(body);
   if (providerErr) return { error: providerErr };
 
-  const { items } = await loadRoutines(vfs, root);
-  const routine = createRoutine(
-    input,
-    crypto.randomUUID(),
-    opts.nowIso,
-    opts.createdBy,
-  );
-  await saveRoutines(vfs, root, upsertById(items, routine));
-  return { routine };
+  // Load→save under the per-doc lock so concurrent routine writes can't drop
+  // each other's entries (same hazard as activities; see doc-lock.ts).
+  return await withDocLock(`${root}#routines`, async () => {
+    const { items } = await loadRoutines(vfs, root);
+    const routine = createRoutine(
+      input,
+      crypto.randomUUID(),
+      opts.nowIso,
+      opts.createdBy,
+    );
+    await saveRoutines(vfs, root, upsertById(items, routine));
+    return { routine };
+  });
 }
 
 /**
@@ -143,42 +148,46 @@ export async function updateRoutineChecked(
   update: Record<string, unknown>,
   opts: RoutineWriteOptions & { actorSub?: string },
 ): Promise<{ routine: Routine } | { error: string } | { notFound: true }> {
-  const { items } = await loadRoutines(vfs, root);
-  const current = items.find((r) => r.id === itemId);
-  if (!current) return { notFound: true };
-  // An update may switch a routine to an event trigger; reject a malformed
-  // binding before it is persisted (normalizeRoutines would drop it).
-  if (update.trigger != null && !isValidTriggerBinding(update.trigger)) {
-    return { error: "invalid 'trigger' binding" };
-  }
-  const next = applyRoutineUpdate(
-    current,
-    update as RoutineUpdate,
-    opts.nowIso,
-    opts.actorSub,
-  );
-  // The APPLIED result must still hold the exactly-one-wake invariant — persisting
-  // a wake-less routine loses it silently (normalizeRoutines drops it on read).
-  const nextWakeErr = wakeMechanismError(
-    next as unknown as Record<string, unknown>,
-  );
-  if (nextWakeErr) return { error: nextWakeErr };
-  // The APPLIED result carries a trigger, but this deployment cannot fire one →
-  // refuse. Converting the routine to a schedule (trigger cleared) passes.
-  if (
-    (next as { trigger?: unknown }).trigger != null &&
-    !opts.triggersEnabled
-  ) {
-    return { error: NO_TRIGGER_BACKEND_WRITE_ERROR };
-  }
-  if (typeof next.schedule === "string") {
-    const accountTz = await getPreference(vfs, workspaceId, "timezone");
-    const scheduleErr = validateSchedule(next.schedule, accountTz);
-    if (scheduleErr) return { error: `invalid schedule: ${scheduleErr}` };
-  }
-  const providerErr = providerPinError(update);
-  if (providerErr) return { error: providerErr };
+  // The whole read-modify-write sits inside the lock: re-loading here is what
+  // makes the final save apply to the list a concurrent writer just produced.
+  return await withDocLock(`${root}#routines`, async () => {
+    const { items } = await loadRoutines(vfs, root);
+    const current = items.find((r) => r.id === itemId);
+    if (!current) return { notFound: true };
+    // An update may switch a routine to an event trigger; reject a malformed
+    // binding before it is persisted (normalizeRoutines would drop it).
+    if (update.trigger != null && !isValidTriggerBinding(update.trigger)) {
+      return { error: "invalid 'trigger' binding" };
+    }
+    const next = applyRoutineUpdate(
+      current,
+      update as RoutineUpdate,
+      opts.nowIso,
+      opts.actorSub,
+    );
+    // The APPLIED result must still hold the exactly-one-wake invariant — persisting
+    // a wake-less routine loses it silently (normalizeRoutines drops it on read).
+    const nextWakeErr = wakeMechanismError(
+      next as unknown as Record<string, unknown>,
+    );
+    if (nextWakeErr) return { error: nextWakeErr };
+    // The APPLIED result carries a trigger, but this deployment cannot fire one →
+    // refuse. Converting the routine to a schedule (trigger cleared) passes.
+    if (
+      (next as { trigger?: unknown }).trigger != null &&
+      !opts.triggersEnabled
+    ) {
+      return { error: NO_TRIGGER_BACKEND_WRITE_ERROR };
+    }
+    if (typeof next.schedule === "string") {
+      const accountTz = await getPreference(vfs, workspaceId, "timezone");
+      const scheduleErr = validateSchedule(next.schedule, accountTz);
+      if (scheduleErr) return { error: `invalid schedule: ${scheduleErr}` };
+    }
+    const providerErr = providerPinError(update);
+    if (providerErr) return { error: providerErr };
 
-  await saveRoutines(vfs, root, upsertById(items, next));
-  return { routine: next };
+    await saveRoutines(vfs, root, upsertById(items, next));
+    return { routine: next };
+  });
 }

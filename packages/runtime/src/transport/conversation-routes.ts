@@ -6,6 +6,7 @@ import {
   disposeConversation,
   ensureProviderForTurn,
   runTurn,
+  setLiveTurnMode,
 } from "../session/chat";
 import { summarizeTitle, titleFromText } from "../session/summarize";
 import {
@@ -39,7 +40,7 @@ export async function handleConversationRoute(
   }
 
   const convMatch = path.match(
-    /^\/conversations\/([^/]+)\/(messages|events|cancel|dismiss-interaction|title)$/,
+    /^\/conversations\/([^/]+)\/(messages|events|cancel|dismiss-interaction|title|mode)$/,
   );
   if (!convMatch) return false;
 
@@ -74,6 +75,18 @@ export async function handleConversationRoute(
     }
     markConversationStopped(id);
     json(res, 200, { ok: true });
+    return true;
+  }
+  if (method === "POST" && action === "mode") {
+    // The Mode pill switched WHILE the agent works: apply it to the executing
+    // turn's live-mode ref (Claude Code's shift+tab). `applied: false` is
+    // benign — no turn is running, and the next send pins the mode itself.
+    // Never trust the wire: unknown values normalize to "execute".
+    const { mode } = await readJson(ctx.req);
+    json(res, 200, {
+      ok: true,
+      applied: setLiveTurnMode(id, normalizeTurnMode(mode)),
+    });
     return true;
   }
   if (method === "POST" && action === "title") {
@@ -174,8 +187,12 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
   const pinnedProvider =
     typeof provider === "string" && provider ? provider : undefined;
   if (!(await ensureProviderForTurn()) && !pinnedProvider) {
+    // `code` is the machine-readable half: the host's scheduler reads it to
+    // demote a routine firing into this expected user state (nothing connected
+    // yet) to a warning instead of a Sentry error (HOUSTON-APP-4XM).
     json(ctx.res, 409, {
       error: "No provider connected. Connect an AI provider first.",
+      code: "no_provider",
     });
     return;
   }

@@ -148,6 +148,13 @@
     "itemPlural": "elementos",
     "menuButton": "Más acciones",
     "breadcrumbs": "Ruta de carpetas",
+    "conflict": {
+      "title": "“{{name}}” ya existe",
+      "description": "La carpeta de destino ya tiene un elemento llamado “{{name}}”. Puedes reemplazarlo o conservar ambos.",
+      "replace": "Reemplazar",
+      "keepBoth": "Conservar ambos",
+      "cancel": "Cancelar"
+    },
     "uploadFiles": "Subir archivos",
     "downloadAll": "Descargar todo",
     "columns": {

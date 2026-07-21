@@ -176,6 +176,9 @@ export interface LocalHostOptions {
    * `capabilities.triggers`, advertised by the managed gateway at its edge.
    */
   triggersEnabled?: boolean;
+  /** Gateway-fronted but the egress still reaches loopback (dev launcher
+   *  only): skips the managed-cloud public-HTTPS endpoint validation. */
+  loopbackEgress?: boolean;
   /** Managed-pod cache persistence. Omit to preserve the local/PVC lifecycle. */
   storeSync?: {
     store: ObjectStore;
@@ -487,6 +490,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // Cloud). Off on desktop/self-host: the write gate refuses trigger bindings
     // and the trigger-status route reports them as unable to wake.
     triggersEnabled: opts.triggersEnabled ?? false,
+    loopbackEgress: opts.loopbackEgress ?? false,
     // The desktop shell reveals/opens agent folders in the OS file manager;
     // give it the REAL directory (the agent id is a route key, not a path).
     agentDir: (_ws, a) => agentDir(a.id),

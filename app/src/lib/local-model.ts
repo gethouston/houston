@@ -148,6 +148,31 @@ export function buildLocalEndpoint(opts: {
 }
 
 /**
+ * Build the agent's provider endpoint for a DIRECT connect — no tunnel, no
+ * bridge, no proxy key. Used when the deployment has no relay (dev, a
+ * desktop-local engine, self-host): the engine is co-located with the detected
+ * server, so it reaches `${baseUrl}/v1` itself. The engine's save-time
+ * validation stays the authority (a managed cloud pod still rejects localhost).
+ */
+export function buildDirectEndpoint(opts: {
+  server: DetectedServer;
+  model: string;
+  name: string;
+  /** Surface the model's chain-of-thought as thinking in Houston. */
+  reasoning?: boolean;
+  /** Share the endpoint with teammates in the active team workspace. */
+  shared?: boolean;
+}): CustomEndpoint {
+  return {
+    baseUrl: `${opts.server.baseUrl.replace(/\/+$/, "")}/v1`,
+    model: opts.model,
+    name: opts.name,
+    ...(opts.reasoning ? { reasoning: true } : {}),
+    ...(opts.shared ? { shared: true } : {}),
+  };
+}
+
+/**
  * Map fresh tunnel credentials onto the `reconnect_local_bridge` arguments. The
  * public URL / target are already persisted native-side, so reconnect only needs
  * the relay coordinates + a fresh token.

@@ -6,6 +6,7 @@ import {
   type ObjectStore,
   syncBack,
 } from "@houston/runtime-client/object-sync";
+import { isBenignRecursiveWatchRace } from "../watch/watcher-race";
 
 const DEFAULT_QUIET_MS = 3_000;
 const DEFAULT_INTERVAL_MS = 300_000;
@@ -86,6 +87,14 @@ export class StoreSyncDaemon {
         this.markDirty(),
       );
       this.watcher.on("error", (err) => {
+        // The Linux recursive-watcher ENOENT race on a transient dir (see
+        // watch/watcher-race.ts) is harmless AND recoverable — the watcher
+        // keeps serving events, so closing it here would silently degrade
+        // reactivity to periodic-only over noise. Log-and-keep instead.
+        if (isBenignRecursiveWatchRace(err)) {
+          this.opts.log("[store-sync] transient fs-watch race (watcher kept)");
+          return;
+        }
         this.opts.log(
           "[store-sync] filesystem watcher failed; using periodic sync",
           err,
@@ -188,6 +197,15 @@ export class StoreSyncDaemon {
     );
     this.manifest = result.manifest;
     if (version === this.dirtyVersion) this.dirty = false;
+    // A skip only happens on an ATTEMPTED upload (a changed file), so this
+    // logs once per oversized version, not on every periodic pass — an err-less
+    // breadcrumb, not a Sentry error (the store's cap is a deterministic
+    // verdict on the file, not an engine fault — HOUSTON-APP-4Y7).
+    for (const skip of result.skipped) {
+      this.opts.log(
+        `[store-sync] ${skip.key} exceeds the store's per-object cap and stays pod-local until it changes (${skip.reason})`,
+      );
+    }
     const cap = this.opts.maxHydrateBytes ?? DEFAULT_MAX_HYDRATE_BYTES;
     if (result.totalBytes > cap * SIZE_WARN_FRACTION) {
       const mb = (n: number) => Math.round(n / 1024 / 1024);

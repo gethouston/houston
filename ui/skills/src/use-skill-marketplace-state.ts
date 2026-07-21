@@ -37,6 +37,14 @@ export interface UseSkillMarketplaceStateArgs {
    * When the search box is empty a non-null value drives the flat result grid.
    */
   categoryQuery: string | null;
+  /**
+   * Controlled search query. When provided the hook renders this value and
+   * routes edits through `onQueryChange` instead of owning the state, so a page
+   * can drive the marketplace search from one shared field. Omit for the
+   * self-contained (internal-state) behavior.
+   */
+  query?: string;
+  onQueryChange?: (q: string) => void;
 }
 
 export interface SkillMarketplaceState {
@@ -52,8 +60,19 @@ export function useSkillMarketplaceState({
   onSearch,
   onInstall,
   categoryQuery,
+  query: controlledQuery,
+  onQueryChange,
 }: UseSkillMarketplaceStateArgs): SkillMarketplaceState {
-  const [query, setQuery] = useState("");
+  const controlled = controlledQuery !== undefined;
+  const [internalQuery, setInternalQuery] = useState("");
+  const query = controlled ? controlledQuery : internalQuery;
+  const setQuery = useCallback(
+    (q: string) => {
+      if (controlled) onQueryChange?.(q);
+      else setInternalQuery(q);
+    },
+    [controlled, onQueryChange],
+  );
   const [phase, setPhase] = useState<SkillMarketplacePhase>({ kind: "idle" });
   const [installState, setInstallState] = useState<MarketplaceInstallState>(
     () => new Map(),
@@ -61,10 +80,12 @@ export function useSkillMarketplaceState({
   const searchAbortRef = useRef<AbortController | null>(null);
   const installAbortsRef = useRef<Map<string, AbortController>>(new Map());
 
-  // Section close: clear query + phase + install state and abort everything.
+  // Section close: clear phase + install state and abort everything. The query
+  // is only wiped when the hook owns it; a controlled query belongs to the page
+  // (it also filters other sections) and is left untouched.
   useEffect(() => {
     if (open) return;
-    setQuery("");
+    if (!controlled) setInternalQuery("");
     setPhase({ kind: "idle" });
     setInstallState(new Map());
     searchAbortRef.current?.abort();
@@ -72,7 +93,7 @@ export function useSkillMarketplaceState({
       c.abort();
     });
     installAbortsRef.current.clear();
-  }, [open]);
+  }, [open, controlled]);
 
   // The effective search: a typed query (debounced) beats a selected category
   // (fired immediately); an empty term parks on `idle` (the browse shelves).

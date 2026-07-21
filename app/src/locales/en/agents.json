@@ -148,6 +148,13 @@
     "itemPlural": "items",
     "menuButton": "More actions",
     "breadcrumbs": "Folder path",
+    "conflict": {
+      "title": "“{{name}}” already exists",
+      "description": "The destination folder already has an item named “{{name}}”. You can replace it or keep both.",
+      "replace": "Replace",
+      "keepBoth": "Keep both",
+      "cancel": "Cancel"
+    },
     "uploadFiles": "Upload files",
     "downloadAll": "Download all",
     "columns": {

@@ -14,6 +14,7 @@
 import type { CustomEndpoint } from "@houston-ai/engine-client";
 import { showErrorToast } from "./error-toast";
 import {
+  buildDirectEndpoint,
   buildLocalEndpoint,
   type DetectedServer,
   reconnectBridgeArgs,
@@ -111,6 +112,23 @@ export async function connectDetectedModel(opts: {
     const cred = await tauriProvider.getTunnelCredentials();
     if (isAbort(opts.signal)) throw new ConnectAborted();
 
+    // No relay in this deployment (dev, desktop-local engine, self-host): the
+    // engine is co-located with the detected server, so register it DIRECTLY —
+    // no bridge, no proxy key. The engine's save-time validation stays the
+    // authority (a managed cloud pod still rejects a localhost URL, loudly).
+    if (!cred) {
+      await tauriProvider.setCustomEndpoint(
+        buildDirectEndpoint({
+          server: opts.server,
+          model: opts.model,
+          name: opts.name,
+          reasoning: opts.reasoning,
+          shared: opts.shared,
+        }),
+      );
+      return;
+    }
+
     let bridge: Awaited<ReturnType<typeof osStartLocalBridge>>;
     try {
       bridge = await osStartLocalBridge({
@@ -162,6 +180,16 @@ export async function reconnectLocalModel(signal?: AbortSignal): Promise<void> {
   return withBridgeOp(async () => {
     const cred = await tauriProvider.getTunnelCredentials();
     if (isAbort(signal)) throw new ConnectAborted();
+    // A saved bridge exists but the deployment no longer offers a relay
+    // (signed out of the hosted workspace, relay unconfigured): the tunnel
+    // cannot come back — surface it, never spin silently.
+    if (!cred) {
+      const err = new Error(
+        "This workspace has no tunnel relay, so the saved local-model bridge cannot reconnect.",
+      );
+      surfaceRaw("reconnect_local_bridge", err);
+      throw err;
+    }
     try {
       await osReconnectLocalBridge(reconnectBridgeArgs(cred));
     } catch (err) {

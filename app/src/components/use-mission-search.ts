@@ -1,6 +1,7 @@
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { analytics } from "../lib/analytics";
 import { matchesPhrase } from "./mission-highlight";
 import {
   buildMissionHistorySearchText,
@@ -52,6 +53,17 @@ export function useMissionSearch({
       mountedRef.current = false;
     };
   }, []);
+
+  // One event per search session (empty → non-empty), never per keystroke.
+  const searchingRef = useRef(false);
+  useEffect(() => {
+    if (phrase && !searchingRef.current) {
+      searchingRef.current = true;
+      analytics.track("search_performed", { surface: "missions" });
+    } else if (!phrase) {
+      searchingRef.current = false;
+    }
+  }, [phrase]);
 
   useEffect(() => {
     if (!phrase) return;

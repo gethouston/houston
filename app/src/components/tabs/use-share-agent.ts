@@ -1,5 +1,6 @@
 import type { AgentAssignment } from "@houston-ai/engine-client";
 import { useMutation } from "@tanstack/react-query";
+import { analytics } from "../../lib/analytics";
 import { tauriAgents } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
@@ -48,6 +49,18 @@ export function useShareAgent() {
           : null,
       });
       return snapshot;
+    },
+    onSuccess: (_data, { agentId, assignments }, snapshot) => {
+      // Only count GROWING the roster as a share; shrinking it is revocation.
+      const prev =
+        snapshot?.agents.find((a) => a.id === agentId)?.assignments?.length ??
+        0;
+      if (assignments.length > prev) {
+        analytics.track("agent_shared", {
+          agent_id: agentId,
+          source: "share_dialog",
+        });
+      }
     },
     onError: (_err, _vars, snapshot) => {
       // Roll the optimistic patch back; call() already toasted + reported.

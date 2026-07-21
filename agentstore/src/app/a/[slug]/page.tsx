@@ -1,8 +1,9 @@
 import type { AgentLearning } from "@houston/agentstore-contract";
 import { Separator } from "@houston-ai/core";
-import { ExternalLink, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { AgentCreatorCredit } from "@/components/agent-creator-credit";
 import { AgentIcon } from "@/components/agent-icon";
 import { InstallPanel } from "@/components/install-panel";
 import { IntegrationChips } from "@/components/integration-chips";
@@ -71,7 +72,7 @@ export default async function AgentDetailPage({ params }: PageParams) {
   const data = await getAgentBySlug(slug);
   if (!data) notFound();
 
-  const { ir } = data;
+  const { ir, agent } = data;
   const { identity } = ir;
   const urls = agentUrls(slug);
   const integrations = resolveIntegrationLabels(ir.integrations);
@@ -98,24 +99,10 @@ export default async function AgentDetailPage({ params }: PageParams) {
               {identity.tagline}
             </p>
           )}
-          <p className="mt-3 text-sm text-muted-foreground">
-            By{" "}
-            {identity.creator.url ? (
-              <a
-                href={identity.creator.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4"
-              >
-                {identity.creator.displayName}
-                <ExternalLink aria-hidden className="size-3.5" />
-              </a>
-            ) : (
-              <span className="font-medium text-foreground">
-                {identity.creator.displayName}
-              </span>
-            )}
-          </p>
+          <AgentCreatorCredit
+            creator={agent.creator}
+            fallback={identity.creator}
+          />
         </div>
       </header>
 
@@ -176,6 +163,7 @@ export default async function AgentDetailPage({ params }: PageParams) {
           <div className="rounded-2xl border bg-card p-5 shadow-sm">
             <InstallPanel
               agentName={identity.name}
+              slug={slug}
               instructions={instructions}
               skillZipUrl={urls.skillZipUrl}
               copyPasteUrl={urls.copyPasteUrl}

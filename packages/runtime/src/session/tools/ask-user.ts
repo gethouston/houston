@@ -2,6 +2,7 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import type { InteractionStep } from "@houston/runtime-client";
 import { type Static, Type } from "typebox";
 import { recordQuestions } from "../interaction";
+import { assertNotAutoMode } from "../live-mode-gate";
 
 /**
  * The blocking-question tool. Any time the model needs the user to answer,
@@ -76,6 +77,9 @@ export function makeAskUserTool() {
     parameters: AskUserParams,
     executionMode: "sequential",
     async execute(_id: string, params: AskUserParams) {
+      // Live gate for the mid-turn Mode-pill switch: a turn built with ask_user
+      // available may now be running in Autopilot — never wait on the user.
+      assertNotAutoMode("ask the user questions or wait for their input");
       if (
         params.questions.length < 1 ||
         params.questions.length > MAX_QUESTIONS

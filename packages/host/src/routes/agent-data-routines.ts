@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { loadRoutines, removeById, saveRoutines } from "@houston/domain";
 import type { Vfs } from "../vfs";
+import { withDocLock } from "./doc-lock";
 import { json, readJson } from "./http";
 import {
   createRoutineChecked,
@@ -75,12 +76,18 @@ export async function handleRoutinesData(
     return true;
   }
   if (method === "DELETE" && itemId) {
-    const { items } = await loadRoutines(vfs, root);
-    if (!items.some((r) => r.id === itemId)) {
+    // Same per-doc lock as the shared write path (routine-write.ts): a delete
+    // racing a create/update must not resurrect or drop the other's entry.
+    const found = await withDocLock(`${root}#routines`, async () => {
+      const { items } = await loadRoutines(vfs, root);
+      if (!items.some((r) => r.id === itemId)) return false;
+      await saveRoutines(vfs, root, removeById(items, itemId).items);
+      return true;
+    });
+    if (!found) {
       json(res, 404, { error: "routine not found" });
       return true;
     }
-    await saveRoutines(vfs, root, removeById(items, itemId).items);
     fireChange();
     json(res, 200, { ok: true });
     return true;

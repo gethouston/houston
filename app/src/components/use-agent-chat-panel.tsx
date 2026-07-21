@@ -131,7 +131,6 @@ import {
 } from "../lib/tauri";
 import {
   DEFAULT_TURN_MODE,
-  modeChangeAppliesNextTurn,
   normalizeTurnMode,
   type TurnMode,
 } from "../lib/turn-mode";
@@ -159,7 +158,7 @@ import { SelectedSkillChip } from "./selected-skill-chip";
 import { ProviderErrorCard } from "./shell/provider-error-card";
 import {
   continuesTaskAfterReconnect,
-  isInlineAuthCardForChat,
+  isInlineAuthCard,
   providerErrorRetryText,
   reconnectContinueText,
   resendsOriginalPrompt,
@@ -745,34 +744,34 @@ export function useAgentChatPanel({
     [path, addToast, t],
   );
   const handleModeSelect = useCallback(
-    async (mode: TurnMode, opts?: { silent?: boolean }) => {
+    async (mode: TurnMode) => {
       // Mode is per-agent composer memory (never synced to engine Settings):
       // persist it so the pill reopens where the user left it. Optimistic flip;
-      // the actual plan/execute pin rides each send as `modeOverride`.
+      // each send pins the pick as `modeOverride`.
       //
-      // A pick while a turn is streaming can't touch that turn (its pin was
-      // stamped at send), so say so: a transient toast tells the user the new
-      // mode rides the NEXT message. `silent` is for programmatic flips whose
-      // send carries the mode explicitly (the plan-ready card), where the
-      // note would be a lie.
-      if (
-        !opts?.silent &&
-        modeChangeAppliesNextTurn(turnRunning, turnMode, mode)
-      ) {
+      // A pick while a turn is STREAMING also applies to that turn (Claude
+      // Code's shift+tab): the runtime mutates the executing turn's live-mode
+      // ref, so the agent adopts the new mode at its next tool decision.
+      // `applied: false` (the turn settled while the request flew) is benign —
+      // the next send pins the mode anyway — but a transport failure is
+      // surfaced, with the honest "your next message still gets it" note.
+      setTurnMode(mode);
+      if (turnRunning && path && selectedSessionKey && mode !== turnMode) {
         const modeLabels: Record<TurnMode, string> = {
           execute: t("chat:modeSelector.coworker"),
           plan: t("chat:modeSelector.planner"),
           auto: t("chat:modeSelector.autopilot"),
         };
-        addToast({
-          title: t("chat:modeSelector.nextTurnToastTitle", {
-            mode: modeLabels[mode],
-          }),
-          description: t("chat:modeSelector.nextTurnToastBody"),
-          variant: "info",
+        tauriChat.setLiveTurnMode(path, selectedSessionKey, mode).catch(() => {
+          addToast({
+            title: t("chat:modeSelector.liveApplyFailedTitle", {
+              mode: modeLabels[mode],
+            }),
+            description: t("chat:modeSelector.liveApplyFailedBody"),
+            variant: "error",
+          });
         });
       }
-      setTurnMode(mode);
       try {
         if (path) {
           const cfg = await tauriConfig.read(path);
@@ -786,7 +785,7 @@ export function useAgentChatPanel({
         });
       }
     },
-    [path, addToast, t, turnRunning, turnMode],
+    [path, selectedSessionKey, addToast, t, turnRunning, turnMode],
   );
 
   // Route a composer model / effort pick. In personal (Teams) mode it writes the
@@ -1206,7 +1205,7 @@ export function useAgentChatPanel({
   const startPlan = useCallback(
     (mode: TurnMode, text: string) => {
       if (!path || !selectedSessionKey) return;
-      void handleModeSelect(mode, { silent: true });
+      void handleModeSelect(mode);
       tauriChat
         .send(path, text, selectedSessionKey, {
           providerOverride: effectiveProvider,
@@ -1781,17 +1780,22 @@ export function useAgentChatPanel({
               // nudge (the transcript filters its bubble, see
               // `mapFeedItems`). Both fire automatically on reconnect;
               // other failures keep the generic visible retry prompt.
-              const text = continuesTaskAfterReconnect(providerError)
-                ? encodeAutoContinueMessage(
-                    reconnectContinueText(
-                      providerError,
-                      t("chat:providerError.reconnectedContinue"),
-                    ),
-                  )
+              const continues = continuesTaskAfterReconnect(providerError);
+              const continueText = reconnectContinueText(
+                providerError,
+                t("chat:providerError.reconnectedContinue"),
+              );
+              const text = continues
+                ? encodeAutoContinueMessage(continueText)
                 : providerErrorRetryText(
                     providerError,
                     t("chat:toolRuntimeError.retryPrompt"),
                   );
+              // The reconnect resume fires WITHOUT the user typing, so it is an
+              // `autoResume` send: if the conversation shows a running turn it
+              // is held at most once (several mounted cards can fire the same
+              // resume) and dropped when redundant — and its queued bubble
+              // shows the human text, never the auto-continue marker.
               await tauriChat.send(path, text, selectedSessionKey, {
                 providerOverride: effectiveProvider,
                 modelOverride: effectiveModel,
@@ -1800,6 +1804,8 @@ export function useAgentChatPanel({
                 // A refused not-connected send left its prompt's bubble in
                 // the feed already — resending it must not add a second one.
                 suppressUserBubble: resendsOriginalPrompt(providerError),
+                autoResume: providerError.kind === "unauthenticated",
+                ...(continues ? { queuedPreview: { text: continueText } } : {}),
               });
             }}
             // "Pick another model" pops the MODEL picker (not the Skills picker);
@@ -1852,14 +1858,13 @@ export function useAgentChatPanel({
       // narrated by the standard in-flight indicator — deriveStatus treats
       // the parked trailing user bubble as "submitted" (HOU-713).
       // The persisted inline `UnauthenticatedCard` (a provider_error feed item)
-      // is the stable reconnect surface. When it's already present for THIS
-      // chat's provider, don't also render the store-driven card — it flickers
-      // (auto-dismisses) when the provider's auth probe is unreliable, e.g.
-      // codex reporting "authenticated" off a stale ~/.codex/auth.json after a
-      // server-side session kill. One card, and it stays put.
-      const hasInlineAuthCard = feedItems.some((it) =>
-        isInlineAuthCardForChat(it, effectiveProvider),
-      );
+      // is the stable reconnect surface. When one is present, don't also
+      // render the store-driven card — it flickers (auto-dismisses) when the
+      // provider's auth probe is unreliable, and when the chat-provider
+      // resolution disagrees with the provider the turn ACTUALLY failed on
+      // (a stale activity record) it would name the wrong provider outright.
+      // One card per chat, and the inline one carries the true provider.
+      const hasInlineAuthCard = feedItems.some(isInlineAuthCard);
       if (hasInlineAuthCard) return null;
       const signalKey = providerAuthSignalKey(feedItems);
       // Always hand the card THIS chat's provider so it can match the global

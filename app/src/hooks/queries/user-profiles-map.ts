@@ -86,13 +86,29 @@ export interface SessionUserMeta {
   avatar_url?: string;
 }
 
+/**
+ * The subset of the caller's Agent Store creator profile the self-face reads:
+ * their claimed @handle, verification, and the avatar they chose in the store.
+ * A bare shape so this pure module keeps importing nothing; a live
+ * `CreatorProfile` (from `@houston-ai/engine-client`) structurally satisfies it.
+ */
+export interface StoreProfileFace {
+  handle: string | null;
+  avatarUrl: string | null;
+  verified: boolean;
+}
+
 /** The signed-in caller's resolved identity — one source for every self-face. */
 export interface MyProfile {
   userId: string;
   /** Never blank: profile name > OAuth name > email > short id. */
   name: string;
-  /** Uploaded avatar > provider photo > `null` (render initials). */
+  /** Store avatar > uploaded avatar > provider photo > `null` (render initials). */
   avatarUrl: string | null;
+  /** The caller's claimed creator @handle, or `null` when unclaimed. */
+  handle: string | null;
+  /** Whether the caller's creator profile is verified. */
+  verified: boolean;
 }
 
 /**
@@ -105,14 +121,22 @@ export interface MyProfile {
  * single-player / non-multiplayer host `profile` is absent and this collapses to
  * pure metadata — byte-identical to the old inline derivation (no behavior
  * change).
+ *
+ * When the caller has an Agent Store creator profile (`storeProfile`), it layers
+ * on top: its avatar takes precedence over both the uploaded and provider photos
+ * (a creator who set a store avatar sees it everywhere), and it supplies the
+ * `handle` + `verified` self-face fields. Absent (no claimed profile, or a host
+ * where the store isn't reached), `handle` is `null`, `verified` is `false`, and
+ * the avatar chain is exactly the prior one.
  */
 export function resolveMyProfile(input: {
   userId: string;
   email?: string | null;
   metadata: SessionUserMeta;
   profile?: UserProfile | null;
+  storeProfile?: StoreProfileFace | null;
 }): MyProfile {
-  const { userId, email, metadata, profile } = input;
+  const { userId, email, metadata, profile, storeProfile } = input;
   return {
     userId,
     name:
@@ -121,7 +145,13 @@ export function resolveMyProfile(input: {
       metadata.name ??
       email ??
       userId.slice(0, 8),
-    avatarUrl: profile?.avatarUrl ?? metadata.avatar_url ?? null,
+    avatarUrl:
+      storeProfile?.avatarUrl ??
+      profile?.avatarUrl ??
+      metadata.avatar_url ??
+      null,
+    handle: storeProfile?.handle ?? null,
+    verified: storeProfile?.verified ?? false,
   };
 }
 

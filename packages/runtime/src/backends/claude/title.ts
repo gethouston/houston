@@ -32,7 +32,21 @@ export interface ClaudeTitleParams {
 
 export async function titleWithClaude(p: ClaudeTitleParams): Promise<string> {
   const text = await oneShotWithClaude({
-    prompt: p.excerpt,
+    // The title instruction rides the PROMPT, not only `systemPrompt`: the
+    // CLI the SDK spawns has been observed running the full claude_code
+    // preset despite a custom string systemPrompt in the initialize request —
+    // the model then ANSWERED the excerpt, and the first line of that answer
+    // became the board title ("Yes, I have image capabilities. I…"). With the
+    // instruction inline the reply is a title whichever prompt the CLI ends
+    // up honoring.
+    prompt: [
+      p.titlePrompt,
+      "",
+      "Conversation excerpt:",
+      p.excerpt,
+      "",
+      "Reply with ONLY the title.",
+    ].join("\n"),
     systemPrompt: p.titlePrompt,
     workspaceDir: p.workspaceDir,
     readToken: p.readToken,

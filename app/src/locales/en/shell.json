@@ -224,6 +224,14 @@
     "retryAction": "Try again",
     "dismissAction": "Dismiss update for now"
   },
+  "updateRequired": {
+    "cardLabel": "Houston update required",
+    "title": "Update required",
+    "description": "Houston {{minVersion}} or newer is required to keep using Houston Cloud. You're on v{{currentVersion}}.",
+    "descriptionNoVersion": "A newer version of Houston is required to keep using Houston Cloud. You're on v{{currentVersion}}.",
+    "downloadAction": "Download the update",
+    "checkAction": "Check for updates"
+  },
   "store": {
     "searchPlaceholder": "Search the library...",
     "noResults": "No agents match your search"
@@ -355,6 +363,8 @@
     "networkUnreachable": {
       "title": "Cannot reach {{provider}}",
       "body": "Houston could not reach the {{provider}} API. Check your internet, then try again.",
+      "localTitle": "Cannot reach your local model",
+      "localBody": "Houston could not reach the model on your computer. Make sure the model app is open and its server is running, then try again.",
       "retry": "Try again",
       "checkStatus": "Check status page"
     },

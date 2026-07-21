@@ -140,7 +140,11 @@ export async function createMission(
       displayText: opts.buildPrompt ? text : undefined,
     });
 
-    analytics.track("mission_created", { agent_mode: opts.agentMode });
+    analytics.track("mission_created", {
+      agent_mode: opts.agentMode,
+      provider: opts.providerOverride,
+      model: opts.modelOverride,
+    });
 
     if (!opts.title) {
       void refreshMissionTitle({

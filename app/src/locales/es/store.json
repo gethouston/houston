@@ -22,5 +22,130 @@
     "learnings_one": "Incluye {{count}} aprendizaje de uso real",
     "learnings_other": "Incluye {{count}} aprendizajes de uso real"
   },
-  "installFailed": "Houston no pudo traer ese agente de la tienda. Intenta de nuevo en un momento."
+  "installFailed": "Houston no pudo traer ese agente de la tienda. Intenta de nuevo en un momento.",
+  "tabs": {
+    "browse": "Explorar",
+    "myAgents": "Mis agentes"
+  },
+  "allIntegrations": "Todas las integraciones",
+  "report": {
+    "open": "Reportar",
+    "title": "Reportar este agente",
+    "reasonLabel": "Motivo",
+    "reason": {
+      "spam": "Spam",
+      "malicious": "Malicioso o inseguro",
+      "impersonation": "Suplantación de identidad",
+      "inappropriate": "Contenido inapropiado",
+      "other": "Otro motivo"
+    },
+    "detailsLabel": "Detalles",
+    "detailsPlaceholder": "Cuéntanos qué está mal (opcional)",
+    "contactLabel": "Tu correo",
+    "contactPlaceholder": "Para poder darte seguimiento (opcional)",
+    "submit": "Enviar reporte",
+    "cancel": "Cancelar",
+    "success": "Gracias por reportarlo. Nuestro equipo lo revisará.",
+    "failed": "No se pudo enviar tu reporte. Inténtalo de nuevo."
+  },
+  "myAgents": {
+    "empty": "Todavía no has publicado ningún agente.",
+    "signedOut": "Inicia sesión para ver los agentes que has publicado.",
+    "signIn": "Iniciar sesión",
+    "state": {
+      "draft": "Borrador",
+      "published": "Publicado",
+      "archived": "Archivado"
+    },
+    "visibility": {
+      "unlisted": "No listado",
+      "public": "Público"
+    },
+    "action": {
+      "requestPublic": "Solicitar listado público",
+      "requestPublicPending": "Solicitando...",
+      "requestPublicDone": "En revisión",
+      "makeUnlisted": "Hacer no listado",
+      "unpublish": "Retirar",
+      "delete": "Eliminar",
+      "seeInStore": "Ver en la tienda"
+    },
+    "confirm": {
+      "deleteTitle": "¿Eliminar este agente?",
+      "deleteBody": "{{name}} se quitará de la tienda de forma permanente. Esto no se puede deshacer.",
+      "deleteConfirm": "Eliminar",
+      "cancel": "Cancelar",
+      "unpublishTitle": "¿Retirar este agente?",
+      "unpublishBody": "{{name}} ya no se podrá instalar desde su enlace. Puedes publicarlo de nuevo más adelante.",
+      "unpublishConfirm": "Retirar"
+    },
+    "actionFailed": "No se pudo completar la acción. Inténtalo de nuevo.",
+    "requestPublicSent": "Listado público solicitado. Lo revisaremos pronto."
+  },
+  "profile": {
+    "edit": "Editar perfil",
+    "title": "Tu perfil de creador",
+    "claimTitle": "Reclama tu @handle",
+    "handleLabel": "Handle",
+    "handlePlaceholder": "tunombre",
+    "handleHint": "Letras minúsculas, números y guiones bajos. Este es tu @handle público.",
+    "handleAvailable": "Ese handle está disponible.",
+    "handleTaken": "Ese handle ya está en uso.",
+    "handleReserved": "Ese handle está reservado.",
+    "handleInvalid": "Usa de 2 a 30 letras minúsculas, números o guiones bajos.",
+    "handleChecking": "Comprobando...",
+    "handleChangeTooSoon": "Cambiaste tu handle hace poco. Inténtalo más tarde.",
+    "displayNameLabel": "Nombre visible",
+    "bioLabel": "Biografía",
+    "bioPlaceholder": "Cuéntale a la gente lo que creas.",
+    "avatarLabel": "Foto de perfil",
+    "avatarChange": "Cambiar foto",
+    "avatarRemove": "Quitar foto",
+    "avatarUploading": "Subiendo...",
+    "avatarTooLarge": "Esa imagen es muy grande. Elige una de menos de 2 MB.",
+    "avatarBadType": "Usa una imagen PNG, JPEG o WebP.",
+    "avatarClaimHint": "Guarda tu perfil primero para agregar una foto.",
+    "socials": {
+      "x": "X",
+      "youtube": "YouTube",
+      "tiktok": "TikTok",
+      "instagram": "Instagram",
+      "github": "GitHub",
+      "linkedin": "LinkedIn",
+      "website": "Sitio web",
+      "hint": "Agrega enlaces a tus perfiles para que la gente te encuentre."
+    },
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "saved": "Perfil guardado",
+    "saveFailed": "No se pudo guardar tu perfil. Inténtalo de nuevo.",
+    "cancel": "Cancelar",
+    "claimCta": "Reclamar mi handle",
+    "claimBody": "Elige un @handle público para que la gente encuentre en un solo lugar todos los agentes que publicas."
+  },
+  "creator": {
+    "by": "Por {{name}}",
+    "viewProfile": "Ver perfil",
+    "verified": "Verificado",
+    "agents_one": "{{count}} agente",
+    "agents_other": "{{count}} agentes",
+    "noAgents": "Aún no hay agentes públicos.",
+    "back": "Volver",
+    "notFound": "No pudimos encontrar a ese creador.",
+    "loadFailed": "No se pudo cargar este perfil. Inténtalo de nuevo.",
+    "report": "Reportar creador"
+  },
+  "analytics": {
+    "title": "Instalaciones",
+    "range": {
+      "7d": "7 días",
+      "30d": "30 días",
+      "90d": "90 días"
+    },
+    "totalInstalls_one": "{{count}} instalación",
+    "totalInstalls_other": "{{count}} instalaciones",
+    "empty": "Aún no hay instalaciones en este período.",
+    "loadFailed": "No se pudieron cargar tus estadísticas. Inténtalo de nuevo.",
+    "barLabel": "{{day}}: {{count}}"
+  }
 }

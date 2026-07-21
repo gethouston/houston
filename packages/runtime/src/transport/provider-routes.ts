@@ -221,6 +221,18 @@ async function handleAuthAction(
       json(ctx.res, 200, { ok: true });
       return;
     }
+    // Attribution for the runtime.log: logout is the ONLY writer that clears a
+    // provider's credential — and for openai-compatible it ALSO forgets the
+    // custom endpoint config (auth/login.ts). A wiped endpoint with no user
+    // sign-out means some caller hit this route; this line is what names the
+    // moment in the log instead of the wipe being silent.
+    console.log(
+      `[auth] logout requested for ${provider} (POST /auth/${provider}/logout)${
+        provider === "openai-compatible"
+          ? " — clearing the custom endpoint config too"
+          : ""
+      }`,
+    );
     await logout(provider);
     json(ctx.res, 200, { ok: true });
   } catch (e) {

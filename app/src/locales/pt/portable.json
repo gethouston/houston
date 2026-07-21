@@ -195,7 +195,10 @@
       "creatorNamePlaceholder": "Como você quer aparecer",
       "creatorUrlLabel": "Link",
       "creatorUrlPlaceholder": "https://seu-site.com",
-      "requiredMark": "(obrigatório)"
+      "requiredMark": "(obrigatório)",
+      "publishingAs": "Publicando como @{{handle}}",
+      "claimHandleCta": "Reserve seu @handle",
+      "editProfile": "Editar perfil"
     },
     "categories": {
       "writing": "Escrita e conteúdo",
@@ -231,7 +234,8 @@
       "removeConfirmBody": "{{name}} não poderá mais ser instalado pelo link. Você pode publicá-lo de novo depois.",
       "removeConfirm": "Remover",
       "removeCancel": "Manter",
-      "seeInStore": "Ver na loja"
+      "seeInStore": "Ver na loja",
+      "manageAll": "Gerenciar todos os meus agentes"
     },
     "errors": {
       "generic": "Algo deu errado. Tente de novo.",

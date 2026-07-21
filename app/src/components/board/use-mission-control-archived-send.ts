@@ -59,7 +59,10 @@ export function useMissionControlArchivedSend({
           modelOverride,
           modeOverride: await readAgentTurnMode(agentPath, tauriConfig.read),
         });
-        analytics.track("chat_message_sent");
+        analytics.track("chat_message_sent", {
+          provider: providerOverride,
+          model: modelOverride,
+        });
         for (const f of files)
           analytics.track("file_attached", { file_kind: classifyFileKind(f) });
         // Reactivated (archived → running): hand off to the agent's board.

@@ -1,5 +1,6 @@
 "use client";
 
+import { StoreApiError } from "@houston/agentstore-client";
 import {
   Alert,
   AlertDescription,
@@ -16,7 +17,7 @@ import {
 } from "@houston-ai/core";
 import { Flag } from "lucide-react";
 import * as React from "react";
-import { reportAgent, StoreApiError } from "@/lib/store-client";
+import { reportAgent } from "@/lib/store-client";
 import {
   ERROR_COPY,
   ReasonRadioGroup,

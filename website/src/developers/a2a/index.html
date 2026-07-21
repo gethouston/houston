@@ -61,7 +61,7 @@ lang: en
           <span class="method get">GET</span>
           <span class="path">/a2a/<b>:org</b>/<b>:agent</b>/.well-known/agent-card.json</span>
         </div>
-        <div class="codeblock"><pre><code>{% raw %}curl https://poc-gateway.gethouston.ai/a2a/acme/revenue-manager/.well-known/agent-card.json \
+        <div class="codeblock"><pre><code>{% raw %}curl {% endraw %}{{ api.gatewayUrl }}{% raw %}/a2a/acme/revenue-manager/.well-known/agent-card.json \
   -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708"{% endraw %}</code></pre></div>
         <p>
           Feed that card URL to your A2A client. <code>:org</code> is your
@@ -85,7 +85,7 @@ lang: en
           Send a message to the agent and open a task. The response contains
           the task, whose <code>status.state</code> you then poll or stream.
         </p>
-        <div class="codeblock"><pre><code>{% raw %}curl -X POST https://poc-gateway.gethouston.ai/a2a/acme/revenue-manager \
+        <div class="codeblock"><pre><code>{% raw %}curl -X POST {% endraw %}{{ api.gatewayUrl }}{% raw %}/a2a/acme/revenue-manager \
   -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708" \
   -H "Content-Type: application/json" \
   -d '{
@@ -118,7 +118,7 @@ lang: en
           and status updates that ends when the task reaches a terminal state.
           Use this for live progress.
         </p>
-        <div class="codeblock"><pre><code>{% raw %}curl -N -X POST https://poc-gateway.gethouston.ai/a2a/acme/revenue-manager \
+        <div class="codeblock"><pre><code>{% raw %}curl -N -X POST {% endraw %}{{ api.gatewayUrl }}{% raw %}/a2a/acme/revenue-manager \
   -H "Authorization: Bearer hst_9f2c1a7b4e8d0364f1a2b3c4d5e6f7089f2c1a7b4e8d0364f1a2b3c4d5e6f708" \
   -H "Content-Type: application/json" \
   -d '{

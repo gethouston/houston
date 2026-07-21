@@ -75,3 +75,5 @@ components:
     status: not-started
   interaction-answers-message:
     status: not-started
+  verified-badge:
+    status: not-started

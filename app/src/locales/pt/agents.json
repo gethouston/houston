@@ -148,6 +148,13 @@
     "itemPlural": "itens",
     "menuButton": "Mais ações",
     "breadcrumbs": "Caminho de pastas",
+    "conflict": {
+      "title": "“{{name}}” já existe",
+      "description": "A pasta de destino já tem um item chamado “{{name}}”. Você pode substituí-lo ou manter os dois.",
+      "replace": "Substituir",
+      "keepBoth": "Manter os dois",
+      "cancel": "Cancelar"
+    },
     "uploadFiles": "Enviar arquivos",
     "downloadAll": "Baixar tudo",
     "columns": {

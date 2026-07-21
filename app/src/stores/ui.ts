@@ -101,6 +101,24 @@ interface UIState {
    * "See it in the store" affordances before `setViewMode(STORE_VIEW_ID)`,
    * cleared by the view once consumed. */
   storeFocusSlug: string | null;
+  /** A one-shot flag that opens the Agent Store view on its "my agents" tab —
+   * set by "Manage all my agents" affordances before `setViewMode(STORE_VIEW_ID)`,
+   * cleared by the view once consumed. Ephemeral, never persisted. */
+  storeOwnerTab: "my" | null;
+  /** A one-shot slug queued by an `houston://store/install` deep link (desktop)
+   * or a `?install=<slug>` web param: the always-on deep-link hook seeds the
+   * import wizard with the store listing, then clears it. Ephemeral, never
+   * persisted (a reload must not re-trigger the install). */
+  pendingStoreInstallSlug: string | null;
+  /** A one-shot creator @handle the Agent Store view opens the creator pane on
+   * (mirrors `storeFocusSlug`): set by "View profile" affordances and by an
+   * `houston://store/creator?handle=…` deep link / `?creator=<handle>` web param
+   * before `setViewMode(STORE_VIEW_ID)`, cleared by the view once consumed.
+   * Ephemeral, never persisted. */
+  storeCreatorHandle: string | null;
+  /** Whether the creator-profile editor dialog is open. Ephemeral, never
+   * persisted (a dialog flag like `createAgentDialogOpen`). */
+  creatorEditorOpen: boolean;
   /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
   sidebarCollapsed: boolean;
   /** Files tab layout: Drive-style card grid or Finder-style list. Persisted. */
@@ -145,6 +163,10 @@ interface UIState {
   setImportFromFriendOpen: (open: boolean) => void;
   setImportSeedPreview: (preview: PortableUploadPreviewResponse | null) => void;
   setStoreFocusSlug: (slug: string | null) => void;
+  setStoreOwnerTab: (v: "my" | null) => void;
+  setPendingStoreInstallSlug: (slug: string | null) => void;
+  setStoreCreatorHandle: (handle: string | null) => void;
+  setCreatorEditorOpen: (open: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
   setFilesViewMode: (mode: "grid" | "list") => void;
@@ -190,6 +212,10 @@ export const useUIStore = create<UIState>()(
       importFromFriendOpen: false,
       importSeedPreview: null,
       storeFocusSlug: null,
+      storeOwnerTab: null,
+      pendingStoreInstallSlug: null,
+      storeCreatorHandle: null,
+      creatorEditorOpen: false,
       sidebarCollapsed: false,
       filesViewMode: "grid",
       filePreview: null,
@@ -314,6 +340,12 @@ export const useUIStore = create<UIState>()(
         set({ importFromFriendOpen }),
       setImportSeedPreview: (importSeedPreview) => set({ importSeedPreview }),
       setStoreFocusSlug: (storeFocusSlug) => set({ storeFocusSlug }),
+      setStoreOwnerTab: (storeOwnerTab) => set({ storeOwnerTab }),
+      setPendingStoreInstallSlug: (pendingStoreInstallSlug) =>
+        set({ pendingStoreInstallSlug }),
+      setStoreCreatorHandle: (storeCreatorHandle) =>
+        set({ storeCreatorHandle }),
+      setCreatorEditorOpen: (creatorEditorOpen) => set({ creatorEditorOpen }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       toggleSidebarCollapsed: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),

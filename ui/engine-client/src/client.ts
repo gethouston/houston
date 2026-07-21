@@ -27,6 +27,7 @@ import type {
   AttachmentManifest,
   AttachmentUploadResult,
   AuditEntry,
+  AvatarUploadResult,
   BillingCheckout,
   BillingSummary,
   Capabilities,
@@ -47,10 +48,14 @@ import type {
   CreateSkillRequest,
   CreateWorkspace,
   CreateWorktreeRequest,
+  CreatorAnalytics,
+  CreatorProfile,
+  CreatorProfilePatch,
   CustomEndpoint,
   CustomIntegrationView,
   ErrorBody,
   GenerateInstructionsResult,
+  HandleAvailability,
   HealthResponse,
   ImportedWorkspace,
   InstallAgent,
@@ -62,6 +67,7 @@ import type {
   IntegrationProviderStatus,
   IntegrationToolkit,
   ListWorktreesRequest,
+  MyAgent,
   NewActivity,
   NewRoutine,
   OrgInfo,
@@ -1116,7 +1122,7 @@ export class HoustonClient {
    * `openaiCompatible` capability, so this is never hit here. Reject loudly
    * rather than pretend (no silent failure).
    */
-  getTunnelCredentials(): Promise<TunnelCredentials> {
+  getTunnelCredentials(): Promise<TunnelCredentials | null> {
     return Promise.reject(
       new Error(
         "Connecting a local model to a cloud agent requires the new engine.",
@@ -1713,6 +1719,24 @@ export class HoustonClient {
       `/agents/${this.seg(agentSlugOrId)}/conversations/${this.seg(conversationId)}/dismiss-interaction`,
     );
   }
+  /**
+   * Apply a Mode-pill switch to a conversation's EXECUTING turn (Claude Code's
+   * shift+tab semantics): the running turn adopts the new mode at its next tool
+   * decision. `applied: false` is benign — no turn was running, and the next
+   * send pins the mode itself. A runtime passthrough via the host's channel
+   * dispatch, like `dismissInteraction`.
+   */
+  setLiveTurnMode(
+    agentSlugOrId: string,
+    conversationId: string,
+    mode: "execute" | "plan" | "auto",
+  ): Promise<{ ok: boolean; applied: boolean }> {
+    return this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/conversations/${this.seg(conversationId)}/mode`,
+      { mode },
+    );
+  }
 
   // ---------- store ----------
 
@@ -2298,6 +2322,119 @@ export class HoustonClient {
         tags: item.tags ?? [],
       },
     };
+  }
+
+  // ---------- Agent Store owner management (the "my agents" panel) ----------
+  //
+  // Act on a listing by its gateway id against the `/agentstore` API with the
+  // caller's own bearer (same surface the publish methods above use). Reads live
+  // off `GET /me/agents`; no host-side pointer is involved.
+
+  /** Every listing the caller owns, in all lifecycle states (`GET /me/agents`). */
+  listMyStoreAgents(): Promise<MyAgent[]> {
+    return this.request<{ items: MyAgent[] }>(
+      "GET",
+      "/agentstore/me/agents",
+    ).then((r) => r.items);
+  }
+  /** Ask an admin to make an owned listing public (`PATCH … {requestPublic}`). */
+  async requestStorePublic(storeAgentId: string): Promise<void> {
+    await this.request(
+      "PATCH",
+      `/agentstore/agents/${this.seg(storeAgentId)}`,
+      { requestPublic: true },
+      undefined,
+      undefined,
+      false,
+    );
+  }
+  /** Drop a public listing back to unlisted (`PATCH … {visibility:"unlisted"}`). */
+  async setStoreVisibilityUnlisted(storeAgentId: string): Promise<void> {
+    await this.request(
+      "PATCH",
+      `/agentstore/agents/${this.seg(storeAgentId)}`,
+      { visibility: "unlisted" },
+      undefined,
+      undefined,
+      false,
+    );
+  }
+  /** Take an owned listing down by its gateway id (`PATCH … {unpublish}`). */
+  async unpublishStoreAgentById(storeAgentId: string): Promise<void> {
+    await this.request(
+      "PATCH",
+      `/agentstore/agents/${this.seg(storeAgentId)}`,
+      { unpublish: true },
+      undefined,
+      undefined,
+      false,
+    );
+  }
+  /** Soft-delete an owned listing by its gateway id (`DELETE /agents/{id}`). */
+  async deleteStoreAgentById(storeAgentId: string): Promise<void> {
+    await this.request(
+      "DELETE",
+      `/agentstore/agents/${this.seg(storeAgentId)}`,
+    );
+  }
+
+  // ---------- Agent Store creator profile (the "publish as @handle" identity) ----------
+  //
+  // The caller's own creator profile, its handle claim + avatar, and their
+  // per-day install analytics — all against the `/agentstore/me/*` gateway
+  // routes with the caller's own bearer, exactly like the owner methods above.
+
+  /** The caller's own creator profile, or `null` when never materialized. */
+  async getMyStoreProfile(): Promise<CreatorProfile | null> {
+    const { profile } = await this.request<{
+      profile: CreatorProfile | null;
+    }>("GET", "/agentstore/me/profile");
+    return profile;
+  }
+  /** Upsert the caller's creator profile (`PATCH /me/profile`). */
+  async updateMyStoreProfile(
+    patch: CreatorProfilePatch,
+  ): Promise<CreatorProfile> {
+    const { profile } = await this.request<{ profile: CreatorProfile }>(
+      "PATCH",
+      "/agentstore/me/profile",
+      patch,
+      undefined,
+      undefined,
+      false,
+    );
+    return profile;
+  }
+  /** Whether a handle is claimable by the caller (`GET /handles/{handle}/available`). */
+  checkStoreHandle(handle: string): Promise<HandleAvailability> {
+    return this.request<HandleAvailability>(
+      "GET",
+      `/agentstore/handles/${this.seg(handle)}/available`,
+    );
+  }
+  /** Replace the caller's avatar (`POST /me/avatar`, multipart field `file`). */
+  uploadStoreAvatar(blob: Blob): Promise<AvatarUploadResult> {
+    const form = new FormData();
+    form.append("file", blob);
+    // No `Content-Type`: `fetch` sets the multipart boundary from the FormData.
+    return this.rawRequest<AvatarUploadResult>(
+      "POST",
+      "/agentstore/me/avatar",
+      form,
+    );
+  }
+  /** Clear the caller's avatar (`DELETE /me/avatar`). Idempotent. */
+  async deleteStoreAvatar(): Promise<void> {
+    await this.request("DELETE", "/agentstore/me/avatar");
+  }
+  /** Per-UTC-day install analytics over the caller's owned agents (`GET /me/analytics?days=`). */
+  getMyStoreAnalytics(days?: number): Promise<CreatorAnalytics> {
+    return this.request<CreatorAnalytics>(
+      "GET",
+      "/agentstore/me/analytics",
+      undefined,
+      { days: days !== undefined ? String(days) : undefined },
+    );
   }
 
   // ---------- WebSocket access (see ws.ts) ----------

@@ -146,8 +146,8 @@
     "plannerDescription": "Primeiro escreve um plano para você aprovar. Não faz alterações.",
     "autopilot": "Piloto automático",
     "autopilotDescription": "Conclui a tarefa sozinho com o que tem. Não faz perguntas.",
-    "nextTurnToastTitle": "Modo {{mode}} selecionado",
-    "nextTurnToastBody": "Será aplicado à sua próxima mensagem. A resposta atual continua."
+    "liveApplyFailedTitle": "Não foi possível mudar a resposta em andamento para {{mode}}",
+    "liveApplyFailedBody": "O modo ainda será aplicado à sua próxima mensagem."
   },
   "modelSelector": {
     "selectModel": "Escolha um modelo",

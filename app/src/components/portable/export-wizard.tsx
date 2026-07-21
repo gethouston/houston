@@ -191,7 +191,10 @@ export function ExportAgentWizard() {
         bytes: Array.from(u8),
       });
       if (savedPath) {
-        analytics.track("agent_shared", { agent_slug: agent.id });
+        analytics.track("agent_shared", {
+          agent_slug: agent.id,
+          source: "export_wizard",
+        });
         addToast({
           variant: "success",
           title: t("export.toasts.savedTitle"),

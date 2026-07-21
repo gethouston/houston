@@ -7,6 +7,7 @@ import {
 } from "@houston-ai/core";
 import { Languages } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { analytics } from "../../../lib/analytics";
 import {
   changeLocale,
   isSupported,
@@ -40,6 +41,7 @@ export function LanguageSection() {
     if (!isSupported(value) || !current) return;
     await setWorkspaceLocale(current.id, value);
     await changeLocale(value);
+    analytics.track("language_changed", { locale: value });
     addToast({ title: t("common:language.toastChanged") });
   };
 

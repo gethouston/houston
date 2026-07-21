@@ -1435,12 +1435,16 @@ visionPath: "vision/index.html"
      DOWNLOAD GATE MODAL
      ═══════════════════════════════════════════ */
 
+  /* No backdrop-filter here (PERFORMANCE.md Rule 2): fading opacity over a
+     backdrop blur makes the blur snap in at full strength on frame one while
+     the tint fades (backdrop-filter ignores the element's opacity), and
+     re-rasterizing a full-viewport blur during the fade janks the open
+     animation. A darker plain scrim reads the same over the dark page. */
   .dl-overlay {
     position: fixed;
     inset: 0;
     z-index: 999;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2298,7 +2302,7 @@ visionPath: "vision/index.html"
   <div class="dl-card">
     <h3 id="dl-title">We're on a closed beta</h3>
     <p>If you were invited, paste your code and download the app.</p>
-    <input type="text" class="dl-input" id="dl-code" placeholder="Paste your invite code" autocomplete="off" spellcheck="false">
+    <input type="text" class="dl-input" id="dl-code" placeholder="Paste your invite code" autocomplete="off" autocapitalize="none" spellcheck="false">
     <div class="dl-actions">
       <a id="dl-btn" class="btn btn-primary btn-lg btn-disabled"><svg viewBox="0 0 384 512" fill="currentColor" width="16" height="16"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Download for Mac</a>
       <span class="dl-divider">or join our waiting list to get access</span>
@@ -2323,7 +2327,7 @@ visionPath: "vision/index.html"
   <div class="dl-card">
     <h3 id="dl-title-windows">We're on a closed beta</h3>
     <p>If you were invited, paste your code and pick your Windows version.</p>
-    <input type="text" class="dl-input" id="dl-windows-code" placeholder="Paste your invite code" autocomplete="off" spellcheck="false">
+    <input type="text" class="dl-input" id="dl-windows-code" placeholder="Paste your invite code" autocomplete="off" autocapitalize="none" spellcheck="false">
     <div class="dl-actions">
       <a id="dl-windows-x64-btn" class="btn btn-primary btn-lg btn-disabled"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Windows (x64 / Intel / AMD)</a>
       <a id="dl-windows-arm64-btn" class="btn btn-secondary btn-lg btn-disabled"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Windows (ARM64 / Surface, Snapdragon)</a>
@@ -2734,7 +2738,47 @@ visionPath: "vision/index.html"
       setTimeout(function() { if (winInput) winInput.focus(); }, 200);
     }
 
-    // Fetch latest release artifact URLs (Mac DMG + Windows MSIs)
+    function codeMatches(el) {
+      return el.value.trim().toLowerCase() === CODE.toLowerCase();
+    }
+
+    function refreshMacGate() {
+      var match = codeMatches(input);
+      input.classList.toggle('valid', match);
+      if (match && dmgUrl) {
+        btn.href = dmgUrl;
+        btn.classList.remove('btn-disabled');
+        if (!unlockedFired) {
+          unlockedFired = true;
+          track('download_unlocked', { source: lastSource });
+        }
+      } else {
+        btn.removeAttribute('href');
+        btn.classList.add('btn-disabled');
+      }
+    }
+
+    function refreshWinGate() {
+      if (!winInput) return;
+      var match = codeMatches(winInput);
+      winInput.classList.toggle('valid', match);
+      setWinButton(winX64Btn, winX64Url, match);
+      setWinButton(winArm64Btn, winArm64Url, match);
+      if (match && !winUnlockedFired) {
+        winUnlockedFired = true;
+        track('windows_download_unlocked', { source: winLastSource });
+      }
+    }
+
+    // Fetch latest release artifact URLs (Mac DMG + Windows MSIs). The
+    // buttons gate on these URLs, so every path out of this fetch — success,
+    // missing asset, network error, or an api.github.com rate-limit (60/hr
+    // per IP, shared by everyone behind a NAT) — must re-run the gates: a
+    // visitor who typed the code while the fetch was in flight would
+    // otherwise stay locked out until their next keystroke. When no direct
+    // artifact URL is available the buttons fall back to the releases page
+    // rather than staying dead.
+    var RELEASES_PAGE = 'https://github.com/gethouston/houston/releases/latest';
     fetch('https://api.github.com/repos/gethouston/houston/releases/latest')
       .then(function(r) { return r.json(); })
       .then(function(data) {
@@ -2745,6 +2789,14 @@ visionPath: "vision/index.html"
         if (winX64) winX64Url = winX64.browser_download_url;
         var winArm64 = assets.find(function(a) { return /_arm64.*\.msi$/.test(a.name); });
         if (winArm64) winArm64Url = winArm64.browser_download_url;
+      })
+      .catch(function() {})
+      .then(function() {
+        dmgUrl = dmgUrl || RELEASES_PAGE;
+        winX64Url = winX64Url || RELEASES_PAGE;
+        winArm64Url = winArm64Url || RELEASES_PAGE;
+        refreshMacGate();
+        refreshWinGate();
       });
 
     // Open modal
@@ -2778,21 +2830,7 @@ visionPath: "vision/index.html"
     });
 
     // Validate code on input
-    input.addEventListener('input', function() {
-      var match = input.value.trim() === CODE;
-      input.classList.toggle('valid', match);
-      if (match && dmgUrl) {
-        btn.href = dmgUrl;
-        btn.classList.remove('btn-disabled');
-        if (!unlockedFired) {
-          unlockedFired = true;
-          track('download_unlocked', { source: lastSource });
-        }
-      } else {
-        btn.removeAttribute('href');
-        btn.classList.add('btn-disabled');
-      }
-    });
+    input.addEventListener('input', refreshMacGate);
 
     // Track actual download
     btn.addEventListener('click', function(e) {
@@ -2838,16 +2876,7 @@ visionPath: "vision/index.html"
 
       // Validate code → unlock both Windows download buttons
       if (winInput) {
-        winInput.addEventListener('input', function() {
-          var match = winInput.value.trim() === CODE;
-          winInput.classList.toggle('valid', match);
-          setWinButton(winX64Btn, winX64Url, match);
-          setWinButton(winArm64Btn, winArm64Url, match);
-          if (match && !winUnlockedFired) {
-            winUnlockedFired = true;
-            track('windows_download_unlocked', { source: winLastSource });
-          }
-        });
+        winInput.addEventListener('input', refreshWinGate);
       }
 
       // Track actual downloads

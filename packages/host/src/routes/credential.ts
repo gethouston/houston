@@ -1,5 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { isExpiring, refreshCredential } from "../credentials/refresh";
+import {
+  isExpiring,
+  RefreshRejectedError,
+  refreshCredential,
+} from "../credentials/refresh";
 import {
   type CredentialStore,
   type CredentialVault,
@@ -72,10 +76,31 @@ export async function handleSandboxCredential(
       cred = await refreshCredential(cred);
       await deps.credentials.put(cred);
     } catch (err) {
-      // No refresh path for this provider or the refresh was rejected. Serve
-      // the existing token best-effort instead of 500-ing every turn: it may
-      // still be valid, and a genuinely expired one surfaces as a clear auth
-      // error on the real API call. This also stops the runtime's
+      if (err instanceof RefreshRejectedError) {
+        // The OAuth server rejected the refresh token itself (invalid_grant /
+        // refresh_token_invalidated — e.g. the session was ended server-side).
+        // That never heals: retrying every serve loops this error forever
+        // while turns fail on the expired access token. Drop the dead
+        // credential and answer the marked 404 so the runtime removes its
+        // served entry (provenance-gated) and the provider reads signed-out
+        // with the reconnect flow — the credential IS the switch.
+        console.error(
+          `[sandbox/credential] refresh token rejected for ${cred.provider}, disconnecting:`,
+          err.message,
+        );
+        await deps.credentials.remove(claim.workspaceId, cred.provider);
+        json(
+          res,
+          404,
+          { error: `${cred.provider} session ended; reconnect the provider` },
+          { "x-houston-not-connected": "1" },
+        );
+        return true;
+      }
+      // No refresh path for this provider, or a transient failure (network,
+      // 5xx). Serve the existing token best-effort instead of 500-ing every
+      // turn: it may still be valid, and a genuinely expired one surfaces as a
+      // clear auth error on the real API call. This also stops the runtime's
       // multi-provider serve loop from spamming serve 500s for a stale, unused
       // credential (e.g. a leftover Claude login while the agent runs
       // OpenCode).

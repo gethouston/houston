@@ -151,6 +151,42 @@ test("the toolbar's new-folder button creates a folder in the open folder", asyn
   await expect(page.getByText("Drafts", { exact: true })).toBeVisible();
 });
 
+test("a move that collides on a name offers Keep both instead of erroring", async ({
+  page,
+}) => {
+  await openFilesTab(page);
+
+  // Move the root PDF into Docs (no conflict yet).
+  await page
+    .getByText("Q3 report.pdf")
+    .dragTo(page.getByText("Docs", { exact: true }));
+  await expect(page.getByText("Q3 report.pdf")).toHaveCount(0);
+
+  // Re-create the same name at the root.
+  const [chooser] = await Promise.all([
+    page.waitForEvent("filechooser"),
+    page.getByRole("button", { name: "Upload files" }).click(),
+  ]);
+  await chooser.setFiles({
+    name: "Q3 report.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4 second"),
+  });
+  await expect(page.getByText("Q3 report.pdf")).toBeVisible();
+
+  // Dropping it onto Docs now collides: the dialog offers choices, no toast.
+  await page
+    .getByText("Q3 report.pdf")
+    .dragTo(page.getByText("Docs", { exact: true }));
+  await expect(page.getByRole("dialog")).toContainText("already exists");
+  await page.getByRole("button", { name: "Keep both" }).click();
+
+  // Both live in Docs, the newcomer under a numbered name.
+  await page.getByText("Docs", { exact: true }).click();
+  await expect(page.getByText("Q3 report.pdf")).toBeVisible();
+  await expect(page.getByText("Q3 report (1).pdf")).toBeVisible();
+});
+
 test("a folder downloads as its own zip from the context menu", async ({
   page,
   browserName,

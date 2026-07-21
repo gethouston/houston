@@ -6,10 +6,12 @@ import * as controlPlane from "../control-plane";
 import {
   flushQueuedSends,
   maybeQueueSend,
+  noteAutoResumeEnded,
+  noteAutoResumeStarted,
   removeQueuedSend,
 } from "../send-queue";
 import { DEFAULT_AGENT_PATH, wireTurnPin } from "../synthetic";
-import { streamTurn } from "../turn-stream";
+import { observeConversation, streamTurn } from "../turn-stream";
 import { setActivityStatus } from "./activity-status";
 import type { BaseCtor } from "./mixin";
 
@@ -28,14 +30,46 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
         : this.ctx.engine;
       // Queue-while-running: a send into a conversation whose turn is still
       // streaming is held and flushed as ONE combined send at settle (see
-      // send-queue.ts). Every send path inherits this here.
-      if (maybeQueueSend(path, req)) return { sessionKey: req.sessionKey };
+      // send-queue.ts). Every send path inherits this here. The dispatch
+      // callback serves the queue's settle watcher — the flush path for turns
+      // settled by an observer or the stale-running heal, which never pass
+      // through the `.finally` below.
+      const redispatch = (r: SessionStartRequest) => {
+        void this.startSession(path, r);
+      };
+      if (maybeQueueSend(path, req, redispatch)) {
+        // The VM says a turn is running, but nothing may actually be streaming
+        // it (a `running` flag left behind by a torn-down stream). Attach the
+        // passive observer so the SERVER arbitrates: a genuinely running turn
+        // renders live and settles the queue when it ends; an idle conversation
+        // heals the flag (`confirmIdle`), which fires the settle watcher and
+        // flushes the held send immediately. No-op while a live turn/observer
+        // already owns this conversation.
+        observeConversation(
+          engine,
+          path,
+          req.sessionKey,
+          (status, pendingInteraction) =>
+            setActivityStatus(
+              this.ctx,
+              path,
+              req.sessionKey,
+              status,
+              pendingInteraction,
+            ),
+          0,
+        );
+        return { sessionKey: req.sessionKey };
+      }
       // Fire-and-stream: events flow to the feed store over the bus/WS adapter.
       // The board-status setter is cloud-aware (writes land where the board reads).
       // The request's provider/model/effort (the chat's OWN pick, app dialect)
       // ride the send as a per-turn wire pin in engine ids (wireTurnPin), so the
       // turn runs on this conversation's provider — not the agent-wide settings
       // some other chat or connect flow last wrote (HOU-695).
+      // A dispatched auto-resume is bracketed so a duplicate resume (another
+      // mounted reconnect card, same login event) is swallowed while it runs.
+      if (req.autoResume) noteAutoResumeStarted(path, req.sessionKey);
       void streamTurn(
         engine,
         path,
@@ -56,9 +90,8 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
         req.displayText,
       ).finally(() => {
         // The turn settled (or failed): release anything queued behind it.
-        flushQueuedSends(path, req.sessionKey, (r) => {
-          void this.startSession(path, r);
-        });
+        if (req.autoResume) noteAutoResumeEnded(path, req.sessionKey);
+        flushQueuedSends(path, req.sessionKey, redispatch);
       });
       return { sessionKey: req.sessionKey };
     }
@@ -96,6 +129,23 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
         );
       }
       return { cancelled: cancelled === true };
+    }
+
+    /**
+     * Apply a Mode-pill switch to a conversation's EXECUTING turn (Claude
+     * Code's shift+tab): the runtime mutates the running turn's live-mode ref
+     * so its tools adopt the new mode at their next decision. `applied: false`
+     * is benign — no turn was running, and the next send pins the mode itself.
+     */
+    async setLiveTurnMode(
+      agentPath: string,
+      conversationId: string,
+      mode: "execute" | "plan" | "auto",
+    ): Promise<{ ok: boolean; applied: boolean }> {
+      const engine = this.ctx.cp
+        ? controlPlane.runtimeClientFor(this.ctx.cp, agentPath)
+        : this.ctx.engine;
+      return engine.setMode(conversationId, mode);
     }
 
     async dismissInteraction(

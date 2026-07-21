@@ -120,7 +120,7 @@ test("Agent Integrations tab: connected apps tile the Installed strip with no pe
 
   // The connect catalog still renders (search box + a connectable, not-connected
   // app row)...
-  await expect(page.getByPlaceholder("Search integrations...")).toBeVisible();
+  await expect(page.getByPlaceholder("Search integrations")).toBeVisible();
   await expect(
     page.getByRole("button").filter({ hasText: "Slack" }).first(),
   ).toBeVisible();

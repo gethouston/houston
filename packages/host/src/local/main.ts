@@ -12,6 +12,7 @@ import {
 } from "../capabilities";
 import { houstonSystemPrompt } from "../houston-prompt";
 import { installParentWatchdog } from "../parent-watchdog";
+import { isBenignRecursiveWatchRace } from "../watch/watcher-race";
 import { buildLocalHost } from "./host";
 import { runtimeCommand } from "./runtime-command";
 
@@ -177,6 +178,11 @@ const host = buildLocalHost({
   // x-houston-acting-as); relay that header to the runtime so integration
   // calls act as the driving user. Desktop/self-host stay direct → false.
   gatewayFronted: process.env.HOUSTON_MANAGED_CLOUD === "1",
+  // Dev launcher only (scripts/dev/control-plane.sh): its managed-cloud "pods"
+  // are processes on the developer's machine, so their egress reaches loopback
+  // and the public-HTTPS endpoint validation must not apply. Real pods never
+  // set this — their NetworkPolicy is what the validation models.
+  loopbackEgress: process.env.HOUSTON_LOOPBACK_EGRESS === "1",
   credentials: remoteGateway,
   sharedEndpoints: remoteGateway,
   // Active-time reporting rides the same managed-pod gateway quadruple: the
@@ -208,9 +214,28 @@ const host = buildLocalHost({
 // dropped SSE socket, or a transient fetch. Log loudly and stay up — the user
 // would otherwise see "NetworkError" on the next request.
 process.on("uncaughtException", (err) => {
+  // One narrow demotion: Node's Linux recursive-watcher ENOENT race on a
+  // transient dir (see watch/watcher-race.ts). Warning breadcrumb, not a
+  // Sentry error event; every other uncaught error stays loud.
+  if (isBenignRecursiveWatchRace(err)) {
+    console.warn(
+      "[local-host] transient fs-watch race (ignored):",
+      err.message,
+    );
+    return;
+  }
   console.error("[local-host] uncaughtException (staying up):", err);
 });
 process.on("unhandledRejection", (reason) => {
+  // Same benign-race demotion as above: Node's promise-based watcher
+  // internals can surface the ENOENT as a rejection instead of a throw.
+  if (isBenignRecursiveWatchRace(reason)) {
+    console.warn(
+      "[local-host] transient fs-watch race (ignored):",
+      (reason as Error).message,
+    );
+    return;
+  }
   console.error("[local-host] unhandledRejection (staying up):", reason);
 });
 

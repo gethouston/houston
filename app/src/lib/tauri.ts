@@ -365,6 +365,9 @@ export const tauriChat = {
       suppressUserBubble?: boolean;
       /** Queue display (user's words + attachment names) if the send is held (see SessionStartRequest). */
       queuedPreview?: { text: string; attachmentNames?: string[] };
+      /** Houston resuming after an out-of-band completion, not user-typed —
+       *  deduped/droppable in the send queue (see SessionStartRequest). */
+      autoResume?: boolean;
       /**
        * What the user's bubble renders when it must differ from `prompt` — a
        * hidden setup-mission directive or appended attachment paths. The engine
@@ -391,6 +394,7 @@ export const tauriChat = {
         suppressUserBubble: opts?.suppressUserBubble,
         queuedPreview: opts?.queuedPreview,
         displayText: opts?.displayText,
+        autoResume: opts?.autoResume,
       });
       return res.sessionKey;
     }),
@@ -405,6 +409,15 @@ export const tauriChat = {
     call<void>("stop_session", async () => {
       await getEngine().cancelSession(agentPath, sessionKey);
     }),
+  /** Apply a Mode-pill switch to the conversation's EXECUTING turn (Claude
+   *  Code's shift+tab): the running turn adopts the new mode at its next tool
+   *  decision. `applied: false` = no turn was running (benign — the next send
+   *  pins the mode itself). */
+  setLiveTurnMode: (
+    agentPath: string,
+    sessionKey: string,
+    mode: "execute" | "plan" | "auto",
+  ) => getEngine().setLiveTurnMode(agentPath, sessionKey, mode),
   /** Retire a conversation's pending interaction (stepper X / abandon): appends
    *  a durable stop marker, like a real Stop — the model learns nothing. */
   dismissInteraction: (agentPath: string, conversationId: string) =>
@@ -1315,13 +1328,19 @@ export const tauriProvider = {
                 // the client only opens the URL. A truly remote engine (hosted
                 // cloud, a VPS, or the HOU-621 runtime `remote` choice with no
                 // baked env — hence the isRemoteEngine() OR) must use device
-                // code instead. A LOOPBACK `VITE_NEW_ENGINE_URL` (the dev
-                // two-terminal setup) is co-located despite being URL-configured,
-                // so it keeps the browser flow like the packaged host-sidecar
-                // build.
+                // code instead. A LOOPBACK engine URL is co-located despite
+                // being URL-configured — `VITE_NEW_ENGINE_URL` (the dev
+                // two-terminal setup) and `VITE_HOSTED_ENGINE_URL` (the dev
+                // cloud profile's local gateway) alike — so it keeps the
+                // browser flow like the packaged host-sidecar build.
                 (isRemoteEngine() &&
                   !isLoopbackHostUrl(
                     import.meta.env?.VITE_NEW_ENGINE_URL as string | undefined,
+                  ) &&
+                  !isLoopbackHostUrl(
+                    import.meta.env?.VITE_HOSTED_ENGINE_URL as
+                      | string
+                      | undefined,
                   )) ||
                 providerLoginUsesDeviceAuthByDefault(
                   (import.meta.env ?? {}) as {
@@ -1403,12 +1422,14 @@ export const tauriProvider = {
   /**
    * Mint a relay credential for the guided "connect a local model" flow: the
    * gateway issues a short-lived tunnel token the desktop's frpc sidecar uses to
-   * expose the user's local model server to their CLOUD agent. Hosted + new
-   * engine only. A failure toasts the real reason with a Report-bug affordance
-   * (default `call` surfacing); the guided dialog also shows a calm retry state.
+   * expose the user's local model server to their CLOUD agent. Resolves `null`
+   * when the deployment has no relay at all (no gateway / tunnels route absent /
+   * relay unconfigured) — the flow then registers the detected server directly.
+   * A real failure toasts the reason with a Report-bug affordance (default
+   * `call` surfacing); the guided dialog also shows a calm retry state.
    */
   getTunnelCredentials: () =>
-    call<import("@houston-ai/engine-client").TunnelCredentials>(
+    call<import("@houston-ai/engine-client").TunnelCredentials | null>(
       "get_tunnel_credentials",
       () => getEngine().getTunnelCredentials(),
     ),

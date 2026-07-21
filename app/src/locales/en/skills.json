@@ -6,7 +6,11 @@
   "grid": {
     "loading": "Loading skills...",
     "addSkill": "Add skill",
-    "yourSkillsHeading": "Your skills"
+    "yourSkillsHeading": "Your skills",
+    "availableHeading": "Available",
+    "searchSkills": "Search skills",
+    "noMatchingSkills": "No skills match your search",
+    "showAllSkills": "Show all {{count}} skills"
   },
   "addDialog": {
     "title": "Add skills",
@@ -40,6 +44,7 @@
       "submit": "Create skill",
       "submitting": "Creating...",
       "errorTitleRequired": "Give your skill a title.",
+      "errorDescriptionRequired": "A description is required. Add one line saying what this skill does.",
       "errorBodyRequired": "Add at least one instruction step.",
       "errorSlugTaken": "A skill with this name already exists."
     }

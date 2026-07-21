@@ -46,7 +46,10 @@ describe("required onboarding email path", () => {
     assert.doesNotMatch(connectEmail, /\b(?:skip|omit)\b/i);
     assert.doesNotMatch(flow, /shouldOfferConnectSkip/);
     assert.doesNotMatch(onboarding, /skipEmailSteps/);
-    assert.match(session, /hasFirstMessage: missionSessionKey !== null/);
+    // The skip escape hatch is failure-gated: the session derives `showSkip`
+    // from shouldOfferSkip (behavior covered in email-skip.test.ts), so no
+    // standalone pre-conversation skip route exists.
+    assert.match(session, /showSkip = shouldOfferSkip\(\{/);
   });
 });
 

@@ -12,6 +12,9 @@
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "typecheck": "tsgo --noEmit"
   },
+  "dependencies": {
+    "@houston/agentstore-client": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "5.9.3"
   }

@@ -4,6 +4,7 @@ import {
   classifyProviderError,
   extractRetryAfterSeconds,
 } from "../../ai/provider-error";
+import { logProviderError } from "../../ai/provider-error-log";
 
 /** The pi provider id this backend runs as — every error is attributed to it. */
 const PROVIDER = "anthropic";
@@ -26,8 +27,10 @@ export interface SdkErrorContext {
  * already classified the failure, so `rate_limit` is always a rate-limit card
  * regardless of the message text (unlike the pi path, which parses a flat string).
  *
- * The verbatim provider text is logged before it is reduced to a typed card
- * (parity with `pi/wire.ts`) — the raw reason is otherwise lost once collapsed.
+ * The verbatim provider text is logged AFTER it is reduced to a typed card
+ * (parity with `pi/wire.ts`), through the severity-aware `logProviderError` —
+ * the raw reason is otherwise lost once collapsed, and each failure logs
+ * exactly once (the fall-through to `classifyText` used to double-log).
  *
  * `invalid_request` / `max_output_tokens` / `unknown` have no clean card of their
  * own, so they fall through to the shared text classifier with the status the SDK
@@ -40,12 +43,20 @@ export function mapSdkError(
   const message = ctx.message.trim() || "Unknown provider error";
   const model = ctx.model;
   const status = ctx.status ?? null;
-  console.error(
-    `[provider_error] provider=${PROVIDER} model=${model ?? "?"} status=${
-      status ?? "?"
-    } error=${error} :: ${message}`,
-  );
+  const mapped = mapSdkEnum(error, message, model, status, ctx);
+  // Fall-through cases delegate to classifyText, which logs for itself.
+  if (mapped) logProviderError(mapped, { model, status, sdkError: error });
+  return mapped ?? classifyText(message, model, status);
+}
 
+/** The enum-determined mappings; null falls through to the text classifier. */
+function mapSdkEnum(
+  error: SDKAssistantMessageError,
+  message: string,
+  model: string | null,
+  status: number | null,
+  ctx: SdkErrorContext,
+): ProviderError | null {
   switch (error) {
     case "authentication_failed":
     case "oauth_org_not_allowed":
@@ -93,9 +104,9 @@ export function mapSdkError(
           suggested_fallback: null,
           message,
         };
-      return classifyText(message, model, status);
+      return null;
     default:
-      return classifyText(message, model, status);
+      return null;
   }
 }
 
@@ -105,12 +116,14 @@ export function classifyText(
   model: string | null,
   status: number | null,
 ): ProviderError {
-  console.error(
-    `[provider_error] provider=${PROVIDER} model=${model ?? "?"} status=${
-      status ?? "?"
-    } :: ${message}`,
-  );
-  return classifyProviderError({ provider: PROVIDER, model, message, status });
+  const classified = classifyProviderError({
+    provider: PROVIDER,
+    model,
+    message,
+    status,
+  });
+  logProviderError(classified, { model, status });
+  return classified;
 }
 
 /**

@@ -124,8 +124,13 @@ export function useAgentBoardSend({
       queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
       analytics.track("mission_created", {
         agent_mode: agentMode ?? "default",
+        provider: providerOverride,
+        model: modelOverride,
       });
-      analytics.track("chat_message_sent");
+      analytics.track("chat_message_sent", {
+        provider: providerOverride,
+        model: modelOverride,
+      });
       for (const f of files)
         analytics.track("file_attached", { file_kind: classifyFileKind(f) });
       return conversationId;
@@ -189,7 +194,10 @@ export function useAgentBoardSend({
             .getState()
             .setQueuedRowStatus(agent.id, activity.id, "running");
         }
-        analytics.track("chat_message_sent");
+        analytics.track("chat_message_sent", {
+          provider: overrides.providerOverride,
+          model: overrides.modelOverride,
+        });
         for (const f of files)
           analytics.track("file_attached", { file_kind: classifyFileKind(f) });
         return;
@@ -211,7 +219,10 @@ export function useAgentBoardSend({
           },
         });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
-        analytics.track("chat_message_sent");
+        analytics.track("chat_message_sent", {
+          provider: overrides.providerOverride,
+          model: overrides.modelOverride,
+        });
         for (const f of files)
           analytics.track("file_attached", { file_kind: classifyFileKind(f) });
       } catch (err) {

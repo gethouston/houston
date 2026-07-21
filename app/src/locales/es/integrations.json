@@ -74,16 +74,19 @@
   "home": {
     "title": "Integraciones",
     "description": "Trabaja con tus agentes en tus herramientas favoritas.",
+    "descriptionCount": "Trabaja con tus agentes en {{count, number}} de tus herramientas favoritas.",
     "tabs": {
       "catalog": "Integraciones",
       "custom": "Integraciones personalizadas"
     },
-    "searchPlaceholder": "Buscar integraciones...",
+    "searchPlaceholder": "Buscar integraciones",
     "allCategories": "Todas las categorías",
     "categoryFilter": "Filtrar por categoría",
     "connect": "Conectar",
     "connectApp": "Conectar {{name}}",
     "installedTitle": "Instaladas",
+    "availableTitle": "Disponibles",
+    "featured": "Destacadas",
     "otherCategory": "Otras",
     "showAllApps": "Ver las {{count}} aplicaciones"
   },
