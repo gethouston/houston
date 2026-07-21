@@ -442,9 +442,17 @@ export const MessageResponse = memo(
             );
           }
           // Labeled link (text distinct from URL) → button with text + icon.
+          // max-w-full + truncate: a long label ellipsizes instead of
+          // overflowing the fixed-height pill as clipped wrapped lines.
           return (
-            <Button type="button" size="sm" variant="default" onClick={onOpen}>
-              {children}
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              className="max-w-full"
+              onClick={onOpen}
+            >
+              <span className="min-w-0 truncate">{children}</span>
               <ExternalLinkIcon size={11} strokeWidth={2} />
             </Button>
           );
