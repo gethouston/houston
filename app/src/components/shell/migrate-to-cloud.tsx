@@ -67,10 +67,19 @@ export function MigrateToCloudOffer() {
       aria-live={downloading ? "polite" : "assertive"}
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4"
     >
-      <div className="w-[480px] max-w-full overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-[0_16px_60px_rgba(0,0,0,0.16)]">
-        {/* Header band: the app's own muted surface with the theme-aware
-            Houston mark — same treatment as the updater card's icon tile. */}
-        <div className="relative flex h-36 items-center justify-center border-b border-border bg-muted">
+      <div className="relative w-[480px] max-w-full overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-[0_16px_60px_rgba(0,0,0,0.16)]">
+        {dismissible && (
+          <button
+            type="button"
+            onClick={dismiss}
+            aria-label={t("migrateToCloud.closeLabel")}
+            className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+        {/* Theme-aware Houston mark on the plain card surface — no band. */}
+        <div className="flex items-center justify-center pt-10">
           <img
             src={houstonBlack}
             alt=""
@@ -83,16 +92,6 @@ export function MigrateToCloudOffer() {
             aria-hidden="true"
             className="houston-update-logo-dark hidden size-14 object-contain"
           />
-          {dismissible && (
-            <button
-              type="button"
-              onClick={dismiss}
-              aria-label={t("migrateToCloud.closeLabel")}
-              className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
-          )}
         </div>
 
         <div className="p-6 text-center">
