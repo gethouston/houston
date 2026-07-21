@@ -29,6 +29,22 @@ const PROVES_AUTH = new Set([
   "context_overflow",
 ]);
 
+/**
+ * Human-readable text for an exception the verify request RAISED (vs a resolved
+ * errored reply). An abort/timeout DOMException reads like a bug ("The
+ * operation was aborted due to timeout"), so name what actually happened —
+ * that text reaches the user verbatim through the connect dialog.
+ */
+export function raisedMessage(e: unknown, providerId: string): string {
+  if (
+    e instanceof Error &&
+    (e.name === "TimeoutError" || e.name === "AbortError")
+  ) {
+    return `${providerId} did not answer within ${VERIFY_TIMEOUT_MS / 1000}s`;
+  }
+  return e instanceof Error ? e.message : String(e);
+}
+
 export async function verifyApiKey(
   providerId: string,
   key: string,
@@ -55,7 +71,7 @@ export async function verifyApiKey(
   } catch (e) {
     // pi raises (rather than resolving an errored message) for pre-request
     // failures; a timeout lands here too. Same classification path.
-    message = e instanceof Error ? e.message : String(e);
+    message = raisedMessage(e, providerId);
   }
 
   const classified = classifyProviderError({

@@ -21,7 +21,6 @@ import { type BrandKey, providerBrandKey } from "./provider-logo-map.ts";
 /** A `BrandKey` -> official brand accent hex. Absent keys render monochrome. */
 const BRAND_COLORS: Partial<Record<BrandKey, string>> = {
   anthropic: "#D97757",
-  "ant-ling": "#1677FF",
   cohere: "#FF7759",
   meta: "#0668E1",
   qwen: "#615CED",

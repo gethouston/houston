@@ -17,7 +17,7 @@ vi.mock("../ai/providers", () => ({
   safeGetModel: () => ({ id: "test-model", provider: "openrouter" }),
 }));
 
-import { verifyApiKey } from "./verify-api-key";
+import { raisedMessage, verifyApiKey } from "./verify-api-key";
 
 const reply = (over: Record<string, unknown>) => ({
   role: "assistant",
@@ -86,4 +86,31 @@ test("a network failure rejects without storing", async () => {
   await expect(verifyApiKey("openrouter", "sk-any")).rejects.toThrow(
     /could not verify/,
   );
+});
+
+test("a gated model (together's 'Unable to access model') proves auth — verified", async () => {
+  // together.ai validates the key BEFORE model entitlement, so this body means
+  // the key works and only the probe model is out of reach on the plan.
+  completeSimple.mockResolvedValue(
+    reply({
+      stopReason: "error",
+      errorMessage:
+        "Unable to access model MiniMaxAI/MiniMax-M2.7. Please visit https://api.together.ai/models to view the list of supported models.",
+    }),
+  );
+  await expect(verifyApiKey("together", "sk-valid")).resolves.toBeUndefined();
+});
+
+test("an abort/timeout maps to a readable did-not-answer message", () => {
+  // Tested on the pure mapper: rejecting the mocked completeSimple with an
+  // abort-named error trips vitest's runner (it attributes the error object to
+  // the test itself), while the integrated path is just try/catch + this fn.
+  const abort = new Error("This operation was aborted");
+  abort.name = "TimeoutError";
+  expect(raisedMessage(abort, "together")).toBe(
+    "together did not answer within 20s",
+  );
+  const plain = new Error("boom");
+  expect(raisedMessage(plain, "together")).toBe("boom");
+  expect(raisedMessage("string failure", "together")).toBe("string failure");
 });

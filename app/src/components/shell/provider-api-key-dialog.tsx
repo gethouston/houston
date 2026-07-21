@@ -10,9 +10,19 @@ import {
 import { ExternalLink, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { reportError } from "../../lib/error-toast";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
+
+/**
+ * The host's own reason for a rejected connect ("openrouter rejected this API
+ * key…", "could not verify…"), minus the transport's "(engine error NNN)"
+ * suffix — the sentence is authored for the user; the code is not.
+ */
+function verifyFailureDetail(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  return raw.replace(/\s*\(engine error \d+\)\s*$/, "");
+}
 
 /**
  * Connect dialog for API-key providers. Unlike the OAuth
@@ -65,7 +75,13 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
       // toasts. Close here so the dialog doesn't linger over the connected state.
       onClose();
     } catch (err) {
-      setError(genericErrorDescription("provider_api_key_submit", err));
+      // Show the provider's REAL reason inline (a generic "something went
+      // wrong" turned every QA failure into an undiagnosable "failed to
+      // connect"), and still capture to Sentry + the frontend log.
+      const detail = verifyFailureDetail(err);
+      console.error(`[provider_api_key_submit] ${detail}`);
+      reportError("provider_api_key_submit", detail, err);
+      setError(t("apiKey.verifyFailed", { detail }));
       setSubmitting(false);
     }
   };

@@ -9,8 +9,10 @@ import {
 // instantiated registry we don't otherwise carry here).
 import { getModels, getProviders } from "@earendil-works/pi-ai/compat";
 import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
-// Side effect: backports Kimi K3 into the 0.80.6 catalog (delete with the pi bump).
-import "./kimi-k3-catalog-patch";
+// Side effects: backport models pi-ai 0.80.6 predates into its baked catalog
+// (delete each with the pi bump that ships it natively).
+import "./gemini-flash-catalog-patch";
+import "./moonshot-k3-catalog-patch";
 import type {
   CatalogModelEntry,
   CatalogProvider,

@@ -62,6 +62,7 @@
     "label": "Chave de API",
     "placeholder": "Cole sua chave de API",
     "required": "Primeiro informe sua chave de API.",
+    "verifyFailed": "Não foi possível conectar esta chave: {{detail}}",
     "show": "Mostrar chave",
     "hide": "Ocultar chave",
     "save": "Conectar",

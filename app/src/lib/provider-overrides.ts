@@ -134,11 +134,26 @@ export function toCanonicalProviderId(id: string): string {
 }
 
 /**
- * pi providers dropped BEFORE the rename is applied. pi's direct api-key `openai`
- * provider collides with the `openai-codex → openai` rename (Houston surfaces the
- * OAuth Codex provider under `openai`, not the raw API-key one), so it is removed.
+ * pi providers dropped BEFORE the rename is applied. Two classes:
+ * - `openai`: pi's direct api-key `openai` provider collides with the
+ *   `openai-codex → openai` rename (Houston surfaces the OAuth Codex provider
+ *   under `openai`, not the raw API-key one).
+ * - Retired cards (2026-07 provider QA): Ant Ling, the Kimi For Coding
+ *   subscription (Kimi models surface under Moonshot AI instead — see the
+ *   moonshot-k3 catalog patch), Moonshot AI's China deployment, and the three
+ *   regional Xiaomi Token Plans. Dropping is presentation-only: the ids stay
+ *   runnable on the wire, so an existing conversation pinned to one keeps
+ *   working; they just can't be connected or picked anymore.
  */
-export const DROP_PI_PROVIDERS: ReadonlySet<string> = new Set(["openai"]);
+export const DROP_PI_PROVIDERS: ReadonlySet<string> = new Set([
+  "openai",
+  "ant-ling",
+  "kimi-coding",
+  "moonshotai-cn",
+  "xiaomi-token-plan-ams",
+  "xiaomi-token-plan-cn",
+  "xiaomi-token-plan-sgp",
+]);
 
 /**
  * Curated per-provider VISIBLE model sets, keyed by Houston (display) provider
@@ -171,9 +186,13 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "claude-sonnet-4-6",
   ]),
   // NOTE: pi-ai ships no plain `gemini-3.1-flash` (only the Lite tier), so the
-  // 3.1 line is represented by Flash Lite here.
+  // 3.1 line is represented by Flash Lite here. `gemini-3.6-flash` and
+  // `gemini-3.5-flash-lite` are backported into pi's catalog by the
+  // gemini-flash catalog patch (packages/host/src/providers/).
   google: new Set([
+    "gemini-3.6-flash",
     "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
     "gemma-4-26b-a4b-it",
     "gemma-4-31b-it",
@@ -479,9 +498,17 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     apiKeyUrl: "https://aistudio.google.com/apikey",
     defaultModel: "gemini-3.5-flash",
     models: {
+      "gemini-3.6-flash": {
+        label: "Gemini 3.6 Flash",
+        description: "Google's newest Flash. Stronger agents, cheaper output.",
+      },
       "gemini-3.5-flash": {
         label: "Gemini 3.5 Flash",
         description: "Fast and capable. Best default.",
+      },
+      "gemini-3.5-flash-lite": {
+        label: "Gemini 3.5 Flash Lite",
+        description: "Lowest cost and latency for simpler tasks.",
       },
       "gemini-3.1-flash-lite": {
         label: "Gemini 3.1 Flash Lite",
@@ -530,7 +557,8 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     description: "Fast, affordable models for agent work.",
     cost: "Pay-as-you-go on your MiniMax account",
     installUrl: "https://platform.minimax.io",
-    apiKeyUrl: "https://platform.minimax.io",
+    apiKeyUrl:
+      "https://platform.minimax.io/user-center/basic-information/interface-key",
     defaultModel: "MiniMax-M3",
     models: {
       "MiniMax-M3": {
@@ -627,35 +655,32 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Pay as you go",
     installUrl: "https://platform.moonshot.ai",
     apiKeyUrl: "https://platform.moonshot.ai/console/api-keys",
+    models: {
+      // Backported into pi 0.80.6's catalog by the moonshot-k3 patch
+      // (packages/host/src/providers/moonshot-k3-catalog-patch.ts).
+      "kimi-k3": {
+        label: "Kimi K3",
+        description: "Moonshot's frontier model. Long context, vision.",
+      },
+    },
   },
-  "moonshotai-cn": {
-    name: "Moonshot AI (China)",
-    subtitle: "Kimi models, China endpoint",
-    cost: "Pay as you go",
-    installUrl: "https://platform.moonshot.cn",
-    apiKeyUrl: "https://platform.moonshot.cn/console/api-keys",
-  },
-  "kimi-coding": {
-    name: "Kimi For Coding",
-    subtitle: "Kimi coding subscription",
-    cost: "Your Kimi For Coding plan",
+  "zai-coding-cn": {
+    name: "Z.ai Coding (China)",
+    subtitle: "GLM coding plan, China endpoint",
+    cost: "Your GLM Coding plan",
     billing: "subscription",
-    installUrl: "https://www.kimi.com/code",
-    apiKeyUrl: "https://www.kimi.com/code",
+    installUrl: "https://open.bigmodel.cn",
+    apiKeyUrl: "https://open.bigmodel.cn/usercenter/apikeys",
   },
   "vercel-ai-gateway": {
     name: "Vercel AI Gateway",
     subtitle: "Many models, one key",
     cost: "Pay-as-you-go on your Vercel account",
     installUrl: "https://vercel.com/ai-gateway",
-    apiKeyUrl: "https://vercel.com/dashboard",
-  },
-  "ant-ling": {
-    name: "Ant Ling",
-    subtitle: "Ling models",
-    cost: "Pay as you go",
-    installUrl: "https://www.ant-ling.com",
-    apiKeyUrl: "https://developer.ant-ling.com",
+    // The exact deep link Vercel's own 401 remedy points at: resolves to the
+    // signed-in team's AI Gateway → API keys page with the create-key modal.
+    apiKeyUrl:
+      "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway%2Fapi-keys%3FshowCreateKeyModal",
   },
   xiaomi: {
     name: "Xiaomi MiMo",
@@ -663,6 +688,29 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Pay as you go",
     installUrl: "https://platform.xiaomimimo.com",
     apiKeyUrl: "https://platform.xiaomimimo.com",
+  },
+  "azure-openai-responses": {
+    name: "Azure OpenAI",
+    subtitle: "OpenAI on Microsoft Azure",
+    cost: "Pay-as-you-go on your Azure account",
+    installUrl:
+      "https://azure.microsoft.com/products/ai-services/openai-service",
+    // Azure keys live per-resource in the portal; there is no global key page.
+    apiKeyUrl: "https://portal.azure.com",
+  },
+  "cloudflare-ai-gateway": {
+    name: "Cloudflare AI Gateway",
+    subtitle: "Many models via Cloudflare",
+    cost: "Pay as you go",
+    installUrl: "https://developers.cloudflare.com/ai-gateway/",
+    apiKeyUrl: "https://dash.cloudflare.com/profile/api-tokens",
+  },
+  "cloudflare-workers-ai": {
+    name: "Cloudflare Workers AI",
+    subtitle: "Open models on Cloudflare's edge",
+    cost: "Free allocation, then pay as you go",
+    installUrl: "https://developers.cloudflare.com/workers-ai/",
+    apiKeyUrl: "https://dash.cloudflare.com/profile/api-tokens",
   },
 };
 
@@ -688,9 +736,6 @@ export const DESCRIPTION_BY_ID: Readonly<Record<string, string>> = {
   huggingface: "Open models via Hugging Face Inference.",
   moonshotai: "Kimi models from Moonshot AI.",
   zai: "GLM open models from Z.ai.",
-  cohere: "Enterprise RAG and Command models.",
-  perplexity: "Search-grounded Sonar models.",
-  "ant-ling": "Ling open models from Ant Group.",
   "vercel-ai-gateway": "One key for many models, from Vercel.",
   "cloudflare-ai-gateway": "Route to many models through Cloudflare.",
   "cloudflare-workers-ai": "Open models on Cloudflare's edge network.",
@@ -698,9 +743,7 @@ export const DESCRIPTION_BY_ID: Readonly<Record<string, string>> = {
   "google-vertex": "Gemini and more on Google Cloud Vertex AI.",
   xiaomi: "MiMo models from Xiaomi.",
   // Named regional / subscription variants (reuse the lab's niche).
-  "kimi-coding": "Kimi coding subscription from Moonshot AI.",
   "zai-coding": "GLM coding subscription from Z.ai.",
-  "xiaomi-token-plan": "MiMo models on a Token Plan subscription.",
 };
 
 /**

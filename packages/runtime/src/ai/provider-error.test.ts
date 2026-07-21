@@ -269,6 +269,19 @@ test("GitHub Copilot model_not_supported → model_unavailable + gpt-4.1 fallbac
   });
 });
 
+test("together.ai's gated-model body → model_unavailable, never unknown", () => {
+  // The verbatim rejection together.ai answers a non-serverless model with. The
+  // key authenticated fine — classifying this as `unknown` made the api-key
+  // verify reject a VALID key (the 2026-07 provider QA "Failed to connect").
+  const err = classifyProviderError({
+    provider: "together",
+    model: "MiniMaxAI/MiniMax-M2.7",
+    message:
+      "Unable to access model MiniMaxAI/MiniMax-M2.7. Please visit https://api.together.ai/models to view the list of supported models.",
+  });
+  expect(err.kind).toBe("model_unavailable");
+});
+
 test("OpenAI model_not_found → model_unavailable, no fallback for a non-Copilot provider", () => {
   const err = classifyProviderError({
     provider: "openai-codex",

@@ -20,7 +20,6 @@ import {
 import {
   AmazonBedrockLogo,
   AnthropicLogo,
-  AntLingLogo,
   AzureLogo,
   CerebrasLogo,
   CloudflareLogo,
@@ -55,7 +54,6 @@ import {
 /** The one place a `BrandKey` binds to its mark. Exhaustive by construction. */
 const BRAND_LOGOS: Record<BrandKey, (props?: LogoProps) => ReactElement> = {
   anthropic: AnthropicLogo,
-  "ant-ling": AntLingLogo,
   cohere: CohereLogo,
   meta: MetaLogo,
   qwen: QwenLogo,
