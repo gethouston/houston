@@ -10,7 +10,7 @@ import {
   type OnboardingSegment,
 } from "../../lib/onboarding-segment";
 import { HoustonLogo } from "../shell/experience-card";
-import { SpaceScreen } from "../space/space-screen";
+import { FirstRunScreen } from "./first-run-screen";
 import { SetupCard } from "./setup-card";
 
 interface SegmentOption {
@@ -70,12 +70,12 @@ export function OnboardingSegmentScreen({
   };
 
   // Centered hero layout (logo → question → pill grid → Continue), modeled on
-  // the ChatGPT desktop segmentation screen but on Houston's space-glass card.
+  // the ChatGPT desktop segmentation screen on Houston's white setup card.
   // The footer lives inside the children so the Continue button can sit
   // centered under the grid instead of in SetupCard's corner footer.
   return (
-    <SpaceScreen>
-      <SetupCard onSpace>
+    <FirstRunScreen>
+      <SetupCard>
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8 text-center">
           <div className="flex flex-col items-center gap-4">
             <HoustonLogo size={52} />
@@ -121,7 +121,7 @@ export function OnboardingSegmentScreen({
           </div>
         </div>
       </SetupCard>
-    </SpaceScreen>
+    </FirstRunScreen>
   );
 }
 

@@ -32,7 +32,7 @@ export function OfferScreen({
     <WizardFrame
       mark={<HoustonLogo size={56} />}
       badge={
-        <WizardBadge icon={<Sparkles aria-hidden />} onPhoto>
+        <WizardBadge icon={<Sparkles aria-hidden />}>
           {t("offer.betaBadge")}
         </WizardBadge>
       }
@@ -46,13 +46,11 @@ export function OfferScreen({
           >
             {t("offer.start")}
           </AsyncButton>
-          <p className="text-xs text-[var(--ht-space-foreground-muted)]">
-            {t("offer.freeNote")}
-          </p>
+          <p className="text-xs text-ink-muted">{t("offer.freeNote")}</p>
           <button
             type="button"
             onClick={onSkip}
-            className="rounded-full px-3 py-1 text-xs text-[var(--ht-space-foreground-muted)] transition-colors hover:text-[var(--ht-space-foreground)]"
+            className="rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
           >
             {t("offer.migrateLater")}
           </button>
@@ -60,13 +58,13 @@ export function OfferScreen({
       }
     >
       <div className="flex flex-wrap items-center justify-center gap-2.5">
-        <WizardBadge icon={<Clock aria-hidden />} onPhoto>
+        <WizardBadge icon={<Clock aria-hidden />}>
           {t("offer.benefit1")}
         </WizardBadge>
-        <WizardBadge icon={<RefreshCw aria-hidden />} onPhoto>
+        <WizardBadge icon={<RefreshCw aria-hidden />}>
           {t("offer.benefit2")}
         </WizardBadge>
-        <WizardBadge icon={<UploadCloud aria-hidden />} onPhoto>
+        <WizardBadge icon={<UploadCloud aria-hidden />}>
           {t("offer.benefit3")}
         </WizardBadge>
       </div>

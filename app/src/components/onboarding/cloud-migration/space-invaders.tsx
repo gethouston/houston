@@ -39,7 +39,9 @@ export function SpaceInvaders({ className }: { className?: string }) {
 
     const state = createState();
     const held = { left: false, right: false };
-    let color = "#fff";
+    // Filled from the canvas's resolved `color` (text-ink) on resize, before the
+    // first draw; the literal is only a pre-resize fallback (dark ink on light).
+    let color = "#0d0d0d";
 
     // Backing store follows the CSS size and devicePixelRatio.
     function resize() {
@@ -47,7 +49,7 @@ export function SpaceInvaders({ className }: { className?: string }) {
       const cssW = canvas.clientWidth || W;
       canvas.width = Math.round(cssW * dpr);
       canvas.height = Math.round(cssW * (H / W) * dpr);
-      color = getComputedStyle(canvas).color || "#fff";
+      color = getComputedStyle(canvas).color || "#0d0d0d";
     }
     resize();
     const ro = new ResizeObserver(resize);
@@ -143,7 +145,7 @@ export function SpaceInvaders({ className }: { className?: string }) {
   return (
     <canvas
       ref={canvasRef}
-      className={`w-full text-[var(--ht-space-foreground)] ${className ?? ""}`}
+      className={`w-full text-ink ${className ?? ""}`}
       style={{ aspectRatio: `${W} / ${H}`, touchAction: "none" }}
     />
   );

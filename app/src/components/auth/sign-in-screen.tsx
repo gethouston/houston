@@ -16,8 +16,8 @@ import {
 } from "../../lib/last-sign-in";
 import { logger } from "../../lib/logger";
 import { tauriSystem } from "../../lib/tauri";
+import { FirstRunScreen } from "../onboarding/first-run-screen";
 import { HoustonLogo } from "../shell/experience-card";
-import { SpaceScreen } from "../space/space-screen";
 import { authErrorKey } from "./auth-errors";
 import { EmailSignIn } from "./email-sign-in";
 import { type Provider, ProviderButtonRow } from "./provider-button-row";
@@ -41,11 +41,11 @@ const openExternal = (url: string) => () => {
  *
  * Two-panel card: the LEFT panel is the sign-in itself — Google / Apple /
  * Microsoft as one row of icon pills, then passwordless email under the
- * divider (the 6-digit code stays fully in-app); the RIGHT panel is
- * a calm value note on a muted surface. The card is pinned to the DARK palette
- * (data-theme="dark") so the login looks the same in both app themes: dark
- * "Log in" surface, dark value panel, light primary buttons. Wordmark sits
- * top-left of the screen and the legal links anchor the footer.
+ * divider (the 6-digit code stays fully in-app); the RIGHT panel is a calm
+ * value note on the filled action surface. A plain white card on the calm grey
+ * {@link FirstRunScreen} background (pinned light, so it reads the same in both
+ * app themes). Wordmark sits top-left of the screen and the legal links anchor
+ * the footer.
  *
  * Re-click semantics: the provider spinner is on only until the system browser
  * opens (`onBrowserOpened` clears it). After that the buttons are free — a
@@ -103,26 +103,18 @@ export function SignInScreen() {
   };
 
   return (
-    <SpaceScreen>
-      <div className="flex items-center gap-2 px-8 pt-14 pb-6 text-[var(--ht-space-foreground)]">
+    <FirstRunScreen>
+      <div className="flex items-center gap-2 px-8 pt-14 pb-6 text-ink">
         <HoustonLogo size={24} />
         <span className="text-lg font-semibold tracking-tight">Houston</span>
       </div>
 
       <div className="flex flex-1 items-center justify-center px-6">
-        {/* data-theme="dark" pins the whole card to the dark palette so the
-            login reads identically in both app themes (dark card on the
-            theme-invariant space backdrop). */}
-        {/* text-ink is declared HERE, inside the pin, on purpose:
-            `color` inherits as a computed value, so a token utility set on an
-            ancestor outside the pin would carry the APP theme's foreground in. */}
-        <div
-          data-theme="dark"
-          className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-[var(--ht-space-glass-border)] text-ink shadow-2xl sm:grid-cols-3"
-        >
-          {/* The landing page's glass surface (`--ht-space-glass`), so the
-              login card and the marketing site read as one material. */}
-          <div className="flex flex-col gap-5 bg-[var(--ht-space-glass)] p-8 backdrop-blur-md sm:col-span-2">
+        {/* A plain white card, hairline + soft shadow, floating on the grey
+            first-run background. The FirstRunScreen wrapper pins light, so the
+            login reads the same bright way in both app themes. */}
+        <div className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-line bg-card text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)] sm:grid-cols-3">
+          <div className="flex flex-col gap-5 bg-card p-8 sm:col-span-2">
             <h1 className="text-lg font-medium">Log in</h1>
 
             {lastSignIn && (
@@ -175,11 +167,11 @@ export function SignInScreen() {
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-3 py-6 text-xs text-[var(--ht-space-foreground-muted)]">
+      <div className="flex items-center justify-center gap-3 py-6 text-xs text-ink-muted">
         <button
           type="button"
           onClick={openExternal("https://gethouston.ai/privacy")}
-          className="underline-offset-4 hover:text-[var(--ht-space-foreground)] hover:underline"
+          className="underline-offset-4 hover:text-ink hover:underline"
         >
           Privacy Policy
         </button>
@@ -187,11 +179,11 @@ export function SignInScreen() {
         <button
           type="button"
           onClick={openExternal("https://gethouston.ai/terms")}
-          className="underline-offset-4 hover:text-[var(--ht-space-foreground)] hover:underline"
+          className="underline-offset-4 hover:text-ink hover:underline"
         >
           Terms of Service
         </button>
       </div>
-    </SpaceScreen>
+    </FirstRunScreen>
   );
 }

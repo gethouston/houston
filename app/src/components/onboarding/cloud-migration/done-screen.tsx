@@ -72,7 +72,6 @@ export function DoneScreen({
   if (step === "ai") {
     return (
       <SetupCard
-        onSpace
         eyebrow={showAppsStep ? t("done.stepAi") : undefined}
         title={t("done.reconnectAiTitle")}
         subtitle={t("done.reconnectAiBody")}
@@ -97,7 +96,6 @@ export function DoneScreen({
 
   return (
     <SetupCard
-      onSpace
       eyebrow={t("done.stepApps")}
       title={t("done.reconnectAppsTitle")}
       subtitle={t("done.reconnectAppsBody")}

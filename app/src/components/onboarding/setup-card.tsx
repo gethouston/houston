@@ -1,21 +1,6 @@
-import { Button, cn } from "@houston-ai/core";
+import { Button } from "@houston-ai/core";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
-
-// The card material for every surface FLOATING on the theme-invariant dark
-// space photo. Those cards pin `data-theme="light"` (so every `--ht-*` resolves
-// to its LIGHT value — dark ink on a white surface — regardless of the app
-// theme), then remap `--ht-card` to the near-opaque white space glass
-// (`--ht-space-glass-light`, rgba white .92): opaque enough that dark ink clears
-// WCAG AA over the bright galactic core, still translucent enough for the
-// `backdrop-blur` to read as glass. Every `bg-card` inside the subtree — the
-// card shell itself and any nested panel — then wears the same material, defined
-// once. Inline style so it wins over the pinned `[data-theme="light"]` token
-// block; it never leaks past the onSpace card. Exported so the cloud-migration
-// wizard's hero frame shares the exact same glass.
-export const SPACE_CARD_VARS: CSSProperties = {
-  "--ht-card": "var(--ht-space-glass-light)",
-} as CSSProperties;
+import type { ReactNode } from "react";
 
 // Re-exported so onboarding call sites keep a single import surface
 // (`import { OptionCard, SetupCard } from "../setup-card"`).
@@ -28,19 +13,16 @@ export { OptionCard } from "./option-card";
  * centered card with a small step eyebrow, one clear question, the content, and
  * a Back / helper / Next footer.
  *
- * `onSpace` floats the card inside the shared `SpaceScreen` space backdrop used by
- * onboarding: it drops the standalone `h-screen`/`bg-chip` backdrop (the
- * SpaceScreen supplies both) and pins the card to the LIGHT palette (a white
- * glass card, dark ink) so it reads identically in both app themes over the
- * theme-invariant dark photo. Left false for the standalone gates (language,
- * disclaimer), which keep the dimmed backdrop.
+ * Always a plain white card ({@link https://…|`bg-card`}) that floats on the
+ * calm grey {@link FirstRunScreen} background: a hairline `border-line` and a
+ * soft shadow lift it off the gutter, no glass, no backdrop-blur. The
+ * FirstRunScreen wrapper pins `data-theme="light"`, so the card reads the same
+ * bright light way in both app themes.
  *
- * Houston-monochrome, not Discord-blue: selection uses the near-black
- * foreground, never a decorative accent (design-system color restraint).
+ * Houston-monochrome: selection uses the near-black foreground, never a
+ * decorative accent (design-system color restraint).
  */
 interface SetupCardProps {
-  /** Float the card on the shared SpaceScreen backdrop (pins the dark palette). */
-  onSpace?: boolean;
   /** Optional brand mark above the eyebrow (used by the Welcome hero). */
   icon?: ReactNode;
   /** Small muted line above the title, e.g. "Step 2 of 3" or "Welcome". */
@@ -61,7 +43,6 @@ interface SetupCardProps {
 }
 
 export function SetupCard({
-  onSpace = false,
   icon,
   eyebrow,
   title,
@@ -76,31 +57,16 @@ export function SetupCard({
   nextLoading,
 }: SetupCardProps) {
   return (
-    <div
-      className={cn(
-        "relative flex flex-col items-center justify-center overflow-hidden px-6",
-        onSpace ? "flex-1" : "h-screen bg-chip/60 text-ink",
-      )}
-    >
-      {/* Fixed min height + flex-1 content so the card stays the SAME size
-          across every step and the footer never jumps as content changes.
-          Keyed by title so React remounts (and the CSS entrance replays) on
-          each step change, but not on in-step state updates like typing.
-          On the space backdrop the card pins the LIGHT palette (data-theme) and
-          wears near-opaque white space glass (`--ht-space-glass-light` via the
-          `bg-card` remap in SPACE_CARD_VARS + a cool hairline + blur), so dark
-          ink reads at WCAG AA over the bright galactic core while the card still
-          floats as glass. Off-space stays the borderless solid card. */}
+    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-6">
+      {/* Fixed height + flex-1 content so the card stays the SAME size across
+          every step and the footer never jumps as content changes. Keyed by
+          title so React remounts (and the CSS entrance replays) on each step
+          change, but not on in-step state updates like typing. A plain white
+          card with a hairline + soft shadow, floating on the grey first-run
+          background — no glass, no backdrop-blur. */}
       <div
         key={title}
-        data-theme={onSpace ? "light" : undefined}
-        style={onSpace ? SPACE_CARD_VARS : undefined}
-        className={cn(
-          "setup-step-in relative z-10 flex h-[680px] max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl p-8",
-          onSpace
-            ? "border border-line bg-card text-ink shadow-2xl backdrop-blur-md"
-            : "bg-input shadow-[0_4px_24px_rgba(0,0,0,0.06)]",
-        )}
+        className="setup-step-in relative z-10 flex h-[680px] max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-line bg-card p-8 text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
       >
         {icon && <div className="mb-4">{icon}</div>}
         {eyebrow && (

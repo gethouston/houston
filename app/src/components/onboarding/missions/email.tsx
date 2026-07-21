@@ -95,7 +95,6 @@ export function EmailMission({
 
   return (
     <SetupCard
-      onSpace
       eyebrow={eyebrow}
       title={t("tutorial.missions.email.title")}
       // The mission body lives in the offer card, so no subtitle duplicates it.

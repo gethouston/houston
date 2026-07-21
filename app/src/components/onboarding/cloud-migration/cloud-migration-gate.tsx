@@ -8,8 +8,7 @@ import { useUIStore } from "../../../stores/ui";
 import { ClaudeBrowserLogin } from "../../shell/claude-browser-login";
 import { ProviderLoginFallback } from "../../shell/provider-login-fallback";
 import { WorkspaceLoading } from "../../shell/workspace-loading";
-import { SpaceScreen } from "../../space/space-screen";
-import { SPACE_CARD_VARS } from "../setup-card";
+import { FirstRunScreen } from "../first-run-screen";
 import { DoneScreen } from "./done-screen";
 import { OfferScreen } from "./offer-screen";
 import { ProgressScreen } from "./progress-screen";
@@ -81,11 +80,10 @@ function CloudMigrationWizard({
     };
   });
 
-  // One SpaceScreen wrapping every wizard screen (like onboarding) so the
-  // backdrop photo mounts once and never re-fades across offer → progress →
-  // done transitions.
+  // One FirstRunScreen wrapping every wizard screen (like onboarding) so the
+  // grey background is painted once across offer → progress → done transitions.
   return (
-    <SpaceScreen>
+    <FirstRunScreen>
       {screen === "offer" ? (
         <OfferScreen
           detection={detection}
@@ -110,12 +108,8 @@ function CloudMigrationWizard({
       ) : (
         <DoneScreen persistOutcome={persistOutcome} />
       )}
-      {/* Pinned light + the space-glass `bg-card` remap (SPACE_CARD_VARS) so
-          toasts read as the same white glass as the wizard's cards over the
-          dark backdrop, instead of dark-on-dark. */}
-      <div data-theme="light" style={SPACE_CARD_VARS}>
-        <ToastContainer toasts={mappedToasts} onDismiss={dismissToast} />
-      </div>
-    </SpaceScreen>
+      {/* A normal light toast — the FirstRunScreen wrapper already pins light. */}
+      <ToastContainer toasts={mappedToasts} onDismiss={dismissToast} />
+    </FirstRunScreen>
   );
 }

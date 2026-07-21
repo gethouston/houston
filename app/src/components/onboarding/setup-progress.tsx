@@ -71,7 +71,7 @@ export function SetupProgress({
   };
 
   return (
-    <SetupCard onSpace onNext={onContinue} nextLabel={ctaLabel}>
+    <SetupCard onNext={onContinue} nextLabel={ctaLabel}>
       <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
         <div className="flex flex-col items-center gap-4">
           <HoustonLogo size={52} />

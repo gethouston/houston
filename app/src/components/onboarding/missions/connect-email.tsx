@@ -107,7 +107,6 @@ export function ConnectEmailMission({
 
   return (
     <SetupCard
-      onSpace
       eyebrow={eyebrow}
       title={t("tutorial.missions.connectEmail.title")}
       subtitle={t("tutorial.missions.connectEmail.body")}

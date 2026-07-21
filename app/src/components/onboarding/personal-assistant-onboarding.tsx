@@ -10,7 +10,7 @@ import { genericErrorDescription } from "../../lib/error-toast";
 import { getDefaultModel } from "../../lib/providers";
 import { stepPosition } from "../../lib/setup-steps";
 import { useUIStore } from "../../stores/ui";
-import { SpaceScreen } from "../space/space-screen";
+import { FirstRunScreen } from "./first-run-screen";
 import { ConnectAiMission } from "./missions/connect-ai";
 import { ConnectEmailMission } from "./missions/connect-email";
 import { EmailMission } from "./missions/email";
@@ -220,12 +220,11 @@ export function PersonalAssistantOnboarding({
     });
   };
 
-  // One SpaceScreen at the top level (not per-step) so the backdrop photo mounts
-  // once and never re-fades on a step transition. Every step's SetupCard floats
-  // on it via `onSpace`, so onboarding reads as the same continuous space as
-  // sign-in and the workspace-loading splash.
+  // One FirstRunScreen at the top level (not per-step) so the grey background is
+  // painted once and every step's white SetupCard floats on it, reading as the
+  // same continuous flow as sign-in and the rest of first-run.
   return (
-    <SpaceScreen>
+    <FirstRunScreen>
       {step === "connect" && (
         <ConnectAiMission
           eyebrow={stepEyebrow("connect")}
@@ -279,7 +278,6 @@ export function PersonalAssistantOnboarding({
           // (disabled while a retry is in flight); Back returns to the AI picker
           // so they can also choose a different provider.
           <SetupCard
-            onSpace
             eyebrow={stepEyebrow("connectEmail")}
             title={t("setup:tutorial.errors.title")}
             subtitle={t("setup:tutorial.errors.body")}
@@ -299,7 +297,7 @@ export function PersonalAssistantOnboarding({
           // provisioning resolved. Hold on a light loading state and advance
           // automatically the instant the agent record lands. Keep the step
           // eyebrow so "Step 2 of 3" doesn't vanish during the wait.
-          <SetupCard onSpace eyebrow={stepEyebrow("connectEmail")}>
+          <SetupCard eyebrow={stepEyebrow("connectEmail")}>
             <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
               <Loader2 className="size-6 animate-spin text-ink-muted" />
               <p className="text-sm text-ink-muted">
@@ -348,6 +346,6 @@ export function PersonalAssistantOnboarding({
       )}
 
       <ToastContainer toasts={toasts} onDismiss={onDismissToast} />
-    </SpaceScreen>
+    </FirstRunScreen>
   );
 }

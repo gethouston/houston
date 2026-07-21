@@ -82,12 +82,12 @@ test.describe("sign-in screen (GCIP)", () => {
     await expect(page.getByRole("button", { name: "Send code" })).toBeVisible();
   });
 
-  test("email and code fields use the pinned dark foreground", async ({
-    page,
-  }) => {
+  test("email and code fields use the light foreground", async ({ page }) => {
+    // The sign-in card is a plain white card on the flat first-run background,
+    // pinned light (FirstRunScreen), so its ink is the LIGHT --ht-ink #14161d.
     const emailInput = page.getByPlaceholder("you@example.com");
     await emailInput.fill("pilot@example.com");
-    await expect(emailInput).toHaveCSS("color", "rgb(229, 229, 229)");
+    await expect(emailInput).toHaveCSS("color", "rgb(20, 22, 29)");
 
     await page.getByRole("button", { name: "Send code" }).click();
     // Three digits only — a sixth would auto-submit and leave the code step.
@@ -97,7 +97,7 @@ test.describe("sign-in screen (GCIP)", () => {
     ).toHaveText("1");
     await expect(
       page.locator('[data-slot="input-otp-slot"]').first(),
-    ).toHaveCSS("color", "rgb(229, 229, 229)");
+    ).toHaveCSS("color", "rgb(20, 22, 29)");
   });
 
   test("email entry advances to the 6-digit code screen", async ({ page }) => {
