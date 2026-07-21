@@ -21,6 +21,9 @@ export interface RawToolkit {
   description?: string;
   logo_url?: string;
   categories?: RawCategory[];
+  /** True for toolkits with no auth at all (Composio's own meta-toolkit,
+   *  hackernews…) — nothing to connect, so they never enter the catalog. */
+  no_auth?: boolean;
 }
 export interface RawConnection {
   toolkit?: { slug?: string } | string;

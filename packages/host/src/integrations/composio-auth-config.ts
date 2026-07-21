@@ -1,5 +1,6 @@
 import type { ComposioHttp } from "./composio-http";
 import type { RawAuthConfig } from "./composio-wire";
+import { IntegrationUpstreamError } from "./types";
 
 /**
  * The project's auth config for a toolkit: reuse an enabled one, else create
@@ -68,7 +69,11 @@ interface RawToolkitDetail {
 const OAUTH_MODES = new Set(["OAUTH1", "OAUTH1A", "OAUTH2"]);
 
 /** Managed auth when Composio offers it; else the toolkit's first scheme the
- *  hosted connect page can collect from the user (never bare custom OAuth). */
+ *  hosted connect page can collect from the user (never bare custom OAuth).
+ *  NO_AUTH is not a scheme either: Composio rejects auth configs for no-auth
+ *  toolkits (Auth_Config_NoAuthApp), so a connect attempt on one — a stale
+ *  catalog, an agent suggesting it — fails as a clean 400 the UI can show,
+ *  not a 502. */
 async function authConfigSpec(
   http: ComposioHttp,
   toolkit: string,
@@ -82,10 +87,17 @@ async function authConfigSpec(
   const modes = (detail?.auth_config_details ?? []).flatMap((d) =>
     d.mode ? [d.mode] : [],
   );
-  const scheme = modes.find((m) => !OAUTH_MODES.has(m.toUpperCase()));
+  const connectable = modes.filter((m) => m.toUpperCase() !== "NO_AUTH");
+  const scheme = connectable.find((m) => !OAUTH_MODES.has(m.toUpperCase()));
   if (!scheme) {
+    if (modes.length > 0 && connectable.length === 0) {
+      throw new IntegrationUpstreamError(400, {
+        error: `${toolkit} does not need connecting; its tools work without an account`,
+        code: "toolkit_no_auth",
+      });
+    }
     throw new Error(
-      modes.length > 0
+      connectable.length > 0
         ? `composio: toolkit '${toolkit}' only offers OAuth and Composio has no managed app for it — register a developer OAuth app for it in the Composio dashboard, then connecting will reuse that auth config`
         : `composio: toolkit '${toolkit}' offers no connectable auth scheme`,
     );

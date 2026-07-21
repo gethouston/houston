@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { ComposioProvider } from "./composio";
+import { IntegrationUpstreamError } from "./types";
 
 /**
  * The Composio adapter verified against an injected fetch — no network. These
@@ -88,6 +89,27 @@ test("listToolkits maps the catalog and sends the platform key", async () => {
   ]);
   expect(calls[0]?.headers["x-api-key"]).toBe("pk_test");
   expect(calls[0]?.path).toBe("/api/v3/toolkits?limit=1000");
+});
+
+test("listToolkits drops no_auth toolkits — nothing to connect", async () => {
+  // Composio's catalog includes toolkits with no auth at all (its own
+  // meta-toolkit, hackernews…). A Connect button on those can only produce
+  // the Auth_Config_NoAuthApp 400 seen in prod — they never enter the catalog.
+  const { provider } = harness((url) => {
+    if (url.pathname === "/api/v3/toolkits") {
+      return {
+        body: {
+          items: [
+            { slug: "composio", name: "Composio", no_auth: true },
+            { slug: "gmail", name: "Gmail" },
+            { slug: "hackernews", name: "Hackernews", no_auth: true },
+          ],
+        },
+      };
+    }
+    return { status: 404 };
+  });
+  expect((await provider.listToolkits()).map((t) => t.slug)).toEqual(["gmail"]);
 });
 
 test("listConnections scopes by user_ids and maps statuses", async () => {
@@ -286,6 +308,42 @@ test("connect refuses an OAuth-only toolkit with no managed app, naming the reme
   await expect(provider.connect(USER, "oauthonly")).rejects.toThrow(
     /only offers OAuth.*Composio dashboard/,
   );
+});
+
+test("connect on a NO_AUTH toolkit is a clean 400, not a doomed Composio POST", async () => {
+  // Prod repro (Sentry): connecting the "composio" meta-toolkit forwarded a
+  // create-auth-config POST that Composio 400s (Auth_Config_NoAuthApp) and
+  // the user saw an opaque 502. NO_AUTH must short-circuit before that POST
+  // with a user-actionable error.
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [] } };
+    }
+    if (url.pathname === "/api/v3/toolkits/composio") {
+      return {
+        body: {
+          composio_managed_auth_schemes: [],
+          auth_config_details: [{ mode: "NO_AUTH" }],
+        },
+      };
+    }
+    return { status: 404 };
+  });
+  const failure = await provider.connect(USER, "composio").then(
+    () => null,
+    (err: unknown) => err,
+  );
+  expect(failure).toBeInstanceOf(IntegrationUpstreamError);
+  expect((failure as IntegrationUpstreamError).status).toBe(400);
+  expect((failure as IntegrationUpstreamError).body).toMatchObject({
+    code: "toolkit_no_auth",
+  });
+  // The doomed create POST was never sent.
+  expect(
+    calls.some(
+      (c) => c.method === "POST" && c.path.startsWith("/api/v3/auth_configs"),
+    ),
+  ).toBe(false);
 });
 
 test("connect refuses a toolkit with no connectable auth scheme, loudly", async () => {
