@@ -1,13 +1,12 @@
 ---
 name: cold-email-sequence
-description: "Co-write a 3-email cold outreach sequence with you, one email at a time, using the James Shields framework: personalized subject (not body), 3 sentences plus PS, irresistible offer, low-friction reply CTA. I lock each email with you before moving to the next so voice, social proof, and offer all stay tight. Phase 4 of both pipelines, also runnable standalone if you have a verified contact list and want fresh copy."
+description: "Co-write a 3-email cold outreach sequence one email at a time using the James Shields framework: trigger-based subject, three-sentence body, irresistible no-strings offer, one-word reply CTA. Each email locked with you before moving to the next. Phase 4 of both LinkedIn pipelines, also runnable standalone."
 version: 1
 category: Outbound
-featured: yes
-image: pencil
+featured: no
+image: memo
 integrations: []
 ---
-
 
 # Cold Email Sequence
 
