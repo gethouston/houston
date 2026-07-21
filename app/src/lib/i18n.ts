@@ -14,6 +14,7 @@ import { initReactI18next } from "react-i18next";
 import agentOnboardingEn from "../locales/en/agent-onboarding.json";
 import agentsEn from "../locales/en/agents.json";
 import aiHubEn from "../locales/en/ai-hub.json";
+import authEn from "../locales/en/auth.json";
 import boardEn from "../locales/en/board.json";
 import chatEn from "../locales/en/chat.json";
 import commonEn from "../locales/en/common.json";
@@ -37,6 +38,7 @@ import teamsEn from "../locales/en/teams.json";
 import agentOnboardingEs from "../locales/es/agent-onboarding.json";
 import agentsEs from "../locales/es/agents.json";
 import aiHubEs from "../locales/es/ai-hub.json";
+import authEs from "../locales/es/auth.json";
 import boardEs from "../locales/es/board.json";
 import chatEs from "../locales/es/chat.json";
 import commonEs from "../locales/es/common.json";
@@ -60,6 +62,7 @@ import teamsEs from "../locales/es/teams.json";
 import agentOnboardingPt from "../locales/pt/agent-onboarding.json";
 import agentsPt from "../locales/pt/agents.json";
 import aiHubPt from "../locales/pt/ai-hub.json";
+import authPt from "../locales/pt/auth.json";
 import boardPt from "../locales/pt/board.json";
 import chatPt from "../locales/pt/chat.json";
 import commonPt from "../locales/pt/common.json";
@@ -133,6 +136,7 @@ const resources = {
   en: {
     common: commonEn,
     aiHub: aiHubEn,
+    auth: authEn,
     setup: setupEn,
     legal: legalEn,
     shell: shellEn,
@@ -158,6 +162,7 @@ const resources = {
   es: {
     common: commonEs,
     aiHub: aiHubEs,
+    auth: authEs,
     setup: setupEs,
     legal: legalEs,
     shell: shellEs,
@@ -183,6 +188,7 @@ const resources = {
   pt: {
     common: commonPt,
     aiHub: aiHubPt,
+    auth: authPt,
     setup: setupPt,
     legal: legalPt,
     shell: shellPt,
@@ -228,6 +234,7 @@ void i18n
     ns: [
       "common",
       "aiHub",
+      "auth",
       "setup",
       "legal",
       "shell",

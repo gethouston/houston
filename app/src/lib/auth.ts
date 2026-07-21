@@ -31,6 +31,7 @@ import {
   googleDesktopSession,
   microsoftDesktopSession,
 } from "./identity/desktop-signin";
+import { writeLastSignIn } from "./last-sign-in";
 import { logger } from "./logger";
 import { osIsTauri } from "./os-bridge";
 import { queryClient } from "./query-client";
@@ -78,6 +79,7 @@ async function establishDesktopSession(
 ): Promise<void> {
   await saveSession(session);
   cacheSession(session);
+  rememberLastSignIn(session);
   startProactiveRefresh();
   analytics.track("user_signed_in", { provider: analyticsProvider });
   logger.info(`[auth] signed in (${session.provider}) as ${session.email}`);
@@ -90,7 +92,16 @@ function establishWebSession(
 ): void {
   if (!session) return; // popup cancelled — no error, no cache write
   cacheSession(session);
+  rememberLastSignIn(session);
   analytics.track("user_signed_in", { provider: analyticsProvider });
+}
+
+// Device-local hint for the sign-in screen, stamped at BOTH terminal success
+// points (desktop + web) so every path — OAuth loopback, deep-link, email OTP —
+// records it once. Deliberately NOT cleared by `signOut()`: it must survive so
+// the next sign-in can suggest how the user signed in last time.
+function rememberLastSignIn(session: Session): void {
+  writeLastSignIn({ provider: session.provider, email: session.email });
 }
 
 // Lazy-load the web SDK surface (a no-op stub on desktop; never reached there).

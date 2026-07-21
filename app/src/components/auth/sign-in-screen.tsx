@@ -1,6 +1,6 @@
 import { Button } from "@houston-ai/core";
 import { ArrowUpRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   cancelPendingAuthorize,
@@ -9,6 +9,11 @@ import {
   signInWithGoogle,
   signInWithMicrosoft,
 } from "../../lib/auth";
+import {
+  describeLastSignIn,
+  lastSignInHint,
+  readLastSignIn,
+} from "../../lib/last-sign-in";
 import { logger } from "../../lib/logger";
 import { tauriSystem } from "../../lib/tauri";
 import { HoustonLogo } from "../shell/experience-card";
@@ -51,8 +56,17 @@ const openExternal = (url: string) => () => {
  */
 export function SignInScreen() {
   const { t } = useTranslation("errors");
+  const { t: tAuth } = useTranslation("auth");
   const [pending, setPending] = useState<Provider | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Device-local memory of the previous sign-in, read once on mount. Survives
+  // sign-out (its own localStorage key), so returning users are guided back to
+  // the method they used last.
+  const lastSignIn = useMemo(() => {
+    const hint = readLastSignIn();
+    return hint ? describeLastSignIn(hint) : null;
+  }, []);
 
   // Cancel any in-flight loopback authorize when this screen unmounts, so a late
   // browser completion can't overwrite a session the user established another way.
@@ -111,7 +125,22 @@ export function SignInScreen() {
           <div className="flex flex-col gap-5 bg-[var(--ht-space-glass)] p-8 backdrop-blur-md sm:col-span-2">
             <h1 className="text-lg font-medium">Log in</h1>
 
-            <ProviderButtonRow pending={pending} onSignIn={handleSignIn} />
+            {lastSignIn && (
+              <p className="-mt-2 text-xs text-ink-muted">
+                {lastSignInHint(lastSignIn, tAuth)}
+              </p>
+            )}
+
+            <ProviderButtonRow
+              pending={pending}
+              onSignIn={handleSignIn}
+              lastUsed={
+                lastSignIn && lastSignIn.highlight !== "email"
+                  ? lastSignIn.highlight
+                  : null
+              }
+              lastUsedLabel={tAuth("lastSignIn.lastUsed")}
+            />
 
             <div className="flex items-center gap-3">
               <div className="h-px flex-1 bg-line" />
@@ -119,7 +148,7 @@ export function SignInScreen() {
               <div className="h-px flex-1 bg-line" />
             </div>
 
-            <EmailSignIn />
+            <EmailSignIn highlight={lastSignIn?.highlight === "email"} />
 
             {error && <p className="text-xs text-danger">{error}</p>}
           </div>

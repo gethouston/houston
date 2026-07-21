@@ -25,8 +25,11 @@ type Step = "email" | "code";
  * The code step swaps it for a six-box pin input that auto-advances, accepts a
  * pasted code, and verifies itself on the sixth digit; the arrow button stays
  * as the retry affordance after a rejected code.
+ *
+ * `highlight` softly rings the email field when this is how the user signed in
+ * last time (the email counterpart to ProviderButtonRow's last-used halo).
  */
-export function EmailSignIn() {
+export function EmailSignIn({ highlight = false }: { highlight?: boolean }) {
   const { t } = useTranslation("errors");
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
@@ -164,7 +167,11 @@ export function EmailSignIn() {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           placeholder="you@example.com"
-          className="h-10 flex-1 rounded-full border-ink/40 px-4"
+          className={`h-10 flex-1 rounded-full border-ink/40 px-4${
+            highlight
+              ? " outline outline-2 outline-offset-2 outline-[var(--ht-focus)]"
+              : ""
+          }`}
         />
         <SendButton disabled={pending || email.trim().length === 0} />
       </div>
