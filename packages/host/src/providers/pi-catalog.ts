@@ -9,6 +9,8 @@ import {
 // instantiated registry we don't otherwise carry here).
 import { getModels, getProviders } from "@earendil-works/pi-ai/compat";
 import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
+// Side effect: backports Kimi K3 into the 0.80.6 catalog (delete with the pi bump).
+import "./kimi-k3-catalog-patch";
 import type {
   CatalogModelEntry,
   CatalogProvider,
