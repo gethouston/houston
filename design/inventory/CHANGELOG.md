@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v32 - 2026-07-21
+
+Add `verified-badge`: the verified-creator indicator glyph shown beside a creator
+handle on Agent Store cards, creator chips, and the profile pane (part of the
+creator-profiles surface). Web ships it as a shared, props-only `ui/` piece
+(`@houston-ai/core` `VerifiedBadge`), so it lands `implemented`.
+
 ## v31 - 2026-07-20
 
 The catalog shell's two-section grammar gets three refinements, all in the shared

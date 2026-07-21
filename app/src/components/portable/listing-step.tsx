@@ -19,6 +19,7 @@ import {
   STORE_CATEGORIES,
   storeCategoryLabelKey,
 } from "../../lib/store-categories";
+import { CreatorIdentityField } from "./creator-identity-field";
 import { Field, TagsEditor } from "./listing-fields";
 
 export function ListingStep({
@@ -98,34 +99,7 @@ export function ListingStep({
         onChange={(tags) => onChange({ ...value, tags })}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field
-          htmlFor="listing-creator-name"
-          label={t("publish.listing.creatorNameLabel")}
-          required
-        >
-          <Input
-            id="listing-creator-name"
-            value={value.creatorName}
-            onChange={(e) =>
-              onChange({ ...value, creatorName: e.target.value })
-            }
-            placeholder={t("publish.listing.creatorNamePlaceholder")}
-          />
-        </Field>
-        <Field
-          htmlFor="listing-creator-url"
-          label={t("publish.listing.creatorUrlLabel")}
-        >
-          <Input
-            id="listing-creator-url"
-            type="url"
-            value={value.creatorUrl}
-            onChange={(e) => onChange({ ...value, creatorUrl: e.target.value })}
-            placeholder={t("publish.listing.creatorUrlPlaceholder")}
-          />
-        </Field>
-      </div>
+      <CreatorIdentityField value={value} onChange={onChange} />
     </div>
   );
 }

@@ -14,6 +14,10 @@
     "./ir": {
       "types": "./src/ir.ts",
       "import": "./src/ir.ts"
+    },
+    "./handle": {
+      "types": "./src/handle.ts",
+      "import": "./src/handle.ts"
     }
   },
   "files": [

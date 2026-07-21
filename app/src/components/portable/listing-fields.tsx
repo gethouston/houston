@@ -1,7 +1,8 @@
 /**
  * Field primitives for the publish listing step: a labelled field wrapper and
  * the tag editor (chip list plus Enter/comma-to-add input). Kept beside the
- * step so the step file stays focused on the form's shape.
+ * step so the step file stays focused on the form's shape. The creator-credit
+ * field lives in its own module (`creator-identity-field.tsx`).
  */
 
 import { Badge, Input } from "@houston-ai/core";

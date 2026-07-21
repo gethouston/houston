@@ -195,7 +195,10 @@
       "creatorNamePlaceholder": "How you want to be credited",
       "creatorUrlLabel": "Link",
       "creatorUrlPlaceholder": "https://your-site.com",
-      "requiredMark": "(required)"
+      "requiredMark": "(required)",
+      "publishingAs": "Publishing as @{{handle}}",
+      "claimHandleCta": "Claim your @handle",
+      "editProfile": "Edit profile"
     },
     "categories": {
       "writing": "Writing & Content",

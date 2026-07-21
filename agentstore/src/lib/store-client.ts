@@ -14,8 +14,13 @@
 import {
   type AgentPatch,
   AgentStoreClient,
+  type AvatarUploadResult,
   type ClaimInput,
   type ClaimResult,
+  type CreatorAnalytics,
+  type CreatorProfile,
+  type CreatorProfilePatch,
+  type HandleAvailability,
   type ReportInput,
   type StoreAgentSummary,
   type StoreRequestOptions,
@@ -76,4 +81,57 @@ export async function reportAgent(
   input: ReportInput,
 ): Promise<void> {
   await anon().reportAgent(slug, input);
+}
+
+/** File an anonymous abuse report against a creator. */
+export async function reportCreator(
+  handle: string,
+  input: ReportInput,
+): Promise<void> {
+  await anon().reportCreator(handle, input);
+}
+
+/** The caller's own creator profile, or null when never materialized. */
+export function getMyProfile(token: string): Promise<CreatorProfile | null> {
+  return authed(token).getMyProfile(NO_STORE);
+}
+
+/** Upsert the caller's creator profile; returns the saved profile. */
+export function patchMyProfile(
+  token: string,
+  patch: CreatorProfilePatch,
+): Promise<CreatorProfile> {
+  return authed(token).patchMyProfile(patch, NO_STORE);
+}
+
+/** Whether a handle is claimable by the caller, with a reason when not. */
+export function checkHandle(
+  token: string,
+  handle: string,
+): Promise<HandleAvailability> {
+  return authed(token).checkHandle(handle, NO_STORE);
+}
+
+/**
+ * Replace the caller's avatar with `blob` (multipart, field `file`). The SDK
+ * builds the FormData; `fetch` sets the multipart boundary.
+ */
+export function uploadAvatar(
+  token: string,
+  blob: Blob,
+): Promise<AvatarUploadResult> {
+  return authed(token).uploadAvatar(blob, NO_STORE);
+}
+
+/** Clear the caller's avatar. Idempotent. */
+export async function deleteAvatar(token: string): Promise<void> {
+  await authed(token).deleteAvatar(NO_STORE);
+}
+
+/** Per-UTC-day install analytics over the caller's owned agents. */
+export function getMyAnalytics(
+  token: string,
+  days?: number,
+): Promise<CreatorAnalytics> {
+  return authed(token).getMyAnalytics(days, NO_STORE);
 }

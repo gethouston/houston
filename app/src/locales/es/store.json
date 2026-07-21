@@ -81,5 +81,71 @@
     },
     "actionFailed": "No se pudo completar la acción. Inténtalo de nuevo.",
     "requestPublicSent": "Listado público solicitado. Lo revisaremos pronto."
+  },
+  "profile": {
+    "edit": "Editar perfil",
+    "title": "Tu perfil de creador",
+    "claimTitle": "Reclama tu @handle",
+    "handleLabel": "Handle",
+    "handlePlaceholder": "tunombre",
+    "handleHint": "Letras minúsculas, números y guiones bajos. Este es tu @handle público.",
+    "handleAvailable": "Ese handle está disponible.",
+    "handleTaken": "Ese handle ya está en uso.",
+    "handleReserved": "Ese handle está reservado.",
+    "handleInvalid": "Usa de 2 a 30 letras minúsculas, números o guiones bajos.",
+    "handleChecking": "Comprobando...",
+    "handleChangeTooSoon": "Cambiaste tu handle hace poco. Inténtalo más tarde.",
+    "displayNameLabel": "Nombre visible",
+    "bioLabel": "Biografía",
+    "bioPlaceholder": "Cuéntale a la gente lo que creas.",
+    "avatarLabel": "Foto de perfil",
+    "avatarChange": "Cambiar foto",
+    "avatarRemove": "Quitar foto",
+    "avatarUploading": "Subiendo...",
+    "avatarTooLarge": "Esa imagen es muy grande. Elige una de menos de 2 MB.",
+    "avatarBadType": "Usa una imagen PNG, JPEG o WebP.",
+    "avatarClaimHint": "Guarda tu perfil primero para agregar una foto.",
+    "socials": {
+      "x": "X",
+      "youtube": "YouTube",
+      "tiktok": "TikTok",
+      "instagram": "Instagram",
+      "github": "GitHub",
+      "linkedin": "LinkedIn",
+      "website": "Sitio web",
+      "hint": "Agrega enlaces a tus perfiles para que la gente te encuentre."
+    },
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "saved": "Perfil guardado",
+    "saveFailed": "No se pudo guardar tu perfil. Inténtalo de nuevo.",
+    "cancel": "Cancelar",
+    "claimCta": "Reclamar mi handle",
+    "claimBody": "Elige un @handle público para que la gente encuentre en un solo lugar todos los agentes que publicas."
+  },
+  "creator": {
+    "by": "Por {{name}}",
+    "viewProfile": "Ver perfil",
+    "verified": "Verificado",
+    "agents_one": "{{count}} agente",
+    "agents_other": "{{count}} agentes",
+    "noAgents": "Aún no hay agentes públicos.",
+    "back": "Volver",
+    "notFound": "No pudimos encontrar a ese creador.",
+    "loadFailed": "No se pudo cargar este perfil. Inténtalo de nuevo.",
+    "report": "Reportar creador"
+  },
+  "analytics": {
+    "title": "Instalaciones",
+    "range": {
+      "7d": "7 días",
+      "30d": "30 días",
+      "90d": "90 días"
+    },
+    "totalInstalls_one": "{{count}} instalación",
+    "totalInstalls_other": "{{count}} instalaciones",
+    "empty": "Aún no hay instalaciones en este período.",
+    "loadFailed": "No se pudieron cargar tus estadísticas. Inténtalo de nuevo.",
+    "barLabel": "{{day}}: {{count}}"
   }
 }

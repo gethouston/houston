@@ -284,6 +284,9 @@ pub fn run() {
             //    Houston" button. Forwarded onto the disjoint `store://deep-link`
             //    event (and stashed for cold-start pull) to seed the import wizard
             //    preview; never touches the auth channel and never auto-installs.
+            //  - `houston://store/creator?handle=<handle>` — a creator profile
+            //    link. Rides the SAME `store://deep-link` event/stash (the
+            //    frontend disambiguates by URL path) to open the creator pane.
             //
             // Managed BEFORE `on_open_url` is wired so a launch-by-deep-link URL
             // that arrives immediately has somewhere to land.
@@ -295,7 +298,9 @@ pub fn run() {
                     for url in event.urls() {
                         if auth::is_auth_callback_deep_link(url.as_str()) {
                             auth::emit_deep_link(&handle, url.as_str());
-                        } else if store_deep_link::is_store_install_deep_link(url.as_str()) {
+                        } else if store_deep_link::is_store_install_deep_link(url.as_str())
+                            || store_deep_link::is_store_creator_deep_link(url.as_str())
+                        {
                             store_deep_link::stash_and_emit(
                                 &handle,
                                 &handle.state::<store_deep_link::PendingStoreDeepLinkState>(),

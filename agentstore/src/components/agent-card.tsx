@@ -4,6 +4,7 @@ import { Download } from "lucide-react";
 import Link from "next/link";
 import { toDisplayIcon } from "@/lib/store-api-types";
 import { AgentIcon } from "./agent-icon";
+import { CreatorChip } from "./creator-chip";
 
 const compactNumber = new Intl.NumberFormat("en", { notation: "compact" });
 
@@ -47,9 +48,7 @@ export function AgentCard({ agent, categoryLabel }: AgentCardProps) {
             <h3 className="truncate font-display text-base font-semibold text-card-foreground">
               {agent.name}
             </h3>
-            <p className="truncate text-sm text-muted-foreground">
-              By {agent.creator.displayName}
-            </p>
+            <CreatorChip creator={agent.creator} className="mt-0.5 text-sm" />
           </div>
         </div>
 

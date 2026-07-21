@@ -15,10 +15,16 @@ import type {
   AdminQueueItem,
   AdminReport,
   AgentPatch,
+  AvatarUploadResult,
   ClaimInput,
   ClaimResult,
   CreateAgentRequest,
   CreateAgentResponse,
+  CreatorAnalytics,
+  CreatorProfile,
+  CreatorProfilePatch,
+  CreatorReport,
+  HandleAvailability,
   MyAgent,
   PatchAgentResponse,
   PurgeResult,
@@ -27,7 +33,9 @@ import type {
   StoreAgentDetail,
   StoreCatalogPage,
   StoreCatalogQuery,
+  StoreCatalogSort,
   StoreCategory,
+  StoreCreatorPage,
   StoreInstallTarget,
 } from "./types.ts";
 
@@ -140,6 +148,34 @@ export class AgentStoreClient {
     });
   }
 
+  /** A creator's public page: their profile plus one page of public agents. */
+  getCreator(
+    handle: string,
+    query: { page?: number; sort?: StoreCatalogSort } = {},
+    options?: StoreRequestOptions,
+  ): Promise<StoreCreatorPage> {
+    const params = new URLSearchParams();
+    if (query.sort) params.set("sort", query.sort);
+    if (query.page && query.page > 1) params.set("page", String(query.page));
+    return this.requestJson<StoreCreatorPage>(
+      "GET",
+      `/creators/${encodeURIComponent(handle)}`,
+      { query: params, options },
+    );
+  }
+
+  /** File an anonymous abuse report against a creator. */
+  async reportCreator(
+    handle: string,
+    input: ReportInput,
+    options?: StoreRequestOptions,
+  ): Promise<void> {
+    await this.send("POST", `/creators/${encodeURIComponent(handle)}/reports`, {
+      body: input,
+      options,
+    });
+  }
+
   // ── Authenticated ─────────────────────────────────────────────────────────
 
   /** The caller's agents in every lifecycle state (`GET /me/agents`). */
@@ -196,6 +232,87 @@ export class AgentStoreClient {
     return this.requestJson<ClaimResult>("POST", "/claim", {
       auth: true,
       body: input,
+      options,
+    });
+  }
+
+  /**
+   * The caller's own creator profile, or `null` when they have never
+   * materialized one (unwraps the `{ profile }` envelope).
+   */
+  async getMyProfile(
+    options?: StoreRequestOptions,
+  ): Promise<CreatorProfile | null> {
+    const body = await this.requestJson<{ profile: CreatorProfile | null }>(
+      "GET",
+      "/me/profile",
+      { auth: true, options },
+    );
+    return body.profile;
+  }
+
+  /** Upsert the caller's creator profile (`PATCH /me/profile`). */
+  async patchMyProfile(
+    patch: CreatorProfilePatch,
+    options?: StoreRequestOptions,
+  ): Promise<CreatorProfile> {
+    const body = await this.requestJson<{ profile: CreatorProfile }>(
+      "PATCH",
+      "/me/profile",
+      { auth: true, body: patch, options },
+    );
+    return body.profile;
+  }
+
+  /** Whether a handle is claimable by the caller (`GET /handles/{handle}/available`). */
+  checkHandle(
+    handle: string,
+    options?: StoreRequestOptions,
+  ): Promise<HandleAvailability> {
+    return this.requestJson<HandleAvailability>(
+      "GET",
+      `/handles/${encodeURIComponent(handle)}/available`,
+      { auth: true, options },
+    );
+  }
+
+  /**
+   * Replace the caller's avatar with `blob` (`POST /me/avatar`, multipart field
+   * `file`). The boundary is set by `fetch` from the `FormData` body — the
+   * client never sets `Content-Type` itself.
+   */
+  uploadAvatar(
+    blob: Blob,
+    options?: StoreRequestOptions,
+  ): Promise<AvatarUploadResult> {
+    const form = new FormData();
+    form.append("file", blob);
+    return this.requestJson<AvatarUploadResult>("POST", "/me/avatar", {
+      auth: true,
+      body: form,
+      options,
+    });
+  }
+
+  /** Clear the caller's avatar (`DELETE /me/avatar`). Idempotent. */
+  async deleteAvatar(options?: StoreRequestOptions): Promise<void> {
+    await this.send("DELETE", "/me/avatar", { auth: true, options });
+  }
+
+  /**
+   * Per-UTC-day install analytics over the caller's owned agents
+   * (`GET /me/analytics?days=`). `days` is clamped server-side to [1, 90]; an
+   * omitted value defaults to 90.
+   */
+  getMyAnalytics(
+    days?: number,
+    options?: StoreRequestOptions,
+  ): Promise<CreatorAnalytics> {
+    const query = new URLSearchParams();
+    if (days !== undefined) query.set("days", String(days));
+    return this.requestJson<CreatorAnalytics>("GET", "/me/analytics", {
+      auth: true,
+      query,
       options,
     });
   }
@@ -263,6 +380,59 @@ export class AgentStoreClient {
     });
   }
 
+  /** Set or clear a creator's verified badge (`POST /admin/creators/{handle}/verify`). */
+  async adminSetCreatorVerified(
+    handle: string,
+    verified: boolean,
+    options?: StoreRequestOptions,
+  ): Promise<void> {
+    await this.send(
+      "POST",
+      `/admin/creators/${encodeURIComponent(handle)}/verify`,
+      { auth: true, body: { verified }, options },
+    );
+  }
+
+  /** Release (null) a creator's handle (`POST /admin/creators/{handle}/release`). */
+  async adminReleaseHandle(
+    handle: string,
+    options?: StoreRequestOptions,
+  ): Promise<void> {
+    await this.send(
+      "POST",
+      `/admin/creators/${encodeURIComponent(handle)}/release`,
+      { auth: true, options },
+    );
+  }
+
+  /** The creator abuse reports, optionally filtered by status. */
+  async adminListCreatorReports(
+    status?: ReportStatus,
+    options?: StoreRequestOptions,
+  ): Promise<CreatorReport[]> {
+    const query = new URLSearchParams();
+    if (status) query.set("status", status);
+    const body = await this.requestJson<{ items: CreatorReport[] }>(
+      "GET",
+      "/admin/creator-reports",
+      { auth: true, query, options },
+    );
+    return body.items;
+  }
+
+  /** Resolve or dismiss a creator report (`POST /admin/creator-reports/{id}`). */
+  async adminActOnCreatorReport(
+    id: string,
+    action: "resolve" | "dismiss",
+    options?: StoreRequestOptions,
+  ): Promise<void> {
+    await this.send(
+      "POST",
+      `/admin/creator-reports/${encodeURIComponent(id)}`,
+      { auth: true, body: { action }, options },
+    );
+  }
+
   // ── Internals ─────────────────────────────────────────────────────────────
 
   /** Absolute URL for a store API path, with the query string appended. */
@@ -287,8 +457,12 @@ export class AgentStoreClient {
     spec: SendSpec,
   ): Promise<Response> {
     const headers = new Headers();
-    let body: string | undefined;
-    if (spec.body !== undefined) {
+    let body: BodyInit | undefined;
+    if (spec.body instanceof FormData) {
+      // Multipart: let fetch derive the Content-Type (with its boundary); setting
+      // it manually would break the parse on the gateway.
+      body = spec.body;
+    } else if (spec.body !== undefined) {
       headers.set("content-type", "application/json");
       body = JSON.stringify(spec.body);
     }
@@ -354,6 +528,7 @@ function catalogQuery(query: StoreCatalogQuery): URLSearchParams {
   if (query.category?.trim()) params.set("category", query.category.trim());
   if (query.integration?.trim())
     params.set("integration", query.integration.trim());
+  if (query.creator?.trim()) params.set("creator", query.creator.trim());
   if (query.sort) params.set("sort", query.sort);
   if (query.page && query.page > 1) params.set("page", String(query.page));
   return params;

@@ -15,10 +15,96 @@ export interface StoreIcon {
   value: string;
 }
 
-/** Who is credited on a listing. */
+/**
+ * Who is credited on a listing. `handle`/`avatarUrl`/`verified` are populated
+ * from the creator's profile when one exists (the gateway sets `verified`
+ * whenever a profile is present); they are absent on unclaimed/legacy listings.
+ */
 export interface StoreCreator {
   displayName: string;
   url?: string;
+  handle?: string;
+  avatarUrl?: string;
+  verified?: boolean;
+}
+
+/**
+ * A creator's optional social/web links. Every value is an https URL; an absent
+ * link is an absent key (mirrors the Go `SocialLinks` with `omitempty`).
+ */
+export interface CreatorLinks {
+  x?: string;
+  youtube?: string;
+  tiktok?: string;
+  instagram?: string;
+  github?: string;
+  linkedin?: string;
+  website?: string;
+}
+
+/**
+ * The wire-ready creator profile (`GET /creators/{handle}`, `GET /me/profile`).
+ * `handle` is null while unclaimed; `bio`/`avatarUrl` are null when unset.
+ */
+export interface CreatorProfile {
+  handle: string | null;
+  displayName: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  verified: boolean;
+  links: CreatorLinks;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * The partial edit behind `PATCH /me/profile`: an absent field is left
+ * untouched. `verified` is never settable here (admin-only). The first
+ * materializing patch requires `handle` + `displayName`.
+ */
+export interface CreatorProfilePatch {
+  handle?: string;
+  displayName?: string;
+  bio?: string;
+  links?: CreatorLinks;
+}
+
+/** Why a handle is unavailable (`GET /handles/{handle}/available`). */
+export type HandleUnavailableReason = "taken" | "reserved" | "invalid";
+
+/** The result of a handle-availability check; `reason` is set only when taken. */
+export interface HandleAvailability {
+  available: boolean;
+  reason?: HandleUnavailableReason;
+}
+
+/**
+ * A creator's public page (`GET /creators/{handle}`): the profile plus one page
+ * of their public, published agents.
+ */
+export interface StoreCreatorPage {
+  profile: CreatorProfile;
+  agents: StoreCatalogPage;
+}
+
+/** The result of an avatar upload (`POST /me/avatar`). */
+export interface AvatarUploadResult {
+  avatarUrl: string;
+}
+
+/** One (agent, UTC day) install bucket in the creator analytics response. */
+export interface CreatorInstallRow {
+  agentId: string;
+  slug: string | null;
+  /** UTC day, `YYYY-MM-DD`. */
+  day: string;
+  installs: number;
+}
+
+/** The creator install analytics (`GET /me/analytics`): per-day rows + totals. */
+export interface CreatorAnalytics {
+  rows: CreatorInstallRow[];
+  totals: { installs: number };
 }
 
 /**
@@ -78,6 +164,8 @@ export interface StoreCatalogQuery {
   sort?: StoreCatalogSort;
   /** 1-based page number. */
   page?: number;
+  /** A creator @handle to scope the catalog to that creator's public agents. */
+  creator?: string;
 }
 
 /** A single agent page: its summary plus the full published-version IR. */
@@ -195,6 +283,23 @@ export interface AdminReport {
   id: string;
   agentId: string;
   agentSlug: string | null;
+  reason: ReportReason;
+  details: string | null;
+  contact: string | null;
+  status: ReportStatus;
+  createdAt: string;
+}
+
+/**
+ * One creator abuse report in the moderation console
+ * (`GET /admin/creator-reports`). Unlike {@link AdminReport}, the reported
+ * subject is a creator profile, referenced by `profileUserId` and its current
+ * `handle` (null after an admin release). There is no `agentId`/`agentSlug`.
+ */
+export interface CreatorReport {
+  id: string;
+  profileUserId: string;
+  handle: string | null;
   reason: ReportReason;
   details: string | null;
   contact: string | null;

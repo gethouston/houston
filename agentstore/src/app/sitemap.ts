@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 import { siteBase } from "@/lib/site-config";
-import { listAllPublicSlugs } from "@/lib/store-api";
+import {
+  listAllPublicCreatorHandles,
+  listAllPublicSlugs,
+} from "@/lib/store-api";
 
 // Rendered dynamically so `next build` never calls the gateway; the underlying
 // catalog fetches carry their own 60s revalidate for runtime caching.
@@ -29,12 +32,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  const slugs = await listAllPublicSlugs();
+  const [slugs, handles] = await Promise.all([
+    listAllPublicSlugs(),
+    listAllPublicCreatorHandles(),
+  ]);
   const agentEntries: MetadataRoute.Sitemap = slugs.map((slug) => ({
     url: `${base}/a/${encodeURIComponent(slug)}`,
     lastModified: now,
     changeFrequency: "weekly",
     priority: 0.7,
   }));
-  return [...staticEntries, ...agentEntries];
+  const creatorEntries: MetadataRoute.Sitemap = handles.map((handle) => ({
+    url: `${base}/@${handle}`,
+    lastModified: now,
+    changeFrequency: "weekly",
+    priority: 0.6,
+  }));
+  return [...staticEntries, ...agentEntries, ...creatorEntries];
 }

@@ -4,6 +4,7 @@ import {
   resolveMyProfile,
   type SessionUserMeta,
 } from "./queries/user-profiles-map";
+import { useMyStoreProfile } from "./use-my-store-profile";
 import { useSession } from "./use-session";
 
 export type { MyProfile } from "./queries/user-profiles-map";
@@ -28,6 +29,10 @@ export function useMyProfile(): MyProfile | null {
   const { profiles } = useUserProfiles(session ? [session.uid] : [], {
     alwaysEnabled: true,
   });
+  // The caller's own creator profile (@handle, verification, store avatar) —
+  // layered on top of the identity/roster face by resolveMyProfile. Signed out
+  // this is null and the merge collapses to the prior metadata-only face.
+  const { profile: storeProfile } = useMyStoreProfile();
 
   if (!session) return null;
 
@@ -40,5 +45,6 @@ export function useMyProfile(): MyProfile | null {
     email: session.email,
     metadata,
     profile: profiles.get(session.uid) ?? null,
+    storeProfile,
   });
 }

@@ -253,6 +253,47 @@ Delivery into the app:
   pickers unchanged) — **never auto-installs**; the website fires NO install
   ping for this path (the app pings once inside the seed flow).
 
+## Creator profiles (@handles)
+
+Influencer-grade identity, keyed to the same Firebase UID that owns listings.
+Gateway is authoritative (`cloud` migration 021, `internal/agentstore/profiles.go`,
+C11 §Creator profiles): handle (`^[a-z0-9][a-z0-9_]{1,29}$`, FCFS claim, 30-day
+change throttle, reserved list byte-copied into
+`packages/agentstore-contract/src/handle.ts` — `HANDLE_REGEX` /
+`normalizeHandle` / `RESERVED_HANDLES`), display name, bio (≤500), 7 social
+links, gateway-served immutable-cached avatar (multipart ≤2 MiB), admin-set
+`verified`. Every catalog `AgentSummary.creator` is enriched with
+`handle`/`avatarUrl`/`verified`, and a live profile's display name overrides the
+listing snapshot, so profile edits propagate to old listings server-side.
+
+Houston surfaces (SDK: profile/creator/analytics methods on
+`AgentStoreClient`; authed front-door methods `getMyStoreProfile` /
+`updateMyStoreProfile` / `checkStoreHandle` / `uploadStoreAvatar` /
+`deleteStoreAvatar` / `getMyStoreAnalytics` implemented in
+`packages/web/src/engine-adapter/portable-profile.ts`; anonymous
+`fetchStoreCreator` / `reportStoreCreator` in `store-catalog.ts`):
+
+- **In-app editor** `app/src/components/store-view/profile/` — dialog mounted
+  app-wide from the user menu, opened via the `creatorEditorOpen` ui-store flag
+  (user menu, My agents header, publish wizard). Handle picker with debounced
+  availability, avatar pick → `app/src/lib/image-crop.ts` (pure canvas
+  center-crop to 512px, no deps) → upload, socials, bio.
+- **In-app creator pane** `store-view/creator/` — full-pane profile (agents
+  grid, socials, `VerifiedBadge` from `@houston-ai/core` — inventory-tracked)
+  opened via the `storeCreatorHandle` one-shot: from creator chips on rows and
+  the detail dialog, from a leading-`@` search in the store search field, or
+  from the `houston://store/creator?handle=<h>` deep link / web `?creator=`
+  param (same `store://deep-link` rail as install).
+- **Analytics** `store-view/analytics/` — owner-only installs-over-time (7/30/90d,
+  gateway `GET /me/analytics` daily buckets, ComputeBarChart grammar) mounted in
+  My agents.
+- **Publish wizard** — with a claimed handle the creator step becomes a
+  read-only "Publishing as @handle" row; free-text creator remains only as the
+  profileless fallback.
+- **Website** — `agents.gethouston.ai/@handle` (middleware rewrite →
+  `/creators/[handle]`, per-creator OG card), `/me/profile` editor, `@` search,
+  admin Creators tab (verify/release + creator reports).
+
 ## Admin + ops
 
 - **Moderation lives in the gateway** (`/v1/agentstore/admin/*`, gated on

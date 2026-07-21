@@ -1762,7 +1762,16 @@ export interface StorePublicationStatus {
 // Owner + moderation wire shapes reused by the store-view surfaces: the "my
 // agents" manage panel (`MyAgent`), the abuse-report dialog (`ReportInput` /
 // `ReportReason`), and the browse filter's category vocabulary (`StoreCategory`).
+// Creator-profile shapes back the "publish as @handle" identity, its public
+// creator page, avatar upload, and the per-day install analytics panel.
 export type {
+  AvatarUploadResult,
+  CreatorAnalytics,
+  CreatorInstallRow,
+  CreatorLinks,
+  CreatorProfile,
+  CreatorProfilePatch,
+  HandleAvailability,
   MyAgent,
   ReportInput,
   ReportReason,
@@ -1770,6 +1779,7 @@ export type {
   StoreCatalogQuery,
   StoreCatalogSort,
   StoreCategory,
+  StoreCreatorPage,
 } from "@houston/agentstore-client";
 
 /** One public Agent Store listing, exactly as the catalog API serializes it. */

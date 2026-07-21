@@ -184,3 +184,7 @@ components:
     notes: >-
       Built on the shared RowCard but composed app-side with the connections
       layer. Extract into ui/ before mobile.
+
+  verified-badge:
+    status: implemented
+    ref: "ui/core/src/components/verified-badge.tsx (@houston-ai/core VerifiedBadge)"

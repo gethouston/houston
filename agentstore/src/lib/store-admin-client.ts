@@ -14,6 +14,7 @@ import {
   type AdminQueueItem,
   type AdminReport,
   AgentStoreClient,
+  type CreatorReport,
   type PurgeResult,
   type ReportStatus,
   type StoreRequestOptions,
@@ -65,4 +66,38 @@ export async function actOnReport(
 /** Run the retention purge of stale drafts and expired soft-deletes. */
 export function runPurge(token: string): Promise<PurgeResult> {
   return admin(token).adminPurge(NO_STORE);
+}
+
+/** Set or clear a creator's verified badge. */
+export async function setCreatorVerified(
+  token: string,
+  handle: string,
+  verified: boolean,
+): Promise<void> {
+  await admin(token).adminSetCreatorVerified(handle, verified, NO_STORE);
+}
+
+/** Release (null) a creator's handle; it becomes immediately claimable. */
+export async function releaseCreatorHandle(
+  token: string,
+  handle: string,
+): Promise<void> {
+  await admin(token).adminReleaseHandle(handle, NO_STORE);
+}
+
+/** The creator abuse reports, optionally filtered by status. */
+export function listCreatorReports(
+  token: string,
+  status?: ReportStatus,
+): Promise<CreatorReport[]> {
+  return admin(token).adminListCreatorReports(status, NO_STORE);
+}
+
+/** Resolve or dismiss a creator report. */
+export async function actOnCreatorReport(
+  token: string,
+  id: string,
+  action: "resolve" | "dismiss",
+): Promise<void> {
+  await admin(token).adminActOnCreatorReport(id, action, NO_STORE);
 }

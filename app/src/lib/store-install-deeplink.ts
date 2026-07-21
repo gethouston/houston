@@ -6,41 +6,38 @@ import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
 import { getEngine } from "./engine";
 import { reportError } from "./error-toast";
-import {
-  legacyListen,
-  osIsTauri,
-  osTakePendingStoreDeepLink,
-} from "./os-bridge";
+import { subscribeStoreDeepLinks } from "./store-deeplink-ingress";
 import {
   decideStoreInstallDrive,
   initialStoreInstallDriveState,
 } from "./store-install-drive";
-import { parseStoreInstallSlug } from "./store-install-slug";
 
+export { parseStoreCreatorHandle } from "./store-creator-handle";
 export { parseStoreInstallSlug } from "./store-install-slug";
 
-/** Raw Tauri event the Rust shell emits when it receives an
- * `houston://store/install` deep link while the app is already running. Fully
- * disjoint from the `auth://deep-link` channel — the two never share state. */
-const STORE_DEEP_LINK_EVENT = "store://deep-link";
-
 /**
- * Always-on hook that turns an `houston://store/install?slug=<slug>` deep link
- * (desktop) or a `?install=<slug>` web param into a seeded import wizard — the
- * SAME preview + scan + name + picker flow every other install uses. It never
- * auto-installs: the deep link only seeds the wizard, so the user still makes
- * every choice.
+ * Always-on hook for the two store deep-link shapes the shell forwards on the
+ * shared `store://deep-link` channel:
+ *  - `houston://store/install?slug=<slug>` (web `?install=<slug>`) seeds the
+ *    import wizard — the SAME preview + scan + name + picker flow every other
+ *    install uses. It never auto-installs: the deep link only seeds the wizard.
+ *  - `houston://store/creator?handle=<handle>` (web `?creator=<handle>`) opens
+ *    the Agent Store on that creator's profile pane.
  *
- * Three ingress paths, one processing effect:
+ * Three ingress paths, one processing effect for installs:
  *  1. Warm desktop: the `store://deep-link` Tauri event fires with the raw URL.
  *  2. Cold desktop: the shell stashed the URL before the webview existed;
  *     `take_pending_store_deep_link` drains it once on mount.
- *  3. Web: `?install=<slug>` in the query string, stripped from history so a
- *     reload does not re-trigger.
+ *  3. Web: `?install=<slug>` / `?creator=<handle>` in the query string, stripped
+ *     from history so a reload does not re-trigger.
  *
- * Every path validates the slug (via `parseStoreInstallSlug` / `SLUG_REGEX`)
- * before it can reach the seed flow, then routes through one pending slug so the
- * install runs exactly once, only when the shell is live and no wizard is open.
+ * Desktop URLs are disambiguated by path (a bare web param cannot be — a handle
+ * also matches `SLUG_REGEX` — so the web branch reads each param explicitly).
+ * Installs validate the slug (`SLUG_REGEX`) and route through one pending slug so
+ * the install runs exactly once; creators validate the handle (`HANDLE_REGEX`)
+ * and open the profile pane. The creator path needs no drive-style dedup: opening
+ * a profile is idempotent and side-effect-free (no install, no ping), so a
+ * repeat delivery merely re-navigates to the same pane.
  */
 export function useStoreInstallDeepLink(): void {
   const { t } = useTranslation("store");
@@ -62,61 +59,10 @@ export function useStoreInstallDeepLink(): void {
     workspaceReady && agentsLoaded && hasAgents && !tutorialActive;
 
   // ── Ingress: register the listeners + drain the cold-start / web sources ──
-  useEffect(() => {
-    const setPending = (raw: string) => {
-      const slug = parseStoreInstallSlug(raw);
-      if (slug) useUIStore.getState().setPendingStoreInstallSlug(slug);
-    };
-
-    // Warm desktop: the raw URL rides the event payload. The web shim makes
-    // `legacyListen` a no-op, so this is harmless in the browser.
-    let off: (() => void) | undefined;
-    legacyListen<string>(STORE_DEEP_LINK_EVENT, (ev) => setPending(ev.payload))
-      .then((fn) => {
-        off = fn;
-      })
-      .catch((err: unknown) => {
-        reportError(
-          "store_install_deeplink",
-          "failed to register store deep-link listener",
-          err,
-        );
-      });
-
-    // Cold desktop: drain whatever the shell stashed before we could listen.
-    if (osIsTauri()) {
-      osTakePendingStoreDeepLink()
-        .then((raw) => {
-          if (raw) setPending(raw);
-        })
-        .catch((err: unknown) => {
-          reportError(
-            "store_install_deeplink",
-            "failed to drain pending store deep-link",
-            err,
-          );
-        });
-    } else {
-      // Web: read `?install=<slug>` once, then strip it so a reload does not
-      // re-trigger the install (the pending slug lives only in memory).
-      const params = new URLSearchParams(window.location.search);
-      const install = params.get("install");
-      if (install !== null) {
-        params.delete("install");
-        const query = params.toString();
-        window.history.replaceState(
-          window.history.state,
-          "",
-          `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
-        );
-        setPending(install);
-      }
-    }
-
-    return () => {
-      off?.();
-    };
-  }, []);
+  // Delegated to `subscribeStoreDeepLinks`, which classifies each raw URL / web
+  // param into its action (install → pending slug, driven below; creator → open
+  // the profile pane) and returns the listener unsubscribe.
+  useEffect(() => subscribeStoreDeepLinks(), []);
 
   // ── Processing: seed the wizard exactly once, when it can actually open ──
   // The decision (drive / drop-duplicate / wait) lives in the pure reducer

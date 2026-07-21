@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUIStore } from "../../stores/ui";
 import { PageContainer, PageHeader } from "../shell/page-shell";
+import { CreatorProfilePane } from "./creator/creator-profile-pane";
 import { MyAgentsPanel } from "./my-agents-panel";
 import { StoreBrowse } from "./store-browse";
 
@@ -39,32 +40,48 @@ export function StoreView() {
     if (focusSlug) setTab(BROWSE);
   }, [focusSlug]);
 
+  // A "View profile" affordance or an `houston://store/creator` deep link sets a
+  // creator @handle; while it is set the creator's public pane takes over the
+  // view. The tab shell is kept mounted (hidden) so Browse's search/filter state
+  // and the current tab survive the round trip; "Back" just clears the handle.
+  const creatorHandle = useUIStore((s) => s.storeCreatorHandle);
+  const setStoreCreatorHandle = useUIStore((s) => s.setStoreCreatorHandle);
+
   return (
     <div className="h-full overflow-auto">
       <PageContainer className="py-10">
-        <PageHeader
-          title={t("title")}
-          subtitle={t("subtitle")}
-          className="mb-7"
-        />
+        {creatorHandle ? (
+          <CreatorProfilePane
+            handle={creatorHandle}
+            onBack={() => setStoreCreatorHandle(null)}
+          />
+        ) : null}
 
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value={BROWSE}>{t("tabs.browse")}</TabsTrigger>
-            <TabsTrigger value={MY_AGENTS}>{t("tabs.myAgents")}</TabsTrigger>
-          </TabsList>
+        <div className={creatorHandle ? "hidden" : undefined}>
+          <PageHeader
+            title={t("title")}
+            subtitle={t("subtitle")}
+            className="mb-7"
+          />
 
-          <TabsContent
-            value={BROWSE}
-            forceMount
-            className="hidden data-[state=active]:block"
-          >
-            <StoreBrowse />
-          </TabsContent>
-          <TabsContent value={MY_AGENTS}>
-            <MyAgentsPanel />
-          </TabsContent>
-        </Tabs>
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value={BROWSE}>{t("tabs.browse")}</TabsTrigger>
+              <TabsTrigger value={MY_AGENTS}>{t("tabs.myAgents")}</TabsTrigger>
+            </TabsList>
+
+            <TabsContent
+              value={BROWSE}
+              forceMount
+              className="hidden data-[state=active]:block"
+            >
+              <StoreBrowse />
+            </TabsContent>
+            <TabsContent value={MY_AGENTS}>
+              <MyAgentsPanel />
+            </TabsContent>
+          </Tabs>
+        </div>
       </PageContainer>
     </div>
   );

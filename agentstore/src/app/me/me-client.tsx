@@ -8,11 +8,13 @@ import {
   Button,
   Spinner,
 } from "@houston-ai/core";
-import { AlertTriangle, LogIn } from "lucide-react";
+import { AlertTriangle, LogIn, UserPen } from "lucide-react";
+import Link from "next/link";
 import * as React from "react";
 import { useSession } from "@/lib/auth/session";
 import { deleteAgent, listMyAgents, patchAgent } from "@/lib/store-client";
 import { MeAgentCard } from "./me-agent-card";
+import { MeAnalytics } from "./me-analytics";
 import { MeEmpty, MeNotice } from "./me-empty";
 
 type LoadState =
@@ -108,14 +110,23 @@ export function MeClient() {
 
   return (
     <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
-          Your agents
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Publish, unpublish, and manage the visibility of the agents you own.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-semibold tracking-tight">
+            Your agents
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            Publish, unpublish, and manage the visibility of the agents you own.
+          </p>
+        </div>
+        <Button variant="outline" asChild>
+          <Link href="/me/profile">
+            <UserPen aria-hidden className="size-4" /> Edit profile
+          </Link>
+        </Button>
       </header>
+
+      <MeAnalytics getToken={getToken} />
 
       {actionError && (
         <Alert variant="destructive">
