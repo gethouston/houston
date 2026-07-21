@@ -1,11 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
-import type { TFunction } from "i18next";
 import {
   describeLastSignIn,
   type LastSignIn,
-  type LastSignInDisplay,
-  lastSignInHint,
   maskEmail,
   readLastSignIn,
   writeLastSignIn,
@@ -138,58 +135,4 @@ test("describeLastSignIn routes email-based providers to the email form", () => 
     assert.equal(d.providerName, null);
     assert.equal(d.maskedEmail, "s…@x.co");
   }
-});
-
-// A fake `t` that echoes the key and its interpolated values, so each test can
-// prove WHICH sentence key `lastSignInHint` chose and what it fed in.
-const echoT = ((key: string, opts?: Record<string, unknown>) =>
-  opts
-    ? `${key}(${Object.entries(opts)
-        .map(([k, v]) => `${k}=${String(v)}`)
-        .join(",")})`
-    : key) as unknown as TFunction<"auth">;
-
-test("lastSignInHint uses the provider+email sentence when both are known", () => {
-  const d: LastSignInDisplay = {
-    highlight: "google",
-    providerName: "Google",
-    maskedEmail: "j…@x.co",
-  };
-  assert.equal(
-    lastSignInHint(d, echoT),
-    "lastSignIn.withProviderEmail(provider=Google,email=j…@x.co)",
-  );
-});
-
-test("lastSignInHint uses the provider-only sentence when email is withheld", () => {
-  const d: LastSignInDisplay = {
-    highlight: "apple",
-    providerName: "Apple",
-    maskedEmail: "",
-  };
-  assert.equal(
-    lastSignInHint(d, echoT),
-    "lastSignIn.withProvider(provider=Apple)",
-  );
-});
-
-test("lastSignInHint uses the email-address sentence for the email form", () => {
-  const d: LastSignInDisplay = {
-    highlight: "email",
-    providerName: null,
-    maskedEmail: "s…@x.co",
-  };
-  assert.equal(
-    lastSignInHint(d, echoT),
-    "lastSignIn.withEmailAddress(email=s…@x.co)",
-  );
-});
-
-test("lastSignInHint falls back to the bare email sentence when nothing is known", () => {
-  const d: LastSignInDisplay = {
-    highlight: "email",
-    providerName: null,
-    maskedEmail: "",
-  };
-  assert.equal(lastSignInHint(d, echoT), "lastSignIn.withEmail");
 });

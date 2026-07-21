@@ -12,7 +12,6 @@
 // hint" and never throws into the sign-in flow. Every discard is logged through
 // the identity seam (visible in frontend.log), never silently swallowed.
 
-import type { TFunction } from "i18next";
 import type { Provider } from "../components/auth/provider-button-row";
 import { identityLog } from "./identity/log.ts";
 import type { AuthProvider } from "./identity/session";
@@ -146,23 +145,4 @@ export function describeLastSignIn(hint: LastSignIn): LastSignInDisplay {
     providerName: meta.name,
     maskedEmail: maskEmail(hint.email),
   };
-}
-
-// Phrase the "last time you signed in with…" hint. Full sentences per case
-// (never fragment concatenation) so word order stays correct in every locale.
-export function lastSignInHint(
-  d: LastSignInDisplay,
-  t: TFunction<"auth">,
-): string {
-  if (d.providerName) {
-    return d.maskedEmail
-      ? t("lastSignIn.withProviderEmail", {
-          provider: d.providerName,
-          email: d.maskedEmail,
-        })
-      : t("lastSignIn.withProvider", { provider: d.providerName });
-  }
-  return d.maskedEmail
-    ? t("lastSignIn.withEmailAddress", { email: d.maskedEmail })
-    : t("lastSignIn.withEmail");
 }

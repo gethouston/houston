@@ -1,5 +1,3 @@
-import { Button } from "@houston-ai/core";
-import { ArrowUpRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -9,28 +7,21 @@ import {
   signInWithGoogle,
   signInWithMicrosoft,
 } from "../../lib/auth";
-import {
-  describeLastSignIn,
-  lastSignInHint,
-  readLastSignIn,
-} from "../../lib/last-sign-in";
+import { describeLastSignIn, readLastSignIn } from "../../lib/last-sign-in";
 import { logger } from "../../lib/logger";
-import { tauriSystem } from "../../lib/tauri";
 import { FirstRunScreen } from "../onboarding/first-run-screen";
 import { HoustonLogo } from "../shell/experience-card";
 import { authErrorKey } from "./auth-errors";
+import { ContinueLastSignIn } from "./continue-last-sign-in";
 import { EmailSignIn } from "./email-sign-in";
 import { type Provider, ProviderButtonRow } from "./provider-button-row";
+import { LegalFooter, ReferralPanel } from "./sign-in-panels";
 
 const SIGN_IN_BY_PROVIDER = {
   google: signInWithGoogle,
   apple: signInWithApple,
   azure: signInWithMicrosoft,
 } as const;
-
-const openExternal = (url: string) => () => {
-  void tauriSystem.openUrl(url);
-};
 
 /**
  * Full-screen sign-in overlay. Rendered by App.tsx when identity (Firebase) is
@@ -47,6 +38,14 @@ const openExternal = (url: string) => () => {
  * app themes). Wordmark sits top-left of the screen and the legal links anchor
  * the footer.
  *
+ * Returning user: when a device-local last-sign-in exists, a prominent filled
+ * {@link ContinueLastSignIn} button leads the panel ("Continue with Google" +
+ * the masked address), the one-click way back to the same account; the pills and
+ * email form drop below an "or use another way" divider. The button owns the
+ * screen's single filled slot, so the email send button steps down to secondary
+ * while it shows. Choosing the email continue collapses the chrome to a focused
+ * code entry.
+ *
  * Re-click semantics: the provider spinner is on only until the system browser
  * opens (`onBrowserOpened` clears it). After that the buttons are free — a
  * re-click starts a fresh PKCE attempt that SUPERSEDES the previous one (the
@@ -59,13 +58,21 @@ export function SignInScreen() {
   const { t: tAuth } = useTranslation("auth");
   const [pending, setPending] = useState<Provider | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The email code flow, once started from the continue button, collapses the
+  // returning-user chrome (continue button + "another way" options) down to the
+  // focused address/code entry. A rising token drives EmailSignIn's auto-send.
+  const [emailAutoSubmit, setEmailAutoSubmit] = useState<{
+    email: string;
+    token: number;
+  } | null>(null);
 
   // Device-local memory of the previous sign-in, read once on mount. Survives
-  // sign-out (its own localStorage key), so returning users are guided back to
-  // the method they used last.
+  // sign-out (its own localStorage key), so returning users get a one-click path
+  // back to the account they used last. Keeps the full address for the email
+  // auto-prefill; only the masked form is ever shown.
   const lastSignIn = useMemo(() => {
     const hint = readLastSignIn();
-    return hint ? describeLastSignIn(hint) : null;
+    return hint ? { ...describeLastSignIn(hint), fullEmail: hint.email } : null;
   }, []);
 
   // Cancel any in-flight loopback authorize when this screen unmounts, so a late
@@ -102,6 +109,30 @@ export function SignInScreen() {
     }
   };
 
+  // The one-click return path. For an OAuth provider it runs the very same
+  // sign-in the matching pill would; for the email path it hands the stored
+  // address to EmailSignIn's auto-send and collapses to the code entry.
+  const onContinue = () => {
+    if (!lastSignIn) return;
+    if (lastSignIn.highlight === "email") {
+      setEmailAutoSubmit({ email: lastSignIn.fullEmail, token: Date.now() });
+      return;
+    }
+    void handleSignIn(lastSignIn.highlight)();
+  };
+
+  // Once the email flow is running, the returning-user chrome collapses so the
+  // user sees only the code entry.
+  const emailFlowActive = emailAutoSubmit !== null;
+  const showContinue = lastSignIn !== null && !emailFlowActive;
+  const continueTitle =
+    lastSignIn &&
+    (lastSignIn.providerName
+      ? tAuth("lastSignIn.continueWithProvider", {
+          provider: lastSignIn.providerName,
+        })
+      : tAuth("lastSignIn.continueWithEmail"));
+
   return (
     <FirstRunScreen>
       <div className="flex items-center gap-2 px-8 pt-14 pb-6 text-ink">
@@ -117,73 +148,51 @@ export function SignInScreen() {
           <div className="flex flex-col gap-5 bg-card p-8 sm:col-span-2">
             <h1 className="text-lg font-medium">Log in</h1>
 
-            {lastSignIn && (
-              <p className="-mt-2 text-xs text-ink-muted">
-                {lastSignInHint(lastSignIn, tAuth)}
-              </p>
+            {showContinue && lastSignIn && continueTitle && (
+              <>
+                <ContinueLastSignIn
+                  highlight={lastSignIn.highlight}
+                  title={continueTitle}
+                  maskedEmail={lastSignIn.maskedEmail}
+                  pending={pending !== null && pending === lastSignIn.highlight}
+                  disabled={pending !== null}
+                  onClick={onContinue}
+                />
+                <Divider label={tAuth("divider.orAnotherWay")} />
+              </>
             )}
 
-            <ProviderButtonRow
-              pending={pending}
-              onSignIn={handleSignIn}
-              lastUsed={
-                lastSignIn && lastSignIn.highlight !== "email"
-                  ? lastSignIn.highlight
-                  : null
-              }
-              lastUsedLabel={tAuth("lastSignIn.lastUsed")}
+            {!emailFlowActive && (
+              <>
+                <ProviderButtonRow pending={pending} onSignIn={handleSignIn} />
+                <Divider label={tAuth("divider.or")} />
+              </>
+            )}
+
+            <EmailSignIn
+              submitFilled={!showContinue}
+              autoSubmit={emailAutoSubmit ?? undefined}
             />
-
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-line" />
-              <span className="text-xs text-ink-muted">or</span>
-              <div className="h-px flex-1 bg-line" />
-            </div>
-
-            <EmailSignIn highlight={lastSignIn?.highlight === "email"} />
 
             {error && <p className="text-xs text-danger">{error}</p>}
           </div>
 
-          <div className="flex flex-col justify-between gap-6 bg-action p-8 text-action-text sm:col-span-1">
-            <div className="flex flex-col gap-3">
-              <h2 className="text-lg font-medium">Share the love</h2>
-              <p className="text-sm text-action-text/70">
-                Know a team that would fly with Houston? Send them our way. When
-                they commit to 5 or more licenses, your team gets $250 in
-                credits.
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={openExternal("https://gethouston.ai/referrals")}
-              className="-ml-3 gap-1 self-start text-action-text hover:bg-action-text/10 hover:text-action-text dark:hover:bg-action-text/10"
-            >
-              See how it works
-              <ArrowUpRight className="size-4" />
-            </Button>
-          </div>
+          <ReferralPanel />
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-3 py-6 text-xs text-ink-muted">
-        <button
-          type="button"
-          onClick={openExternal("https://gethouston.ai/privacy")}
-          className="underline-offset-4 hover:text-ink hover:underline"
-        >
-          Privacy Policy
-        </button>
-        <span aria-hidden="true">·</span>
-        <button
-          type="button"
-          onClick={openExternal("https://gethouston.ai/terms")}
-          className="underline-offset-4 hover:text-ink hover:underline"
-        >
-          Terms of Service
-        </button>
-      </div>
+      <LegalFooter />
     </FirstRunScreen>
+  );
+}
+
+/** A hairline rule with a centered lowercase label ("or", "or use another way"). */
+function Divider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="h-px flex-1 bg-line" />
+      <span className="text-xs text-ink-muted">{label}</span>
+      <div className="h-px flex-1 bg-line" />
+    </div>
   );
 }

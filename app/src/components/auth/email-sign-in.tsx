@@ -7,11 +7,12 @@ import {
   REGEXP_ONLY_DIGITS,
 } from "@houston-ai/core";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { sendEmailOtp, verifyEmailOtp } from "../../lib/auth";
 import { logger } from "../../lib/logger";
 import { authErrorKey } from "./auth-errors";
+import { EmailCodeFooter } from "./email-code-footer";
 
 type Step = "email" | "code";
 
@@ -26,10 +27,21 @@ type Step = "email" | "code";
  * pasted code, and verifies itself on the sixth digit; the arrow button stays
  * as the retry affordance after a rejected code.
  *
- * `highlight` softly rings the email field when this is how the user signed in
- * last time (the email counterpart to ProviderButtonRow's last-used halo).
+ * `submitFilled` controls whether the send/verify button is the screen's single
+ * filled action: it is by default, but steps down to secondary when the returning
+ * user's {@link ContinueLastSignIn} button is showing and owns the filled slot.
+ *
+ * `autoSubmit` lets the "Continue with your email" button drive this form: a new
+ * token prefills the stored address and fires the code send in one click, so the
+ * returning user lands straight on the 6-digit entry.
  */
-export function EmailSignIn({ highlight = false }: { highlight?: boolean }) {
+export function EmailSignIn({
+  submitFilled = true,
+  autoSubmit,
+}: {
+  submitFilled?: boolean;
+  autoSubmit?: { email: string; token: number };
+}) {
   const { t } = useTranslation("errors");
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
@@ -37,8 +49,10 @@ export function EmailSignIn({ highlight = false }: { highlight?: boolean }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sendCode = async () => {
-    const trimmed = email.trim();
+  // Takes the value explicitly so the "Continue with your email" auto-submit can
+  // send the just-prefilled address without racing the `email` state update.
+  const sendCode = async (value: string = email) => {
+    const trimmed = value.trim();
     if (!trimmed) return;
     setPending(true);
     setError(null);
@@ -52,6 +66,18 @@ export function EmailSignIn({ highlight = false }: { highlight?: boolean }) {
       setPending(false);
     }
   };
+
+  // One-click return path: when the continue button hands over a fresh token,
+  // prefill the stored address and send the code immediately. The ref guards
+  // against re-firing on unrelated re-renders (a given token sends exactly once).
+  const sentToken = useRef<number | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: autoSubmit.token is the intentional trigger; sendCode/setEmail are stable enough and re-running on their identity would resend the code.
+  useEffect(() => {
+    if (!autoSubmit || autoSubmit.token === sentToken.current) return;
+    sentToken.current = autoSubmit.token;
+    setEmail(autoSubmit.email);
+    void sendCode(autoSubmit.email);
+  }, [autoSubmit]);
 
   // Takes the value explicitly so the pin input's `onComplete` can submit the
   // just-completed code without racing the `code` state update.
@@ -85,6 +111,7 @@ export function EmailSignIn({ highlight = false }: { highlight?: boolean }) {
     <Button
       type="submit"
       size="icon"
+      variant={submitFilled ? "default" : "secondary"}
       disabled={disabled}
       aria-label={step === "code" ? "Verify code" : "Send code"}
       className="size-10 shrink-0 rounded-full border-none!"
@@ -125,35 +152,17 @@ export function EmailSignIn({ highlight = false }: { highlight?: boolean }) {
           </InputOTP>
           <SendButton disabled={pending || code.trim().length < 6} />
         </div>
-        {/* pr-12 mirrors the send button + gap on the row above, so the
-            centered copy lines up with the pin boxes, not the full row. */}
-        <p className="pr-12 text-center text-xs text-ink-muted">
-          We sent a 6-digit code to {email}.
-        </p>
-        <div className="flex items-center justify-center gap-4 pr-12">
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => void sendCode()}
-            className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-50"
-          >
-            Resend code
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setStep("email");
-              setCode("");
-              setError(null);
-            }}
-            className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline"
-          >
-            Use a different email
-          </button>
-        </div>
-        {error && (
-          <p className="pr-12 text-center text-xs text-danger">{error}</p>
-        )}
+        <EmailCodeFooter
+          email={email}
+          pending={pending}
+          error={error}
+          onResend={() => void sendCode()}
+          onChangeEmail={() => {
+            setStep("email");
+            setCode("");
+            setError(null);
+          }}
+        />
       </form>
     );
   }
@@ -167,11 +176,7 @@ export function EmailSignIn({ highlight = false }: { highlight?: boolean }) {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           placeholder="you@example.com"
-          className={`h-10 flex-1 rounded-full border-ink/40 px-4${
-            highlight
-              ? " outline outline-2 outline-offset-2 outline-[var(--ht-focus)]"
-              : ""
-          }`}
+          className="h-10 flex-1 rounded-full border-ink/40 px-4"
         />
         <SendButton disabled={pending || email.trim().length === 0} />
       </div>

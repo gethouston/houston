@@ -40,6 +40,27 @@ async function mockOtpVerify(
   );
 }
 
+/**
+ * Seed the device-local last-sign-in hint BEFORE the app boots, so SignInScreen
+ * renders the returning-user "continue" path. Mirrors lib/last-sign-in.ts's
+ * storage key + versioned shape.
+ */
+async function seedLastSignIn(
+  page: import("@playwright/test").Page,
+  provider: string,
+  email: string,
+): Promise<void> {
+  await page.addInitScript(
+    ([p, e]) => {
+      window.localStorage.setItem(
+        "houston.last-sign-in",
+        JSON.stringify({ v: 1, provider: p, email: e }),
+      );
+    },
+    [provider, email] as const,
+  );
+}
+
 async function submitEmail(
   page: import("@playwright/test").Page,
   email: string,
@@ -135,6 +156,44 @@ test.describe("sign-in screen (GCIP)", () => {
     await codeInput(page).fill("000000");
     await expect(
       page.getByText("Too many attempts. Wait a minute, then try again."),
+    ).toBeVisible();
+  });
+});
+
+test.describe("returning user (last sign-in continue)", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockOtpStart(page);
+  });
+
+  test("leads with a one-click continue for the last OAuth account", async ({
+    page,
+  }) => {
+    await seedLastSignIn(page, "google.com", "jane@gethouston.ai");
+    await page.goto("/");
+    // The prominent continue button carries the masked address in its name,
+    // distinguishing it from the plain "Continue with Google" pill below.
+    await expect(
+      page.getByRole("button", { name: /^Continue with Google \(/ }),
+    ).toBeVisible();
+    await expect(page.getByText("j…@gethouston.ai")).toBeVisible();
+    // The pills + email form stay below the "another way" divider.
+    await expect(page.getByText("or use another way")).toBeVisible();
+    await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
+  });
+
+  test("email continue prefills the stored address and sends the code", async ({
+    page,
+  }) => {
+    await seedLastSignIn(page, "password", "pilot@example.com");
+    await page.goto("/");
+    await page
+      .getByRole("button", { name: /^Continue with your email \(/ })
+      .click();
+    // One click lands straight on the 6-digit entry, naming the FULL stored
+    // email (masked on the button, real value used to send the code).
+    await expect(page.locator('[data-slot="input-otp-slot"]')).toHaveCount(6);
+    await expect(
+      page.getByText("We sent a 6-digit code to pilot@example.com"),
     ).toBeVisible();
   });
 });
