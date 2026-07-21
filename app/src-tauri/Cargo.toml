@@ -31,7 +31,16 @@ sentry = "0.42"
 # Layer is a no-op until sentry::init has run, so safe to register
 # unconditionally in logging.rs even when SENTRY_DSN is empty.
 sentry-tracing = "0.42"
-keyring = { version = "3", features = ["apple-native", "windows-native"] }
+# keyring v3 backends are OPT-IN per platform. Without a Linux feature the
+# crate silently compiles its in-memory mock on Linux — auth_set_item
+# "succeeds" into a throwaway object and every session evaporates on quit
+# (shipped AppImages ≤0.5.20 forced a fresh sign-in on every launch).
+# `sync-secret-service` talks to gnome-keyring/KWallet over D-Bus;
+# `vendored` builds libdbus from source so neither CI nor user systems need
+# dev packages; `crypto-rust` enables encrypted Secret Service sessions
+# without an openssl dependency. auth.rs adds a 0600-file fallback for
+# systems with no Secret Service daemon.
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust", "vendored"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking", "stream"], default-features = false }
 # Local-bridge auth reverse-proxy (src/local_bridge/proxy.rs). hyper's server is
 # needed because reqwest gives us only a client; a real streaming SSE/chunked
