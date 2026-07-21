@@ -3,8 +3,8 @@ import { expect, test } from "./support/fixtures";
 /**
  * The Files tab on the host adapter (HOU-677 follow-through): the default
  * Drive-style card grid with per-folder navigation, the Finder-style list
- * view behind the toggle, uploads through the footer button, context-menu
- * rename + delete, and the browser-mode footer ("Download all" —
+ * view behind the toggle, uploads through the header button, context-menu
+ * rename + delete, and the browser-mode header action ("Download all" —
  * reveal-in-OS only exists on a co-located desktop). The fake host models
  * the real host's `files*` routes (see `@houston/fake-host` routes-files.ts).
  */
@@ -54,7 +54,7 @@ test("list view keeps kind, size, and both date columns", async ({ page }) => {
   await expect(page.getByText("Docs", { exact: true })).toBeVisible();
   await expect(page.getByText("PDF Document")).toBeVisible();
 
-  // Browser build: no OS file manager — the footer offers Download all +
+  // Browser build: no OS file manager — the header offers Download all +
   // Upload files, never "Open in File Manager".
   await expect(
     page.getByRole("button", { name: "Upload files" }),
@@ -65,7 +65,7 @@ test("list view keeps kind, size, and both date columns", async ({ page }) => {
   await expect(page.getByText("Open in File Manager")).toHaveCount(0);
 });
 
-test("uploads a file through the footer button", async ({ page }) => {
+test("uploads a file through the header button", async ({ page }) => {
   await openFilesTab(page);
 
   const [chooser] = await Promise.all([

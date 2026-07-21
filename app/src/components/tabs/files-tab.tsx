@@ -1,7 +1,6 @@
 import { type FileEntry, FilesBrowser } from "@houston-ai/agent";
 import { isTauri } from "@tauri-apps/api/core";
-import { Download, FolderOpen, Upload } from "lucide-react";
-import { type ReactNode, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useCreateFolder,
@@ -25,8 +24,8 @@ import { buildBrowserLabels, buildMenuLabels } from "./files-tab-labels";
 export default function FilesTab({ agent }: TabProps) {
   const { t } = useTranslation("agents");
   // No OS to open/reveal with (web build, cloud pod, remote host): double-click
-  // previews in-browser, the context menu offers Download, and the footer
-  // becomes "Download all" instead of "Open in File Manager".
+  // previews in-browser, the context menu offers Download, and the header's
+  // secondary action becomes "Download all" instead of "Open in File Manager".
   const desktop = isTauri();
   const { capabilities } = useCapabilities();
   // The directory the OS can actually open: the host-reported real path (TS
@@ -79,7 +78,7 @@ export default function FilesTab({ agent }: TabProps) {
   const pickFiles = () => fileInput.current?.click();
 
   return (
-    <div className="h-full overflow-hidden p-4">
+    <div className="flex h-full flex-col">
       <input
         ref={fileInput}
         type="file"
@@ -130,28 +129,13 @@ export default function FilesTab({ agent }: TabProps) {
         emptyDescription={t("files.emptyDescription")}
         labels={browserLabels}
         menuLabels={menuLabels}
-        statusBarAction={
-          <div className="flex items-center gap-3">
-            <FooterButton
-              onClick={pickFiles}
-              icon={<Upload className="size-3" />}
-              label={t("files.uploadFiles")}
-            />
-            {canUseLocalFiles && osDir ? (
-              <FooterButton
-                onClick={() => tauriFiles.revealAgent(osDir)}
-                icon={<FolderOpen className="size-3" />}
-                label={t("files.openInFileManager")}
-              />
-            ) : (
-              <FooterButton
-                onClick={downloadAll}
-                icon={<Download className="size-3" />}
-                label={t("files.downloadAll")}
-              />
-            )}
-          </div>
+        onUpload={pickFiles}
+        onRevealAgent={
+          canUseLocalFiles && osDir
+            ? () => tauriFiles.revealAgent(osDir)
+            : undefined
         }
+        onDownloadAll={canUseLocalFiles ? undefined : downloadAll}
       />
       <FilePreviewDialog
         agentPath={path}
@@ -166,26 +150,5 @@ export default function FilesTab({ agent }: TabProps) {
         onCancel={move.cancel}
       />
     </div>
-  );
-}
-
-function FooterButton({
-  onClick,
-  icon,
-  label,
-}: {
-  onClick: () => void;
-  icon: ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-1 text-[11px] text-ink-muted hover:text-ink transition-colors"
-    >
-      {icon}
-      {label}
-    </button>
   );
 }
