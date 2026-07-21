@@ -480,10 +480,23 @@ icon (~56px) + `text-sm font-medium` name over one truncated `text-[13px]`
 `ink-muted` description line + ONE quiet trailing glyph (`Plus`, lock, ...) at
 the row edge; the page hero is the shared `PageHeader` with a rounded
 `bg-input` search field (`border-line-input`, magnifier glyph) in its
-`trailing` slot. Two-column row grids collapse to one under `lg`. First shipped
-surface: the Integrations personal page (`integrations-view/`, see
-`knowledge-base/integrations.md` §3); apply this language when refactoring
-further pages instead of inventing new row chrome.
+`trailing` slot. Two-column row grids collapse to one under `lg`. Shipped
+surfaces: the Integrations personal page (`integrations-view/`, see
+`knowledge-base/integrations.md` §3) and the agent **Files tab** — the old
+nested `rounded-xl border` "file manager window" frame (bordered toolbar,
+zebra list with decorative filler stripes, bottom status bar whose 11px
+footer links held Upload / Open in File Manager) was flattened onto the
+canvas: `FilesBrowser` (`ui/agent/src/files-browser.tsx`) renders a
+shrink-0 header (`files-header.tsx`: grid-only breadcrumbs, sort, soft
+segmented view toggle in `view-toggle.tsx`, new-folder ghost icon, Upload
+as a filled `Button size="sm"` pill + reveal/download-all as a ghost pill)
+over a full-bleed scroll/drop body whose content is capped to the shared
+`FILES_CONTENT_COLUMN` (`mx-auto w-full max-w-4xl px-6`); list rows are
+`h-8 rounded-lg`, transparent at rest, `hover:bg-hover`. Breadcrumbs stay
+grid-view-only on purpose: the list view is a hierarchical tree always
+rooted at the workspace, so a path crumb there would misstate its scope.
+Apply this language when refactoring further pages instead of inventing
+new row chrome.
 
 **Settings (`app/src/components/settings/`)** — no sidebar. The landing is the
 **overview** (`settings-index.tsx`); it uses the shared `PageContainer` +

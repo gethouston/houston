@@ -68,7 +68,7 @@ export function FilesGrid({
   }
 
   return (
-    <div className="grid shrink-0 grid-cols-[repeat(auto-fill,minmax(180px,1fr))] content-start gap-3 p-3">
+    <div className="grid shrink-0 grid-cols-[repeat(auto-fill,minmax(180px,1fr))] content-start gap-3 pt-1">
       {creatingFolder && onCreateFolder && (
         <NewFolderCard
           onConfirm={onCreateFolder}

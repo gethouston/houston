@@ -17,11 +17,16 @@ export interface FilesBrowserLabels {
   newFolder?: string;
   newFolderPlaceholder?: string;
   emptyFolder?: string;
+  /** Folder-card child count (grid view), pluralized against the count. */
   itemSingular?: string;
   itemPlural?: string;
   menuButton?: string;
   /** Accessible name for the breadcrumb navigation. */
   breadcrumbs?: string;
+  /** Header action labels (promoted from the old status-bar footer). */
+  uploadFiles?: string;
+  openInFileManager?: string;
+  downloadAll?: string;
 }
 
 /** Slice the flat label bag into the shapes the subcomponents take. */
@@ -74,4 +79,7 @@ export const DEFAULT_FILES_BROWSER_LABELS: Required<FilesBrowserLabels> = {
   itemPlural: "items",
   menuButton: "More actions",
   breadcrumbs: "Folder path",
+  uploadFiles: "Upload files",
+  openInFileManager: "Open in File Manager",
+  downloadAll: "Download all",
 };

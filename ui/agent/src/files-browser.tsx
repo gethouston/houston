@@ -1,22 +1,21 @@
 /**
  * FilesBrowser — Drive-style card grid (default) with per-folder breadcrumb
- * navigation, plus the original Finder-style list view behind a toggle.
- * Status bar, drag-and-drop, context menus and inline rename in both views.
+ * navigation, plus the original Finder-style list view behind a toggle. Flat
+ * on the canvas: a header row over a full-bleed scroll body whose content is
+ * capped to the sibling-tab column. Drag-and-drop, context menus and inline
+ * rename in both views.
  */
 
 import { BgContextMenu } from "./bg-context-menu";
 import type { FileMenuLabels } from "./file-menu";
+import { FilesBody } from "./files-body";
 import {
   DEFAULT_FILES_BROWSER_LABELS,
   type FilesBrowserLabels,
-  toColumnLabels,
-  toGridLabels,
   toSortLabels,
 } from "./files-browser-labels";
 import { FilesEmptyState } from "./files-empty-state";
-import { FilesGrid } from "./files-grid";
-import { FilesListView } from "./files-list-view";
-import { FilesToolbar } from "./files-toolbar";
+import { FILES_CONTENT_COLUMN, FilesHeader } from "./files-header";
 import type { FileEntry, FilesViewMode, LoadFilePreview } from "./types";
 import { useFilesBrowser } from "./use-files-browser";
 
@@ -48,8 +47,12 @@ export interface FilesBrowserProps {
   onBrowse?: () => void;
   emptyTitle?: string;
   emptyDescription?: string;
-  /** Optional action rendered in the bottom status bar (e.g. "Open in File Manager" link) */
-  statusBarAction?: React.ReactNode;
+  /** Pick files to upload (header's filled primary pill). */
+  onUpload?: () => void;
+  /** Reveal the agent's folder in the OS file manager (co-located desktop). */
+  onRevealAgent?: () => void;
+  /** Download the whole workspace as one zip (browser/remote builds). */
+  onDownloadAll?: () => void;
   /** Overrides for chrome labels (toolbar, columns, loading, browse CTA). */
   labels?: FilesBrowserLabels;
   /** Overrides for the right-click context-menu labels. */
@@ -86,10 +89,10 @@ export function FilesBrowser(props: FilesBrowserProps) {
 
   return (
     <div
-      className="relative flex h-full flex-col overflow-hidden rounded-xl border border-line bg-transparent"
+      className="relative flex h-full flex-col"
       {...(props.onFilesDropped || props.onMove ? b.dragHandlers : {})}
     >
-      <FilesToolbar
+      <FilesHeader
         view={b.view}
         onViewChange={b.changeView}
         path={b.resolvedPath}
@@ -107,6 +110,12 @@ export function FilesBrowser(props: FilesBrowserProps) {
           props.onCreateFolder ? () => b.setCreatingFolder(true) : undefined
         }
         newFolderLabel={l.newFolder}
+        onUpload={props.onUpload}
+        uploadLabel={l.uploadFiles}
+        onRevealAgent={props.onRevealAgent}
+        revealAgentLabel={l.openInFileManager}
+        onDownloadAll={props.onDownloadAll}
+        downloadAllLabel={l.downloadAll}
       />
 
       {/* biome-ignore lint/a11y/noStaticElementInteractions: click-to-deselect and right-click-for-context-menu on the backdrop are pointer-only affordances; no keyboard equivalent exists for these background gestures */}
@@ -128,65 +137,9 @@ export function FilesBrowser(props: FilesBrowserProps) {
           }
         }}
       >
-        {props.loading || !b.tree || !b.currentFolder ? (
-          <div className="flex items-center justify-center py-16">
-            <p className="text-sm text-ink-muted/50">{l.loading}</p>
-          </div>
-        ) : b.view === "grid" ? (
-          <FilesGrid
-            folder={b.currentFolder}
-            selectedPath={b.selectedPath}
-            loadPreview={props.loadPreview}
-            onNavigate={b.navigate}
-            onSelect={b.handleSelect}
-            onOpen={props.onOpen}
-            onReveal={props.onReveal}
-            onDownload={props.onDownload}
-            onDownloadFolder={props.onDownloadFolder}
-            onDelete={props.onDelete}
-            onRename={props.onRename}
-            onMove={props.onMove}
-            onDragActive={b.onDragActive}
-            creatingFolder={b.creatingFolder}
-            onCreateFolder={props.onCreateFolder ? b.createFolderAt : undefined}
-            onCancelCreateFolder={() => b.setCreatingFolder(false)}
-            menuLabels={props.menuLabels}
-            labels={toGridLabels(l)}
-          />
-        ) : (
-          <FilesListView
-            tree={b.tree}
-            fileCount={b.fileCount}
-            sortKey={b.sortKey}
-            sortDir={b.sortDir}
-            onSort={b.handleSort}
-            selectedPath={b.selectedPath}
-            onSelect={b.handleSelect}
-            onOpen={props.onOpen}
-            onReveal={props.onReveal}
-            onDownload={props.onDownload}
-            onDownloadFolder={props.onDownloadFolder}
-            onDelete={props.onDelete}
-            onRename={props.onRename}
-            onFilesDropped={props.onFilesDropped}
-            onDragActive={b.onDragActive}
-            onMove={props.onMove}
-            creatingFolder={b.creatingFolder}
-            onCreateFolder={props.onCreateFolder ? b.createFolderAt : undefined}
-            onCancelCreateFolder={() => b.setCreatingFolder(false)}
-            newFolderPlaceholder={l.newFolderPlaceholder}
-            onBackgroundInteraction={b.handleBackgroundInteraction}
-            columnLabels={toColumnLabels(l)}
-            menuLabels={props.menuLabels}
-          />
-        )}
-      </div>
-
-      <div className="flex h-[22px] shrink-0 select-none items-center justify-between rounded-b-xl border-t border-line px-3">
-        <span className="text-[11px] text-ink-muted">
-          {b.fileCount} {b.fileCount === 1 ? l.itemSingular : l.itemPlural}
-        </span>
-        {props.statusBarAction}
+        <div className={`${FILES_CONTENT_COLUMN} pb-6`}>
+          <FilesBody b={b} props={props} l={l} />
+        </div>
       </div>
 
       {b.bgMenu && (

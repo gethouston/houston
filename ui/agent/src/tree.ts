@@ -82,13 +82,3 @@ export function buildTree(files: FileEntry[]): FolderNode {
 
   return root;
 }
-
-/** Count all file descendants of a folder node (recursively). */
-export function countFiles(node: FolderNode): number {
-  let count = 0;
-  for (const child of node.children) {
-    if (child.kind === "file") count++;
-    else count += countFiles(child);
-  }
-  return count;
-}

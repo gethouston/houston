@@ -1,25 +1,31 @@
 /**
- * Files toolbar: breadcrumb navigation on the left (only while inside a
- * folder — the surrounding page already names the agent, so the root is a
- * home glyph, not a title), sort menu and the grid/list view toggle on the
- * right. Breadcrumbs are drop targets so a drag can move items to any
- * ancestor ("" signals the root).
+ * Files header: breadcrumb navigation on the left (grid view only — the list
+ * is a hierarchical tree always rooted at the workspace, so a path crumb would
+ * misstate its scope) and a right cluster with sort, the grid/list toggle,
+ * new-folder, and the promoted Upload + reveal/download-all actions.
+ * Breadcrumbs are drop targets so a drag can move items to any ancestor
+ * ("" signals the root). This row does not scroll with the file list.
  */
-import { cn } from "@houston-ai/core";
+import { Button } from "@houston-ai/core";
 import {
   ChevronRight,
+  Download,
+  FolderOpen,
   FolderPlus,
   House,
-  LayoutGrid,
-  List,
+  Upload,
 } from "lucide-react";
 import { CrumbButton } from "./crumb-button";
 import { crumbsForPath } from "./grid-utils";
 import { SortMenu, type SortMenuLabels } from "./sort-menu";
 import type { FilesViewMode } from "./types";
 import type { SortDirection, SortKey } from "./utils";
+import { ViewToggle } from "./view-toggle";
 
-export function FilesToolbar({
+/** Shared width cap so the header and the scroll body's content column align. */
+export const FILES_CONTENT_COLUMN = "mx-auto w-full max-w-4xl px-6";
+
+export function FilesHeader({
   view,
   onViewChange,
   path,
@@ -35,6 +41,12 @@ export function FilesToolbar({
   breadcrumbsLabel,
   onNewFolder,
   newFolderLabel,
+  onUpload,
+  uploadLabel,
+  onRevealAgent,
+  revealAgentLabel,
+  onDownloadAll,
+  downloadAllLabel,
 }: {
   view: FilesViewMode;
   onViewChange: (view: FilesViewMode) => void;
@@ -52,10 +64,34 @@ export function FilesToolbar({
   breadcrumbsLabel: string;
   onNewFolder?: () => void;
   newFolderLabel: string;
+  /** Pick files to upload (filled primary pill). */
+  onUpload?: () => void;
+  uploadLabel: string;
+  /** Reveal the agent's folder in the OS file manager (co-located desktop). */
+  onRevealAgent?: () => void;
+  revealAgentLabel: string;
+  /** Download the whole workspace as one zip (browser/remote builds). */
+  onDownloadAll?: () => void;
+  downloadAllLabel: string;
 }) {
   const crumbs = crumbsForPath(path);
+  const secondary = onRevealAgent
+    ? {
+        onClick: onRevealAgent,
+        icon: <FolderOpen aria-hidden />,
+        label: revealAgentLabel,
+      }
+    : onDownloadAll
+      ? {
+          onClick: onDownloadAll,
+          icon: <Download aria-hidden />,
+          label: downloadAllLabel,
+        }
+      : null;
   return (
-    <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-2">
+    <div
+      className={`${FILES_CONTENT_COLUMN} flex shrink-0 items-center gap-2 pt-6 pb-4`}
+    >
       {view === "grid" && crumbs.length > 0 ? (
         <nav
           aria-label={breadcrumbsLabel}
@@ -92,17 +128,6 @@ export function FilesToolbar({
       ) : (
         <div className="min-w-0 flex-1" />
       )}
-      {onNewFolder && (
-        <button
-          type="button"
-          aria-label={newFolderLabel}
-          title={newFolderLabel}
-          onClick={onNewFolder}
-          className="shrink-0 rounded-md p-1.5 text-ink-muted transition-colors hover:bg-hover hover:text-ink"
-        >
-          <FolderPlus aria-hidden className="size-4" />
-        </button>
-      )}
       {view === "grid" && (
         <SortMenu
           sortKey={sortKey}
@@ -111,52 +136,38 @@ export function FilesToolbar({
           labels={sortLabels}
         />
       )}
-      <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-line p-0.5">
-        <ViewToggleButton
-          active={view === "list"}
-          label={viewListLabel}
-          onClick={() => onViewChange("list")}
+      <ViewToggle
+        view={view}
+        onViewChange={onViewChange}
+        viewGridLabel={viewGridLabel}
+        viewListLabel={viewListLabel}
+      />
+      {onNewFolder && (
+        <button
+          type="button"
+          aria-label={newFolderLabel}
+          title={newFolderLabel}
+          onClick={onNewFolder}
+          className="shrink-0 rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-hover hover:text-ink"
         >
-          <List aria-hidden className="size-3.5" />
-        </ViewToggleButton>
-        <ViewToggleButton
-          active={view === "grid"}
-          label={viewGridLabel}
-          onClick={() => onViewChange("grid")}
-        >
-          <LayoutGrid aria-hidden className="size-3.5" />
-        </ViewToggleButton>
-      </div>
-    </div>
-  );
-}
-
-function ViewToggleButton({
-  active,
-  label,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "rounded-md p-1 transition-colors",
-        active
-          ? "bg-chip-solid text-ink"
-          : "text-ink-muted hover:bg-hover hover:text-ink",
+          <FolderPlus aria-hidden className="size-4" />
+        </button>
       )}
-    >
-      {children}
-    </button>
+      {onUpload && (
+        <Button size="sm" onClick={onUpload} className="shrink-0">
+          <Upload aria-hidden /> {uploadLabel}
+        </Button>
+      )}
+      {secondary && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={secondary.onClick}
+          className="shrink-0"
+        >
+          {secondary.icon} {secondary.label}
+        </Button>
+      )}
+    </div>
   );
 }
