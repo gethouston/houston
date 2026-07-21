@@ -15,9 +15,11 @@ import { SetupCard } from "../onboarding/setup-card";
  * First-run language flow, styled like the rest of setup. A single beat: a
  * clean centered white card on the calm grey {@link FirstRunScreen} background,
  * the languages offered as plain buttons (one per language, named in its own
- * language). The OS locale is detected and shown as the recommended (filled)
- * button, so the common case is one click; every button applies + persists its
- * language and advances immediately. Language is changeable later from Settings.
+ * language). No language is pre-selected — every button is the same neutral
+ * grey, so no option is nudged over the others; each applies + persists its
+ * language and advances immediately on click. The OS locale is still detected,
+ * but only to choose the language the screen's own copy renders in. Language is
+ * changeable later from Settings.
  *
  * This is the TRUE first screen of the app. Shown before the disclaimer so a
  * Spanish/Portuguese speaker reads the agreement in their own language. Skipped
@@ -78,18 +80,19 @@ function LanguagePicker({
 }: {
   onPick: (locale: SupportedLocale) => Promise<void>;
 }) {
-  // The OS-detected locale arrives preselected; the user either confirms it
-  // with Continue (or by clicking its row) or picks another row directly.
+  // The OS-detected locale drives ONLY the language this screen's own copy
+  // renders in (title, error). No button is pre-selected off it — every
+  // language is offered as an identical neutral choice.
   const [detected] = useState<SupportedLocale | null>(() =>
     normalizeLocale(navigator.language),
   );
-  const preselected = detected ?? "en";
+  const copyLocale = detected ?? "en";
   // Which row is mid-apply (its choice is being applied + persisted). Null once
   // idle. On success the gate swaps to the next screen, so this never resets to
   // idle on the happy path.
   const [pending, setPending] = useState<SupportedLocale | null>(null);
   const [failed, setFailed] = useState(false);
-  const copy = COPY[preselected];
+  const copy = COPY[copyLocale];
 
   const handlePick = async (loc: SupportedLocale) => {
     if (pending) return;
@@ -118,14 +121,13 @@ function LanguagePicker({
         <div className="flex flex-col gap-3">
           {SUPPORTED_LOCALES.map((loc) => (
             // Each language is a plain, generous button that applies + advances
-            // on click. The OS-detected language is the filled (recommended)
-            // one, so the common case is a single obvious click; the rest are
-            // secondary. Selection is always visible without hovering.
+            // on click. All identical neutral grey — no language is nudged over
+            // the others, and every option is fully visible without hovering.
             <Button
               key={loc}
               type="button"
               size="lg"
-              variant={loc === preselected ? "default" : "secondary"}
+              variant="secondary"
               className="w-full justify-center rounded-full text-base"
               disabled={pending !== null && pending !== loc}
               onClick={() => void handlePick(loc)}

@@ -80,13 +80,14 @@ function ProviderIconButton({
   children: ReactNode;
 }) {
   // Outline (not ring) so the halo never fights the pill's `shadow-none`; the
-  // offset lifts it clear of the pill edge into a clean focus-toned halo.
+  // offset lifts it clear of the pill edge into a clean focus-toned halo — it
+  // reads cleanly against the neutral grey pill because it sits outside its edge.
   const highlight = lastUsed
     ? " outline outline-2 outline-offset-2 outline-[var(--ht-focus)]"
     : "";
   return (
     <Button
-      variant="default"
+      variant="secondary"
       aria-label={
         lastUsed && lastUsedLabel ? `${label} (${lastUsedLabel})` : label
       }
