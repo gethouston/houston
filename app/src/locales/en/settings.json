@@ -8,7 +8,8 @@
     "provider": "AI provider",
     "phone": "Connect phone",
     "shortcuts": "Keyboard shortcuts",
-    "reportBug": "Report bug"
+    "reportBug": "Report bug",
+    "migrateToCloud": "Move to the cloud"
   },
   "account": {
     "title": "Account",
@@ -103,5 +104,10 @@
     "providerSwitched": "Switched to {{provider}} ({{model}})",
     "versionCopied": "Version copied",
     "versionCopyFailed": "Couldn't copy version"
+  },
+  "migrateToCloud": {
+    "title": "Move to the cloud",
+    "description": "Upgrade this app to Houston Cloud. Your agents and data are imported automatically; you'll sign in and reconnect your integrations afterwards.",
+    "button": "Open the upgrade"
   }
 }

@@ -21,7 +21,8 @@
     "needsYouCount_one": "{{count}} asunto necesita tu atención",
     "needsYouCount_other": "{{count}} asuntos necesitan tu atención",
     "runningCount_one": "{{count}} asunto en curso",
-    "runningCount_other": "{{count}} asuntos en curso"
+    "runningCount_other": "{{count}} asuntos en curso",
+    "migrateToCloud": "Múdate a la nube"
   },
   "tabActions": {
     "newMission": "Nueva misión",
@@ -169,6 +170,23 @@
     "relaunchAction": "Reiniciar Houston",
     "retryAction": "Intentar otra vez",
     "dismissAction": "Descartar actualización por ahora"
+  },
+  "migrateToCloud": {
+    "cardLabel": "Actualiza a Houston Cloud",
+    "title": "Te elegimos",
+    "intro": "Creíste en Houston antes que nadie.",
+    "introFree": "Houston Cloud, la versión pro, es tuya <b>gratis</b>.",
+    "whatTitle": "Qué obtienes",
+    "whatAlwaysOn": "Tus agentes trabajan <b>24/7</b>, incluso con tu computadora apagada.",
+    "whatModels": "Acceso a <b>más de 400 modelos</b>, incluidos modelos locales.",
+    "whatPhone": "Lleva tus agentes contigo: habla con ellos desde <b>tu teléfono</b>.",
+    "warnTitle": "Deberás reconectar tus integraciones",
+    "warnBody": "Las conexiones con tus aplicaciones no se transfieren. Después de actualizar, inicia sesión y reconéctalas.",
+    "anytimeNote": "Sin prisa. Puedes reabrir esto cuando quieras desde “Múdate a la nube” en la barra lateral.",
+    "installAction": "Múdate a la nube",
+    "ready": "La actualización está instalada; relanza la app para abrir Houston Cloud.",
+    "error": "No se pudo instalar la actualización. Revisa tu conexión e inténtalo de nuevo.",
+    "closeLabel": "Ahora no"
   },
   "store": {
     "searchPlaceholder": "Buscar en la tienda...",

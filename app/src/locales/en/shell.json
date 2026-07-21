@@ -21,7 +21,8 @@
     "needsYouCount_one": "{{count}} issue needs you",
     "needsYouCount_other": "{{count}} issues need you",
     "runningCount_one": "{{count}} issue running",
-    "runningCount_other": "{{count}} issues running"
+    "runningCount_other": "{{count}} issues running",
+    "migrateToCloud": "Move to the cloud"
   },
   "tabActions": {
     "newMission": "New mission",
@@ -169,6 +170,23 @@
     "relaunchAction": "Relaunch Houston",
     "retryAction": "Try again",
     "dismissAction": "Dismiss update for now"
+  },
+  "migrateToCloud": {
+    "cardLabel": "Upgrade to Houston Cloud",
+    "title": "You've been chosen",
+    "intro": "You believed in Houston before anyone else.",
+    "introFree": "Houston Cloud, the pro version, is yours <b>for free</b>.",
+    "whatTitle": "What you get",
+    "whatAlwaysOn": "Agents keep working <b>24/7</b>, even when your computer is off.",
+    "whatModels": "Access to <b>400+ models</b>, including local models.",
+    "whatPhone": "Take your agents with you: talk to them from <b>your phone</b>.",
+    "warnTitle": "You'll need to reconnect your integrations",
+    "warnBody": "App connections don't transfer. After upgrading, sign in and reconnect them.",
+    "anytimeNote": "No rush. Reopen this anytime from “Move to the cloud” in the sidebar.",
+    "installAction": "Move to the cloud",
+    "ready": "The upgrade is installed. Relaunch to open Houston Cloud.",
+    "error": "The upgrade couldn't be installed. Check your connection and try again.",
+    "closeLabel": "Not now"
   },
   "store": {
     "searchPlaceholder": "Search the store...",

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@houston-ai/core";
-import { User, Folder, Bot, Bug, FileText, Keyboard, UserCircle } from "lucide-react";
+import { User, Folder, Bot, Bug, CloudUpload, FileText, Keyboard, UserCircle } from "lucide-react";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useUIStore } from "../../stores/ui";
 import {
@@ -17,7 +17,8 @@ type SettingsSectionId =
   | "provider"
   | "phone"
   | "shortcuts"
-  | "reportBug";
+  | "reportBug"
+  | "migrateToCloud";
 import { AccountSection, useAccountAvailable } from "./sections/account";
 import { ConnectPhoneSection } from "./sections/connect-phone";
 import { WorkspaceSection } from "./sections/workspace";
@@ -29,6 +30,7 @@ import { ProviderSection } from "./sections/provider";
 import { LanguageSection } from "./sections/language";
 import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
+import { MigrateToCloudSection } from "./sections/migrate-to-cloud";
 import { ReportBugSection } from "./sections/report-bug";
 import { ShortcutsSection } from "./sections/shortcuts";
 
@@ -71,6 +73,11 @@ export function SettingsView() {
       { id: "provider", label: t("settings:nav.provider"), icon: Bot },
       { id: "shortcuts", label: t("settings:nav.shortcuts"), icon: Keyboard },
       { id: "reportBug", label: t("settings:nav.reportBug"), icon: Bug },
+      {
+        id: "migrateToCloud",
+        label: t("settings:nav.migrateToCloud"),
+        icon: CloudUpload,
+      },
     );
     return list;
   }, [accountAvailable, t]);
@@ -130,6 +137,7 @@ export function SettingsView() {
             {activeVisible === "phone" && <ConnectPhoneSection />}
             {activeVisible === "shortcuts" && <ShortcutsSection />}
             {activeVisible === "reportBug" && <ReportBugSection />}
+            {activeVisible === "migrateToCloud" && <MigrateToCloudSection />}
           </div>
         )}
       </div>

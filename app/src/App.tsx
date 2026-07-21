@@ -20,6 +20,7 @@ import { installDeepLinkListener } from "./lib/auth";
 import { useSession } from "./hooks/use-session";
 import { SignInScreen } from "./components/auth/sign-in-screen";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
+import { MigrateToCloudOffer } from "./components/shell/migrate-to-cloud";
 import { WorkspaceShell } from "./components/shell/workspace-shell";
 import { shouldAllowNativeContextMenu } from "./lib/context-menu";
 
@@ -180,17 +181,25 @@ export default function App() {
 
   if (workspaces.length === 0) {
     return (
-      <PersonalAssistantOnboarding
-        toasts={mappedToasts}
-        onDismissToast={dismissToast}
-      />
+      <>
+        {/* The offer overlays onboarding too: a fresh install of an old
+            download should meet the upgrade path immediately. */}
+        <MigrateToCloudOffer />
+        <PersonalAssistantOnboarding
+          toasts={mappedToasts}
+          onDismissToast={dismissToast}
+        />
+      </>
     );
   }
 
   return (
-    <WorkspaceShell
-      toasts={mappedToasts}
-      onDismissToast={dismissToast}
-    />
+    <>
+      <MigrateToCloudOffer />
+      <WorkspaceShell
+        toasts={mappedToasts}
+        onDismissToast={dismissToast}
+      />
+    </>
   );
 }
