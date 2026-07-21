@@ -16,6 +16,12 @@ import { isToolkitConnected } from "./onboarding-flow";
 /** Ignore a second click immediately after OAuth begins. */
 const CANCEL_GUARD_MS = 300;
 
+/** The email providers this step offers, in display order. */
+const EMAIL_PROVIDERS = [
+  { toolkit: "gmail", label: "Gmail" },
+  { toolkit: "outlook", label: "Outlook" },
+] as const;
+
 interface ConnectEmailMissionProps {
   eyebrow: string;
   /** The agent created in the previous step, connect is scoped to it. */
@@ -73,14 +79,35 @@ export function ConnectEmailMission({
   // live flow dims the other row (the per-slug flow could run both at once).
   const connecting = Object.keys(states).length > 0;
 
+  // Single hand-off gate: the auto-advance effect and the explicit Continue
+  // button both route through here, so the step advances exactly once no matter
+  // which fires first (a manual connect landing as the effect runs, say).
   const handedOff = useRef(false);
-  useEffect(() => {
-    if (handedOff.current) return;
-    if (chosen && isToolkitConnected(connections.data, chosen.toolkit)) {
+  const advance = useCallback(
+    (toolkit: string, label: string) => {
+      if (handedOff.current) return;
       handedOff.current = true;
-      onConnected(chosen.toolkit, chosen.label);
-    }
-  }, [chosen, connections.data, onConnected]);
+      onConnected(toolkit, label);
+    },
+    [onConnected],
+  );
+
+  // Advance the moment a relevant email connection is active — whether the user
+  // just connected it here (`chosen`) OR it was ALREADY connected when the step
+  // opened (a returning user). Gate on `connections.data` being resolved: an
+  // empty array is "resolved, none connected"; `undefined` is still loading, and
+  // advancing then would flash-skip the step before we know the truth.
+  useEffect(() => {
+    if (handedOff.current || !connections.data) return;
+    const active =
+      (chosen && isToolkitConnected(connections.data, chosen.toolkit)
+        ? chosen
+        : undefined) ??
+      EMAIL_PROVIDERS.find((p) =>
+        isToolkitConnected(connections.data, p.toolkit),
+      );
+    if (active) advance(active.toolkit, active.label);
+  }, [chosen, connections.data, advance]);
 
   const busyRef = useRef(false);
   const startedAtRef = useRef(0);
@@ -117,6 +144,12 @@ export function ConnectEmailMission({
   const disabledExcept = (toolkit: string) =>
     connecting && !(toolkit in states);
 
+  // Belt and braces: whenever a row is Connected, offer an explicit Continue so
+  // the user is never stranded even if the auto-advance above misses an edge.
+  const connected = EMAIL_PROVIDERS.find((p) =>
+    isToolkitConnected(connections.data, p.toolkit),
+  );
+
   return (
     <SetupCard
       eyebrow={eyebrow}
@@ -124,27 +157,27 @@ export function ConnectEmailMission({
       subtitle={t("tutorial.missions.connectEmail.body")}
       onBack={onBack}
       backLabel={t("tutorial.nav.back")}
+      onNext={
+        connected
+          ? () => advance(connected.toolkit, connected.label)
+          : undefined
+      }
+      nextLabel={t("tutorial.nav.continue")}
     >
       <div className="flex flex-1 flex-col items-center justify-center">
         <div className="flex w-full max-w-md flex-col gap-2">
-          <EmailProviderRow
-            display={displayFor("gmail", "Gmail")}
-            connected={isToolkitConnected(connections.data, "gmail")}
-            loading={isLoading("gmail")}
-            disabled={disabledExcept("gmail")}
-            labels={labels}
-            onConnect={() => startConnect("gmail", "Gmail")}
-            onCancel={() => tryCancel("gmail")}
-          />
-          <EmailProviderRow
-            display={displayFor("outlook", "Outlook")}
-            connected={isToolkitConnected(connections.data, "outlook")}
-            loading={isLoading("outlook")}
-            disabled={disabledExcept("outlook")}
-            labels={labels}
-            onConnect={() => startConnect("outlook", "Outlook")}
-            onCancel={() => tryCancel("outlook")}
-          />
+          {EMAIL_PROVIDERS.map((p) => (
+            <EmailProviderRow
+              key={p.toolkit}
+              display={displayFor(p.toolkit, p.label)}
+              connected={isToolkitConnected(connections.data, p.toolkit)}
+              loading={isLoading(p.toolkit)}
+              disabled={disabledExcept(p.toolkit)}
+              labels={labels}
+              onConnect={() => startConnect(p.toolkit, p.label)}
+              onCancel={() => tryCancel(p.toolkit)}
+            />
+          ))}
         </div>
       </div>
     </SetupCard>
