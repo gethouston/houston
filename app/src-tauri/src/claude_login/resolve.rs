@@ -63,6 +63,23 @@ pub(super) fn build_login_command(bin: &Path, config_dir: &Path) -> Command {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+    // The CLI's Windows startup gate needs a resolvable shell (Git Bash or
+    // PowerShell); repair the child env so it can't miss (HOUSTON-APP-4YP).
+    for (key, value) in crate::shell_env::claude_shell_env() {
+        cmd.env(key, value);
+    }
+    #[cfg(windows)]
+    {
+        // `claude.exe` is a console binary and this GUI app has no console:
+        // without CREATE_NO_WINDOW every sign-in pops a visible console
+        // window, and a user closing it hangs up the child — the CLI then
+        // dies with SIGHUP semantics, exit 129 (HOUSTON-APP-4YQ).
+        // CREATE_NEW_PROCESS_GROUP keeps console control events aimed at the
+        // parent from propagating, mirroring the engine sidecar spawn.
+        cmd.creation_flags(
+            crate::child_guard::CREATE_NEW_PROCESS_GROUP | crate::child_guard::CREATE_NO_WINDOW,
+        );
+    }
     cmd
 }
 

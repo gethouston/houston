@@ -14,6 +14,7 @@ mod logging;
 mod loopback_util;
 mod notification;
 mod oauth_loopback;
+mod shell_env;
 mod store_deep_link;
 mod window_focus;
 
