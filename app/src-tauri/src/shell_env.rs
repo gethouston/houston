@@ -37,7 +37,9 @@ pub fn claude_shell_env() -> Vec<(String, OsString)> {
 /// Append `dirs` (Windows `;`-separated PATH semantics) to `path` unless an
 /// equivalent entry is already present — case-insensitive, ignoring trailing
 /// separators. Returns `None` when nothing is missing. Pure string logic so
-/// the behavior is unit-testable on every host platform.
+/// the behavior is unit-testable on every host platform (hence compiled — but
+/// unused outside tests — on non-Windows).
+#[cfg_attr(not(windows), allow(dead_code))]
 fn append_missing_dirs(path: &str, dirs: &[String]) -> Option<String> {
     let normalize = |s: &str| s.trim_end_matches(['\\', '/']).to_ascii_lowercase();
     let present: Vec<String> = path
@@ -116,7 +118,15 @@ mod windows {
             format!("{system_root}\\System32\\WindowsPowerShell\\v1.0"),
             format!("{system_root}\\System32"),
         ];
-        let current = std::env::var("PATH").unwrap_or_default();
+        let current = match std::env::var("PATH") {
+            Ok(path) => path,
+            Err(std::env::VarError::NotPresent) => String::new(),
+            // A non-Unicode PATH must be left alone: emitting a repaired
+            // value here would REPLACE the inherited PATH with only what we
+            // could parse, dropping every real entry — strictly worse than
+            // not repairing. The Git Bash override above still applies.
+            Err(std::env::VarError::NotUnicode(_)) => return None,
+        };
         append_missing_dirs(&current, &required)
     }
 }

@@ -65,6 +65,25 @@ test("operational ambient env (PATH) is preserved", () => {
   expect(env.PATH).toBe(process.env.PATH);
 });
 
+test("the Windows Git Bash override reaches the subprocess", () => {
+  // The desktop shell repairs CLAUDE_CODE_GIT_BASH_PATH into the engine's env
+  // on Windows (app/src-tauri shell_env.rs) so the CLI's shell gate passes.
+  // If the allowlist drops it, sign-in works but every turn exits at startup
+  // on machines that need the override.
+  const saved = process.env.CLAUDE_CODE_GIT_BASH_PATH;
+  process.env.CLAUDE_CODE_GIT_BASH_PATH =
+    "C:\\Program Files\\Git\\bin\\bash.exe";
+  try {
+    const env = buildClaudeEnv("/cfg", oauth);
+    expect(env.CLAUDE_CODE_GIT_BASH_PATH).toBe(
+      "C:\\Program Files\\Git\\bin\\bash.exe",
+    );
+  } finally {
+    if (saved === undefined) delete process.env.CLAUDE_CODE_GIT_BASH_PATH;
+    else process.env.CLAUDE_CODE_GIT_BASH_PATH = saved;
+  }
+});
+
 test("the username (USER/LOGNAME) reaches the subprocess", () => {
   // The Claude CLI derives its macOS Keychain item's ACCOUNT from the
   // username. Scrubbing USER made the SDK resolve "unknown" and read a
