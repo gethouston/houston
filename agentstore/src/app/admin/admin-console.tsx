@@ -16,6 +16,7 @@ import { Brush, LogIn } from "lucide-react";
 import * as React from "react";
 import { useSession } from "@/lib/auth/session";
 import { runPurge } from "@/lib/store-admin-client";
+import { CreatorsTab } from "./creators-tab";
 import { QueueTab } from "./queue-tab";
 import { ReportsTab } from "./reports-tab";
 
@@ -86,12 +87,16 @@ export function AdminConsole() {
         <TabsList>
           <TabsTrigger value="queue">Review queue</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
+          <TabsTrigger value="creators">Creators</TabsTrigger>
         </TabsList>
         <TabsContent value="queue" className="mt-6">
           <QueueTab getToken={getToken} />
         </TabsContent>
         <TabsContent value="reports" className="mt-6">
           <ReportsTab getToken={getToken} />
+        </TabsContent>
+        <TabsContent value="creators" className="mt-6">
+          <CreatorsTab getToken={getToken} />
         </TabsContent>
       </Tabs>
     </div>

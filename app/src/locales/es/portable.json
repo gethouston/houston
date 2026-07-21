@@ -195,7 +195,10 @@
       "creatorNamePlaceholder": "Cómo quieres aparecer",
       "creatorUrlLabel": "Enlace",
       "creatorUrlPlaceholder": "https://tu-sitio.com",
-      "requiredMark": "(obligatorio)"
+      "requiredMark": "(obligatorio)",
+      "publishingAs": "Publicando como @{{handle}}",
+      "claimHandleCta": "Reclama tu @handle",
+      "editProfile": "Editar perfil"
     },
     "categories": {
       "writing": "Escritura y contenido",

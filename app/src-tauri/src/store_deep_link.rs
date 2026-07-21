@@ -1,9 +1,14 @@
-//! `houston://store/install` deep-link bridge for one-click Agent Store installs.
+//! `houston://store/*` deep-link bridge for the Agent Store desktop hand-offs.
 //!
-//! The Agent Store website (`agentstore/`) opens `houston://store/install?slug=<slug>`
-//! to hand a store agent's slug to the desktop app. The shell forwards it to the
-//! frontend over the `store://deep-link` event, which seeds the import-from-friend
-//! wizard preview (a scan + name + pickers step — never an auto-install).
+//! The Agent Store website (`agentstore/`) opens two shapes:
+//!  - `houston://store/install?slug=<slug>` to hand a store agent's slug to the
+//!    desktop app, which seeds the import-from-friend wizard preview (a scan +
+//!    name + pickers step — never an auto-install).
+//!  - `houston://store/creator?handle=<handle>` to open a creator's profile pane.
+//!
+//! Both shapes ride the SAME `store://deep-link` event (and the same cold-start
+//! stash); the frontend disambiguates by URL path. This keeps one channel and one
+//! pull command rather than a parallel pair.
 //!
 //! Cold start: when the OS launches the app *by* the deep link, the webview may not
 //! have registered its `store://deep-link` listener yet, so the raw URL is also
@@ -66,9 +71,21 @@ pub fn is_store_install_deep_link(url: &str) -> bool {
     }
 }
 
-/// Emit the raw store-install URL onto the `store://deep-link` event for a webview
-/// that is already listening, and stash it for the cold-start pull ONLY while no
-/// listener is live yet. Called from the `on_open_url` handler in `lib.rs`.
+/// True iff a real OS deep link is the creator-profile shape the frontend
+/// consumes (`houston://store/creator?...`). Same boundary guard as
+/// `is_store_install_deep_link`: the trailing char must be `?`, `/`, or end so
+/// `houston://store/creatorEVIL` can never masquerade as a creator link.
+pub fn is_store_creator_deep_link(url: &str) -> bool {
+    match url.strip_prefix("houston://store/creator") {
+        Some(rest) => rest.is_empty() || rest.starts_with('?') || rest.starts_with('/'),
+        None => false,
+    }
+}
+
+/// Emit the raw store deep-link URL (install OR creator) onto the shared
+/// `store://deep-link` event for a webview that is already listening, and stash
+/// it for the cold-start pull ONLY while no listener is live yet. Called from the
+/// `on_open_url` handler in `lib.rs`.
 pub fn stash_and_emit(handle: &AppHandle, state: &PendingStoreDeepLinkState, url: &str) {
     state.stash_if_cold(url);
     if let Err(e) = handle.emit("store://deep-link", url) {
@@ -131,6 +148,34 @@ mod tests {
         assert!(!is_store_install_deep_link("houston://open"));
         assert!(!is_store_install_deep_link(
             "https://example.com/store/install"
+        ));
+    }
+
+    #[test]
+    fn store_creator_deep_links_are_recognized() {
+        assert!(is_store_creator_deep_link(
+            "houston://store/creator?handle=felipe"
+        ));
+        assert!(is_store_creator_deep_link("houston://store/creator"));
+        assert!(is_store_creator_deep_link("houston://store/creator/"));
+    }
+
+    #[test]
+    fn non_creator_deep_links_are_ignored() {
+        // `creatorEVIL` must never masquerade as a creator link (boundary guard).
+        assert!(!is_store_creator_deep_link(
+            "houston://store/creatorEVIL?handle=felipe"
+        ));
+        assert!(!is_store_creator_deep_link("houston://open"));
+        assert!(!is_store_creator_deep_link(
+            "https://example.com/store/creator"
+        ));
+        // The two shapes never cross-recognize each other.
+        assert!(!is_store_creator_deep_link(
+            "houston://store/install?slug=my-agent"
+        ));
+        assert!(!is_store_install_deep_link(
+            "houston://store/creator?handle=felipe"
         ));
     }
 }

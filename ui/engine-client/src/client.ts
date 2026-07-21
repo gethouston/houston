@@ -27,6 +27,7 @@ import type {
   AttachmentManifest,
   AttachmentUploadResult,
   AuditEntry,
+  AvatarUploadResult,
   BillingCheckout,
   BillingSummary,
   Capabilities,
@@ -47,10 +48,14 @@ import type {
   CreateSkillRequest,
   CreateWorkspace,
   CreateWorktreeRequest,
+  CreatorAnalytics,
+  CreatorProfile,
+  CreatorProfilePatch,
   CustomEndpoint,
   CustomIntegrationView,
   ErrorBody,
   GenerateInstructionsResult,
+  HandleAvailability,
   HealthResponse,
   ImportedWorkspace,
   InstallAgent,
@@ -2346,6 +2351,65 @@ export class HoustonClient {
     await this.request(
       "DELETE",
       `/agentstore/agents/${this.seg(storeAgentId)}`,
+    );
+  }
+
+  // ---------- Agent Store creator profile (the "publish as @handle" identity) ----------
+  //
+  // The caller's own creator profile, its handle claim + avatar, and their
+  // per-day install analytics — all against the `/agentstore/me/*` gateway
+  // routes with the caller's own bearer, exactly like the owner methods above.
+
+  /** The caller's own creator profile, or `null` when never materialized. */
+  async getMyStoreProfile(): Promise<CreatorProfile | null> {
+    const { profile } = await this.request<{
+      profile: CreatorProfile | null;
+    }>("GET", "/agentstore/me/profile");
+    return profile;
+  }
+  /** Upsert the caller's creator profile (`PATCH /me/profile`). */
+  async updateMyStoreProfile(
+    patch: CreatorProfilePatch,
+  ): Promise<CreatorProfile> {
+    const { profile } = await this.request<{ profile: CreatorProfile }>(
+      "PATCH",
+      "/agentstore/me/profile",
+      patch,
+      undefined,
+      undefined,
+      false,
+    );
+    return profile;
+  }
+  /** Whether a handle is claimable by the caller (`GET /handles/{handle}/available`). */
+  checkStoreHandle(handle: string): Promise<HandleAvailability> {
+    return this.request<HandleAvailability>(
+      "GET",
+      `/agentstore/handles/${this.seg(handle)}/available`,
+    );
+  }
+  /** Replace the caller's avatar (`POST /me/avatar`, multipart field `file`). */
+  uploadStoreAvatar(blob: Blob): Promise<AvatarUploadResult> {
+    const form = new FormData();
+    form.append("file", blob);
+    // No `Content-Type`: `fetch` sets the multipart boundary from the FormData.
+    return this.rawRequest<AvatarUploadResult>(
+      "POST",
+      "/agentstore/me/avatar",
+      form,
+    );
+  }
+  /** Clear the caller's avatar (`DELETE /me/avatar`). Idempotent. */
+  async deleteStoreAvatar(): Promise<void> {
+    await this.request("DELETE", "/agentstore/me/avatar");
+  }
+  /** Per-UTC-day install analytics over the caller's owned agents (`GET /me/analytics?days=`). */
+  getMyStoreAnalytics(days?: number): Promise<CreatorAnalytics> {
+    return this.request<CreatorAnalytics>(
+      "GET",
+      "/agentstore/me/analytics",
+      undefined,
+      { days: days !== undefined ? String(days) : undefined },
     );
   }
 

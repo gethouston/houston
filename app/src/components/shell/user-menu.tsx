@@ -1,9 +1,10 @@
-import { LogOut, MessageSquare, User } from "lucide-react";
+import { AtSign, LogOut, MessageSquare, User } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMyProfile } from "../../hooks/use-my-profile";
 import { signOut } from "../../lib/auth";
 import { useUIStore } from "../../stores/ui";
+import { CreatorProfileEditorDialog } from "../store-view/profile/creator-profile-editor";
 import { FeedbackDialog } from "./feedback-dialog";
 
 /**
@@ -18,10 +19,13 @@ import { FeedbackDialog } from "./feedback-dialog";
  */
 export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
   const { t } = useTranslation("shell");
+  const { t: tStore } = useTranslation("store");
   const profile = useMyProfile();
   const [open, setOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const creatorEditorOpen = useUIStore((s) => s.creatorEditorOpen);
+  const setCreatorEditorOpen = useUIStore((s) => s.setCreatorEditorOpen);
 
   if (!profile) return null;
 
@@ -101,6 +105,17 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
                 type="button"
                 onClick={() => {
                   setOpen(false);
+                  setCreatorEditorOpen(true);
+                }}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-hover transition-colors flex items-center gap-2"
+              >
+                <AtSign className="h-3.5 w-3.5" />
+                {tStore("profile.edit")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
                   setFeedbackOpen(true);
                 }}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-hover transition-colors flex items-center gap-2"
@@ -121,6 +136,10 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
         )}
       </div>
       <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
+      <CreatorProfileEditorDialog
+        open={creatorEditorOpen}
+        onOpenChange={setCreatorEditorOpen}
+      />
     </>
   );
 }

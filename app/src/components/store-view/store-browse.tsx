@@ -1,3 +1,4 @@
+import { HANDLE_REGEX, normalizeHandle } from "@houston/agentstore-contract";
 import { CatalogSearchField } from "@houston-ai/core";
 import type {
   StoreCatalogAgent,
@@ -39,10 +40,23 @@ export function StoreBrowse() {
   );
   const { install, installingSlug } = useStoreInstall();
 
-  // Debounce typing into the server-side full-text query.
+  // Debounce typing into the server-side full-text query. A leading `@` is an
+  // intent to open a creator's profile, not a catalog search: when what follows
+  // is a valid handle, route to that creator's pane (via the ui store, mirroring
+  // "See it in the store") and leave the catalog query untouched.
   useEffect(() => {
-    const handle = setTimeout(() => setQ(search.trim()), 300);
-    return () => clearTimeout(handle);
+    const timer = setTimeout(() => {
+      const trimmed = search.trim();
+      if (trimmed.startsWith("@")) {
+        const candidate = normalizeHandle(trimmed);
+        if (HANDLE_REGEX.test(candidate)) {
+          useUIStore.getState().setStoreCreatorHandle(candidate);
+          return;
+        }
+      }
+      setQ(trimmed);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [search]);
 
   const catalog = useInfiniteQuery({
@@ -151,6 +165,9 @@ export function StoreBrowse() {
           onShowMore={() => void catalog.fetchNextPage()}
           onInstall={(slug) => void handleInstall(slug)}
           onOpenDetail={setDetailAgent}
+          onOpenCreator={(handle) =>
+            useUIStore.getState().setStoreCreatorHandle(handle)
+          }
         />
       </div>
 

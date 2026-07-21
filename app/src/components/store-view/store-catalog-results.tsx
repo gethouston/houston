@@ -7,6 +7,7 @@ import {
 } from "@houston-ai/core";
 import type { StoreCatalogAgent } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
+import { CreatorChip } from "./creator/creator-chip";
 import { StoreAgentIcon } from "./store-agent-icon";
 import { formatInstalls } from "./store-view-model";
 
@@ -26,6 +27,7 @@ export function StoreCatalogResults({
   onShowMore,
   onInstall,
   onOpenDetail,
+  onOpenCreator,
 }: {
   items: StoreCatalogAgent[];
   isPending: boolean;
@@ -37,6 +39,9 @@ export function StoreCatalogResults({
   onShowMore: () => void;
   onInstall: (slug: string) => void;
   onOpenDetail: (agent: StoreCatalogAgent) => void;
+  /** Opens a creator's public pane from a row's chip. Omit to hide the chip
+   *  (e.g. on a creator's own pane, where every row shares that creator). */
+  onOpenCreator?: (handle: string) => void;
 }) {
   const { t, i18n } = useTranslation("store");
 
@@ -75,13 +80,25 @@ export function StoreCatalogResults({
               </span>
             }
             action={
-              agent.slug ? (
-                <CatalogAddButton
-                  label={t("installLabel", { name: agent.name })}
-                  busy={installingSlug === agent.slug}
-                  disabled={installingSlug !== null}
-                  onClick={() => onInstall(agent.slug ?? "")}
-                />
+              onOpenCreator || agent.slug ? (
+                <div className="flex items-center gap-1.5">
+                  {onOpenCreator ? (
+                    <span className="flex min-w-0 max-w-[7.5rem]">
+                      <CreatorChip
+                        creator={agent.creator}
+                        onOpen={onOpenCreator}
+                      />
+                    </span>
+                  ) : null}
+                  {agent.slug ? (
+                    <CatalogAddButton
+                      label={t("installLabel", { name: agent.name })}
+                      busy={installingSlug === agent.slug}
+                      disabled={installingSlug !== null}
+                      onClick={() => onInstall(agent.slug ?? "")}
+                    />
+                  ) : null}
+                </div>
               ) : undefined
             }
             onClick={() => onOpenDetail(agent)}

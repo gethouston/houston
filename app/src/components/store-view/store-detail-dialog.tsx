@@ -10,7 +10,9 @@ import {
   isStoreCategory,
   storeCategoryLabelKey,
 } from "../../lib/store-categories";
+import { useUIStore } from "../../stores/ui";
 import { AppLogo, appDisplay, useToolkitBySlug } from "../integrations";
+import { CreatorChip } from "./creator/creator-chip";
 import { StoreAgentIcon } from "./store-agent-icon";
 import { StoreReportDialog } from "./store-report-dialog";
 
@@ -33,8 +35,17 @@ export function StoreDetailDialog({
 }) {
   const { t } = useTranslation("store");
   const { t: tPortable } = useTranslation("portable");
+  const setStoreCreatorHandle = useUIStore((s) => s.setStoreCreatorHandle);
   const [reportOpen, setReportOpen] = useState(false);
   const slug = agent?.slug ?? null;
+
+  // Opening a creator's public pane replaces the detail dialog: close this
+  // surface, then hand the handle to the one-shot ui-store deep link the store
+  // view consumes to swap in the creator pane.
+  const handleOpenCreator = (handle: string) => {
+    onClose();
+    setStoreCreatorHandle(handle);
+  };
 
   const detail = useQuery({
     queryKey: ["store-agent", slug],
@@ -108,11 +119,11 @@ export function StoreDetailDialog({
         }
       >
         <div className="space-y-3 text-sm">
-          <p className="text-ink-muted">
-            {t("detail.by", { name: agent.creator.displayName })}
-            {" · "}
-            {t("installs", { count: agent.installsCount })}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-ink-muted">
+            <CreatorChip creator={agent.creator} onOpen={handleOpenCreator} />
+            <span aria-hidden>·</span>
+            <span>{t("installs", { count: agent.installsCount })}</span>
+          </div>
           {skills.length > 0 && (
             <div>
               <p className="mb-1.5 font-medium text-ink">

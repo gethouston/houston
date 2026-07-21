@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 31
+version: 32
 
 components:
   - id: agent-avatar
@@ -636,3 +636,17 @@ components:
       provider detail. Pricing vs "Included with subscription" comes from the offer.
     a11y: RowCard semantics; Connect is a labeled button; connected shown as dot + label.
     since: 2
+
+  - id: verified-badge
+    title: Verified badge
+    purpose: The verified-creator indicator glyph shown beside a creator handle on store cards, creator chips, and the profile pane.
+    anatomy: [check-glyph]
+    states: [default]
+    variants: [size-sm, size-md]
+    behavior: >-
+      Presentational only, driven by the creator profile's verified flag. Props
+      only and i18n-agnostic: the consumer passes a translated label used as the
+      accessible name (English "Verified" default). Color comes from the action
+      design token.
+    a11y: img role with the label as its accessible name; conveys meaning by glyph plus label, never color alone.
+    since: 32

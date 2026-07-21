@@ -195,7 +195,10 @@
       "creatorNamePlaceholder": "Como você quer aparecer",
       "creatorUrlLabel": "Link",
       "creatorUrlPlaceholder": "https://seu-site.com",
-      "requiredMark": "(obrigatório)"
+      "requiredMark": "(obrigatório)",
+      "publishingAs": "Publicando como @{{handle}}",
+      "claimHandleCta": "Reserve seu @handle",
+      "editProfile": "Editar perfil"
     },
     "categories": {
       "writing": "Escrita e conteúdo",

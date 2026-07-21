@@ -20,7 +20,9 @@ import type {
   StoreCatalogAgentDetail,
   StoreCatalogPage,
   StoreCatalogQuery,
+  StoreCatalogSort,
   StoreCategory,
+  StoreCreatorPage,
 } from "./types.ts";
 
 /**
@@ -109,6 +111,44 @@ export async function fetchStoreCategories(
 ): Promise<StoreCategory[]> {
   try {
     return await catalogClient(fetchImpl).listCategories(ACCEPT_JSON);
+  } catch (err) {
+    throw asCatalogError(err);
+  }
+}
+
+/**
+ * A creator's public page: their profile plus one page of their public
+ * listings. Anonymous, exactly like the rest of this module — a signed-out
+ * visitor can open `houston://store/creator?handle=…` or `/@handle`.
+ */
+export async function fetchStoreCreator(
+  handle: string,
+  query: { page?: number; sort?: StoreCatalogSort } = {},
+  fetchImpl: typeof fetch = fetch,
+): Promise<StoreCreatorPage> {
+  try {
+    return await catalogClient(fetchImpl).getCreator(
+      handle,
+      query,
+      ACCEPT_JSON,
+    );
+  } catch (err) {
+    throw asCatalogError(err);
+  }
+}
+
+/**
+ * File an anonymous abuse report against a creator. The gateway rate-limits
+ * these (same 5/min/IP ceiling as listing reports); a rejection surfaces as a
+ * {@link StoreCatalogError} the caller toasts.
+ */
+export async function reportStoreCreator(
+  handle: string,
+  input: ReportInput,
+  fetchImpl: typeof fetch = fetch,
+): Promise<void> {
+  try {
+    await catalogClient(fetchImpl).reportCreator(handle, input);
   } catch (err) {
     throw asCatalogError(err);
   }

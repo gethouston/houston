@@ -16,10 +16,13 @@
 import {
   AgentStoreClient,
   type StoreAgentDetail,
+  type StoreAgentSummary,
   StoreApiError,
   type StoreCatalogPage,
   type StoreCatalogQuery,
+  type StoreCatalogSort,
   type StoreCategory,
+  type StoreCreatorPage,
   type StoreInstallTarget,
   type StoreRequestOptions,
 } from "@houston/agentstore-client";
@@ -79,6 +82,29 @@ export function listCategories(): Promise<StoreCategory[]> {
 }
 
 /**
+ * A creator's public page: their profile plus one page of their public agents.
+ * Returns null on 404 (no such handle) so the page can `notFound()`; any other
+ * failure throws so a gateway outage is a real error rather than a silent miss.
+ */
+export async function getCreator(
+  handle: string,
+  query: { page?: number; sort?: StoreCatalogSort } = {},
+): Promise<StoreCreatorPage | null> {
+  const clean = handle.trim();
+  if (!clean) return null;
+  try {
+    return await client().getCreator(
+      clean,
+      query,
+      revalidate(CATALOG_REVALIDATE),
+    );
+  } catch (err) {
+    if (err instanceof StoreApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
  * A published agent by slug, with its IR snapshot. Returns null on 404 (unknown,
  * deleted, or never-published slug); any other failure throws so a gateway outage
  * is a real error rather than a silent "not found".
@@ -97,18 +123,42 @@ export async function getAgentBySlug(
 }
 
 /**
- * Every public slug, newest first, for the sitemap. The gateway paginates the
- * catalog (24/page), so this walks pages until `hasMore` is false or the page cap
- * is hit — the cap bounds a hostile/huge catalog to a predictable request count.
+ * Walk the public catalog page by page (24/page), invoking `visit` for each
+ * agent, until `hasMore` is false or the page cap is hit — the cap bounds a
+ * hostile/huge catalog to a predictable request count. Shared by the sitemap
+ * enumerations so they never diverge on how far they crawl.
  */
-export async function listAllPublicSlugs(): Promise<string[]> {
-  const slugs: string[] = [];
+async function walkPublicCatalog(
+  visit: (agent: StoreAgentSummary) => void,
+): Promise<void> {
   for (let page = 1; page <= SITEMAP_MAX_PAGES; page++) {
     const { items, hasMore } = await listAgents({ sort: "recent", page });
-    for (const agent of items) if (agent.slug) slugs.push(agent.slug);
+    for (const agent of items) visit(agent);
     if (!hasMore) break;
   }
+}
+
+/** Every public slug, newest first, for the sitemap. */
+export async function listAllPublicSlugs(): Promise<string[]> {
+  const slugs: string[] = [];
+  await walkPublicCatalog((agent) => {
+    if (agent.slug) slugs.push(agent.slug);
+  });
   return slugs;
+}
+
+/**
+ * Every distinct creator handle credited on a public agent, for the sitemap's
+ * creator pages. A creator with no public agent is intentionally omitted (there
+ * would be nothing to crawl on their page); one walk of the same catalog.
+ */
+export async function listAllPublicCreatorHandles(): Promise<string[]> {
+  const handles = new Set<string>();
+  await walkPublicCatalog((agent) => {
+    const handle = agent.creator.handle;
+    if (handle) handles.add(handle);
+  });
+  return [...handles];
 }
 
 /**

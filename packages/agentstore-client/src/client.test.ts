@@ -406,3 +406,247 @@ describe("AgentStoreClient — method path + verb coverage", () => {
     expect(calls[0].url).toBe(`${BASE}${STORE_API_PREFIX}/admin/purge`);
   });
 });
+
+describe("AgentStoreClient — creator profiles", () => {
+  const token = () => "tok";
+
+  it("catalogQuery emits creator, trimmed", async () => {
+    const { fetchImpl, calls } = stubFetch(
+      jsonRes({ items: [], hasMore: false }),
+    );
+    await client(fetchImpl).listAgents({ creator: "  felipe  " });
+    const url = new URL(calls[0].url);
+    expect(url.searchParams.get("creator")).toBe("felipe");
+  });
+
+  it("getCreator → GET /creators/{handle} with page + sort query", async () => {
+    const { fetchImpl, calls } = stubFetch(
+      jsonRes({
+        profile: { handle: "felipe", displayName: "Felipe" },
+        agents: { items: [{ id: "1" }], hasMore: true },
+      }),
+    );
+    const page = await client(fetchImpl).getCreator("felipe", {
+      page: 2,
+      sort: "installs",
+    });
+    expect(page.profile.handle).toBe("felipe");
+    expect(page.agents.items).toEqual([{ id: "1" }]);
+    expect(calls[0].init.method).toBe("GET");
+    const url = new URL(calls[0].url);
+    expect(url.pathname).toBe(`${STORE_API_PREFIX}/creators/felipe`);
+    expect(url.searchParams.get("page")).toBe("2");
+    expect(url.searchParams.get("sort")).toBe("installs");
+  });
+
+  it("getCreator omits page=1 and an absent sort", async () => {
+    const { fetchImpl, calls } = stubFetch(
+      jsonRes({ profile: {}, agents: { items: [], hasMore: false } }),
+    );
+    await client(fetchImpl).getCreator("felipe", { page: 1 });
+    expect(calls[0].url).toBe(`${BASE}${STORE_API_PREFIX}/creators/felipe`);
+  });
+
+  it("getCreator percent-encodes the handle segment", async () => {
+    const { fetchImpl, calls } = stubFetch(
+      jsonRes({ profile: {}, agents: { items: [], hasMore: false } }),
+    );
+    await client(fetchImpl).getCreator("a/b");
+    expect(calls[0].url).toBe(`${BASE}${STORE_API_PREFIX}/creators/a%2Fb`);
+  });
+
+  it("reportCreator → POST /creators/{handle}/reports with the report body", async () => {
+    const { fetchImpl, calls } = stubFetch(new Response(null, { status: 201 }));
+    await client(fetchImpl).reportCreator("felipe", {
+      reason: "impersonation",
+      details: "d",
+    });
+    expect(calls[0].init.method).toBe("POST");
+    expect(calls[0].url).toBe(
+      `${BASE}${STORE_API_PREFIX}/creators/felipe/reports`,
+    );
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({
+      reason: "impersonation",
+      details: "d",
+    });
+    expect(headersOf(calls[0]).has("authorization")).toBe(false);
+  });
+
+  it("getMyProfile → GET /me/profile, unwrapping the profile", async () => {
+    const { fetchImpl, calls } = stubFetch(
+      jsonRes({ profile: { handle: "felipe", displayName: "Felipe" } }),
+    );
+    const profile = await client(fetchImpl, token).getMyProfile();
+    expect(profile).toEqual({ handle: "felipe", displayName: "Felipe" });
+    expect(calls[0].init.method).toBe("GET");
+    expect(calls[0].url).toBe(`${BASE}${STORE_API_PREFIX}/me/profile`);
+    expect(headersOf(calls[0]).get("authorization")).toBe("Bearer tok");
+  });
+
+  it("getMyProfile → null when no profile has been materialized", async () => {
+    const { fetchImpl } = stubFetch(jsonRes({ profile: null }));
+    const profile = await client(fetchImpl, token).getMyProfile();
+    expect(profile).toBeNull();
+  });
+
+  it("patchMyProfile → PATCH /me/profile with the patch, unwrapping the profile", async () => {
+    const { fetchImpl, calls } = stubFetch(
+      jsonRes({ profile: { handle: "felipe", displayName: "Felipe" } }),
+    );
+    const profile = await client(fetchImpl, token).patchMyProfile({
+      handle: "felipe",
+      displayName: "Felipe",
+      links: { x: "https://x.com/felipe" },
+    });
+    expect(profile.handle).toBe("felipe");
+    expect(calls[0].init.method).toBe("PATCH");
+    expect(calls[0].url).toBe(`${BASE}${STORE_API_PREFIX}/me/profile`);
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({
+      handle: "felipe",
+      displayName: "Felipe",
+      links: { x: "https://x.com/felipe" },
+    });
+  });
+
+  it("maps a handle_taken conflict on patchMyProfile", async () => {
+    const { fetchImpl } = stubFetch(jsonRes({ error: "handle_taken" }, 409));
+    const err = await client(fetchImpl, token)
+      .patchMyProfile({ handle: "taken" })
+      .catch((e) => e);
+    expect(err).toBeInstanceOf(StoreApiError);
+    expect(err.status).toBe(409);
+    expect(err.code).toBe("handle_taken");
+  });
+
+  it("checkHandle → GET /handles/{handle}/available (authed)", async () => {
+    const { fetchImpl, calls } = stubFetch(
+      jsonRes({ available: false, reason: "reserved" }),
+    );
+    const res = await client(fetchImpl, token).checkHandle("admin");
+    expect(res).toEqual({ available: false, reason: "reserved" });
+    expect(calls[0].init.method).toBe("GET");
+    expect(calls[0].url).toBe(
+      `${BASE}${STORE_API_PREFIX}/handles/admin/available`,
+    );
+    expect(headersOf(calls[0]).get("authorization")).toBe("Bearer tok");
+  });
+
+  it("uploadAvatar → POST /me/avatar multipart with the blob under field 'file'", async () => {
+    const { fetchImpl, calls } = stubFetch(
+      jsonRes({ avatarUrl: "https://gw/v1/agentstore/avatars/x.webp" }),
+    );
+    const blob = new Blob([new Uint8Array([1, 2, 3])], { type: "image/webp" });
+    const res = await client(fetchImpl, token).uploadAvatar(blob);
+    expect(res).toEqual({
+      avatarUrl: "https://gw/v1/agentstore/avatars/x.webp",
+    });
+    expect(calls[0].init.method).toBe("POST");
+    expect(calls[0].url).toBe(`${BASE}${STORE_API_PREFIX}/me/avatar`);
+    const body = calls[0].init.body;
+    expect(body).toBeInstanceOf(FormData);
+    const file = (body as FormData).get("file");
+    expect(file).toBeInstanceOf(Blob);
+    expect((file as Blob).type).toBe("image/webp");
+    // The client must NOT set Content-Type — fetch derives the boundary.
+    expect(headersOf(calls[0]).has("content-type")).toBe(false);
+  });
+
+  it("deleteAvatar → DELETE /me/avatar", async () => {
+    const { fetchImpl, calls } = stubFetch(new Response(null, { status: 204 }));
+    await client(fetchImpl, token).deleteAvatar();
+    expect(calls[0].init.method).toBe("DELETE");
+    expect(calls[0].url).toBe(`${BASE}${STORE_API_PREFIX}/me/avatar`);
+  });
+
+  it("getMyAnalytics → GET /me/analytics?days when a window is given", async () => {
+    const { fetchImpl, calls } = stubFetch(
+      jsonRes({
+        rows: [{ agentId: "a", slug: "s", day: "2026-07-01", installs: 3 }],
+        totals: { installs: 3 },
+      }),
+    );
+    const res = await client(fetchImpl, token).getMyAnalytics(30);
+    expect(res.rows).toHaveLength(1);
+    expect(res.totals.installs).toBe(3);
+    const url = new URL(calls[0].url);
+    expect(url.pathname).toBe(`${STORE_API_PREFIX}/me/analytics`);
+    expect(url.searchParams.get("days")).toBe("30");
+  });
+
+  it("getMyAnalytics → GET /me/analytics with no query when days omitted", async () => {
+    const { fetchImpl, calls } = stubFetch(
+      jsonRes({ rows: [], totals: { installs: 0 } }),
+    );
+    await client(fetchImpl, token).getMyAnalytics();
+    expect(calls[0].url).toBe(`${BASE}${STORE_API_PREFIX}/me/analytics`);
+  });
+});
+
+describe("AgentStoreClient — creator admin", () => {
+  const token = () => "tok";
+
+  it("adminSetCreatorVerified → POST /admin/creators/{handle}/verify with verified", async () => {
+    const { fetchImpl, calls } = stubFetch(jsonRes({ ok: true }));
+    await client(fetchImpl, token).adminSetCreatorVerified("felipe", true);
+    expect(calls[0].init.method).toBe("POST");
+    expect(calls[0].url).toBe(
+      `${BASE}${STORE_API_PREFIX}/admin/creators/felipe/verify`,
+    );
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({ verified: true });
+  });
+
+  it("adminReleaseHandle → POST /admin/creators/{handle}/release", async () => {
+    const { fetchImpl, calls } = stubFetch(jsonRes({ ok: true }));
+    await client(fetchImpl, token).adminReleaseHandle("felipe");
+    expect(calls[0].init.method).toBe("POST");
+    expect(calls[0].url).toBe(
+      `${BASE}${STORE_API_PREFIX}/admin/creators/felipe/release`,
+    );
+    expect(calls[0].init.body).toBeUndefined();
+  });
+
+  it("adminListCreatorReports → GET /admin/creator-reports?status= when filtered", async () => {
+    const row = {
+      id: "r1",
+      profileUserId: "u1",
+      handle: "acme",
+      reason: "impersonation",
+      details: "not the real acme",
+      contact: null,
+      status: "open",
+      createdAt: "2026-07-17T00:00:00Z",
+    };
+    const { fetchImpl, calls } = stubFetch(jsonRes({ items: [row] }));
+    const reports = await client(fetchImpl, token).adminListCreatorReports(
+      "open",
+    );
+    expect(reports).toEqual([row]);
+    // The report carries the targeted creator's handle and profile id, not an
+    // agent id/slug (the creator-report wire shape, not the agent-report one).
+    expect(reports[0].handle).toBe("acme");
+    expect(reports[0].profileUserId).toBe("u1");
+    expect(calls[0].url).toBe(
+      `${BASE}${STORE_API_PREFIX}/admin/creator-reports?status=open`,
+    );
+  });
+
+  it("adminListCreatorReports → GET /admin/creator-reports with no query when unfiltered", async () => {
+    const { fetchImpl, calls } = stubFetch(jsonRes({ items: [] }));
+    await client(fetchImpl, token).adminListCreatorReports();
+    expect(calls[0].url).toBe(
+      `${BASE}${STORE_API_PREFIX}/admin/creator-reports`,
+    );
+  });
+
+  it("adminActOnCreatorReport → POST /admin/creator-reports/{id} with the action", async () => {
+    const { fetchImpl, calls } = stubFetch(jsonRes({ ok: true }));
+    await client(fetchImpl, token).adminActOnCreatorReport("r1", "resolve");
+    expect(calls[0].init.method).toBe("POST");
+    expect(calls[0].url).toBe(
+      `${BASE}${STORE_API_PREFIX}/admin/creator-reports/r1`,
+    );
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({
+      action: "resolve",
+    });
+  });
+});

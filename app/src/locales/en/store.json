@@ -81,5 +81,71 @@
     },
     "actionFailed": "That action could not be completed. Please try again.",
     "requestPublicSent": "Public listing requested. We will review it soon."
+  },
+  "profile": {
+    "edit": "Edit profile",
+    "title": "Your creator profile",
+    "claimTitle": "Claim your @handle",
+    "handleLabel": "Handle",
+    "handlePlaceholder": "yourname",
+    "handleHint": "Lowercase letters, numbers and underscores. This is your public @handle.",
+    "handleAvailable": "That handle is available.",
+    "handleTaken": "That handle is already taken.",
+    "handleReserved": "That handle is reserved.",
+    "handleInvalid": "Use 2 to 30 lowercase letters, numbers or underscores.",
+    "handleChecking": "Checking...",
+    "handleChangeTooSoon": "You changed your handle recently. Try again later.",
+    "displayNameLabel": "Display name",
+    "bioLabel": "Bio",
+    "bioPlaceholder": "Tell people what you build.",
+    "avatarLabel": "Profile photo",
+    "avatarChange": "Change photo",
+    "avatarRemove": "Remove photo",
+    "avatarUploading": "Uploading...",
+    "avatarTooLarge": "That image is too large. Pick one under 2 MB.",
+    "avatarBadType": "Use a PNG, JPEG or WebP image.",
+    "avatarClaimHint": "Save your profile first to add a photo.",
+    "socials": {
+      "x": "X",
+      "youtube": "YouTube",
+      "tiktok": "TikTok",
+      "instagram": "Instagram",
+      "github": "GitHub",
+      "linkedin": "LinkedIn",
+      "website": "Website",
+      "hint": "Add links to your profiles so people can find you."
+    },
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Profile saved",
+    "saveFailed": "Your profile could not be saved. Please try again.",
+    "cancel": "Cancel",
+    "claimCta": "Claim your handle",
+    "claimBody": "Pick a public @handle so people can find every agent you publish in one place."
+  },
+  "creator": {
+    "by": "By {{name}}",
+    "viewProfile": "View profile",
+    "verified": "Verified",
+    "agents_one": "{{count}} agent",
+    "agents_other": "{{count}} agents",
+    "noAgents": "No public agents yet.",
+    "back": "Back",
+    "notFound": "We could not find that creator.",
+    "loadFailed": "This profile could not be loaded. Please try again.",
+    "report": "Report creator"
+  },
+  "analytics": {
+    "title": "Installs",
+    "range": {
+      "7d": "7 days",
+      "30d": "30 days",
+      "90d": "90 days"
+    },
+    "totalInstalls_one": "{{count}} install",
+    "totalInstalls_other": "{{count}} installs",
+    "empty": "No installs yet in this period.",
+    "loadFailed": "Your analytics could not be loaded. Please try again.",
+    "barLabel": "{{day}}: {{count}}"
   }
 }

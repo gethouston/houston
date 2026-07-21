@@ -44,7 +44,7 @@ import { STORE_SITE_URL, storeApiBase, storeAuthFetch } from "./store-gateway";
  * the client's own pre-flight auth guard passes exactly when a request would be
  * sent (the value itself is superseded by the fetch seam).
  */
-function storeClient(cfg: ControlPlaneConfig): AgentStoreClient {
+export function storeClient(cfg: ControlPlaneConfig): AgentStoreClient {
   return new AgentStoreClient({
     baseUrl: storeApiBase(cfg),
     fetchImpl: storeAuthFetch(cfg.token),
@@ -60,7 +60,7 @@ function storeClient(cfg: ControlPlaneConfig): AgentStoreClient {
  * one engine-error class. A network-level failure (status `0`) rethrows its
  * underlying cause verbatim — exactly as the hand-rolled `fetch` propagated it.
  */
-async function asEngineError<T>(op: () => Promise<T>): Promise<T> {
+export async function asEngineError<T>(op: () => Promise<T>): Promise<T> {
   try {
     return await op();
   } catch (err) {
