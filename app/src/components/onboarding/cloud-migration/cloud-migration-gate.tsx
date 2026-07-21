@@ -1,12 +1,14 @@
+import { type Toast, ToastContainer } from "@houston-ai/core";
 import { type ReactNode, useEffect, useRef } from "react";
 import { useCloudMigration } from "../../../hooks/use-cloud-migration";
 import { analytics } from "../../../lib/analytics";
 import type { LegacyDetection } from "../../../lib/cloud-migration";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
+import { useUIStore } from "../../../stores/ui";
 import { ClaudeBrowserLogin } from "../../shell/claude-browser-login";
 import { ProviderLoginFallback } from "../../shell/provider-login-fallback";
 import { WorkspaceLoading } from "../../shell/workspace-loading";
-import { SpaceScreen } from "../../space/space-screen";
+import { FirstRunScreen } from "../first-run-screen";
 import { DoneScreen } from "./done-screen";
 import { OfferScreen } from "./offer-screen";
 import { ProgressScreen } from "./progress-screen";
@@ -60,12 +62,28 @@ function CloudMigrationWizard({
   const screen = useCloudMigrationStore((s) => s.screen);
   const start = useCloudMigrationStore((s) => s.start);
   const deferMigration = useCloudMigrationStore((s) => s.deferMigration);
+  const toasts = useUIStore((s) => s.toasts);
+  const dismissToast = useUIStore((s) => s.dismissToast);
 
-  // One SpaceScreen wrapping every wizard screen (like onboarding) so the
-  // backdrop photo mounts once and never re-fades across offer → progress →
-  // done transitions.
+  // The wizard REPLACES the app tree, so the WorkspaceShell's ToastContainer is
+  // not mounted while migrating — a migration-time error (e.g. an agent that
+  // failed to move) would otherwise have no surface to reach the user (the
+  // no-silent-failures rule). We mount the app's toast container inside the
+  // wizard, mapping the store toasts exactly the way App.tsx does.
+  const mappedToasts: Toast[] = toasts.map((t) => {
+    const base = t.description ? `${t.title} ${t.description}` : t.title;
+    return {
+      id: t.id,
+      message: t.count && t.count > 1 ? `${base} (×${t.count})` : base,
+      variant: t.variant ?? "info",
+      action: t.action,
+    };
+  });
+
+  // One FirstRunScreen wrapping every wizard screen (like onboarding) so the
+  // grey background is painted once across offer → progress → done transitions.
   return (
-    <SpaceScreen>
+    <FirstRunScreen>
       {screen === "offer" ? (
         <OfferScreen
           detection={detection}
@@ -90,6 +108,8 @@ function CloudMigrationWizard({
       ) : (
         <DoneScreen persistOutcome={persistOutcome} />
       )}
-    </SpaceScreen>
+      {/* A normal light toast — the FirstRunScreen wrapper already pins light. */}
+      <ToastContainer toasts={mappedToasts} onDismiss={dismissToast} />
+    </FirstRunScreen>
   );
 }

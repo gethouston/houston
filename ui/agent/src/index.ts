@@ -23,7 +23,7 @@ export type { FilesBrowserLabels } from "./files-browser-labels";
 export type { InstructionsPanelProps } from "./instructions-panel";
 export { InstructionsPanel } from "./instructions-panel";
 export type { FileNode, FolderNode, TreeNode } from "./tree";
-export { buildTree, countFiles } from "./tree";
+export { buildTree } from "./tree";
 export type {
   FileEntry,
   FilePreviewData,

@@ -5,7 +5,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useDropZone } from "./drop-zone";
 import { folderAtPath, resolveExistingPath } from "./grid-utils";
-import { buildTree, countFiles } from "./tree";
+import { buildTree } from "./tree";
 import type { FileEntry, FilesViewMode } from "./types";
 import { type SortDirection, type SortKey, sortTree } from "./utils";
 
@@ -56,7 +56,6 @@ export function useFilesBrowser(opts: {
     if (isEmpty) return null;
     return sortTree(buildTree(opts.files), sortKey, sortDir);
   }, [opts.files, isEmpty, sortKey, sortDir]);
-  const fileCount = useMemo(() => (tree ? countFiles(tree) : 0), [tree]);
   // Survive the current folder being deleted/renamed under us.
   const resolvedPath = tree ? resolveExistingPath(tree, currentPath) : "";
   const currentFolder = tree ? folderAtPath(tree, resolvedPath) : null;
@@ -137,7 +136,6 @@ export function useFilesBrowser(opts: {
     handleSort,
     isEmpty,
     tree,
-    fileCount,
     resolvedPath,
     currentFolder,
     navigate,

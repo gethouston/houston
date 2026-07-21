@@ -83,8 +83,8 @@ export function FileRow({
         }}
         data-selected={selected || undefined}
         className={cn(
-          "h-[24px] cursor-default select-none items-center outline-none",
-          selected && "rounded-lg !bg-action text-action-text",
+          "h-8 cursor-default select-none items-center rounded-lg outline-none transition-colors hover:bg-hover",
+          selected && "!bg-action text-action-text",
           dragging && "opacity-40",
         )}
         style={{ display: "grid", gridTemplateColumns: COL_GRID }}

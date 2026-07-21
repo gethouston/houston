@@ -48,6 +48,14 @@ export interface SourceAgent {
   workspaceId: string;
   name: string;
   manifest: SourceAgentManifest;
+  /**
+   * The legacy client-side overlay color for this agent, if the old install
+   * saved one (resolved from `localStorage` — see `legacy-agent-colors.ts`).
+   * Color never crosses the wire; the prepare phase reads it locally and
+   * threads it here so the migrated cloud agent keeps its color. `undefined`
+   * when unknown — the create path applies the default, don't default here.
+   */
+  color?: string;
 }
 
 /** A cloud agent that already exists, with its import marker (when probed). */
@@ -66,6 +74,8 @@ export interface MigrationTask {
   /** A previous run already completed this agent — skip it (resume). */
   alreadyDone: boolean;
   manifest: SourceAgentManifest;
+  /** The legacy overlay color to seed on the created cloud agent (if any). */
+  color?: string;
 }
 
 const normalize = (name: string) => name.trim().toLowerCase();
@@ -103,6 +113,7 @@ export function buildMigrationPlan(
         targetName: done.name,
         alreadyDone: true,
         manifest: src.manifest,
+        color: src.color,
       });
       continue;
     }
@@ -122,6 +133,7 @@ export function buildMigrationPlan(
       targetName,
       alreadyDone: false,
       manifest: src.manifest,
+      color: src.color,
     });
   }
   return tasks;

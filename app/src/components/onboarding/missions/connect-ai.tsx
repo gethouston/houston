@@ -38,7 +38,6 @@ export function ConnectAiMission({
 
   return (
     <SetupCard
-      onSpace
       eyebrow={eyebrow}
       title={t("tutorial.missions.connect.title")}
       subtitle={t("tutorial.missions.connect.body")}

@@ -81,7 +81,7 @@
       "email": {
         "title": "Mira a tu agente en acción",
         "offer": {
-          "option": "Enviar un correo a mí mismo"
+          "option": "Envíame un correo de saludo"
         },
         "chip": "Envía un correo por mí",
         "placeholder": "Responde a tu agente...",
@@ -97,8 +97,10 @@
       "connectEmail": {
         "title": "Dale a tu agente acceso a tu correo",
         "body": "Elige tu correo para que tu agente pueda enviar por ti. Lo conectas una vez, de forma segura.",
+        "connect": "Conectar",
         "connecting": "Conectando...",
         "cancel": "Cancelar",
+        "connected": "Conectado",
         "preparing": "Preparando a tu asistente..."
       },
       "emailConnected": {

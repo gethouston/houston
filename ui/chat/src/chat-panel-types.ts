@@ -91,6 +91,10 @@ export interface ChatPanelProps {
   renderTurnSummary?: ChatMessagesProps["renderTurnSummary"];
   onOpenLink?: (url: string) => void;
   renderLink?: ChatMessagesProps["renderLink"];
+  /** Locks the composer: the textarea, attach, and submit controls all go
+   *  inert and dimmed, so no message can be typed or sent while it is set.
+   *  Generic — the consumer decides when an interaction owns the turn. */
+  composerDisabled?: boolean;
   composerOverride?: ReactNode;
   /** How `composerOverride` composes with the input. `"above"` (default) keeps
    *  the input usable below the card so typing abandons the pending

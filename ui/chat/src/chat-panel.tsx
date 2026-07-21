@@ -62,6 +62,7 @@ export function ChatPanel({
   onRemoveQueuedMessage,
   queuedLabels,
   canSendEmpty,
+  composerDisabled,
   composerOverride,
   composerOverrideMode = "above",
   composerLabels,
@@ -207,6 +208,7 @@ export function ChatPanel({
           onRemoveQueuedMessage={onRemoveQueuedMessage}
           queuedLabels={queuedLabels}
           canSendEmpty={canSendEmpty}
+          disabled={composerDisabled}
           labels={composerLabels}
           dictation={dictation}
         />

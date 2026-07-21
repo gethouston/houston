@@ -51,11 +51,11 @@ export function ConnectAppsStep({
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, enabled);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, enabled);
 
-  const {
-    state: connectState,
-    connect,
-    cancel,
-  } = useConnectFlow({ agentId: agent.id });
+  const { states, connect, cancel } = useConnectFlow({ agentId: agent.id });
+  // This step keeps its one-at-a-time UX: while any tile's OAuth runs the
+  // others stay disabled (the per-slug flow supports parallel, but this offer
+  // doesn't render it). Parallel connect lands with the migration wizard wave.
+  const anyConnecting = Object.keys(states).length > 0;
 
   const bySlug = useMemo(
     () => new Map((catalog.data ?? []).map((tk) => [tk.slug, tk])),
@@ -88,10 +88,10 @@ export function ConnectAppsStep({
               key={slug}
               display={appDisplay(slug, bySlug.get(slug))}
               connected={isToolkitConnected(connections.data, slug)}
-              connecting={connectState?.toolkit === slug}
-              disabled={connectState !== null && connectState.toolkit !== slug}
+              connecting={slug in states}
+              disabled={anyConnecting && !(slug in states)}
               onConnect={() => handleConnect(slug)}
-              onCancel={cancel}
+              onCancel={() => cancel(slug)}
             />
           ))}
         </div>

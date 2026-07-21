@@ -85,13 +85,19 @@ async function doRefresh(): Promise<string | null> {
   } catch (e) {
     // Terminal refresh outcomes = a real sign-out: the refresh token is no
     // longer usable (revoked/expired) OR the account itself is gone. The
-    // securetoken endpoint returns USER_DISABLED for a disabled account — that
-    // must sign the user out, not leave the session retrying on the backoff.
+    // securetoken endpoint returns USER_DISABLED for a disabled account and
+    // USER_NOT_FOUND (mapped to `invalid_credentials`) for a deleted one —
+    // both must sign the user out, not leave the session retrying on the
+    // backoff: a deleted-account session otherwise boots past the login gate
+    // and 401s every call with no way out. On the refresh endpoint
+    // `invalid_credentials` can only mean the account is gone (the
+    // password-shaped sources of that code never reach this call).
     if (
       isIdentityError(e) &&
       (e.code === "invalid_refresh_token" ||
         e.code === "token_expired" ||
-        e.code === "user_disabled")
+        e.code === "user_disabled" ||
+        e.code === "invalid_credentials")
     ) {
       await clearSession();
       sessionSink(null);

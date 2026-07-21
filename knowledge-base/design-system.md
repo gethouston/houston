@@ -21,8 +21,9 @@ by Style Dictionary to every surface. The CSS emits the light values on **both
 subtree can **pin either palette regardless of the app theme** by setting
 `data-theme` on a wrapper — custom properties inherit, so the scoped
 re-declaration re-resolves every `var(--ht-*)`, and thus every Tailwind
-`--color-*` utility, inside it (the sign-in and onboarding cards pin
-`data-theme="dark"` this way). The `dark` Tailwind
+`--color-*` utility, inside it (the whole first-run flow pins
+`data-theme="light"` this way, so a dark-mode user still gets a light
+first-run). The `dark` Tailwind
 variant (`ui/core/src/globals.css`) and every `[data-theme="dark"]` descendant
 rule (`futuristic.css`, app `globals.css`) carry a
 `:not(:where([data-theme="light"], [data-theme="light"] *))` guard so dark
@@ -88,32 +89,37 @@ The owner vocabulary (say these words to direct changes):
   fill, light `#efefef`), `chip`/`chip-text` + `chip-subtle` (soft fills).
 - **Lines & focus**: `line` (hairlines), `line-input` (field borders), `focus`.
 - **Status**: `danger`, `success`, `warning`, `highlight` (each with `-text`).
-- Untouched families: `space-*` (sign-in backdrop), `agent.*` (avatar palette),
+- Untouched families: `space-*` (the workspace-loading splash + OrbitLoader),
+  `agent.*` (avatar palette),
   `sidebar*` (with `-text`/`-hover`/`-line`/`-active` suffixes; `sidebar-active`
   is the selected-row fill, a clear step above hover in both themes).
 
-### `--ht-space-*` (sign-in backdrop)
+### `--ht-space-*` (workspace-loading splash)
 A deliberately **theme-invariant** group — both `color.light.json` and
 `color.dark.json` alias the same `color.space.*` primitives, so the space
-backdrop reads identically in light and dark. Feeds the shared
+backdrop reads identically in light and dark. It now backs ONLY the
+**workspace-loading splash** (`shell/workspace-loading.tsx`) and the
+`OrbitLoader` / `SuccessCheck` it hosts — the first-run gates, sign-in,
+onboarding, and the cloud-migration wizard moved OFF the space photo to a flat
+light page (see Animation → First-run flow). Feeds the shared
 `SpaceScreen` backdrop (see Animation → Space screen backdrop): `--ht-space-canvas`
 `#07080f` (near-black indigo base + the photo scrim's only colour, via
 `color-mix`) · `-canvas-glow` `#101430` (decode-gradient top) ·
 `-nebula-1` `#38346b` / `-nebula-core` `#b8b2e8` / `-star-warm` `#f6e7cd` —
 the `SuccessCheck` celebratory gradient · `-star` `#dce2f7` (OrbitLoader ring
-+ comet tail) · `-foreground` `#ffffff` (pure-white wordmark + logo,
-currentColor) · `-foreground-muted` `#8e96b8` (footer links, status lines).
++ comet tail) · `-foreground` `#ffffff` (the splash wordmark + loader,
+currentColor) · `-foreground-muted` `#8e96b8` (splash status line).
 The `OrbitLoader` rocket + comet trail reuse `-foreground` (pure white, head)
 and `-star` (cool white, tail) — no dedicated comet tokens. (`-nebula-2`,
 `-nebula-dust`, `-haze` were deleted with the procedural nebula/starfield —
-see Animation → Space screen backdrop.)
-`--ht-space-glass` `rgba(22,24,36,0.75)` + `-glass-border` (white a10) are the
-**landing page's card material** (the website's `--glass`/`--glass-border`
-hue, deliberately MORE transparent than the landing's 0.92 — the app blurs
-behind the card, the landing can't), worn by every card floating on the space
-backdrop — the sign-in card, `SetupCard onSpace`, the migration wizard's
-panels — with `backdrop-blur-md`, so the app's pre-workspace cards and the
-marketing site read as one material.
+see Animation → Space screen backdrop.) The **migration progress screen**
+reuses the same `OrbitLoader` but remaps `-foreground`/`-star` to
+`--ht-ink`/`--ht-ink-muted` via an inline wrapper (`ORBIT_INK_VARS`), so the
+rocket reads as dark-on-light there without a component change.
+**Deleted:** `--ht-space-glass` / `-glass-border` / `-glass-light` (the old
+white-glass card material for cards floating on the photo). The first-run
+flow is flat light with plain white cards now, so nothing floats on the photo
+— the `glass.space-75` + `glass.white-92` primitives went with them.
 
 ### Borders (opacity)
 5%/15%/15%/25% = light/medium/heavy/xheavy. Use `rgba(13,13,13,X)`.
@@ -224,49 +230,52 @@ Duration: fast 0.2s / common 0.667s / bounce 0.833s / elegant 0.582s. Under 0.3s
 
 Rules: `layout` prop on reordering items. `AnimatePresence mode="popLayout"` for lists. Spring > CSS easing.
 
-### Space screen backdrop
+### First-run flow (flat light, `FirstRunScreen`)
+The language + disclaimer gates, **sign-in**, **onboarding**, and the
+**cloud-migration wizard** all render on **`FirstRunScreen`**
+(`components/onboarding/first-run-screen.tsx`): a flat, calm full-screen page in
+the app's light-mode gutter grey (`bg-base` — the tone the sidebar melts into)
+under plain **white cards**. It pins `data-theme="light"`, so a dark-mode user
+still gets a bright light first-run (that decision stands) and every `--ht-*`
+token inside resolves light. **No space photo, no glass, no `backdrop-blur`** —
+the space/galaxy look is OUT for first-run.
+- **Cards** are the shared `SetupCard` (`components/onboarding/setup-card.tsx`):
+  a `bg-card` white card + `border-line` hairline + soft shadow. There is no
+  `onSpace` prop and no glass remap any more — `SPACE_CARD_VARS` and the
+  `--ht-space-glass*` tokens were deleted.
+- **Sign-in** (`auth/sign-in-screen.tsx`) is a white card with the filled
+  `bg-action` value panel; ink is normal `text-ink` (the last-sign-in hint on
+  `text-ink-muted`, the provider halo on `--ht-focus`, both retuned for white).
+- **Language gate** (`shell/language-gate.tsx`) offers each language as a plain
+  gray `Button` (`variant="secondary"`, none pre-selected — the OS locale only
+  picks the copy language) and a single click applies + advances (no separate
+  Continue). The sign-in provider pills are the same gray secondary; the email
+  submit is the card's single filled action.
+- The **cloud-migration wizard** (`components/onboarding/cloud-migration/`): the
+  OFFER is a PR-1003-style split card (`offer-screen.tsx` + `offer-pitch.tsx` —
+  820px elevated white card, astro side image with seam-blend gradient,
+  "What you get" icon tiles, full-width pill CTA); progress/congrats keep
+  `WizardFrame` (card-less hero, ink copy, no veil)
+  and `SetupCard`s for the done-steps; `MigrationProgressBar` (normal `bg-chip`
+  track + `bg-action` fill), `SpaceInvaders` (paints `text-ink`), the status
+  cycle, and `WizardBadge` (the `onPhoto` variant was removed) all render on
+  light tokens. The progress `OrbitLoader` is remapped to ink (`ORBIT_INK_VARS`,
+  see `--ht-space-*` above). The done congrats keeps the one colour accent, the
+  `SuccessCheck`.
+- **Gotcha (still true): `text-base` is BOTH a font-size AND a colour utility**
+  here (a `--color-base` token exists) — pair it only with a NAMED colour
+  utility (`text-ink…`), or set the colour inline; an arbitrary
+  `text-[var(...)]` loses the cascade.
+
+### Space screen backdrop (workspace-loading only)
 `SpaceScreen` (`app/src/components/space/space-screen.tsx`) is the **shared
 full-screen space layout**: the `--ht-space-canvas` base, the `SpaceBackground`
-backdrop, and a `z-10` content slot on top. The **sign-in screen**
-(`components/auth/sign-in-screen.tsx`), the **workspace-loading splash**
-(`components/shell/workspace-loading.tsx`), the **first-run onboarding flow**
-(`components/onboarding/personal-assistant-onboarding.tsx`), and the
-**cloud-migration wizard** (`components/onboarding/cloud-migration/`) all
-render inside it, so the whole boot experience reads as one continuous space.
-The sign-in screen and each onboarding step float a card **pinned to the DARK
-palette** (`data-theme="dark"`) so the card reads identically in both app
-themes (dark card on the theme-invariant space backdrop). Onboarding and the
-migration wizard each wrap ONE `SpaceScreen` at the top level so the backdrop
-photo never remounts (and its fade never replays) across step transitions;
-`SetupCard`'s `onSpace` prop is what floats each step's card on it (drops the
-standalone `h-screen`/`bg-chip` backdrop and pins the dark palette). The
-language and disclaimer gates (`shell/language-gate.tsx`,
-`shell/disclaimer-gate.tsx`) render the SAME way — each wrapped in
-`SpaceScreen` with an `onSpace` `SetupCard` — so the whole pre-workspace flow
-is one continuous space, not the old dimmed `bg-chip` backdrop. The
-**finished "You're all set" step** is the one deliberate colour accent: a
-celebratory `SuccessCheck` (warm space-nebula gradient fill + expanding ring,
-from the `--ht-space-*` tokens) above a single **"Start building"** CTA;
-everything else stays monochrome content. The **workspace-loading splash has NO card** — the `OrbitLoader` +
-status line sit directly on the dark backdrop, using the space-foreground token
-family (`--ht-space-foreground` / `-foreground-muted`, same as the sign-in
-wordmark/footer). The whole space rendering cluster lives in
-**`app/src/components/space/`**.
-
-The **cloud-migration wizard** shares the backdrop two ways: its hero screens
-(offer, progress, congrats) render through `WizardFrame`
-(`cloud-migration/wizard-frame.tsx`) — a centered dark-pinned column floating
-DIRECTLY on the photo (no card, like the loading splash) over a local radial
-text-protection veil (the hero copy sits right on the photo's bright galactic
-core) — while its interactive done-steps (connect AI / reconnect apps) float
-ordinary `onSpace` `SetupCard`s. The progress centerpiece is the shared
-`OrbitLoader` (the rocket in transit, the move made literal); the old
-rainbow-ring `MigrationLoader` + its `futuristic.css` section were deleted.
-**Gotcha (learned the hard way): `text-base` is BOTH a font-size utility and a
-colour utility here** (a `--color-base` token exists), and the colour half
-outranks an arbitrary `text-[var(...)]` class in the generated order — pair
-`text-base` only with NAMED colour utilities (`text-ink…`), or set the colour
-as an inline style.
+backdrop (the landing page's Milky Way photograph under its readability scrim),
+and a `z-10` content slot on top. Its ONE remaining consumer is the
+**workspace-loading splash** (`components/shell/workspace-loading.tsx`) — the
+`OrbitLoader` + status line sit directly on the dark backdrop, using the
+space-foreground token family (`--ht-space-foreground` / `-foreground-muted`).
+The whole space rendering cluster lives in **`app/src/components/space/`**.
 
 **`OrbitLoader`** (`space/orbit-loader.tsx` + geometry/trail constants in
 `space/orbit-path.ts`) is the loading centrepiece that replaced the old scaled-up
@@ -471,10 +480,23 @@ icon (~56px) + `text-sm font-medium` name over one truncated `text-[13px]`
 `ink-muted` description line + ONE quiet trailing glyph (`Plus`, lock, ...) at
 the row edge; the page hero is the shared `PageHeader` with a rounded
 `bg-input` search field (`border-line-input`, magnifier glyph) in its
-`trailing` slot. Two-column row grids collapse to one under `lg`. First shipped
-surface: the Integrations personal page (`integrations-view/`, see
-`knowledge-base/integrations.md` §3); apply this language when refactoring
-further pages instead of inventing new row chrome.
+`trailing` slot. Two-column row grids collapse to one under `lg`. Shipped
+surfaces: the Integrations personal page (`integrations-view/`, see
+`knowledge-base/integrations.md` §3) and the agent **Files tab** — the old
+nested `rounded-xl border` "file manager window" frame (bordered toolbar,
+zebra list with decorative filler stripes, bottom status bar whose 11px
+footer links held Upload / Open in File Manager) was flattened onto the
+canvas: `FilesBrowser` (`ui/agent/src/files-browser.tsx`) renders a
+shrink-0 header (`files-header.tsx`: grid-only breadcrumbs, sort, soft
+segmented view toggle in `view-toggle.tsx`, new-folder ghost icon, Upload
+as a filled `Button size="sm"` pill + reveal/download-all as a ghost pill)
+over a full-bleed scroll/drop body whose content is capped to the shared
+`FILES_CONTENT_COLUMN` (`mx-auto w-full max-w-4xl px-6`); list rows are
+`h-8 rounded-lg`, transparent at rest, `hover:bg-hover`. Breadcrumbs stay
+grid-view-only on purpose: the list view is a hierarchical tree always
+rooted at the workspace, so a path crumb there would misstate its scope.
+Apply this language when refactoring further pages instead of inventing
+new row chrome.
 
 **Settings (`app/src/components/settings/`)** — no sidebar. The landing is the
 **overview** (`settings-index.tsx`); it uses the shared `PageContainer` +

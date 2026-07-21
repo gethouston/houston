@@ -44,6 +44,37 @@ test("flattening two workspaces with the same agent name renames the second", ()
   );
 });
 
+test("threads a source agent's color onto its task", () => {
+  const src: SourceAgent = { ...agent("Work", "Sales"), color: "#ff0000" };
+  const plan = buildMigrationPlan([src], []);
+  assert.equal(plan[0].color, "#ff0000");
+});
+
+test("color lands on the right task when names collide (per-agent, not shared)", () => {
+  const a: SourceAgent = { ...agent("Work", "Sales"), color: "#aa0000" };
+  const b: SourceAgent = { ...agent("Personal", "Sales"), color: "#00bb00" };
+  const plan = buildMigrationPlan([a, b], []);
+  assert.equal(plan[0].color, "#aa0000");
+  assert.equal(plan[1].color, "#00bb00");
+  // The rename didn't disturb color threading.
+  assert.equal(plan[1].targetName, "Sales (Personal)");
+});
+
+test("a colorless source agent yields an undefined task color (create defaults)", () => {
+  const plan = buildMigrationPlan([agent("Work", "Sales")], []);
+  assert.equal(plan[0].color, undefined);
+});
+
+test("a resumed (alreadyDone) task still carries its color", () => {
+  const src: SourceAgent = { ...agent("Work", "Sales"), color: "#123456" };
+  const plan = buildMigrationPlan(
+    [src],
+    [{ name: "Sales", importedSource: { workspace: "Work", agent: "Sales" } }],
+  );
+  assert.equal(plan[0].alreadyDone, true);
+  assert.equal(plan[0].color, "#123456");
+});
+
 test("collision with an existing cloud agent renames with the workspace", () => {
   const plan = buildMigrationPlan(
     [agent("Work", "Sales")],

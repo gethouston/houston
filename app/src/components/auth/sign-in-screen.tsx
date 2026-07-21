@@ -1,6 +1,4 @@
-import { Button } from "@houston-ai/core";
-import { ArrowUpRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   cancelPendingAuthorize,
@@ -9,23 +7,21 @@ import {
   signInWithGoogle,
   signInWithMicrosoft,
 } from "../../lib/auth";
+import { describeLastSignIn, readLastSignIn } from "../../lib/last-sign-in";
 import { logger } from "../../lib/logger";
-import { tauriSystem } from "../../lib/tauri";
+import { FirstRunScreen } from "../onboarding/first-run-screen";
 import { HoustonLogo } from "../shell/experience-card";
-import { SpaceScreen } from "../space/space-screen";
 import { authErrorKey } from "./auth-errors";
+import { ContinueLastSignIn } from "./continue-last-sign-in";
 import { EmailSignIn } from "./email-sign-in";
 import { type Provider, ProviderButtonRow } from "./provider-button-row";
+import { LegalFooter, ReferralPanel } from "./sign-in-panels";
 
 const SIGN_IN_BY_PROVIDER = {
   google: signInWithGoogle,
   apple: signInWithApple,
   azure: signInWithMicrosoft,
 } as const;
-
-const openExternal = (url: string) => () => {
-  void tauriSystem.openUrl(url);
-};
 
 /**
  * Full-screen sign-in overlay. Rendered by App.tsx when identity (Firebase) is
@@ -36,11 +32,19 @@ const openExternal = (url: string) => () => {
  *
  * Two-panel card: the LEFT panel is the sign-in itself — Google / Apple /
  * Microsoft as one row of icon pills, then passwordless email under the
- * divider (the 6-digit code stays fully in-app); the RIGHT panel is
- * a calm value note on a muted surface. The card is pinned to the DARK palette
- * (data-theme="dark") so the login looks the same in both app themes: dark
- * "Log in" surface, dark value panel, light primary buttons. Wordmark sits
- * top-left of the screen and the legal links anchor the footer.
+ * divider (the 6-digit code stays fully in-app); the RIGHT panel is a calm
+ * value note on the filled action surface. A plain white card on the calm grey
+ * {@link FirstRunScreen} background (pinned light, so it reads the same in both
+ * app themes). Wordmark sits top-left of the screen and the legal links anchor
+ * the footer.
+ *
+ * Returning user: when a device-local last-sign-in exists, a prominent filled
+ * {@link ContinueLastSignIn} button leads the panel ("Continue with Google" +
+ * the masked address), the one-click way back to the same account; the pills and
+ * email form drop below an "or use another way" divider. The button owns the
+ * screen's single filled slot, so the email send button steps down to secondary
+ * while it shows. Choosing the email continue collapses the chrome to a focused
+ * code entry.
  *
  * Re-click semantics: the provider spinner is on only until the system browser
  * opens (`onBrowserOpened` clears it). After that the buttons are free — a
@@ -51,8 +55,25 @@ const openExternal = (url: string) => () => {
  */
 export function SignInScreen() {
   const { t } = useTranslation("errors");
+  const { t: tAuth } = useTranslation("auth");
   const [pending, setPending] = useState<Provider | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The email code flow, once started from the continue button, collapses the
+  // returning-user chrome (continue button + "another way" options) down to the
+  // focused address/code entry. A rising token drives EmailSignIn's auto-send.
+  const [emailAutoSubmit, setEmailAutoSubmit] = useState<{
+    email: string;
+    token: number;
+  } | null>(null);
+
+  // Device-local memory of the previous sign-in, read once on mount. Survives
+  // sign-out (its own localStorage key), so returning users get a one-click path
+  // back to the account they used last. Keeps the full address for the email
+  // auto-prefill; only the masked form is ever shown.
+  const lastSignIn = useMemo(() => {
+    const hint = readLastSignIn();
+    return hint ? { ...describeLastSignIn(hint), fullEmail: hint.email } : null;
+  }, []);
 
   // Cancel any in-flight loopback authorize when this screen unmounts, so a late
   // browser completion can't overwrite a session the user established another way.
@@ -88,81 +109,90 @@ export function SignInScreen() {
     }
   };
 
+  // The one-click return path. For an OAuth provider it runs the very same
+  // sign-in the matching pill would; for the email path it hands the stored
+  // address to EmailSignIn's auto-send and collapses to the code entry.
+  const onContinue = () => {
+    if (!lastSignIn) return;
+    if (lastSignIn.highlight === "email") {
+      setEmailAutoSubmit({ email: lastSignIn.fullEmail, token: Date.now() });
+      return;
+    }
+    void handleSignIn(lastSignIn.highlight)();
+  };
+
+  // Once the email flow is running, the returning-user chrome collapses so the
+  // user sees only the code entry.
+  const emailFlowActive = emailAutoSubmit !== null;
+  const showContinue = lastSignIn !== null && !emailFlowActive;
+  const continueTitle =
+    lastSignIn &&
+    (lastSignIn.providerName
+      ? tAuth("lastSignIn.continueWithProvider", {
+          provider: lastSignIn.providerName,
+        })
+      : tAuth("lastSignIn.continueWithEmail"));
+
   return (
-    <SpaceScreen>
-      <div className="flex items-center gap-2 px-8 pt-14 pb-6 text-[var(--ht-space-foreground)]">
+    <FirstRunScreen>
+      <div className="flex items-center gap-2 px-8 pt-14 pb-6 text-ink">
         <HoustonLogo size={24} />
         <span className="text-lg font-semibold tracking-tight">Houston</span>
       </div>
 
       <div className="flex flex-1 items-center justify-center px-6">
-        {/* data-theme="dark" pins the whole card to the dark palette so the
-            login reads identically in both app themes (dark card on the
-            theme-invariant space backdrop). */}
-        {/* text-ink is declared HERE, inside the pin, on purpose:
-            `color` inherits as a computed value, so a token utility set on an
-            ancestor outside the pin would carry the APP theme's foreground in. */}
-        <div
-          data-theme="dark"
-          className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-[var(--ht-space-glass-border)] text-ink shadow-2xl sm:grid-cols-3"
-        >
-          {/* The landing page's glass surface (`--ht-space-glass`), so the
-              login card and the marketing site read as one material. */}
-          <div className="flex flex-col gap-5 bg-[var(--ht-space-glass)] p-8 backdrop-blur-md sm:col-span-2">
+        {/* A plain white card, hairline + soft shadow, floating on the grey
+            first-run background. The FirstRunScreen wrapper pins light, so the
+            login reads the same bright way in both app themes. */}
+        <div className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-line bg-card text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)] sm:grid-cols-3">
+          <div className="flex flex-col gap-5 bg-card p-8 sm:col-span-2">
             <h1 className="text-lg font-medium">Log in</h1>
 
-            <ProviderButtonRow pending={pending} onSignIn={handleSignIn} />
+            {showContinue && lastSignIn && continueTitle && (
+              <>
+                <ContinueLastSignIn
+                  highlight={lastSignIn.highlight}
+                  title={continueTitle}
+                  maskedEmail={lastSignIn.maskedEmail}
+                  pending={pending !== null && pending === lastSignIn.highlight}
+                  disabled={pending !== null}
+                  onClick={onContinue}
+                />
+                <Divider label={tAuth("divider.orAnotherWay")} />
+              </>
+            )}
 
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-line" />
-              <span className="text-xs text-ink-muted">or</span>
-              <div className="h-px flex-1 bg-line" />
-            </div>
+            {!emailFlowActive && (
+              <>
+                <ProviderButtonRow pending={pending} onSignIn={handleSignIn} />
+                <Divider label={tAuth("divider.or")} />
+              </>
+            )}
 
-            <EmailSignIn />
+            <EmailSignIn
+              submitFilled={!showContinue}
+              autoSubmit={emailAutoSubmit ?? undefined}
+            />
 
             {error && <p className="text-xs text-danger">{error}</p>}
           </div>
 
-          <div className="flex flex-col justify-between gap-6 bg-action p-8 text-action-text sm:col-span-1">
-            <div className="flex flex-col gap-3">
-              <h2 className="text-lg font-medium">Share the love</h2>
-              <p className="text-sm text-action-text/70">
-                Know a team that would fly with Houston? Send them our way. When
-                they commit to 5 or more licenses, your team gets $250 in
-                credits.
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={openExternal("https://gethouston.ai/referrals")}
-              className="-ml-3 gap-1 self-start text-action-text hover:bg-action-text/10 hover:text-action-text dark:hover:bg-action-text/10"
-            >
-              See how it works
-              <ArrowUpRight className="size-4" />
-            </Button>
-          </div>
+          <ReferralPanel />
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-3 py-6 text-xs text-[var(--ht-space-foreground-muted)]">
-        <button
-          type="button"
-          onClick={openExternal("https://gethouston.ai/privacy")}
-          className="underline-offset-4 hover:text-[var(--ht-space-foreground)] hover:underline"
-        >
-          Privacy Policy
-        </button>
-        <span aria-hidden="true">·</span>
-        <button
-          type="button"
-          onClick={openExternal("https://gethouston.ai/terms")}
-          className="underline-offset-4 hover:text-[var(--ht-space-foreground)] hover:underline"
-        >
-          Terms of Service
-        </button>
-      </div>
-    </SpaceScreen>
+      <LegalFooter />
+    </FirstRunScreen>
+  );
+}
+
+/** A hairline rule with a centered lowercase label ("or", "or use another way"). */
+function Divider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="h-px flex-1 bg-line" />
+      <span className="text-xs text-ink-muted">{label}</span>
+      <div className="h-px flex-1 bg-line" />
+    </div>
   );
 }

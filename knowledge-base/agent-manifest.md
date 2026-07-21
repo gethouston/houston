@@ -272,6 +272,21 @@ is the resume contract: set on mount, cleared in every terminal path
 (`finishOnboarding` and the stuck-escape `skipOnboarding`); `App.tsx` re-enters
 onboarding while it is set.
 
+**Never re-onboard a real user.** The zero-agent first-run signal can't tell a
+fresh install from an emptied workspace (all agents deleted) or a
+just-finished cloud migration, so the durable `onboarding_completed` engine
+preference (`app/src/hooks/use-onboarding-completed.ts`, upgrade-only, uid-keyed
+localStorage mirror + try/catch fallback like the segment pref — a pod-pref
+blip must never re-onboard anyone) records "this install has onboarded".
+It is set in both onboarding terminal paths, on cloud-migration outcome
+`"done"` (`use-cloud-migration.ts::persistOutcome` — `"skipped"` deliberately
+not: a declining zero-agent user still needs onboarding), and backfilled on
+boot for anyone with ≥1 agent. Routing is the pure `onboardingRoute()`
+(`onboarding-flow.ts`, unit-tested in `app/tests/onboarding-flow.test.ts`):
+`"segment"` / `"onboarding"` only on an uncompleted first run (or an
+`onboarding_pending` resume); a completed zero-agent user lands in
+`WorkspaceShell`'s empty state.
+
 **The default assistant ships seeded.** Creation writes real capability into the
 new agent's tree via `personal-assistant-seeds.ts` (`buildPersonalAssistantSeeds`
 → `create(..., seeds)`), so first-run users get working content, not an empty

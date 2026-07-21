@@ -4,8 +4,8 @@ import { useLegalAcceptance } from "../../hooks/use-legal-acceptance";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
 import { analytics } from "../../lib/analytics";
 import { genericErrorDescription } from "../../lib/error-toast";
+import { FirstRunScreen } from "../onboarding/first-run-screen";
 import { SetupCard } from "../onboarding/setup-card";
-import { SpaceScreen } from "../space/space-screen";
 
 interface Section {
   heading: string;
@@ -16,8 +16,8 @@ interface Section {
  * Agreement step. Renders `children` once the user has accepted the current
  * disclaimer version; otherwise it shows the agreement on the shared
  * `SetupCard` as step 2 of the setup flow (the language pick runs before, in the
- * LanguageGate), floated on the shared `SpaceScreen` space backdrop so it reads as
- * the same continuous space. Copy lives in `locales/<lang>/legal.json`.
+ * LanguageGate), on the calm grey {@link FirstRunScreen} background so it reads
+ * as the same continuous flow. Copy lives in `locales/<lang>/legal.json`.
  */
 export function DisclaimerGate({ children }: { children: ReactNode }) {
   const { isAccepted, isLoading, accept } = useLegalAcceptance();
@@ -25,20 +25,20 @@ export function DisclaimerGate({ children }: { children: ReactNode }) {
 
   if (isLoading) {
     return (
-      <SpaceScreen>
-        {/* Transparent hold — SpaceScreen paints the backdrop, so we don't
-            double-paint a dim overlay. Full-size so the layout doesn't jump. */}
+      <FirstRunScreen>
+        {/* Transparent hold — the background is already painted, so we don't
+            double-paint. Full-size so the layout doesn't jump. */}
         <div aria-hidden className="flex flex-1" />
-      </SpaceScreen>
+      </FirstRunScreen>
     );
   }
 
   if (isAccepted) return <>{children}</>;
 
   return (
-    <SpaceScreen>
+    <FirstRunScreen>
       <AgreementScreen onAccept={accept} onBack={() => void clearLocale()} />
-    </SpaceScreen>
+    </FirstRunScreen>
   );
 }
 
@@ -73,7 +73,6 @@ function AgreementScreen({
 
   return (
     <SetupCard
-      onSpace
       title={t("legal:title")}
       subtitle={t("legal:intro")}
       onBack={onBack}
