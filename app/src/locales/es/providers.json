@@ -63,6 +63,7 @@
     "label": "Clave de API",
     "placeholder": "Pega tu clave de API",
     "required": "Primero ingresa tu clave de API.",
+    "verifyFailed": "No se pudo conectar esta clave: {{detail}}",
     "show": "Mostrar clave",
     "hide": "Ocultar clave",
     "save": "Conectar",

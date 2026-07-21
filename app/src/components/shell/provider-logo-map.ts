@@ -16,18 +16,15 @@
  * via its per-provider logo endpoint (models.dev/logos/<id>.svg) — we ship NO
  * hand-approximated glyphs, since an inexact mark reads as a wrong logo.
  * Off-endpoint sourcing, same rule: `meta` carries models.dev's `llama` art,
- * `qwen` its `alibaba` art, `ant-ling` the Ant Group mark from LobeHub's icon
- * set (github.com/lobehub/lobe-icons, MIT), and `opencode` the official O mark
- * from opencode.ai/brand — real marks under different ids, never
- * approximations. An id with no real mark anywhere falls back to the polished
- * monogram.
+ * `qwen` its `alibaba` art, and `opencode` the official O mark from
+ * opencode.ai/brand — real marks under different ids, never approximations. An
+ * id with no real mark anywhere falls back to the polished monogram.
  *
  * Keys are the provider ids that resolve to their OWN mark. Regional/variant ids
  * that models.dev serves the default for reuse a parent via `BRAND_ALIASES`.
  */
 export type BrandKey =
   | "anthropic"
-  | "ant-ling"
   | "cohere"
   | "meta"
   | "qwen"
@@ -60,7 +57,6 @@ export type BrandKey =
 
 export const BRAND_KEYS: ReadonlySet<BrandKey> = new Set([
   "anthropic",
-  "ant-ling",
   "cohere",
   "meta",
   "qwen",
@@ -101,7 +97,10 @@ export const BRAND_KEYS: ReadonlySet<BrandKey> = new Set([
  */
 export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
   // Variant ids models.dev serves the generic default for — reuse a parent
-  // brand's real mark rather than a monogram.
+  // brand's real mark rather than a monogram. Retired provider ids (kimi-coding,
+  // moonshotai-cn, xiaomi-token-plan-*) keep their alias: they no longer render
+  // a card (DROP_PI_PROVIDERS) but a legacy conversation pinned to one still
+  // shows the right glyph.
   "openai-codex": "openai",
   "minimax-cn": "minimax",
   "moonshotai-cn": "moonshotai",

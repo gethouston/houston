@@ -88,6 +88,10 @@ const MODEL_UNAVAILABLE_PATTERNS = [
   "is not supported",
   "model_not_found",
   "does not exist or you do not have access",
+  // together.ai's gated-model body — "Unable to access model <id>. Please visit
+  // …" — for models its serverless tier doesn't include. The credential
+  // authenticated fine; only the model is out of reach.
+  "unable to access model",
 ];
 
 /**

@@ -63,6 +63,7 @@
     "label": "API key",
     "placeholder": "Paste your API key",
     "required": "Enter your API key first.",
+    "verifyFailed": "This key couldn't be connected: {{detail}}",
     "show": "Show key",
     "hide": "Hide key",
     "save": "Connect",

@@ -31,6 +31,22 @@ const PROVES_AUTH = new Set([
 ]);
 
 /**
+ * Human-readable text for an exception the verify request RAISED (vs a resolved
+ * errored reply). An abort/timeout DOMException reads like a bug ("The
+ * operation was aborted due to timeout"), so name what actually happened —
+ * that text reaches the user verbatim through the connect dialog.
+ */
+export function raisedMessage(e: unknown, providerId: string): string {
+  if (
+    e instanceof Error &&
+    (e.name === "TimeoutError" || e.name === "AbortError")
+  ) {
+    return `${providerId} did not answer within ${VERIFY_TIMEOUT_MS / 1000}s`;
+  }
+  return e instanceof Error ? e.message : String(e);
+}
+
+/**
  * Why a key failed verification, carried on the wire (`/auth/:provider/api-key`
  * 401 body `reason`) so the connect dialog can show actionable copy instead of
  * a generic failure:
@@ -87,7 +103,7 @@ export async function verifyApiKey(
   } catch (e) {
     // pi raises (rather than resolving an errored message) for pre-request
     // failures; a timeout lands here too. Same classification path.
-    message = e instanceof Error ? e.message : String(e);
+    message = raisedMessage(e, providerId);
   }
 
   const classified = classifyProviderError({
@@ -123,7 +139,7 @@ async function verifyGoogleApiKey(
       signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
     });
   } catch (e) {
-    throw noVerdict(providerId, e instanceof Error ? e.message : String(e));
+    throw noVerdict(providerId, raisedMessage(e, providerId));
   }
   if (res.ok) return;
   // Throttled = the key authenticated; a garbage key can't be rate-limited.

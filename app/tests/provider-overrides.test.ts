@@ -2,6 +2,7 @@ import { ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   DESCRIPTION_BY_ID,
+  DROP_PI_PROVIDERS,
   FEATURED_PROVIDER_IDS,
   PROVIDER_OVERRIDES,
   providerDescription,
@@ -71,29 +72,41 @@ describe("providerDescription", () => {
       "huggingface",
       "moonshotai",
       "zai",
-      "cohere",
-      "perplexity",
       "vercel-ai-gateway",
       "cloudflare-ai-gateway",
       "cloudflare-workers-ai",
       "azure-openai-responses",
       "google-vertex",
-      "ant-ling",
       "openai-compatible",
-      "moonshotai-cn",
-      "minimax-cn",
       "zai-coding-cn",
-      "kimi-coding",
       "xiaomi",
-      "xiaomi-token-plan-cn",
-      "xiaomi-token-plan-sgp",
-      "xiaomi-token-plan-ams",
     ];
     for (const id of ids) {
       const desc = providerDescription(id);
       ok(desc.length > 0, `missing description for ${id}`);
       ok(desc.length <= 60, `description too long for ${id}: ${desc.length}`);
       ok(!desc.includes("—"), `em dash in description for ${id}`);
+    }
+  });
+
+  it("retired providers are dropped from the catalog, not merely uncurated", () => {
+    // 2026-07 provider QA: these cards are gone from every connect/pick
+    // surface. The drop is presentation-only (legacy conversations still run),
+    // so the ids must sit in DROP_PI_PROVIDERS and carry no override entry.
+    for (const id of [
+      "ant-ling",
+      "kimi-coding",
+      "moonshotai-cn",
+      "xiaomi-token-plan-ams",
+      "xiaomi-token-plan-cn",
+      "xiaomi-token-plan-sgp",
+    ]) {
+      ok(DROP_PI_PROVIDERS.has(id), `${id} must be in DROP_PI_PROVIDERS`);
+      strictEqual(
+        PROVIDER_OVERRIDES[id],
+        undefined,
+        `${id} must not keep a curated override`,
+      );
     }
   });
 
