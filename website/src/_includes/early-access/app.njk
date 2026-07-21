@@ -1,3 +1,4 @@
+{% include "installer-urls.njk" %}
 <script>
   // ── Storage config ──
   // Supabase anon key is public + RLS-protected; injected at build (SUPABASE_ANON_KEY),
@@ -33,18 +34,15 @@
   var macBtn = document.getElementById('macBtn');
   var winBtn = document.getElementById('winBtn');
 
-  // Resolve the real installer URLs from the latest GitHub release (same source
-  // as the home page). On failure we fall back to the site, and log it.
+  // Resolve the real installer URLs via the shared resolver
+  // (installer-urls.njk — newest `cloud-v*` prerelease, same source and
+  // selection as the home page). On failure we fall back to the site, and
+  // log it.
   var dmgUrl = null, winUrl = null;
-  fetch('https://api.github.com/repos/gethouston/houston/releases/latest')
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      var assets = (data && data.assets) || [];
-      var dmg = assets.find(function (a) { return /\.dmg$/.test(a.name); });
-      if (dmg) dmgUrl = dmg.browser_download_url;
-      var win = assets.find(function (a) { return /_x64.*\.msi$/.test(a.name); }) ||
-                assets.find(function (a) { return /\.msi$/.test(a.name); });
-      if (win) winUrl = win.browser_download_url;
+  window.houstonInstallerUrls()
+    .then(function (urls) {
+      dmgUrl = urls.dmg;
+      winUrl = urls.winX64 || urls.winArm64;
     })
     .catch(function (err) { console.warn('early-access: release lookup failed, using fallback link:', err); });
 
