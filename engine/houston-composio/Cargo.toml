@@ -1,6 +1,6 @@
 [package]
 name = "houston-composio"
-version = "0.4.28"
+version = "0.4.29"
 edition = "2021"
 description = "Composio integration — CLI install/lifecycle, OAuth, app catalog (transport-neutral)"
 license = "MIT"
