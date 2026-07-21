@@ -29,8 +29,14 @@ name: Website Deploy
 # ── Required repo secrets ─────────────────────────────────────────────────────
 #   SUPABASE_ANON_KEY   - public (RLS-protected) Supabase anon key for the
 #                         /waitlist form. Still Supabase, intentionally unchanged.
+#   POSTHOG_KEY         - public PostHog ingest token (phc_...). base.njk omits
+#                         the whole analytics snippet when it is empty, so a
+#                         guard step fails the build loudly instead of shipping
+#                         a blind site (this exact miss cost 2026-05-25 →
+#                         2026-07-21 of website analytics when builds moved off
+#                         Cloudflare Pages, which held the key in its dashboard).
 # Optional (committed defaults exist):
-#   SUPABASE_URL, WAITLIST_SHEET_ENDPOINT
+#   SUPABASE_URL, WAITLIST_SHEET_ENDPOINT, POSTHOG_HOST
 
 on:
   push:
@@ -64,6 +70,18 @@ jobs:
         working-directory: website
         run: npm ci
 
+      # env.js falls back to an empty posthogKey and base.njk then silently
+      # omits the whole PostHog snippet, so a missing secret would ship a site
+      # with no analytics and a green build. Fail loudly instead.
+      - name: Fail if POSTHOG_KEY is missing
+        env:
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+        run: |
+          if [ -z "$POSTHOG_KEY" ]; then
+            echo "::error::POSTHOG_KEY secret is not set — refusing to deploy the site without analytics. Create it in Settings → Secrets and variables → Actions (public phc_ ingest token)."
+            exit 1
+          fi
+
       - name: Build site
         working-directory: website
         run: npx @11ty/eleventy
@@ -71,6 +89,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           WAITLIST_SHEET_ENDPOINT: ${{ secrets.WAITLIST_SHEET_ENDPOINT }}
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
 
       - name: Auth to GCP
         uses: google-github-actions/auth@v2
