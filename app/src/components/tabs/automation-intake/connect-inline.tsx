@@ -54,10 +54,10 @@ function OAuthConnect({
 }: ConnectInlineProps) {
   const { t } = useTranslation("routines");
   const connectFlow = useConnectFlow({ agentId });
-  const busy = connectFlow.state !== null;
-  const waiting =
-    connectFlow.state?.toolkit === toolkit &&
-    connectFlow.state.step === "waiting";
+  // Per-slug flow states (main's multi-connect API): this card only ever drives
+  // ONE toolkit, so "busy" is scoped to it rather than any in-flight connect.
+  const busy = toolkit in connectFlow.states;
+  const waiting = connectFlow.states[toolkit] === "waiting";
 
   const start = async () => {
     const outcome = await connectFlow.connect(toolkit);
@@ -70,7 +70,11 @@ function OAuthConnect({
         {t("triggerStep.connectReason", { app: appName })}
       </p>
       {waiting ? (
-        <ConnectWaitingPanel appName={appName} connectFlow={connectFlow} />
+        <ConnectWaitingPanel
+          appName={appName}
+          connectFlow={connectFlow}
+          toolkit={toolkit}
+        />
       ) : (
         <Button
           className="gap-1.5 self-start"
