@@ -20,6 +20,7 @@ import {
   fetchSourceScan,
   type SourceHostHandshake,
 } from "./cloud-migration-transport";
+import { readLegacyAgentColors } from "./legacy-agent-colors";
 import { osStartMigrationSourceHost } from "./os-bridge";
 
 export interface PreparedMigration {
@@ -59,12 +60,20 @@ export async function prepareMigration(
 ): Promise<PreparedMigration> {
   const source = await osStartMigrationSourceHost();
   const scan = await fetchSourceScan(source);
-  const existing = await probeExistingAgents(existingAgents, scan.agents);
+  // Color is a client-only overlay (never on the wire), still in this webview's
+  // localStorage from the legacy install. Attach each agent's saved color —
+  // by id, then name — so the migrated cloud agent keeps it (HOU-719).
+  const colors = readLegacyAgentColors();
+  const agents: SourceAgent[] = scan.agents.map((a) => ({
+    ...a,
+    color: a.color ?? colors.colorFor(a.id, a.name),
+  }));
+  const existing = await probeExistingAgents(existingAgents, agents);
   return {
     source,
-    tasks: buildMigrationPlan(scan.agents, existing),
+    tasks: buildMigrationPlan(agents, existing),
     // Per-agent records (ancient installs) ∪ the account-level Composio
     // list (the v0.4.x consumer account) — one deduped, sorted checklist.
-    integrations: collectIntegrations(scan.agents, scan.accountIntegrations),
+    integrations: collectIntegrations(agents, scan.accountIntegrations),
   };
 }
