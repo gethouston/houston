@@ -2,22 +2,19 @@ import { Button, cn } from "@houston-ai/core";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 
-// On the space backdrop the card is the landing page's near-opaque bluish
-// glass (`--ht-space-glass`), not the futuristic aurora glass the dark tokens
-// are tuned for — so `secondary` (5% white) and `accent` (8%) read as nearly
-// invisible fills on it. We re-point the underlying `--ht-*` custom properties
-// (which every `--color-*` Tailwind utility aliases) at the theme-invariant
-// `--ht-space-card-*` token set, scoped to just this card and its descendants.
-// Inline style so it always wins over the pinned `[data-theme="dark"]` token
-// block; it never leaks past the onSpace card. Buttons here read as clickable
-// through FILL contrast alone (secondary/accent) — no border is boosted: the
-// card itself and every button inside it are deliberately borderless.
-// Exported for the other dark-pinned on-space surfaces (the cloud-migration
-// wizard's hero frame) so the remap stays defined exactly once.
+// The card material for every surface FLOATING on the theme-invariant dark
+// space photo. Those cards pin `data-theme="light"` (so every `--ht-*` resolves
+// to its LIGHT value — dark ink on a white surface — regardless of the app
+// theme), then remap `--ht-card` to the near-opaque white space glass
+// (`--ht-space-glass-light`, rgba white .92): opaque enough that dark ink clears
+// WCAG AA over the bright galactic core, still translucent enough for the
+// `backdrop-blur` to read as glass. Every `bg-card` inside the subtree — the
+// card shell itself and any nested panel — then wears the same material, defined
+// once. Inline style so it wins over the pinned `[data-theme="light"]` token
+// block; it never leaks past the onSpace card. Exported so the cloud-migration
+// wizard's hero frame shares the exact same glass.
 export const SPACE_CARD_VARS: CSSProperties = {
-  "--ht-chip": "var(--ht-space-card-secondary)",
-  "--ht-chip-text": "var(--ht-space-card-secondary-fg)",
-  "--ht-hover": "var(--ht-space-card-accent)",
+  "--ht-card": "var(--ht-space-glass-light)",
 } as CSSProperties;
 
 // Re-exported so onboarding call sites keep a single import surface
@@ -33,9 +30,10 @@ export { OptionCard } from "./option-card";
  *
  * `onSpace` floats the card inside the shared `SpaceScreen` space backdrop used by
  * onboarding: it drops the standalone `h-screen`/`bg-chip` backdrop (the
- * SpaceScreen supplies both) and pins the card to the dark palette so it reads
- * identically in both app themes, exactly like the sign-in card. Left false for
- * the standalone gates (language, disclaimer), which keep the dimmed backdrop.
+ * SpaceScreen supplies both) and pins the card to the LIGHT palette (a white
+ * glass card, dark ink) so it reads identically in both app themes over the
+ * theme-invariant dark photo. Left false for the standalone gates (language,
+ * disclaimer), which keep the dimmed backdrop.
  *
  * Houston-monochrome, not Discord-blue: selection uses the near-black
  * foreground, never a decorative accent (design-system color restraint).
@@ -88,19 +86,19 @@ export function SetupCard({
           across every step and the footer never jumps as content changes.
           Keyed by title so React remounts (and the CSS entrance replays) on
           each step change, but not on in-step state updates like typing.
-          On the space backdrop the card pins the dark palette (data-theme)
-          and wears the LANDING PAGE's glass (`--ht-space-glass` translucent
-          bluish surface + hairline + blur), so the app's pre-workspace cards
-          and the marketing site's cards read as one material. Off-space stays
-          the borderless solid card. */}
+          On the space backdrop the card pins the LIGHT palette (data-theme) and
+          wears near-opaque white space glass (`--ht-space-glass-light` via the
+          `bg-card` remap in SPACE_CARD_VARS + a cool hairline + blur), so dark
+          ink reads at WCAG AA over the bright galactic core while the card still
+          floats as glass. Off-space stays the borderless solid card. */}
       <div
         key={title}
-        data-theme={onSpace ? "dark" : undefined}
+        data-theme={onSpace ? "light" : undefined}
         style={onSpace ? SPACE_CARD_VARS : undefined}
         className={cn(
           "setup-step-in relative z-10 flex h-[680px] max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl p-8",
           onSpace
-            ? "border border-[var(--ht-space-glass-border)] bg-[var(--ht-space-glass)] text-ink shadow-2xl backdrop-blur-md"
+            ? "border border-line bg-card text-ink shadow-2xl backdrop-blur-md"
             : "bg-input shadow-[0_4px_24px_rgba(0,0,0,0.06)]",
         )}
       >

@@ -7,9 +7,11 @@ import { SPACE_CARD_VARS } from "../setup-card";
  * column floating DIRECTLY on the shared `SpaceScreen` backdrop (the landing
  * page's Milky Way photograph), no card, like the workspace-loading splash,
  * so the move-to-cloud moment reads as the same continuous space as sign-in
- * and onboarding. Pins the dark palette + the space-card token remap so
- * interactive content inside (buttons, chips, rows) reads on the photo.
- * Content scrolls inside the frame; the page itself never scrolls.
+ * and onboarding. The HERO copy sits directly on the (still dark) photo, so it
+ * stays on the theme-invariant white `--ht-space-foreground`; the frame pins
+ * `data-theme="light"` + the `bg-card` glass remap (SPACE_CARD_VARS) so any
+ * CARD content nested inside reads as a light white-glass surface, matching the
+ * onboarding SetupCards. Content scrolls inside the frame; the page never scrolls.
  */
 export function WizardFrame({
   mark,
@@ -37,7 +39,7 @@ export function WizardFrame({
 }) {
   return (
     <div
-      data-theme="dark"
+      data-theme="light"
       style={SPACE_CARD_VARS}
       className="relative flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-[var(--ht-space-foreground)]"
     >

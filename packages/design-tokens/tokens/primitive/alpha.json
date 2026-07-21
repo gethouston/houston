@@ -18,6 +18,7 @@
       "white-68": { "$value": "rgba(255, 255, 255, 0.68)" },
       "white-76": { "$value": "rgba(255, 255, 255, 0.76)" },
       "white-82": { "$value": "rgba(255, 255, 255, 0.82)" },
+      "white-92": { "$value": "rgba(255, 255, 255, 0.92)" },
       "neutral-50": { "$value": "rgba(40, 40, 40, 0.5)" },
       "neutral-58": { "$value": "rgba(50, 50, 52, 0.58)" },
       "neutral-85": { "$value": "rgba(34, 34, 34, 0.85)" },

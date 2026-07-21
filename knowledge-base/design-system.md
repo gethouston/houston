@@ -233,13 +233,17 @@ backdrop, and a `z-10` content slot on top. The **sign-in screen**
 (`components/onboarding/personal-assistant-onboarding.tsx`), and the
 **cloud-migration wizard** (`components/onboarding/cloud-migration/`) all
 render inside it, so the whole boot experience reads as one continuous space.
-The sign-in screen and each onboarding step float a card **pinned to the DARK
-palette** (`data-theme="dark"`) so the card reads identically in both app
-themes (dark card on the theme-invariant space backdrop). Onboarding and the
+The **sign-in screen** floats a card **pinned to the DARK palette**
+(`data-theme="dark"`) so the login reads identically in both app themes (dark
+card on the theme-invariant space backdrop). The **onboarding steps and the
+migration wizard instead pin the LIGHT palette** (`data-theme="light"` + the
+`bg-card` remap in `SPACE_CARD_VARS` → near-opaque white space-glass,
+`--ht-space-glass-light`, dark ink), so their cards read as bright white glass
+on the same dark photo. Onboarding and the
 migration wizard each wrap ONE `SpaceScreen` at the top level so the backdrop
 photo never remounts (and its fade never replays) across step transitions;
 `SetupCard`'s `onSpace` prop is what floats each step's card on it (drops the
-standalone `h-screen`/`bg-chip` backdrop and pins the dark palette). The
+standalone `h-screen`/`bg-chip` backdrop and pins the light space-glass). The
 language and disclaimer gates (`shell/language-gate.tsx`,
 `shell/disclaimer-gate.tsx`) render the SAME way — each wrapped in
 `SpaceScreen` with an `onSpace` `SetupCard` — so the whole pre-workspace flow
@@ -255,8 +259,11 @@ wordmark/footer). The whole space rendering cluster lives in
 
 The **cloud-migration wizard** shares the backdrop two ways: its hero screens
 (offer, progress, congrats) render through `WizardFrame`
-(`cloud-migration/wizard-frame.tsx`) — a centered dark-pinned column floating
-DIRECTLY on the photo (no card, like the loading splash) over a local radial
+(`cloud-migration/wizard-frame.tsx`) — a centered column (it pins
+`data-theme="light"` + `SPACE_CARD_VARS` so any nested card reads as white
+glass, while the hero copy itself stays on the theme-invariant white
+`--ht-space-foreground`) floating DIRECTLY on the photo (no card, like the
+loading splash) over a local radial
 text-protection veil (the hero copy sits right on the photo's bright galactic
 core) — while its interactive done-steps (connect AI / reconnect apps) float
 ordinary `onSpace` `SetupCard`s. The progress centerpiece is the shared

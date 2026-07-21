@@ -1,28 +1,22 @@
 import { AsyncButton } from "@houston-ai/core";
 import { Clock, RefreshCw, Sparkles, UploadCloud } from "lucide-react";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { LegacyDetection } from "../../../lib/cloud-migration";
 import { HoustonLogo } from "../../shell/experience-card";
+import { WizardBadge } from "../wizard-badge";
 import { WizardFrame } from "./wizard-frame";
-
-/** One benefit, one breath: an icon + a few words, never a paragraph. */
-function Benefit({ icon, label }: { icon: ReactNode; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-chip px-4 py-2 text-sm font-medium text-ink">
-      {icon}
-      {label}
-    </span>
-  );
-}
 
 /**
  * The wizard's opening announcement (HOU-719). Shown on the FIRST run of the
  * new cloud app (the old desktop app auto-updates into this one, so there is
  * no separate "download the new app" step). A hero moment on the shared space
- * backdrop: headline, one short line, three benefit chips, one big CTA.
+ * backdrop: headline, one short line, three benefit badges, one big CTA.
  * Deliberately no walls of text — the audience skims. `detection` stays in
  * the props for the caller's analytics.
+ *
+ * Everything that only LABELS state (the beta badge, the three benefits) is a
+ * non-interactive {@link WizardBadge} — a hairline, fill-less chip — so the
+ * single filled CTA ("Migrate Now") reads as the one and only thing to press.
  */
 export function OfferScreen({
   onStart,
@@ -38,10 +32,9 @@ export function OfferScreen({
     <WizardFrame
       mark={<HoustonLogo size={56} />}
       badge={
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-chip px-3 py-1 text-xs font-medium text-ink">
-          <Sparkles className="size-3.5" aria-hidden />
+        <WizardBadge icon={<Sparkles aria-hidden />} onPhoto>
           {t("offer.betaBadge")}
-        </span>
+        </WizardBadge>
       }
       title={t("offer.title")}
       body={t("offer.body")}
@@ -67,18 +60,15 @@ export function OfferScreen({
       }
     >
       <div className="flex flex-wrap items-center justify-center gap-2.5">
-        <Benefit
-          icon={<Clock className="size-4" aria-hidden />}
-          label={t("offer.benefit1")}
-        />
-        <Benefit
-          icon={<RefreshCw className="size-4" aria-hidden />}
-          label={t("offer.benefit2")}
-        />
-        <Benefit
-          icon={<UploadCloud className="size-4" aria-hidden />}
-          label={t("offer.benefit3")}
-        />
+        <WizardBadge icon={<Clock aria-hidden />} onPhoto>
+          {t("offer.benefit1")}
+        </WizardBadge>
+        <WizardBadge icon={<RefreshCw aria-hidden />} onPhoto>
+          {t("offer.benefit2")}
+        </WizardBadge>
+        <WizardBadge icon={<UploadCloud aria-hidden />} onPhoto>
+          {t("offer.benefit3")}
+        </WizardBadge>
       </div>
     </WizardFrame>
   );
