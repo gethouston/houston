@@ -234,7 +234,7 @@ Rules: `layout` prop on reordering items. `AnimatePresence mode="popLayout"` for
 The language + disclaimer gates, **sign-in**, **onboarding**, and the
 **cloud-migration wizard** all render on **`FirstRunScreen`**
 (`components/onboarding/first-run-screen.tsx`): a flat, calm full-screen page in
-the app's light-mode gutter grey (`bg-base` — the tone the sidebar melts into)
+the app's light-mode gutter grey (`bg-gutter` — the tone the sidebar melts into)
 under plain **white cards**. It pins `data-theme="light"`, so a dark-mode user
 still gets a bright light first-run (that decision stands) and every `--ht-*`
 token inside resolves light. **No space photo, no glass, no `backdrop-blur`** —
@@ -262,10 +262,14 @@ the space/galaxy look is OUT for first-run.
   light tokens. The progress `OrbitLoader` is remapped to ink (`ORBIT_INK_VARS`,
   see `--ht-space-*` above). The done congrats keeps the one colour accent, the
   `SuccessCheck`.
-- **Gotcha (still true): `text-base` is BOTH a font-size AND a colour utility**
-  here (a `--color-base` token exists) — pair it only with a NAMED colour
-  utility (`text-ink…`), or set the colour inline; an arbitrary
-  `text-[var(...)]` loses the cascade.
+- **Gotcha RESOLVED (2026-07): `text-base` is a plain font-size utility
+  again.** The gutter token's Tailwind alias was renamed `--color-base` →
+  `--color-gutter` (`ui/core/src/globals.css`) precisely because a colour
+  named `base` made Tailwind also emit `text-base` as a COLOUR utility —
+  any `text-base` heading without its own colour class rendered
+  background-coloured (invisible on a matching surface, both themes; the
+  forced-update dialog title was the casualty that exposed it). Never
+  reintroduce a colour token named `base`.
 
 ### Space screen backdrop (workspace-loading only)
 `SpaceScreen` (`app/src/components/space/space-screen.tsx`) is the **shared

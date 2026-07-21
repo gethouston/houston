@@ -6,7 +6,7 @@ import { isMac } from "../../lib/platform";
 /**
  * The shared full-screen layout for every first-run / migration surface (the
  * language + disclaimer gates, sign-in, onboarding, and the cloud-migration
- * wizard). A flat, calm page: the app's light-mode gutter grey (`bg-base`, the
+ * wizard). A flat, calm page: the app's light-mode gutter grey (`bg-gutter`, the
  * same tone the sidebar melts into) under white cards, no space photo, no glass.
  *
  * `data-theme="light"` is pinned so the first-run flow reads as a bright light
@@ -26,7 +26,7 @@ export function FirstRunScreen({
     <div
       data-theme="light"
       className={cn(
-        "relative flex h-screen flex-col bg-base text-ink",
+        "relative flex h-screen flex-col bg-gutter text-ink",
         className,
       )}
     >

@@ -53,8 +53,12 @@
   /* The standard main-canvas surface: the light gray the content panes float
      cards on (dark = the frosted "screen" glass). Backs the Arc `.canvas-screen`
      panes; `bg-background` lets any surface that lives ON the canvas (e.g. the chat
-     panel) reference the SAME tone as one source of truth. */
-  --color-base: var(--ht-base);
+     panel) reference the SAME tone as one source of truth.
+     Named `gutter`, NEVER `base`: a `base` color makes Tailwind emit
+     `text-base` as a COLOR utility, shadowing the standard 16px font-size
+     utility and painting every `text-base` heading background-colored
+     (invisible on a matching surface, both themes). */
+  --color-gutter: var(--ht-base);
   --color-background: var(--ht-background);
   --color-card: var(--ht-card);
   --color-card-hover: var(--ht-card-hover);
