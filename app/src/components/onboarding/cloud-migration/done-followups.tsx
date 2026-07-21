@@ -1,6 +1,6 @@
 import { Button } from "@houston-ai/core";
 import confetti from "canvas-confetti";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -114,6 +114,11 @@ export function DoneCongrats({ onFinish }: { onFinish: () => void }) {
  * toolkit catalog). Connect is the REAL account-level OAuth hand-off — the
  * same `useConnectFlow` the Integrations tab runs (mint link, open browser,
  * poll until active, invalidate, toast failures) with no agent context.
+ *
+ * Connects run TRULY in parallel: each row's Connect is gated only on ITS OWN
+ * slug being in flight (`slug in flow.states`), never on any other app, so the
+ * user can hand off several OAuth tabs at once. A row mid-flight shows a live
+ * "Connecting…" line with a per-slug Cancel that bails out of that one flow.
  */
 export function DoneStepApps({ integrations }: { integrations: string[] }) {
   const { t } = useTranslation("migration");
@@ -150,7 +155,7 @@ export function DoneStepApps({ integrations }: { integrations: string[] }) {
     <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {integrations.map((slug) => {
         const isConnected = activeToolkits.has(slug);
-        const isBusy = flow.state?.toolkit === slug;
+        const inFlight = slug in flow.states;
         return (
           <li key={slug}>
             <AppRow
@@ -164,15 +169,29 @@ export function DoneStepApps({ integrations }: { integrations: string[] }) {
                     <Check className="size-4" strokeWidth={2.5} />
                     {t("done.connected")}
                   </span>
+                ) : inFlight ? (
+                  // This app's OAuth is mid-flight: a live status line plus a
+                  // per-slug Cancel that stops ONLY this flow (silent, leaves any
+                  // other app still connecting untouched).
+                  <span className="inline-flex items-center gap-2 pr-1 text-xs text-ink-muted">
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                    {t("done.connecting")}
+                    <button
+                      type="button"
+                      onClick={() => flow.cancel(slug)}
+                      className="font-medium text-ink underline-offset-2 transition-colors hover:underline"
+                    >
+                      {t("done.cancel")}
+                    </button>
+                  </span>
                 ) : (
                   <Button
                     variant="secondary"
                     size="sm"
                     className="rounded-full"
-                    disabled={flow.state !== null}
                     onClick={() => void flow.connect(slug)}
                   >
-                    {isBusy ? t("done.connecting") : t("done.connect")}
+                    {t("done.connect")}
                   </Button>
                 )
               }

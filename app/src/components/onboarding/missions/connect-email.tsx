@@ -49,12 +49,10 @@ export function ConnectEmailMission({
     ready || attempted,
   );
 
-  const {
-    state: connectState,
-    connect,
-    cancel,
-  } = useConnectFlow({ agentId: agent.id });
-  const connecting = connectState !== null;
+  const { states, connect, cancel } = useConnectFlow({ agentId: agent.id });
+  // One-at-a-time by design: this step offers a single email provider, so any
+  // live flow dims the other row (the per-slug flow could run both at once).
+  const connecting = Object.keys(states).length > 0;
 
   const handedOff = useRef(false);
   useEffect(() => {
@@ -82,27 +80,30 @@ export function ConnectEmailMission({
     [connect, connections.data],
   );
 
-  const tryCancel = useCallback(() => {
-    if (Date.now() - startedAtRef.current < CANCEL_GUARD_MS) return;
-    cancel();
-  }, [cancel]);
+  const tryCancel = useCallback(
+    (toolkit: string) => {
+      if (Date.now() - startedAtRef.current < CANCEL_GUARD_MS) return;
+      cancel(toolkit);
+    },
+    [cancel],
+  );
 
   const onBrandRow = useCallback(
     (toolkit: string, label: string) => {
-      if (connectState?.toolkit === toolkit) {
-        tryCancel();
+      if (toolkit in states) {
+        tryCancel(toolkit);
         return;
       }
       startConnect(toolkit, label);
     },
-    [connectState, tryCancel, startConnect],
+    [states, tryCancel, startConnect],
   );
 
   const busyLabel = t("tutorial.missions.connectEmail.connecting");
   const cancelLabel = t("tutorial.missions.connectEmail.cancel");
-  const isLoading = (toolkit: string) => connectState?.toolkit === toolkit;
+  const isLoading = (toolkit: string) => toolkit in states;
   const disabledExcept = (toolkit: string) =>
-    connecting && connectState?.toolkit !== toolkit;
+    connecting && !(toolkit in states);
 
   return (
     <SetupCard
