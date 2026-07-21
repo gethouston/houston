@@ -1,22 +1,23 @@
 import { AsyncButton } from "@houston-ai/core";
-import { Clock, RefreshCw, Sparkles, UploadCloud } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import astroJpg from "../../../assets/space/astro-960.jpg";
+import astroWebp from "../../../assets/space/astro-960.webp";
 import type { LegacyDetection } from "../../../lib/cloud-migration";
-import { HoustonLogo } from "../../shell/experience-card";
 import { WizardBadge } from "../wizard-badge";
-import { WizardFrame } from "./wizard-frame";
+import { OfferPitch } from "./offer-pitch";
 
 /**
  * The wizard's opening announcement (HOU-719). Shown on the FIRST run of the
- * new cloud app (the old desktop app auto-updates into this one, so there is
- * no separate "download the new app" step). A hero moment on the shared space
- * backdrop: headline, one short line, three benefit badges, one big CTA.
- * Deliberately no walls of text — the audience skims. `detection` stays in
- * the props for the caller's analytics.
- *
- * Everything that only LABELS state (the beta badge, the three benefits) is a
- * non-interactive {@link WizardBadge} — a hairline, fill-less chip — so the
- * single filled CTA ("Migrate Now") reads as the one and only thing to press.
+ * new cloud app (the old desktop app auto-updates into this one). Adapts the
+ * "Move to the cloud" announcement modal (PR-1003) to the first-run flow: a
+ * bounded, elevated white split card centered on the calm grey
+ * {@link FirstRunScreen} page (not a modal overlay, no space backdrop behind
+ * it) — a full-height astronaut side image with a seam-blend gradient, then a
+ * content column with the early-believer copy, the "what you get" pitch, a
+ * free-note footnote, and one full-width pill CTA. "Migrate later" stays the
+ * quiet escape below it. `detection` stays in the props for the caller's
+ * analytics.
  */
 export function OfferScreen({
   onStart,
@@ -29,45 +30,69 @@ export function OfferScreen({
   const { t } = useTranslation("migration");
 
   return (
-    <WizardFrame
-      mark={<HoustonLogo size={56} />}
-      badge={
-        <WizardBadge icon={<Sparkles aria-hidden />}>
-          {t("offer.betaBadge")}
-        </WizardBadge>
-      }
-      title={t("offer.title")}
-      body={t("offer.body")}
-      footer={
-        <div className="flex w-full max-w-xs flex-col items-center gap-3">
+    <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-6 py-10">
+      {/* Borderless split card: the shadow separates it from the grey page, a
+          hairline would read as a gap between the full-bleed image and the
+          card edge. The image takes a side column so the pitch keeps a
+          comfortable measure beside it. */}
+      <div className="relative flex w-full max-w-[820px] overflow-hidden rounded-2xl bg-card text-ink shadow-[0_16px_60px_rgba(0,0,0,0.12)]">
+        {/* space-canvas underlay: any subpixel sliver the cover-crop leaves at
+            the rounded edge reads as space-dark, never white. */}
+        <div className="relative hidden w-[360px] shrink-0 self-stretch bg-[var(--ht-space-canvas)] sm:block">
+          <picture className="absolute inset-0 block">
+            <source type="image/webp" srcSet={astroWebp} />
+            <img
+              src={astroJpg}
+              alt=""
+              aria-hidden="true"
+              width={960}
+              height={1440}
+              decoding="async"
+              className="block h-full w-full object-cover"
+            />
+          </picture>
+          {/* Seam blend: a whisper of shadow where the photo meets the card, so
+              the edge reads composed instead of cut. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 right-0 w-12 bg-gradient-to-r from-transparent to-black/20"
+          />
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-4 px-8 pb-8 pt-7 text-left">
+          <WizardBadge icon={<Sparkles aria-hidden />} className="self-start">
+            {t("offer.betaBadge")}
+          </WizardBadge>
+          <div className="space-y-2">
+            <h1 className="text-balance text-2xl font-semibold leading-tight tracking-tight">
+              {t("offer.title")}
+            </h1>
+            <p className="text-pretty text-sm leading-relaxed text-ink-muted">
+              {t("offer.body")}
+            </p>
+          </div>
+
+          <OfferPitch />
+
+          {/* Above the CTA on purpose: the pill is the one thing to press. */}
+          <p className="mt-1 text-xs leading-snug text-ink-muted">
+            {t("offer.freeNote")}
+          </p>
           <AsyncButton
             className="h-11 w-full rounded-full px-6 text-base"
             onClick={() => onStart()}
           >
             {t("offer.start")}
           </AsyncButton>
-          <p className="text-xs text-ink-muted">{t("offer.freeNote")}</p>
           <button
             type="button"
             onClick={onSkip}
-            className="rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
+            className="self-center rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
           >
             {t("offer.migrateLater")}
           </button>
         </div>
-      }
-    >
-      <div className="flex flex-wrap items-center justify-center gap-2.5">
-        <WizardBadge icon={<Clock aria-hidden />}>
-          {t("offer.benefit1")}
-        </WizardBadge>
-        <WizardBadge icon={<RefreshCw aria-hidden />}>
-          {t("offer.benefit2")}
-        </WizardBadge>
-        <WizardBadge icon={<UploadCloud aria-hidden />}>
-          {t("offer.benefit3")}
-        </WizardBadge>
       </div>
-    </WizardFrame>
+    </div>
   );
 }

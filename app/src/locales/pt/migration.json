@@ -2,10 +2,11 @@
   "offer": {
     "betaBadge": "Você é um dos primeiros",
     "title": "O Houston está indo para a nuvem",
-    "body": "Seus assistentes vão trabalhar o tempo todo, mesmo com seu computador desligado. Tudo o que você criou vem junto.",
-    "benefit1": "Sempre ativo",
-    "benefit2": "As rotinas não param",
-    "benefit3": "Nada fica para trás",
+    "body": "Você acreditou no Houston antes de todo mundo. Veja o que você ganha ao ir para a nuvem.",
+    "whatTitle": "O que você ganha",
+    "benefit1": "<b>Sempre ativo.</b> Seus assistentes continuam trabalhando, mesmo com seu computador desligado.",
+    "benefit2": "<b>As rotinas não param</b> e seguem o horário, sem precisar do computador ligado.",
+    "benefit3": "<b>Nada fica para trás.</b> Tudo o que você criou vem junto.",
     "freeNote": "É grátis e leva só alguns minutos.",
     "start": "Migrar agora",
     "migrateLater": "Migrar depois"

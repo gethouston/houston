@@ -2,11 +2,12 @@
   "offer": {
     "betaBadge": "Eres de los primeros",
     "title": "Houston se está mudando a la nube",
-    "body": "Tus asistentes trabajarán a toda hora, incluso con tu computador apagado. Todo lo que has creado viene contigo.",
-    "benefit1": "Siempre activo",
-    "benefit2": "Las rutinas no se detienen",
-    "benefit3": "Nada se queda atrás",
-    "freeNote": "Es gratis y toma solo un par de minutos.",
+    "body": "Creíste en Houston antes que nadie. Esto es lo que ganas al mudarte a la nube.",
+    "whatTitle": "Lo que obtienes",
+    "benefit1": "<b>Siempre activo.</b> Tus asistentes siguen trabajando, incluso con tu computador apagado.",
+    "benefit2": "<b>Las rutinas no se detienen</b> y siguen su horario, sin tener el computador encendido.",
+    "benefit3": "<b>Nada se queda atrás.</b> Todo lo que has creado viene contigo.",
+    "freeNote": "Es gratis y solo toma un par de minutos.",
     "start": "Migrar ahora",
     "migrateLater": "Migrar después"
   },
