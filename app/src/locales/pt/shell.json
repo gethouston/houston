@@ -174,7 +174,9 @@
   "migrateToCloud": {
     "cardLabel": "Atualize para o Houston Cloud",
     "title": "Atualize para o Houston Cloud",
-    "description": "O Houston está migrando para a nuvem: seus agentes continuam trabalhando mesmo com o computador desligado. O Houston Cloud está em beta inicial; seus agentes e dados são importados automaticamente e, após a atualização, você fará login e reconectará suas integrações.",
+    "intro": "O Houston está migrando para a nuvem: seus agentes continuam trabalhando mesmo com o computador desligado.",
+    "beta": "O Houston Cloud está em beta inicial.",
+    "details": "Seus agentes e dados são importados automaticamente. Após a atualização, você fará login e reconectará suas integrações.",
     "anytimeNote": "Não precisa decidir agora: você pode iniciar a atualização quando quiser em “Migrar para a nuvem” na barra lateral.",
     "installAction": "Atualizar agora",
     "ready": "A atualização está instalada; reinicie o app para abrir o Houston Cloud.",

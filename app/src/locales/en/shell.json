@@ -174,7 +174,9 @@
   "migrateToCloud": {
     "cardLabel": "Upgrade to Houston Cloud",
     "title": "Upgrade to Houston Cloud",
-    "description": "Houston is moving to the cloud: your agents keep working even when your computer is off. Houston Cloud is in early beta. Your agents and data are imported automatically, and you'll sign in and reconnect your integrations after the upgrade.",
+    "intro": "Houston is moving to the cloud: your agents keep working even when your computer is off.",
+    "beta": "Houston Cloud is in early beta.",
+    "details": "Your agents and data are imported automatically. After the upgrade, you'll sign in and reconnect your integrations.",
     "anytimeNote": "No need to decide now. You can start the upgrade anytime from “Migrate to cloud” in the sidebar.",
     "installAction": "Upgrade now",
     "ready": "The upgrade is installed. Relaunch to open Houston Cloud.",

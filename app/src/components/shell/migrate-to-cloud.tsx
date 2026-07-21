@@ -1,6 +1,7 @@
 import { AlertCircle, CloudUpload, Loader2, RotateCw, X } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import houstonBlack from "../../assets/houston-black.svg";
 import houstonWhite from "../../assets/houston-icon-white.svg";
 import { osIsTauri } from "../../lib/os-bridge";
 import { useMigrateToCloudStore } from "../../stores/migrate-to-cloud";
@@ -46,7 +47,9 @@ export function MigrateToCloudOffer() {
   const error = status === "error";
   const dismissible = policy !== "required" && !downloading && !ready;
 
-  const message = downloading
+  // Idle shows the three-paragraph pitch; any active state collapses to a
+  // single status line in its place.
+  const statusMessage = downloading
     ? progress === null
       ? t("updateChecker.downloading")
       : t("updateChecker.downloadingProgress", { progress })
@@ -54,7 +57,7 @@ export function MigrateToCloudOffer() {
       ? t("migrateToCloud.ready")
       : error
         ? t("migrateToCloud.error")
-        : t("migrateToCloud.description");
+        : null;
 
   return (
     <div
@@ -65,20 +68,27 @@ export function MigrateToCloudOffer() {
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4"
     >
       <div className="w-[480px] max-w-full overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-[0_16px_60px_rgba(0,0,0,0.16)]">
-        {/* Hero: pure CSS gradient (no bundled artwork) with the Houston mark. */}
-        <div className="relative flex h-44 items-center justify-center bg-gradient-to-br from-indigo-600 via-violet-500 to-purple-400">
+        {/* Header band: the app's own muted surface with the theme-aware
+            Houston mark — same treatment as the updater card's icon tile. */}
+        <div className="relative flex h-36 items-center justify-center border-b border-border bg-muted">
+          <img
+            src={houstonBlack}
+            alt=""
+            aria-hidden="true"
+            className="houston-update-logo-light size-14 object-contain"
+          />
           <img
             src={houstonWhite}
             alt=""
             aria-hidden="true"
-            className="size-16 object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.25)]"
+            className="houston-update-logo-dark hidden size-14 object-contain"
           />
           {dismissible && (
             <button
               type="button"
               onClick={dismiss}
               aria-label={t("migrateToCloud.closeLabel")}
-              className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-black/20 text-white transition-colors hover:bg-black/35"
+              className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <X className="size-4" />
             </button>
@@ -94,9 +104,17 @@ export function MigrateToCloudOffer() {
               <AlertCircle className="size-4 shrink-0 text-destructive" />
             )}
           </div>
-          <p className="mx-auto mt-2 max-w-[380px] text-sm leading-relaxed text-muted-foreground">
-            {message}
-          </p>
+          {statusMessage ? (
+            <p className="mx-auto mt-2 max-w-[380px] text-sm leading-relaxed text-muted-foreground">
+              {statusMessage}
+            </p>
+          ) : (
+            <div className="mx-auto mt-3 max-w-[380px] space-y-2 text-sm leading-relaxed text-muted-foreground">
+              <p>{t("migrateToCloud.intro")}</p>
+              <p>{t("migrateToCloud.beta")}</p>
+              <p>{t("migrateToCloud.details")}</p>
+            </div>
+          )}
 
           {downloading && (
             <div className="mx-auto mt-4 h-1.5 max-w-[380px] overflow-hidden rounded-full bg-muted">
