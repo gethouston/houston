@@ -137,6 +137,8 @@ export interface ComposerTrailingProps {
   onStop?: () => void;
   /** When absent (e.g. the web build) no mic affordance renders at all. */
   dictation?: DictationControl;
+  /** Locks the composer: submit goes inert and the mic is hidden. */
+  disabled?: boolean;
 }
 
 /**
@@ -150,6 +152,7 @@ export function ComposerTrailing({
   hasContent,
   onStop,
   dictation,
+  disabled = false,
 }: ComposerTrailingProps) {
   const view = resolveDictationView(dictation);
 
@@ -165,10 +168,10 @@ export function ComposerTrailing({
     );
   }
 
-  const submitDisabled = status === "ready" && !hasContent;
+  const submitDisabled = disabled || (status === "ready" && !hasContent);
   return (
     <div className="flex items-center gap-1.5 [grid-area:trailing]">
-      {view.kind === "idle" && status === "ready" && dictation && (
+      {view.kind === "idle" && status === "ready" && !disabled && dictation && (
         <button
           type="button"
           onClick={dictation.onStart}

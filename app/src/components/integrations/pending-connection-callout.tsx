@@ -27,19 +27,21 @@ export function PendingConnectionCallout({
 }) {
   const { t } = useTranslation("integrations");
   const name = appName ?? toolkit;
-  const waitingHere =
-    connectFlow.state?.toolkit === toolkit &&
-    connectFlow.state.step === "waiting";
+  const waitingHere = connectFlow.states[toolkit] === "waiting";
 
   if (waitingHere) {
     return (
       <div className="mt-2">
-        <ConnectWaitingPanel appName={name} connectFlow={connectFlow} />
+        <ConnectWaitingPanel
+          appName={name}
+          toolkit={toolkit}
+          connectFlow={connectFlow}
+        />
       </div>
     );
   }
 
-  const busy = connectFlow.state !== null;
+  const busy = Object.keys(connectFlow.states).length > 0;
   const copy =
     status === "pending"
       ? {

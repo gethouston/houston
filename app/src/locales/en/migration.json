@@ -1,14 +1,20 @@
 {
   "offer": {
-    "betaBadge": "You're one of the first",
     "title": "Houston is moving to the cloud",
-    "body": "Your assistants will work around the clock, even when your computer is off. Everything you've built comes along.",
-    "benefit1": "Always on",
-    "benefit2": "Routines keep running",
-    "benefit3": "Nothing left behind",
-    "freeNote": "Free, and it takes just a couple of minutes.",
-    "start": "Move my data",
-    "migrateLater": "Migrate later"
+    "body": "You believed in Houston before anyone else. Here's what moving to the cloud gives you.",
+    "whatTitle": "What you get",
+    "benefit1": "<b>Always on.</b> Your assistants keep working, even when your computer is off.",
+    "benefit2": "<b>Routines keep running</b> on schedule, without your computer awake.",
+    "benefit3": "<b>Nothing left behind.</b> Everything you've built comes along.",
+    "freeNote": "It's free, and it only takes a couple of minutes.",
+    "start": "Migrate Now",
+    "skipAction": "Start without my assistants",
+    "skipConfirm": {
+      "title": "Start without your assistants?",
+      "body": "Your assistants and their conversations won't be here. Nothing is deleted, they stay safe on this computer, and you can migrate them anytime from Settings, under Cloud migration.",
+      "confirm": "Start without them",
+      "goBack": "Go back"
+    }
   },
   "progress": {
     "title": "Moving to the cloud",
@@ -17,6 +23,7 @@
     "phaseFiles": "Packing up your files and skills",
     "phaseCloud": "Setting up your cloud",
     "keepOpen": "Keep Houston open until it finishes.",
+    "playCaption": "While you wait, defend the galaxy.",
     "backingUp": "Backing up your data on this computer.",
     "preparing": "Getting your data ready. This can take a few minutes.",
     "startFailed": "We couldn't start the move, so nothing was changed. You can try again.",
@@ -50,6 +57,7 @@
     "back": "Back",
     "connect": "Connect",
     "connecting": "Connecting…",
+    "cancel": "Cancel",
     "connected": "Connected",
     "finish": "Start building",
     "congratsTitle": "You're all set",

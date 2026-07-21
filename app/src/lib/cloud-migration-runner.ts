@@ -92,6 +92,11 @@ export async function runMigrationTask(
       getEngine().createAgent(deps.workspaceId, {
         name: task.targetName,
         configId: MIGRATED_AGENT_CONFIG_ID,
+        // Seed the legacy overlay color onto the created cloud agent. The cp
+        // adapter's create routes `color` into the color overlay keyed by the
+        // NEW agent id (createdAgentToUi → setColor); undefined falls back to
+        // DEFAULT_AGENT_COLOR — so this is the only seed point needed.
+        color: task.color,
       }),
     );
     agentId = created.agent.id;

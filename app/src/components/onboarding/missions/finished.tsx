@@ -85,7 +85,7 @@ export function FinishedMission({ variant, onStart }: FinishedMissionProps) {
       : "tutorial.missions.finished.readyBody";
 
   return (
-    <SetupCard onSpace>
+    <SetupCard>
       <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
         <SuccessCheck />
         <div className="flex flex-col items-center gap-2">

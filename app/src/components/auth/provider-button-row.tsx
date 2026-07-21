@@ -10,6 +10,10 @@ export type Provider = "google" | "apple" | "azure";
  * Brand icons are self-identifying; the full "Continue with X" label survives
  * as `aria-label` + `title`, so screen readers and tooltips keep the words.
  * Equal `flex-1` widths keep the row balanced.
+ *
+ * The returning user's last account is surfaced by the prominent
+ * {@link ContinueLastSignIn} button above this row, so the pills here stay a
+ * calm, un-decorated "use another way" fallback.
  */
 export function ProviderButtonRow({
   pending,
@@ -63,7 +67,7 @@ function ProviderIconButton({
 }) {
   return (
     <Button
-      variant="default"
+      variant="secondary"
       aria-label={label}
       title={label}
       onClick={onClick}

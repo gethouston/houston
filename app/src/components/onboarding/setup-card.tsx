@@ -1,24 +1,6 @@
-import { Button, cn } from "@houston-ai/core";
+import { Button } from "@houston-ai/core";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
-
-// On the space backdrop the card is the landing page's near-opaque bluish
-// glass (`--ht-space-glass`), not the futuristic aurora glass the dark tokens
-// are tuned for — so `secondary` (5% white) and `accent` (8%) read as nearly
-// invisible fills on it. We re-point the underlying `--ht-*` custom properties
-// (which every `--color-*` Tailwind utility aliases) at the theme-invariant
-// `--ht-space-card-*` token set, scoped to just this card and its descendants.
-// Inline style so it always wins over the pinned `[data-theme="dark"]` token
-// block; it never leaks past the onSpace card. Buttons here read as clickable
-// through FILL contrast alone (secondary/accent) — no border is boosted: the
-// card itself and every button inside it are deliberately borderless.
-// Exported for the other dark-pinned on-space surfaces (the cloud-migration
-// wizard's hero frame) so the remap stays defined exactly once.
-export const SPACE_CARD_VARS: CSSProperties = {
-  "--ht-chip": "var(--ht-space-card-secondary)",
-  "--ht-chip-text": "var(--ht-space-card-secondary-fg)",
-  "--ht-hover": "var(--ht-space-card-accent)",
-} as CSSProperties;
+import type { ReactNode } from "react";
 
 // Re-exported so onboarding call sites keep a single import surface
 // (`import { OptionCard, SetupCard } from "../setup-card"`).
@@ -31,18 +13,16 @@ export { OptionCard } from "./option-card";
  * centered card with a small step eyebrow, one clear question, the content, and
  * a Back / helper / Next footer.
  *
- * `onSpace` floats the card inside the shared `SpaceScreen` space backdrop used by
- * onboarding: it drops the standalone `h-screen`/`bg-chip` backdrop (the
- * SpaceScreen supplies both) and pins the card to the dark palette so it reads
- * identically in both app themes, exactly like the sign-in card. Left false for
- * the standalone gates (language, disclaimer), which keep the dimmed backdrop.
+ * Always a plain white card ({@link https://…|`bg-card`}) that floats on the
+ * calm grey {@link FirstRunScreen} background: a hairline `border-line` and a
+ * soft shadow lift it off the gutter, no glass, no backdrop-blur. The
+ * FirstRunScreen wrapper pins `data-theme="light"`, so the card reads the same
+ * bright light way in both app themes.
  *
- * Houston-monochrome, not Discord-blue: selection uses the near-black
- * foreground, never a decorative accent (design-system color restraint).
+ * Houston-monochrome: selection uses the near-black foreground, never a
+ * decorative accent (design-system color restraint).
  */
 interface SetupCardProps {
-  /** Float the card on the shared SpaceScreen backdrop (pins the dark palette). */
-  onSpace?: boolean;
   /** Optional brand mark above the eyebrow (used by the Welcome hero). */
   icon?: ReactNode;
   /** Small muted line above the title, e.g. "Step 2 of 3" or "Welcome". */
@@ -63,7 +43,6 @@ interface SetupCardProps {
 }
 
 export function SetupCard({
-  onSpace = false,
   icon,
   eyebrow,
   title,
@@ -78,31 +57,16 @@ export function SetupCard({
   nextLoading,
 }: SetupCardProps) {
   return (
-    <div
-      className={cn(
-        "relative flex flex-col items-center justify-center overflow-hidden px-6",
-        onSpace ? "flex-1" : "h-screen bg-chip/60 text-ink",
-      )}
-    >
-      {/* Fixed min height + flex-1 content so the card stays the SAME size
-          across every step and the footer never jumps as content changes.
-          Keyed by title so React remounts (and the CSS entrance replays) on
-          each step change, but not on in-step state updates like typing.
-          On the space backdrop the card pins the dark palette (data-theme)
-          and wears the LANDING PAGE's glass (`--ht-space-glass` translucent
-          bluish surface + hairline + blur), so the app's pre-workspace cards
-          and the marketing site's cards read as one material. Off-space stays
-          the borderless solid card. */}
+    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-6">
+      {/* Fixed height + flex-1 content so the card stays the SAME size across
+          every step and the footer never jumps as content changes. Keyed by
+          title so React remounts (and the CSS entrance replays) on each step
+          change, but not on in-step state updates like typing. A plain white
+          card with a hairline + soft shadow, floating on the grey first-run
+          background — no glass, no backdrop-blur. */}
       <div
         key={title}
-        data-theme={onSpace ? "dark" : undefined}
-        style={onSpace ? SPACE_CARD_VARS : undefined}
-        className={cn(
-          "setup-step-in relative z-10 flex h-[680px] max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl p-8",
-          onSpace
-            ? "border border-[var(--ht-space-glass-border)] bg-[var(--ht-space-glass)] text-ink shadow-2xl backdrop-blur-md"
-            : "bg-input shadow-[0_4px_24px_rgba(0,0,0,0.06)]",
-        )}
+        className="setup-step-in relative z-10 flex h-[680px] max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-line bg-card p-8 text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
       >
         {icon && <div className="mb-4">{icon}</div>}
         {eyebrow && (

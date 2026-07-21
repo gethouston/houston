@@ -1,3 +1,4 @@
+import { Button } from "@houston-ai/core";
 import { Loader2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
@@ -7,16 +8,18 @@ import {
   SUPPORTED_LOCALES,
   type SupportedLocale,
 } from "../../lib/i18n";
-import { OptionCard, SetupCard } from "../onboarding/setup-card";
-import { SpaceScreen } from "../space/space-screen";
+import { FirstRunScreen } from "../onboarding/first-run-screen";
+import { SetupCard } from "../onboarding/setup-card";
 
 /**
- * First-run language flow, styled like the rest of setup. A single beat: the
- * language picker, floated on the shared `SpaceScreen` space backdrop so it reads as
- * the same continuous space as sign-in and onboarding. The OS locale is
- * detected and PRESELECTED, so the common case is one click on Continue (or on
- * the already-marked row); picking any row applies + persists it and advances
- * immediately. Language is changeable later from Settings.
+ * First-run language flow, styled like the rest of setup. A single beat: a
+ * clean centered white card on the calm grey {@link FirstRunScreen} background,
+ * the languages offered as plain buttons (one per language, named in its own
+ * language). No language is pre-selected — every button is the same neutral
+ * grey, so no option is nudged over the others; each applies + persists its
+ * language and advances immediately on click. The OS locale is still detected,
+ * but only to choose the language the screen's own copy renders in. Language is
+ * changeable later from Settings.
  *
  * This is the TRUE first screen of the app. Shown before the disclaimer so a
  * Spanish/Portuguese speaker reads the agreement in their own language. Skipped
@@ -28,21 +31,20 @@ export function LanguageGate({ children }: { children: ReactNode }) {
 
   if (isLoading) {
     return (
-      <SpaceScreen>
-        {/* Transparent hold — the SpaceScreen already paints the backdrop, so
-            we don't double-paint a dim overlay on the space backdrop. Full-size so
-            the layout doesn't jump when the picker resolves. */}
+      <FirstRunScreen>
+        {/* Transparent hold — the background is already painted, so we don't
+            double-paint. Full-size so the layout doesn't jump when it resolves. */}
         <div aria-hidden className="flex flex-1" />
-      </SpaceScreen>
+      </FirstRunScreen>
     );
   }
 
   if (locale) return <>{children}</>;
 
   return (
-    <SpaceScreen>
+    <FirstRunScreen>
       <LanguagePicker onPick={setLocale} />
-    </SpaceScreen>
+    </FirstRunScreen>
   );
 }
 
@@ -58,23 +60,17 @@ const DISPLAY_NAMES: Record<SupportedLocale, string> = {
 // through t() (see the i18n KB: the gate predates the choice). Instead the
 // few strings render in the OS-DETECTED language — the honest counterpart of
 // preselecting it — with English as the fallback.
-const COPY: Record<
-  SupportedLocale,
-  { title: string; continueLabel: string; error: string }
-> = {
+const COPY: Record<SupportedLocale, { title: string; error: string }> = {
   en: {
     title: "Choose your language",
-    continueLabel: "Continue",
     error: "Something went wrong. Please try again.",
   },
   es: {
     title: "Elige tu idioma",
-    continueLabel: "Continuar",
     error: "Algo salió mal. Inténtalo de nuevo.",
   },
   pt: {
     title: "Escolha seu idioma",
-    continueLabel: "Continuar",
     error: "Algo deu errado. Tente novamente.",
   },
 };
@@ -84,18 +80,19 @@ function LanguagePicker({
 }: {
   onPick: (locale: SupportedLocale) => Promise<void>;
 }) {
-  // The OS-detected locale arrives preselected; the user either confirms it
-  // with Continue (or by clicking its row) or picks another row directly.
+  // The OS-detected locale drives ONLY the language this screen's own copy
+  // renders in (title, error). No button is pre-selected off it — every
+  // language is offered as an identical neutral choice.
   const [detected] = useState<SupportedLocale | null>(() =>
     normalizeLocale(navigator.language),
   );
-  const preselected = detected ?? "en";
+  const copyLocale = detected ?? "en";
   // Which row is mid-apply (its choice is being applied + persisted). Null once
   // idle. On success the gate swaps to the next screen, so this never resets to
   // idle on the happy path.
   const [pending, setPending] = useState<SupportedLocale | null>(null);
   const [failed, setFailed] = useState(false);
-  const copy = COPY[preselected];
+  const copy = COPY[copyLocale];
 
   const handlePick = async (loc: SupportedLocale) => {
     if (pending) return;
@@ -119,36 +116,33 @@ function LanguagePicker({
   };
 
   return (
-    <SetupCard
-      onSpace
-      title={copy.title}
-      subtitle="English · Español · Português"
-      onNext={() => void handlePick(preselected)}
-      nextLabel={copy.continueLabel}
-      nextLoading={pending !== null}
-    >
-      <div className="flex flex-col gap-3">
-        {SUPPORTED_LOCALES.map((loc) => (
-          <OptionCard
-            key={loc}
-            label={DISPLAY_NAMES[loc]}
-            size="lg"
-            selected={loc === preselected}
-            disabled={pending !== null && pending !== loc}
-            trailing={
-              pending === loc ? (
-                <Loader2 className="size-5 animate-spin text-ink-muted" />
-              ) : undefined
-            }
-            onSelect={() => void handlePick(loc)}
-          />
-        ))}
+    <SetupCard title={copy.title} subtitle="English · Español · Português">
+      <div className="flex flex-1 flex-col justify-center">
+        <div className="flex flex-col gap-3">
+          {SUPPORTED_LOCALES.map((loc) => (
+            // Each language is a plain, generous button that applies + advances
+            // on click. All identical neutral grey — no language is nudged over
+            // the others, and every option is fully visible without hovering.
+            <Button
+              key={loc}
+              type="button"
+              size="lg"
+              variant="secondary"
+              className="w-full justify-center rounded-full text-base"
+              disabled={pending !== null && pending !== loc}
+              onClick={() => void handlePick(loc)}
+            >
+              {pending === loc && <Loader2 className="size-5 animate-spin" />}
+              {DISPLAY_NAMES[loc]}
+            </Button>
+          ))}
+        </div>
+        {failed && (
+          <p className="mt-4 text-xs text-danger" role="alert">
+            {copy.error}
+          </p>
+        )}
       </div>
-      {failed && (
-        <p className="mt-4 text-xs text-danger" role="alert">
-          {copy.error}
-        </p>
-      )}
     </SetupCard>
   );
 }

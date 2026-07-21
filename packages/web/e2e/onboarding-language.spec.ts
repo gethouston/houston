@@ -9,18 +9,17 @@ import { expect, test } from "./support/fixtures";
 /**
  * First-run LANGUAGE gate (the app's true first screen, before sign-in and the
  * agreement). The default fixture seeds `locale=en` to skip this gate; here we
- * clear it so the picker renders, and assert the connect-first flow's contract:
+ * clear it so the picker renders, and assert its contract:
  *
- *   1. the picker floats on the shared SpaceScreen space backdrop (same as
- *      sign-in and the rest of onboarding — the landing page's Milky Way
- *      photograph painted behind the card),
- *   2. the OS-detected locale arrives PRESELECTED with a Continue button to
- *      confirm it (the common case is one click), and
- *   3. clicking any language row ADVANCES IMMEDIATELY — a single click both
- *      persists the choice and moves past the gate, no Continue required. This
- *      is the regression guard for the dead-end where clicking a language did
- *      nothing because the (best-effort) preference write was awaited-then-
- *      swallowed before the flow could advance.
+ *   1. the picker is a clean centered white card on the flat first-run
+ *      background — NO space photo backdrop,
+ *   2. each language is a plain button (one per language, named in its own
+ *      language), and
+ *   3. clicking any language button ADVANCES IMMEDIATELY — a single click both
+ *      persists the choice and moves past the gate. This is the regression
+ *      guard for the dead-end where clicking a language did nothing because the
+ *      (best-effort) preference write was awaited-then-swallowed before the flow
+ *      could advance.
  */
 const NEW_ENGINE_STORAGE_KEY = "houston.web.engine.new";
 const pref = (key: string) => `houston.pref.${key}`;
@@ -29,7 +28,7 @@ const ACCEPTED_DISCLAIMER = JSON.stringify({
   acceptedAt: "2024-01-01T00:00:00.000Z",
 });
 
-test("first-run language gate: space backdrop, preselected Continue, and a single row click advances", async ({
+test("first-run language gate: flat light card, language buttons, and a single click advances", async ({
   page,
 }) => {
   // Seed the engine + the later gates, but NOT the locale, so the LanguageGate
@@ -72,18 +71,16 @@ test("first-run language gate: space backdrop, preselected Continue, and a singl
     page.getByRole("heading", { name: "Choose your language" }),
   ).toBeVisible();
 
-  // The shared space backdrop paints behind the card (the Milky Way photo).
-  expect(await page.locator('img[src*="milkyway"]').count()).toBeGreaterThan(0);
+  // No space photo backdrop — the first-run flow is a flat light page now.
+  expect(await page.locator('img[src*="milkyway"]').count()).toBe(0);
 
-  // The OS-detected locale (en in CI) arrives preselected, with a Continue
-  // button to confirm it in one click.
-  await expect(
-    page.getByRole("button", { name: /Continue|Continuar/ }),
-  ).toBeVisible();
+  // Each language is a plain button, named in its own language.
+  await expect(page.getByRole("button", { name: "English" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Español" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Português" })).toBeVisible();
 
-  // But the rows are still actions themselves: a single click on a language
-  // advances past the gate without touching Continue.
-  await page.getByText("Español", { exact: true }).click();
+  // A single click on a language button advances past the gate immediately.
+  await page.getByRole("button", { name: "Español" }).click();
   await expect(
     page.getByRole("heading", { name: "Choose your language" }),
   ).toHaveCount(0);

@@ -1,15 +1,13 @@
 import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
-import { SPACE_CARD_VARS } from "../setup-card";
 
 /**
  * The shared hero layout of the cloud-migration wizard (HOU-719): a centered
- * column floating DIRECTLY on the shared `SpaceScreen` backdrop (the landing
- * page's Milky Way photograph), no card, like the workspace-loading splash,
- * so the move-to-cloud moment reads as the same continuous space as sign-in
- * and onboarding. Pins the dark palette + the space-card token remap so
- * interactive content inside (buttons, chips, rows) reads on the photo.
- * Content scrolls inside the frame; the page itself never scrolls.
+ * column on the calm grey {@link FirstRunScreen} background, no card (like the
+ * onboarding celebration screens), so the move-to-cloud moment reads as the
+ * same continuous flow as sign-in and onboarding. Hero copy is normal ink; any
+ * card content nested inside is a plain white surface. Content scrolls inside
+ * the frame; the page never scrolls.
  */
 export function WizardFrame({
   mark,
@@ -36,22 +34,7 @@ export function WizardFrame({
   wide?: boolean;
 }) {
   return (
-    <div
-      data-theme="dark"
-      style={SPACE_CARD_VARS}
-      className="relative flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-[var(--ht-space-foreground)]"
-    >
-      {/* Local text-protection veil: the hero column sits right over the
-          photo's bright galactic core (center 42%), so a soft radial pool of
-          canvas darkness backs the copy without dimming the whole photo. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 55% 48% at 50% 50%, color-mix(in srgb, var(--ht-space-canvas) 78%, transparent) 0%, color-mix(in srgb, var(--ht-space-canvas) 55%, transparent) 55%, transparent 78%)",
-        }}
-      />
+    <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-ink">
       <div
         className={cn(
           "relative z-10 flex min-h-0 w-full flex-col items-center gap-6 text-center",
@@ -62,22 +45,18 @@ export function WizardFrame({
         {badge}
         <div>
           {eyebrow && (
-            <p className="mb-2 text-xs font-medium text-[var(--ht-space-foreground-muted)]">
-              {eyebrow}
-            </p>
+            <p className="mb-2 text-xs font-medium text-ink-muted">{eyebrow}</p>
           )}
           <h1 className="text-balance text-[34px] font-semibold leading-tight tracking-tight">
             {title}
           </h1>
         </div>
         {body && (
-          // Colour is inline because `text-base` is ALSO a colour utility in
-          // this theme (`--color-base` exists), and it outranks an arbitrary
-          // `text-[var(...)]` class in the generated utility order.
-          <p
-            className="max-w-lg text-pretty text-base leading-relaxed opacity-85"
-            style={{ color: "var(--ht-space-foreground)" }}
-          >
+          // `text-base` is BOTH a font-size and a colour utility here
+          // (`--color-base` exists), so it is paired with a NAMED colour
+          // utility (`text-ink-muted`), which wins the colour while text-base
+          // keeps the 1rem size — the design-system-documented safe pattern.
+          <p className="max-w-lg text-pretty text-base leading-relaxed text-ink-muted">
             {body}
           </p>
         )}
