@@ -1,6 +1,6 @@
 {
   "name": "@houston-ai/events",
-  "version": "0.5.9",
+  "version": "0.5.21",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",

@@ -26,7 +26,6 @@ import {
   buildSidebarNavItems,
   SidebarWorkspaceHeader,
 } from "./sidebar-chrome";
-import { UpdateChecker } from "./update-checker";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
 import { UserMenu } from "./user-menu";
 import { CreateWorkspaceDialog } from "./workspace-dialog";
@@ -232,7 +231,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
           footer={
             <div className="flex flex-col">
               <UserMenu collapsed={collapsed} />
-              <UpdateChecker />
             </div>
           }
         >

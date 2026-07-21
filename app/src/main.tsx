@@ -11,6 +11,7 @@ import { DisclaimerGate } from "./components/shell/disclaimer-gate";
 import { EngineGate } from "./components/shell/engine-gate";
 import { LanguageGate } from "./components/shell/language-gate";
 import { QueryPersistenceProvider } from "./components/shell/query-persistence-provider";
+import { UpdateChecker } from "./components/shell/update-checker";
 import { analytics, classifyAnalyticsError } from "./lib/analytics";
 import { whenEngineReady } from "./lib/engine";
 import { showErrorToast } from "./lib/error-toast";
@@ -154,6 +155,14 @@ createRoot(rootElement).render(
           <StartupEffects>
             <EngineGate>
               <QueryPersistenceProvider>
+                {/* Update surfaces (gateway 426 hard floor + forced updates)
+                    sit ABOVE the language/disclaimer gates: on a below-floor
+                    build those gates' own preference reads 426 too, so a user
+                    stuck in front of them must still get the update screen —
+                    not a wedged first-run flow (the staging 0.5.19 lockout).
+                    Both surfaces render as full-window fixed overlays, so
+                    mounting here covers every screen including the gates. */}
+                <UpdateChecker />
                 <LanguageGate>
                   <DisclaimerGate>
                     <App />

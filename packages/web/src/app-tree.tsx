@@ -18,6 +18,7 @@ import { AgentFilePreviewHost } from "@houston/app/components/agent-file-preview
 import { DisclaimerGate } from "@houston/app/components/shell/disclaimer-gate";
 import { LanguageGate } from "@houston/app/components/shell/language-gate";
 import { QueryPersistenceProvider } from "@houston/app/components/shell/query-persistence-provider";
+import { UpdateChecker } from "@houston/app/components/shell/update-checker";
 import { WorkspaceLoading } from "@houston/app/components/shell/workspace-loading";
 import { analytics, classifyAnalyticsError } from "@houston/app/lib/analytics";
 import { isEngineReady, whenEngineReady } from "@houston/app/lib/engine";
@@ -144,6 +145,11 @@ export default function AppTree() {
                     overlays every gate/screen without disturbing layout or clicks.
                     Renders null off the preview deployment. */}
                 <PreviewBadge />
+                {/* Mirrors app/src/main.tsx: update surfaces above the gates.
+                    On web the updater is shimmed and no version header is
+                    sent (no 426 floor), so this renders null — kept so the
+                    two trees can't drift. */}
+                <UpdateChecker />
                 <LanguageGate>
                   <DisclaimerGate>
                     <App />
