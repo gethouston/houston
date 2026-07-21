@@ -5,7 +5,7 @@ Anthropic is the one provider whose turns run through the **Claude Agent SDK**
 every other provider. This file is the map. History: the July 2026 "Anthropic
 is unusable" cluster (reconnect card after every send locally, cloud connect
 timing out into the setup-token paste dialog, mid-session sign-outs) came from
-the four traps at the bottom — read them before touching any of this.
+the traps at the bottom — read them before touching any of this.
 
 ## Where the credential lives, per deployment
 
@@ -39,7 +39,7 @@ the four traps at the bottom — read them before touching any of this.
   (`backends/claude/read-token.ts`). This is what survives pod recycles:
   `/data` is an emptyDir in prod and store-sync EXCLUDES both credential files.
 
-## The four traps (each was a live bug)
+## The five traps (each was a live bug)
 
 1. **`USER` must reach the SDK subprocess.** The CLI names its Keychain
    *account* after the username; `buildClaudeEnv`'s allowlist passes
@@ -61,3 +61,16 @@ the four traps at the bottom — read them before touching any of this.
    central-store copy on a desktop host is an inert marker (never served,
    never refreshed — TS `credentials/refresh.ts` deliberately has no anthropic
    entry).
+5. **Windows: the CLI needs a shell BEFORE it does anything — even
+   `auth login`.** At startup on Windows the CLI exits 1 unless it finds Git
+   Bash or PowerShell (`pwsh` on PATH → three pwsh install dirs → plain
+   `powershell` on PATH). Stock machines always have PowerShell 5.1 under
+   `System32`, but mangled user PATHs made the probe miss (HOUSTON-APP-4YP,
+   v0.5.20 launch day). And as a console binary spawned from a GUI app it
+   pops a visible console window; the user closing it hangs up the child →
+   exit 129 / SIGHUP (HOUSTON-APP-4YQ). Both spawn sites (login helper +
+   engine sidecar) route through `app/src-tauri/src/shell_env.rs`, which sets
+   `CLAUDE_CODE_GIT_BASH_PATH` when a Git for Windows bash exists, guarantees
+   the built-in PowerShell dir on the child PATH, and the login spawn adds
+   `CREATE_NO_WINDOW`. Never PATH-scan for `bash.exe` there —
+   `System32\bash.exe` is WSL and wedges the CLI.

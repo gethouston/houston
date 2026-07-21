@@ -226,6 +226,14 @@ test("the row menu deletes the routine after confirming", async ({ page }) => {
   await expect(dialog.getByText("Delete Doomed?")).toBeVisible();
   expect(await listRoutines(agentId)).toHaveLength(1);
 
+  // Cancel keeps it…
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByText("Doomed")).toBeVisible();
+  expect(await listRoutines(agentId)).toHaveLength(1);
+
+  // …confirm removes it.
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await dialog.getByRole("button", { name: "Delete" }).click();
   await expect(page.getByText("Doomed")).toHaveCount(0);
   await expect.poll(async () => (await listRoutines(agentId)).length).toBe(0);

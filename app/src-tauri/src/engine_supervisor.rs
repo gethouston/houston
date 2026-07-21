@@ -180,6 +180,13 @@ impl EngineSubprocess {
         ] {
             cmd.env_remove(key);
         }
+        // The runtime spawns the bundled Claude Code CLI for chat turns, and
+        // on Windows that CLI refuses to start without a resolvable shell.
+        // Repair the env BEFORE the caller-provided pairs so an explicit
+        // override still wins (see `shell_env`).
+        for (key, value) in crate::shell_env::claude_shell_env() {
+            cmd.env(key, value);
+        }
         for (k, v) in env {
             cmd.env(k, v);
         }
