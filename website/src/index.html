@@ -2349,6 +2349,7 @@ visionPath: "vision/index.html"
      SCRIPTS
      ═══════════════════════════════════════════ -->
 
+{% include "installer-urls.njk" %}
 <script>
   // Nav scroll state — transparent at top, frosted glass once scrolled
   (function() {
@@ -2770,25 +2771,21 @@ visionPath: "vision/index.html"
       }
     }
 
-    // Fetch latest release artifact URLs (Mac DMG + Windows MSIs). The
-    // buttons gate on these URLs, so every path out of this fetch — success,
-    // missing asset, network error, or an api.github.com rate-limit (60/hr
-    // per IP, shared by everyone behind a NAT) — must re-run the gates: a
-    // visitor who typed the code while the fetch was in flight would
-    // otherwise stay locked out until their next keystroke. When no direct
-    // artifact URL is available the buttons fall back to the releases page
-    // rather than staying dead.
-    var RELEASES_PAGE = 'https://github.com/gethouston/houston/releases/latest';
-    fetch('https://api.github.com/repos/gethouston/houston/releases/latest')
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        var assets = data.assets || [];
-        var dmg = assets.find(function(a) { return a.name.endsWith('.dmg'); });
-        if (dmg) dmgUrl = dmg.browser_download_url;
-        var winX64 = assets.find(function(a) { return /_x64.*\.msi$/.test(a.name); });
-        if (winX64) winX64Url = winX64.browser_download_url;
-        var winArm64 = assets.find(function(a) { return /_arm64.*\.msi$/.test(a.name); });
-        if (winArm64) winArm64Url = winArm64.browser_download_url;
+    // Fetch installer URLs (Mac DMG + Windows MSIs) via the shared resolver
+    // (installer-urls.njk), which picks the newest `cloud-v*` prerelease —
+    // `releases/latest` would serve the legacy app kept around for migrating
+    // users. The buttons gate on these URLs, so every path out of this
+    // fetch — success, missing asset, network error, or an api.github.com
+    // rate-limit — must re-run the gates: a visitor who typed the code while
+    // the fetch was in flight would otherwise stay locked out until their
+    // next keystroke. When no direct artifact URL is available the buttons
+    // fall back to the releases page rather than staying dead.
+    var RELEASES_PAGE = 'https://github.com/gethouston/houston/releases';
+    window.houstonInstallerUrls()
+      .then(function(urls) {
+        dmgUrl = urls.dmg;
+        winX64Url = urls.winX64;
+        winArm64Url = urls.winArm64;
       })
       .catch(function() {})
       .then(function() {
