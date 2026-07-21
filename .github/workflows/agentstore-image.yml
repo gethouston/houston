@@ -14,10 +14,15 @@
 #   - push to main (paths-filtered, checked in "Determine whether to build"
 #     below): continuous build → dispatches roll-agentstore →
 #     cloud/roll-agentstore-staging.yml rolls staging.
-#   - push of ANY tag (unconditional, no path filter — a tag means "ship
+#   - push of an agentstore-v* tag (no path filter — the tag means "ship
 #     this", and combining paths with a tags trigger is unreliable in GitHub
 #     Actions, since a tag push often carries no commit list to diff against):
 #     dispatches roll-agentstore-prod → cloud/roll-agentstore.yml rolls prod.
+# The tag pattern is deliberately NARROW: this repo's tag namespace already
+# carries other release trains — v*/cloud-v* (desktop, release.yml),
+# cloud-latest (a MOVING pointer that gets re-pushed), ios-v* (TestFlight),
+# engine-v* (self-host host binary), engine-pod-v* (prod engine fleet). Each
+# train versions independently; only agentstore-v* may roll prod agentstore.
 #
 # Publishes two tags per build:
 #   agentstore:<git-sha>  — immutable, by-digest reference used for the roll.
@@ -42,7 +47,7 @@ name: Agent Store Image
 on:
   push:
     branches: [main]
-    tags: ["*"]
+    tags: ["agentstore-v*"]
   workflow_dispatch:
 
 # One build at a time. cancel-in-progress is false so an in-flight build + push +
@@ -68,8 +73,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Any tag or a manual dispatch always builds (a tag IS the release
-      # decision). A push to main only builds when it touched a relevant path
+      # An agentstore-v* tag or a manual dispatch always builds (the tag IS
+      # the release decision; no other tag pattern reaches this workflow).
+      # A push to main only builds when it touched a relevant path
       # — this replaces the old trigger-level `paths:` filter, which can't
       # apply to branch pushes only once the trigger also matches tags.
       #
