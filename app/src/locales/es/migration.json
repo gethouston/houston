@@ -1,6 +1,5 @@
 {
   "offer": {
-    "betaBadge": "Eres de los primeros",
     "title": "Houston se está mudando a la nube",
     "body": "Creíste en Houston antes que nadie. Esto es lo que ganas al mudarte a la nube.",
     "whatTitle": "Lo que obtienes",
@@ -9,7 +8,13 @@
     "benefit3": "<b>Nada se queda atrás.</b> Todo lo que has creado viene contigo.",
     "freeNote": "Es gratis y solo toma un par de minutos.",
     "start": "Migrar ahora",
-    "migrateLater": "Migrar después"
+    "skipAction": "Empezar sin mis asistentes",
+    "skipConfirm": {
+      "title": "¿Empezar sin tus asistentes?",
+      "body": "Tus asistentes y sus conversaciones no estarán aquí. No se borra nada, quedan seguros en este computador y puedes migrarlos cuando quieras desde Configuración, en Migración a la nube.",
+      "confirm": "Empezar sin ellos",
+      "goBack": "Volver"
+    }
   },
   "progress": {
     "title": "Moviéndonos a la nube",

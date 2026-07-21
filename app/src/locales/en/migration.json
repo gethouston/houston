@@ -1,6 +1,5 @@
 {
   "offer": {
-    "betaBadge": "You're one of the first",
     "title": "Houston is moving to the cloud",
     "body": "You believed in Houston before anyone else. Here's what moving to the cloud gives you.",
     "whatTitle": "What you get",
@@ -9,7 +8,13 @@
     "benefit3": "<b>Nothing left behind.</b> Everything you've built comes along.",
     "freeNote": "It's free, and it only takes a couple of minutes.",
     "start": "Migrate Now",
-    "migrateLater": "Migrate later"
+    "skipAction": "Start without my assistants",
+    "skipConfirm": {
+      "title": "Start without your assistants?",
+      "body": "Your assistants and their conversations won't be here. Nothing is deleted, they stay safe on this computer, and you can migrate them anytime from Settings, under Cloud migration.",
+      "confirm": "Start without them",
+      "goBack": "Go back"
+    }
   },
   "progress": {
     "title": "Moving to the cloud",

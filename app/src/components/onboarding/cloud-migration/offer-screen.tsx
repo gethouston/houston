@@ -1,11 +1,11 @@
 import { AsyncButton } from "@houston-ai/core";
-import { Sparkles } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import astroJpg from "../../../assets/space/astro-960.jpg";
 import astroWebp from "../../../assets/space/astro-960.webp";
 import type { LegacyDetection } from "../../../lib/cloud-migration";
-import { WizardBadge } from "../wizard-badge";
 import { OfferPitch } from "./offer-pitch";
+import { OfferSkipConfirm } from "./offer-skip-confirm";
 
 /**
  * The wizard's opening announcement (HOU-719). Shown on the FIRST run of the
@@ -15,9 +15,10 @@ import { OfferPitch } from "./offer-pitch";
  * {@link FirstRunScreen} page (not a modal overlay, no space backdrop behind
  * it) — a full-height astronaut side image with a seam-blend gradient, then a
  * content column with the early-believer copy, the "what you get" pitch, a
- * free-note footnote, and one full-width pill CTA. "Migrate later" stays the
- * quiet escape below it. `detection` stays in the props for the caller's
- * analytics.
+ * free-note footnote, and one full-width pill CTA. The quiet escape below it
+ * is honest about the consequence — skipping starts the app empty — and opens
+ * {@link OfferSkipConfirm} before it runs the caller's `onSkip`. `detection`
+ * stays in the props for the caller's analytics.
  */
 export function OfferScreen({
   onStart,
@@ -28,6 +29,7 @@ export function OfferScreen({
   onSkip: () => void;
 }) {
   const { t } = useTranslation("migration");
+  const [skipConfirmOpen, setSkipConfirmOpen] = useState(false);
 
   return (
     <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-6 py-10">
@@ -60,9 +62,6 @@ export function OfferScreen({
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-4 px-8 pb-8 pt-7 text-left">
-          <WizardBadge icon={<Sparkles aria-hidden />} className="self-start">
-            {t("offer.betaBadge")}
-          </WizardBadge>
           <div className="space-y-2">
             <h1 className="text-balance text-2xl font-semibold leading-tight tracking-tight">
               {t("offer.title")}
@@ -86,13 +85,19 @@ export function OfferScreen({
           </AsyncButton>
           <button
             type="button"
-            onClick={onSkip}
+            onClick={() => setSkipConfirmOpen(true)}
             className="self-center rounded-full px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
           >
-            {t("offer.migrateLater")}
+            {t("offer.skipAction")}
           </button>
         </div>
       </div>
+
+      <OfferSkipConfirm
+        open={skipConfirmOpen}
+        onOpenChange={setSkipConfirmOpen}
+        onConfirmSkip={onSkip}
+      />
     </div>
   );
 }
