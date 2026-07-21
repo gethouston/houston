@@ -23,7 +23,13 @@ dirs = "5"
 chrono = { version = "0.4", features = ["serde"] }
 houston-tauri = { path = "../houston-tauri" }
 tauri-plugin-notification = "2"
-tauri-plugin-updater = "2"
+# native-tls ADDED (defaults kept): with both TLS stacks compiled, the
+# plugin's reqwest client prefers native-tls — schannel on Windows, Secure
+# Transport on macOS — so update checks and the cloud-migration download
+# trust the OS cert store. The bundled-roots-only default left machines
+# behind TLS-intercepting AV/proxies (corporate CAs in the OS store, unknown
+# to webpki) unable to update at all: Sentry HOUSTON 7541949805.
+tauri-plugin-updater = { version = "2", features = ["native-tls"] }
 tauri-plugin-deep-link = "2"
 tauri-plugin-sentry = "0.5"
 sentry = "0.42"
@@ -33,7 +39,10 @@ sentry = "0.42"
 sentry-tracing = "0.42"
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
 houston-ui-events = { path = "../../engine/houston-ui-events" }
-reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking"], default-features = false }
+# rustls-tls-native-roots (not plain rustls-tls): load trust roots from the
+# OS store instead of the bundled webpki list — same UnknownIssuer rationale
+# as the updater plugin above.
+reqwest = { version = "0.12", features = ["json", "rustls-tls-native-roots", "blocking"], default-features = false }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
