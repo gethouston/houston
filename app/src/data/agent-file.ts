@@ -6,21 +6,10 @@
  * and over the engine REST route tomorrow.
  */
 
-import Ajv, { type Schema, type ValidateFunction } from "ajv";
+import type { Schema } from "ajv";
 import { logger } from "../lib/logger";
 import { tauriAgent } from "../lib/tauri";
-
-const ajv = new Ajv({ allErrors: true, strict: false });
-const validators = new Map<string, ValidateFunction>();
-
-function getValidator(name: string, schema: Schema): ValidateFunction {
-  let v = validators.get(name);
-  if (!v) {
-    v = ajv.compile(schema);
-    validators.set(name, v);
-  }
-  return v;
-}
+import { getValidator, parseAgentJson } from "./agent-json";
 
 /** Relative path convention: `.houston/<name>/<name>.json`. */
 export function relPath(name: string): string {
@@ -29,9 +18,9 @@ export function relPath(name: string): string {
 
 /**
  * Read + parse `.houston/<name>/<name>.json`. Returns `fallback` when the file
- * is missing or empty. Validates against the JSON Schema and logs (but doesn't
- * throw) on mismatch — validation failures should surface data bugs, not block
- * the UI.
+ * is missing, empty, unparseable, or has the wrong top-level container shape
+ * (agents write these files directly). Item-level schema mismatches only log —
+ * they should surface data bugs, not block the UI.
  */
 export async function readAgentJson<T>(
   agentPath: string,
@@ -41,21 +30,9 @@ export async function readAgentJson<T>(
 ): Promise<T> {
   const raw = await tauriAgent.readFile(agentPath, relPath(name));
   if (!raw) return fallback;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (e) {
-    logger.warn(`[agent-file] ${name}: invalid JSON, falling back`, String(e));
-    return fallback;
-  }
-  const validate = getValidator(name, schema);
-  if (!validate(parsed)) {
-    logger.warn(
-      `[agent-file] ${name}: schema validation failed`,
-      JSON.stringify(validate.errors),
-    );
-  }
-  return parsed as T;
+  return parseAgentJson(name, raw, schema, fallback, (message, detail) =>
+    logger.warn(`[agent-file] ${message}`, detail),
+  );
 }
 
 /** Serialize + atomically write `.houston/<name>/<name>.json`. */
