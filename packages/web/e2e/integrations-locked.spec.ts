@@ -115,7 +115,7 @@ test("searching for a blocked app shows its locked row, not the empty state", as
   // A query that matches ONLY a blocked app must surface its locked row rather
   // than the "no matching apps" empty state (the search filters before the
   // connectable/locked partition).
-  await page.getByPlaceholder("Search integrations...").fill("slack");
+  await page.getByPlaceholder("Search integrations").fill("slack");
 
   await expect(page.getByText("Ask your admin to enable Slack")).toBeVisible();
   await expect(page.getByText("No matching apps found.")).toHaveCount(0);
