@@ -115,7 +115,8 @@
     "reasons": {
       "blockedType": "Este tipo de arquivo não pode ser usado aqui.",
       "blockedTypeWithExtension": "Arquivos .{{extension}} não podem ser usados aqui.",
-      "tooLarge": "Este arquivo é maior que {{maxSize}}."
+      "tooLarge": "Este arquivo é maior que {{maxSize}}.",
+      "modelCannotViewImages": "O modelo de IA atual não consegue ver imagens. Troque para um modelo com visão ou remova a imagem."
     }
   },
   "composio": {

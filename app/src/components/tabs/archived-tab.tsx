@@ -8,6 +8,7 @@ import { useActivity, useDeleteActivity } from "../../hooks/queries";
 import { useConversationFeed } from "../../hooks/use-conversation-vm";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { selectArchived } from "../../lib/mission-selection";
+import { modelAcceptsImages } from "../../lib/providers";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
@@ -35,7 +36,6 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   const deleteActivity = useDeleteActivity(path);
   const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
   const viewMode = useUIStore((s) => s.viewMode);
-  const attachmentValidation = useAttachmentRejectionDialog();
 
   const archived = useMemo(() => selectArchived(rawItems ?? []), [rawItems]);
   const items: KanbanItem[] = useMemo(
@@ -77,6 +77,9 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
     onSelectSession: setSelectedId,
   });
   const { effectiveProvider, effectiveModel } = panel;
+  const attachmentValidation = useAttachmentRejectionDialog({
+    modelAcceptsImages: modelAcceptsImages(effectiveProvider, effectiveModel),
+  });
 
   // The open conversation's reactive feed from the SDK conversation VM
   // (history seeded by the adapter's loadHistory).

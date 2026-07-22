@@ -44,3 +44,66 @@ describe("composer attachment validation", () => {
     });
   });
 });
+
+describe("composer image gate (model without vision)", () => {
+  const noVision = { modelAcceptsImages: false };
+
+  it("rejects an image when the active model cannot view images", () => {
+    const reason = validateComposerAttachment(
+      { name: "screenshot.png", size: 1024, type: "image/png" },
+      noVision,
+    );
+    deepStrictEqual(reason, { kind: "modelCannotViewImages" });
+  });
+
+  it("detects images by extension when the mime type is missing", () => {
+    const reason = validateComposerAttachment(
+      { name: "photo.HEIC", size: 1024, type: "" },
+      noVision,
+    );
+    deepStrictEqual(reason, { kind: "modelCannotViewImages" });
+  });
+
+  it("allows images when the model has vision or capability is unknown", () => {
+    const file = { name: "screenshot.png", size: 1024, type: "image/png" };
+    strictEqual(
+      validateComposerAttachment(file, { modelAcceptsImages: true }),
+      null,
+    );
+    strictEqual(validateComposerAttachment(file, {}), null);
+    strictEqual(validateComposerAttachment(file), null);
+  });
+
+  it("lets SVG through: it is text any model can read", () => {
+    const reason = validateComposerAttachment(
+      { name: "diagram.svg", size: 1024, type: "image/svg+xml" },
+      noVision,
+    );
+    strictEqual(reason, null);
+  });
+
+  it("leaves non-image files untouched by the gate", () => {
+    const reason = validateComposerAttachment(
+      { name: "notes.pdf", size: 1024, type: "application/pdf" },
+      noVision,
+    );
+    strictEqual(reason, null);
+  });
+
+  it("splits a mixed batch: images rejected, documents kept", () => {
+    const result = splitComposerAttachments(
+      [
+        { name: "brief.pdf", size: 1024, type: "application/pdf" },
+        { name: "receipt.jpg", size: 1024, type: "image/jpeg" },
+      ],
+      noVision,
+    );
+    deepStrictEqual(
+      result.accepted.map((f) => f.name),
+      ["brief.pdf"],
+    );
+    deepStrictEqual(result.rejected[0]?.reason, {
+      kind: "modelCannotViewImages",
+    });
+  });
+});
