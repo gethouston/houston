@@ -122,7 +122,11 @@ export default function App() {
     const userEmail = session?.email ?? null;
     const signupDate = null;
     if (userId && userId !== prevUserIdRef.current) {
-      analytics.identifyUser(userId, { email: userEmail, signupDate });
+      analytics.identifyUser(userId, {
+        email: userEmail,
+        name: session?.displayName ?? null,
+        signupDate,
+      });
       setSentryUser({
         id: userId,
         email: userEmail,

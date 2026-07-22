@@ -197,6 +197,8 @@ type AnalyticsProperty =
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserIdentity = {
   email?: string | null;
+  /** Provider display name — person property (like email, never an event prop). */
+  name?: string | null;
   /**
    * ISO date (YYYY-MM-DD) acquisition cohort. The GCP Identity Platform
    * session carries no created_at, so post-migration callers pass `null`
@@ -517,11 +519,13 @@ export const analytics = {
     if (!KEY) return;
     try {
       const email = cleanEmail(identity?.email);
+      const name = identity?.name?.trim() || undefined;
       posthog.alias(userId);
       posthog.setPersonProperties(
         {
           firebase_uid: userId,
           ...(email ? { email } : {}),
+          ...(name ? { name } : {}),
         },
         identity?.signupDate ? { signup_date: identity.signupDate } : undefined,
       );
