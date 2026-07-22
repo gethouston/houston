@@ -76,6 +76,17 @@ describe("firebase-rest signInWithIdp", () => {
     strictEqual(r.photoUrl, "https://example.com/grace.png");
     strictEqual(r.expiresAt >= before + 3600 * 1000, true);
     strictEqual(r.expiresAt <= Date.now() + 3600 * 1000, true);
+    strictEqual(r.isNewUser, false); // absent in the response → not a signup
+  });
+
+  it("parses isNewUser=true when the exchange created the account", async () => {
+    stubFetch(200, { ...IDP_OK, isNewUser: true });
+    const r = await signInWithIdp({
+      apiKey: "k",
+      providerId: "google.com",
+      idToken: "google-id-token",
+    });
+    strictEqual(r.isNewUser, true);
   });
 
   it("parses photoUrl as null when the GCIP response omits it", async () => {
@@ -184,6 +195,18 @@ describe("firebase-rest signInWithCustomToken", () => {
     const r = await signInWithCustomToken({ apiKey: "k", customToken: "ct" });
     strictEqual(r.idToken, "id-2");
     strictEqual(r.refreshToken, "r-2");
+    strictEqual(r.isNewUser, false); // absent in the response → not a signup
+  });
+
+  it("parses isNewUser=true when the exchange created the account (email-OTP signup)", async () => {
+    stubFetch(200, {
+      idToken: "id-2",
+      refreshToken: "r-2",
+      expiresIn: "3600",
+      isNewUser: true,
+    });
+    const r = await signInWithCustomToken({ apiKey: "k", customToken: "ct" });
+    strictEqual(r.isNewUser, true);
   });
 
   it("maps an invalid custom token", async () => {
@@ -259,7 +282,11 @@ describe("firebase-rest createAuthUri (brokered flow, Apple)", () => {
 
 describe("firebase-rest signInWithIdpSession (brokered flow, Apple)", () => {
   it("posts requestUri + sessionId (no postBody) and normalizes the session", async () => {
-    const { captured } = stubFetch(200, { ...IDP_OK, providerId: "apple.com" });
+    const { captured } = stubFetch(200, {
+      ...IDP_OK,
+      providerId: "apple.com",
+      isNewUser: true,
+    });
     const res = await signInWithIdpSession({
       apiKey: "k",
       requestUri: "http://127.0.0.1:8975/auth/callback?state=st-9&code=c",
@@ -267,6 +294,7 @@ describe("firebase-rest signInWithIdpSession (brokered flow, Apple)", () => {
     });
     strictEqual(res.uid, "uid-1");
     strictEqual(res.providerId, "apple.com");
+    strictEqual(res.isNewUser, true);
     const body = JSON.parse(captured.body);
     strictEqual(body.sessionId, "sess-9");
     strictEqual(

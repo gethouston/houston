@@ -7,7 +7,7 @@
 // here mirrors that module's signature but throws `operation_not_allowed` — none
 // is ever called on desktop (the flows are `osIsTauri()`-guarded in auth.ts).
 
-import { IdentityError, type Session } from "./index.ts";
+import { IdentityError, type Session, type SignInOutcome } from "./index.ts";
 
 // A firebase-free structural view of the fields `toSession` reads from a
 // Firebase user. The desktop bundle has no firebase types, so the seam's
@@ -35,21 +35,21 @@ export function initWebAuth(_config: {
   notOnDesktop();
 }
 
-export function webSignInWithGoogle(): Promise<Session | null> {
+export function webSignInWithGoogle(): Promise<SignInOutcome | null> {
   return notOnDesktop();
 }
 
-export function webSignInWithMicrosoft(): Promise<Session | null> {
+export function webSignInWithMicrosoft(): Promise<SignInOutcome | null> {
   return notOnDesktop();
 }
 
-export function webSignInWithApple(): Promise<Session | null> {
+export function webSignInWithApple(): Promise<SignInOutcome | null> {
   return notOnDesktop();
 }
 
 export function webSignInWithCustomToken(
   _token: string,
-): Promise<Session | null> {
+): Promise<SignInOutcome | null> {
   return notOnDesktop();
 }
 

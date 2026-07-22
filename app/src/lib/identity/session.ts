@@ -48,6 +48,17 @@ export interface Session {
   expiresAt: number;
 }
 
+/**
+ * A completed interactive sign-in: the session plus whether GCIP created the
+ * account during this exchange (`isNewUser`). Deliberately NOT part of
+ * `Session` — being new is a fact about the sign-up moment, not state to
+ * persist and re-serve on every launch.
+ */
+export interface SignInOutcome {
+  session: Session;
+  isNewUser: boolean;
+}
+
 function isAuthProvider(v: unknown): v is AuthProvider {
   return (
     typeof v === "string" && (AUTH_PROVIDERS as readonly string[]).includes(v)

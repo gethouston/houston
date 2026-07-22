@@ -30,6 +30,10 @@ export type AnalyticsEventName =
   | "session_ended"
   // Auth
   | "user_signed_in"
+  // First sign-in of a brand-new GCIP account (its `isNewUser` flag). Fires
+  // ONCE per account, ever — the PostHog → Slack new-user notification and
+  // the activation funnel key on this single event.
+  | "user_signed_up"
   | "user_signed_out"
   // Onboarding
   | "onboarding_started"

@@ -168,7 +168,7 @@ export function useAdminAuth(): AdminAuth {
     setError(null);
     try {
       const s = await webSignInWithGoogle();
-      if (s) adopt(sessionFromIdentity(s)); // null = popup cancelled (benign)
+      if (s) adopt(sessionFromIdentity(s.session)); // null = popup cancelled (benign)
     } catch (e) {
       setError(adminAuthMessage(e));
     } finally {

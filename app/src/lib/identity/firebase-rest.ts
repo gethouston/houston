@@ -32,6 +32,8 @@ export interface IdpSignInResult {
   displayName: string | null;
   photoUrl: string | null;
   providerId: string;
+  /** True when THIS exchange created the GCIP account (first sign-in ever). */
+  isNewUser: boolean;
 }
 
 export interface PasswordSignInResult {
@@ -47,6 +49,12 @@ export interface TokenSignInResult {
   idToken: string;
   refreshToken: string;
   expiresAt: number;
+}
+
+/** Custom-token exchange tokens + GCIP's account-creation flag. */
+export interface CustomTokenSignInResult extends TokenSignInResult {
+  /** True when THIS exchange created the GCIP account (first sign-in ever). */
+  isNewUser: boolean;
 }
 
 function reqString(
@@ -105,6 +113,7 @@ export async function signInWithIdp(params: {
     photoUrl: typeof body.photoUrl === "string" ? body.photoUrl : null,
     providerId:
       typeof body.providerId === "string" ? body.providerId : params.providerId,
+    isNewUser: body.isNewUser === true,
   };
 }
 
@@ -140,6 +149,7 @@ export async function signInWithIdpSession(params: {
     displayName: typeof body.displayName === "string" ? body.displayName : null,
     photoUrl: typeof body.photoUrl === "string" ? body.photoUrl : null,
     providerId: typeof body.providerId === "string" ? body.providerId : "",
+    isNewUser: body.isNewUser === true,
   };
 }
 
@@ -195,7 +205,7 @@ export async function signInWithPassword(params: {
 export async function signInWithCustomToken(params: {
   apiKey: string;
   customToken: string;
-}): Promise<TokenSignInResult> {
+}): Promise<CustomTokenSignInResult> {
   const body = await postGcipJson(
     `${IDENTITY_TOOLKIT_BASE}/accounts:signInWithCustomToken?key=${params.apiKey}`,
     { token: params.customToken, returnSecureToken: true },
@@ -204,6 +214,7 @@ export async function signInWithCustomToken(params: {
     idToken: reqString(body, "idToken"),
     refreshToken: reqString(body, "refreshToken"),
     expiresAt: expiresAtFrom(body, "expiresIn"),
+    isNewUser: body.isNewUser === true,
   };
 }
 
