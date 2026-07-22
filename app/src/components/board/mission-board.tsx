@@ -2,6 +2,7 @@ import { AIBoard } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
+import { modelAcceptsImages } from "../../lib/providers";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { buildMissionBoardColumns } from "../mission-board-columns";
@@ -116,7 +117,12 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     source.activeAgent?.folderPath ?? null,
   );
 
-  const attachmentValidation = useAttachmentRejectionDialog();
+  const attachmentValidation = useAttachmentRejectionDialog({
+    modelAcceptsImages: modelAcceptsImages(
+      panel.effectiveProvider,
+      panel.effectiveModel,
+    ),
+  });
 
   return (
     <>

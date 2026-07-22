@@ -47,6 +47,12 @@ export interface ModelOption {
   label: string;
   description: string;
   /**
+   * Whether the model accepts image INPUT (the catalog's `vision` flag).
+   * Absent on seed/override-only entries (pre-hydration) = unknown — the
+   * composer's image gate only blocks on a definitive `false`.
+   */
+  acceptsImages?: boolean;
+  /**
    * Reasoning-effort levels this model accepts, ordered low→high. Omitted
    * or empty means the model has no effort control and the picker hides the
    * effort row (e.g. Haiku).
@@ -217,6 +223,7 @@ function buildProvider(
         id: entry.id,
         label: mo?.label ?? entry.name,
         description: mo?.description ?? "",
+        acceptsImages: entry.vision === true,
         contextWindow: window.default,
         // Omit when there is no upward gating, matching the "absent = no snap"
         // contract `getContextWindowConfig` reads.
@@ -554,6 +561,20 @@ export function validModelOrNull(
   // silently reverts a live OpenRouter pick to the provider default.
   if (isOpenCatalogProvider(providerId)) return modelId;
   return getModel(providerId, modelId) ? modelId : null;
+}
+
+/**
+ * Whether a model accepts image input, from the hydrated catalog. `undefined`
+ * when the model isn't in `PROVIDERS` (pre-hydration, local/BYO, or an
+ * open-catalog id) = unknown — callers must treat unknown as permitted, so a
+ * missing catalog can never block an attachment the model might handle.
+ */
+export function modelAcceptsImages(
+  providerId: string | null | undefined,
+  modelId: string | null | undefined,
+): boolean | undefined {
+  if (!providerId || !modelId) return undefined;
+  return getModel(providerId, modelId)?.acceptsImages;
 }
 
 /**

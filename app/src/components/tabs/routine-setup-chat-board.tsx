@@ -12,6 +12,7 @@ import type { Activity } from "@houston-ai/engine-client";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { useConversationFeed } from "../../hooks/use-conversation-vm";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
+import { modelAcceptsImages } from "../../lib/providers";
 import { type HistoryLoadOptions, tauriChat } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
@@ -64,7 +65,6 @@ export function RoutineSetupChatBoard({
   const openHref = useOpenAgentHref(path);
   const queuedLabels = useQueuedMessageLabels();
   const { composerLabels } = useBoardLabels();
-  const attachmentValidation = useAttachmentRejectionDialog();
   const addToast = useUIStore((s) => s.addToast);
 
   const panel = useAgentChatPanel({
@@ -76,6 +76,12 @@ export function RoutineSetupChatBoard({
     // needs ask_user and must never open read-only in Planner — so the live
     // composer opens on Coworker too. The user can still switch modes here.
     initialTurnMode: "execute",
+  });
+  const attachmentValidation = useAttachmentRejectionDialog({
+    modelAcceptsImages: modelAcceptsImages(
+      panel.effectiveProvider,
+      panel.effectiveModel,
+    ),
   });
   const overrides = useMemo(
     () => ({

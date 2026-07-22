@@ -12,6 +12,7 @@ import { AlertTriangle } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  type ComposerAttachmentPolicy,
   type ComposerAttachmentRejectReason,
   formatBytes,
   splitComposerAttachments,
@@ -23,15 +24,20 @@ interface AttachmentValidationDialogApi {
   dialog: ReactNode;
 }
 
-export function useAttachmentRejectionDialog(): AttachmentValidationDialogApi {
+export function useAttachmentRejectionDialog(
+  policy?: ComposerAttachmentPolicy,
+): AttachmentValidationDialogApi {
   const { t } = useTranslation("chat");
   const [rejections, setRejections] = useState<AttachmentRejection[]>([]);
   const open = rejections.length > 0;
   const close = useCallback(() => setRejections([]), []);
 
+  // Keyed on the policy VALUE (not the object identity) so callers may build
+  // the policy inline without re-creating prepareAttachments every render.
+  const modelAcceptsImages = policy?.modelAcceptsImages;
   const prepareAttachments = useCallback<PrepareAttachments>(
     (incoming) => {
-      const result = splitComposerAttachments(incoming);
+      const result = splitComposerAttachments(incoming, { modelAcceptsImages });
       return {
         accepted: result.accepted,
         rejected: result.rejected.map((rejection) => ({
@@ -40,7 +46,7 @@ export function useAttachmentRejectionDialog(): AttachmentValidationDialogApi {
         })),
       };
     },
-    [t],
+    [t, modelAcceptsImages],
   );
 
   const onAttachmentRejections = useCallback(
@@ -98,6 +104,9 @@ function formatReason(
     return t("attachmentIssues.reasons.tooLarge", {
       maxSize: formatBytes(reason.maxBytes),
     });
+  }
+  if (reason.kind === "modelCannotViewImages") {
+    return t("attachmentIssues.reasons.modelCannotViewImages");
   }
   if (reason.extension) {
     return t("attachmentIssues.reasons.blockedTypeWithExtension", {

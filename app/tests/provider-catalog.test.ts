@@ -8,6 +8,7 @@ import {
   getModel,
   getProvider,
   hydrateProviderCatalog,
+  modelAcceptsImages,
   normalizeEffort,
   normalizeLegacyModel,
   PROVIDERS,
@@ -56,6 +57,16 @@ describe("hydrateProviderCatalog: model metadata", () => {
     const sonnet = getModel("anthropic", "claude-sonnet-5");
     strictEqual(sonnet?.label, "Sonnet 5");
     ok(sonnet && sonnet.description.length > 0);
+  });
+
+  it("keeps the catalog's vision flag as acceptsImages (the composer image gate reads it)", () => {
+    strictEqual(getModel("openai", "gpt-5.6-sol")?.acceptsImages, true);
+    strictEqual(getModel("openai", "gpt-5.6-luna")?.acceptsImages, false);
+    strictEqual(modelAcceptsImages("openai", "gpt-5.6-sol"), true);
+    strictEqual(modelAcceptsImages("openai", "gpt-5.6-luna"), false);
+    // Unknown model / provider = unknown, never a definitive block.
+    strictEqual(modelAcceptsImages("openai", "no-such-model"), undefined);
+    strictEqual(modelAcceptsImages(null, null), undefined);
   });
 
   it("takes the model window from pi, and the snap-up ceiling from the override", () => {

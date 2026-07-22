@@ -8,7 +8,20 @@ export interface ComposerAttachmentFile {
 
 export type ComposerAttachmentRejectReason =
   | { kind: "blockedType"; extension?: string }
-  | { kind: "tooLarge"; maxBytes: number };
+  | { kind: "tooLarge"; maxBytes: number }
+  | { kind: "modelCannotViewImages" };
+
+/**
+ * What the active chat allows, threaded from the composer's effective model.
+ * `modelAcceptsImages: false` = the model that will run this turn cannot take
+ * image input, so image files are rejected LOUDLY at attach time — without
+ * this, the agent gets a file path it can never see and burns the mission
+ * planning OCR forever. `true`/`undefined` (unknown) both permit images:
+ * only a definitive "no vision" from the catalog blocks.
+ */
+export interface ComposerAttachmentPolicy {
+  modelAcceptsImages?: boolean;
+}
 
 export interface ComposerAttachmentRejection<T extends ComposerAttachmentFile> {
   file: T;
@@ -58,6 +71,7 @@ const BLOCKED_MIME_TYPES = new Set([
 
 export function splitComposerAttachments<T extends ComposerAttachmentFile>(
   incoming: readonly T[],
+  policy?: ComposerAttachmentPolicy,
 ): {
   accepted: T[];
   rejected: ComposerAttachmentRejection<T>[];
@@ -65,7 +79,7 @@ export function splitComposerAttachments<T extends ComposerAttachmentFile>(
   const accepted: T[] = [];
   const rejected: ComposerAttachmentRejection<T>[] = [];
   for (const file of incoming) {
-    const reason = validateComposerAttachment(file);
+    const reason = validateComposerAttachment(file, policy);
     if (reason) rejected.push({ file, reason });
     else accepted.push(file);
   }
@@ -74,6 +88,7 @@ export function splitComposerAttachments<T extends ComposerAttachmentFile>(
 
 export function validateComposerAttachment(
   file: ComposerAttachmentFile,
+  policy?: ComposerAttachmentPolicy,
 ): ComposerAttachmentRejectReason | null {
   const extension = extensionOf(file.name);
   if (extension && BLOCKED_EXTENSIONS.has(extension)) {
@@ -87,10 +102,39 @@ export function validateComposerAttachment(
   ) {
     return { kind: "blockedType", extension };
   }
+  if (policy?.modelAcceptsImages === false && isImageAttachment(file)) {
+    return { kind: "modelCannotViewImages" };
+  }
   if (file.size > MAX_COMPOSER_ATTACHMENT_BYTES) {
     return { kind: "tooLarge", maxBytes: MAX_COMPOSER_ATTACHMENT_BYTES };
   }
   return null;
+}
+
+// Raster/photo formats only: these are opaque to a no-vision model (its Read
+// tool can't show them, which is what sends the agent into the OCR spiral).
+// SVG is deliberately NOT here — it's text/XML any model can read.
+const IMAGE_EXTENSIONS = new Set([
+  "avif",
+  "bmp",
+  "gif",
+  "heic",
+  "heif",
+  "ico",
+  "jpeg",
+  "jpg",
+  "png",
+  "tif",
+  "tiff",
+  "webp",
+]);
+
+function isImageAttachment(file: ComposerAttachmentFile): boolean {
+  const mime = (file.type ?? "").toLowerCase();
+  if (mime === "image/svg+xml") return false;
+  if (mime.startsWith("image/")) return true;
+  const extension = extensionOf(file.name);
+  return !!extension && IMAGE_EXTENSIONS.has(extension);
 }
 
 export function formatBytes(bytes: number): string {
