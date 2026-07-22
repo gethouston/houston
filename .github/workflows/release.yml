@@ -90,6 +90,14 @@ jobs:
   prep:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # macos_flavors drives the build-macos matrix. A `cloud-v*` tag builds TWO
+    # macOS DMGs from the SAME commit/pipeline/signing — the prod cloud DMG and a
+    # `staging` QA sibling — so downstream fans out over ["prod","staging"]. A
+    # local `v*` tag builds only ["prod"], leaving that channel byte-identical to
+    # before this output existed (the matrix collapses to a single leg). See the
+    # build-macos header for the full staging contract.
+    outputs:
+      macos_flavors: ${{ steps.flavors.outputs.macos_flavors }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -131,6 +139,36 @@ jobs:
             exit 1
           fi
           echo "HOSTED_ENGINE_URL secret is present — cloud gateway will be baked in."
+
+      # A `cloud-v*` build ALSO produces a `staging` QA DMG that bakes the staging
+      # gateway URL from HOSTED_ENGINE_URL_STAGING. If that secret is empty the
+      # flavor-conditional env in build-macos would silently fall back to the PROD
+      # gateway, producing a "staging" DMG that actually talks to prod — the exact
+      # wrong-target build QA is trying to avoid. Fail loudly HERE (channel is
+      # known, ~1 min in) rather than after ~25 min of signing + notarization on
+      # the staging matrix leg. Mirrors the prod-gateway guard above.
+      - name: Verify staging gateway secret is set (cloud channel)
+        if: ${{ startsWith(github.ref_name, 'cloud-') }}
+        env:
+          HOSTED_ENGINE_URL_STAGING: ${{ secrets.HOSTED_ENGINE_URL_STAGING }}
+        run: |
+          if [ -z "${HOSTED_ENGINE_URL_STAGING}" ]; then
+            echo "::error::A cloud-v* tag was pushed but the HOSTED_ENGINE_URL_STAGING secret is empty. It bakes into the staging QA DMG; set it (repo → Settings → Secrets) before releasing a cloud build."
+            exit 1
+          fi
+          echo "HOSTED_ENGINE_URL_STAGING secret is present — staging QA DMG will bake the staging gateway."
+
+      # Emit the macOS build fan-out consumed by build-macos's matrix. Cloud
+      # releases build prod + staging DMGs; local releases build prod only. The
+      # array is a JSON string parsed downstream with fromJSON().
+      - name: Compute macOS build flavors
+        id: flavors
+        run: |
+          if [[ "$GITHUB_REF_NAME" == cloud-* ]]; then
+            echo 'macos_flavors=["prod","staging"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'macos_flavors=["prod"]' >> "$GITHUB_OUTPUT"
+          fi
 
       # Resolve `release-notes.md`. Two paths:
       #
@@ -324,10 +362,38 @@ jobs:
           path: update-notes.txt
           retention-days: 1
 
+  # ============================================================================
+  # macOS universal DMG. Matrix over `flavor` so a single job definition builds
+  # both cloud DMGs from ONE commit.
+  #
+  # Staging contract (cloud channel only — the local `v*` matrix is ["prod"], a
+  # single leg identical to the pre-matrix job):
+  #   * SAME commit, SAME pipeline, SAME signing + notarization as the prod cloud
+  #     DMG. The staging leg diverges in exactly TWO places:
+  #       1. VITE_HOSTED_ENGINE_URL / HOUSTON_INTEGRATIONS_URL bake the STAGING
+  #          gateway (HOSTED_ENGINE_URL_STAGING) instead of the prod gateway.
+  #       2. Its in-app updater is neutralized — pointed at a never-created tag so
+  #          the launch-time update check 404s forever and never replaces the
+  #          staging install with the published prod build
+  #          (point-updater-at-staging-noop.sh).
+  #   * Staging artifacts NEVER enter an updater manifest (latest-cloud.json), the
+  #     checksums file, or a Sentry upload. The staging leg skips all of those and
+  #     uploads exactly ONE asset: the DMG, renamed
+  #     `Houston_staging_<version>_universal.dmg`.
+  #   * Purpose: let QA test the EXACT shipped binary against the staging engine
+  #     fleet before that engine is promoted to prod and the draft is published.
   build-macos:
     needs: prep
+    name: Build macOS (${{ matrix.flavor }})
     runs-on: macos-latest
     timeout-minutes: 60
+    strategy:
+      # fail-fast=false so a staging-leg failure never kills the prod DMG that
+      # actually ships (mirrors build-windows). macos_flavors is ["prod"] on the
+      # local channel (single leg) and ["prod","staging"] on the cloud channel.
+      fail-fast: false
+      matrix:
+        flavor: ${{ fromJSON(needs.prep.outputs.macos_flavors) }}
     # Job-level env so the per-step `if: ${{ env.SENTRY_AUTH_TOKEN != '' }}`
     # gate can actually SEE the secret. A step's OWN `env:` block is NOT in
     # scope for that same step's `if:` — GitHub evaluates `if:` before the
@@ -338,7 +404,17 @@ jobs:
     # Hoisting to job scope fixes the gate while still resolving to '' on forks
     # without the secret, so forks keep skipping the upload.
     env:
-      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      # Prod flavor gets the Sentry token; the staging flavor deliberately does
+      # NOT — its symbols/sourcemaps must never reach Sentry (a QA build is not a
+      # shipped release). Resolving to '' on the staging leg makes the upload
+      # step's `if: ${{ env.SENTRY_AUTH_TOKEN != '' }}` gate skip it, reusing the
+      # same mechanism forks use. The condition is `!= 'staging'` (not
+      # `== 'staging' && '' || …`) on purpose: GitHub's `&&/||` return the operand
+      # value, and an empty-string "true" branch is falsy, so the `== 'staging'`
+      # form would fall through to the token and leak it to staging. Keeping the
+      # secret as the truthy branch avoids that footgun (forks with no secret still
+      # get '' → skip).
+      SENTRY_AUTH_TOKEN: ${{ matrix.flavor != 'staging' && secrets.SENTRY_AUTH_TOKEN || '' }}
       # CLOUD channel (tag `cloud-v*`): bake the managed gateway URL so the
       # packaged app talks to Houston Cloud and the user just signs in with
       # Google — no URL to enter (resolveEngine → hosted-oauth, chooser skipped).
@@ -347,18 +423,26 @@ jobs:
       # VITE_HOSTED_ENGINE_AUTH=oauth is the managed-cloud default anyway; set it
       # explicitly so the Google-login gate is unambiguous. Baked as VITE_* build
       # constants (consumed by app/vite.config.ts), so job-level like the flag above.
+      #
+      # Flavor split (cloud channel only): the `staging` leg bakes the STAGING
+      # gateway (HOSTED_ENGINE_URL_STAGING) so QA hits the staging engine fleet;
+      # the `prod` leg bakes the prod gateway. Both fall back to '' on the local
+      # channel, so a `v*` build is byte-identical to before. prep's staging-secret
+      # guard fails the run if HOSTED_ENGINE_URL_STAGING is empty, so the staging
+      # leg can never silently degrade to the prod URL via this fallback.
       IS_CLOUD: ${{ startsWith(github.ref_name, 'cloud-') }}
-      VITE_HOSTED_ENGINE_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
+      VITE_HOSTED_ENGINE_URL: ${{ startsWith(github.ref_name, 'cloud-') && (matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL) || '' }}
       VITE_HOSTED_ENGINE_AUTH: ${{ startsWith(github.ref_name, 'cloud-') && 'oauth' || '' }}
       # Integrations for the LOCAL engine: compile-time bake read by
       # app/src-tauri (option_env! in lib.rs) and handed to the spawned host
       # sidecar, so a signed-in desktop user gets connected apps (and the
       # onboarding email step) on the local engine too — not only on cloud
       # pods. Same base URL as the hosted gateway (it serves /v1/integrations/*
-      # publicly), hence the same secret. Cloud-channel gated: a non-cloud
-      # build has no gateway to authenticate against, so it stays '' and
-      # lib.rs's empty-filter keeps integrations off there.
-      HOUSTON_INTEGRATIONS_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
+      # publicly), hence the same secret — and the same staging/prod split, so the
+      # staging DMG's integrations resolve against the staging gateway too. Cloud-
+      # channel gated: a non-cloud build has no gateway to authenticate against, so
+      # it stays '' and lib.rs's empty-filter keeps integrations off there.
+      HOUSTON_INTEGRATIONS_URL: ${{ startsWith(github.ref_name, 'cloud-') && (matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL) || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -602,9 +686,20 @@ jobs:
       # a local build and drop the baked gateway). Local `v*` builds skip this
       # and keep the default `latest.json` endpoint untouched. Edits only the
       # runner's checkout — never committed.
-      - name: Point updater at cloud manifest (cloud channel)
-        if: ${{ env.IS_CLOUD == 'true' }}
+      # PROD cloud flavor: repoint the updater at `latest-cloud.json` so the app
+      # tracks the cloud release channel.
+      - name: Point updater at cloud manifest (prod cloud flavor)
+        if: ${{ env.IS_CLOUD == 'true' && matrix.flavor == 'prod' }}
         run: bash scripts/ci/point-updater-at-cloud-manifest.sh
+
+      # STAGING flavor: neutralize the updater instead — point it at a
+      # never-created tag so the launch-time check 404s forever and the staging
+      # install is never force-updated into the published prod build (the app's
+      # update check is fail-open; see the script header). `staging` only ever
+      # appears on the cloud channel, so this leg implies IS_CLOUD.
+      - name: Neutralize updater (staging flavor)
+        if: ${{ matrix.flavor == 'staging' }}
+        run: bash scripts/ci/point-updater-at-staging-noop.sh
 
       - name: Build Tauri app (universal)
         uses: tauri-apps/tauri-action@v0
@@ -969,7 +1064,10 @@ jobs:
 
           echo "=== All checks passed ==="
 
+      # Staging is a QA-only DMG: it must never enter the checksums file (nor any
+      # updater manifest or Sentry upload — see the job header). Prod flavor only.
       - name: Generate checksums
+        if: ${{ matrix.flavor != 'staging' }}
         run: |
           shasum -a 256 \
             "${{ steps.artifacts.outputs.dmg }}" \
@@ -982,12 +1080,17 @@ jobs:
       # embeds it verbatim into latest.json's `notes` so existing users see the
       # new-version description on the auto-update prompt, in their own language
       # (English body + the trailing houston-i18n comment carrying es/pt).
+      # Prod flavor only — the staging leg builds no manifest, so it needs no notes.
       - name: Download updater-notes artifact
+        if: ${{ matrix.flavor != 'staging' }}
         uses: actions/download-artifact@v8
         with:
           name: update-notes
 
+      # Prod flavor only: the staging DMG must never be advertised for
+      # auto-update, so it produces no manifest fragment for finalize to merge.
       - name: Generate updater manifest
+        if: ${{ matrix.flavor != 'staging' }}
         run: |
           VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
           # Channel-specific updater manifest name so the cloud + local feeds
@@ -1052,7 +1155,10 @@ jobs:
       # Note: latest.json uploaded here advertises macOS only. The
       # `finalize` job pulls it back down after `build-windows` finishes
       # and extends it with the Windows entry.
+      # Prod flavor only: the full macOS asset set (DMG + updater tarball + sig +
+      # manifest + checksums) that feeds the auto-updater and the published draft.
       - name: Upload macOS artifacts to draft release
+        if: ${{ matrix.flavor != 'staging' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -1065,6 +1171,25 @@ jobs:
             --clobber
 
           echo "::notice::macOS artifacts uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME"
+
+      # Staging flavor only: upload EXACTLY the DMG, renamed so it's unmistakable
+      # in the draft's asset list — no tarball, no .sig, no manifest, no checksums
+      # entry (staging must never enter the auto-updater feed). The rename is a
+      # pure `mv` AFTER notarization + stapling, so the signature/staple stay
+      # valid. Uploading into the same draft from a parallel job is already this
+      # workflow's established pattern (mac/win/linux all do it).
+      - name: Upload staging QA DMG to draft release (staging flavor)
+        if: ${{ matrix.flavor == 'staging' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
+          SRC="${{ steps.artifacts.outputs.dmg }}"
+          DEST="$(dirname "$SRC")/Houston_staging_${VERSION}_universal.dmg"
+          mv "$SRC" "$DEST"
+          gh release upload "$GITHUB_REF_NAME" "$DEST" --clobber
+          echo "::notice::Staging QA DMG (Houston_staging_${VERSION}_universal.dmg) uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME — it talks to the staging gateway and is NOT in any updater manifest."
 
   # ============================================================================
   # Windows MSI build — runs IN PARALLEL with build-macos. Both jobs only
@@ -1953,7 +2078,6 @@ jobs:
 
           VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${GITHUB_REF_NAME}"
-          DMG_URL=$(gh release view "$GITHUB_REF_NAME" --json assets --jq '[.assets[] | select(.name | endswith(".dmg")) | .url] | first // empty')
 
           # First ~700 chars of the release-notes body, skipping the leading "## Houston X.Y.Z" header line.
           NOTES_PREVIEW=$(tail -n +2 release-notes.md | head -c 700)
@@ -1961,27 +2085,56 @@ jobs:
             NOTES_PREVIEW="${NOTES_PREVIEW}…"
           fi
 
-          # Build action buttons: always include "View on GitHub", add "Download DMG" only when we found one.
-          if [ -n "$DMG_URL" ]; then
-            ACTIONS=$(jq -n --arg dmg "$DMG_URL" --arg url "$RELEASE_URL" '[
-              { type: "button", text: { type: "plain_text", text: "Download DMG", emoji: true }, url: $dmg, style: "primary" },
-              { type: "button", text: { type: "plain_text", text: "View on GitHub", emoji: true }, url: $url }
-            ]')
-          else
-            ACTIONS=$(jq -n --arg url "$RELEASE_URL" '[
-              { type: "button", text: { type: "plain_text", text: "View on GitHub", emoji: true }, url: $url }
-            ]')
-          fi
+          # Button + context selection is channel-specific because a cloud draft
+          # now carries TWO DMGs (prod + staging QA), which makes "the first .dmg"
+          # ambiguous.
+          case "$GITHUB_REF_NAME" in
+            cloud-*)
+              # Cloud channel: the STAGING DMG is the one to test in the daily — it
+              # talks to the staging gateway, which is what we're QA'ing before the
+              # engine is promoted and the draft published. Make it the PRIMARY
+              # button; add a non-primary button for the prod DMG. Staging assets
+              # are named `Houston_staging_*.dmg`; the prod DMG is the other .dmg.
+              STAGING_DMG_URL=$(gh release view "$GITHUB_REF_NAME" --json assets --jq '[.assets[] | select(.name | startswith("Houston_staging")) | .url] | first // empty')
+              PROD_DMG_URL=$(gh release view "$GITHUB_REF_NAME" --json assets --jq '[.assets[] | select((.name | endswith(".dmg")) and (.name | startswith("Houston_staging") | not)) | .url] | first // empty')
+              CONTEXT_TEXT="Draft cloud release · the *staging DMG* talks to the staging gateway — it's the one to test in the daily before we publish"
+              ACTIONS=$(jq -n \
+                --arg staging "$STAGING_DMG_URL" \
+                --arg prod "$PROD_DMG_URL" \
+                --arg url "$RELEASE_URL" \
+                '[
+                  ( if $staging != "" then { type: "button", text: { type: "plain_text", text: "Download staging DMG (QA)", emoji: true }, url: $staging, style: "primary" } else empty end ),
+                  ( if $prod != "" then { type: "button", text: { type: "plain_text", text: "Prod DMG", emoji: true }, url: $prod } else empty end ),
+                  { type: "button", text: { type: "plain_text", text: "View on GitHub", emoji: true }, url: $url }
+                ]')
+              ;;
+            *)
+              # Local channel: unchanged — one DMG, primary "Download DMG" button.
+              DMG_URL=$(gh release view "$GITHUB_REF_NAME" --json assets --jq '[.assets[] | select(.name | endswith(".dmg")) | .url] | first // empty')
+              CONTEXT_TEXT="Draft release · grab the DMG and try it before we publish"
+              if [ -n "$DMG_URL" ]; then
+                ACTIONS=$(jq -n --arg dmg "$DMG_URL" --arg url "$RELEASE_URL" '[
+                  { type: "button", text: { type: "plain_text", text: "Download DMG", emoji: true }, url: $dmg, style: "primary" },
+                  { type: "button", text: { type: "plain_text", text: "View on GitHub", emoji: true }, url: $url }
+                ]')
+              else
+                ACTIONS=$(jq -n --arg url "$RELEASE_URL" '[
+                  { type: "button", text: { type: "plain_text", text: "View on GitHub", emoji: true }, url: $url }
+                ]')
+              fi
+              ;;
+          esac
 
           jq -n \
             --arg ver "$VERSION" \
             --arg notes "$NOTES_PREVIEW" \
+            --arg context "$CONTEXT_TEXT" \
             --argjson actions "$ACTIONS" \
             '{
               text: ("Houston v" + $ver + " is ready to test"),
               blocks: [
                 { type: "header", text: { type: "plain_text", text: ("Houston v" + $ver + " is ready to test"), emoji: true } },
-                { type: "context", elements: [ { type: "mrkdwn", text: "Draft release · grab the DMG and try it before we publish" } ] },
+                { type: "context", elements: [ { type: "mrkdwn", text: $context } ] },
                 { type: "section", text: { type: "mrkdwn", text: $notes } },
                 { type: "actions", elements: $actions }
               ]

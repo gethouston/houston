@@ -229,10 +229,18 @@ CI also needs as Secrets:
 - **Duration:** ~25-30 min wall-clock (mac + win + linux run in parallel; mac is the long pole at ~25 min including Apple notarization).
 - **Draft = QA gate.** Users don't see until published on GitHub.
 
+### Staging QA DMG (cloud channel)
+
+Every `cloud-v*` release builds a SECOND macOS DMG, `Houston_staging_<version>_universal.dmg`, via a `flavor: [prod, staging]` matrix on `build-macos` (prep outputs the flavor list; local `v*` tags stay a single `prod` leg). Same commit, same pipeline, same signing + notarization — the staging leg differs in exactly two bakes: the gateway URL comes from secret `HOSTED_ENGINE_URL_STAGING` (staging gateway, guarded non-empty in `prep`), and the updater endpoint is rewritten to a never-created tag by `scripts/ci/point-updater-at-staging-noop.sh` so the forced-update-at-launch flow can never replace a staging install with the published prod build (update checks are fail-open — warn-and-continue). Staging artifacts never enter `latest-cloud.json`, checksums, or Sentry; the leg uploads exactly the one renamed DMG. Purpose: QA the exact shipped binary against the staging engine fleet (which auto-rolls on every merge to main) before pushing `engine-pod-v*` to roll prod and publishing the draft. The finalize Slack message's primary button is the staging DMG on the cloud channel.
+
+### Daily cloud cut (`daily-cloud-cut.yml`)
+
+Cuts the `cloud-v*` release automatically at 12:45 UTC Mon–Fri (07:45 America/Bogota, no DST) so the draft is built before the 08:30 daily. Replicates the manual cut: branch from main tip → `scripts/version.sh` → `release: v<version>` commit (lives only under the tag, never pushed to protected main) → annotated `cloud-v<version>` tag pushed with the `RELEASE_CUT_TOKEN` fine-grained PAT (a default-GITHUB_TOKEN tag push would not trigger `release.yml` — recursive-workflow guard). Guards: skips quietly when main has no new commits since the last cut; refuses to cut a red main (failed completed check-runs) and pings the release Slack webhook. Manual/off-schedule cuts: `workflow_dispatch`, optional `version` override.
+
 ### Job graph
 ```
 prep (ubuntu, ~30s)               creates empty draft + release-notes.md artifact
-  ├── build-macos (mac, ~25m)     bun-compiles host sidecar (both arches) → signs, notarizes, uploads DMG/tar/sig/latest.json
+  ├── build-macos (mac, ~25m)     matrix [prod, staging on cloud-v*] — bun-compiles host sidecar (both arches) → signs, notarizes, uploads DMG/tar/sig/latest.json (staging leg: one renamed DMG only)
   ├── build-windows (win, ~15m)   bun-compiles host sidecar per arch → uploads MSI + .sig (x64 + arm64)
   ├── build-linux (ubuntu, ~15m)  bun-compiles host sidecar → uploads AppImage (download-only, not in latest.json)
   ├── build-web (ubuntu, ~5m)     builds packages/web → uploads web-dist.tar.gz + Sentry maps, deploys PREVIEW site
