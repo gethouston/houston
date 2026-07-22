@@ -220,11 +220,29 @@ export class ProcessLauncher implements RuntimeLauncher {
     return endpoint;
   }
 
-  async sleep(agentId: AgentId): Promise<void> {
+  async sleep(agentId: AgentId, timeoutMs = 5_000): Promise<void> {
     const r = this.running.get(agentId);
     if (!r) return; // already asleep — pi's continueRecent restores on next wake
+    // Subscribe to the exit BEFORE killing, then wait (bounded) for the child
+    // to ACTUALLY be gone: callers sleep an agent to get its directory quiet
+    // (a rename is about to move it; on Windows a live child's cwd even locks
+    // it), and SIGTERM alone resolves while the process is still flushing.
+    // Handles without onExit (test stubs) count as already exited — same
+    // posture as shutdownAllAndWait.
+    const exited = r.handle.onExit
+      ? new Promise<void>((resolve) => r.handle.onExit?.(() => resolve()))
+      : undefined;
     r.handle.kill();
     this.running.delete(agentId);
+    if (exited) {
+      await Promise.race([
+        exited,
+        new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, timeoutMs);
+          timer.unref?.();
+        }),
+      ]);
+    }
   }
 
   async destroy(agentId: AgentId): Promise<void> {

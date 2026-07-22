@@ -138,6 +138,54 @@ test("sleep kills the process; the next ensureAwake spawns a fresh one", async (
   expect(spawns).toHaveLength(2);
 });
 
+test("sleep resolves only after the child has ACTUALLY exited", async () => {
+  // A rename moves the agent's directory right after sleeping it — resolving
+  // on SIGTERM alone would let the move race the still-flushing child (and on
+  // Windows the live child's cwd locks the directory outright).
+  let exitCb: (() => void) | undefined;
+  const spawner: RuntimeSpawner = {
+    spawn() {
+      return {
+        port: 5000,
+        kill: () => {}, // the "process" ignores SIGTERM for a while
+        onExit: (cb) => {
+          exitCb = cb;
+        },
+      };
+    },
+  };
+  const launcher = new ProcessLauncher(opts(spawner));
+  await launcher.ensureAwake(agent("slow"));
+
+  let slept = false;
+  const sleeping = launcher.sleep("slow").then(() => {
+    slept = true;
+  });
+  await new Promise((r) => setTimeout(r, 10));
+  expect(slept).toBe(false); // still waiting on the real exit
+
+  exitCb?.(); // now the child actually dies
+  await sleeping;
+  expect(slept).toBe(true);
+  expect(await launcher.status("slow")).toBe("asleep");
+});
+
+test("sleep gives up waiting after its bound when a child hangs on SIGTERM", async () => {
+  const spawner: RuntimeSpawner = {
+    spawn() {
+      return {
+        port: 5000,
+        kill: () => {},
+        onExit: () => {}, // exit never fires — a truly hung process
+      };
+    },
+  };
+  const launcher = new ProcessLauncher(opts(spawner));
+  await launcher.ensureAwake(agent("hung"));
+  await launcher.sleep("hung", 20); // bounded — resolves despite no exit
+  expect(await launcher.status("hung")).toBe("asleep");
+});
+
 test("a runtime that never becomes healthy is killed and not cached (the turn errors visibly)", async () => {
   const { spawner, killed } = recordingSpawner();
   const launcher = new ProcessLauncher(

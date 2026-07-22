@@ -32,6 +32,7 @@ import {
 } from "./agent-authz";
 import { handleAgentData } from "./agent-data";
 import { handleAgentFile } from "./agent-file";
+import { legacyAgentColor } from "./agent-legacy-color";
 import { asSeedRecord, writeAgentSeeds } from "./agent-seed";
 import { json, readJson } from "./http";
 import { handleMigration } from "./migration";
@@ -48,9 +49,20 @@ import { handleTriggerStatus } from "./trigger-status";
 // routine-runs.ts); re-exported so existing importers keep working.
 export type { AgentRouteDeps } from "./agent-authz";
 
-/** Attach the agent's real directory (`dir`) when this deployment has one. */
-function withAgentDir(deps: AgentRouteDeps, ws: Workspace, agent: Agent) {
-  return deps.agentDir ? { ...agent, dir: deps.agentDir(ws, agent) } : agent;
+/**
+ * The agent as the wire serves it: the record plus the deployment extras — the
+ * real directory (`dir`, local profile only) and the Rust-era legacy `color`
+ * (read from `.houston/agent.json`; the client overlay outranks it, see
+ * agent-legacy-color.ts). Color is attached only where a vfs is wired.
+ */
+async function agentPayload(deps: AgentRouteDeps, ws: Workspace, agent: Agent) {
+  const base = deps.agentDir
+    ? { ...agent, dir: deps.agentDir(ws, agent) }
+    : agent;
+  if (!deps.vfs) return base;
+  const paths = deps.paths ?? DEFAULT_PATHS;
+  const color = await legacyAgentColor(deps.vfs, paths.agentRoot(ws, agent));
+  return color ? { ...base, color } : base;
 }
 
 /**
@@ -183,7 +195,7 @@ export async function handleAgents(
     json(
       res,
       200,
-      agents.map((a) => withAgentDir(deps, ws, a)),
+      await Promise.all(agents.map((a) => agentPayload(deps, ws, a))),
     );
     return true;
   }
@@ -246,7 +258,7 @@ export async function handleAgents(
       type: "AgentsChanged",
       workspaceId: ws.id,
     });
-    json(res, 201, withAgentDir(deps, ws, agent));
+    json(res, 201, await agentPayload(deps, ws, agent));
     return true;
   }
 
@@ -270,6 +282,26 @@ export async function handleAgents(
         json(res, 400, { error: "missing 'name'" });
         return true;
       }
+      // Quiesce the agent's standing runtime BEFORE the rename moves its
+      // directory. A warm local runtime holds absolute paths into the OLD
+      // directory (cwd + HOUSTON_DATA_DIR) and stays keyed under the OLD id in
+      // the launcher, so a rename under it leaks the process and its next
+      // write (conversation store, usage ledger, logs — all mkdir-recursive)
+      // RESURRECTS the old-named folder, which the directory-derived local
+      // store then re-lists as an agent with the old name ("my rename
+      // reverted"). On Windows the live child's cwd even locks the directory
+      // against the rename itself. The runtime respawns on the next dispatch
+      // (pi's continueRecent restores its sessions from the renamed tree). A
+      // quiesce failure surfaces — never rename under a live runtime.
+      if (name !== authz.agent.name) {
+        const channel = channelFor(deps, authz.workspace);
+        if (channel?.quiesce) {
+          await channel.quiesce({
+            workspace: authz.workspace,
+            agent: authz.agent,
+          });
+        }
+      }
       let renamed: Agent;
       try {
         renamed = await deps.store.renameAgent(agentId, name);
@@ -284,7 +316,7 @@ export async function handleAgents(
         type: "AgentsChanged",
         workspaceId: authz.workspace.id,
       });
-      json(res, 200, withAgentDir(deps, authz.workspace, renamed));
+      json(res, 200, await agentPayload(deps, authz.workspace, renamed));
       return true;
     }
 
