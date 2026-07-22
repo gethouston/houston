@@ -1,0 +1,240 @@
+# Daily Cloud Cut — automate the desktop cloud release train's first step.
+#
+# THE RELEASE TRAIN (what this workflow kicks off, and what a human still does):
+#   1. CUT (this workflow)  — branch from main tip, run scripts/version.sh to
+#      bump the ~12 version-bearing files, commit `release: v<version>`, and push
+#      an annotated `cloud-v<version>` tag. The release commit intentionally
+#      lives ONLY under that tag; it is never pushed to main (main is protected).
+#   2. DRAFT (release.yml)  — the `cloud-v*` tag push triggers .github/workflows/
+#      release.yml, which builds + signs + notarizes the macOS DMG (+ Windows/
+#      Linux) and uploads them to a DRAFT GitHub Release marked PRERELEASE. A
+#      cloud release is kept prerelease so it never becomes GitHub's "latest" and
+#      shadows the local channel's latest.json updater feed.
+#   3. QA         — the team downloads the staging DMG in the 08:30 (Bogotá)
+#      daily and smoke-tests it against the managed gateway.
+#   4. ROLL PROD  — once QA passes, an operator pushes an `engine-pod-v*` tag to
+#      roll the production engine pod image to match the app being shipped.
+#   5. PUBLISH    — the operator publishes the draft release (still a prerelease),
+#      which flips the `cloud-latest` pointer the cloud app's auto-updater polls.
+#
+# This workflow owns ONLY step 1, on a schedule, so a fresh draft is waiting when
+# the team opens the 08:30 daily.
+#
+# WHY A PAT (RELEASE_CUT_TOKEN), NOT GITHUB_TOKEN:
+#   A tag pushed with the default GITHUB_TOKEN does NOT trigger other workflows —
+#   GitHub's recursive-workflow guard suppresses `push` events raised by the
+#   built-in token to stop a workflow from endlessly re-triggering itself. If we
+#   cut with GITHUB_TOKEN, release.yml (step 2) would never fire and no draft
+#   would build. So the tag push here uses a fine-grained PAT stored as the
+#   RELEASE_CUT_TOKEN secret; a push authenticated by a real token DOES trigger
+#   release.yml. `permissions: contents: read` below is therefore deliberate —
+#   the write we need is the PAT's, not the job token's. (Read-only check-run
+#   queries still use GITHUB_TOKEN; those don't need to trigger anything.)
+#
+# WHY WEEKDAYS-ONLY AT 12:45 UTC:
+#   The team QAs in the 08:30 America/Bogota daily, which runs Mon–Fri. Bogotá is
+#   UTC-5 all year (Colombia observes no DST), so 12:45 UTC == 07:45 Bogotá. The
+#   release build takes ~30 min, so cutting at 07:45 leaves the draft ready
+#   before 08:30. `cron: '1-5'` skips weekends — no daily, no cut.
+#
+# WHY TAG-ONLY PUSH:
+#   main is a protected branch; the automation cannot (and must not) push commits
+#   to it. The release commit is created locally on the runner and referenced
+#   solely by the annotated tag we push. release.yml checks out the tag, so it
+#   sees the bumped versions without the commit ever landing on main. This
+#   mirrors the manual cut exactly.
+#
+# workflow_dispatch is the manual / off-schedule path: run it by hand to cut a
+# release outside the morning window, or pass an explicit `version` to override
+# the computed next patch (e.g. to jump a minor). Same guards apply.
+
+name: Daily cloud cut
+
+on:
+  schedule:
+    # 12:45 UTC, Mon–Fri == 07:45 America/Bogota (UTC-5, no DST). ~30-min build
+    # finishes before the 08:30 daily. See the header for the full rationale.
+    - cron: "45 12 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Override the computed next version (semver, e.g. 0.5.18). Leave blank to auto-bump the patch of the latest cloud-v* tag."
+        required: false
+        type: string
+
+# Read-only for the JOB token on purpose: the tag push is authenticated by the
+# RELEASE_CUT_TOKEN PAT (see header — a GITHUB_TOKEN push wouldn't trigger
+# release.yml). Check-run reads below use GITHUB_TOKEN and need only read.
+permissions:
+  contents: read
+
+# Never overlap or cancel a cut in flight — two cuts racing could push conflicting
+# tags. Queue, don't cancel: a running cut must finish cleanly.
+concurrency:
+  group: daily-cloud-cut
+  cancel-in-progress: false
+
+jobs:
+  cut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # 1. Token guard — fail loudly if the PAT is missing, explaining WHY it's
+      #    required (a GITHUB_TOKEN tag push wouldn't trigger release.yml).
+      - name: Verify RELEASE_CUT_TOKEN is set
+        env:
+          RELEASE_CUT_TOKEN: ${{ secrets.RELEASE_CUT_TOKEN }}
+        run: |
+          if [ -z "${RELEASE_CUT_TOKEN}" ]; then
+            echo "::error::RELEASE_CUT_TOKEN is empty. The daily cut pushes the cloud-v* tag with this PAT because a tag pushed with the default GITHUB_TOKEN does NOT trigger other workflows (GitHub's recursive-workflow guard), so release.yml would never build the draft. Create a fine-grained PAT with contents:read/write on gethouston/houston and save it as the RELEASE_CUT_TOKEN repository secret."
+            exit 1
+          fi
+          echo "RELEASE_CUT_TOKEN is present."
+
+      # 2. Checkout main with the PAT so the persisted push credential is the PAT
+      #    (that's what makes the tag push trigger release.yml). Full history +
+      #    tags: the guards below resolve tags and walk the release commit's
+      #    first parent.
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          token: ${{ secrets.RELEASE_CUT_TOKEN }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      # 3. No-new-commits guard. Pick the highest cloud-v* tag by SEMVER (sort -V
+      #    on the numeric part — creation order is not version order). The tag
+      #    points at a release commit whose FIRST PARENT is the main tip it was
+      #    cut from; if that parent equals today's main tip, nothing merged since
+      #    the last cut, so there's nothing to release. A quiet morning is normal,
+      #    so this is success (proceed=false), not a failure.
+      - name: Guard — new commits on main since last cut
+        id: newcommits
+        run: |
+          set -euo pipefail
+          LAST_VER=$(git tag --list 'cloud-v*' \
+            | sed -n 's/^cloud-v\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$/\1/p' \
+            | sort -V | tail -1)
+          if [ -z "$LAST_VER" ]; then
+            # Bootstrap: no cloud-v* tag exists yet. There's no base to auto-bump
+            # from and no parent to compare against, so require an explicit
+            # version via workflow_dispatch rather than guess.
+            echo "::error::No existing cloud-v* tag found. Cut the first cloud release manually, or run this workflow via 'Run workflow' with an explicit version input."
+            exit 1
+          fi
+          LAST_TAG="cloud-v$LAST_VER"
+          echo "Latest cloud tag: $LAST_TAG"
+
+          LAST_BASE=$(git rev-parse "${LAST_TAG}^")   # first parent of the release commit
+          MAIN_TIP=$(git rev-parse HEAD)              # current main tip
+          echo "last cut was based on $LAST_BASE; main tip is $MAIN_TIP"
+
+          if [ "$LAST_BASE" = "$MAIN_TIP" ]; then
+            echo "::notice::no new commits on main since $LAST_TAG; skipping today's cut"
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "last_ver=$LAST_VER" >> "$GITHUB_OUTPUT"
+          echo "main_tip=$MAIN_TIP" >> "$GITHUB_OUTPUT"
+
+      # 4. Green-main guard. Don't cut a red tree. Inspect the main tip's
+      #    check-runs: block only on COMPLETED runs that FAILED (failure /
+      #    timed_out / cancelled). In-progress / queued runs are acceptable —
+      #    merges land green through PR gates, and a still-running post-merge job
+      #    must not starve the cut. Zero check-runs is treated as green. On red,
+      #    name the failing checks and (if configured) ping Slack before the
+      #    08:30 daily, then fail.
+      - name: Guard — main is green
+        if: ${{ steps.newcommits.outputs.proceed == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_RELEASE_WEBHOOK_URL: ${{ secrets.SLACK_RELEASE_WEBHOOK_URL }}
+          MAIN_TIP: ${{ steps.newcommits.outputs.main_tip }}
+        run: |
+          set -euo pipefail
+          FAILING=$(gh api --paginate \
+            "repos/${{ github.repository }}/commits/${MAIN_TIP}/check-runs" \
+            -q '.check_runs[] | select(.status == "completed") | select(.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled") | .name' \
+            | sort -u)
+
+          if [ -z "$FAILING" ]; then
+            echo "main tip ${MAIN_TIP} is green (no completed check-run failed)."
+            exit 0
+          fi
+
+          NAMES=$(echo "$FAILING" | paste -sd ', ' -)
+          CHECKS_URL="https://github.com/${{ github.repository }}/commit/${MAIN_TIP}/checks"
+          echo "::error::Daily cloud cut skipped: main is red — failing checks: ${NAMES}. See ${CHECKS_URL}"
+
+          if [ -n "${SLACK_RELEASE_WEBHOOK_URL}" ]; then
+            PAYLOAD=$(jq -n --arg t "Daily cloud cut skipped: main is red — ${NAMES}, ${CHECKS_URL}" '{text: $t}')
+            curl -sS -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "${SLACK_RELEASE_WEBHOOK_URL}" \
+              || echo "::warning::failed to post the red-main notice to Slack"
+          fi
+          exit 1
+
+      # 5. Compute the next version. Default: bump the PATCH of the latest tag.
+      #    A workflow_dispatch `version` input overrides it (validated semver).
+      #    Fail if the resulting tag already exists.
+      - name: Compute next version
+        id: version
+        if: ${{ steps.newcommits.outputs.proceed == 'true' }}
+        env:
+          LAST_VER: ${{ steps.newcommits.outputs.last_ver }}
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -n "${VERSION_INPUT}" ]; then
+            if ! [[ "${VERSION_INPUT}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::version input '${VERSION_INPUT}' is not semver (expected N.N.N, e.g. 0.5.18)."
+              exit 1
+            fi
+            VERSION="${VERSION_INPUT}"
+            echo "Using override version ${VERSION} from workflow_dispatch input."
+          else
+            IFS=. read -r MAJOR MINOR PATCH <<< "${LAST_VER}"
+            VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+            echo "Auto-bumped patch: ${LAST_VER} -> ${VERSION}"
+          fi
+
+          if git rev-parse -q --verify "refs/tags/cloud-v${VERSION}" >/dev/null; then
+            echo "::error::tag cloud-v${VERSION} already exists. Pick a different version."
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      # 6. Cut: bump every version-bearing file, commit the release, tag it, and
+      #    push ONLY the tag. version.sh edits tracked files in place; `git add -u`
+      #    stages exactly those. The push is tag-only — main is protected and the
+      #    release commit is meant to live solely under the tag (see header). The
+      #    persisted PAT credential from checkout authenticates the push, which is
+      #    what makes release.yml fire.
+      - name: Cut release commit + tag
+        id: cut
+        if: ${{ steps.newcommits.outputs.proceed == 'true' }}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "houston-release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+
+          ./scripts/version.sh "${VERSION}"
+
+          git add -u
+          git commit -m "release: v${VERSION}"
+          git tag -a "cloud-v${VERSION}" -m "Houston Cloud v${VERSION} — daily cut"
+          git push origin "refs/tags/cloud-v${VERSION}"
+
+          echo "Pushed tag cloud-v${VERSION}."
+
+      # 7. Summarize what shipped and hand off to release.yml.
+      - name: Summary
+        if: ${{ steps.newcommits.outputs.proceed == 'true' }}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          echo "::notice::Cut cloud-v${VERSION} (release: v${VERSION}) from the current main tip. release.yml is now building the draft PRERELEASE — it should be ready for the 08:30 daily. See https://github.com/${{ github.repository }}/releases/tag/cloud-v${VERSION}"
