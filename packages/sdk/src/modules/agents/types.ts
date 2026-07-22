@@ -10,15 +10,22 @@
 
 /**
  * One agent exactly as the host's `GET /agents` returns it (protocol v3, the
- * `Agent` record in `packages/host/src/domain/types.ts`). No cosmetic overlay
- * fields (color, assignment) — those are hosted-gateway extras the base host
- * route does not serve, so the SDK does not invent them.
+ * `Agent` record in `packages/host/src/domain/types.ts`). Assignment fields
+ * are hosted-gateway extras the base host route does not serve, so the SDK
+ * does not invent them.
  */
 export interface WireAgent {
   id: string;
   workspaceId: string;
   name: string;
   createdAt: number;
+  /**
+   * Rust-era legacy color, read by the host from the agent's
+   * `.houston/agent.json` (local/self-host profiles only; the hosted gateway
+   * omits it). A client's own color overlay outranks it — this only fills the
+   * gap for agents whose color was picked before the engine cutover.
+   */
+  color?: string;
 }
 
 /** A single agent inside the `agents` scope snapshot. */

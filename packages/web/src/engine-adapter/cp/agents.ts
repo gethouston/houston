@@ -18,6 +18,12 @@ interface CpAgent {
   /** Absolute on-disk directory — present only when the host is co-located
    * with the files (local profile). Feeds the OS reveal/open commands. */
   dir?: string;
+  /** Rust-era legacy color the host reads from the agent's
+   * `.houston/agent.json` (local profiles only; the gateway omits it). The
+   * client overlay — the user's current pick — outranks it; this only fills
+   * the gap for colors picked before the engine cutover, which the overlay
+   * never held (they lived engine-side). */
+  color?: string;
   assigned?: boolean;
   assignedUserIds?: string[];
   /** Teams v2: the caller's effective access to this agent. */
@@ -26,7 +32,8 @@ interface CpAgent {
   assignments?: AgentAssignment[];
 }
 
-function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
+/** Exported for unit tests (the color precedence is the load-bearing bit). */
+export function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
   const iso = new Date(a.createdAt).toISOString();
   return {
     id: a.id,
@@ -36,7 +43,12 @@ function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
     // folderPath here is a route key, not a path (HOU-677).
     localDir: a.dir,
     configId: DEFAULT_AGENT_CONFIG_ID,
-    color: colors[a.id] ?? DEFAULT_AGENT_COLOR,
+    // Overlay (the user's current pick) → the host's legacy Rust-era color
+    // (`.houston/agent.json`) → the default. Before the wire fallback every
+    // pre-cutover color rendered as the default purple: the Rust engine stored
+    // colors server-side, so the overlay never held them (the reported
+    // everything-turned-purple migration bug).
+    color: colors[a.id] ?? a.color ?? DEFAULT_AGENT_COLOR,
     createdAt: iso,
     lastOpenedAt: iso,
     assigned: a.assigned,

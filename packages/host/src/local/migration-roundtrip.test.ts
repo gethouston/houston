@@ -67,6 +67,16 @@ function buildSourceTree() {
   const agentRoot = join(workspacesRoot, "Work", "Sales");
   mkdirSync(join(agentRoot, ".houston"), { recursive: true });
   writeFileSync(join(agentRoot, "CLAUDE.md"), "# Sales agent");
+  // Rust-era per-agent metadata: the engine stored the picked COLOR here.
+  writeFileSync(
+    join(agentRoot, ".houston", "agent.json"),
+    JSON.stringify({
+      id: "legacy-uuid",
+      config_id: "personal-assistant",
+      color: "crimson",
+      created_at: "2025-01-01T00:00:00Z",
+    }),
+  );
   mkdirSync(join(agentRoot, ".agents", "skills", "crm"), { recursive: true });
   writeFileSync(
     join(agentRoot, ".agents", "skills", "crm", "SKILL.md"),
@@ -124,13 +134,18 @@ test("source→target round trip: convert on boot, export, import, resume marker
     ).json()) as {
       agents: {
         id: string;
+        color?: string;
         manifest: { entries: { path: string }[]; integrations: string[] };
       }[];
     };
     expect(listing.agents.map((a) => a.id)).toEqual(["Work/Sales"]);
+    // The Rust-era color rides the scan so the wizard can seed it on the
+    // created cloud agent (the everything-turned-purple bug).
+    expect(listing.agents[0]?.color).toBe("crimson");
     const manifest = listing.agents[0]?.manifest;
     const paths = manifest?.entries.map((e) => e.path) ?? [];
     expect(paths).toContain("CLAUDE.md");
+    expect(paths).toContain(".houston/agent.json"); // legacy color survives the move
     expect(paths).toContain(".houston/learnings/learnings.json"); // md → json on boot
     expect(paths).toContain(".houston/runtime/conversations/activity-1.json"); // db → transcript on boot
     expect(paths.some((p) => p.startsWith(".houston/sessions/"))).toBe(false);
@@ -193,6 +208,18 @@ test("source→target round trip: convert on boot, export, import, resume marker
         join(targetAgentDir, ".houston", "runtime", "sessions", "activity-1"),
       ),
     ).toBe(true);
+    // The imported legacy metadata is on the target AND its color is served on
+    // the agent list — this is what heals already-migrated installs on their
+    // next list, no re-migration needed.
+    expect(existsSync(join(targetAgentDir, ".houston", "agent.json"))).toBe(
+      true,
+    );
+    const targetAgents = (await (
+      await fetch(`${target.base}/agents`, { headers: auth })
+    ).json()) as { id: string; color?: string }[];
+    expect(targetAgents.find((a) => a.id === created.id)?.color).toBe(
+      "crimson",
+    );
 
     // Completion marker round-trips for resume.
     await fetch(`${agentUrl}/migration/complete`, {

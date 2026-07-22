@@ -4,6 +4,7 @@ import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
+import { legacyAgentColor } from "./agent-legacy-color";
 import { json } from "./http";
 import { legacyConnectedToolkits } from "./migration-legacy-composio";
 import {
@@ -103,11 +104,17 @@ export async function handleMigrationSource(
   for (const agent of await deps.store.listAllAgents()) {
     const ws = await deps.store.getWorkspace(agent.workspaceId);
     if (!ws) continue; // deleted between list and read — nothing to migrate
+    const root = paths.agentRoot(ws, agent);
     agents.push({
       id: agent.id,
       workspaceId: agent.workspaceId,
       name: agent.name,
-      manifest: await buildMigrationManifest(vfs, paths.agentRoot(ws, agent)),
+      // The Rust-era color from `.houston/agent.json`, so the wizard seeds it
+      // onto the created cloud agent (SourceAgent.color; the localStorage
+      // overlay reader stays the fallback for TS-era local installs).
+      // JSON.stringify drops it when absent.
+      color: await legacyAgentColor(vfs, root),
+      manifest: await buildMigrationManifest(vfs, root),
     });
   }
   json(res, 200, {

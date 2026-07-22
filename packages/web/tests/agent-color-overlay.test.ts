@@ -2,7 +2,9 @@ import { expect, test } from "vitest";
 import {
   removeColorOverlay,
   renameColorOverlay,
+  toUiAgent,
 } from "../src/engine-adapter/control-plane";
+import { DEFAULT_AGENT_COLOR } from "../src/engine-adapter/synthetic";
 
 /**
  * In host mode an agent's color lives in a client-side overlay keyed by
@@ -47,4 +49,32 @@ test("delete drops the agent's overlay entry so a reused path-id can't inherit i
 test("delete is a no-op when the agent had no color", () => {
   const overlay = { "Home/Ada": "#5b21b6" };
   expect(removeColorOverlay(overlay, "Home/Bob")).toBe(overlay);
+});
+
+// ── legacy wire color (Rust-era `.houston/agent.json`, served by the host) ──
+
+const wireAgent = (color?: string) => ({
+  id: "Home/Bob",
+  workspaceId: "Home",
+  name: "Bob",
+  createdAt: 0,
+  ...(color ? { color } : {}),
+});
+
+test("the overlay (the user's current pick) outranks the host's legacy color", () => {
+  const ui = toUiAgent(wireAgent("forest"), { "Home/Bob": "#5b21b6" });
+  expect(ui.color).toBe("#5b21b6");
+});
+
+test("without an overlay entry, the host's legacy Rust-era color is used", () => {
+  // Pre-cutover colors lived engine-side (`.houston/agent.json`), so the
+  // overlay never held them — falling straight to the default was the
+  // everything-turned-purple migration bug.
+  const ui = toUiAgent(wireAgent("forest"), {});
+  expect(ui.color).toBe("forest");
+});
+
+test("no overlay and no legacy color falls back to the default", () => {
+  const ui = toUiAgent(wireAgent(), {});
+  expect(ui.color).toBe(DEFAULT_AGENT_COLOR);
 });
