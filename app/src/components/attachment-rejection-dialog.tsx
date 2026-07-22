@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
-import { AlertTriangle } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -59,17 +58,10 @@ export function useAttachmentRejectionDialog(
       <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && close()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                <AlertTriangle className="size-5" />
-              </span>
-              <div>
-                <DialogTitle>{t("attachmentIssues.title")}</DialogTitle>
-                <DialogDescription className="mt-1">
-                  {t("attachmentIssues.description")}
-                </DialogDescription>
-              </div>
-            </div>
+            <DialogTitle>{t("attachmentIssues.title")}</DialogTitle>
+            <DialogDescription>
+              {t("attachmentIssues.description")}
+            </DialogDescription>
           </DialogHeader>
           <div className="max-h-64 overflow-y-auto rounded-md border bg-chip-subtle/25">
             {rejections.map((rejection) => (
