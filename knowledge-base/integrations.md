@@ -32,7 +32,13 @@ code everywhere, no drift.
 - `ComposioProvider` (`composio.ts`) — the **direct** adapter. Speaks Composio v3
   REST directly (`x-api-key`), no CLI/SDK. Used by cloud + self-host, which hold
   the key. `userId` scopes each user's connections. Connect uses
-  `POST /api/v3.1/connected_accounts/link`.
+  `POST /api/v3.1/connected_accounts/link`. Every `/tools` read and execute pins
+  Composio's TOOL VERSION to `latest` (`TOOL_VERSION`): the v3 endpoints default
+  to the frozen base snapshot `00000000_00`, whose connector code ages until the
+  third-party API retires what it depends on (prod: LinkedIn create-post 426
+  NONEXISTENT_VERSION from a retired `Linkedin-Version` header) and which hides
+  every tool added since the snapshot. Search and execute pin TOGETHER so the
+  schema the model read and the connector that runs are the same version.
 - `RemoteIntegrationProvider` (`remote.ts`) — the **gateway** adapter, the
   desktop's provider. The desktop holds NO key: every port call is forwarded to
   Houston's cloud host `/v1/integrations/*` with the user's Firebase (GCIP) session

@@ -740,6 +740,7 @@ test("execute posts user_id + arguments and maps success and failure", async () 
   expect(ok.calls[0]?.body).toEqual({
     user_id: USER,
     arguments: { to: "a@b.com" },
+    version: "latest",
   });
 
   const failed = harness(() => ({
@@ -750,6 +751,54 @@ test("execute posts user_id + arguments and maps success and failure", async () 
     data: undefined,
     error: "no connected account found",
   });
+});
+
+test("every tools read + execute pins version 'latest', never the frozen base snapshot", async () => {
+  // Composio's v3 endpoints default to the base snapshot (00000000_00) when no
+  // version is sent. That snapshot's connectors age until the third-party API
+  // retires what they depend on — prod: LINKEDIN_CREATE_LINKED_IN_POST kept
+  // sending the retired `Linkedin-Version: 20241101` header, so every post
+  // failed 426 NONEXISTENT_VERSION while auth still worked. Pinning `latest`
+  // on search AND execute keeps the schema the model read and the connector
+  // that runs the same, current version.
+  const { provider, calls } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts")
+      return {
+        body: {
+          items: [
+            { toolkit: { slug: "linkedin" }, id: "ca_1", status: "ACTIVE" },
+          ],
+        },
+      };
+    if (url.pathname === "/api/v3/toolkits") return { body: { items: [] } };
+    // Zero-hit query-bearing calls force the scoped LISTING fallback too, so
+    // all three /tools request shapes (scoped, global, listing) are exercised.
+    if (url.searchParams.has("query")) return { body: { items: [] } };
+    return {
+      body: {
+        items: [
+          {
+            slug: "LINKEDIN_CREATE_LINKED_IN_POST",
+            toolkit: { slug: "linkedin" },
+            description: "Create a post",
+          },
+        ],
+      },
+    };
+  });
+  await provider.search(USER, "post on linkedin for me");
+  const toolReads = calls.filter((c) => c.path.startsWith("/api/v3/tools?"));
+  expect(toolReads.length).toBeGreaterThanOrEqual(3);
+  for (const c of toolReads) {
+    expect(c.path).toContain("toolkit_versions=latest");
+  }
+
+  const exec = harness(() => ({ body: { successful: true, data: {} } }));
+  await exec.provider.execute(USER, "LINKEDIN_CREATE_LINKED_IN_POST", {
+    author: "urn:li:person:1",
+    commentary: "hello",
+  });
+  expect(exec.calls[0]?.body).toMatchObject({ version: "latest" });
 });
 
 test("a non-2xx response surfaces as an error with the status + detail", async () => {

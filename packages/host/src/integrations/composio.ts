@@ -45,6 +45,21 @@ const DEFAULT_BASE_URL = "https://backend.composio.dev";
  *  for search's name resolution so a hot session does not refetch ~1000 apps. */
 const CATALOG_TTL_MS = 60 * 60 * 1000;
 
+/**
+ * Which Composio TOOL VERSION every /tools read and execute requests. The v3
+ * endpoints default to the FROZEN base snapshot (`00000000_00`), not the newest
+ * release, so an unversioned call runs connector code from before versioning
+ * launched — which ages until the third-party API retires what it depends on.
+ * Prod bug: LINKEDIN_CREATE_LINKED_IN_POST at the base snapshot still sent
+ * LinkedIn the retired `Linkedin-Version: 20241101` header → HTTP 426
+ * NONEXISTENT_VERSION on every post, unfixable by reconnecting. `latest` is
+ * Composio's own recommendation for agent consumers (the model re-reads each
+ * action's schema from search every turn, so schema drift self-corrects), and
+ * pinning search AND execute together keeps the schema the model read and the
+ * connector that runs the SAME version.
+ */
+const TOOL_VERSION = "latest";
+
 export interface ComposioOptions {
   /** Houston's Composio PROJECT API key (dashboard → Project Settings). */
   apiKey: string;
@@ -210,10 +225,12 @@ export class ComposioProvider implements IntegrationProvider {
       {
         listConnections: () => this.listConnections(userId),
         // GET /api/v3/tools?query=… (the older `search` param is deprecated).
+        // toolkit_versions pins the CURRENT tool set — unversioned, this
+        // endpoint serves only the base snapshot's tools (4 of LinkedIn's 22).
         queryTools: async (q) => {
           const body = await this.http.call<{ items?: RawTool[] }>(
             "/api/v3/tools",
-            { query: q },
+            { query: { ...q, toolkit_versions: TOOL_VERSION } },
           );
           return (body?.items ?? []).map(mapTool);
         },
@@ -230,9 +247,13 @@ export class ComposioProvider implements IntegrationProvider {
     _acting?: ActingContext,
   ): Promise<ActionResult> {
     // Acting context ignored — see search(): identity is the verified userId.
+    // `version` pins the connector build that runs — see TOOL_VERSION.
     const body = await this.http.call<RawExecute>(
       `/api/v3/tools/execute/${encodeURIComponent(action)}`,
-      { method: "POST", body: { user_id: userId, arguments: params } },
+      {
+        method: "POST",
+        body: { user_id: userId, arguments: params, version: TOOL_VERSION },
+      },
     );
     return mapExecute(body);
   }
