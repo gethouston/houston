@@ -45,9 +45,18 @@ export class MemoryCustomSecretStore implements CustomSecretStore {
 }
 
 /**
- * File-backed store: one JSON object, 0600, atomic tmp+rename. A corrupt file
- * throws (a vanished credential must surface as an error the user can act on,
- * never silently degrade to "not connected").
+ * File-backed store: one JSON object, owner-only, atomic tmp+rename. A corrupt
+ * file throws (a vanished credential must surface as an error the user can act
+ * on, never silently degrade to "not connected").
+ *
+ * Owner-only is PLATFORM-SPECIFIC. On POSIX (macOS desktop, self-host, cloud
+ * pods) the 0600 file mode is the protection, asserted after every write. On
+ * Windows there are no POSIX modes: files under the user's profile inherit
+ * user-scoped NTFS ACLs, `mode`/`chmod` map onto nothing but the read-only
+ * attribute — so the write path must NOT chmod (a POSIX-only concept), and it
+ * clears a stray read-only attribute on the destination first, because
+ * rename-replace over a read-only file fails EPERM on Windows (backup/AV
+ * tools set that attribute in the wild).
  */
 export class FileCustomSecretStore implements CustomSecretStore {
   constructor(private readonly path: string) {}
@@ -64,8 +73,17 @@ export class FileCustomSecretStore implements CustomSecretStore {
     mkdirSync(dirname(this.path), { recursive: true });
     const tmp = `${this.path}.tmp`;
     writeFileSync(tmp, JSON.stringify(map), { encoding: "utf8", mode: 0o600 });
+    if (process.platform === "win32" && existsSync(this.path)) {
+      // Clears the read-only attribute (the one thing chmod maps to on
+      // Windows) so the rename below can replace the file.
+      chmodSync(this.path, 0o600);
+    }
     renameSync(tmp, this.path);
-    chmodSync(this.path, 0o600);
+    if (process.platform !== "win32") {
+      // The tmp file was created 0600; re-assert on the destination in case a
+      // pre-existing file carried a wider mode.
+      chmodSync(this.path, 0o600);
+    }
   }
 
   async get(id: string): Promise<string | null> {

@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, statSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
@@ -56,12 +56,40 @@ test("multiple ids coexist independently", async () => {
   expect(await store.get("ci_beta_token")).toBe("b");
 });
 
-test("the secret file is written 0600, not world/group readable", async () => {
-  const store = new FileCustomSecretStore(path);
-  await store.set("ci_acme_token", "sk-live-123");
-  const mode = statSync(path).mode & 0o777;
-  expect(mode).toBe(0o600);
-});
+// POSIX custody: the 0600 file mode IS the protection. Windows has no POSIX
+// modes (stat reports a synthesized 0666; NTFS ACLs under the user profile
+// are the user-scoped protection there), so this assertion is POSIX-only.
+test.runIf(process.platform !== "win32")(
+  "the secret file is written 0600, not world/group readable",
+  async () => {
+    const store = new FileCustomSecretStore(path);
+    await store.set("ci_acme_token", "sk-live-123");
+    const mode = statSync(path).mode & 0o777;
+    expect(mode).toBe(0o600);
+
+    // A later write over an EXISTING file re-asserts 0600 even if the file's
+    // mode was widened out-of-band.
+    chmodSync(path, 0o644);
+    await store.set("ci_acme_token", "sk-live-456");
+    expect(statSync(path).mode & 0o777).toBe(0o600);
+  },
+);
+
+// Windows custody: no chmod on the write path (POSIX-only concept), and a
+// destination some backup/AV tool marked read-only must not break the save
+// (rename-replace over a read-only file fails EPERM unless cleared first).
+test.runIf(process.platform === "win32")(
+  "windows: writes succeed, including over a read-only destination",
+  async () => {
+    const store = new FileCustomSecretStore(path);
+    await store.set("ci_acme_token", "sk-live-123");
+    expect(await store.get("ci_acme_token")).toBe("sk-live-123");
+
+    chmodSync(path, 0o400); // sets the read-only attribute on Windows
+    await store.set("ci_acme_token", "sk-live-456");
+    expect(await store.get("ci_acme_token")).toBe("sk-live-456");
+  },
+);
 
 test("secretIdFor is stable and namespaced per slug+variable", () => {
   expect(secretIdFor("acme", "token")).toBe("ci_acme_token");
