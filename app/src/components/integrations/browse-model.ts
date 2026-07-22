@@ -47,7 +47,13 @@ export function browseCatalog(opts: {
   category: string;
   connected: ReadonlySet<string>;
 }): IntegrationToolkit[] {
-  let filtered = opts.catalog.filter((t) => !opts.connected.has(t.slug));
+  // No-auth apps (web search, weather…) never surface in the catalog: there is
+  // nothing to connect (a Connect button could only 400), so a row would just
+  // be noise. They stay AGENT-facing instead — search stamps their matches
+  // `connected`, so agents use the working ones directly.
+  let filtered = opts.catalog.filter(
+    (t) => !opts.connected.has(t.slug) && !t.noAuth,
+  );
   if (opts.category !== "all") {
     filtered = filtered.filter((t) =>
       (t.categories ?? []).includes(opts.category),

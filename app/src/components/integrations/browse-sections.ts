@@ -118,6 +118,10 @@ export function groupCatalogByCategory(opts: {
   const buckets = new Map<string, IntegrationToolkit[]>();
   for (const t of opts.catalog) {
     if (opts.connected.has(t.slug)) continue;
+    // No-auth apps never join a category bucket — a bucket row carries the
+    // Connect `+`, and connecting a no-auth app can only fail (there is no
+    // account). They stay agent-facing: search stamps their matches connected.
+    if (t.noAuth) continue;
     if (!matchesQuery(t, q)) continue;
     let category: string;
     if (only) {

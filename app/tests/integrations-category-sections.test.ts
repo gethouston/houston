@@ -439,6 +439,60 @@ describe("groupCatalogByCategory mainstream-first priority ordering", () => {
   });
 });
 
+describe("groupCatalogByCategory hides no-auth apps entirely", () => {
+  // No-auth toolkits (web search, weather…) never surface in the catalog:
+  // there is nothing to connect, so a row would only grow a Connect `+` that
+  // can only fail. They stay agent-facing (search stamps their matches
+  // connected server-side).
+  const NOAUTH_CATALOG: IntegrationToolkit[] = [
+    ...CATALOG,
+    { ...tk("weathermap", "Weathermap", ["utilities"]), noAuth: true },
+    { ...tk("test_app", "Test App", ["developer-tools"]), noAuth: true },
+  ];
+
+  it("keeps every no-auth app out of every section, at rest and under search", () => {
+    const atRest = groupCatalogByCategory({
+      catalog: NOAUTH_CATALOG,
+      query: "",
+      connected: new Set(),
+    });
+    const allSlugs = atRest.flatMap((s) => s.connectable.map((t) => t.slug));
+    deepStrictEqual(
+      allSlugs.some((s) => ["weathermap", "test_app"].includes(s)),
+      false,
+    );
+    // A direct search for one finds nothing — hidden means hidden.
+    deepStrictEqual(
+      groupCatalogByCategory({
+        catalog: NOAUTH_CATALOG,
+        query: "weather",
+        connected: new Set(),
+      }),
+      [],
+    );
+  });
+
+  it("keeps no-auth apps out of a narrowed category section too", () => {
+    deepStrictEqual(
+      groupCatalogByCategory({
+        catalog: NOAUTH_CATALOG,
+        query: "",
+        connected: new Set(),
+        category: "utilities",
+      }),
+      [],
+    );
+  });
+
+  it("does not let hidden no-auth apps create phantom dropdown options", () => {
+    const slugs = catalogCategorySlugs({
+      catalog: NOAUTH_CATALOG,
+      connected: new Set(),
+    });
+    deepStrictEqual(slugs.includes("utilities"), false);
+  });
+});
+
 describe("catalogCategorySlugs", () => {
   it("orders A-Z by label with UNCATEGORIZED last, regardless of section size", () => {
     deepStrictEqual(

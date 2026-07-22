@@ -88,6 +88,11 @@ export class ComposioProvider implements IntegrationProvider {
         query: { limit: "1000" },
       },
     );
+    // no_auth toolkits (web search, weather…) stay in the catalog but carry
+    // the flag: there is no account to connect (creating an auth config 400s
+    // upstream — Auth_Config_NoAuthApp, seen in prod), yet their tools work
+    // as-is. The UI renders them "ready to use" instead of connectable, and
+    // search stamps their matches `connected` (see composio-search.ts).
     return (body?.items ?? []).map(mapToolkit);
   }
 

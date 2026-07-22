@@ -126,6 +126,41 @@ describe("browseCatalog (new module)", () => {
   });
 });
 
+describe("browseCatalog hides no-auth apps", () => {
+  // No-auth toolkits never surface in the catalog: there is nothing to
+  // connect (a Connect button could only 400 — the Auth_Config_NoAuthApp
+  // prod crash). They stay agent-facing: search stamps their matches
+  // connected server-side, so agents use the working ones directly.
+  const NOAUTH_CATALOG: IntegrationToolkit[] = [
+    ...CATALOG,
+    { ...tk("weathermap", "Weathermap", ["utilities"]), noAuth: true },
+    { ...tk("test_app", "Test App", ["developer-tools"]), noAuth: true },
+  ];
+
+  it("excludes every no-auth app from the browse list", () => {
+    const all = browseCatalog({
+      catalog: NOAUTH_CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(),
+    }).map((t) => t.slug);
+    strictEqual(all.includes("weathermap"), false);
+    strictEqual(all.includes("test_app"), false);
+  });
+
+  it("hidden means hidden — a Teams allowlist never shows one as locked", () => {
+    const { connectable, locked } = browseCatalogView({
+      catalog: NOAUTH_CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(),
+      allowlist: ["gmail"],
+    });
+    strictEqual(connectable.map((t) => t.slug).includes("weathermap"), false);
+    strictEqual(locked.map((t) => t.slug).includes("weathermap"), false);
+  });
+});
+
 describe("browseCatalogView (allowlist partition)", () => {
   it("single-player (allowlist null) → everything connectable, nothing locked", () => {
     const view = browseCatalogView({

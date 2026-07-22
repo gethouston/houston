@@ -13,13 +13,21 @@
  * provider, keyed by that userId.
  */
 
-/** A connectable app (the catalog the user picks from). */
+/** An app in the catalog the user picks from. */
 export interface Toolkit {
   slug: string;
   name: string;
   description?: string;
   logoUrl?: string;
   categories?: string[];
+  /**
+   * True for a no-auth toolkit (web search, weather…): there is NO account to
+   * connect — its tools work as-is, and creating an auth config for it is
+   * rejected upstream (Auth_Config_NoAuthApp). The UI renders these as
+   * "ready to use" (never a Connect button); search stamps their matches
+   * `connected` so the agent uses them instead of offering a doomed connect.
+   */
+  noAuth?: boolean;
 }
 
 /** A user's established connection to one toolkit. */

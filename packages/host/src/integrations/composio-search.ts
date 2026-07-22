@@ -78,9 +78,25 @@ export function activeToolkitSlugs(connections: Connection[]): string[] {
 const isConnectedIn = (slugs: string[], toolkit: string): boolean =>
   slugs.some((s) => s.toLowerCase() === toolkit.toLowerCase());
 
-/** Stamp `connected` + `status` on a raw action match from the user's set. */
-function annotate(match: ToolMatch, connectedSlugs: string[]): ToolMatch {
-  const connected = isConnectedIn(connectedSlugs, match.toolkit);
+/** The catalog's no-auth toolkit slugs, lowercased: these need no connection —
+ *  their tools work as-is, so search treats them as `connected` (the agent
+ *  must USE them, never offer a request_connection that can only 400). */
+function noAuthSlugs(catalog: Toolkit[]): Set<string> {
+  return new Set(
+    catalog.filter((tk) => tk.noAuth).map((tk) => tk.slug.toLowerCase()),
+  );
+}
+
+/** Stamp `connected` + `status` on a raw action match: an active connection or
+ *  a no-auth toolkit (nothing to connect) both mean "usable now". */
+function annotate(
+  match: ToolMatch,
+  connectedSlugs: string[],
+  noAuth: ReadonlySet<string>,
+): ToolMatch {
+  const connected =
+    isConnectedIn(connectedSlugs, match.toolkit) ||
+    noAuth.has(match.toolkit.toLowerCase());
   const status: IntegrationAppStatus = connected ? "connected" : "connectable";
   return { ...match, connected, status };
 }
@@ -122,13 +138,14 @@ export async function searchComposio(
       ? await deps.queryTools({ limit: "50", toolkit_slug: scopedSlug })
       : [];
 
+  const noAuth = noAuthSlugs(catalog);
   const out: ToolMatch[] = [];
   const seenActions = new Set<string>();
   const push = (m: ToolMatch) => {
     const key = m.action.toLowerCase();
     if (seenActions.has(key)) return;
     seenActions.add(key);
-    out.push(annotate(m, slugs));
+    out.push(annotate(m, slugs, noAuth));
   };
   // Scoped (or its listing fallback) first — connected apps, highest precision.
   for (const m of scoped.length > 0 ? scoped : scopedListed) push(m);
@@ -136,12 +153,14 @@ export async function searchComposio(
   for (const m of global) push(m);
 
   // Catalog: surface every resolved app that has no action match yet, so the
-  // model always learns the slug to offer via request_connection.
+  // model always learns the slug to offer via request_connection (or, for a
+  // no-auth app, to use directly — those read `connected`).
   const represented = new Set(out.map((m) => m.toolkit.toLowerCase()));
   for (const tk of resolveCatalogToolkits(catalog, query)) {
     if (represented.has(tk.slug.toLowerCase())) continue;
     represented.add(tk.slug.toLowerCase());
-    const connected = isConnectedIn(slugs, tk.slug);
+    const connected =
+      isConnectedIn(slugs, tk.slug) || noAuth.has(tk.slug.toLowerCase());
     out.push({
       action: "",
       toolkit: tk.slug,
