@@ -10,6 +10,7 @@ import {
   canSeeMembers,
   GRANTABLE_ROLES,
   isMultiplayer,
+  isPersonalSpace,
   orgRole,
 } from "../src/lib/org-roles.ts";
 
@@ -133,6 +134,37 @@ describe("canSeeBillingTab (C8)", () => {
     strictEqual(canSeeBillingTab(multiplayer("owner"), true), false); // no spaces flag
     strictEqual(canSeeBillingTab(caps(), true), false);
     strictEqual(canSeeBillingTab(null, true), false);
+  });
+});
+
+describe("isPersonalSpace (C8 spaceKind)", () => {
+  const hosted = (spaceKind?: Capabilities["spaceKind"]): Capabilities =>
+    caps({
+      multiplayer: true,
+      role: "owner",
+      teams: true,
+      spaces: true,
+      spaceKind,
+    });
+
+  it("personal: the host explicitly says the active space is personal", () => {
+    // Every user is `owner` of their personal space, so the role gates alone
+    // cannot tell it apart from a team — only the explicit spaceKind can.
+    strictEqual(isPersonalSpace(hosted("personal")), true);
+  });
+
+  it("team: the invite surface stays", () => {
+    strictEqual(isPersonalSpace(hosted("team")), false);
+  });
+
+  it("absent (older gateway): never hides the invite surface", () => {
+    // Tolerant reader — a gateway that predates spaceKind omits it, and hosted
+    // team users there MUST keep today's members/invite surface unchanged.
+    strictEqual(isPersonalSpace(hosted(undefined)), false);
+    strictEqual(isPersonalSpace(multiplayer("owner")), false);
+    strictEqual(isPersonalSpace(caps()), false);
+    strictEqual(isPersonalSpace(null), false);
+    strictEqual(isPersonalSpace(undefined), false);
   });
 });
 

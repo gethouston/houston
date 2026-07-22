@@ -91,6 +91,7 @@
       },
       "rows": {
         "people": "Convide colegas, defina funções e remova membros.",
+        "peoplePersonal": "Por enquanto é só você aqui. Crie uma equipe para convidar pessoas.",
         "activity": "O que aconteceu neste espaço de trabalho, do mais recente ao mais antigo.",
         "usage": "Quantas mensagens cada agente e pessoa está enviando.",
         "billing": "Assentos, plano e pagamento."
@@ -166,6 +167,11 @@
   },
   "people": {
     "adminNotice": "Você pode ver sua equipe. Apenas o proprietário pode adicionar ou remover pessoas.",
+    "personal": {
+      "title": "Crie uma equipe para convidar pessoas",
+      "body": "Por enquanto é só você aqui. As equipes permitem convidar pessoas, compartilhar agentes e trabalhar em conjunto.",
+      "cta": "Criar uma equipe"
+    },
     "add": {
       "title": "Adicionar alguém",
       "subtitle": "Convide um colega por e-mail. Se ainda não tiver o Houston, enviaremos um convite.",
