@@ -252,6 +252,13 @@ export class ProxyChannel implements RuntimeChannel {
     // dispatch respawns it (pi's continueRecent restores its sessions). The
     // launcher's sleep waits for the child to ACTUALLY exit, so a caller that
     // needs the agent's directory quiet (rename) can rely on it.
+    //
+    // Quiesce is idempotent by contract: an absent runtime is ALREADY quiet.
+    // The launcher's sleep deliberately rejects sleeping an unknown sandbox
+    // (a genuine sleep-of-absent elsewhere is a bug it must not paper over),
+    // so only an existing runtime is slept — renaming a never-woken agent
+    // must succeed, not 500.
+    if ((await this.opts.launcher.status(ctx.agent.id)) === "absent") return;
     await this.opts.launcher.sleep(ctx.agent.id);
   }
 
