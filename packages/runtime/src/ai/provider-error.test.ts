@@ -418,6 +418,82 @@ test("a genuine opencode 401 invalid key still reads as unauthenticated", () => 
 });
 
 // ---------------------------------------------------------------------------
+// No-credit / payment-required bodies (2026-07 provider QA). A VALID key on an
+// account with no credit answers with a billing error; if that fell to
+// `unknown`, verify-api-key read it as "no verdict" and refused to store a
+// perfectly good key. HTTP 402 alone decides — Payment Required is
+// definitionally billing — and the wordings below cover the shapes that ship
+// under other statuses. Together/Fireworks/Cerebras bodies are reconstructed
+// from their docs (402 semantics verified; exact prose may drift), the Vercel /
+// Anthropic / NVIDIA bodies are verbatim from user reports.
+
+test("a 402 classifies as quota_exhausted on status alone, whatever the body", () => {
+  // The body deliberately matches NO balance wording — the status must decide.
+  const err = classifyProviderError({
+    provider: "fireworks",
+    model: "accounts/fireworks/models/deepseek-v4-flash",
+    message:
+      '402: {"error":{"message":"Usage is paused for this account. Visit your billing dashboard to resume.","code":"BILLING_PAUSED"}}',
+  });
+  expect(err.kind).toBe("quota_exhausted");
+  if (err.kind === "quota_exhausted") expect(err.resets_at).toBeNull();
+});
+
+test("together 402 spend cap → quota_exhausted, never a reconnect", () => {
+  const err = classifyProviderError({
+    provider: "together",
+    model: "MiniMaxAI/MiniMax-M2.7",
+    message:
+      '402: {"error":{"message":"The account associated with this API key has reached its maximum allowed spending limit. Update your limit at https://api.together.ai/settings/billing","type":"invalid_request_error","param":null,"code":null}}',
+  });
+  expect(err.kind).toBe("quota_exhausted");
+});
+
+test("cerebras 402 missing payment method → quota_exhausted", () => {
+  const err = classifyProviderError({
+    provider: "cerebras",
+    model: "gemma-4-31b",
+    message:
+      '402: {"message":"Please add a payment method to unlock your free credits.","type":"payment_required_error","code":"payment_required"}',
+  });
+  expect(err.kind).toBe("quota_exhausted");
+});
+
+test("vercel AI Gateway no-card block classifies off the body with no status", () => {
+  // Verbatim gateway body (community.vercel.com/t/37168): the account is valid,
+  // it just has no card on file — a billing action, not a reconnect.
+  const err = classifyProviderError({
+    provider: "vercel-ai-gateway",
+    model: "alibaba/qwen-3-14b",
+    message:
+      '{"error":{"message":"AI Gateway requires a valid credit card on file to service requests. Please visit https://vercel.com/d?to=%2F%5Bteam%5D%2F~%2Fai%3Fmodal%3Dadd-credit-card to add a card and unlock your free credits.","type":"customer_verification_required"}}',
+  });
+  expect(err.kind).toBe("quota_exhausted");
+});
+
+test("anthropic api-key credit floor (HTTP 400) → quota_exhausted", () => {
+  // Anthropic ships its no-credit failure under 400 invalid_request_error, so
+  // the 402 short-circuit misses it; the body wording must carry it.
+  const err = classifyProviderError({
+    provider: "anthropic",
+    model: "claude-sonnet-4-6",
+    message:
+      '400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}}',
+  });
+  expect(err.kind).toBe("quota_exhausted");
+});
+
+test("NVIDIA NIM expired cloud credits → quota_exhausted", () => {
+  const err = classifyProviderError({
+    provider: "nvidia",
+    model: "moonshotai/kimi-k2.5",
+    message:
+      "402: Cloud credits expired - Please contact NVIDIA representatives",
+  });
+  expect(err.kind).toBe("quota_exhausted");
+});
+
+// ---------------------------------------------------------------------------
 // Context overflow — the conversation no longer fits the model's window.
 // The Jan fixture is the VERBATIM llama.cpp rejection from the production
 // incident that used to fall through to `unknown` (a Jan-v3.5-4B custom

@@ -99,7 +99,12 @@ const MODEL_UNAVAILABLE_PATTERNS = [
  * out-of-credit account with `401 {"type":"CreditsError","message":"Insufficient
  * balance. Manage your billing here: …"}`. Reconnecting the (valid) key does
  * nothing; the user must top up. Classified as `quota_exhausted` (the "pay or
- * switch" card), never a reconnect.
+ * switch" card), never a reconnect. HTTP 402 (Payment Required) short-circuits
+ * to the same verdict regardless of body wording (see `classifyProviderError`);
+ * the text patterns below catch the billing bodies that arrive WITHOUT a 402
+ * status — each is tied to a real provider payload in `provider-error.test.ts`:
+ * Vercel AI Gateway's no-card / verification block, Together's spend cap,
+ * Anthropic's api-key credit floor, NVIDIA NIM's expired cloud credits.
  */
 const INSUFFICIENT_BALANCE_PATTERNS = [
   "insufficient balance",
@@ -108,6 +113,22 @@ const INSUFFICIENT_BALANCE_PATTERNS = [
   "insufficient funds",
   "not enough credits",
   "creditserror",
+  // Vercel AI Gateway: `{"error":{"message":"AI Gateway requires a valid credit
+  // card on file to service requests. …","type":"customer_verification_required"}}`
+  "requires a valid credit card",
+  "customer_verification_required",
+  // Together 402: the account "has reached its maximum allowed spending limit".
+  "spending limit",
+  // Generic Payment Required wording / Fireworks' error `code` style.
+  "payment required",
+  "payment_required",
+  // Anthropic api-key accounts: "Your credit balance is too low to access the
+  // Anthropic API." — arrives under HTTP 400, so the 402 short-circuit misses it.
+  "credit balance is too low",
+  // "You have run out of credits" phrasing (various gateways).
+  "out of credits",
+  // NVIDIA NIM: "Cloud credits expired - Please contact NVIDIA representatives".
+  "credits expired",
 ];
 
 /**
@@ -148,10 +169,16 @@ export function classifyProviderError(
       message,
     };
   }
-  // Spend/credit exhaustion (opencode.ai CreditsError): the account is out of
-  // credit or lacks the subscription for this model — the "pay or switch" state,
-  // NOT auth and NOT a wait-out rate limit. Surfaces the provider's message.
-  if (isInsufficientBalance(lower)) {
+  // Spend/credit exhaustion: the account is out of credit or blocked on a
+  // billing precondition — the "pay or switch" state, NOT auth and NOT a
+  // wait-out rate limit. Surfaces the provider's message. HTTP 402 (Payment
+  // Required) is definitionally this state — Together's spend cap, Cerebras'
+  // missing payment method, Fireworks' drained prepaid balance, DeepSeek's
+  // "Insufficient Balance" all ride it — so the status alone decides, no body
+  // wording required; the text patterns catch the same failures when a gateway
+  // ships them under another status (opencode's 401 CreditsError, Anthropic's
+  // 400 credit floor, Vercel's no-card block).
+  if (status === 402 || isInsufficientBalance(lower)) {
     return {
       kind: "quota_exhausted",
       provider,
