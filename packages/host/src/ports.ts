@@ -225,6 +225,18 @@ export interface RuntimeChannel {
     ctx: ChannelCtx,
     items: { id: string; text: string }[],
   ): Promise<{ id: string; text: string; summary: string }[]>;
+  /**
+   * Stop the agent's STANDING runtime (kill / scale to zero), persisting its
+   * state — destroying nothing; the runtime respawns on the next dispatch.
+   * Called before operations that move the agent's on-disk identity (rename):
+   * a live local runtime holds absolute paths into the old directory (cwd,
+   * data dir) and its next write would resurrect the old-named folder, which
+   * the directory-derived local store re-lists as an agent with the OLD name.
+   * On Windows the live child's cwd also locks the directory against the
+   * rename itself. Optional: channels with no standing runtime (per-turn)
+   * have nothing to quiesce and omit it.
+   */
+  quiesce?(ctx: ChannelCtx): Promise<void>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
   /**

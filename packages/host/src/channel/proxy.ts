@@ -247,6 +247,14 @@ export class ProxyChannel implements RuntimeChannel {
     return this.opts.launcher.status(ctx.agent.id);
   }
 
+  async quiesce(ctx: ChannelCtx): Promise<void> {
+    // Sleep, not destroy: the runtime's state stays on disk and the next
+    // dispatch respawns it (pi's continueRecent restores its sessions). The
+    // launcher's sleep waits for the child to ACTUALLY exit, so a caller that
+    // needs the agent's directory quiet (rename) can rely on it.
+    await this.opts.launcher.sleep(ctx.agent.id);
+  }
+
   async teardown(ctx: ChannelCtx): Promise<void> {
     await this.opts.launcher.destroy(ctx.agent.id, { dropVolume: true });
   }

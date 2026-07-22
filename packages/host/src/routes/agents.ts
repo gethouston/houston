@@ -282,6 +282,26 @@ export async function handleAgents(
         json(res, 400, { error: "missing 'name'" });
         return true;
       }
+      // Quiesce the agent's standing runtime BEFORE the rename moves its
+      // directory. A warm local runtime holds absolute paths into the OLD
+      // directory (cwd + HOUSTON_DATA_DIR) and stays keyed under the OLD id in
+      // the launcher, so a rename under it leaks the process and its next
+      // write (conversation store, usage ledger, logs — all mkdir-recursive)
+      // RESURRECTS the old-named folder, which the directory-derived local
+      // store then re-lists as an agent with the old name ("my rename
+      // reverted"). On Windows the live child's cwd even locks the directory
+      // against the rename itself. The runtime respawns on the next dispatch
+      // (pi's continueRecent restores its sessions from the renamed tree). A
+      // quiesce failure surfaces — never rename under a live runtime.
+      if (name !== authz.agent.name) {
+        const channel = channelFor(deps, authz.workspace);
+        if (channel?.quiesce) {
+          await channel.quiesce({
+            workspace: authz.workspace,
+            agent: authz.agent,
+          });
+        }
+      }
       let renamed: Agent;
       try {
         renamed = await deps.store.renameAgent(agentId, name);
