@@ -819,6 +819,25 @@ validate (`connections.validate`, fail-open on `unknown`) → secret store →
 connection rewire. It NEVER enters the transcript; the prompt (houston-prompt.ts
 + the Rust mirror) forbids asking for keys in chat.
 
+**A spec with no security scheme still takes a key (the PriceLabs fix).** Many
+real specs (and agent-authored ones) declare NO `securitySchemes` — the key is
+just a documented header. That used to dead-end the secure save with
+`credential_invalid` on every attempt while pasting the key in chat worked (the
+worst possible incentive). Compile now injects a synthesized `houston_fallback`
+method for credential-mode OpenAPI defs with no collectible method
+(`custom/fallback-auth.ts` → `executor.openapi.configure`): the placement is
+derived from the spec's own api-key-shaped header/query parameter
+(`X-API-Key`-like names; an `Authorization` param gets `Bearer `), else the
+`Authorization: Bearer` default the MCP path already uses. The executor is
+in-memory, so every rebuild re-injects the SAME slug before the stored
+credential's connection re-renders through it. `setCredential` also heals defs
+added as `auth:"none"` (a later `request_credential` upgrades them), and its
+residual failures (uncompiled def; MCP def with no declared method) carry
+actionable messages. The secret FILE write is platform-correct: 0600 asserted
+on POSIX; on Windows (no POSIX modes — NTFS ACLs under the user profile are the
+protection) the write skips chmod and clears a stray read-only attribute before
+its rename-replace.
+
 **User routes** (`routes/custom-integrations.ts`, mounted BEFORE the generic
 `/v1/integrations/:provider/*` catch-all): GET/DELETE
 `/v1/integrations/custom/definitions[/:slug]` + the credential POST. Errors
