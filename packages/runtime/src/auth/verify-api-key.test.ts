@@ -103,6 +103,36 @@ test("insufficient balance proves the key authenticated — verified", async () 
   await expect(verifyApiKey("opencode", "sk-broke")).resolves.toBeUndefined();
 });
 
+test("a 402 payment-required reply proves the key authenticated — verified", async () => {
+  // The no-credits connect (2026-07 provider QA): a VALID key on an account
+  // with an empty balance answers 402. That is past auth — a garbage key can't
+  // owe money — so the key stores; the first chat turn then renders the
+  // quota_exhausted card with the provider's own billing message.
+  completeSimple.mockResolvedValue(
+    reply({
+      stopReason: "error",
+      errorMessage:
+        '402: {"error":{"message":"The account associated with this API key has reached its maximum allowed spending limit.","type":"invalid_request_error"}}',
+    }),
+  );
+  await expect(verifyApiKey("together", "sk-broke")).resolves.toBeUndefined();
+});
+
+test("vercel's no-card block proves the key authenticated — verified", async () => {
+  // Vercel AI Gateway rejects EVERY request until a card is on file, with no
+  // status in pi's surfaced message — the body wording must carry the verdict.
+  completeSimple.mockResolvedValue(
+    reply({
+      stopReason: "error",
+      errorMessage:
+        '{"error":{"message":"AI Gateway requires a valid credit card on file to service requests.","type":"customer_verification_required"}}',
+    }),
+  );
+  await expect(
+    verifyApiKey("vercel-ai-gateway", "vck-valid"),
+  ).resolves.toBeUndefined();
+});
+
 test("a network failure rejects without storing, as provider_unavailable", async () => {
   completeSimple.mockResolvedValue(
     reply({ stopReason: "error", errorMessage: "fetch failed" }),

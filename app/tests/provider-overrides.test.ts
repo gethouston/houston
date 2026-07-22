@@ -73,8 +73,6 @@ describe("providerDescription", () => {
       "moonshotai",
       "zai",
       "vercel-ai-gateway",
-      "cloudflare-ai-gateway",
-      "cloudflare-workers-ai",
       "azure-openai-responses",
       "google-vertex",
       "openai-compatible",
@@ -93,6 +91,10 @@ describe("providerDescription", () => {
     // 2026-07 provider QA: these cards are gone from every connect/pick
     // surface. The drop is presentation-only (legacy conversations still run),
     // so the ids must sit in DROP_PI_PROVIDERS and carry no override entry.
+    // The Cloudflare pair is dropped for a different reason — connecting needs
+    // the account/gateway id in the URL, which the single-key dialog can never
+    // collect — but the mechanics are identical (revisit with multi-field
+    // connect).
     for (const id of [
       "ant-ling",
       "kimi-coding",
@@ -100,6 +102,8 @@ describe("providerDescription", () => {
       "xiaomi-token-plan-ams",
       "xiaomi-token-plan-cn",
       "xiaomi-token-plan-sgp",
+      "cloudflare-ai-gateway",
+      "cloudflare-workers-ai",
     ]) {
       ok(DROP_PI_PROVIDERS.has(id), `${id} must be in DROP_PI_PROVIDERS`);
       strictEqual(

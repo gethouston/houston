@@ -9,17 +9,23 @@ import {
 } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { resolveCopilotDomain } from "../../lib/copilot-domain";
 import type { ProviderInfo } from "../../lib/providers";
 
 /**
- * GitHub Copilot connect dialog. ONE card, two plans:
- *  - **Personal** — your own Copilot on github.com (no domain).
- *  - **Company / GitHub Enterprise** — Copilot your employer provides, on their
- *    GitHub domain. The device-code flow is domain-specific, so we collect the
- *    company domain here before login.
+ * GitHub Copilot connect dialog. ONE card, two sign-in homes:
+ *  - **github.com** — personal Copilot AND company-paid Copilot Business (a
+ *    Business seat has no domain of its own; entitlement follows the account).
+ *  - **GitHub Enterprise domain** — only for companies that sign in at their
+ *    own GitHub address (data residency, company.ghe.com). The device-code
+ *    flow is domain-specific, so we collect that domain here before login.
  *
- * On submit: `onConnect(undefined)` for Personal, `onConnect(domain)` for
- * Company. The caller (picker / settings) owns the async login + spinner.
+ * On submit: `onConnect(undefined)` for github.com, `onConnect(domain)` for an
+ * enterprise domain — `resolveCopilotDomain` collapses a typed github.com back
+ * to the no-domain path and rejects unusable input at the dialog (the Copilot
+ * Business failure class: a company WEBSITE domain sent the device flow to a
+ * non-GitHub host). The caller (picker / settings) owns the async login +
+ * spinner.
  */
 type Plan = "personal" | "company";
 
@@ -37,12 +43,14 @@ export function ProviderCopilotConnectDialog({
   const { t } = useTranslation("providers");
   const [plan, setPlan] = useState<Plan>("personal");
   const [domain, setDomain] = useState("");
+  const [domainInvalid, setDomainInvalid] = useState(false);
 
   // Reset per-open so a stale plan/domain never leaks across opens.
   useEffect(() => {
     if (provider) {
       setPlan("personal");
       setDomain("");
+      setDomainInvalid(false);
     }
   }, [provider]);
 
@@ -53,9 +61,16 @@ export function ProviderCopilotConnectDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (plan === "company") {
-      const trimmed = domain.trim();
-      if (!trimmed) return;
-      onConnect(trimmed);
+      const target = resolveCopilotDomain(domain);
+      if (target.kind === "invalid") {
+        // Unusable input fails HERE with a remedy, not minutes later inside a
+        // device-code flow pointed at a non-GitHub host.
+        setDomainInvalid(true);
+        return;
+      }
+      // github.com typed into the company field IS the github.com path (a
+      // Copilot Business seat signs in there); never route it as "enterprise".
+      onConnect(target.kind === "enterprise" ? target.domain : undefined);
     } else {
       onConnect(undefined);
     }
@@ -107,13 +122,23 @@ export function ProviderCopilotConnectDialog({
                 autoComplete="off"
                 autoFocus
                 value={domain}
-                onChange={(e) => setDomain(e.target.value)}
+                onChange={(e) => {
+                  setDomain(e.target.value);
+                  setDomainInvalid(false);
+                }}
                 placeholder={t("copilot.domainPlaceholder")}
+                aria-invalid={domainInvalid}
                 className="w-full rounded-md border bg-input px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-focus"
               />
-              <p className="text-[12px] text-ink-muted">
-                {t("copilot.domainHint")}
-              </p>
+              {domainInvalid ? (
+                <p role="alert" className="text-[12px] text-danger">
+                  {t("copilot.domainInvalid")}
+                </p>
+              ) : (
+                <p className="text-[12px] text-ink-muted">
+                  {t("copilot.domainHint")}
+                </p>
+              )}
             </div>
           )}
 

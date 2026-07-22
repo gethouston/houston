@@ -144,6 +144,11 @@ export function toCanonicalProviderId(id: string): string {
  *   regional Xiaomi Token Plans. Dropping is presentation-only: the ids stay
  *   runnable on the wire, so an existing conversation pinned to one keeps
  *   working; they just can't be connected or picked anymore.
+ * - Structurally unconnectable (2026-07 provider QA): both Cloudflare providers
+ *   need the user's ACCOUNT ID (AI Gateway also a gateway id) baked into the
+ *   request URL, so the single-pasted-key connect dialog can never verify or
+ *   run them — every attempt dead-ends in "could not verify". Dropped until a
+ *   multi-field connect ships (mapped follow-up); same presentation-only rules.
  */
 export const DROP_PI_PROVIDERS: ReadonlySet<string> = new Set([
   "openai",
@@ -153,6 +158,8 @@ export const DROP_PI_PROVIDERS: ReadonlySet<string> = new Set([
   "xiaomi-token-plan-ams",
   "xiaomi-token-plan-cn",
   "xiaomi-token-plan-sgp",
+  "cloudflare-ai-gateway",
+  "cloudflare-workers-ai",
 ]);
 
 /**
@@ -698,20 +705,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     // Azure keys live per-resource in the portal; there is no global key page.
     apiKeyUrl: "https://portal.azure.com",
   },
-  "cloudflare-ai-gateway": {
-    name: "Cloudflare AI Gateway",
-    subtitle: "Many models via Cloudflare",
-    cost: "Pay as you go",
-    installUrl: "https://developers.cloudflare.com/ai-gateway/",
-    apiKeyUrl: "https://dash.cloudflare.com/profile/api-tokens",
-  },
-  "cloudflare-workers-ai": {
-    name: "Cloudflare Workers AI",
-    subtitle: "Open models on Cloudflare's edge",
-    cost: "Free allocation, then pay as you go",
-    installUrl: "https://developers.cloudflare.com/workers-ai/",
-    apiKeyUrl: "https://dash.cloudflare.com/profile/api-tokens",
-  },
 };
 
 /**
@@ -737,8 +730,6 @@ export const DESCRIPTION_BY_ID: Readonly<Record<string, string>> = {
   moonshotai: "Kimi models from Moonshot AI.",
   zai: "GLM open models from Z.ai.",
   "vercel-ai-gateway": "One key for many models, from Vercel.",
-  "cloudflare-ai-gateway": "Route to many models through Cloudflare.",
-  "cloudflare-workers-ai": "Open models on Cloudflare's edge network.",
   "azure-openai-responses": "OpenAI models on Microsoft Azure.",
   "google-vertex": "Gemini and more on Google Cloud Vertex AI.",
   xiaomi: "MiMo models from Xiaomi.",
