@@ -13,8 +13,8 @@ import {
   type ConnectFlow,
   ConnectWaitingPanel,
   categoryLabel,
-  FEATURED,
   groupCatalogByCategory,
+  MOST_USED,
   type PermissionsFix,
   SECTION_PREVIEW_CAP,
   SectionHeader,
@@ -146,8 +146,8 @@ export function CategoryCatalog({
                   // <h3>: nested under the Available section's lg <h2> heading.
                   as="h3"
                   title={
-                    section.category === FEATURED
-                      ? t("home.featured")
+                    section.category === MOST_USED
+                      ? t("home.mostUsed")
                       : section.category === UNCATEGORIZED
                         ? t("home.otherCategory")
                         : categoryLabel(section.category)
