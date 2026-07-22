@@ -75,14 +75,15 @@ async function guardAuthCall(
 }
 
 async function establishDesktopSession(
-  { session, isNewUser }: SignInOutcome,
+  outcome: SignInOutcome,
   analyticsProvider: string,
 ): Promise<void> {
+  const { session } = outcome;
   await saveSession(session);
   cacheSession(session);
   rememberLastSignIn(session);
   startProactiveRefresh();
-  trackSignIn(analyticsProvider, isNewUser);
+  trackSignIn(analyticsProvider, outcome);
   logger.info(`[auth] signed in (${session.provider}) as ${session.email}`);
 }
 
@@ -94,14 +95,28 @@ function establishWebSession(
   if (!outcome) return; // popup cancelled — no error, no cache write
   cacheSession(outcome.session);
   rememberLastSignIn(outcome.session);
-  trackSignIn(analyticsProvider, outcome.isNewUser);
+  trackSignIn(analyticsProvider, outcome);
 }
 
 // A sign-in that CREATED the account also emits `user_signed_up` — the
 // once-per-account event the PostHog → Slack new-user notification and the
 // activation funnel key on. `user_signed_in` still fires on every sign-in.
-function trackSignIn(provider: string, isNewUser: boolean): void {
-  if (isNewUser) analytics.track("user_signed_up", { provider });
+function trackSignIn(
+  provider: string,
+  { session, isNewUser }: SignInOutcome,
+): void {
+  if (isNewUser) {
+    // Identify BEFORE the sign-up event: the Slack destination renders
+    // person.properties.name/email from the person snapshot AT event
+    // ingestion (person-on-events), so the $set must precede the event on
+    // the wire — App.tsx's identify effect runs a render later, too late.
+    analytics.identifyUser(session.uid, {
+      email: session.email,
+      name: session.displayName,
+      signupDate: null,
+    });
+    analytics.track("user_signed_up", { provider });
+  }
   analytics.track("user_signed_in", { provider });
 }
 
