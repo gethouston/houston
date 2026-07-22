@@ -462,17 +462,19 @@ describe("groupCatalogByCategory ready-to-use (no-auth) apps", () => {
   ) =>
     sections.find((s) => s.category === READY)?.connectable.map((t) => t.slug);
 
-  it("pins Ready right after Featured at rest, in curated READY_SLUGS order", () => {
+  it("pins Ready LAST at rest, in curated READY_SLUGS order", () => {
     const sections = groupCatalogByCategory({
       catalog: READY_CATALOG,
       query: "",
       connected: new Set(),
     });
+    // The page leads with actionable (connectable) sections; Ready closes it.
     deepStrictEqual(sections[0].category, FEATURED);
-    deepStrictEqual(sections[1].category, READY);
+    const last = sections[sections.length - 1];
+    deepStrictEqual(last.category, READY);
     // READY_SLUGS order (composio_search first), not A-Z.
     deepStrictEqual(
-      sections[1].connectable.map((t) => t.slug),
+      last.connectable.map((t) => t.slug),
       ["composio_search", "weathermap"],
     );
   });

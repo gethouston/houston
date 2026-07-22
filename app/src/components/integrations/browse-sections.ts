@@ -23,7 +23,8 @@ export const FEATURED = "__featured";
 
 /** The section slug for the curated "Ready to use" no-auth apps (web search,
  * weather…): nothing to connect — their tools work as-is, so the rows carry a
- * ready badge instead of the `+`. Pinned right after {@link FEATURED}. */
+ * ready badge instead of the `+`. Pinned LAST: the page leads with apps the
+ * user can act on (connect), and closes with what is already theirs. */
 export const READY = "__ready";
 
 /**
@@ -193,15 +194,14 @@ export function groupCatalogByCategory(opts: {
       sections.unshift({ category: FEATURED, connectable: featured });
     }
   }
-  // Ready to use: pinned after Featured. Unlike Featured it SURVIVES a search
-  // (these apps have no category-section home, so the query must find them
-  // here); a category pick still hides it — ready apps belong to no category
-  // section by design.
+  // Ready to use: pinned LAST — the page leads with the apps the user can act
+  // on. Unlike Featured it SURVIVES a search (these apps have no
+  // category-section home, so the query must find them here); a category pick
+  // still hides it — ready apps belong to no category section by design.
   if (!only) {
     const ready = readyToolkits(opts.catalog, q);
     if (ready.length > 0) {
-      const at = sections[0]?.category === FEATURED ? 1 : 0;
-      sections.splice(at, 0, { category: READY, connectable: ready });
+      sections.push({ category: READY, connectable: ready });
     }
   }
   return sections;
