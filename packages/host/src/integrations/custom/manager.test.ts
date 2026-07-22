@@ -72,6 +72,32 @@ const AUTH_SPEC = JSON.stringify({
   },
 });
 
+// The reported PriceLabs shape: NO securitySchemes at all — the key exists
+// only as a header parameter the docs describe per operation. The secure save
+// used to dead-end on this (`credential_invalid: declares no credential-based
+// auth method`) while pasting the key in chat worked.
+const HEADER_PARAM_SPEC = JSON.stringify({
+  openapi: "3.0.0",
+  info: { title: "PriceLabs", version: "1.0.0" },
+  servers: [{ url: "https://api.pricelabs.example" }],
+  paths: {
+    "/listings": {
+      get: {
+        operationId: "getListings",
+        parameters: [
+          {
+            name: "X-API-Key",
+            in: "header",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: { "200": { description: "ok" } },
+      },
+    },
+  },
+});
+
 function setup() {
   const store = new MemoryCustomIntegrationStore();
   const secrets = new MemoryCustomSecretStore();
@@ -178,6 +204,100 @@ test("add(openapi, auth:credential) is pending until setCredential(); then activ
     template: expect.any(String),
     secretIds: { token: `ci_${added.slug}_token` },
   });
+});
+
+test("a spec with NO security scheme still takes a key: the fallback method places it (PriceLabs regression)", async () => {
+  const { manager, secrets, store } = setup();
+  const added = await manager.add({
+    kind: "openapi",
+    name: "PriceLabs",
+    spec: { kind: "blob", value: HEADER_PARAM_SPEC },
+    auth: "credential",
+  });
+  // The pending card must offer a REAL field (the synthesized method naming
+  // the spec's own X-API-Key header), never an empty method list.
+  expect(added.state.status).toBe("pending");
+  if (added.state.status === "pending") {
+    expect(added.state.authMethods).toHaveLength(1);
+    expect(added.state.authMethods[0]?.label).toContain("X-API-Key");
+  }
+
+  const updated = await manager.setCredential(added.slug, {
+    token: "plk_live_123",
+  });
+  expect(updated.state.status).toBe("active");
+  expect(await secrets.get(`ci_${added.slug}_token`)).toBe("plk_live_123");
+  const def = (await store.list()).find((d) => d.slug === added.slug);
+  expect(def?.credential).toEqual({
+    template: "houston_fallback",
+    secretIds: { token: `ci_${added.slug}_token` },
+  });
+});
+
+test("a spec with no auth hints at all falls back to Bearer and still saves", async () => {
+  const { manager } = setup();
+  // OPENAPI_SPEC declares neither securitySchemes nor key-shaped parameters.
+  const added = await manager.add({
+    kind: "openapi",
+    name: "Widgets",
+    spec: { kind: "blob", value: OPENAPI_SPEC },
+    auth: "credential",
+  });
+  expect(added.state.status).toBe("pending");
+  if (added.state.status === "pending") {
+    expect(added.state.authMethods[0]?.label).toContain("Authorization");
+  }
+  const updated = await manager.setCredential(added.slug, { token: "k" });
+  expect(updated.state.status).toBe("active");
+});
+
+test("setCredential on a def added as auth:'none' upgrades it (request_credential after the fact)", async () => {
+  const { manager, store } = setup();
+  const added = await manager.add({
+    kind: "openapi",
+    name: "PriceLabs",
+    spec: { kind: "blob", value: HEADER_PARAM_SPEC },
+    auth: "none",
+  });
+  expect(added.state.status).toBe("active");
+
+  const updated = await manager.setCredential(added.slug, { token: "k" });
+  expect(updated.state.status).toBe("active");
+  const def = (await store.list()).find((d) => d.slug === added.slug);
+  expect(def?.auth).toBe("credential");
+  expect(def?.credential?.template).toBe("houston_fallback");
+});
+
+test("a fallback-credential def survives a restart: fresh host reconnects through the re-injected template", async () => {
+  const store = new MemoryCustomIntegrationStore();
+  const secrets = new MemoryCustomSecretStore();
+  const host1 = new CustomExecutorHost(secrets, () => store.list());
+  const manager1 = new CustomIntegrationManager(
+    store,
+    secrets,
+    host1,
+    () => {},
+  );
+  const added = await manager1.add({
+    kind: "openapi",
+    name: "PriceLabs",
+    spec: { kind: "blob", value: HEADER_PARAM_SPEC },
+    auth: "credential",
+  });
+  await manager1.setCredential(added.slug, { token: "plk_live_123" });
+
+  // The executor is in-memory: a fresh host must re-inject `houston_fallback`
+  // BEFORE re-creating the stored connection that renders through it, or every
+  // restart would break the integration.
+  const host2 = new CustomExecutorHost(secrets, () => store.list());
+  const manager2 = new CustomIntegrationManager(
+    store,
+    secrets,
+    host2,
+    () => {},
+  );
+  const views = await manager2.list();
+  expect(views[0]?.state.status).toBe("active");
 });
 
 test("setCredential on an unknown slug is not_found; an empty value is credential_invalid", async () => {

@@ -6,6 +6,7 @@ import { mcpPlugin } from "@executor-js/plugin-mcp/core";
 import { openApiPlugin } from "@executor-js/plugin-openapi/core";
 import { createExecutor } from "@executor-js/sdk";
 import { authMethodsOf, TOKEN_VARIABLE } from "./auth-methods";
+import { fallbackAuthTemplate } from "./fallback-auth";
 import type { CustomSecretStore } from "./secrets";
 import { HOUSTON_PROVIDER_KEY, houstonCredentialProvider } from "./secrets";
 import type {
@@ -127,6 +128,12 @@ export class CustomExecutorHost {
             : {}),
         });
       }
+      if (def.kind === "openapi" && def.auth === "credential") {
+        // BEFORE the pending/connect fork: a pending def's card needs the
+        // (possibly synthesized) fields, and a stored credential's template
+        // must exist before connections.create renders through it.
+        await this.ensureCollectibleAuth(executor, def);
+      }
       if (def.auth === "credential" && !def.credential) {
         return {
           status: "pending",
@@ -217,6 +224,34 @@ export class CustomExecutorHost {
   async toolCount(executor: CustomExecutor, slug: string): Promise<number> {
     const tools = await executor.tools.list();
     return tools.filter((t) => t.integration === slug).length;
+  }
+
+  /**
+   * A compiled OpenAPI integration with NO collectible auth method (a spec
+   * that models its key as a plain header parameter, or declares no auth at
+   * all) would dead-end the secure credential save: the key has nowhere to
+   * go, so `setCredential` could only fail — the reported PriceLabs bug,
+   * where the secure card errored on every attempt while pasting the key in
+   * chat worked. Synthesize a stable fallback method from the spec's own
+   * api-key-shaped parameter (else `Authorization: Bearer`, the MCP path's
+   * default). The executor is an in-memory view, so every rebuild re-injects
+   * the same `houston_fallback` template; a def whose stored credential
+   * references it therefore reconnects across restarts. No-op when the
+   * integration failed to compile or already declares a collectible method.
+   */
+  async ensureCollectibleAuth(
+    executor: CustomExecutor,
+    def: CustomIntegrationDef,
+  ): Promise<void> {
+    if (def.kind !== "openapi") return;
+    const integration = await executor.integrations.get(def.slug);
+    if (!integration) return;
+    const methods = integration.authMethods ?? [];
+    if (methods.some((m) => m.kind !== "oauth")) return;
+    await executor.openapi.configure(def.slug, {
+      authenticationTemplate: [fallbackAuthTemplate(def)],
+      mode: "merge",
+    });
   }
 
   /** The integration's declared auth methods, reduced to collectible fields. */

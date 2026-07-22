@@ -86,12 +86,20 @@ export class CustomIntegrationManager {
   ): Promise<CustomIntegrationView> {
     const def = await this.defOr404(slug);
     const { executor, states } = await this.host.ensure();
+    // Providing a key IS declaring the service needs one: heal an OpenAPI def
+    // with no collectible method (spec without a security scheme) instead of
+    // dead-ending the save — covers defs added as `auth: "none"` too, which
+    // compileDef's own ensure call never sees.
+    await this.host.ensureCollectibleAuth(executor, def);
     const methods = await this.host.authMethods(executor, slug);
     const method = methods[0];
     if (!method) {
+      const state = states.get(slug);
       throw new CustomIntegrationError(
         "credential_invalid",
-        `'${slug}' declares no credential-based auth method`,
+        state?.status === "error"
+          ? `'${slug}' is not working right now (${state.message}), so the key cannot be saved. Fix or re-add the integration first.`
+          : `'${slug}' does not say where an API key goes. Remove it and add it again as a service that needs a key.`,
       );
     }
     const token = values[TOKEN_VARIABLE] ?? Object.values(values)[0];
