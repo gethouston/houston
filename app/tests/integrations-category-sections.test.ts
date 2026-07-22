@@ -7,8 +7,8 @@ import {
 } from "../src/components/integrations/browse-model.ts";
 import {
   catalogCategorySlugs,
-  FEATURED,
   groupCatalogByCategory,
+  MOST_USED,
 } from "../src/components/integrations/browse-sections.ts";
 
 const tk = (
@@ -34,11 +34,11 @@ const shape = (
   sections: { category: string; connectable: IntegrationToolkit[] }[],
 ) => sections.map((s) => [s.category, s.connectable.map((t) => t.slug)]);
 
-/** The category grid alone — the {@link FEATURED} spotlight (asserted on its
+/** The category grid alone — the {@link MOST_USED} spotlight (asserted on its
  *  own below) is orthogonal to how the size-ranked category buckets form. */
 const categoryShape = (
   sections: { category: string; connectable: IntegrationToolkit[] }[],
-) => shape(sections.filter((s) => s.category !== FEATURED));
+) => shape(sections.filter((s) => s.category !== MOST_USED));
 
 describe("groupCatalogByCategory (new module)", () => {
   it("groups by PRIMARY category and orders sections by size desc", () => {
@@ -178,37 +178,59 @@ describe("groupCatalogByCategory (new module)", () => {
   });
 });
 
-describe("groupCatalogByCategory featured spotlight", () => {
-  const featuredSlugs = (
+describe("groupCatalogByCategory most-used spotlight", () => {
+  const mostUsedSlugs = (
     sections: { category: string; connectable: IntegrationToolkit[] }[],
   ) =>
     sections
-      .find((s) => s.category === FEATURED)
+      .find((s) => s.category === MOST_USED)
       ?.connectable.map((t) => t.slug);
 
-  it("pins Featured first at rest, in curated FEATURED_SLUGS order (not A-Z)", () => {
+  it("pins Most used first at rest, in curated MOST_USED_SLUGS order (not A-Z)", () => {
     const sections = groupCatalogByCategory({
       catalog: CATALOG,
       query: "",
       connected: new Set(),
     });
-    // First section is the spotlight; slugs follow the curated order
+    // First section is the spotlight; slugs follow the curated usage order
     // (gmail, googlecalendar, notion, slack, asana), NOT A-Z (which would open
-    // with asana).
-    deepStrictEqual(sections[0].category, FEATURED);
+    // with asana). Curated apps missing from this catalog (googledrive,
+    // whatsapp…) simply drop out — the fallback for a shrunken catalog.
+    deepStrictEqual(sections[0].category, MOST_USED);
     deepStrictEqual(
       sections[0].connectable.map((t) => t.slug),
       ["gmail", "googlecalendar", "notion", "slack", "asana"],
     );
   });
 
-  it("keeps featured apps in their own category sections too (a spotlight, not a move)", () => {
+  it("orders members by curated usage rank, never alphabetically", () => {
+    // All four are in MOST_USED_SLUGS; A-Z would open with instagram. The
+    // curated usage ranks (twitter < linkedin < whatsapp < instagram) win.
+    const sections = groupCatalogByCategory({
+      catalog: [
+        tk("instagram", "Instagram", ["social-media-accounts"]),
+        tk("linkedin", "LinkedIn", ["social-media-accounts"]),
+        tk("twitter", "Twitter", ["social-media-accounts"]),
+        tk("whatsapp", "WhatsApp", ["team-chat"]),
+      ],
+      query: "",
+      connected: new Set(),
+    });
+    deepStrictEqual(mostUsedSlugs(sections), [
+      "twitter",
+      "linkedin",
+      "whatsapp",
+      "instagram",
+    ]);
+  });
+
+  it("keeps most-used apps in their own category sections too (a spotlight, not a move)", () => {
     const sections = groupCatalogByCategory({
       catalog: CATALOG,
       query: "",
       connected: new Set(),
     });
-    // gmail is featured AND still present in Productivity, A-Z.
+    // gmail is in the spotlight AND still present in Productivity, A-Z.
     const productivity = sections.find((s) => s.category === "productivity");
     deepStrictEqual(
       productivity?.connectable.map((t) => t.slug),
@@ -216,39 +238,39 @@ describe("groupCatalogByCategory featured spotlight", () => {
     );
   });
 
-  it("omits Featured while a search query is active", () => {
+  it("omits Most used while a search query is active", () => {
     const sections = groupCatalogByCategory({
       catalog: CATALOG,
       query: "gmail",
       connected: new Set(),
     });
-    deepStrictEqual(featuredSlugs(sections), undefined);
+    deepStrictEqual(mostUsedSlugs(sections), undefined);
   });
 
-  it("omits Featured when narrowed to a single category", () => {
+  it("omits Most used when narrowed to a single category", () => {
     const sections = groupCatalogByCategory({
       catalog: CATALOG,
       query: "",
       connected: new Set(),
       category: "productivity",
     });
-    deepStrictEqual(featuredSlugs(sections), undefined);
+    deepStrictEqual(mostUsedSlugs(sections), undefined);
   });
 
-  it("excludes already-connected apps from Featured", () => {
+  it("excludes already-connected apps from Most used", () => {
     const sections = groupCatalogByCategory({
       catalog: CATALOG,
       query: "",
       connected: new Set(["gmail", "slack"]),
     });
-    deepStrictEqual(featuredSlugs(sections), [
+    deepStrictEqual(mostUsedSlugs(sections), [
       "googlecalendar",
       "notion",
       "asana",
     ]);
   });
 
-  it("omits Featured entirely when no featured app is in the catalog", () => {
+  it("omits Most used entirely when no curated app is in the catalog", () => {
     const sections = groupCatalogByCategory({
       catalog: [
         tk("serpapi", "SerpApi", ["developer-tools"]),
@@ -257,13 +279,13 @@ describe("groupCatalogByCategory featured spotlight", () => {
       query: "",
       connected: new Set(),
     });
-    deepStrictEqual(featuredSlugs(sections), undefined);
+    deepStrictEqual(mostUsedSlugs(sections), undefined);
   });
 
-  it("never leaks FEATURED into the category dropdown options", () => {
+  it("never leaks MOST_USED into the category dropdown options", () => {
     deepStrictEqual(
       catalogCategorySlugs({ catalog: CATALOG, connected: new Set() }).filter(
-        (c) => c === FEATURED,
+        (c) => c === MOST_USED,
       ),
       [],
     );

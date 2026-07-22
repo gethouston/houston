@@ -9,61 +9,76 @@ import { categoryRank } from "./category-priority.ts";
 
 /**
  * The catalog-BROWSE section layer: grouping the connectable catalog into the
- * size-ranked category sections of the "plane" page, plus the curated Featured
- * spotlight pinned above them. Split from `browse-model.ts` (the filter/category
- * layer) so each file stays within the file-size law; both are pure and share
- * the same matching/ordering helpers.
+ * size-ranked category sections of the "plane" page, plus the curated "Most
+ * used" spotlight pinned above them. Split from `browse-model.ts` (the
+ * filter/category layer) so each file stays within the file-size law; both are
+ * pure and share the same matching/ordering helpers.
  */
 
-/** The section slug for the curated "Featured" spotlight, pinned FIRST on the
+/** The section slug for the curated "Most used" spotlight, pinned FIRST on the
  * at-rest landing view (before any search or category narrowing). */
-export const FEATURED = "__featured";
+export const MOST_USED = "__mostUsed";
 
 /**
- * The curated, ORDERED everyday-app spotlight for our non-technical audience —
- * the apps most people already live in, pinned above the size-ranked category
- * sections so "Developer tools" never greets a first-time user. These are
- * Composio toolkit slugs (lowercase, no separators); matched case-insensitively
- * and any that aren't in the live catalog simply drop out. Order here IS the
- * display order (curated, not A-Z).
+ * The curated, ORDERED "Most used" spotlight for our non-technical audience —
+ * the everyday apps most people already live in, pinned above the size-ranked
+ * category sections so "Developer tools" never greets a first-time user.
+ *
+ * Committed data on purpose, NOT the live API sort. Composio's toolkits
+ * endpoint DOES expose a usage sort (`GET /api/v3/toolkits?sort_by=usage`,
+ * verified 2026-07-22 — it is also the endpoint's default order), but it ranks
+ * by usage across Composio's whole customer base, which is developers: its top
+ * ten includes github, supabase and perplexityai — exactly the apps this
+ * catalog's curated ordering exists to bury for our audience (see
+ * `category-priority.ts`). Membership therefore stays hand-picked, while the
+ * ORDER follows those same apps' relative ranks from that verified usage data,
+ * so the section is honestly "most used" without the developer-heavy tail.
+ *
+ * These are Composio toolkit slugs (lowercase, no separators); matched
+ * case-insensitively and any that aren't in the live catalog simply drop out.
+ * Order here IS the display order (curated, not A-Z). The trailing numbers are
+ * each app's rank in Composio's usage-sorted catalog on 2026-07-22.
  */
-export const FEATURED_SLUGS: readonly string[] = [
-  "gmail",
-  "googlecalendar",
-  "googledrive",
-  "googledocs",
-  "googlesheets",
-  "notion",
-  "slack",
-  "whatsapp",
-  "outlook",
-  "dropbox",
-  "canva",
-  "trello",
-  "asana",
-  "zoom",
-  "calendly",
-  "shopify",
+export const MOST_USED_SLUGS: readonly string[] = [
+  "gmail", // 0
+  "googlecalendar", // 3
+  "notion", // 4
+  "googlesheets", // 5
+  "slack", // 6
+  "outlook", // 8
+  "twitter", // 10 (X)
+  "googledrive", // 11
+  "googledocs", // 12
+  "asana", // 38
+  "shopify", // 40
+  "linkedin", // 41
+  "calendly", // 47
+  "trello", // 48
+  "dropbox", // 66
+  "whatsapp", // 88
+  "zoom", // 103
+  "canva", // 142
+  "instagram", // 608
 ];
 
 /**
- * The catalog's featured toolkits: those whose slug is in {@link FEATURED_SLUGS}
- * and not already connected, in FEATURED_SLUGS order (curated, NOT A-Z). Missing
- * apps drop out. Featured apps still appear in their own category sections too —
- * this is a spotlight, not a move.
+ * The catalog's most-used toolkits: those whose slug is in
+ * {@link MOST_USED_SLUGS} and not already connected, in MOST_USED_SLUGS order
+ * (curated usage rank, NOT A-Z). Missing apps drop out. Most-used apps still
+ * appear in their own category sections too — this is a spotlight, not a move.
  */
-function featuredToolkits(
+function mostUsedToolkits(
   catalog: IntegrationToolkit[],
   connected: ReadonlySet<string>,
 ): IntegrationToolkit[] {
   const bySlug = new Map<string, IntegrationToolkit>();
   for (const t of catalog) bySlug.set(t.slug.toLowerCase(), t);
-  const featured: IntegrationToolkit[] = [];
-  for (const slug of FEATURED_SLUGS) {
+  const mostUsed: IntegrationToolkit[] = [];
+  for (const slug of MOST_USED_SLUGS) {
     const tk = bySlug.get(slug);
-    if (tk && !connected.has(tk.slug)) featured.push(tk);
+    if (tk && !connected.has(tk.slug)) mostUsed.push(tk);
   }
-  return featured;
+  return mostUsed;
 }
 
 /**
@@ -102,9 +117,10 @@ export interface CatalogSection {
  * Empty sections drop.
  *
  * On the at-rest landing view (NO search query AND NO single-category narrowing) a
- * curated {@link FEATURED} section is pinned FIRST when non-empty, so everyday apps
- * greet a first-time user instead of the size-ranked "Developer tools". Featured
- * apps stay in their normal category sections too (a spotlight, not a move).
+ * curated {@link MOST_USED} section is pinned FIRST when non-empty, so everyday
+ * apps greet a first-time user instead of the size-ranked "Developer tools".
+ * Most-used apps stay in their normal category sections too (a spotlight, not a
+ * move).
  */
 export function groupCatalogByCategory(opts: {
   catalog: IntegrationToolkit[];
@@ -160,9 +176,9 @@ export function groupCatalogByCategory(opts: {
   // Spotlight only on the at-rest landing view — a search or category pick is a
   // deliberate narrowing the curated list would fight.
   if (!q && !only) {
-    const featured = featuredToolkits(opts.catalog, opts.connected);
-    if (featured.length > 0) {
-      sections.unshift({ category: FEATURED, connectable: featured });
+    const mostUsed = mostUsedToolkits(opts.catalog, opts.connected);
+    if (mostUsed.length > 0) {
+      sections.unshift({ category: MOST_USED, connectable: mostUsed });
     }
   }
   return sections;
@@ -173,7 +189,7 @@ export function groupCatalogByCategory(opts: {
  * excluded), sorted A-Z by display label with {@link UNCATEGORIZED} pinned
  * last — the option set for the category filter beside the search field. The
  * dropdown orders alphabetically (a user LOOKS UP a category by name there)
- * even though the page's sections order by size. The curated {@link FEATURED}
+ * even though the page's sections order by size. The curated {@link MOST_USED}
  * spotlight is not a real category, so it never leaks into the options. The
  * consumer prepends its "all" entry and labels {@link UNCATEGORIZED} itself.
  */
@@ -183,7 +199,7 @@ export function catalogCategorySlugs(opts: {
 }): string[] {
   return groupCatalogByCategory({ ...opts, query: "" })
     .map((s) => s.category)
-    .filter((c) => c !== FEATURED)
+    .filter((c) => c !== MOST_USED)
     .sort((a, b) => {
       if (a === UNCATEGORIZED) return 1;
       if (b === UNCATEGORIZED) return -1;

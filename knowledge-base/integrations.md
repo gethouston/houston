@@ -493,14 +493,20 @@ integrations** tab (§2, `teams.md`).
   "Developer tools" instead of the raw size ranking floating dev/AI apps up. Each section header carries its count chip
   (`CatalogSectionHeader` `count` — the chevron accent is GONE from the section-header
   idiom). At REST ONLY (no search query AND no single-category narrowing) a curated
-  **Featured** spotlight (`FEATURED = "__featured"`, an ordered `FEATURED_SLUGS` list
-  of everyday apps — gmail, calendar, drive, notion, slack…) is pinned FIRST above the
-  category sections, so a first-time user meets familiar apps instead of
-  "Developer tools"; it renders under `t("home.featured")`. Featured apps still appear
-  in their own category sections too (a spotlight, not a move), already-connected apps
-  drop out, and `FEATURED` never leaks into `catalogCategorySlugs` (the dropdown
-  options). A search or a category pick suppresses it (the curated list would fight a
-  deliberate narrowing). Each row is the split `CatalogRow`
+  **Most used** spotlight (`MOST_USED = "__mostUsed"`, an ordered `MOST_USED_SLUGS`
+  list of everyday apps — gmail, calendar, notion, sheets, slack, twitter, linkedin,
+  whatsapp, instagram…) is pinned FIRST above the category sections, so a first-time
+  user meets familiar apps instead of "Developer tools"; it renders under
+  `t("home.mostUsed")` ("Most used" / "Más usadas" / "Mais usadas"). Membership is
+  COMMITTED data, deliberately not Composio's live usage sort: the API does expose
+  `GET /api/v3/toolkits?sort_by=usage` (verified 2026-07-22; it is also the default
+  order), but it ranks global Composio (developer) usage — github/supabase/
+  perplexityai in the top ten — so the list stays hand-picked, ordered by those same
+  apps' relative ranks from that verified data (rank comments in
+  `browse-sections.ts`). Most-used apps still appear in their own category sections
+  too (a spotlight, not a move), already-connected apps drop out, and `MOST_USED`
+  never leaks into `catalogCategorySlugs` (the dropdown options). A search or a
+  category pick suppresses it (the curated list would fight a deliberate narrowing). Each row is the split `CatalogRow`
   (`ui/core/src/components/catalog-row.tsx`): the row BODY opens the app's
   "more info" modal (`app-info-dialog.tsx` over the generic `CatalogDetailDialog` —
   art, name, category `Badge` chips, the FULL description, a Connect CTA), while

@@ -27,8 +27,8 @@ export {
 export {
   type CatalogSection,
   catalogCategorySlugs,
-  FEATURED,
   groupCatalogByCategory,
+  MOST_USED,
   SECTION_PREVIEW_CAP,
 } from "./browse-sections";
 export { CatalogLockedSection } from "./catalog-locked-section";

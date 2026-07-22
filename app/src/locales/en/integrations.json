@@ -86,7 +86,7 @@
     "connectApp": "Connect {{name}}",
     "installedTitle": "Installed",
     "availableTitle": "Available",
-    "featured": "Featured",
+    "mostUsed": "Most used",
     "otherCategory": "Other",
     "showAllApps": "Show all {{count}} apps"
   },

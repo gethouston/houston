@@ -86,7 +86,7 @@
     "connectApp": "Conectar {{name}}",
     "installedTitle": "Instaladas",
     "availableTitle": "Disponíveis",
-    "featured": "Destaques",
+    "mostUsed": "Mais usadas",
     "otherCategory": "Outras",
     "showAllApps": "Ver todos os {{count}} aplicativos"
   },
