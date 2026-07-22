@@ -13,10 +13,17 @@ export const BROWSE_PAGE_SIZE = 100;
 
 /**
  * The curated, ORDERED no-auth apps we surface as "Ready to use": they need no
- * account — their tools work as-is (verified live against Composio). Lowercase
- * slugs; order here IS the display order. The catalog's other no-auth toolkits
- * (test apps, Composio's own meta-toolkit…) are hidden everywhere: they can
- * never be connected, and none of them is worth a consumer catalog row.
+ * account — their tools work as-is (EVERY entry verified live against Composio
+ * before curating; the bar for adding one is a successful connection-free
+ * execute). Lowercase slugs; order here IS the display order.
+ *
+ * The catalog's other no-auth toolkits stay hidden everywhere. Verified
+ * 2026-07-21, don't re-add without re-testing: `gemini` and `instacart`
+ * execute-fail with "no connected account" and their NO_AUTH-only mode means
+ * no auth config (and so no account) can ever be created; `browser_tool`
+ * fails on a missing ANCHOR_API_KEY on Composio's side; `deepwiki_mcp`
+ * returns zero tools; `entelligence` needs vectorDBUrl/history params (a dev
+ * tool); `composio`/`codeinterpreter`/`bench`/`test_app` are meta/dev junk.
  *
  * Lives in the model layer (not beside FEATURED_SLUGS in browse-sections)
  * because {@link browseCatalog} — the base filter every browse surface shares —
@@ -26,6 +33,7 @@ export const READY_SLUGS: readonly string[] = [
   "composio_search",
   "weathermap",
   "hackernews",
+  "seat_geek",
   "text_to_pdf",
 ];
 
