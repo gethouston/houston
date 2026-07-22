@@ -1,7 +1,8 @@
 // Desktop sign-in orchestration: drive the loopback/PKCE authorize + the GCIP
-// REST exchange, and assemble the app's `Session`. auth.ts calls these on the
-// `osIsTauri()` branch; the web branch uses firebase-js-sdk instead. Kept beside
-// the identity REST modules (not in auth.ts) so auth.ts stays a thin dispatcher.
+// REST exchange, and assemble a `SignInOutcome` (the app's `Session` + GCIP's
+// account-created flag). auth.ts calls these on the `osIsTauri()` branch; the
+// web branch uses firebase-js-sdk instead. Kept beside the identity REST
+// modules (not in auth.ts) so auth.ts stays a thin dispatcher.
 
 import { authorizeAppleDesktop } from "./apple-authorize.ts";
 import { identityConfig } from "./config.ts";
@@ -15,16 +16,17 @@ import {
 import { authorizeGoogleDesktop } from "./google-authorize.ts";
 import { decodeIdTokenClaims } from "./id-token.ts";
 import { authorizeMicrosoftDesktop } from "./microsoft-authorize.ts";
-import type { Session } from "./session.ts";
+import type { SignInOutcome } from "./session.ts";
 import { sessionFromCustomToken, sessionFromIdp } from "./session-from-idp.ts";
 
 /**
- * Google: loopback id_token → `signInWithIdp` → Session (provider "google.com").
- * Returns `null` when the loopback authorize was benignly cancelled.
+ * Google: loopback id_token → `signInWithIdp` → SignInOutcome (provider
+ * "google.com"). Returns `null` when the loopback authorize was benignly
+ * cancelled.
  */
 export async function googleDesktopSession(
   opts?: LoopbackAuthorizeOptions,
-): Promise<Session | null> {
+): Promise<SignInOutcome | null> {
   const idToken = await authorizeGoogleDesktop(opts);
   if (idToken === null) return null; // benign cancel
   const result = await signInWithIdp({
@@ -32,16 +34,20 @@ export async function googleDesktopSession(
     providerId: "google.com",
     idToken,
   });
-  return sessionFromIdp(result, "google.com");
+  return {
+    session: sessionFromIdp(result, "google.com"),
+    isNewUser: result.isNewUser,
+  };
 }
 
 /**
- * Microsoft: loopback tokens → `signInWithIdp` → Session (provider "microsoft.com").
- * Returns `null` when the loopback authorize was benignly cancelled.
+ * Microsoft: loopback tokens → `signInWithIdp` → SignInOutcome (provider
+ * "microsoft.com"). Returns `null` when the loopback authorize was benignly
+ * cancelled.
  */
 export async function microsoftDesktopSession(
   opts?: LoopbackAuthorizeOptions,
-): Promise<Session | null> {
+): Promise<SignInOutcome | null> {
   const authorized = await authorizeMicrosoftDesktop(opts);
   if (authorized === null) return null; // benign cancel
   const { idToken, accessToken } = authorized;
@@ -51,17 +57,20 @@ export async function microsoftDesktopSession(
     idToken,
     accessToken,
   });
-  return sessionFromIdp(result, "microsoft.com");
+  return {
+    session: sessionFromIdp(result, "microsoft.com"),
+    isNewUser: result.isNewUser,
+  };
 }
 
 /**
  * Apple: GCIP-brokered loopback (`createAuthUri` → handler → loopback) →
- * `signInWithIdpSession` → Session (provider "apple.com"). Returns `null` when
- * the authorize was benignly cancelled.
+ * `signInWithIdpSession` → SignInOutcome (provider "apple.com"). Returns `null`
+ * when the authorize was benignly cancelled.
  */
 export async function appleDesktopSession(
   opts?: LoopbackAuthorizeOptions,
-): Promise<Session | null> {
+): Promise<SignInOutcome | null> {
   const authorized = await authorizeAppleDesktop(opts);
   if (authorized === null) return null; // benign cancel
   const result = await signInWithIdpSession({
@@ -69,18 +78,24 @@ export async function appleDesktopSession(
     requestUri: authorized.requestUri,
     sessionId: authorized.sessionId,
   });
-  return sessionFromIdp(result, "apple.com");
+  return {
+    session: sessionFromIdp(result, "apple.com"),
+    isNewUser: result.isNewUser,
+  };
 }
 
-/** Email OTP: gateway custom token → REST exchange → Session from decoded claims. */
+/** Email OTP: gateway custom token → REST exchange → outcome from decoded claims. */
 export async function customTokenDesktopSession(
   customToken: string,
-): Promise<Session> {
+): Promise<SignInOutcome> {
   const tokens = await signInWithCustomToken({
     apiKey: identityConfig.apiKey,
     customToken,
   });
   const claims = decodeIdTokenClaims(tokens.idToken);
   if (!claims) throw new IdentityError("malformed_response");
-  return sessionFromCustomToken(tokens, claims);
+  return {
+    session: sessionFromCustomToken(tokens, claims),
+    isNewUser: tokens.isNewUser,
+  };
 }

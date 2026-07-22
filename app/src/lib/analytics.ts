@@ -30,6 +30,10 @@ export type AnalyticsEventName =
   | "session_ended"
   // Auth
   | "user_signed_in"
+  // First sign-in of a brand-new GCIP account (its `isNewUser` flag). Fires
+  // ONCE per account, ever — the PostHog → Slack new-user notification and
+  // the activation funnel key on this single event.
+  | "user_signed_up"
   | "user_signed_out"
   // Onboarding
   | "onboarding_started"
@@ -193,6 +197,8 @@ type AnalyticsProperty =
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserIdentity = {
   email?: string | null;
+  /** Provider display name — person property (like email, never an event prop). */
+  name?: string | null;
   /**
    * ISO date (YYYY-MM-DD) acquisition cohort. The GCP Identity Platform
    * session carries no created_at, so post-migration callers pass `null`
@@ -513,11 +519,13 @@ export const analytics = {
     if (!KEY) return;
     try {
       const email = cleanEmail(identity?.email);
+      const name = identity?.name?.trim() || undefined;
       posthog.alias(userId);
       posthog.setPersonProperties(
         {
           firebase_uid: userId,
           ...(email ? { email } : {}),
+          ...(name ? { name } : {}),
         },
         identity?.signupDate ? { signup_date: identity.signupDate } : undefined,
       );

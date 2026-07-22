@@ -35,7 +35,7 @@ export {
   startProactiveRefresh,
   stopProactiveRefresh,
 } from "./refresh.ts";
-export type { AuthProvider, Session } from "./session.ts";
+export type { AuthProvider, Session, SignInOutcome } from "./session.ts";
 export {
   clearSession,
   loadSession,

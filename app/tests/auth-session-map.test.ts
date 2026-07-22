@@ -23,6 +23,7 @@ describe("identity/session-from-idp — sessionFromIdp", () => {
       displayName: "Ada Lovelace",
       photoUrl: "https://example.com/a.png",
       providerId: "google.com",
+      isNewUser: false,
     };
     const expected: Session = {
       idToken: "id-token",
@@ -49,12 +50,14 @@ describe("identity/session-from-idp — sessionFromIdp", () => {
       displayName: null,
       photoUrl: null,
       providerId: "microsoft.com",
+      isNewUser: true, // moment-in-time flag: the mapper must NOT leak it into Session
     };
     const session = sessionFromIdp(result, "microsoft.com");
     deepStrictEqual(session.provider, "microsoft.com");
     deepStrictEqual(session.displayName, null);
     deepStrictEqual(session.photoUrl, null);
     deepStrictEqual(session.email, "");
+    deepStrictEqual("isNewUser" in session, false);
   });
 });
 

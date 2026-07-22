@@ -13,12 +13,14 @@ import {
   decodeIdTokenClaims,
   IdentityError,
   type Session,
+  type SignInOutcome,
 } from "@houston/app/lib/identity";
 import { initializeApp } from "firebase/app";
 import {
   type Auth,
   browserLocalPersistence,
   GoogleAuthProvider,
+  getAdditionalUserInfo,
   getAuth,
   OAuthProvider,
   onIdTokenChanged,
@@ -27,6 +29,7 @@ import {
   signInWithPopup,
   signOut,
   type User,
+  type UserCredential,
 } from "firebase/auth";
 import { isBenignPopupCancel, mapFirebaseError } from "./firebase-errors.ts";
 
@@ -69,13 +72,23 @@ async function ready(): Promise<Auth> {
   return auth;
 }
 
+// Assemble the outcome: the app Session + whether this credential CREATED the
+// GCIP account (`getAdditionalUserInfo(...).isNewUser` — the SDK counterpart of
+// the REST `isNewUser` field the desktop path reads).
+async function toOutcome(cred: UserCredential): Promise<SignInOutcome> {
+  return {
+    session: await toSession(cred.user),
+    isNewUser: getAdditionalUserInfo(cred)?.isNewUser === true,
+  };
+}
+
 async function popupSignIn(
   provider: GoogleAuthProvider | OAuthProvider,
-): Promise<Session | null> {
+): Promise<SignInOutcome | null> {
   const auth = await ready();
   try {
     const cred = await signInWithPopup(auth, provider);
-    return await toSession(cred.user);
+    return await toOutcome(cred);
   } catch (e) {
     if (isBenignPopupCancel(e)) return null; // benign cancel: no toast, no-op
     throw mapFirebaseError(e);
@@ -83,18 +96,18 @@ async function popupSignIn(
 }
 
 /** Google popup sign-in. Resolves `null` if the user cancels the popup. */
-export function webSignInWithGoogle(): Promise<Session | null> {
+export function webSignInWithGoogle(): Promise<SignInOutcome | null> {
   return popupSignIn(new GoogleAuthProvider());
 }
 
 /** Microsoft (Entra) popup sign-in. Resolves `null` on a cancelled popup. */
-export function webSignInWithMicrosoft(): Promise<Session | null> {
+export function webSignInWithMicrosoft(): Promise<SignInOutcome | null> {
   return popupSignIn(new OAuthProvider("microsoft.com"));
 }
 
 /** Apple popup sign-in. Resolves `null` on a cancelled popup. Apple returns
  *  the user's name/email only on the FIRST consent for this Services ID. */
-export function webSignInWithApple(): Promise<Session | null> {
+export function webSignInWithApple(): Promise<SignInOutcome | null> {
   const provider = new OAuthProvider("apple.com");
   provider.addScope("email");
   provider.addScope("name");
@@ -104,11 +117,11 @@ export function webSignInWithApple(): Promise<Session | null> {
 /** Exchange a gateway-minted custom token (email-OTP flow) for a session. */
 export async function webSignInWithCustomToken(
   token: string,
-): Promise<Session | null> {
+): Promise<SignInOutcome | null> {
   const auth = await ready();
   try {
     const cred = await signInWithCustomToken(auth, token);
-    return await toSession(cred.user);
+    return await toOutcome(cred);
   } catch (e) {
     throw mapFirebaseError(e);
   }

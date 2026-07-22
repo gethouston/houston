@@ -17,6 +17,7 @@ import {
   isIdentityError,
   SESSION_QUERY_KEY,
   type Session,
+  type SignInOutcome,
   saveSession,
   setSessionSink,
   startEmailOtp,
@@ -74,26 +75,34 @@ async function guardAuthCall(
 }
 
 async function establishDesktopSession(
-  session: Session,
+  { session, isNewUser }: SignInOutcome,
   analyticsProvider: string,
 ): Promise<void> {
   await saveSession(session);
   cacheSession(session);
   rememberLastSignIn(session);
   startProactiveRefresh();
-  analytics.track("user_signed_in", { provider: analyticsProvider });
+  trackSignIn(analyticsProvider, isNewUser);
   logger.info(`[auth] signed in (${session.provider}) as ${session.email}`);
 }
 
 // Cache a web session (or a benign null popup-cancel) and track it.
 function establishWebSession(
-  session: Session | null,
+  outcome: SignInOutcome | null,
   analyticsProvider: string,
 ): void {
-  if (!session) return; // popup cancelled — no error, no cache write
-  cacheSession(session);
-  rememberLastSignIn(session);
-  analytics.track("user_signed_in", { provider: analyticsProvider });
+  if (!outcome) return; // popup cancelled — no error, no cache write
+  cacheSession(outcome.session);
+  rememberLastSignIn(outcome.session);
+  trackSignIn(analyticsProvider, outcome.isNewUser);
+}
+
+// A sign-in that CREATED the account also emits `user_signed_up` — the
+// once-per-account event the PostHog → Slack new-user notification and the
+// activation funnel key on. `user_signed_in` still fires on every sign-in.
+function trackSignIn(provider: string, isNewUser: boolean): void {
+  if (isNewUser) analytics.track("user_signed_up", { provider });
+  analytics.track("user_signed_in", { provider });
 }
 
 // Device-local hint for the sign-in screen, stamped at BOTH terminal success
@@ -113,8 +122,8 @@ export function signInWithGoogle(opts?: SignInOptions): Promise<void> {
     if (osIsTauri()) {
       // A `null` session = benign cancel (superseded / unmount / abandoned tab):
       // no session write, no emit, no throw — mirroring the web popup-cancel path.
-      const session = await googleDesktopSession(opts);
-      if (session) await establishDesktopSession(session, "google");
+      const signIn = await googleDesktopSession(opts);
+      if (signIn) await establishDesktopSession(signIn, "google");
       return;
     }
     // Web popup returns focus naturally, so `onBrowserOpened` is not needed here.
@@ -130,8 +139,8 @@ export function signInWithMicrosoft(opts?: SignInOptions): Promise<void> {
     if (osIsTauri()) {
       // "azure" keeps the historical analytics provider value for continuity.
       // A `null` session is a benign cancel (see signInWithGoogle).
-      const session = await microsoftDesktopSession(opts);
-      if (session) await establishDesktopSession(session, "azure");
+      const signIn = await microsoftDesktopSession(opts);
+      if (signIn) await establishDesktopSession(signIn, "azure");
       return;
     }
     const web = await loadWebIdentity();
@@ -147,8 +156,8 @@ export function signInWithApple(opts?: SignInOptions): Promise<void> {
       // GCIP-brokered loopback (Apple rejects 127.0.0.1 redirects on direct
       // OAuth, so GCIP's handler is the registered return URL). A `null`
       // session is a benign cancel (see signInWithGoogle).
-      const session = await appleDesktopSession(opts);
-      if (session) await establishDesktopSession(session, "apple");
+      const signIn = await appleDesktopSession(opts);
+      if (signIn) await establishDesktopSession(signIn, "apple");
       return;
     }
     const web = await loadWebIdentity();
@@ -183,8 +192,8 @@ export function verifyEmailOtp(email: string, code: string): Promise<void> {
         code,
       );
       if (osIsTauri()) {
-        const session = await customTokenDesktopSession(customToken);
-        await establishDesktopSession(session, "email");
+        const signIn = await customTokenDesktopSession(customToken);
+        await establishDesktopSession(signIn, "email");
         return;
       }
       const web = await loadWebIdentity();
