@@ -126,36 +126,29 @@ describe("browseCatalog (new module)", () => {
   });
 });
 
-describe("browseCatalog no-auth admission (ready to use)", () => {
+describe("browseCatalog hides no-auth apps", () => {
+  // No-auth toolkits never surface in the catalog: there is nothing to
+  // connect (a Connect button could only 400 — the Auth_Config_NoAuthApp
+  // prod crash). They stay agent-facing: search stamps their matches
+  // connected server-side, so agents use the working ones directly.
   const NOAUTH_CATALOG: IntegrationToolkit[] = [
     ...CATALOG,
     { ...tk("weathermap", "Weathermap", ["utilities"]), noAuth: true },
     { ...tk("test_app", "Test App", ["developer-tools"]), noAuth: true },
   ];
 
-  it("admits only CURATED no-auth apps, and only on the un-narrowed view", () => {
+  it("excludes every no-auth app from the browse list", () => {
     const all = browseCatalog({
       catalog: NOAUTH_CATALOG,
       query: "",
       category: "all",
       connected: new Set(),
     }).map((t) => t.slug);
-    // weathermap is curated (READY_SLUGS) → in; test_app is not → out.
-    strictEqual(all.includes("weathermap"), true);
+    strictEqual(all.includes("weathermap"), false);
     strictEqual(all.includes("test_app"), false);
   });
 
-  it("drops no-auth apps under a category narrow (they render only in the Ready section)", () => {
-    const utilities = browseCatalog({
-      catalog: NOAUTH_CATALOG,
-      query: "",
-      category: "utilities",
-      connected: new Set(),
-    });
-    deepStrictEqual(utilities, []);
-  });
-
-  it("locks a ready app a Teams allowlist walls off, like any other app", () => {
+  it("hidden means hidden — a Teams allowlist never shows one as locked", () => {
     const { connectable, locked } = browseCatalogView({
       catalog: NOAUTH_CATALOG,
       query: "",
@@ -164,7 +157,7 @@ describe("browseCatalog no-auth admission (ready to use)", () => {
       allowlist: ["gmail"],
     });
     strictEqual(connectable.map((t) => t.slug).includes("weathermap"), false);
-    strictEqual(locked.map((t) => t.slug).includes("weathermap"), true);
+    strictEqual(locked.map((t) => t.slug).includes("weathermap"), false);
   });
 });
 

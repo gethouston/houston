@@ -12,37 +12,6 @@ import type { IntegrationToolkit } from "@houston-ai/engine-client";
 export const BROWSE_PAGE_SIZE = 100;
 
 /**
- * The curated, ORDERED no-auth apps we surface as "Ready to use": they need no
- * account — their tools work as-is (EVERY entry verified live against Composio
- * before curating; the bar for adding one is a successful connection-free
- * execute). Lowercase slugs; order here IS the display order.
- *
- * The catalog's other no-auth toolkits stay hidden everywhere. Verified
- * 2026-07-21, don't re-add without re-testing: `gemini` and `instacart`
- * execute-fail with "no connected account" and their NO_AUTH-only mode means
- * no auth config (and so no account) can ever be created; `browser_tool`
- * fails on a missing ANCHOR_API_KEY on Composio's side; `deepwiki_mcp`
- * returns zero tools; `entelligence` needs vectorDBUrl/history params (a dev
- * tool); `composio`/`codeinterpreter`/`bench`/`test_app` are meta/dev junk.
- *
- * Lives in the model layer (not beside FEATURED_SLUGS in browse-sections)
- * because {@link browseCatalog} — the base filter every browse surface shares —
- * needs it to admit exactly these no-auth apps and no others.
- */
-export const READY_SLUGS: readonly string[] = [
-  "composio_search",
-  "weathermap",
-  "hackernews",
-  "seat_geek",
-  "text_to_pdf",
-];
-
-/** A curated no-auth app — shown as "Ready to use", never connectable. */
-export function isReadyToolkit(t: IntegrationToolkit): boolean {
-  return t.noAuth === true && READY_SLUGS.includes(t.slug.toLowerCase());
-}
-
-/**
  * Whether a toolkit matches an ALREADY-normalised (trimmed, lowercased) search
  * query: a case-insensitive substring over name, slug, and description. `""`
  * matches everything. Shared across the browse family (also `browse-sections`).
@@ -78,14 +47,12 @@ export function browseCatalog(opts: {
   category: string;
   connected: ReadonlySet<string>;
 }): IntegrationToolkit[] {
-  // No-auth apps: only the curated "Ready to use" set is browsable, and only
-  // on the un-narrowed view (they render solely in the pinned Ready section,
-  // which a category pick hides) — so every consumer's counts, sections, and
-  // allowlist partition agree on the same set of rows.
+  // No-auth apps (web search, weather…) never surface in the catalog: there is
+  // nothing to connect (a Connect button could only 400), so a row would just
+  // be noise. They stay AGENT-facing instead — search stamps their matches
+  // `connected`, so agents use the working ones directly.
   let filtered = opts.catalog.filter(
-    (t) =>
-      !opts.connected.has(t.slug) &&
-      (!t.noAuth || (opts.category === "all" && isReadyToolkit(t))),
+    (t) => !opts.connected.has(t.slug) && !t.noAuth,
   );
   if (opts.category !== "all") {
     filtered = filtered.filter((t) =>

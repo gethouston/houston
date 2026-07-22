@@ -1,6 +1,6 @@
 import { Badge, Button, CatalogDetailDialog } from "@houston-ai/core";
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
-import { Check, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AppLogo, appDisplay, categoryLabel } from "../integrations";
 
@@ -10,10 +10,6 @@ import { AppLogo, appDisplay, categoryLabel } from "../integrations";
  * one line), and the Connect CTA. `toolkit === null` keeps it closed.
  * Connecting from here closes the modal and hands off to the page's one
  * connect flow (the inline waiting panel takes over, same as a row's `+`).
- *
- * A no-auth app (`toolkit.noAuth` — web search, weather…) has nothing to
- * connect: its tools already work, so the CTA slot carries a quiet
- * "no connection needed" note instead of a Connect button.
  */
 export function AppInfoDialog({
   toolkit,
@@ -46,22 +42,15 @@ export function AppInfoDialog({
       ))}
       description={display.description}
       action={
-        toolkit.noAuth ? (
-          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted">
-            <Check className="size-4" aria-hidden />
-            {t("home.noConnectionNeeded")}
-          </span>
-        ) : (
-          <Button
-            type="button"
-            disabled={busy}
-            onClick={() => onConnect(toolkit.slug)}
-            className="gap-1.5"
-          >
-            <Plus className="size-4" />
-            {t("home.connect")}
-          </Button>
-        )
+        <Button
+          type="button"
+          disabled={busy}
+          onClick={() => onConnect(toolkit.slug)}
+          className="gap-1.5"
+        >
+          <Plus className="size-4" />
+          {t("home.connect")}
+        </Button>
       }
     />
   );

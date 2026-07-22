@@ -16,7 +16,6 @@ import {
   FEATURED,
   groupCatalogByCategory,
   type PermissionsFix,
-  READY,
   SECTION_PREVIEW_CAP,
   SectionHeader,
   UNCATEGORIZED,
@@ -149,11 +148,9 @@ export function CategoryCatalog({
                   title={
                     section.category === FEATURED
                       ? t("home.featured")
-                      : section.category === READY
-                        ? t("home.readyToUse")
-                        : section.category === UNCATEGORIZED
-                          ? t("home.otherCategory")
-                          : categoryLabel(section.category)
+                      : section.category === UNCATEGORIZED
+                        ? t("home.otherCategory")
+                        : categoryLabel(section.category)
                   }
                   count={section.connectable.length}
                   className="mb-3"
@@ -167,7 +164,6 @@ export function CategoryCatalog({
                       onConnect={() => void connectFlow.connect(tk.slug)}
                       connecting={tk.slug in states}
                       busy={busy}
-                      ready={tk.noAuth === true}
                     />
                   ))}
                 </CatalogGrid>
