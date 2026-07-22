@@ -39,6 +39,17 @@ Two flags on `/v1/capabilities` (`Capabilities` in `ui/engine-client`):
   seat billing). Absent/false on desktop/self-host, where the switcher's create
   action stays "create a local workspace". Read via `hasSpaces(caps)`
   (`app/src/lib/org-roles.ts`). See the **Spaces** section below.
+- **`spaceKind?: "personal" | "team"`** — the ACTIVE space's kind, re-fetched
+  on every space switch exactly like `role`. The server-truth signal the
+  members/invite surface gates on: a personal space is non-invitable (every
+  member-add answers `403 personal_space`), and every user is `owner` of their
+  personal space, so the role gates alone can't tell it apart from a team.
+  Read via `isPersonalSpace(caps)` (`app/src/lib/org-roles.ts`) — a TOLERANT
+  reader: true only on an explicit `"personal"`, so a gateway that predates
+  the field keeps today's surface (a stale gateway never hides a team's invite
+  surface). When personal, the Organization > People body is replaced by a
+  create-a-team CTA (`people-create-team-cta.tsx`) and the Admin index People
+  caption follows (`org.index.rows.peoplePersonal`).
 
 Optional so every existing single-player/self-host profile stays valid.
 
@@ -445,6 +456,9 @@ restores members.
 
 - `caps.spaces` = the whole surface feature-detect (`hasSpaces`).
 - `caps.role` is the ACTIVE space's role; re-fetched on every switch (cache drop).
+- `caps.spaceKind` is the ACTIVE space's kind (`isPersonalSpace`); same
+  refetch-on-switch contract. Personal = non-invitable → the People surface
+  swaps to the create-team CTA (see **Feature detection**).
 - Growth beats, all Spaces-gated: an onboarding "invite your team" finish card
   (`onboarding/missions/onboarding-flow.ts` `showsInviteTeamCard`), a
   space-switcher tour step, and the personal-space person-filter teaser on the
@@ -566,7 +580,12 @@ hides the "Add models" list, all copy passed in.
 ## Invites, members, audit, usage
 
 - **Invites**: `addOrgMember(email, role)` → `POST /org/members` (targets the
-  ACTIVE space; `403 personal_space` on a personal one). A known user is added
+  ACTIVE space; `403 personal_space` on a personal one — which is why the
+  People tab never renders the add form in a personal space: `MembersTab`
+  branches on `isPersonalSpace(caps)` (`caps.spaceKind`) and shows the
+  create-a-team CTA instead, whose `CreateTeamDialog` switches into the new
+  team on success so the real invite surface appears right after). A known
+  user is added
   directly (`AddOrgMemberResult.userId`); an unknown email creates a pending
   invite and the host answers **202 `{invited:true}`**. `OrgInvite` rows surface
   on `GET /org` for owner/admin; `deleteOrgInvite` revokes (owner only).
