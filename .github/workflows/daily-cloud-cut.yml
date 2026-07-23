@@ -81,27 +81,57 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      # 1. Token guard — fail loudly if the PAT is missing, explaining WHY it's
-      #    required (a GITHUB_TOKEN tag push wouldn't trigger release.yml).
-      - name: Verify RELEASE_CUT_TOKEN is set
+      # 1. Token guard — fail loudly AND EARLY if the PAT is missing or does
+      #    not actually authenticate, explaining WHY it's required (a
+      #    GITHUB_TOKEN tag push wouldn't trigger release.yml). The ls-remote
+      #    probe catches every silent-token failure mode in one place: expired,
+      #    revoked, wrong resource owner (a personal-owner fine-grained PAT
+      #    can't see an org repo), or pending org approval — all of which
+      #    otherwise surface as a confusing credential error mid-run. The
+      #    token reaches git ONLY via the credential-helper env read, never
+      #    argv or a URL, so it can't leak into logs or error messages.
+      - name: Verify RELEASE_CUT_TOKEN is set and authenticates
         env:
           RELEASE_CUT_TOKEN: ${{ secrets.RELEASE_CUT_TOKEN }}
         run: |
           if [ -z "${RELEASE_CUT_TOKEN}" ]; then
-            echo "::error::RELEASE_CUT_TOKEN is empty. The daily cut pushes the cloud-v* tag with this PAT because a tag pushed with the default GITHUB_TOKEN does NOT trigger other workflows (GitHub's recursive-workflow guard), so release.yml would never build the draft. Create a fine-grained PAT with contents:read/write on gethouston/houston and save it as the RELEASE_CUT_TOKEN repository secret."
+            echo "::error::RELEASE_CUT_TOKEN is empty. The daily cut pushes the cloud-v* tag with this PAT because a tag pushed with the default GITHUB_TOKEN does NOT trigger other workflows (GitHub's recursive-workflow guard), so release.yml would never build the draft. Create a fine-grained PAT (Resource owner: the gethouston ORG, Contents: read/write on gethouston/houston) and save it as the RELEASE_CUT_TOKEN repository secret."
             exit 1
           fi
-          echo "RELEASE_CUT_TOKEN is present."
+          git config --global credential.helper \
+            '!f() { echo "username=x-access-token"; echo "password=${RELEASE_CUT_TOKEN}"; }; f'
+          # Probe via the REST API, not git: a PUBLIC repo never challenges
+          # git reads, so an ls-remote "succeeds" with any garbage token and
+          # proves nothing. The API call authenticates for real and the
+          # permissions field proves the write bit the tag push needs.
+          # gh api prints the ERROR BODY to stdout on HTTP failure, so probe
+          # in two steps: capture everything, then extract what we need — and
+          # on failure surface GitHub's own message, which names the real
+          # cause (org PAT policy, expiry, missing repo access) instead of
+          # leaving the operator to guess between five failure modes.
+          PROBE=$(GH_TOKEN="${RELEASE_CUT_TOKEN}" gh api "repos/${{ github.repository }}" 2>&1) && PROBE_OK=true || PROBE_OK=false
+          CAN_PUSH=$(printf '%s' "$PROBE" | jq -r '.permissions.push // false' 2>/dev/null || echo false)
+          if [ "$PROBE_OK" != "true" ] || [ "$CAN_PUSH" != "true" ]; then
+            GH_MSG=$(printf '%s' "$PROBE" | jq -r '.message // empty' 2>/dev/null | head -c 300)
+            echo "::error::RELEASE_CUT_TOKEN does not grant push on ${{ github.repository }}. GitHub says: '${GH_MSG:-<no message — token authenticated but permissions.push is not true>}'. Common causes: the org restricts fine-grained PATs or the token awaits org approval (org Settings → Third-party Access → Personal access tokens), the PAT's resource owner is a personal account instead of the gethouston org, it expired, or it lacks Contents:read/write. A CLASSIC PAT with repo scope also works."
+            exit 1
+          fi
+          echo "RELEASE_CUT_TOKEN authenticates with push access on ${{ github.repository }}."
 
-      # 2. Checkout main with the PAT so the persisted push credential is the PAT
-      #    (that's what makes the tag push trigger release.yml). Full history +
-      #    tags: the guards below resolve tags and walk the release commit's
-      #    first parent.
+      # 2. Checkout main TOKENLESS (public repo) with persist-credentials
+      #    off. Deliberate: if checkout persisted the default GITHUB_TOKEN,
+      #    the tag push below would silently use it and succeed WITHOUT
+      #    triggering release.yml (recursive-workflow guard) — the worst
+      #    failure mode, a cut that looks green and builds nothing. With no
+      #    persisted credential, every authenticated git operation goes
+      #    through the credential helper configured in step 1, which serves
+      #    the PAT. Full history + tags: the guards below resolve tags and
+      #    walk the release commit's first parent.
       - name: Checkout main
         uses: actions/checkout@v6
         with:
           ref: main
-          token: ${{ secrets.RELEASE_CUT_TOKEN }}
+          persist-credentials: false
           fetch-depth: 0
           fetch-tags: true
 
@@ -212,13 +242,16 @@ jobs:
       #    push ONLY the tag. version.sh edits tracked files in place; `git add -u`
       #    stages exactly those. The push is tag-only — main is protected and the
       #    release commit is meant to live solely under the tag (see header). The
-      #    persisted PAT credential from checkout authenticates the push, which is
-      #    what makes release.yml fire.
+      #    push authenticates via the credential helper from step 1 reading
+      #    RELEASE_CUT_TOKEN from this step's env (checkout persisted nothing,
+      #    so the PAT is the ONLY credential in play) — a PAT push is what makes
+      #    release.yml fire.
       - name: Cut release commit + tag
         id: cut
         if: ${{ steps.newcommits.outputs.proceed == 'true' }}
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_CUT_TOKEN: ${{ secrets.RELEASE_CUT_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name "houston-release-bot"
