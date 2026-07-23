@@ -1262,6 +1262,46 @@ export class HoustonClient {
       { values },
     );
   }
+  /**
+   * The custom-integration list through the per-agent surface — the ONE form a
+   * gateway-fronted deployment proxies to the agent's pod (the gateway's own
+   * `/v1/integrations` subtree is Composio-only, so the top-level form 404s
+   * there — HOU-823). The list is user-global; the agent id authorizes and
+   * routes. `null` on 404, mirroring `customIntegrations`.
+   */
+  async agentCustomIntegrations(
+    agentSlugOrId: string,
+  ): Promise<CustomIntegrationView[] | null> {
+    try {
+      return (
+        await this.request<{ items: CustomIntegrationView[] }>(
+          "GET",
+          `/agents/${this.seg(agentSlugOrId)}/integrations/custom/definitions`,
+        )
+      ).items;
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
+  }
+  /**
+   * Provide the secret through the per-agent surface (see
+   * `agentCustomIntegrations`) — what the in-chat credential card calls, so
+   * the save reaches the agent's pod on a gateway-fronted deployment instead
+   * of 404ing at the gateway (HOU-823). Same contract as
+   * `submitCustomIntegrationCredential` otherwise.
+   */
+  submitAgentCustomIntegrationCredential(
+    agentSlugOrId: string,
+    slug: string,
+    values: Record<string, string>,
+  ): Promise<CustomIntegrationView> {
+    return this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/integrations/custom/definitions/${this.seg(slug)}/credential`,
+      { values },
+    );
+  }
 
   // ---------- triggers (C9 event-driven routines) ----------
   //

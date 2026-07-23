@@ -34,6 +34,7 @@ import { handleAgentData } from "./agent-data";
 import { handleAgentFile } from "./agent-file";
 import { legacyAgentColor } from "./agent-legacy-color";
 import { asSeedRecord, writeAgentSeeds } from "./agent-seed";
+import { handleCustomIntegrationsDispatch } from "./custom-integrations-user";
 import { json, readJson } from "./http";
 import { handleMigration } from "./migration";
 import { handlePortableExport } from "./portable";
@@ -720,6 +721,22 @@ export async function handleAgents(
       await handleActionApprovalsDispatch(
         deps.actionApprovals,
         agentId,
+        method,
+        rest,
+        req,
+        res,
+      )
+    )
+      return true;
+
+    // Custom-integration user routes (list / remove / provide-credential) on
+    // the dispatch surface — the hosted gateway proxies ONLY this per-agent
+    // form to the pod (its own /v1/integrations subtree is Composio-only), so
+    // the in-chat secure credential card calls it in both deployments
+    // (HOU-823). See routes/custom-integrations-user.ts.
+    if (
+      await handleCustomIntegrationsDispatch(
+        deps.customIntegrations,
         method,
         rest,
         req,

@@ -2,7 +2,7 @@ import { Button } from "@houston-ai/core";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
-  useCustomIntegrations,
+  useAgentCustomIntegrations,
   useSubmitCustomCredential,
 } from "../../../hooks/queries";
 import { ConnectWaitingPanel } from "../../integrations/connect-waiting-panel";
@@ -34,7 +34,10 @@ interface ConnectInlineProps {
  * returns to the app grid so this is never a dead end.
  */
 export function ConnectInline(props: ConnectInlineProps) {
-  const list = useCustomIntegrations();
+  // Per-agent surface (HOU-823): this intake runs on managed cloud (triggers
+  // are cloud-only), where the top-level custom-integrations read 404s at the
+  // gateway — only the agent-scoped form reaches the pod.
+  const list = useAgentCustomIntegrations(props.agentId);
   const view = list.data?.find((v) => v.slug === props.toolkit);
   const needsKey = !!view && isPendingCredential(view);
 
@@ -95,12 +98,13 @@ function OAuthConnect({
 function CredentialConnect({
   toolkit,
   appName,
+  agentId,
   onConnected,
   onBack,
 }: ConnectInlineProps) {
   const { t } = useTranslation("routines");
-  const list = useCustomIntegrations();
-  const submit = useSubmitCustomCredential();
+  const list = useAgentCustomIntegrations(agentId);
+  const submit = useSubmitCustomCredential(agentId);
   const view = list.data?.find((v) => v.slug === toolkit);
   const authMethod = view ? customAuthMethod(view) : null;
 

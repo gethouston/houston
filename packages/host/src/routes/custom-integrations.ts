@@ -8,17 +8,11 @@ import type { CredentialVault } from "../ports";
 import { bearer, json, readJson } from "./http";
 
 /**
- * Custom-integration management routes (HOU-550), split by caller:
- *
- *  - USER routes (`/v1/integrations/custom/definitions*`, signed-in user):
- *    list / remove / provide-credential — what the Integrations page and the
- *    in-chat credential card call. The credential value crosses ONLY here
- *    (HTTPS body → secret store); it never rides the chat transcript.
- *  - SANDBOX routes (`/sandbox/integrations/custom/*`, per-sandbox HMAC): what
- *    the agent's setup tools call — detect a pasted URL, add an integration.
- *
- * Both mounted BEFORE the generic `/v1/integrations/:provider/*` handler in
- * server.ts (its catch-all would 404 the `custom/definitions` subpaths).
+ * Custom-integration SANDBOX routes (HOU-550) — `/sandbox/integrations/custom/*`
+ * (per-sandbox HMAC): what the agent's setup tools call — detect a pasted URL,
+ * add an integration. The USER routes (list / remove / provide-credential, on
+ * three surfaces incl. the per-agent dispatch the hosted gateway proxies) live
+ * in custom-integrations-user.ts.
  */
 export interface CustomIntegrationDeps {
   customIntegrations?: CustomIntegrationManager;
@@ -29,67 +23,10 @@ const httpStatusOf = (code: CustomIntegrationError["code"]): number =>
 
 /** Map manager failures to stable JSON bodies (the runtime tools + UI classify
  *  on `code`, never bare statuses); rethrow anything unrecognized. */
-function relayCustomError(res: ServerResponse, err: unknown): boolean {
+export function relayCustomError(res: ServerResponse, err: unknown): boolean {
   if (!(err instanceof CustomIntegrationError)) return false;
   json(res, httpStatusOf(err.code), { error: err.message, code: err.code });
   return true;
-}
-
-export async function handleCustomIntegrations(
-  deps: CustomIntegrationDeps,
-  method: string,
-  path: string,
-  req: IncomingMessage,
-  res: ServerResponse,
-): Promise<boolean> {
-  if (!path.startsWith("/v1/integrations/custom/definitions")) return false;
-  const manager = deps.customIntegrations;
-  if (!manager) {
-    json(res, 404, { error: "custom integrations not available here" });
-    return true;
-  }
-
-  try {
-    if (path === "/v1/integrations/custom/definitions" && method === "GET") {
-      json(res, 200, { items: await manager.list() });
-      return true;
-    }
-
-    const m = path.match(
-      /^\/v1\/integrations\/custom\/definitions\/([^/]+)(\/credential)?$/,
-    );
-    if (!m) return false;
-    const slug = decodeURIComponent(m[1] ?? "");
-
-    if (!m[2] && method === "DELETE") {
-      await manager.remove(slug);
-      json(res, 200, { ok: true });
-      return true;
-    }
-    if (m[2] && method === "POST") {
-      const body = await readJson(req);
-      const values = body.values;
-      if (
-        !values ||
-        typeof values !== "object" ||
-        Array.isArray(values) ||
-        !Object.values(values).every((v) => typeof v === "string")
-      ) {
-        json(res, 400, { error: "missing 'values' (object of strings)" });
-        return true;
-      }
-      json(
-        res,
-        200,
-        await manager.setCredential(slug, values as Record<string, string>),
-      );
-      return true;
-    }
-  } catch (err) {
-    if (relayCustomError(res, err)) return true;
-    throw err;
-  }
-  return false;
 }
 
 // ── Sandbox (agent-initiated) routes ─────────────────────────────────────────

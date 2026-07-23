@@ -1628,6 +1628,7 @@ export function useAgentChatPanel({
           <ChatCredentialInteractionCard
             key={step.id}
             stepId={step.id}
+            agentId={agent.id}
             pager={api.pager}
             onDismiss={api.onDismiss}
             dismissLabel={api.dismissLabel}

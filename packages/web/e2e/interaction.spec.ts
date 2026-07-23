@@ -1058,7 +1058,10 @@ test("pressing Esc declines a lone connect step", async ({ page, request }) => {
  * `slug === step.toolkit`), the agent's reason over a muted "stored securely"
  * subtitle, the secure key form (one password input per auth field), and the
  * unified "Skip" (Esc) + "Save key" (Enter) footer. Saving POSTs the secret to
- * `/v1/integrations/custom/definitions/:slug/credential` and resumes the agent
+ * the per-agent surface `/agents/:id/integrations/custom/definitions/:slug/
+ * credential` (HOU-823 — the one form the hosted gateway proxies to the pod;
+ * the old top-level form 404ed there and failed every managed-cloud save) and
+ * resumes the agent
  * with a hidden auto-continue ("I've added the {name} key. Please continue.");
  * skipping resumes it with "Skipped adding the {name} key." — a decline the agent
  * MUST hear, or it waits on a key that never comes. These arm the SAME

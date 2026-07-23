@@ -10,6 +10,7 @@ import type {
 } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { LocalActionApprovals } from "../integrations/action-approvals";
+import type { CustomIntegrationManager } from "../integrations/custom/manager";
 import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
@@ -77,6 +78,13 @@ export interface AgentRouteDeps {
    * Absent → those requests fall through toward the runtime channel (404).
    */
   actionApprovals?: LocalActionApprovals;
+  /**
+   * Custom-integration manager (mirrors ControlPlaneDeps.customIntegrations) —
+   * the dispatch-surface user routes (`/agents/:id/integrations/custom/*`)
+   * serve off it (HOU-823: the hosted gateway proxies only this per-agent
+   * form). Absent → those requests fall through toward the runtime channel.
+   */
+  customIntegrations?: CustomIntegrationManager;
   /**
    * Whether this deployment can fire event-driven routines: a trigger backend
    * (a Composio project key + a public webhook URL) exists, so a routine's

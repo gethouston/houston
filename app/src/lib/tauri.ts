@@ -1614,6 +1614,20 @@ export const tauriIntegrations = {
     call("custom_integration_credential", () =>
       getEngine().submitCustomIntegrationCredential(slug, values),
     ),
+  // The per-agent forms (HOU-823): same user-global data, addressed through
+  // the ONE per-agent surface a gateway-fronted deployment proxies to the
+  // agent's pod — the in-chat credential card uses these so a save works on
+  // managed cloud (the top-level form 404s at the gateway there).
+  customListForAgent: (agentId: string) =>
+    getEngine().agentCustomIntegrations(agentId),
+  customCredentialForAgent: (
+    agentId: string,
+    slug: string,
+    values: Record<string, string>,
+  ) =>
+    call("custom_integration_credential", () =>
+      getEngine().submitAgentCustomIntegrationCredential(agentId, slug, values),
+    ),
 };
 
 /**

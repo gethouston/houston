@@ -107,6 +107,22 @@ export function useCustomIntegrations() {
 }
 
 /**
+ * The SAME list through the per-agent surface (HOU-823) — the one form a
+ * gateway-fronted deployment proxies to the agent's pod, so the in-chat
+ * credential card resolves the integration's name + auth fields on managed
+ * cloud too (where the top-level read 404s at the gateway → `null` → the card
+ * would degrade to its generic fallback field).
+ */
+export function useAgentCustomIntegrations(agentId: string) {
+  const { capabilities } = useCapabilities();
+  return useQuery<CustomIntegrationView[] | null>({
+    queryKey: queryKeys.agentCustomIntegrations(agentId),
+    queryFn: () => tauriIntegrations.customListForAgent(agentId),
+    enabled: integrationsSupported(capabilities),
+  });
+}
+
+/**
  * Remove a custom integration entirely. Carries no `onError` for the same reason
  * as the mutations above — the `call()` wrapper surfaces + reports once. On
  * success both the custom list and the merged connections view drop it.
@@ -127,8 +143,15 @@ export function useRemoveCustomIntegration() {
 /**
  * Provide the secret for a `pending` custom integration. Returns the refreshed
  * view so a caller can read the new `active` state. No `onError` (see above).
+ *
+ * With `agentId` the save rides the per-agent surface (HOU-823) — REQUIRED
+ * wherever a gateway may front the host (the in-chat credential card): the
+ * top-level route 404s at the gateway, which failed every managed-cloud save.
+ * Without it (the global Integrations page, a direct-host-only surface) the
+ * top-level route serves as before. The invalidation targets the shared
+ * "custom-integrations" prefix, so both reads refresh either way.
  */
-export function useSubmitCustomCredential() {
+export function useSubmitCustomCredential(agentId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -137,7 +160,10 @@ export function useSubmitCustomCredential() {
     }: {
       slug: string;
       values: Record<string, string>;
-    }) => tauriIntegrations.customCredential(slug, values),
+    }) =>
+      agentId
+        ? tauriIntegrations.customCredentialForAgent(agentId, slug, values)
+        : tauriIntegrations.customCredential(slug, values),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.customIntegrations() });
       qc.invalidateQueries({
