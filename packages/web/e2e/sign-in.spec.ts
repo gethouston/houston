@@ -170,12 +170,13 @@ test.describe("returning user (last sign-in continue)", () => {
   }) => {
     await seedLastSignIn(page, "google.com", "jane@gethouston.ai");
     await page.goto("/");
-    // The prominent continue button carries the masked address in its name,
-    // distinguishing it from the plain "Continue with Google" pill below.
+    // The prominent continue button carries the full address in its name
+    // (PR #1041: no masking on the user's own device), distinguishing it from
+    // the plain "Continue with Google" pill below.
     await expect(
       page.getByRole("button", { name: /^Continue with Google \(/ }),
     ).toBeVisible();
-    await expect(page.getByText("j…@gethouston.ai")).toBeVisible();
+    await expect(page.getByText("jane@gethouston.ai")).toBeVisible();
     // The pills + email form stay below the "another way" divider.
     await expect(page.getByText("or use another way")).toBeVisible();
     await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
@@ -189,8 +190,8 @@ test.describe("returning user (last sign-in continue)", () => {
     await page
       .getByRole("button", { name: /^Continue with your email \(/ })
       .click();
-    // One click lands straight on the 6-digit entry, naming the FULL stored
-    // email (masked on the button, real value used to send the code).
+    // One click lands straight on the 6-digit entry, naming the same full
+    // stored email the button carries.
     await expect(page.locator('[data-slot="input-otp-slot"]')).toHaveCount(6);
     await expect(
       page.getByText("We sent a 6-digit code to pilot@example.com"),
