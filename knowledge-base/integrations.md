@@ -819,7 +819,8 @@ management routes: `/sandbox/integrations/custom/{detect,add}`, HMAC-authed),
 and `request_credential` — records a `{kind:"credential", toolkit, reason?}`
 interaction step (protocol `interaction.ts`, ids `k1..kN`, auto-excluded from
 Autopilot) that replaces the composer with a SECURE key-entry card. The secret
-travels UI → `POST /v1/integrations/custom/definitions/:slug/credential` →
+travels UI → `POST .../integrations/custom/definitions/:slug/credential` on the
+**per-agent surface** (`/agents/:id/...` — HOU-823, see User routes below) →
 validate (`connections.validate`, fail-open on `unknown`) → secret store →
 connection rewire. It NEVER enters the transcript; the prompt (houston-prompt.ts
 + the Rust mirror) forbids asking for keys in chat.
@@ -843,12 +844,26 @@ on POSIX; on Windows (no POSIX modes — NTFS ACLs under the user profile are th
 protection) the write skips chmod and clears a stray read-only attribute before
 its rename-replace.
 
-**User routes** (`routes/custom-integrations.ts`, mounted BEFORE the generic
-`/v1/integrations/:provider/*` catch-all): GET/DELETE
-`/v1/integrations/custom/definitions[/:slug]` + the credential POST. Errors
-carry stable `code`s (`not_found`, `duplicate_slug`, `credential_invalid`,
-`compile_failed`…). Mutations emit `CustomIntegrationsChanged` (protocol
-events.ts) → query invalidation.
+**User routes** (`routes/custom-integrations-user.ts`; the sandbox detect/add
+routes stay in `routes/custom-integrations.ts`): GET/DELETE
+`definitions[/:slug]` + the credential POST, on THREE surfaces (the
+action-approvals precedent): top-level `/v1/integrations/custom/*` (mounted
+BEFORE the generic `/v1/integrations/:provider/*` catch-all), the `/v1/agents/
+:id/integrations/custom/*` wrapper, and the per-agent dispatch `/agents/:id/
+integrations/custom/*`. **The dispatch form is the one the shipped clients
+call** (HOU-823): the hosted gateway proxies ONLY per-agent routes to a pod and
+its own `/v1/integrations` subtree is Composio-only, so the top-level POST 404ed
+at the gateway — every managed-cloud secure-card save failed
+(`custom_integration_credential: not found (engine error 404)` in Sentry). The
+data stays user-global; the agent id authorizes and routes. Note the gateway's
+dispatch-scope classifier treats this family as configure-scope (fail-closed),
+so in a Teams org only agent managers can save/remove — a member-facing
+use-scope carve-out is a gateway follow-up. Errors carry stable `code`s
+(`not_found`, `duplicate_slug`, `credential_invalid`, `compile_failed`…).
+Mutations emit `CustomIntegrationsChanged` (protocol events.ts) → query
+invalidation. The agent tab + global page still read the top-level list (hidden
+behind the 404→null degrade on managed cloud); moving those management surfaces
+to the per-agent form is a follow-up.
 
 **UI**: a "Custom integrations" section on the global Integrations page (between
 Connected apps and the catalog) listing defs with kind badge/status/delete plus

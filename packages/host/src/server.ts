@@ -42,9 +42,9 @@ import { handleCatalog } from "./routes/catalog";
 import { handleSandboxCredential } from "./routes/credential";
 import {
   type CustomIntegrationDeps,
-  handleCustomIntegrations,
   handleSandboxCustomIntegrations,
 } from "./routes/custom-integrations";
+import { handleCustomIntegrations } from "./routes/custom-integrations-user";
 import { handleEventStream } from "./routes/events-stream";
 import { bearer, json, readJson } from "./routes/http";
 import {
@@ -360,7 +360,8 @@ async function handle(
   if (await handleAgentConfigs(deps, userId, method, path, req, res)) return;
   // Custom-integration definitions — BEFORE the generic provider routes, whose
   // `/v1/integrations/:provider/*` catch-all would 404 these subpaths.
-  if (await handleCustomIntegrations(deps, method, path, req, res)) return;
+  if (await handleCustomIntegrations(deps, userId, method, path, req, res))
+    return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;
   if (await handleActionApprovals(deps, userId, method, path, req, res)) return;
   // Pre-agent provider connect (first-run onboarding): a hidden setup runtime

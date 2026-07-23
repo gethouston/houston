@@ -1,5 +1,6 @@
 import { EngineError } from "@houston/runtime-client";
 import * as controlPlane from "../control-plane";
+import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 
 export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
@@ -112,6 +113,54 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
         slug,
         values,
       );
+    }
+
+    // ---- custom integrations, per-agent surface (HOU-823) ----
+    // HOST routes that work in BOTH deployments, on the per-agent DISPATCH
+    // surface (`/agents/:id/integrations/custom/definitions[...]`): the
+    // local/self-host host serves it directly, and the cloud gateway proxies
+    // exactly this surface to the agent's pod. Its own `/v1/integrations`
+    // subtree is Composio-only, so the top-level form above 404s there — that
+    // 404 broke every in-chat secure credential card save on managed cloud.
+    // Like the action-approvals family they route through `authFetch` against
+    // `baseUrl` (bearer + `x-houston-org`, live in both) — never cp-gated.
+    async agentCustomIntegrations(
+      agentSlugOrId: string,
+    ): Promise<controlPlane.CustomIntegrationView[] | null> {
+      const res = await this.ctx.authFetch(
+        `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/integrations/custom/definitions`,
+      );
+      // A host that does not serve the feature answers 404 → the caller hides
+      // the custom UI (mirrors `customIntegrations`' null degrade).
+      if (res.status === 404) return null;
+      if (!res.ok)
+        throw new HoustonEngineError(
+          res.status,
+          await res.json().catch(() => ({})),
+        );
+      return (
+        (await res.json()) as { items: controlPlane.CustomIntegrationView[] }
+      ).items;
+    }
+    async submitAgentCustomIntegrationCredential(
+      agentSlugOrId: string,
+      slug: string,
+      values: Record<string, string>,
+    ): Promise<controlPlane.CustomIntegrationView> {
+      const res = await this.ctx.authFetch(
+        `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/integrations/custom/definitions/${encodeURIComponent(slug)}/credential`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ values }),
+        },
+      );
+      if (!res.ok)
+        throw new HoustonEngineError(
+          res.status,
+          await res.json().catch(() => ({})),
+        );
+      return (await res.json()) as controlPlane.CustomIntegrationView;
     }
   }
   return Integrations;

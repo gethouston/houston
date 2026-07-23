@@ -95,6 +95,10 @@ export const queryKeys = {
     ["integration-toolkits", provider] as const,
   /** HOU-550: the user's custom (API / MCP) integrations. User-level, one list. */
   customIntegrations: () => ["custom-integrations"] as const,
+  /** The per-agent read of the same list (HOU-823) — shares the
+   *  "custom-integrations" prefix so one invalidation refreshes both. */
+  agentCustomIntegrations: (agentId: string) =>
+    ["custom-integrations", agentId] as const,
 
   // Multiplayer (org). The current user's org + roster is app-scoped (one org
   // per user).

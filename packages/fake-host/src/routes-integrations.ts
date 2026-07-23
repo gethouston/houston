@@ -139,6 +139,21 @@ export function handleUserRoutes(
   segs: string[],
   body: Record<string, unknown> | undefined,
 ): Response | undefined {
+  // Per-agent custom-integration surface (HOU-823), BOTH forms like
+  // action-approvals: `/v1/agents/:id/integrations/custom/*` and the dispatch
+  // `/agents/:id/integrations/custom/*` — the one form the hosted gateway
+  // proxies to a pod, so the shipped in-chat credential card calls it. Same
+  // user-global data as the top-level routes; the agent id only routes.
+  const rel = segs[0] === "v1" ? segs.slice(1) : segs;
+  if (
+    rel[0] === "agents" &&
+    rel.length >= 5 &&
+    rel[2] === "integrations" &&
+    rel[3] === "custom"
+  ) {
+    if (state.integrationsMode() === "unavailable") return unavailable();
+    return handleCustom(method, rel.slice(4), body);
+  }
   // /v1/integrations[/composio/...]
   if (segs[0] === "v1" && segs[1] === "integrations") {
     return handleIntegrations(method, segs, body);

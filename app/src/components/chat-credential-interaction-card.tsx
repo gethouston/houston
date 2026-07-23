@@ -8,7 +8,7 @@ import { Check, CornerDownLeft, KeyRound, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  useCustomIntegrations,
+  useAgentCustomIntegrations,
   useSubmitCustomCredential,
 } from "../hooks/queries";
 import { useUIStore } from "../stores/ui";
@@ -20,6 +20,11 @@ interface ChatCredentialInteractionCardProps extends StepChrome {
   /** The credential step's stable id — fades the modal body on a step swap and
    *  scopes the form id so parallel credential steps never collide. */
   stepId: string;
+  /** The agent whose chat raised this step. Both the list read and the save
+   *  ride the per-agent surface (HOU-823) — the ONE route a gateway-fronted
+   *  deployment proxies to the agent's pod; the top-level form 404s at the
+   *  gateway, which failed every managed-cloud save. */
+  agentId: string;
   /** The custom integration's slug the agent asked the user to credential. */
   toolkit: string;
   /** Why the agent needs the key, rendered as the body's foreground "why" line.
@@ -67,6 +72,7 @@ interface ChatCredentialInteractionCardProps extends StepChrome {
  */
 export function ChatCredentialInteractionCard({
   stepId,
+  agentId,
   toolkit,
   reason,
   onSaved,
@@ -79,8 +85,8 @@ export function ChatCredentialInteractionCard({
 }: ChatCredentialInteractionCardProps) {
   const { t } = useTranslation("chat");
   const addToast = useUIStore((s) => s.addToast);
-  const list = useCustomIntegrations();
-  const submit = useSubmitCustomCredential();
+  const list = useAgentCustomIntegrations(agentId);
+  const submit = useSubmitCustomCredential(agentId);
   const [ready, setReady] = useState(false);
 
   const view = list.data?.find((v) => v.slug === toolkit);
