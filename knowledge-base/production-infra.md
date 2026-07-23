@@ -236,7 +236,7 @@ Every `cloud-v*` release builds a SECOND macOS DMG, `Houston_staging_<version>_u
 
 ### Daily cloud cut (`daily-cloud-cut.yml`)
 
-Cuts the `cloud-v*` release automatically at 12:45 UTC Mon–Fri (07:45 America/Bogota, no DST) so the draft is built before the 08:30 daily. Replicates the manual cut: branch from main tip → `scripts/version.sh` → `release: v<version>` commit (lives only under the tag, never pushed to protected main) → annotated `cloud-v<version>` tag pushed with the `RELEASE_CUT_TOKEN` fine-grained PAT (a default-GITHUB_TOKEN tag push would not trigger `release.yml` — recursive-workflow guard). Guards: skips quietly when main has no new commits since the last cut; refuses to cut a red main (failed completed check-runs) and pings the release Slack webhook. Manual/off-schedule cuts: `workflow_dispatch`, optional `version` override.
+Cuts the `cloud-v*` release automatically at 12:30 UTC Mon–Fri (07:30 America/Bogota, no DST) so the draft is built before the 08:30 daily. Replicates the manual cut: branch from main tip → `scripts/version.sh` → `release: v<version>` commit (lives only under the tag, never pushed to protected main) → annotated `cloud-v<version>` tag pushed with the `RELEASE_CUT_TOKEN` fine-grained PAT (a default-GITHUB_TOKEN tag push would not trigger `release.yml` — recursive-workflow guard). Guards: skips quietly when main has no new commits since the last cut; refuses to cut a red main (failed completed check-runs) and pings the release Slack webhook. Manual/off-schedule cuts: `workflow_dispatch`, optional `version` override.
 
 ### Ship train (`ship-train.yml`) — publish is the ship button
 

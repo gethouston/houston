@@ -33,10 +33,10 @@
 #   the write we need is the PAT's, not the job token's. (Read-only check-run
 #   queries still use GITHUB_TOKEN; those don't need to trigger anything.)
 #
-# WHY WEEKDAYS-ONLY AT 12:45 UTC:
+# WHY WEEKDAYS-ONLY AT 12:30 UTC:
 #   The team QAs in the 08:30 America/Bogota daily, which runs Mon–Fri. Bogotá is
-#   UTC-5 all year (Colombia observes no DST), so 12:45 UTC == 07:45 Bogotá. The
-#   release build takes ~30 min, so cutting at 07:45 leaves the draft ready
+#   UTC-5 all year (Colombia observes no DST), so 12:30 UTC == 07:30 Bogotá. The
+#   release build takes ~30 min, so cutting at 07:30 leaves the draft ready
 #   before 08:30. `cron: '1-5'` skips weekends — no daily, no cut.
 #
 # WHY TAG-ONLY PUSH:
@@ -54,9 +54,9 @@ name: Daily cloud cut
 
 on:
   schedule:
-    # 12:45 UTC, Mon–Fri == 07:45 America/Bogota (UTC-5, no DST). ~30-min build
+    # 12:30 UTC, Mon–Fri == 07:30 America/Bogota (UTC-5, no DST). ~30-min build
     # finishes before the 08:30 daily. See the header for the full rationale.
-    - cron: "45 12 * * 1-5"
+    - cron: "30 12 * * 1-5"
   workflow_dispatch:
     inputs:
       version:
