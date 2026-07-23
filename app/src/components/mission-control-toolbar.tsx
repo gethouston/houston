@@ -172,7 +172,6 @@ export function MissionControlToolbar({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    data-keep-panel-open
                     size={collapsed ? "icon" : "default"}
                     className={cn(collapsed && "rounded-full")}
                     onClick={onNewMission}

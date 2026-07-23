@@ -16,8 +16,8 @@ export interface ResolvedSelection {
  * an item-presence check unmounted the whole chat panel for that window and
  * remounted it a beat later (a visible close/reopen flicker of an open chat,
  * HOU-693/HOU-730). The open conversation must outlive its card: only an
- * explicit deselect (close button, outside click, Escape, delete, agent
- * switch) closes the panel.
+ * explicit deselect (close button, Escape, delete, agent switch) closes
+ * the panel.
  *
  * While the card is absent, `panelItem` falls back to the same selection's
  * last resolved card, so the header (title, people, actions) doesn't flash

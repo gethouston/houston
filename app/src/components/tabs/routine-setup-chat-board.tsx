@@ -149,10 +149,7 @@ export function RoutineSetupChatBoard({
         selectedId={activity.id}
         onSelect={onPanelClose ? handlePanelSelect : noop}
         panelContainer={panelContainer}
-        // Clicks on app chrome or the persistent list must NOT dismiss the pane;
-        // only the close X (or Escape) deselects it. The X shows only when a
-        // deselect handler is wired (`onPanelClose`).
-        disableOutsideClose
+        // The close X shows only when a deselect handler is wired (`onPanelClose`).
         hidePanelClose={onPanelClose ? undefined : true}
         feedItems={feedItems}
         isLoading={send.effectiveLoading}

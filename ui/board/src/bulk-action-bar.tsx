@@ -101,10 +101,7 @@ export function BulkActionBar({
 
   return (
     <>
-      <div
-        data-keep-panel-open
-        className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border border-line/60 bg-popover px-2 py-1.5 shadow-lg"
-      >
+      <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border border-line/60 bg-popover px-2 py-1.5 shadow-lg">
         <span className="px-2 text-xs font-medium tabular-nums text-ink-muted">
           {labels.selected(count)}
         </span>
