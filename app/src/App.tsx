@@ -2,6 +2,7 @@ import "./styles/globals.css";
 import type { Toast } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { SignInScreen } from "./components/auth/sign-in-screen";
+import { StorageUnavailableScreen } from "./components/auth/storage-unavailable-screen";
 import { CloudMigrationGate } from "./components/onboarding/cloud-migration/cloud-migration-gate";
 import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
 import {
@@ -25,7 +26,7 @@ import { useOnboardingCompleted } from "./hooks/use-onboarding-completed";
 import { useOnboardingPending } from "./hooks/use-onboarding-pending";
 import { useOnboardingSegment } from "./hooks/use-onboarding-segment";
 import { useProviderCatalog } from "./hooks/use-provider-catalog";
-import { useSession } from "./hooks/use-session";
+import { SessionUnavailableError, useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
 import { analytics } from "./lib/analytics";
 import { shouldAllowNativeContextMenu } from "./lib/context-menu";
@@ -101,7 +102,12 @@ export default function App() {
     };
   }, []);
 
-  const { data: session, isLoading: sessionLoading } = useSession();
+  const {
+    data: session,
+    isLoading: sessionLoading,
+    error: sessionError,
+    refetch: refetchSession,
+  } = useSession();
 
   // Desktop boot: if this machine owns a local-model tunnel whose cloud endpoint
   // is still active, quietly re-establish frpc (dead after a restart). Gated on a
@@ -272,6 +278,15 @@ export default function App() {
   // the web SDK holds `isLoading` until it resolves persistence.
   if (isIdentityConfigured() && sessionLoading) {
     return <WorkspaceLoading />;
+  }
+  // Secure-storage read fault (retries exhausted): the device's store couldn't
+  // be read, which is NOT a signed-out user. Show a retryable storage-error
+  // screen, never SignInScreen — a spurious sign-in here reads as a logout.
+  if (
+    isIdentityConfigured() &&
+    sessionError instanceof SessionUnavailableError
+  ) {
+    return <StorageUnavailableScreen onRetry={() => void refetchSession()} />;
   }
   if (isIdentityConfigured() && !session) {
     // Local account login. Dev builds sign in with the passwordless email code

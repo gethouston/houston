@@ -11,6 +11,9 @@
     "tooManyAttempts": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
     "userDisabled": "Esta cuenta ha sido deshabilitada. Contacta a soporte.",
     "configError": "El inicio de sesión no está configurado correctamente. Contacta a soporte.",
-    "generic": "El inicio de sesión falló. Inténtalo de nuevo."
+    "generic": "El inicio de sesión falló. Inténtalo de nuevo.",
+    "storageUnavailableTitle": "No podemos acceder al almacenamiento seguro de este dispositivo",
+    "storageUnavailableBody": "Houston no pudo abrir el almacenamiento seguro de este dispositivo donde se guarda tu inicio de sesión. Normalmente se soluciona solo. Vuelve a intentarlo y, si sigue pasando, reinicia tu computador.",
+    "storageUnavailableRetry": "Reintentar"
   }
 }

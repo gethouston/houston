@@ -271,14 +271,18 @@ the space/galaxy look is OUT for first-run.
   forced-update dialog title was the casualty that exposed it). Never
   reintroduce a colour token named `base`.
 
-### Space screen backdrop (workspace-loading only)
+### Space screen backdrop (boot gate states)
 `SpaceScreen` (`app/src/components/space/space-screen.tsx`) is the **shared
 full-screen space layout**: the `--ht-space-canvas` base, the `SpaceBackground`
 backdrop (the landing page's Milky Way photograph under its readability scrim),
-and a `z-10` content slot on top. Its ONE remaining consumer is the
-**workspace-loading splash** (`components/shell/workspace-loading.tsx`) — the
-`OrbitLoader` + status line sit directly on the dark backdrop, using the
-space-foreground token family (`--ht-space-foreground` / `-foreground-muted`).
+and a `z-10` content slot on top. Its consumers are the **workspace-loading
+splash** (`components/shell/workspace-loading.tsx`) and the **storage-unavailable
+gate** (`components/auth/storage-unavailable-screen.tsx`) — content sits
+directly on the dark backdrop, using the space-foreground token family
+(`--ht-space-foreground` / `-foreground-muted`). The canvas is theme-invariant
+DARK while `action` follows the app theme, so any themed control placed on it
+(e.g. the storage gate's Retry `Button`) must pin `data-theme="dark"` on its
+subtree or it turns near-black-on-black in light mode.
 The whole space rendering cluster lives in **`app/src/components/space/`**.
 
 **`OrbitLoader`** (`space/orbit-loader.tsx` + geometry/trail constants in

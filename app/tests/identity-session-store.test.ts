@@ -89,6 +89,42 @@ test("subscribeSession is notified on save (session) and clear (null)", async ()
   assert.deepEqual(seen, [SESSION, null]);
 });
 
+test("loadSessionState maps a read fault to `unavailable` WITHOUT notifying", async () => {
+  const { loadSessionState, subscribeSession } = await import(
+    "../src/lib/identity/session-store.ts"
+  );
+  // A store whose read throws: the wiring must surface a FAULT, not a null that
+  // would flip every subscriber to signed-out (the spurious-logout bug).
+  globalThis.localStorage = {
+    getItem: () => {
+      throw new Error("storage read blew up");
+    },
+    setItem: () => {},
+    removeItem: () => {},
+  } as unknown as Storage;
+  const seen: Array<Session | null> = [];
+  const unsub = subscribeSession((s) => seen.push(s));
+  const state = await loadSessionState();
+  unsub();
+  assert.equal(state.kind, "unavailable");
+  assert.deepEqual(seen, [], "a read fault must never broadcast");
+});
+
+test("loadSessionState reports `none` for an absent entry", async () => {
+  const { loadSessionState } = await import(
+    "../src/lib/identity/session-store.ts"
+  );
+  assert.deepEqual(await loadSessionState(), { kind: "none" });
+});
+
+test("loadSessionState reports `none` for a corrupt blob", async () => {
+  const { loadSessionState } = await import(
+    "../src/lib/identity/session-store.ts"
+  );
+  fake.store.set(STORAGE_KEY, "{not json");
+  assert.deepEqual(await loadSessionState(), { kind: "none" });
+});
+
 test("saveSession rethrows when the underlying storage write fails", async () => {
   const { saveSession } = await import("../src/lib/identity/session-store.ts");
   globalThis.localStorage = {
