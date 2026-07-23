@@ -135,6 +135,14 @@ export function ProviderLoginBrowserPending({
           </span>
         </div>
 
+        {/* Primes the copy-and-return motion that lets the clipboard
+            auto-finish recover a blocked hand-off with zero typing. */}
+        {stage !== "finishing" && (
+          <p className="text-[12px] text-ink-muted">
+            {t("providerLogin.browserCodeCopyHint")}
+          </p>
+        )}
+
         {stage === "revealed" && (
           <Button
             type="button"

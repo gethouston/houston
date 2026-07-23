@@ -54,6 +54,7 @@
     "deviceSettingsOpenFailed": "No se pudo abrir la configuración de ChatGPT",
     "cancel": "Cancelar",
     "browserDescription": "Aprueba Houston en la pestaña del navegador que se abrió. Esta ventana se actualiza sola cuando termines.",
+    "browserCodeCopyHint": "Si la página de Claude te muestra un código, cópialo y vuelve aquí. El inicio de sesión terminará solo.",
     "browserCodeReveal": "¿Claude te mostró un código?",
     "browserCodeHint": "Si Claude te muestra un código después de aprobar, pégalo aquí para terminar.",
     "browserOpen": "¿No se abrió? Abrir inicio de sesión"
