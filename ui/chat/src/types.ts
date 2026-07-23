@@ -12,7 +12,20 @@ export interface MessageAuthor {
   name?: string;
 }
 
-export type FeedItem =
+/**
+ * Optional stable identity for a feed item, carried from the conversation
+ * view-model's feed entries. When present it keys the rendered message, so
+ * PREPENDING older items (scroll-up lazy-load, HOU-819) never re-keys the
+ * items below — positional keys would hand every existing Streamdown
+ * instance a different message's content (the #364 stale-render class).
+ * Absent on id-less feeds (tests, standalone consumers): keys fall back to
+ * positional and behave exactly as before.
+ */
+type FeedItemIdentity = { id?: string };
+
+export type FeedItem = FeedItemVariant & FeedItemIdentity;
+
+type FeedItemVariant =
   | { feed_type: "assistant_text"; data: string }
   | { feed_type: "assistant_text_streaming"; data: string }
   | { feed_type: "thinking"; data: string }
