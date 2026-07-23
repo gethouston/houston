@@ -409,3 +409,95 @@ test("confirmIdle leaves a settled conversation untouched", () => {
   // The terminal truth stays — only a stale "running" is reconciled.
   expect(snap().sessionStatus).toBe("error");
 });
+
+// ── Transcript windowing (HOU-819) ──────────────────────────────────────────
+
+test("seedHistory with a window stamps historyWindow on the snapshot", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory(
+    "a",
+    "c1",
+    [{ feed_type: "user_message", data: "hi", ts: 100 }],
+    { earliestLoaded: 380, total: 381 },
+  );
+
+  expect(snap().historyWindow).toEqual({ earliestLoaded: 380, total: 381 });
+});
+
+test("seedHistory without a window CLEARS a stale stamp (feed no longer maps to it)", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [{ feed_type: "user_message", data: "hi" }], {
+    earliestLoaded: 10,
+    total: 11,
+  });
+  vm.seedHistory("a", "c1", [{ feed_type: "user_message", data: "hi" }]);
+
+  expect(snap().historyWindow).toBeUndefined();
+});
+
+test("prependHistory inserts older frames BEFORE the feed and updates the window", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory(
+    "a",
+    "c1",
+    [{ feed_type: "user_message", data: "newer", ts: 200 }],
+    { earliestLoaded: 80, total: 81 },
+  );
+  vm.prependHistory(
+    "a",
+    "c1",
+    [
+      { feed_type: "user_message", data: "oldest", ts: 50 },
+      { feed_type: "assistant_text", data: "older reply", ts: 60 },
+    ],
+    { earliestLoaded: 0, total: 81 },
+  );
+
+  expect(snap().feed.map((f) => f.data)).toEqual([
+    "oldest",
+    "older reply",
+    "newer",
+  ]);
+  expect(snap().historyWindow).toEqual({ earliestLoaded: 0, total: 81 });
+});
+
+test("prependHistory keeps the existing entries' ids (no remount churn below)", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory(
+    "a",
+    "c1",
+    [{ feed_type: "user_message", data: "kept", ts: 200 }],
+    { earliestLoaded: 5, total: 6 },
+  );
+  const keptId = snap().feed[0]?.id;
+  vm.prependHistory(
+    "a",
+    "c1",
+    [{ feed_type: "user_message", data: "older", ts: 10 }],
+    { earliestLoaded: 0, total: 6 },
+  );
+
+  expect(snap().feed[1]?.id).toBe(keptId);
+});
+
+test("stampHistoryWindow records the window without touching the feed", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [
+    { feed_type: "user_message", data: "painted", ts: 100 },
+  ]);
+  const feedBefore = snap().feed;
+  vm.stampHistoryWindow("a", "c1", { earliestLoaded: 42, total: 142 });
+
+  expect(snap().historyWindow).toEqual({ earliestLoaded: 42, total: 142 });
+  expect(snap().feed).toEqual(feedBefore);
+});
+
+test("stampHistoryWindow with an unchanged window does not republish", () => {
+  const { store, vm } = harness();
+  vm.stampHistoryWindow("a", "c1", { earliestLoaded: 1, total: 2 });
+  const listener = vi.fn();
+  store.subscribe(conversationScope("a", "c1"), listener);
+  vm.stampHistoryWindow("a", "c1", { earliestLoaded: 1, total: 2 });
+
+  expect(listener).not.toHaveBeenCalled();
+});

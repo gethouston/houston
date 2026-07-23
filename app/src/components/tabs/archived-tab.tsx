@@ -5,10 +5,11 @@ import { messagePreviewText } from "@houston-ai/chat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity, useDeleteActivity } from "../../hooks/queries";
-import { useConversationFeed } from "../../hooks/use-conversation-vm";
+import { useConversationVm } from "../../hooks/use-conversation-vm";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { selectArchived } from "../../lib/mission-selection";
 import { modelAcceptsImages } from "../../lib/providers";
+import { tauriChat } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
@@ -19,6 +20,8 @@ import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { ArchivedEmptyState, ArchivedSearchBar } from "./archived-tab-search";
 import { useArchivedMissionSearch } from "./use-archived-mission-search";
 import { useArchivedSendMessage } from "./use-archived-send-message";
+
+const EMPTY_FEED: FeedItem[] = [];
 
 /**
  * Archived missions: a column-less list of the agent's archived missions.
@@ -84,11 +87,20 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
 
   // The open conversation's reactive feed from the SDK conversation VM
   // (history seeded by the adapter's loadHistory).
-  const activeFeed = useConversationFeed(path, selectedSessionKey);
+  const activeVm = useConversationVm(path, selectedSessionKey);
+  const activeFeed = activeVm?.feed ?? EMPTY_FEED;
   const feedItems = useMemo<Record<string, FeedItem[]>>(
     () => (selectedSessionKey ? { [selectedSessionKey]: activeFeed } : {}),
     [selectedSessionKey, activeFeed],
   );
+  // Scroll-up lazy-load (HOU-819): archived missions can be the longest
+  // transcripts of all — the open chat shows the tail window and prepends
+  // older pages on scroll.
+  const hasOlderMessages = (activeVm?.historyWindow?.earliestLoaded ?? 0) > 0;
+  const onLoadOlderMessages = useCallback(async () => {
+    if (!selectedSessionKey) return;
+    await tauriChat.loadOlderHistory(path, selectedSessionKey);
+  }, [path, selectedSessionKey]);
 
   const archivedSearch = useArchivedMissionSearch(path, items);
 
@@ -140,6 +152,8 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           onSendMessage={handleSendMessage}
           onComposerSubmit={panel.onComposerSubmit}
           onLoadHistory={archivedSearch.loadHistory}
+          onLoadOlderMessages={onLoadOlderMessages}
+          hasOlderMessages={hasOlderMessages}
           emptyState={emptyState}
           onPanelOpenChange={setMissionPanelOpen}
           onOpenLink={openHref}

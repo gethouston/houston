@@ -48,7 +48,15 @@ export async function handleConversationRoute(
   const action = convMatch[2];
 
   if (method === "GET" && action === "messages") {
-    const history = getHistory(id);
+    // Optional transcript window (HOU-819): `limit` = tail size, `before` =
+    // the caller's current `offset` (fetch the previous page). Absent or
+    // malformed params fall back to the full history — the pre-windowing
+    // contract — so an old client (or a proxy that strips query strings)
+    // keeps working, just without the windowing win.
+    const history = getHistory(id, {
+      limit: positiveInt(ctx.url.searchParams.get("limit")),
+      before: positiveInt(ctx.url.searchParams.get("before"), 0),
+    });
     history
       ? json(res, 200, history)
       : json(res, 404, { error: "conversation not found" });
@@ -217,6 +225,13 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     typeof displayText === "string" ? displayText : undefined,
   );
   json(ctx.res, 202, { ok: true, id });
+}
+
+/** Parse an integer query param ≥ `min` (default 1); anything else → undefined. */
+function positiveInt(raw: string | null, min = 1): number | undefined {
+  if (raw === null) return undefined;
+  const n = Number.parseInt(raw, 10);
+  return Number.isInteger(n) && n >= min ? n : undefined;
 }
 
 /** Extract the C2 acting-as identity from a message request's headers, or undefined. */

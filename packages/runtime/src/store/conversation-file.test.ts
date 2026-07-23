@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -237,4 +237,145 @@ test("a user message with no acting-as token stays author-free (byte-identical t
   // so a single-user transcript is byte-identical to before this feature.
   const raw = readFileSync(join(dir, "c1.json"), "utf8");
   expect(raw).not.toContain("author");
+});
+
+// ── Transcript windowing (HOU-819) ──────────────────────────────────────────
+
+function seedConversation(dir: string, count: number) {
+  for (let i = 0; i < count; i++) {
+    if (i % 2 === 0) appendUserMessageAt(dir, "c1", `user ${i}`);
+    else appendAssistantMessageAt(dir, "c1", `reply ${i}`);
+  }
+}
+
+test("no window returns the full transcript with offset 0 and the total", () => {
+  const dir = freshDir();
+  seedConversation(dir, 5);
+
+  const h = getHistoryAt(dir, "c1");
+  if (!h) throw new Error("getHistoryAt returned null");
+  expect(h.messages).toHaveLength(5);
+  expect(h.offset).toBe(0);
+  expect(h.totalMessages).toBe(5);
+});
+
+test("limit returns the LAST N messages and where they start", () => {
+  const dir = freshDir();
+  seedConversation(dir, 10);
+
+  const h = getHistoryAt(dir, "c1", { limit: 3 });
+  if (!h) throw new Error("getHistoryAt returned null");
+  expect(h.messages.map((m) => m.content)).toEqual([
+    "reply 7",
+    "user 8",
+    "reply 9",
+  ]);
+  expect(h.offset).toBe(7);
+  expect(h.totalMessages).toBe(10);
+});
+
+test("before + limit returns the previous page, ending at the cursor", () => {
+  const dir = freshDir();
+  seedConversation(dir, 10);
+
+  const h = getHistoryAt(dir, "c1", { limit: 3, before: 7 });
+  if (!h) throw new Error("getHistoryAt returned null");
+  expect(h.messages.map((m) => m.content)).toEqual([
+    "user 4",
+    "reply 5",
+    "user 6",
+  ]);
+  expect(h.offset).toBe(4);
+  expect(h.totalMessages).toBe(10);
+});
+
+test("a limit larger than the transcript clamps to the start (offset 0)", () => {
+  const dir = freshDir();
+  seedConversation(dir, 4);
+
+  const h = getHistoryAt(dir, "c1", { limit: 100 });
+  if (!h) throw new Error("getHistoryAt returned null");
+  expect(h.messages).toHaveLength(4);
+  expect(h.offset).toBe(0);
+});
+
+test("a before cursor past the end clamps to the transcript's tail", () => {
+  const dir = freshDir();
+  seedConversation(dir, 4);
+
+  const h = getHistoryAt(dir, "c1", { limit: 2, before: 999 });
+  if (!h) throw new Error("getHistoryAt returned null");
+  expect(h.messages.map((m) => m.content)).toEqual(["user 2", "reply 3"]);
+  expect(h.offset).toBe(2);
+});
+
+test("before at the transcript start returns an empty page (nothing older)", () => {
+  const dir = freshDir();
+  seedConversation(dir, 4);
+
+  const h = getHistoryAt(dir, "c1", { limit: 2, before: 0 });
+  if (!h) throw new Error("getHistoryAt returned null");
+  expect(h.messages).toHaveLength(0);
+  expect(h.offset).toBe(0);
+  expect(h.totalMessages).toBe(4);
+});
+
+// ── Parse cache (HOU-819) ───────────────────────────────────────────────────
+
+test("a cached read returns the appended state written through save", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "first");
+  expect(getHistoryAt(dir, "c1")?.messages).toHaveLength(1); // warm the cache
+  appendAssistantMessageAt(dir, "c1", "reply");
+
+  const h = getHistoryAt(dir, "c1");
+  expect(h?.messages.map((m) => m.content)).toEqual(["first", "reply"]);
+});
+
+test("an EXTERNAL rewrite (bypassing save) is picked up on the next read", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "original");
+  expect(getHistoryAt(dir, "c1")?.messages[0]?.content).toBe("original");
+
+  // The cloud store-sync (and any manual edit) writes files directly — the
+  // mtime/size validation must invalidate the cached parse.
+  const f = join(dir, "c1.json");
+  const replaced = {
+    id: "c1",
+    title: "Replaced",
+    createdAt: 1,
+    updatedAt: 2,
+    messages: [
+      { role: "user", content: "hydrated from the object store", ts: 3 },
+    ],
+  };
+  writeFileSync(f, JSON.stringify(replaced));
+
+  const h = getHistoryAt(dir, "c1");
+  expect(h?.title).toBe("Replaced");
+  expect(h?.messages[0]?.content).toBe("hydrated from the object store");
+});
+
+test("a deleted conversation reads null even when its parse was cached", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "hello");
+  expect(getHistoryAt(dir, "c1")).not.toBeNull(); // cached
+  deleteConversationAt(dir, "c1");
+  expect(getHistoryAt(dir, "c1")).toBeNull();
+});
+
+test("list reflects an external rewrite (per-file cache validated by stat)", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "one");
+  appendUserMessageAt(dir, "c2", "two");
+  expect(listConversationsAt(dir)).toHaveLength(2); // warm both
+
+  const f = join(dir, "c2.json");
+  const conv = JSON.parse(readFileSync(f, "utf8"));
+  conv.title = "Externally renamed";
+  conv.updatedAt = Date.now() + 60_000;
+  writeFileSync(f, JSON.stringify(conv));
+
+  const list = listConversationsAt(dir);
+  expect(list[0]?.title).toBe("Externally renamed");
 });

@@ -45,6 +45,11 @@ export interface ChatMessagesProps {
   /** Node rendered after the last message (inside the scroll container).
    *  Useful for inline end-of-feed cards like auth reconnect prompts. */
   afterMessages?: ReactNode;
+  /** Scroll-up lazy-load (HOU-819): prepend the previous transcript page.
+   *  Rendered as a top-of-feed trigger only when `hasOlderMessages`. */
+  onLoadOlder?: () => Promise<unknown>;
+  /** Older messages exist beyond the loaded window (the trigger shows). */
+  hasOlderMessages?: boolean;
   onOpenLink?: (url: string) => void;
   /** Custom renderer for markdown links. See `RenderLinkProps`. */
   renderLink?: (props: RenderLinkProps) => ReactNode;

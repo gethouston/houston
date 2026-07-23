@@ -3,6 +3,22 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v34 - 2026-07-23
+
+Refine `conversation-feed` (no new component, no `since` change): the transcript
+now opens on its TAIL window instead of the full history, and gains a
+`load-older-trigger` at the top of the scroll viewport plus a `loading-older`
+state (HOU-819). When the view-model reports messages beyond the loaded window
+(`historyWindow.earliestLoaded > 0` on the conversation VM), scrolling the top
+of the feed into view fetches the previous page and prepends it, scroll-anchored
+(same distance from the bottom) so on-screen content never jumps; a quiet
+spinner shows while the page loads and the trigger retires at the transcript
+start. Web ships it in `ui/chat` (`ConversationLoadOlder`, threaded through
+`ChatPanel`/`ChatMessages` as `onLoadOlder` + `hasOlderMessages` and through
+`AIBoard` as `onLoadOlderMessages` + `hasOlderMessages`); the windowed reads
+ride the additive protocol params (`?limit`/`?before` on the runtime's
+messages route) and the SDK VM's additive `historyWindow` + `prependHistory`.
+
 ## v33 - 2026-07-22
 
 Add `status-badge`: the shared connected/live-status indicator (a colored dot,

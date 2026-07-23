@@ -11,6 +11,7 @@ import {
   appendUserMessageAt,
   deleteConversationAt,
   getHistoryAt,
+  type HistoryWindow,
   listConversationsAt,
   renameConversationAt,
   type UserMessageMeta,
@@ -54,8 +55,11 @@ export function markConversationStopped(id: string): void {
   appendAssistantMessage(id, "", { stopped: true });
 }
 
-export function getHistory(id: string): ConversationHistory | null {
-  return getHistoryAt(dir, id);
+export function getHistory(
+  id: string,
+  window?: HistoryWindow,
+): ConversationHistory | null {
+  return getHistoryAt(dir, id, window);
 }
 
 export function listConversations(): ConversationSummary[] {

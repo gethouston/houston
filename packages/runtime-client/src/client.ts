@@ -231,9 +231,21 @@ export class HoustonEngineClient {
   listConversations() {
     return this.json<ConversationSummary[]>("/conversations");
   }
-  getHistory(id: string) {
+  /**
+   * Read a conversation's transcript. `limit` fetches only the LAST N messages
+   * (the chat-open window, HOU-819); `before` fetches the window ENDING at
+   * that absolute index (the response's `offset`) — the load-older page. No
+   * options = the full transcript. A pre-windowing server ignores the params
+   * and returns everything — callers must treat `offset`/`totalMessages` as
+   * optional.
+   */
+  getHistory(id: string, opts: { limit?: number; before?: number } = {}) {
+    const params = new URLSearchParams();
+    if (opts.limit !== undefined) params.set("limit", String(opts.limit));
+    if (opts.before !== undefined) params.set("before", String(opts.before));
+    const qs = params.toString();
     return this.json<ConversationHistory>(
-      `/conversations/${encodeURIComponent(id)}/messages`,
+      `/conversations/${encodeURIComponent(id)}/messages${qs ? `?${qs}` : ""}`,
     );
   }
   /**

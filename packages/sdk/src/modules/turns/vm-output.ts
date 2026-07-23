@@ -98,6 +98,21 @@ export interface ConversationVM {
    * flushes them as ONE combined send when the turn settles.
    */
   queued?: QueuedMessageVM[];
+  /**
+   * The server-transcript window this feed was seeded from (additive; absent
+   * until a WINDOWED history read seeds it — a cache paint or a full-history
+   * seed carries none). `earliestLoaded` is the absolute index of the oldest
+   * loaded message; `> 0` means older messages exist server-side and a surface
+   * may offer/trigger load-older (HOU-819). `total` is the transcript's full
+   * message count at the last read.
+   */
+  historyWindow?: HistoryWindowVM;
+}
+
+/** See {@link ConversationVM.historyWindow}. */
+export interface HistoryWindowVM {
+  earliestLoaded: number;
+  total: number;
 }
 
 interface ConvState {
@@ -109,6 +124,7 @@ interface ConvState {
   /** Open streaming run: its streaming feed_type -> the feed entry id it updates. */
   streaming: Map<string, string>;
   queued: QueuedMessageVM[];
+  historyWindow?: HistoryWindowVM;
 }
 
 /** Final feed_type -> the streaming feed_type it finalizes. */
@@ -219,6 +235,7 @@ export class ConversationVmOutput implements FeedOutput {
     agentPath: string,
     sessionKey: string,
     frames: readonly { feed_type: string; data: unknown; ts?: number }[],
+    window?: HistoryWindowVM,
   ): void {
     const s = this.state(agentPath, sessionKey);
     // History frames carry their source `ChatMessage.ts` (absent for a pre-`ts`
@@ -231,6 +248,37 @@ export class ConversationVmOutput implements FeedOutput {
       ...(f.ts !== undefined ? { ts: f.ts } : {}),
     }));
     s.streaming.clear();
+    // A windowed server read stamps its window; a cache paint / full-history
+    // seed passes none and CLEARS any prior stamp — the feed no longer maps to
+    // a known server window, so load-older must not trust a stale one.
+    s.historyWindow = window;
+    this.publish(agentPath, sessionKey, s);
+  }
+
+  /**
+   * Prepend an OLDER transcript window before the current feed — the
+   * scroll-up lazy-load seam (HOU-819). The existing entries (including any
+   * open streaming bubble) keep their ids and order; only the new frames are
+   * minted. The caller is the same windowed-history reader that seeds, so the
+   * frames are final history — never streaming state.
+   */
+  prependHistory(
+    agentPath: string,
+    sessionKey: string,
+    frames: readonly { feed_type: string; data: unknown; ts?: number }[],
+    window: HistoryWindowVM,
+  ): void {
+    const s = this.state(agentPath, sessionKey);
+    s.feed = [
+      ...frames.map((f) => ({
+        id: `f${s.seq++}`,
+        feed_type: f.feed_type,
+        data: f.data,
+        ...(f.ts !== undefined ? { ts: f.ts } : {}),
+      })),
+      ...s.feed,
+    ];
+    s.historyWindow = window;
     this.publish(agentPath, sessionKey, s);
   }
 
@@ -381,6 +429,28 @@ export class ConversationVmOutput implements FeedOutput {
     this.publish(agentPath, sessionKey, s);
   }
 
+  /**
+   * Record the server-transcript window WITHOUT reseeding the feed — the
+   * identical-content revalidation path (HOU-819): the windowed read's fold
+   * matched what is already on screen, so replacing would only churn entry
+   * ids, but load-older still needs to know where the loaded feed starts.
+   */
+  stampHistoryWindow(
+    agentPath: string,
+    sessionKey: string,
+    window: HistoryWindowVM,
+  ): void {
+    const s = this.state(agentPath, sessionKey);
+    if (
+      s.historyWindow?.earliestLoaded === window.earliestLoaded &&
+      s.historyWindow?.total === window.total
+    ) {
+      return;
+    }
+    s.historyWindow = window;
+    this.publish(agentPath, sessionKey, s);
+  }
+
   /** Replace the conversation's queued-message list (the send queue's seam). */
   setQueued(
     agentPath: string,
@@ -400,6 +470,7 @@ export class ConversationVmOutput implements FeedOutput {
       boardStatus: s.boardStatus,
       pendingInteraction: s.pendingInteraction,
       ...(s.queued.length ? { queued: s.queued.map((q) => ({ ...q })) } : {}),
+      ...(s.historyWindow ? { historyWindow: { ...s.historyWindow } } : {}),
     };
     const scope = conversationScope(agentPath, sessionKey);
     this.store.publish(scope, snapshot);

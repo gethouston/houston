@@ -220,6 +220,9 @@ export function handleAgents(
             cid,
             String(body?.text ?? ""),
             typeof body?.nonce === "string" ? body.nonce : undefined,
+            typeof body?.displayText === "string"
+              ? body.displayText
+              : undefined,
           );
       }
       if (action === "cancel") {

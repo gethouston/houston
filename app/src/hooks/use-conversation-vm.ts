@@ -46,6 +46,10 @@ export interface ConversationView {
    *  request_connection), or null. Set on settle, cleared on the next turn
    *  start — drives the composer-replacing interaction card. */
   pendingInteraction: ConversationVM["pendingInteraction"];
+  /** The server-transcript window the feed was seeded from (HOU-819):
+   *  `earliestLoaded > 0` means older messages exist server-side and the chat
+   *  offers scroll-up lazy-load. Absent before any windowed read. */
+  historyWindow: ConversationVM["historyWindow"];
 }
 
 const EMPTY_FEED: FeedItem[] = [];
@@ -58,6 +62,7 @@ function toView(vm: ConversationVM): ConversationView {
     boardStatus: vm.boardStatus,
     queued: vm.queued,
     pendingInteraction: vm.pendingInteraction,
+    historyWindow: vm.historyWindow,
   };
 }
 

@@ -119,6 +119,11 @@ export interface BoardSource {
     sessionKey: string,
     opts?: HistoryLoadOptions,
   ) => Promise<FeedItem[]>;
+  /** Scroll-up lazy-load for the OPEN chat (HOU-819): prepend the previous
+   *  transcript page of the active conversation. */
+  onLoadOlderMessages?: () => Promise<unknown>;
+  /** Older messages exist beyond the open chat's loaded window. */
+  hasOlderMessages?: boolean;
   /** Raw send (no queue). `overrides` carry the composer's effective
    *  provider/model; the per-agent source uses them, Mission Control resolves
    *  its own from the target activity. */

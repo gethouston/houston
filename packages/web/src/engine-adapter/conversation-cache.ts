@@ -20,6 +20,7 @@
  */
 
 import { createIdbBackend } from "./conversation-cache-idb";
+import { trimForCache } from "./history-window";
 
 export {
   conversationCacheScope,
@@ -30,6 +31,14 @@ export {
 export interface CachedFrame {
   feed_type: string;
   data: unknown;
+  /**
+   * The frame's timestamp, when the source fold carried one — preserved so a
+   * cache-painted bubble keeps its real time instead of losing it (HOU-819).
+   * Display metadata only: seed/replace decisions never compare timestamps
+   * (live pushes and history folds are stamped by different clocks). Absent
+   * on records written before this field existed.
+   */
+  ts?: number;
 }
 
 /** A stored transcript: its frames plus a write stamp (prune order). */
@@ -137,7 +146,14 @@ export async function writeCachedConversation(
   if (!key || !b || frames.length === 0) return;
   try {
     await b.set(key, {
-      frames: frames.map((f) => ({ feed_type: f.feed_type, data: f.data })),
+      // Bounded (HOU-819): the cache exists to paint a cold open instantly,
+      // so it keeps a recent-window snapshot, trimmed at a TURN boundary —
+      // never mid-turn, which would paint a reply missing its own prompt.
+      frames: trimForCache(frames).map((f) => ({
+        feed_type: f.feed_type,
+        data: f.data,
+        ...(f.ts !== undefined ? { ts: f.ts } : {}),
+      })),
       updatedAt: Date.now(),
     });
     const keys = await b.keysOldestFirst();

@@ -101,11 +101,20 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
     }
   };
 
-  const ensureAssistant = (): ChatMessage => {
+  // Message keys prefer the feed item's stable VM id (`kind-fA7`) over the
+  // positional fallback (`kind-3`): prepending older history (HOU-819) shifts
+  // every position, and positional keys would remount the whole list below —
+  // reusing Streamdown instances against different messages' content (#364's
+  // failure class). The id of the item that STARTS a message keys it; a
+  // streaming entry keeps its id across deltas, so live keys are stable too.
+  const keyFor = (kind: string, item: { id?: string }): string =>
+    `${kind}-${item.id ?? messages.length}`;
+
+  const ensureAssistant = (item: { id?: string }): ChatMessage => {
     if (cur?.from !== "assistant") {
       flush();
       cur = {
-        key: `assistant-${messages.length}`,
+        key: keyFor("assistant", item),
         from: "assistant",
         content: "",
         isStreaming: false,
@@ -140,7 +149,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         turnHadErrorCard = false;
         const { source, text } = extractSource(item.data);
         messages.push({
-          key: `user-${messages.length}`,
+          key: keyFor("user", item),
           from: "user",
           content: text,
           isStreaming: false,
@@ -153,7 +162,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
       }
 
       case "assistant_text": {
-        const msg = ensureAssistant();
+        const msg = ensureAssistant(item);
         msg.content = item.data;
         msg.isStreaming = false;
         flush();
@@ -161,7 +170,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
       }
 
       case "assistant_text_streaming": {
-        const msg = ensureAssistant();
+        const msg = ensureAssistant(item);
         msg.content = item.data;
         msg.isStreaming = true;
         break;
@@ -178,7 +187,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         ) {
           flush();
         }
-        const msg = ensureAssistant();
+        const msg = ensureAssistant(item);
         msg.reasoning = { content: item.data, isStreaming: isStream };
         if (isStream) msg.isStreaming = true;
         if (!isStream) flush();
@@ -186,7 +195,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
       }
 
       case "tool_call": {
-        const msg = ensureAssistant();
+        const msg = ensureAssistant(item);
         // Deduplicate: the parser emits two tool_calls per tool (null input
         // on block start, real input on block stop). Replace the placeholder.
         const lastTool = msg.tools[msg.tools.length - 1];
@@ -245,7 +254,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         flush();
         turnHadErrorCard = true;
         messages.push({
-          key: `tool-runtime-error-${messages.length}`,
+          key: keyFor("tool-runtime-error", item),
           from: "system",
           content: "A local tool failed to start.",
           isStreaming: false,
@@ -270,7 +279,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         seenProviderErrors.add(providerErrorKey);
         flush();
         messages.push({
-          key: `provider-error-${messages.length}-${item.data.kind}`,
+          key: `${keyFor("provider-error", item)}-${item.data.kind}`,
           from: "system",
           // Empty content so the rendered message body collapses to the
           // typed card. The consumer (renderSystemMessage in the app)
@@ -291,7 +300,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         if (turnHadErrorCard && isSessionErrorEcho(item.data)) break;
         flush();
         messages.push({
-          key: `system-${messages.length}`,
+          key: keyFor("system", item),
           from: "system",
           content: item.data,
           isStreaming: false,
@@ -304,7 +313,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
       case "context_compacted": {
         flush();
         messages.push({
-          key: `context-compacted-${messages.length}`,
+          key: keyFor("context-compacted", item),
           from: "system",
           // Empty content — the renderer shows a localized divider keyed off
           // `compaction`, not this string.
@@ -324,7 +333,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
       case "provider_switched": {
         flush();
         messages.push({
-          key: `provider-switched-${messages.length}`,
+          key: keyFor("provider-switched", item),
           from: "system",
           // Empty content — the renderer shows a localized divider keyed off
           // `compaction`, not this string.

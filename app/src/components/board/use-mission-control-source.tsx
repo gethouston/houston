@@ -180,6 +180,8 @@ export function useMissionControlSource(
     onApprove: mc.handleApprove,
     onRename: mc.handleRename,
     loadHistory: mc.loadHistory,
+    onLoadOlderMessages: mc.onLoadOlderMessages,
+    hasOlderMessages: mc.hasOlderMessages,
     sendMessageNow: actions.sendMessageNow,
     createConversation: actions.createConversation,
     stopSession: actions.stopSession,

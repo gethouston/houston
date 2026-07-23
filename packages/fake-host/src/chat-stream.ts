@@ -65,7 +65,8 @@ export function sendMessage(
   cid: string,
   text: string,
   nonce: string | undefined,
+  displayText?: string,
 ): Response {
-  streamReplySafe(agentId, cid, text, nonce);
+  streamReplySafe(agentId, cid, text, nonce, displayText);
   return noContent(202);
 }
