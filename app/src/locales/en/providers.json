@@ -54,6 +54,9 @@
     "deviceSettingsOpenFailed": "Couldn't open ChatGPT settings",
     "cancel": "Cancel",
     "browserDescription": "Approve Houston in the browser tab that just opened. This window updates on its own when you finish.",
+    "browserCodeCopyHint": "If the Claude page shows you a code, copy it and come back here. Sign-in will finish on its own.",
+    "browserCodeReveal": "Claude showed you a code?",
+    "browserCodeHint": "If Claude shows you a code after you approve, paste it here to finish.",
     "browserOpen": "Didn't open? Open sign-in"
   },
   "apiKey": {

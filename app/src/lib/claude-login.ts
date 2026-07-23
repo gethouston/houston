@@ -43,8 +43,11 @@ import { tauriProvider } from "./tauri";
 /** Native event carrying the login result `{ success, error }`. */
 const CLAUDE_LOGIN_DONE_EVENT = "claude-login://done";
 
-/** Overall guard: the user may sit on the Claude consent screen for a while. */
-const LOGIN_TIMEOUT_MS = 5 * 60_000;
+/** Overall guard: the user may sit on the Claude consent screen for a while.
+ * Mirrors the native helper's `LOGIN_TIMEOUT` (claude_login/runner.rs) — kill
+ * the CLI early and its local listener dies, forcing the approval page onto
+ * its show-a-code fallback for late approvers (HOU-839). */
+const LOGIN_TIMEOUT_MS = 15 * 60_000;
 
 /** After `done: success`, how long to wait for the engine to read the fresh
  *  credential as connected (the /providers probe re-reads `claude auth status`). */

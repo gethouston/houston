@@ -20,9 +20,21 @@ the traps at the bottom — read them before touching any of this.
 
 - **Desktop browser login** (`app/src-tauri/src/claude_login/`): spawns
   `claude auth login --claudeai` with `CLAUDE_CONFIG_DIR` pinned to the shared
-  login dir. The CLI opens the browser, catches its own loopback callback, and
-  caches the credential itself. There is NO deep link back to the app — the app
-  just watches the CLI's stdout/exit.
+  login dir and PIPED stdin. The CLI opens the browser and authorizes with
+  `code=true` (redirect aimed at platform.claude.com — no localhost redirect):
+  after the user approves, that callback page hands the authorization code to
+  the CLI's random-port local listener automatically (the seamless path) OR,
+  when that hand-off is blocked (firewalls, strict browsers; the common case on
+  Windows — HOU-839), shows the user a code. That case recovers in stages so
+  the happy path stays code-free: on app refocus a clipboard probe
+  (`complete_claude_login_from_clipboard`) silently feeds a copied code-shaped
+  string to the CLI's stdin; only when that finds nothing does the dialog
+  surface a "Claude showed you a code?" link revealing a paste field
+  (`submit_claude_login_code` → the CLI's `Paste code here if prompted >`
+  readline). Either way the CLI caches the credential itself; there is NO deep
+  link back to the app — the app watches the CLI's stdout/exit. The `visit:`
+  URL line is OSC-8 hyperlink-wrapped by current CLIs; `resolve.rs` strips that
+  before parsing.
 - **Remote/cloud handoff** (`app/src/lib/claude-login-remote.ts`): after the
   local login, `read_claude_credential` (Rust) extracts the cached credential —
   file first, then the Keychain item `Claude Code-credentials-<sha256(dir)[:8]>`
