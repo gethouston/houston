@@ -8,6 +8,7 @@
 
 import type { DragEvent, DragEventHandler } from "react";
 import { useCallback, useRef, useState } from "react";
+import { collectDroppedItems, resolveDroppedFiles } from "./attachment-folders";
 import { fileIdentityKey } from "./clipboard-files";
 
 /**
@@ -64,6 +65,10 @@ export interface FileDropZone {
 
 export function useFileDropZone(
   onFiles: (files: File[]) => void,
+  /** Called when expanding a dropped folder fails (unreadable directory,
+   *  too many files). Omitting it lets the rejection surface as an unhandled
+   *  rejection — never swallowed. */
+  onDropError?: (error: unknown) => void,
 ): FileDropZone {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const dragDepthRef = useRef(0);
@@ -108,10 +113,22 @@ export function useFileDropZone(
       e.preventDefault();
       dragDepthRef.current = 0;
       setIsDraggingOver(false);
-      const dropped = Array.from(e.dataTransfer.files);
-      if (dropped.length > 0) onFiles(dropped);
+      // Capture entries/files SYNCHRONOUSLY — the DataTransfer is neutered
+      // once this handler returns. Expanding folders is async (directory
+      // reads), so the ingest is deferred to the resolved promise.
+      const dropped = collectDroppedItems(e.dataTransfer);
+      if (dropped.length === 0) return;
+      resolveDroppedFiles(dropped).then(
+        (files) => {
+          if (files.length > 0) onFiles(files);
+        },
+        (error) => {
+          if (!onDropError) throw error;
+          onDropError(error);
+        },
+      );
     },
-    [hasFiles, onFiles],
+    [hasFiles, onFiles, onDropError],
   );
 
   return {

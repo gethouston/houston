@@ -8,6 +8,10 @@
     "dropTitle": "Suelta tus archivos",
     "dropDescription": "Suéltalos aquí para añadirlos a la conversación",
     "imagePasteUnavailable": "No se pudo leer la imagen pegada. Prueba a arrastrar el archivo.",
+    "tooManyFiles": "Puedes adjuntar hasta {{max}} archivos a la vez",
+    "folderReadFailed": "No se pudo leer esa carpeta. Prueba con el botón de adjuntar.",
+    "folderFileCount_one": "{{count}} archivo",
+    "folderFileCount_other": "{{count}} archivos",
     "addFiles": "Agregar archivos",
     "dictation": {
       "start": "Iniciar dictado por voz",

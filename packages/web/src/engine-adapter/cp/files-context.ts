@@ -71,6 +71,12 @@ export async function setContext(
  * files: …"). Binary rides as base64 JSON (the host writes the bytes through
  * its Vfs); the agent resolves each path against its workspace root.
  *
+ * Folder uploads (HOU-808): a file picked or dropped as part of a folder
+ * carries `webkitRelativePath`; we forward it as `relPath` and the host stores
+ * the file nested (`uploads/<folder>/…`) so the folder's structure survives.
+ * Pods predating folder support ignore the field and store the flat filename —
+ * every returned path is still exact, the upload just loses its nesting.
+ *
  * `scopeId` is legacy: current hosts ignore it, but engine pods that predate
  * the durable-uploads layout still 400 without it — keep sending it until no
  * pre-HOU-706 pod remains.
@@ -81,19 +87,17 @@ export async function saveAttachments(
   scopeId: string,
   files: readonly File[],
 ): Promise<string[]> {
-  // One request per file: bounds each request to the client's per-file limit,
-  // so a multi-file drop can't blow past the host's per-request upload cap
-  // (the host dedupes against the scope's existing files across requests).
   const paths: string[] = [];
-  for (const f of files) {
+  for (const batch of planAttachmentBatches(files)) {
     const payload = {
       scopeId,
-      files: [
-        {
+      files: await Promise.all(
+        batch.map(async (f) => ({
           name: f.name,
           contentBase64: bytesToBase64(new Uint8Array(await f.arrayBuffer())),
-        },
-      ],
+          relPath: attachmentRelPath(f),
+        })),
+      ),
     };
     const res = await cpFetch(cfg, `${agentPath(agentId)}/attachments`, {
       method: "POST",
@@ -102,6 +106,47 @@ export async function saveAttachments(
     paths.push(...((await res.json()) as { paths: string[] }).paths);
   }
   return paths;
+}
+
+// A folder can hold hundreds of small files; a request per file would turn one
+// drop into hundreds of round trips. Batch small files together up to a modest
+// byte budget, well under the host's per-request cap, and give anything larger
+// than the budget its own request (the client's per-file limit already bounds
+// it to the host cap). Requests stay sequential so per-file host-side dedupe
+// never races itself.
+const BATCH_BUDGET_BYTES = 8 * 1024 * 1024;
+const BATCH_MAX_FILES = 25;
+
+export function planAttachmentBatches(files: readonly File[]): File[][] {
+  const batches: File[][] = [];
+  let current: File[] = [];
+  let currentBytes = 0;
+  for (const f of files) {
+    const fits =
+      current.length < BATCH_MAX_FILES &&
+      currentBytes + f.size <= BATCH_BUDGET_BYTES;
+    if (current.length > 0 && !fits) {
+      batches.push(current);
+      current = [];
+      currentBytes = 0;
+    }
+    current.push(f);
+    currentBytes += f.size;
+  }
+  if (current.length > 0) batches.push(current);
+  return batches;
+}
+
+/**
+ * The upload-relative path for a folder-derived file, or undefined for a plain
+ * file. Normalized to forward slashes with no leading slash; a value without a
+ * `/` carries no structure and is treated as plain.
+ */
+function attachmentRelPath(f: File): string | undefined {
+  const raw = f.webkitRelativePath;
+  if (!raw) return undefined;
+  const normalized = raw.replace(/\\/g, "/").replace(/^\/+/, "");
+  return normalized.includes("/") ? normalized : undefined;
 }
 
 /** Base64-encode bytes without blowing the call stack on large files (chunked btoa). */

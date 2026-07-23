@@ -8,6 +8,10 @@
     "dropTitle": "Solte seus arquivos",
     "dropDescription": "Solte-os aqui para adicioná-los à conversa",
     "imagePasteUnavailable": "Não foi possível ler a imagem colada. Tente arrastar o arquivo.",
+    "tooManyFiles": "Você pode anexar até {{max}} arquivos por vez",
+    "folderReadFailed": "Não foi possível ler essa pasta. Tente o botão de anexar.",
+    "folderFileCount_one": "{{count}} arquivo",
+    "folderFileCount_other": "{{count}} arquivos",
     "addFiles": "Adicionar arquivos",
     "dictation": {
       "start": "Iniciar ditado por voz",

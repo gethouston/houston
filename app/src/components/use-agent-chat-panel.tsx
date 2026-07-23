@@ -36,7 +36,7 @@ import {
 } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Play, Users } from "lucide-react";
+import { FolderUp, Paperclip, Play, Users } from "lucide-react";
 import {
   type ReactNode,
   useCallback,
@@ -2018,7 +2018,7 @@ export function useAgentChatPanel({
 
   const attachMenu = useMemo<AIBoardProps["attachMenu"]>(() => {
     if (!agent) return undefined;
-    return ({ openFilePicker }) => (
+    return ({ openFilePicker, openFolderPicker }) => (
       <div className="flex flex-col gap-0.5">
         <button
           type="button"
@@ -2029,6 +2029,16 @@ export function useAgentChatPanel({
         >
           <Paperclip className="size-4 text-ink-muted" />
           {t("composerAttach.addFiles")}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            openFolderPicker();
+          }}
+          className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-ink hover:bg-hover transition-colors"
+        >
+          <FolderUp className="size-4 text-ink-muted" />
+          {t("composerAttach.addFolder")}
         </button>
       </div>
     );

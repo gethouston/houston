@@ -1,4 +1,5 @@
 import type { AIBoardProps } from "@houston-ai/board";
+import { MAX_ATTACHMENT_FILES } from "@houston-ai/chat";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -30,6 +31,12 @@ export function useBoardLabels(): {
       dropTitle: t("chat:composer.dropTitle"),
       dropDescription: t("chat:composer.dropDescription"),
       imagePasteUnavailable: t("chat:composer.imagePasteUnavailable"),
+      tooManyFiles: t("chat:composer.tooManyFiles", {
+        max: MAX_ATTACHMENT_FILES,
+      }),
+      folderReadFailed: t("chat:composer.folderReadFailed"),
+      folderFileCount: (count: number) =>
+        t("chat:composer.folderFileCount", { count }),
     },
   };
 }

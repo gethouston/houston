@@ -89,6 +89,119 @@ test("uploads are visible in the Files tab listing", async () => {
   expect(listed).toContain("uploads/attached.txt");
 });
 
+test("folder uploads keep their directory structure under uploads/ (HOU-808)", async () => {
+  const vfs = new MemoryVfs();
+  const paths = await saveAttachments(vfs, ROOT, [
+    { name: "intro.md", contentBase64: b64("intro"), relPath: "docs/intro.md" },
+    {
+      name: "api.md",
+      contentBase64: b64("api"),
+      relPath: "docs/guide/api.md",
+    },
+  ]);
+  expect(paths).toEqual(["uploads/docs/intro.md", "uploads/docs/guide/api.md"]);
+  expect(await vfs.readText(`${ROOT}/uploads/docs/guide/api.md`)).toBe("api");
+});
+
+test("same basename in different subfolders is NOT a collision", async () => {
+  const vfs = new MemoryVfs();
+  const paths = await saveAttachments(vfs, ROOT, [
+    { name: "index.ts", contentBase64: b64("a"), relPath: "src/a/index.ts" },
+    { name: "index.ts", contentBase64: b64("b"), relPath: "src/b/index.ts" },
+  ]);
+  expect(paths).toEqual(["uploads/src/a/index.ts", "uploads/src/b/index.ts"]);
+});
+
+test("a colliding file inside a folder dedupes the FILE, keeping the folder", async () => {
+  const vfs = new MemoryVfs();
+  await saveAttachments(vfs, ROOT, [
+    { name: "a.txt", contentBase64: b64("first"), relPath: "docs/a.txt" },
+  ]);
+  // The same folder attached again later merges: no "docs (1)/", the file
+  // inside disambiguates instead — the returned paths stay exact either way.
+  const second = await saveAttachments(vfs, ROOT, [
+    { name: "a.txt", contentBase64: b64("second"), relPath: "docs/a.txt" },
+  ]);
+  expect(second).toEqual(["uploads/docs/a (1).txt"]);
+  expect(await vfs.readText(`${ROOT}/uploads/docs/a.txt`)).toBe("first");
+  expect(await vfs.readText(`${ROOT}/uploads/docs/a (1).txt`)).toBe("second");
+});
+
+test("nested folder-upload files show up in the Files tab listing", async () => {
+  const vfs = new MemoryVfs();
+  await saveAttachments(vfs, ROOT, [
+    { name: "b.csv", contentBase64: b64("x"), relPath: "data/2026/b.csv" },
+  ]);
+  const listed = (await listWorkspace(vfs, ROOT)).map((f) => f.path);
+  expect(listed).toContain("uploads/data/2026/b.csv");
+});
+
+test("hostile relPaths are rejected loudly, never clamped or flattened", async () => {
+  const vfs = new MemoryVfs();
+  const bad = [
+    "../escape.txt", // traversal out of uploads/
+    "docs/../../auth.json", // traversal via inner segment
+    "docs//a.txt", // empty segment
+    "docs/.hidden/a.txt", // hidden dir segment
+    "docs/.env", // hidden file segment
+    "docs\\a.txt/b.txt", // backslash inside a segment
+    "plain.txt", // single segment must arrive as `name`, not relPath
+  ];
+  for (const relPath of bad) {
+    await expect(
+      saveAttachments(vfs, ROOT, [
+        { name: "a.txt", contentBase64: b64("x"), relPath },
+      ]),
+    ).rejects.toThrow(AttachmentError);
+  }
+  // Nothing may have been written by any of the rejected uploads.
+  expect(await vfs.list(ROOT)).toEqual([]);
+});
+
+test("POST with relPath stores nested and returns the nested path", async () => {
+  const vfs = new MemoryVfs();
+  const post = fakeRes();
+  await handleAttachments(
+    vfs,
+    PATHS,
+    CTX,
+    "POST",
+    "attachments",
+    fakeReq({
+      files: [
+        {
+          name: "notes.txt",
+          contentBase64: b64("n"),
+          relPath: "trip/notes.txt",
+        },
+      ],
+    }),
+    post.res,
+  );
+  expect(post.state.status).toBe(200);
+  expect((post.state.body as { paths: string[] }).paths).toEqual([
+    "uploads/trip/notes.txt",
+  ]);
+  expect(await vfs.readText(`${ROOT}/uploads/trip/notes.txt`)).toBe("n");
+});
+
+test("a non-string relPath 400s", async () => {
+  const vfs = new MemoryVfs();
+  const post = fakeRes();
+  await handleAttachments(
+    vfs,
+    PATHS,
+    CTX,
+    "POST",
+    "attachments",
+    fakeReq({
+      files: [{ name: "a.txt", contentBase64: b64("x"), relPath: 7 }],
+    }),
+    post.res,
+  );
+  expect(post.state.status).toBe(400);
+});
+
 test("traversal or dotfile in filename is rejected, never silently clamped", async () => {
   const vfs = new MemoryVfs();
   await expect(

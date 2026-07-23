@@ -152,6 +152,12 @@ export type {
 } from "./ai-elements/suggestion";
 // === AI Elements: Suggestion ===
 export { Suggestion, Suggestions } from "./ai-elements/suggestion";
+export {
+  attachmentFolderRoot,
+  attachmentRelativePath,
+  MAX_ATTACHMENT_FILES,
+  TooManyAttachmentFilesError,
+} from "./attachment-folders";
 export type {
   AttachmentInvocation,
   AttachmentReference,
