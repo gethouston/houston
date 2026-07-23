@@ -28,6 +28,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
+    "@houston/agentstore-client": "workspace:*",
+    "@houston/agentstore-contract": "workspace:*",
     "@types/node": "22.20.0",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",

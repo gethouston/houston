@@ -15,6 +15,7 @@ import {
   setCreatorVerified,
 } from "@/lib/store-admin-client";
 import { CreatorReportsTab } from "./creator-reports-tab";
+import { GrantHandleForm } from "./grant-handle-form";
 
 type Action = "verify" | "unverify" | "release";
 
@@ -74,6 +75,8 @@ export function CreatorsTab({
 
   return (
     <div className="flex flex-col gap-8">
+      <GrantHandleForm getToken={getToken} onGranted={setHandle} />
+
       <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
         <div>
           <h2 className="font-display text-base font-semibold">

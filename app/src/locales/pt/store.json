@@ -16,7 +16,6 @@
   "retry": "Tentar de novo",
   "showMore": "Mostrar mais agentes",
   "detail": {
-    "by": "Criado por {{name}}",
     "skills": "Habilidades",
     "integrations": "Funciona com",
     "learnings_one": "Vem com {{count}} aprendizado de uso real",
@@ -124,7 +123,6 @@
     "claimBody": "Escolha um @handle público para as pessoas encontrarem em um só lugar todos os agentes que você publica."
   },
   "creator": {
-    "by": "Por {{name}}",
     "viewProfile": "Ver perfil",
     "verified": "Verificado",
     "agents_one": "{{count}} agente",

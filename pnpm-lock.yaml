@@ -15,6 +15,12 @@ importers:
       '@biomejs/biome':
         specifier: 2.5.0
         version: 2.5.0
+      '@houston/agentstore-client':
+        specifier: workspace:*
+        version: link:packages/agentstore-client
+      '@houston/agentstore-contract':
+        specifier: workspace:*
+        version: link:packages/agentstore-contract
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0

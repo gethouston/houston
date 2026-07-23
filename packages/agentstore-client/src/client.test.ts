@@ -595,6 +595,55 @@ describe("AgentStoreClient — creator admin", () => {
     expect(JSON.parse(String(calls[0].init.body))).toEqual({ verified: true });
   });
 
+  it("adminGrantCreatorHandle → POST /admin/creators/{handle}/grant, unwrapping the profile", async () => {
+    const profile = {
+      handle: "houston",
+      displayName: "Houston",
+      bio: null,
+      avatarUrl: null,
+      verified: false,
+      links: {},
+      createdAt: "2026-07-17T00:00:00Z",
+      updatedAt: "2026-07-17T00:00:00Z",
+    };
+    const { fetchImpl, calls } = stubFetch(jsonRes({ profile }));
+    const res = await client(fetchImpl, token).adminGrantCreatorHandle(
+      "houston",
+      { userId: "u-official", displayName: "Houston" },
+    );
+    expect(res).toEqual(profile);
+    expect(calls[0].init.method).toBe("POST");
+    expect(calls[0].url).toBe(
+      `${BASE}${STORE_API_PREFIX}/admin/creators/houston/grant`,
+    );
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({
+      userId: "u-official",
+      displayName: "Houston",
+    });
+    expect(headersOf(calls[0]).get("authorization")).toBe("Bearer tok");
+  });
+
+  it("adminGrantCreatorHandle → percent-encodes the handle and omits displayName when absent", async () => {
+    const { fetchImpl, calls } = stubFetch(jsonRes({ profile: {} }));
+    await client(fetchImpl, token).adminGrantCreatorHandle("a/b", {
+      userId: "u1",
+    });
+    expect(calls[0].url).toBe(
+      `${BASE}${STORE_API_PREFIX}/admin/creators/a%2Fb/grant`,
+    );
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({ userId: "u1" });
+  });
+
+  it("adminGrantCreatorHandle → maps a handle_taken conflict", async () => {
+    const { fetchImpl } = stubFetch(jsonRes({ error: "handle_taken" }, 409));
+    const err = await client(fetchImpl, token)
+      .adminGrantCreatorHandle("houston", { userId: "u1" })
+      .catch((e) => e);
+    expect(err).toBeInstanceOf(StoreApiError);
+    expect(err.status).toBe(409);
+    expect(err.code).toBe("handle_taken");
+  });
+
   it("adminReleaseHandle → POST /admin/creators/{handle}/release", async () => {
     const { fetchImpl, calls } = stubFetch(jsonRes({ ok: true }));
     await client(fetchImpl, token).adminReleaseHandle("felipe");

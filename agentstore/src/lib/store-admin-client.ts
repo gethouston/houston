@@ -11,9 +11,11 @@
  * `@houston/agentstore-client`.
  */
 import {
+  type AdminGrantHandleInput,
   type AdminQueueItem,
   type AdminReport,
   AgentStoreClient,
+  type CreatorProfile,
   type CreatorReport,
   type PurgeResult,
   type ReportStatus,
@@ -75,6 +77,15 @@ export async function setCreatorVerified(
   verified: boolean,
 ): Promise<void> {
   await admin(token).adminSetCreatorVerified(handle, verified, NO_STORE);
+}
+
+/** Grant a creator handle to a user, materializing or moving their profile. */
+export function grantCreatorHandle(
+  token: string,
+  handle: string,
+  input: AdminGrantHandleInput,
+): Promise<CreatorProfile> {
+  return admin(token).adminGrantCreatorHandle(handle, input, NO_STORE);
 }
 
 /** Release (null) a creator's handle; it becomes immediately claimable. */

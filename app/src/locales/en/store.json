@@ -16,7 +16,6 @@
   "retry": "Try again",
   "showMore": "Show more agents",
   "detail": {
-    "by": "Made by {{name}}",
     "skills": "Skills",
     "integrations": "Works with",
     "learnings_one": "Comes with {{count}} learning from real use",
@@ -124,7 +123,6 @@
     "claimBody": "Pick a public @handle so people can find every agent you publish in one place."
   },
   "creator": {
-    "by": "By {{name}}",
     "viewProfile": "View profile",
     "verified": "Verified",
     "agents_one": "{{count}} agent",
