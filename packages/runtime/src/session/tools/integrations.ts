@@ -2,7 +2,7 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { recordApproval, recordConnection, recordSignin } from "../interaction";
-import { assertNotAutoMode, assertNotPlanMode } from "../live-mode-gate";
+import { assertNotPlanMode } from "../live-mode-gate";
 import { currentTurnMode } from "../turn-mode-context";
 
 /**
@@ -495,10 +495,11 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     parameters: ConnectParams,
     executionMode: "sequential",
     async execute(_id: string, params: ConnectParams) {
-      // Live gates for the mid-turn Mode-pill switch: connecting an app both
-      // waits on the user (never in Autopilot) and sets up a real-world
-      // capability (not while planning).
-      assertNotAutoMode("wait for the user to connect an app");
+      // Live gate for the mid-turn Mode-pill switch: connecting an app sets up
+      // a real-world capability, off-limits while planning. Autopilot is NOT
+      // gated (HOU-853): the recorded step doesn't hold the turn open — it ends
+      // the turn with the connect card, and the live connection auto-continues
+      // the run (same shape as request_credential).
       assertNotPlanMode("ask the user to connect an app");
       const toolkit = normalizeToolkitSlug(params.toolkit);
       if (!toolkit)
@@ -521,10 +522,13 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
 }
 
 /**
- * The in-chat connect hand-off tool. A blocking/interactive tool (it waits for
- * the user to connect an app), so — like `ask_user` — it is EXCLUDED from
- * Autopilot ("auto") mode, which never waits on the user. Named here so the
- * mode tool filter can reference it without a string literal.
+ * The in-chat connect hand-off tool. Available in EVERY acting mode, Autopilot
+ * included (HOU-853): a missing connection is the one thing autonomy cannot
+ * produce, and the recorded step doesn't hold the turn open — it ends the turn
+ * with the connect card, and the live connection auto-continues the run (the
+ * same rationale as `request_credential`). Only Plan mode withholds it (no
+ * real-world setup while planning). Named here so the mode tool filter can
+ * reference it without a string literal.
  */
 export const REQUEST_CONNECTION_TOOL_NAME = "request_connection";
 

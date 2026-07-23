@@ -4,9 +4,10 @@
  * `execute` is a normal turn (Houston can read, act, and change things).
  * `plan` pins a read-only planning turn: the runtime restricts the turn to
  * read-only tools and a planning overlay via the per-turn pin.
- * `auto` (Autopilot) is fire-and-forget: the runtime removes the blocking
- * tools (ask_user, request_connection) so the agent finishes the task with
- * what it has instead of pausing to ask, then reports back. An UNPINNED turn
+ * `auto` (Autopilot) is fire-and-forget: the runtime removes ask_user so the
+ * agent finishes the task with what it has instead of pausing to ask, then
+ * reports back (a missing app connection still queues a connect card, which
+ * ends the turn and auto-continues once connected — HOU-853). An UNPINNED turn
  * is always `execute`, so `plan`/`auto` only take effect on sends that forward
  * the pin as `modeOverride`. A pick while a turn is RUNNING additionally
  * applies to that turn live (`tauriChat.setLiveTurnMode` — Claude Code's

@@ -59,3 +59,11 @@ test("the auto overlay establishes the never-wait, act-and-report contract", () 
   expect(lower).toContain("assum");
   expect(lower).toContain("report");
 });
+
+test("the auto overlay teaches the connect hand-off instead of writing apps off (HOU-853)", () => {
+  // request_connection survives Autopilot (tool-selection.ts): an unconnected
+  // app must produce a connect card, never a "go connect it yourself" reply.
+  const lower = AUTO_MODE_OVERLAY.toLowerCase();
+  expect(lower).toContain("request_connection");
+  expect(lower).toContain("not connected");
+});

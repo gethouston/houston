@@ -180,19 +180,21 @@ test("save_routine is bridged for execute/auto but stripped from plan", () => {
   );
 });
 
-test("auto mode keeps the integration + suggest_reusable tools but drops the blocking tools", () => {
+test("auto mode keeps the integration + suggest_reusable tools but drops ask_user", () => {
   const { tools, mcp } = build(INTEGRATIONS, "auto");
-  // Autopilot never waits on the user: ask_user + request_connection are gone
-  // (and plan_ready is plan-only). The acting integration tools stay,
-  // suggest_reusable stays (it never blocks the turn), and request_credential
-  // stays — an API key is the one thing autonomy cannot produce, and its card
-  // auto-continues the run.
+  // Autopilot never waits on the user's judgment: ask_user is gone (and
+  // plan_ready is plan-only). The acting integration tools stay,
+  // suggest_reusable stays (it never blocks the turn), and request_connection
+  // + request_credential stay (HOU-853) — a missing connection or API key is
+  // the one thing autonomy cannot produce, and the queued card ends the turn
+  // and auto-continues the run.
   expect(new Set(tools.map((t) => t.name))).toEqual(
     new Set([
       "suggest_reusable",
       "save_routine",
       "integration_search",
       "integration_execute",
+      "request_connection",
       "custom_integration_detect",
       "custom_integration_add",
       "request_credential",
@@ -204,6 +206,7 @@ test("auto mode keeps the integration + suggest_reusable tools but drops the blo
       "mcp__houston__save_routine",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
+      "mcp__houston__request_connection",
       "mcp__houston__custom_integration_detect",
       "mcp__houston__custom_integration_add",
       "mcp__houston__request_credential",

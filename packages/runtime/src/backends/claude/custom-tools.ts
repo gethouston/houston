@@ -76,10 +76,12 @@ export interface HoustonMcpInput {
   /**
    * The turn's execution mode, applied as the SAME tool filter the pi path uses
    * (`toolNamesForMode`): "plan" keeps `ask_user` + `plan_ready` (the acting
-   * integration tools are withheld), "auto" drops the blocking tools (`ask_user`,
-   * `request_connection`) and `plan_ready` while KEEPING `integration_search` /
-   * `integration_execute`, and "execute" (or absent) exposes the full built set
-   * minus `plan_ready` (plan-only). `plan_ready` never survives outside plan.
+   * integration tools are withheld), "auto" drops `ask_user` (the one blocking
+   * tool) and `plan_ready` while KEEPING `integration_search` /
+   * `integration_execute` / `request_connection` (the queued connect card ends
+   * the turn instead of holding it open — HOU-853), and "execute" (or absent)
+   * exposes the full built set minus `plan_ready` (plan-only). `plan_ready`
+   * never survives outside plan.
    * `suggest_reusable` mirrors the acting tools' reach — it survives execute AND
    * auto (it never blocks the turn) but never plan (plan is not a finished task).
    */

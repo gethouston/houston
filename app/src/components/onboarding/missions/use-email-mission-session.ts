@@ -128,7 +128,8 @@ export function useEmailMissionSession({
           modelOverride: model,
           effortOverride: "medium",
           // Autopilot: the onboarding turn must SEND the email on the first
-          // message, not pause on ask_user/request_connection questions.
+          // message, not pause on ask_user questions (the email app was
+          // already connected earlier in the tutorial).
           modeOverride: "auto",
         },
       );

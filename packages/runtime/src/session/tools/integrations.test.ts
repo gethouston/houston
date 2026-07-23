@@ -487,7 +487,7 @@ test("the turn-mode header is sent iff the turn is Autopilot", async () => {
   expect(bare[0]?.headers["x-houston-turn-mode"]).toBeUndefined();
 });
 
-test("live mode gates: a turn switched to Plan refuses execute; Autopilot refuses request_connection", async () => {
+test("live mode gates: a turn switched to Plan refuses execute and the connect hand-off", async () => {
   // The user flipped the Mode pill to Plan while the turn ran: acting on the
   // user's apps refuses BEFORE any network call, with the planning instruction.
   const calls = mockFetch(() => ({ body: { successful: true } }));
@@ -496,18 +496,30 @@ test("live mode gates: a turn switched to Plan refuses execute; Autopilot refuse
   ).rejects.toThrow(/Plan mode/);
   expect(calls).toHaveLength(0);
 
-  // A flip to Autopilot mid-turn: waiting on the user to connect an app refuses.
-  await expect(
-    runWithTurnMode({ current: "auto" }, () =>
-      run(requestConnection, { toolkit: "gmail" }),
-    ),
-  ).rejects.toThrow(/Autopilot mode/);
   // And Plan refuses the connect hand-off too (setup while planning).
   await expect(
     runWithTurnMode({ current: "plan" }, () =>
       run(requestConnection, { toolkit: "gmail" }),
     ),
   ).rejects.toThrow(/Plan mode/);
+});
+
+test("Autopilot does NOT gate request_connection: the connect step is recorded (HOU-853)", async () => {
+  // Auto never waits on the user's judgment, but a missing connection is the
+  // one thing autonomy cannot produce — the queued connect card ends the turn
+  // (it never holds it open) and the live connection auto-continues the run,
+  // so the hand-off works in Autopilot exactly as in Coworker.
+  const holder = newInteractionHolder();
+  await runWithTurnMode({ current: "auto" }, () =>
+    runWithInteractionCapture(holder, () =>
+      run(requestConnection, { toolkit: "gmail", reason: "to send email" }),
+    ),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      { kind: "connect", id: "c1", toolkit: "gmail", reason: "to send email" },
+    ],
+  });
 });
 
 test("C2: attaches the turn's acting-as header inside a turn, and nothing outside one", async () => {
