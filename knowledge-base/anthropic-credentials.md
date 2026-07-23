@@ -86,3 +86,34 @@ the traps at the bottom — read them before touching any of this.
    the built-in PowerShell dir on the child PATH, and the login spawn adds
    `CREATE_NO_WINDOW`. Never PATH-scan for `bash.exe` there —
    `System32\bash.exe` is WSL and wedges the CLI.
+
+## "Connected" means USABLE, not present (all providers)
+
+The status surface (`GET /providers` → the AI Models page + the chat model
+picker; the frontend maps `configured` straight to authenticated/
+unauthenticated) reports a provider connected only when its credential can
+actually serve a turn:
+
+- **auth.json entries** (`auth/storage.ts` `credentialUsable`): an API key is
+  always usable (live-verified at connect); an OAuth entry with a refresh
+  token is usable (pi refreshes it); an OAuth entry with refresh="" (the
+  Gate #2 serve shape) is usable only until `expires`. A dead served token
+  left behind by a control-plane outage no longer reads "Connected".
+- **The materialized `.credentials.json`** (`backends/claude/
+  credentials-file.ts` `claudeCredentialFileUsable`): judged by content, not
+  existence — refresh token present, or unexpired access token. A stale file
+  used to short-circuit `anthropicCredentialCached()` to connected even when
+  the `claude auth status` probe correctly said logged-out.
+- **Turn-failure feedback** (`auth/credential-health.ts`): a turn that fails
+  `unauthenticated` marks the provider's CURRENT credential (by fingerprint)
+  as broken — covering deaths invisible on disk (rotated-away refresh token,
+  upstream revocation). The mark auto-heals when the credential changes and
+  on the next clean turn. In-memory only.
+- **Local model reachability** (`ai/endpoint-reachability.ts`): the
+  OpenAI-compatible provider's status row additionally requires a cached
+  `GET <baseUrl>/models` probe to succeed (TTL'd, warmed by `GET /providers`);
+  a configured-but-stopped Ollama/LM Studio/Jan server reads disconnected.
+
+The TURN path deliberately keeps looser gating (`providerConfigured`): a turn
+on a suspect provider should run and surface its REAL typed card (network /
+reconnect), and a clean turn is what heals a stale failure mark.

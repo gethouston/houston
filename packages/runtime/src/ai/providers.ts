@@ -5,8 +5,10 @@ import type { Api, KnownProvider, Model } from "@earendil-works/pi-ai";
 // (the new `Models`/`Provider` collection API needs an instantiated registry
 // we don't otherwise carry here).
 import { getModel } from "@earendil-works/pi-ai/compat";
+import { authFailureActive } from "../auth/credential-health";
 import { authStorage, providerConnected } from "../auth/storage";
 import { config } from "../config";
+import { endpointReachableCached } from "./endpoint-reachability";
 import {
   buildActiveCustomModel,
   customEndpointConfigured,
@@ -221,6 +223,24 @@ export function modelFor(provider: ProviderId): string {
 function providerConfigured(id: ProviderId): boolean {
   if (id === OPENAI_COMPATIBLE) return customEndpointConfigured();
   return providerConnected(authStorage, id);
+}
+
+/**
+ * The STATUS-surface truth: configured AND currently able to serve a turn.
+ * Two health signals layer on top of `providerConfigured`:
+ * - `authFailureActive` — a turn already failed `unauthenticated` on this
+ *   exact credential (auth/credential-health.ts), so "Connected" would be a
+ *   lie until the credential changes or a turn succeeds;
+ * - the local endpoint's reachability probe — a configured but stopped/
+ *   unreachable OpenAI-compatible server must not offer its model.
+ * Deliberately NOT used by the turn path (`activeProvider`): a turn on a
+ * suspect provider should run and surface its REAL typed error (network card,
+ * reconnect card) — and a clean turn is what heals a stale failure mark.
+ */
+function providerUsable(id: ProviderId): boolean {
+  if (!providerConfigured(id)) return false;
+  if (authFailureActive(id)) return false;
+  return id === OPENAI_COMPATIBLE ? endpointReachableCached() : true;
 }
 
 /** The agent's saved reasoning effort for new turns, or null (model default). */
@@ -495,12 +515,16 @@ function safeModelIds(provider: ProviderId): string[] {
   return piModelIds(provider);
 }
 
-/** One /providers status row for a provider id. */
+/** One /providers status row for a provider id. `configured` reports the
+ *  status-surface truth (`providerUsable`): the frontend maps it straight to
+ *  authenticated/unauthenticated for the AI Models page and the chat model
+ *  picker, so it must mean "this provider's models can actually answer",
+ *  not merely "some credential/config artifact exists". */
 function providerRow(id: ProviderId, name: string, active: ProviderId | null) {
   return {
     id,
     name,
-    configured: providerConfigured(id),
+    configured: providerUsable(id),
     isActive: id === active,
     activeModel: modelFor(id),
     models: safeModelIds(id),
@@ -519,7 +543,7 @@ export function listProviders() {
   const curated = new Set(PROVIDERS.map((p) => p.id));
   const rows = PROVIDERS.map((p) => providerRow(p.id, p.name, active));
   for (const id of piProviderIds()) {
-    if (!curated.has(id) && providerConfigured(id))
+    if (!curated.has(id) && providerUsable(id))
       rows.push(providerRow(id, id, active));
   }
   return rows;

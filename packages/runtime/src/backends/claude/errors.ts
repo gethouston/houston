@@ -5,6 +5,7 @@ import {
   extractRetryAfterSeconds,
 } from "../../ai/provider-error";
 import { logProviderError } from "../../ai/provider-error-log";
+import { noteAuthFailure } from "../../auth/credential-health";
 
 /** The pi provider id this backend runs as — every error is attributed to it. */
 const PROVIDER = "anthropic";
@@ -45,7 +46,13 @@ export function mapSdkError(
   const status = ctx.status ?? null;
   const mapped = mapSdkEnum(error, message, model, status, ctx);
   // Fall-through cases delegate to classifyText, which logs for itself.
-  if (mapped) logProviderError(mapped, { model, status, sdkError: error });
+  if (mapped) {
+    logProviderError(mapped, { model, status, sdkError: error });
+    // Feed the failure into the status surface: the credential the turn just
+    // ran on cannot authenticate, so "Connected" would be a lie until it
+    // changes (auth/credential-health.ts).
+    if (mapped.kind === "unauthenticated") noteAuthFailure(mapped.provider);
+  }
   return mapped ?? classifyText(message, model, status);
 }
 
@@ -123,6 +130,8 @@ export function classifyText(
     status,
   });
   logProviderError(classified, { model, status });
+  if (classified.kind === "unauthenticated")
+    noteAuthFailure(classified.provider);
   return classified;
 }
 

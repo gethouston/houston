@@ -11,6 +11,7 @@ import type {
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { classifyProviderError } from "../ai/provider-error";
+import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
 import { createPiBackend } from "../backends/pi/backend";
 import { config } from "../config";
 import {
@@ -283,6 +284,9 @@ export async function runPiTurn(
       turnId,
     });
     if (fileChanges) emit({ type: "file_changes", data: fileChanges });
+    // A completed turn proves this provider's credential works — heal any
+    // stale turn-failure mark (auth/credential-health.ts; mirrors exec-turn).
+    if (!providerError) clearAuthFailure(provider);
     // Carry the pending question only on a clean turn — never alongside a
     // provider error (mirrors exec-turn: only the clean `done` carries it).
     return providerError ? {} : { pendingInteraction: interaction.pending };
@@ -311,6 +315,10 @@ export async function runPiTurn(
         tools.length === 0
       )
         thrown.undelivered_prompt = text;
+      // A thrown auth failure never crossed the backends' streamed-error
+      // seams — feed it into the status surface (auth/credential-health.ts;
+      // mirrors exec-turn).
+      if (thrown.kind === "unauthenticated") noteAuthFailure(thrown.provider);
       if (thrown.kind !== "unknown") {
         appendAssistantMessageAt(
           conversationsDir,

@@ -1,7 +1,8 @@
 import { execFile } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { rmSync } from "node:fs";
 import { buildClaudeEnv } from "./backend";
 import { resolveClaudeExecutable } from "./binary-path";
+import { claudeCredentialFileUsable } from "./credentials-file";
 import { claudeCredentialsFile, claudeLoginConfigDir } from "./paths";
 
 /**
@@ -133,18 +134,19 @@ export async function refreshAnthropicCredential(
  * The sync "is anthropic connected?" signal, hit at turn time by
  * `activeProvider`/`providerConnected`.
  *
- * On the POD (Linux) the credential is materialized as a file — a sync stat is
+ * On the POD (Linux) the credential is materialized as a file — a sync read is
  * instant, needs no subprocess, and is correct the moment the file is written,
- * so there is no cold-start race and no probe spam on the turn path. macOS-local
- * caches in the Keychain (no file to stat), so there we fall back to the last
- * `claude auth status` probe result (warmed by `getAuthStatus`).
+ * so there is no cold-start race and no probe spam on the turn path. The file
+ * must actually be USABLE (`claudeCredentialFileUsable`), not merely present: a
+ * stale materialized file whose token expired with no refresh token used to
+ * short-circuit this to "connected" — even shadowing a probe that correctly
+ * said logged-out — so the AI Models page showed Connected while every turn
+ * failed with the reconnect card. macOS-local caches in the Keychain (no file
+ * to read), so a missing/dead file falls back to the last `claude auth status`
+ * probe result (warmed by `getAuthStatus`).
  */
 export function anthropicCredentialCached(): boolean {
-  try {
-    if (existsSync(claudeCredentialsFile())) return true;
-  } catch {
-    // A stat failure just defers to the probe cache below.
-  }
+  if (claudeCredentialFileUsable(claudeCredentialsFile())) return true;
   return cache ?? false;
 }
 

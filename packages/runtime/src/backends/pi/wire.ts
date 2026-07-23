@@ -7,6 +7,7 @@ import {
 } from "@houston/runtime-client";
 import { classifyProviderError } from "../../ai/provider-error";
 import { logProviderError } from "../../ai/provider-error-log";
+import { noteAuthFailure } from "../../auth/credential-health";
 
 /**
  * Normalize pi's per-message `Usage` into our provider-agnostic `TokenUsage`.
@@ -134,6 +135,11 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
           status,
         });
         logProviderError(classified, { model: msg.model ?? null, status });
+        // Feed an auth failure into the status surface: the credential the
+        // turn just ran on cannot authenticate, so "Connected" would be a lie
+        // until it changes (auth/credential-health.ts).
+        if (classified.kind === "unauthenticated")
+          noteAuthFailure(classified.provider);
         return { type: "provider_error", data: classified };
       }
       // Otherwise its usage carries the latest request's context size = the

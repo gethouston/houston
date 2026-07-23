@@ -136,6 +136,9 @@ test("GET /providers hydrates served credentials before listing providers", asyn
   process.env.HOUSTON_DATA_DIR = dataDir;
   process.env.HOUSTON_CONTROL_PLANE_URL = "http://control-plane.test";
   process.env.HOUSTON_SANDBOX_TOKEN = "sbx-token";
+  // A served access token is short-TTL but FRESH — `configured` only counts a
+  // usable credential, so the fixture's expiry must sit in the future.
+  const servedExpires = Date.now() + 3_600_000;
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.includes("provider=openai-codex")) {
@@ -144,7 +147,7 @@ test("GET /providers hydrates served credentials before listing providers", asyn
           provider: "openai-codex",
           kind: "oauth",
           access: "AT-served",
-          expires: 1_730_000_000_000,
+          expires: servedExpires,
           accountId: null,
           enterpriseUrl: null,
         }),
@@ -178,7 +181,7 @@ test("GET /providers hydrates served credentials before listing providers", asyn
       type: "oauth",
       access: "AT-served",
       refresh: "",
-      expires: 1_730_000_000_000,
+      expires: servedExpires,
     });
     expect(
       (

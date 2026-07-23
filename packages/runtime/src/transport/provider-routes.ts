@@ -1,4 +1,5 @@
 import { parseClaudeOAuthEnvelope } from "@houston/runtime-client";
+import { refreshEndpointReachability } from "../ai/endpoint-reachability";
 import { customEndpointStatus } from "../ai/openai-compatible";
 import {
   claimActiveProvider,
@@ -29,10 +30,15 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
 
   if (method === "GET" && path === "/providers") {
     await syncServedCredentialSafe("providers");
-    // Warm the anthropic shared-dir credential probe so a just-completed browser
-    // login flips `configured` on this poll (the card-status path goes through
-    // /providers, not /auth/status). listProviders() then reads the fresh cache.
-    await refreshAnthropicCredential();
+    // Warm the cached health signals listProviders() reads synchronously: the
+    // anthropic shared-dir credential probe (so a just-completed browser login
+    // flips `configured` on this poll — the card-status path goes through
+    // /providers, not /auth/status) and the local endpoint's reachability
+    // probe (so a stopped Ollama/LM Studio server stops offering its model).
+    await Promise.all([
+      refreshAnthropicCredential(),
+      refreshEndpointReachability(),
+    ]);
     json(res, 200, listProviders());
     return true;
   }
