@@ -1,0 +1,168 @@
+# Ship train — publishing the cloud draft is THE ship button.
+#
+# THE TRAIN (one version, every piece):
+#   1. CUT (daily-cloud-cut.yml, 12:45 UTC Mon–Fri) — tag `cloud-v<version>`.
+#   2. DRAFT (release.yml) — prod + staging DMGs on a draft PRERELEASE; the
+#      staging engine fleet already runs the current main engine (it rolls on
+#      every merge), so staging DMG + staging engine = the exact 0.5.N pairing.
+#   3. QA — the team tests the staging DMG in the 08:30 (Bogotá) daily.
+#   4. PUBLISH (human, one click) — and everything ships together:
+#        · cloud-updater-manifest.yml flips the `cloud-latest` pointer, so
+#          every desktop auto-updates to the new app.
+#        · THIS workflow promotes the prod ENGINE fleet to the same train and
+#          stamps the version label. Before this file existed, the engine roll
+#          was a separate manual `engine-pod-v*` tag push that people forgot,
+#          so prod engine drifted behind the app for days.
+#
+# WHAT "SAME TRAIN" MEANS FOR THE ENGINE:
+#   Engine images build per engine-touching merge (engine-pod-image.yml is
+#   paths-filtered), so the engine of train `cloud-v<V>` is the NEWEST
+#   `engine-pod:<sha>` at-or-before the release's base commit. We find it by
+#   walking the FIRST-PARENT chain from the release commit's parent (the main
+#   tip the train was cut from) and probing Artifact Registry for each sha —
+#   first hit wins. First-parent only: side-branch commits never had images
+#   built for their own shas, and walking them would probe noise.
+#
+# SEQ = EPOCH SECONDS: cloud's roll-engine.yml skips any dispatch whose seq is
+#   <= the stored `engine-image-seq` (out-of-order guard). Both this workflow
+#   and engine-pod-image.yml fire prod dispatches, and their run_numbers are
+#   incomparable across workflows — so every sender uses epoch seconds, which
+#   stay monotonic no matter who sends. The payload KEY stays `run_number`
+#   (cloud reads client_payload.run_number).
+#
+# THE `engine-pod-v<version>` TAG IS A LABEL, NOT A TRIGGER: it is pushed with
+#   the default GITHUB_TOKEN, whose pushes deliberately do NOT trigger other
+#   workflows (GitHub's recursive-workflow guard) — so stamping the label can
+#   never rebuild or re-roll anything. It exists so humans get one version
+#   namespace: "train 0.5.24" names the app AND the engine it shipped with.
+#   Pushing an `engine-pod-v*` tag MANUALLY (a real user push, which DOES
+#   trigger engine-pod-image.yml's tag path) remains the break-glass prod
+#   engine roll, independent of any release.
+#
+# OUT OF SCOPE (deliberately): the prod gateway/control-plane (gethouston/cloud
+#   repo) deploys on its own release tag and is not yet part of this train.
+
+name: Ship train
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write # the engine-pod-v* label tag push (GITHUB_TOKEN, non-triggering)
+  id-token: write # Workload Identity Federation (Artifact Registry probe)
+
+concurrency:
+  group: ship-train
+  cancel-in-progress: false
+
+env:
+  REGISTRY: us-east1-docker.pkg.dev/gethouston/houston
+
+jobs:
+  promote:
+    # Cloud channel drafts only: local `v*` and manual `engine-pod-v*` release
+    # publishes are not trains, and `cloud-latest` is the machine-managed
+    # updater pointer (cloud- prefixed but never a train).
+    if: >-
+      startsWith(github.event.release.tag_name, 'cloud-v') &&
+      github.event.release.tag_name != 'cloud-latest'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy-engine@gethouston.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      # The release commit's FIRST PARENT is the main tip the train was cut
+      # from (the release commit itself lives only under the tag). Walk that
+      # first-parent chain for the newest sha with a published engine image.
+      - name: Resolve the train's engine image
+        id: engine
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#cloud-v}"
+          BASE_SHA=$(git rev-parse "${TAG}^")
+          echo "Train ${VERSION}: base commit ${BASE_SHA}"
+
+          TRAIN_SHA=""
+          DIGEST=""
+          for sha in $(git log --first-parent --format=%H -n 100 "$BASE_SHA"); do
+            if DIGEST=$(gcloud artifacts docker images describe \
+                "${REGISTRY}/engine-pod:${sha}" \
+                --format='value(image_summary.digest)' 2>/dev/null); then
+              TRAIN_SHA="$sha"
+              break
+            fi
+          done
+
+          if [ -z "$TRAIN_SHA" ] || [ -z "$DIGEST" ]; then
+            echo "::error::No engine-pod image found in the last 100 first-parent commits before ${BASE_SHA}. Something is wrong with engine-pod-image.yml — investigate before shipping; do not guess an image."
+            exit 1
+          fi
+
+          echo "Train engine: engine-pod:${TRAIN_SHA} (${DIGEST})"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "train_sha=${TRAIN_SHA}" >> "$GITHUB_OUTPUT"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      # Fire the prod roll — the same repository_dispatch contract
+      # engine-pod-image.yml's tag path uses (cloud/roll-engine.yml consumes
+      # it: ConfigMap write, converge ticker rolls the fleet busy-aware).
+      - name: Promote prod engine fleet
+        env:
+          GH_TOKEN: ${{ secrets.CLOUD_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          IMAGE="${REGISTRY}/engine-pod@${{ steps.engine.outputs.digest }}"
+          gh api repos/gethouston/cloud/dispatches \
+            -f event_type='engine-pod-published-prod' \
+            -F "client_payload[digest]=${{ steps.engine.outputs.digest }}" \
+            -F "client_payload[image]=$IMAGE" \
+            -F "client_payload[sha]=${{ steps.engine.outputs.train_sha }}" \
+            -F "client_payload[run_number]=$(date +%s)"
+          echo "::notice::Prod engine promotion dispatched for train ${{ steps.engine.outputs.version }} (${IMAGE})"
+
+      # Version label: engine-pod-v<version> at the train's engine sha. Pushed
+      # with GITHUB_TOKEN so it can never trigger a build (see header). A
+      # re-publish of the same release is a no-op when the label already points
+      # at the same sha; a label pointing ELSEWHERE is a hard error — a train's
+      # label must never silently move.
+      - name: Stamp engine version label
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.engine.outputs.version }}"
+          TRAIN_SHA="${{ steps.engine.outputs.train_sha }}"
+          LABEL="engine-pod-v${VERSION}"
+
+          if EXISTING=$(git rev-parse -q --verify "refs/tags/${LABEL}" 2>/dev/null); then
+            EXISTING_TARGET=$(git rev-parse "${EXISTING}^{commit}")
+            if [ "$EXISTING_TARGET" = "$TRAIN_SHA" ]; then
+              echo "::notice::${LABEL} already points at ${TRAIN_SHA} (release re-published) — nothing to do."
+              exit 0
+            fi
+            echo "::error::${LABEL} already exists at ${EXISTING_TARGET}, but this train resolves to ${TRAIN_SHA}. A train label must never move — investigate before re-tagging."
+            exit 1
+          fi
+
+          git config user.name "houston-release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+          git tag -a "$LABEL" -m "Houston train ${VERSION} — engine label (app tag cloud-v${VERSION})" "$TRAIN_SHA"
+          git push origin "refs/tags/${LABEL}"
+          echo "::notice::Stamped ${LABEL} at ${TRAIN_SHA}"
+
+      - name: Summary
+        run: |
+          echo "::notice::Train ${{ steps.engine.outputs.version }} shipped: desktop updater flipped by cloud-updater-manifest.yml, prod engine rolling to engine-pod@${{ steps.engine.outputs.digest }} (sha ${{ steps.engine.outputs.train_sha }}), label engine-pod-v${{ steps.engine.outputs.version }} stamped."

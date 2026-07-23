@@ -12,10 +12,12 @@
 #      shadows the local channel's latest.json updater feed.
 #   3. QA         — the team downloads the staging DMG in the 08:30 (Bogotá)
 #      daily and smoke-tests it against the managed gateway.
-#   4. ROLL PROD  — once QA passes, an operator pushes an `engine-pod-v*` tag to
-#      roll the production engine pod image to match the app being shipped.
-#   5. PUBLISH    — the operator publishes the draft release (still a prerelease),
-#      which flips the `cloud-latest` pointer the cloud app's auto-updater polls.
+#   4. PUBLISH    — the operator publishes the draft release (still a prerelease):
+#      the ship button. cloud-updater-manifest.yml flips the `cloud-latest`
+#      pointer (desktops auto-update) AND ship-train.yml promotes the prod
+#      engine fleet to the same train, stamping an `engine-pod-v<version>`
+#      version label. Pushing an `engine-pod-v*` tag manually remains only the
+#      break-glass prod engine roll.
 #
 # This workflow owns ONLY step 1, on a schedule, so a fresh draft is waiting when
 # the team opens the 08:30 daily.
