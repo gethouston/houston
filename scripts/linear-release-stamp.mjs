@@ -1,27 +1,37 @@
 #!/usr/bin/env node
-// Linear release stamp — runs when a cloud-v* draft release is PUBLISHED (the
-// ship button). Downstream observer only: it must never block or fail a ship.
+// Linear release stamp — two moments of the release train, one script:
 //
-// What it does, per train:
-//   1. Diff this cloud-v* tag against the previous PUBLISHED cloud-v* release.
-//   2. Collect the PRs merged in between; extract `Fixes HOU-N` magic words
-//      from their bodies (the convention in the workspace CLAUDE.md).
-//   3. In Linear: apply a `cloud-vX.Y.Z` label (under the "Release" label
-//      group), move each issue to "Released" (never demoting Done/canceled),
-//      and comment a link to the release. Idempotent: an issue already carrying
-//      the release label is skipped, so re-running the workflow is safe.
-//   4. Append two changelogs to the GitHub release body: an internal list
-//      grouped by Linear project, and a WhatsApp draft with the reporter phone
-//      numbers pulled from User Bug issues (drives the notify-the-reporter
-//      step).
+//   STAMP_MODE=draft    fired by the cloud-v* TAG PUSH (the 07:45 cut; GitHub
+//                       Actions never fires on draft-release creation, but the
+//                       tag push that births the draft does). Applies the
+//                       `cloud-vX.Y.Z` label to every issue in the train so the
+//                       08:30 QA review is a Linear filter (App Review + label).
+//                       No state changes, no comments — the ship decision
+//                       hasn't happened yet.
 //
-// Env: LINEAR_API_KEY, GITHUB_TOKEN, REPO (owner/name), RELEASE_TAG,
-//      RELEASE_URL, RELEASE_ID.
+//   STAMP_MODE=publish  fired when the release is PUBLISHED (the ship button).
+//                       Moves the train's issues to "Released", comments the
+//                       release link, and appends two changelogs to the release
+//                       body: internal (grouped by Linear project) and a
+//                       WhatsApp draft with reporter phones from User Bug
+//                       issues.
+//
+// Idempotency: labels are add-if-missing; the state move + comment happen only
+// when the issue actually transitions (already-completed/canceled issues are
+// never touched); the body append is guarded by a marker. Re-running either
+// mode is safe.
+//
+// Deliberately an OBSERVER: exits 0 on failure so a Linear outage can never
+// block or taint a cut or a ship.
+//
+// Env: LINEAR_API_KEY, GITHUB_TOKEN, REPO (owner/name), STAMP_MODE,
+//      RELEASE_TAG; publish mode only: RELEASE_URL, RELEASE_ID.
 
 const {
   LINEAR_API_KEY,
   GITHUB_TOKEN,
   REPO,
+  STAMP_MODE,
   RELEASE_TAG,
   RELEASE_URL,
   RELEASE_ID,
@@ -69,14 +79,8 @@ function cmp(a, b) {
   return 0;
 }
 
-async function main() {
-  const cur = semver(RELEASE_TAG);
-  if (!cur) {
-    console.log(`Tag ${RELEASE_TAG} is not cloud-v*; nothing to do.`);
-    return;
-  }
-
-  // 1. Previous published cloud-v* release (drafts excluded; prereleases count —
+async function trainIssueKeys(cur) {
+  // Previous published cloud-v* release (drafts excluded; prereleases count —
   // cloud releases are deliberately kept prerelease, see daily-cloud-cut.yml).
   const releases = await gh(`/repos/${REPO}/releases?per_page=100`);
   const prev = releases
@@ -86,14 +90,14 @@ async function main() {
     .sort((a, b) => cmp(semver(b.tag_name), semver(a.tag_name)))[0];
   if (!prev) {
     console.log(
-      "No previous published cloud-v* release found; skipping (first train).",
+      "No previous published cloud-v* release; skipping (first train).",
     );
-    return;
+    return null;
   }
   console.log(`Train: ${prev.tag_name} -> ${RELEASE_TAG}`);
 
-  // 2. PRs merged between the two cut points. The compare API caps at 250
-  // commits; a daily train is far below that, but log loudly if truncated.
+  // PRs merged between the two cut points. The compare API caps at 250 commits;
+  // a daily train is far below that, but log loudly if truncated.
   const compare = await gh(
     `/repos/${REPO}/compare/${prev.tag_name}...${RELEASE_TAG}`,
   );
@@ -122,10 +126,20 @@ async function main() {
     }
   }
   console.log(`Linear issues: ${[...issueKeys].join(", ") || "none"}`);
-  if (issueKeys.size === 0) return;
+  return issueKeys;
+}
 
-  // 3. Linear: Released state + release label (created under the "Release"
-  // group on first use) + comment.
+async function main() {
+  const cur = semver(RELEASE_TAG || "");
+  if (!cur) {
+    console.log(`Tag ${RELEASE_TAG} is not cloud-v*; nothing to do.`);
+    return;
+  }
+  const publish = STAMP_MODE === "publish";
+
+  const issueKeys = await trainIssueKeys(cur);
+  if (!issueKeys || issueKeys.size === 0) return;
+
   const teamData = await lin(
     `query($t: String!) { team(id: $t) {
        states { nodes { id name type } }
@@ -183,30 +197,24 @@ async function main() {
       );
       const issue = d.issue;
       const labelNames = issue.labels.nodes.map((l) => l.name);
-      const alreadyStamped = labelNames.includes(RELEASE_TAG);
-      const isUserBug = labelNames.includes(USER_BUG_LABEL);
-      const phones =
-        (issue.description || "")
-          .match(/Reporter phone\(s\):\*{0,2}\s*([^\n]+)/)?.[1]
-          ?.trim() ?? null;
+      const actions = [];
 
-      if (!alreadyStamped) {
+      if (!labelNames.includes(RELEASE_TAG)) {
         await lin(
           `mutation($id: String!, $l: String!) { issueAddLabel(id: $id, labelId: $l) { success } }`,
-          {
-            id: issue.id,
-            l: tagLabel.id,
-          },
+          { id: issue.id, l: tagLabel.id },
         );
-        if (issue.state.name !== "Done" && issue.state.type !== "canceled") {
-          await lin(
-            `mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`,
-            {
-              id: issue.id,
-              s: released.id,
-            },
-          );
-        }
+        actions.push("labeled");
+      }
+      if (
+        publish &&
+        issue.state.type !== "completed" &&
+        issue.state.type !== "canceled"
+      ) {
+        await lin(
+          `mutation($id: String!, $s: String!) { issueUpdate(id: $id, input: { stateId: $s }) { success } }`,
+          { id: issue.id, s: released.id },
+        );
         await lin(
           `mutation($i: CommentCreateInput!) { commentCreate(input: $i) { success } }`,
           {
@@ -216,24 +224,27 @@ async function main() {
             },
           },
         );
+        actions.push("released");
       }
+
+      const phones =
+        (issue.description || "")
+          .match(/Reporter phone\(s\):\*{0,2}\s*([^\n]+)/)?.[1]
+          ?.trim() ?? null;
       stamped.push({
         key: issue.identifier,
         title: issue.title,
         project: issue.project?.name ?? "(no project)",
-        isUserBug,
-        phones: isUserBug ? phones : null,
+        isUserBug: labelNames.includes(USER_BUG_LABEL),
+        phones: labelNames.includes(USER_BUG_LABEL) ? phones : null,
       });
-      console.log(
-        `${issue.identifier}: ${alreadyStamped ? "already stamped" : "stamped"}`,
-      );
+      console.log(`${issue.identifier}: ${actions.join("+") || "no-op"}`);
     } catch (e) {
       console.warn(`${key}: ${e.message}`);
     }
   }
   if (stamped.length === 0) return;
 
-  // 4. Changelogs appended to the release body.
   const byProject = new Map();
   for (const s of stamped) {
     if (!byProject.has(s.project)) byProject.set(s.project, []);
@@ -246,30 +257,32 @@ async function main() {
       internal += `- ${s.key} — ${s.title}${s.isUserBug ? " 🐛" : ""}\n`;
   }
 
-  const bugs = stamped.filter((s) => s.isUserBug);
-  let wa = `\n## WhatsApp draft\n\n\`\`\`\n🚀 Nueva versión de Houston!\n`;
-  for (const s of stamped) wa += `✅ ${s.title}\n`;
-  wa += `Gracias a todos los que reportaron 🙌\n\`\`\`\n`;
-  if (bugs.length) {
-    wa += `\n**Notify reporters** (then clear the \`Notify pending\` label):\n`;
-    for (const b of bugs)
-      wa += `- ${b.key} → ${b.phones ?? "⚠️ no phone on issue"}\n`;
+  let wa = "";
+  if (publish) {
+    const bugs = stamped.filter((s) => s.isUserBug);
+    wa = `\n## WhatsApp draft\n\n\`\`\`\n🚀 Nueva versión de Houston!\n`;
+    for (const s of stamped) wa += `✅ ${s.title}\n`;
+    wa += `Gracias a todos los que reportaron 🙌\n\`\`\`\n`;
+    if (bugs.length) {
+      wa += `\n**Notify reporters** (then clear the \`Notify pending\` label):\n`;
+      for (const b of bugs)
+        wa += `- ${b.key} → ${b.phones ?? "⚠️ no phone on issue"}\n`;
+    }
+
+    const rel = await gh(`/repos/${REPO}/releases/${RELEASE_ID}`);
+    if (!(rel.body || "").includes(`## Linear — ${RELEASE_TAG}`)) {
+      await gh(`/repos/${REPO}/releases/${RELEASE_ID}`, {
+        method: "PATCH",
+        body: JSON.stringify({ body: (rel.body || "") + internal + wa }),
+      });
+    }
   }
 
-  const rel = await gh(`/repos/${REPO}/releases/${RELEASE_ID}`);
-  if (!(rel.body || "").includes(`## Linear — ${RELEASE_TAG}`)) {
-    await gh(`/repos/${REPO}/releases/${RELEASE_ID}`, {
-      method: "PATCH",
-      body: JSON.stringify({ body: (rel.body || "") + internal + wa }),
-    });
-  }
   if (process.env.GITHUB_STEP_SUMMARY) {
     const { appendFileSync } = await import("node:fs");
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, internal + wa);
   }
-  console.log(
-    `Stamped ${stamped.length} issues; changelogs appended to the release.`,
-  );
+  console.log(`${STAMP_MODE}: processed ${stamped.length} issues.`);
 }
 
 main().catch((e) => {
