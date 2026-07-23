@@ -48,7 +48,7 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
     async createSession(opts: CreateSessionOptions): Promise<HarnessSession> {
       // The turn's mode overlays its prompt (via the loader) and clamps the
       // allowlist through `toolNamesForMode`: plan → the read-only subset, auto →
-      // everything minus the blocking tools (ask_user/request_connection),
+      // everything minus ask_user (the one blocking tool),
       // execute → unchanged. The customTools list is UNCHANGED — pi gates its
       // custom tools by the `tools` name allowlist, so filtering the names here
       // drops the excluded tools from the model's reach without rebuilding the

@@ -162,34 +162,35 @@ describe("planToolNames", () => {
 });
 
 describe("autoToolNames", () => {
-  test("drops exactly the blocking tools from the full local selection", () => {
+  test("drops exactly ask_user from the full local selection", () => {
     const local = buildToolSelection({
       codeExecution: "local",
       integrations: true,
     });
-    // Auto keeps every read/write/exec/integration tool; it only removes the
-    // blocking tools. request_credential survives: an API key is the one thing
-    // autonomy cannot produce, and the card auto-continues the run (an auto
-    // add of a keyed custom integration was a dead end without it). Order is
-    // preserved (filter, not reorder).
+    // Auto keeps every read/write/exec/integration tool; it only removes
+    // ask_user (the one tool that waits on the user's judgment).
+    // request_connection and request_credential survive (HOU-853): a missing
+    // connection — like an API key — is the one thing autonomy cannot produce,
+    // and the queued card ends the turn instead of holding it open, then
+    // auto-continues the run. Order is preserved (filter, not reorder).
     expect(autoToolNames(local.toolNames)).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
       "suggest_reusable",
       "bash",
       "integration_search",
       "integration_execute",
+      "request_connection",
       "custom_integration_detect",
       "custom_integration_add",
       "request_credential",
     ]);
-    for (const dropped of ["ask_user", "request_connection"])
-      expect(autoToolNames(local.toolNames)).not.toContain(dropped);
+    expect(autoToolNames(local.toolNames)).not.toContain("ask_user");
     // …and it keeps the file WRITE tools + bash, unlike plan.
     for (const kept of ["edit", "write", "bash"])
       expect(autoToolNames(local.toolNames)).toContain(kept);
   });
 
-  test("keeps run_code from the remote selection, drops the blocking tools", () => {
+  test("keeps run_code from the remote selection, drops ask_user", () => {
     const remote = buildToolSelection({
       codeExecution: "remote",
       integrations: true,
@@ -197,8 +198,8 @@ describe("autoToolNames", () => {
     const names = autoToolNames(remote.toolNames);
     expect(names).toContain("run_code");
     expect(names).toContain("integration_search");
+    expect(names).toContain("request_connection");
     expect(names).not.toContain("ask_user");
-    expect(names).not.toContain("request_connection");
   });
 
   test("the disabled, integration-less selection just loses ask_user", () => {
@@ -212,11 +213,8 @@ describe("autoToolNames", () => {
     ]);
   });
 
-  test("the excluded set is exactly ask_user + request_connection", () => {
-    expect([...AUTO_MODE_EXCLUDED_TOOL_NAMES]).toEqual([
-      "ask_user",
-      "request_connection",
-    ]);
+  test("the excluded set is exactly ask_user", () => {
+    expect([...AUTO_MODE_EXCLUDED_TOOL_NAMES]).toEqual(["ask_user"]);
   });
 });
 

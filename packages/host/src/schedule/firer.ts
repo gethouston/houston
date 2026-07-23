@@ -27,7 +27,9 @@ export class ChannelRoutineFirer implements RoutineFirer {
     // inherit), with routinePin applying the read-time legacy id mapping —
     // the pin is what makes a routine's provider stick regardless of what
     // other chats or routines have picked since. Routine fires also pin
-    // Autopilot mode so they never block on ask_user/request_connection.
+    // Autopilot mode so they never block on an ask_user question (a missing
+    // app connection still queues a connect card the user finds in the chat —
+    // the turn ends rather than blocking).
     // The creator's sub (C2) is threaded as the turn's acting-user so integration
     // calls act as them; absent for legacy creator-less routines → acts as owner.
     const createdBy = job.routine.created_by;

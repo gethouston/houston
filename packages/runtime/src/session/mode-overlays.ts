@@ -26,9 +26,12 @@ export const PLAN_MODE_OVERLAY = [
 /**
  * Autopilot mode's system-prompt overlay. Appended (LAST, after the agent's own
  * context) on an "auto" turn only. Auto is fire-and-forget: the model CANNOT
- * block on the user — the blocking tools (`ask_user`, `request_connection`) are
- * withheld from its toolset (session/tool-selection.ts) — so this overlay tells
- * it to act on its own judgment and report back.
+ * block on the user's judgment — `ask_user` is withheld from its toolset
+ * (session/tool-selection.ts) — so this overlay tells it to act on its own
+ * judgment and report back. `request_connection` DOES survive auto (HOU-853):
+ * a missing app connection is the one thing autonomy cannot produce, and the
+ * queued connect card ends the turn rather than holding it open, so the
+ * overlay teaches the hand-off instead of declaring the app out of reach.
  *
  * Voice: same non-technical rule as the plan overlay — no files, JSON, or CLIs.
  */
@@ -37,7 +40,8 @@ export const AUTO_MODE_OVERLAY = [
   "",
   "- Do not ask the user questions or wait for their input. Work with the information you have.",
   "- When something is ambiguous, make the most sensible choice and keep going. Remember the important assumptions you make.",
-  "- If something is truly out of reach (for example an app that is not connected), do the rest of the task and say clearly what you could not do and why.",
+  "- If the task needs an app that is not connected yet, call the request_connection tool for it. Houston shows the user a connect card and sends you a message automatically once the connection is live - so first finish everything that does not need that app, then end your turn.",
+  "- If something else is truly out of reach, do the rest of the task and say clearly what you could not do and why.",
   "- Finish with a short report: what you did, what you assumed, and anything that needs the user's attention.",
 ].join("\n");
 
