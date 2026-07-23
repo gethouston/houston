@@ -98,17 +98,14 @@ export function readLastSignIn(): LastSignIn | null {
 }
 
 /**
- * Mask an email for this low-trust surface: keep only the first character of the
- * local part, hide the rest, keep the full domain.
- * `"jane@gethouston.ai"` → `"j…@gethouston.ai"`.
- * A withheld or malformed address returns `""` so the caller shows no address.
+ * The address shown on the continue button. The hint is device-local on the
+ * user's own machine, so the FULL address renders (masking it read as
+ * confusing, not private). A withheld or malformed address returns `""` so the
+ * caller shows no caption.
  */
-export function maskEmail(email: string): string {
+function displayEmail(email: string): string {
   const at = email.indexOf("@");
-  if (at <= 0 || at === email.length - 1) return "";
-  const local = email.slice(0, at);
-  const domain = email.slice(at);
-  return local.length <= 1 ? `${local}${domain}` : `${local[0]}…${domain}`;
+  return at <= 0 || at === email.length - 1 ? "" : email;
 }
 
 /** Which affordance the sign-in screen highlights for the remembered provider. */
@@ -120,8 +117,8 @@ export interface LastSignInDisplay {
   highlight: SignInHighlight;
   /** Brand name to interpolate into the copy, or null for the email path. */
   providerName: string | null;
-  /** Masked address, or "" when none is known. */
-  maskedEmail: string;
+  /** Full address to caption the button with, or "" when none is known. */
+  email: string;
 }
 
 const PROVIDER_META: Record<
@@ -143,6 +140,6 @@ export function describeLastSignIn(hint: LastSignIn): LastSignInDisplay {
   return {
     highlight: meta.highlight,
     providerName: meta.name,
-    maskedEmail: maskEmail(hint.email),
+    email: displayEmail(hint.email),
   };
 }

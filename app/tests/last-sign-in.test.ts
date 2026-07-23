@@ -3,7 +3,6 @@ import { afterEach, beforeEach, test } from "node:test";
 import {
   describeLastSignIn,
   type LastSignIn,
-  maskEmail,
   readLastSignIn,
   writeLastSignIn,
 } from "../src/lib/last-sign-in.ts";
@@ -97,35 +96,37 @@ test("read swallows a disabled storage and returns null", () => {
   assert.equal(readLastSignIn(), null);
 });
 
-test("maskEmail keeps first local char and full domain", () => {
-  assert.equal(maskEmail("jane@gethouston.ai"), "j…@gethouston.ai");
-});
-
-test("maskEmail keeps a single-char local part as-is", () => {
-  assert.equal(maskEmail("j@gethouston.ai"), "j@gethouston.ai");
-});
-
-test("maskEmail returns empty for withheld or malformed addresses", () => {
-  assert.equal(maskEmail(""), "");
-  assert.equal(maskEmail("nobody"), "");
-  assert.equal(maskEmail("@domain.com"), "");
-  assert.equal(maskEmail("local@"), "");
-});
-
 test("describeLastSignIn maps each provider to its pill and brand name", () => {
   assert.deepEqual(
     describeLastSignIn({ provider: "google.com", email: "jane@x.co" }),
-    { highlight: "google", providerName: "Google", maskedEmail: "j…@x.co" },
+    { highlight: "google", providerName: "Google", email: "jane@x.co" },
   );
   assert.deepEqual(
     describeLastSignIn({ provider: "microsoft.com", email: "" }),
-    { highlight: "azure", providerName: "Microsoft", maskedEmail: "" },
+    { highlight: "azure", providerName: "Microsoft", email: "" },
   );
   assert.deepEqual(describeLastSignIn({ provider: "apple.com", email: "" }), {
     highlight: "apple",
     providerName: "Apple",
-    maskedEmail: "",
+    email: "",
   });
+});
+
+test("describeLastSignIn shows the FULL address (never masked)", () => {
+  assert.equal(
+    describeLastSignIn({ provider: "google.com", email: "jane@gethouston.ai" })
+      .email,
+    "jane@gethouston.ai",
+  );
+});
+
+test("describeLastSignIn hides a withheld or malformed address", () => {
+  for (const bad of ["nobody", "@domain.com", "local@"]) {
+    assert.equal(
+      describeLastSignIn({ provider: "google.com", email: bad }).email,
+      "",
+    );
+  }
 });
 
 test("describeLastSignIn routes email-based providers to the email form", () => {
@@ -133,6 +134,6 @@ test("describeLastSignIn routes email-based providers to the email form", () => 
     const d = describeLastSignIn({ provider, email: "sam@x.co" });
     assert.equal(d.highlight, "email");
     assert.equal(d.providerName, null);
-    assert.equal(d.maskedEmail, "s…@x.co");
+    assert.equal(d.email, "sam@x.co");
   }
 });

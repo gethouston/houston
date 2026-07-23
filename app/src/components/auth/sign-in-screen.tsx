@@ -68,8 +68,8 @@ export function SignInScreen() {
 
   // Device-local memory of the previous sign-in, read once on mount. Survives
   // sign-out (its own localStorage key), so returning users get a one-click path
-  // back to the account they used last. Keeps the full address for the email
-  // auto-prefill; only the masked form is ever shown.
+  // back to the account they used last. Keeps the raw address for the email
+  // auto-prefill; the button captions the (validated) full address.
   const lastSignIn = useMemo(() => {
     const hint = readLastSignIn();
     return hint ? { ...describeLastSignIn(hint), fullEmail: hint.email } : null;
@@ -153,7 +153,7 @@ export function SignInScreen() {
                 <ContinueLastSignIn
                   highlight={lastSignIn.highlight}
                   title={continueTitle}
-                  maskedEmail={lastSignIn.maskedEmail}
+                  email={lastSignIn.email}
                   pending={pending !== null && pending === lastSignIn.highlight}
                   disabled={pending !== null}
                   onClick={onContinue}

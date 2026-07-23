@@ -15,7 +15,7 @@ const ICON_BY_HIGHLIGHT: Record<SignInHighlight, () => ReactNode> = {
  * The one-click "continue with the account you used last time" action. It IS
  * the returning-user path: a single filled, full-width button pinned above the
  * provider row, carrying the last provider's mark, the "Continue with X" title,
- * and the masked account address as a caption. Clicking it runs exactly the
+ * and the full account address as a caption. Clicking it runs exactly the
  * same sign-in the matching provider pill would (or, for the email path, kicks
  * off the passwordless code flow with the stored address prefilled).
  *
@@ -25,14 +25,14 @@ const ICON_BY_HIGHLIGHT: Record<SignInHighlight, () => ReactNode> = {
 export function ContinueLastSignIn({
   highlight,
   title,
-  maskedEmail,
+  email,
   pending,
   disabled,
   onClick,
 }: {
   highlight: SignInHighlight;
   title: string;
-  maskedEmail: string;
+  email: string;
   pending: boolean;
   disabled: boolean;
   onClick: () => void;
@@ -42,7 +42,7 @@ export function ContinueLastSignIn({
     <Button
       onClick={onClick}
       disabled={disabled}
-      aria-label={maskedEmail ? `${title} (${maskedEmail})` : title}
+      aria-label={email ? `${title} (${email})` : title}
       className="h-auto w-full justify-start gap-3 rounded-2xl px-4 py-3"
     >
       <span className="flex size-5 items-center justify-center">
@@ -50,9 +50,9 @@ export function ContinueLastSignIn({
       </span>
       <span className="flex min-w-0 flex-col items-start leading-tight">
         <span className="text-sm font-medium">{title}</span>
-        {maskedEmail && (
+        {email && (
           <span className="max-w-full truncate text-xs text-action-text/70">
-            {maskedEmail}
+            {email}
           </span>
         )}
       </span>
