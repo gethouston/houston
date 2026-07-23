@@ -15,6 +15,7 @@ import {
 import { classifyProviderError } from "../ai/provider-error";
 import { activeEffort, resolveModel } from "../ai/providers";
 import { recordTokenSpend } from "../ai/usage/ledger";
+import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
 import { config } from "../config";
 import {
   appendAssistantMessage,
@@ -478,7 +479,12 @@ export async function execTurn(
     // clean-done path, carry whatever the model is now waiting on the user for so
     // the board card settles to `needs_you` (absent → `done`). Only the clean
     // done ever carries it.
-    if (!providerError && !stopped)
+    if (!providerError && !stopped) {
+      // A completed turn proves this provider's credential works — heal any
+      // stale turn-failure mark so status reads connected again
+      // (auth/credential-health.ts; covers the macOS Keychain re-login no
+      // fingerprint can observe).
+      clearAuthFailure(model.provider);
       publish(id, {
         type: "done",
         data: null,
@@ -487,6 +493,7 @@ export async function execTurn(
           ? { pendingInteraction: interaction.pending }
           : {}),
       });
+    }
   } catch (err) {
     // Persist the failure even when nothing streamed: a thrown turn (bad pin,
     // missing credential, stale model id) must leave the same durable trace a
@@ -520,6 +527,12 @@ export async function execTurn(
       tools.length === 0
     )
       thrown.undelivered_prompt = text;
+    // A thrown auth failure never crossed the backends' streamed-error seams,
+    // so feed it into the status surface here — e.g. a refresh-bearing entry
+    // whose refresh token was rejected raises at prompt time, before any
+    // stream exists (auth/credential-health.ts).
+    if (thrown.kind === "unauthenticated" && !providerError)
+      noteAuthFailure(thrown.provider);
     const typed = thrown.kind !== "unknown" ? thrown : undefined;
     appendAssistantMessage(id, assistantText, {
       tools,

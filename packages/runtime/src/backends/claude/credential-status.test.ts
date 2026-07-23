@@ -126,6 +126,43 @@ test("the materialized credentials file short-circuits the sync signal (pod path
   });
 });
 
+test("a STALE materialized file (expired, no refresh token) no longer reads connected", () => {
+  withHoustonHome((credFile) => {
+    // The screenshot bug: the file survives the credential it carried, and its
+    // mere EXISTENCE shadowed a probe that correctly said logged-out — so the
+    // AI Models page showed Connected while every turn hit the reconnect card.
+    mkdirSync(dirname(credFile), { recursive: true });
+    writeFileSync(
+      credFile,
+      JSON.stringify({
+        claudeAiOauth: { accessToken: "sk-ant-oat01-x", expiresAt: 1 },
+      }),
+    );
+    resetAnthropicCredentialCache(false);
+    expect(anthropicCredentialCached()).toBe(false); // dead file → probe cache
+    resetAnthropicCredentialCache(true);
+    expect(anthropicCredentialCached()).toBe(true); // probe still decides
+  });
+});
+
+test("a refresh-bearing file stays connected past its access-token expiry (SDK self-refreshes)", () => {
+  withHoustonHome((credFile) => {
+    mkdirSync(dirname(credFile), { recursive: true });
+    writeFileSync(
+      credFile,
+      JSON.stringify({
+        claudeAiOauth: {
+          accessToken: "sk-ant-oat01-x",
+          refreshToken: "rt",
+          expiresAt: 1,
+        },
+      }),
+    );
+    resetAnthropicCredentialCache(false);
+    expect(anthropicCredentialCached()).toBe(true);
+  });
+});
+
 test("logout removes the materialized file so the signal flips off", async () => {
   await withHoustonHomeAsync(async (credFile) => {
     writeCredFile(credFile);

@@ -4,7 +4,7 @@ import {
   refreshAnthropicCredential,
   resetAnthropicCredentialCache,
 } from "../backends/claude/credential-status";
-import { providerConnected } from "./storage";
+import { credentialUsable, providerConnected } from "./storage";
 
 test("providerConnected: only a STORED credential counts; connect then logout flips it", () => {
   const store = AuthStorage.inMemory({});
@@ -59,4 +59,63 @@ test("providerConnected(anthropic): a pasted setup token also counts (degraded f
   expect(providerConnected(store, "anthropic")).toBe(false);
   store.set("anthropic", { type: "api_key", key: "sk-ant-oat01-x" });
   expect(providerConnected(store, "anthropic")).toBe(true);
+});
+
+test("credentialUsable: presence is not connection — a dead serve-written entry reads unusable", () => {
+  const now = 1_784_000_000_000;
+  // An API key never expires (it was live-verified at connect).
+  expect(credentialUsable({ type: "api_key" }, now)).toBe(true);
+  // OAuth with a refresh token: pi auto-refreshes → usable even past expiry.
+  expect(
+    credentialUsable({ type: "oauth", refresh: "rt", expires: now - 1 }, now),
+  ).toBe(true);
+  // The Gate #2 serve shape (refresh="") is usable only until it expires…
+  expect(
+    credentialUsable(
+      { type: "oauth", refresh: "", expires: now + 60_000 },
+      now,
+    ),
+  ).toBe(true);
+  // …and DEAD after: this is the stale entry that showed "Connected" while
+  // every turn failed with the reconnect card.
+  expect(
+    credentialUsable({ type: "oauth", refresh: "", expires: now - 1 }, now),
+  ).toBe(false);
+  // expires 0/absent = no expiry recorded (a pasted token stored as oauth).
+  expect(
+    credentialUsable({ type: "oauth", refresh: "", expires: 0 }, now),
+  ).toBe(true);
+  expect(credentialUsable(undefined, now)).toBe(false);
+  // An unrecognized variant is not something we can vouch for.
+  expect(credentialUsable({ type: "mystery" }, now)).toBe(false);
+});
+
+test("providerConnected: an EXPIRED access-only oauth entry no longer counts as connected", async () => {
+  const store = AuthStorage.inMemory({});
+  store.set("openai-codex", {
+    type: "oauth",
+    access: "at",
+    refresh: "",
+    expires: Date.now() - 60_000,
+  });
+  expect(providerConnected(store, "openai-codex")).toBe(false);
+  // The same shape while still fresh IS connected.
+  store.set("openai-codex", {
+    type: "oauth",
+    access: "at",
+    refresh: "",
+    expires: Date.now() + 60_000,
+  });
+  expect(providerConnected(store, "openai-codex")).toBe(true);
+
+  // Anthropic's auth.json entry follows the same rule (the probe stays off).
+  await refreshAnthropicCredential(async () => false);
+  resetAnthropicCredentialCache(false);
+  store.set("anthropic", {
+    type: "oauth",
+    access: "at",
+    refresh: "",
+    expires: Date.now() - 60_000,
+  });
+  expect(providerConnected(store, "anthropic")).toBe(false);
 });

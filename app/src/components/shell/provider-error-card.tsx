@@ -20,6 +20,9 @@
  */
 
 import type { ProviderError } from "@houston-ai/chat";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { queryKeys } from "../../lib/query-keys";
 import { UnauthenticatedCard } from "./provider-error-cards/auth";
 import {
   ContextOverflowCard,
@@ -48,12 +51,34 @@ interface ProviderErrorCardProps {
   onApplyModel?: (model: string) => void;
 }
 
+/**
+ * Error kinds that change what the engine now reports for the provider's
+ * connection status: an auth failure marks the credential broken and an
+ * unreachable endpoint flips the local model's reachability (both computed
+ * engine-side). The picker/AI Hub cache statuses for 30s, so without a nudge
+ * they keep offering the dead provider's models right after the card appears.
+ */
+const STATUS_CHANGING_KINDS: ReadonlySet<ProviderError["kind"]> = new Set([
+  "unauthenticated",
+  "network_unreachable",
+]);
+
 export function ProviderErrorCard({
   error,
   onRetry,
   onSwitchModel,
   onApplyModel,
 }: ProviderErrorCardProps) {
+  const queryClient = useQueryClient();
+  // Refresh the cached provider statuses when a status-changing card lands,
+  // so the model picker and the AI Models page stop showing the provider as
+  // connected while its inline card says otherwise.
+  useEffect(() => {
+    if (!STATUS_CHANGING_KINDS.has(error.kind)) return;
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.providerStatuses(),
+    });
+  }, [error.kind, queryClient]);
   // Cancellation has no UI surface; feed-to-messages should drop it
   // before we get here, but guard defensively in case it ever sneaks
   // through (e.g. resumed sessions reading from history).

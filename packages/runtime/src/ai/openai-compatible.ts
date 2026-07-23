@@ -32,7 +32,9 @@ interface StoredEndpoint {
   orgShared?: boolean;
 }
 
-const endpointFileIn = (dataDir: string) =>
+/** The endpoint config's on-disk path — exported so credential-health can
+ *  fingerprint the file (a reconfigured endpoint must heal a failure mark). */
+export const endpointFileIn = (dataDir: string) =>
   join(dataDir, "custom-endpoint.json");
 
 /**

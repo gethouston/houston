@@ -1,5 +1,8 @@
-import { mkdirSync, renameSync, writeFileSync } from "node:fs";
-import type { ClaudeOAuthCredential } from "@houston/runtime-client";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import {
+  type ClaudeOAuthCredential,
+  parseClaudeOAuthEnvelope,
+} from "@houston/runtime-client";
 import { claudeCredentialsFile } from "./paths";
 
 /**
@@ -34,4 +37,52 @@ export function writeClaudeOAuthCredentialFile(
   const tmp = `${path}.tmp`;
   writeFileSync(tmp, JSON.stringify({ claudeAiOauth: cred }), { mode: 0o600 });
   renameSync(tmp, path);
+}
+
+/**
+ * Whether a materialized credential can still authenticate a turn. The file's
+ * EXISTENCE used to be the pod's "connected" signal, but a stale file survives
+ * the credential it carried: an access token that expired with no refresh token
+ * (or after the refresh token was rotated away by another login — Anthropic
+ * rotates on refresh, so a second holder invalidates the first) leaves a file
+ * that reads "Connected" while the SDK answers "Not logged in".
+ * - a refresh token present → usable (the SDK self-refreshes in place);
+ * - no refresh token → usable only until `expiresAt` (absent/0 = no expiry
+ *   recorded, treated as usable — mirrors read-token.ts's `expires=0` rule).
+ * A revoked-but-unexpired credential is indistinguishable on disk; the
+ * turn-failure feedback in auth/credential-health.ts covers that residue.
+ */
+export function claudeOAuthCredentialUsable(
+  cred: ClaudeOAuthCredential,
+  now: number = Date.now(),
+): boolean {
+  if (cred.refreshToken) return true;
+  const expires = cred.expiresAt ?? 0;
+  return expires <= 0 || expires > now;
+}
+
+/**
+ * Read `<configDir>/.credentials.json` and judge it: true only when the file
+ * exists, parses as the CLI envelope, AND carries a usable credential. An
+ * absent, corrupt, or dead file reads false — the caller falls back to the
+ * `claude auth status` probe, which owns the Keychain (macOS) answer.
+ */
+export function claudeCredentialFileUsable(
+  path: string,
+  now: number = Date.now(),
+): boolean {
+  let raw: string;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch {
+    return false; // absent (the common case) or unreadable — defer to the probe
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  const parsed = parseClaudeOAuthEnvelope(body);
+  return parsed.ok && claudeOAuthCredentialUsable(parsed.value, now);
 }
