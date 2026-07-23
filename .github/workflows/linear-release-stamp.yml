@@ -1,0 +1,46 @@
+# Linear release stamp — the release train's bookkeeping step.
+#
+# Fires when a cloud-v* release is PUBLISHED (the ship button — same trigger as
+# cloud-updater-manifest.yml and ship-train.yml). It stamps the shipped Linear
+# issues and writes the changelogs; see scripts/linear-release-stamp.mjs for the
+# full behavior. Deliberately an OBSERVER: it needs no build outputs, runs after
+# the ship decision, and the script exits 0 on Linear failures so a tracker
+# outage can never block or taint a release. Re-running is safe (idempotent per
+# issue via the release label).
+#
+# Secrets: LINEAR_API_KEY — a Linear personal API key (workspace houston-ai).
+# contents: write is required to append the changelogs to the release body.
+
+name: Linear release stamp
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: linear-release-stamp-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  stamp:
+    if: startsWith(github.event.release.tag_name, 'cloud-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Stamp Linear issues + changelogs
+        run: node scripts/linear-release-stamp.mjs
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_ID: ${{ github.event.release.id }}
