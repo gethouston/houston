@@ -338,6 +338,10 @@
       "heading": "Compartido con {{team}}"
     }
   },
+  "moveResume": {
+    "done": "{{agent}} terminó de moverse a {{team}}.",
+    "failed": "{{agent}} no pudo terminar de moverse a {{team}}. Houston lo intentará de nuevo la próxima vez que inicie."
+  },
   "billing": {
     "unavailable": "No pudimos cargar la facturación de este equipo.",
     "status": {

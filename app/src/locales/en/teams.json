@@ -338,6 +338,10 @@
       "heading": "Shared with {{team}}"
     }
   },
+  "moveResume": {
+    "done": "{{agent}} finished moving to {{team}}.",
+    "failed": "{{agent}} could not finish moving to {{team}}. Houston will try again the next time it starts."
+  },
   "billing": {
     "unavailable": "We couldn't load billing for this team.",
     "status": {
