@@ -261,9 +261,16 @@ jobs:
           IMAGE="${{ env.REGISTRY }}/engine-pod@${{ steps.build.outputs.digest }}"
           EVENT_TYPE="engine-pod-published"
           [ "${{ github.ref_type }}" = "tag" ] && EVENT_TYPE="engine-pod-published-prod"
+          # Seq is EPOCH SECONDS, not github.run_number: cloud's roll workflows
+          # skip any dispatch whose seq <= the stored one, and ship-train.yml
+          # ALSO fires prod dispatches — run_numbers from two different
+          # workflows are meaningless to compare, epoch seconds stay monotonic
+          # no matter who sends. The payload KEY stays `run_number` because
+          # cloud reads client_payload.run_number — renaming it would break
+          # the consumer.
           gh api repos/gethouston/cloud/dispatches \
             -f event_type="$EVENT_TYPE" \
             -F "client_payload[digest]=${{ steps.build.outputs.digest }}" \
             -F "client_payload[image]=$IMAGE" \
             -F "client_payload[sha]=${{ github.sha }}" \
-            -F "client_payload[run_number]=${{ github.run_number }}"
+            -F "client_payload[run_number]=$(date +%s)"
