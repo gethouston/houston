@@ -58,6 +58,7 @@ type ClaudeCredentialPusher = {
   pushClaudeOAuthCredential?: (
     agentId: string | null,
     credentialJson: string,
+    opts?: { ifAbsent?: boolean },
   ) => Promise<void>;
 };
 
@@ -73,8 +74,18 @@ export type ClaudeHandoffResult =
  * workspace-central, any real pod stores and serves them), else the agentless
  * setup runtime (true first-run). Retries transient failures with backoff.
  * Never throws; the caller decides how loud the outcome is.
+ *
+ * `ifAbsent` (the background RECONCILE): the cached credential may be an OLD
+ * snapshot whose refresh token the gateway has since rotated — overwriting the
+ * live central credential with it makes the gateway's next refresh trip
+ * Anthropic's refresh-token-reuse detection and revoke the whole token family
+ * (HOU-855). Fill-only: the push is a no-op when a central credential already
+ * exists. The fresh-login path omits it (a just-minted credential SHOULD
+ * replace whatever is stored).
  */
-export async function pushCachedClaudeCredential(): Promise<ClaudeHandoffResult> {
+export async function pushCachedClaudeCredential(opts?: {
+  ifAbsent?: boolean;
+}): Promise<ClaudeHandoffResult> {
   let credentialJson: string;
   try {
     credentialJson = await osReadClaudeCredential();
@@ -92,7 +103,7 @@ export async function pushCachedClaudeCredential(): Promise<ClaudeHandoffResult>
     }
     for (let attempt = 0; ; attempt++) {
       try {
-        await engine.pushClaudeOAuthCredential(agentId, credentialJson);
+        await engine.pushClaudeOAuthCredential(agentId, credentialJson, opts);
         return { ok: true };
       } catch (err) {
         const delay = PUSH_RETRY_DELAYS_MS[attempt];

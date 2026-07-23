@@ -57,8 +57,13 @@ export class FileCredentialStore implements CredentialStore {
     return this.creds.get(this.key(workspaceId, provider)) ?? null;
   }
 
-  async put(cred: WorkspaceCredential): Promise<void> {
-    this.creds.set(this.key(cred.workspaceId, cred.provider), { ...cred });
+  async put(
+    cred: WorkspaceCredential,
+    opts?: { ifAbsent?: boolean },
+  ): Promise<void> {
+    const key = this.key(cred.workspaceId, cred.provider);
+    if (opts?.ifAbsent && this.creds.has(key)) return;
+    this.creds.set(key, { ...cred });
     this.flush();
   }
 

@@ -126,9 +126,15 @@ async function boot(owner = "alice"): Promise<Fixture> {
   };
 }
 
-function push(base: string, agentId: string, body: unknown, user = "alice") {
+function push(
+  base: string,
+  agentId: string,
+  body: unknown,
+  user = "alice",
+  query = "",
+) {
   return fetch(
-    `${base}/agents/${encodeURIComponent(agentId)}/credential/claude-oauth`,
+    `${base}/agents/${encodeURIComponent(agentId)}/credential/claude-oauth${query}`,
     {
       method: "POST",
       headers: {
@@ -244,5 +250,76 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
       for (const restore of spies) restore();
       fx.close();
     }
+  });
+
+  // The desktop RECONCILE re-pushes a CACHED snapshot whose refresh token the
+  // gateway may have rotated since; clobbering the live central credential
+  // with it revokes the whole token family (HOU-855). `?if_absent=1` makes the
+  // push fill-only.
+  describe("?if_absent=1 (cached-snapshot reconcile)", () => {
+    const STALE = {
+      claudeAiOauth: {
+        accessToken: "sk-ant-oat-STALE-ACCESS",
+        refreshToken: "sk-ant-ort-STALE-REFRESH",
+        expiresAt: 1_700_000_000_000,
+      },
+    };
+
+    test("central credential present → 200 no-op: store untouched, runtime NOT materialized", async () => {
+      const fx = await boot();
+      try {
+        // The live (rotated) central credential a fresh login stored earlier.
+        await push(fx.base, fx.agent.id, VALID);
+        lastPush = null;
+
+        const res = await push(
+          fx.base,
+          fx.agent.id,
+          STALE,
+          "alice",
+          "?if_absent=1",
+        );
+        expect(res.status).toBe(200);
+
+        const cred = await fx.credentials.get(fx.workspace.id, "anthropic");
+        expect(cred?.refreshToken).toBe("sk-ant-ort-REFRESH-SECRET");
+        expect(lastPush).toBeNull();
+      } finally {
+        fx.close();
+      }
+    });
+
+    test("no central credential → fills: store + runtime dual write as usual", async () => {
+      const fx = await boot();
+      try {
+        const res = await push(
+          fx.base,
+          fx.agent.id,
+          STALE,
+          "alice",
+          "?if_absent=1",
+        );
+        expect(res.status).toBe(200);
+
+        const cred = await fx.credentials.get(fx.workspace.id, "anthropic");
+        expect(cred?.refreshToken).toBe("sk-ant-ort-STALE-REFRESH");
+        expect(lastPush).toEqual(STALE);
+      } finally {
+        fx.close();
+      }
+    });
+
+    test("without the flag a push still overwrites (fresh login)", async () => {
+      const fx = await boot();
+      try {
+        await push(fx.base, fx.agent.id, STALE);
+        const res = await push(fx.base, fx.agent.id, VALID);
+        expect(res.status).toBe(200);
+        const cred = await fx.credentials.get(fx.workspace.id, "anthropic");
+        expect(cred?.refreshToken).toBe("sk-ant-ort-REFRESH-SECRET");
+      } finally {
+        fx.close();
+      }
+    });
   });
 });

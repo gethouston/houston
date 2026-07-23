@@ -31,6 +31,22 @@ test("MemoryCredentialStore: get is null, then put → get → overwrite → rem
   expect(await s.get("ws_1", "openai-codex")).toBeNull();
 });
 
+test("MemoryCredentialStore: ifAbsent put fills a hole but never clobbers (HOU-855)", async () => {
+  const s = new MemoryCredentialStore();
+
+  // Absent → fills.
+  await s.put(cred({ accessToken: "at-fill" }), { ifAbsent: true });
+  expect((await s.get("ws_1", "openai-codex"))?.accessToken).toBe("at-fill");
+
+  // Present → the stale snapshot is dropped, the live row survives.
+  await s.put(cred({ accessToken: "at-stale", refreshToken: "rt-stale" }), {
+    ifAbsent: true,
+  });
+  const kept = await s.get("ws_1", "openai-codex");
+  expect(kept?.accessToken).toBe("at-fill");
+  expect(kept?.refreshToken).toBe("rt");
+});
+
 test("MemoryCredentialStore: workspaces + providers are isolated keys", async () => {
   const s = new MemoryCredentialStore();
   await s.put(cred({ workspaceId: "ws_a" }));

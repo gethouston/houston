@@ -524,6 +524,10 @@ export async function handleAgents(
       await channel.saveClaudeOAuthCredential(
         { workspace: authz.workspace, agent: authz.agent },
         parsed.value,
+        // `?if_absent=1` marks a fill-only push of a CACHED snapshot (the
+        // desktop reconcile) — never allowed to clobber a live central
+        // credential whose refresh token may have rotated since (HOU-855).
+        { ifAbsent: url.searchParams.get("if_absent") === "1" },
       );
       json(res, 200, { ok: true });
     } catch (err) {

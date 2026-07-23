@@ -50,6 +50,7 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
     async pushClaudeOAuthCredential(
       agentId: string | null,
       credentialJson: string,
+      opts?: { ifAbsent?: boolean },
     ): Promise<void> {
       if (!this.ctx.cp) {
         throw new Error("Pushing a Claude credential needs a cloud engine.");
@@ -59,12 +60,14 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
           this.ctx.cp,
           agentId,
           credentialJson,
+          opts,
         );
         return;
       }
       await controlPlane.pushSetupClaudeOAuthCredential(
         this.ctx.cp,
         credentialJson,
+        opts,
       );
     }
 

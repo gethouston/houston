@@ -146,7 +146,11 @@ export async function handleSetupRuntime(
       return true;
     }
     try {
-      await channel.saveClaudeOAuthCredential(ctx, parsed.value);
+      await channel.saveClaudeOAuthCredential(ctx, parsed.value, {
+        // Fill-only for a cached-snapshot reconcile (HOU-855) — mirrors the
+        // per-agent claude-oauth route.
+        ifAbsent: url.searchParams.get("if_absent") === "1",
+      });
       json(res, 200, { ok: true });
     } catch (err) {
       json(res, 502, {

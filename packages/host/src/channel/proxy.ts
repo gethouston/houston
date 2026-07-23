@@ -436,19 +436,41 @@ export class ProxyChannel implements RuntimeChannel {
   async saveClaudeOAuthCredential(
     ctx: ChannelCtx,
     cred: ClaudeOAuthCredential,
+    opts?: { ifAbsent?: boolean },
   ): Promise<void> {
-    await this.opts.credentials.put({
-      workspaceId: ctx.agent.workspaceId,
-      // pi's provider id for Houston's native Anthropic provider.
-      provider: "anthropic",
-      kind: "oauth",
-      accessToken: cred.accessToken,
-      // Central-store durability marker only — the pod authenticates from the
-      // materialized file, not this. A credential without a refresh token /
-      // expiry (both optional in the CLI shape) still stores cleanly.
-      refreshToken: cred.refreshToken ?? "",
-      expiresAt: cred.expiresAt ?? 0,
-    });
+    if (opts?.ifAbsent) {
+      // Fill-only push (the desktop reconcile of a CACHED snapshot, HOU-855):
+      // when the workspace already holds a central anthropic credential —
+      // whose refresh token the gateway may have rotated since this snapshot
+      // was cached — storing OR materializing the snapshot would poison the
+      // family (the gateway's next refresh with the superseded token trips
+      // Anthropic's reuse detection and revokes every access token). Present
+      // means done: the pod serves the live credential. A probe failure
+      // throws — the reconcile logs it and retries next session; guessing
+      // "absent" here and materializing a stale file is never worth it.
+      const existing = await this.opts.credentials.get(
+        ctx.agent.workspaceId,
+        "anthropic",
+      );
+      if (existing) return;
+    }
+    await this.opts.credentials.put(
+      {
+        workspaceId: ctx.agent.workspaceId,
+        // pi's provider id for Houston's native Anthropic provider.
+        provider: "anthropic",
+        kind: "oauth",
+        accessToken: cred.accessToken,
+        // Central-store durability marker only — the pod authenticates from the
+        // materialized file, not this. A credential without a refresh token /
+        // expiry (both optional in the CLI shape) still stores cleanly.
+        refreshToken: cred.refreshToken ?? "",
+        expiresAt: cred.expiresAt ?? 0,
+      },
+      // Belt-and-braces under the gateway's atomic row lock: a concurrent
+      // write between the probe above and this put still cannot be clobbered.
+      { ifAbsent: opts?.ifAbsent },
+    );
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     const res = await fetch(
       `${endpoint.baseUrl}/auth/anthropic/oauth-credential`,
