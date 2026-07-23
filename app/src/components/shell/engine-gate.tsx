@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { useSession } from "../../hooks/use-session";
+import { SessionUnavailableError, useSession } from "../../hooks/use-session";
 import {
   hostedOauthGateActive,
   installHostedSessionRefresh,
@@ -12,6 +12,7 @@ import i18n from "../../lib/i18n";
 import { isIdentityConfigured, refreshNow } from "../../lib/identity";
 import { logger } from "../../lib/logger";
 import { SignInScreen } from "../auth/sign-in-screen";
+import { StorageUnavailableScreen } from "../auth/storage-unavailable-screen";
 import { WorkspaceLoading } from "./workspace-loading";
 
 /**
@@ -29,7 +30,12 @@ export function EngineGate({ children }: { children: ReactNode }) {
 
 function HostedEngineGate({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(isEngineReady());
-  const { data: session, isLoading: sessionLoading } = useSession();
+  const {
+    data: session,
+    isLoading: sessionLoading,
+    error: sessionError,
+    refetch: refetchSession,
+  } = useSession();
 
   useEffect(() => {
     if (!isIdentityConfigured()) return;
@@ -55,6 +61,16 @@ function HostedEngineGate({ children }: { children: ReactNode }) {
     setHostedEngineSessionToken(token);
     if (token) setReady(true);
   }, [session?.idToken]);
+
+  // Secure-storage read fault (retries exhausted): the store couldn't be read,
+  // which is NOT a signed-out user. Show the retryable storage-error screen,
+  // never SignInScreen (a spurious sign-in here reads as a logout).
+  if (
+    isIdentityConfigured() &&
+    sessionError instanceof SessionUnavailableError
+  ) {
+    return <StorageUnavailableScreen onRetry={() => void refetchSession()} />;
+  }
 
   const state = hostedGateState({
     authConfigured: isIdentityConfigured(),

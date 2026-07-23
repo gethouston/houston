@@ -156,6 +156,17 @@ export async function webRefreshIdToken(): Promise<string | null> {
   return user ? await user.getIdToken(true) : null;
 }
 
+/**
+ * The persisted SDK session right now, or null when the SDK confirms no user.
+ * Used on the web boot timeout to resolve a returning user directly instead of
+ * blindly falling to signed-out (which flashed the sign-in screen on a slow
+ * `onIdTokenChanged`).
+ */
+export async function webCurrentSession(): Promise<Session | null> {
+  const user = requireAuth().currentUser;
+  return user ? await toSession(user) : null;
+}
+
 function toAuthProvider(providerId: string | undefined): AuthProvider {
   switch (providerId) {
     case "google.com":

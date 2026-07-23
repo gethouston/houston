@@ -11,6 +11,9 @@
     "tooManyAttempts": "Too many attempts. Wait a few minutes, then try again.",
     "userDisabled": "This account has been disabled. Contact support.",
     "configError": "Sign-in isn't set up correctly. Please contact support.",
-    "generic": "Sign-in failed. Please try again."
+    "generic": "Sign-in failed. Please try again.",
+    "storageUnavailableTitle": "Can't reach this device's secure storage",
+    "storageUnavailableBody": "Houston couldn't open the secure storage on this device where your sign-in is kept. This usually clears up on its own. Try again, and if it keeps happening, restart your computer.",
+    "storageUnavailableRetry": "Try again"
   }
 }

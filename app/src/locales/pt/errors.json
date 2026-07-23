@@ -11,6 +11,9 @@
     "tooManyAttempts": "Muitas tentativas. Espere alguns minutos e tente novamente.",
     "userDisabled": "Esta conta foi desativada. Entre em contato com o suporte.",
     "configError": "O login não está configurado corretamente. Entre em contato com o suporte.",
-    "generic": "O login falhou. Tente novamente."
+    "generic": "O login falhou. Tente novamente.",
+    "storageUnavailableTitle": "Não foi possível acessar o armazenamento seguro deste dispositivo",
+    "storageUnavailableBody": "O Houston não conseguiu abrir o armazenamento seguro deste dispositivo onde o seu login fica guardado. Isso costuma se resolver sozinho. Tente novamente e, se continuar acontecendo, reinicie o computador.",
+    "storageUnavailableRetry": "Tentar novamente"
   }
 }

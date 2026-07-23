@@ -245,16 +245,47 @@ apple.com | password | custom` (`identity/session.ts`).
 `session-store.ts` reuses the `houston-auth` key, so an upgrading user may have a
 stale **Supabase** blob under it — `deserializeSession` treats any non-Firebase
 shape (legacy blob / corrupt JSON) as signed-out: discard + log, never throw, never
-silently accept (`identity/session.ts`). If the Keychain is locked, the in-memory
-session on the current run still works but nothing persists across launches —
-degraded mode, not failure. Override the storage backend with
+silently accept (`identity/session.ts`). Override the storage backend with
 `HOUSTON_AUTH_STORAGE=keychain|browser`.
 
+**Read fault ≠ signed out (HOU spurious-logout fix).** A keychain READ that
+*fails* (locked keychain, denied prompt, or a stale item ACL after an
+auto-update re-signs the app) is NOT the same as "no entry". The KV adapter
+(`session-storage-kv.ts`) returns a discriminated `ReadResult` (`{ ok:true,
+value }` vs `{ ok:false, error }`) — the Rust side already distinguishes
+`NoEntry → Ok(None)` from `Err(...)` (`auth.rs`), so a rejected `osAuthGetItem`
+is a fault, never absence — on macOS/Windows. (Linux caveat: `auth.rs` catches a
+secret-service fault and falls back to the file store, so a daemon fault with no
+fallback file still reads as absence there.) The pure loader (`session-load.ts`
+`createSessionLoader`) maps a fault to `loadSessionState() → { kind:
+"unavailable" }` and — critically — does **NOT** `notify(...)` (a null broadcast
+would flip every `subscribeSession` subscriber to signed-out). `loadSession()`
+stays a collapsed `Session | null` wrapper for the refresh paths (fault → null,
+no broadcast). On a **successful** keychain read, once per app run, the loader
+re-saves the same blob so the macOS keychain item's ACL **rebinds to the current
+code signature** — the permanent fix for "logged out after update"; that
+maintenance write's failure is logged, never thrown, never affects the result.
+`loadSessionState` splits across three files to stay inside the 200-line limit:
+`session-storage-kv.ts` (adapters + `ReadResult`), `session-load.ts` (pure
+orchestration, unit-tested via injected deps like `oauth-attempt.ts`),
+`session-store.ts` (app API + epoch + pub/sub).
+
 `useSession` (`app/src/hooks/use-session.ts`) is the TanStack source of truth
-(`SESSION_QUERY_KEY = ["session"]`): desktop reads the Keychain via `loadSession`
-and mirrors `subscribeSession` broadcasts; web awaits the first `onIdTokenChanged`
-so a returning user never flashes signed-out. `App.tsx` renders `SignInScreen`
-when `isIdentityConfigured() && !session`.
+(`SESSION_QUERY_KEY = ["session"]`): desktop reads the Keychain via
+`loadSessionState` and mirrors `subscribeSession` broadcasts; web awaits the
+first `onIdTokenChanged` so a returning user never flashes signed-out. A desktop
+read fault throws `SessionUnavailableError` into the query (retried up to 3× on a
+1s/2s/4s backoff); once retries exhaust, `App.tsx` and `HostedEngineGate` render
+`StorageUnavailableScreen` (a retryable full-screen state on the space backdrop,
+copy in `errors:auth.storageUnavailable*`) instead of `SignInScreen` — a fault
+must never look like a logout. `App.tsx` still renders `SignInScreen` only when
+`isIdentityConfigured() && !session` with no error.
+
+**Web boot timeout (returning-user flash fix).** `loadWebSession`'s 10s
+belt-and-suspenders timeout no longer blindly resolves `null`: it asks the SDK
+via `webCurrentSession()` (`getAuth().currentUser → toSession`, mirrored in the
+desktop stub) and resolves the real persisted session when one exists, only
+resolving `null` when the SDK confirms no user.
 
 ## Refresh
 
@@ -289,7 +320,9 @@ cleanup. The desktop hosted-mode **engine bearer clears reactively**: `cacheSess
 | `id-token.ts` | `decodeIdTokenClaims` (decode-only, for the custom-token OTP path) |
 | `otp.ts` | `startEmailOtp` / `verifyEmailOtp` (gateway contract; module header is the pinned contract) |
 | `session.ts` | `Session` shape + shape-tolerant serialize/deserialize + `sessionExpiresWithin` |
-| `session-store.ts` | Keychain/browser persistence + `subscribeSession` + `SESSION_QUERY_KEY` |
+| `session-storage-kv.ts` | Keychain/browser KV adapter; `ReadResult` (read fault ≠ absence); `storageKey` / `isKeychainMode` |
+| `session-load.ts` | Pure `createSessionLoader` — `ReadResult` → `SessionLoadState`, notify decision, once-per-run ACL rebind (unit-tested via injected deps) |
+| `session-store.ts` | App persistence API (`loadSessionState`/`loadSession`/`save`/`clear`) + `subscribeSession` + epoch + `SESSION_QUERY_KEY` |
 | `refresh.ts` | Proactive timer, `refreshNow` (401 seam), `setSessionSink`, `start/stopProactiveRefresh` |
 | `desktop-oauth.ts` | Loopback+PKCE driver (Tauri wiring); shared by Google + Microsoft |
 | `oauth-attempt.ts` | Tauri-free attempt lifecycle (supersede / cancel / timeout / ignore-foreign-state) — unit-testable |

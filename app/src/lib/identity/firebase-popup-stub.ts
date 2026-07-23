@@ -67,6 +67,10 @@ export function webRefreshIdToken(): Promise<string | null> {
   return notOnDesktop();
 }
 
+export function webCurrentSession(): Promise<Session | null> {
+  return notOnDesktop();
+}
+
 export function toSession(_user: FirebaseUserLike): Promise<Session> {
   return notOnDesktop();
 }
