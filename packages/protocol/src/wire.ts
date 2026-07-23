@@ -23,6 +23,7 @@ import type { ProviderError } from "./provider-error";
  *   be served — the client must treat the stream as fresh (refetch history,
  *   rebuild from this snapshot) instead of splicing.
  * - `user`  — a user message was added (by any client); `nonce` echoes the sender's.
+ * - `turn_start` — the provider + resolved model this turn runs against.
  * - `text` / `thinking` — assistant output deltas.
  * - `tool_start` / `tool_end` — tool activity within the turn.
  * - `usage` — normalized token usage for the turn (when the provider reports it),
@@ -83,6 +84,18 @@ export type WireEvent =
          */
         author?: { userId: string; name?: string };
       };
+    }
+  | {
+      /**
+       * Turn metadata, emitted once at turn start: the provider and the
+       * concrete model this turn resolved to after applying any per-turn pin
+       * (not the raw pin, which may be absent = inherit). Lets a client
+       * attribute a turn's output to a specific provider + model without
+       * inferring it from a later `provider_switched` / `provider_error` (which
+       * only fire on a switch or a failure).
+       */
+      type: "turn_start";
+      data: { provider: string; model: string };
     }
   | { type: "text"; data: string }
   | { type: "thinking"; data: string }

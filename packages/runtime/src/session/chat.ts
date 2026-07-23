@@ -147,6 +147,19 @@ export async function runTurn(
     return;
   }
 
+  // turn_start metadata: the provider + concrete model this turn resolves to
+  // under its pin, for observers that attribute a turn's output to a model.
+  // Best-effort — getConversation already validated the pin, so this resolves;
+  // a resolve failure must never block the turn, so it degrades to blank.
+  const startProvider = pin?.provider ?? activeProvider();
+  let startModel = "";
+  try {
+    startModel =
+      (resolveModel(pin?.model, pin?.provider) as { id?: string }).id ?? "";
+  } catch {
+    /* leave blank — the turn still runs; provider still rides later frames */
+  }
+
   // Two layers of serialization: per-conversation ordering (conv.queue) AND
   // the per-workdir lock — every conversation in this runtime shares ONE
   // workspaceDir, so a routine's turn and a user chat queue instead of
@@ -174,6 +187,14 @@ export async function runTurn(
       acting,
       displayText,
     );
+    // turn_start rides right after the user frame (metadata for the live turn),
+    // matching the cloud executor where the concrete model is only known then.
+    if (startProvider)
+      publish(id, {
+        type: "turn_start",
+        data: { provider: startProvider, model: startModel },
+        turnId,
+      });
     return withWorkdirLock(config.workspaceDir, () =>
       execTurn(conv, id, turnId, text, recorded, pin, acting),
     );
