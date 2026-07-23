@@ -1,5 +1,5 @@
+import { DEFAULT_CARD_LABELS } from "./skill-marketplace-card-labels";
 import type { SkillMarketplaceGridLabels } from "./skill-marketplace-grid";
-import type { SkillMarketplaceCardLabels } from "./skill-marketplace-row";
 import {
   DEFAULT_SHELVES,
   type MarketplaceShelf,
@@ -33,14 +33,6 @@ export interface SkillMarketplaceSectionLabels
   /** Curated browse shelves, titles localized; queries stay English. */
   shelves?: MarketplaceShelf[];
 }
-
-const DEFAULT_CARD_LABELS: Required<SkillMarketplaceCardLabels> = {
-  installAria: (name) => `Install ${name}`,
-  installedAria: (name) => `${name} installed`,
-  installsCount: (count, formatted) =>
-    count === 1 ? `${formatted} install` : `${formatted} installs`,
-  bySource: (owner) => `by ${owner}`,
-};
 
 const DEFAULT_PREVIEW_LABELS: Required<SkillPreviewSheetLabels> = {
   install: "Install",

@@ -8,9 +8,8 @@
  * coded hex, no `useTranslation` here.
  */
 
-import { cn } from "@houston-ai/core";
+import { cn, StatusBadge } from "@houston-ai/core";
 import type { ReactNode } from "react";
-import { StatusDot } from "../integrations/connection-status-badge";
 
 /** Base neutral pill every hub chip is built from. */
 export function SpecChip({
@@ -47,16 +46,10 @@ export function PriceText({ text }: { text: string }) {
 }
 
 /**
- * The only always-green element: a live dot + label for connected state.
- * Same primitive + proportions as the Integrations tab's `ConnectionStatusBadge`
- * (`StatusDot` + `text-xs`) so "connected" reads identically everywhere in the
- * app, not just here.
+ * The only always-green element: a live dot + label for connected state. A thin
+ * wrapper over the shared `ui/core` {@link StatusBadge} (`active`), so
+ * "connected" reads identically everywhere in the app, not just here.
  */
 export function LiveStatus({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
-      <StatusDot status="active" />
-      {label}
-    </span>
-  );
+  return <StatusBadge status="active" label={label} />;
 }

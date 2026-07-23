@@ -21,6 +21,10 @@ export interface CatalogRowProps
   title: string;
   /** One muted line, truncated. */
   description?: string;
+  /** A tiny, always-visible status dot (e.g. {@link StatusDot}) rendered
+   *  immediately LEFT of the title — presence-style, "● Asana" — so
+   *  connected/installed state reads without hovering. */
+  statusDot?: ReactNode;
   /** Quiet NON-interactive trailing inside the row body (a lock, a badge). */
   trailing?: ReactNode;
   /** Interactive right-edge sibling (its own button — never nested). */
@@ -34,6 +38,7 @@ export function CatalogRow({
   icon,
   title,
   description,
+  statusDot,
   trailing,
   action,
   className,
@@ -59,7 +64,10 @@ export function CatalogRow({
       >
         {icon}
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-ink text-sm">{title}</p>
+          <p className="flex items-center gap-1.5 font-medium text-ink text-sm">
+            {statusDot}
+            <span className="truncate">{title}</span>
+          </p>
           {description && (
             <p className="truncate text-[13px] text-ink-muted">{description}</p>
           )}

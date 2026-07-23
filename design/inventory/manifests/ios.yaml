@@ -266,3 +266,6 @@ components:
   verified-badge:
     status: not-started
     notes: Verified-creator glyph; the creator-profiles store surface is not in mobile v1.
+  status-badge:
+    status: not-started
+    notes: Connected/live-status dot+label; the catalog hub surfaces are not in mobile v1.

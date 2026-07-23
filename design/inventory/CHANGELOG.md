@@ -3,6 +3,26 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v33 - 2026-07-22
+
+Add `status-badge`: the shared connected/live-status indicator (a colored dot,
+alone or with a label) that conveys connected / pending / error state beside an
+item name. Web ships it as a props-only, i18n-agnostic `ui/` piece
+(`@houston-ai/core` `StatusBadge` / `StatusDot`, mapping each status to a
+semantic color token), so it lands `implemented`. The app's
+`ConnectionStatusBadge` (Integrations) and `LiveStatus` (AI hub) are now thin
+i18n wrappers over it, so "connected" reads identically everywhere.
+
+Also a refinement to the shared `CatalogRow` (no new component, no `since`
+change; the catalog surfaces stay app/-locked, web `partial`): the row gains an
+optional `statusDot` slot rendered immediately LEFT of the title —
+presence-style, "● Asana" — always visible (no hover gating). The three catalog
+surfaces use it so connected/installed state no longer rides on section
+placement alone: Integrations (green/amber/red per connection status, with an
+sr-only status label), the AI-models hub (green, sr-only "Connected"), and the
+Skills marketplace's installed rows (green, beside the quiet installed check in
+the `action` slot), contrasting with the not-installed `+`.
+
 ## v32 - 2026-07-21
 
 Add `verified-badge`: the verified-creator indicator glyph shown beside a creator

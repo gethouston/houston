@@ -3,6 +3,7 @@ import {
   CatalogGrid,
   CatalogRow,
   CatalogShowMore,
+  StatusDot,
 } from "@houston-ai/core";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
@@ -68,6 +69,9 @@ export function ConnectedProvidersStrip({
               title={provider.name}
               description={description || undefined}
               onClick={() => onOpen(provider)}
+              statusDot={
+                <StatusDot status="active" srLabel={t("card.connected")} />
+              }
               trailing={
                 <ChevronRight
                   aria-hidden

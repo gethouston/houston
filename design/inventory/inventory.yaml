@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 32
+version: 33
 
 components:
   - id: agent-avatar
@@ -650,3 +650,25 @@ components:
       design token.
     a11y: img role with the label as its accessible name; conveys meaning by glyph plus label, never color alone.
     since: 32
+
+  - id: status-badge
+    title: Status badge
+    purpose: >-
+      A colored connection/live-status indicator -- a presence-style dot left of
+      an item name ("dot Asana", catalog rows' statusDot slot) or a dot with a
+      visible label (integration and AI-provider detail surfaces) -- so
+      connected/pending/error reads without relying on which section the item
+      sits in.
+    anatomy: [status-dot, status-label]
+    states: [active, pending, error]
+    variants: [dot-only, dot-with-label]
+    behavior: >-
+      Presentational, props-only, i18n-agnostic: the status maps to one semantic
+      color token (success/warning/danger) and the consumer passes the already
+      translated label (visible, or sr-only for dot-only rows). One source of
+      the "connected" treatment reused across the integrations and AI-models
+      hubs so it reads identically everywhere.
+    a11y: >-
+      the dot is decorative; status is carried by the visible label
+      (dot-with-label) or an sr-only label (dot-only rows), never color alone.
+    since: 33
