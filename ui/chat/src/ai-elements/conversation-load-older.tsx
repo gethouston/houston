@@ -44,6 +44,11 @@ export const ConversationLoadOlder = ({
         setLoading(true);
         // Anchor by distance-from-bottom: prepended content grows the pane
         // upward, so restoring that distance keeps the visible messages still.
+        // Known limitation: content APPENDED during the fetch (an actively
+        // streaming turn) is indistinguishable from prepended growth here, so
+        // the viewport shifts by that delta — message React keys are
+        // position-based today, so no DOM node above survives the prepend to
+        // anchor on. Fix rides on stable feed-entry keys (follow-up).
         const bottomGap = pane.scrollHeight - pane.scrollTop;
         void onLoadOlder()
           .catch(() => {

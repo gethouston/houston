@@ -15,7 +15,7 @@ import {
 } from "@houston/sdk";
 import { cachePersistOutput } from "./cache-persist";
 import { createBusFeedOutput } from "./feed-output";
-import { decideServerSeed } from "./history-window";
+import { decideServerSeed, type SeedFrame } from "./history-window";
 import { conversationStore, conversationVm } from "./vm";
 
 export type { StreamTuning } from "@houston/sdk";
@@ -70,8 +70,10 @@ function composedOutput(
  * - Windowed server read (`window` set): the fold is a TAIL, so it can be
  *   shorter than the feed yet strictly newer (a teammate's turn landed while
  *   this chat was closed and cache-painted) — {@link decideServerSeed}
- *   compares by last-message recency, replaces on newer/richer, stamps the
- *   window without reseeding on identical content, and skips on poorer.
+ *   anchors on user-message content (never cross-clock timestamps), replaces
+ *   on newer/richer, stamps the window without reseeding on identical
+ *   content, and skips on poorer (or when the feed holds loaded pages /
+ *   unconfirmed sends the fold lacks).
  */
 export function seedConversationVm(
   agentPath: string,
@@ -82,14 +84,18 @@ export function seedConversationVm(
   if (registry.get(streamKey(agentPath, sessionKey))) return;
   const current = conversationStore.getSnapshot(
     conversationScope(agentPath, sessionKey),
-  ) as { feed?: { ts?: number }[] } | undefined;
+  ) as { feed?: SeedFrame[]; historyWindow?: HistoryWindowVM } | undefined;
   const curFeed = current?.feed ?? [];
   if (!window) {
     if (curFeed.length >= frames.length) return;
     conversationVm.seedHistory(agentPath, sessionKey, frames);
     return;
   }
-  const decision = decideServerSeed(curFeed, frames);
+  const decision = decideServerSeed(
+    curFeed,
+    frames,
+    current?.historyWindow !== undefined,
+  );
   if (decision === "replace") {
     conversationVm.seedHistory(agentPath, sessionKey, frames, window);
   } else if (decision === "stamp") {

@@ -20,7 +20,7 @@
  */
 
 import { createIdbBackend } from "./conversation-cache-idb";
-import { CHAT_OPEN_WINDOW } from "./history-window";
+import { trimForCache } from "./history-window";
 
 export {
   conversationCacheScope,
@@ -32,10 +32,11 @@ export interface CachedFrame {
   feed_type: string;
   data: unknown;
   /**
-   * The frame's source-message timestamp, when the fold carried one. Persisted
-   * so the windowed-history revalidation (HOU-819) can compare a cache-painted
-   * feed against a fresh server tail by recency; absent on records written
-   * before this field existed (comparisons then degrade to the length guard).
+   * The frame's timestamp, when the source fold carried one — preserved so a
+   * cache-painted bubble keeps its real time instead of losing it (HOU-819).
+   * Display metadata only: seed/replace decisions never compare timestamps
+   * (live pushes and history folds are stamped by different clocks). Absent
+   * on records written before this field existed.
    */
   ts?: number;
 }
@@ -145,11 +146,10 @@ export async function writeCachedConversation(
   if (!key || !b || frames.length === 0) return;
   try {
     await b.set(key, {
-      // Cap at the open window (HOU-819): the cache exists to paint a cold
-      // open instantly, and a cold open shows exactly the tail window — a
-      // longer record would only make the revalidating tail read look poorer
-      // than the paint and suppress the load-older affordance.
-      frames: frames.slice(-CHAT_OPEN_WINDOW).map((f) => ({
+      // Bounded (HOU-819): the cache exists to paint a cold open instantly,
+      // so it keeps a recent-window snapshot, trimmed at a TURN boundary —
+      // never mid-turn, which would paint a reply missing its own prompt.
+      frames: trimForCache(frames).map((f) => ({
         feed_type: f.feed_type,
         data: f.data,
         ...(f.ts !== undefined ? { ts: f.ts } : {}),
