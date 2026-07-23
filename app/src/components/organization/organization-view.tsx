@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { analytics } from "../../lib/analytics";
-import { canSeeBillingTab } from "../../lib/org-roles";
+import { canSeeBillingTab, isPersonalSpace } from "../../lib/org-roles";
 import { isTeamWorkspace } from "../../lib/space-id";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { AdminDetailScreen } from "./admin-detail-screen";
@@ -98,6 +98,7 @@ export function OrganizationView() {
       <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
         <AdminIndex
           visibleIds={visibleIds}
+          personalSpace={isPersonalSpace(capabilities)}
           memberCount={org?.members?.length}
           onSelect={setActive}
         />

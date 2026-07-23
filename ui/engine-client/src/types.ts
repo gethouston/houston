@@ -112,6 +112,17 @@ export interface Capabilities {
    */
   spaces?: boolean;
   /**
+   * The kind of the ACTIVE space (C8). A `personal` space is non-invitable —
+   * the gateway answers `403 personal_space` on any member-add — while a
+   * `team` space is the invitable per-seat product. Server truth for the
+   * members/invite surface, re-fetched on every space switch exactly like
+   * `role` (the switch drops the query cache). Additive: absent on gateways
+   * that predate it, and readers MUST treat absent as "unknown" and keep the
+   * pre-spaceKind behavior so hosted team users on a stale gateway never lose
+   * the invite surface. The gateway is the sole enforcer either way.
+   */
+  spaceKind?: "personal" | "team";
+  /**
    * Whether this deployment can wake routines on external Composio events (C9
    * event-driven routines). Requires a Composio project key AND a public webhook
    * URL, so it is on for managed cloud + self-host and OFF on desktop (no public

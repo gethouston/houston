@@ -28,6 +28,23 @@ export function hasSpaces(caps: Capabilities | null | undefined): boolean {
 }
 
 /**
+ * Is the ACTIVE space the caller's personal one (C8 `spaceKind`)? A personal
+ * space is non-invitable — the gateway answers `403 personal_space` on any
+ * member-add — so the People/invite surface swaps to the create-a-team path
+ * when this is true (every user is `owner` of their personal space, so the
+ * role gates alone cannot tell it apart from a team). TOLERANT READER: true
+ * only when the host explicitly advertises `spaceKind: "personal"`; a gateway
+ * that predates the field omits it and this stays false, so hosted team users
+ * on a stale gateway keep the invite surface unchanged. The gateway is the
+ * sole enforcer; this only routes an affordance.
+ */
+export function isPersonalSpace(
+  caps: Capabilities | null | undefined,
+): boolean {
+  return caps?.spaceKind === "personal";
+}
+
+/**
  * The caller's org role, or null in single-player mode. A multiplayer host
  * always advertises a role; treat a missing one as the least-privileged `user`
  * so a stale/absent field never widens power.

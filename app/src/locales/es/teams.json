@@ -91,6 +91,7 @@
       },
       "rows": {
         "people": "Invita compañeros, asigna roles y quita miembros.",
+        "peoplePersonal": "Por ahora solo estás tú aquí. Crea un equipo para invitar a personas.",
         "activity": "Lo que pasó en este espacio de trabajo, lo más reciente primero.",
         "usage": "Cuántos mensajes envía cada agente y persona.",
         "billing": "Asientos, plan y pago."
@@ -166,6 +167,11 @@
   },
   "people": {
     "adminNotice": "Puedes ver a tu equipo. Solo el propietario puede agregar o quitar personas.",
+    "personal": {
+      "title": "Crea un equipo para invitar a personas",
+      "body": "Por ahora solo estás tú aquí. Los equipos te permiten invitar a personas, compartir agentes y trabajar en conjunto.",
+      "cta": "Crear un equipo"
+    },
     "add": {
       "title": "Agregar a alguien",
       "subtitle": "Invita a un compañero por correo. Si aún no tiene Houston, le enviaremos una invitación.",

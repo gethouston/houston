@@ -91,6 +91,7 @@
       },
       "rows": {
         "people": "Invite teammates, set roles, remove members.",
+        "peoplePersonal": "It's just you here. Create a team to invite people.",
         "activity": "What happened in this workspace, newest first.",
         "usage": "How much each agent and person is messaging.",
         "billing": "Seats, plan, and payment."
@@ -166,6 +167,11 @@
   },
   "people": {
     "adminNotice": "You can view your team. Only the owner can add or remove people.",
+    "personal": {
+      "title": "Create a team to invite people",
+      "body": "It's just you here for now. Teams let you invite people, share agents, and work together.",
+      "cta": "Create a team"
+    },
     "add": {
       "title": "Add someone",
       "subtitle": "Invite a teammate by email. If they don't have Houston yet, we'll send an invitation.",

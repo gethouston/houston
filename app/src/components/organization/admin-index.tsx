@@ -7,6 +7,12 @@ import type { OrgTabId } from "./org-view-model";
 interface AdminIndexProps {
   /** The sections visible for this caller + space, from `orgTabIds`. */
   visibleIds: readonly OrgTabId[];
+  /**
+   * True when the active space is the caller's personal one (C8 `spaceKind`).
+   * A personal space is non-invitable, so the People row's caption reads as
+   * the create-a-team path instead of promising invites the gateway rejects.
+   */
+  personalSpace?: boolean;
   /** Roster size from the loaded `GET /org`; undefined while it loads. */
   memberCount?: number;
   onSelect: (id: OrgTabId) => void;
@@ -27,6 +33,7 @@ interface AdminIndexProps {
  */
 export function AdminIndex({
   visibleIds,
+  personalSpace = false,
   memberCount,
   onSelect,
 }: AdminIndexProps) {
@@ -46,7 +53,11 @@ export function AdminIndex({
           <SettingsRow
             icon={Users}
             title={t("org.tabs.people")}
-            description={t("org.index.rows.people")}
+            description={t(
+              personalSpace
+                ? "org.index.rows.peoplePersonal"
+                : "org.index.rows.people",
+            )}
             value={
               memberCount === undefined
                 ? undefined
