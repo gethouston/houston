@@ -1,12 +1,20 @@
-# Linear release stamp — the release train's bookkeeping step.
+# Linear release stamp — the release train's bookkeeping, at both of its moments.
 #
-# Fires when a cloud-v* release is PUBLISHED (the ship button — same trigger as
-# cloud-updater-manifest.yml and ship-train.yml). It stamps the shipped Linear
-# issues and writes the changelogs; see scripts/linear-release-stamp.mjs for the
-# full behavior. Deliberately an OBSERVER: it needs no build outputs, runs after
-# the ship decision, and the script exits 0 on Linear failures so a tracker
-# outage can never block or taint a release. Re-running is safe (idempotent per
-# issue via the release label).
+#   TAG PUSH (cloud-v*)   = the 07:45 cut. Labels the train's Linear issues
+#                           `cloud-vX.Y.Z` so the 08:30 QA review is a filter
+#                           (App Review + that label). GitHub Actions never fires
+#                           on draft-release creation, but the tag push that
+#                           births the draft does — and it's PAT-authenticated
+#                           (RELEASE_CUT_TOKEN), so it triggers workflows.
+#   RELEASE PUBLISHED     = the ship button (same trigger as
+#                           cloud-updater-manifest.yml / ship-train.yml). Moves
+#                           issues to Released, comments, appends the internal +
+#                           WhatsApp changelogs to the release body.
+#
+# See scripts/linear-release-stamp.mjs for full behavior. Deliberately an
+# OBSERVER: needs no build outputs, runs beside the train, and the script exits
+# 0 on Linear failures so a tracker outage can never block a cut or a ship.
+# Re-running either mode is safe (idempotent per issue).
 #
 # Secrets: LINEAR_API_KEY — a Linear personal API key (workspace houston-ai).
 # contents: write is required to append the changelogs to the release body.
@@ -14,6 +22,8 @@
 name: Linear release stamp
 
 on:
+  push:
+    tags: ["cloud-v*"]
   release:
     types: [published]
 
@@ -22,12 +32,12 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: linear-release-stamp-${{ github.event.release.tag_name }}
+  group: linear-release-stamp-${{ github.event_name == 'push' && github.ref_name || github.event.release.tag_name }}-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
   stamp:
-    if: startsWith(github.event.release.tag_name, 'cloud-v')
+    if: github.event_name == 'push' || startsWith(github.event.release.tag_name, 'cloud-v')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -35,12 +45,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Stamp Linear issues + changelogs
+      - name: Stamp Linear issues
         run: node scripts/linear-release-stamp.mjs
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          STAMP_MODE: ${{ github.event_name == 'push' && 'draft' || 'publish' }}
+          RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || github.event.release.tag_name }}
           RELEASE_URL: ${{ github.event.release.html_url }}
           RELEASE_ID: ${{ github.event.release.id }}
