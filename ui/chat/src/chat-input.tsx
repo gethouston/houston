@@ -52,10 +52,12 @@ export function ChatInput({
     setFiles,
     isFilesControlled,
     fileInputRef,
+    folderInputRef,
     handleFileChange,
     handlePaste,
     openFilePicker,
-    removeFile,
+    openFolderPicker,
+    removeFiles,
   } = useComposerAttachments({
     attachments,
     onAttachmentsChange,
@@ -146,9 +148,11 @@ export function ChatInput({
       >
         <ChatInputAttachments
           fileInputRef={fileInputRef}
+          folderInputRef={folderInputRef}
           files={files}
           onFileChange={handleFileChange}
-          onRemoveFile={removeFile}
+          onRemoveFiles={removeFiles}
+          folderCountLabel={labels?.folderFileCount}
         />
 
         <QueuedMessageList
@@ -164,6 +168,7 @@ export function ChatInput({
 
           <ChatInputAttachButton
             onOpenFilePicker={openFilePicker}
+            onOpenFolderPicker={openFolderPicker}
             attachMenu={attachMenu}
             disabled={disabled}
           />

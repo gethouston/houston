@@ -8,6 +8,10 @@
     "dropTitle": "Drop your files",
     "dropDescription": "Drop them here to add them to the conversation",
     "imagePasteUnavailable": "Couldn't read the pasted image. Try dragging the file in instead.",
+    "tooManyFiles": "You can attach up to {{max}} files at a time",
+    "folderReadFailed": "Couldn't read that folder. Try the attach button instead.",
+    "folderFileCount_one": "{{count}} file",
+    "folderFileCount_other": "{{count}} files",
     "addFiles": "Add files",
     "dictation": {
       "start": "Start voice typing",

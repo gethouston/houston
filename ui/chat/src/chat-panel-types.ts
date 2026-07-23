@@ -35,6 +35,12 @@ export interface ChatComposerLabels {
   /** Shown when an image was on the clipboard but the webview never
    *  handed over the bytes (Linux Wayland WebKitGTK). */
   imagePasteUnavailable?: string;
+  /** Shown when a folder pick/drop exceeds MAX_ATTACHMENT_FILES (HOU-808). */
+  tooManyFiles?: string;
+  /** Shown when expanding a dropped folder's contents fails. */
+  folderReadFailed?: string;
+  /** "N files" line on a folder chip. */
+  folderFileCount?: (count: number) => string;
 }
 
 export interface ChatPanelProps {
@@ -58,10 +64,14 @@ export interface ChatPanelProps {
   footer?: ReactNode;
   composerHeader?: ReactNode;
   /** Popover menu anchored to the paperclip button. Receives `openFilePicker`
-   *  so the menu can trigger the underlying file input. */
+   *  / `openFolderPicker` so the menu can trigger the underlying inputs. */
   attachMenu?:
     | ReactNode
-    | ((api: { openFilePicker: () => void; close: () => void }) => ReactNode);
+    | ((api: {
+        openFilePicker: () => void;
+        openFolderPicker: () => void;
+        close: () => void;
+      }) => ReactNode);
   queuedMessages?: QueuedChatMessage[];
   onRemoveQueuedMessage?: (id: string) => void;
   queuedLabels?: QueuedMessageLabels;

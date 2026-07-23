@@ -142,14 +142,16 @@ export interface AIBoardProps {
   /** Content rendered inside the composer above the textarea. */
   composerHeader?: ReactNode | ((ctx: { hasMessages: boolean }) => ReactNode);
   /** Popover menu anchored to the composer's paperclip button. When a
-   *  function, called with `{ hasMessages, openFilePicker, close }` — the
-   *  consumer can lock the provider for active conversations, trigger the
-   *  file picker from inside the menu, and close the popover. */
+   *  function, called with `{ hasMessages, openFilePicker, openFolderPicker,
+   *  close }` — the consumer can lock the provider for active conversations,
+   *  trigger the file or folder picker from inside the menu, and close the
+   *  popover. */
   attachMenu?:
     | ReactNode
     | ((ctx: {
         hasMessages: boolean;
         openFilePicker: () => void;
+        openFolderPicker: () => void;
         close: () => void;
       }) => ReactNode);
   /** Enables submit even when the composer has no text or files. */
@@ -807,16 +809,18 @@ export function AIBoard({
           }
           attachMenu={
             typeof attachMenu === "function"
-              ? ({ openFilePicker, close }) =>
+              ? ({ openFilePicker, openFolderPicker, close }) =>
                   (
                     attachMenu as (ctx: {
                       hasMessages: boolean;
                       openFilePicker: () => void;
+                      openFolderPicker: () => void;
                       close: () => void;
                     }) => ReactNode
                   )({
                     hasMessages: activeFeed.length > 0,
                     openFilePicker,
+                    openFolderPicker,
                     close,
                   })
               : attachMenu

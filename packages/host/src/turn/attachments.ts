@@ -52,10 +52,18 @@ export class AttachmentError extends Error {
   }
 }
 
-/** One uploaded file: original name + its base64-encoded bytes. */
+/**
+ * One uploaded file: original name + its base64-encoded bytes. `relPath` is
+ * set for folder uploads (HOU-808): the file's slash-joined path INSIDE the
+ * dropped folder, including the filename (mirrors `File.webkitRelativePath`,
+ * e.g. `docs/guide/intro.md`) — the file then lands at `uploads/<relPath>` so
+ * the folder's structure survives. Hosts predating folder support ignore the
+ * field and store the flat `name`, which still yields readable paths.
+ */
 interface UploadFile {
   name: string;
   contentBase64: string;
+  relPath?: string;
 }
 
 /**
@@ -77,14 +85,43 @@ function safeFilename(name: string): string {
   return name;
 }
 
+/** Folder uploads can nest, but not absurdly: a runaway path is a client bug. */
+const MAX_RELPATH_SEGMENTS = 32;
+const MAX_RELPATH_LENGTH = 1024;
+
+/**
+ * Validate a folder-upload relative path: 2+ segments (a 1-segment path is a
+ * plain filename and must arrive as `name`), every segment individually held to
+ * the same rules as `safeFilename` — so `..`, `\`, empty segments (`a//b`) and
+ * hidden dot-segments are all rejected loudly, and the joined path can never
+ * escape `uploads/`.
+ */
+function safeRelPath(relPath: string): string {
+  const segments = relPath.split("/");
+  if (
+    segments.length < 2 ||
+    segments.length > MAX_RELPATH_SEGMENTS ||
+    relPath.length > MAX_RELPATH_LENGTH
+  ) {
+    throw new AttachmentError(400, `invalid attachment path: ${relPath}`);
+  }
+  for (const segment of segments) safeFilename(segment);
+  return relPath;
+}
+
 const uploadsKey = (root: string) => `${root}/${UPLOADS_DIR}`;
 
 /**
  * Write each uploaded file under `uploads/` and return the RELATIVE workspace
- * paths the agent will read. Names colliding with anything already in the
- * folder — or with each other within a batch — are disambiguated (`name.ext`,
- * `name (1).ext`, …) so an upload never silently overwrites an earlier one and
- * every returned path resolves to a distinct stored file.
+ * paths the agent will read. Folder uploads (`relPath` set) keep their
+ * directory structure: `docs/a.md` lands at `uploads/docs/a.md`. FILES
+ * colliding with anything already stored — or with each other within a batch —
+ * are disambiguated (`name.ext`, `name (1).ext`, …) so an upload never
+ * silently overwrites an earlier one and every returned path resolves to a
+ * distinct stored file. DIRECTORIES deliberately merge instead of deduping:
+ * the client uploads a folder across several requests (one per size-batch),
+ * so a per-request folder rename would scatter one folder over many — and the
+ * returned per-file paths stay exact either way.
  */
 export async function saveAttachments(
   vfs: Vfs,
@@ -93,33 +130,51 @@ export async function saveAttachments(
 ): Promise<string[]> {
   // Seed the dedup set with what the folder already holds: uploads are durable
   // across conversations, so "report.pdf" attached today must not clobber the
-  // "report.pdf" attached last week.
+  // "report.pdf" attached last week. `vfs.list` is recursive, so the set holds
+  // full `uploads/`-relative paths — nested folder-upload files included.
   const prefix = uploadsKey(root);
   const used = new Set<string>(
     (await vfs.list(prefix)).map((k) => k.slice(prefix.length + 1)),
   );
-  const paths: string[] = [];
-  for (const f of files) {
-    const filename = dedupe(safeFilename(f.name), used);
-    const bytes = Buffer.from(f.contentBase64, "base64");
-    const rel = `${UPLOADS_DIR}/${filename}`;
-    await vfs.writeBytes(`${root}/${rel}`, bytes);
-    paths.push(rel);
+  // Validate the WHOLE batch before writing anything: one bad path must 400
+  // the request without leaving earlier files half-persisted (their paths
+  // would never be returned and no FilesChanged would fire).
+  const paths = files.map((f) => {
+    const target = f.relPath ? safeRelPath(f.relPath) : safeFilename(f.name);
+    return `${UPLOADS_DIR}/${dedupe(target, used)}`;
+  });
+  // Path validation is lexical; the Vfs write resolves the path as the
+  // filesystem sees it, symlinks included. A symlinked dir under uploads/
+  // could redirect a write — but only something that already writes to the
+  // workspace (the agent itself) can plant one there, and that principal can
+  // already write wherever the symlink would point. Same posture as the
+  // pre-existing flat uploads (where `uploads` itself could be a symlink).
+  for (const [i, f] of files.entries()) {
+    await vfs.writeBytes(
+      `${root}/${paths[i]}`,
+      Buffer.from(f.contentBase64, "base64"),
+    );
   }
   return paths;
 }
 
-/** Pick a unique filename within the folder, appending " (n)" before the extension. */
-function dedupe(name: string, used: Set<string>): string {
-  if (!used.has(name)) {
-    used.add(name);
-    return name;
+/**
+ * Pick a unique path within `uploads/`, appending " (n)" before the FILENAME's
+ * extension (the directory part never changes — see saveAttachments on merge).
+ */
+function dedupe(relPath: string, used: Set<string>): string {
+  if (!used.has(relPath)) {
+    used.add(relPath);
+    return relPath;
   }
+  const slash = relPath.lastIndexOf("/");
+  const dir = slash >= 0 ? relPath.slice(0, slash + 1) : "";
+  const name = slash >= 0 ? relPath.slice(slash + 1) : relPath;
   const dot = name.lastIndexOf(".");
   const stem = dot > 0 ? name.slice(0, dot) : name;
   const ext = dot > 0 ? name.slice(dot) : "";
   for (let n = 1; ; n++) {
-    const candidate = `${stem} (${n})${ext}`;
+    const candidate = `${dir}${stem} (${n})${ext}`;
     if (!used.has(candidate)) {
       used.add(candidate);
       return candidate;
@@ -135,12 +190,19 @@ function parseUploadBody(body: Record<string, unknown>): UploadFile[] {
   }
   let total = 0;
   return body.files.map((raw, i) => {
-    const f = raw as { name?: unknown; contentBase64?: unknown };
+    const f = raw as {
+      name?: unknown;
+      contentBase64?: unknown;
+      relPath?: unknown;
+    };
     if (typeof f.name !== "string" || typeof f.contentBase64 !== "string") {
       throw new AttachmentError(
         400,
         `file[${i}] needs string 'name' and 'contentBase64'`,
       );
+    }
+    if (f.relPath !== undefined && typeof f.relPath !== "string") {
+      throw new AttachmentError(400, `file[${i}] 'relPath' must be a string`);
     }
     // Semantic decoded-size limit (base64 is ~3/4 the byte size). The raw body
     // is already capped DURING draining by readJson(MAX_UPLOAD_BODY_BYTES) — the
@@ -153,7 +215,7 @@ function parseUploadBody(body: Record<string, unknown>): UploadFile[] {
         "attachments exceed the upload size limit",
       );
     }
-    return { name: f.name, contentBase64: f.contentBase64 };
+    return { name: f.name, contentBase64: f.contentBase64, relPath: f.relPath };
   });
 }
 
@@ -162,7 +224,7 @@ function parseUploadBody(body: Record<string, unknown>): UploadFile[] {
  * runtime channel (the runtime has no /attachments route). Returns true when it
  * owns the request. A missing vfs 503s; malformed input 4xxs. Nothing swallowed.
  *
- *   POST attachments  { files: [{ name, contentBase64 }] } → { paths }
+ *   POST attachments  { files: [{ name, contentBase64, relPath? }] } → { paths }
  *
  * DELETE (the legacy per-scope wipe) is gone: uploads are permanent workspace
  * files the user manages through the Files tab. Old clients still fire a

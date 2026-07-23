@@ -5,6 +5,7 @@ import { type ReactNode, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { TabProps } from "../../lib/types";
+import { useUIStore } from "../../stores/ui";
 import { useBoardLabels } from "../board/use-board-labels";
 import { RoutineActivationChip } from "./routine-activation-chip";
 import { RoutineSetupChatBoard } from "./routine-setup-chat-board";
@@ -156,6 +157,9 @@ export function RoutineSetupChat({
             status={onIntakeSend ? "ready" : "submitted"}
             placeholder={t("chat.intakePlaceholder")}
             labels={composerLabels}
+            onNotice={(message) =>
+              useUIStore.getState().addToast({ title: message })
+            }
           />
         </div>
       );

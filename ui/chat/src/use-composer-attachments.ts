@@ -1,5 +1,6 @@
 import type { ChangeEvent, ClipboardEvent, RefObject } from "react";
 import { useCallback, useRef } from "react";
+import { visibleAttachmentFiles } from "./attachment-folders";
 import type {
   AttachmentRejection,
   ChatComposerLabels,
@@ -29,10 +30,12 @@ export interface ComposerAttachments {
   setFiles: (files: File[]) => void;
   isFilesControlled: boolean;
   fileInputRef: RefObject<HTMLInputElement | null>;
+  folderInputRef: RefObject<HTMLInputElement | null>;
   handleFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
   handlePaste: (e: ClipboardEvent<HTMLTextAreaElement>) => void;
   openFilePicker: () => void;
-  removeFile: (index: number) => void;
+  openFolderPicker: () => void;
+  removeFiles: (indices: readonly number[]) => void;
 }
 
 export function useComposerAttachments({
@@ -50,6 +53,7 @@ export function useComposerAttachments({
   );
   const isFilesControlled = attachments !== undefined;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const addFiles = useAttachmentIntake({
     files,
@@ -58,12 +62,16 @@ export function useComposerAttachments({
     onAttachmentRejections,
     onNotice,
     duplicateNotice: labels?.fileAlreadyInChat,
+    tooManyNotice: labels?.tooManyFiles,
   });
 
   const handleFileChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || e.target.files.length === 0) return;
-      addFiles(Array.from(e.target.files));
+      // A folder pick sweeps in hidden files (.DS_Store, .git/**) the host
+      // refuses — filter them here; plain picks pass through untouched.
+      const picked = visibleAttachmentFiles(Array.from(e.target.files));
+      if (picked.length > 0) addFiles(picked);
       e.target.value = "";
     },
     [addFiles],
@@ -95,8 +103,20 @@ export function useComposerAttachments({
     input.click();
   }, []);
 
-  const removeFile = useCallback(
-    (index: number) => setFiles(files.filter((_, i) => i !== index)),
+  const openFolderPicker = useCallback(() => {
+    const input = folderInputRef.current;
+    if (!input) return;
+    input.value = "";
+    input.click();
+  }, []);
+
+  // Index-set removal (not single-index): a folder chip removes every file of
+  // that folder in ONE state update.
+  const removeFiles = useCallback(
+    (indices: readonly number[]) => {
+      const drop = new Set(indices);
+      setFiles(files.filter((_, i) => !drop.has(i)));
+    },
     [files, setFiles],
   );
 
@@ -105,9 +125,11 @@ export function useComposerAttachments({
     setFiles,
     isFilesControlled,
     fileInputRef,
+    folderInputRef,
     handleFileChange,
     handlePaste,
     openFilePicker,
-    removeFile,
+    openFolderPicker,
+    removeFiles,
   };
 }

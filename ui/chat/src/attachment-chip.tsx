@@ -7,6 +7,7 @@
 import {
   FileSpreadsheetIcon,
   FileTextIcon,
+  FolderIcon,
   ImageIcon,
   FileIcon as LucideFileIcon,
   MicIcon,
@@ -118,6 +119,47 @@ export function AttachmentChip({ name, onRemove }: AttachmentChipProps) {
         <p className="text-[10px] text-ink-muted leading-tight">
           {getTypeLabel(ext)}
         </p>
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="absolute top-1.5 right-1.5 size-4 rounded-full bg-ink/60 text-input flex items-center justify-center hover:bg-ink/80 transition-colors"
+        aria-label={`Remove ${name}`}
+      >
+        <XIcon className="size-2.5" strokeWidth={3} />
+      </button>
+    </div>
+  );
+}
+
+export interface FolderAttachmentChipProps {
+  name: string;
+  /** Localized "N files" line under the folder name (HOU-808). */
+  countLabel: string;
+  onRemove: () => void;
+}
+
+/** A whole attached folder as ONE chip — its files upload together and are
+ *  removed together. Same card anatomy as AttachmentChip. */
+export function FolderAttachmentChip({
+  name,
+  countLabel,
+  onRemove,
+}: FolderAttachmentChipProps) {
+  return (
+    <div className="relative flex items-center gap-2.5 rounded-xl border border-ink/[0.08] bg-input pl-2.5 pr-8 py-2 min-w-0 shrink-0 max-w-[240px] shadow-sm">
+      <div className="size-8 rounded-md bg-[#54A8F0] flex items-center justify-center shrink-0">
+        <FolderIcon
+          className="size-4 text-white"
+          strokeWidth={2}
+          fill="currentColor"
+        />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-ink truncate leading-tight">
+          {name}
+        </p>
+        <p className="text-[10px] text-ink-muted leading-tight">{countLabel}</p>
       </div>
       <button
         type="button"

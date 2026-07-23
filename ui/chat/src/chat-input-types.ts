@@ -38,10 +38,15 @@ export interface ChatInputProps {
   /** Optional menu rendered in a popover anchored to the paperclip button.
    *  When provided, clicking the button opens the popover instead of going
    *  straight to the file picker. The render-prop form receives an API the
-   *  caller can use to trigger the file picker from inside the menu. */
+   *  caller can use to trigger the file or folder picker from inside the
+   *  menu. */
   attachMenu?:
     | ReactNode
-    | ((api: { openFilePicker: () => void; close: () => void }) => ReactNode);
+    | ((api: {
+        openFilePicker: () => void;
+        openFolderPicker: () => void;
+        close: () => void;
+      }) => ReactNode);
   /** Messages accepted while a turn is active, waiting to be sent as one turn. */
   queuedMessages?: QueuedChatMessage[];
   onRemoveQueuedMessage?: (id: string) => void;

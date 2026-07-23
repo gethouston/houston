@@ -2,10 +2,13 @@
  * Stable identity for a user-attached File: name + size + lastModified.
  * Single source of truth so dedupe stays consistent across every entry
  * point (drop, picker, clipboard) and the multiple browser APIs that can
- * surface the same file twice.
+ * surface the same file twice. Folder-derived files identify by their
+ * folder-relative path instead of the bare name — a folder legitimately
+ * holds same-named same-sized files in different subfolders (HOU-808).
  */
 export function fileIdentityKey(file: File): string {
-  return `${file.name}::${file.size}::${file.lastModified}`;
+  const name = file.webkitRelativePath || file.name;
+  return `${name}::${file.size}::${file.lastModified}`;
 }
 
 // `kind`/`type` are loose `string` (not unions) on purpose: a real DOM

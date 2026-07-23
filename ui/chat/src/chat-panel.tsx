@@ -5,13 +5,17 @@
  */
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Shimmer } from "./ai-elements/shimmer";
+import { TooManyAttachmentFilesError } from "./attachment-folders";
 import { ChatDropOverlay } from "./chat-drop-overlay";
 import { feedItemsToMessages } from "./chat-helpers";
 import { ChatInput } from "./chat-input";
 import { ChatMessages } from "./chat-messages";
 import type { ChatPanelProps } from "./chat-panel-types";
 import { deriveStatus } from "./chat-status";
-import { useAttachmentIntake } from "./use-attachment-intake";
+import {
+  DEFAULT_TOO_MANY_FILES_NOTICE,
+  useAttachmentIntake,
+} from "./use-attachment-intake";
 import { useControllable, useFileDropZone } from "./use-file-drop-zone";
 
 export type { ChatPanelProps } from "./chat-panel-types";
@@ -92,8 +96,28 @@ export function ChatPanel({
     onAttachmentRejections,
     onNotice,
     duplicateNotice: composerLabels?.fileAlreadyInChat,
+    tooManyNotice: composerLabels?.tooManyFiles,
   });
-  const { isDraggingOver, dropProps } = useFileDropZone(addDroppedFiles);
+  const tooManyFilesNotice = composerLabels?.tooManyFiles;
+  const folderReadFailedNotice = composerLabels?.folderReadFailed;
+  const onDropError = useCallback(
+    (error: unknown) => {
+      // No notice channel → rethrow: the failure surfaces as an unhandled
+      // rejection (Sentry) instead of being silently swallowed.
+      if (!onNotice) throw error;
+      onNotice(
+        error instanceof TooManyAttachmentFilesError
+          ? (tooManyFilesNotice ?? DEFAULT_TOO_MANY_FILES_NOTICE)
+          : (folderReadFailedNotice ??
+              "Couldn't read the dropped folder. Try the attach button instead."),
+      );
+    },
+    [onNotice, tooManyFilesNotice, folderReadFailedNotice],
+  );
+  const { isDraggingOver, dropProps } = useFileDropZone(
+    addDroppedFiles,
+    onDropError,
+  );
 
   useEffect(() => {
     if (composerFocusToken === undefined) return;

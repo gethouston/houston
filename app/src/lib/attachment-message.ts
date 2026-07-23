@@ -8,9 +8,42 @@ const MARKER_SUFFIX = "-->";
 
 export function withAttachmentPaths(text: string, paths: string[]): string {
   if (paths.length === 0) return text;
-  const list = paths.map((p) => `- ${p}`).join("\n");
+  const list = groupedAttachmentLines(paths).join("\n");
   const block = `[User attached these files. Read them with the Read tool if needed:\n${list}]`;
   return text.length > 0 ? `${text}\n\n${block}` : block;
+}
+
+/**
+ * Flat uploads land directly under `uploads/`, so any deeper RELATIVE
+ * `uploads/…` path is a folder upload (HOU-808). Listing a 200-file folder
+ * file-by-file would bloat the prompt, so each uploaded folder collapses to
+ * ONE line naming its root and file count — the agent's file tools list the
+ * contents on demand. Order follows first appearance. Anything else (legacy
+ * absolute paths included) stays a plain per-file line.
+ */
+function groupedAttachmentLines(paths: readonly string[]): string[] {
+  const lines: string[] = [];
+  const folders = new Map<string, { line: number; count: number }>();
+  for (const path of paths) {
+    const segments = path.split("/");
+    if (segments[0] !== "uploads" || segments.length <= 2) {
+      lines.push(`- ${path}`);
+      continue;
+    }
+    const root = `${segments[0]}/${segments[1]}`;
+    const folder = folders.get(root);
+    if (folder) {
+      folder.count += 1;
+      continue;
+    }
+    folders.set(root, { line: lines.length, count: 1 });
+    lines.push(""); // placeholder, filled below once the count is final
+  }
+  for (const [root, { line, count }] of folders) {
+    lines[line] =
+      `- ${root}/ (uploaded folder with ${count} ${count === 1 ? "file" : "files"} inside)`;
+  }
+  return lines;
 }
 
 export function buildAttachmentPrompt(
