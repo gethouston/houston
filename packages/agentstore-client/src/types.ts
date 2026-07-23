@@ -312,3 +312,14 @@ export interface PurgeResult {
   draftsDeleted: number;
   softDeletedPurged: number;
 }
+
+/**
+ * The body of the admin handle grant (`POST /admin/creators/{handle}/grant`).
+ * Materializes or moves the handle onto `userId`'s profile; reserved handles
+ * are allowed, so this is how official handles (e.g. `@houston`) are minted.
+ * `displayName` is required when the target user has no profile yet.
+ */
+export interface AdminGrantHandleInput {
+  userId: string;
+  displayName?: string;
+}

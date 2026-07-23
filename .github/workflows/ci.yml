@@ -89,7 +89,7 @@ jobs:
           pnpm --filter @houston/host test
           pnpm --filter @houston/runtime test
           pnpm --filter @houston/code-sandbox test
-          pnpm exec vitest run scripts/check-parity.test.mjs
+          pnpm exec vitest run scripts/check-parity.test.mjs scripts/publish-starter-agents.test.mjs
 
   web:
     name: Web (typecheck + unit + UI tests)

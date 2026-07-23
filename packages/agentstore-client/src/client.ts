@@ -12,6 +12,7 @@
  */
 import { StoreApiError } from "./errors.ts";
 import type {
+  AdminGrantHandleInput,
   AdminQueueItem,
   AdminReport,
   AgentPatch,
@@ -391,6 +392,26 @@ export class AgentStoreClient {
       `/admin/creators/${encodeURIComponent(handle)}/verify`,
       { auth: true, body: { verified }, options },
     );
+  }
+
+  /**
+   * Grant a creator handle to `input.userId`, materializing or moving the
+   * handle onto that user's profile (`POST /admin/creators/{handle}/grant`).
+   * Reserved handles are allowed — this is how official handles (e.g.
+   * `@houston`) are minted. Does not set the verified badge (that is
+   * {@link adminSetCreatorVerified}). Unwraps the `{ profile }` envelope.
+   */
+  async adminGrantCreatorHandle(
+    handle: string,
+    input: AdminGrantHandleInput,
+    options?: StoreRequestOptions,
+  ): Promise<CreatorProfile> {
+    const body = await this.requestJson<{ profile: CreatorProfile }>(
+      "POST",
+      `/admin/creators/${encodeURIComponent(handle)}/grant`,
+      { auth: true, body: input, options },
+    );
+    return body.profile;
   }
 
   /** Release (null) a creator's handle (`POST /admin/creators/{handle}/release`). */

@@ -4,7 +4,6 @@
     "fromFriendCard": "De un amigo",
     "fromFriendDescription": "Trae un agente que alguien te compartió, desde un archivo o un enlace."
   },
-  "flagged": "Houston marcó este para revisarlo con cuidado.",
   "export": {
     "eyebrow": "Exportando {{name}}",
     "loading": "Cargando tu agente.",
@@ -46,8 +45,6 @@
       "learningTitle": "Aprendizaje"
     },
     "step3": {
-      "title": "Listo para exportar",
-      "body": "Houston empaqueta {{name}} en un solo archivo que puedes enviar por cualquier app. Quien lo reciba importa su propia copia. La colaboración en vivo está en Compartir.",
       "skillsLabel": "Habilidades",
       "routinesLabel": "Rutinas",
       "learningsLabel": "Aprendizajes",
@@ -101,36 +98,21 @@
       "scanFlagged": "Houston marcó {{count}} elemento(s). Revísalos mientras continúas."
     },
     "step2": {
-      "title": "Nómbrale a tu nuevo agente",
-      "body": "Elige un nombre y un color. Puedes cambiarlos después.",
-      "nameLabel": "Nombre",
-      "colorLabel": "Color",
       "namePlaceholder": "Nombra a tu agente",
       "placeholderName": "Tu agente",
       "tagline": "Listo para ayudarte"
     },
     "step3": {
       "title": "Elige qué habilidades traer",
-      "body": "Desmarca lo que no quieres traer.",
-      "empty": "No hay habilidades en este paquete."
+      "body": "Desmarca lo que no quieres traer."
     },
     "step4": {
       "title": "Elige qué rutinas traer",
-      "body": "Las rutinas corren en horario. Esperan hasta que sus integraciones estén conectadas.",
-      "empty": "No hay rutinas en este paquete."
+      "body": "Las rutinas corren en horario. Esperan hasta que sus integraciones estén conectadas."
     },
     "step5": {
       "title": "Elige qué aprendizajes conservar",
-      "body": "Los aprendizajes son notas que el agente usa como contexto. Puedes dejar afuera los personales.",
-      "empty": "No hay aprendizajes en este paquete."
-    },
-    "step6": {
-      "title": "El agente necesita algunas apps",
-      "body": "Conéctalas ahora desde la página de conexiones, o sáltalo y conéctalas después.",
-      "none": "Nada que conectar. Tu agente está listo.",
-      "connected": "Conectado",
-      "needsConnection": "Conectar después",
-      "connectLater": "Las rutinas que necesiten una app esperarán hasta que la conectes."
+      "body": "Los aprendizajes son notas que el agente usa como contexto. Puedes dejar afuera los personales."
     },
     "link": {
       "label": "Instalar desde un enlace",

@@ -110,6 +110,47 @@ so there's no harm in repeating them.
 User-created sharing is intentionally separate. Future community store
 work should add publish/share flow without requiring GitHub.
 
+## Publishing the starters to the hosted Agent Store
+
+`scripts/publish-starter-agents.mjs` publishes (or updates) all eight
+starter packages to the hosted Houston Agent Store via the cloud gateway.
+It maps each `store/agents/<id>/` package to an `AgentIR` (identity from
+`houston.json`, `instructions` from `CLAUDE.md`, `skills` as verbatim
+`SKILL.md` bodies, integrations UPPERCASED), validates every IR with
+`agentIrSchema`, then publishes idempotently: it lists the caller's agents,
+matches each starter by its identity slug, and PATCHes the existing listing
+or POSTs a new one (both `publish: true`). The pure mapping lives in
+`scripts/lib/starter-agent-ir.mjs` and is covered by
+`scripts/publish-starter-agents.test.mjs`.
+
+```bash
+# Preview + validate all eight IRs, no network:
+node scripts/publish-starter-agents.mjs --dry-run
+
+# Publish to the default staging gateway:
+HOUSTON_STORE_TOKEN=<bearer> node scripts/publish-starter-agents.mjs
+
+# Publish a subset to a specific gateway:
+node scripts/publish-starter-agents.mjs \
+  --gateway https://staging-gateway.gethouston.ai \
+  --token <bearer> --only sales,support
+```
+
+Flags: `--gateway <url>` (default `https://staging-gateway.gethouston.ai`),
+`--token <bearer>` or env `HOUSTON_STORE_TOKEN`, `--dry-run`, `--only <id,...>`.
+The script prints a per-agent result table (created/updated, slug, share URL)
+and exits nonzero if any agent fails.
+
+**Getting a bearer token.** It is the Firebase ID token from a signed-in
+Houston app session (the same token the app sends to the gateway). Sign in,
+copy the ID token, and pass it via `--token` or `HOUSTON_STORE_TOKEN`.
+
+**Crediting `@houston`.** The starters should be attributed to the official
+`@houston` creator handle. Granting that handle to the publishing account is
+a separate admin-console step (the gateway's
+`POST /v1/agentstore/admin/creators/{handle}/grant`); this script never sets
+the handle or the verified badge.
+
 ## Relation to other products
 
 - **Houston App** consumes Store in the New Agent dialog.

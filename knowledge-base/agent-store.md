@@ -84,9 +84,8 @@ render these with i18n labels. `identity.category` must be one of them.
 
 Ownership is the caller's **Firebase UID** (`owner_user_id` on the gateway), proven
 by their own GCIP bearer; there is **no per-agent manage token**. The old
-manage-token model is gone; `packages/agentstore-contract/src/token.ts` still
-exports `newManageToken`/`hashManageToken` but is **vestigial (unused)**, a
-cleanup candidate, not part of the live model.
+manage-token model is gone (its vestigial `token.ts` module has been deleted from
+`packages/agentstore-contract`).
 
 Two publish identities:
 
@@ -333,13 +332,21 @@ pnpm --filter houston-agentstore dev                       # http://localhost:33
 Full runbook in `agentstore/README.md`. With no gateway reachable, pages render but
 catalog reads error (expected, not a bug).
 
+## Starter agents (seeding the catalog under @houston)
+
+Houston's own first-party listings come from the release-bundled starter agents in
+`store/agents/` (the same packages the New Agent dialog installs from — see
+`store/README.md`). `scripts/publish-starter-agents.mjs` is the official pipeline:
+it reads each `store/agents/<id>/` package, builds its AgentIR, and publishes it to
+the gateway under the **@houston** creator account. It is **idempotent by slug** —
+a re-run PATCHes the existing listing instead of creating a duplicate, so it is
+safe to run on every release. This is the seed path for the public catalog; ordinary
+users publish through the in-app share wizard (§Publish flow), not this script.
+
 ## Gaps + follow-ups
 
-- **`token.ts` is dead code.** Manage tokens were removed with the account-based
-  model; the module is still exported but unused. Delete it when convenient.
 - **Multi-file skills are lossy** (a skill is one `SKILL.md` body; sibling
   resource files are not carried).
 - **Public listing is manual**: going `public` routes through the gateway admin
   review queue; there is no self-serve promotion.
-- **No ratings/reviews and no public creator profiles** on either surface
-  (creator is a display name + optional URL) — a product decision, not debt.
+- **No ratings/reviews** on either surface — a product decision, not debt.

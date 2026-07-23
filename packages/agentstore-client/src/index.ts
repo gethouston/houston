@@ -13,6 +13,7 @@ export type { StoreClientOptions, StoreRequestOptions } from "./client.ts";
 export { AgentStoreClient, STORE_API_PREFIX } from "./client.ts";
 export { StoreApiError } from "./errors.ts";
 export type {
+  AdminGrantHandleInput,
   AdminQueueItem,
   AdminReport,
   AgentIdentityPatch,

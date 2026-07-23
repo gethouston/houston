@@ -4,7 +4,6 @@
     "fromFriendCard": "From a friend",
     "fromFriendDescription": "Bring in an agent someone shared with you, from a file or a link."
   },
-  "flagged": "Houston flagged this one for a closer look.",
   "export": {
     "eyebrow": "Exporting {{name}}",
     "loading": "Loading your agent.",
@@ -46,8 +45,6 @@
       "learningTitle": "Learning"
     },
     "step3": {
-      "title": "Ready to export",
-      "body": "Houston packages {{name}} into a single file you can send through any app. Whoever gets it imports their own copy. Live collaboration lives in Share.",
       "skillsLabel": "Skills",
       "routinesLabel": "Routines",
       "learningsLabel": "Learnings",
@@ -101,36 +98,21 @@
       "scanFlagged": "Houston flagged {{count}} item(s). Review them as you continue."
     },
     "step2": {
-      "title": "Name your new agent",
-      "body": "Pick a name and a color. You can change either one later.",
-      "nameLabel": "Name",
-      "colorLabel": "Color",
       "namePlaceholder": "Name your agent",
       "placeholderName": "Your agent",
       "tagline": "Ready to help"
     },
     "step3": {
       "title": "Pick which skills to bring along",
-      "body": "Uncheck anything you don't want.",
-      "empty": "No skills in this package."
+      "body": "Uncheck anything you don't want."
     },
     "step4": {
       "title": "Pick which routines to bring along",
-      "body": "Routines run on a schedule. They wait until their integrations are connected.",
-      "empty": "No routines in this package."
+      "body": "Routines run on a schedule. They wait until their integrations are connected."
     },
     "step5": {
       "title": "Pick which learnings to keep",
-      "body": "Learnings are notes the agent uses as background context. Personal items can be left out.",
-      "empty": "No learnings in this package."
-    },
-    "step6": {
-      "title": "The agent needs a few apps",
-      "body": "Connect them now from the connections page, or skip and connect later.",
-      "none": "Nothing to connect. Your agent is ready.",
-      "connected": "Connected",
-      "needsConnection": "Connect later",
-      "connectLater": "Routines that need a missing app wait until you connect it."
+      "body": "Learnings are notes the agent uses as background context. Personal items can be left out."
     },
     "link": {
       "label": "Install from a link",
