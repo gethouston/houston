@@ -104,9 +104,16 @@ jobs:
           # git reads, so an ls-remote "succeeds" with any garbage token and
           # proves nothing. The API call authenticates for real and the
           # permissions field proves the write bit the tag push needs.
-          CAN_PUSH=$(GH_TOKEN="${RELEASE_CUT_TOKEN}" gh api "repos/${{ github.repository }}" --jq '.permissions.push' 2>/dev/null || echo "auth-failed")
-          if [ "$CAN_PUSH" != "true" ]; then
-            echo "::error::RELEASE_CUT_TOKEN is present but does not grant push on ${{ github.repository }} (probe result: ${CAN_PUSH}). Most likely: the fine-grained PAT was created with YOUR ACCOUNT as resource owner instead of the gethouston org (it can then never access the org repo), it is pending org approval (org Settings → Third-party Access → Personal access tokens), it expired, or it lacks Contents:read/write. Recreate it with Resource owner = gethouston."
+          # gh api prints the ERROR BODY to stdout on HTTP failure, so probe
+          # in two steps: capture everything, then extract what we need — and
+          # on failure surface GitHub's own message, which names the real
+          # cause (org PAT policy, expiry, missing repo access) instead of
+          # leaving the operator to guess between five failure modes.
+          PROBE=$(GH_TOKEN="${RELEASE_CUT_TOKEN}" gh api "repos/${{ github.repository }}" 2>&1) && PROBE_OK=true || PROBE_OK=false
+          CAN_PUSH=$(printf '%s' "$PROBE" | jq -r '.permissions.push // false' 2>/dev/null || echo false)
+          if [ "$PROBE_OK" != "true" ] || [ "$CAN_PUSH" != "true" ]; then
+            GH_MSG=$(printf '%s' "$PROBE" | jq -r '.message // empty' 2>/dev/null | head -c 300)
+            echo "::error::RELEASE_CUT_TOKEN does not grant push on ${{ github.repository }}. GitHub says: '${GH_MSG:-<no message — token authenticated but permissions.push is not true>}'. Common causes: the org restricts fine-grained PATs or the token awaits org approval (org Settings → Third-party Access → Personal access tokens), the PAT's resource owner is a personal account instead of the gethouston org, it expired, or it lacks Contents:read/write. A CLASSIC PAT with repo scope also works."
             exit 1
           fi
           echo "RELEASE_CUT_TOKEN authenticates with push access on ${{ github.repository }}."
