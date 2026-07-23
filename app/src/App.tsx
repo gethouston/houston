@@ -22,6 +22,7 @@ import { useHoustonInit } from "./hooks/use-houston-init";
 import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync";
 import { useLocalBridgeAutoReconnect } from "./hooks/use-local-bridge-autoreconnect";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
+import { useMoveResume } from "./hooks/use-move-resume";
 import { useOnboardingCompleted } from "./hooks/use-onboarding-completed";
 import { useOnboardingPending } from "./hooks/use-onboarding-pending";
 import { useOnboardingSegment } from "./hooks/use-onboarding-segment";
@@ -113,6 +114,11 @@ export default function App() {
   // is still active, quietly re-establish frpc (dead after a restart). Gated on a
   // signed-in session — the reconnect mints hosted tunnel credentials.
   useLocalBridgeAutoReconnect(Boolean(session));
+
+  // Re-drive any share-via-team agent move whose driver vanished mid-move
+  // (HOU-817): the gateway keeps the agent locked until the move finishes.
+  // Gated on a signed-in session — every move call is authenticated.
+  useMoveResume(Boolean(session));
 
   // Tag the user in PostHog AND Sentry on sign-in; reset on sign-out. The
   // install_id stays PostHog's distinct_id (the website UTM bridge + onboarding

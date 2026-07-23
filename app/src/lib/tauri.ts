@@ -1682,9 +1682,16 @@ export const tauriOrg = {
       options,
     ),
   /** C8 spaces: poll one agent-move's progress. */
-  moveStatus: (agentSlugOrId: string, moveId: string) =>
-    call("agent_move_status", () =>
-      getEngine().getMoveStatus(agentSlugOrId, moveId),
+  moveStatus: (
+    agentSlugOrId: string,
+    moveId: string,
+    options?: EngineCallOptions,
+  ) =>
+    call(
+      "agent_move_status",
+      () => getEngine().getMoveStatus(agentSlugOrId, moveId),
+      undefined,
+      options,
     ),
   /** C8 billing: the active team's billing summary (owner/admin, team space).
    *  Degrades to null off-entitlement so the billing UI renders nothing. */

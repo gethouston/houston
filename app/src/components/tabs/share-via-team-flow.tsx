@@ -14,6 +14,12 @@ import {
 } from "../../hooks/queries";
 import { useCreateTeam } from "../../hooks/queries/use-orgs";
 import {
+  claimMove,
+  clearPendingMove,
+  recordPendingMove,
+  releaseMove,
+} from "../../lib/pending-move";
+import {
   addInviteEmails,
   applyMovePoll,
   assertInviteReady,
@@ -94,19 +100,28 @@ export function ShareViaTeamFlow({
   );
   const polled = moveStatus.data;
 
-  // Reset when the dialog closes so a reopen always starts clean.
+  // Reset when the dialog closes so a reopen always starts clean. Also release
+  // the pending-move claim: the record itself stays until the move reaches
+  // `done`, so an abandoned move is resumed by `useMoveResume` on next boot
+  // (HOU-817) instead of leaving the agent locked behind the gateway's
+  // "agent is being moved" guard forever.
   useEffect(() => {
     if (!open) {
       setState(initialState());
       setSending(false);
+      releaseMove(agent.id);
     }
-  }, [open]);
+  }, [open, agent.id]);
+  useEffect(() => () => releaseMove(agent.id), [agent.id]);
 
   // Fold each move-status poll into the machine (moving -> switching | failed).
+  // Terminal `done` retires the durable pending-move record — the ONLY event
+  // that does; every other exit leaves it for the boot-time resume.
   useEffect(() => {
     if (!polled) return;
+    if (polled.status === "done") clearPendingMove(agent.id);
     setState((s) => applyMovePoll(s, polled));
-  }, [polled]);
+  }, [polled, agent.id]);
 
   // Wall-clock ceiling on the non-dismissable `moving` step: without it a gateway
   // move that never reaches done/failed strands the user on an un-closable
@@ -172,11 +187,24 @@ export function ShareViaTeamFlow({
   const handleMove = async () => {
     if (state.step !== "confirm" && state.step !== "moveFailed") return;
     const toSlug = state.team.slug;
+    const teamName = state.team.name;
     try {
       const { moveId: id } = await moveAgent.mutateAsync({
         agentSlugOrId: agent.id,
         toSlug,
       });
+      // Persist the accepted move BEFORE polling: from here on the gateway
+      // holds a durable lock only a completed move releases, so the ticket
+      // must survive a closed dialog or app quit for `useMoveResume`.
+      recordPendingMove({
+        agentId: agent.id,
+        agentName: agent.name,
+        teamSlug: toSlug,
+        teamName,
+        moveId: id,
+        startedAt: Date.now(),
+      });
+      claimMove(agent.id);
       setState((s) => startMove(s, id));
     } catch (err) {
       setState((s) => moveRejected(s, shareErrorCode(err)));
