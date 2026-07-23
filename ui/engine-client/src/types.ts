@@ -1343,6 +1343,14 @@ export interface ChatHistoryEntry {
    * Absent on every other feed type and in single-player mode.
    */
   author?: { userId: string; name?: string };
+  /**
+   * The turn this entry belongs to — the source `ChatMessage.turnId`, the SAME
+   * id the live stream stamps on the turn's wire frames (`WireFrame.turnId`).
+   * Lets a client that ingests live frames and refetches history on a resync
+   * (`sync{resync:true}`) match a backfilled entry to the turn it belongs to.
+   * Optional/additive: absent on pre-turn-id transcripts and pre-field servers.
+   */
+  turn_id?: string;
 }
 
 export interface SummarizeResult {
