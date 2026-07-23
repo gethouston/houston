@@ -20,9 +20,13 @@ use super::resolve::{build_login_command, extract_visit_url};
 use super::{EVENT_DONE, EVENT_URL};
 
 /// Give up on the login if the CLI never returns (user closed the consent tab,
-/// bailed on the browser approve, …). Mirrors the loopback's 300s ceiling. The
-/// frontend can start a fresh attempt after this.
-const LOGIN_TIMEOUT: Duration = Duration::from_secs(300);
+/// bailed on the browser approve, …). Generous on purpose: the CLI's local
+/// listener only exists while the child runs, and killing it early FORCES the
+/// approval page onto its show-a-code fallback for anyone who approves late
+/// (HOU-839). The port is random-per-attempt, so holding it is harmless
+/// (unlike Codex's fixed 1455). Mirror `LOGIN_TIMEOUT_MS` in
+/// app/src/lib/claude-login.ts when changing this.
+const LOGIN_TIMEOUT: Duration = Duration::from_secs(900);
 
 /// How often the wait loop wakes to check the cancel flag while the child is
 /// still running. Small enough that Cancel feels instant, large enough not to

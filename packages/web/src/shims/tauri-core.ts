@@ -213,6 +213,7 @@ export async function invoke<T = unknown>(
     case "start_claude_login": // desktop runs `claude auth login`; web uses the setup-token paste flow
     case "cancel_claude_login": // desktop-only sign-in helper; no web counterpart
     case "submit_claude_login_code": // relays a pasted code to the desktop `claude` child's stdin
+    case "complete_claude_login_from_clipboard": // desktop clipboard probe for the sign-in auto-finish
     case "read_claude_credential": // reads this machine's Keychain/cred file; web has neither
 
     case "get_engine_handshake": // web injects window.__HOUSTON_ENGINE__ directly

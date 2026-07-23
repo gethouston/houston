@@ -4,7 +4,11 @@ import {
   reconcileClaudeCredentialHandoff,
 } from "../../lib/claude-login";
 import { listenOsEvent } from "../../lib/events";
-import { osIsTauri, osSubmitClaudeLoginCode } from "../../lib/os-bridge";
+import {
+  osCompleteClaudeLoginFromClipboard,
+  osIsTauri,
+  osSubmitClaudeLoginCode,
+} from "../../lib/os-bridge";
 import { PROVIDERS } from "../../lib/providers";
 import { ProviderLoginBrowserPending } from "./provider-login-browser-pending";
 
@@ -54,6 +58,7 @@ export function ClaudeBrowserLogin() {
     <ProviderLoginBrowserPending
       provider={ANTHROPIC}
       url={url}
+      onClipboardProbe={osCompleteClaudeLoginFromClipboard}
       onSubmitCode={(code) => osSubmitClaudeLoginCode(code)}
       onClose={() => {
         // Cancel kills the native `claude` child and clears the pending card

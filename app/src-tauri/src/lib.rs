@@ -480,6 +480,7 @@ pub fn run() {
             claude_login::start_claude_login,
             claude_login::cancel_claude_login,
             claude_login::code_input::submit_claude_login_code,
+            claude_login::code_input::complete_claude_login_from_clipboard,
             // Extract the cached credential to push to a REMOTE engine pod
             // (a hosted pod can't read this machine's Keychain).
             claude_login::credential::read_claude_credential,

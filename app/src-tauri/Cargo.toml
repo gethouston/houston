@@ -23,6 +23,9 @@ dirs = "5"
 percent-encoding = "2"
 chrono = { version = "0.4", features = ["serde"] }
 tauri-plugin-notification = "2"
+# Rust-side clipboard read for the Claude sign-in auto-finish (the webview's
+# navigator.clipboard.readText is permission-gated and flaky across platforms).
+arboard = "3"
 tauri-plugin-updater = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-sentry = "0.5"

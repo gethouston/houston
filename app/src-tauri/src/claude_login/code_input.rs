@@ -63,6 +63,83 @@ pub async fn submit_claude_login_code(
     write_login_code(&slot, &code).await
 }
 
+/// True for a string shaped like the authorization code the claude.ai approval
+/// page shows (`<code>#<state>`): one line, base64url-ish charset on both
+/// sides of a single `#`, with the state half at least 32 chars (OAuth states
+/// are 43-char base64url). Deliberately strict — this gates what the clipboard
+/// auto-finish is willing to feed the CLI, and ordinary clipboard content
+/// (text, URLs, passwords) must never match.
+pub(super) fn looks_like_login_code(value: &str) -> Option<&str> {
+    let v = value.trim();
+    if v.len() > 512 {
+        return None;
+    }
+    let (code, tail) = v.split_once('#')?;
+    let b64url = |s: &str| {
+        !s.is_empty()
+            && s.chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.' | '~'))
+    };
+    if b64url(code) && b64url(tail) && tail.len() >= 32 {
+        Some(v)
+    } else {
+        None
+    }
+}
+
+/// Tauri command: opportunistically finish the sign-in from the clipboard.
+/// Called when the app regains focus while a login is pending — the stuck
+/// signature (a completed hand-off closes the dialog before the user returns).
+/// If the clipboard holds a code-shaped string (the approval page's Copy code
+/// button), it is fed to the CLI and `true` returns; anything else — no pending
+/// login, unreadable or non-matching clipboard — returns `false` so the dialog
+/// can fall back to its manual affordance. Background reconciliation, not a
+/// user action: never errors, never logs clipboard contents.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn complete_claude_login_from_clipboard(
+    state: State<'_, ClaudeLoginState>,
+) -> Result<bool, String> {
+    let Some(slot) = ({
+        let guard = state.0.lock().await;
+        guard.as_ref().map(|handle| handle.stdin.clone())
+    }) else {
+        return Ok(false);
+    };
+    // arboard is blocking; keep it off the async runtime's core threads.
+    let text = tokio::task::spawn_blocking(|| {
+        arboard::Clipboard::new().and_then(|mut c| c.get_text())
+    })
+    .await;
+    let text = match text {
+        Ok(Ok(t)) => t,
+        Ok(Err(e)) => {
+            // Empty/non-text clipboard lands here too — expected, stay quiet
+            // beyond a debug trace (contents are never logged, only the error).
+            tracing::debug!("[claude-login] clipboard read unavailable: {e}");
+            return Ok(false);
+        }
+        Err(e) => {
+            tracing::warn!("[claude-login] clipboard probe task failed: {e}");
+            return Ok(false);
+        }
+    };
+    let Some(code) = looks_like_login_code(&text) else {
+        return Ok(false);
+    };
+    match write_login_code(&slot, code).await {
+        Ok(()) => {
+            tracing::info!("[claude-login] finished sign-in from a copied code");
+            Ok(true)
+        }
+        Err(e) => {
+            // The child may have just exited (hand-off won the race) — treat as
+            // "nothing consumed" and let the dialog fall back.
+            tracing::warn!("[claude-login] clipboard code relay failed: {e}");
+            Ok(false)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -72,6 +149,30 @@ mod tests {
         let empty: StdinSlot = Arc::new(tokio::sync::Mutex::new(None));
         assert!(write_login_code(&empty, "   ").await.is_err());
         assert!(write_login_code(&empty, "abc").await.is_err());
+    }
+
+    #[test]
+    fn looks_like_login_code_accepts_only_code_hash_state_shapes() {
+        let state43 = "dC6jOHpzMnxqFPzlziDLuI2idI8uGWL0RlAg1HQ5l78";
+        // Real shape: opaque code, '#', 43-char base64url state (whitespace trimmed).
+        let ok = format!("  ac_7GhK2mPq-x9_zW#{state43}  ");
+        assert_eq!(
+            looks_like_login_code(&ok).map(str::trim),
+            Some(format!("ac_7GhK2mPq-x9_zW#{state43}").trim())
+        );
+        // Ordinary clipboard content must never match.
+        for junk in [
+            "",
+            "hello world",
+            "https://claude.ai/oauth#section",       // short tail
+            "password#hunter2",                      // short tail
+            &format!("has space#{state43}"),         // whitespace inside
+            &format!("multi\nline#{state43}"),       // newline inside
+            state43,                                 // no '#'
+            &format!("a#b#{state43}"),               // '#' in the tail charset? ('#' not allowed)
+        ] {
+            assert_eq!(looks_like_login_code(junk), None, "matched junk: {junk:?}");
+        }
     }
 
     /// End-to-end paste path: a fake `claude` prints the visit line, waits for a

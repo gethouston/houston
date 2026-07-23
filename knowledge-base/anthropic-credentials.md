@@ -25,8 +25,11 @@ the traps at the bottom — read them before touching any of this.
   after the user approves, that callback page hands the authorization code to
   the CLI's random-port local listener automatically (the seamless path) OR,
   when that hand-off is blocked (firewalls, strict browsers; the common case on
-  Windows — HOU-839), shows the user a code. The sign-in dialog always offers a
-  paste field that relays such a code to the CLI's stdin
+  Windows — HOU-839), shows the user a code. That case recovers in stages so
+  the happy path stays code-free: on app refocus a clipboard probe
+  (`complete_claude_login_from_clipboard`) silently feeds a copied code-shaped
+  string to the CLI's stdin; only when that finds nothing does the dialog
+  surface a "Claude showed you a code?" link revealing a paste field
   (`submit_claude_login_code` → the CLI's `Paste code here if prompted >`
   readline). Either way the CLI caches the credential itself; there is NO deep
   link back to the app — the app watches the CLI's stdout/exit. The `visit:`
