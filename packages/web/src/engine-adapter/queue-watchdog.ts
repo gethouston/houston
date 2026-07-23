@@ -29,7 +29,14 @@ import { conversationVm } from "./vm";
 /** Backoff between probes: quick first check, settling at a gentle idle poll. */
 const PROBE_DELAYS_MS = [2_000, 4_000, 8_000, 15_000];
 
-const timers = new Map<string, ReturnType<typeof setTimeout>>();
+/** One live watchdog per scope. The session OBJECT is the arm's identity: a
+ *  tick that resumes after an await reschedules only while its own session
+ *  still owns the scope, so a disarm-then-rearm racing an in-flight probe can
+ *  never leave two probe chains running for one conversation. */
+interface WatchdogSession {
+  timer?: ReturnType<typeof setTimeout>;
+}
+const sessions = new Map<string, WatchdogSession>();
 
 /** True when the server transcript shows no half-open turn. */
 const provesIdle = (messages: ChatMessage[]): boolean =>
@@ -37,7 +44,7 @@ const provesIdle = (messages: ChatMessage[]): boolean =>
 
 /**
  * Arm the watchdog for one conversation's queue. Re-arming while armed is a
- * no-op (the running timer keeps its backoff position). `stillHeld` is read at
+ * no-op (the running chain keeps its backoff position). `stillHeld` is read at
  * every tick so a queue emptied by any other path stops the watchdog without a
  * disarm call racing it.
  */
@@ -49,32 +56,39 @@ export function armQueueWatchdog(
   stillHeld: () => boolean,
   flush: () => void,
 ): void {
-  if (timers.has(scope)) return;
+  if (sessions.has(scope)) return;
+  const session: WatchdogSession = {};
+  sessions.set(scope, session);
   let attempt = 0;
+  const owns = (): boolean => sessions.get(scope) === session;
   const schedule = (): void => {
     const delay =
       PROBE_DELAYS_MS[Math.min(attempt, PROBE_DELAYS_MS.length - 1)] ?? 0;
     attempt++;
-    timers.set(
-      scope,
-      setTimeout(() => {
-        void tick();
-      }, delay),
-    );
+    session.timer = setTimeout(() => {
+      void tick();
+    }, delay);
   };
   const tick = async (): Promise<void> => {
-    timers.delete(scope);
-    if (!stillHeld()) return;
+    if (!owns()) return;
+    if (!stillHeld()) {
+      sessions.delete(scope);
+      return;
+    }
     let idle: boolean;
     try {
       idle = provesIdle(await probe());
     } catch {
       // Engine unreachable (waking pod, mid-move gateway): the next tick
       // retries — an unreachable probe must never strand the queue for good.
-      if (stillHeld()) schedule();
+      if (owns()) schedule();
       return;
     }
-    if (!stillHeld()) return;
+    if (!owns()) return;
+    if (!stillHeld()) {
+      sessions.delete(scope);
+      return;
+    }
     if (!idle) {
       // A turn is genuinely half-open server-side — the settle watcher owns
       // the normal flush; keep watching in case ITS trigger dies too.
@@ -84,16 +98,18 @@ export function armQueueWatchdog(
     // Server-confirmed idle: heal the stale running flag (publishes running:
     // false, which fires the settle watcher) and flush directly as well —
     // `flushQueuedSends` re-checks the VM and no-ops when already handled.
+    // The flush disarms this watchdog via `disarmQueueWatchdog`.
     conversationVm.confirmIdle(agentPath, sessionKey);
     flush();
-    if (stillHeld()) schedule();
+    if (owns() && stillHeld()) schedule();
   };
   schedule();
 }
 
 /** Stop the watchdog for one conversation's queue (flushed or emptied). */
 export function disarmQueueWatchdog(scope: string): void {
-  const timer = timers.get(scope);
-  if (timer !== undefined) clearTimeout(timer);
-  timers.delete(scope);
+  const session = sessions.get(scope);
+  if (!session) return;
+  if (session.timer !== undefined) clearTimeout(session.timer);
+  sessions.delete(scope);
 }
