@@ -2,11 +2,17 @@
 //! terminal.
 //!
 //! The installed `claude` CLI's `auth login --claudeai` is a plain readline
-//! stdio flow (NOT an Ink TUI): it starts its OWN loopback, prints
-//! `Opening browser to sign in…` then a line
-//! `If the browser didn't open, visit: <AUTHORIZE_URL>`, auto-opens the
-//! browser, catches its own callback, caches the credential, prints
-//! `Login successful`, and exits 0. On failure it exits non-zero.
+//! stdio flow (NOT an Ink TUI): it prints `Opening browser to sign in…` then a
+//! line `If the browser didn't open, visit: <AUTHORIZE_URL>`, auto-opens the
+//! browser, and waits. The authorize URL carries `code=true` with the redirect
+//! aimed at platform.claude.com (no localhost redirect): after the user
+//! approves, that callback page tries to hand the authorization code to the
+//! CLI's local listener automatically — the seamless path — and when the
+//! hand-off is blocked (firewalls, strict browsers; common on Windows) it shows
+//! the user a code instead, which the CLI awaits on stdin
+//! (`Paste code here if prompted >`; relayed via [`code_input`]). Either way
+//! the CLI caches the credential, prints `Login successful`, and exits 0. On
+//! failure it exits non-zero.
 //!
 //! We run it as a piped child so the app can (1) surface the authorize URL to
 //! the webview (as a copy/paste fallback when the auto-open browser doesn't
@@ -34,6 +40,7 @@
 // defining path (`claude_login::credential::read_claude_credential`) — the macro
 // resolves the sibling `__cmd__*` items in the module where the command lives, so
 // a re-export of just the fn would not carry them.
+pub(crate) mod code_input;
 pub(crate) mod credential;
 mod resolve;
 mod runner;
@@ -69,11 +76,15 @@ pub(super) fn claude_login_config_dir() -> PathBuf {
 #[derive(Default)]
 pub struct ClaudeLoginState(pub tokio::sync::Mutex<Option<ClaudeLoginHandle>>);
 
-/// The cancel side of one in-flight login. `start_claude_login` overwrites this
-/// on each fresh attempt; a stale handle left after a completed login is benign
-/// (nothing polls the flag once the task has finished).
+/// The cancel + code-relay side of one in-flight login. `start_claude_login`
+/// overwrites this on each fresh attempt; a stale handle left after a completed
+/// login is benign (nothing polls the flag once the task has finished, and a
+/// late code write fails loudly on the closed pipe).
 pub struct ClaudeLoginHandle {
     cancel: Arc<AtomicBool>,
+    /// The child's piped stdin, for `submit_claude_login_code` — the CLI's
+    /// `Paste code here if prompted >` fallback (see `code_input`).
+    stdin: code_input::StdinSlot,
 }
 
 /// Start the native Claude sign-in. Returns `Err` (→ frontend toast) only for
@@ -109,7 +120,7 @@ pub async fn start_claude_login(
     let bin = resolve_claude_binary();
     // Spawn synchronously so a launch failure surfaces as a toast (Err) rather
     // than an async `done` event.
-    let child = build_login_command(&bin, &config_dir)
+    let mut child = build_login_command(&bin, &config_dir)
         .spawn()
         .map_err(|e| format!("Could not start the Claude sign-in helper: {e}"))?;
     tracing::info!(
@@ -118,13 +129,15 @@ pub async fn start_claude_login(
         config_dir.display()
     );
 
-    // Publish the cancel flag before the task starts so a Cancel racing the
-    // spawn is honored.
+    // Publish the cancel flag + stdin slot before the task starts so a Cancel
+    // or a pasted code racing the spawn is honored.
     let cancel = Arc::new(AtomicBool::new(false));
+    let stdin: code_input::StdinSlot = Arc::new(tokio::sync::Mutex::new(child.stdin.take()));
     {
         let mut guard = state.0.lock().await;
         *guard = Some(ClaudeLoginHandle {
             cancel: cancel.clone(),
+            stdin,
         });
     }
 

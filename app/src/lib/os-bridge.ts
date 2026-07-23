@@ -153,6 +153,16 @@ export function osReadClaudeCredential(): Promise<string> {
   return invoke<string>("read_claude_credential");
 }
 
+/** Relay a pasted authorization code to the in-flight desktop Claude sign-in.
+ * The claude.ai approval page shows a code when it cannot hand it to the CLI's
+ * local listener automatically (firewalls, strict browsers; common on Windows);
+ * the native side writes it to the `claude` child's stdin and the CLI finishes
+ * its own exchange — the outcome still arrives via `claude-login://done`.
+ * Rejects with the real reason when nothing is in flight or the write fails. */
+export function osSubmitClaudeLoginCode(code: string): Promise<void> {
+  return invoke<void>("submit_claude_login_code", { code });
+}
+
 /** Cancel an in-flight desktop Claude sign-in (kills the `claude` child). The
  * native side then emits `claude-login://done` with `error: null` (a benign
  * dismissal). No-op outside Tauri / when nothing is in flight. */

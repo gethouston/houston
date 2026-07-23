@@ -479,6 +479,7 @@ pub fn run() {
             // `claude-login://url` / `claude-login://done` events.
             claude_login::start_claude_login,
             claude_login::cancel_claude_login,
+            claude_login::code_input::submit_claude_login_code,
             // Extract the cached credential to push to a REMOTE engine pod
             // (a hosted pod can't read this machine's Keychain).
             claude_login::credential::read_claude_credential,
