@@ -136,13 +136,24 @@ export async function saveAttachments(
   const used = new Set<string>(
     (await vfs.list(prefix)).map((k) => k.slice(prefix.length + 1)),
   );
-  const paths: string[] = [];
-  for (const f of files) {
+  // Validate the WHOLE batch before writing anything: one bad path must 400
+  // the request without leaving earlier files half-persisted (their paths
+  // would never be returned and no FilesChanged would fire).
+  const paths = files.map((f) => {
     const target = f.relPath ? safeRelPath(f.relPath) : safeFilename(f.name);
-    const rel = `${UPLOADS_DIR}/${dedupe(target, used)}`;
-    const bytes = Buffer.from(f.contentBase64, "base64");
-    await vfs.writeBytes(`${root}/${rel}`, bytes);
-    paths.push(rel);
+    return `${UPLOADS_DIR}/${dedupe(target, used)}`;
+  });
+  // Path validation is lexical; the Vfs write resolves the path as the
+  // filesystem sees it, symlinks included. A symlinked dir under uploads/
+  // could redirect a write — but only something that already writes to the
+  // workspace (the agent itself) can plant one there, and that principal can
+  // already write wherever the symlink would point. Same posture as the
+  // pre-existing flat uploads (where `uploads` itself could be a symlink).
+  for (const [i, f] of files.entries()) {
+    await vfs.writeBytes(
+      `${root}/${paths[i]}`,
+      Buffer.from(f.contentBase64, "base64"),
+    );
   }
   return paths;
 }

@@ -7,7 +7,7 @@
  */
 
 import type { DragEvent, DragEventHandler } from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { collectDroppedItems, resolveDroppedFiles } from "./attachment-folders";
 import { fileIdentityKey } from "./clipboard-files";
 
@@ -72,6 +72,16 @@ export function useFileDropZone(
 ): FileDropZone {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const dragDepthRef = useRef(0);
+  // Folder expansion is async: by the time it resolves, the attachment state
+  // may have moved on (another drop, a remove, a send). Deliver through a ref
+  // so the LATEST ingest callback runs — never a stale closure that would
+  // overwrite newer state.
+  const onFilesRef = useRef(onFiles);
+  const onDropErrorRef = useRef(onDropError);
+  useEffect(() => {
+    onFilesRef.current = onFiles;
+    onDropErrorRef.current = onDropError;
+  });
 
   const hasFiles = useCallback(
     (e: DragEvent) => e.dataTransfer.types.includes("Files"),
@@ -120,15 +130,16 @@ export function useFileDropZone(
       if (dropped.length === 0) return;
       resolveDroppedFiles(dropped).then(
         (files) => {
-          if (files.length > 0) onFiles(files);
+          if (files.length > 0) onFilesRef.current(files);
         },
         (error) => {
-          if (!onDropError) throw error;
-          onDropError(error);
+          const handler = onDropErrorRef.current;
+          if (!handler) throw error;
+          handler(error);
         },
       );
     },
-    [hasFiles, onFiles, onDropError],
+    [hasFiles],
   );
 
   return {

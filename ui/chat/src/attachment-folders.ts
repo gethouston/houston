@@ -163,7 +163,14 @@ function entryFile(entry: FileSystemFileEntry): Promise<File> {
   return new Promise((resolve, reject) => entry.file(resolve, reject));
 }
 
-/** Drain a directory reader fully — readEntries returns ≤100 per call. */
+/**
+ * Drain a directory reader fully — readEntries returns ≤100 per call. Bails
+ * at the attachment ceiling DURING the drain so a huge flat directory (a
+ * dropped node_modules) fails fast instead of enumerating everything first.
+ * Slightly conservative: the count includes subdirectory and hidden entries
+ * that would never become attachments — past 1000 of anything in one
+ * directory, refusing is the right answer regardless.
+ */
 async function readAllEntries(
   dir: FileSystemDirectoryEntry,
 ): Promise<FileSystemEntry[]> {
@@ -175,5 +182,8 @@ async function readAllEntries(
     );
     if (batch.length === 0) return all;
     all.push(...batch);
+    if (all.length > MAX_ATTACHMENT_FILES) {
+      throw new TooManyAttachmentFilesError();
+    }
   }
 }

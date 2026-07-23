@@ -34,6 +34,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   const panelContainer = useDetailPanelContainer();
   const { data: rawItems } = useActivity(path);
   const deleteActivity = useDeleteActivity(path);
+  const addToast = useUIStore((s) => s.addToast);
   const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
   const viewMode = useUIStore((s) => s.viewMode);
 
@@ -142,6 +143,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           emptyState={emptyState}
           onPanelOpenChange={setMissionPanelOpen}
           onOpenLink={openHref}
+          onNotice={(message) => addToast({ title: message })}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           cardAvatar={<AgentCardAvatar color={agent.color} />}

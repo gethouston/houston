@@ -158,6 +158,18 @@ test("hostile relPaths are rejected loudly, never clamped or flattened", async (
   expect(await vfs.list(ROOT)).toEqual([]);
 });
 
+test("a bad path anywhere in a batch rejects the WHOLE batch — no partial persist", async () => {
+  const vfs = new MemoryVfs();
+  await expect(
+    saveAttachments(vfs, ROOT, [
+      { name: "good.txt", contentBase64: b64("good") },
+      { name: "evil", contentBase64: b64("x"), relPath: "../evil" },
+    ]),
+  ).rejects.toThrow(AttachmentError);
+  // The valid file listed BEFORE the invalid one must not have been written.
+  expect(await vfs.list(ROOT)).toEqual([]);
+});
+
 test("POST with relPath stores nested and returns the nested path", async () => {
   const vfs = new MemoryVfs();
   const post = fakeRes();

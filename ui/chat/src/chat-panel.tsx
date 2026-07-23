@@ -102,7 +102,10 @@ export function ChatPanel({
   const folderReadFailedNotice = composerLabels?.folderReadFailed;
   const onDropError = useCallback(
     (error: unknown) => {
-      onNotice?.(
+      // No notice channel → rethrow: the failure surfaces as an unhandled
+      // rejection (Sentry) instead of being silently swallowed.
+      if (!onNotice) throw error;
+      onNotice(
         error instanceof TooManyAttachmentFilesError
           ? (tooManyFilesNotice ?? DEFAULT_TOO_MANY_FILES_NOTICE)
           : (folderReadFailedNotice ??

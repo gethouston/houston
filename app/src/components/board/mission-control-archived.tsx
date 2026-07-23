@@ -142,6 +142,7 @@ export function MissionControlArchived({
           }
           onPanelOpenChange={setMissionPanelOpen}
           onOpenLink={openHref}
+          onNotice={(message) => addToast({ title: message })}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           thinkingIndicator={panel.thinkingIndicator}
