@@ -69,18 +69,23 @@ describe("maybeQueueSend", () => {
     expect(queuedOf(key)?.map((q) => q.text)).toEqual(["the user's words"]);
   });
 
-  it("holds at most ONE auto-resume per conversation", () => {
+  it("holds at most ONE auto-resume per conversation, invisibly", () => {
     setRunning(true);
     const resume = () =>
       req(key, "<!--houston:auto_continue-->\n\ncontinue", {
         autoResume: true,
-        queuedPreview: { text: "continue" },
       });
     expect(maybeQueueSend(AGENT, resume(), dispatch)).toBe(true);
     // A second mounted reconnect card firing the same resume is swallowed:
-    // reported as handled, but never queued twice.
+    // reported as handled, but never held twice.
     expect(maybeQueueSend(AGENT, resume(), dispatch)).toBe(true);
-    expect(queuedOf(key)).toHaveLength(1);
+    // A held resume is a hidden system message — it never renders a queued
+    // bubble (the flash read as a stuck send, HOU-849).
+    expect(queuedOf(key) ?? []).toEqual([]);
+    // Exactly one resume flushes at settle.
+    setRunning(false);
+    expect(dispatched).toHaveLength(1);
+    expect(dispatched[0]?.autoResume).toBe(true);
   });
 });
 

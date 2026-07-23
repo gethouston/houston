@@ -12,11 +12,14 @@ import { conversationStore, conversationVm } from "../src/engine-adapter/vm";
  * The queue watchdog (HOU-849): the ground-truth flush trigger for a held send
  * whose settle-watcher chain silently died — a fatal or budget-exhausted
  * observer stream never healed the stale `running` flag, so the reconnect
- * auto-continue sat "Queued" forever. The watchdog probes persisted history on
- * a backoff: a trailing assistant message (or an empty transcript) proves no
- * turn is half-open server-side, so it heals the flag and flushes; a trailing
- * user message means a turn IS half-open, so it keeps waiting; a failed probe
- * retries. Driven through `maybeQueueSend`, the seam the adapter uses.
+ * auto-continue sat "Queued" forever. The watchdog probes persisted history: a
+ * trailing assistant message (or an empty transcript) proves no turn is
+ * half-open server-side, so it heals the flag and flushes; a trailing user
+ * message means a turn IS half-open, so it keeps waiting; a failed probe
+ * retries. An auto-resume hold probes IMMEDIATELY (a stale hold must clear
+ * within one round-trip) and renders no queued bubble; user-typed holds start
+ * on the 2s backoff. Driven through `maybeQueueSend`, the seam the adapter
+ * uses.
  */
 
 const AGENT = "Houston/Bo";
@@ -62,16 +65,17 @@ const queueResume = (probe: () => Promise<ChatMessage[]>) =>
   );
 
 describe("queue watchdog", () => {
-  it("flushes a held resume when the probe proves the server is idle", async () => {
+  it("flushes a held resume IMMEDIATELY when the probe proves the server is idle", async () => {
     // The observer heal never fires (its stream died silently); history shows
-    // the failed turn's persisted reply — no half-open turn server-side.
+    // the failed turn's persisted reply — no half-open turn server-side. The
+    // resume hold is invisible and clears within one probe round-trip.
     queueResume(async () => [msg("user", "hrey"), msg("assistant", "")]);
+    expect(queuedOf(key) ?? []).toEqual([]);
     expect(dispatched).toHaveLength(0);
 
-    await vi.advanceTimersByTimeAsync(2_000);
+    await vi.advanceTimersByTimeAsync(0);
     expect(dispatched).toHaveLength(1);
     expect(dispatched[0]?.autoResume).toBe(true);
-    expect(queuedOf(key) ?? []).toEqual([]);
     // The stale running flag was healed, not bypassed.
     expect(
       (
@@ -88,7 +92,6 @@ describe("queue watchdog", () => {
 
     await vi.advanceTimersByTimeAsync(2_000);
     expect(dispatched).toHaveLength(0);
-    expect(queuedOf(key)).toHaveLength(1);
 
     history = [msg("user", "still running"), msg("assistant", "done now")];
     await vi.advanceTimersByTimeAsync(4_000);
@@ -103,23 +106,39 @@ describe("queue watchdog", () => {
       return [msg("assistant", "")];
     });
 
-    await vi.advanceTimersByTimeAsync(2_000);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(calls).toBe(1);
     expect(dispatched).toHaveLength(0);
 
-    await vi.advanceTimersByTimeAsync(4_000);
+    await vi.advanceTimersByTimeAsync(2_000);
     expect(calls).toBe(2);
     expect(dispatched).toHaveLength(1);
   });
 
   it("treats an empty transcript as idle", async () => {
     queueResume(async () => []);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(dispatched).toHaveLength(1);
+  });
+
+  it("watches user-typed holds too, on the gentler backoff", async () => {
+    const probe = vi.fn(async () => [msg("assistant", "")]);
+    maybeQueueSend(AGENT, req(key, "my own message"), dispatch, probe);
+    expect(queuedOf(key)).toHaveLength(1);
+
+    // No immediate probe for a user-typed hold — the observer heal owns the
+    // fast path; the watchdog is the backstop.
+    await vi.advanceTimersByTimeAsync(0);
+    expect(probe).not.toHaveBeenCalled();
+
     await vi.advanceTimersByTimeAsync(2_000);
     expect(dispatched).toHaveLength(1);
+    expect(dispatched[0]?.prompt).toBe("my own message");
   });
 
   it("stops probing once the queued send is removed by the user", async () => {
     const probe = vi.fn(async () => [msg("assistant", "")]);
-    queueResume(probe);
+    maybeQueueSend(AGENT, req(key, "remove me"), dispatch, probe);
     const id = queuedOf(key)?.[0]?.id ?? "";
     removeQueuedSend(AGENT, key, id);
 

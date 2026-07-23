@@ -28,6 +28,10 @@ import { conversationVm } from "./vm";
 
 /** Backoff between probes: quick first check, settling at a gentle idle poll. */
 const PROBE_DELAYS_MS = [2_000, 4_000, 8_000, 15_000];
+/** An `immediate` arm probes NOW, then falls onto the normal backoff — the
+ *  reconnect auto-resume's cadence: a stale hold must clear within one
+ *  round-trip, not after a visible pause. */
+const IMMEDIATE_DELAYS_MS = [0, ...PROBE_DELAYS_MS];
 
 /** One live watchdog per scope. The session OBJECT is the arm's identity: a
  *  tick that resumes after an await reschedules only while its own session
@@ -55,15 +59,18 @@ export function armQueueWatchdog(
   probe: () => Promise<ChatMessage[]>,
   stillHeld: () => boolean,
   flush: () => void,
+  /** Probe immediately instead of after the first backoff step — for holds
+   *  that should clear within one round-trip (the reconnect auto-resume). */
+  immediate = false,
 ): void {
   if (sessions.has(scope)) return;
   const session: WatchdogSession = {};
   sessions.set(scope, session);
+  const delays = immediate ? IMMEDIATE_DELAYS_MS : PROBE_DELAYS_MS;
   let attempt = 0;
   const owns = (): boolean => sessions.get(scope) === session;
   const schedule = (): void => {
-    const delay =
-      PROBE_DELAYS_MS[Math.min(attempt, PROBE_DELAYS_MS.length - 1)] ?? 0;
+    const delay = delays[Math.min(attempt, delays.length - 1)] ?? 0;
     attempt++;
     session.timer = setTimeout(() => {
       void tick();

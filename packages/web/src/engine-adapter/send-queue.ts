@@ -35,9 +35,11 @@ import { conversationStore, conversationVm } from "./vm";
  * `autoResume` sends (Houston resuming after a provider reconnect — not
  * user-typed) get special handling: one resume per conversation at a time —
  * a duplicate is swallowed while another is queued OR dispatched-and-running
- * (several reconnect surfaces fire the same resume off one login event) — and
- * a held one is dropped at flush when the user queued their own follow-up
- * (their message resumes the conversation by itself).
+ * (several reconnect surfaces fire the same resume off one login event) — a
+ * held one is dropped at flush when the user queued their own follow-up
+ * (their message resumes the conversation by itself), it never renders a
+ * queued bubble (a hidden system message stays hidden while held), and its
+ * watchdog probes immediately so a stale hold clears within one round-trip.
  */
 
 interface QueuedSend {
@@ -57,7 +59,11 @@ function publishQueued(agentPath: string, sessionKey: string): void {
   conversationVm.setQueued(
     agentPath,
     sessionKey,
-    entries.map((e) => e.vm),
+    // A held auto-resume stays INVISIBLE: it is a hidden system message (the
+    // transcript filters its bubble too), and surfacing it as a queued row
+    // read as a stuck send when a stale hold made it wait (HOU-849). The
+    // reconnected card's "continuing where you left off" is its only surface.
+    entries.filter((e) => !e.req.autoResume).map((e) => e.vm),
   );
 }
 
@@ -135,6 +141,10 @@ export function maybeQueueSend(
       probe,
       () => queues.has(k),
       flush,
+      // An auto-resume probes IMMEDIATELY: the reconnect promised "Houston is
+      // continuing where you left off", so a stale hold must clear within one
+      // round-trip, not after a visible pause.
+      req.autoResume === true,
     );
   return true;
 }

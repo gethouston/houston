@@ -1794,8 +1794,9 @@ export function useAgentChatPanel({
               // The reconnect resume fires WITHOUT the user typing, so it is an
               // `autoResume` send: if the conversation shows a running turn it
               // is held at most once (several mounted cards can fire the same
-              // resume) and dropped when redundant — and its queued bubble
-              // shows the human text, never the auto-continue marker.
+              // resume), dropped when redundant, and held INVISIBLY — no
+              // queued bubble; the adapter's watchdog probes immediately so a
+              // stale hold clears within one round-trip (HOU-849).
               await tauriChat.send(path, text, selectedSessionKey, {
                 providerOverride: effectiveProvider,
                 modelOverride: effectiveModel,
@@ -1805,7 +1806,6 @@ export function useAgentChatPanel({
                 // the feed already — resending it must not add a second one.
                 suppressUserBubble: resendsOriginalPrompt(providerError),
                 autoResume: providerError.kind === "unauthenticated",
-                ...(continues ? { queuedPreview: { text: continueText } } : {}),
               });
             }}
             // "Pick another model" pops the MODEL picker (not the Skills picker);
