@@ -177,7 +177,10 @@ jobs:
       #    merges land green through PR gates, and a still-running post-merge job
       #    must not starve the cut. Zero check-runs is treated as green. On red,
       #    name the failing checks and (if configured) ping Slack before the
-      #    08:30 daily, then fail.
+      #    08:30 daily, then fail. This workflow's OWN job ("cut") is excluded
+      #    from the sweep: a dispatch run's check-runs attach to the main tip,
+      #    so a failed cut attempt would otherwise read as "main is red" and
+      #    deadlock every subsequent cut against its own history.
       - name: Guard — main is green
         if: ${{ steps.newcommits.outputs.proceed == 'true' }}
         env:
@@ -188,7 +191,7 @@ jobs:
           set -euo pipefail
           FAILING=$(gh api --paginate \
             "repos/${{ github.repository }}/commits/${MAIN_TIP}/check-runs" \
-            -q '.check_runs[] | select(.status == "completed") | select(.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled") | .name' \
+            -q '.check_runs[] | select(.status == "completed") | select(.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled") | select(.name != "cut") | .name' \
             | sort -u)
 
           if [ -z "$FAILING" ]; then
