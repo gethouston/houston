@@ -1,4 +1,3 @@
-import { type FSWatcher, watch } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import {
   type HydrateManifest,
@@ -6,7 +5,7 @@ import {
   type ObjectStore,
   syncBack,
 } from "@houston/runtime-client/object-sync";
-import { isBenignRecursiveWatchRace } from "../watch/watcher-race";
+import { type TreeWatch, watchTree } from "../watch/watch-tree";
 
 const DEFAULT_QUIET_MS = 3_000;
 const DEFAULT_INTERVAL_MS = 300_000;
@@ -50,7 +49,7 @@ export class StoreSyncDaemon {
   private stopping = false;
   private dirty = false;
   private dirtyVersion = 0;
-  private watcher: FSWatcher | undefined;
+  private watcher: TreeWatch | undefined;
   private quietTimer: ReturnType<typeof setTimeout> | undefined;
   private intervalTimer: ReturnType<typeof setInterval> | undefined;
   private syncPromise: Promise<void> | undefined;
@@ -83,24 +82,15 @@ export class StoreSyncDaemon {
     if (this.started) return;
     this.started = true;
     try {
-      this.watcher = watch(this.opts.rootDir, { recursive: true }, () =>
-        this.markDirty(),
-      );
-      this.watcher.on("error", (err) => {
-        // The Linux recursive-watcher ENOENT race on a transient dir (see
-        // watch/watcher-race.ts) is harmless AND recoverable — the watcher
-        // keeps serving events, so closing it here would silently degrade
-        // reactivity to periodic-only over noise. Log-and-keep instead.
-        if (isBenignRecursiveWatchRace(err)) {
-          this.opts.log("[store-sync] transient fs-watch race (watcher kept)");
-          return;
-        }
-        this.opts.log(
-          "[store-sync] filesystem watcher failed; using periodic sync",
-          err,
-        );
-        this.watcher?.close();
-        this.watcher = undefined;
+      this.watcher = watchTree(this.opts.rootDir, () => this.markDirty(), {
+        // Fires at most once (ENOSPC on the pod's inotify budget — HOU-841);
+        // the tree watch keeps whatever coverage it already has, and the
+        // periodic pass guarantees eventual sync regardless.
+        onError: (err) =>
+          this.opts.log(
+            "[store-sync] filesystem watcher degraded; periodic sync covers changes",
+            err,
+          ),
       });
     } catch (err) {
       this.opts.log(
