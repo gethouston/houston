@@ -441,7 +441,12 @@ integrations** tab (§2, `teams.md`).
   integrations as a two-column `CatalogGrid` of `CatalogRow`s (`InstalledStrip`) —
   the SAME row grammar as the browse catalog: brand art via `AppLogo` (custom rows
   get letter avatars), the always-visible name, a one-line description (the app
-  description or a localized custom-kind badge), and a quiet trailing `ChevronRight`
+  description or a localized custom-kind badge), an always-visible
+  presence-style `StatusDot` LEFT of the name ("● Asana" — green/amber/red per
+  connection status, sr-only status label, via the ui/core `CatalogRow`
+  `statusDot` slot — connected state reads on the ROW, not just from section
+  placement; same treatment as the connected-providers strip and the skills
+  marketplace's installed rows), and a quiet trailing `ChevronRight`
   marking each row as an open-affordance (the shared convention with the connected
   providers + installed skills strips). A catalog row opens `AppDetailDialog`; a
   custom row jumps to the Custom tab. At rest the grid caps to the shared

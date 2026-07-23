@@ -1,5 +1,6 @@
-import { CatalogAddButton, CatalogRow } from "@houston-ai/core";
+import { CatalogAddButton, CatalogRow, StatusDot } from "@houston-ai/core";
 import { Check } from "lucide-react";
+import { resolveCardLabels } from "./skill-marketplace-card-labels";
 import {
   formatInstalls,
   kebabToTitle,
@@ -15,14 +16,6 @@ export interface SkillMarketplaceCardLabels {
   bySource?: (owner: string) => string;
 }
 
-const DEFAULT_LABELS: Required<SkillMarketplaceCardLabels> = {
-  installAria: (name) => `Install ${name}`,
-  installedAria: (name) => `${name} installed`,
-  installsCount: (count, formatted) =>
-    count === 1 ? `${formatted} install` : `${formatted} installs`,
-  bySource: (owner) => `by ${owner}`,
-};
-
 export interface SkillMarketplaceRowProps {
   skill: CommunitySkill;
   installing: boolean;
@@ -37,7 +30,9 @@ export interface SkillMarketplaceRowProps {
  * avatar + title + `by <owner> · <installs>` subtitle, transparent at rest
  * with the full-row hover fill. The row BODY opens the detail info modal; the
  * ghost `+` ({@link CatalogAddButton}, spinning while THIS skill installs) is
- * the install action — once installed it becomes a quiet check mark.
+ * the install action — once installed the row gains the presence-style green
+ * {@link StatusDot} left of the name and the `+` becomes a quiet check, so
+ * installed and not-installed contrast at a glance.
  */
 export function SkillMarketplaceRow({
   skill,
@@ -47,7 +42,7 @@ export function SkillMarketplaceRow({
   onOpenInfo,
   labels,
 }: SkillMarketplaceRowProps) {
-  const l = { ...DEFAULT_LABELS, ...labels };
+  const l = resolveCardLabels(labels);
   const owner = ownerOf(skill.source);
   const title = kebabToTitle(skill.skillId || skill.name);
   const subtitle =
@@ -64,6 +59,7 @@ export function SkillMarketplaceRow({
       title={title}
       description={subtitle}
       onClick={onOpenInfo}
+      statusDot={installed ? <StatusDot status="active" /> : undefined}
       action={
         installed ? (
           <span
@@ -72,7 +68,7 @@ export function SkillMarketplaceRow({
             title={l.installedAria(title)}
             className="flex size-9 shrink-0 items-center justify-center text-ink-muted"
           >
-            <Check className="size-4" />
+            <Check className="size-4" aria-hidden />
           </span>
         ) : (
           <CatalogAddButton

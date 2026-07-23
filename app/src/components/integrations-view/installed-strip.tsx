@@ -3,6 +3,7 @@ import {
   CatalogGrid,
   CatalogRow,
   CatalogShowMore,
+  StatusDot,
 } from "@houston-ai/core";
 import type {
   CustomIntegrationView,
@@ -25,6 +26,9 @@ interface InstalledItem {
   icon: ReactNode;
   title: string;
   description: string;
+  /** The presence-style status dot left of the name ("● Asana"), so connected /
+   *  pending / error reads without opening the row. */
+  statusDot: ReactNode;
   onClick: () => void;
 }
 
@@ -73,6 +77,12 @@ export function InstalledStrip({
       icon: <AppLogo display={row.app} size="lg" className="rounded-lg" />,
       title: row.app.name,
       description: row.app.description,
+      statusDot: (
+        <StatusDot
+          status={row.connection.status}
+          srLabel={t(`status.${row.connection.status}`)}
+        />
+      ),
       onClick: () => onOpen(row.connection),
     })),
     ...custom.map((integration) => ({
@@ -92,6 +102,12 @@ export function InstalledStrip({
       title: integration.name,
       description: t(
         integration.kind === "mcp" ? "custom.badge.mcp" : "custom.badge.api",
+      ),
+      statusDot: (
+        <StatusDot
+          status={integration.state.status}
+          srLabel={t(`status.${integration.state.status}`)}
+        />
       ),
       onClick: () => onOpenCustom(integration),
     })),
@@ -113,6 +129,7 @@ export function InstalledStrip({
             title={item.title}
             description={item.description}
             onClick={item.onClick}
+            statusDot={item.statusDot}
             trailing={
               <ChevronRight
                 aria-hidden

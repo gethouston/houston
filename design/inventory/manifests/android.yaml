@@ -77,3 +77,5 @@ components:
     status: not-started
   verified-badge:
     status: not-started
+  status-badge:
+    status: not-started

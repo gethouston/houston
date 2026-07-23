@@ -188,3 +188,7 @@ components:
   verified-badge:
     status: implemented
     ref: "ui/core/src/components/verified-badge.tsx (@houston-ai/core VerifiedBadge)"
+
+  status-badge:
+    status: implemented
+    ref: "ui/core/src/components/status-badge.tsx (@houston-ai/core StatusBadge / StatusDot)"
