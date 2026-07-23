@@ -64,11 +64,13 @@ describe("turns/history — fold persisted transcript", () => {
         data: "Ping",
         author: undefined,
         ts: expect.any(Number),
+        turn_id: expect.any(String),
       },
       {
         feed_type: "assistant_text",
         data: cannedReply("Ping"),
         ts: expect.any(Number),
+        turn_id: expect.any(String),
       },
       {
         feed_type: "final_result",
@@ -79,10 +81,18 @@ describe("turns/history — fold persisted transcript", () => {
           usage: seedUsage,
         },
         ts: expect.any(Number),
+        turn_id: expect.any(String),
       },
     ]);
     // Each folded frame carries its source ChatMessage.ts (epoch ms).
     for (const f of feed) expect(f.ts).toBeGreaterThan(0);
+    // …and its source ChatMessage.turnId: the whole settled turn — the user
+    // bubble and the assistant's frames — folds under ONE turn_id, so a client
+    // refetching history on a resync can align every backfilled entry to the
+    // live turn it belongs to (the point of W2).
+    const turnIds = new Set(feed.map((f) => f.turn_id));
+    expect(turnIds.size).toBe(1);
+    expect([...turnIds][0]).toEqual(expect.any(String));
   });
 });
 
