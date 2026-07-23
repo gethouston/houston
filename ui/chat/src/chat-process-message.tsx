@@ -1,3 +1,4 @@
+import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
 import { Message } from "./ai-elements/message";
 import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
@@ -12,6 +13,8 @@ type ProcessItem = Extract<ChatDisplayItem, { kind: "process" }>;
 
 interface ChatProcessMessageProps {
   item: ProcessItem;
+  /** Merged onto the root Message (the offscreen render-skip classes). */
+  className?: string;
   turnEndSummaries: Map<number, TurnEndSummary>;
   renderMessageAvatar?: (msg: ChatMessage) => ReactNode | undefined;
   renderTurnSummary?: (summary: TurnEndSummary) => ReactNode;
@@ -24,6 +27,7 @@ interface ChatProcessMessageProps {
 
 export function ChatProcessMessage({
   item,
+  className,
   turnEndSummaries,
   renderMessageAvatar,
   renderTurnSummary,
@@ -41,7 +45,7 @@ export function ChatProcessMessage({
   return (
     <Message
       from="assistant"
-      className="-my-6"
+      className={cn("-my-6", className)}
       avatar={renderMessageAvatar?.(item.segments[0].message)}
     >
       <div>

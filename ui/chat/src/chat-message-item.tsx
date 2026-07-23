@@ -1,3 +1,4 @@
+import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
 import type { RenderLinkProps } from "./ai-elements/message";
 import {
@@ -14,6 +15,7 @@ import type { ChatDisplayItem } from "./chat-process-groups";
 import { ChatProcessMessage } from "./chat-process-message";
 import { ChatSystemMessage } from "./chat-system-message";
 import type { ChatMessage } from "./feed-to-messages";
+import { OFFSCREEN_RENDER_SKIP } from "./offscreen-render";
 import type { TurnEndSummary } from "./turn-tools";
 
 interface ChatMessageItemProps {
@@ -69,6 +71,9 @@ export function ChatMessageItem({
   if (item.kind === "process") {
     return (
       <ChatProcessMessage
+        // An ACTIVE (streaming) block is at the viewport bottom and renders
+        // normally either way; settled blocks off-screen skip layout/paint.
+        className={OFFSCREEN_RENDER_SKIP}
         getThinkingMessage={getThinkingMessage}
         isSpecialTool={isSpecialTool}
         item={item}
@@ -86,9 +91,11 @@ export function ChatMessageItem({
   const highlighted = highlightedMessageKey === message.key;
   const sharedProps = {
     "aria-label": highlighted ? selectedLabel : undefined,
-    className: highlighted
-      ? "rounded-xl bg-accent/70 px-2 py-1 outline outline-2 outline-ring"
-      : undefined,
+    className: cn(
+      OFFSCREEN_RENDER_SKIP,
+      highlighted &&
+        "rounded-xl bg-accent/70 px-2 py-1 outline outline-2 outline-ring",
+    ),
     "data-conversation-message-key": message.key,
   };
 

@@ -13,9 +13,36 @@ import { setActivityStatus } from "./activity-status";
 import { loadOlderPage } from "./load-older";
 import type { BaseCtor } from "./mixin";
 
+/**
+ * Single-flight for OBSERVED chat-open reads (HOU-819): opening a chat fires
+ * this read twice — the board's hydrate call and the chat-history query's
+ * fetch land in the same tick — and both want the identical windowed read +
+ * VM seed. Sharing the in-flight promise halves the open traffic; bulk reads
+ * (`observe: false`) never join it (mission search needs its own full fetch).
+ */
+const openLoadsInFlight = new Map<string, Promise<ChatHistoryEntry[]>>();
+
 export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
   class ChatHistory extends Base {
-    async loadChatHistory(
+    loadChatHistory(
+      agentPath: string,
+      sessionKey: string,
+      opts: { observe?: boolean } = {},
+    ): Promise<ChatHistoryEntry[]> {
+      if (opts.observe === false) {
+        return this.loadChatHistoryNow(agentPath, sessionKey, opts);
+      }
+      const key = `${agentPath}|${sessionKey}`;
+      const inFlight = openLoadsInFlight.get(key);
+      if (inFlight) return inFlight;
+      const load = this.loadChatHistoryNow(agentPath, sessionKey, opts).finally(
+        () => openLoadsInFlight.delete(key),
+      );
+      openLoadsInFlight.set(key, load);
+      return load;
+    }
+
+    private async loadChatHistoryNow(
       agentPath: string,
       sessionKey: string,
       opts: { observe?: boolean } = {},

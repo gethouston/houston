@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -318,4 +318,64 @@ test("before at the transcript start returns an empty page (nothing older)", () 
   expect(h.messages).toHaveLength(0);
   expect(h.offset).toBe(0);
   expect(h.totalMessages).toBe(4);
+});
+
+// ── Parse cache (HOU-819) ───────────────────────────────────────────────────
+
+test("a cached read returns the appended state written through save", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "first");
+  expect(getHistoryAt(dir, "c1")?.messages).toHaveLength(1); // warm the cache
+  appendAssistantMessageAt(dir, "c1", "reply");
+
+  const h = getHistoryAt(dir, "c1");
+  expect(h?.messages.map((m) => m.content)).toEqual(["first", "reply"]);
+});
+
+test("an EXTERNAL rewrite (bypassing save) is picked up on the next read", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "original");
+  expect(getHistoryAt(dir, "c1")?.messages[0]?.content).toBe("original");
+
+  // The cloud store-sync (and any manual edit) writes files directly — the
+  // mtime/size validation must invalidate the cached parse.
+  const f = join(dir, "c1.json");
+  const replaced = {
+    id: "c1",
+    title: "Replaced",
+    createdAt: 1,
+    updatedAt: 2,
+    messages: [
+      { role: "user", content: "hydrated from the object store", ts: 3 },
+    ],
+  };
+  writeFileSync(f, JSON.stringify(replaced));
+
+  const h = getHistoryAt(dir, "c1");
+  expect(h?.title).toBe("Replaced");
+  expect(h?.messages[0]?.content).toBe("hydrated from the object store");
+});
+
+test("a deleted conversation reads null even when its parse was cached", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "hello");
+  expect(getHistoryAt(dir, "c1")).not.toBeNull(); // cached
+  deleteConversationAt(dir, "c1");
+  expect(getHistoryAt(dir, "c1")).toBeNull();
+});
+
+test("list reflects an external rewrite (per-file cache validated by stat)", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "one");
+  appendUserMessageAt(dir, "c2", "two");
+  expect(listConversationsAt(dir)).toHaveLength(2); // warm both
+
+  const f = join(dir, "c2.json");
+  const conv = JSON.parse(readFileSync(f, "utf8"));
+  conv.title = "Externally renamed";
+  conv.updatedAt = Date.now() + 60_000;
+  writeFileSync(f, JSON.stringify(conv));
+
+  const list = listConversationsAt(dir);
+  expect(list[0]?.title).toBe("Externally renamed");
 });

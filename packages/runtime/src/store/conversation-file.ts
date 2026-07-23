@@ -2,7 +2,6 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
-  readFileSync,
   renameSync,
   rmSync,
   writeFileSync,
@@ -15,6 +14,11 @@ import type {
   TokenUsage,
   ToolCallRecord,
 } from "@houston/runtime-client";
+import {
+  dropParsedFile,
+  readParsedFile,
+  stampParsedFile,
+} from "./conversation-parse-cache";
 
 /**
  * Pure, dir-parameterized conversation file logic: one JSON file per
@@ -34,17 +38,19 @@ export type StoredConversation = {
 const fileFor = (dir: string, id: string) =>
   join(dir, `${encodeURIComponent(id)}.json`);
 
+/**
+ * Reads go through the mtime/size-validated parse cache
+ * (`conversation-parse-cache.ts`, HOU-819): a hit costs a stat instead of a
+ * whole-file JSON.parse on the event loop; writers that bypass {@link save}
+ * (the cloud store-sync hydrating `/data`, a manual edit) are picked up on
+ * the next read. The cached object is the SAME reference the appenders
+ * mutate-then-save — never mutate a loaded conversation without saving it.
+ */
 export function loadConversation(
   dir: string,
   id: string,
 ): StoredConversation | null {
-  const f = fileFor(dir, id);
-  if (!existsSync(f)) return null;
-  try {
-    return JSON.parse(readFileSync(f, "utf8")) as StoredConversation;
-  } catch {
-    return null;
-  }
+  return readParsedFile(fileFor(dir, id));
 }
 
 function save(dir: string, conv: StoredConversation) {
@@ -53,6 +59,7 @@ function save(dir: string, conv: StoredConversation) {
   const tmp = `${f}.tmp`;
   writeFileSync(tmp, JSON.stringify(conv));
   renameSync(tmp, f); // atomic swap; never leaves a half-written file
+  stampParsedFile(f, conv);
 }
 
 /** Optional fields of a persisted user message. */
@@ -169,6 +176,7 @@ export function renameConversationAt(
 
 export function deleteConversationAt(dir: string, id: string): boolean {
   const f = fileFor(dir, id);
+  dropParsedFile(f);
   if (!existsSync(f)) return false;
   rmSync(f);
   return true;
@@ -210,21 +218,19 @@ export function listConversationsAt(dir: string): ConversationSummary[] {
   const out: ConversationSummary[] = [];
   for (const f of readdirSync(dir)) {
     if (!f.endsWith(".json")) continue;
-    try {
-      const conv = JSON.parse(
-        readFileSync(join(dir, f), "utf8"),
-      ) as StoredConversation;
-      const last = conv.messages[conv.messages.length - 1];
-      out.push({
-        id: conv.id,
-        title: conv.title,
-        createdAt: conv.createdAt,
-        updatedAt: conv.updatedAt,
-        lastMessage: last?.content.slice(0, 80),
-      });
-    } catch {
-      // skip unreadable files
-    }
+    // Path-keyed cached read: a list pass costs one stat per file and parses
+    // only files that actually changed since the last read — it used to
+    // re-parse EVERY transcript on every call.
+    const conv = readParsedFile(join(dir, f));
+    if (!conv) continue; // unreadable/foreign file — skip, as before
+    const last = conv.messages[conv.messages.length - 1];
+    out.push({
+      id: conv.id,
+      title: conv.title,
+      createdAt: conv.createdAt,
+      updatedAt: conv.updatedAt,
+      lastMessage: last?.content.slice(0, 80),
+    });
   }
   return out.sort((a, b) => b.updatedAt - a.updatedAt);
 }
