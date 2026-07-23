@@ -223,6 +223,24 @@ test("opens a mission's chat when its card is clicked", async ({ page }) => {
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
 
+/**
+ * Clicks on app chrome (sidebar, titlebar, toolbar) must NOT dismiss an open
+ * chat — only an explicit close (the X, Escape, delete, agent switch) does.
+ * The board once closed the panel on any outside pointerdown; a stray click
+ * anywhere silently dropped the conversation the user was reading.
+ */
+test("keeps the open chat when clicking app chrome outside the panel", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByText("Plan a trip to Tokyo").click();
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+});
+
 /** The "Search missions" box filters the board client-side. */
 test("filters the board with the search box", async ({ page }) => {
   await page.goto("/");

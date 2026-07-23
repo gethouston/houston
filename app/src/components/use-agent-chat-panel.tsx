@@ -1967,7 +1967,6 @@ export function useAgentChatPanel({
         <button
           type="button"
           onClick={() => setPickerOpen(true)}
-          data-keep-panel-open
           className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-medium text-ink-muted hover:text-ink hover:bg-hover transition-colors"
         >
           <Play className="size-3 fill-current" />

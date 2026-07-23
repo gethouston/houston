@@ -256,10 +256,7 @@ export function WorkspaceShell({
                           activeTab={viewMode}
                           onTabChange={setViewMode}
                           actions={
-                            <div
-                              data-keep-panel-open
-                              className="flex min-w-0 flex-1 items-center justify-end gap-2"
-                            >
+                            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
                               {currentAgent && (
                                 <MissionSearchInput
                                   value={agentMissionSearchQuery}
