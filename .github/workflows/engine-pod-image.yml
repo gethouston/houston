@@ -162,6 +162,92 @@ jobs:
           echo "  ${{ env.REGISTRY }}/engine-pod:poc"
           echo "  digest ${{ steps.build.outputs.digest }}"
 
+      # ── Engine-pod catalog artifact ──────────────────────────────────────────
+      # The gateway (private gethouston/cloud) serves GET /v1/catalog to the app's
+      # model picker from an EMBEDDED snapshot that used to be hand-regenerated and
+      # drifted — users saw a week-old catalog. Fix: every engine image build ALSO
+      # publishes the catalog it serves as a tiny sibling image, and cloud's roll
+      # workflows (roll-engine.yml / roll-engine-staging.yml) fetch it by the SAME
+      # <git-sha> they roll and serve it live. The engine image is the single
+      # source of truth; the gateway can never drift from the fleet again. This
+      # MUST run before "Notify cloud repo" so the roll can always fetch the
+      # catalog by the dispatched sha, and it MUST fail the build (never skip) when
+      # the catalog can't be produced — a silent skip resurrects the drift.
+      #
+      # We obtain the catalog by BOOTING the just-built engine-pod image and
+      # curling the real /v1/catalog — not by re-deriving it — so the artifact is
+      # byte-for-byte what the fleet serves, and a bundle that can't answer the
+      # route fails HERE instead of in users' pickers. (Re-deriving via a dump
+      # script was rejected: the shipped image ships an esbuild bundle with no TS
+      # runner in its --prod deps, so it couldn't run a source-level dumper without
+      # a second bundle that would itself drift from the route.) Boot is safe with
+      # one dummy token: the managed-cloud credential/store gateway env is absent
+      # here → those configs no-op (packages/host/src/local/main.ts), eager-runtime
+      # is a no-op on the empty /data (no stored agents), and /v1/catalog is public
+      # (served before the auth gate) from pi-ai's static in-process registry — no
+      # network, no DB, not user-scoped.
+      - name: Produce & push engine-pod-catalog artifact
+        id: catalog
+        if: steps.gate.outputs.build == 'true'
+        run: |
+          set -euo pipefail
+          SHA_TAG="${{ env.REGISTRY }}/engine-pod:${{ github.sha }}"
+          PORT=4318
+          mkdir -p catalog-image
+
+          # Boot the pod. /v1/catalog needs no token, but HOUSTON_HOST_TOKEN is
+          # required for the host to start at all (an unset token would leave the
+          # 0.0.0.0-bound port open). No --rm, so logs survive a crash for diag.
+          CID=$(docker run -d \
+            -e HOUSTON_HOST_TOKEN=ci-catalog-probe \
+            -p 127.0.0.1:${PORT}:4318 \
+            "$SHA_TAG")
+          cleanup() { docker rm -f "$CID" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+
+          # Wait up to 60s for /health (public, no token) to answer 200. Bail
+          # early — with logs — if the container dies before becoming ready.
+          ready=""
+          for _ in $(seq 1 120); do
+            if curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then
+              ready=1; break
+            fi
+            if [ -z "$(docker ps -q --no-trunc --filter "id=$CID")" ]; then
+              echo "ERROR: engine-pod container exited before becoming ready" >&2
+              docker logs "$CID" 2>&1 || true
+              exit 1
+            fi
+            sleep 0.5
+          done
+          if [ -z "$ready" ]; then
+            echo "ERROR: engine-pod did not become ready within 60s" >&2
+            docker logs "$CID" 2>&1 || true
+            exit 1
+          fi
+
+          # The real body the fleet serves. -f fails the step on any non-200.
+          curl -fsS "http://127.0.0.1:${PORT}/v1/catalog" -o catalog-image/catalog.json
+
+          # Fail loudly on anything that would resurrect the stale/empty catalog:
+          # not a JSON array, empty, or missing a known-stable provider.
+          jq -e 'type == "array" and length > 0' catalog-image/catalog.json >/dev/null \
+            || { echo "ERROR: /v1/catalog is not a non-empty JSON array" >&2; head -c 400 catalog-image/catalog.json >&2; exit 1; }
+          jq -e 'any(.[]; .id == "anthropic")' catalog-image/catalog.json >/dev/null \
+            || { echo "ERROR: /v1/catalog is missing the anthropic provider — suspect a broken/partial registry" >&2; exit 1; }
+          echo "catalog.json OK: $(jq 'length' catalog-image/catalog.json) providers, $(wc -c < catalog-image/catalog.json) bytes"
+
+          # Publish as a FROM-scratch sibling image at the SAME <git-sha> tag as
+          # engine-pod above, one file at /catalog.json. cloud's roll workflow
+          # pulls this by the dispatched sha and extracts /catalog.json to serve.
+          # (The WIF SA's "Artifact Registry Writer" on this repo path already
+          # covers the engine-pod-catalog repo — same registry/repo prefix.) Built
+          # from the tiny catalog-image/ dir so the build context is one file.
+          CATALOG_TAG="${{ env.REGISTRY }}/engine-pod-catalog:${{ github.sha }}"
+          printf 'FROM scratch\nCOPY catalog.json /catalog.json\n' > catalog-image/Dockerfile
+          docker build --platform linux/amd64 -f catalog-image/Dockerfile -t "$CATALOG_TAG" catalog-image
+          docker push "$CATALOG_TAG"
+          echo "Published: $CATALOG_TAG"
+
       # Notify cloud that a new engine-pod image is ready — cloud owns the
       # cluster credentials and performs the actual roll. A tag push notifies
       # prod (engine-pod-published-prod); a push to main notifies staging
