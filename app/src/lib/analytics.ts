@@ -297,9 +297,17 @@ function bootstrap() {
     // selectors/positions — so user content still never leaves the app.
     // The PostHog project toggles (session_recording_opt_in /
     // heatmaps_opt_in) must be ON too; either side alone captures nothing.
+    //
+    // Do NOT set `advanced_disable_flags` here. The web recorder does not
+    // start from local config alone: it waits for the remote `/flags`
+    // response, which carries the `sessionRecording` block (endpoint, sample
+    // rate, masking). Suppressing that request means the recorder never
+    // initializes, `recorder.js` is never fetched, and not a single
+    // `$snapshot` is emitted — replay looks enabled on both sides yet
+    // captures nothing, silently. That flag shipped alongside replay in
+    // 0.5.18+ and is why this project has zero recordings.
     disable_session_recording: false,
     enable_heatmaps: true,
-    advanced_disable_flags: true,
     loaded: (ph) => {
       ph.register({
         ...baseSuperProps(),
