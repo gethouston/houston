@@ -168,6 +168,30 @@ test("positive cache absorbs repeated gets within the TTL", async () => {
   expect(calls).toHaveLength(1);
 });
 
+test("put with ifAbsent sends the gateway's fill-only header (HOU-855)", async () => {
+  const { calls, fetchImpl } = fakeFetch((call) => {
+    if (call.init?.method === "PUT") {
+      expect(headers(call)["x-houston-if-absent"]).toBe("1");
+      return json({ ok: true });
+    }
+    return json(gatewayCredential({ access: "AT" }));
+  });
+  const s = store(fetchImpl);
+
+  await s.put(
+    {
+      workspaceId: "ws_1",
+      provider: "openai-codex",
+      kind: "oauth",
+      accessToken: "AT-local",
+      refreshToken: "RT-local",
+      expiresAt: 456,
+    },
+    { ifAbsent: true },
+  );
+  expect(calls.some((c) => c.init?.method === "PUT")).toBe(true);
+});
+
 test("put writes the gateway row and invalidates the provider cache", async () => {
   let getCount = 0;
   const { calls, fetchImpl } = fakeFetch((call) => {

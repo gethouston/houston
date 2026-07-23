@@ -134,7 +134,11 @@ export async function reconcileClaudeCredentialHandoff(): Promise<void> {
   } catch {
     return; // engine unreachable — nothing to reconcile against
   }
-  const result = await pushCachedClaudeCredential();
+  // Fill-only: this cached snapshot may predate gateway refresh-token
+  // rotations, and clobbering the live central credential with it would
+  // revoke the whole token family (HOU-855). When a central credential
+  // already exists the push no-ops and the confirm below decides the outcome.
+  const result = await pushCachedClaudeCredential({ ifAbsent: true });
   if (!result.ok) {
     if (result.reason === "push-failed") {
       logger.warn(

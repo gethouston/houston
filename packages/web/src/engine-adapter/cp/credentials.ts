@@ -37,12 +37,24 @@ export async function pushClaudeOAuthCredential(
   cfg: ControlPlaneConfig,
   agentId: string,
   credentialJson: string,
+  opts?: { ifAbsent?: boolean },
 ): Promise<void> {
   await cpFetch(
     cfg,
-    `/agents/${encodeURIComponent(agentId)}/credential/claude-oauth`,
+    `/agents/${encodeURIComponent(agentId)}/credential/claude-oauth${ifAbsentQuery(opts)}`,
     { method: "POST", body: credentialJson },
   );
+}
+
+/**
+ * `?if_absent=1` marks a fill-only push of a CACHED credential snapshot (the
+ * reconcile): the host must never overwrite a live central credential whose
+ * refresh token the gateway may have rotated since the snapshot was cached
+ * (HOU-855). A fresh browser login omits it and overwrites. Rides the query
+ * string so the CLI's credential JSON is forwarded byte-verbatim as the body.
+ */
+function ifAbsentQuery(opts?: { ifAbsent?: boolean }): string {
+  return opts?.ifAbsent ? "?if_absent=1" : "";
 }
 
 /**
@@ -133,11 +145,16 @@ export async function getTunnelCredentials(
 export async function pushSetupClaudeOAuthCredential(
   cfg: ControlPlaneConfig,
   credentialJson: string,
+  opts?: { ifAbsent?: boolean },
 ): Promise<void> {
-  await cpFetch(cfg, `/setup-runtime/credential/claude-oauth`, {
-    method: "POST",
-    body: credentialJson,
-  });
+  await cpFetch(
+    cfg,
+    `/setup-runtime/credential/claude-oauth${ifAbsentQuery(opts)}`,
+    {
+      method: "POST",
+      body: credentialJson,
+    },
+  );
 }
 
 /** Connect-once capture on the setup runtime — `captureCredential`, agentless. */

@@ -71,8 +71,14 @@ export class RemoteCredentialStore implements CredentialStore {
     return this.withWorkspace(workspaceId, adopted);
   }
 
-  async put(cred: WorkspaceCredential): Promise<void> {
-    await this.putRemote(cred.provider, cred);
+  async put(
+    cred: WorkspaceCredential,
+    opts?: { ifAbsent?: boolean },
+  ): Promise<void> {
+    // ifAbsent rides to the gateway as `x-houston-if-absent`, whose PUT is
+    // atomic under the per-(org, provider) row lock — the authoritative guard
+    // against clobbering a live rotated refresh token with a cached snapshot.
+    await this.putRemote(cred.provider, cred, { ifAbsent: opts?.ifAbsent });
     this.cache.delete(cred.provider);
   }
 

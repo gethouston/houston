@@ -276,6 +276,16 @@ export interface RuntimeChannel {
   saveClaudeOAuthCredential(
     ctx: ChannelCtx,
     cred: ClaudeOAuthCredential,
+    opts?: {
+      /**
+       * Fill-only push (the desktop RECONCILE of a cached snapshot): when the
+       * workspace already holds a live central credential — whose refresh
+       * token the gateway may have rotated since this snapshot was cached —
+       * the push is a no-op instead of a clobber (HOU-855). A fresh browser
+       * login omits it and overwrites.
+       */
+      ifAbsent?: boolean;
+    },
   ): Promise<void>;
   /**
    * Connect an OpenAI-compatible server: a base URL + model id. Desktop/self-host
@@ -340,8 +350,15 @@ export interface CredentialStore {
     workspaceId: WorkspaceId,
     provider: string,
   ): Promise<WorkspaceCredential | null>;
-  /** Upsert (overwrite in place on refresh). */
-  put(cred: WorkspaceCredential): Promise<void>;
+  /**
+   * Upsert (overwrite in place on refresh). `ifAbsent` makes it a FILL, not a
+   * clobber: an existing entry is left untouched. Required for any push of a
+   * CACHED credential snapshot (the desktop reconcile) — the central copy may
+   * hold a rotated refresh token, and overwriting it with a stale snapshot
+   * makes the next central refresh trip the provider's refresh-token-reuse
+   * detection, revoking the whole family (HOU-855).
+   */
+  put(cred: WorkspaceCredential, opts?: { ifAbsent?: boolean }): Promise<void>;
   remove(workspaceId: WorkspaceId, provider: string): Promise<void>;
 }
 
