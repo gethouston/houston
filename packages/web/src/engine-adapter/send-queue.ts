@@ -1,9 +1,11 @@
+import type { ChatMessage } from "@houston/runtime-client";
 import {
   type ConversationVM,
   conversationScope,
   type QueuedMessageVM,
 } from "@houston/sdk";
 import type { SessionStartRequest } from "../../../../ui/engine-client/src/types";
+import { armQueueWatchdog, disarmQueueWatchdog } from "./queue-watchdog";
 import { armSettleWatcher, disarmSettleWatcher } from "./settle-watcher";
 import { conversationStore, conversationVm } from "./vm";
 
@@ -20,11 +22,15 @@ import { conversationStore, conversationVm } from "./vm";
  * requests (attachments already saved, prompt final); `queuedPreview` carries
  * the user's words + attachment names for the composer's queued-bubble UI.
  *
- * Flushing has two triggers, because a settle has two shapes: the dispatched
- * turn's own settle (the `.finally` in `chat-send-mixin`), and — for a turn
- * settled by anything else — the settle watcher armed at queue time (see
- * settle-watcher.ts; HOU-718's reconnect auto-continue was the canonical
- * victim of its absence).
+ * Flushing has three triggers, because a settle has two shapes and one
+ * failure mode: the dispatched turn's own settle (the `.finally` in
+ * `chat-send-mixin`); for a turn settled by anything else, the settle watcher
+ * armed at queue time (see settle-watcher.ts; HOU-718's reconnect
+ * auto-continue was the canonical victim of its absence); and the queue
+ * watchdog (queue-watchdog.ts), the ground-truth history probe that flushes a
+ * queue whose settle-watcher trigger silently died — a fatal or exhausted
+ * observer stream left the stale `running` flag unhealed and the queued
+ * resume sat forever (HOU-849).
  *
  * `autoResume` sends (Houston resuming after a provider reconnect — not
  * user-typed) get special handling: one resume per conversation at a time —
@@ -88,11 +94,15 @@ export function noteAutoResumeEnded(
  * conversation is idle and the caller dispatches normally. An `autoResume`
  * send is held at most once per conversation — a duplicate (one already queued
  * or dispatched-and-running) is swallowed, reported as handled.
+ *
+ * `probe` (the conversation's history read) arms the queue watchdog alongside
+ * the settle watcher, so the hold survives a silently-dead observer stream.
  */
 export function maybeQueueSend(
   agentPath: string,
   req: SessionStartRequest,
   dispatch: (req: SessionStartRequest) => void,
+  probe?: () => Promise<ChatMessage[]>,
 ): boolean {
   if (!conversationRunning(agentPath, req.sessionKey)) return false;
   const k = queueKey(agentPath, req.sessionKey);
@@ -115,9 +125,17 @@ export function maybeQueueSend(
   });
   queues.set(k, entries);
   publishQueued(agentPath, req.sessionKey);
-  armSettleWatcher(k, () =>
-    flushQueuedSends(agentPath, req.sessionKey, dispatch),
-  );
+  const flush = () => flushQueuedSends(agentPath, req.sessionKey, dispatch);
+  armSettleWatcher(k, flush);
+  if (probe)
+    armQueueWatchdog(
+      k,
+      agentPath,
+      req.sessionKey,
+      probe,
+      () => queues.has(k),
+      flush,
+    );
   return true;
 }
 
@@ -132,6 +150,7 @@ export function removeQueuedSend(
   if (entries.length === 0) {
     queues.delete(k);
     disarmSettleWatcher(k);
+    disarmQueueWatchdog(k);
   } else queues.set(k, entries);
   publishQueued(agentPath, sessionKey);
 }
@@ -161,6 +180,7 @@ export function flushQueuedSends(
   const entries = hasUserEntries ? all.filter((e) => !e.req.autoResume) : all;
   queues.delete(k);
   disarmSettleWatcher(k);
+  disarmQueueWatchdog(k);
   publishQueued(agentPath, sessionKey);
   const last = entries[entries.length - 1];
   const prompt = entries
