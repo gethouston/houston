@@ -33,11 +33,15 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
       // send-queue.ts). Every send path inherits this here. The dispatch
       // callback serves the queue's settle watcher — the flush path for turns
       // settled by an observer or the stale-running heal, which never pass
-      // through the `.finally` below.
+      // through the `.finally` below. The history probe backs the queue
+      // watchdog, the ground-truth flush trigger for a hold whose observer
+      // stream died silently (HOU-849).
       const redispatch = (r: SessionStartRequest) => {
         void this.startSession(path, r);
       };
-      if (maybeQueueSend(path, req, redispatch)) {
+      const probe = async () =>
+        (await engine.getHistory(req.sessionKey)).messages;
+      if (maybeQueueSend(path, req, redispatch, probe)) {
         // The VM says a turn is running, but nothing may actually be streaming
         // it (a `running` flag left behind by a torn-down stream). Attach the
         // passive observer so the SERVER arbitrates: a genuinely running turn
