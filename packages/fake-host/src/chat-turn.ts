@@ -68,6 +68,7 @@ async function streamReply(
   cid: string,
   userText: string,
   nonce: string | undefined,
+  displayText: string | undefined,
 ): Promise<void> {
   const ch = channel(chatKey(agentId, cid));
   const epoch = ch.epoch;
@@ -75,7 +76,7 @@ async function streamReply(
   const reply = cannedReply(userText);
   ch.pending = { turnId, remaining: replyDeltas(reply) };
   // The user message persists at turn START (the dead-turn history shape).
-  state.appendUserMessage(agentId, cid, userText, turnId);
+  state.appendUserMessage(agentId, cid, userText, turnId, displayText);
   publish(ch, {
     type: "user",
     data: { content: userText, ts: Date.now(), nonce },
@@ -125,8 +126,9 @@ export function streamReplySafe(
   cid: string,
   text: string,
   nonce: string | undefined,
+  displayText?: string,
 ): void {
-  streamReply(agentId, cid, text, nonce).catch((err: unknown) => {
+  streamReply(agentId, cid, text, nonce, displayText).catch((err: unknown) => {
     console.error("[fake-host] streamReply failed:", err);
     queueMicrotask(() => {
       throw err;

@@ -23,10 +23,22 @@ export function appendUserMessage(
   conversationId: string,
   userText: string,
   turnId: string,
+  displayText?: string,
 ): void {
   const key = `${agentId}:${conversationId}`;
   const list = state.histories.get(key) ?? [];
-  list.push({ role: "user", content: userText, ts: EPOCH, turnId });
+  // `displayText` mirrors the real runtime's contract: the model ran on
+  // `content` (a kickoff send carries the full hidden directive there), while
+  // a history reload renders `displayText ?? content`. Dropping it here made
+  // the served fold DIFFER from the live bubble — a windowed reseed
+  // (HOU-819) then replaced the pretty bubble with the raw directive.
+  list.push({
+    role: "user",
+    content: userText,
+    ts: EPOCH,
+    turnId,
+    ...(displayText !== undefined ? { displayText } : {}),
+  });
   state.histories.set(key, list);
   emitDomain("ConversationsChanged", agentId);
 }
