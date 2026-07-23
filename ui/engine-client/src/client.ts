@@ -1974,6 +1974,18 @@ export class HoustonClient {
       `/agents/${this.seg(agentPath)}/sessions/${this.seg(sessionKey)}/history`,
     );
   }
+  /**
+   * Prepend the previous transcript page before the loaded window (HOU-819).
+   * Implemented by the v3 host adapter (which owns the conversation VM the
+   * page prepends into); this legacy client loads full histories, so there is
+   * never an older page to fetch.
+   */
+  loadOlderChatHistory(
+    _agentPath: string,
+    _sessionKey: string,
+  ): Promise<{ hasOlder: boolean }> {
+    return Promise.resolve({ hasOlder: false });
+  }
   summarizeActivity(
     message: string,
     opts: SummarizeOptions = {},

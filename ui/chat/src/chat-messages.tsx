@@ -8,6 +8,7 @@ import {
   ConversationScrollButton,
   ConversationTopFade,
 } from "./ai-elements/conversation";
+import { ConversationLoadOlder } from "./ai-elements/conversation-load-older";
 import { Message, MessageContent } from "./ai-elements/message";
 import { ChatMessageItem } from "./chat-message-item";
 import type { ChatMessagesProps } from "./chat-messages-types";
@@ -40,6 +41,8 @@ export function ChatMessages({
   contextCompactedLabel,
   renderUserMessage,
   afterMessages,
+  onLoadOlder,
+  hasOlderMessages,
   onOpenLink,
   renderLink,
   currentUserId,
@@ -90,6 +93,12 @@ export function ChatMessages({
       <ConversationAutoScroll status={status} />
       <ConversationTopFade />
       <ConversationContent className="max-w-3xl mx-auto">
+        {onLoadOlder ? (
+          <ConversationLoadOlder
+            hasOlder={hasOlderMessages === true}
+            onLoadOlder={onLoadOlder}
+          />
+        ) : null}
         {displayItems.map((item) => (
           <ChatMessageItem
             authorLabels={authorLabels}

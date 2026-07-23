@@ -375,6 +375,19 @@ export interface ConversationHistory {
   id: string;
   title: string;
   messages: ChatMessage[];
+  /**
+   * Absolute index of `messages[0]` in the full transcript — `0` when the
+   * response starts at the beginning. Non-zero only on a windowed read
+   * (`?limit=` / `?before=`): older messages exist below this index and are
+   * fetched with `before: offset`. Absent on pre-windowing servers (treat as
+   * `0` — the response is the whole transcript).
+   */
+  offset?: number;
+  /**
+   * Total messages stored in the conversation, regardless of the window
+   * returned. Absent on pre-windowing servers (treat as `messages.length`).
+   */
+  totalMessages?: number;
 }
 
 /**

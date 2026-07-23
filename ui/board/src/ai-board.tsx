@@ -69,6 +69,11 @@ export interface AIBoardProps {
    *  internal `newPanelOpen` state, which `setSelectedId(null)` does
    *  not touch. */
   onPanelCloserReady?: (close: () => void) => void;
+  /** Scroll-up lazy-load for the OPEN chat (HOU-819): the parent resolves it
+   *  for the active conversation; prepends the previous transcript page. */
+  onLoadOlderMessages?: () => Promise<unknown>;
+  /** Older messages exist beyond the open chat's loaded window. */
+  hasOlderMessages?: boolean;
   /** Custom empty state for the chat panel when no messages exist. */
   chatEmptyState?: ReactNode;
   /** Custom thinking indicator for the chat panel. */
@@ -284,6 +289,8 @@ export function AIBoard({
   onHistoryLoaded,
   onNewPanelOpenerReady,
   onPanelCloserReady,
+  onLoadOlderMessages,
+  hasOlderMessages,
   chatEmptyState,
   thinkingIndicator,
   cardAvatar,
@@ -689,6 +696,8 @@ export function AIBoard({
               : "What should the agent work on?"
           }
           emptyState={activeFeed.length === 0 ? chatEmptyState : undefined}
+          onLoadOlder={activeSessionKey ? onLoadOlderMessages : undefined}
+          hasOlderMessages={hasOlderMessages}
           thinkingIndicator={thinkingIndicator}
           value={drafts ? (drafts[activeDraftKey] ?? "") : undefined}
           onValueChange={

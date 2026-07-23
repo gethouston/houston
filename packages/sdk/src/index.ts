@@ -154,6 +154,7 @@ export {
   type FeedFrame,
   type FeedItemVM,
   type FeedOutput,
+  type HistoryWindowVM,
   historyToFeed,
   isNotConnectedError,
   isStoppedByUser,

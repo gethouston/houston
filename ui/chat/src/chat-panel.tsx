@@ -48,6 +48,8 @@ export function ChatPanel({
   contextCompactedLabel,
   renderUserMessage,
   afterMessages,
+  onLoadOlder,
+  hasOlderMessages,
   renderTurnSummary,
   onOpenLink,
   renderLink,
@@ -186,6 +188,8 @@ export function ChatPanel({
           contextCompactedLabel={contextCompactedLabel}
           renderUserMessage={renderUserMessage}
           afterMessages={afterMessages}
+          onLoadOlder={onLoadOlder}
+          hasOlderMessages={hasOlderMessages}
           renderTurnSummary={renderTurnSummary}
           onOpenLink={onOpenLink}
           renderLink={renderLink}

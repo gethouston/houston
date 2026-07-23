@@ -3,7 +3,7 @@ import {
   type BoardStatus,
   conversationScope,
   type FeedFrame,
-  type FeedOutput,
+  type HistoryWindowVM,
   MultiplexFeedOutput,
   type PendingInteraction,
   StreamRegistry,
@@ -13,8 +13,9 @@ import {
   streamKey,
   type TurnWirePin,
 } from "@houston/sdk";
-import { writeCachedConversation } from "./conversation-cache";
+import { cachePersistOutput } from "./cache-persist";
 import { createBusFeedOutput } from "./feed-output";
+import { decideServerSeed } from "./history-window";
 import { conversationStore, conversationVm } from "./vm";
 
 export type { StreamTuning } from "@houston/sdk";
@@ -30,35 +31,6 @@ const registry = new StreamRegistry();
 /** Abort every live conversation stream this adapter owns (WS teardown seam). */
 export function disposeAllStreams(): void {
   registry.disposeAll();
-}
-
-/**
- * Persist the VM's folded feed to the local conversation cache when a turn
- * (or observed turn) settles, so the transcript a cold reopen paints includes
- * everything sent THIS session — not just the state at the last history read
- * (HOU-712). Frames were already folded by the VM (first in the multiplex);
- * this just snapshots them. Cloud-only by construction: the cache no-ops
- * without a gateway identity. Fire-and-forget — a cache write must never
- * delay a settle.
- */
-function cachePersistOutput(): FeedOutput {
-  return {
-    pushFeedItem() {},
-    sessionStatus() {},
-    async persistBoardStatus(agentPath, sessionKey, status) {
-      if (status === "running") return;
-      const snapshot = conversationStore.getSnapshot(
-        conversationScope(agentPath, sessionKey),
-      ) as { feed?: { feed_type: string; data: unknown }[] } | undefined;
-      const frames = snapshot?.feed;
-      if (!frames || frames.length === 0) return;
-      void writeCachedConversation(
-        agentPath,
-        sessionKey,
-        frames.map((f) => ({ feed_type: f.feed_type, data: f.data })),
-      );
-    },
-  };
 }
 
 /**
@@ -86,25 +58,43 @@ function composedOutput(
 /**
  * Seed the conversation VM from a loaded history fold — unless a live turn or
  * observer already owns the conversation (that stream's feed IS the VM;
- * re-seeding would clobber its in-flight bubble), or the VM already holds at
- * least as much as the fold. The second guard is what makes a RACED history
+ * re-seeding would clobber its in-flight bubble), or the VM already holds a
+ * feed the fold would make poorer. The guard is what makes a RACED history
  * read harmless: a load fired mid-turn can resolve just after settle (the
  * registry entry already released) carrying a fold persisted BEFORE the reply
- * — replacing the settled live feed with it would eat the reply. History only
- * ever seeds a poorer VM (cold open, or turns that landed while this chat was
- * closed).
+ * — replacing the settled live feed with it would eat the reply.
+ *
+ * Two seed shapes (HOU-819):
+ * - Cache paint (no `window`): the historical richer-wins length guard — the
+ *   paint only ever fills an emptier VM.
+ * - Windowed server read (`window` set): the fold is a TAIL, so it can be
+ *   shorter than the feed yet strictly newer (a teammate's turn landed while
+ *   this chat was closed and cache-painted) — {@link decideServerSeed}
+ *   compares by last-message recency, replaces on newer/richer, stamps the
+ *   window without reseeding on identical content, and skips on poorer.
  */
 export function seedConversationVm(
   agentPath: string,
   sessionKey: string,
   frames: FeedFrame[],
+  window?: HistoryWindowVM,
 ): void {
   if (registry.get(streamKey(agentPath, sessionKey))) return;
   const current = conversationStore.getSnapshot(
     conversationScope(agentPath, sessionKey),
-  ) as { feed?: unknown[] } | undefined;
-  if ((current?.feed?.length ?? 0) >= frames.length) return;
-  conversationVm.seedHistory(agentPath, sessionKey, frames);
+  ) as { feed?: { ts?: number }[] } | undefined;
+  const curFeed = current?.feed ?? [];
+  if (!window) {
+    if (curFeed.length >= frames.length) return;
+    conversationVm.seedHistory(agentPath, sessionKey, frames);
+    return;
+  }
+  const decision = decideServerSeed(curFeed, frames);
+  if (decision === "replace") {
+    conversationVm.seedHistory(agentPath, sessionKey, frames, window);
+  } else if (decision === "stamp") {
+    conversationVm.stampHistoryWindow(agentPath, sessionKey, window);
+  }
 }
 
 /**

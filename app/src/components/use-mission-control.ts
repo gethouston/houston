@@ -162,6 +162,13 @@ export function useMissionControl(agents: Agent[]) {
       activeSessionKey ? { [activeSessionKey]: activeVm?.feed ?? [] } : {},
     [activeSessionKey, activeVm],
   );
+  // Scroll-up lazy-load (HOU-819): the open chat renders the transcript's
+  // tail window; older pages prepend on scroll. See use-agent-board-data.
+  const hasOlderMessages = (activeVm?.historyWindow?.earliestLoaded ?? 0) > 0;
+  const onLoadOlderMessages = useCallback(async () => {
+    if (!activeAgentPath || !activeSessionKey) return;
+    await tauriChat.loadOlderHistory(activeAgentPath, activeSessionKey);
+  }, [activeAgentPath, activeSessionKey]);
 
   const loadHistory = useCallback(
     async (
@@ -390,6 +397,8 @@ export function useMissionControl(agents: Agent[]) {
     isLoaded: isFetched,
     feedItems,
     loadHistory,
+    onLoadOlderMessages,
+    hasOlderMessages,
     handleDelete,
     handleApprove,
     handleRename,

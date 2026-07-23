@@ -4,7 +4,7 @@ import { messagePreviewText } from "@houston-ai/chat";
 import { createElement, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
-import { useConversationFeed } from "../../hooks/use-conversation-vm";
+import { useConversationVm } from "../../hooks/use-conversation-vm";
 import { isSetupChatMode } from "../../lib/integration-chat-setup";
 import { missionCardTags } from "../../lib/mission-card";
 import {
@@ -15,6 +15,8 @@ import {
 import type { Agent } from "../../lib/types";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
+
+const EMPTY_FEED: FeedItem[] = [];
 
 /**
  * Cross-agent archived data: every agent's *archived* missions on one list,
@@ -120,11 +122,18 @@ export function useMissionControlArchived(agents: Agent[]) {
   const activeAgentPath = activeSessionKey
     ? (sessionMapRef.current[activeSessionKey]?.agentPath ?? null)
     : null;
-  const activeFeed = useConversationFeed(activeAgentPath, activeSessionKey);
+  const activeVm = useConversationVm(activeAgentPath, activeSessionKey);
+  const activeFeed = activeVm?.feed ?? EMPTY_FEED;
   const feedItems = useMemo<Record<string, FeedItem[]>>(
     () => (activeSessionKey ? { [activeSessionKey]: activeFeed } : {}),
     [activeSessionKey, activeFeed],
   );
+  // Scroll-up lazy-load (HOU-819): see use-agent-board-data.
+  const hasOlderMessages = (activeVm?.historyWindow?.earliestLoaded ?? 0) > 0;
+  const onLoadOlderMessages = useCallback(async () => {
+    if (!activeAgentPath || !activeSessionKey) return;
+    await tauriChat.loadOlderHistory(activeAgentPath, activeSessionKey);
+  }, [activeAgentPath, activeSessionKey]);
 
   const loadHistory = useCallback(
     async (
@@ -161,6 +170,8 @@ export function useMissionControlArchived(agents: Agent[]) {
     setSelectedId,
     sessionKeyFor,
     loadHistory,
+    onLoadOlderMessages,
+    hasOlderMessages,
     handleDelete,
     agentMap,
   };

@@ -146,6 +146,8 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           onRemoveQueuedMessage={sendQueue.onRemoveQueuedMessage}
           queuedLabels={queuedLabels}
           onLoadHistory={source.loadHistory}
+          onLoadOlderMessages={source.onLoadOlderMessages}
+          hasOlderMessages={source.hasOlderMessages}
           onNewPanelOpenerReady={source.registerOpener}
           onPanelCloserReady={handleCloserReady}
           emptyState={source.emptyState}

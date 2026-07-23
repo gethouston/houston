@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 33
+version: 34
 
 components:
   - id: agent-avatar
@@ -67,12 +67,17 @@ components:
   - id: conversation-feed
     title: Conversation feed
     purpose: The scrolling transcript that hosts every message/tool/system item.
-    anatomy: [scroll-viewport, item-list, stick-to-bottom-anchor, scroll-to-bottom-button]
-    states: [empty, loading-history, streaming, idle, error]
+    anatomy: [scroll-viewport, load-older-trigger, item-list, stick-to-bottom-anchor, scroll-to-bottom-button]
+    states: [empty, loading-history, loading-older, streaming, idle, error]
     variants: [single-player, multiplayer]
     behavior: >-
       Renders an ordered FeedItem stream; auto-sticks to bottom while streaming
       unless the user scrolled up. Item ordering/merge is view-model driven.
+      Opens on the transcript's TAIL window (v34): when the view-model reports
+      older messages beyond the loaded window, scrolling the top of the feed
+      into view fetches and prepends the previous page (quiet spinner while
+      loading), anchored so on-screen content never jumps; the trigger retires
+      when the window reaches the transcript start.
     a11y: log role with aria-live=polite for appended items; preserves scroll on prepend.
     since: 1
 

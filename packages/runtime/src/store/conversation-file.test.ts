@@ -238,3 +238,84 @@ test("a user message with no acting-as token stays author-free (byte-identical t
   const raw = readFileSync(join(dir, "c1.json"), "utf8");
   expect(raw).not.toContain("author");
 });
+
+// ── Transcript windowing (HOU-819) ──────────────────────────────────────────
+
+function seedConversation(dir: string, count: number) {
+  for (let i = 0; i < count; i++) {
+    if (i % 2 === 0) appendUserMessageAt(dir, "c1", `user ${i}`);
+    else appendAssistantMessageAt(dir, "c1", `reply ${i}`);
+  }
+}
+
+test("no window returns the full transcript with offset 0 and the total", () => {
+  const dir = freshDir();
+  seedConversation(dir, 5);
+
+  const h = getHistoryAt(dir, "c1");
+  if (!h) throw new Error("getHistoryAt returned null");
+  expect(h.messages).toHaveLength(5);
+  expect(h.offset).toBe(0);
+  expect(h.totalMessages).toBe(5);
+});
+
+test("limit returns the LAST N messages and where they start", () => {
+  const dir = freshDir();
+  seedConversation(dir, 10);
+
+  const h = getHistoryAt(dir, "c1", { limit: 3 });
+  if (!h) throw new Error("getHistoryAt returned null");
+  expect(h.messages.map((m) => m.content)).toEqual([
+    "reply 7",
+    "user 8",
+    "reply 9",
+  ]);
+  expect(h.offset).toBe(7);
+  expect(h.totalMessages).toBe(10);
+});
+
+test("before + limit returns the previous page, ending at the cursor", () => {
+  const dir = freshDir();
+  seedConversation(dir, 10);
+
+  const h = getHistoryAt(dir, "c1", { limit: 3, before: 7 });
+  if (!h) throw new Error("getHistoryAt returned null");
+  expect(h.messages.map((m) => m.content)).toEqual([
+    "user 4",
+    "reply 5",
+    "user 6",
+  ]);
+  expect(h.offset).toBe(4);
+  expect(h.totalMessages).toBe(10);
+});
+
+test("a limit larger than the transcript clamps to the start (offset 0)", () => {
+  const dir = freshDir();
+  seedConversation(dir, 4);
+
+  const h = getHistoryAt(dir, "c1", { limit: 100 });
+  if (!h) throw new Error("getHistoryAt returned null");
+  expect(h.messages).toHaveLength(4);
+  expect(h.offset).toBe(0);
+});
+
+test("a before cursor past the end clamps to the transcript's tail", () => {
+  const dir = freshDir();
+  seedConversation(dir, 4);
+
+  const h = getHistoryAt(dir, "c1", { limit: 2, before: 999 });
+  if (!h) throw new Error("getHistoryAt returned null");
+  expect(h.messages.map((m) => m.content)).toEqual(["user 2", "reply 3"]);
+  expect(h.offset).toBe(2);
+});
+
+test("before at the transcript start returns an empty page (nothing older)", () => {
+  const dir = freshDir();
+  seedConversation(dir, 4);
+
+  const h = getHistoryAt(dir, "c1", { limit: 2, before: 0 });
+  if (!h) throw new Error("getHistoryAt returned null");
+  expect(h.messages).toHaveLength(0);
+  expect(h.offset).toBe(0);
+  expect(h.totalMessages).toBe(4);
+});

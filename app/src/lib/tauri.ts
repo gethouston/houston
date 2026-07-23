@@ -441,6 +441,12 @@ export const tauriChat = {
           "load_chat_history",
           () => getEngine().loadChatHistory(agentPath, sessionKey, opts),
         ),
+  /** Prepend the previous transcript page before the loaded window (HOU-819):
+   *  the scroll-up lazy-load. Resolves whether even older messages remain. */
+  loadOlderHistory: (agentPath: string, sessionKey: string) =>
+    call<{ hasOlder: boolean }>("load_older_chat_history", () =>
+      getEngine().loadOlderChatHistory(agentPath, sessionKey),
+    ),
   summarize: (message: string) =>
     call<{ title: string; description: string }>("summarize_activity", () =>
       getEngine().summarizeActivity(message),

@@ -9,7 +9,7 @@ import {
   useDeleteActivity,
   useUpdateActivity,
 } from "../../hooks/queries";
-import { useConversationFeed } from "../../hooks/use-conversation-vm";
+import { useConversationVm } from "../../hooks/use-conversation-vm";
 import { useWarmingBoardRows } from "../../hooks/use-warming-board-rows";
 import { missionCardTags } from "../../lib/mission-card";
 import { canDropMission, selectActive } from "../../lib/mission-selection";
@@ -22,6 +22,8 @@ import type { Agent, AgentDefinition } from "../../lib/types";
 import { mergeWarmingRows } from "../../lib/warming-board-rows";
 import { useUIStore } from "../../stores/ui";
 import { missionColumnIdForStatus } from "../mission-board-columns";
+
+const EMPTY_FEED: FeedItem[] = [];
 
 /**
  * Per-agent board data: maps this agent's activities to kanban items, exposes
@@ -107,11 +109,21 @@ export function useAgentBoardData({
     activeSessionKey ? path : undefined,
     activeSessionKey ?? undefined,
   );
-  const activeFeed = useConversationFeed(path, activeSessionKey);
+  const activeVm = useConversationVm(path, activeSessionKey);
+  const activeFeed = activeVm?.feed ?? EMPTY_FEED;
   const feedItems = useMemo<Record<string, FeedItem[]>>(
     () => (activeSessionKey ? { [activeSessionKey]: activeFeed } : {}),
     [activeSessionKey, activeFeed],
   );
+  // Scroll-up lazy-load (HOU-819): the open chat renders only the transcript's
+  // tail window; when older messages exist server-side the panel prepends the
+  // previous page as the user scrolls up. `hasOlderMessages` comes off the
+  // VM's stamped window, so it flips as pages land.
+  const hasOlderMessages = (activeVm?.historyWindow?.earliestLoaded ?? 0) > 0;
+  const onLoadOlderMessages = useCallback(async () => {
+    if (!activeSessionKey) return;
+    await tauriChat.loadOlderHistory(path, activeSessionKey);
+  }, [path, activeSessionKey]);
 
   const loadHistory = useCallback(
     async (sessionKey: string, opts?: HistoryLoadOptions) => {
@@ -174,6 +186,8 @@ export function useAgentBoardData({
     feedItems,
     sessionKeyFor,
     loadHistory,
+    onLoadOlderMessages,
+    hasOlderMessages,
     handleDelete,
     handleApprove,
     handleItemMove,

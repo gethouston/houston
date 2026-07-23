@@ -174,13 +174,35 @@ export function deleteConversationAt(dir: string, id: string): boolean {
   return true;
 }
 
+/**
+ * A transcript window request: `limit` = max messages returned, `before` = the
+ * absolute index the window must end at (exclusive) — the caller's current
+ * `offset`, for fetching the previous page. Both optional; absent = full
+ * history (the pre-windowing contract, unchanged for old clients).
+ */
+export interface HistoryWindow {
+  limit?: number;
+  before?: number;
+}
+
 export function getHistoryAt(
   dir: string,
   id: string,
+  window: HistoryWindow = {},
 ): ConversationHistory | null {
   const conv = loadConversation(dir, id);
   if (!conv) return null;
-  return { id: conv.id, title: conv.title, messages: conv.messages };
+  const total = conv.messages.length;
+  const end = Math.min(Math.max(window.before ?? total, 0), total);
+  const start =
+    window.limit === undefined ? 0 : Math.max(0, end - window.limit);
+  return {
+    id: conv.id,
+    title: conv.title,
+    messages: conv.messages.slice(start, end),
+    offset: start,
+    totalMessages: total,
+  };
 }
 
 export function listConversationsAt(dir: string): ConversationSummary[] {

@@ -20,6 +20,7 @@
  */
 
 import { createIdbBackend } from "./conversation-cache-idb";
+import { CHAT_OPEN_WINDOW } from "./history-window";
 
 export {
   conversationCacheScope,
@@ -30,6 +31,13 @@ export {
 export interface CachedFrame {
   feed_type: string;
   data: unknown;
+  /**
+   * The frame's source-message timestamp, when the fold carried one. Persisted
+   * so the windowed-history revalidation (HOU-819) can compare a cache-painted
+   * feed against a fresh server tail by recency; absent on records written
+   * before this field existed (comparisons then degrade to the length guard).
+   */
+  ts?: number;
 }
 
 /** A stored transcript: its frames plus a write stamp (prune order). */
@@ -137,7 +145,15 @@ export async function writeCachedConversation(
   if (!key || !b || frames.length === 0) return;
   try {
     await b.set(key, {
-      frames: frames.map((f) => ({ feed_type: f.feed_type, data: f.data })),
+      // Cap at the open window (HOU-819): the cache exists to paint a cold
+      // open instantly, and a cold open shows exactly the tail window — a
+      // longer record would only make the revalidating tail read look poorer
+      // than the paint and suppress the load-older affordance.
+      frames: frames.slice(-CHAT_OPEN_WINDOW).map((f) => ({
+        feed_type: f.feed_type,
+        data: f.data,
+        ...(f.ts !== undefined ? { ts: f.ts } : {}),
+      })),
       updatedAt: Date.now(),
     });
     const keys = await b.keysOldestFirst();

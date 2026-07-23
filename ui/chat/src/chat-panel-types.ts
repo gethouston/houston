@@ -98,6 +98,9 @@ export interface ChatPanelProps {
   contextCompactedLabel?: string;
   renderUserMessage?: (msg: ChatMessage) => ReactNode | undefined;
   afterMessages?: ReactNode;
+  /** Scroll-up lazy-load (HOU-819): see `ChatMessagesProps.onLoadOlder`. */
+  onLoadOlder?: ChatMessagesProps["onLoadOlder"];
+  hasOlderMessages?: ChatMessagesProps["hasOlderMessages"];
   renderTurnSummary?: ChatMessagesProps["renderTurnSummary"];
   onOpenLink?: (url: string) => void;
   renderLink?: ChatMessagesProps["renderLink"];

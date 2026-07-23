@@ -6,9 +6,11 @@ import {
   readCachedConversation,
   writeCachedConversation,
 } from "../conversation-cache";
+import { CHAT_OPEN_WINDOW } from "../history-window";
 import { historyToFeed, isConversationNotFound } from "../translate";
 import { observeConversation, seedConversationVm } from "../turn-stream";
 import { setActivityStatus } from "./activity-status";
+import { loadOlderPage } from "./load-older";
 import type { BaseCtor } from "./mixin";
 
 export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
@@ -35,8 +37,21 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
         const engine = this.ctx.cp
           ? controlPlane.runtimeClientFor(this.ctx.cp, agentPath)
           : this.ctx.engine;
-        const history = await engine.getHistory(sessionKey);
+        // A conversation OPEN reads only the tail window (HOU-819) — long
+        // missions used to fetch and fold their entire transcript here, the
+        // main "chat hangs before opening" cost. Bulk reads (mission search
+        // needs full text to match against) keep the full fetch. A
+        // pre-windowing server ignores `limit` and returns everything —
+        // `offset`/`totalMessages` then default to the full-transcript shape.
+        const history = await engine.getHistory(
+          sessionKey,
+          opts.observe !== false ? { limit: CHAT_OPEN_WINDOW } : {},
+        );
         const sdkFeed = sdkHistoryToFeed(history.messages);
+        const window = {
+          earliestLoaded: history.offset ?? 0,
+          total: history.totalMessages ?? history.messages.length,
+        };
         // Refresh the local copy on EVERY successful read (bulk scans too), so
         // the next cold open paints the freshest transcript we ever saw.
         if (this.ctx.cp) {
@@ -58,7 +73,7 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
           // seedConversationVm) — its feed IS the VM. The VM seed is the SDK's
           // UNMAPPED fold: the VM carries engine provider ids uniformly (seeded
           // and live alike); the app's binding hook owns the old-id remap.
-          seedConversationVm(agentPath, sessionKey, sdkFeed);
+          seedConversationVm(agentPath, sessionKey, sdkFeed, window);
           observeConversation(
             engine,
             agentPath,
@@ -71,7 +86,9 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
                 status,
                 pendingInteraction,
               ),
-            history.messages.length,
+            // The legacy settle guard compares against a FULL history reload,
+            // so hand it the transcript's total, not the window's length.
+            window.total,
           );
         }
         return historyToFeed(history.messages);
@@ -96,6 +113,20 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
         }
         throw err;
       }
+    }
+
+    /**
+     * Prepend the previous transcript page before the loaded window — the
+     * scroll-up lazy-load (HOU-819). See {@link loadOlderPage}.
+     */
+    loadOlderChatHistory(
+      agentPath: string,
+      sessionKey: string,
+    ): Promise<{ hasOlder: boolean }> {
+      const engine = this.ctx.cp
+        ? controlPlane.runtimeClientFor(this.ctx.cp, agentPath)
+        : this.ctx.engine;
+      return loadOlderPage(engine, agentPath, sessionKey);
     }
 
     /**
