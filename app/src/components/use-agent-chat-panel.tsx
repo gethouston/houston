@@ -1819,7 +1819,11 @@ export function useAgentChatPanel({
         };
         return [greeting, ...mapped];
       }
-      if (setupGreetingName && !hasAgentOutput(mapped)) {
+      if (
+        setupGreetingName &&
+        sessionKey === selectedSessionKey &&
+        !hasAgentOutput(mapped)
+      ) {
         const hello: FeedItem = {
           feed_type: "assistant_text",
           data: t("chat:setupGreeting.text", { name: setupGreetingName }),
@@ -1829,7 +1833,13 @@ export function useAgentChatPanel({
       }
       return mapped;
     },
-    [welcomeGreetingRevealed, agentName, setupGreetingName, t],
+    [
+      welcomeGreetingRevealed,
+      agentName,
+      setupGreetingName,
+      selectedSessionKey,
+      t,
+    ],
   );
   const afterMessages = useCallback(
     ({ feedItems }: { sessionKey: string; feedItems: FeedItem[] }) => {
