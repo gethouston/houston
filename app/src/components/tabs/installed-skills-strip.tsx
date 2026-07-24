@@ -15,6 +15,11 @@ import {
 } from "../../lib/installed-preview";
 import type { SkillSummary } from "../../lib/types";
 import { SkillIcon } from "../skill-icon";
+import { skillIntegrationChips } from "../skill-integration-chips";
+
+/** How many app logos a row shows before collapsing the rest into "+N". A row
+ *  is a dense line, so it stays well below the card surfaces' allowance. */
+const ROW_LOGO_CAP = 3;
 
 // The pure search filter lives in the node-safe `lib/installed-preview` module
 // (tested under `node --test`); re-exported here so any consumer keeps
@@ -26,8 +31,9 @@ export { filterInstalledSkills } from "../../lib/installed-preview";
  * A-Z sorted list (also the parent's source for the open editor), the count the
  * section header shows (matches while the page search filters, the total at
  * rest), and the strip body: a {@link CatalogGrid} of {@link CatalogRow}s (the
- * browse/store row grammar — the skill's own icon, title, and one-line
- * description; the whole row opens the edit modal). The page owns the ONE search
+ * browse/store row grammar — the skill's own icon, title, one-line description,
+ * and, for a skill that declares any, a quiet trailing row of the app logos it
+ * works with; the whole row opens the edit modal). The page owns the ONE search
  * `query` and passes it in; it filters this strip AND the store. At rest the
  * grid shows at most {@link CATALOG_INSTALLED_PREVIEW_CAP} rows behind a
  * "Show all" expander so a well-stocked strip never buries the discovery tabs;
@@ -77,10 +83,13 @@ export function useInstalledSkillsStrip(
               title={skillDisplayTitle(skill)}
               description={skill.description || undefined}
               trailing={
-                <ChevronRight
-                  aria-hidden
-                  className="size-4 shrink-0 text-ink-muted"
-                />
+                <div className="flex shrink-0 items-center gap-2">
+                  {skillIntegrationChips(skill.integrations, ROW_LOGO_CAP)}
+                  <ChevronRight
+                    aria-hidden
+                    className="size-4 shrink-0 text-ink-muted"
+                  />
+                </div>
               }
               onClick={() => onEditSkill(skill.name)}
             />

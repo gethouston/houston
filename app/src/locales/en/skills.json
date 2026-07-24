@@ -110,7 +110,8 @@
     "loadFailed": "Couldn't load this skill's instructions.",
     "deleteTitle": "Delete \"{{name}}\"?",
     "deleteDescription": "This removes the skill from your agent. You can reinstall it later.",
-    "instructionsPlaceholder": "Instructions for this skill..."
+    "instructionsPlaceholder": "Instructions for this skill...",
+    "integrations": "Works with"
   },
   "categories": {
     "Advisory": "Advisory",

@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { AppDisplay } from "./app-display";
 
 const SIZES = {
+  xs: "size-4",
   sm: "size-6",
   md: "size-8",
   lg: "size-10",
@@ -10,8 +11,10 @@ const SIZES = {
 } as const;
 
 // The initial-letter fallback scales with the box so the hero-size (xl) plate
-// never shows a tiny letter lost in the middle; the smaller rows keep text-xs.
+// never shows a tiny letter lost in the middle; the smaller rows keep text-xs,
+// and the 16px pip drops below it so the letter fits its box.
 const LETTER_SIZE = {
+  xs: "text-[9px]",
   sm: "text-xs",
   md: "text-xs",
   lg: "text-xs",
@@ -47,7 +50,7 @@ export function AppLogo({
   className,
 }: {
   display: AppDisplay;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   className?: string;
 }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
