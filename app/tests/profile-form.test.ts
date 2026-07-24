@@ -107,6 +107,32 @@ describe("buildProfilePatch", () => {
     deepStrictEqual(patch, { handle: "newbie", displayName: "New Bee" });
   });
 
+  it("omits displayName on a first claim with a blank name (gateway defaults to the handle)", () => {
+    const patch = buildProfilePatch(
+      {
+        handle: "newbie",
+        displayName: "   ",
+        bio: "",
+        links: {},
+      },
+      profile({ handle: null, displayName: "", bio: null, links: {} }),
+    );
+    deepStrictEqual(patch, { handle: "newbie" });
+  });
+
+  it("sends an empty displayName to clear a previously set one (gateway resets it to the handle)", () => {
+    const patch = buildProfilePatch(
+      {
+        handle: "ana",
+        displayName: "",
+        bio: "builds things",
+        links: { github: "https://github.com/ana" },
+      },
+      profile(),
+    );
+    deepStrictEqual(patch, { displayName: "" });
+  });
+
   it("sends an empty bio to clear a previously set one", () => {
     const patch = buildProfilePatch(
       {
@@ -154,7 +180,6 @@ describe("canSaveProfile", () => {
     claiming: true,
     handleChanged: false,
     handleValid: false,
-    displayName: "New Bee",
     links: {},
     saving: false,
   };
@@ -180,15 +205,10 @@ describe("canSaveProfile", () => {
     );
   });
 
-  it("still requires a non-empty display name on claim", () => {
+  it("allows Save on claim with an empty display name (gateway defaults it to the handle)", () => {
     strictEqual(
-      canSaveProfile({
-        ...base,
-        handleChanged: true,
-        handleValid: true,
-        displayName: "   ",
-      }),
-      false,
+      canSaveProfile({ ...base, handleChanged: true, handleValid: true }),
+      true,
     );
   });
 
@@ -199,7 +219,6 @@ describe("canSaveProfile", () => {
         claiming: false,
         handleChanged: false,
         handleValid: false,
-        displayName: "Ana",
       }),
       true,
     );
@@ -212,7 +231,6 @@ describe("canSaveProfile", () => {
         claiming: false,
         handleChanged: true,
         handleValid: false,
-        displayName: "Ana",
       }),
       false,
     );

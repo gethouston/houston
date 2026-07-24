@@ -71,9 +71,10 @@ export function linksEqual(a: CreatorLinks, b: CreatorLinks): boolean {
  * The minimal `PATCH /me/profile` body: only fields that actually differ from
  * the current profile. Crucially the `handle` is omitted when unchanged, so
  * merely saving a bio edit can never trip the gateway's `handle_change_too_soon`
- * rate limit. `displayName` is trimmed. An unclaimed profile (`current` null or
- * its `handle` null) makes the first materializing patch carry `handle` +
- * `displayName` automatically, because both differ from the empty baseline.
+ * rate limit. `displayName` is trimmed and sent only when it differs from the
+ * baseline: a blank display name on claim sends NO `displayName` (so the gateway
+ * defaults it to the handle), while clearing a previously set name sends `""`
+ * (which the gateway likewise resets to the handle).
  */
 export function buildProfilePatch(
   form: ProfileFormValues,
@@ -99,8 +100,6 @@ export interface SaveGateInputs {
   handleChanged: boolean;
   /** Whether the normalized handle passes grammar and is not reserved. */
   handleValid: boolean;
-  /** The raw display-name field value (trimmed here). */
-  displayName: string;
   /** The current social links, for the invalid-URL guard. */
   links: CreatorLinks;
   /** Whether a save is already in flight. */
@@ -113,16 +112,12 @@ export interface SaveGateInputs {
  * gating on "changed" alone would enable Save and round-trip a handle-less patch
  * that the gateway bounces with `invalid_handle` against a blank field. When
  * editing an existing profile an unchanged handle is fine; a changed one must be
- * valid. A non-empty display name and only valid links are always required.
+ * valid. Only valid links are additionally required — the display name is
+ * optional, since the gateway defaults a blank one to the `@handle`.
  */
 export function canSaveProfile(inputs: SaveGateInputs): boolean {
   const handleOk = inputs.claiming
     ? inputs.handleValid
     : !inputs.handleChanged || inputs.handleValid;
-  return (
-    handleOk &&
-    inputs.displayName.trim().length > 0 &&
-    !hasInvalidLink(inputs.links) &&
-    !inputs.saving
-  );
+  return handleOk && !hasInvalidLink(inputs.links) && !inputs.saving;
 }

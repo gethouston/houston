@@ -84,7 +84,6 @@ export function CreatorProfileEditorDialog({
     claiming,
     handleChanged,
     handleValid,
-    displayName,
     links,
     saving,
   });
@@ -146,7 +145,8 @@ export function CreatorProfileEditorDialog({
               htmlFor={displayNameId}
               className="text-sm font-medium text-ink"
             >
-              {t("profile.displayNameLabel")}
+              {t("profile.displayNameLabel")}{" "}
+              <span className="text-ink-muted">{t("profile.optional")}</span>
             </label>
             <Input
               id={displayNameId}
@@ -155,10 +155,13 @@ export function CreatorProfileEditorDialog({
               onChange={(e) => setDisplayName(e.target.value)}
               disabled={saving}
             />
+            <p className="text-xs text-ink-muted">
+              {t("profile.displayNameHint")}
+            </p>
           </div>
           <AvatarUploadField
             avatarUrl={profile?.avatarUrl ?? null}
-            displayName={displayName}
+            displayName={displayName.trim() || normalized}
             onChanged={() => void invalidate()}
             disabled={saving}
             claiming={claiming}

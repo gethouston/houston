@@ -95,6 +95,8 @@
     "handleChecking": "Checking...",
     "handleChangeTooSoon": "You changed your handle recently. Try again later.",
     "displayNameLabel": "Display name",
+    "optional": "(optional)",
+    "displayNameHint": "Leave it empty to use your @handle.",
     "bioLabel": "Bio",
     "bioPlaceholder": "Tell people what you build.",
     "avatarLabel": "Profile photo",
