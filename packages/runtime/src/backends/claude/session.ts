@@ -33,6 +33,18 @@ const errMessage = (err: unknown): string =>
   err instanceof Error ? err.message : String(err);
 
 /**
+ * The SDK's rejection of a `resume` id it cannot find. `resolveResume` already
+ * drops mappings whose transcript file is gone, but the SDK scopes its lookup
+ * to the CURRENT cwd's project slug — after an agent rename moves the
+ * workspace directory, the transcript still exists (old slug) yet every resume
+ * fails with this error, permanently wedging the conversation (HOU-892 side
+ * finding: a weekly routine erroring on every fire after its agent was
+ * renamed). Matched on the message because the SDK surfaces it both as a
+ * thrown error and as an error result.
+ */
+const DANGLING_RESUME_RE = /No conversation found with session ID/i;
+
+/**
  * The Claude Agent SDK implementation of `HarnessSession`. `prompt` runs one
  * `query()` to completion, translating SDK messages into the pi wire dialect
  * (text/thinking/tool_start/tool_end/usage/provider_error) — never `done`, which
@@ -68,13 +80,36 @@ export class ClaudeSession implements HarnessSession {
 
   async prompt(text: string): Promise<void> {
     if (this.disposed) return;
+    const resume = this.deps.sessionsStore.resolveResume(
+      this.deps.conversationId,
+    );
+    const outcome = await this.runAttempt(text, resume);
+    if (outcome !== "retry-fresh") return;
+    // The SDK refused the resume id (its cwd-scoped lookup missed the
+    // transcript — e.g. the workspace was renamed). The stale mapping is
+    // already dropped; run the turn once more as a fresh session instead of
+    // erroring a conversation that can never resume again.
+    console.warn(
+      `[claude] resume for conversation ${this.deps.conversationId} was rejected by the SDK; starting a fresh session`,
+    );
+    await this.runAttempt(text, undefined);
+  }
+
+  /**
+   * One `query()` to completion. Returns "retry-fresh" ONLY when a resume was
+   * attempted and the SDK rejected the session id as unknown — the caller then
+   * reruns without resume; every wire event of the failed attempt is
+   * suppressed, so the user sees one clean turn, not an error + a retry. Any
+   * other outcome (success, abort, real provider failure) returns "done".
+   */
+  private async runAttempt(
+    text: string,
+    resume: string | undefined,
+  ): Promise<"done" | "retry-fresh"> {
     this.aborting = false;
     const abortController = new AbortController();
     this.abortController = abortController;
 
-    const resume = this.deps.sessionsStore.resolveResume(
-      this.deps.conversationId,
-    );
     const effort = this.thinkingLevel
       ? toSdkEffort(this.thinkingLevel)
       : undefined;
@@ -96,12 +131,24 @@ export class ClaudeSession implements HarnessSession {
     // throw-AFTER-error-result — the SDK routinely rejects the iterator right
     // after yielding an error `result` — is not reported a SECOND time.
     let providerErrored = false;
+    const danglingResume = (message: string): boolean =>
+      resume !== undefined && DANGLING_RESUME_RE.test(message);
     try {
       for await (const msg of this.deps.query({ prompt: text, options })) {
         if (this.aborting) break;
         if (hasSessionId(msg)) capturedSessionId = msg.session_id;
         for (const wire of translator.translate(msg)) {
-          if (wire.type === "provider_error") providerErrored = true;
+          if (wire.type === "provider_error") {
+            const errText =
+              wire.data.kind === "unknown"
+                ? wire.data.raw_excerpt
+                : wire.data.message;
+            if (danglingResume(errText)) {
+              this.deps.sessionsStore.remove(this.deps.conversationId);
+              return "retry-fresh";
+            }
+            providerErrored = true;
+          }
           this.emit(wire);
         }
       }
@@ -112,10 +159,14 @@ export class ClaudeSession implements HarnessSession {
       // state (not `instanceof AbortError`) deliberately: importing the SDK's
       // error class at module load would eager-load the 250 MB optional binary
       // into every non-Anthropic process.
-      if (this.aborting) return;
+      if (this.aborting) return "done";
       // The typed failure already rode the stream as a provider_error; the trailing
       // throw is just the SDK closing the iterator — don't re-report it.
-      if (providerErrored) return;
+      if (providerErrored) return "done";
+      if (danglingResume(errMessage(err))) {
+        this.deps.sessionsStore.remove(this.deps.conversationId);
+        return "retry-fresh";
+      }
       // Any other throw is an unexpected transport failure: surface it as a
       // typed provider_error rather than rethrow, so the turn never dies silently.
       this.emit({
@@ -129,6 +180,7 @@ export class ClaudeSession implements HarnessSession {
           capturedSessionId,
         );
     }
+    return "done";
   }
 
   async abort(): Promise<void> {

@@ -129,7 +129,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         query,
         conversationId: opts.conversationId,
         baseOptions,
-        sessionsStore: createSessionsStore(deps.dataDir),
+        sessionsStore: createSessionsStore(deps.dataDir, deps.workspaceDir),
         model: toSdkModel(opts.model.id),
         thinkingLevel: opts.thinkingLevel,
       });

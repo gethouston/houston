@@ -274,6 +274,55 @@ test("no resume id → the option is omitted (fresh session)", async () => {
   expect(captured && "resume" in captured).toBe(false);
 });
 
+test("a resume the SDK rejects as unknown retries fresh: mapping dropped, no phantom error (HOU-892)", async () => {
+  // After an agent rename the transcript survives under the OLD cwd slug, so
+  // resolveResume still hands out the id but the SDK's cwd-scoped lookup
+  // rejects it — without the retry, every future turn of the conversation
+  // errors permanently (observed live: a weekly routine failing on every fire).
+  const store = fakeStore("sess-gone");
+  const removed: string[] = [];
+  store.remove = (c) => {
+    removed.push(c);
+  };
+  const optionsSeen: Options[] = [];
+  let call = 0;
+  const query: ClaudeQuery = (params) => {
+    optionsSeen.push(params.options);
+    call++;
+    if (call === 1)
+      return throwingQuery(
+        new Error("No conversation found with session ID: sess-gone"),
+      )(params);
+    return arrayQuery([textMsg("recovered", "sess-new"), usageMsg("sess-new")])(
+      params,
+    );
+  };
+  const session = make({ query, store });
+  const events: WireEvent[] = [];
+  session.subscribe((e) => events.push(e));
+  await session.prompt("go");
+
+  expect(removed).toEqual(["c1"]); // stale mapping dropped
+  expect(optionsSeen[0]?.resume).toBe("sess-gone");
+  expect(optionsSeen[1] && "resume" in optionsSeen[1]).toBe(false); // fresh retry
+  expect(events.some((e) => e.type === "provider_error")).toBe(false);
+  expect(events.some((e) => e.type === "text")).toBe(true);
+  expect(store.setCalls).toContainEqual(["c1", "sess-new"]);
+});
+
+test("the same SDK error WITHOUT a resume surfaces normally (no retry loop)", async () => {
+  const session = make({
+    query: throwingQuery(
+      new Error("No conversation found with session ID: whatever"),
+    ),
+    store: fakeStore(undefined),
+  });
+  const events: WireEvent[] = [];
+  session.subscribe((e) => events.push(e));
+  await session.prompt("go");
+  expect(events.some((e) => e.type === "provider_error")).toBe(true);
+});
+
 test("the captured session_id is persisted after the turn", async () => {
   const store = fakeStore();
   const session = make({
