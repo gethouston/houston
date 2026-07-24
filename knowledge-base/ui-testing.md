@@ -83,9 +83,11 @@ cache was warm).
 
 ## CI
 
-`.github/workflows/ci.yml` (the repo's only PR gate — others fire on tags). Runs:
-web typecheck + `typecheck:e2e` + unit (`vitest run ./tests`) + `test:e2e`. Uploads
-the Playwright HTML report as an artifact.
+`.github/workflows/ci.yml` (the repo's only PR gate — others fire on tags). The
+`web` job runs: web typecheck + `typecheck:e2e` + unit (`vitest run ./tests`) +
+`test:e2e`. A separate **`visual`** job runs `test:visual` inside the pinned
+Playwright container (see Visual regression below). Both upload their Playwright
+HTML report as an artifact.
 
 ## Add a spec
 
@@ -94,3 +96,31 @@ boots to shell, one agent selected. Prefer role/label/text selectors (en is
 forced). Reuse a stable anchor (e.g. `data-tour-target`) before adding a
 `data-testid`. Need more host behavior? Extend `fake-host/state.ts` + `routes.ts`
 (`FAKE_HOST_LOG=1` logs every request).
+
+## Visual regression (`e2e/visual/`)
+
+Pixel baselines for the key screens, so design drift becomes visible. They run
+as their OWN Playwright **`visual` project** — never inside `test:e2e`, so the
+functional suite (and its CI job) stay unchanged.
+
+```bash
+pnpm --filter houston-web test:visual         # compare against committed baselines
+pnpm --filter houston-web test:visual:update  # re-record (intentional change only)
+```
+
+- **Covered** (full-page, fixed 1280×800 viewport, animations + caret frozen via
+  `playwright.config.ts` `toHaveScreenshot`): mission board (light + dark + one
+  640px narrow run), chat settled reply (light + dark), first-run language gate.
+- **Platform-suffixed baselines.** Both `darwin` (local / agent gate) and `linux`
+  (CI) PNGs are committed under `e2e/visual/__screenshots__/` — a darwin render
+  won't match a Linux one pixel-for-pixel, so BOTH sets ship. Regenerate the
+  Linux set inside the pinned Playwright container so a CI render matches.
+- **CI** runs the `visual` job in `mcr.microsoft.com/playwright:v1.61.1-noble`
+  (browsers ship in the image, no install step); the image tag MUST track
+  `@playwright/test` in `packages/web/package.json` — bump both together.
+- **Update discipline.** Re-record ONLY when a UI change is deliberate, eyeball
+  the new PNGs, and commit them in the same PR as the change so the diff
+  documents the visual delta — never blindly re-record to green a red run.
+
+Full guide (determinism rules, the Docker Linux-regen command): `packages/web/e2e/README.md`
+→ Visual regression.

@@ -146,3 +146,57 @@ so each server gets its own optimizer output — no shared state, no race.
 4. Need more host behavior? Extend `@houston/fake-host` (`src/state.ts` +
    `src/routes.ts`). Set `FAKE_HOST_LOG=1` on the fake host to log every request
    it serves.
+
+## Visual regression (`e2e/visual/`)
+
+Pixel baselines for the key screens, so design drift becomes visible. They run
+as their own Playwright **`visual` project** — never inside `test:e2e`, so the
+functional suite and CI are unchanged.
+
+```bash
+pnpm --filter houston-web test:visual          # compare against committed baselines
+pnpm --filter houston-web test:visual:update   # re-record baselines (intentional change)
+```
+
+**Covered** (`toHaveScreenshot`, full-page, fixed 1280×800 viewport):
+
+| Screen | Themes | Spec |
+| --- | --- | --- |
+| Mission board (home) | light + dark, and one 640px narrow run | `shell.visual.spec.ts` |
+| Chat conversation (settled reply) | light + dark | `chat.visual.spec.ts` |
+| First-run language gate | one (the flow pins `data-theme="light"` itself) | `onboarding.visual.spec.ts` |
+
+Theme is pinned by setting `data-theme` on `<html>` before the app mounts
+(`visual/support.ts` `seedTheme`) — NOT the `houston.pref.theme` preference: the
+web entry (`NewEngineRoot`) never runs the desktop's `loadTheme` bootstrap, so
+that pref is inert here.
+
+**Determinism rules** (a flaky baseline is worse than none — skip a screen you
+can't make deterministic rather than commit one):
+
+- Fixed viewport + `animations: "disabled"` + `caret: "hide"` + `scale: "css"`
+  (config-wide `expect.toHaveScreenshot`), with a small `maxDiffPixelRatio`
+  tolerance for antialiasing.
+- Capture only SETTLED states — for chat, wait for the fake host's canned reply
+  (`/Roger that\. You said:/`) so no streaming delta or typing caret is in the
+  frame.
+- These screens carry no live clock (kanban cards only sort by `updatedAt`, they
+  don't render it; chat bubbles render no timestamp) and the fake host seeds
+  fixed timestamps (`state-store.ts` `EPOCH`), so no masking is needed. If you
+  add a screen with a timestamp / spinner / other live region, freeze it with
+  fixtures or `mask:` — do not commit a moving baseline.
+
+**Updating baselines intentionally.** When a UI change is deliberate, re-record
+with `test:visual:update`, eyeball the new PNGs under
+`e2e/visual/__screenshots__/`, and commit them in the same PR as the change so
+the diff documents the visual delta.
+
+**Platforms.** Baselines are platform-suffixed (`…-<platform>.png`). Both
+`darwin` (local/agent gate) and `linux` (CI) baselines are committed; regenerate
+the Linux set in the official Playwright container so a CI render matches:
+
+```bash
+docker run --rm -v "$PWD/../..":/w -w /w/packages/web \
+  mcr.microsoft.com/playwright:v1.61.1-noble \
+  bash -c "corepack enable && pnpm install --frozen-lockfile && pnpm test:visual:update"
+```

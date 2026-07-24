@@ -139,7 +139,7 @@ function GateMessage({ children }: { children: ReactNode }) {
         height: "100vh",
         padding: "0 24px",
         fontFamily: "system-ui, sans-serif",
-        color: "#888",
+        color: "var(--ht-ink-muted)",
         fontSize: 14,
         lineHeight: 1.5,
       }}
