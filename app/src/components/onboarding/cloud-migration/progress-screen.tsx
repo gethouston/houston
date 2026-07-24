@@ -1,52 +1,15 @@
-import { AsyncButton, Button, cn } from "@houston-ai/core";
+import { AsyncButton, Button } from "@houston-ai/core";
 import { useReducedMotion } from "framer-motion";
-import type { TFunction } from "i18next";
-import { Check, CircleAlert, Loader2 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
-import type { MigrationTask } from "../../../lib/cloud-migration";
-import {
-  type AgentMigrationProgress,
-  computeOverallProgress,
-} from "../../../lib/cloud-migration-progress";
+import { computeOverallProgress } from "../../../lib/cloud-migration-progress";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
 import { OrbitLoader } from "../../space/orbit-loader";
 import { MigrationProgressBar } from "./migration-progress-bar";
+import { AgentRow, RUNNING } from "./progress-agent-row";
 import { SpaceInvaders } from "./space-invaders";
 import { MigrationStatusCycle } from "./status-cycle";
 import { WizardFrame } from "./wizard-frame";
-
-function stepLabel(
-  t: TFunction<"migration">,
-  p: AgentMigrationProgress,
-): string {
-  switch (p.step) {
-    case "pending":
-      return t("progress.step.pending");
-    case "creating":
-      return t("progress.step.creating");
-    case "warming":
-      return t("progress.step.warming");
-    case "uploading":
-      return t("progress.step.uploading", {
-        current: Math.max(p.chunkIndex, 1),
-        total: Math.max(p.chunkCount, 1),
-      });
-    case "finalizing":
-      return t("progress.step.finalizing");
-    case "done":
-      return t("progress.step.done");
-    case "error":
-      return t("progress.step.error");
-  }
-}
-
-const RUNNING: ReadonlySet<AgentMigrationProgress["step"]> = new Set([
-  "creating",
-  "warming",
-  "uploading",
-  "finalizing",
-]);
 
 // The OrbitLoader draws entirely from --ht-space-foreground/-star (white tones
 // tuned for the space photo). On the light wizard those would vanish, so for
@@ -56,52 +19,6 @@ const ORBIT_INK_VARS: CSSProperties = {
   "--ht-space-foreground": "var(--ht-ink)",
   "--ht-space-star": "var(--ht-ink-muted)",
 } as CSSProperties;
-
-function AgentRow({
-  task,
-  progress,
-  onRetry,
-}: {
-  task: MigrationTask;
-  progress: AgentMigrationProgress;
-  onRetry: () => Promise<void>;
-}) {
-  const { t } = useTranslation("migration");
-  const running = RUNNING.has(progress.step);
-  return (
-    <div className="flex items-center gap-3 rounded-xl bg-chip px-4 py-3">
-      <span className="shrink-0">
-        {progress.step === "done" ? (
-          <Check className="size-4 text-ink" />
-        ) : progress.step === "error" ? (
-          <CircleAlert className="size-4 text-danger" />
-        ) : (
-          <Loader2
-            className={cn("size-4 text-ink-muted", running && "animate-spin")}
-          />
-        )}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{task.targetName}</p>
-        <p className="truncate text-xs text-ink-muted">
-          {progress.step === "error" && progress.errorMessage
-            ? progress.errorMessage
-            : stepLabel(t, progress)}
-        </p>
-      </div>
-      {progress.step === "error" && (
-        <AsyncButton
-          variant="outline"
-          size="sm"
-          className="shrink-0 rounded-full"
-          onClick={() => onRetry()}
-        >
-          {t("progress.retry")}
-        </AsyncButton>
-      )}
-    </div>
-  );
-}
 
 /** The quiet "Migrate later" escape hatch — the same `onDefer` everywhere:
  *  while the run is still going AND on every error state, so a user stuck on
@@ -243,20 +160,33 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
                 }
               />
               {!indeterminate && (
-                <p className="text-xs text-ink-muted">
-                  {t("progress.keepOpen")}
-                </p>
+                <div className="flex flex-col gap-1">
+                  {tasks.length > 1 && (
+                    <p className="text-xs text-ink-muted">
+                      {t("progress.overall", {
+                        done: done.length,
+                        total: tasks.length,
+                      })}
+                    </p>
+                  )}
+                  <p className="text-xs text-ink-muted">
+                    {t("progress.keepOpen")}
+                  </p>
+                </div>
               )}
             </div>
             {/* The roomy wait is a chance to play: a tiny Space Invaders under
                 the bar (subtle, card-width). It self-nulls under reduced motion,
                 so the invitation is gated on the same signal to never orphan. */}
             {!indeterminate && !reduce && (
-              <div className="mt-2 flex w-full max-w-xs flex-col items-center gap-2">
+              <div className="mt-2 flex w-full max-w-xs flex-col items-center gap-2 rounded-2xl border border-line bg-card/60 p-4">
                 <p className="text-xs text-ink-muted">
                   {t("progress.playCaption")}
                 </p>
                 <SpaceInvaders />
+                <p className="text-center text-[11px] text-ink-muted">
+                  {t("progress.playHint")}
+                </p>
               </div>
             )}
           </div>

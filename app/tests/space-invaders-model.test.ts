@@ -2,17 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   COLS,
-  createState,
+  EXPLOSION_TTL,
   INV_H,
   INV_W,
   ROWS,
-  reset,
   SHIP_W,
   SHIP_Y,
+  W,
+} from "../src/components/onboarding/cloud-migration/space-invaders-defs.ts";
+import {
+  createState,
+  reset,
   shoot,
   steer,
   step,
-  W,
 } from "../src/components/onboarding/cloud-migration/space-invaders-model.ts";
 
 const IDLE = { left: false, right: false, dt: 1 / 60 };
@@ -47,6 +50,26 @@ test("a bullet overlapping an invader kills it and scores", () => {
   assert.equal(target.alive, false);
   assert.equal(s.score, 1);
   assert.equal(s.bullets.length, 0);
+  assert.deepEqual(s.explosions, [
+    { x: target.x + INV_W / 2, y: target.y + INV_H / 2, age: 0 },
+  ]);
+});
+
+test("explosions age with each frame and expire after their lifetime", () => {
+  const s = createState();
+  s.explosions.push({ x: 10, y: 20, age: 0 });
+  step(s, { ...IDLE, dt: EXPLOSION_TTL / 2 });
+  assert.equal(s.explosions[0]?.age, EXPLOSION_TTL / 2);
+  step(s, { ...IDLE, dt: EXPLOSION_TTL / 2 + 0.001 });
+  assert.equal(s.explosions.length, 0);
+});
+
+test("invaders preserve their zero-based spawn row", () => {
+  const s = createState();
+  assert.deepEqual(
+    s.invaders.map((invader) => invader.row),
+    Array.from({ length: ROWS }, (_, row) => Array(COLS).fill(row)).flat(),
+  );
 });
 
 test("clearing the swarm respawns it and keeps the score", () => {
@@ -66,6 +89,7 @@ test("an invader reaching the ship row ends the game", () => {
   s.invaders[0].y = SHIP_Y - INV_H + 1; // its bottom crosses the ship row
   step(s, IDLE);
   assert.equal(s.over, true);
+  assert.deepEqual(s.explosions, [{ x: s.shipX, y: SHIP_Y, age: 0 }]);
 });
 
 test("an enemy bomb striking the ship ends the game", () => {
@@ -73,6 +97,7 @@ test("an enemy bomb striking the ship ends the game", () => {
   s.bombs.push({ x: s.shipX, y: SHIP_Y }); // right on the ship
   step(s, IDLE);
   assert.equal(s.over, true);
+  assert.deepEqual(s.explosions, [{ x: s.shipX, y: SHIP_Y, age: 0 }]);
 });
 
 test("step is a no-op once the game is over", () => {

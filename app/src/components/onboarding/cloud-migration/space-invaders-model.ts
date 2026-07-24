@@ -1,57 +1,32 @@
 /**
- * Pure model for the {@link SpaceInvaders} canvas easter egg — every rule of
- * the game that can be reasoned about without a canvas: the fixed-resolution
- * geometry, the state shape, and a deterministic `step`. The React/canvas shell
+ * Pure rules for the {@link SpaceInvaders} canvas easter egg — everything about
+ * the game that can be reasoned about without a canvas: spawning, movement,
+ * collisions, and a deterministic `step`. Geometry constants and state shapes
+ * live in `space-invaders-defs.ts`; the React/canvas shell
  * (`space-invaders.tsx`) owns only rendering and input wiring, so this file is
  * unit-testable under `node --test` (see `app/tests/space-invaders-model.ts`).
  */
 
-// Fixed internal resolution; the canvas is scaled to its container via CSS and
-// devicePixelRatio, so play reads crisp at any width without re-laying-out.
-export const W = 320;
-export const H = 240;
-export const ROWS = 4;
-export const COLS = 8;
-export const INV_W = 16;
-export const INV_H = 10;
-const GAP_X = 14;
-const GAP_Y = 12;
-export const SHIP_W = 22;
-export const SHIP_H = 8;
-export const SHIP_Y = H - 16;
-const SHIP_SPEED = 150; // px/s from held keys
-const BULLET_SPEED = 260;
-const BOMB_SPEED = 90;
-/** Most player bullets allowed in flight at once. */
-const MAX_BULLETS = 3;
-
-export interface Invader {
-  x: number;
-  y: number;
-  alive: boolean;
-}
-export interface Shot {
-  x: number;
-  y: number;
-}
-export interface GameState {
-  invaders: Invader[];
-  /** Swarm horizontal direction, +1 / -1. */
-  dir: number;
-  shipX: number;
-  bullets: Shot[];
-  bombs: Shot[];
-  score: number;
-  over: boolean;
-  /** Seconds until the next enemy bomb may drop. */
-  bombTimer: number;
-}
-/** Per-frame input: held movement keys + the elapsed seconds. */
-export interface StepInput {
-  left: boolean;
-  right: boolean;
-  dt: number;
-}
+import {
+  BOMB_SPEED,
+  BULLET_SPEED,
+  COLS,
+  EXPLOSION_TTL,
+  GAP_X,
+  GAP_Y,
+  type GameState,
+  H,
+  INV_H,
+  INV_W,
+  type Invader,
+  MAX_BULLETS,
+  ROWS,
+  SHIP_SPEED,
+  SHIP_W,
+  SHIP_Y,
+  type StepInput,
+  W,
+} from "./space-invaders-defs.ts";
 
 const clamp = (n: number, min: number, max: number) =>
   Math.min(max, Math.max(min, n));
@@ -65,6 +40,7 @@ export function spawnInvaders(): Invader[] {
       list.push({
         x: left + c * (INV_W + GAP_X),
         y: 24 + r * (INV_H + GAP_Y),
+        row: r,
         alive: true,
       });
   return list;
@@ -77,6 +53,7 @@ export function createState(): GameState {
     shipX: W / 2,
     bullets: [],
     bombs: [],
+    explosions: [],
     score: 0,
     over: false,
     bombTimer: 0,
@@ -111,6 +88,10 @@ export function step(
 ): void {
   if (s.over) return;
   const { dt } = input;
+  for (const explosion of s.explosions) explosion.age += dt;
+  s.explosions = s.explosions.filter(
+    (explosion) => explosion.age <= EXPLOSION_TTL,
+  );
   if (input.left) s.shipX -= SHIP_SPEED * dt;
   if (input.right) s.shipX += SHIP_SPEED * dt;
   s.shipX = clamp(s.shipX, SHIP_W / 2, W - SHIP_W / 2);
@@ -133,7 +114,7 @@ export function step(
     s.dir *= -1;
     for (const inv of live) inv.y += INV_H;
   }
-  for (const inv of live) if (inv.y + INV_H >= SHIP_Y) s.over = true;
+  for (const inv of live) if (inv.y + INV_H >= SHIP_Y) endGame(s);
 
   // Enemy bombs, dropped occasionally from a random front-line invader.
   s.bombTimer -= dt;
@@ -151,7 +132,7 @@ export function step(
       b.x < s.shipX + SHIP_W / 2 &&
       b.y > SHIP_Y
     )
-      s.over = true;
+      endGame(s);
   }
 
   for (const sh of s.bullets) sh.y -= BULLET_SPEED * dt;
@@ -172,7 +153,18 @@ export function step(
         inv.alive = false;
         s.bullets.splice(i, 1);
         s.score++;
+        s.explosions.push({
+          x: inv.x + INV_W / 2,
+          y: inv.y + INV_H / 2,
+          age: 0,
+        });
         break;
       }
   }
+}
+
+function endGame(s: GameState): void {
+  if (s.over) return;
+  s.over = true;
+  s.explosions.push({ x: s.shipX, y: SHIP_Y, age: 0 });
 }
