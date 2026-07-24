@@ -66,13 +66,15 @@ export function useSkillChatSetup(
 
   // Background link reconciliation: an agent-created skill carries the
   // forward `setup_activity_id` but its chat has no durable `skill_slug`
-  // stamp until the client writes one. One repair per pass; the invalidation
-  // refetch re-runs the effect until consistent. Failures only log: there is
-  // no user action to toast on, and the next refetch retries anyway.
+  // stamp until the client writes one; a title-matched orphan chat (a stamp
+  // write that failed mid-flight) is adopted back too. One repair per pass;
+  // the invalidation refetch re-runs the effect until consistent. Failures
+  // only log: there is no user action to toast on, and the next refetch
+  // retries anyway.
   const healingRef = useRef(false);
   useEffect(() => {
     if (healingRef.current) return;
-    const heal = findSkillChatHeal(rawItems, skills);
+    const heal = findSkillChatHeal(rawItems, skills, skillDisplayTitle);
     if (!heal) return;
     healingRef.current = true;
     tauriActivity
@@ -148,10 +150,23 @@ export function useSkillChatSetup(
             modeOverride: "execute",
           },
         );
-        // The durable direction: agents never rewrite activity.json.
-        await tauriActivity.update(path, conversationId, {
-          skill_slug: skill.name,
-        });
+        try {
+          // The durable direction: agents never rewrite activity.json.
+          await tauriActivity.update(path, conversationId, {
+            skill_slug: skill.name,
+          });
+        } catch (err) {
+          // The chat exists but the link write failed: archive it so it can
+          // never linger as a bogus "draft" row on the Custom tab (the heal's
+          // title-match adoption is a repair, not a license to leak).
+          logger.error(`[skill-chat] link stamp failed, retiring chat: ${err}`);
+          await tauriActivity
+            .update(path, conversationId, { status: "archived" })
+            .catch((cleanupErr) =>
+              logger.error(`[skill-chat] orphan cleanup failed: ${cleanupErr}`),
+            );
+          throw err;
+        }
         queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
         return true;
       } catch {
@@ -169,6 +184,8 @@ export function useSkillChatSetup(
     draftActivities,
     activityFor,
     activityById,
+    /** The raw activity list (claim heuristics need the full picture). */
+    activities: rawItems,
     /** Whether the activity query has resolved (vs. still loading) — lets the
      *  surface distinguish "no match yet" from "loaded, genuinely no match". */
     activitiesLoaded: rawItems !== undefined,

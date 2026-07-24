@@ -1,9 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "../../lib/analytics";
 import { logger } from "../../lib/logger";
 import { queryKeys } from "../../lib/query-keys";
-import { claimedSkillSlug } from "../../lib/skill-chat-setup";
+import {
+  claimedSkillSlug,
+  claimNewlyCreatedSkill,
+} from "../../lib/skill-chat-setup";
 import { tauriActivity } from "../../lib/tauri";
 import type { Agent, SkillSummary } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
@@ -63,6 +66,33 @@ export function useSkillSetupView(
     const slug = claimedSkillSlug(selected.activityId, skills);
     if (slug) setSelected({ kind: "skill", slug });
   }, [selected, skills]);
+
+  // Claim FALLBACK: an agent that forgot the frontmatter link would strand
+  // the draft forever ("Meeting prep" showing both installed AND in
+  // progress). While the user sits in a draft chat, the one skill that newly
+  // appears with no link and no chat of its own is this conversation's
+  // creation — stamp the durable link ourselves and swap.
+  const prevSlugsRef = useRef<ReadonlySet<string> | null>(null);
+  useEffect(() => {
+    const prev = prevSlugsRef.current;
+    if (skills !== undefined)
+      prevSlugsRef.current = new Set(skills.map((s) => s.name));
+    if (!prev || selected?.kind !== "draft" || !selected.activityId) return;
+    const activityId = selected.activityId;
+    const slug = claimNewlyCreatedSkill(prev, skills, chatSetup.activities);
+    if (!slug) return;
+    setSelected({ kind: "skill", slug });
+    tauriActivity
+      .update(agent.folderPath, activityId, { skill_slug: slug })
+      .then(() =>
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.activity(agent.folderPath),
+        }),
+      )
+      .catch((err) =>
+        logger.error(`[skill-chat] fallback claim stamp failed: ${err}`),
+      );
+  }, [selected, skills, chatSetup.activities, agent.folderPath, queryClient]);
 
   // "Create with AI": open the calm creating surface instantly, then swap in
   // the draft's id (or clear the selection on failure) once the start lands —

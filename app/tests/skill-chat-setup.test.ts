@@ -5,6 +5,7 @@ import {
   filterAutoContinueFeedItems,
   isAutoContinueMessage,
 } from "../src/lib/auto-continue-message.ts";
+import { skillDisplayTitle } from "../src/lib/humanize-skill-name.ts";
 import { isSetupChatMode } from "../src/lib/integration-chat-setup.ts";
 import { selectActive, selectArchived } from "../src/lib/mission-selection.ts";
 import {
@@ -15,6 +16,7 @@ import {
 } from "../src/lib/skill-chat-prompts.ts";
 import {
   claimedSkillSlug,
+  claimNewlyCreatedSkill,
   findDraftSkillChatActivities,
   findSkillChatActivity,
   findSkillChatHeal,
@@ -258,6 +260,133 @@ describe("skill chat setup message", () => {
         [{ id: "a1", agent: "researcher" }],
         [{ name: "s1", setup_activity_id: "a1" }],
       ),
+      null,
+    );
+  });
+
+  it("heal adopts a title-matched orphan chat back onto its chatless skill", () => {
+    // The reported bug: "Meeting prep" installed AND showing as a draft —
+    // the modify chat was created (titled with the skill's display name) but
+    // the link stamp never landed. The heal stamps it back.
+    const orphan = {
+      id: "a1",
+      agent: SKILL_SETUP_AGENT_MODE,
+      status: "done",
+      title: "Meeting prep",
+    };
+    deepStrictEqual(
+      findSkillChatHeal(
+        [orphan],
+        [{ name: "meeting-prep" }],
+        skillDisplayTitle,
+      ),
+      { kind: "stamp_activity", activityId: "a1", slug: "meeting-prep" },
+    );
+    // Frontmatter title wins over the humanized slug, same as everywhere.
+    deepStrictEqual(
+      findSkillChatHeal(
+        [{ ...orphan, title: "Preparar reunión" }],
+        [{ name: "preparar-reunion", title: "Preparar reunión" }],
+        skillDisplayTitle,
+      ),
+      {
+        kind: "stamp_activity",
+        activityId: "a1",
+        slug: "preparar-reunion",
+      },
+    );
+    // Ambiguous (two skills share the display title) → never guess.
+    deepStrictEqual(
+      findSkillChatHeal(
+        [orphan],
+        [
+          { name: "meeting-prep" },
+          { name: "meeting-prep-2", title: "Meeting prep" },
+        ],
+        skillDisplayTitle,
+      ),
+      null,
+    );
+    // The skill already has its own chat → the orphan stays a draft.
+    deepStrictEqual(
+      findSkillChatHeal(
+        [
+          orphan,
+          {
+            id: "a2",
+            agent: SKILL_SETUP_AGENT_MODE,
+            skill_slug: "meeting-prep",
+          },
+        ],
+        [{ name: "meeting-prep" }],
+        skillDisplayTitle,
+      ),
+      null,
+    );
+    // A create-flow draft ("New skill") matches no skill → untouched, and
+    // without the resolver rule 2 never runs.
+    deepStrictEqual(
+      findSkillChatHeal(
+        [{ ...orphan, title: "New skill" }],
+        [{ name: "meeting-prep" }],
+        skillDisplayTitle,
+      ),
+      null,
+    );
+    deepStrictEqual(
+      findSkillChatHeal([orphan], [{ name: "meeting-prep" }]),
+      null,
+    );
+  });
+
+  it("fallback claim: the one new, linkless, chatless skill wins the draft", () => {
+    const prev = new Set(["existing"]);
+    const acts = [{ id: "d1", agent: SKILL_SETUP_AGENT_MODE }];
+    // One arrival, no forward link, no chat → claimed.
+    deepStrictEqual(
+      claimNewlyCreatedSkill(
+        prev,
+        [{ name: "existing" }, { name: "meeting-prep" }],
+        acts,
+      ),
+      "meeting-prep",
+    );
+    // An arrival that DID link itself is the normal claim path, not this one.
+    deepStrictEqual(
+      claimNewlyCreatedSkill(
+        prev,
+        [{ name: "meeting-prep", setup_activity_id: "d1" }],
+        acts,
+      ),
+      null,
+    );
+    // Two ambiguous arrivals → never guess.
+    deepStrictEqual(
+      claimNewlyCreatedSkill(
+        prev,
+        [{ name: "a-skill" }, { name: "b-skill" }],
+        acts,
+      ),
+      null,
+    );
+    // An arrival whose chat already exists (stamped elsewhere) is not free.
+    deepStrictEqual(
+      claimNewlyCreatedSkill(
+        prev,
+        [{ name: "meeting-prep" }],
+        [
+          {
+            id: "a9",
+            agent: SKILL_SETUP_AGENT_MODE,
+            skill_slug: "meeting-prep",
+          },
+        ],
+      ),
+      null,
+    );
+    // Nothing new → nothing claimed.
+    deepStrictEqual(
+      claimNewlyCreatedSkill(new Set(["existing"]), [{ name: "existing" }], []),
       null,
     );
   });
