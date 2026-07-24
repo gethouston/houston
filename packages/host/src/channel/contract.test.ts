@@ -477,4 +477,42 @@ describe("saveClaudeOAuthCredential (single-tenant only, asymmetric)", () => {
       /cloud|per-turn|available/i,
     );
   });
+
+  test("an overwrite push with an already-expired access token is rejected, keeping the live credential (HOU-892)", async () => {
+    // A fresh browser login always mints a future-dated access token. An
+    // expired one on the overwrite path is a stale cached snapshot wearing the
+    // wrong hat — accepting it clobbers the live rotated credential and
+    // re-revokes the family (observed live: a 7-hours-expired snapshot
+    // overwrote a freshly reconnected credential).
+    const { channel, credentials } = makeProxyFixture();
+    await channel.saveClaudeOAuthCredential(ctx, cred); // live credential
+
+    const stale = { ...cred, accessToken: "sk-ant-oat-stale", expiresAt: 1 };
+    await expect(channel.saveClaudeOAuthCredential(ctx, stale)).rejects.toThrow(
+      /expired/i,
+    );
+    expect((await credentials.get(ws.id, "anthropic"))?.accessToken).toBe(
+      "sk-ant-oat-access",
+    );
+
+    // The same stale snapshot on the RECONCILE path (fill-only) stays a quiet
+    // no-op against a live credential — reconciles legitimately carry old
+    // snapshots and must neither clobber nor error.
+    await channel.saveClaudeOAuthCredential(ctx, stale, { ifAbsent: true });
+    expect((await credentials.get(ws.id, "anthropic"))?.accessToken).toBe(
+      "sk-ant-oat-access",
+    );
+  });
+
+  test("a credential without an expiry still overwrites (absent metadata proves nothing)", async () => {
+    const { channel, credentials } = makeProxyFixture();
+    const { expiresAt: _dropped, ...noExpiry } = {
+      ...cred,
+      accessToken: "sk-ant-oat-no-expiry",
+    };
+    await channel.saveClaudeOAuthCredential(ctx, noExpiry);
+    expect((await credentials.get(ws.id, "anthropic"))?.accessToken).toBe(
+      "sk-ant-oat-no-expiry",
+    );
+  });
 });

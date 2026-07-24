@@ -435,6 +435,32 @@ test("disconnect deletes every connected account for the toolkit", async () => {
   ]);
 });
 
+test("disconnect succeeds when an account is already gone upstream (DELETE → 404)", async () => {
+  // Composio can expire/remove a connected account on its own (HOU-892: a
+  // Gmail login vanished server-side overnight). The list can then still
+  // return the account, or a retry can race a prior disconnect — either way
+  // the DELETE 404s and the disconnect must land as success, not wedge the
+  // user's only cleanup path with an error.
+  const deleted: string[] = [];
+  const { provider } = harness((url, method) => {
+    if (url.pathname === "/api/v3/connected_accounts" && method === "GET") {
+      return { body: { items: [{ id: "ca_gone" }, { id: "ca_live" }] } };
+    }
+    if (method === "DELETE") {
+      deleted.push(url.pathname);
+      return url.pathname.endsWith("ca_gone")
+        ? { status: 404 }
+        : { status: 204 };
+    }
+    return { status: 404 };
+  });
+  await provider.disconnect(USER, "gmail");
+  expect(deleted).toEqual([
+    "/api/v3/connected_accounts/ca_gone",
+    "/api/v3/connected_accounts/ca_live",
+  ]);
+});
+
 test("search runs BOTH the scoped and global query, merges (scoped first, deduped), and stamps status", async () => {
   const { provider } = harness((url) => {
     if (url.pathname === "/api/v3/connected_accounts")
