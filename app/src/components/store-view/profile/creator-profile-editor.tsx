@@ -25,7 +25,8 @@ import { AvatarUploadField } from "./avatar-upload-field";
 import { BioField } from "./bio-field";
 import { HandleField } from "./handle-field";
 import { buildProfilePatch, canSaveProfile } from "./profile-form";
-import { gatewayErrorCode, HANDLE_ERROR_KEYS } from "./save-error";
+import { gatewayErrorCode } from "./save-error";
+import { HANDLE_ERROR_KEYS, saveErrorKey } from "./save-error-map";
 import { SocialsEditor } from "./socials-editor";
 
 /**
@@ -113,7 +114,7 @@ export function CreatorProfileEditorDialog({
       );
       const handleKey = code ? HANDLE_ERROR_KEYS[code] : undefined;
       if (handleKey) setHandleServerError(t(handleKey));
-      else addToast({ title: t("profile.saveFailed"), variant: "error" });
+      else addToast({ title: t(saveErrorKey(code)), variant: "error" });
     } finally {
       setSaving(false);
     }

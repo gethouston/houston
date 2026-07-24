@@ -104,6 +104,7 @@
     "avatarTooLarge": "Esa imagen es muy grande. Elige una de menos de 2 MB.",
     "avatarBadType": "Usa una imagen PNG, JPEG o WebP.",
     "avatarClaimHint": "Guarda tu perfil primero para agregar una foto.",
+    "avatarFailed": "No se pudo subir tu foto. Inténtalo de nuevo.",
     "socials": {
       "x": "X",
       "youtube": "YouTube",
@@ -118,6 +119,10 @@
     "saving": "Guardando...",
     "saved": "Perfil guardado",
     "saveFailed": "No se pudo guardar tu perfil. Inténtalo de nuevo.",
+    "saveFailedAccount": "No encontramos tu cuenta. Cierra sesión, vuelve a entrar e inténtalo de nuevo.",
+    "bioTooLong": "Tu biografía es muy larga. Acórtala e inténtalo de nuevo.",
+    "invalidLink": "Uno de tus enlaces no es una dirección web válida. Revísalos e inténtalo de nuevo.",
+    "displayNameRequired": "Agrega un nombre visible para guardar tu perfil.",
     "cancel": "Cancelar",
     "claimCta": "Reclamar mi handle",
     "claimBody": "Elige un @handle público para que la gente encuentre en un solo lugar todos los agentes que publicas."
