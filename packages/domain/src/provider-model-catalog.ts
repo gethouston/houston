@@ -110,11 +110,13 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
     "claude-opus-4-6",
     "claude-opus-4-7",
     "claude-opus-4-8",
+    "claude-opus-5",
     "claude-sonnet-4-0",
     "claude-sonnet-4-20250514",
     "claude-sonnet-4-5",
     "claude-sonnet-4-5-20250929",
     "claude-sonnet-4-6",
+    "claude-sonnet-5",
   ]),
   "openai-codex": new Set([
     "gpt-5.3-codex-spark",
@@ -154,11 +156,11 @@ export const MODEL_ALIASES: Partial<
 > = {
   anthropic: {
     // Bare tier names the Claude CLI accepted.
-    opus: "claude-opus-4-8",
+    opus: "claude-opus-5",
     sonnet: "claude-sonnet-4-6",
     haiku: "claude-haiku-4-5",
     // "latest"-style aliases the CLI used that pi doesn't expose verbatim.
-    "claude-opus-latest": "claude-opus-4-8",
+    "claude-opus-latest": "claude-opus-5",
     "claude-sonnet-latest": "claude-sonnet-4-6",
     "claude-haiku-latest": "claude-haiku-4-5",
   },

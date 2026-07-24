@@ -8,6 +8,7 @@ import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
 // (delete each with the pi bump that ships it natively).
 import "./gemini-flash-catalog-patch";
 import "./moonshot-k3-catalog-patch";
+import "./opus-5-catalog-patch";
 
 /**
  * pi-ai is the model-catalog source of truth. These predicates read its LIVE

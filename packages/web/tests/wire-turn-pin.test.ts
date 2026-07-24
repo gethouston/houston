@@ -15,7 +15,7 @@ test("maps the app dialect to engine ids (openai → openai-codex, legacy aliase
   // CLI-era bare tier aliases map at the same tier.
   expect(wireTurnPin({ provider: "claude", model: "opus" })).toEqual({
     provider: "anthropic",
-    model: "claude-opus-4-8",
+    model: "claude-opus-5",
   });
 });
 

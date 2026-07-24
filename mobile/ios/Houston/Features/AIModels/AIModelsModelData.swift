@@ -17,9 +17,10 @@ enum ModelData {
     "anthropic": [
       .init("claude-sonnet-5", "Sonnet 5", "Newest Sonnet. Stronger agentic coding and tool use.", [.low, .medium, .high, .xhigh, .max]),
       .init("claude-sonnet-4-6", "Sonnet 4.6", "Best balance of speed and quality.", [.low, .medium, .high, .max]),
-      .init("claude-opus-4-8", "Opus 4.8", "Latest Opus. Better alignment and agentic coding than 4.7.", [.low, .medium, .high, .xhigh, .max]),
-      .init("claude-fable-5", "Fable 5", "Most capable model. Costs 2x more credits than Opus 4.8.", [.low, .medium, .high, .xhigh, .max]),
-      .init("claude-opus-4-7", "Opus 4.7", "Previous flagship. Strong coding autonomy and complex reasoning.", [.low, .medium, .high, .xhigh, .max]),
+      .init("claude-opus-5", "Opus 5", "Newest Opus. Deeper reasoning and stronger autonomous work.", [.low, .medium, .high, .xhigh, .max]),
+      .init("claude-opus-4-8", "Opus 4.8", "Previous Opus. Strong alignment and agentic coding.", [.low, .medium, .high, .xhigh, .max]),
+      .init("claude-fable-5", "Fable 5", "Most capable model. Costs 2x more credits than Opus 5.", [.low, .medium, .high, .xhigh, .max]),
+      .init("claude-opus-4-7", "Opus 4.7", "Older Opus. Strong coding autonomy and complex reasoning.", [.low, .medium, .high, .xhigh, .max]),
     ],
     "github-copilot": [
       .init("gpt-4.1", "GPT-4.1", "Available on every plan, including Copilot Free."),
