@@ -14,7 +14,6 @@ import type auth from "../locales/en/auth.json";
 import type board from "../locales/en/board.json";
 import type chat from "../locales/en/chat.json";
 import type common from "../locales/en/common.json";
-import type connect from "../locales/en/connect.json";
 import type context from "../locales/en/context.json";
 import type dashboard from "../locales/en/dashboard.json";
 import type errors from "../locales/en/errors.json";
@@ -57,7 +56,6 @@ declare module "react-i18next" {
       migration: typeof migration;
       portable: typeof portable;
       context: typeof context;
-      connect: typeof connect;
       teams: typeof teams;
       agentOnboarding: typeof agentOnboarding;
     };

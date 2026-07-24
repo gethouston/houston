@@ -1,7 +1,6 @@
 import { Badge, cn } from "@houston-ai/core";
 import {
   Brain,
-  Cable,
   FileText,
   LibraryBig,
   type LucideIcon,
@@ -18,7 +17,6 @@ const ICONS: Record<AgentAdminScreen, LucideIcon> = {
   skills: LibraryBig,
   knowledge: Brain,
   people: Users,
-  connect: Cable,
 };
 
 /**
@@ -31,7 +29,6 @@ const ROW_TITLES = {
   skills: "agents:subTabs.skills",
   knowledge: "agentAdmin.rows.knowledge.title",
   people: "agentAdmin.rows.people.title",
-  connect: "connect:row.title",
 } as const satisfies Record<AgentAdminScreen, string>;
 
 /**

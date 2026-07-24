@@ -62,28 +62,16 @@ describe("agentAdminCards — card + row visibility", () => {
     }
   });
 
-  it("public API gateway (apiKeys): adds the Connect card, last", () => {
+  it("no Connect card anywhere — even on an apiKeys gateway (HOU-806)", () => {
     deepStrictEqual(cardIds(agentAdminCards(caps({ apiKeys: true }))), [
       "configuration",
-      "connect",
     ]);
-    deepStrictEqual(
-      cardIds(agentAdminCards(multiplayer("owner"))).includes("connect"),
-      false,
-    );
     const hosted = agentAdminCards(
       caps({ multiplayer: true, role: "owner", apiKeys: true }),
     );
-    deepStrictEqual(cardIds(hosted), ["configuration", "access", "connect"]);
-    deepStrictEqual(rowsOf(hosted, "connect"), ["connect"]);
-  });
-
-  it("no Connect card off-cloud (absent/false flag, null caps)", () => {
+    deepStrictEqual(cardIds(hosted), ["configuration", "access"]);
     for (const c of [caps(), caps({ apiKeys: false }), null]) {
-      strictEqual(
-        agentAdminCards(c).some((card) => card.id === "connect"),
-        false,
-      );
+      deepStrictEqual(cardIds(agentAdminCards(c)), ["configuration"]);
     }
   });
 });
