@@ -82,8 +82,40 @@ export function handleTeamsRoutes(
       name: "Acme",
       role,
       members,
-      invites: [],
+      invites: state.getOrgInvites(),
     });
+  }
+
+  // POST /v1/org/members — add a member by email (Teams v2). The fake host
+  // models the invite path only: every email is treated as not-yet-a-user, so
+  // it mints a pending invite and answers `202 { invited:true }` (the wire
+  // `AddOrgMemberResult` shape). The new invite then surfaces in `GET /v1/org`'s
+  // `invites`, so the People tab's pending-invite row renders after the refetch.
+  if (
+    segs[0] === "v1" &&
+    segs[1] === "org" &&
+    segs[2] === "members" &&
+    segs.length === 3 &&
+    method === "POST"
+  ) {
+    const email = typeof body?.email === "string" ? body.email.trim() : "";
+    if (!email) return json({ error: "missing email" }, 400);
+    // Org roles are owner/admin/user; a grant is admin or user (never owner).
+    const role = body?.role === "admin" ? "admin" : "user";
+    const invite = state.addOrgInvite(email, role);
+    return json({ invited: true, email: invite.email, role: invite.role }, 202);
+  }
+
+  // DELETE /v1/org/invites/:id — revoke a pending invite (owner/admin).
+  if (
+    segs[0] === "v1" &&
+    segs[1] === "org" &&
+    segs[2] === "invites" &&
+    segs.length === 4 &&
+    method === "DELETE"
+  ) {
+    state.setOrgInvites(state.getOrgInvites().filter((i) => i.id !== segs[3]));
+    return json({ ok: true });
   }
 
   // /v1/agents/:slug/assignments — set-replace the agent's assignee roster

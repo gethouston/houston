@@ -13,15 +13,36 @@ import { SEED_WORKSPACE_ID } from "./config";
 import { json } from "./http";
 import * as state from "./state";
 
-/** The workspace wire shape the gateway/host return (account.ts `toWire`). */
+/** The personal workspace wire shape the gateway/host return (account.ts
+ *  `toWire`). `kind:"personal"` marks the C8 Spaces bridge row — the opaque,
+ *  never-`org:`-prefixed personal space. */
 function workspaceWire() {
   return {
     id: SEED_WORKSPACE_ID,
     name: SEED_WORKSPACE_ID,
     isDefault: true,
     createdAt: new Date(0).toISOString(),
+    kind: "personal" as const,
     locale: state.getPreference("locale"),
   };
+}
+
+/** An armed team-space bridge row (C8): `{ id:"org:<slug>", kind:"org" }`. */
+function teamWorkspaceWire(row: { id: string; name: string }) {
+  return {
+    id: row.id,
+    name: row.name,
+    isDefault: false,
+    createdAt: new Date(0).toISOString(),
+    kind: "org" as const,
+    locale: null,
+  };
+}
+
+/** The full `GET /v1/workspaces` list: the personal seed row plus any armed
+ *  team-space rows (C8 Spaces bridge). Personal-only when none are armed. */
+function workspacesList() {
+  return [workspaceWire(), ...state.getTeamWorkspaces().map(teamWorkspaceWire)];
 }
 
 /** Every integrations + grants route 503s when no Composio key is configured. */
@@ -164,18 +185,21 @@ export function handleUserRoutes(
   }
   // GET /v1/workspaces · PATCH /v1/workspaces/:id (locale)
   if (segs[0] === "v1" && segs[1] === "workspaces") {
-    if (segs.length === 2 && method === "GET") return json([workspaceWire()]);
+    if (segs.length === 2 && method === "GET") return json(workspacesList());
     if (segs.length === 3 && method === "PATCH") {
-      if (segs[2] !== SEED_WORKSPACE_ID) {
+      // Tolerate an armed team id too (a team-space locale write must not 4xx);
+      // locale state is single-tenant, so a team PATCH echoes its own row.
+      if (!state.isKnownWorkspace(segs[2], SEED_WORKSPACE_ID)) {
         return json({ error: "workspace not found" }, 404);
       }
-      if (body && "locale" in body) {
+      if (segs[2] === SEED_WORKSPACE_ID && body && "locale" in body) {
         state.setPreference(
           "locale",
           body.locale === null ? null : String(body.locale),
         );
       }
-      return json(workspaceWire());
+      const team = state.getTeamWorkspaces().find((w) => w.id === segs[2]);
+      return json(team ? teamWorkspaceWire(team) : workspaceWire());
     }
     // GET/PUT /v1/workspaces/:id/sidebar-layout — the sidebar's order + grouping.
     if (
@@ -183,7 +207,7 @@ export function handleUserRoutes(
       segs[3] === "sidebar-layout" &&
       (method === "GET" || method === "PUT")
     ) {
-      if (segs[2] !== SEED_WORKSPACE_ID) {
+      if (!state.isKnownWorkspace(segs[2], SEED_WORKSPACE_ID)) {
         return json({ error: "workspace not found" }, 404);
       }
       if (method === "GET") return json(state.getSidebarLayout(segs[2]));

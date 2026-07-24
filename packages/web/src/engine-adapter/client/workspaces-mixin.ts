@@ -2,6 +2,7 @@ import type {
   SidebarLayout,
   Workspace,
 } from "../../../../../ui/engine-client/src/types";
+import { listWorkspaces as cpListWorkspaces } from "../control-plane";
 import { syntheticWorkspace } from "../synthetic";
 import type { BaseCtor } from "./mixin";
 
@@ -36,8 +37,23 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
   class Workspaces extends Base {
     async listWorkspaces(): Promise<Workspace[]> {
       const { provider, model } = await this.ctx.activeOld();
-      console.info("[engine-adapter] listWorkspaces -> 1 synthetic workspace");
-      return [syntheticWorkspace(provider, model)];
+      const personal = syntheticWorkspace(provider, model);
+      // C8 §Workspaces bridge: the host returns one row per membership — a
+      // personal row plus one `org:<slug>` row per team. The synthetic
+      // personal row REPLACES the served one (its "default" id is load-bearing
+      // for prefs, caches, and the desktop boot path); ONLY the `org:*` team
+      // rows bridge through, so a local/self-host list (never `org:`-prefixed)
+      // stays byte-identical. `prefConfig()` is the shared seam: the gateway
+      // in cloud mode, the local host otherwise. A host without the surface
+      // (404) or a failed read degrades to personal-only — the switcher must
+      // never go empty.
+      try {
+        const rows = await cpListWorkspaces(this.ctx.prefConfig());
+        const teams = rows.filter((w) => w.id.startsWith("org:"));
+        return [personal, ...teams];
+      } catch {
+        return [personal];
+      }
     }
     async createWorkspace(req: { name?: string }): Promise<Workspace> {
       const { provider, model } = await this.ctx.activeOld();

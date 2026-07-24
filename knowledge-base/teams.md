@@ -351,6 +351,18 @@ C8 rides the EXISTING workspace switcher rather than a new selector.
 (opaque id, never `org:`-prefixed, `kind: "personal"`, `isDefault`) plus one row
 per team, each `{ id: "org:" + slug, kind: "org" }` where `slug` is `[a-f0-9]{16}`.
 
+> **The adapter merges, not passes through (HOU-881).** The engine-adapter's
+> `listWorkspaces` (`packages/web/src/engine-adapter/client/workspaces-mixin.ts`)
+> fetches the bridge via `prefConfig()` (gateway in cloud mode, local host
+> otherwise) and keeps ONLY the `org:*` team rows, appended after the SYNTHETIC
+> personal row — the synthetic `"default"` id is load-bearing for prefs/caches,
+> and a local/self-host list (never `org:`-prefixed) stays byte-identical. A
+> failed/absent bridge read degrades to personal-only. Until this fix the mixin
+> never fetched the bridge at all, so teams never reached the switcher and the
+> create-team auto-switch silently no-oped (the C8 flow was unreachable in prod).
+> E2E: `packages/web/e2e/spaces-gating.spec.ts` (fake host arms team rows via
+> `/__test__/workspaces`).
+
 - **Id grammar** (`app/src/lib/space-id.ts`, pure + unit-tested):
   `orgSlugFromWorkspaceId(id)` returns the 16-hex slug for an `org:*` id, else
   `null` (personal); `isTeamWorkspace(id)` is the boolean. This id alone drives

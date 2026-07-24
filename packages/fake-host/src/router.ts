@@ -181,6 +181,29 @@ export async function handle(req: Request): Promise<Response> {
       agents: state.listAgents(),
     });
   }
+  // Arm the team-space rows `GET /v1/workspaces` bridges in (C8 Spaces): each
+  // `{ slug, name }` becomes an `{ id:"org:<slug>", kind:"org" }` switcher row,
+  // served alongside the always-present personal seed row. A `slug` must be
+  // exactly 16 lowercase hex chars (the id grammar `space-id.ts` enforces).
+  // Pair with `/__test__/capabilities` `{ spaces:true }`. Reset (or `{teams:[]}`)
+  // restores the personal-only list.
+  if (path === "/__test__/workspaces" && method === "POST") {
+    const body = await parseBody(req);
+    const teams = Array.isArray(body?.teams) ? body.teams : [];
+    const rows = teams.flatMap((t) => {
+      const row = t as { slug?: unknown; name?: unknown };
+      if (typeof row.slug !== "string" || !/^[a-f0-9]{16}$/.test(row.slug)) {
+        return [];
+      }
+      return [
+        {
+          id: `org:${row.slug}`,
+          name: typeof row.name === "string" ? row.name : row.slug,
+        },
+      ];
+    });
+    return json({ teams: state.setTeamWorkspaces(rows) });
+  }
   // Read back the action-approval writes the interaction card made: the
   // always-allow slugs AND the "Allow once" ticket hashes (the product tickets
   // route never reads back). Lets an e2e assert Allow once posted the step's hash.
