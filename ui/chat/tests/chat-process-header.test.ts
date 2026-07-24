@@ -1,12 +1,17 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { ChatProcessSegment } from "../src/chat-process-groups.ts";
+import type { ChatActionBrand } from "../src/chat-process-header.ts";
 import {
+  buildProcessHeader,
   buildProcessHeaderLabel,
+  getCurrentActionTool,
   getCurrentActionToolName,
+  integrationActionOf,
 } from "../src/chat-process-header.ts";
+import type { ToolEntry } from "../src/feed-to-messages.ts";
 
-type ToolStub = { name: string; result?: unknown };
+type ToolStub = { name: string; input?: unknown; result?: unknown };
 
 const RESULT = { content: "ok", is_error: false };
 
@@ -157,5 +162,159 @@ describe("pi tool-name labels", () => {
       buildProcessHeaderLabel({ isActive: true, segments }),
       "Mission in progress: Running command",
     );
+  });
+});
+
+// getCurrentActionTool returns the whole ToolEntry (not just its name) so the
+// branded path can read `input.action` off the current call.
+describe("getCurrentActionTool", () => {
+  it("returns the last tool ENTRY of the last segment with tools", () => {
+    const segments = [
+      seg([{ name: "Bash" }]),
+      seg([
+        { name: "Read", result: RESULT },
+        { name: "Grep", input: { q: 1 } },
+      ]),
+    ];
+    deepStrictEqual(getCurrentActionTool(segments), {
+      name: "Grep",
+      input: { q: 1 },
+    });
+  });
+
+  it("returns undefined when no segment has tools", () => {
+    strictEqual(getCurrentActionTool([seg([]), seg([])]), undefined);
+  });
+});
+
+// integrationActionOf reads the Composio action off an integration_execute call,
+// tolerating MCP prefixes and any malformed/half-streamed input.
+describe("integrationActionOf", () => {
+  const tool = (name: string, input?: unknown): ToolEntry =>
+    ({ name, input }) as ToolEntry;
+
+  it("returns the action for a bare integration_execute", () => {
+    strictEqual(
+      integrationActionOf(
+        tool("integration_execute", { action: "GMAIL_SEND_EMAIL" }),
+      ),
+      "GMAIL_SEND_EMAIL",
+    );
+  });
+
+  it("strips an MCP server prefix off the tool name", () => {
+    strictEqual(
+      integrationActionOf(
+        tool("mcp__houston__integration_execute", {
+          action: "SLACK_POST_MESSAGE",
+        }),
+      ),
+      "SLACK_POST_MESSAGE",
+    );
+  });
+
+  it("returns undefined for a non-integration tool", () => {
+    strictEqual(integrationActionOf(tool("Read", { action: "X" })), undefined);
+    strictEqual(
+      integrationActionOf(tool("integration_search", { query: "x" })),
+      undefined,
+    );
+  });
+
+  it("tolerates malformed input (null, non-object, missing/empty/non-string action)", () => {
+    strictEqual(integrationActionOf(tool("integration_execute")), undefined);
+    strictEqual(
+      integrationActionOf(tool("integration_execute", null)),
+      undefined,
+    );
+    strictEqual(
+      integrationActionOf(tool("integration_execute", "GMAIL")),
+      undefined,
+    );
+    strictEqual(
+      integrationActionOf(tool("integration_execute", {})),
+      undefined,
+    );
+    strictEqual(
+      integrationActionOf(tool("integration_execute", { action: "" })),
+      undefined,
+    );
+    strictEqual(
+      integrationActionOf(tool("integration_execute", { action: 7 })),
+      undefined,
+    );
+  });
+});
+
+// buildProcessHeader chooses the branded row only when the current tool is a
+// resolvable integration_execute; everything else stays the plain text label.
+describe("buildProcessHeader", () => {
+  const brand: ChatActionBrand = {
+    name: "Gmail",
+    logoUrl: "https://logo",
+    actionLabel: "Sending email",
+  };
+  const resolveActionBrand = (action: string) =>
+    action === "GMAIL_SEND_EMAIL" ? brand : undefined;
+
+  it("returns the brand when an integration_execute resolves", () => {
+    const segments = [
+      seg([
+        { name: "integration_execute", input: { action: "GMAIL_SEND_EMAIL" } },
+      ]),
+    ];
+    deepStrictEqual(
+      buildProcessHeader({
+        isActive: true,
+        segments,
+        labels: { resolveActionBrand },
+      }),
+      { kind: "brand", brand },
+    );
+  });
+
+  it("falls back to the plain label when the resolver returns undefined", () => {
+    const segments = [
+      seg([{ name: "integration_execute", input: { action: "UNKNOWN_DO" } }]),
+    ];
+    deepStrictEqual(
+      buildProcessHeader({
+        isActive: true,
+        segments,
+        labels: { resolveActionBrand },
+      }),
+      { kind: "text", label: "Mission in progress: Using an app" },
+    );
+  });
+
+  it("stays plain for a non-integration tool even with a resolver", () => {
+    deepStrictEqual(
+      buildProcessHeader({
+        isActive: true,
+        segments: [seg([{ name: "Read" }])],
+        labels: { resolveActionBrand },
+      }),
+      { kind: "text", label: "Mission in progress: Reading file" },
+    );
+  });
+
+  it("stays plain when settled (never branded), and with no resolver", () => {
+    const segments = [
+      seg([
+        { name: "integration_execute", input: { action: "GMAIL_SEND_EMAIL" } },
+      ]),
+    ];
+    deepStrictEqual(
+      buildProcessHeader({
+        isActive: false,
+        segments,
+        labels: { resolveActionBrand },
+      }),
+      { kind: "text", label: "Mission log" },
+    );
+    deepStrictEqual(buildProcessHeader({ isActive: true, segments }), {
+      kind: "text",
+      label: "Mission in progress: Using an app",
+    });
   });
 });

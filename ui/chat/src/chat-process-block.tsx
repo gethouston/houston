@@ -13,15 +13,16 @@ import {
   ReasoningContent,
   ReasoningTrigger,
 } from "./ai-elements/reasoning";
+import { ChatActionBrandLine } from "./chat-action-brand-line";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import { ToolsAndCards } from "./chat-helpers";
 import { processScrollPaneClass } from "./chat-process-classes";
 import type { ChatProcessSegment } from "./chat-process-groups";
 import type { ChatProcessLabels } from "./chat-process-header";
-import { buildProcessHeaderLabel } from "./chat-process-header";
+import { buildProcessHeader } from "./chat-process-header";
 import { ChatStatusLine } from "./chat-status-line";
 
-export type { ChatProcessLabels } from "./chat-process-header";
+export type { ChatActionBrand, ChatProcessLabels } from "./chat-process-header";
 
 export interface ChatProcessBlockProps {
   segments: ChatProcessSegment[];
@@ -49,10 +50,12 @@ export function ChatProcessBlock({
   const [isOpen, setIsOpen] = useState(false);
 
   // The single trigger line. While active it surfaces only the one in-progress
-  // action ("Mission in progress: Reading file"); settled it reads "Mission
-  // log". Never a count of how many tool calls ran.
-  const headerLabel = useMemo(
-    () => buildProcessHeaderLabel({ isActive, segments, labels, toolLabels }),
+  // action ("Mission in progress: Reading file"), upgraded to a branded row
+  // ("Mission in progress: [logo] Gmail · Sending email") when the current tool
+  // is an integration the app resolves; settled it reads "Mission log". Never a
+  // count of how many tool calls ran.
+  const header = useMemo(
+    () => buildProcessHeader({ isActive, segments, labels, toolLabels }),
     [isActive, segments, labels, toolLabels],
   );
 
@@ -71,7 +74,15 @@ export function ChatProcessBlock({
   return (
     <Collapsible className="not-prose" open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger className="inline-flex max-w-full items-center gap-1.5 text-ink-muted/65 transition-colors hover:text-ink-muted">
-        <ChatStatusLine label={headerLabel} active={isActive} />
+        {header.kind === "brand" ? (
+          <ChatActionBrandLine
+            active={isActive}
+            brand={header.brand}
+            prefix={labels?.activeActionPrefix}
+          />
+        ) : (
+          <ChatStatusLine label={header.label} active={isActive} />
+        )}
         <ChevronDownIcon
           className={cn(
             "size-3.5 shrink-0 transition-transform",

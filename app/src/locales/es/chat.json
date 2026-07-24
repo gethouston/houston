@@ -205,6 +205,7 @@
   "process": {
     "active": "Misión en curso...",
     "activeAction": "Misión en curso: {{action}}",
+    "activeActionPrefix": "Misión en curso:",
     "complete": "Registro de misión"
   },
   "summary": {

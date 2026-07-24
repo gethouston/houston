@@ -3,19 +3,26 @@ import { Shimmer } from "@houston-ai/chat";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { HoustonLogo } from "./shell/experience-card";
+import { useActionBrandResolver } from "./use-action-brand-resolver";
 
 export function useChatDisplayLabels(): Pick<
   ChatPanelProps,
   "processLabels" | "getThinkingMessage" | "thinkingIndicator"
 > {
   const { t } = useTranslation("chat");
+  // Resolves an in-flight integration action to the app logo + name + present-
+  // tense label the process header shows as a branded row; ui/chat calls it
+  // through `processLabels.resolveActionBrand`, staying Composio-unaware.
+  const resolveActionBrand = useActionBrandResolver();
   const processLabels = useMemo(
     () => ({
       active: t("process.active"),
       activeAction: (action: string) => t("process.activeAction", { action }),
+      activeActionPrefix: t("process.activeActionPrefix"),
       complete: t("process.complete"),
+      resolveActionBrand,
     }),
-    [t],
+    [t, resolveActionBrand],
   );
   const getThinkingMessage = useCallback<
     NonNullable<ChatPanelProps["getThinkingMessage"]>

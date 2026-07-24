@@ -9,7 +9,21 @@
  */
 
 import type { ChatProcessSegment } from "./chat-process-groups";
-import { getToolActionLabel } from "./tool-labels.ts";
+import type { ToolEntry } from "./feed-to-messages";
+import { getToolActionLabel, toolShortName } from "./tool-labels.ts";
+
+/**
+ * A resolved integration action for the header's branded row: the app's display
+ * NAME, its LOGO (when the catalog carried one), and the humanized action in
+ * present tense ("Sending email"). Resolved by the app — `ui/chat` stays
+ * Composio-unaware — and rendered as `{name} · {actionLabel}` after the logo.
+ * A missing `logoUrl` shows the name alone, never a broken image.
+ */
+export interface ChatActionBrand {
+  name: string;
+  logoUrl?: string;
+  actionLabel: string;
+}
 
 export interface ChatProcessLabels {
   /**
@@ -27,6 +41,21 @@ export interface ChatProcessLabels {
    * `Mission in progress: ${action}`.
    */
   activeAction?: (action: string) => string;
+  /**
+   * The localized prefix for the BRANDED row ("Mission in progress:"), rendered
+   * before the app logo + `{name} · {actionLabel}`. Split from `activeAction`
+   * because the branded row interleaves an inline image, so the text can't be
+   * one interpolated string. Keep the colon/wording per locale.
+   */
+  activeActionPrefix?: string;
+  /**
+   * Resolves a Composio action slug (e.g. `GMAIL_SEND_EMAIL`) to the app's
+   * presentational brand for the branded header row. App-supplied (the catalog
+   * lives app-side); returns `undefined` when the current tool isn't a
+   * resolvable integration action, and the header falls back to the plain
+   * `activeAction` string. Read-only — no connect side effects.
+   */
+  resolveActionBrand?: (action: string) => ChatActionBrand | undefined;
 }
 
 const DEFAULTS = {
@@ -47,14 +76,36 @@ const DEFAULTS = {
  * active turn keeps the concrete step visible; it updates the moment a new tool
  * starts and clears when the turn settles.
  */
+export function getCurrentActionTool(
+  segments: ChatProcessSegment[],
+): ToolEntry | undefined {
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const tools = segments[i].tools;
+    if (tools.length > 0) return tools[tools.length - 1];
+  }
+  return undefined;
+}
+
+/** The name of {@link getCurrentActionTool}, or undefined when no tool has run. */
 export function getCurrentActionToolName(
   segments: ChatProcessSegment[],
 ): string | undefined {
-  for (let i = segments.length - 1; i >= 0; i--) {
-    const tools = segments[i].tools;
-    if (tools.length > 0) return tools[tools.length - 1].name;
-  }
-  return undefined;
+  return getCurrentActionTool(segments)?.name;
+}
+
+/**
+ * The Composio action slug of an `integration_execute` tool call, or undefined
+ * for any other tool. The action lives in `input.action` (the entry may arrive
+ * MCP-prefixed — `toolShortName` strips that). Tolerates a malformed input
+ * (null, non-object, missing / non-string / empty `action`) by returning
+ * undefined, so a half-streamed call never drives a branded row.
+ */
+export function integrationActionOf(tool: ToolEntry): string | undefined {
+  if (toolShortName(tool.name) !== "integration_execute") return undefined;
+  const input = tool.input;
+  if (!input || typeof input !== "object") return undefined;
+  const action = (input as { action?: unknown }).action;
+  return typeof action === "string" && action.length > 0 ? action : undefined;
 }
 
 /**
@@ -75,4 +126,34 @@ export function buildProcessHeaderLabel(opts: {
   if (!name) return labels?.active ?? DEFAULTS.active;
   const action = getToolActionLabel(name, false, toolLabels);
   return (labels?.activeAction ?? DEFAULTS.activeAction)(action);
+}
+
+/**
+ * The header content, either a resolved integration brand (the branded row) or
+ * a plain string (every other case). While active, if the current tool is an
+ * `integration_execute` AND the app's `resolveActionBrand` returns a value, the
+ * branded row wins; otherwise this is `buildProcessHeaderLabel` verbatim. The
+ * split keeps the decision pure and unit-testable, and the component only picks
+ * a renderer off the `kind`.
+ */
+export type ProcessHeader =
+  | { kind: "brand"; brand: ChatActionBrand }
+  | { kind: "text"; label: string };
+
+export function buildProcessHeader(opts: {
+  isActive: boolean;
+  segments: ChatProcessSegment[];
+  labels?: ChatProcessLabels;
+  toolLabels?: Record<string, string>;
+}): ProcessHeader {
+  const { isActive, segments, labels } = opts;
+  if (isActive && labels?.resolveActionBrand) {
+    const tool = getCurrentActionTool(segments);
+    const action = tool ? integrationActionOf(tool) : undefined;
+    if (action) {
+      const brand = labels.resolveActionBrand(action);
+      if (brand) return { kind: "brand", brand };
+    }
+  }
+  return { kind: "text", label: buildProcessHeaderLabel(opts) };
 }

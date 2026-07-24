@@ -295,6 +295,31 @@ action-approval-store.ts, action-classification.ts, approvals.ts, agent-file.ts}
 + `routes-action-approvals.ts`. The old Always-allow / one-shot-ticket / 15-minute-
 grant systems are all gone with it.
 
+### Branded process-block header while an execute runs (HOU-888)
+
+While an `integration_execute` is the current tool, the chat process-block header
+reads **"Mission in progress: [logo] Gmail · Sending email"** instead of the raw
+`getToolActionLabel` fallback. `ui/chat` stays Composio-unaware: the header gains
+a structured path. `chat-process-header.ts` exposes `getCurrentActionTool`,
+`integrationActionOf(tool)` (short-name `integration_execute` **and** a non-empty
+`input.action` → the action slug; tolerates malformed input), and `buildProcessHeader`
+(a `{kind:"brand"|"text"}` union — brand only when the current tool is a
+resolvable execute). The brand is supplied by the app through the existing
+`processLabels` channel: `ChatProcessLabels.resolveActionBrand?(action)` +
+`activeActionPrefix` (the localized "Mission in progress:" split from the
+`{{action}}` template because the row interleaves an inline logo). The branded
+row renders in `chat-action-brand-line.tsx` (helmet + prefix + logo `size-3.5` +
+`name · actionLabel`, REGULAR weight, shimmer while active, logo drops on error).
+
+App side (`use-action-brand-resolver.ts`, wired in `use-chat-display-labels.tsx`):
+action → toolkit via `toolkitOfActionSlug(action, catalogSlugs)` (LONGEST catalog
+slug prefixing the action, first-segment fallback — in `integrations/app-display.ts`)
+→ name/logo via the shared `useToolkitBrandResolver` (catalog MISS = prettified
+name, no logo) → present-tense label via `humanizeActionGerund(action, toolkit)`
+(gerund verb map, English by the same rule as `tool-labels.ts`). The mission-log
+ROW is text-only: `tool-labels.ts` now maps `integration_execute`/`integration_search`
+to "Using an app"/"Finding app actions" so raw underscores never leak.
+
 ---
 
 ## 3. UI map

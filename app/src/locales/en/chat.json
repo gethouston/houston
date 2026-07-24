@@ -205,6 +205,7 @@
   "process": {
     "active": "Mission in progress...",
     "activeAction": "Mission in progress: {{action}}",
+    "activeActionPrefix": "Mission in progress:",
     "complete": "Mission log"
   },
   "summary": {

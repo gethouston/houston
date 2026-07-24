@@ -31,6 +31,12 @@ const ACTIVE_LABELS: Record<string, string> = {
   find: "Searching files",
   grep: "Searching code",
   ls: "Listing files",
+  // Composio integration tools (MCP-prefixed on the wire, resolved by short
+  // name). Generic verbs so the mission-log ROW never leaks the raw
+  // `integration_execute` underscores; the process-block HEADER upgrades an
+  // execute to a branded "Gmail · Sending email" line when the app resolves it.
+  integration_execute: "Using an app",
+  integration_search: "Finding app actions",
 };
 
 const DONE_LABELS: Record<string, string> = {
@@ -51,6 +57,8 @@ const DONE_LABELS: Record<string, string> = {
   find: "Searched files",
   grep: "Searched code",
   ls: "Listed files",
+  integration_execute: "Used an app",
+  integration_search: "Found app actions",
 };
 
 /** The bare tool name with any MCP `server__tool` prefix stripped. */
