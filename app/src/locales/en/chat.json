@@ -203,9 +203,7 @@
     "thoughtForFew": "Thought for a few seconds"
   },
   "process": {
-    "active": "Mission in progress...",
-    "activeAction": "Mission in progress: {{action}}",
-    "activeActionPrefix": "Mission in progress:",
+    "active": "Thinking...",
     "complete": "Mission log"
   },
   "summary": {

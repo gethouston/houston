@@ -21,6 +21,7 @@ import type { ChatProcessSegment } from "./chat-process-groups";
 import type { ChatProcessLabels } from "./chat-process-header";
 import { buildProcessHeader } from "./chat-process-header";
 import { ChatStatusLine } from "./chat-status-line";
+import { getMappedToolIcon } from "./tool-formatters";
 
 export type { ChatActionBrand, ChatProcessLabels } from "./chat-process-header";
 
@@ -50,10 +51,10 @@ export function ChatProcessBlock({
   const [isOpen, setIsOpen] = useState(false);
 
   // The single trigger line. While active it surfaces only the one in-progress
-  // action ("Mission in progress: Reading file"), upgraded to a branded row
-  // ("Mission in progress: [logo] Gmail · Sending email") when the current tool
-  // is an integration the app resolves; settled it reads "Mission log". Never a
-  // count of how many tool calls ran.
+  // action: a per-tool icon + the verb ("Reading file"), upgraded to the app
+  // logo + "Gmail · Sending email" when the current tool is an integration the
+  // app resolves, or the helmet + "Thinking..." before the first tool runs;
+  // settled it reads the helmet + "Mission log". Never a count of tool calls.
   const header = useMemo(
     () => buildProcessHeader({ isActive, segments, labels, toolLabels }),
     [isActive, segments, labels, toolLabels],
@@ -75,10 +76,12 @@ export function ChatProcessBlock({
     <Collapsible className="not-prose" open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger className="inline-flex max-w-full items-center gap-1.5 text-ink-muted/65 transition-colors hover:text-ink-muted">
         {header.kind === "brand" ? (
-          <ChatActionBrandLine
+          <ChatActionBrandLine active={isActive} brand={header.brand} />
+        ) : header.kind === "tool" ? (
+          <ChatStatusLine
             active={isActive}
-            brand={header.brand}
-            prefix={labels?.activeActionPrefix}
+            icon={renderToolIcon(header.toolName)}
+            label={header.label}
           />
         ) : (
           <ChatStatusLine label={header.label} active={isActive} />
@@ -139,4 +142,14 @@ export function ChatProcessBlock({
       </CollapsibleContent>
     </Collapsible>
   );
+}
+
+/**
+ * The header's leading glyph for a running tool: the same per-tool icon the
+ * expanded mission-log rows show, sized to the header line. Returns undefined
+ * for a tool we don't map so `ChatStatusLine` keeps the Houston helmet.
+ */
+function renderToolIcon(toolName: string) {
+  const Icon = getMappedToolIcon(toolName);
+  return Icon ? <Icon className="size-3.5 shrink-0" /> : undefined;
 }

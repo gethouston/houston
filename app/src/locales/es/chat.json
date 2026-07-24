@@ -203,9 +203,7 @@
     "thoughtForFew": "Pensó durante unos segundos"
   },
   "process": {
-    "active": "Misión en curso...",
-    "activeAction": "Misión en curso: {{action}}",
-    "activeActionPrefix": "Misión en curso:",
+    "active": "Pensando...",
     "complete": "Registro de misión"
   },
   "summary": {

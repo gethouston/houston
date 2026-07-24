@@ -1,8 +1,8 @@
 /**
  * Tool-name → human label resolution. Pure (no React imports) so the exact
  * same verb that a `ToolBlock` row shows ("Reading file", "Running command")
- * can also drive the process-block header ("Mission in progress: Reading
- * file"), and so it can be unit-tested under `node:test` without a DOM.
+ * can also drive the process-block header, and so it can be unit-tested under
+ * `node:test` without a DOM.
  *
  * These labels are intentionally English: `ui/` stays i18n-agnostic, and the
  * app does not pass `toolLabels`, so tool verbs read in English in every
