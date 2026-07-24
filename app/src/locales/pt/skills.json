@@ -110,7 +110,8 @@
     "loadFailed": "Não foi possível carregar as instruções deste skill.",
     "deleteTitle": "Excluir \"{{name}}\"?",
     "deleteDescription": "Isso remove o skill do seu agente. Você pode reinstalar depois.",
-    "instructionsPlaceholder": "Instruções para este skill..."
+    "instructionsPlaceholder": "Instruções para este skill...",
+    "integrations": "Funciona com"
   },
   "categories": {
     "Advisory": "Consultoria",

@@ -22,11 +22,9 @@ export type {
   SkillCategorySelectProps,
 } from "./skill-category-select";
 export { SkillCategorySelect } from "./skill-category-select";
-export type {
-  SkillEditModalLabels,
-  SkillEditModalProps,
-} from "./skill-edit-modal";
+export type { SkillEditModalProps } from "./skill-edit-modal";
 export { SkillEditModal } from "./skill-edit-modal";
+export type { SkillEditModalLabels } from "./skill-edit-modal-labels";
 export type { SkillErrorKind } from "./skill-error-kinds";
 export { classifySkillError, getSkillErrorKind } from "./skill-error-kinds";
 export type {
