@@ -1,28 +1,22 @@
 /*
- * Motion — one orchestrated hero load sequence + restrained scroll reveals.
+ * Motion — a restrained load fade-in for the hero, plus scroll reveals.
  * Rules (DESIGN.md §5): transform + opacity only, ease-OUT entrances, never
  * from scale(0). Everything is wrapped so `prefers-reduced-motion: reduce`
  * and no-JS both fall back to fully-visible static content (no hidden copy).
+ * Toned down: a subtle fade/rise, no hero orchestration theatrics.
  */
 
-/* Only hide-then-reveal when JS is present AND motion is welcome. Without the
-   `.js` class (script disabled) or under reduced-motion, content is static. */
 @media (prefers-reduced-motion: no-preference) {
   html.js .hero-load {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(14px);
     animation: load-up var(--dur-elegant) var(--ease-entrance) forwards;
     animation-delay: var(--load-delay, 0ms);
-  }
-  html.js .hero-stage.hero-load {
-    transform: translateY(26px) scale(0.985);
-    animation-name: load-up-stage;
-    animation-duration: 833ms;
   }
 
   html.js .reveal {
     opacity: 0;
-    transform: translateY(22px);
+    transform: translateY(18px);
     transition: opacity var(--dur-elegant) var(--ease-entrance),
       transform var(--dur-elegant) var(--ease-entrance);
     transition-delay: var(--reveal-delay, 0ms);
@@ -40,31 +34,22 @@
     transform: none;
   }
 }
-@keyframes load-up-stage {
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
 
-/* Staggered delays for the hero load choreography. */
-.hero-eyebrow.hero-load {
-  --load-delay: 60ms;
-}
+/* A gentle stagger for the hero load — headline first, window last. */
 .hero h1.hero-load {
-  --load-delay: 140ms;
+  --load-delay: 40ms;
 }
 .hero-sub.hero-load {
-  --load-delay: 240ms;
+  --load-delay: 120ms;
 }
 .hero-actions.hero-load {
-  --load-delay: 340ms;
+  --load-delay: 200ms;
 }
 .hero-proof.hero-load {
-  --load-delay: 420ms;
+  --load-delay: 280ms;
 }
-.hero-stage.hero-load {
-  --load-delay: 480ms;
+.hero-frame.hero-load {
+  --load-delay: 360ms;
 }
 
 /* Reveal delay steps for grouped children. */

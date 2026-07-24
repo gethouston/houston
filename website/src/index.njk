@@ -4,7 +4,7 @@ permalink: /index.html
 {% extends "base.njk" %}
 {% block title %}Houston — AI agents that actually do the work{% endblock %}
 {% block favicon %}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{% endblock %}
-{# The rebuilt landing self-hosts Fraunces + Hanken Grotesk and uses zero
+{# The landing self-hosts a single family (Hanken Grotesk) and uses zero
    General Sans, so drop base.njk's render-blocking Fontshare stylesheet. #}
 {% block fonts %}{% endblock %}
 {% block meta %}
@@ -30,7 +30,7 @@ permalink: /index.html
 <script>document.documentElement.className += " js";</script>
 {% endblock %}
 {% block stylesheets %}
-<link rel="preload" href="/assets/fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/hanken-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/site-tokens.css">
 <link rel="stylesheet" href="/assets/css/landing.css">
 <link rel="stylesheet" href="/assets/css/landing-hero.css">
@@ -43,7 +43,6 @@ permalink: /index.html
 {% include "landing/nav.njk" %}
 <main id="main">
 {% include "landing/hero.njk" %}
-{% include "landing/dawn.njk" %}
 {% include "landing/how.njk" %}
 {% include "landing/roster.njk" %}
 {% include "landing/byo.njk" %}
