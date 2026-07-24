@@ -31,6 +31,9 @@ export interface Activity {
   agent?: string;
   routine_id?: string;
   routine_run_id?: string;
+  /** The installed skill (directory slug) this setup chat belongs to — the
+   *  durable reverse direction of the skill <-> chat link (HOU-791). */
+  skill_slug?: string;
   updated_at?: string;
   provider?: string;
   model?: string;
@@ -46,6 +49,7 @@ export interface ActivityUpdate {
   agent?: string;
   routine_id?: string;
   routine_run_id?: string;
+  skill_slug?: string;
   provider?: string;
   model?: string;
   /** Clear the persisted pending interaction (the board card leaves "Needs

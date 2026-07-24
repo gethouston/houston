@@ -20,6 +20,10 @@
       "worktree_path": { "type": ["string", "null"] },
       "routine_id": { "type": "string" },
       "routine_run_id": { "type": "string" },
+      "skill_slug": {
+        "type": "string",
+        "description": "The installed skill (directory slug) this setup chat belongs to. Set by Houston, not by the agent."
+      },
       "updated_at": { "type": "string", "format": "date-time" },
       "provider": { "type": "string" },
       "model": { "type": "string" },
