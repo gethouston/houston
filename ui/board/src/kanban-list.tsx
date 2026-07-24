@@ -1,5 +1,5 @@
 import { cn } from "@houston-ai/core";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import type { KanbanCardLabels } from "./kanban-card";
 import { KanbanListItem } from "./kanban-list-item";
 import { KanbanListRail } from "./kanban-list-rail";
@@ -59,28 +59,25 @@ export function KanbanList({
       )}
     >
       <KanbanListRail align={align} className="space-y-1.5">
-        <AnimatePresence mode="popLayout">
-          {sorted.map((item) => (
-            <motion.div
-              key={item.id}
-              layout
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-            >
-              <KanbanListItem
-                item={item}
-                avatar={avatar}
-                selected={selectedId === item.id}
-                onSelect={() => onSelect(item)}
-                onDelete={onDelete ? () => onDelete(item) : undefined}
-                labels={cardLabels}
-                snippet={searchSnippets?.[item.id]}
-              />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {/* No enter/exit animation — an agent switch swaps the whole list and
+            must repaint instantly (HOU-858); `layout` keeps reorder glides. */}
+        {sorted.map((item) => (
+          <motion.div
+            key={item.id}
+            layout
+            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <KanbanListItem
+              item={item}
+              avatar={avatar}
+              selected={selectedId === item.id}
+              onSelect={() => onSelect(item)}
+              onDelete={onDelete ? () => onDelete(item) : undefined}
+              labels={cardLabels}
+              snippet={searchSnippets?.[item.id]}
+            />
+          </motion.div>
+        ))}
       </KanbanListRail>
     </div>
   );

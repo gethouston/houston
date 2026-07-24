@@ -1,5 +1,5 @@
 import { cn } from "@houston-ai/core";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { KanbanCard, type KanbanCardLabels } from "./kanban-card";
 import type { KanbanItem } from "./types";
@@ -110,48 +110,47 @@ export function KanbanColumn({
       {/* Cards. `pt-1` so the selected ring on the first card isn't
           clipped by the scroll container's top edge. */}
       <div className="flex-1 px-1.5 pt-1 pb-1.5 space-y-1.5 overflow-y-auto">
-        <AnimatePresence mode="popLayout">
-          {items.map((item) => (
-            <motion.div
-              key={item.id}
-              layout
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-            >
-              {renderCard ? (
-                renderCard(item)
-              ) : (
-                <KanbanCard
-                  item={item}
-                  selected={selectedId === item.id}
-                  highlighted={highlightedId === item.id}
-                  onSelect={() => onSelect(item)}
-                  onDelete={onDelete ? () => onDelete(item) : undefined}
-                  onApprove={onApprove ? () => onApprove(item) : undefined}
-                  onRename={
-                    onRename ? (title) => onRename(item, title) : undefined
-                  }
-                  runningStatuses={runningStatuses}
-                  approveStatuses={approveStatuses}
-                  errorStatuses={errorStatuses}
-                  actions={actions?.(item)}
-                  avatar={avatar}
-                  labels={cardLabels}
-                  selectable={selectable}
-                  selectedForBulk={selectedIds?.has(item.id) ?? false}
-                  anySelected={anySelected}
-                  onToggleSelect={
-                    onToggleSelect ? () => onToggleSelect(item) : undefined
-                  }
-                  enableDrag={dndEnabled}
-                  dragging={draggingId === item.id}
-                />
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {/* Cards mount/unmount with NO enter/exit animation: switching agents
+            swaps the whole item set, and any fade would cross-blend the
+            previous agent's cards with the next one's (HOU-858). `layout`
+            stays so a card gliding between columns still animates. */}
+        {items.map((item) => (
+          <motion.div
+            key={item.id}
+            layout
+            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            {renderCard ? (
+              renderCard(item)
+            ) : (
+              <KanbanCard
+                item={item}
+                selected={selectedId === item.id}
+                highlighted={highlightedId === item.id}
+                onSelect={() => onSelect(item)}
+                onDelete={onDelete ? () => onDelete(item) : undefined}
+                onApprove={onApprove ? () => onApprove(item) : undefined}
+                onRename={
+                  onRename ? (title) => onRename(item, title) : undefined
+                }
+                runningStatuses={runningStatuses}
+                approveStatuses={approveStatuses}
+                errorStatuses={errorStatuses}
+                actions={actions?.(item)}
+                avatar={avatar}
+                labels={cardLabels}
+                selectable={selectable}
+                selectedForBulk={selectedIds?.has(item.id) ?? false}
+                anySelected={anySelected}
+                onToggleSelect={
+                  onToggleSelect ? () => onToggleSelect(item) : undefined
+                }
+                enableDrag={dndEnabled}
+                dragging={draggingId === item.id}
+              />
+            )}
+          </motion.div>
+        ))}
         {onAdd && (
           <button
             type="button"
