@@ -273,6 +273,15 @@ not pre-blessed pauses the turn on an approval card instead of firing silently.
 branch, evaluated in strict PRECEDENCE (skipped wholesale when `deps.actionApprovals`
 is unwired, so existing installs/tests execute untouched):
 
+0. **Read-only action** — a READ never needs supervision, so it runs ungated
+   (no card, in every mode). Composio ships no read/write metadata, so
+   `isReadOnlyAction` (`packages/host/src/integrations/action-classification.ts`)
+   classifies from the slug's `_`-split verb segments: read-only IFF a read verb
+   (GET/LIST/FETCH/SEARCH/FIND/…) is present AND no write/risky verb
+   (SEND/CREATE/DELETE/UPDATE/RUN/…) is. Deliberately CONSERVATIVE — ambiguous
+   (no verb, or read mixed with write like `..._RUN_..._GET_...`) is NOT
+   read-only, so a miss is safe: it just shows the card as before. A mutating
+   action can never slip through.
 1. **Autopilot header** — an `auto` turn auto-approves. The runtime forwards
    `x-houston-turn-mode: auto` on `/sandbox/integrations/execute` (from the
    turn-mode `AsyncLocalStorage`, `packages/runtime/src/session/turn-mode-context.ts`)

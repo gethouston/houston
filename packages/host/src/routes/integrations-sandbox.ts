@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { LocalActionApprovals } from "../integrations/action-approvals";
+import { isReadOnlyAction } from "../integrations/action-classification";
 import { displayParams, hashActionParams } from "../integrations/approvals";
 import { CUSTOM_ACTION_PREFIX } from "../integrations/custom/provider";
 import type { IntegrationProvider } from "../integrations/provider";
@@ -157,16 +158,23 @@ export async function handleSandboxIntegrations(
         ? (body.params as Record<string, unknown>)
         : {};
 
-    // Action-approval gate. Precedence: (1) an Autopilot turn auto-approves —
-    // the runtime stamps x-houston-turn-mode:auto and the sandbox HMAC already
-    // authenticated the runtime, so the header is trusted; (2) an always-allow
-    // record for THIS action runs; (3) a fresh one-shot ticket matching
-    // hash(action, params) is consumed (single use) and runs; else 409
-    // approval_required with a display payload the runtime turns into an
-    // approval step on the interaction card. Skipped wholesale when the policy
-    // is unwired (deps.actionApprovals absent → existing installs unchanged).
+    // Action-approval gate. Precedence: (0) a READ-ONLY action runs ungated —
+    // a read never needs supervision, classified from the slug's verb segments
+    // (isReadOnlyAction, conservative: ambiguous = not read-only); (1) an
+    // Autopilot turn auto-approves — the runtime stamps x-houston-turn-mode:auto
+    // and the sandbox HMAC already authenticated the runtime, so the header is
+    // trusted; (2) an always-allow record for THIS action runs; (3) a fresh
+    // one-shot ticket matching hash(action, params) is consumed (single use)
+    // and runs; else (4) 409 approval_required with a display payload the
+    // runtime turns into an approval step on the interaction card. Skipped
+    // wholesale when the policy is unwired (deps.actionApprovals absent →
+    // existing installs unchanged).
     const approvals = deps.actionApprovals;
-    if (approvals && header(req, "x-houston-turn-mode") !== "auto") {
+    if (
+      approvals &&
+      !isReadOnlyAction(action) &&
+      header(req, "x-houston-turn-mode") !== "auto"
+    ) {
       if (!(await approvals.isAlways(claim.agentId, action))) {
         const hash = hashActionParams(action, params);
         if (!(await approvals.consumeTicket(claim.agentId, hash))) {

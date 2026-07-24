@@ -6,6 +6,8 @@ import type { Capabilities } from "@houston/protocol";
 import { expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import { EnvCredentialVault } from "../credentials/vault";
+import { MemoryActionApprovalStore } from "../integrations/action-approval-store";
+import { LocalActionApprovals } from "../integrations/action-approvals";
 import { FakeIntegrationProvider } from "../integrations/fake";
 import { IntegrationRegistry } from "../integrations/registry";
 import { IntegrationUpstreamError } from "../integrations/types";
@@ -42,6 +44,7 @@ async function setup(
       dismiss(): void | Promise<void>;
     };
     session?: { set(token: string | null): void };
+    withApprovals?: boolean;
   } = {},
 ) {
   const withIntegrations = opts.withIntegrations ?? true;
@@ -53,6 +56,9 @@ async function setup(
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const vault = new EnvCredentialVault({ secret: "test-secret" });
   const fake = new FakeIntegrationProvider({ id: "composio" });
+  const approvals = opts.withApprovals
+    ? new LocalActionApprovals({ store: new MemoryActionApprovalStore() })
+    : undefined;
   const deps: ControlPlaneDeps = {
     verifier,
     store,
@@ -69,6 +75,7 @@ async function setup(
           ...(opts.session ? { session: opts.session } : {}),
         }
       : undefined,
+    ...(approvals ? { actionApprovals: approvals } : {}),
     corsOrigin: "*",
   };
   const server: Server = createControlPlaneServer(deps);
@@ -383,6 +390,46 @@ test("sandbox proxy: HMAC token → workspace owner's userId → execute/search"
     expect(
       (await search.json()).items.map((m: { action: string }) => m.action),
     ).toContain("GMAIL_SEND_EMAIL");
+  } finally {
+    stop();
+  }
+});
+
+test("action-approval gate: a read-only action runs ungated (no ticket, no always record)", async () => {
+  // Approvals wired but the store is empty — no always record, no ticket. A
+  // read-only slug must still execute (precedence step 0), never 409.
+  const { base, ws, vault, stop } = await setup({ withApprovals: true });
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/execute`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "GMAIL_FETCH_EMAILS", params: {} }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).successful).toBe(true);
+  } finally {
+    stop();
+  }
+});
+
+test("action-approval gate: a write action still 409s approval_required without a ticket", async () => {
+  const { base, ws, vault, stop } = await setup({ withApprovals: true });
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/execute`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
+    });
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe("approval_required");
   } finally {
     stop();
   }
