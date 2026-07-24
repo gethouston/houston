@@ -480,3 +480,39 @@ test("cancel from replica B aborts a turn owned by replica A", async () => {
     { type: "error", data: { message: "Stopped by user" }, seq: 1 },
   ]);
 });
+
+test("a re-send of the running turn (same conversation + nonce) reads as a duplicate, not a foreign busy (HOU-807)", async () => {
+  const relay = new TurnRelay();
+  let finish!: () => void;
+  await relay.start(
+    "a1",
+    "a1/c1",
+    () => new Promise<void>((r) => (finish = r)),
+    "nonce-1",
+  );
+
+  // The caller's retry of the SAME send — the request whose response it lost.
+  expect(relay.duplicateSend("a1", "a1/c1", "nonce-1")).toBe(true);
+  // A genuinely different send is NOT a duplicate: another nonce, another
+  // conversation, or no nonce at all.
+  expect(relay.duplicateSend("a1", "a1/c1", "nonce-2")).toBe(false);
+  expect(relay.duplicateSend("a1", "a1/c2", "nonce-1")).toBe(false);
+  expect(relay.duplicateSend("a1", "a1/c1", "")).toBe(false);
+
+  finish();
+  await drainTick();
+  // Slot released → nothing is a duplicate anymore.
+  expect(relay.duplicateSend("a1", "a1/c1", "nonce-1")).toBe(false);
+});
+
+test("a nonce-less turn (routine fire) never matches a duplicate probe", async () => {
+  const relay = new TurnRelay();
+  let finish!: () => void;
+  await relay.start(
+    "a1",
+    "a1/c1",
+    () => new Promise<void>((r) => (finish = r)),
+  );
+  expect(relay.duplicateSend("a1", "a1/c1", "anything")).toBe(false);
+  finish();
+});

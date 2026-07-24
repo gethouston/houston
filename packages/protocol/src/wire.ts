@@ -31,8 +31,10 @@ import type { ProviderError } from "./provider-error";
  *   mid-session; renders a boundary divider and resets the context-usage window.
  * - `provider_error` — the turn's model request failed with a typed provider /
  *   auth / rate-limit / 5xx / network error; renders the matching inline card.
- *   The turn still ends with a normal terminal frame (pi resolves the turn — it
- *   does NOT throw on a provider error), so this never replaces `done`.
+ *   This IS the failed turn's terminal frame: the turn's server deliberately
+ *   skips the clean `done` after one (a `done` would settle the chat as a
+ *   clean success — see session/exec-turn.ts), so consumers must treat
+ *   `provider_error` as ending the turn.
  * - `file_changes` — user-visible workspace files this turn created/modified,
  *   emitted once before `done` (only when non-empty). Drives the "files this
  *   mission touched" summary.
@@ -142,8 +144,10 @@ export type WireEvent =
        * Published live so the chat renders the matching reconnect / rate-limit
        * card, and persisted on the turn's assistant message
        * (`ChatMessage.providerError`) so the card survives a reload. pi resolves
-       * the turn rather than throwing, so a normal terminal frame (`done`) still
-       * follows — this is NOT a substitute for it.
+       * the turn rather than throwing, but the turn's server then SKIPS the
+       * clean `done` (it would settle the chat as a clean success — see
+       * session/exec-turn.ts): this frame IS the failed turn's terminal
+       * surface, and stream consumers must treat it as ending the turn.
        */
       type: "provider_error";
       data: ProviderError;
