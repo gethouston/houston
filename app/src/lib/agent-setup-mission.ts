@@ -13,9 +13,11 @@
  * so there is no strip/sweep machinery to leak into later chats.
  */
 
+import { registerSetupGreeting } from "../hooks/use-setup-greeting";
 import { useUIStore } from "../stores/ui";
 import { analytics } from "./analytics";
 import { createMission } from "./create-mission";
+import { creationTiming } from "./creation-timing-live";
 import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
 
@@ -74,6 +76,15 @@ export async function startAgentSetupMission(
       },
     );
     analytics.track("agent_onboarding_started", { source });
+    // Instant first impression (HOU-867): the model's real intro can't run
+    // until the pod is warm, so the chat derives a localized hello meanwhile
+    // and drops it when the intro streams in.
+    registerSetupGreeting({
+      agentPath: agent.folderPath,
+      sessionKey: result.sessionKey,
+      agentName: agent.name,
+    });
+    creationTiming.bindConversation(agent.folderPath, result.sessionKey);
     // Open the chat on the new mission, like the old welcome flow did.
     useUIStore
       .getState()

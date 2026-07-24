@@ -24,6 +24,7 @@ import {
   parsePersistedProvisioning,
   runProvisioningProbe,
 } from "../lib/agent-provisioning";
+import { creationTiming } from "../lib/creation-timing-live";
 import { getEngine, isCoLocatedEngine, whenEngineReady } from "../lib/engine";
 import { reportError, showErrorToast } from "../lib/error-toast";
 import i18n from "../lib/i18n";
@@ -237,6 +238,7 @@ function startProbe(entry: ProvisioningEntry): void {
     isMarked: (id) =>
       useAgentProvisioningStore.getState().provisioning[id] === entry,
     onReady: (id) => {
+      creationTiming.markEngineReady(id);
       // Deliver the queued messages FIRST (their turns register before any
       // new composer send can). Then refetch the board BEFORE dropping the
       // entry, so the optimistic rows hand off to the real rows the flush

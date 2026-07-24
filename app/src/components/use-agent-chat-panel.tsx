@@ -60,6 +60,7 @@ import {
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { useSession } from "../hooks/use-session";
+import { useSetupGreetingName } from "../hooks/use-setup-greeting";
 import { useStoreSkillLocaleMigration } from "../hooks/use-store-skill-locale-migration";
 import { useWelcomeGreetingRevealed } from "../hooks/use-welcome-greeting";
 import { deriveActiveInteraction } from "../lib/active-interaction";
@@ -75,6 +76,7 @@ import {
   sessionContextUsage,
 } from "../lib/context-usage";
 import { createMission } from "../lib/create-mission";
+import { hasAgentOutput } from "../lib/creation-timing";
 import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
 import { genericErrorDescription } from "../lib/error-toast";
@@ -1802,6 +1804,9 @@ export function useAgentChatPanel({
   const welcomeGreetingRevealed =
     useWelcomeGreetingRevealed(selectedSessionKey);
   const agentName = agent?.name;
+  // The setup mission's instant hello (HOU-867): derived while the pod warms
+  // up, dropped the moment the agent's own first output arrives.
+  const setupGreetingName = useSetupGreetingName(path, selectedSessionKey);
   const mapFeedItems = useCallback(
     ({ sessionKey, items }: { sessionKey: string; items: FeedItem[] }) => {
       const mapped = filterAutoContinueFeedItems(
@@ -1814,9 +1819,17 @@ export function useAgentChatPanel({
         };
         return [greeting, ...mapped];
       }
+      if (setupGreetingName && !hasAgentOutput(mapped)) {
+        const hello: FeedItem = {
+          feed_type: "assistant_text",
+          data: t("chat:setupGreeting.text", { name: setupGreetingName }),
+        };
+        // After the kickoff bubble — it reads as the agent's first reply.
+        return [...mapped, hello];
+      }
       return mapped;
     },
-    [welcomeGreetingRevealed, agentName, t],
+    [welcomeGreetingRevealed, agentName, setupGreetingName, t],
   );
   const afterMessages = useCallback(
     ({ feedItems }: { sessionKey: string; feedItems: FeedItem[] }) => {
