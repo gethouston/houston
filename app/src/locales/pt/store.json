@@ -95,6 +95,8 @@
     "handleChecking": "Verificando...",
     "handleChangeTooSoon": "Você mudou seu handle há pouco. Tente mais tarde.",
     "displayNameLabel": "Nome de exibição",
+    "optional": "(opcional)",
+    "displayNameHint": "Deixe em branco para usar seu @handle.",
     "bioLabel": "Biografia",
     "bioPlaceholder": "Conte para as pessoas o que você cria.",
     "avatarLabel": "Foto de perfil",
