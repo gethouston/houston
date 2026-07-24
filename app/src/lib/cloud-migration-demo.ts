@@ -27,9 +27,10 @@ import {
 function demoFlag(): string | null {
   try {
     if (!import.meta.env.DEV) return null;
-    // `VITE_MIGRATION_DEMO=1 pnpm tauri dev` forces it on for the whole launch
-    // (no console step needed); otherwise the per-tab localStorage flag.
-    if (import.meta.env.VITE_MIGRATION_DEMO === "1") return "1";
+    // `VITE_MIGRATION_DEMO=1|hold pnpm tauri dev` forces it on for the whole
+    // launch (no console step needed); otherwise the per-tab localStorage flag.
+    const env = import.meta.env.VITE_MIGRATION_DEMO;
+    if (env === "1" || env === "hold") return env;
     return typeof localStorage !== "undefined"
       ? localStorage.getItem("houston.cloudMigration.demo")
       : null;
