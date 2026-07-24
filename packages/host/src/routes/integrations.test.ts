@@ -83,7 +83,7 @@ async function setup(
   const addr = server.address();
   const base = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
   const ws = await store.getOrCreatePersonalWorkspace(USER);
-  return { base, ws, vault, fake, stop: () => server.close() };
+  return { base, ws, store, vault, fake, stop: () => server.close() };
 }
 
 const auth = {
@@ -408,6 +408,44 @@ test("action-approval gate: a read-only action runs ungated (no ticket, no alway
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ action: "GMAIL_FETCH_EMAILS", params: {} }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).successful).toBe(true);
+  } finally {
+    stop();
+  }
+});
+
+test("action-approval circle: 'Always allow' on the dispatch route lets the same action execute", async () => {
+  // The full user flow: the card's Always-allow POSTs the dispatch surface
+  // (what the shipped clients call), the model re-issues the exact action, and
+  // the sandbox gate must pass on the stored always record — proving the route
+  // and the gate address the SAME record for the SAME agent id.
+  const { base, ws, store, vault, stop } = await setup({ withApprovals: true });
+  try {
+    const agent = await store.createAgent({
+      workspaceId: ws.id,
+      name: "Assistant",
+    });
+    const post = await fetch(
+      `${base}/agents/${encodeURIComponent(agent.id)}/action-approvals/always`,
+      {
+        method: "POST",
+        headers: auth,
+        body: JSON.stringify({ action: "GMAIL_SEND_EMAIL" }),
+      },
+    );
+    expect(post.status).toBe(200);
+    expect((await post.json()).always).toContain("GMAIL_SEND_EMAIL");
+
+    const sb = vault.sandboxToken(ws.id, agent.id);
+    const res = await fetch(`${base}/sandbox/integrations/execute`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
     });
     expect(res.status).toBe(200);
     expect((await res.json()).successful).toBe(true);
