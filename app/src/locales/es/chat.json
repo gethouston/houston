@@ -45,7 +45,7 @@
     "description": "Escribe un mensaje para hablar con tu asistente."
   },
   "questionCard": {
-    "placeholder": "Escribe otra opción...",
+    "placeholder": "Escribe tu respuesta...",
     "escapePlaceholder": "Escribe otra opción...",
     "send": "Enviar",
     "back": "Atrás",

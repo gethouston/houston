@@ -45,7 +45,7 @@
     "description": "Type a message to talk to your assistant."
   },
   "questionCard": {
-    "placeholder": "Type another option...",
+    "placeholder": "Type your answer...",
     "escapePlaceholder": "Type another option...",
     "send": "Send",
     "back": "Back",

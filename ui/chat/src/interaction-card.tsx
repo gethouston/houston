@@ -196,8 +196,9 @@ export function ChatInteractionCard({
   const total = steps.length;
   const current = Math.min(state.current, total - 1);
   const step = steps[current];
-  const neutralPlaceholder = labels?.placeholder ?? "Type another option...";
-  const escapePlaceholder = labels?.escapePlaceholder ?? neutralPlaceholder;
+  const neutralPlaceholder = labels?.placeholder ?? "Type your answer...";
+  const escapePlaceholder =
+    labels?.escapePlaceholder ?? "Type another option...";
   const backLabel = labels?.back ?? "Back";
   const forwardLabel = labels?.forward ?? "Forward";
   const skipLabel = labels?.skip ?? "Skip";

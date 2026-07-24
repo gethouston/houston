@@ -45,7 +45,7 @@
     "description": "Digite uma mensagem para falar com seu assistente."
   },
   "questionCard": {
-    "placeholder": "Digite outra opção...",
+    "placeholder": "Digite sua resposta...",
     "escapePlaceholder": "Digite outra opção...",
     "send": "Enviar",
     "back": "Voltar",
