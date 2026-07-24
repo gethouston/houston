@@ -1,31 +1,68 @@
-<section id="how" class="section">
-  <div class="how">
-    <div class="how-head reveal">
-      <div class="eyebrow-mono">How it works</div>
-      <h2 class="sec-title">You describe the outcome. Your agents handle the rest.</h2>
-      <p class="sec-lead">No prompts to engineer, no tools to wire up by hand. Brief Houston the way you'd brief a new hire, then watch the work move across the board.</p>
+{% from "houston-logo.njk" import houstonLogo %}
+<section id="features" class="section is-panel">
+  <div class="hiw-head reveal">
+    <div class="eyebrow-mono" style="justify-content:center">How it works</div>
+    <h2 class="sec-title">You ask. Your agent does it.</h2>
+  </div>
+
+  <div class="hiw-tabs reveal">
+    <button class="hiw-tab active" data-agent="0">Personal Assistant</button>
+    <button class="hiw-tab" data-agent="1">Bookkeeper</button>
+    <button class="hiw-tab" data-agent="2">HR Manager</button>
+    <button class="hiw-tab" data-agent="3">Support Rep</button>
+    <button class="hiw-tab" data-agent="4">Sales Rep</button>
+    <button class="hiw-tab" data-agent="5">Office Manager</button>
+    <button class="hiw-tab" data-agent="6">Financial Analyst</button>
+  </div>
+
+  <div class="feature-row reveal reveal-d1">
+    <div class="hiw-steps">
+      <div class="hiw-step">
+        <span class="hiw-n">1</span>
+        <div>
+          <div class="hiw-step-t">You ask in plain English</div>
+          <p id="hiw-ask"></p>
+        </div>
+      </div>
+      <div class="hiw-step">
+        <span class="hiw-n">2</span>
+        <div>
+          <div class="hiw-step-t">Your agent gets to work</div>
+          <p id="hiw-work"></p>
+        </div>
+      </div>
+      <div class="hiw-step">
+        <span class="hiw-n">3</span>
+        <div>
+          <div class="hiw-step-t">You review the results</div>
+          <p id="hiw-result"></p>
+        </div>
+      </div>
     </div>
-    <div class="steps">
-      <div class="step reveal reveal-d1">
-        <div class="step-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></div>
-        <div>
-          <h3>Tell it what you need.</h3>
-          <p>Describe the job in plain language, like "keep our invoices reconciled" or "book me six sales calls a week." Houston turns it into a mission.</p>
+
+    <div class="iphone" role="img" aria-label="Houston running on iPhone: a chat with your agent">
+      <span class="iphone-btn action"></span>
+      <span class="iphone-btn vol-up"></span>
+      <span class="iphone-btn vol-dn"></span>
+      <span class="iphone-btn power"></span>
+      <div class="iphone-screen">
+        <div class="iphone-island"></div>
+        <div class="iphone-statusbar">
+          <span class="ip-time">9:41</span>
+          <span class="ip-icons">
+            <svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="0.6"/><rect x="5" y="5.5" width="3" height="6.5" rx="0.6"/><rect x="10" y="3" width="3" height="9" rx="0.6"/><rect x="15" y="0.5" width="3" height="11.5" rx="0.6"/></svg>
+            <svg viewBox="0 0 16 12" width="16" height="11" fill="currentColor" aria-hidden="true"><path d="M8 2.2c2.6 0 4.98 1 6.75 2.63.28.26.29.7.03.98l-.62.66a.68.68 0 0 1-.95.03A7.63 7.63 0 0 0 8 4.5a7.63 7.63 0 0 0-5.21 2.03.68.68 0 0 1-.95-.03l-.62-.66a.7.7 0 0 1 .03-.98A9.94 9.94 0 0 1 8 2.2Zm0 3.6c1.5 0 2.87.56 3.9 1.48.3.26.31.71.04 1l-.66.68a.67.67 0 0 1-.92.04A4.02 4.02 0 0 0 8 8.9c-.9 0-1.72.28-2.36.76a.67.67 0 0 1-.92-.04l-.66-.69a.68.68 0 0 1 .04-.99A5.86 5.86 0 0 1 8 5.8Zm0 3.5c.62 0 1.18.22 1.6.58.3.26.32.72.04 1l-1.15 1.17a.68.68 0 0 1-.98 0L6.36 10.9a.68.68 0 0 1 .04-1c.42-.37.98-.59 1.6-.59Z"/></svg>
+            <svg viewBox="0 0 27 12" width="26" height="11" fill="none" aria-hidden="true"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" stroke-opacity="0.5"/><rect x="2" y="2" width="17.5" height="8" rx="1.8" fill="currentColor"/><path d="M24.5 4v4a1.9 1.9 0 0 0 0-4Z" fill="currentColor" fill-opacity="0.5"/></svg>
+          </span>
         </div>
-      </div>
-      <div class="step reveal reveal-d2">
-        <div class="step-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="9" cy="7" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 7h5M19.5 4.5v5"/></svg></div>
-        <div>
-          <h3>Hire the agents for it.</h3>
-          <p>Pick a specialist from the store or build your own. Each agent gets its own memory, its own tools, and access to only what you allow.</p>
+        <div class="iphone-appbar">
+          <span class="hiw-head-logo" aria-hidden="true">{{ houstonLogo(26) }}</span>
+          <div>
+            <div class="ip-appbar-name" id="hiw-agent-name"></div>
+            <div class="ip-appbar-mission" id="hiw-agent-mission"></div>
+          </div>
         </div>
-      </div>
-      <div class="step reveal reveal-d3">
-        <div class="step-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M22 11.5V5a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9"/><path d="M2 9h20"/><path d="m16 18 2 2 4-4"/></svg></div>
-        <div>
-          <h3>Watch the work get done.</h3>
-          <p>Tasks move across your mission board in real time, on the apps you already use. Step in when you want, ignore it when you don't.</p>
-        </div>
+        <div id="hiw-chat" class="chat-mockup ip-chat"></div>
       </div>
     </div>
   </div>
