@@ -38,6 +38,17 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
   const toolBlocks = new Map<number, ToolBlock>();
   const toolNameById = new Map<string, string>();
   let lastRateLimitRetry: number | null = null;
+  // Block-boundary tracking (HOU-857): a turn's text arrives as flat deltas,
+  // but the model emits DISTINCT content blocks (text → tool_use → text on the
+  // next request). Downstream every consumer concatenates the deltas verbatim
+  // — the live feed, the persisted transcript — so without a separator the
+  // second block glues onto the first mid-sentence ("…for you now.Go ahead…").
+  // When a NEW text block starts after this turn already streamed text, prefix
+  // its first delta with a paragraph break. Same for thinking blocks.
+  let sawText = false;
+  let sawThinking = false;
+  let sepText = false;
+  let sepThinking = false;
   // At most one provider_error per turn: an errored assistant message and an
   // error result can both describe the same failure — never double-terminal.
   let emittedError = false;
@@ -97,14 +108,27 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
         });
         toolNameById.set(block.id, block.name);
       }
+      // A FOLLOW-UP text/thinking block: arm the separator; the block's first
+      // delta carries it (never emitted standalone, so an empty block can't
+      // leave a dangling break).
+      if (block?.type === "text" && sawText) sepText = true;
+      if (block?.type === "thinking" && sawThinking) sepThinking = true;
       return [];
     }
     if (event?.type === "content_block_delta") {
       const d = event.delta;
-      if (d?.type === "text_delta" && d.text !== undefined)
-        return [{ type: "text", data: d.text }];
-      if (d?.type === "thinking_delta" && d.thinking !== undefined)
-        return [{ type: "thinking", data: d.thinking }];
+      if (d?.type === "text_delta" && d.text !== undefined) {
+        sawText = true;
+        const data = sepText ? `\n\n${d.text}` : d.text;
+        sepText = false;
+        return [{ type: "text", data }];
+      }
+      if (d?.type === "thinking_delta" && d.thinking !== undefined) {
+        sawThinking = true;
+        const data = sepThinking ? `\n\n${d.thinking}` : d.thinking;
+        sepThinking = false;
+        return [{ type: "thinking", data }];
+      }
       if (d?.type === "input_json_delta" && event.index !== undefined) {
         const tb = toolBlocks.get(event.index);
         if (tb) tb.json += d.partial_json ?? "";
