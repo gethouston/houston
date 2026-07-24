@@ -11,5 +11,14 @@ import base from "./playwright.config";
  */
 export default defineConfig({
   ...base,
-  projects: [{ name: "webkit", use: { ...devices["Desktop Safari"] } }],
+  // The visual suite is Chromium-only (its baselines are Chromium renders), so
+  // keep it out of the WebKit run just as the default config keeps it out of
+  // the chromium project.
+  projects: [
+    {
+      name: "webkit",
+      testIgnore: "**/visual/**",
+      use: { ...devices["Desktop Safari"] },
+    },
+  ],
 });

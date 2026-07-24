@@ -10,12 +10,16 @@
  *
  * Pair `running` with the `.avatar-running-ring` rule shipped from
  * `globals.css` so the halo animation stays in lockstep with the
- * kanban card / detail panel variants. If your app doesn't import the
- * core globals, the avatar still renders — the halo is just inert.
+ * kanban card / detail panel variants. Colors resolve from the `--ht-*`
+ * design tokens (default helmet = `--ht-ink-muted`, badge tint = `--ht-chip`),
+ * so the host must load `@houston/design-tokens`; without the core globals the
+ * halo is simply inert.
  */
 import { cn } from "../utils";
 
-const HOUSTON_GRAY = "#9b9b9b";
+/** Default helmet/badge tint when no agent color is supplied: the muted-neutral
+ *  semantic token (light ≈ #8e8e8e, dark ≈ #9a9a9a), so it tracks the theme. */
+const HOUSTON_GRAY = "var(--ht-ink-muted)";
 
 interface HelmetProps {
   /** CSS fill color (hex, currentColor, or a var() reference — agent palette
@@ -91,7 +95,7 @@ export function HoustonAvatar({
       style={{
         width: innerDiameter,
         height: innerDiameter,
-        backgroundColor: `color-mix(in srgb, var(--ht-chip, #f5f5f5) 82%, ${bg} 18%)`,
+        backgroundColor: `color-mix(in srgb, var(--ht-chip) 82%, ${bg} 18%)`,
       }}
     >
       <HoustonHelmet color={bg} size={Math.round(innerDiameter * 0.65)} />
