@@ -54,6 +54,7 @@ export function handleTeamsRoutes(
   method: string,
   segs: string[],
   body: Record<string, unknown> | undefined,
+  url: URL,
 ): Response | undefined {
   // /v1/org — the caller's org identity + role (+ a minimal roster). The
   // Organization ("Admin") view loads this on mount; `role` drives owner-edit
@@ -84,6 +85,36 @@ export function handleTeamsRoutes(
       members,
       invites: state.getOrgInvites(),
     });
+  }
+
+  // GET /v1/org/profiles?ids=<csv> — display profiles (name + photo) for any
+  // co-member of the active space, keyed by user id. Served from the armed org
+  // roster (each `FakeMember` may carry `displayName`/`photoUrl`); ids that are
+  // NOT in the roster are omitted, and a member with neither field is skipped,
+  // mirroring the gateway (non-co-members omitted, bare profiles absent).
+  if (
+    segs[0] === "v1" &&
+    segs[1] === "org" &&
+    segs[2] === "profiles" &&
+    segs.length === 3
+  ) {
+    if (method !== "GET") return json({ error: "not found" }, 404);
+    const raw = url.searchParams.get("ids") ?? "";
+    const wanted = new Set(raw.split(",").filter(Boolean));
+    const members = state.getOrgMembers() ?? [];
+    const profiles: Record<
+      string,
+      { displayName?: string; photoUrl?: string }
+    > = {};
+    for (const m of members) {
+      if (!wanted.has(m.userId)) continue;
+      if (m.displayName === undefined && m.photoUrl === undefined) continue;
+      profiles[m.userId] = {
+        ...(m.displayName !== undefined ? { displayName: m.displayName } : {}),
+        ...(m.photoUrl !== undefined ? { photoUrl: m.photoUrl } : {}),
+      };
+    }
+    return json({ profiles });
   }
 
   // POST /v1/org/members — add a member by email (Teams v2). The fake host

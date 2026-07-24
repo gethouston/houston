@@ -45,6 +45,8 @@ export type {
   TriggerStatusItem,
   TriggerType,
   UsageRow,
+  UserProfile,
+  UserProfilesResult,
   WebhookKeyReveal,
 } from "../../../../ui/engine-client/src/types";
 

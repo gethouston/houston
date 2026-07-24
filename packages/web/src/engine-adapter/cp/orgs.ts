@@ -5,12 +5,39 @@ import type {
   OrgInfo,
   OrgRole,
   UsageRow,
+  UserProfilesResult,
 } from "../../../../../ui/engine-client/src/types";
+import { HoustonEngineError } from "../client/errors";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
 export async function getOrg(cfg: ControlPlaneConfig): Promise<OrgInfo> {
   const res = await cpFetch(cfg, "/v1/org");
   return (await res.json()) as OrgInfo;
+}
+
+/**
+ * Display profiles (name + photo) for the given member ids — any co-member of
+ * the active space (the personal space resolves only the caller). Non-co-member
+ * ids are omitted server-side. Degrades to an empty map on a gateway that
+ * predates the route (404) — teammate faces then fall back to initials — so a
+ * pre-feature host stays byte-identical. Mirrors `getAgentModelChoice`'s 404
+ * swallow; every other error throws.
+ */
+export async function getOrgProfiles(
+  cfg: ControlPlaneConfig,
+  ids: string[],
+): Promise<UserProfilesResult> {
+  if (ids.length === 0) return { profiles: {} };
+  const query = new URLSearchParams({ ids: ids.join(",") }).toString();
+  try {
+    const res = await cpFetch(cfg, `/v1/org/profiles?${query}`);
+    return (await res.json()) as UserProfilesResult;
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404) {
+      return { profiles: {} };
+    }
+    throw err;
+  }
 }
 
 export async function addOrgMember(

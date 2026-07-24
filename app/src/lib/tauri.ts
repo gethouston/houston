@@ -1657,6 +1657,15 @@ export const tauriIntegrations = {
  */
 export const tauriOrg = {
   get: () => call("get_org", () => getEngine().getOrg()),
+  /** Teammate display profiles (name + photo) for member ids. A cosmetic,
+   *  non-user-initiated read: it degrades to an empty map off-gateway/on hosts
+   *  without the route, so a rare hard failure stays silent (no toast, no
+   *  Sentry) and consumers fall back to initials via React Query's `isError`. */
+  profiles: (ids: string[]) =>
+    call("get_org_profiles", () => getEngine().getOrgProfiles(ids), undefined, {
+      toast: false,
+      capture: false,
+    }),
   addMember: (
     email: string,
     role: import("@houston-ai/engine-client").OrgRole,
