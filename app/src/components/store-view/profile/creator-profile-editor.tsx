@@ -25,7 +25,8 @@ import { AvatarUploadField } from "./avatar-upload-field";
 import { BioField } from "./bio-field";
 import { HandleField } from "./handle-field";
 import { buildProfilePatch, canSaveProfile } from "./profile-form";
-import { gatewayErrorCode, HANDLE_ERROR_KEYS } from "./save-error";
+import { gatewayErrorCode } from "./save-error";
+import { HANDLE_ERROR_KEYS, saveErrorKey } from "./save-error-map";
 import { SocialsEditor } from "./socials-editor";
 
 /**
@@ -83,7 +84,6 @@ export function CreatorProfileEditorDialog({
     claiming,
     handleChanged,
     handleValid,
-    displayName,
     links,
     saving,
   });
@@ -113,7 +113,7 @@ export function CreatorProfileEditorDialog({
       );
       const handleKey = code ? HANDLE_ERROR_KEYS[code] : undefined;
       if (handleKey) setHandleServerError(t(handleKey));
-      else addToast({ title: t("profile.saveFailed"), variant: "error" });
+      else addToast({ title: t(saveErrorKey(code)), variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -145,7 +145,8 @@ export function CreatorProfileEditorDialog({
               htmlFor={displayNameId}
               className="text-sm font-medium text-ink"
             >
-              {t("profile.displayNameLabel")}
+              {t("profile.displayNameLabel")}{" "}
+              <span className="text-ink-muted">{t("profile.optional")}</span>
             </label>
             <Input
               id={displayNameId}
@@ -154,10 +155,13 @@ export function CreatorProfileEditorDialog({
               onChange={(e) => setDisplayName(e.target.value)}
               disabled={saving}
             />
+            <p className="text-xs text-ink-muted">
+              {t("profile.displayNameHint")}
+            </p>
           </div>
           <AvatarUploadField
             avatarUrl={profile?.avatarUrl ?? null}
-            displayName={displayName}
+            displayName={displayName.trim() || normalized}
             onChanged={() => void invalidate()}
             disabled={saving}
             claiming={claiming}

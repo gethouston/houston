@@ -250,3 +250,36 @@ test("agent Permissions tab: a plain member sees it read-only (states visible, n
   ).toBeVisible();
   await expect(page.getByRole("radio", { name: "Any app" })).toBeDisabled();
 });
+
+test("Admin People roster shows a member's gateway display name, email as a secondary line", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, OWNER_CAPS);
+  // Arm a roster where Bob carries the gateway-stored GCIP display name; the
+  // owner keeps only an email (never set a name), proving the fallback too.
+  await request.post(`${FAKE_HOST_URL}/__test__/org`, {
+    data: {
+      members: [
+        { userId: "u-self", email: "you@acme.test", role: "owner" },
+        {
+          userId: "u-bob",
+          email: "bob@acme.test",
+          role: "user",
+          displayName: "Bob Q. Public",
+        },
+      ],
+    },
+  });
+
+  await page.goto("/");
+  await page.locator('[data-tour-target="nav-organization"]').click();
+  await page.getByRole("button", { name: /People/ }).click();
+
+  // Bob's display name is the primary label; his email drops to a muted
+  // secondary line — the gateway-backed profile lit up the roster row.
+  await expect(page.getByText("Bob Q. Public")).toBeVisible();
+  await expect(page.getByText("bob@acme.test")).toBeVisible();
+  // The owner has no display name, so the row still shows the email as primary.
+  await expect(page.getByText("you@acme.test")).toBeVisible();
+});

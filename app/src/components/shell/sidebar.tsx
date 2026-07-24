@@ -14,6 +14,7 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
 import { canSeeAiModelsPage } from "../../lib/org-roles";
 import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
+import { isTeamWorkspace } from "../../lib/space-id";
 import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
@@ -59,9 +60,13 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const { canCreate: canCreateAgents } = useCanCreateAgents();
   const { capabilities } = useCapabilities();
   // Teams v2: the Organization dashboard is owner/admin-only and multiplayer-
-  // only. Hidden entirely for plain members and single-player (canSeeOrganization
-  // is the same gate as the members roster).
-  const showOrganization = canSeeOrganization(capabilities);
+  // only. Hidden entirely for plain members and single-player, and on a Spaces
+  // host also whenever the active space is personal (non-invitable, no roster) —
+  // Admin + Permissions are team-space surfaces there.
+  const isTeam = currentWorkspace
+    ? isTeamWorkspace(currentWorkspace.id)
+    : false;
+  const showOrganization = canSeeOrganization(capabilities, isTeam);
   // Teams v2: in a Teams workspace the AI Models hub is owner/admin territory
   // (org-level provider credentials + admin model policy), so plain members lose
   // its nav entry too — they pick their model per agent in the composer.

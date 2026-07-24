@@ -1,15 +1,19 @@
 # Design System
 
-Visual language: ChatGPT-like. Near-black primary, monochrome, clean typography, minimal chrome.
+**Read `/DESIGN.md` first.** That repo-root file is the compact, agent-facing
+spec — the rules you hold in context before touching any UI (hard rules, token
+quick-reference, motion, banned defaults, polish checklist, component
+inventory). This doc is the **deeper narrative layer**: the rationale, the
+detailed component and animation guidance, and the futuristic-theme internals
+that `/DESIGN.md`'s telegraphic tables can't hold. Precedence on any conflict:
+`packages/design-tokens/tokens/*.json` (tokens win) › this doc › `/DESIGN.md`.
 
-> **⚠️ Updated — the desktop app now ships the "futuristic" theme**, a deliberate
-> brand-direction refactor layered into `app/src/styles/futuristic.css` (imported
-> last so its token overrides win). It intentionally overrides much of the
-> monochrome guidance below: an aurora glow + glass surfaces in **dark**, a cool
-> solid "Aurora" palette in **light**, an Arc/Zen "canvas" layout, and a seamless
-> macOS overlay title bar. See **Futuristic theme** at the bottom of this doc. The
-> grayscale / "never decorative colour" / "light mode only" notes below are kept
-> for history, but the futuristic layer is the current source of truth.
+The current look is the **futuristic theme** — a calm, futuristic desktop AI
+product ("quiet expert"). Dark mode is the loved baseline (aurora glow + glass);
+light mode is the cool solid "Aurora" palette. Content stays near-monochrome;
+colour lives in the chrome. Everything below describes the current system.
+(Pre-futuristic monochrome doctrine is archived in
+`knowledge-base/design-system-history.md` — history only, don't copy from it.)
 
 ## Design tokens are the source of truth
 
@@ -38,7 +42,6 @@ the guard on any new dark-scoped descendant rule. Outputs:
 the client-architecture contract — see `knowledge-base/client-architecture.md`
 for how visual, behavior, and structural changes flow across all three surfaces):
 
-
 1. Edit `packages/design-tokens/tokens/*.json` (a primitive value or a semantic
    reference). NEVER edit `dist/` and NEVER add a new hardcoded colour/spacing
    literal to app or `ui/` CSS — reference a `--ht-*` var (or a Tailwind
@@ -63,25 +66,25 @@ Capable, calm, invisible. Quiet expert. Not flashy, not corporate, not techy. Li
 2. **Always feel alive.** AI working → user sees movement every second. Silence = broken.
 3. **Chat is interface.** Primary interaction. Everything else supports.
 4. **Non-technical labels.** "Prompt" not "Description". "Needs You" not "In Review". Mom-test every word.
-5. **Invisible borders, visible actions.** Borders 5-15% opacity. Action buttons (Start/Approve/Delete) always visible — never hover-only.
+5. **Invisible borders, visible actions.** Borders 5–15% opacity (via `--ht-line` / `.ht-hairline`, never a raw rgba). Action buttons (Start/Approve/Delete) always visible — never hover-only.
 
 ## Color
-Near-black `#0d0d0d`, NEVER pure black. **Both light and dark ship** now (the
-"light mode only" era is over — see Futuristic theme).
 
-### Grays
-`gray-50 #f9f9f9` (sidebar bg) · `100 #ececec` (hover, user bubble) · `200 #e3e3e3` (pressed, dividers) · `300 #cdcdcd` (borders) · `400 #b4b4b4` (disabled) · `500 #9b9b9b` (placeholder) · `600 #676767` (secondary text) · `700 #424242` (body) · `950 #0d0d0d` (primary text + buttons)
+Both light and dark ship on every screen. Primary ink is near-black `#0d0d0d`,
+NEVER pure black. Content stays near-monochrome; the **chrome** (window
+background, glass, aurora glow) carries deliberate brand colour.
 
 ### Tokens
+
 The semantic `--ht-*` set (re-exported to Tailwind `--color-*`) is generated from
 `@houston/design-tokens` — see `tokens/semantic/color.{light,dark}.json` for the
 live values (each token carries its own light AND dark value; dark glass keeps
 its transparency inside the value).
 
 The owner vocabulary (say these words to direct changes):
-- **Grounds**: `base` (the app frame the sidebar sits on) → `background` (the
-  main pane, light `#fcfcfc`) → `input` (the white `#fff` surface — fields,
-  composer, floating cards).
+- **Grounds**: `gutter` (`--ht-base`, the window frame the sidebar melts into) →
+  `background` (the main pane / floating "screen", light `#fcfcfc`) → `input`
+  (the white `#fff` surface — fields, composer, floating cards).
 - **Elevated**: `card` / `card-hover` (glass) / `card-solid` (solid board card)
   / `popover` / `dialog` (both SOLID — floating surfaces never bleed).
 - **Text**: `ink`, `ink-muted` (+ per-surface `card-text`, `popover-text`).
@@ -93,6 +96,45 @@ The owner vocabulary (say these words to direct changes):
   `agent.*` (avatar palette),
   `sidebar*` (with `-text`/`-hover`/`-line`/`-active` suffixes; `sidebar-active`
   is the selected-row fill, a clear step above hover in both themes).
+
+The Tailwind utility for the gutter token is **`bg-gutter`** (`--color-gutter →
+--ht-base`), deliberately NOT `bg-base` — see the "`base` colour naming gotcha"
+under Animation → First-run flow for why the alias was renamed.
+
+### The surface ladder (real tokens)
+
+There is **no `layer-*` token** — the surface stack is expressed through the
+grounds/elevated tokens above. Bottom → top (with the Tailwind utility, and
+light → dark value):
+
+- **`bg-gutter`** (`--ht-base`, `#eef1f7` → `#141416`) — the recessed window
+  frame the sidebar melts into. Sits one step BELOW `background` so the screen
+  reads as raised (in `futuristic.css` this is `body`'s `background-color`).
+- **`bg-background`** (`--ht-background`, `#fcfcfc` → glass `rgba(38,38,40,.55)`)
+  — the floating "screen" and the **standard main pane** every content surface
+  sits on (board, chat, routines, integrations, files, settings, AI hub…).
+  Applied via the `.canvas-screen` class (which also carries the dark
+  frosted-glass blur); `bg-background` stays on the element as the theme-off
+  opaque fallback. In light it is a calm light-gray, NOT white, so white cards,
+  the composer, inputs and popovers **float** on it rather than vanishing
+  white-on-white.
+- **`bg-input`** (`--ht-input`, `#ffffff` → `#1e1e1e`) — floating white inputs,
+  the composer, white pills. NOT a pane background (a pane painted `bg-input`
+  becomes a white slab on the gray canvas).
+- **`bg-card` / `bg-card-hover`** (glass `white-68`/`white-76` → glass
+  `neutral-50`/`neutral-58`) — cards/panels that should **float above** the
+  canvas (mission cards, settings group cards, AI-hub material). White + border +
+  sheen is what makes them lift off the gray.
+- **`bg-popover` / `bg-dialog`** (white → `#1e1e1e`) — menus / modals; **SOLID in
+  both themes** (see Modals below).
+- **`bg-chip` / `bg-chip-subtle`** (`ink-a035` = `rgba(13,13,13,.035)` →
+  `white-a05`) — recessed panels that sit BELOW the card tier (board columns,
+  provider rows, soft chips).
+
+The `futuristic.css` AI-Hub material comment states the same ladder as its depth
+vocabulary: `bg-background → bg-card → bg-card-hover → bg-popover`, with depth
+from HAIRLINE INSET RINGS (`.ht-hairline`), not opaque borders or drop shadows —
+real shadow is reserved for floating chrome (modals/popovers).
 
 ### `--ht-space-*` (workspace-loading splash)
 A deliberately **theme-invariant** group — both `color.light.json` and
@@ -121,21 +163,27 @@ white-glass card material for cards floating on the photo). The first-run
 flow is flat light with plain white cards now, so nothing floats on the photo
 — the `glass.space-75` + `glass.white-92` primitives went with them.
 
-### Borders (opacity)
-5%/15%/15%/25% = light/medium/heavy/xheavy. Use `rgba(13,13,13,X)`.
+### Borders & lines
+The "invisible borders" principle holds: hairlines are very low opacity (5–15%).
+Reach for the **`border-line`** token (`--ht-line`) or the **`.ht-hairline`**
+inset-ring utility (a 1px `outline` in the `--ht-line` colour, so it composes
+with glass sheen and Tailwind ring/shadow utilities) — never a raw `rgba`.
+Field borders use **`border-line-input`** (`--ht-line-input`, `#e3e3e3` light).
 
 ### Status
-success `#00a240` · info `#0169cc` · warning `#e0ac00` · danger `#e02e2a`
+`success #00a240` → bright `#22c55e` · `warning #e0ac00` → `#eab308` ·
+`danger #e02e2a` → `#ef4444` (each with a `-text`), plus `highlight` (brand
+wash + ink). Links use the same semantic status/highlight family.
 
 ### Color restraint
-The monochrome discipline still holds for *content* (text, controls), but the
-futuristic theme adds intentional **ambient brand colour** as chrome:
+The monochrome discipline holds for *content* (text, controls); the futuristic
+theme adds intentional **ambient brand colour** as chrome:
 1. card-running-glow gradient (blue→indigo→orange→yellow) — the brand palette
 2. the **aurora glow** behind dark mode (same blue/indigo/orange family)
 3. the cool **Aurora** light palette (blue/indigo-tinted gutter + cards)
 4. status indicators, agent/channel avatars, links
 
-"Never decorative colour" is now scoped to *content surfaces*; the **chrome**
+"Never decorative colour" is scoped to *content surfaces*; the **chrome**
 (window background, glass, glow) carries brand colour deliberately.
 
 ### Agent avatars
@@ -153,7 +201,7 @@ System font stack. No webfonts.
 
 | Element | Size | Weight | Tailwind |
 |---------|------|--------|----------|
-| h1 | 28px | 400 | `text-[28px]` |
+| h1 / page title | 28px | 400 | `text-[28px] font-normal` |
 | model selector | 18px | 400 | `text-lg` |
 | body/input | 16px | 400 | `text-base` |
 | buttons | 14px | 500 | `text-sm font-medium` |
@@ -163,16 +211,19 @@ System font stack. No webfonts.
 Section headers: sentence case, never uppercase/tracking-wider. `text-sm font-medium`.
 
 ## Buttons
-Pill shape (`rounded-full`) everywhere.
+Pill shape (`rounded-full`) everywhere. Use the `Button` primitive from
+`@houston-ai/core` and its variants — never hardcode a fill. Variants map to
+tokens:
 
-- **Primary:** `bg-gray-950 text-white rounded-full h-9 px-3 text-sm font-medium hover:bg-gray-800`
-- **Secondary:** `bg-white text-gray-950 rounded-full h-9 px-3 border border-black/15 hover:bg-gray-50`
-- **Ghost:** `bg-transparent rounded-lg w-9 h-9 hover:bg-[#f3f3f3]`
-- **Soft chip:** `bg-gray-100 rounded-full h-9 px-3 hover:bg-gray-200`
-- **Large:** `h-11 px-4`
+- **Primary:** filled `bg-action` / `text-action-text`, `h-9 px-3 text-sm font-medium` (flat and sober — not a glossy slab).
+- **Secondary:** `bg-input` + `border-line`, `text-ink`, hover `bg-hover`.
+- **Ghost:** transparent, `rounded-lg w-9 h-9`, hover `bg-hover`.
+- **Soft chip:** `bg-chip`, `rounded-full h-9 px-3`, hover `bg-chip-solid-hover`.
+- **Large:** `h-11 px-4`.
 
 ## Composer (signature)
-`max-w-3xl rounded-[28px] bg-white p-2.5` + multi-shadow:
+`max-w-3xl rounded-[28px] bg-input p-2.5` + the signature multi-shadow (the
+tokenized `composer` elevation):
 ```
 0 4px 4px rgba(0,0,0,0.04),
 0 4px 80px 8px rgba(0,0,0,0.04),
@@ -181,11 +232,14 @@ Pill shape (`rounded-full`) everywhere.
 Grid: leading (attach) | primary (text) | trailing (send).
 
 ## Messages
-- **User:** `ml-auto max-w-[70%] rounded-3xl bg-[#f4f4f4] px-5 py-2.5`
+- **User:** `ml-auto max-w-[70%] rounded-3xl bg-chip px-5 py-2.5`
 - **Assistant:** no bubble. Plain markdown, left-aligned, transparent.
 
 ## Cards
-White bg, `border-black/5`, `rounded-xl`, hover shadow. Running state = `card-running-glow` animation border.
+`bg-card` (or `bg-input` for a floating white card), `border-line` /
+`.ht-hairline`, `rounded-xl`, hover lift. Running state = `card-running-glow`
+animation border. Kanban resting cards use one token, `--ht-card-solid`
+(`#2c2c2b` dark / white light), unified across resting + running + needs-you.
 
 ### RowCard (inline notice + integration cards)
 One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-chip`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the inline Composio `#houston_toolkit` link card. **Not** the interaction-card stepper's connect/signin STEPS — those compose the shared `InteractionModal` shell (`ui/chat`, reference "Coworker card" look, inventory v19): the `(icon) name` identity lockup (brand logo `sm` beside the integration NAME at REGULAR weight, via `InteractionModalTitle`) is the modal HEADER title, on the same row as the pager + dismiss X; the body is TWO fields (the agent's reason in foreground tone, then the app description / sign-in explainer muted); the FOOTER is the unified "Not now" + Esc hint beside a filled CTA with a return-key glyph. Weight is restrained: color tone carries the hierarchy, so the title and labels are regular — `font-medium` survives only on the Recommended chip, the number badge, and the CTA label; no competing bolds. "Not now" travels WITH the CTA (present wherever the CTA is, including a reconsidered skip). The signin/connect body renders its OWN `InteractionModal` wired with the stepper's `StepChrome` (pager + dismiss), so ui/chat stays auth/Composio-unaware. See `chat-connect-interaction-card.tsx` / `chat-signin-interaction-card.tsx`.
@@ -208,7 +262,10 @@ One shared component (`app/src/components/cards/row-card.tsx`) for the compact h
 +----------+---------------+-------------+
 ```
 
-Sidebar 200px `#f5f5f5`. Right panel 45% width, 380px min. Split view resizable, default 55/45. Chat max-width 768px (`max-w-3xl`). Header 52px.
+Sidebar 200px, **transparent** — its token is transparent, so it melts into the
+window gutter (`bg-gutter`, the Arc/Zen canvas layout). Right panel 45% width,
+380px min. Split view resizable, default 55/45. Chat max-width 768px
+(`max-w-3xl`). Header 52px.
 
 ### Radii
 `rounded` (0.25rem chips) · `rounded-md` (inputs) · `rounded-lg` (sidebar items, icon btns) · `rounded-xl` (cards) · `rounded-2xl` (large cards, dialogs) · `rounded-[28px]` (composer) · `rounded-full` (pills, avatars)
@@ -217,7 +274,9 @@ Sidebar 200px `#f5f5f5`. Right panel 45% width, 380px min. Split view resizable,
 `h-9` standard · `h-11` large · `w-9 h-9` icon
 
 ## Shadows
-Composer shadow = main depth cue. Else flat or 1px edge: `0 1px 0 rgba(0,0,0,0.05)`.
+The composer shadow is the signature depth cue. Otherwise flat or a 1px edge
+(`edge` = `0 1px 0 rgba(0,0,0,0.05)`). **In dark mode use NO drop shadows** —
+depth comes from the surface ladder + `.ht-hairline` inset ring + glass sheen.
 
 ## Animation
 - **card-running-glow** — rotating conic-gradient border. blue→indigo→orange→yellow. 2.5s infinite. Comet tail.
@@ -228,7 +287,7 @@ Composer shadow = main depth cue. Else flat or 1px edge: `0 1px 0 rgba(0,0,0,0.0
 
 Duration: fast 0.2s / common 0.667s / bounce 0.833s / elegant 0.582s. Under 0.3s for interactions.
 
-Rules: `layout` prop on reordering items. `AnimatePresence mode="popLayout"` for lists. Spring > CSS easing.
+Rules: `layout` prop on reordering items. `AnimatePresence mode="popLayout"` for lists. Spring > CSS easing. (Full craft rules — exits faster than entrances, animate only transform+opacity, never `scale(0)`, no animation on high-frequency menus — in `/DESIGN.md` §5.)
 
 ### First-run flow (flat light, `FirstRunScreen`)
 The language + disclaimer gates, **sign-in**, **onboarding**, and the
@@ -262,14 +321,14 @@ the space/galaxy look is OUT for first-run.
   light tokens. The progress `OrbitLoader` is remapped to ink (`ORBIT_INK_VARS`,
   see `--ht-space-*` above). The done congrats keeps the one colour accent, the
   `SuccessCheck`.
-- **Gotcha RESOLVED (2026-07): `text-base` is a plain font-size utility
-  again.** The gutter token's Tailwind alias was renamed `--color-base` →
-  `--color-gutter` (`ui/core/src/globals.css`) precisely because a colour
-  named `base` made Tailwind also emit `text-base` as a COLOUR utility —
+- **`base` colour naming gotcha (RESOLVED, 2026-07): `text-base` is a plain
+  font-size utility again.** The gutter token's Tailwind alias was renamed
+  `--color-base` → `--color-gutter` (`ui/core/src/globals.css`) precisely because
+  a colour named `base` made Tailwind also emit `text-base` as a COLOUR utility —
   any `text-base` heading without its own colour class rendered
   background-coloured (invisible on a matching surface, both themes; the
   forced-update dialog title was the casualty that exposed it). Never
-  reintroduce a colour token named `base`.
+  reintroduce a colour token named `base` — the gutter utility is `bg-gutter`.
 
 ### Space screen backdrop (boot gate states)
 `SpaceScreen` (`app/src/components/space/space-screen.tsx`) is the **shared
@@ -345,9 +404,8 @@ Lucide React only. 20px standard (`h-5 w-5`), 16px small, 24px large. Stroke 2px
 7. Brand via tokens only — never hardcode hex
 
 ## Design skill workflow
-1. `/critique` — before building
-2. `/polish` — final alignment/spacing/consistency pass
-Use when relevant: `/clarify` (UX copy), `/distill` (overloaded screen), `/animate` (micro-interactions), `/audit` (a11y, perf).
+1. `/frontend-design` — before building a new surface (3–5 genuinely distinct variants, two-pass discipline)
+2. `/design-review` — the screenshot self-critique loop, mandatory before calling any UI done
 
 ## Futuristic theme
 
@@ -358,41 +416,26 @@ tokens, re-exported to Tailwind as `--color-*`, so the theme is mostly token
 overrides — not a 20-component rewrite.
 
 **Arc / Zen "canvas" layout.** The main content floats as a rounded "screen"
-card (the `background` token; the `.canvas-screen` CSS class) on a recessed **window gutter** (`base`); the sidebar is
-transparent and melts into the gutter. Tokens: `--ht-layer-0` (window bg)
-and `--ht-layer-1` (the floating screen). The mission panel opens as a
-second rounded card with a gutter gap.
+card (`bg-background`; the `.canvas-screen` CSS class) on a recessed **window
+gutter** (`bg-gutter`, `--ht-base`); the sidebar is transparent and melts into
+the gutter. The mission panel opens as a second rounded card with a gutter gap.
+There is **no `--ht-layer-*` token** — the window bg is `--ht-base` (`bg-gutter`)
+and the floating screen is `--ht-background` (`bg-background`).
 
 **The canvas is the standard main surface — a light gray, not white (light
-mode).** `--ht-layer-1` is the tone every content pane (board, chat,
-routines, integrations, files, settings, AI hub, agent settings…) sits on. In
-**light** it is `#fbfbfb` — the flattened equivalent of the chat panel's former
-`bg-chip-subtle/50` over white, promoted to the ONE standard so white cards, the
-composer, inputs, and popovers **float** on a calm gray rather than vanishing
-into white-on-white. In **dark** it is unchanged (`{color.glass.screen-55}`
-frosted glass); the light change never moves dark. It is exposed to Tailwind as
-**`bg-layer-1`** (`--color-layer-1 → --ht-layer-1`, `ui/core/src/globals.css`
-`@theme`) so any surface that lives ON the canvas can reference the SAME tone as
-one source of truth — e.g. the chat panel (`ui/chat/chat-panel.tsx`) is
-`bg-layer-1 dark:bg-transparent` (transparent in dark to let the pane's glass
-through). The two shell panes (`shell/workspace-shell.tsx`) get it via the
-`.canvas-screen` class, which ALSO carries the dark frosted-glass blur — so they
-keep the class (never swap it for a bare `bg-layer-1`, which would drop the dark
-glass); the light-gray flip is purely the token value change.
-
-**the surface ladder (light mode):**
-- **`bg-layer-1`** (`#fbfbfb`) — the main pane / standard surface things float
-  ON. Use for a content-area background that should read as the calm base.
-- **`bg-card`** (`white-68` glass ≈ near-white over canvas) — a card/panel that
-  should **float above** the canvas (mission cards, settings group cards). White
-  + border + sheen is what makes it lift off the gray.
-- **`bg-layer-2`** (`#fff`) — the opaque-white fallback / floating inputs &
-  the composer (white pills that float on the canvas). NOT for pane backgrounds
-  in the futuristic layout (a pane painted `bg-layer-2` becomes a white slab
-  on the gray canvas — the `.canvas-screen` panes keep `bg-background` only as
-  the theme-off fallback, overridden by the class).
-- **`bg-chip` / `bg-chip-subtle`** (`ink-a035`, subtle darker-than-canvas) —
-  recessed panels that sit BELOW the card tier (board columns, provider rows).
+mode).** `bg-background` (`--ht-background`) is the tone every content pane
+(board, chat, routines, integrations, files, settings, AI hub, agent settings…)
+sits on. In **light** it is `#fcfcfc` (`neutral.50`) — a calm gray promoted to
+the ONE standard so white cards, the composer, inputs, and popovers **float** on
+it rather than vanishing white-on-white. In **dark** it is frosted glass
+(`glass.screen-55` = `rgba(38,38,40,.55)`); the light change never moves dark.
+Consumers reference the SAME tone as one source of truth: the chat panel
+(`ui/chat/chat-panel.tsx`) is `bg-background dark:bg-transparent` (transparent in
+dark to let the pane's glass through). The two shell panes
+(`shell/workspace-shell.tsx`) get it via `rounded-2xl bg-background
+canvas-screen` — the `.canvas-screen` class carries the dark frosted-glass blur,
+so keep the class (never drop it for a bare `bg-background`, which would lose the
+dark glass); the light-gray value is purely the token.
 
 **Dark mode** — the signature look: a multi-radial **aurora glow** on
 `body::before` (blue/indigo/orange, slow 32s drift, disabled under
@@ -401,10 +444,10 @@ sidebar) with `backdrop-filter` blur. FLOATING surfaces (`popover`, `dialog`)
 are NOT glass — they are solid in both themes (see "Modals" below).
 
 **Light mode** — the cool, solid **"Aurora" palette** (no glow mesh — it read as
-"glitter" over solid surfaces): gutter `#eef1f7`, screen `#fbfbfb` (the standard
-light-gray canvas — see "The canvas is the standard main surface" above), cards
-`#f4f6fc`, cool blue/indigo border. Clean and futuristic by restraint, not
-decoration.
+"glitter" over solid surfaces): gutter `#eef1f7` (`cool.gutter`), screen
+`#fcfcfc` (the standard light-gray canvas — see above), near-white glass cards
+(`bg-card` = `glass.white-68`), cool blue/indigo border. Clean and futuristic by
+restraint, not decoration.
 
 **Modals and popovers: SOLID in both themes.** All modal primitives —
 `DialogContent` (`ui/core/components/dialog.tsx`), `AlertDialogContent`,
@@ -523,3 +566,11 @@ editors render full-width, the rest in a centered `max-w-xl` column, all under a
 appear only when `accountAvailable` / `showMembers`. Version string = overview
 footer. Nav-row copy + group titles + `Set`/count values live under
 `settings.index.*` / `settings.nav.*` in the three locale files.
+
+---
+
+**History:** the pre-futuristic monochrome ("ChatGPT-like") doctrine — the old
+gray ladder, `light mode only`, hardcoded `gray-*` / `rgba(13,13,13,X)` recipes,
+and the transition banner that once topped this doc — is archived in
+[`design-system-history.md`](design-system-history.md). It is superseded; read
+it only for archaeology, never copy from it.

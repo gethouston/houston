@@ -35,3 +35,6 @@ playwright-report/
 blob-report/
 playwright/.cache/
 .last-run.json
+
+# pnpm content-addressable store (created when a worktree sits on a different FS than the global store)
+.pnpm-store/

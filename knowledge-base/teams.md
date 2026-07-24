@@ -121,9 +121,22 @@ Top-level view labelled **"Admin"** in the UI (`teams:org.nav`/`org.title`;
 "Admin" / "Administración" / "Administração"). The internal id, dir, and gate are
 UNCHANGED: `ORGANIZATION_VIEW_ID = "organization"`
 (`app/src/components/organization/`), rendered only when
-`canSeeOrganization(caps)` (multiplayer owner/admin). The sidebar nav entry and
-the `workspace-shell` render branch both guard on it, so it never mounts for a
-plain member or single-player.
+`canSeeOrganization(caps, activeSpaceIsTeam)` (multiplayer owner/admin, AND — on
+a Spaces host — a TEAM active space). The sidebar nav entry and the
+`workspace-shell` render branch both guard on it, so it never mounts for a plain
+member, single-player, or in the personal space of a Spaces host.
+
+**Personal space hides Admin + Permissions (HOU-824).** On a C8 Spaces host the
+personal space is single-player semantics: non-invitable (the gateway 403s a
+member-add with `personal_space`), no roster, no policy. So Admin and Permissions
+are TEAM-space surfaces there — `canSeeOrganization` returns false whenever the
+active space is personal (`!isTeamWorkspace(current.id)`), whatever the role. The
+two call sites (`workspace-shell.tsx`, `sidebar.tsx`) derive `activeSpaceIsTeam`
+from the active workspace id and thread the resulting `showOrganization` boolean
+everywhere it gates (the render branches, the `blockedTopLevelView` fallback that
+resets a stale personal-space `viewMode` to the dashboard, and the org/permissions
+UI tour steps). On a non-spaces multiplayer host (legacy Teams v2, exactly one
+org) `activeSpaceIsTeam` is irrelevant and behavior is unchanged.
 
 **Now membership + insights + billing ONLY.** All policy (per-agent access and
 per-agent ceilings) moved OUT to the new top-level **Permissions** view (next
@@ -194,8 +207,10 @@ pick an agent, then manage who can use it and what it can use.
 `PERMISSIONS_VIEW_ID = "permissions"`
 (`app/src/components/permissions/id.ts`), registered in
 `app/src/lib/top-level-views.ts` (`TOP_LEVEL_VIEWS` + `blockedTopLevelView`, which
-shares the Organization gate exactly). Gated by `canSeeOrganization(caps)`
-(multiplayer owner/admin) — the IDENTICAL gate to the Organization view. The sidebar
+shares the Organization gate exactly). Gated by `canSeeOrganization(caps,
+activeSpaceIsTeam)` (multiplayer owner/admin, and a TEAM active space on a Spaces
+host) — the IDENTICAL gate to the Organization view, threaded through the same
+`showOrganization` boolean. The sidebar
 nav item (`app/src/components/shell/sidebar-chrome.tsx`, `buildSidebarNavItems`) is a
 `ShieldCheck` lucide icon, label `shell:sidebar.permissions`, placed right BEFORE the
 Organization item (both inside the `showOrganization` block). Render branch + tour
@@ -336,6 +351,18 @@ C8 rides the EXISTING workspace switcher rather than a new selector.
 (opaque id, never `org:`-prefixed, `kind: "personal"`, `isDefault`) plus one row
 per team, each `{ id: "org:" + slug, kind: "org" }` where `slug` is `[a-f0-9]{16}`.
 
+> **The adapter merges, not passes through (HOU-881).** The engine-adapter's
+> `listWorkspaces` (`packages/web/src/engine-adapter/client/workspaces-mixin.ts`)
+> fetches the bridge via `prefConfig()` (gateway in cloud mode, local host
+> otherwise) and keeps ONLY the `org:*` team rows, appended after the SYNTHETIC
+> personal row — the synthetic `"default"` id is load-bearing for prefs/caches,
+> and a local/self-host list (never `org:`-prefixed) stays byte-identical. A
+> failed/absent bridge read degrades to personal-only. Until this fix the mixin
+> never fetched the bridge at all, so teams never reached the switcher and the
+> create-team auto-switch silently no-oped (the C8 flow was unreachable in prod).
+> E2E: `packages/web/e2e/spaces-gating.spec.ts` (fake host arms team rows via
+> `/__test__/workspaces`).
+
 - **Id grammar** (`app/src/lib/space-id.ts`, pure + unit-tested):
   `orgSlugFromWorkspaceId(id)` returns the 16-hex slug for an `org:*` id, else
   `null` (personal); `isTeamWorkspace(id)` is the boolean. This id alone drives
@@ -433,6 +460,15 @@ team-space-only:
   into an expired team) is an EXPECTED business state, not a bug.
   `isNeedsUpgradeError` (`team-status-model.ts`) routes it to a plain
   informational toast instead of the red "report a bug" toast.
+- **`personal_space` invite failures**: a `403 personal_space` (a member-add on
+  the caller's personal space, which is non-invitable by design — share via
+  creating a team) is likewise EXPECTED, not a bug. `isPersonalSpaceError`
+  (`team-status-model.ts`) is routed in `tauri.ts` `surfaceError` exactly like
+  `needs_upgrade` to an informational toast (`teams:personalSpace.inviteBlocked*`:
+  "This is your personal space" / "Your personal space is just for you. Create a
+  team to invite people."). Defense in depth: the org-surface gate (HOU-824) now
+  hides the invite box in the personal space, so this toast is the fallback for
+  any invite that still reaches the gateway.
 
 **No push on expiry.** The effective status is a DERIVED gateway read, so the
 client re-reads on entering a team space (the switch cache-drop refetches
@@ -565,8 +601,10 @@ hides the "Add models" list, all copy passed in.
 
 ## Invites, members, audit, usage
 
-- **Invites**: `addOrgMember(email, role)` → `POST /org/members` (targets the
-  ACTIVE space; `403 personal_space` on a personal one). A known user is added
+- **Invites**: `addOrgMember(email, role)` → `POST /v1/org/members` (the shipped
+  adapter path, `packages/web/src/engine-adapter/cp/orgs.ts`; targets the ACTIVE
+  space; `403 personal_space` on a personal one — surfaced as the friendly
+  `personalSpace` toast, and the invite box is hidden there per HOU-824). A known user is added
   directly (`AddOrgMemberResult.userId`); an unknown email creates a pending
   invite and the host answers **202 `{invited:true}`**. `OrgInvite` rows surface
   on `GET /org` for owner/admin; `deleteOrgInvite` revokes (owner only).
@@ -681,25 +719,50 @@ i18n-agnostic (label passed in). Alongside the agent filter, the app adds
 on the board** (roster from `distinctBoardPeople`), itself gated on
 `isMultiplayer` and a signed-in user.
 
-**Teammate names + photos.** The Supabase `public.profiles` table + avatar storage
-that used to back these were **retired with Supabase auth** — RLS `auth.uid()` can't
-match Firebase (GCIP) uids, so the profiles source no longer resolves (see
-`knowledge-base/auth-migration.md`). `useUserProfiles`
-(`app/src/hooks/queries/use-user-profiles.ts`) is therefore **stubbed**: teammate
-names fall back to **initials** (from the stored `name` or the id slice) until a
-gateway-backed profile source lands, and avatars are absent. i18n:
+**Teammate names + photos — gateway-backed (HOU-876).** The Supabase `public.profiles`
+table + avatar storage were retired with Supabase auth (RLS `auth.uid()` can't match a
+GCIP uid; see `knowledge-base/auth-migration.md`). The source is now the **gateway**,
+which stores each user's GCIP `name`/`picture` and serves them two ways:
+
+- **Inline on the roster.** `GET /v1/org` members each carry optional
+  `displayName?`/`photoUrl?` (`OrgMember`). The **People roster**
+  (`people-roster.tsx`) reads these directly — display name is the primary label,
+  the email drops to a muted secondary line, and `photoUrl` is the avatar (initials
+  fallback via the design system's `Avatar`/`AvatarFallback`). No profiles fetch there.
+- **By id for face stacks.** `GET /v1/org/profiles?ids=<csv>` (`getOrgProfiles`,
+  `cp/orgs.ts` + `orgs-mixin.ts`, `tauriOrg.profiles`) resolves display profiles for any
+  contributor id, `200 {"profiles":{"<id>":{displayName?,photoUrl?}}}`. `useUserProfiles`
+  (`app/src/hooks/queries/use-user-profiles.ts`) is a real TanStack Query over it —
+  multiplayer-gated (`alwaysEnabled` for the caller's own id in `useMyProfile`), ids
+  deduped+sorted into a stable key `[USER_PROFILES_KEY, ...ids]`, `staleTime` 5 min. It
+  backs the mission face stacks (`mission-people.ts`, `KanbanPeople`), the person filter,
+  the Share dialogs, and the agent People tab (avatars). Wire→app mapping
+  (`displayName`/`photoUrl` → `name`/`avatarUrl`, absent → `null`) is the pure
+  `mapProfilesResult` (`user-profiles-map.ts`).
+
+**Privacy boundary.** The gateway is the sole enforcer: `/v1/org/profiles` returns a
+profile ONLY for a **co-member of the caller's active space** (≤100 ids/request);
+non-co-members are omitted, and a **personal space resolves only the caller**. Off-gateway
+(desktop/self-host) and on a pre-feature gateway (404) both reads degrade to an empty map —
+faces fall back to initials, `useMyProfile` collapses to the session's displayName/photoUrl
+— so a single-player `activity.json`/roster stays byte-identical. It is a cosmetic,
+non-user-initiated read: `tauriOrg.profiles` runs with `{toast:false,capture:false}`, so a
+rare hard failure stays silent and consumers fall back via React Query's `isError`. i18n:
 `dashboard:peopleFilter.*`, `board:people.label` (en/es/pt).
 
 ## engine-client types + methods
 
-Wire types in `ui/engine-client/src/types.ts`: `OrgRole`, `OrgMember`,
-`OrgInfo`, `OrgInvite`, `AddOrgMemberResult`, `AgentAccess`, `AgentAssignment`,
+Wire types in `ui/engine-client/src/types.ts`: `OrgRole`, `OrgMember`
+(+ optional `displayName`/`photoUrl`), `UserProfile`/`UserProfilesResult` (the
+`GET /v1/org/profiles` shape), `OrgInfo`, `OrgInvite`, `AddOrgMemberResult`,
+`AgentAccess`, `AgentAssignment`,
 `AgentSettings` (`allowedToolkits` + `allowedModels` — the agent's whole ceilings;
 policy is per agent only, there is no `OrgSettings` type), `AuditEntry`, `UsageRow`,
 `AgentModelChoice` / `AgentModelChoiceInfo`. `Agent` gains multiplayer-only
 `assigned` / `assignedUserIds` / `access` / `assignments`. All hand-maintained
 against the gateway (the server is source of truth). Methods in `client.ts`:
-`getOrg`, `addOrgMember`, `deleteOrgInvite`, `removeOrgMember`, `setOrgMemberRole`,
+`getOrg`, `getOrgProfiles` (404-degrades to `{}`), `addOrgMember`, `deleteOrgInvite`,
+`removeOrgMember`, `setOrgMemberRole`,
 `setAgentAssignments` (v2 `{assignments}` or legacy `{userIds}`), `getAgentSettings`
 / `setAgentSettings`, `getAgentModelChoice` /
 `setAgentModelChoice`, `orgAudit`, `orgUsage`, and

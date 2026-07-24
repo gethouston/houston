@@ -95,6 +95,8 @@
     "handleChecking": "Checking...",
     "handleChangeTooSoon": "You changed your handle recently. Try again later.",
     "displayNameLabel": "Display name",
+    "optional": "(optional)",
+    "displayNameHint": "Leave it empty to use your @handle.",
     "bioLabel": "Bio",
     "bioPlaceholder": "Tell people what you build.",
     "avatarLabel": "Profile photo",
@@ -104,6 +106,7 @@
     "avatarTooLarge": "That image is too large. Pick one under 2 MB.",
     "avatarBadType": "Use a PNG, JPEG or WebP image.",
     "avatarClaimHint": "Save your profile first to add a photo.",
+    "avatarFailed": "Your photo could not be uploaded. Please try again.",
     "socials": {
       "x": "X",
       "youtube": "YouTube",
@@ -118,6 +121,10 @@
     "saving": "Saving...",
     "saved": "Profile saved",
     "saveFailed": "Your profile could not be saved. Please try again.",
+    "saveFailedAccount": "We could not find your account. Sign out, sign back in, and try again.",
+    "bioTooLong": "Your bio is too long. Make it shorter and try again.",
+    "invalidLink": "One of your links is not a valid web address. Check them and try again.",
+    "displayNameRequired": "Add a display name to save your profile.",
     "cancel": "Cancel",
     "claimCta": "Claim your handle",
     "claimBody": "Pick a public @handle so people can find every agent you publish in one place."

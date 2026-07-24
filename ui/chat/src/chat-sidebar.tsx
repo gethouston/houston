@@ -105,8 +105,8 @@ function StepRow({ step }: { step: SidebarStep }) {
     <div className="flex items-start gap-2.5 py-1.5">
       <div className="mt-0.5 shrink-0">
         {step.status === "done" && (
-          <div className="size-4 rounded-full bg-[#00a240] flex items-center justify-center">
-            <Check className="size-2.5 text-white" strokeWidth={3} />
+          <div className="size-4 rounded-full bg-success flex items-center justify-center">
+            <Check className="size-2.5 text-success-text" strokeWidth={3} />
           </div>
         )}
         {step.status === "active" && (

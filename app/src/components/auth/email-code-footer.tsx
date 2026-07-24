@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 /**
  * Helper copy + secondary actions under the 6-digit code entry: where the code
  * went, resend, and switch-address. `pr-12` mirrors the send button + gap on
@@ -17,10 +19,11 @@ export function EmailCodeFooter({
   onResend: () => void;
   onChangeEmail: () => void;
 }) {
+  const { t } = useTranslation("auth");
   return (
     <>
       <p className="pr-12 text-center text-xs text-ink-muted">
-        We sent a 6-digit code to {email}.
+        {t("email.codeSentTo", { email })}
       </p>
       <div className="flex items-center justify-center gap-4 pr-12">
         <button
@@ -29,14 +32,14 @@ export function EmailCodeFooter({
           onClick={onResend}
           className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-50"
         >
-          Resend code
+          {t("email.resendCode")}
         </button>
         <button
           type="button"
           onClick={onChangeEmail}
           className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline"
         >
-          Use a different email
+          {t("email.useDifferentEmail")}
         </button>
       </div>
       {error && (

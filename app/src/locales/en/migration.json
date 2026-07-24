@@ -24,6 +24,7 @@
     "phaseCloud": "Setting up your cloud",
     "keepOpen": "Keep Houston open until it finishes.",
     "playCaption": "While you wait, defend the galaxy.",
+    "playHint": "Move with the arrow keys and shoot with the space bar, or drag and tap.",
     "backingUp": "Backing up your data on this computer.",
     "preparing": "Getting your data ready. This can take a few minutes.",
     "startFailed": "We couldn't start the move, so nothing was changed. You can try again.",
@@ -40,6 +41,10 @@
       "error": "Something went wrong"
     },
     "migrateLater": "Migrate later"
+  },
+  "game": {
+    "over": "Game over. You scored {{score}}.",
+    "playAgain": "Tap or press space to play again"
   },
   "done": {
     "stepAi": "Step 1 of 2",

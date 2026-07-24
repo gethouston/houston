@@ -1,31 +1,27 @@
 import { useReducedMotion } from "framer-motion";
 import { useEffect, useRef } from "react";
-import {
-  createState,
-  H,
-  INV_H,
-  INV_W,
-  reset,
-  SHIP_H,
-  SHIP_W,
-  SHIP_Y,
-  shoot,
-  steer,
-  step,
-  W,
-} from "./space-invaders-model";
+import { useTranslation } from "react-i18next";
+import { H, W } from "./space-invaders-defs";
+import { drawGame } from "./space-invaders-draw";
+import { createState, reset, shoot, steer, step } from "./space-invaders-model";
+
+const BEST_KEY = "houston.migration.invaders.best";
 
 /**
- * A tiny, tasteful Space Invaders on a <canvas> — a quiet easter egg to pass
- * the time during a long cloud migration. Monochrome (it inherits the
- * surrounding text colour), one life, no audio, no levels: the swarm just
- * speeds up as it thins. All game rules live in `space-invaders-model.ts`; this
- * shell only renders state and wires input. Keyboard input is window-scoped but
- * yields to any focused field, so it never steals typing. Reduced motion → null.
+ * A tiny Space Invaders on a <canvas> — a quiet easter egg to pass the time
+ * during a long cloud migration. Emoji sprites (👾🛸👽🤖 vs 🚀, 💥 on kills)
+ * over ink-colored HUD/shots that inherit the surrounding text colour; one
+ * life, no audio, no levels: the swarm just speeds up as it thins. Game rules
+ * live in `space-invaders-model.ts`, frame rendering in `space-invaders-draw.ts`;
+ * this shell wires input, the rAF loop, and the persisted best score. Keyboard
+ * input is window-scoped but yields to any focused field, so it never steals
+ * typing. Reduced motion → null.
  */
 export function SpaceInvaders({ className }: { className?: string }) {
   const reduce = useReducedMotion() ?? false;
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const bestRef = useRef<number | null>(null);
+  const { t } = useTranslation("migration");
 
   useEffect(() => {
     if (reduce) return;
@@ -39,9 +35,20 @@ export function SpaceInvaders({ className }: { className?: string }) {
 
     const state = createState();
     const held = { left: false, right: false };
+    let best = bestRef.current ?? 0;
+    let recordedOver = false;
+    let elapsed = 0;
     // Filled from the canvas's resolved `color` (text-ink) on resize, before the
     // first draw; the literal is only a pre-resize fallback (dark ink on light).
     let color = "#0d0d0d";
+    if (bestRef.current === null) {
+      try {
+        best = Number(localStorage.getItem(BEST_KEY)) || 0;
+      } catch {
+        /* storage disabled — best just starts at 0 */
+      }
+      bestRef.current = best;
+    }
 
     // Backing store follows the CSS size and devicePixelRatio.
     function resize() {
@@ -55,31 +62,11 @@ export function SpaceInvaders({ className }: { className?: string }) {
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    function draw() {
-      ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = color;
-      for (const inv of state.invaders)
-        if (inv.alive) ctx.fillRect(inv.x, inv.y, INV_W, INV_H);
-      for (const b of state.bullets) ctx.fillRect(b.x - 1, b.y - 5, 2, 5);
-      for (const b of state.bombs) ctx.fillRect(b.x - 1, b.y, 2, 5);
-      // Player ship: a small triangle atop a base.
-      ctx.beginPath();
-      ctx.moveTo(state.shipX, SHIP_Y);
-      ctx.lineTo(state.shipX - SHIP_W / 2, SHIP_Y + SHIP_H);
-      ctx.lineTo(state.shipX + SHIP_W / 2, SHIP_Y + SHIP_H);
-      ctx.closePath();
-      ctx.fill();
-      if (state.over) {
-        ctx.textAlign = "center";
-        ctx.font = "10px system-ui, sans-serif";
-        ctx.fillText(`score ${state.score} · press space`, W / 2, H / 2);
-      }
-    }
-
     function fire() {
-      if (state.over) reset(state);
-      else shoot(state);
+      if (state.over) {
+        reset(state);
+        recordedOver = false;
+      } else shoot(state);
     }
 
     // ── Input: window-scoped, but never steals typing from a focused field ──
@@ -125,8 +112,27 @@ export function SpaceInvaders({ className }: { className?: string }) {
     function frame(now: number) {
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
+      elapsed += dt;
       step(state, { left: held.left, right: held.right, dt });
-      draw();
+      if (state.over && !recordedOver) {
+        recordedOver = true;
+        if (state.score > best) {
+          best = state.score;
+          bestRef.current = best;
+          try {
+            localStorage.setItem(BEST_KEY, String(best));
+          } catch {
+            /* storage disabled — the run's best just isn't remembered */
+          }
+        }
+      }
+      drawGame(ctx, canvas, state, {
+        color,
+        best,
+        elapsed,
+        overLine: t("game.over", { score: state.score }),
+        playAgainLine: t("game.playAgain"),
+      });
       raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
@@ -139,7 +145,7 @@ export function SpaceInvaders({ className }: { className?: string }) {
       canvas.removeEventListener("pointermove", onSteer);
       canvas.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [reduce]);
+  }, [reduce, t]);
 
   if (reduce) return null;
   return (

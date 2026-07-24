@@ -14,8 +14,6 @@ import type { OrgMember, OrgRole } from "@houston-ai/engine-client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRemoveMember, useSetMemberRole } from "../../hooks/queries";
-import { useUserProfiles } from "../../hooks/queries/use-user-profiles";
-import { avatarUrlFromProfiles } from "../../hooks/queries/user-profiles-map";
 import { GRANTABLE_ROLES } from "../../lib/org-roles";
 import { canEditMember, initialsFor, memberLabel } from "./people-tab-model";
 
@@ -40,7 +38,6 @@ export function PeopleRoster({
   const { t } = useTranslation("teams");
   const setRole = useSetMemberRole();
   const removeMember = useRemoveMember();
-  const { profiles } = useUserProfiles(members.map((m) => m.userId));
   const [pendingRemove, setPendingRemove] = useState<OrgMember | null>(null);
 
   const roleLabel = (role: OrgRole) => t(`people.roles.${role}`);
@@ -58,7 +55,12 @@ export function PeopleRoster({
             isSelf,
             role: member.role,
           });
-          const avatarUrl = avatarUrlFromProfiles(profiles, member.userId);
+          // Display name is primary when the gateway resolved one; the email
+          // then drops to a muted secondary line. Falls back to email/id.
+          const name = member.displayName ?? memberLabel(member);
+          const secondaryEmail =
+            member.displayName && member.email ? member.email : null;
+          const avatarUrl = member.photoUrl ?? null;
           return (
             <li
               key={member.userId}
@@ -74,18 +76,23 @@ export function PeopleRoster({
                     />
                   )}
                   <AvatarFallback className="text-xs">
-                    {initialsFor(memberLabel(member))}
+                    {initialsFor(name)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium text-ink">
-                    {memberLabel(member)}
+                    {name}
                     {isSelf && (
                       <span className="ml-2 text-xs text-ink-muted">
                         {t("people.roster.you")}
                       </span>
                     )}
                   </div>
+                  {secondaryEmail && (
+                    <div className="truncate text-xs text-ink-muted">
+                      {secondaryEmail}
+                    </div>
+                  )}
                 </div>
               </div>
               {editable ? (

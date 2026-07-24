@@ -1,6 +1,7 @@
 import { Button } from "@houston-ai/core";
 import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { AppleIcon, GoogleIcon, MicrosoftIcon } from "./provider-brand-icons";
 
 export type Provider = "google" | "apple" | "azure";
@@ -22,10 +23,11 @@ export function ProviderButtonRow({
   pending: Provider | null;
   onSignIn: (provider: Provider) => () => void;
 }) {
+  const { t } = useTranslation("auth");
   return (
     <div className="flex items-center gap-2.5">
       <ProviderIconButton
-        label="Continue with Google"
+        label={t("continueWith", { provider: "Google" })}
         pending={pending === "google"}
         disabled={pending !== null}
         onClick={onSignIn("google")}
@@ -33,7 +35,7 @@ export function ProviderButtonRow({
         <GoogleIcon />
       </ProviderIconButton>
       <ProviderIconButton
-        label="Continue with Apple"
+        label={t("continueWith", { provider: "Apple" })}
         pending={pending === "apple"}
         disabled={pending !== null}
         onClick={onSignIn("apple")}
@@ -41,7 +43,7 @@ export function ProviderButtonRow({
         <AppleIcon />
       </ProviderIconButton>
       <ProviderIconButton
-        label="Continue with Microsoft"
+        label={t("continueWith", { provider: "Microsoft" })}
         pending={pending === "azure"}
         disabled={pending !== null}
         onClick={onSignIn("azure")}

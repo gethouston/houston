@@ -60,6 +60,7 @@ They drive the failure/reactivity scenarios the specs assert against:
 | `/__test__/integrations-activate` | `{ connectionId }` | Flip a pending connection to `active` (models the OAuth completing). Returns `{ activated }`. |
 | `/__test__/capabilities` | `Partial<Capabilities>` | Merge a partial into the advertised `/v1/capabilities`. Arm the Teams-shaped state single-player can't reach — e.g. `{ integrations:["composio"], multiplayer:true, teams:true, role:"owner" }` to light up the agent Integrations tab's locked browse rows, or just `{ integrations:["composio"] }` for a single-player-with-apps run. Returns the merged capabilities. |
 | `/__test__/agent-settings` | `{ allowedToolkits?, orgAllowedToolkits?, allowedModels?, access? }` | Set the Teams v2 ceilings served at `/v1/agents/:slug/settings` + `/v1/org/settings` (`allowedToolkits`/`orgAllowedToolkits`: `null` = unrestricted, `[]` = none). The `effectiveAllowlist` = agent ∩ org drives the tab's connectable-vs-locked partition. Returns the merged settings. |
+| `/__test__/workspaces` | `{ teams: [{ slug, name }] }` | Arm the team-space rows the C8 Spaces workspaces bridge serves at `GET /v1/workspaces` (alongside the always-present personal seed row). Each `slug` (exactly `[a-f0-9]{16}`) becomes an `{ id:"org:<slug>", kind:"org" }` switcher row. Pair with `/__test__/capabilities` `{ spaces:true }`. `{ teams: [] }` (and reset) restores personal-only. Returns the armed `{ teams }`. |
 
 ## Modeled surface
 
@@ -71,8 +72,13 @@ They drive the failure/reactivity scenarios the specs assert against:
   boot gate is reachability-only, and onboarding's connect step shows a
   Connect pill per provider. Connect mutations flip the slot for both reads.
 - `/v1/capabilities` (single-player `local` profile by default; armable to a
-  Teams-shaped set), `/v1/workspaces`, `/v1/integrations`, `/v1/preferences`,
-  `/v1/events` (reactivity feed).
+  Teams-shaped set), `/v1/workspaces` (the personal seed row plus any team-space
+  rows armed by `/__test__/workspaces` — the C8 Spaces bridge), `/v1/integrations`,
+  `/v1/preferences`, `/v1/events` (reactivity feed).
+- `/v1/org` (Teams v2 identity + roster + pending `invites`) and
+  `POST /v1/org/members` (invite path: an unknown email mints a pending invite,
+  `202 { invited:true }`, then surfaced in `/v1/org`'s `invites`;
+  `DELETE /v1/org/invites/:id` revokes).
 - `/v1/agents/:slug/settings` + `/v1/org/settings` (Teams v2, the gateway-only
   allowlist/model ceilings `getAgentSettings` / `getOrgSettings` read; GET + the
   manager/owner PUT). Seeded unrestricted; armed by `/__test__/agent-settings`.

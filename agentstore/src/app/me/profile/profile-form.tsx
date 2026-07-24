@@ -66,7 +66,7 @@ export function ProfileForm({
         </h1>
         <p className="mt-2 text-muted-foreground">
           {claiming
-            ? "Pick a handle and a display name to create your public creator page."
+            ? "Pick a handle to create your public creator page."
             : "Update how you appear across the store."}
         </p>
       </header>
@@ -95,7 +95,7 @@ export function ProfileForm({
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="profile-name" className="text-sm font-medium">
-          Display name
+          Display name <span className="text-muted-foreground">(optional)</span>
         </label>
         <Input
           id="profile-name"
@@ -104,6 +104,9 @@ export function ProfileForm({
           maxLength={80}
           placeholder="Your name or brand"
         />
+        <p className="text-sm text-muted-foreground">
+          Leave it empty to use your @handle.
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">

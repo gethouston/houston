@@ -4,6 +4,7 @@ import type { BillingSummary, OrgRole } from "@houston-ai/engine-client";
 import {
   daysLeftUntil,
   isNeedsUpgradeError,
+  isPersonalSpaceError,
   type TeamStatusView,
   teamStatusView,
 } from "../src/lib/team-status-model.ts";
@@ -142,5 +143,22 @@ describe("isNeedsUpgradeError", () => {
     strictEqual(isNeedsUpgradeError({ code: "not_owner" }), false);
     strictEqual(isNeedsUpgradeError(new Error("boom")), false);
     strictEqual(isNeedsUpgradeError(null), false);
+  });
+});
+
+describe("isPersonalSpaceError", () => {
+  it("matches a gateway personal_space rejection", () => {
+    strictEqual(isPersonalSpaceError({ code: "personal_space" }), true);
+    strictEqual(
+      isPersonalSpaceError({ body: { error: "personal_space" } }),
+      true,
+    );
+  });
+
+  it("ignores other errors", () => {
+    strictEqual(isPersonalSpaceError({ code: "needs_upgrade" }), false);
+    strictEqual(isPersonalSpaceError({ code: "not_owner" }), false);
+    strictEqual(isPersonalSpaceError(new Error("boom")), false);
+    strictEqual(isPersonalSpaceError(null), false);
   });
 });

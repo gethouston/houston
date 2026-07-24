@@ -274,7 +274,9 @@
     "submit": "Criar equipe",
     "creating": "Criando…",
     "tooLong": "Use um nome com menos de {{max}} caracteres.",
-    "successTitle": "Equipe \"{{name}}\" criada"
+    "successTitle": "Equipe \"{{name}}\" criada",
+    "successBody": "Convide pessoas para trabalharem juntas.",
+    "successAction": "Convide sua equipe"
   },
   "shareViaTeam": {
     "sectionHelper": "Este agente está no seu espaço pessoal. Mova-o para uma equipe para compartilhá-lo com seus colegas.",
@@ -373,5 +375,9 @@
     "upgrade": "Fazer upgrade",
     "writeBlockedTitle": "Upgrade necessário",
     "writeBlockedBody": "O teste da sua equipe terminou. Peça ao proprietário para fazer o upgrade para fazer alterações."
+  },
+  "personalSpace": {
+    "inviteBlockedTitle": "Este é o seu espaço pessoal",
+    "inviteBlockedBody": "Seu espaço pessoal é só para você. Crie uma equipe para convidar pessoas."
   }
 }

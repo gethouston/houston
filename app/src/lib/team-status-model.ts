@@ -108,3 +108,15 @@ export function teamStatusView(input: TeamStatusInput): TeamStatusView {
 export function isNeedsUpgradeError(err: unknown): boolean {
   return shareErrorCode(err) === "needs_upgrade";
 }
+
+/**
+ * True for a gateway `personal_space` rejection (403) — an EXPECTED business
+ * state, NOT a Houston bug: the caller tried to add a member to their personal
+ * space, which is non-invitable by design (sharing goes through creating a
+ * team). Routed to a plain informational toast, exactly like
+ * {@link isNeedsUpgradeError}, so the user learns to create a team instead of
+ * seeing a red "report a bug" toast. Reuses the same kind/code/body extractor.
+ */
+export function isPersonalSpaceError(err: unknown): boolean {
+  return shareErrorCode(err) === "personal_space";
+}

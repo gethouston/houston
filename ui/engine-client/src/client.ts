@@ -119,6 +119,7 @@ import type {
   UpdateAgent,
   UpdateProvider,
   UsageRow,
+  UserProfilesResult,
   VersionResponse,
   WebhookKeyReveal,
   Workspace,
@@ -1378,6 +1379,27 @@ export class HoustonClient {
   /** The current user's org + role (and, for owner/admin, the member roster). */
   getOrg(): Promise<OrgInfo> {
     return this.request("GET", "/org");
+  }
+  /**
+   * Display profiles (name + photo) for the given member ids (any co-member of
+   * the active space; the personal space resolves only the caller). Non-co-member
+   * ids are omitted. Degrades to an empty map on a host without the route (404),
+   * mirroring `getAgentModelChoice`'s swallow; every other error throws.
+   */
+  async getOrgProfiles(ids: string[]): Promise<UserProfilesResult> {
+    if (ids.length === 0) return { profiles: {} };
+    const query = new URLSearchParams({ ids: ids.join(",") }).toString();
+    try {
+      return await this.request<UserProfilesResult>(
+        "GET",
+        `/org/profiles?${query}`,
+      );
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) {
+        return { profiles: {} };
+      }
+      throw err;
+    }
   }
   /**
    * Add a member by email at a role (owner only; enforced by the host). A known

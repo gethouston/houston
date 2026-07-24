@@ -290,6 +290,7 @@ Run what you touched; run `pnpm check` always.
 | Web unit | `pnpm --filter houston-web test` |
 | Web types (incl. Tauri shim-parity guard) | `pnpm --filter houston-web typecheck` |
 | Web e2e (Playwright vs fake-host = the wire contract) | `pnpm --filter houston-web test:e2e` |
+| Web visual regression (screenshot baselines for key screens) | `pnpm --filter houston-web test:visual` (re-record intentionally: `test:visual:update`) |
 | Tokens build + sync/zero-diff | `pnpm --filter @houston/design-tokens build` · `… test` |
 | Component parity | `pnpm check:parity` |
 | Open/closed boundaries | `pnpm check:boundaries` |

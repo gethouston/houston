@@ -138,6 +138,41 @@ jobs:
           path: packages/web/playwright-report/
           retention-days: 14
 
+  visual:
+    name: Visual regression (Playwright screenshots)
+    # Runs INSIDE the pinned Playwright image so the render matches the committed
+    # `-linux` baselines pixel-for-pixel (same browser build, same fonts). The
+    # image tag MUST track `@playwright/test` in packages/web/package.json — bump
+    # both together, then regenerate baselines in the same image (see
+    # packages/web/e2e/README.md → Visual regression → Platforms).
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Browsers ship in the image (PLAYWRIGHT_BROWSERS_PATH) — no install step.
+      - name: Visual tests (Playwright)
+        run: pnpm --filter houston-web test:visual
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-visual-report
+          path: packages/web/playwright-report/
+          retention-days: 14
+
   app:
     name: App (node:test unit tests)
     runs-on: ubuntu-latest

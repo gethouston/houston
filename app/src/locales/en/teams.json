@@ -274,7 +274,9 @@
     "submit": "Create team",
     "creating": "Creating…",
     "tooLong": "Keep the name under {{max}} characters.",
-    "successTitle": "Team \"{{name}}\" created"
+    "successTitle": "Team \"{{name}}\" created",
+    "successBody": "Invite people so you can work together.",
+    "successAction": "Invite your team"
   },
   "shareViaTeam": {
     "sectionHelper": "This agent lives in your personal space. Move it into a team to share it with teammates.",
@@ -373,5 +375,9 @@
     "upgrade": "Upgrade",
     "writeBlockedTitle": "Upgrade needed",
     "writeBlockedBody": "Your team's trial ended. Ask your team's owner to upgrade to make changes."
+  },
+  "personalSpace": {
+    "inviteBlockedTitle": "This is your personal space",
+    "inviteBlockedBody": "Your personal space is just for you. Create a team to invite people."
   }
 }

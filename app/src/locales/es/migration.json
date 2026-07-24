@@ -24,6 +24,7 @@
     "phaseCloud": "Preparando tu nube",
     "keepOpen": "Mantén Houston abierto hasta que termine.",
     "playCaption": "Mientras esperas, defiende la galaxia.",
+    "playHint": "Muévete con las flechas y dispara con la barra espaciadora, o arrastra y toca.",
     "backingUp": "Haciendo una copia de seguridad de tus datos en este computador.",
     "preparing": "Preparando tus datos. Esto puede tomar unos minutos.",
     "startFailed": "No pudimos iniciar la mudanza, así que no se cambió nada. Puedes intentar de nuevo.",
@@ -40,6 +41,10 @@
       "error": "Algo salió mal"
     },
     "migrateLater": "Migrar después"
+  },
+  "game": {
+    "over": "Fin del juego. Hiciste {{score}} puntos.",
+    "playAgain": "Toca o presiona espacio para jugar de nuevo"
   },
   "done": {
     "stepAi": "Paso 1 de 2",

@@ -116,6 +116,34 @@ export interface FakeMember {
   userId: string;
   email?: string;
   role: OrgRole;
+  /** GCIP display name, when the gateway has one stored (Teams profiles). */
+  displayName?: string;
+  /** GCIP profile photo URL, when the gateway has one stored. */
+  photoUrl?: string;
+}
+
+/** A pending org invite (the `OrgInvite` wire shape) `GET /v1/org` surfaces to
+ *  owner/admin, minted by `POST /v1/org/members` for an unknown email. */
+export interface FakeInvite {
+  id: string;
+  email: string;
+  role: OrgRole;
+  invitedBy: string;
+  createdAt: number;
+}
+
+/**
+ * An armed team-space row the gateway bridges into `GET /v1/workspaces` (C8
+ * Spaces, `cloud/docs/contracts/C8-spaces-billing.md` §Workspaces bridge). Its
+ * id is `"org:" + slug` where slug is exactly 16 lowercase hex chars; the wire
+ * `kind` is `"org"`. Armed by `/__test__/workspaces`; served alongside the
+ * always-present personal seed row. Empty (the default) = personal-only, so the
+ * list stays byte-identical to a single-workspace deployment.
+ */
+export interface FakeTeamWorkspace {
+  /** `"org:" + [a-f0-9]{16}`. */
+  id: string;
+  name: string;
 }
 
 /**
@@ -241,6 +269,20 @@ export interface HostState {
    * role, preserving the pre-feature behavior; a present array is served verbatim.
    */
   orgMembers: FakeMember[] | null;
+  /**
+   * The pending org invites `GET /v1/org` surfaces (Teams v2), appended by
+   * `POST /v1/org/members` when an unknown email is added. Empty (the default)
+   * = no pending invites.
+   */
+  orgInvites: FakeInvite[];
+  /** Monotonic counter for minted invite ids. */
+  inviteSeq: number;
+  /**
+   * The team-space rows `GET /v1/workspaces` bridges in (C8 Spaces), armed by
+   * `/__test__/workspaces`. Empty (the default) = personal-only, keeping the
+   * switcher byte-identical to a single-workspace host.
+   */
+  teamWorkspaces: FakeTeamWorkspace[];
   /** connectionId -> the acting user's connected account. */
   connections: Map<string, IntegrationConnection>;
   /** Per-user preference key -> value (locale, timezone, …). */
@@ -308,6 +350,9 @@ function freshState(): HostState {
     agentReadHoldMs: 0,
     customIntegrations: null,
     orgMembers: null,
+    orgInvites: [],
+    inviteSeq: 0,
+    teamWorkspaces: [],
     connections,
     preferences: new Map(),
     sidebarLayouts: new Map(),

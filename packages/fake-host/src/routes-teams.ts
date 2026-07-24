@@ -54,6 +54,7 @@ export function handleTeamsRoutes(
   method: string,
   segs: string[],
   body: Record<string, unknown> | undefined,
+  url: URL,
 ): Response | undefined {
   // /v1/org — the caller's org identity + role (+ a minimal roster). The
   // Organization ("Admin") view loads this on mount; `role` drives owner-edit
@@ -82,8 +83,70 @@ export function handleTeamsRoutes(
       name: "Acme",
       role,
       members,
-      invites: [],
+      invites: state.getOrgInvites(),
     });
+  }
+
+  // GET /v1/org/profiles?ids=<csv> — display profiles (name + photo) for any
+  // co-member of the active space, keyed by user id. Served from the armed org
+  // roster (each `FakeMember` may carry `displayName`/`photoUrl`); ids that are
+  // NOT in the roster are omitted, and a member with neither field is skipped,
+  // mirroring the gateway (non-co-members omitted, bare profiles absent).
+  if (
+    segs[0] === "v1" &&
+    segs[1] === "org" &&
+    segs[2] === "profiles" &&
+    segs.length === 3
+  ) {
+    if (method !== "GET") return json({ error: "not found" }, 404);
+    const raw = url.searchParams.get("ids") ?? "";
+    const wanted = new Set(raw.split(",").filter(Boolean));
+    const members = state.getOrgMembers() ?? [];
+    const profiles: Record<
+      string,
+      { displayName?: string; photoUrl?: string }
+    > = {};
+    for (const m of members) {
+      if (!wanted.has(m.userId)) continue;
+      if (m.displayName === undefined && m.photoUrl === undefined) continue;
+      profiles[m.userId] = {
+        ...(m.displayName !== undefined ? { displayName: m.displayName } : {}),
+        ...(m.photoUrl !== undefined ? { photoUrl: m.photoUrl } : {}),
+      };
+    }
+    return json({ profiles });
+  }
+
+  // POST /v1/org/members — add a member by email (Teams v2). The fake host
+  // models the invite path only: every email is treated as not-yet-a-user, so
+  // it mints a pending invite and answers `202 { invited:true }` (the wire
+  // `AddOrgMemberResult` shape). The new invite then surfaces in `GET /v1/org`'s
+  // `invites`, so the People tab's pending-invite row renders after the refetch.
+  if (
+    segs[0] === "v1" &&
+    segs[1] === "org" &&
+    segs[2] === "members" &&
+    segs.length === 3 &&
+    method === "POST"
+  ) {
+    const email = typeof body?.email === "string" ? body.email.trim() : "";
+    if (!email) return json({ error: "missing email" }, 400);
+    // Org roles are owner/admin/user; a grant is admin or user (never owner).
+    const role = body?.role === "admin" ? "admin" : "user";
+    const invite = state.addOrgInvite(email, role);
+    return json({ invited: true, email: invite.email, role: invite.role }, 202);
+  }
+
+  // DELETE /v1/org/invites/:id — revoke a pending invite (owner/admin).
+  if (
+    segs[0] === "v1" &&
+    segs[1] === "org" &&
+    segs[2] === "invites" &&
+    segs.length === 4 &&
+    method === "DELETE"
+  ) {
+    state.setOrgInvites(state.getOrgInvites().filter((i) => i.id !== segs[3]));
+    return json({ ok: true });
   }
 
   // /v1/agents/:slug/assignments — set-replace the agent's assignee roster

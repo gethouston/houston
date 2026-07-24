@@ -17,6 +17,7 @@ import { PromptInputSubmit } from "./ai-elements/prompt-input";
 import { DictationActions, DictationTranscribing } from "./dictation-controls";
 import type { DictationControl } from "./dictation-types";
 import { isDictationActive, resolveDictationView } from "./dictation-types";
+import { FILE_TYPE_ACCENT } from "./file-type-colors";
 
 export function getExt(name: string): string {
   const dot = name.lastIndexOf(".");
@@ -49,7 +50,10 @@ export function getTypeLabel(ext: string): string {
 export function AttachmentIcon({ ext }: { ext: string }) {
   if (ext === "pdf") {
     return (
-      <div className="size-8 rounded-md bg-[#E5252A] flex items-center justify-center shrink-0">
+      <div
+        className="size-8 rounded-md flex items-center justify-center shrink-0"
+        style={{ backgroundColor: FILE_TYPE_ACCENT.pdf }}
+      >
         <svg
           className="size-4"
           viewBox="0 0 16 16"
@@ -74,14 +78,20 @@ export function AttachmentIcon({ ext }: { ext: string }) {
   }
   if (["xlsx", "xls", "csv"].includes(ext)) {
     return (
-      <div className="size-8 rounded-md bg-[#34A853] flex items-center justify-center shrink-0">
+      <div
+        className="size-8 rounded-md flex items-center justify-center shrink-0"
+        style={{ backgroundColor: FILE_TYPE_ACCENT.sheet }}
+      >
         <FileSpreadsheetIcon className="size-4 text-white" strokeWidth={2} />
       </div>
     );
   }
   if (["doc", "docx", "txt", "rtf"].includes(ext)) {
     return (
-      <div className="size-8 rounded-md bg-[#4285F4] flex items-center justify-center shrink-0">
+      <div
+        className="size-8 rounded-md flex items-center justify-center shrink-0"
+        style={{ backgroundColor: FILE_TYPE_ACCENT.doc }}
+      >
         <FileTextIcon className="size-4 text-white" strokeWidth={2} />
       </div>
     );
@@ -90,7 +100,10 @@ export function AttachmentIcon({ ext }: { ext: string }) {
     ["png", "jpg", "jpeg", "gif", "svg", "webp", "tif", "tiff"].includes(ext)
   ) {
     return (
-      <div className="size-8 rounded-md bg-[#9333EA] flex items-center justify-center shrink-0">
+      <div
+        className="size-8 rounded-md flex items-center justify-center shrink-0"
+        style={{ backgroundColor: FILE_TYPE_ACCENT.image }}
+      >
         <ImageIcon className="size-4 text-white" strokeWidth={2} />
       </div>
     );
@@ -148,7 +161,10 @@ export function FolderAttachmentChip({
 }: FolderAttachmentChipProps) {
   return (
     <div className="relative flex items-center gap-2.5 rounded-xl border border-ink/[0.08] bg-input pl-2.5 pr-8 py-2 min-w-0 shrink-0 max-w-[240px] shadow-sm">
-      <div className="size-8 rounded-md bg-[#54A8F0] flex items-center justify-center shrink-0">
+      <div
+        className="size-8 rounded-md flex items-center justify-center shrink-0"
+        style={{ backgroundColor: FILE_TYPE_ACCENT.folder }}
+      >
         <FolderIcon
           className="size-4 text-white"
           strokeWidth={2}

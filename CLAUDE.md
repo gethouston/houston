@@ -35,7 +35,7 @@ Bug? Don't guess → `/debug`
 
 Need specific knowledge? Load on demand:
 - **Host architecture (host + pi runtime + adapter profiles, protocol v3, Composio-as-REST) → `knowledge-base/architecture.md`.** `convergence/` is the record of how we got here (the Rust→host cutover) — historical, not the day-to-day map.
-- Colors, typography, components, animation → `knowledge-base/design-system.md`
+- Design — the rules before ANY UI work → **`/DESIGN.md`** (repo-root compact agent spec: identity, hard rules, tokens, motion, banned defaults, polish checklist; **MANDATORY, hold it in context**). The deep narrative (rationale, component/animation detail, futuristic-theme internals) → `knowledge-base/design-system.md`
 - Client architecture — SDK / tokens / inventory / parity procedures → `knowledge-base/client-architecture.md`
 - `.houston/` layout, schemas, reactivity → `knowledge-base/files-first.md`
 - Skills on disk + UI, picker, invocation marker → `knowledge-base/skills.md`
@@ -59,7 +59,7 @@ Need specific knowledge? Load on demand:
 - Translating UI strings, namespaces, ui/ labels prop pattern, `t()` rules → `knowledge-base/i18n.md`
 - Automated UI / end-to-end tests (Playwright, web build, fake host, new TS engine) → `knowledge-base/ui-testing.md` + `packages/web/e2e/README.md`
 
-Design work? Skills: `/critique` before, `/polish` after. Else `/clarify` (copy), `/distill` (overloaded screen), `/animate` (micro-interactions), `/audit` (a11y).
+UI / design work? Two skills: **`/frontend-design`** when creating a new surface (3–5 genuinely distinct variants, two-pass discipline) and **`/design-review`** (the screenshot self-critique loop — MANDATORY before calling any UI done).
 
 ---
 
@@ -71,7 +71,7 @@ The phases themselves are in the workspace CLAUDE.md. In this repo they mean:
 - Phase 3 (challenge): library or app? Generic → ui/engine. App-specific → app/. Props generic, no store imports, no app types?
 - Phase 4 (plan): tag each step `[ui/board]`, `[host]`, `[app]`. Library before app.
 - Phase 6 (test): host/runtime/domain → vitest; the Tauri shell (`app/src-tauri`) → `cargo test`, not just check.
-- Phase 7 (verify): UI touched → visual fidelity check. Issue? Add logging first (`/debug`), never blind fix.
+- Phase 7 (verify): UI touched → run the `/design-review` loop + `pnpm --filter houston-web test:visual`. Issue? Add logging first (`/debug`), never blind fix.
 - Phase 9 (cleanup): ui/ → no `@/`, no Zustand, no Tauri. app/ → no duplicated logic.
 - Phase 10 (document): `knowledge-base/*.md`, skills, showcase.
 
@@ -89,6 +89,7 @@ The phases themselves are in the workspace CLAUDE.md. In this repo they mean:
 | app/ i18n | `cd app && pnpm check-locales` | — | — |
 | packages/web | `pnpm --filter houston-web typecheck` (runs Tauri shim-parity guard + tsgo) | — | `pnpm --filter houston-web build` |
 | packages/web UI tests | `pnpm --filter houston-web test:e2e` (Playwright; `typecheck:e2e` for the harness) — see `knowledge-base/ui-testing.md` | — | — |
+| packages/web visual regression | `pnpm --filter houston-web test:visual` (screenshot baselines for key screens; re-record intentionally via `test:visual:update`) — see `knowledge-base/ui-testing.md` → Visual regression | — | — |
 
 ### Host sidecar staleness
 
@@ -124,6 +125,7 @@ Three surfaces (web/desktop today; iOS/Android next), one model of the world. Th
 - **Behavior** (turn lifecycle, state, reconnection, VM fields) → change `@houston/sdk` FIRST, then surfaces bind. NEVER re-implement behavior in surface code. VM-snapshot changes are contract changes — additive only.
 - **Visual values** → a design-token edit (`packages/design-tokens`), never a hardcoded hex/spacing literal in app or `ui/`.
 - **Cross-surface structure** (a component added/changed) → bump `design/inventory/inventory.yaml` + CHANGELOG + enforced manifests in the SAME PR (`pnpm check:parity`).
+- **Visual baselines** → a visual-value change that alters a key screen (mission board, chat, first-run) requires re-recording the Playwright visual baselines intentionally (`pnpm --filter houston-web test:visual:update`, both `darwin` + `linux` sets) in the SAME PR (`knowledge-base/ui-testing.md` → Visual regression).
 
 Full procedures + decision table + verification matrix: `knowledge-base/client-architecture.md`.
 

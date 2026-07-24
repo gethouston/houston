@@ -180,6 +180,29 @@ export async function handle(req: Request): Promise<Response> {
       agents: state.listAgents(),
     });
   }
+  // Arm the team-space rows `GET /v1/workspaces` bridges in (C8 Spaces): each
+  // `{ slug, name }` becomes an `{ id:"org:<slug>", kind:"org" }` switcher row,
+  // served alongside the always-present personal seed row. A `slug` must be
+  // exactly 16 lowercase hex chars (the id grammar `space-id.ts` enforces).
+  // Pair with `/__test__/capabilities` `{ spaces:true }`. Reset (or `{teams:[]}`)
+  // restores the personal-only list.
+  if (path === "/__test__/workspaces" && method === "POST") {
+    const body = await parseBody(req);
+    const teams = Array.isArray(body?.teams) ? body.teams : [];
+    const rows = teams.flatMap((t) => {
+      const row = t as { slug?: unknown; name?: unknown };
+      if (typeof row.slug !== "string" || !/^[a-f0-9]{16}$/.test(row.slug)) {
+        return [];
+      }
+      return [
+        {
+          id: `org:${row.slug}`,
+          name: typeof row.name === "string" ? row.name : row.slug,
+        },
+      ];
+    });
+    return json({ teams: state.setTeamWorkspaces(rows) });
+  }
   // Flip a pending connection to active (models the OAuth completing).
   if (path === "/__test__/integrations-activate" && method === "POST") {
     const body = await parseBody(req);
@@ -226,7 +249,7 @@ export async function handle(req: Request): Promise<Response> {
   if (userRoute) return userRoute;
 
   // --- Teams v2 gateway routes (agent + org settings / allowlist ceilings) ---
-  const teamsRoute = handleTeamsRoutes(method, segs, body);
+  const teamsRoute = handleTeamsRoutes(method, segs, body, url);
   if (teamsRoute) return teamsRoute;
 
   // --- everything under /agents/* ---

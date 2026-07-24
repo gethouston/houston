@@ -29,7 +29,18 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   timeout: 30_000,
-  expect: { timeout: 10_000 },
+  expect: {
+    timeout: 10_000,
+    // Visual-regression defaults (only the `visual` project asserts screenshots).
+    // Freeze CSS animations/transitions and the text caret so a shot is a
+    // function of layout + tokens alone, and allow a hair of antialiasing drift.
+    toHaveScreenshot: {
+      animations: "disabled",
+      caret: "hide",
+      scale: "css",
+      maxDiffPixelRatio: 0.01,
+    },
+  },
   reporter: process.env.CI
     ? [["list"], ["html", { open: "never" }]]
     : [["list"]],
@@ -42,10 +53,27 @@ export default defineConfig({
   projects: [
     {
       // The identity-OFF server (no baked Firebase key): the whole suite boots
-      // straight to the shell. Excludes the sign-in spec, which needs identity on.
+      // straight to the shell. Excludes the sign-in spec, which needs identity
+      // on, and the visual suite, which runs as its own project below (so the
+      // default `test:e2e` run — and CI — never picks up pixel baselines).
       name: "chromium",
-      testIgnore: "**/sign-in.spec.ts",
+      testIgnore: ["**/sign-in.spec.ts", "**/visual/**"],
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      // Visual-regression suite (pixel baselines). Runs ONLY via `test:visual`
+      // (`--project visual`), never inside `test:e2e`, so CI behavior is
+      // unchanged. A fixed viewport keeps layout stable across machines;
+      // baselines are platform-suffixed (see snapshotPathTemplate) because a
+      // darwin PNG will not match a Linux render pixel-for-pixel.
+      name: "visual",
+      testDir: "./e2e/visual",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 800 },
+      },
+      snapshotPathTemplate:
+        "{testDir}/__screenshots__/{testFileName}/{arg}{-platform}{ext}",
     },
     {
       // The GCIP SignInScreen spec, driven against the identity-ON server below.

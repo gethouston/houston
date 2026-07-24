@@ -14,7 +14,10 @@
 import type {
   ComputeUsageSeed,
   FakeCapabilities,
+  FakeInvite,
   FakeMember,
+  FakeTeamWorkspace,
+  OrgRole,
   TeamsSettings,
 } from "./state-store";
 import { state } from "./state-store";
@@ -66,6 +69,55 @@ export function setOrgMembers(
 ): FakeMember[] | null {
   state.orgMembers = members;
   return state.orgMembers;
+}
+
+/** The pending org invites `GET /v1/org` surfaces (owner/admin only). */
+export function getOrgInvites(): FakeInvite[] {
+  return state.orgInvites;
+}
+
+/** Replace the pending invites (used to revoke one via delete-invite). */
+export function setOrgInvites(invites: FakeInvite[]): FakeInvite[] {
+  state.orgInvites = invites;
+  return state.orgInvites;
+}
+
+/**
+ * Append a pending invite for an unknown email (the `POST /v1/org/members`
+ * invite path) and return it. Mints a stable, monotonic id so the surfaced
+ * row is addressable (delete-invite) and deterministic across a test.
+ */
+export function addOrgInvite(email: string, role: OrgRole): FakeInvite {
+  const invite: FakeInvite = {
+    id: `invite-${++state.inviteSeq}`,
+    email,
+    role,
+    invitedBy: "u-self",
+    createdAt: Date.now(),
+  };
+  state.orgInvites = [...state.orgInvites, invite];
+  return invite;
+}
+
+/**
+ * The team-space rows `GET /v1/workspaces` bridges in (C8 Spaces), armed by
+ * `/__test__/workspaces`. Empty (the default) = personal-only.
+ */
+export function getTeamWorkspaces(): FakeTeamWorkspace[] {
+  return state.teamWorkspaces;
+}
+
+/** Replace (or clear, with `[]`) the armed team-space rows. */
+export function setTeamWorkspaces(
+  rows: FakeTeamWorkspace[],
+): FakeTeamWorkspace[] {
+  state.teamWorkspaces = rows;
+  return state.teamWorkspaces;
+}
+
+/** True when `id` addresses a known workspace: the personal seed or an armed team. */
+export function isKnownWorkspace(id: string, seedId: string): boolean {
+  return id === seedId || state.teamWorkspaces.some((w) => w.id === id);
 }
 
 /** The armed compute-usage dataset; `null` = the route 404s (feature off). */

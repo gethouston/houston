@@ -44,8 +44,9 @@ export interface OrgTabProps {
  *
  * Permission surfaces (who can use which agent, per-agent + org-wide ceilings)
  * moved OUT to the top-level Permissions view. Rendered ONLY when
- * `canSeeOrganization` (multiplayer owner/admin) — the sidebar hides the nav
- * entry and `workspace-shell` guards the render for everyone else.
+ * `canSeeOrganization` (multiplayer owner/admin, and on a Spaces host a TEAM
+ * active space — never the personal one) — the sidebar hides the nav entry and
+ * `workspace-shell` guards the render for everyone else.
  */
 export function OrganizationView() {
   const { t } = useTranslation("teams");

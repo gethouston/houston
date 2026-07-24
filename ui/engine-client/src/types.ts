@@ -153,6 +153,33 @@ export interface OrgMember {
   /** The member's email, when the host exposes it to the caller. */
   email?: string;
   role: OrgRole;
+  /** The member's GCIP display name, when the gateway has one stored. */
+  displayName?: string;
+  /** The member's GCIP profile photo URL, when the gateway has one stored. */
+  photoUrl?: string;
+}
+
+/**
+ * The public display fields of one human user (Teams), from
+ * `GET /v1/org/profiles`. Both are optional — a user who never set a name or
+ * photo resolves to a bare `{}`, so a consumer falls back to initials / a short
+ * id rather than render an empty face. Sourced from the gateway's stored GCIP
+ * `name`/`picture`; kept in sync by hand with the gateway (server is the source
+ * of truth).
+ */
+export interface UserProfile {
+  displayName?: string;
+  photoUrl?: string;
+}
+
+/**
+ * Response of `GET /v1/org/profiles?ids=<csv>` (Teams): display profiles for the
+ * requested member ids, keyed by user id. Ids that are NOT co-members of the
+ * caller's active space are omitted (the personal space resolves only the
+ * caller). Degrades to `{ profiles: {} }` on a host without the route.
+ */
+export interface UserProfilesResult {
+  profiles: Record<string, UserProfile>;
 }
 
 /**

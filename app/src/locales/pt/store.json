@@ -95,6 +95,8 @@
     "handleChecking": "Verificando...",
     "handleChangeTooSoon": "Você mudou seu handle há pouco. Tente mais tarde.",
     "displayNameLabel": "Nome de exibição",
+    "optional": "(opcional)",
+    "displayNameHint": "Deixe em branco para usar seu @handle.",
     "bioLabel": "Biografia",
     "bioPlaceholder": "Conte para as pessoas o que você cria.",
     "avatarLabel": "Foto de perfil",
@@ -104,6 +106,7 @@
     "avatarTooLarge": "Essa imagem é muito grande. Escolha uma com menos de 2 MB.",
     "avatarBadType": "Use uma imagem PNG, JPEG ou WebP.",
     "avatarClaimHint": "Salve seu perfil primeiro para adicionar uma foto.",
+    "avatarFailed": "Não foi possível enviar sua foto. Tente de novo.",
     "socials": {
       "x": "X",
       "youtube": "YouTube",
@@ -118,6 +121,10 @@
     "saving": "Salvando...",
     "saved": "Perfil salvo",
     "saveFailed": "Não foi possível salvar seu perfil. Tente de novo.",
+    "saveFailedAccount": "Não encontramos sua conta. Saia, entre de novo e tente outra vez.",
+    "bioTooLong": "Sua biografia é muito longa. Deixe mais curta e tente de novo.",
+    "invalidLink": "Um dos seus links não é um endereço web válido. Confira e tente de novo.",
+    "displayNameRequired": "Adicione um nome de exibição para salvar seu perfil.",
     "cancel": "Cancelar",
     "claimCta": "Reservar meu handle",
     "claimBody": "Escolha um @handle público para as pessoas encontrarem em um só lugar todos os agentes que você publica."
