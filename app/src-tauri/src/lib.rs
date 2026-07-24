@@ -293,17 +293,22 @@ pub fn run() {
             // Managed BEFORE `on_open_url` is wired so a launch-by-deep-link URL
             // that arrives immediately has somewhere to land.
             app.manage(store_deep_link::PendingStoreDeepLinkState::default());
-            // Linux: OS deep-link routing needs an installed .desktop handler
-            // declaring `x-scheme-handler/houston`. Package installs get one
-            // from the bundle, but an AppImage is never installed — without
-            // this runtime registration (which writes
-            // `~/.local/share/applications/houston-app-handler.desktop`
-            // pointing at the AppImage path) `houston://auth-callback` never
-            // reaches the app and Apple sign-in cannot complete. macOS
-            // (Info.plist) and Windows (MSI registry) register at install
-            // time. Failure is a warn, not a crash: Google/Microsoft/email
-            // sign-in don't depend on the scheme.
-            #[cfg(target_os = "linux")]
+            // Runtime `houston://` scheme registration. Only macOS registers
+            // the scheme at install time (the bundler bakes it into
+            // Info.plist). Neither of Windows' MSI/WiX installers register a
+            // custom URL scheme, and a Linux AppImage is never "installed" at
+            // all — so Windows AND Linux must register the handler at runtime,
+            // on every launch, or `houston://auth-callback` (Apple sign-in),
+            // the Agent Store "Open in Houston" links, and the loopback success
+            // page's "Open Houston" button never reach the app.
+            //   - Windows: `register_all()` writes HKCU\Software\Classes\houston
+            //     pointing at the current exe (per-user, no admin, idempotent).
+            //   - Linux: it writes
+            //     `~/.local/share/applications/houston-app-handler.desktop`
+            //     declaring `x-scheme-handler/houston` at the AppImage path.
+            // Must run in setup(), before any sign-in. Failure is a warn, not a
+            // crash: Google/Microsoft/email sign-in don't depend on the scheme.
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
                 if let Err(e) = app.deep_link().register_all() {
