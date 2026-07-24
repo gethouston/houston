@@ -41,6 +41,10 @@
     },
     "migrateLater": "Migrate later"
   },
+  "game": {
+    "over": "Game over. You scored {{score}}.",
+    "playAgain": "Tap or press space to play again"
+  },
   "done": {
     "stepAi": "Step 1 of 2",
     "stepApps": "Step 2 of 2",

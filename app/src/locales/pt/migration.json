@@ -41,6 +41,10 @@
     },
     "migrateLater": "Migrar depois"
   },
+  "game": {
+    "over": "Fim de jogo. Você fez {{score}} pontos.",
+    "playAgain": "Toque ou pressione espaço para jogar de novo"
+  },
   "done": {
     "stepAi": "Etapa 1 de 2",
     "stepApps": "Etapa 2 de 2",
