@@ -5,7 +5,7 @@ import type {
 } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
-import { normalizeUsage, toWire } from "./wire";
+import { createWireTranslator, normalizeUsage, toWire } from "./wire";
 
 /** A valid pi `Usage` for fixtures; `cost` is required by the type. */
 function usage(partial: Partial<Usage>): Usage {
@@ -265,6 +265,96 @@ test("toWire omits tool_end content for a text-less or malformed result", () => 
   expect(toWire(bare)).toEqual({
     type: "tool_end",
     data: { name: "bash", isError: true },
+  });
+});
+
+// --- createWireTranslator: block-boundary separators (HOU-857) ---------------
+
+/** A `message_update` session event carrying the given assistant-message event. */
+function msgUpdate(assistantMessageEvent: unknown): AgentSessionEvent {
+  return {
+    type: "message_update",
+    message: assistantMessage(usage({})),
+    assistantMessageEvent,
+  } as unknown as AgentSessionEvent;
+}
+const textStart = () => msgUpdate({ type: "text_start", contentIndex: 0 });
+const textDelta = (delta: string) =>
+  msgUpdate({ type: "text_delta", contentIndex: 0, delta });
+const thinkingStart = () =>
+  msgUpdate({ type: "thinking_start", contentIndex: 0 });
+const thinkingDelta = (delta: string) =>
+  msgUpdate({ type: "thinking_delta", contentIndex: 0, delta });
+const agentStart = () =>
+  ({ type: "agent_start" }) as unknown as AgentSessionEvent;
+
+test("translator inserts a paragraph break between a turn's text blocks (HOU-857)", () => {
+  // The screenshot bug: text → tool call → text streamed as two blocks, but the
+  // bare deltas concatenate downstream into "…for you now.Go ahead…". The
+  // second block's FIRST delta must carry the separator.
+  const translate = createWireTranslator();
+  expect(translate(textStart())).toBeNull();
+  expect(translate(textDelta("I'll get that set up for you now."))).toEqual({
+    type: "text",
+    data: "I'll get that set up for you now.",
+  });
+  translate({
+    type: "tool_execution_start",
+    toolCallId: "t1",
+    toolName: "connect",
+    args: {},
+  } as unknown as AgentSessionEvent);
+  expect(translate(textStart())).toBeNull();
+  expect(translate(textDelta("Go ahead and sign in."))).toEqual({
+    type: "text",
+    data: "\n\nGo ahead and sign in.",
+  });
+  // Later deltas of the SAME block stream unprefixed.
+  expect(translate(textDelta(" Once connected, I'll confirm."))).toEqual({
+    type: "text",
+    data: " Once connected, I'll confirm.",
+  });
+});
+
+test("translator never prefixes the turn's first text block — even after thinking", () => {
+  const translate = createWireTranslator();
+  expect(translate(thinkingStart())).toBeNull();
+  expect(translate(thinkingDelta("hmm"))).toEqual({
+    type: "thinking",
+    data: "hmm",
+  });
+  // First TEXT block: thinking streamed already, but text starts fresh.
+  expect(translate(textStart())).toBeNull();
+  expect(translate(textDelta("Hello"))).toEqual({
+    type: "text",
+    data: "Hello",
+  });
+});
+
+test("translator separates thinking blocks independently of text blocks", () => {
+  const translate = createWireTranslator();
+  translate(thinkingStart());
+  expect(translate(thinkingDelta("first block"))).toEqual({
+    type: "thinking",
+    data: "first block",
+  });
+  translate(thinkingStart());
+  expect(translate(thinkingDelta("second block"))).toEqual({
+    type: "thinking",
+    data: "\n\nsecond block",
+  });
+});
+
+test("translator resets its block state on agent_start (a new turn starts fresh)", () => {
+  const translate = createWireTranslator();
+  translate(textStart());
+  translate(textDelta("turn one"));
+  translate(agentStart());
+  translate(textStart());
+  // A long-lived subscriber crossing into the next turn: no leaked separator.
+  expect(translate(textDelta("turn two"))).toEqual({
+    type: "text",
+    data: "turn two",
   });
 });
 

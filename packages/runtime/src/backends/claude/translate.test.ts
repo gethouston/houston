@@ -128,6 +128,59 @@ test("text_delta / thinking_delta map to text / thinking frames", () => {
   ]);
 });
 
+test("a follow-up text block gets a paragraph-break prefix on its first delta (HOU-857)", () => {
+  // The screenshot bug: text → tool call → text streams as distinct content
+  // blocks, but the bare deltas concatenate downstream into "…for you now.Go
+  // ahead…". The new block's first delta must carry the separator.
+  const blockStart = (index: number, type: string) =>
+    streamEvent({
+      type: "content_block_start",
+      index,
+      content_block: { type },
+    });
+  const { events } = collect([
+    blockStart(0, "text"),
+    textDelta("I'll get that set up for you now."),
+    toolStart(1, "t1", "connect"),
+    blockStop(1),
+    toolResult("t1", false),
+    blockStart(0, "text"),
+    textDelta("Go ahead and sign in."),
+    textDelta(" Once connected, I'll confirm."),
+  ]);
+  expect(events).toEqual([
+    { type: "text", data: "I'll get that set up for you now." },
+    { type: "tool_start", data: { name: "connect", args: {} } },
+    { type: "tool_end", data: { name: "connect", isError: false } },
+    // Separator rides the follow-up block's FIRST delta only.
+    { type: "text", data: "\n\nGo ahead and sign in." },
+    { type: "text", data: " Once connected, I'll confirm." },
+  ]);
+});
+
+test("thinking blocks separate independently; the first of each kind is never prefixed", () => {
+  const blockStart = (index: number, type: string) =>
+    streamEvent({
+      type: "content_block_start",
+      index,
+      content_block: { type },
+    });
+  const { events } = collect([
+    blockStart(0, "thinking"),
+    thinkingDelta("first thoughts"),
+    blockStart(1, "thinking"),
+    thinkingDelta("second thoughts"),
+    // First TEXT block after thinking-only content: text starts fresh.
+    blockStart(2, "text"),
+    textDelta("Hello"),
+  ]);
+  expect(events).toEqual([
+    { type: "thinking", data: "first thoughts" },
+    { type: "thinking", data: "\n\nsecond thoughts" },
+    { type: "text", data: "Hello" },
+  ]);
+});
+
 test("tool_use: accumulated input_json_delta parses into tool_start args at stop", () => {
   const { events } = collect([
     toolStart(1, "t1", "Read"),
