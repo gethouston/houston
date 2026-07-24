@@ -9,6 +9,9 @@
  *
  * Toggle it from the running app's devtools console:
  *   localStorage.setItem("houston.cloudMigration.demo", "1"); location.reload();
+ *   // "hold" instead of "1" parks the run mid-upload FOREVER — the progress
+ *   // screen (and its wait game) stays up for design iteration:
+ *   localStorage.setItem("houston.cloudMigration.demo", "hold"); location.reload();
  *   // turn off: localStorage.removeItem("houston.cloudMigration.demo")
  *
  * Guarded by `import.meta.env.DEV`, so the whole path is dead-code-eliminated
@@ -21,19 +24,23 @@ import {
   initialProgress,
 } from "./cloud-migration-progress";
 
-export function isMigrationDemo(): boolean {
+function demoFlag(): string | null {
   try {
-    if (!import.meta.env.DEV) return false;
+    if (!import.meta.env.DEV) return null;
     // `VITE_MIGRATION_DEMO=1 pnpm tauri dev` forces it on for the whole launch
     // (no console step needed); otherwise the per-tab localStorage flag.
-    if (import.meta.env.VITE_MIGRATION_DEMO === "1") return true;
-    return (
-      typeof localStorage !== "undefined" &&
-      localStorage.getItem("houston.cloudMigration.demo") === "1"
-    );
+    if (import.meta.env.VITE_MIGRATION_DEMO === "1") return "1";
+    return typeof localStorage !== "undefined"
+      ? localStorage.getItem("houston.cloudMigration.demo")
+      : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function isMigrationDemo(): boolean {
+  const flag = demoFlag();
+  return flag === "1" || flag === "hold";
 }
 
 export const DEMO_DETECTION: LegacyDetection = {
@@ -109,13 +116,17 @@ export async function runDemoMigration(
   await sleep(750);
   set(() => ({ preparing: false }));
 
-  for (const t of DEMO_TASKS) {
+  for (const [i, t] of DEMO_TASKS.entries()) {
     patch(t.sourceId, { step: "creating" });
     await sleep(500);
     patch(t.sourceId, { step: "warming" });
     await sleep(650);
     patch(t.sourceId, { step: "uploading", chunkIndex: 1, chunkCount: 3 });
     await sleep(500);
+    // "hold": park the SECOND agent mid-upload forever (one done, one active,
+    // one pending — a representative frame) so the progress screen + game can
+    // be designed against without racing the timers.
+    if (i === 1 && demoFlag() === "hold") return;
     patch(t.sourceId, { chunkIndex: 2 });
     await sleep(500);
     patch(t.sourceId, { chunkIndex: 3 });

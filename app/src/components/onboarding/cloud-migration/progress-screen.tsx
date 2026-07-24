@@ -184,6 +184,9 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
                   {t("progress.playCaption")}
                 </p>
                 <SpaceInvaders />
+                <p className="text-center text-[11px] text-ink-muted">
+                  {t("progress.playHint")}
+                </p>
               </div>
             )}
           </div>
