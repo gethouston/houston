@@ -28,6 +28,13 @@ export interface RuntimeProxy {
 }
 
 /**
+ * Clock-skew grace for the fresh-push staleness gate in
+ * saveClaudeOAuthCredential: a credential minted seconds ago on a machine with
+ * a slightly-fast clock must not be rejected as expired.
+ */
+const STALE_SKEW_MS = 60_000;
+
+/**
  * The standing-runtime channel: wake the agent's runtime (GKE pod today, local
  * subprocess in P4) and relay the request 1:1 over the runtime's whole contract
  * (chat, SSE events, provider device-code login, settings).
@@ -453,6 +460,21 @@ export class ProxyChannel implements RuntimeChannel {
         "anthropic",
       );
       if (existing) return;
+    } else if (cred.expiresAt && cred.expiresAt < Date.now() - STALE_SKEW_MS) {
+      // Overwrite intent claims "just minted by a browser login" — but a
+      // genuine fresh mint always carries a future-dated access token. An
+      // already-expired one is a CACHED snapshot wearing the wrong hat (a
+      // login flow that failed to update the OS cache before extraction), and
+      // storing it would clobber the live central credential and poison the
+      // token family exactly like the HOU-855 clobber (observed in HOU-892: a
+      // 7-hours-expired snapshot overwrote a freshly reconnected credential,
+      // re-revoking it). Reject loudly — the desktop degrades to the paste
+      // flow with a visible toast. Credentials without an expiry pass: absent
+      // metadata proves nothing, and the reconcile's fill-only path (above)
+      // stays the home for possibly-stale snapshots.
+      throw new Error(
+        "This Claude credential's access token is already expired, so it can't be a fresh sign-in. Sign in to Claude again, or paste a setup token.",
+      );
     }
     await this.opts.credentials.put(
       {
