@@ -579,11 +579,13 @@ export function modelAcceptsImages(
 
 /**
  * Retired Claude CLI aliases → the explicit catalog ID that replaced them.
- * Mirrors the engine map in `houston-agent-files/src/lib.rs`
- * (`LEGACY_MODEL_ALIASES`) — keep both in sync.
+ * Mirrors `MODEL_ALIASES.anthropic` in
+ * `packages/domain/src/provider-model-catalog.ts` (the migration-side twin,
+ * which the host applies when it rewrites a stored config) — keep both in sync.
+ * A bare tier name resolves to the CURRENT model at that tier.
  */
 const LEGACY_MODEL_ALIASES: Readonly<Record<string, string>> = {
-  opus: "claude-opus-4-7",
+  opus: "claude-opus-5",
   sonnet: "claude-sonnet-4-6",
 };
 

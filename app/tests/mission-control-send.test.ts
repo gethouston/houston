@@ -63,7 +63,7 @@ describe("resolveActivityOverride (Mission Control send-path override drop fix)"
     });
   });
 
-  it("normalizes the legacy 'opus' alias to claude-opus-4-7", () => {
+  it("normalizes the legacy 'opus' alias to claude-opus-5", () => {
     // Activity records created before catalog version-pinning hold bare
     // aliases on disk and are NOT migrated by the engine (only config.json
     // is). The frontend must normalize on read so the send doesn't ship
@@ -74,7 +74,7 @@ describe("resolveActivityOverride (Mission Control send-path override drop fix)"
     );
     deepStrictEqual(overrides, {
       providerOverride: "anthropic",
-      modelOverride: "claude-opus-4-7",
+      modelOverride: "claude-opus-5",
     });
   });
 

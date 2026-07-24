@@ -64,7 +64,7 @@ describe("resolveAgentModelOverrides", () => {
       provider: "anthropic",
       model: "opus",
     });
-    strictEqual(pins.modelOverride, "claude-opus-4-7");
+    strictEqual(pins.modelOverride, "claude-opus-5");
   });
 });
 

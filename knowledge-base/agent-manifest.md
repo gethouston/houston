@@ -449,7 +449,7 @@ adapter, see `knowledge-base/architecture.md`).
 
 | Provider id | CLI | Default model | Premium model | Login flow |
 |---|---|---|---|---|
-| `anthropic` (alias `claude`) | `claude` (runtime download) | `claude-sonnet-4-6` | `claude-opus-4-8` | OAuth via `claude auth login --claudeai` |
+| `anthropic` (alias `claude`) | `claude` (runtime download) | `claude-sonnet-4-6` | `claude-opus-5` | OAuth via `claude auth login --claudeai` |
 | `openai` (alias `codex`) | `codex` (bundled) | `gpt-5.5` | `gpt-5.5` (frontier; no separate tier) | OAuth via `codex login` |
 | `gemini` (alias `google`) | `gemini` (bundled, macOS only) | `gemini-2.5-flash` | `gemini-2.5-pro` | API key, no CLI login (see `knowledge-base/auth.md`) |
 
@@ -671,8 +671,8 @@ sizing) — the context bar and the engine's compaction trigger always divide by
 the same denominator now. `default` is the starting estimate; the estimate
 snaps UP to `max` once observed usage exceeds `default`, proving the larger
 (plan/credit-gated) window is actually active. Anthropic's flagships
-(`claude-sonnet-4-6`, `claude-opus-4-7`, `claude-opus-4-8`) default to 200k and
-snap to 1M. `normalizeUsage` (`packages/runtime/src/backends/pi/wire.ts`)
+(`claude-sonnet-4-6`, `claude-opus-4-7`, `claude-opus-4-8`, `claude-opus-5`)
+default to 200k and snap to 1M. `normalizeUsage` (`packages/runtime/src/backends/pi/wire.ts`)
 synthesizes `context_tokens` from the component fields when a provider's usage
 event omits a summed `totalTokens`, so a provider that under-reports usage
 still feeds the window estimate instead of going null. The choice is staged in

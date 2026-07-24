@@ -33,6 +33,12 @@ const pi = (await import(
   getProviders(): string[];
 };
 
+// The catalog Houston actually serves is pi-ai PLUS the host's backport patch
+// (`GET /v1/catalog` imports it), so apply it here before checking for orphans
+// — an override for a backported model (anthropic claude-opus-5) is not drift.
+// Delete with the pi bump that ships it natively.
+await import("../../packages/host/src/providers/opus-5-catalog-patch.ts");
+
 // Houston provider id → pi provider id (reverse of PROVIDER_ID_RENAME, which is
 // pi → Houston, e.g. `openai-codex` → `openai`). Identity for every other id.
 const houstonToPi: Record<string, string> = {};

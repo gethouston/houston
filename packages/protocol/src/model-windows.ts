@@ -45,8 +45,9 @@ interface WindowOverride {
  * - `anthropic` — pi reports 1,000,000 for the flagships, but standard (Pro,
  *   non-credit) plans get 200k; the 1M window is credit/plan-gated, so the
  *   estimate starts at 200k and snaps to 1M once observed usage proves it.
- *   `claude-fable-5` and `claude-sonnet-5` are intentionally omitted (no
- *   evidence either is plan-gated — pi's flat 1M stands for both).
+ *   `claude-opus-5` follows the rest of the Opus line (same subscription
+ *   gating). `claude-fable-5` and `claude-sonnet-5` are intentionally omitted
+ *   (no evidence either is plan-gated — pi's flat 1M stands for both).
  * - `openai-codex` — Codex's `/status` reports a 95%-EFFECTIVE window (the number
  *   the user sees), and gpt-5.5/5.4 expose an opt-in 1M variant (× 95%).
  */
@@ -57,6 +58,7 @@ export const MODEL_WINDOW_OVERRIDES: Readonly<
     "claude-sonnet-4-6": { default: 200_000, max: 1_000_000 },
     "claude-opus-4-7": { default: 200_000, max: 1_000_000 },
     "claude-opus-4-8": { default: 200_000, max: 1_000_000 },
+    "claude-opus-5": { default: 200_000, max: 1_000_000 },
   },
   "openai-codex": {
     "gpt-5.5": { default: 258_400, max: 950_000 },

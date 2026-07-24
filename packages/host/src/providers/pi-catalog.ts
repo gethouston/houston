@@ -13,6 +13,10 @@ import {
   getModels,
   getProviders,
 } from "@earendil-works/pi-ai/compat";
+// Side effect: backport Claude Opus 5, which pi-ai 0.82.0 predates (it shipped
+// 2026-07-24). Delete with the pi bump that ships it natively — as the 0.82
+// bump did for the gemini-flash and moonshot-k3 patches.
+import "./opus-5-catalog-patch";
 import type {
   CatalogModelEntry,
   CatalogProvider,
