@@ -1,6 +1,7 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  hasAgentOutput,
   parsePersistedGreetings,
   SETUP_GREETING_REVEAL_MS,
   SETUP_GREETING_TTL_MS,
@@ -97,6 +98,26 @@ describe("SetupGreetingRegistry", () => {
       agentName: "Vega",
     });
     strictEqual(calls, 1);
+  });
+});
+
+describe("hasAgentOutput", () => {
+  it("hides the hello only once the agent itself speaks or acts", () => {
+    strictEqual(hasAgentOutput([{ feed_type: "user_message" }]), false);
+    strictEqual(hasAgentOutput([{ feed_type: "system_message" }]), false);
+    for (const feed_type of [
+      "assistant_text",
+      "assistant_text_streaming",
+      "thinking",
+      "thinking_streaming",
+      "tool_call",
+    ]) {
+      strictEqual(
+        hasAgentOutput([{ feed_type: "user_message" }, { feed_type }]),
+        true,
+        feed_type,
+      );
+    }
   });
 });
 

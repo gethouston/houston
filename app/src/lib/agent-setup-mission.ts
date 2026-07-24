@@ -17,7 +17,6 @@ import { registerSetupGreeting } from "../hooks/use-setup-greeting";
 import { useUIStore } from "../stores/ui";
 import { analytics } from "./analytics";
 import { createMission } from "./create-mission";
-import { creationTiming } from "./creation-timing-live";
 import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
 
@@ -84,7 +83,6 @@ export async function startAgentSetupMission(
       sessionKey: result.sessionKey,
       agentName: agent.name,
     });
-    creationTiming.bindConversation(agent.folderPath, result.sessionKey);
     // Open the chat on the new mission, like the old welcome flow did.
     useUIStore
       .getState()

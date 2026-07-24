@@ -93,10 +93,6 @@ export type AnalyticsEventName =
   | "chat_message_sent"
   | "chat_message_received"
   | "mission_created"
-  // One event per agent create (HOU-867): the phase breakdown from the
-  // Create click to the agent's first visible output. Carries `outcome`,
-  // `remote_engine`, and the per-phase `*_ms` durations.
-  | "agent_creation_timing"
   | "conversation_map_opened"
   | "conversation_map_closed"
   | "conversation_map_moment_clicked"
@@ -196,16 +192,7 @@ type AnalyticsProperty =
   | "selected_segment"
   | "source_screen"
   // Org membership role (org_member_added / org_role_changed)
-  | "role"
-  // Agent-creation timing breakdown (agent_creation_timing, HOU-867)
-  | "outcome"
-  | "remote_engine"
-  | "create_request_ms"
-  | "reveal_ms"
-  | "warming_ms"
-  | "dispatch_ms"
-  | "first_reply_ms"
-  | "total_ms";
+  | "role";
 
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserIdentity = {
@@ -256,14 +243,6 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "selected_segment",
   "source_screen",
   "role",
-  "outcome",
-  "remote_engine",
-  "create_request_ms",
-  "reveal_ms",
-  "warming_ms",
-  "dispatch_ms",
-  "first_reply_ms",
-  "total_ms",
 ]);
 
 // Bootstrap PostHog at module load so a configured build can capture errors

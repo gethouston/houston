@@ -15,6 +15,20 @@
  * the transcript the hello never shows again.
  */
 
+/** Feed items that mean "the agent said or did something" — the signal that
+ *  the derived hello must stop rendering. */
+const AGENT_OUTPUT_TYPES = new Set([
+  "assistant_text",
+  "assistant_text_streaming",
+  "thinking",
+  "thinking_streaming",
+  "tool_call",
+]);
+
+export function hasAgentOutput(feed: Array<{ feed_type: string }>): boolean {
+  return feed.some((item) => AGENT_OUTPUT_TYPES.has(item.feed_type));
+}
+
 /** The hello reveals this long after the mission is registered. */
 export const SETUP_GREETING_REVEAL_MS = 1_500;
 

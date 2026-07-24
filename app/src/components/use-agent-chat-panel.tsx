@@ -76,7 +76,6 @@ import {
   sessionContextUsage,
 } from "../lib/context-usage";
 import { createMission } from "../lib/create-mission";
-import { hasAgentOutput } from "../lib/creation-timing";
 import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
 import { genericErrorDescription } from "../lib/error-toast";
@@ -110,6 +109,7 @@ import {
   validModelOrNull,
 } from "../lib/providers";
 import { queryKeys } from "../lib/query-keys";
+import { hasAgentOutput } from "../lib/setup-mission-greeting";
 import {
   buildSkillClaudePrompt,
   decodeSkillMessage,
