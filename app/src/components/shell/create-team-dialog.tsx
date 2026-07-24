@@ -15,6 +15,7 @@ import { orgSlugFromWorkspaceId } from "../../lib/space-id";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import { ORGANIZATION_VIEW_ID } from "../organization/id.ts";
 import { MAX_TEAM_NAME_LENGTH, validateTeamName } from "./create-team-model";
 
 interface Props {
@@ -41,6 +42,7 @@ export function CreateTeamDialog({ open, onOpenChange }: Props) {
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
   const loadAgents = useAgentStore((s) => s.loadAgents);
   const addToast = useUIStore((s) => s.addToast);
+  const setViewMode = useUIStore((s) => s.setViewMode);
   const [name, setName] = useState("");
 
   // Start every open with a clean field; reset on close so a reopen after a
@@ -75,9 +77,18 @@ export function CreateTeamDialog({ open, onOpenChange }: Props) {
           setCurrentWorkspace(ws);
           await loadAgents(ws.id);
         }
+        // Point the user at the next step: the Admin dashboard's People card,
+        // now guaranteed visible because the active space is the fresh team.
+        // The switch (setCurrent) already happened above, so the org view is
+        // reachable the moment they click.
         addToast({
           title: t("teams:createTeam.successTitle", { name: org.name }),
+          description: t("teams:createTeam.successBody"),
           variant: "success",
+          action: {
+            label: t("teams:createTeam.successAction"),
+            onClick: () => setViewMode(ORGANIZATION_VIEW_ID),
+          },
         });
         onOpenChange(false);
       },
