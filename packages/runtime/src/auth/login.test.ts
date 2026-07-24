@@ -31,21 +31,34 @@ function occupyCodexCallbackPort(): Promise<Server> {
 }
 
 /**
- * Stub pi's OAuth login (ModelRuntime.login) so no real OAuth/network runs: it
- * resolves the `info` (via the auth_url notify) so startLogin returns, then
- * hangs until cancelLogin tears it down. The mock being CALLED is the signal
- * that startLogin got past the port preflight.
+ * Stub the provider's OAuth login (reached via `modelRuntime.getProvider`) so
+ * no real OAuth/network runs: it resolves the `info` (via the auth_url notify)
+ * so startLogin returns, then hangs until cancelLogin tears it down. The mock
+ * being CALLED is the signal that startLogin got past the port preflight.
  */
-function stubPiLogin() {
-  return vi
-    .spyOn(modelRuntime, "login")
-    .mockImplementation((_provider, _type, interaction) => {
-      interaction.notify({
-        type: "auth_url",
-        url: "https://auth.example/codex",
-      });
-      return new Promise<never>(() => {});
+function stubPiLogin(
+  login: (
+    interaction: import("@earendil-works/pi-ai").AuthInteraction,
+  ) => Promise<import("@earendil-works/pi-ai").OAuthCredential> = (
+    interaction,
+  ) => {
+    interaction.notify({
+      type: "auth_url",
+      url: "https://auth.example/codex",
     });
+    return new Promise<never>(() => {});
+  },
+) {
+  const oauthLogin = vi.fn(login);
+  const spy = vi.spyOn(modelRuntime, "getProvider").mockImplementation(
+    (id: string) =>
+      ({
+        id,
+        name: id,
+        auth: { oauth: { name: id, login: oauthLogin } },
+      }) as never,
+  );
+  return Object.assign(spy, { oauthLogin });
 }
 
 test("openai-codex browser login preflights the callback port and fails fast when it is busy (no pi call, slot free)", async () => {
@@ -304,16 +317,14 @@ test("github-copilot: a no-Copilot-subscription 403 surfaces the sentinel in aut
   // The user authorized the device flow, then GitHub's token exchange answered
   // 403 no_copilot_access. The raw JSON (with the user's GitHub handle) used to
   // land verbatim in the failure toast; status must now carry the sentinel.
-  const piLogin = vi
-    .spyOn(modelRuntime, "login")
-    .mockImplementation((_provider, _type, interaction) => {
-      interaction.notify({
-        type: "device_code",
-        userCode: "ABCD-1234",
-        verificationUri: "https://github.com/login/device",
-      });
-      return Promise.reject(new Error(NO_ACCESS_403));
+  const piLogin = stubPiLogin((interaction) => {
+    interaction.notify({
+      type: "device_code",
+      userCode: "ABCD-1234",
+      verificationUri: "https://github.com/login/device",
     });
+    return Promise.reject(new Error(NO_ACCESS_403));
+  });
   try {
     const info = await startLogin("github-copilot", true);
     expect(info.kind).toBe("device_code");

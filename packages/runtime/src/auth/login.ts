@@ -190,6 +190,28 @@ export function autoPromptAnswer(
 // confirms it is an api-key (not OAuth) provider before storing the key.
 const known = (id: string): id is ProviderId => isProvider(id);
 
+/**
+ * Run the provider-owned OAuth flow and persist its credential — the provider's
+ * `auth.oauth.login` plus the CredentialStore's documented app-login persist
+ * (`modify(provider, async () => credential)`), deliberately NOT
+ * `ModelRuntime.login`: that wrapper follows the store write with a NETWORK
+ * catalog refresh (`refresh({allowNetwork: true})` whenever `PI_OFFLINE` is
+ * unset) which the login abort signal does not cover — on a stalled network a
+ * SUCCESSFUL sign-in would sit unresolved past the 10-minute abandonment
+ * expiry (status flips to "Login timed out"), then late-complete over the
+ * error. Login completeness must depend only on auth + the store write.
+ * Catalog freshness is a separate concern with its own paths.
+ */
+async function runProviderOAuthLogin(
+  provider: ProviderId,
+  interaction: AuthInteraction,
+): Promise<void> {
+  const oauth = modelRuntime.getProvider(provider)?.auth.oauth;
+  if (!oauth) throw new Error(`${provider} has no OAuth sign-in flow`);
+  const credential = await oauth.login(interaction);
+  await authStorage.modify(provider, async () => credential);
+}
+
 /** One /auth/status row for a provider id (curated or uncurated pi). */
 function authStatusRow(id: ProviderId, name: string) {
   const st = active.get(id);
@@ -360,7 +382,7 @@ export async function startLogin(
               authStorage.set("anthropic", { type: "api_key", key }),
           },
         )
-      : modelRuntime.login(provider, "oauth", interaction);
+      : runProviderOAuthLogin(provider, interaction);
 
   void login
     .then(() => {
@@ -476,7 +498,11 @@ export function completeLogin(providerId: string, code: string): void {
 
 export async function logout(providerId: string): Promise<void> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
-  authStorage.remove(providerId);
+  // `delete` (not the sync `remove`): it queues on the store's per-provider
+  // chain, so a sign-out issued while pi's getAuth is refreshing this
+  // provider's OAuth token inside `modify` cannot be undone when that refresh
+  // lands and re-persists the rotated credential.
+  await authStorage.delete(providerId);
   const state = active.get(providerId);
   if (state) clearLoginExpiry(state);
   active.delete(providerId);
