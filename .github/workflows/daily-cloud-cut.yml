@@ -272,7 +272,36 @@ jobs:
 
           echo "Pushed tag cloud-v${VERSION}."
 
-      # 7. Summarize what shipped and hand off to release.yml.
+      # 7. Clean up superseded drafts. A cut that never shipped is dead weight
+      #    once a newer one exists: the stamp script's train math already rolls
+      #    its work into the new tag, and a stale draft on the releases page is
+      #    a live risk that the operator publishes the WRONG (older) build at
+      #    the daily. Delete every never-published cloud-v* draft strictly
+      #    below the new version, tag included (an unpublished tag has no
+      #    consumers). Authenticated with the PAT — the job token is read-only.
+      #    Best-effort (|| true): a cleanup hiccup must not fail the cut.
+      - name: Clean up superseded draft releases
+        if: ${{ steps.newcommits.outputs.proceed == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_CUT_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq '.[] | select(.draft) | select(.tag_name | test("^cloud-v[0-9]+\\.[0-9]+\\.[0-9]+$")) | [.id, .tag_name] | @tsv' \
+            | while IFS=$'\t' read -r id tag; do
+              v="${tag#cloud-v}"
+              if [ "$v" != "$VERSION" ] && \
+                 [ "$(printf '%s\n%s\n' "$v" "$VERSION" | sort -V | head -1)" = "$v" ]; then
+                echo "Deleting superseded draft ${tag} (release ${id})"
+                gh api -X DELETE "repos/${{ github.repository }}/releases/${id}" \
+                  || echo "::warning::could not delete draft release ${id} (${tag})"
+                gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/${tag}" \
+                  || echo "::notice::tag ${tag} already gone (duplicate draft or earlier cleanup)"
+              fi
+            done
+
+      # 8. Summarize what shipped and hand off to release.yml.
       - name: Summary
         if: ${{ steps.newcommits.outputs.proceed == 'true' }}
         env:
