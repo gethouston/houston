@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { queryKeys } from "../lib/query-keys";
 import { tauriPreferences } from "../lib/tauri";
 import { useSession } from "./use-session";
 
@@ -10,8 +11,6 @@ import { useSession } from "./use-session";
  * app restart.
  */
 export const ONBOARDING_COMPLETED_KEY = "onboarding_completed";
-
-const queryKey = ["onboarding-completed"] as const;
 
 /** Per-user localStorage key for the device-local mirror of the flag (mirrors
  *  `onboardingSegmentLocalKey`). */
@@ -80,7 +79,7 @@ export function useOnboardingCompleted(): OnboardingCompletedState {
   const uid = session?.uid ?? null;
 
   const query = useQuery({
-    queryKey: [...queryKey, uid],
+    queryKey: queryKeys.onboardingCompleted(uid),
     queryFn: async (): Promise<boolean> => {
       let fromEngine = false;
       try {
@@ -116,7 +115,7 @@ export function useOnboardingCompleted(): OnboardingCompletedState {
       }
     },
     onSuccess: () => {
-      qc.setQueryData<boolean>([...queryKey, uid], true);
+      qc.setQueryData<boolean>(queryKeys.onboardingCompleted(uid), true);
     },
   });
 
@@ -127,7 +126,7 @@ export function useOnboardingCompleted(): OnboardingCompletedState {
   // completed — the backfill effect never fires twice and no onboarding frame
   // slips through.
   const markCompleted = useCallback(async () => {
-    qc.setQueryData<boolean>([...queryKey, uid], true);
+    qc.setQueryData<boolean>(queryKeys.onboardingCompleted(uid), true);
     await mutateAsync();
   }, [mutateAsync, qc, uid]);
 

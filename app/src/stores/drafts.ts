@@ -13,6 +13,9 @@ interface DraftsState {
   clearDraft: (key: string) => void;
   /** Remove all drafts whose key starts with the given prefix (e.g. on agent delete). */
   clearByPrefix: (prefix: string) => void;
+  /** Drop every draft — the outgoing account's parked messages are private to it
+   *  (identity change, HOU-903). */
+  reset: () => void;
 }
 
 /**
@@ -83,6 +86,8 @@ export const useDraftStore = create<DraftsState>((set) => ({
       }
       return { drafts: next };
     }),
+
+  reset: () => set({ drafts: {} }),
 }));
 
 /** Read-only selector for a single draft's text. Returns "" if no draft exists. */

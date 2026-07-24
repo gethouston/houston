@@ -76,6 +76,14 @@ export function CreateTeamDialog({ open, onOpenChange }: Props) {
         if (ws) {
           setCurrentWorkspace(ws);
           await loadAgents(ws.id);
+          // The active space just switched under the user. If they opened this
+          // from Settings (or any non-home view, or an agent that belonged to
+          // the old space and the reload above just dropped), the view would
+          // stay put and the whole create reads as a silent failure. Land them
+          // in the new team's home — the same "dashboard" the shell resets a
+          // blocked view to — so the switch is visible. The toast's Invite
+          // action then takes them on to Admin from home.
+          setViewMode("dashboard");
         }
         // Point the user at the next step: the Admin dashboard's People card,
         // now guaranteed visible because the active space is the fresh team.

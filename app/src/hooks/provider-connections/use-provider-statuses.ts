@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { providerAppearsConnected } from "../../components/shell/provider-reconnect-state";
 import { analytics } from "../../lib/analytics";
 import {
@@ -11,6 +11,8 @@ import {
   type ProviderStatus,
   tauriProvider,
 } from "../../lib/tauri";
+import { useAgentStore } from "../../stores/agents";
+import { useWorkspaceStore } from "../../stores/workspaces";
 import { scanIsUnreachable } from "./unreachable-scan";
 
 export interface ProviderStatusState {
@@ -68,6 +70,19 @@ export function useProviderStatuses(
   const hasBaseline = useRef(false);
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});
 
+  // The active-space signals (C8). Provider connections are tenant data, so a
+  // space switch must re-seed from the NEW space's snapshot and re-probe live.
+  // The shell stays mounted across a switch (HOU-907), so this hook is NOT
+  // remounted — the mount-time seed (the `useState` initializer above, which
+  // reads the per-scope cache) and the mount probe (in `use-provider-connections`)
+  // won't re-run. These refs drive both off the active workspace id instead;
+  // they start AT the current id so a fresh mount doesn't double-seed/probe.
+  const currentWorkspaceId = useWorkspaceStore((s) => s.current?.id ?? null);
+  const agentsLoading = useAgentStore((s) => s.loading);
+  const agentsLoaded = useAgentStore((s) => s.loaded);
+  const seededWorkspaceIdRef = useRef(currentWorkspaceId);
+  const probedWorkspaceIdRef = useRef(currentWorkspaceId);
+
   const loadStatuses = useCallback(async () => {
     const gatewayIds = [
       ...new Set(visibleProviders.flatMap((p) => providerGatewayIds(p))),
@@ -106,6 +121,36 @@ export function useProviderStatuses(
     // Persist the confirmed scan so the NEXT visit paints instantly.
     saveCachedProviderStatuses(next);
   }, [visibleProviders]);
+
+  // On a real active-space change, immediately swap to the new scope's cached
+  // snapshot (keyed by active org — provider-status-cache.ts). This must NOT
+  // keep painting the previous space's connected cards: an empty new-scope cache
+  // flips back to the loading state until the live probe below reconciles. A new
+  // space is also a fresh analytics baseline, so its first probe emits no
+  // provider_configured transition against the prior space's snapshot.
+  useEffect(() => {
+    if (seededWorkspaceIdRef.current === currentWorkspaceId) return;
+    seededWorkspaceIdRef.current = currentWorkspaceId;
+    const seed = loadCachedProviderStatuses();
+    setStatuses(seed);
+    setLoading(Object.keys(seed).length === 0);
+    setProbed(false);
+    prevStatuses.current = {};
+    hasBaseline.current = false;
+  }, [currentWorkspaceId]);
+
+  // Re-probe LIVE after a switch, but ONLY once the new space's agents have
+  // loaded. The probe routes per-agent (last_agent_id + knownAgentIds in the
+  // engine adapter), so firing it before `loadAgents` settles would hit the OLD
+  // space's agent under the new org header — the sidebar switch handler awaits
+  // loadAgents, which repopulates knownAgentIds for the new org. Gating on the
+  // agent store's settled state closes that window.
+  useEffect(() => {
+    if (probedWorkspaceIdRef.current === currentWorkspaceId) return;
+    if (!agentsLoaded || agentsLoading) return;
+    probedWorkspaceIdRef.current = currentWorkspaceId;
+    void loadStatuses();
+  }, [currentWorkspaceId, agentsLoaded, agentsLoading, loadStatuses]);
 
   const patchAuthState = useCallback(
     (providerId: string, authenticated: boolean) => {
