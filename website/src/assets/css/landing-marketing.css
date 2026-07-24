@@ -1,0 +1,290 @@
+/*
+ * Light editorial body — part 2: the USB-cable differentiator, pricing, FAQ.
+ * Palette/type from site-tokens.css.
+ */
+
+/* ── USB cable differentiator ─────────────────────────────────────────────── */
+.usb-head {
+  text-align: center;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.usb-head .eyebrow-mono {
+  margin-bottom: 16px;
+}
+.usb-head .sec-title {
+  max-width: none;
+  margin: 0 auto;
+}
+.usb-head .sec-lead {
+  margin: 18px auto 0;
+}
+.usb-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  max-width: 900px;
+  margin: 48px auto 0;
+}
+.usb-card {
+  position: relative;
+  border-radius: 20px;
+  padding: 32px 30px;
+  border: 1px solid var(--line-light);
+  background: var(--paper-card);
+}
+.usb-card.is-houston {
+  border-color: rgba(var(--ember-rgb), 0.4);
+  box-shadow: 0 24px 60px -34px rgba(var(--ember-rgb), 0.4);
+}
+.usb-badge {
+  position: absolute;
+  top: -12px;
+  left: 24px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--slate-soft);
+  color: #fff;
+}
+.usb-card.is-houston .usb-badge {
+  background: var(--ember);
+}
+.usb-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  margin: 8px 0 20px;
+}
+.usb-steps {
+  display: flex;
+  flex-direction: column;
+}
+.usb-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 9px 0;
+}
+.usb-step .n {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--paper-raised);
+  color: var(--slate);
+}
+.usb-card.is-houston .usb-step .n {
+  background: var(--ember);
+  color: #fff;
+}
+.usb-step p {
+  font-size: 13.5px;
+  color: var(--slate);
+  line-height: 1.5;
+}
+.usb-card.is-houston .usb-step p {
+  color: var(--ink);
+}
+.usb-connector {
+  width: 1px;
+  height: 8px;
+  margin-left: 12px;
+  background: var(--line-light);
+}
+.usb-card.is-houston .usb-connector {
+  background: rgba(var(--ember-rgb), 0.4);
+}
+@media (max-width: 720px) {
+  .usb-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+}
+
+/* ── Pricing ─────────────────────────────────────────────────────────────── */
+.pricing-head {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto 48px;
+}
+.pricing-head .eyebrow-mono {
+  margin-bottom: 16px;
+}
+.pricing-head .sec-title {
+  max-width: none;
+  margin: 0 auto;
+}
+.pricing-head .sec-lead {
+  margin: 18px auto 0;
+}
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+.price-col {
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-card);
+  border: 1px solid var(--line-light);
+  border-radius: 20px;
+  padding: 30px 28px;
+}
+.price-col.featured {
+  border-color: rgba(var(--ember-rgb), 0.4);
+  box-shadow: 0 24px 60px -34px rgba(var(--ember-rgb), 0.35);
+}
+.price-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  letter-spacing: -0.01em;
+}
+.price-amt {
+  margin: 14px 0 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.price-amt .amount {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 40px;
+  letter-spacing: -0.03em;
+  color: var(--ink-strong);
+}
+.price-amt .per {
+  font-size: 14px;
+  color: var(--slate);
+  font-weight: 500;
+}
+.price-note {
+  font-size: 12.5px;
+  color: var(--slate-soft);
+  min-height: 18px;
+}
+.price-desc {
+  font-size: 14px;
+  color: var(--slate);
+  line-height: 1.5;
+  margin: 14px 0 20px;
+  min-height: 42px;
+}
+.price-cta .btn {
+  width: 100%;
+}
+.price-list-intro {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--slate);
+  margin: 22px 0 12px;
+}
+.price-feats {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.price-feats li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+.price-feats svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--ember);
+  stroke-width: 2.4;
+}
+.price-feat-note {
+  font-size: 12.5px;
+  color: var(--slate-soft);
+  margin-top: 2px;
+}
+@media (max-width: 880px) {
+  .pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+  }
+  .price-desc {
+    min-height: 0;
+  }
+}
+
+/* ── FAQ ─────────────────────────────────────────────────────────────────── */
+.faq-head {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.faq-head .eyebrow-mono {
+  margin-bottom: 16px;
+}
+.faq-head .sec-title {
+  margin: 0 auto;
+}
+.faq-list {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.faq-item {
+  background: var(--paper-card);
+  border: 1px solid var(--line-light);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+.faq-chevron {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--slate);
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+.faq-item[open] .faq-chevron {
+  transform: rotate(180deg);
+}
+.faq-answer {
+  padding: 0 22px 20px;
+}
+.faq-answer p {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--slate);
+  max-width: 60ch;
+}
+@media (prefers-reduced-motion: reduce) {
+  .faq-chevron {
+    transition: none;
+  }
+}

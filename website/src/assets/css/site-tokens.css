@@ -1,0 +1,105 @@
+/*
+ * Houston marketing site — the ONE token layer for the landing page.
+ * =====================================================================
+ * This is the single source of truth for the landing-page palette and type.
+ * It replaces THREE overlapping palettes the old page carried:
+ *   1. the inline `--gray-*` "inverted" grayscale in index.html,
+ *   2. the `--m-*` app-window palette in landing-app-window.css,
+ *   3. the ad-hoc dark values in space.css.
+ * Everything the new landing renders reads from the custom properties below.
+ *
+ * Relationship to @houston/design-tokens
+ * ---------------------------------------
+ * The product app uses the cool "Aurora" semantic tokens (`--ht-*`,
+ * packages/design-tokens). The marketing landing is a deliberately DIFFERENT,
+ * warmer, cinematic art direction (the "Night Launch" direction) — an editorial
+ * paper body under a dark space hero. Those warm hues (ember, dawn, paper, warm
+ * ink) have no counterpart in the app's cool palette, so they are NOT added to
+ * @houston/design-tokens: that package must stay the app's identity, and folding
+ * marketing-only hues into it would pollute the semantic system every app surface
+ * consumes. Where a primitive genuinely matches we reuse its exact value and note
+ * it inline (the night void = the app's space-canvas primitive; the app-window
+ * mock reuses the real agent-avatar + status primitives). This keeps a single
+ * marketing token layer without corrupting the product token system.
+ */
+
+/* ── Self-hosted fonts (OFL, latin subset, no runtime Google CDN) ─────────── */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 340 600;              /* variable roman: display weights only */
+  font-display: swap;
+  src: url("/assets/fonts/fraunces-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 340 600;              /* variable italic: the one accent word */
+  font-display: swap;
+  src: url("/assets/fonts/fraunces-italic-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 400 700;              /* variable: body + UI */
+  font-display: swap;
+  src: url("/assets/fonts/hanken-grotesk-latin.woff2") format("woff2");
+}
+
+:root {
+  /* ── Night ladder (dark hero / closing band) ─────────────────────────── */
+  --night-void: #07080f;             /* = --ht-space-canvas primitive */
+  --night-void-rgb: 7, 8, 15;        /* for the hero veils / scrims */
+  --night-orbit: #101725;            /* raised dark surface / window chrome */
+
+  /* ── Ember accent — one, disciplined ─────────────────────────────────── */
+  --ember: #e0672f;                  /* THE accent */
+  --ember-rgb: 224, 103, 47;
+  --ember-soft: #e9895a;
+  --dawn: #f0a876;                   /* warm horizon light (transition only) */
+
+  /* ── Warm editorial light body ───────────────────────────────────────── */
+  --paper: #f6f1e8;                  /* body background */
+  --paper-raised: #efe8db;           /* recessed warm fill */
+  --paper-card: #fffdf9;             /* cards floating on paper */
+  --ink: #1b1710;                    /* warm near-black body text */
+  --ink-strong: #120f0a;             /* headline ink */
+  --slate: #736a5c;                  /* muted warm-gray secondary text */
+  --slate-soft: #9a9082;             /* faint labels */
+
+  /* ── Hairlines ───────────────────────────────────────────────────────── */
+  --line-dark: rgba(255, 255, 255, 0.1);
+  --line-dark-soft: rgba(255, 255, 255, 0.06);
+  --line-light: rgba(27, 23, 16, 0.12);
+  --line-light-soft: rgba(27, 23, 16, 0.07);
+
+  /* ── On-dark text (hero + closing band) ──────────────────────────────── */
+  --on-dark: #ffffff;
+  --on-dark-muted: rgba(233, 236, 245, 0.82);
+  --on-dark-faint: rgba(233, 236, 245, 0.6);
+
+  /* ── White CTA (the .btn-white hero button) ──────────────────────────── */
+  /* Deliberately COOL, not the warm paper ink: this label/hover sit on a pure
+     white pill over the cool night hero, so a warm tint (--ink-strong /
+     --paper-raised) would read slightly off there. Kept as their own tokens
+     rather than raw literals in component CSS. */
+  --ink-on-white: #141019;           /* cool near-black label on the white CTA */
+  --on-white-hover: #f0ece4;         /* hover fill for the white CTA */
+
+  /* ── Type ─────────────────────────────────────────────────────────────── */
+  --serif: "Fraunces", Georgia, "Times New Roman", serif;
+  --sans: "Hanken Grotesk", ui-sans-serif, -apple-system, system-ui,
+    "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "SFMono-Regular", "Menlo", monospace;
+
+  /* ── Rhythm ──────────────────────────────────────────────────────────── */
+  --section-pad: clamp(64px, 9vw, 104px);
+  --gutter: clamp(20px, 5vw, 52px);
+  --measure: 1120px;
+
+  /* ── Motion (mirrors DESIGN.md scale/motion) ─────────────────────────── */
+  --dur-fast: 200ms;
+  --dur-elegant: 582ms;
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+}

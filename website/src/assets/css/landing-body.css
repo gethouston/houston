@@ -1,0 +1,333 @@
+/*
+ * Light editorial body — part 1: how-it-works, the agent roster rows, the
+ * stats band, and the BYO-subscription differentiator. Warm paper, hairlines
+ * only, magazine measure. Palette/type from site-tokens.css.
+ */
+
+.band-paper {
+  background: var(--paper);
+}
+.band-paper-raised {
+  background: var(--paper-raised);
+}
+
+/* ── How it works — editorial, hairline-ruled, asymmetric ─────────────────── */
+.how {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: clamp(32px, 6vw, 88px);
+  align-items: start;
+}
+.how-head .eyebrow-mono {
+  margin-bottom: 16px;
+}
+.how-head .sec-lead {
+  max-width: 42ch;
+}
+.steps {
+  display: flex;
+  flex-direction: column;
+}
+.step {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 20px;
+  padding: 26px 0;
+  border-top: 1px solid var(--line-light);
+}
+.step:last-child {
+  border-bottom: 1px solid var(--line-light);
+}
+.step-ic {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+}
+.step-ic svg {
+  width: 21px;
+  height: 21px;
+  stroke-width: 1.7;
+}
+.step h3 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 7px;
+  color: var(--ink-strong);
+}
+.step p {
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--slate);
+}
+@media (max-width: 840px) {
+  .how {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+}
+
+/* ── Agent roster rows (v2 band-rhythm graft) ─────────────────────────────── */
+.roster-head {
+  max-width: 46ch;
+  margin-bottom: 8px;
+}
+.roster-head .eyebrow-mono {
+  margin-bottom: 16px;
+}
+.roster {
+  border-top: 1px solid var(--line-light);
+}
+.roster-row {
+  display: grid;
+  grid-template-columns: 220px 1fr auto;
+  gap: 28px;
+  align-items: center;
+  padding: 24px 6px;
+  border-bottom: 1px solid var(--line-light);
+}
+.roster-id {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+.roster-id .av {
+  width: 38px;
+  height: 38px;
+  font-size: 13px;
+  border-radius: 11px;
+}
+.roster-id .r-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  letter-spacing: -0.01em;
+}
+.roster-id .r-role {
+  font-size: 13px;
+  color: var(--slate-soft);
+  margin-top: 1px;
+}
+.roster-does {
+  min-width: 0;
+}
+.roster-does .r-what {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--slate);
+}
+.roster-does .r-status {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--slate-soft);
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.roster-does .r-status .live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ember);
+  flex-shrink: 0;
+}
+.roster-stat {
+  text-align: right;
+  white-space: nowrap;
+}
+.roster-stat .s-val {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--ink-strong);
+}
+.roster-stat .s-lbl {
+  font-size: 12.5px;
+  color: var(--slate-soft);
+  margin-top: 2px;
+}
+.roster-more {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 24px 6px 0;
+}
+.roster-more span {
+  font-size: 15px;
+  color: var(--slate);
+}
+.roster-more strong {
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+@media (max-width: 720px) {
+  .roster-row {
+    grid-template-columns: 1fr auto;
+    gap: 12px 20px;
+    row-gap: 10px;
+  }
+  .roster-does {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+  .roster-stat {
+    align-self: start;
+  }
+}
+
+/* ── Stats band ──────────────────────────────────────────────────────────── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--line-light);
+  border: 1px solid var(--line-light);
+  border-radius: 18px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.stat {
+  background: var(--paper);
+  padding: 32px 30px;
+}
+.stat .n {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 42px;
+  letter-spacing: -0.03em;
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+}
+.stat .l {
+  font-size: 14.5px;
+  color: var(--slate);
+  margin-top: 6px;
+  line-height: 1.45;
+}
+@media (max-width: 640px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── BYO subscription differentiator (v2 graft) ───────────────────────────── */
+.byo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(32px, 6vw, 72px);
+  align-items: center;
+}
+.byo-copy .eyebrow-mono {
+  margin-bottom: 16px;
+}
+.byo-copy .sec-lead {
+  max-width: 44ch;
+}
+.byo-points {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.byo-point {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.byo-point svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--ember);
+  margin-top: 1px;
+  stroke-width: 1.9;
+}
+.byo-panel {
+  background: var(--paper-card);
+  border: 1px solid var(--line-light);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 24px 60px -34px rgba(27, 23, 16, 0.35);
+}
+.byo-panel-label {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--slate-soft);
+  margin-bottom: 16px;
+}
+.byo-providers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.byo-prov {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--paper);
+  border: 1px solid var(--line-light);
+}
+.byo-prov .p-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.byo-prov .p-logo svg {
+  width: 20px;
+  height: 20px;
+}
+.byo-prov .p-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  flex: 1;
+}
+.byo-prov .p-tag {
+  font-size: 12px;
+  color: var(--slate);
+  font-weight: 500;
+}
+.byo-foot {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--slate);
+  line-height: 1.5;
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+.byo-foot svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--slate-soft);
+  margin-top: 2px;
+}
+@media (max-width: 840px) {
+  .byo {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
