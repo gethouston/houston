@@ -1,13 +1,10 @@
-import { prettifyToolkit } from "@houston-ai/chat";
 import { useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import {
   useIntegrationConnections,
   useIntegrationStatus,
   useIntegrationToolkits,
 } from "../hooks/queries";
 import { analytics } from "../lib/analytics";
-import { useUIStore } from "../stores/ui";
 import {
   type ConnectCardView,
   deriveConnectCardView,
@@ -76,9 +73,6 @@ export function useIntegrationConnect({
   view: ConnectCardView;
   startConnect: () => Promise<void>;
 } {
-  const { t } = useTranslation("chat");
-  const addToast = useUIStore((s) => s.addToast);
-
   const status = useIntegrationStatus();
   const ready = !!status.data?.find((p) => p.provider === INTEGRATION_PROVIDER)
     ?.ready;
@@ -90,9 +84,8 @@ export function useIntegrationConnect({
   const resolved = appDisplay(slug, findCatalogToolkit(catalog.data, toolkit));
   const app: AppDisplay = {
     ...resolved,
-    // Catalog miss (name fell back to the slug): show a best-effort human
-    // label from the slug itself, never the raw "googlesheets" string.
-    name: resolved.name === slug ? prettifyToolkit(toolkit) : resolved.name,
+    // The name needs no patching here: `appDisplay` prettifies a catalog miss
+    // itself ("googlesheets" never reaches a surface raw), for every consumer.
     // Hold the logo until the catalog settles: the favicon-guess fallback is
     // only for a REAL catalog miss, never an interim src while the real
     // logoUrl is still in flight (AppLogo shows the letter meanwhile).
@@ -109,16 +102,25 @@ export function useIntegrationConnect({
   // another card must not make this one speak.
   const followupFired = useRef(false);
 
+  // The success toast is NOT fired here: the shared connect flow announces
+  // every outcome once, for every surface, so a connect started in chat and a
+  // connect started on the Integrations tab read identically (and a card that
+  // JOINS a running flow never double-toasts it).
+  //
+  // `initiated` guards the rest the same way. Two cards for the same app (the
+  // agent asked twice, or a card and the stepper both render it) share ONE
+  // flow, and both `await` the same outcome — so without it a single landed
+  // connection tracked `integration_connected` twice and nudged the agent
+  // twice, making it answer a question it had already been told the answer to.
   const startConnect = async () => {
-    const outcome = await connect(slug);
-    if (outcome !== "active" || followupFired.current) return;
+    const { outcome, initiated } = await connect(
+      slug,
+      `chat:${agentId}:${slug}`,
+    );
+    if (!initiated || outcome !== "active" || followupFired.current) return;
     followupFired.current = true;
     analytics.track("integration_connected", { integration_slug: slug });
     onConnected?.(slug, app.name);
-    addToast({
-      title: t("composio.verifiedToast", { name: app.name }),
-      variant: "success",
-    });
   };
 
   // Stepper mode: an already-connected toolkit shows only a badge, so nothing

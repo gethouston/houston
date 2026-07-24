@@ -24,10 +24,29 @@ export function appDisplay(
 ): AppDisplay {
   return {
     toolkit: slug,
-    name: toolkit?.name ?? slug,
+    // A catalog miss must never leak the machine slug into the product: fall
+    // back to a human label built from the slug itself ("googlesheets" reads as
+    // "Googlesheets", "google-sheets" as "Google Sheets"), never "googlesheets".
+    name: toolkit?.name || prettifyToolkit(slug),
     description: toolkit?.description ?? "",
     logoUrl: toolkit?.logoUrl || fallbackLogo(slug),
   };
+}
+
+/**
+ * A readable app name from a toolkit slug alone ("google-sheets" -> "Google
+ * Sheets"), the best-effort label for every surface the catalog has not
+ * resolved yet. Lives here, beside the rest of the slug -> display resolution,
+ * so it is DOM-free and node-testable: `ui/chat` used to own it, which put a
+ * JSX barrel in the import path of pure display code.
+ */
+export function prettifyToolkit(toolkit: string): string {
+  return toolkit
+    .trim()
+    .split(/[\s_-]+/)
+    .filter((w) => w.length > 0)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 /** Resolve + sort a connection list into display rows by app name. */

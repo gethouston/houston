@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { cancelAllConnectFlows } from "../stores/connect-flow.ts";
 import { queryKeys } from "./query-keys.ts";
 
 /**
@@ -40,6 +41,13 @@ const SPACE_INVARIANT_KEY_ROOTS: ReadonlySet<string> = new Set([
  * data too, so every tenant query refetches clean under the new space while the
  * space-invariant user keys are left intact (HOU-907).
  *
+ * In-flight connect hand-offs are stopped alongside the wipe. A connect poll
+ * deliberately outlives the surface that started it, but it must NOT outlive
+ * the IDENTITY it started under: its next tick would carry the new
+ * `x-houston-org` and read a connection id that belongs to the previous space —
+ * a red failure toast for an app the new space never touched, or a success
+ * toast plus an invalidation landing in the cache we are wiping right here.
+ *
  * A no-op when the space did not change (same-space reselect, or every switch on
  * a personal-only host where every id maps to null).
  */
@@ -48,6 +56,7 @@ export function resetCacheForSpaceChange(
   orgChanged: boolean,
 ): void {
   if (!orgChanged) return;
+  cancelAllConnectFlows();
   queryClient.removeQueries({
     predicate: (query) =>
       !SPACE_INVARIANT_KEY_ROOTS.has(String(query.queryKey[0])),

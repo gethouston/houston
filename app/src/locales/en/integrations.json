@@ -25,8 +25,11 @@
     "loadMoreWithRemaining": "Load more ({{count}} remaining)"
   },
   "connectResult": {
-    "timeout": "The connection didn't finish. Please try again.",
-    "failed": "The app couldn't be connected. Please try again."
+    "connected": "{{app}} is connected",
+    "timeoutTitle": "Still waiting for {{app}}",
+    "timeout": "We stopped checking for now. When you finish signing in, use Finish connecting on {{app}}.",
+    "failedTitle": "{{app}} could not be connected",
+    "failed": "Something went wrong while signing in. Please try connecting it again."
   },
   "grants": {
     "disconnect": {
@@ -41,11 +44,15 @@
     "error": "Needs reconnecting"
   },
   "waiting": {
+    "opening": "Opening {{app}} in your browser",
     "title": "Finish connecting {{app}}",
     "body": "We opened {{app}} in your browser. Sign in there, then come back here.",
     "reopen": "Reopen in browser",
     "check": "I have finished",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "connected": "Connected",
+    "failed": "Could not connect",
+    "stopped": "We stopped checking on {{app}}. Use Finish connecting when you are done."
   },
   "pendingRecovery": {
     "body": "You started connecting {{app}} but did not finish signing in.",

@@ -21,6 +21,7 @@ import {
   useConnectFlow,
   useIntegrationsGate,
 } from "../../integrations";
+import { CatalogSurfaceSkeleton } from "../../integrations-view/catalog-skeletons";
 import { INTEGRATIONS_VIEW_ID } from "../../integrations-view/id";
 import { PERMISSIONS_VIEW_ID } from "../../permissions/id";
 import { usePermissionsNav } from "../../permissions/permissions-nav-store";
@@ -103,11 +104,14 @@ export default function IntegrationsTab({ agent }: TabProps) {
         ) : gate.kind === "signin" ? (
           <SigninState onSignIn={gate.signIn} signingIn={gate.signingIn} />
         ) : bodyLoading ? (
+          // The boot gate is past: this is the SECTIONS loading, so it shows
+          // the same skeletons the global page does, never a second full-page
+          // "Loading your integrations" for content the user can already place.
           <>
             {gate.reconnectNotice && (
               <ReconnectBanner onDismiss={gate.dismissReconnect} />
             )}
-            <LoadingState />
+            <CatalogSurfaceSkeleton />
           </>
         ) : (
           <>
@@ -124,6 +128,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
               allowlist={allowlist}
               connections={connections.data ?? []}
               connectFlow={connectFlow}
+              surface={`agent:${agent.id}`}
               catalogLoading={catalog.isLoading}
               onDisconnect={(toolkit) => disconnect.mutate(toolkit)}
               onManageAll={onManageAll}

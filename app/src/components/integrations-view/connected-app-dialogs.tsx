@@ -44,7 +44,10 @@ export function ConnectedAppDialogs({
           display={selectedApp}
           connection={selectedConn}
           onReconnect={() => {
-            void connectFlow.connect(selectedConn.toolkit);
+            void connectFlow.connect(
+              selectedConn.toolkit,
+              `detail:${selectedConn.toolkit}`,
+            );
             closeConn();
           }}
           onDisconnect={() => requestDisconnect(selectedConn.toolkit)}

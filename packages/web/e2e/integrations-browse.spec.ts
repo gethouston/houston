@@ -57,11 +57,13 @@ test("the browse page groups the catalog into category sections with an installe
   await expect(page.getByRole("heading", { name: "Sales" })).toBeVisible();
 
   // A connectable app renders as a flat row (name + one-line description). Slack
-  // is an everyday app, so at rest it appears in BOTH the curated Featured
-  // spotlight and its Communication section — take the first.
+  // is an everyday app, so at rest it appears in BOTH the curated "Most used"
+  // spotlight and its Communication section — the spotlight is a spotlight, not
+  // a move, so the row is deliberately present twice.
+  await expect(page.getByRole("heading", { name: "Most used" })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: /Slack Team messaging/ }).first(),
-  ).toBeVisible();
+    page.getByRole("button", { name: /Slack Team messaging/ }),
+  ).toHaveCount(2);
 
   // Gmail is connected, so it appears ONCE — the installed tile — and never as
   // a catalog row.
@@ -102,39 +104,87 @@ test("searching filters the category sections live", async ({
   ).toBeVisible();
 });
 
-test("clicking a row's + starts the connect flow", async ({
+test("a row's + connects INLINE, exactly once, leaving every other row usable", async ({
   page,
   request,
 }) => {
   await armCapabilities(request, { integrations: ["composio"] });
   await openIntegrationsPage(page);
 
-  // The filled + at the row's right edge is the install affordance. Slack is
-  // featured AND in its category section, so take the first + it renders.
-  const slackAdd = page.getByRole("button", { name: "Connect Slack" }).first();
-  await expect(slackAdd).toBeVisible();
-  await slackAdd.click();
+  // The + at the row's right edge is the install affordance. Slack sits in the
+  // "Most used" spotlight AND in Communication, so the page really does show
+  // two Slack rows: the guard is that only ONE of them expands.
+  const slackAdd = page.getByRole("button", { name: "Connect Slack" });
+  await expect(slackAdd).toHaveCount(2);
+  await slackAdd.first().click();
 
-  // The shared waiting panel takes over above the sections while the OAuth
-  // hand-off is in flight.
-  await expect(page.getByText("Finish connecting Slack")).toBeVisible();
+  // The waiting state lands INLINE, under the row the user clicked — there is
+  // no page-level banner shoving the sections down, and no second copy of the
+  // panel (two live regions announcing one hand-off, two rival Cancel buttons)
+  // under the duplicate row.
+  await expect(page.getByText("Finish connecting Slack")).toHaveCount(1);
+  await expect(
+    page.getByRole("status").filter({ hasText: "Finish connecting Slack" }),
+  ).toHaveCount(1);
 
-  // Single flight: while one connect owns the flow, the other + buttons
-  // disable. The row BODIES stay clickable (reading about an app is safe).
+  // The duplicate row is NOT silent about it though: the flow is per slug, so
+  // both of Slack's + buttons show it is busy.
+  await expect(slackAdd.first()).toBeDisabled();
+  await expect(slackAdd.last()).toBeDisabled();
+
+  // Connects are per app and concurrent: every OTHER row stays fully usable,
+  // both its + and its body. A whole-surface lockout is the bug this replaced.
+  const githubAdd = page.getByRole("button", { name: "Connect GitHub" });
+  await expect(githubAdd.first()).toBeEnabled();
   await expect(
-    page.getByRole("button", { name: "Connect GitHub" }),
-  ).toBeDisabled();
-  await expect(
-    page.getByRole("button", { name: /GitHub Issues, PRs, and repos/ }),
+    page.getByRole("button", { name: /GitHub Issues, PRs, and repos/ }).first(),
   ).toBeEnabled();
 
-  // Cancel returns the calm catalog — the waiting panel goes away and the +
-  // buttons are interactive again.
-  await page.getByRole("button", { name: "Cancel" }).click();
+  // Proving it: a SECOND app hands off while the first is still waiting, and
+  // both rows carry their own live state — one panel each.
+  await githubAdd.first().click();
+  await expect(page.getByText("Finish connecting GitHub")).toHaveCount(1);
+  await expect(page.getByText("Finish connecting Slack")).toHaveCount(1);
+
+  // Cancel addresses ONE flow: Slack's state clears, GitHub keeps waiting.
+  // Each inline state is its own live region, so scoping by it is exact.
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Finish connecting Slack" })
+    .getByRole("button", { name: "Cancel" })
+    .click();
   await expect(page.getByText("Finish connecting Slack")).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Connect GitHub" }),
-  ).toBeEnabled();
+  await expect(page.getByText("Finish connecting GitHub")).toHaveCount(1);
+});
+
+test("the row the user pressed owns the panel, not the first copy of the app", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["composio"] });
+  await openIntegrationsPage(page);
+
+  // Press the CATEGORY-section Slack row (the second copy), not the spotlight
+  // one: the feedback must appear under the row that was clicked, so scoping to
+  // the Communication section finds it there and nowhere else.
+  await page.getByRole("button", { name: "Connect Slack" }).last().click();
+
+  await expect(page.getByText("Finish connecting Slack")).toHaveCount(1);
+  const panel = page.getByRole("status").filter({
+    hasText: "Finish connecting Slack",
+  });
+  await expect(panel).toHaveCount(1);
+  // It is BELOW the "Most used" spotlight's own Slack row, i.e. down in the
+  // category section: the spotlight row (first) did not steal it.
+  const spotlightRow = page
+    .getByRole("button", { name: /Slack Team messaging/ })
+    .first();
+  const rowBox = await spotlightRow.boundingBox();
+  const panelBox = await panel.boundingBox();
+  expect(panelBox?.y ?? 0).toBeGreaterThan(rowBox?.y ?? 0);
+
+  await panel.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByText("Finish connecting Slack")).toHaveCount(0);
 });
 
 test("clicking a row's body opens the more-info modal, and its CTA connects", async ({
@@ -145,8 +195,8 @@ test("clicking a row's body opens the more-info modal, and its CTA connects", as
   await openIntegrationsPage(page);
 
   // The row body (name + description) opens the detail modal, not a connect.
-  // Slack is featured AND in its category section — either row body opens the
-  // same modal, so take the first.
+  // Slack is in the spotlight AND in its category section; either body opens the
+  // same modal, and the modal remembers WHICH row it came from.
   await page
     .getByRole("button", { name: /Slack Team messaging/ })
     .first()
@@ -158,11 +208,17 @@ test("clicking a row's body opens the more-info modal, and its CTA connects", as
   await expect(dialog.getByText("Communication")).toBeVisible();
   await expect(page.getByText("Finish connecting Slack")).toHaveCount(0);
 
-  // The modal's CTA hands off to the same connect flow and closes the modal.
+  // The modal's CTA hands off to the same connect flow, closes the modal, and
+  // the state appears on Slack's own row (never as a page-level banner).
   await dialog.getByRole("button", { name: "Connect", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByText("Finish connecting Slack")).toBeVisible();
-  await page.getByRole("button", { name: "Cancel" }).click();
+  // On the row the modal was opened from, and on that row ONLY.
+  await expect(page.getByText("Finish connecting Slack")).toHaveCount(1);
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Finish connecting Slack" })
+    .getByRole("button", { name: "Cancel" })
+    .click();
 });
 
 test("an installed tile opens the app detail modal", async ({

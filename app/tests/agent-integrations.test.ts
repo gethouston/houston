@@ -113,12 +113,13 @@ describe("agentIntegrationsView", () => {
     strictEqual(byToolkit.get("notion"), "error");
   });
 
-  it("falls back to the slug when the catalog lacks the toolkit", () => {
+  it("falls back to a readable name when the catalog lacks the toolkit", () => {
     const view = agentIntegrationsView({
       connections: [conn("obscure_app")],
       catalog: CATALOG,
     });
-    strictEqual(view.activeRows[0]?.app.name, "obscure_app");
+    // The machine slug never reaches the row: `appDisplay` prettifies a miss.
+    strictEqual(view.activeRows[0]?.app.name, "Obscure App");
   });
 });
 
@@ -180,6 +181,28 @@ describe("E7 integrations tab source", () => {
     ok(
       body.includes("catalog={catalog}"),
       "the pane receives the FULL catalog, never a pre-filtered one",
+    );
+  });
+
+  it("shows section skeletons, not a second full-page loader, for data loads", () => {
+    // Three loading languages used to fight here: the boot LoadingState, the
+    // page's skeletons, and a full-page LoadingState for a plain section
+    // refetch. The boot gate keeps LoadingState; everything past it mirrors the
+    // real layout so resolving costs no shift.
+    ok(
+      src.includes("<CatalogSurfaceSkeleton />"),
+      "the body load shows the shared catalog skeleton",
+    );
+    ok(
+      src.includes("bodyLoading ? ("),
+      "the skeleton is the body-loading branch",
+    );
+    const skeletons = read(
+      "../src/components/integrations-view/catalog-skeletons.tsx",
+    );
+    ok(
+      skeletons.includes("CatalogGrid"),
+      "the placeholder uses the SAME grid the real rows do (no CLS)",
     );
   });
 

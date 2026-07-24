@@ -127,7 +127,6 @@
     "connect": "Conectar",
     "waitingToConnect": "Esperando a que te conectes",
     "reconnect": "Reconectar",
-    "verifiedToast": "{{name}} está conectado",
     "connectedFollowup": "Ya conecté {{name}}. Por favor continúa.",
     "followupFailed": "No pudimos avisar al asistente que {{name}} está conectado"
   },

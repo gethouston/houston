@@ -63,7 +63,6 @@
     "connectReason": "Connect {{app}} to watch it for events",
     "connectKeyReason": "Add your {{app}} key to watch it for events",
     "connect": "Connect",
-    "connecting": "Connecting",
     "saveKey": "Save key",
     "savingKey": "Saving",
     "back": "Choose another app",

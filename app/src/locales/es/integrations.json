@@ -25,8 +25,11 @@
     "loadMoreWithRemaining": "Cargar más ({{count}} restantes)"
   },
   "connectResult": {
-    "timeout": "La conexión no se completó. Inténtalo de nuevo.",
-    "failed": "No se pudo conectar la aplicación. Inténtalo de nuevo."
+    "connected": "{{app}} está conectada",
+    "timeoutTitle": "Seguimos esperando {{app}}",
+    "timeout": "Dejamos de revisar por ahora. Cuando termines de iniciar sesión, usa Terminar de conectar en {{app}}.",
+    "failedTitle": "No se pudo conectar {{app}}",
+    "failed": "Algo salió mal al iniciar sesión. Inténtalo de nuevo."
   },
   "grants": {
     "disconnect": {
@@ -41,11 +44,15 @@
     "error": "Necesita reconexión"
   },
   "waiting": {
+    "opening": "Abriendo {{app}} en tu navegador",
     "title": "Termina de conectar {{app}}",
     "body": "Abrimos {{app}} en tu navegador. Inicia sesión ahí y luego vuelve aquí.",
     "reopen": "Volver a abrir en el navegador",
     "check": "Ya terminé",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "connected": "Conectada",
+    "failed": "No se pudo conectar",
+    "stopped": "Dejamos de revisar {{app}}. Usa Terminar de conectar cuando hayas acabado."
   },
   "pendingRecovery": {
     "body": "Empezaste a conectar {{app}} pero no terminaste de iniciar sesión.",

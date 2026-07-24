@@ -8,6 +8,7 @@ import type {
   PermissionsFix,
   RecoveringAppRow,
 } from "../integrations";
+import { CatalogSkeleton } from "./catalog-skeletons";
 import { CategoryCatalog } from "./category-catalog";
 import { RecoveryRow } from "./recovery-row";
 
@@ -19,14 +20,17 @@ import { RecoveryRow } from "./recovery-row";
  * category (its `controls` row above BOTH sections) and threads them in as
  * `query` + `category`, so the same filter narrows this discovery area and the
  * Installed strip together (the custom tab keeps its own internal search). The
- * connect flow stays on the surface so switching tabs never kills an in-flight
- * OAuth poll. On a Teams host `allowlist` renders blocked apps as locked rows;
- * `readOnly` (a viewer without edit rights) keeps recovery rows visible but
- * action-less.
+ * connect flow is app-wide shared state, so switching tabs (or leaving the
+ * surface entirely) never kills an in-flight OAuth poll. On a Teams host
+ * `allowlist` renders blocked apps as locked rows; `readOnly` (a viewer without
+ * edit rights) keeps recovery rows visible but action-less. While the data
+ * settles it shows the {@link CatalogSkeleton}, which mirrors the grouped
+ * catalog it replaces so resolving costs no layout shift.
  */
 export function CatalogPane({
   catalog,
   connections,
+  surface,
   query,
   category,
   recovering,
@@ -40,6 +44,9 @@ export function CatalogPane({
 }: {
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
+  /** Which surface these rows belong to (the global page vs. one agent's tab),
+   *  half of each row's connect-flow origin key. */
+  surface: string;
   /** The surface's shared search query (from its one controls row). */
   query: string;
   /** The surface's shared category pick: a primary slug, `UNCATEGORIZED`, or
@@ -85,27 +92,13 @@ export function CatalogPane({
           catalog={catalog}
           connections={connections}
           connectFlow={connectFlow}
+          surface={surface}
           query={query}
           category={category}
           allowlist={allowlist}
           lockedFix={lockedFix}
         />
       )}
-    </div>
-  );
-}
-
-/**
- * A light placeholder standing in for the category catalog while the
- * connections + toolkit catalog settle: a few text bars. Decorative only, so
- * it is `aria-hidden`.
- */
-function CatalogSkeleton() {
-  return (
-    <div aria-hidden className="space-y-3">
-      <div className="h-4 w-32 animate-pulse rounded bg-chip" />
-      <div className="h-4 w-full max-w-md animate-pulse rounded bg-chip" />
-      <div className="h-4 w-full max-w-sm animate-pulse rounded bg-chip" />
     </div>
   );
 }

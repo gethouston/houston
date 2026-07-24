@@ -1,15 +1,28 @@
+import { AsyncButton, Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import { ConnectWaitingPanel } from "./connect-waiting-panel";
-import type { ConnectFlow } from "./use-connect-flow";
+import { ConnectFlowInline } from "./connect-flow-inline";
+import type { ConnectFlow } from "./connect-flow-registry";
+import { ConnectNoticeLine } from "./connect-notice-line";
 
 /**
  * The recovery affordance for a connection that never went active, so a user who
  * abandoned the OAuth mid-flow ALWAYS has a way back:
  *
- *  - while a connect flow is waiting for THIS toolkit → the waiting panel
- *    (Reopen / I have finished / Cancel);
+ *  - while a connect flow for THIS toolkit is LIVE → the shared inline state
+ *    ({@link ConnectFlowInline}: the browser hand-off and its Reopen / I have
+ *    finished / Cancel actions);
  *  - otherwise `pending` → Finish connecting (a fresh link) + Remove;
  *  - otherwise `error` → Reconnect (a fresh link) + Remove.
+ *
+ * A just-SETTLED outcome is shown above those actions, never instead of them:
+ * gating the swap on the notice too meant a failed attempt replaced the
+ * Reconnect button — the one thing its own copy tells the user to press — for
+ * the six seconds the notice lives.
+ *
+ * The primary action is an {@link AsyncButton} holding the whole hand-off, so a
+ * rage click can't start a second flow; it is gated on nothing else. Another
+ * app connecting in a different row is irrelevant here (flows are per toolkit
+ * and concurrent), and gating on it is what used to freeze the whole surface.
  */
 export function PendingConnectionCallout({
   status,
@@ -27,21 +40,19 @@ export function PendingConnectionCallout({
 }) {
   const { t } = useTranslation("integrations");
   const name = appName ?? toolkit;
-  const waitingHere = connectFlow.states[toolkit] === "waiting";
 
-  if (waitingHere) {
+  if (toolkit in connectFlow.states) {
     return (
-      <div className="mt-2">
-        <ConnectWaitingPanel
-          appName={name}
-          toolkit={toolkit}
-          connectFlow={connectFlow}
-        />
-      </div>
+      <ConnectFlowInline
+        appName={name}
+        className="mt-2"
+        connectFlow={connectFlow}
+        toolkit={toolkit}
+      />
     );
   }
 
-  const busy = Object.keys(connectFlow.states).length > 0;
+  const notice = connectFlow.notices[toolkit];
   const copy =
     status === "pending"
       ? {
@@ -56,24 +67,26 @@ export function PendingConnectionCallout({
         };
 
   return (
-    <div className="mt-2 rounded-xl border border-line bg-input p-3">
-      <p className="text-[11px] text-ink-muted">{copy.body}</p>
+    <div className="mt-2 rounded-xl border border-line bg-input p-3 text-[13px]">
+      {notice && (
+        <div role="status" aria-live="polite" className="mb-2">
+          <ConnectNoticeLine appName={name} notice={notice} />
+        </div>
+      )}
+      <p className="text-ink-muted text-xs">{copy.body}</p>
       <div className="mt-2.5 flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void connectFlow.connect(toolkit)}
-          className="inline-flex h-7 items-center rounded-full bg-action px-3 text-xs font-medium text-action-text transition-colors hover:bg-action/90 disabled:opacity-60"
+        <AsyncButton
+          size="xs"
+          spinner={false}
+          // The recovery row is the only copy of this app on its surface, so it
+          // always shows its own flow's state — the origin is bookkeeping.
+          onClick={() => connectFlow.connect(toolkit, `recovery:${toolkit}`)}
         >
           {copy.primary}
-        </button>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium text-ink-muted transition-colors hover:bg-chip"
-        >
+        </AsyncButton>
+        <Button size="xs" type="button" variant="ghost" onClick={onRemove}>
           {copy.remove}
-        </button>
+        </Button>
       </div>
     </div>
   );

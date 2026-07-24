@@ -1,4 +1,5 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import type { IntegrationConnection } from "@houston-ai/engine-client";
 import {
@@ -132,5 +133,32 @@ describe("shouldAutoContinueConnected", () => {
       shouldAutoContinueConnected({ ...base, alreadyFired: true }),
       false,
     );
+  });
+});
+
+/**
+ * HOU-847: the in-chat connect surfaces bind the SAME shared flow as the
+ * Integrations tab, so they must not re-announce what the flow already
+ * announced (a card that JOINS a running connect would otherwise toast twice).
+ */
+describe("in-chat connect card source", () => {
+  const src = readFileSync(
+    new URL("../src/components/use-integration-connect.tsx", import.meta.url),
+    "utf8",
+  );
+
+  it("leaves the success toast to the shared flow", () => {
+    ok(!src.includes("addToast"), "the card raises no toast of its own");
+    ok(!src.includes("verifiedToast"), "its duplicate copy key is gone");
+  });
+
+  it("still nudges the agent and records the connect it drove", () => {
+    ok(src.includes("onConnected?.(slug, app.name)"), "the nudge survives");
+    ok(src.includes("integration_connected"), "analytics survive");
+  });
+
+  it("lights up for ITS toolkit only, never for any in-flight connect", () => {
+    ok(src.includes("slug in states"));
+    ok(!src.includes("Object.keys(states).length"));
   });
 });

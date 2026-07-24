@@ -1,4 +1,3 @@
-import { CatalogGrid, CatalogShowMore } from "@houston-ai/core";
 import type {
   IntegrationConnection,
   IntegrationToolkit,
@@ -6,22 +5,20 @@ import type {
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  appDisplay,
   browseCatalogView,
   CatalogLockedSection,
   type CatalogSection,
   type ConnectFlow,
-  ConnectWaitingPanel,
-  categoryLabel,
   groupCatalogByCategory,
-  MOST_USED,
+  inlineOwners,
   type PermissionsFix,
   SECTION_PREVIEW_CAP,
-  SectionHeader,
-  UNCATEGORIZED,
 } from "../integrations";
 import { AppInfoDialog } from "./app-info-dialog";
-import { PlaneAppRow } from "./plane-app-row";
+import {
+  CatalogCategorySection,
+  type VisibleSection,
+} from "./catalog-category-section";
 
 /**
  * The browse plane: the full connectable catalog grouped into flat category
@@ -31,20 +28,27 @@ import { PlaneAppRow } from "./plane-app-row";
  * connectable app is present, sorted into its section. Each section shows at
  * most {@link SECTION_PREVIEW_CAP} rows until the user expands it, so the first
  * paint stays bounded even over the ~1000-app catalog; every section expands
- * independently. An in-flight OAuth surfaces inline above the sections via the
- * shared waiting panel. A row BODY click opens the app's "more info" modal
+ * independently. A row BODY click opens the app's "more info" modal
  * ({@link AppInfoDialog}); only the row's `+` (or the modal's CTA) connects.
- * The connect flow lives on the SURFACE (`connectFlow`) so polling survives
- * re-renders; each row's `+` disables while ANOTHER connect owns the flow
- * (`busy`) and spins while it is the one connecting. On a Teams host with an
- * `allowlist` ceiling, apps outside it drop from the sections and surface as
- * read-only LOCKED rows below (same query + category filter, so searching a
- * blocked app finds its locked row, never a false empty state).
+ *
+ * An in-flight OAuth belongs to its OWN row ({@link PlaneAppRow} expands with
+ * the live phase): there is no page-level waiting panel, so feedback never
+ * appears 90px above whatever the user is reading, and no row is ever disabled
+ * because a different app is connecting. Flows are per toolkit and concurrent;
+ * the shared flow state (`connectFlow`) outlives this surface, so switching
+ * tabs or leaving the page never kills a poll. The spotlight REPEATS rows that
+ * also sit in a category section, so each row carries a
+ * {@link connectOriginKey} and {@link inlineOwners} hands the expansion to the
+ * single copy the user pressed — the duplicate keeps only its `+` spinner. On a
+ * Teams host with an `allowlist` ceiling, apps outside it drop from the sections
+ * and surface as read-only LOCKED rows below (same query + category filter, so
+ * searching a blocked app finds its locked row, never a false empty state).
  */
 export function CategoryCatalog({
   catalog,
   connections,
   connectFlow,
+  surface,
   query,
   category,
   allowlist = null,
@@ -53,6 +57,9 @@ export function CategoryCatalog({
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
   connectFlow: ConnectFlow;
+  /** This catalog's half of every row's origin key — which surface the row
+   *  belongs to (the global page vs. one agent's tab). */
+  surface: string;
   query: string;
   /** The filter dropdown's pick: a primary-category slug or "all". */
   category: string;
@@ -64,10 +71,6 @@ export function CategoryCatalog({
 }) {
   const { t } = useTranslation("integrations");
 
-  const bySlug = useMemo(
-    () => new Map(catalog.map((tk) => [tk.slug, tk])),
-    [catalog],
-  );
   const connected = useMemo(
     () => new Set(connections.map((c) => c.toolkit)),
     [connections],
@@ -90,9 +93,12 @@ export function CategoryCatalog({
   );
 
   // The "more info" modal's subject — a row-body click sets it; `+` never does.
-  const [infoToolkit, setInfoToolkit] = useState<IntegrationToolkit | null>(
-    null,
-  );
+  // It carries the row's origin so connecting from the modal lands its state on
+  // the row the user opened, not on some other copy of the same app.
+  const [info, setInfo] = useState<{
+    toolkit: IntegrationToolkit;
+    origin: string;
+  } | null>(null);
   // A fresh query OR category resets every section back to its capped preview
   // (changing category re-groups the sections, so a stale expansion no longer
   // maps). Adjusting state during render (React's documented pattern, mirroring
@@ -105,86 +111,60 @@ export function CategoryCatalog({
     setExpanded(new Set());
   }
 
-  // This surface stays one-at-a-time: a live connect disables every other row
-  // (`busy`), so at most one slug is ever in flight. Read the record as such —
-  // the lone in-flight slug drives the shared waiting panel above the sections.
-  const { states } = connectFlow;
-  const busy = Object.keys(states).length > 0;
-  const connectingSlug = Object.keys(states)[0] ?? null;
-  const connectingName = connectingSlug
-    ? appDisplay(connectingSlug, bySlug.get(connectingSlug)).name
-    : "";
+  // The rows each section actually renders (capped until expanded), resolved
+  // BEFORE the tree so the inline-state owner can be decided across sections.
+  const visible: VisibleSection[] = useMemo(
+    () =>
+      sections.map((section) => {
+        const isExpanded = expanded.has(section.category);
+        return {
+          category: section.category,
+          total: section.connectable.length,
+          rows: isExpanded
+            ? section.connectable
+            : section.connectable.slice(0, SECTION_PREVIEW_CAP),
+          hasMore:
+            !isExpanded && section.connectable.length > SECTION_PREVIEW_CAP,
+        };
+      }),
+    [sections, expanded],
+  );
+  const owners = useMemo(
+    () =>
+      inlineOwners(
+        visible.map((s) => ({
+          section: s.category,
+          slugs: s.rows.map((tk) => tk.slug),
+        })),
+        surface,
+        connectFlow.origins,
+      ),
+    [visible, surface, connectFlow.origins],
+  );
 
   return (
     <div>
-      {connectingSlug && (
-        <div className="mb-6">
-          <ConnectWaitingPanel
-            appName={connectingName}
-            connectFlow={connectFlow}
-            toolkit={connectingSlug}
-          />
-        </div>
-      )}
-
       {sections.length === 0 && locked.length === 0 ? (
         <p className="py-8 text-center text-sm text-ink-muted">
           {t("picker.noResults")}
         </p>
       ) : (
         <div className="space-y-8">
-          {sections.map((section) => {
-            const isExpanded = expanded.has(section.category);
-            const rows = isExpanded
-              ? section.connectable
-              : section.connectable.slice(0, SECTION_PREVIEW_CAP);
-            const hasMore =
-              !isExpanded && section.connectable.length > SECTION_PREVIEW_CAP;
-            return (
-              <section key={section.category}>
-                <SectionHeader
-                  // <h3>: nested under the Available section's lg <h2> heading.
-                  as="h3"
-                  title={
-                    section.category === MOST_USED
-                      ? t("home.mostUsed")
-                      : section.category === UNCATEGORIZED
-                        ? t("home.otherCategory")
-                        : categoryLabel(section.category)
-                  }
-                  count={section.connectable.length}
-                  className="mb-3"
-                />
-                <CatalogGrid>
-                  {rows.map((tk) => (
-                    <PlaneAppRow
-                      key={tk.slug}
-                      display={appDisplay(tk.slug, tk)}
-                      onOpen={() => setInfoToolkit(tk)}
-                      onConnect={() => void connectFlow.connect(tk.slug)}
-                      connecting={tk.slug in states}
-                      busy={busy}
-                    />
-                  ))}
-                </CatalogGrid>
-                {hasMore && (
-                  <CatalogShowMore
-                    onClick={() =>
-                      setExpanded((prev) => {
-                        const next = new Set(prev);
-                        next.add(section.category);
-                        return next;
-                      })
-                    }
-                  >
-                    {t("home.showAllApps", {
-                      count: section.connectable.length,
-                    })}
-                  </CatalogShowMore>
-                )}
-              </section>
-            );
-          })}
+          {visible.map((section) => (
+            <CatalogCategorySection
+              key={section.category}
+              section={section}
+              surface={surface}
+              connectFlow={connectFlow}
+              // The spotlight repeats category rows: only the copy that owns
+              // this app expands, so the panel appears exactly once.
+              owns={(slug, origin) => owners.get(slug) === origin}
+              onOpen={(toolkit, origin) => setInfo({ toolkit, origin })}
+              onExpand={(category) =>
+                setExpanded((prev) => new Set(prev).add(category))
+              }
+            />
+          ))}
         </div>
       )}
 
@@ -193,13 +173,18 @@ export function CategoryCatalog({
       )}
 
       <AppInfoDialog
-        toolkit={infoToolkit}
-        onClose={() => setInfoToolkit(null)}
+        toolkit={info?.toolkit ?? null}
+        onClose={() => setInfo(null)}
         onConnect={(toolkit) => {
-          setInfoToolkit(null);
-          void connectFlow.connect(toolkit);
+          const origin = info?.origin;
+          setInfo(null);
+          if (origin) void connectFlow.connect(toolkit, origin);
         }}
-        busy={busy}
+        // Gated on THIS app's own flow only: the modal's CTA must not go dead
+        // because some other row is mid-OAuth. Live whenever the user opens the
+        // modal for an app whose hand-off is already running (started from its
+        // row, or from another surface entirely).
+        busy={info !== null && info.toolkit.slug in connectFlow.states}
       />
     </div>
   );

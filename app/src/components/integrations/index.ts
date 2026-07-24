@@ -4,6 +4,7 @@ export {
   type AppDisplay,
   appDisplay,
   connectionRows,
+  prettifyToolkit,
 } from "./app-display";
 export { AppLogo } from "./app-logo";
 export { AppRow } from "./app-row";
@@ -33,7 +34,13 @@ export {
 } from "./browse-sections";
 export { CatalogLockedSection } from "./catalog-locked-section";
 export { CATEGORY_PRIORITY } from "./category-priority";
-export { ConnectWaitingPanel } from "./connect-waiting-panel";
+export { ConnectFlowInline } from "./connect-flow-inline";
+export { ConnectNoticeLine } from "./connect-notice-line";
+export {
+  connectOriginKey,
+  inlineOwners,
+  type RenderedSection,
+} from "./connect-origin";
 export {
   type ConnectionStatus,
   ConnectionStatusBadge,
@@ -61,6 +68,7 @@ export {
 } from "./states";
 export {
   type ConnectFlow,
+  type ConnectNotice,
   type ConnectStep,
   useConnectFlow,
 } from "./use-connect-flow";

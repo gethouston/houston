@@ -75,9 +75,6 @@ export function ConnectEmailMission({
   );
 
   const { states, connect, cancel } = useConnectFlow({ agentId: agent.id });
-  // One-at-a-time by design: this step offers a single email provider, so any
-  // live flow dims the other row (the per-slug flow could run both at once).
-  const connecting = Object.keys(states).length > 0;
 
   // Single hand-off gate: the auto-advance effect and the explicit Continue
   // button both route through here, so the step advances exactly once no matter
@@ -119,7 +116,7 @@ export function ConnectEmailMission({
       if (isToolkitConnected(connections.data, toolkit)) return;
       busyRef.current = true;
       startedAtRef.current = Date.now();
-      void Promise.resolve(connect(toolkit)).finally(() => {
+      void connect(toolkit, `onboardingEmail:${toolkit}`).finally(() => {
         busyRef.current = false;
       });
     },
@@ -140,9 +137,10 @@ export function ConnectEmailMission({
     cancel: t("tutorial.missions.connectEmail.cancel"),
     connected: t("tutorial.missions.connectEmail.connected"),
   };
+  // Rows are independent: connects run per toolkit and concurrently, so a live
+  // Gmail hand-off must never dim Outlook (the flow state is app-wide now, so a
+  // connect started elsewhere would have dimmed both).
   const isLoading = (toolkit: string) => toolkit in states;
-  const disabledExcept = (toolkit: string) =>
-    connecting && !(toolkit in states);
 
   // Belt and braces: whenever a row is Connected, offer an explicit Continue so
   // the user is never stranded even if the auto-advance above misses an edge.
@@ -172,7 +170,6 @@ export function ConnectEmailMission({
               display={displayFor(p.toolkit, p.label)}
               connected={isToolkitConnected(connections.data, p.toolkit)}
               loading={isLoading(p.toolkit)}
-              disabled={disabledExcept(p.toolkit)}
               labels={labels}
               onConnect={() => startConnect(p.toolkit, p.label)}
               onCancel={() => tryCancel(p.toolkit)}
