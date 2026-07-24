@@ -387,3 +387,35 @@ img {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Explicit per-OS download triggers (HOU-919) ──────────────────────────
+   The gate script routes [data-dl-trigger] by data-dl-os (else detectOs),
+   but v3 dropped every pinned trigger — non-Windows visitors had no path to
+   the Windows installer. These quiet text links restore both directions. */
+.dl-os-links {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--ink-subtle);
+}
+.dl-os-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.dl-os-link:hover {
+  color: var(--ink-strong);
+}
+.lfoot .dl-os-links {
+  color: var(--on-ink-faint);
+}
+.lfoot .dl-os-link {
+  color: var(--on-ink-muted);
+}
+.lfoot .dl-os-link:hover {
+  color: var(--on-ink);
+}
