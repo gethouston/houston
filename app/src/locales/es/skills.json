@@ -140,7 +140,7 @@
     "custom": "Habilidades personalizadas",
     "customEmptyTitle": "Aún no tienes habilidades personalizadas",
     "customEmptyDescription": "Describe lo que necesitas y constrúyela junto a tu agente, o agrégala tú mismo desde GitHub o desde cero.",
-    "createWithAi": "Crear con IA"
+    "createSkill": "Crear habilidad"
   },
   "setupChat": {
     "missionTitle": "Nueva habilidad",

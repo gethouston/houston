@@ -140,7 +140,7 @@
     "custom": "Custom skills",
     "customEmptyTitle": "No custom skills yet",
     "customEmptyDescription": "Describe what you need and build it together with your agent, or add one yourself from GitHub or from scratch.",
-    "createWithAi": "Create with AI"
+    "createSkill": "Create skill"
   },
   "setupChat": {
     "missionTitle": "New skill",

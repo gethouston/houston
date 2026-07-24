@@ -41,8 +41,7 @@ export function SkillCustomTab({
   const actions = (
     <div className="flex items-center gap-2">
       <Button type="button" onClick={onCreateWithAi}>
-        <Sparkles className="size-4" />
-        {t("tabs.createWithAi")}
+        {t("tabs.createSkill")}
       </Button>
       <Button type="button" variant="outline" onClick={onAddClick}>
         <Plus className="size-4" />
