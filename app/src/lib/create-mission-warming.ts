@@ -26,6 +26,7 @@ import type {
   CreateMissionOptions,
   CreateMissionResult,
 } from "./create-mission";
+import { creationTiming } from "./creation-timing-live";
 import { getEngine } from "./engine";
 import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
@@ -112,6 +113,7 @@ export function createMissionWhileWarming(
         effortOverride: opts.effortOverride,
         modeOverride: opts.modeOverride,
       });
+      creationTiming.markIntroDispatched(sessionKey);
       // The engine answers now, so the AI title pass runs like the normal
       // path's (createMission fires it right after the first send).
       if (!opts.title) {

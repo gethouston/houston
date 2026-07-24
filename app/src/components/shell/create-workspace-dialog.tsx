@@ -14,6 +14,7 @@ import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { finishAgentSetup } from "../../lib/agent-setup";
 import { startAgentSetupMission } from "../../lib/agent-setup-mission";
+import { creationTiming } from "../../lib/creation-timing-live";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
@@ -127,6 +128,7 @@ export function CreateAgentDialog() {
     if (creating || !trimmed || !selectedConfigId || !currentWorkspace) return;
     setError(null);
     setCreating(true);
+    creationTiming.begin();
     // AI-generated instructions take priority over the template's claudeMd.
     let claudeMd = generatedClaudeMd ?? selectedDef?.config.claudeMd;
     let seeds = selectedDef?.config.agentSeeds;
@@ -155,7 +157,9 @@ export function CreateAgentDialog() {
       );
       created = agent;
       agentPath = agent.folderPath;
+      creationTiming.markCreated(agent.id);
     } catch (err) {
+      creationTiming.fail();
       setError(String(err));
       setCreating(false);
       return;
@@ -168,6 +172,7 @@ export function CreateAgentDialog() {
     // land before the pod is usable enough to send a message, and each surfaces
     // its own error toast on failure.
     useUIStore.getState().setViewMode(DEFAULT_TAB_ID);
+    creationTiming.markRevealed();
     void finishAgentSetup(agentPath, {
       provider,
       model,

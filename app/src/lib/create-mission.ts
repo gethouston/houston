@@ -7,6 +7,7 @@
 import { isAgentProvisioning } from "../stores/agent-provisioning";
 import { analytics } from "./analytics";
 import { createMissionWhileWarming } from "./create-mission-warming";
+import { creationTiming } from "./creation-timing-live";
 import { logger } from "./logger";
 import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
 import { tauriActivity, tauriChat } from "./tauri";
@@ -139,6 +140,7 @@ export async function createMission(
       // renders the clean `text` instead, live and on every history reload.
       displayText: opts.buildPrompt ? text : undefined,
     });
+    creationTiming.markIntroDispatched(sessionKey);
 
     analytics.track("mission_created", {
       agent_mode: opts.agentMode,

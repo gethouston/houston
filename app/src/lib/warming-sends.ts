@@ -19,6 +19,7 @@ import type {
   PendingWarmingSend,
   ProvisioningEntry,
 } from "./agent-provisioning";
+import { creationTiming } from "./creation-timing-live";
 import { getEngine } from "./engine";
 import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
@@ -189,6 +190,7 @@ export async function flushWarmingSends(
         // builder ran, prompt === send.text and there is nothing to hide.
         displayText: build ? send.text : undefined,
       });
+      creationTiming.markIntroDispatched(send.sessionKey);
       // The AI title pass this mission skipped at queue time (HOU-713): the
       // row just landed and the engine answers now. Fire-and-forget — a
       // failure keeps the fallback title (refreshMissionTitle logs it).
