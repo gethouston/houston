@@ -13,6 +13,11 @@
   text-align: left;
   border: 1px solid var(--app-line);
   background: var(--app-gutter);
+  /* The app renders in the SYSTEM font stack (DESIGN.md §4) — never the site's
+     Hanken. Pin it here so the mock's chrome matches the product exactly. */
+  font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,
+    Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 .win-body {
   display: flex;
@@ -64,10 +69,10 @@
   gap: 5px;
 }
 .sb-ws .ws-name svg {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   color: var(--app-ink-muted);
-  stroke-width: 2.2;
+  stroke-width: 2;
 }
 .sb-ws .ws-collapse {
   width: 16px;
@@ -86,24 +91,20 @@
   font-weight: 500;
 }
 .nav-item svg {
-  width: 17px;
-  height: 17px;
-  stroke-width: 1.9;
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
   flex-shrink: 0;
-  color: var(--app-ink-muted);
-}
-.nav-item.on {
-  background: var(--app-active);
-}
-.nav-item.on svg {
+  /* Real SidebarNavItem: the Lucide icon inherits text-ink (currentColor) — the
+     top-level nav glyphs read dark, not muted. */
   color: var(--app-ink);
 }
 .sb-group {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  font-weight: 600;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--app-ink-muted);
   padding: 16px 8px 6px;
 }
@@ -111,8 +112,8 @@
   flex: 1;
 }
 .sb-group .sg-ic {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   color: var(--app-ink-muted);
   stroke-width: 2;
 }
@@ -126,40 +127,50 @@
 .agent-row.on {
   background: var(--app-active);
 }
+/* Agent avatar — EXACTLY as core's HoustonAvatar renders: a faint circle tinted
+   18% toward the agent color, holding the Houston helmet glyph filled in that
+   same color at ~65% of the diameter. Never a solid gradient, never an initial. */
 .av {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--app-chip) 82%, var(--ac) 18%);
 }
-/* agent-avatar palette — bright→base gradient, as HoustonAvatar renders */
-.av-p { background: linear-gradient(150deg, var(--agent-purple-1), var(--agent-purple-2)); }
-.av-b { background: linear-gradient(150deg, var(--agent-navy-1), var(--agent-navy-2)); }
-.av-g { background: linear-gradient(150deg, var(--agent-forest-1), var(--agent-forest-2)); }
-.av-o { background: linear-gradient(150deg, var(--agent-orange-1), var(--agent-orange-2)); }
-.av-c { background: linear-gradient(150deg, var(--agent-crimson-1), var(--agent-crimson-2)); }
+.av::before {
+  content: "";
+  width: 65%;
+  height: 65%;
+  background-color: var(--ac);
+  -webkit-mask: var(--helmet-mask) center / contain no-repeat;
+  mask: var(--helmet-mask) center / contain no-repeat;
+}
+/* Single-color agent palette (the app's real light --ht-agent-* values). */
+.av-p { --ac: #5b21b6; } /* purple — Houston */
+.av-b { --ac: #1e4d8c; } /* navy — Chief of Staff */
+.av-g { --ac: #1b6b3a; } /* forest */
+.av-o { --ac: #b45309; } /* orange — Bookkeeper */
+.av-c { --ac: #a3261a; } /* crimson — Sales Rep */
 .agent-row .a-name {
   flex: 1;
   font-size: 13.5px;
   color: var(--app-ink);
   font-weight: 500;
 }
+/* Needs-you chip — a white outline Badge (core NeedsYouChip): 11px semibold,
+   near-ink text, hairline border. Not a gray chip. */
 .agent-row .a-count {
   font-size: 11px;
   font-weight: 600;
-  color: var(--app-ink-muted);
-  min-width: 20px;
+  color: rgba(20, 22, 29, 0.8);
+  min-width: 24px;
   height: 18px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--app-chip);
+  background: var(--app-input);
+  border: 1px solid var(--app-line);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -183,7 +194,7 @@
   padding: 16px 20px 12px;
 }
 .sh-title {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--app-ink);
@@ -241,9 +252,10 @@
 .sh-new .glyph {
   width: 16px;
   height: 16px;
-  border-radius: 50%;
-  background: linear-gradient(150deg, var(--agent-purple-1), var(--agent-purple-2));
   flex-shrink: 0;
+  background-color: var(--app-action-text);
+  -webkit-mask: var(--helmet-mask) center / contain no-repeat;
+  mask: var(--helmet-mask) center / contain no-repeat;
 }
 
 /* Tabs */
@@ -376,42 +388,41 @@
 .tc-head {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin-bottom: 9px;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 .tc-head .av {
-  width: 18px;
-  height: 18px;
-  font-size: 8.5px;
+  width: 16px;
+  height: 16px;
 }
 .tc-agent {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 400;
   color: var(--app-ink-muted);
   flex: 1;
 }
 .tc-actions {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: var(--app-ink-muted);
-  opacity: 0.6;
+  opacity: 0.4;
 }
 .tc-actions svg {
-  width: 14px;
-  height: 14px;
-  stroke-width: 1.9;
+  width: 12px;
+  height: 12px;
+  stroke-width: 2;
 }
 .tc-title {
-  font-size: 14.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--app-ink);
-  line-height: 1.3;
-  letter-spacing: -0.01em;
-  margin-bottom: 4px;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  margin-bottom: 3px;
 }
 .tc-desc {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--app-ink-muted);
   line-height: 1.4;
 }

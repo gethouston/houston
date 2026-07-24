@@ -58,7 +58,6 @@
       '<span class="tc-agent"></span></div>' +
       '<div class="tc-title"></div>' +
       '<div class="tc-desc"></div>';
-    c.querySelector(".av").textContent = agent.initials;
     c.querySelector(".tc-agent").textContent = agent.name;
     c.querySelector(".tc-title").textContent = script.card.title;
     c.querySelector(".tc-desc").textContent = script.card.running;

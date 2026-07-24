@@ -28,7 +28,6 @@ window.createHeroDemoStage = (root, agents) => {
       if (needsAgent) needsAgent.textContent = agent.name;
       if (needsAvatar) {
         needsAvatar.className = `av ${agent.av}`;
-        needsAvatar.textContent = agent.initials;
       }
       if (needsTitle) needsTitle.textContent = script.needsYou.title;
       if (needsDesc) needsDesc.textContent = script.needsYou.desc;

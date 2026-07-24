@@ -1,7 +1,7 @@
 /*
  * Data for the scripted hero demo (assets/hero-demo.js): the agent roster
  * (keys match the mockup sidebar's `data-agent` values in the hero window;
- * `av` is the monochrome-skin avatar class, `initials` the chip label) and the
+ * `av` is the avatar color class, which tints the Houston helmet glyph) and the
  * four missions the loop cycles through, one per agent, so the whole team is
  * visibly working on the true-to-app board.
  *
@@ -12,10 +12,10 @@
  */
 window.HERO_DEMO = {
   agents: {
-    houston: { name: "Houston", av: "av-p", initials: "H" },
-    "sales-rep": { name: "Sales Rep", av: "av-c", initials: "SR" },
-    bookkeeper: { name: "Bookkeeper", av: "av-o", initials: "BK" },
-    "chief-of-staff": { name: "Chief of Staff", av: "av-b", initials: "CS" },
+    houston: { name: "Houston", av: "av-p" },
+    "sales-rep": { name: "Sales Rep", av: "av-c" },
+    bookkeeper: { name: "Bookkeeper", av: "av-o" },
+    "chief-of-staff": { name: "Chief of Staff", av: "av-b" },
   },
   scripts: [
     {

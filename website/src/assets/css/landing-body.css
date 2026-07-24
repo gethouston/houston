@@ -24,7 +24,7 @@
 }
 .agent-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 14px;
   margin-top: 52px;
 }
@@ -79,7 +79,7 @@
   color: var(--ink-muted);
   line-height: 1.5;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -99,33 +99,45 @@
   height: 15px;
   display: block;
 }
+/* The Agent Store tile is the 9th cell of the 3×3 grid — a single card-sized
+   CTA, not a full-width banner. Same footprint as an agent card, panel-toned. */
 .agent-more {
-  grid-column: 1 / -1;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
-  padding: 22px 24px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 14px;
+  padding: 18px;
   border-radius: 16px;
   background: var(--panel);
   border: 1px solid var(--line);
 }
 .agent-more span {
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--ink-muted);
 }
 .agent-more strong {
   color: var(--ink-strong);
   font-weight: 600;
 }
-@media (max-width: 720px) {
+@media (max-width: 980px) {
+  .agent-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 640px) {
   .agent-grid {
     grid-template-columns: 1fr;
   }
 }
 
 /* ── How it works (#features) — tabs + steps + phone ──────────────────────── */
+/* The restructured two-column layout is far shorter than the old stacked one,
+   so the band tightens to match (was --section-pad ≈ 108px each side). */
+#features.section {
+  padding-block: clamp(44px, 5vw, 64px);
+}
 .hiw-head {
   text-align: center;
   margin-bottom: 8px;
@@ -140,14 +152,14 @@
 .hiw-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-  margin: 30px auto 48px;
-  max-width: 760px;
+  gap: 7px;
+  justify-content: flex-start;
+  margin: 0 0 4px;
+  max-width: none;
 }
 .hiw-tab {
-  font-size: 13px;
-  padding: 8px 16px;
+  font-size: 12.5px;
+  padding: 6px 13px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
   background: var(--card);
@@ -172,29 +184,37 @@
   color: var(--action-text);
   border-color: var(--action);
 }
+/* Two columns: the tabs + compact steps on the left, the phone on the right.
+   Centering the shorter left stack against the phone keeps the section low. */
 .feature-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.05fr 0.95fr;
   gap: clamp(32px, 5vw, 60px);
   align-items: center;
+  margin-top: 24px;
+}
+.hiw-left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 .hiw-steps {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 .hiw-step {
   display: flex;
-  gap: 16px;
+  gap: 13px;
   align-items: flex-start;
-  padding: 22px 24px;
-  border-radius: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
   background: var(--card);
   border: 1px solid var(--line);
 }
 .hiw-n {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -202,28 +222,31 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink-muted);
 }
 .hiw-step-t {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink-strong);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .hiw-step p {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--ink-muted);
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
-/* Phone mock — real titanium frame, light Houston app inside. */
+/* Phone mock — real titanium frame, light Houston app inside. `zoom` shrinks
+   the whole device (frame + content, proportions intact) so the two-column
+   #features stays low without re-sizing every inner value. */
 .iphone {
   position: relative;
   width: 322px;
   max-width: 100%;
   margin: 0 auto;
+  zoom: 0.66;
   aspect-ratio: 322 / 656;
   border-radius: 56px;
   padding: 11px;
