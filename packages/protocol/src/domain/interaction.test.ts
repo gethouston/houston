@@ -1,5 +1,9 @@
 import { expect, expectTypeOf, test } from "vitest";
-import { isPendingInteraction, type PendingInteraction } from "../index";
+import {
+  isPendingInteraction,
+  type PendingInteraction,
+  parsePendingInteraction,
+} from "../index";
 
 test("isPendingInteraction accepts the step-sequence shape and rejects legacy shapes", () => {
   expect(
@@ -113,132 +117,96 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
   );
 });
 
-test("isPendingInteraction validates approval steps", () => {
-  // A full approval step (with display params) is accepted.
-  expect(
-    isPendingInteraction({
-      steps: [
-        {
-          kind: "approval",
-          id: "a1",
-          toolkit: "gmail",
-          action: "GMAIL_SEND_DRAFT",
-          params: { to: "alex@acme.com", subject: "Q3 report" },
-          paramsHash: "h7f3a1",
-        },
-      ],
-    }),
-  ).toBe(true);
-
-  // `params` is optional: an approval step without it is accepted.
-  expect(
-    isPendingInteraction({
-      steps: [
-        {
-          kind: "approval",
-          id: "a1",
-          toolkit: "gmail",
-          action: "GMAIL_SEND_DRAFT",
-          paramsHash: "h7f3a1",
-        },
-      ],
-    }),
-  ).toBe(true);
-
-  // A missing paramsHash is invalid.
-  expect(
-    isPendingInteraction({
-      steps: [
-        {
-          kind: "approval",
-          id: "a1",
-          toolkit: "gmail",
-          action: "GMAIL_SEND_DRAFT",
-        },
-      ],
-    }),
-  ).toBe(false);
-
-  // A missing toolkit / action is invalid.
-  expect(
-    isPendingInteraction({
-      steps: [{ kind: "approval", id: "a1", action: "X", paramsHash: "h" }],
-    }),
-  ).toBe(false);
-  expect(
-    isPendingInteraction({
-      steps: [
-        { kind: "approval", id: "a1", toolkit: "gmail", paramsHash: "h" },
-      ],
-    }),
-  ).toBe(false);
-
-  // A non-string param value is invalid.
-  expect(
-    isPendingInteraction({
-      steps: [
-        {
-          kind: "approval",
-          id: "a1",
-          toolkit: "gmail",
-          action: "GMAIL_SEND_DRAFT",
-          params: { to: 42 },
-          paramsHash: "h",
-        },
-      ],
-    }),
-  ).toBe(false);
-
-  // `paramsOmitted` is optional: a numeric value is accepted.
-  expect(
-    isPendingInteraction({
-      steps: [
-        {
-          kind: "approval",
-          id: "a1",
-          toolkit: "gmail",
-          action: "GMAIL_SEND_DRAFT",
-          paramsHash: "h",
-          paramsOmitted: 3,
-        },
-      ],
-    }),
-  ).toBe(true);
-
-  // A non-number `paramsOmitted` is invalid.
-  expect(
-    isPendingInteraction({
-      steps: [
-        {
-          kind: "approval",
-          id: "a1",
-          toolkit: "gmail",
-          action: "GMAIL_SEND_DRAFT",
-          paramsHash: "h",
-          paramsOmitted: "3",
-        },
-      ],
-    }),
-  ).toBe(false);
-
-  // A whole interaction mixing kinds — questions → signin → connect → approval —
-  // is accepted (approvals land last).
+test("a whole interaction mixing question → signin → connect is accepted", () => {
   expect(
     isPendingInteraction({
       steps: [
         { kind: "question", id: "q1", question: "Which draft?" },
         { kind: "signin", id: "s1" },
         { kind: "connect", id: "c1", toolkit: "gmail" },
+      ],
+    }),
+  ).toBe(true);
+});
+
+test("a question step carries an optional toolkit slug", () => {
+  // The card brands itself with the app's logo when the question confirms an
+  // app action: a string toolkit is accepted.
+  expect(
+    isPendingInteraction({
+      steps: [
         {
-          kind: "approval",
-          id: "a1",
+          kind: "question",
+          id: "q1",
+          question: "Should I send the 30 invites?",
           toolkit: "gmail",
-          action: "GMAIL_SEND_DRAFT",
-          paramsHash: "h7f3a1",
+          options: [
+            { id: "send", label: "Send it", recommended: true },
+            { id: "no", label: "Don't send" },
+          ],
         },
       ],
     }),
   ).toBe(true);
+
+  // A non-string toolkit is invalid.
+  expect(
+    isPendingInteraction({
+      steps: [
+        { kind: "question", id: "q1", question: "Send it?", toolkit: 42 },
+      ],
+    }),
+  ).toBe(false);
+
+  // Omitting toolkit is fine — most questions concern no app.
+  expect(
+    isPendingInteraction({
+      steps: [{ kind: "question", id: "q1", question: "Which week?" }],
+    }),
+  ).toBe(true);
+});
+
+test("an unrecognized step kind is DROPPED, not fatal (mixed-version peer)", () => {
+  // A peer on an older build carries a step kind this build no longer knows
+  // (e.g. the retired `approval` step). The parse keeps the valid steps and
+  // drops the unknown one — the card still renders — never throwing.
+  const withUnknown = {
+    steps: [
+      { kind: "question", id: "q1", question: "Which draft?" },
+      {
+        kind: "approval",
+        id: "a1",
+        toolkit: "gmail",
+        action: "GMAIL_SEND_DRAFT",
+        paramsHash: "h7f3a1",
+      },
+      { kind: "connect", id: "c1", toolkit: "gmail" },
+    ],
+  };
+  expect(parsePendingInteraction(withUnknown)).toEqual({
+    steps: [
+      { kind: "question", id: "q1", question: "Which draft?" },
+      { kind: "connect", id: "c1", toolkit: "gmail" },
+    ],
+  });
+  // The boolean guard stays tolerant: valid steps survive → not absent.
+  expect(isPendingInteraction(withUnknown)).toBe(true);
+
+  // An interaction of ONLY unknown steps drops to undefined (nothing to render).
+  expect(
+    parsePendingInteraction({
+      steps: [{ kind: "approval", id: "a1", toolkit: "gmail" }],
+    }),
+  ).toBeUndefined();
+  expect(
+    isPendingInteraction({
+      steps: [{ kind: "approval", id: "a1", toolkit: "gmail" }],
+    }),
+  ).toBe(false);
+
+  // No `steps` array at all → undefined, never a throw.
+  expect(parsePendingInteraction({ kind: "question" })).toBeUndefined();
+  expect(parsePendingInteraction(null)).toBeUndefined();
 });
 
 test("question options tolerate the optional description/recommended fields", () => {
@@ -302,14 +270,6 @@ test("the protocol index re-exports PendingInteraction", () => {
       },
       { kind: "signin", id: "s1", reason: "Sign in first." },
       { kind: "connect", id: "c1", toolkit: "gmail", reason: "to send it" },
-      {
-        kind: "approval",
-        id: "a1",
-        toolkit: "gmail",
-        action: "GMAIL_SEND_DRAFT",
-        params: { to: "alex@acme.com" },
-        paramsHash: "h7f3a1",
-      },
     ],
   };
 

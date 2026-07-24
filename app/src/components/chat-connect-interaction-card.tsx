@@ -1,11 +1,13 @@
 import {
+  InlineTextRow,
   InteractionModal,
   InteractionModalTitle,
   type StepChrome,
 } from "@houston-ai/chat";
-import { Button, Kbd } from "@houston-ai/core";
+import { Button } from "@houston-ai/core";
 import { Check, CornerDownLeft, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ChatStepDeclineButton } from "./chat-step-decline-button";
 import { AppLogo } from "./integrations";
 import { useIntegrationConnect } from "./use-integration-connect";
 import { useInteractionStepKeys } from "./use-interaction-step-keys";
@@ -24,10 +26,11 @@ interface ChatConnectInteractionCardProps extends StepChrome {
   /** Fired once when the connection the user drove from here lands — the panel
    *  nudges the agent to resume (reuses the auto-continue path). */
   onConnected: (toolkit: string, appName: string) => void;
-  /** Fired when the user declines this connect step ("Not now", live frontier
-   *  only). The panel records the skip so the composed reply tells the agent the
-   *  user declined, then advances the sequence. */
-  onSkip: (toolkit: string, appName: string) => void;
+  /** Fired when the user declines this connect step: "Not now" (live frontier
+   *  only) passes no `message`; typing an instruction into the free-text row and
+   *  sending passes that verbatim text. The panel records the decline (with the
+   *  message, if any, so the composed reply relays it) then advances. */
+  onSkip: (toolkit: string, appName: string, message?: string) => void;
   /** True when the user walked BACK onto this already-reached step via the pager.
    *  A revisited step that is already connected shows the calm connected state
    *  with no footer (the pager's forward chevron is the way onward); a revisited
@@ -157,7 +160,8 @@ export function ChatConnectInteractionCard({
             </span>
           ) : (
             // Two-field body: the agent's REASON (foreground "why") over the app
-            // description (muted, one truncated line).
+            // description (muted, one truncated line), then the always-visible
+            // free-text row — connect, or tell it what to do instead.
             <div className="flex flex-col gap-1">
               <p className="text-balance text-ink text-sm leading-snug">
                 {reasonLine}
@@ -165,6 +169,12 @@ export function ChatConnectInteractionCard({
               <p className="truncate text-ink-muted text-sm">
                 {app.description || t("composio.integration")}
               </p>
+              <InlineTextRow
+                disabled={connecting}
+                onSubmit={(text) => onSkip(toolkit, app.name, text)}
+                placeholder={t("interaction.declinePlaceholder")}
+                sendLabel={t("questionCard.send")}
+              />
             </div>
           )}
           {connecting && (
@@ -178,17 +188,12 @@ export function ChatConnectInteractionCard({
         showConnect ? (
           <>
             {showNotNow && (
-              <Button
-                className="gap-1.5 text-ink-muted"
+              <ChatStepDeclineButton
                 disabled={connecting}
+                escLabel={t("interaction.esc")}
+                label={t("interaction.skip")}
                 onClick={() => onSkip(toolkit, app.name)}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                {t("interaction.skip")}
-                <Kbd>{t("interaction.esc")}</Kbd>
-              </Button>
+              />
             )}
             {connectButton}
           </>

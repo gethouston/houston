@@ -1,8 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { LocalActionApprovals } from "../integrations/action-approvals";
-import { displayParams, hashActionParams } from "../integrations/approvals";
 import { CUSTOM_ACTION_PREFIX } from "../integrations/custom/provider";
-import type { IntegrationProvider } from "../integrations/provider";
 import type { IntegrationRegistry } from "../integrations/registry";
 import { IntegrationSigninRequiredError } from "../integrations/types";
 import type { CredentialVault, WorkspaceStore } from "../ports";
@@ -44,13 +41,6 @@ export async function handleSandboxIntegrations(
     vault: CredentialVault;
     store: WorkspaceStore;
     integrations?: IntegrationDeps;
-    /**
-     * Per-agent action-approval policy (LOCAL / self-host + managed pods). When
-     * present, execute is gated on user approval unless the turn runs in
-     * Autopilot (auto header) — see the gate below. Absent → no gate (existing
-     * installs/tests execute untouched).
-     */
-    actionApprovals?: LocalActionApprovals;
   },
   method: string,
   path: string,
@@ -157,41 +147,10 @@ export async function handleSandboxIntegrations(
         ? (body.params as Record<string, unknown>)
         : {};
 
-    // Action-approval gate. Precedence: (1) an Autopilot turn auto-approves —
-    // the runtime stamps x-houston-turn-mode:auto and the sandbox HMAC already
-    // authenticated the runtime, so the header is trusted; (2) an always-allow
-    // record for THIS action runs; (3) a fresh one-shot ticket matching
-    // hash(action, params) is consumed (single use) and runs; else 409
-    // approval_required with a display payload the runtime turns into an
-    // approval step on the interaction card. Skipped wholesale when the policy
-    // is unwired (deps.actionApprovals absent → existing installs unchanged).
-    const approvals = deps.actionApprovals;
-    if (approvals && header(req, "x-houston-turn-mode") !== "auto") {
-      if (!(await approvals.isAlways(claim.agentId, action))) {
-        const hash = hashActionParams(action, params);
-        if (!(await approvals.consumeTicket(claim.agentId, hash))) {
-          const display = displayParams(params);
-          json(res, 409, {
-            error: "approval required",
-            code: "approval_required",
-            approval: {
-              toolkit: await resolveToolkit(action, provider, ws.ownerUserId),
-              action,
-              params: display.params,
-              paramsHash: hash,
-              // The user approves the full call; when the card caps its param
-              // rows, tell it how many settings it isn't showing so it can say so
-              // (present only when > 0 — omitted from the common no-cap case).
-              ...(display.omitted > 0
-                ? { paramsOmitted: display.omitted }
-                : {}),
-            },
-          });
-          return true;
-        }
-      }
-    }
-
+    // The host executes every authenticated execute directly. Integration
+    // confirmations are model-driven `ask_user` questions raised BEFORE the
+    // call (Ask first mode); there is no host-side approval gate. Planner
+    // blocking and the cloud gateway's toolkit allowlist live elsewhere.
     json(
       res,
       200,
@@ -206,61 +165,4 @@ export async function handleSandboxIntegrations(
     if (relayIntegrationUpstreamError(res, err)) return true;
     throw err;
   }
-}
-
-/**
- * Does `action` belong to `toolkit`? Composio slugs are `<TOOLKIT>_<REST>` with
- * the toolkit uppercased VERBATIM, so a multi-word slug keeps its underscores
- * (`google_maps` → `GOOGLE_MAPS_GET_ROUTE`); match the FULL slug as a prefix up
- * to an underscore boundary, never the segment before the first `_`. Custom
- * actions are executor addresses (`tools.<integration>.…`): the toolkit is the
- * integration segment, matched exactly.
- */
-function actionInToolkit(action: string, toolkit: string): boolean {
-  const a = action.toLowerCase();
-  const t = toolkit.toLowerCase();
-  if (a.startsWith("tools.")) return a.split(".")[1] === t;
-  return a === t || a.startsWith(`${t}_`);
-}
-
-/** Longest slug in `slugs` whose full-prefix matches `action` (so a multi-word
- *  `google_maps` wins over a shorter `google` that also prefixes the action), or
- *  null when none matches. */
-function longestMatchingSlug(action: string, slugs: string[]): string | null {
-  let best: string | null = null;
-  for (const slug of slugs) {
-    if (actionInToolkit(action, slug) && (!best || slug.length > best.length))
-      best = slug;
-  }
-  return best;
-}
-
-/**
- * Best-effort toolkit slug for the approval card (execute carries only the
- * action slug). Resolution, in order:
- *   1. The LONGEST matching slug among the acting user's CONNECTIONS, so a
- *      multi-word slug like `google_maps` is labeled correctly instead of the
- *      segment before the first underscore (`google`). Fault-tolerant: a
- *      `listConnections` failure falls through — the 409 must never fail on this
- *      display-only lookup.
- *   2. The segment before the first underscore, lowercased — the last-resort
- *      fallback (lossy for multi-word slugs). Only the paramsHash + action gate
- *      the call; the toolkit label is display-only.
- * Runs ONLY on the 409 path, never on the happy path.
- */
-async function resolveToolkit(
-  action: string,
-  provider: IntegrationProvider,
-  userId: string,
-): Promise<string> {
-  try {
-    const connected = (await provider.listConnections(userId)).map(
-      (c) => c.toolkit,
-    );
-    const best = longestMatchingSlug(action, connected);
-    if (best) return best;
-  } catch {
-    // Display-only lookup — never let it fail the 409; fall through.
-  }
-  return action.split("_")[0]?.toLowerCase() ?? "";
 }

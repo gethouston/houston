@@ -1224,7 +1224,7 @@ export class HoustonClient {
   // User-added API / MCP servers not in the Composio catalog. The host owns
   // persistence; the frontend lists, removes, and provides a secret. The list
   // returns `null` when the host predates the feature (404) so all custom UI
-  // hides, mirroring `agentActionApprovals`; every other error throws.
+  // hides, mirroring `getAgentModelChoice`; every other error throws.
 
   /** All custom integrations, or `null` when the host does not support the
    *  feature (404 — old build / gateway-fronted pod). */
@@ -1328,7 +1328,7 @@ export class HoustonClient {
    * One agent's per-routine trigger status (C9), or `null` when the host does
    * not serve triggers (404) — a deployment without event-driven routines (e.g.
    * desktop). Callers treat `null` as "triggers unsupported here" and hide the
-   * badge; every other error still throws. Mirrors how `agentActionApprovals`
+   * badge; every other error still throws. Mirrors how `getAgentModelChoice`
    * degrades on a 404.
    */
   async agentTriggerStatus(
@@ -1433,8 +1433,7 @@ export class HoustonClient {
    * The caller's spaces + pending invites (C8 §Wire surface). Degrades to an
    * empty result on a host that predates spaces (404) — the switcher then shows
    * only the personal workspace, byte-identical to a pre-C8 deployment. Mirrors
-   * how `getAgentModelChoice`/`agentActionApprovals` swallow a 404; every other
-   * error throws.
+   * how `getAgentModelChoice` swallows a 404; every other error throws.
    */
   async listOrgs(): Promise<OrgsList> {
     try {
@@ -1704,67 +1703,6 @@ export class HoustonClient {
       "/org/compute-usage",
       undefined,
       { days: days.toString() },
-    );
-  }
-  // ---------- action approvals ----------
-
-  /**
-   * The actions this agent may run without asking again (the "always allow"
-   * set). A host that does not serve the action-approval gate answers 404,
-   * which degrades to `{ always: [] }`: the approval card only shows on hosts
-   * that DO serve it, so an empty set is the correct "nothing pre-approved"
-   * reading rather than a hard failure (a 404 → empty degrade).
-   * Every other error still throws.
-   */
-  async agentActionApprovals(
-    agentSlugOrId: string,
-  ): Promise<{ always: string[] }> {
-    try {
-      return await this.request<{ always: string[] }>(
-        "GET",
-        `/agents/${this.seg(agentSlugOrId)}/action-approvals`,
-      );
-    } catch (err) {
-      if (isHoustonEngineError(err) && err.status === 404)
-        return { always: [] };
-      throw err;
-    }
-  }
-  /** Add an action to this agent's "always allow" set; returns the new set. */
-  async allowActionAlways(
-    agentSlugOrId: string,
-    action: string,
-  ): Promise<{ always: string[] }> {
-    return this.request(
-      "POST",
-      `/agents/${this.seg(agentSlugOrId)}/action-approvals/always`,
-      { action },
-    );
-  }
-  /**
-   * Remove an action from this agent's "always allow" set (the review UI's
-   * Remove); returns the new set. A mutation, so it does NOT degrade a 404 to a
-   * fake empty result (unlike the GET) — a real failure must reach the user.
-   */
-  async disallowActionAlways(
-    agentSlugOrId: string,
-    action: string,
-  ): Promise<{ always: string[] }> {
-    return this.request(
-      "DELETE",
-      `/agents/${this.seg(agentSlugOrId)}/action-approvals/always`,
-      { action },
-    );
-  }
-  /** Approve one pending action once, by its `hash` (a single-use ticket). */
-  async addActionApprovalTicket(
-    agentSlugOrId: string,
-    hash: string,
-  ): Promise<void> {
-    await this.request(
-      "POST",
-      `/agents/${this.seg(agentSlugOrId)}/action-approvals/tickets`,
-      { hash },
     );
   }
   /**

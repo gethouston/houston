@@ -27,7 +27,7 @@ const AskUserParams = Type.Object({
     Type.Object({
       question: Type.String({
         description:
-          "One question to show the user, in plain everyday language.",
+          "ONE question to show the user, in plain everyday language. Never fuse two asks into one ('Should I do X? If so, what is Y?') — make them separate questions in this same call.",
       }),
       options: Type.Optional(
         Type.Array(
@@ -47,9 +47,15 @@ const AskUserParams = Type.Object({
           }),
           {
             description:
-              "Optional 2-6 short, mutually-exclusive choices for this question, offered as single-select rows. Use for a choice or an approval; omit for an open question. The user can always type a custom answer instead of picking one, so never add a catch-all choice like 'Other' or 'Something else' to this list.",
+              "2-6 short, mutually-exclusive choices for this question, offered as single-select rows. Provide these for nearly every question — whenever you can think of likely answers, offer them as choices. Omit ONLY for genuinely open input (a name, an address, content to write). The user can always type a custom answer instead of picking one, so never add a catch-all choice like 'Other' or 'Something else' to this list.",
           },
         ),
+      ),
+      toolkit: Type.Optional(
+        Type.String({
+          description:
+            "Set when the question concerns a connected app: the exact toolkit slug (e.g. 'gmail'). Houston shows the app's logo on the question card. Always set it when confirming an app action.",
+        }),
       ),
     }),
     {
@@ -94,6 +100,9 @@ export function makeAskUserTool() {
           id: `q${i + 1}`,
           question: q.question,
           ...(q.options && q.options.length > 0 ? { options: q.options } : {}),
+          // Passed through verbatim: brands the card with the app's logo when
+          // the question confirms a connected-app action.
+          ...(q.toolkit ? { toolkit: q.toolkit } : {}),
         }),
       );
       recordQuestions(questions);

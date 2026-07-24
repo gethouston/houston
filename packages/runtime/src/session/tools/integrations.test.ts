@@ -362,7 +362,27 @@ test("a RELAYED upstream 409 (transient conflict) queues NO signin card", async 
   expect(holder.pending).toBeUndefined();
 });
 
-test("a 409 (approval_required) queues an approval step and returns a NORMAL instruction", async () => {
+test("execute POSTs the action + params only (no confirmation intent)", async () => {
+  // The dedicated host approval gate is gone: execute no longer sends an
+  // `intent`, and a change action is confirmed up front by an ask_user question.
+  const calls = mockFetch(() => ({ body: { successful: true } }));
+  await run(execute, {
+    action: "GMAIL_SEND_EMAIL",
+    params: { to: "a@b.com" },
+  });
+  expect(calls[0]?.body).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    params: { to: "a@b.com" },
+  });
+
+  const reads = mockFetch(() => ({ body: { successful: true } }));
+  await run(execute, { action: "GMAIL_LIST_MESSAGES" });
+  expect(reads[0]?.body).toEqual({ action: "GMAIL_LIST_MESSAGES", params: {} });
+});
+
+test("a 409 (approval_required) is no longer special: it surfaces as a generic error", async () => {
+  // The host no longer 409-gates actions. Any 409 it still emits flows through
+  // the generic error path — nothing is queued, nothing is returned as normal.
   mockFetch(() => ({
     status: 409,
     body: {
@@ -371,37 +391,16 @@ test("a 409 (approval_required) queues an approval step and returns a NORMAL ins
       approval: {
         toolkit: "gmail",
         action: "GMAIL_SEND_EMAIL",
-        params: { to: "a@b.com", subject: "Hi" },
         paramsHash: "h7f3a1",
       },
     },
   }));
   const holder = newInteractionHolder();
-  const out = await runWithInteractionCapture(holder, () =>
+  const failure = runWithInteractionCapture(holder, () =>
     run(execute, { action: "GMAIL_SEND_EMAIL", params: { to: "a@b.com" } }),
   );
-  // It RETURNS (does not throw) — being gated is a normal, expected state.
-  const text = (out.content[0] as { text: string }).text;
-  expect(text).toBe(
-    'This action needs the user\'s permission. Houston queued an approval card for "GMAIL_SEND_EMAIL" that the user will see when you end your turn. Do not run this action again now and do not ask for permission in text. Queue anything else the task needs (ask_user questions, request_connection) in this same turn, then end your turn. Houston sends you a message automatically once the user decides.',
-  );
-  expect(out.details).toEqual({
-    action: "GMAIL_SEND_EMAIL",
-    queuedApproval: true,
-  });
-  // The approval step is queued in this turn's interaction flow, id "a1".
-  expect(holder.pending).toEqual({
-    steps: [
-      {
-        kind: "approval",
-        id: "a1",
-        toolkit: "gmail",
-        action: "GMAIL_SEND_EMAIL",
-        params: { to: "a@b.com", subject: "Hi" },
-        paramsHash: "h7f3a1",
-      },
-    ],
-  });
+  await expect(failure).rejects.toThrow(/integrations execute failed \(409\)/);
+  expect(holder.pending).toBeUndefined();
 });
 
 test("a 403 (toolkit_not_allowed) returns Permissions-tab guidance, not a raw error", async () => {
@@ -446,45 +445,6 @@ test("a RELAYED upstream 403 (no code) stays a generic error, not the turned-off
   await expect(run(execute, { action: "X" })).rejects.toThrow(
     /integrations execute failed \(403\)/,
   );
-});
-
-test("a malformed approval payload falls through to the generic error throw", async () => {
-  // The code is present but the payload is broken (no paramsHash) → NOT a valid
-  // approval signal, so it must surface as the generic error, queueing nothing.
-  mockFetch(() => ({
-    status: 409,
-    body: {
-      code: "approval_required",
-      approval: { toolkit: "gmail", action: "GMAIL_SEND_EMAIL" },
-    },
-  }));
-  const holder = newInteractionHolder();
-  const failure = runWithInteractionCapture(holder, () =>
-    run(execute, { action: "GMAIL_SEND_EMAIL" }),
-  );
-  await expect(failure).rejects.toThrow(/integrations execute failed \(409\)/);
-  expect(holder.pending).toBeUndefined();
-});
-
-test("the turn-mode header is sent iff the turn is Autopilot", async () => {
-  // Inside an "auto" turn, the host is told to run the action un-gated.
-  const auto = mockFetch(() => ({ body: { successful: true } }));
-  await runWithTurnMode({ current: "auto" }, () =>
-    run(execute, { action: "X" }),
-  );
-  expect(auto[0]?.headers["x-houston-turn-mode"]).toBe("auto");
-
-  // A normal "execute" turn omits the header (the host gates un-approved actions).
-  const exec = mockFetch(() => ({ body: { successful: true } }));
-  await runWithTurnMode({ current: "execute" }, () =>
-    run(execute, { action: "X" }),
-  );
-  expect(exec[0]?.headers["x-houston-turn-mode"]).toBeUndefined();
-
-  // Outside any turn the header is absent too.
-  const bare = mockFetch(() => ({ body: { successful: true } }));
-  await run(execute, { action: "X" });
-  expect(bare[0]?.headers["x-houston-turn-mode"]).toBeUndefined();
 });
 
 test("live mode gates: a turn switched to Plan refuses execute and the connect hand-off", async () => {

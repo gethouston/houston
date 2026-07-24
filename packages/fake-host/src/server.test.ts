@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SEED_AGENT_ID, SEED_WORKSPACE_ID } from "./config";
 import { type FakeHost, startFakeHost } from "./server";
-import { addTicket, consumeTicket } from "./state";
 
 /**
  * Covers the package's new lifecycle surface — `startFakeHost` / `FakeHost.stop`
@@ -185,95 +184,39 @@ describe("startFakeHost", () => {
     expect(res.status).toBe(404);
   });
 
-  it("round-trips the per-agent action-approval routes", async () => {
-    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
-    const base = `${host.url}/v1/agents/${SEED_AGENT_ID}/action-approvals`;
-    const jsonHeaders = { "content-type": "application/json" };
-
-    // Unset → nothing pre-approved.
-    expect(await (await fetch(base)).json()).toEqual({ always: [] });
-
-    // "Always allow" appends the slug and echoes the updated list.
-    const allow = await fetch(`${base}/always`, {
-      method: "POST",
-      headers: jsonHeaders,
-      body: JSON.stringify({ action: "GMAIL_SEND_DRAFT" }),
-    });
-    expect(allow.status).toBe(200);
-    expect(await allow.json()).toEqual({ always: ["GMAIL_SEND_DRAFT"] });
-    // A re-add dedupes; GET reflects the stored list.
-    await fetch(`${base}/always`, {
-      method: "POST",
-      headers: jsonHeaders,
-      body: JSON.stringify({ action: "gmail_send_draft" }),
-    });
-    expect(await (await fetch(base)).json()).toEqual({
-      always: ["GMAIL_SEND_DRAFT"],
-    });
-
-    // An invalid action slug is a clean 400, never a swallowed accept.
-    const badAction = await fetch(`${base}/always`, {
-      method: "POST",
-      headers: jsonHeaders,
-      body: JSON.stringify({ action: "bad slug!" }),
-    });
-    expect(badAction.status).toBe(400);
-
-    // "Allow once" writes a one-shot ticket for a 16-hex-char fingerprint.
-    const ticket = await fetch(`${base}/tickets`, {
-      method: "POST",
-      headers: jsonHeaders,
-      body: JSON.stringify({ hash: "0123456789abcdef" }),
-    });
-    expect(ticket.status).toBe(200);
-    expect(await ticket.json()).toEqual({ ok: true });
-
-    // A malformed hash 400s.
-    const badHash = await fetch(`${base}/tickets`, {
-      method: "POST",
-      headers: jsonHeaders,
-      body: JSON.stringify({ hash: "nope" }),
-    });
-    expect(badHash.status).toBe(400);
-
-    // The stored ticket is consume-once: first read succeeds, the second misses.
-    expect(consumeTicket(SEED_AGENT_ID, "0123456789abcdef")).toBe(true);
-    expect(consumeTicket(SEED_AGENT_ID, "0123456789abcdef")).toBe(false);
-    addTicket(SEED_AGENT_ID, "fedcba9876543210");
-    expect(consumeTicket(SEED_AGENT_ID, "fedcba9876543210")).toBe(true);
-  });
-
   it("dismiss-interaction stops the transcript and clears the activity", async () => {
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     const agentBase = `${host.url}/agents/${SEED_AGENT_ID}`;
     const jsonHeaders = { "content-type": "application/json" };
-    const approval = {
+    const interaction = {
       steps: [
         {
-          kind: "approval",
-          id: "a1",
+          kind: "question",
+          id: "q1",
+          question: "Should I send the draft?",
           toolkit: "gmail",
-          action: "GMAIL_SEND_DRAFT",
-          params: { to: "a@b.com" },
-          paramsHash: "0123456789abcdef",
+          options: [
+            { id: "send", label: "Send it", recommended: true },
+            { id: "dont", label: "Don't send" },
+          ],
         },
       ],
     };
 
-    // Bind a conversation to the seeded activity and persist the approval
+    // Bind a conversation to the seeded activity and persist the question
     // interaction VERBATIM (covers the kind-agnostic PATCH set path).
     const patched = await fetch(`${agentBase}/activities/act-1`, {
       method: "PATCH",
       headers: jsonHeaders,
       body: JSON.stringify({
         session_key: "conv-1",
-        pending_interaction: approval,
+        pending_interaction: interaction,
       }),
     });
     const patchedBody = (await patched.json()) as {
       pending_interaction?: unknown;
     };
-    expect(patchedBody.pending_interaction).toEqual(approval);
+    expect(patchedBody.pending_interaction).toEqual(interaction);
 
     // Dismiss: append the stop marker + retire the pending interaction.
     const dismissed = await fetch(
@@ -305,22 +248,14 @@ describe("startFakeHost", () => {
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     const url = `${host.url}/agents/${SEED_AGENT_ID}/activities/act-1`;
     const jsonHeaders = { "content-type": "application/json" };
-    const approval = {
-      steps: [
-        {
-          kind: "approval",
-          id: "a1",
-          toolkit: "gmail",
-          action: "X",
-          paramsHash: "0123456789abcdef",
-        },
-      ],
+    const interaction = {
+      steps: [{ kind: "question", id: "q1", question: "X?", toolkit: "gmail" }],
     };
 
     await fetch(url, {
       method: "PATCH",
       headers: jsonHeaders,
-      body: JSON.stringify({ pending_interaction: approval }),
+      body: JSON.stringify({ pending_interaction: interaction }),
     });
     // Explicit null clears it — the key is DELETED, not stored as null.
     const cleared = await fetch(url, {

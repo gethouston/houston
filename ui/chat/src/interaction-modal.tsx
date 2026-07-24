@@ -114,7 +114,9 @@ export function InteractionModalTitle({
  * sign-in step, the connect step) is structurally identical: they differ ONLY in
  * the title, body, and footer nodes they hand in.
  *
- * The card never replaces the composer; it floats ABOVE the always-mounted one.
+ * How it composes with the composer is the caller's call (see ChatPanel's
+ * `composerOverrideMode`): a full interaction stepper replaces the composer's
+ * slot, while a lighter plan/offer floats above the still-mounted one.
  * Weight is restrained across the whole family: ONE regular step of hierarchy,
  * never competing bolds — color tone (foreground vs muted) carries the structure.
  */
@@ -178,8 +180,8 @@ export function InteractionModal({
       </div>
 
       {footer && (
-        // flex-wrap: a step with several actions (the approval card's three
-        // decisions, longer in es/pt) must wrap onto a second row in a narrow
+        // flex-wrap: a step with several actions (a decline beside a filled CTA,
+        // longer in es/pt) must wrap onto a second row in a narrow
         // panel — the card clips overflow, so an unwrapped row loses buttons.
         <div className="mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
           {footer}

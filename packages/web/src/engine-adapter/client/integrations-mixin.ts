@@ -122,8 +122,8 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
     // exactly this surface to the agent's pod. Its own `/v1/integrations`
     // subtree is Composio-only, so the top-level form above 404s there — that
     // 404 broke every in-chat secure credential card save on managed cloud.
-    // Like the action-approvals family they route through `authFetch` against
-    // `baseUrl` (bearer + `x-houston-org`, live in both) — never cp-gated.
+    // They route through `authFetch` against `baseUrl` (bearer +
+    // `x-houston-org`, live in both) — never cp-gated.
     async agentCustomIntegrations(
       agentSlugOrId: string,
     ): Promise<controlPlane.CustomIntegrationView[] | null> {

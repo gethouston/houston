@@ -1,9 +1,8 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
-import { recordApproval, recordConnection, recordSignin } from "../interaction";
+import { recordConnection, recordSignin } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
-import { currentTurnMode } from "../turn-mode-context";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google
@@ -81,83 +80,6 @@ function signalCode(detail: string): string | undefined {
     // Non-JSON body (e.g. an HTML proxy error page) → uncoded, generic error.
   }
   return undefined;
-}
-
-/** The host's action-approval payload (409 "approval_required" on `execute`). */
-interface ApprovalPayload {
-  toolkit: string;
-  action: string;
-  params?: Record<string, string>;
-  /** How many params the host dropped past the card's row cap (present only when
-   *  > 0); passed through to the approval step so the card can surface it. */
-  paramsOmitted?: number;
-  paramsHash: string;
-}
-
-/**
- * Parse the `approval` object off a 409 body, TOLERANTLY: toolkit/action/
- * paramsHash must be strings, params (optional) a record of strings,
- * paramsOmitted (optional) a number. A malformed payload returns undefined so
- * the caller falls through to the generic error throw rather than queueing a
- * broken approval card.
- */
-function parseApproval(detail: string): ApprovalPayload | undefined {
-  try {
-    const body: unknown = JSON.parse(detail);
-    if (!body || typeof body !== "object") return undefined;
-    const { approval } = body as { approval?: unknown };
-    if (!approval || typeof approval !== "object") return undefined;
-    const { toolkit, action, params, paramsOmitted, paramsHash } = approval as {
-      toolkit?: unknown;
-      action?: unknown;
-      params?: unknown;
-      paramsOmitted?: unknown;
-      paramsHash?: unknown;
-    };
-    if (
-      typeof toolkit !== "string" ||
-      typeof action !== "string" ||
-      typeof paramsHash !== "string"
-    )
-      return undefined;
-    if (paramsOmitted !== undefined && typeof paramsOmitted !== "number")
-      return undefined;
-    let parsedParams: Record<string, string> | undefined;
-    if (params !== undefined) {
-      if (
-        typeof params !== "object" ||
-        params === null ||
-        !Object.values(params as Record<string, unknown>).every(
-          (v) => typeof v === "string",
-        )
-      )
-        return undefined;
-      parsedParams = params as Record<string, string>;
-    }
-    return {
-      toolkit,
-      action,
-      paramsHash,
-      ...(parsedParams ? { params: parsedParams } : {}),
-      ...(paramsOmitted !== undefined ? { paramsOmitted } : {}),
-    };
-  } catch {
-    // Non-JSON body → not an approval signal; generic error.
-  }
-  return undefined;
-}
-
-/**
- * Thrown by `post()` when the host gated an integration `execute` (409
- * "approval_required"). Module-private: the `execute` tool catches it, queues an
- * approval step, and RETURNS a normal (non-error) instruction — being gated is
- * an expected state, not a tool failure.
- */
-class ApprovalRequiredError extends Error {
-  constructor(readonly payload: ApprovalPayload) {
-    super("approval required");
-    this.name = "ApprovalRequiredError";
-  }
 }
 
 /**
@@ -259,10 +181,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     // (chat.ts wraps the turn), so it's present only when this turn received one —
     // absent otherwise, preserving the act-as-owner behavior.
     const acting = currentActingContext();
-    // Autopilot turns act un-gated: tell the host this is an "auto" turn so its
-    // action-approval gate lets the call through. Any other mode (or outside a
-    // turn) omits the header, so the host gates un-approved actions as normal.
-    const auto = currentTurnMode() === "auto";
     const res = await fetch(`${base}/sandbox/integrations/${path}`, {
       method: "POST",
       headers: {
@@ -272,7 +190,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         ...(acting?.actingUser
           ? { "x-houston-acting-user": acting.actingUser }
           : {}),
-        ...(auto ? { "x-houston-turn-mode": "auto" } : {}),
       },
       body: JSON.stringify(body),
       signal,
@@ -286,14 +203,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       // status, and let any uncoded failure fall through to the generic error
       // below rather than a false "sign in" / "not set up" claim.
       const code = signalCode(detail);
-      // approval_required (409): the host gated this integration action pending
-      // the user's permission (a non-Autopilot turn). Parse the approval payload
-      // and throw the typed error the execute tool turns into a queued approval
-      // card. A malformed payload falls through to the generic error below.
-      if (code === "approval_required") {
-        const approval = parseApproval(detail);
-        if (approval) throw new ApprovalRequiredError(approval);
-      }
       // toolkit_not_allowed (403): the gateway walled this action off because
       // its app is outside this agent's allowlist (turned off in the agent's
       // Permissions tab). A normal, user-fixable policy state — throw the typed
@@ -395,11 +304,10 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
 
   const execute = defineTool<
     typeof ExecuteParams,
-    // Pinned so the success path ({ action }), the gated path ({ action,
-    // queuedApproval: true }), and the walled-off path ({ action,
-    // appTurnedOff: true }) share ONE details type — the flags are present only
-    // in their respective states.
-    { action: string; queuedApproval?: boolean; appTurnedOff?: boolean }
+    // Pinned so the success path ({ action }) and the walled-off path
+    // ({ action, appTurnedOff: true }) share ONE details type — the flag is
+    // present only in its state.
+    { action: string; appTurnedOff?: boolean }
   >({
     name: "integration_execute",
     label: "Run an app action",
@@ -415,8 +323,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     ) {
       // Live gate for the mid-turn Mode-pill switch: an execute/auto-built turn
       // may now be running in Plan — acting on the user's apps is off-limits.
-      // The `x-houston-turn-mode: auto` header in post() reads the SAME live
-      // mode, so a mid-turn flip to/from Autopilot re-gates approvals at once.
       assertNotPlanMode("take real-world actions on the user's connected apps");
       let result: ActionResult;
       try {
@@ -426,24 +332,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           signal,
         );
       } catch (err) {
-        // Gated by the host pending the user's permission: NOT a tool failure.
-        // Queue an approval card for this turn and return a normal instruction
-        // telling the model to end its turn — Houston re-prompts it once the
-        // user decides. (Signin/not-configured keep their throw; only approval
-        // is a normal, expected state.)
-        if (err instanceof ApprovalRequiredError) {
-          recordApproval(err.payload);
-          const action = err.payload.action;
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `This action needs the user's permission. Houston queued an approval card for "${action}" that the user will see when you end your turn. Do not run this action again now and do not ask for permission in text. Queue anything else the task needs (ask_user questions, request_connection) in this same turn, then end your turn. Houston sends you a message automatically once the user decides.`,
-              },
-            ],
-            details: { action, queuedApproval: true },
-          };
-        }
         // The gateway walled this action off: its app is outside this agent's
         // allowlist (turned off in the agent's Permissions tab). NOT a tool
         // failure — return guidance the model relays to the user, and do not

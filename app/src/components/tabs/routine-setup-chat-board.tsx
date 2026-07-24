@@ -72,9 +72,9 @@ export function RoutineSetupChatBoard({
     agentDef,
     selectedSessionKey: sessionKey,
     onSelectSession: noop,
-    // The setup chat's kickoff turn runs Coworker (execute) — the interview
+    // The setup chat's kickoff turn runs Ask first (execute) — the interview
     // needs ask_user and must never open read-only in Planner — so the live
-    // composer opens on Coworker too. The user can still switch modes here.
+    // composer opens on Ask first too. The user can still switch modes here.
     initialTurnMode: "execute",
   });
   const attachmentValidation = useAttachmentRejectionDialog({
@@ -167,6 +167,7 @@ export function RoutineSetupChatBoard({
         // turn settles needs_you — the interview IS this card, so dropping
         // it turns the guided setup into a dead chat.
         composerOverride={panel.composerOverride}
+        composerOverrideMode={panel.composerOverrideMode}
         composerLabels={composerLabels}
         prepareAttachments={attachmentValidation.prepareAttachments}
         onAttachmentRejections={attachmentValidation.onAttachmentRejections}

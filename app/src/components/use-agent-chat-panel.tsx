@@ -22,14 +22,13 @@ import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
 import {
   type ChatInteractionAnswer,
   ChatInteractionCard,
+  type ChatInteractionStep,
   ChatPlanReadyCard,
   type ChatPlanReadyLabels,
   ChatSuggestReusableCard,
   type ChatSuggestReusableLabels,
   decodeAttachmentMessage,
   decodeInteractionAnswersMessage,
-  humanizeActionSlug,
-  prettifyToolkit,
   UserAttachmentMessage,
   type UserAttachmentMessageLabels,
   UserInteractionAnswersMessage,
@@ -81,11 +80,9 @@ import { useDictation } from "../lib/dictation/use-dictation";
 import { genericErrorDescription } from "../lib/error-toast";
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import {
-  type ApprovalOutcome,
   type ConnectOutcome,
   type CredentialOutcome,
   encodeInteractionAnswersMessage,
-  finalApprovalNames,
   finalConnectNames,
   finalCredentialNames,
 } from "../lib/interaction-reply";
@@ -125,7 +122,6 @@ import {
   tauriAttachments,
   tauriChat,
   tauriConfig,
-  tauriIntegrations,
   tauriProvider,
   withAttachmentPaths,
 } from "../lib/tauri";
@@ -138,7 +134,6 @@ import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { newConversationDraftKey, useDraftStore } from "../stores/drafts";
 import { useUIStore } from "../stores/ui";
-import { ChatApprovalInteractionCard } from "./chat-approval-interaction-card";
 import { ChatConnectInteractionCard } from "./chat-connect-interaction-card";
 import { ChatCredentialInteractionCard } from "./chat-credential-interaction-card";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
@@ -175,6 +170,7 @@ import {
 } from "./tabs/provider-auth-feed";
 import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
+import { useToolkitBrandResolver } from "./use-toolkit-brand-resolver";
 import { UserSkillMessage } from "./user-skill-message";
 
 interface UseAgentChatPanelArgs {
@@ -192,7 +188,7 @@ interface UseAgentChatPanelArgs {
   /** Seeds the composer's turn mode for THIS surface and suppresses the
    *  per-agent config mode from overwriting it, so the surface opens on the
    *  given mode and keeps it until the user changes it in-session. The routine
-   *  setup chat passes `"execute"` (Coworker) — its kickoff turn runs Coworker,
+   *  setup chat passes `"execute"` (Ask first) — its kickoff turn runs Ask first,
    *  so the live composer must match. Omit to keep today's behavior exactly
    *  (seed the global default, then load the agent's remembered mode). */
   initialTurnMode?: TurnMode;
@@ -203,10 +199,16 @@ interface AgentChatPanelProps {
   chatEmptyState: AIBoardProps["chatEmptyState"];
   /** Selected Skill chip rendered above the prompt input. */
   composerHeader: AIBoardProps["composerHeader"];
-  /** Replaces the whole composer with the interaction card (ask_user /
-   *  request_connection) when the mission is waiting on the user. Undefined
-   *  when nothing is pending or a turn is running. */
+  /** The pending-interaction card shown when the mission is waiting on the user
+   *  (ask_user / request_connection / credential), or a lighter
+   *  plan_ready / suggest_reusable offer. Undefined when nothing is pending or a
+   *  turn is running. Pair it with {@link composerOverrideMode}. */
   composerOverride: AIBoardProps["composerOverride"];
+  /** How the override composes with the input: the interaction STEPPER passes
+   *  `"replace"` (it owns the one text input on screen — the composer is not
+   *  rendered under it), while plan_ready / suggest_reusable pass `"above"` (they
+   *  carry no input, so the composer stays mounted below them). */
+  composerOverrideMode: AIBoardProps["composerOverrideMode"];
   /** Submit can run the selected Skill without extra text. */
   canSendEmpty: AIBoardProps["canSendEmpty"];
   /** Intercepts composer submit while a Skill is selected. */
@@ -400,7 +402,7 @@ export function useAgentChatPanel({
   //
   // `initialTurnMode` (when a surface passes one) seeds this AND wins over the
   // per-agent config, so the surface opens on that mode and holds it until the
-  // user changes it in-session (the setup chat opens on Coworker). Absent, the
+  // user changes it in-session (the setup chat opens on Ask first). Absent, the
   // behavior is unchanged: the global default, then the agent's remembered mode.
   const [turnMode, setTurnMode] = useState<TurnMode>(
     initialTurnMode ?? DEFAULT_TURN_MODE,
@@ -758,7 +760,7 @@ export function useAgentChatPanel({
       setTurnMode(mode);
       if (turnRunning && path && selectedSessionKey && mode !== turnMode) {
         const modeLabels: Record<TurnMode, string> = {
-          execute: t("chat:modeSelector.coworker"),
+          execute: t("chat:modeSelector.askFirst"),
           plan: t("chat:modeSelector.planner"),
           auto: t("chat:modeSelector.autopilot"),
         };
@@ -1098,6 +1100,12 @@ export function useAgentChatPanel({
     ],
   );
 
+  // Resolves a question step's `toolkit` to the app's presentational brand (logo
+  // + name) so a question that concerns an integration wears the app's identity
+  // in its title. Read-only (no connect side effects); a catalog miss yields the
+  // prettified slug and no logo. Stable across renders unless the catalog moves.
+  const resolveBrand = useToolkitBrandResolver();
+
   const interactionLabels = useMemo(
     () => ({
       placeholder: t("chat:questionCard.placeholder"),
@@ -1155,7 +1163,7 @@ export function useAgentChatPanel({
   // Keyed on the STABLE `selectedActivityId` string (not the `selectedActivity`
   // object), so an activity-query refetch mid-sequence never gives this callback
   // a new reference — which would recompute the composerOverride memo and RESET
-  // the in-progress connect/approval outcome maps the user is walking.
+  // the in-progress connect/credential outcome maps the user is walking.
   const clearPersistedInteraction = useCallback(async () => {
     if (!path) return;
     if (selectedActivityId) {
@@ -1178,7 +1186,7 @@ export function useAgentChatPanel({
       });
   }, [path, selectedActivityId, selectedSessionKey, queryClient, addToast, t]);
 
-  // The stepper's X on ANY step kind (question/signin/connect/approval): "the
+  // The stepper's X on ANY step kind (question/signin/connect/credential): "the
   // user interrupted, nothing was decided" — exactly a Stop. Hide the card at
   // once (the abandoned-key suppresses it), append the durable stop marker on the
   // runtime (its own toast on failure via `call()`; swallow the re-throw so the
@@ -1235,8 +1243,8 @@ export function useAgentChatPanel({
   const planReadyLabels = useMemo<ChatPlanReadyLabels>(
     () => ({
       title: t("chat:planReady.title"),
-      coworkerTitle: t("chat:planReady.coworkerTitle"),
-      coworkerDescription: t("chat:planReady.coworkerDescription"),
+      askFirstTitle: t("chat:planReady.askFirstTitle"),
+      askFirstDescription: t("chat:planReady.askFirstDescription"),
       autopilotTitle: t("chat:planReady.autopilotTitle"),
       autopilotDescription: t("chat:planReady.autopilotDescription"),
       keepPlanningTitle: t("chat:planReady.keepPlanningTitle"),
@@ -1325,12 +1333,23 @@ export function useAgentChatPanel({
   // interaction, so the memo does not recompute — and the accumulator does not
   // reset — while the user walks the steps; a fresh interaction gets a fresh
   // array.
-  const composerOverride = useMemo<AIBoardProps["composerOverride"]>(() => {
-    if (!agent || !activeInteraction) return undefined;
-    // Abandoned (dismiss X, or a fresh composer send while it showed): suppress
-    // the card uniformly, whatever kind it is (suggest_reusable / plan_ready /
-    // stepper), and let the always-mounted composer stand alone.
-    if (interactionKey === abandonedInteractionKey) return undefined;
+  // The pending-interaction override plus how it composes with the input: the
+  // stepper (question / signin / connect / credential) REPLACES the
+  // composer (its own free-text row is the one input on screen — no competing
+  // "Send a follow-up..." below it), while the lighter plan_ready / suggest_reusable
+  // offers stay ABOVE the always-mounted composer (they carry no text input, so
+  // the composer below them is the single input). `node: undefined` means no
+  // override (the composer stands alone).
+  const composerOverrideState = useMemo<{
+    node: AIBoardProps["composerOverride"];
+    mode: "above" | "replace";
+  }>(() => {
+    const none = { node: undefined, mode: "above" as const };
+    if (!agent || !activeInteraction) return none;
+    // Abandoned (dismiss X, or a fresh composer send while a plan/offer showed):
+    // suppress the card uniformly, whatever kind it is (suggest_reusable /
+    // plan_ready / stepper), and let the always-mounted composer stand alone.
+    if (interactionKey === abandonedInteractionKey) return none;
     // A lone suggest_reusable step is the optional save offer. Resolve it FIRST
     // and short-circuit: it is not a plan_ready step, so resolvePlanReadyOverride
     // would wrongly route it into the interaction stepper. It never coexists with
@@ -1344,26 +1363,29 @@ export function useAgentChatPanel({
         activeInteraction.steps,
         dismissedSuggestReusable,
       );
-      if (reusable.kind === "none") return undefined;
+      if (reusable.kind === "none") return none;
       const step = reusable.step;
-      return (
-        <ChatSuggestReusableCard
-          reusableKind={step.reusableKind}
-          title={step.title}
-          rationale={step.rationale}
-          labels={suggestReusableLabels}
-          onSave={() => saveReusable(step)}
-          onDismiss={() => {
-            // "Not now" on the save offer: dismiss locally AND clear the
-            // persisted interaction so it doesn't reappear on reload. NO stop
-            // marker — the mission genuinely finished, so "interrupted" would be
-            // false (unlike the stepper's X). plan_ready's "Keep planning" stays
-            // local-only: it's an explicit choice to continue, not an abandon.
-            setDismissedSuggestReusable(step.id);
-            void clearPersistedInteraction();
-          }}
-        />
-      );
+      return {
+        mode: "above",
+        node: (
+          <ChatSuggestReusableCard
+            reusableKind={step.reusableKind}
+            title={step.title}
+            rationale={step.rationale}
+            labels={suggestReusableLabels}
+            onSave={() => saveReusable(step)}
+            onDismiss={() => {
+              // "Not now" on the save offer: dismiss locally AND clear the
+              // persisted interaction so it doesn't reappear on reload. NO stop
+              // marker — the mission genuinely finished, so "interrupted" would be
+              // false (unlike the stepper's X). plan_ready's "Keep planning" stays
+              // local-only: it's an explicit choice to continue, not an abandon.
+              setDismissedSuggestReusable(step.id);
+              void clearPersistedInteraction();
+            }}
+          />
+        ),
+      };
     }
     // A lone plan_ready step becomes the plan-ready card (unless dismissed);
     // everything else feeds the stepper over its plan_ready-free steps.
@@ -1371,24 +1393,36 @@ export function useAgentChatPanel({
       activeInteraction.steps,
       dismissedPlanReady,
     );
-    if (override.kind === "none") return undefined;
+    if (override.kind === "none") return none;
     if (override.kind === "card") {
       const summary = override.summary;
-      return (
-        <ChatPlanReadyCard
-          summary={summary}
-          labels={planReadyLabels}
-          onStartWorking={() =>
-            startPlan("execute", t("chat:planReady.startWorkingMessage"))
-          }
-          onRunAutopilot={() =>
-            startPlan("auto", t("chat:planReady.runAutopilotMessage"))
-          }
-          onKeepPlanning={() => setDismissedPlanReady(summary)}
-        />
-      );
+      return {
+        mode: "above",
+        node: (
+          <ChatPlanReadyCard
+            summary={summary}
+            labels={planReadyLabels}
+            onStartWorking={() =>
+              startPlan("execute", t("chat:planReady.startWorkingMessage"))
+            }
+            onRunAutopilot={() =>
+              startPlan("auto", t("chat:planReady.runAutopilotMessage"))
+            }
+            onKeepPlanning={() => setDismissedPlanReady(summary)}
+          />
+        ),
+      };
     }
-    const steps = override.steps;
+    // Map the protocol steps into ui/chat steps, resolving each question step's
+    // optional `toolkit` into a presentational brand (logo + name) so a question
+    // that concerns an integration wears the app's identity in its title. A step
+    // with no toolkit passes through unbranded; a catalog miss keeps the question
+    // plain-titled with a prettified name and no logo — never a crash.
+    const steps: ChatInteractionStep[] = override.steps.map((step) =>
+      step.kind === "question" && step.toolkit
+        ? { ...step, brand: resolveBrand(step.toolkit) }
+        : step,
+    );
     const hasQuestionSteps = steps.some((step) => step.kind === "question");
     // A completed sequence has walked EVERY step, but a signin/connect step may
     // have been SKIPPED — a fact the agent must hear (or it re-asks forever) —
@@ -1401,13 +1435,11 @@ export function useAgentChatPanel({
     // doesn't recompute — and the outcomes don't reset — while the user walks
     // the steps; a fresh interaction starts clean.
     const connectOutcomes = new Map<string, ConnectOutcome>();
-    // Per approval step's FINAL decision (last write wins), recorded in place as
-    // the user acts — like `connectOutcomes`. Lives in the memo body (not a ref)
-    // for the same reason: `deriveActiveInteraction` returns a STABLE reference
-    // so the memo doesn't recompute while the user walks the steps; a fresh
-    // interaction starts clean.
-    const approvalOutcomes = new Map<string, ApprovalOutcome>();
     let signinOutcome: "pending" | "signedIn" | "skipped" = "pending";
+    // The user's typed "do this instead" text on a declined sign-in step (the
+    // free-text row), relayed to the agent so it hears the redirection. Lives in
+    // the memo body like the outcome maps; a fresh interaction starts clean.
+    let signinDeclineText: string | undefined;
     // Per credential step's FINAL outcome (saved wins over an earlier skip),
     // recorded in place as the user acts — the credential mirror of
     // `connectOutcomes`. Folded into the ONE composed reply below so a credential
@@ -1415,244 +1447,175 @@ export function useAgentChatPanel({
     // the X key.", a declined one "Skipped adding the X key." (a fact the agent
     // MUST hear, or it waits on a key that never comes).
     const credentialOutcomes = new Map<string, CredentialOutcome>();
-    return (
-      <ChatInteractionCard
-        steps={steps}
-        labels={interactionLabels}
-        onDismiss={dismissActiveInteraction}
-        onComplete={(answers: ChatInteractionAnswer[]) => {
-          // ONE send after the LAST step: a sequence with questions replies with
-          // the user's visible answers; a signin/connect/credential-only
-          // sequence resumes the agent with a hidden auto-continue message (no
-          // fake user bubble). The visible reply also carries a structured
-          // marker so the transcript renders the answers as a Q&A card.
-          //
-          // Derive the connected/skipped lines from each step's FINAL outcome,
-          // in step order — a step skipped then reconsidered reports "Connected"
-          // (never a stale "Skipped ..."), and no step is ever named twice.
-          const { connectedNames, skippedConnectNames } = finalConnectNames(
-            steps.filter((s) => s.kind === "connect").map((s) => s.id),
-            connectOutcomes,
-          );
-          // Approval decisions ride AFTER the connect lines, in step order. The
-          // flat body the MODEL reads names the RAW slug (so it re-issues the
-          // EXACT same action, or leaves a denied one alone); the VISIBLE
-          // transcript payload names the humanized `display` a non-technical user
-          // can read ("Allowed Gmail to send draft.").
-          const {
-            approvedActions,
-            deniedActions,
-            approvedDisplays,
-            deniedDisplays,
-          } = finalApprovalNames(
-            steps.filter((s) => s.kind === "approval").map((s) => s.id),
-            approvalOutcomes,
-          );
-          // Credential outcomes mirror connects: saved keys name "Added the X
-          // key.", declined ones "Skipped adding the X key." — FINAL state, so a
-          // key skipped then reconsidered reports saved, never a stale skip.
-          const { credentialedNames, skippedCredentialNames } =
-            finalCredentialNames(
+    return {
+      mode: "replace",
+      node: (
+        <ChatInteractionCard
+          steps={steps}
+          labels={interactionLabels}
+          onDismiss={dismissActiveInteraction}
+          onComplete={(answers: ChatInteractionAnswer[]) => {
+            // ONE send after the LAST step: a sequence with questions replies with
+            // the user's visible answers; a signin/connect/credential-only
+            // sequence resumes the agent with a hidden auto-continue message (no
+            // fake user bubble). The visible reply also carries a structured
+            // marker so the transcript renders the answers as a Q&A card.
+            //
+            // Derive the connected/skipped lines from each step's FINAL outcome,
+            // in step order — a step skipped then reconsidered reports "Connected"
+            // (never a stale "Skipped ..."), and no step is ever named twice.
+            const { connectedNames, skippedConnectNames, connectRedirects } =
+              finalConnectNames(
+                steps.filter((s) => s.kind === "connect").map((s) => s.id),
+                connectOutcomes,
+              );
+            // Credential outcomes mirror connects: saved keys name "Added the X
+            // key.", declined ones "Skipped adding the X key." — FINAL state, so a
+            // key skipped then reconsidered reports saved, never a stale skip.
+            const {
+              credentialedNames,
+              skippedCredentialNames,
+              credentialRedirects,
+            } = finalCredentialNames(
               steps.filter((s) => s.kind === "credential").map((s) => s.id),
               credentialOutcomes,
             );
-          sendInteractionMessage(
-            encodeInteractionAnswersMessage({
-              answers,
-              connectedNames,
-              skippedConnectNames,
-              approvedActions,
-              deniedActions,
-              approvedDisplays,
-              deniedDisplays,
-              credentialedNames,
-              skippedCredentialNames,
-              hasQuestionSteps,
-              signedIn: signinOutcome === "signedIn",
-              signinSkipped: signinOutcome === "skipped",
-              connectedLine: (name) =>
-                t("chat:interaction.connectedLine", { name }),
-              skippedConnectLine: (name) =>
-                t("chat:interaction.skippedConnectLine", { name }),
-              credentialedLine: (name) =>
-                t("chat:credential.savedLine", { name }),
-              skippedCredentialLine: (name) =>
-                t("chat:credential.skippedLine", { name }),
-              signedInLine: t("chat:interaction.signedInLine"),
-              skippedSigninLine: t("chat:interaction.skippedSigninLine"),
-              signedInFollowup: t("chat:interaction.signedInFollowup"),
-              approvedLine: (action) =>
-                t("chat:interaction.approvedLine", { action }),
-              deniedLine: (action) =>
-                t("chat:interaction.deniedLine", { action }),
-              approvedLineDisplay: ({ app, action }) =>
-                t("chat:interaction.approvedLineDisplay", { app, action }),
-              deniedLineDisplay: ({ app, action }) =>
-                t("chat:interaction.deniedLineDisplay", { app, action }),
-              credentialedFollowup: t("chat:credential.savedFollowup", {
-                name: credentialedNames.join(", "),
+            sendInteractionMessage(
+              encodeInteractionAnswersMessage({
+                answers,
+                connectedNames,
+                skippedConnectNames,
+                credentialedNames,
+                skippedCredentialNames,
+                connectRedirects,
+                credentialRedirects,
+                signinDeclineText,
+                hasQuestionSteps,
+                signedIn: signinOutcome === "signedIn",
+                signinSkipped: signinOutcome === "skipped",
+                connectedLine: (name) =>
+                  t("chat:interaction.connectedLine", { name }),
+                skippedConnectLine: (name) =>
+                  t("chat:interaction.skippedConnectLine", { name }),
+                connectRedirectLine: (name, text) =>
+                  t("chat:interaction.connectRedirectLine", { name, text }),
+                credentialedLine: (name) =>
+                  t("chat:credential.savedLine", { name }),
+                skippedCredentialLine: (name) =>
+                  t("chat:credential.skippedLine", { name }),
+                credentialRedirectLine: (name, text) =>
+                  t("chat:credential.redirectLine", { name, text }),
+                signedInLine: t("chat:interaction.signedInLine"),
+                skippedSigninLine: t("chat:interaction.skippedSigninLine"),
+                signinRedirectLine: (text) =>
+                  t("chat:interaction.signinRedirectLine", { text }),
+                signedInFollowup: t("chat:interaction.signedInFollowup"),
+                credentialedFollowup: t("chat:credential.savedFollowup", {
+                  name: credentialedNames.join(", "),
+                }),
               }),
-            }),
-          );
-        }}
-        renderSignin={(step, api) => (
-          <ChatSigninInteractionCard
-            key={step.id}
-            stepId={step.id}
-            pager={api.pager}
-            onDismiss={api.onDismiss}
-            dismissLabel={api.dismissLabel}
-            disabled={api.disabled}
-            reason={step.reason}
-            revisited={api.revisited}
-            onSignedIn={() => {
-              // Record the FINAL state (signed in wins over any earlier skip)
-              // and advance ONLY — the composed reply fires at completion.
-              signinOutcome = "signedIn";
-              api.onSignedIn();
-            }}
-            onSkip={() => {
-              // Record the decline and advance ONLY (same one-send rule as
-              // connects: the composed reply fires at completion).
-              signinOutcome = "skipped";
-              api.onSkip();
-            }}
-          />
-        )}
-        renderConnect={(step, api) => (
-          <ChatConnectInteractionCard
-            key={step.id}
-            stepId={step.id}
-            pager={api.pager}
-            onDismiss={api.onDismiss}
-            dismissLabel={api.dismissLabel}
-            disabled={api.disabled}
-            agentId={agent.id}
-            reason={step.reason}
-            revisited={api.revisited}
-            onConnected={(_toolkit, appName) => {
-              // Record the app's FINAL outcome (connected wins over any earlier
-              // skip for this step) and advance ONLY. The composed `onComplete`
-              // reply resumes the agent once EVERY step is done; starting a turn
-              // here would tear the card down before later connect steps could
-              // complete.
-              connectOutcomes.set(step.id, { name: appName, connected: true });
-              api.onConnected();
-            }}
-            onSkip={(_toolkit, appName) => {
-              // Record the decline and advance ONLY (one send at completion).
-              connectOutcomes.set(step.id, { name: appName, connected: false });
-              api.onSkip();
-            }}
-            toolkit={step.toolkit}
-          />
-        )}
-        renderApproval={(step, api) => {
-          // The recorded decision maps to the card's calm decided-state label
-          // when the user walks Back onto a resolved step.
-          const recorded = approvalOutcomes.get(step.id);
-          const outcome = recorded
-            ? recorded.decision === "deny"
-              ? "denied"
-              : recorded.decision === "alwaysAllow"
-                ? "alwaysAllowed"
-                : "allowedOnce"
-            : undefined;
-          return (
-            <ChatApprovalInteractionCard
+            );
+          }}
+          renderSignin={(step, api) => (
+            <ChatSigninInteractionCard
               key={step.id}
               stepId={step.id}
               pager={api.pager}
               onDismiss={api.onDismiss}
               dismissLabel={api.dismissLabel}
               disabled={api.disabled}
-              toolkit={step.toolkit}
-              action={step.action}
+              reason={step.reason}
               revisited={api.revisited}
-              outcome={outcome}
-              onDecision={(decision) => {
-                // The RAW slug is what the model re-issues; `display` is the
-                // humanized app + action the visible transcript line shows a
-                // non-technical user ("Allowed Gmail to send draft.").
-                const display = {
-                  app: prettifyToolkit(step.toolkit),
-                  action: humanizeActionSlug(step.action, step.toolkit),
-                };
-                // FIRST the store write (deny writes nothing), THEN on success
-                // record the outcome and advance. Deny resolves synchronously.
-                // A write FAILURE keeps the frontier here so the user can retry
-                // (the tauri `call()` already toasted once — never double-toast,
-                // never advance on failure).
-                if (decision === "deny") {
-                  approvalOutcomes.set(step.id, {
-                    action: step.action,
-                    decision,
-                    display,
-                  });
-                  api.onResolve();
-                  return;
-                }
-                const write =
-                  decision === "allowOnce"
-                    ? tauriIntegrations.addApprovalTicket(
-                        agent.id,
-                        step.paramsHash,
-                      )
-                    : tauriIntegrations.allowActionAlways(
-                        agent.id,
-                        step.action,
-                      );
-                write
-                  .then(() => {
-                    approvalOutcomes.set(step.id, {
-                      action: step.action,
-                      decision,
-                      display,
-                    });
-                    // Keep the agent tab's "Runs without asking" review live:
-                    // an always-allow just extended the set the section reads.
-                    if (decision === "alwaysAllow") {
-                      queryClient.invalidateQueries({
-                        queryKey: queryKeys.actionApprovals(agent.id),
-                      });
-                    }
-                    api.onResolve();
-                  })
-                  // `call()` toasted; swallow the re-throw and DON'T advance.
-                  .catch(() => {});
+              onSignedIn={() => {
+                // Record the FINAL state (signed in wins over any earlier skip)
+                // and advance ONLY — the composed reply fires at completion.
+                signinOutcome = "signedIn";
+                api.onSignedIn();
+              }}
+              onSkip={(message) => {
+                // Record the decline (and the typed "do this instead" text, if
+                // any) and advance ONLY — same one-send rule as connects: the
+                // composed reply fires at completion. A message makes the sequence
+                // resume visibly so the agent (and the transcript) hears it.
+                signinOutcome = "skipped";
+                signinDeclineText = message;
+                api.onSkip();
               }}
             />
-          );
-        }}
-        renderCredential={(step, api) => (
-          <ChatCredentialInteractionCard
-            key={step.id}
-            stepId={step.id}
-            agentId={agent.id}
-            pager={api.pager}
-            onDismiss={api.onDismiss}
-            dismissLabel={api.dismissLabel}
-            disabled={api.disabled}
-            toolkit={step.toolkit}
-            reason={step.reason}
-            revisited={api.revisited}
-            onSaved={(name) => {
-              // Record the FINAL outcome (saved wins over any earlier skip for
-              // this step) and advance ONLY. The composed `onComplete` reply
-              // resumes the agent once EVERY step is done, mirroring connect.
-              credentialOutcomes.set(step.id, { name, saved: true });
-              api.onSaved();
-            }}
-            onSkip={(name) => {
-              // Record the decline and advance ONLY (one send at completion) —
-              // the agent hears "Skipped adding the X key." so it stops waiting.
-              credentialOutcomes.set(step.id, { name, saved: false });
-              api.onSkip();
-            }}
-          />
-        )}
-      />
-    );
+          )}
+          renderConnect={(step, api) => (
+            <ChatConnectInteractionCard
+              key={step.id}
+              stepId={step.id}
+              pager={api.pager}
+              onDismiss={api.onDismiss}
+              dismissLabel={api.dismissLabel}
+              disabled={api.disabled}
+              agentId={agent.id}
+              reason={step.reason}
+              revisited={api.revisited}
+              onConnected={(_toolkit, appName) => {
+                // Record the app's FINAL outcome (connected wins over any earlier
+                // skip for this step) and advance ONLY. The composed `onComplete`
+                // reply resumes the agent once EVERY step is done; starting a turn
+                // here would tear the card down before later connect steps could
+                // complete.
+                connectOutcomes.set(step.id, {
+                  name: appName,
+                  connected: true,
+                });
+                api.onConnected();
+              }}
+              onSkip={(_toolkit, appName, message) => {
+                // Record the decline (and the typed "do this instead" text, if
+                // any) and advance ONLY (one send at completion). A message makes
+                // the sequence resume visibly so the agent hears the redirection.
+                connectOutcomes.set(step.id, {
+                  name: appName,
+                  connected: false,
+                  message,
+                });
+                api.onSkip();
+              }}
+              toolkit={step.toolkit}
+            />
+          )}
+          renderCredential={(step, api) => (
+            <ChatCredentialInteractionCard
+              key={step.id}
+              stepId={step.id}
+              agentId={agent.id}
+              pager={api.pager}
+              onDismiss={api.onDismiss}
+              dismissLabel={api.dismissLabel}
+              disabled={api.disabled}
+              toolkit={step.toolkit}
+              reason={step.reason}
+              revisited={api.revisited}
+              onSaved={(name) => {
+                // Record the FINAL outcome (saved wins over any earlier skip for
+                // this step) and advance ONLY. The composed `onComplete` reply
+                // resumes the agent once EVERY step is done, mirroring connect.
+                credentialOutcomes.set(step.id, { name, saved: true });
+                api.onSaved();
+              }}
+              onSkip={(name, message) => {
+                // Record the decline (and the typed "do this instead" text, if
+                // any) and advance ONLY (one send at completion) — the agent hears
+                // "Skipped adding the X key." (or the redirection) so it stops
+                // waiting. A message makes the sequence resume visibly.
+                credentialOutcomes.set(step.id, {
+                  name,
+                  saved: false,
+                  message,
+                });
+                api.onSkip();
+              }}
+            />
+          )}
+        />
+      ),
+    };
   }, [
     agent,
     activeInteraction,
@@ -1668,9 +1631,11 @@ export function useAgentChatPanel({
     sendInteractionMessage,
     clearPersistedInteraction,
     dismissActiveInteraction,
-    queryClient,
+    resolveBrand,
     t,
   ]);
+  const composerOverride = composerOverrideState.node;
+  const composerOverrideMode = composerOverrideState.mode;
 
   // A fresh message typed into the always-mounted composer WHILE an interaction
   // card shows is an implicit "abandon this interaction": mark it abandoned so
@@ -2077,6 +2042,7 @@ export function useAgentChatPanel({
     chatEmptyState,
     composerHeader,
     composerOverride,
+    composerOverrideMode,
     canSendEmpty: activeSkill != null,
     onComposerSubmit,
     footer,

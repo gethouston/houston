@@ -121,6 +121,48 @@ test("passes through per-option description and recommended onto the question st
   });
 });
 
+test("threads a per-question toolkit slug onto the recorded question step", async () => {
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () =>
+    run({
+      questions: [
+        {
+          question: "Should I send the 30 invites?",
+          toolkit: "gmail",
+          options: [
+            { id: "send", label: "Send it", recommended: true },
+            { id: "no", label: "Don't send" },
+          ],
+        },
+      ],
+    }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "question",
+        id: "q1",
+        question: "Should I send the 30 invites?",
+        toolkit: "gmail",
+        options: [
+          { id: "send", label: "Send it", recommended: true },
+          { id: "no", label: "Don't send" },
+        ],
+      },
+    ],
+  });
+});
+
+test("a question with no toolkit records no toolkit key (most questions)", async () => {
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () =>
+    run({ questions: [{ question: "Which week?" }] }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "question", id: "q1", question: "Which week?" }],
+  });
+});
+
 test("an empty options array on a question is dropped (recorded as open)", async () => {
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, () =>

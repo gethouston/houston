@@ -1601,25 +1601,6 @@ export const tauriIntegrations = {
     call("integration_dismiss_reconnect_notice", () =>
       getEngine().dismissIntegrationsReconnectNotice(),
     ),
-  /** The actions this agent may run without asking again ("always allow"). */
-  actionApprovals: (agentId: string) =>
-    call("action_approvals", () => getEngine().agentActionApprovals(agentId)),
-  /** Add an action to the agent's "always allow" set; returns the new set. */
-  allowActionAlways: (agentId: string, action: string) =>
-    call("allow_action_always", () =>
-      getEngine().allowActionAlways(agentId, action),
-    ),
-  /** Remove an action from the agent's "always allow" set (the review UI's
-   *  Remove); returns the new set. */
-  revokeActionAlways: (agentId: string, action: string) =>
-    call("revoke_action_always", () =>
-      getEngine().disallowActionAlways(agentId, action),
-    ),
-  /** Approve one pending action once, by its hash (a single-use ticket). */
-  addApprovalTicket: (agentId: string, hash: string) =>
-    call("add_approval_ticket", () =>
-      getEngine().addActionApprovalTicket(agentId, hash),
-    ),
   // ── custom integrations (HOU-550) ──────────────────────────────────────────
   // The list is a plain read (a React Query hook owns its error surface and
   // `null` = unsupported host); the two mutations go through `call()` so a

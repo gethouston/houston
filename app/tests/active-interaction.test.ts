@@ -46,26 +46,24 @@ const questionSignin: PendingInteraction = {
     { kind: "signin", id: "s1" },
   ],
 };
-const approval: PendingInteraction = {
+const brandedQuestion: PendingInteraction = {
   steps: [
     {
-      kind: "approval",
-      id: "a1",
+      kind: "question",
+      id: "q1",
+      question: "Should I send the draft?",
       toolkit: "gmail",
-      action: "GMAIL_SEND_EMAIL",
-      paramsHash: "0123456789abcdef",
     },
   ],
 };
-const connectApproval: PendingInteraction = {
+const connectQuestion: PendingInteraction = {
   steps: [
     { kind: "connect", id: "c1", toolkit: "gmail" },
     {
-      kind: "approval",
-      id: "a1",
+      kind: "question",
+      id: "q1",
+      question: "Should I send the draft?",
       toolkit: "gmail",
-      action: "GMAIL_SEND_EMAIL",
-      paramsHash: "0123456789abcdef",
     },
   ],
 };
@@ -222,19 +220,19 @@ describe("interactionNotificationBodyKey", () => {
     );
   });
 
-  it("maps an approval-only sequence to the approval body", () => {
+  it("maps a branded confirmation question to the question body", () => {
     strictEqual(
-      interactionNotificationBodyKey(approval),
-      "sessionComplete.approval",
+      interactionNotificationBodyKey(brandedQuestion),
+      "sessionComplete.question",
     );
   });
 
-  // Steps are ordered connections -> approvals, so a connect+approval sequence's
-  // FIRST unmet need is the connect.
-  it("maps a connect+approval sequence to the connect body (connect first)", () => {
+  // Questions outrank the other kinds in the body precedence, so a mixed
+  // connect+question sequence reads as a question.
+  it("maps a connect+question sequence to the question body", () => {
     strictEqual(
-      interactionNotificationBodyKey(connectApproval),
-      "sessionComplete.connect",
+      interactionNotificationBodyKey(connectQuestion),
+      "sessionComplete.question",
     );
   });
 

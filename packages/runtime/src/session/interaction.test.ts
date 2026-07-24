@@ -2,7 +2,6 @@ import { isInteractionStep } from "@houston/protocol";
 import { expect, test } from "vitest";
 import {
   newInteractionHolder,
-  recordApproval,
   recordConnection,
   recordPlanReady,
   recordQuestions,
@@ -171,89 +170,12 @@ test("recording outside a turn is a no-op (undefined store)", () => {
       rationale: "no turn",
     }),
   ).not.toThrow();
-  expect(() =>
-    recordApproval({
-      toolkit: "gmail",
-      action: "GMAIL_SEND_EMAIL",
-      paramsHash: "h1",
-    }),
-  ).not.toThrow();
 });
 
-test("recordApproval takes a1..aN ids in first-seen order and dedupes by paramsHash", () => {
-  const holder = newInteractionHolder();
-  runWithInteractionCapture(holder, () => {
-    recordApproval({
-      toolkit: "gmail",
-      action: "GMAIL_SEND_EMAIL",
-      params: { to: "a@b.com" },
-      paramsHash: "hEmail",
-    });
-    recordApproval({
-      toolkit: "slack",
-      action: "SLACK_POST",
-      paramsHash: "hSlack",
-    });
-    // A repeat of the SAME hash is a no-op (same action + params → one card).
-    recordApproval({
-      toolkit: "gmail",
-      action: "GMAIL_SEND_EMAIL",
-      params: { to: "different-render@b.com" },
-      paramsHash: "hEmail",
-    });
-  });
-  expect(holder.pending).toEqual({
-    steps: [
-      {
-        kind: "approval",
-        id: "a1",
-        toolkit: "gmail",
-        action: "GMAIL_SEND_EMAIL",
-        params: { to: "a@b.com" },
-        paramsHash: "hEmail",
-      },
-      {
-        kind: "approval",
-        id: "a2",
-        toolkit: "slack",
-        action: "SLACK_POST",
-        paramsHash: "hSlack",
-      },
-    ],
-  });
-});
-
-test("an approval step alone yields a valid pending sequence", () => {
-  const holder = newInteractionHolder();
-  runWithInteractionCapture(holder, () =>
-    recordApproval({
-      toolkit: "gmail",
-      action: "GMAIL_SEND_EMAIL",
-      paramsHash: "h1",
-    }),
-  );
-  expect(holder.pending).toEqual({
-    steps: [
-      {
-        kind: "approval",
-        id: "a1",
-        toolkit: "gmail",
-        action: "GMAIL_SEND_EMAIL",
-        paramsHash: "h1",
-      },
-    ],
-  });
-});
-
-test("pending order is questions -> signin -> connects -> approvals", () => {
+test("pending order is questions -> signin -> connects", () => {
   const holder = newInteractionHolder();
   runWithInteractionCapture(holder, () => {
     // Record out of order; `pending` normalizes the sequence.
-    recordApproval({
-      toolkit: "gmail",
-      action: "GMAIL_SEND_EMAIL",
-      paramsHash: "hA",
-    });
     recordConnection({ toolkit: "gmail", reason: "to send it" });
     recordSignin({ reason: "Sign in first." });
     recordQuestions([q("q1", "Which address?")]);
@@ -263,58 +185,7 @@ test("pending order is questions -> signin -> connects -> approvals", () => {
       q("q1", "Which address?"),
       { kind: "signin", id: "s1", reason: "Sign in first." },
       { kind: "connect", id: "c1", toolkit: "gmail", reason: "to send it" },
-      {
-        kind: "approval",
-        id: "a1",
-        toolkit: "gmail",
-        action: "GMAIL_SEND_EMAIL",
-        paramsHash: "hA",
-      },
     ],
-  });
-});
-
-test("suggest-reusable is dropped when an approval exists this turn", () => {
-  const holder = newInteractionHolder();
-  runWithInteractionCapture(holder, () => {
-    recordSuggestReusable({
-      reusableKind: "skill",
-      title: "Weekly report",
-      rationale: "Reuse it next week.",
-    });
-    recordApproval({
-      toolkit: "gmail",
-      action: "GMAIL_SEND_EMAIL",
-      paramsHash: "hA",
-    });
-  });
-  // The approval means the mission is NOT done, so it takes priority and the
-  // suggestion is dropped entirely.
-  expect(holder.pending).toEqual({
-    steps: [
-      {
-        kind: "approval",
-        id: "a1",
-        toolkit: "gmail",
-        action: "GMAIL_SEND_EMAIL",
-        paramsHash: "hA",
-      },
-    ],
-  });
-});
-
-test("a plan-ready step wins over an approval recorded the same turn", () => {
-  const holder = newInteractionHolder();
-  runWithInteractionCapture(holder, () => {
-    recordApproval({
-      toolkit: "gmail",
-      action: "GMAIL_SEND_EMAIL",
-      paramsHash: "hA",
-    });
-    recordPlanReady({ summary: "Here is the plan." });
-  });
-  expect(holder.pending).toEqual({
-    steps: [{ kind: "plan_ready", id: "p1", summary: "Here is the plan." }],
   });
 });
 

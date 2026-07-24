@@ -276,6 +276,7 @@ export { decodeInteractionAnswersMessage } from "./interaction-answers-message";
 // always-mounted composer while a pending interaction is awaiting the user.
 export type {
   ChatInteractionAnswer,
+  ChatInteractionBrand,
   ChatInteractionCardProps,
   ChatInteractionOption,
   ChatInteractionStep,
@@ -283,7 +284,10 @@ export type {
   StepFooterApi,
 } from "./interaction-card";
 export { ChatInteractionCard } from "./interaction-card";
-export { humanizeActionSlug, prettifyToolkit } from "./interaction-card-model";
+export { prettifyToolkit } from "./interaction-card-model";
+// The always-visible single-line free-text row every non-question step carries
+// (connect / sign-in / credential decline-with-instruction).
+export { InlineTextRow } from "./interaction-decline-row";
 // The shared modal shell every interaction step composes (a signin/connect body
 // renders its own, wired with the StepChrome the stepper hands it) so the whole
 // family shares one surface, header row, and footer row.

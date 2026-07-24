@@ -8,8 +8,8 @@ import {
 
 const LABELS: ChatPlanReadyLabels = {
   title: "Plan ready",
-  coworkerTitle: "Continue in Coworker mode",
-  coworkerDescription: "Works with you and asks when unsure.",
+  askFirstTitle: "Continue in Ask first mode",
+  askFirstDescription: "Gets things done, asks before sensitive actions.",
   autopilotTitle: "Continue in Autopilot mode",
   autopilotDescription: "Finishes it on its own. No questions asked.",
   keepPlanningTitle: "Keep planning",
@@ -30,8 +30,8 @@ describe("resolvePlanReadyActions", () => {
     assert.deepEqual(actions, [
       {
         key: "startWorking",
-        title: "Continue in Coworker mode",
-        description: "Works with you and asks when unsure.",
+        title: "Continue in Ask first mode",
+        description: "Gets things done, asks before sensitive actions.",
         disabled: false,
       },
       {
@@ -64,8 +64,8 @@ describe("DEFAULT_PLAN_READY_LABELS", () => {
   it("ships the English fallback copy with no em dashes", () => {
     assert.equal(DEFAULT_PLAN_READY_LABELS.title, "Plan ready");
     assert.equal(
-      DEFAULT_PLAN_READY_LABELS.coworkerTitle,
-      "Continue in Coworker mode",
+      DEFAULT_PLAN_READY_LABELS.askFirstTitle,
+      "Continue in Ask first mode",
     );
     assert.equal(
       DEFAULT_PLAN_READY_LABELS.autopilotTitle,

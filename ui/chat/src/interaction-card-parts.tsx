@@ -2,8 +2,28 @@
 
 import { Button, cn, Kbd } from "@houston-ai/core";
 import { ArrowRight, ArrowUp } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { ChatInteractionOption } from "./interaction-card-logic";
+
+/** The app-logo lockup image for a branded question's title, sized to match the
+ *  header's icon row (24px, the same box the connect card's `sm` logo uses). The
+ *  URL is app-supplied; a load failure drops the image so the title falls back to
+ *  the name alone — never a broken image. `alt` is the app name so the logo is
+ *  addressable in tests/a11y. */
+export function BrandLogo({ url, name }: { url: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <img
+      alt={name}
+      className="size-6 shrink-0 rounded-lg object-contain"
+      decoding="async"
+      loading="lazy"
+      onError={() => setFailed(true)}
+      src={url}
+    />
+  );
+}
 
 /** A question step's body: the single-select option rows (when the agent offered
  *  choices) followed by the free-text ESCAPE field, as ONE tight list so the

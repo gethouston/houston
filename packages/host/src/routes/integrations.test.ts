@@ -76,7 +76,7 @@ async function setup(
   const addr = server.address();
   const base = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
   const ws = await store.getOrCreatePersonalWorkspace(USER);
-  return { base, ws, vault, fake, stop: () => server.close() };
+  return { base, ws, store, vault, fake, stop: () => server.close() };
 }
 
 const auth = {
@@ -383,6 +383,28 @@ test("sandbox proxy: HMAC token → workspace owner's userId → execute/search"
     expect(
       (await search.json()).items.map((m: { action: string }) => m.action),
     ).toContain("GMAIL_SEND_EMAIL");
+  } finally {
+    stop();
+  }
+});
+
+test("sandbox proxy: a write action executes directly (no host approval gate)", async () => {
+  // The host executes every authenticated execute directly — integration
+  // confirmations are model-driven ask_user questions, not a host-side gate. A
+  // write slug (GMAIL_SEND_EMAIL) runs 200 with no grant, no 409.
+  const { base, ws, vault, stop } = await setup();
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/execute`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).successful).toBe(true);
   } finally {
     stop();
   }

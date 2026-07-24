@@ -160,8 +160,8 @@ export function handleUserRoutes(
   segs: string[],
   body: Record<string, unknown> | undefined,
 ): Response | undefined {
-  // Per-agent custom-integration surface (HOU-823), BOTH forms like
-  // action-approvals: `/v1/agents/:id/integrations/custom/*` and the dispatch
+  // Per-agent custom-integration surface (HOU-823), BOTH forms:
+  // `/v1/agents/:id/integrations/custom/*` and the dispatch
   // `/agents/:id/integrations/custom/*` — the one form the hosted gateway
   // proxies to a pod, so the shipped in-chat credential card calls it. Same
   // user-global data as the top-level routes; the agent id only routes.

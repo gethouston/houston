@@ -5,14 +5,14 @@ import { expect, test } from "./support/fixtures";
  * Element 4 (v3): the pending-interaction hand-off, a STEPPER. When a turn
  * ends on an `ask_user` / `request_connection`, its `done` frame carries a
  * `PendingInteraction { steps }`; the SDK settles the board to `needs_you` and
- * the app shows ONE `ChatInteractionCard` ABOVE the composer (which stays
- * mounted and usable throughout) that walks the user through the steps ONE AT
- * A TIME with a compact "N of M" pager (its chevrons are Back/Forward). Typing a fresh message directly into the
- * composer while the card shows abandons the whole sequence and sends the
- * typed text as a normal message instead of an answer. These specs arm the
- * fake host's `/__test__/chat-interaction` control with the `{ steps }`
- * shape, then drive the whole seam: card appears above the composer -> user
- * answers each step (or abandons) -> card retires, composer stands alone.
+ * the app shows ONE `ChatInteractionCard` in the composer's slot, REPLACING it
+ * (HOU-870) — the card's own free-text row is the ONE text input on screen, no
+ * "Send a follow-up..." below it — and walks the user through the steps ONE AT
+ * A TIME with a compact "N of M" pager (its chevrons are Back/Forward). The
+ * card's dismiss X abandons the whole sequence and restores the composer. These
+ * specs arm the fake host's `/__test__/chat-interaction` control with the
+ * `{ steps }` shape, then drive the whole seam: card replaces the composer ->
+ * user answers each step (or dismisses) -> card retires, composer returns.
  *
  * A turn's steps are the question steps (from one ask_user call, 1 to 3) FOLLOWED
  * BY at most one signin step (the user must sign in to Houston first) FOLLOWED BY
@@ -43,8 +43,8 @@ async function startMission(
  * The three-question stepper: only ONE step shows at a time with a
  * compact "N of M" pager. Answer step 1 by option, step 2 by free text, step 3
  * by option; the completion composes ONE structured user message carrying all
- * three answers, and the normal follow-up composer (which was visible the
- * whole time) is all that's left.
+ * three answers, and the normal follow-up composer (replaced by the card while
+ * it walked the steps) returns as all that's left.
  */
 test("walks three questions one at a time and composes a single structured reply", async ({
   page,
@@ -96,13 +96,13 @@ test("walks three questions one at a time and composes a single structured reply
   await expect(page.getByText("Morning or evening flight?")).toHaveCount(0);
 
   // Exactly this step's two options, plus the free-text ESCAPE row (which, when
-  // options are present, carries the escape placeholder), and
-  // the real composer stays visible and usable alongside the card.
+  // options are present, carries the escape placeholder). The card REPLACES the
+  // composer, so the card's own input is the ONE text field on screen: the
+  // "Send a follow-up..." composer is not rendered under it.
   await expect(page.getByRole("radio")).toHaveCount(2);
   await expect(page.getByPlaceholder("Type another option...")).toBeVisible();
   const composer = page.getByPlaceholder("Send a follow-up...");
-  await expect(composer).toBeVisible();
-  await expect(composer).toBeEditable();
+  await expect(composer).toHaveCount(0);
 
   // Answer step 1 by option -> advances to 2 of 3 (a free-text-only question).
   // On a multi-step sequence the click advances, it does not send.
@@ -113,12 +113,13 @@ test("walks three questions one at a time and composes a single structured reply
   await expect(page.getByText("2 of 3")).toBeVisible();
   await expect(page.getByText("Which city are you flying to?")).toHaveCount(0);
   await expect(page.getByRole("radio")).toHaveCount(0);
-  await expect(composer).toBeVisible();
+  // Still mid-sequence: the composer stays replaced by the card.
+  await expect(composer).toHaveCount(0);
 
   // Answer step 2 by free text -> advances to 3 of 3. A free-text-only question
   // has no options, so its escape row shows the neutral placeholder; Enter in
   // the field commits the draft (there is no footer Next button anymore).
-  const freeText = page.getByPlaceholder("Type another option...");
+  const freeText = page.getByPlaceholder("Type your answer...");
   await freeText.fill("Window seat please");
   await freeText.press("Enter");
   await expect(page.getByText("Morning or evening flight?")).toBeVisible();
@@ -245,7 +246,7 @@ test("single question with options sends on option click (fast path)", async ({
 
   await startMission(page, "book my flight");
 
-  // The lone question shows above the composer; a single step shows NO
+  // The lone question REPLACES the composer; a single step shows NO
   // progress chrome and NO back chevron (the one-tap feel is preserved).
   await expect(
     page.getByText("Do you want the morning or evening flight?"),
@@ -254,7 +255,8 @@ test("single question with options sends on option click (fast path)", async ({
   await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
   const morning = page.getByRole("radio", { name: "Morning flight" });
   await expect(morning).toBeVisible();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  // Card in the composer's slot: the follow-up input is not on screen.
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
 
   // Clicking an option completes immediately as one composed user message...
   await morning.click();
@@ -357,7 +359,7 @@ test("advances from a question to a connect step in one sequence", async ({
   // Answer the question (Enter commits the free-text draft) -> advance to the
   // connect step (2 of 2). The app NAME is the identity line, the reason is the
   // foreground body line, and the Connect CTA owns the footer; the question is gone.
-  const freeText = page.getByPlaceholder("Type another option...");
+  const freeText = page.getByPlaceholder("Type your answer...");
   await freeText.fill("john@example.com");
   await freeText.press("Enter");
 
@@ -375,8 +377,8 @@ test("advances from a question to a connect step in one sequence", async ({
   await expect(
     page.getByText("Who should I send the itinerary to?"),
   ).toHaveCount(0);
-  // The composer stays visible and usable throughout, even mid-sequence.
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  // Mid-sequence: the connect card holds the composer's slot (no follow-up input).
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
 });
 
 /**
@@ -431,7 +433,7 @@ test("advances from a question to a signin step in a three-step sequence", async
   // Answer the question (Enter commits) -> advance to the SIGNIN step (2 of 3).
   // "Houston" is the identity line, its reason the foreground body line, and the
   // Sign in button the footer; the question is gone, the connect (3 of 3) queued.
-  const freeText = page.getByPlaceholder("Type another option...");
+  const freeText = page.getByPlaceholder("Type your answer...");
   await freeText.fill("john@example.com");
   await freeText.press("Enter");
 
@@ -449,9 +451,10 @@ test("advances from a question to a signin step in a three-step sequence", async
   await expect(
     page.getByText("Who should I send the itinerary to?"),
   ).toHaveCount(0);
-  // The connect step hasn't been reached, and the composer stays visible.
+  // The connect step hasn't been reached, and the signin card holds the
+  // composer's slot (no follow-up input while a step is pending).
   await expect(page.getByRole("button", { name: "Connect" })).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
 });
 
 /**
@@ -480,14 +483,14 @@ test("shows a lone signin step for a signin-only sequence", async ({
 
   await startMission(page, "check my email");
 
-  // The signin card shows above the composer: the reason plus the Sign in
-  // button, a single step (no progress chrome), composer stays visible.
+  // The signin card REPLACES the composer: the reason plus the Sign in button,
+  // a single step (no progress chrome), the follow-up input not on screen.
   await expect(
     page.getByText("Sign in to Houston to use your connected apps."),
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   await expect(page.getByText(/\d+ of \d+/)).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
 });
 
 /**
@@ -516,14 +519,14 @@ test("shows a lone connect step for a connect-only sequence", async ({
 
   await startMission(page, "email me the itinerary");
 
-  // The connect card shows above the composer: the reason plus the rich
-  // integration connect card, a single step (no progress), composer visible.
+  // The connect card REPLACES the composer: the reason plus the rich integration
+  // connect card, a single step (no progress), the follow-up input not on screen.
   await expect(
     page.getByText("I need access to your Gmail to send the trip itinerary."),
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
   await expect(page.getByText(/\d+ of \d+/)).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
 });
 
 /**
@@ -621,6 +624,60 @@ test("skips a lone connect step and tells the agent the user declined", async ({
 });
 
 /**
+ * The always-visible free-text row on a connect step (HOU-870): instead of
+ * connecting, the user types "or tell it what to do instead" and sends. That
+ * records a decline WITH the instruction, which — because it carries user text —
+ * resumes the agent VISIBLY (a user bubble the transcript shows), naming the app
+ * and the verbatim instruction so the agent reacts instead of re-requesting the
+ * connection. No connection is made.
+ */
+test("declines a connect step with a typed instruction and resumes visibly", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "gmail",
+            reason: "I need access to your Gmail to send the trip itinerary.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "email me the itinerary");
+
+  await expect(
+    page.getByText("I need access to your Gmail to send the trip itinerary."),
+  ).toBeVisible({ timeout: 15_000 });
+
+  // The decline row is the ONE text input on screen (the composer is replaced).
+  const row = page.getByPlaceholder("Or tell it what to do instead...");
+  await expect(row).toBeVisible();
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+
+  await row.fill("just draft it, I'll send it from my phone");
+  await row.press("Enter");
+
+  // VISIBLE resume: a user bubble carries the humanized decline-with-instruction
+  // (naming the app), and the card retires so the composer returns.
+  const composed = page
+    .locator(".is-user")
+    .filter({ hasText: "just draft it, I'll send it from my phone" });
+  await expect(composed).toHaveCount(1, { timeout: 15_000 });
+  await expect(composed).toContainText("I didn't connect Gmail. Instead");
+  await expect(
+    page.getByText("I need access to your Gmail to send the trip itinerary."),
+  ).toHaveCount(0);
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+});
+
+/**
  * Skipping the connect step of a mixed (question then connect) sequence: the
  * answered question still composes the ONE visible structured reply, and the
  * skip line rides it so the transcript (and the agent) carry the decline.
@@ -654,7 +711,7 @@ test("skipping the connect step of a mixed sequence keeps the answers and record
   await expect(
     page.getByText("Who should I send the itinerary to?"),
   ).toBeVisible({ timeout: 15_000 });
-  const freeText = page.getByPlaceholder("Type another option...");
+  const freeText = page.getByPlaceholder("Type your answer...");
   await freeText.fill("john@example.com");
   await freeText.press("Enter");
 
@@ -820,12 +877,12 @@ test("skips a lone signin step and tells the agent the user declined", async ({
 });
 
 /**
- * The escape hatch: instead of engaging with the card at all, the user can type
- * straight into the always-visible real composer. Sending that message abandons
- * the WHOLE pending interaction (mirrors clicking the card's own dismiss X) and
- * the typed text goes out as a normal message.
+ * The free-text row on a signin step (HOU-870): instead of signing in, the user
+ * types what to do instead and sends. The decline carries the instruction, so it
+ * resumes the agent VISIBLY (a user bubble) rather than the hidden signin-only
+ * followup, telling the agent to proceed a different way.
  */
-test("typing a fresh message in the composer abandons the pending interaction", async ({
+test("declines a signin step with a typed instruction and resumes visibly", async ({
   page,
   request,
 }) => {
@@ -834,46 +891,47 @@ test("typing a fresh message in the composer abandons the pending interaction", 
       interaction: {
         steps: [
           {
-            kind: "question",
-            id: "q1",
-            question: "Which city are you flying to?",
-            options: [
-              { id: "paris", label: "Paris" },
-              { id: "tokyo", label: "Tokyo" },
-            ],
+            kind: "signin",
+            id: "s1",
+            reason: "Sign in to Houston to use your connected apps.",
           },
         ],
       },
     },
   });
 
-  await startMission(page, "plan my trip");
+  await startMission(page, "check my email");
 
-  await expect(page.getByText("Which city are you flying to?")).toBeVisible({
-    timeout: 15_000,
-  });
-
-  const composer = page.getByPlaceholder("Send a follow-up...");
-  await expect(composer).toBeVisible();
-  await composer.fill("actually just book the cheapest option");
-  await composer.press("Enter");
-
-  // The card retires entirely (question, options, and free-text field all gone)
-  // and the typed message sends as a normal user turn, not an answer.
-  await expect(page.getByText("Which city are you flying to?")).toHaveCount(0);
-  await expect(page.getByPlaceholder("Type another option...")).toHaveCount(0);
   await expect(
-    page
-      .locator(".is-user")
-      .filter({ hasText: "actually just book the cheapest option" }),
-  ).toHaveCount(1);
+    page.getByText("Sign in to Houston to use your connected apps."),
+  ).toBeVisible({ timeout: 15_000 });
+
+  const row = page.getByPlaceholder("Or tell it what to do instead...");
+  await expect(row).toBeVisible();
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+
+  await row.fill("skip the connected apps, just search the web");
+  await row.press("Enter");
+
+  const composed = page
+    .locator(".is-user")
+    .filter({ hasText: "skip the connected apps, just search the web" });
+  await expect(composed).toHaveCount(1, { timeout: 15_000 });
+  await expect(composed).toContainText("I didn't sign in. Instead");
+  await expect(
+    page.getByText("Sign in to Houston to use your connected apps."),
+  ).toHaveCount(0);
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
 
 /**
- * The explicit escape hatch: the card's own header X button abandons the whole
- * sequence without requiring the user to type anything.
+ * The card REPLACES the composer (HOU-870): while a step is pending the
+ * "Send a follow-up..." input is not on screen, so the card's own free-text row
+ * is the ONE text input (no two competing inputs). The header X restores the
+ * composer — the only way to leave the card without deciding, now that the
+ * composer is not sitting below it to type into.
  */
-test("the dismiss X button abandons the pending interaction", async ({
+test("the card replaces the composer and dismiss restores it", async ({
   page,
   request,
 }) => {
@@ -901,9 +959,14 @@ test("the dismiss X button abandons the pending interaction", async ({
     timeout: 15_000,
   });
 
-  await page.getByRole("button", { name: "Dismiss" }).click();
+  // Exactly ONE text input on screen: the card's own, not the composer.
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder("Type another option...")).toHaveCount(1);
 
+  // The header X retires the card and RESTORES the composer.
+  await page.getByRole("button", { name: "Dismiss" }).click();
   await expect(page.getByText("Which city are you flying to?")).toHaveCount(0);
+  await expect(page.getByPlaceholder("Type another option...")).toHaveCount(0);
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
 
@@ -1229,6 +1292,47 @@ test("skips the credential step and tells the agent the key was declined", async
     page.getByText("I need your API key to sync your records."),
   ).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Save key" })).toHaveCount(0);
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+});
+
+/**
+ * The free-text row on a credential step (HOU-870): instead of pasting the key,
+ * the user types what to do instead and sends. The secret never enters the
+ * transcript; the decline carries the instruction, resuming the agent VISIBLY
+ * (a user bubble naming the integration) so it proceeds a different way.
+ */
+test("declines the credential step with a typed instruction and resumes visibly", async ({
+  page,
+  request,
+}) => {
+  await armCustomIntegration(request);
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: { interaction: { steps: [credentialStep] } },
+  });
+
+  await startMission(page, "connect the CRM");
+
+  await expect(
+    page.getByText("I need your API key to sync your records."),
+  ).toBeVisible({ timeout: 15_000 });
+
+  const row = page.getByPlaceholder("Or tell it what to do instead...");
+  await expect(row).toBeVisible();
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+
+  await row.fill("read the key from the ACME_KEY environment variable");
+  await row.press("Enter");
+
+  const composed = page
+    .locator(".is-user")
+    .filter({ hasText: "read the key from the ACME_KEY environment variable" });
+  await expect(composed).toHaveCount(1, { timeout: 15_000 });
+  await expect(composed).toContainText(
+    "I didn't add the Acme CRM key. Instead",
+  );
+  await expect(
+    page.getByText("I need your API key to sync your records."),
+  ).toHaveCount(0);
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
 

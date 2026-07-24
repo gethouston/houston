@@ -95,13 +95,7 @@
     "disconnect": "Disconnect"
   },
   "agentTab": {
-    "manageAll": "Manage all integrations",
-    "runsWithoutAsking": {
-      "heading": "Runs without asking",
-      "subtitle": "You allowed this agent to run these app actions without checking with you first. Remove one and Houston will ask again.",
-      "remove": "Remove",
-      "removeFor": "Stop {{action}} running without asking"
-    }
+    "manageAll": "Manage all integrations"
   },
   "custom": {
     "title": "Custom integrations",

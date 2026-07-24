@@ -211,6 +211,10 @@ export interface AIBoardProps {
    * focused interaction surface (e.g. an action-input form).
    */
   composerOverride?: ReactNode;
+  /** How `composerOverride` composes with the input. `"above"` (default) keeps
+   *  the input mounted below the card; `"replace"` hides it while the override is
+   *  present. Forwarded to ChatPanel. */
+  composerOverrideMode?: ChatPanelProps["composerOverrideMode"];
   /** Translated labels for the file-drop overlay and composer notices. Forwarded to ChatPanel. */
   composerLabels?: ChatPanelProps["composerLabels"];
   /** Multiplayer only (C5): the signed-in viewer's user id. Forwarded to
@@ -335,6 +339,7 @@ export function AIBoard({
   onComposerSubmit,
   cardLabels,
   composerOverride,
+  composerOverrideMode,
   composerLabels,
   currentUserId,
   authorLabels,
@@ -757,6 +762,7 @@ export function AIBoard({
           }
           canSendEmpty={canSendEmpty}
           composerOverride={composerOverride}
+          composerOverrideMode={composerOverrideMode}
           composerLabels={composerLabels}
         />
       </div>

@@ -125,8 +125,8 @@ real not-found, NOT a policy block).
 `execute` with `{code:"toolkit_not_allowed"}` (the sole execute gate, C7). The
 sandbox proxy relays that body verbatim (`integrationUpstreamErrorFromResponse` →
 `IntegrationUpstreamError` → `relayIntegrationUpstreamError`, preserving the JSON
-`code`), so `integration_execute` classifies it by its stable `code` — mirroring
-how it classifies `approval_required` (409), never the bare 403 — and RETURNS
+`code`), so `integration_execute` classifies it by its stable `code`, never the
+bare 403, and RETURNS
 guidance (the app is turned off for this agent; tell the user to enable it in the
 Permissions tab; do not retry until they confirm), never a thrown/raw error.
 Marked `details.appTurnedOff`.
@@ -248,107 +248,52 @@ just the UI:
   `GET`/`PUT /v1/agents/:agentId/integration-grants` route, its wiring in
   `local/host.ts` + `ControlPlaneDeps`, the sandbox search-filter + execute 403,
   and the store-ir publish-time union with grants. `search`/`execute` now run
-  unfiltered on this host. The Composio slug-attribution helper survives, inlined
-  into `integrations-sandbox.ts`, ONLY for the approval card's `resolveToolkit`
-  (§2b) — it never gates a call.
+  unfiltered on this host.
 - **fake-host**: the `integration-grants` route + `grants` state map are gone;
-  connections / settings / approvals are intact.
+  connections / settings are intact.
 
 **Stale files are inert.** `<agent>/.houston/integration-grants.json` files
 written by earlier builds are IGNORED harmlessly — nothing reads them, no boot
-migration is needed, and no generic globber touches them (the surviving
-file-backed store, action-approvals, addresses its file by exact name). They are
-removed for free whenever the agent dir is deleted.
+migration is needed, and no generic globber touches them. They are removed for
+free whenever the agent dir is deleted.
 
 ---
 
-## 2b. Action approvals — the execute-time permission gate
+## 2b. Confirming an action — model-driven, no host gate (HOU-885)
 
-The ALLOWLIST answers "which toolkit may this agent touch at all" (§2, gateway);
-APPROVALS answer "may this specific action call, with these params, run right
-now". Distinct concepts, distinct store. An `integration_execute` the user has
-not pre-blessed pauses the turn on an approval card instead of firing silently.
+Confirmation before a write is now a **model-driven `ask_user` question**, not a
+host-side gate. When an agent is about to run a consequential
+`integration_execute` in **Ask first** mode, it asks the user first through the
+normal `ask_user` tool (rendered as a branded confirmation question in chat); the
+model decides when to ask, guided by the prompt. There is NO host approval card,
+no per-action grant, no TTL.
 
-**The gate** — `packages/host/src/routes/integrations-sandbox.ts`, in the execute
-branch, evaluated in strict PRECEDENCE (skipped wholesale when `deps.actionApprovals`
-is unwired, so existing installs/tests execute untouched):
+**The host executes every authenticated execute directly.** `/sandbox/integrations/execute`
+(`packages/host/src/routes/integrations-sandbox.ts`) runs the call as soon as the
+sandbox HMAC authenticates it — read or write, every mode. The old execute-time
+gate (the read-only classifier, the Autopilot `x-houston-turn-mode: auto` bypass,
+the fresh-grant check, the 409 `approval_required` response, the display/hash
+helpers, `resolveToolkit`) and its whole store/route/UI stack are DELETED. The
+policy that remains lives ELSEWHERE, untouched: the Planner cannot act at all
+(it blocks writes upstream), and the closed cloud gateway's toolkit allowlist
+still 403s an out-of-allowlist execute (§1, §2).
 
-1. **Autopilot header** — an `auto` turn auto-approves. The runtime forwards
-   `x-houston-turn-mode: auto` on `/sandbox/integrations/execute` (from the
-   turn-mode `AsyncLocalStorage`, `packages/runtime/src/session/turn-mode-context.ts`)
-   ONLY on an Autopilot turn; the sandbox HMAC already authenticated the runtime,
-   so the header is trusted. Fire-and-forget can never wait on the user.
-2. **Always-allow record** — the action slug is on the agent's always list → runs.
-3. **One-shot ticket** — a FRESH ticket matching `hashActionParams(action, params)`
-   is consumed (single use) → runs. The hash is canonical JSON with recursively
-   SORTED keys → sha256 → 16 hex chars, so re-serializing the same call re-hashes
-   identically, yet ANY param drift changes the hash → a new card (drift is safe,
-   never silently pre-approved).
-4. **Else 409** `{error, code:"approval_required", approval:{toolkit, action,
-   params, paramsOmitted?, paramsHash}}`. `params` is display-ready
-   (`displayParams` returns `{params, omitted}`: strings pass, else JSON; each
-   value truncated to 80 chars, at most the first 8 keys). `paramsOmitted` (only
-   when > 0) is how many params were dropped past that cap — the card surfaces it
-   ("And N more settings") so the user knows the hash covers settings the rows
-   don't show. `toolkit` is best-effort (`resolveToolkit`, 409-path only: the
-   LONGEST matching slug among the acting user's CONNECTIONS — fault-tolerant, so
-   a `listConnections` failure falls through — else the segment before the first
-   `_`; display-only, `paramsHash` + `action` are what gate). Its slug-attribution
-   helper (`actionInToolkit`) is inlined into `integrations-sandbox.ts`.
+**Mode semantics.** In **Ask first** the model asks before a consequential write
+via `ask_user`; in **Autopilot** the agent cannot pause on the user, so it does
+not ask — fire-and-forget executes directly. The distinction is purely a prompt/
+model concern now; the host does not read the turn mode for integrations.
 
-The runtime's `integration_execute` classifies the 409 by its `code` (never the
-bare status), records an `approval` step on the turn holder (`recordApproval`,
-deduped by paramsHash, ids `a1..aN`, LAST in the sequence — approving follows
-connecting), and returns non-error queued-pending text so the model ends the turn
-cleanly rather than erroring. See `knowledge-base/architecture.md` (interaction
-lifecycle).
+**Stale files are inert.** `<agent>/.houston/action-approvals.json` records
+written by earlier builds are ignored — nothing reads them, no migration is
+needed, and they are removed for free whenever the agent dir is deleted.
 
-**The store** — `packages/host/src/integrations/{action-approval-store.ts,
-action-approvals.ts, approvals.ts}`. `FileActionApprovalStore` persists per-agent
-JSON at `<agent>/.houston/action-approvals.json` `{always: string[], tickets:
-[{hash, ts}]}` (atomic tmp+rename; missing/corrupt reads as the empty record,
-never a crash; removed for free on agent deletion). It derives the agent-dir path
-+ atomic write via `agent-file.ts` (`agentDotHoustonFile` + `atomicWriteJson`). `LocalActionApprovals` is the
-policy over it: `isAlways` / `allowAlways` (case-insensitive dedupe) /
-`disallowAlways` (case-insensitive REMOVE for the review UI — read→filter→prune→
-put→return next.always, skipping the redundant put on a clean miss like
-`consumeTicket`), `addTicket` / `consumeTicket` (consume-once). Tickets have a **15-minute TTL**
-(`TICKET_TTL_MS`) and are PRUNED on every read/write path, so a stale ticket never
-silently authorizes a later identical call. Every MUTATING op is a read→mutate→
-write across awaits, so they are **serialized per agent** through a promise-chain
-tail (`chains` map) — two concurrent `consumeTicket`s for one fresh ticket can't
-both win (no double-consume / resurrection); `consumeTicket` also skips the
-redundant `put` on a clean miss (nothing pruned or removed).
-
-**Pod-side in v1 (NOT gated on gatewayFronted).** Wired in `local/host.ts`
-whenever `registry` exists — it does NOT check `!gatewayFronted`, so a managed
-cloud pod still enforces the gate pod-side per agent (the gateway does not own
-action approvals yet). Per-user approval scoping for Teams is a known cloud
-follow-up.
-
-**User routes** — `packages/host/src/routes/action-approvals.ts` (authorize =
-`canUseAgent`; dep absent → the handler falls through to 404 → client reads
-"unsupported" and degrades without a toast):
-
-- `GET    /v1/agents/:agentId/action-approvals` → `{always}`
-- `POST   /v1/agents/:agentId/action-approvals/always`   `{action}` → `{always}`
-- `DELETE /v1/agents/:agentId/action-approvals/always`   `{action}` → `{always}` (revoke)
-- `POST   /v1/agents/:agentId/action-approvals/tickets`  `{hash}`   → `{ok:true}`
-
-The shared `serve()` core handles all four on BOTH surfaces (the `/v1` wrapper and
-the per-agent dispatch), DELETE validating the slug with the same 400 shape as the
-POST. The engine-client method is `disallowActionAlways` (DELETE with a JSON body,
-no 404-degrade on a mutation), surfaced through `tauriIntegrations.revokeActionAlways`.
-
-The app calls `tickets` on "Allow once", `always` on "Always allow" (the card also
-invalidates `queryKeys.actionApprovals(agentId)` on a successful always-allow so the
-review list below stays live), and DELETE `always` on the agent tab's **Runs without
-asking** review (§3). The model then re-issues the same execute and the gate lets it
-through. **The prompt no
-longer pre-asks** via `ask_user` for connected-app actions (`houston-prompt.ts` +
-the Rust mirror `houston_prompt/base.rs`): "For connected-app actions, do not ask.
-Houston shows its own approval card after your turn, so just call
-`integration_execute`."
+**Gone entirely:** `packages/host/src/integrations/{action-approvals.ts,
+action-approval-store.ts, action-classification.ts, approvals.ts, agent-file.ts}`,
+`packages/host/src/routes/action-approvals.ts`, the `actionApprovals` dep on
+`ControlPlaneDeps`/`AgentAuthzDeps`, its wiring in `local/host.ts` and the
+`/agents/:id/action-approvals/*` dispatch, and the fake-host `state-action-approvals.ts`
++ `routes-action-approvals.ts`. The old Always-allow / one-shot-ticket / 15-minute-
+grant systems are all gone with it.
 
 ---
 
@@ -592,21 +537,10 @@ grant section (`agent-ungranted-apps-section.tsx`, `useAgentGrantMutation`,
 `integrations:agentTab.offForAgent.*`) and the `availableRows` bucket are GONE —
 connecting an app makes it usable (∩ allowlist), no per-agent toggle. The
 `disallowedRows` render the transparency section (`agent-disallowed-apps-section.tsx`,
-"Not allowed" + role-aware Permissions CTA), then the
-**"Runs without asking"** review (`agent-approved-actions-section.tsx`,
-`integrations:agentTab.runsWithoutAsking.*`) — the ONE surface that reviews and
-REVOKES the action-approval always-list (§2b), rendered by `AgentCatalogSections`
-below the disallowed section. It self-gates on
-its own `useAgentActionApprovals(agentId, enabled)` query (`enabled` =
-`integrationsSupported`, the engine-client GET degrades 404→`[]`) and renders
-nothing while the list is empty. Each row resolves the bare action slug to its app
-via the pure `toolkitOfActionSlug(action, catalogSlugs)` (longest catalog-slug
-prefix wins over the first segment, mirroring the host's `resolveToolkit`;
-node-tested in `app/tests/approved-actions-model.test.ts`) fed into
-`useIntegrationAppDisplay` for logo+name, with the HUMANIZED action
-(`humanizeActionSlug`, never the raw slug) as the row text and a visible outline
-**Remove** (not hover-gated) firing `useRevokeActionApproval(agentId)` (optimistic
-remove + targeted rollback + invalidate on settle, no `onError` toast). Recovery
+"Not allowed" + role-aware Permissions CTA). The old **"Runs without asking"**
+review that reviewed/revoked the per-agent action-approval always-list was REMOVED
+with the whole approval system (§2b — confirmation is now a model-driven `ask_user`
+question, no host-side always-list to manage). Recovery
 **Remove** DISCONNECTS the user's connection. Connect forwards the agent slug so the
 gateway enforces the agent's allowlist (`useConnectFlow`, `autoGrant` removed). The tab
 count chip excludes locked apps. All lifted view state (tab/search/category/modals)
@@ -680,12 +614,16 @@ design.
 calls the integration-gated `request_connection` tool (never writes a link). That
 records a `{kind:"connect", toolkit, reason?}` pending interaction which rides the
 turn's clean `done` frame and settles the board card to `needs_you`; the pending
-interaction floats a `ChatInteractionCard` stepper ABOVE the composer, whose
+interaction renders a `ChatInteractionCard` stepper that REPLACES the composer
+while pending (HOU-870, `composerOverrideMode: "replace"` — one text input on
+screen; dismissing restores the composer), whose
 connect step is `ChatConnectInteractionCard`. Every step (question, sign-in,
-connect, approval) composes ONE shared modal shell — `InteractionModal` + `InteractionModalTitle`
+connect, credential) composes ONE shared modal shell — `InteractionModal` + `InteractionModalTitle`
 in `ui/chat` (reference "Coworker card" look, inventory v19) — that owns the
 surface, the HEADER row (title left; `‹ N of M ›` pager + dismiss X top-right),
-the body, and a right-aligned FOOTER row. The connect step's `(icon) NAME`
+the body, and a right-aligned FOOTER row. Every step kind also carries an
+always-visible free-text row (`InlineTextRow`, ui/chat): submitted text records
+a decline-with-instruction the agent hears in the composed reply. The connect step's `(icon) NAME`
 identity lockup (AppLogo `sm` beside the integration NAME at REGULAR weight — the
 sign-in step seats the Houston helmet + "Houston" in the same slot) is the modal
 TITLE, IN the header beside the pager/X; the body is a two-field block (the
@@ -725,38 +663,18 @@ connect hack is GONE from the prompt and tool guidance — the app's legacy
 link-card renderer survives only to render old transcripts. Full lifecycle →
 `knowledge-base/architecture.md`.
 
-**Action-approval card (in-chat).** When the host gates an
-`integration_execute` (§2b), the runtime queues an `approval` step and the same
-stepper renders `ChatApprovalInteractionCard`
-(`app/src/components/chat-approval-interaction-card.tsx`) through ui/chat's
-`renderApproval` prop — its own `InteractionModal` wired with the `StepChrome`
-(pager + dismiss X) the stepper hands it, so ui/chat stays Composio-unaware. It
-resolves the toolkit to a logo + name for the '(icon) NAME' title WITHOUT any
-connect side effect (no OAuth, no auto-continue — reusing `useIntegrationStatus`
-/ `useIntegrationToolkits` + the shared `AppLogo`), asks JUST "Allow {app} to
-{action}?" (`humanizeActionSlug`) — the tool's raw params ride the wire but are
-NEVER rendered (non-technical audience; the approval still covers the exact
-call via `paramsHash`) —
-and offers three FOOTER decisions — Always allow (outline, LEFT) / Deny (outline,
-Esc) / Allow once (filled, Enter). `onDecision` writes the store (allow-once →
-`tickets` POST, always-allow → `always` POST) then advances. The composed reply
-(`app/src/lib/interaction-reply.ts`) is TWO-FACED: the flat BODY the MODEL reads
-names the RAW action slug via `approvedLine` / `deniedLine` (so it re-issues the
-EXACT call — `approvedLine` also says "Use exactly the same parameters as before"
-to guard against param drift breaking the one-shot ticket), while the VISIBLE
-transcript payload a non-technical user reads names the HUMANIZED app + action via
-`approvedLineDisplay` / `deniedLineDisplay` ("Allowed Gmail to send draft.", never
-the slug). `finalApprovalNames` keeps one decision per step id (walked-back
-re-decides collapse to the LAST) and carries both the slug and the humanized
-`display` the panel computes (`humanizeActionSlug` + `prettifyToolkit`). A
-revisited decided step shows a calm check + "Allowed" (or muted "Denied") with no
-footer. The three step cards (approval/connect/signin) share ONE capture-phase
-Enter/Esc hook (`use-interaction-step-keys.ts`); the approval card's read-only
-app-identity resolution is `use-integration-app-display.ts`.
+**Confirming an action (in-chat) — REMOVED as a dedicated card (HOU-885).** The
+host no longer gates `integration_execute`, so there is no `approval` step and no
+dedicated action-approval card. Confirmation before a consequential write is now a
+model-driven branded `ask_user` question (Ask first mode), rendered by the same
+question step of the interaction stepper as any other `ask_user` — not a special
+Composio-aware approval card. The old `ChatApprovalInteractionCard` /
+`renderApproval` prop / three-way Always-allow / Deny / Allow-once footer and the
+`approvedLine` / `deniedLine` reply plumbing are gone.
 
 **No silent failures.** All engine mutations route through `call()`
 (`app/src/lib/tauri.ts`), which toasts + reports once, so the integration hooks
-carry NO `onError` (a second toast would double up). See `useRevokeActionApproval`.
+carry NO `onError` (a second toast would double up).
 
 ---
 
@@ -801,9 +719,8 @@ method) / `error`.
 
 **Actions are executor addresses.** A custom ToolMatch's `action` is
 `tools.<integration>.<owner>.<connection>.<tool>`; `toolkit` is the integration
-slug. The sandbox's `actionInToolkit` maps a `tools.`-prefixed action to its
-integration segment (exact match) — used only by the approval card's toolkit
-resolution (§2b), so custom actions label correctly on the card.
+slug. The sandbox routes a `tools.`-prefixed action to the `custom` provider
+(`providerForAction`, `CUSTOM_ACTION_PREFIX`).
 
 **Sandbox proxy fans out.** `/sandbox/integrations/search` with no explicit
 provider queries ALL registered providers and merges (a failing provider never
@@ -846,8 +763,8 @@ its rename-replace.
 
 **User routes** (`routes/custom-integrations-user.ts`; the sandbox detect/add
 routes stay in `routes/custom-integrations.ts`): GET/DELETE
-`definitions[/:slug]` + the credential POST, on THREE surfaces (the
-action-approvals precedent): top-level `/v1/integrations/custom/*` (mounted
+`definitions[/:slug]` + the credential POST, on THREE surfaces: top-level
+`/v1/integrations/custom/*` (mounted
 BEFORE the generic `/v1/integrations/:provider/*` catch-all), the `/v1/agents/
 :id/integrations/custom/*` wrapper, and the per-agent dispatch `/agents/:id/
 integrations/custom/*`. **The dispatch form is the one the shipped clients
@@ -877,8 +794,7 @@ with a "Save key" CTA beside the unified "Skip" (Esc). A saved key auto-continue
 a SKIPPED key is a recorded fact the reply states ("Skipped adding the {name}
 key.", `chat:credential.skippedLine`; `finalCredentialNames` mirrors
 `finalConnectNames`) so the agent stops waiting. Hidden when the host 404s the
-definitions route (engine-client returns `null`, the same 404→null degrade the
-action-approvals read uses).
+definitions route (engine-client returns `null`, a 404→null degrade).
 
 **Cloud custody**: definitions remain agent data, while values are agent-scoped
 Secret Manager secrets. Engine pods have no GCP IAM; only the gateway can

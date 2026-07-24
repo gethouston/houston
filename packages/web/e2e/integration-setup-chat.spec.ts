@@ -163,12 +163,14 @@ test("the interview surface renders: an ask_user question card replaces the comp
 
   // The ask_user card shows once the turn settles — proof the setup panel
   // forwards composerOverride (the same channel the request_credential card
-  // uses). The real composer stays mounted below it.
+  // uses). The card REPLACES the composer (HOU-870): its own free-text row is
+  // the one input on screen while the step is pending.
   await expect(
     page.getByText("Which service do you want to connect?"),
   ).toBeVisible({ timeout: 45_000 });
   await expect(page.getByRole("radio")).toHaveCount(2);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder("Send a follow-up...")).not.toBeVisible();
+  await expect(page.getByPlaceholder("Type another option...")).toBeVisible();
 });
 
 test("Done retires the chat: no banner, and the next Add starts a FRESH chat", async ({
