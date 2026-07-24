@@ -22,6 +22,12 @@ export interface Activity {
   worktree_path?: string | null;
   routine_id?: string;
   routine_run_id?: string;
+  /** The installed skill (directory slug) this setup chat belongs to. The
+   *  durable direction of the skill <-> chat link: agents rewrite SKILL.md
+   *  (which carries the forward `setup_activity_id`) but never activity.json,
+   *  so this client-stamped reverse link survives (HOU-791, mirrors
+   *  `routine_id`). */
+  skill_slug?: string;
   updated_at?: string;
   provider?: string;
   model?: string;
@@ -45,6 +51,7 @@ export interface ActivityUpdate {
   worktree_path?: string | null;
   routine_id?: string;
   routine_run_id?: string;
+  skill_slug?: string;
   provider?: string;
   model?: string;
   /** Set to record a new pending interaction; `null` clears it explicitly. */

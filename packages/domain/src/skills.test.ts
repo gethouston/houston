@@ -50,7 +50,23 @@ test("parses Houston's existing frontmatter, including YAML-1.1 'featured: yes' 
   expect(parsed.summary.created).toContain("2026-04-25"); // YAML date scalar → string
   expect(parsed.summary.integrations).toEqual(["tavily", "gmail"]);
   expect(parsed.summary.category).toBe("research");
+  expect(parsed.summary.setupActivityId).toBeNull(); // no setup chat link
   expect(parsed.body).toContain("## Procedure");
+});
+
+test("frontmatter setup_activity_id: surfaces as the setup-chat link (HOU-791)", () => {
+  const built = `---
+name: weekly-update
+description: Draft my weekly investor update
+setup_activity_id: act-42
+---
+
+## Procedure
+Step one.
+`;
+  const parsed = parseSkillMd("weekly-update", built);
+  if ("error" in parsed) throw new Error(parsed.error);
+  expect(parsed.summary.setupActivityId).toBe("act-42");
 });
 
 test("frontmatter title: surfaces as the display title while name stays the directory slug", async () => {

@@ -124,6 +124,10 @@ export interface SkillSummary {
   integrations: string[];
   /** Image URL or Microsoft Fluent 3D Emoji slug (e.g. "rocket"). */
   image: string | null;
+  /** The setup chat this skill was built in (HOU-791). Forward link from the
+   *  frontmatter `setup_activity_id:`; the durable reverse link is the
+   *  activity's `skill_slug`. */
+  setup_activity_id?: string | null;
   /** Legacy structured inputs. Parsed for compatibility, ignored by composer UX. */
   inputs: SkillInputDef[];
   /** Legacy prompt template. Parsed for compatibility, ignored by sends. */

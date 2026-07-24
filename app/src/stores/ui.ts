@@ -62,6 +62,13 @@ interface UIState {
    * navigates, clears it) the moment it sees a match.
    */
   pendingRoutineActivityId: string | null;
+  /**
+   * One-shot nav target for a skill-setup chat with no board card (session-
+   * finished notification click, HOU-791): the activity id to open in the
+   * Skills section. The surface consumes it (resolves which skill or draft it
+   * belongs to, opens the chat, clears it) the moment it sees a match.
+   */
+  pendingSkillChatActivityId: string | null;
   /** Agent id whose custom-integration setup chat (Integrations page) is
    *  open, or null. The draft itself is derived from that agent's activities;
    *  the page has no per-chat route, so an explicit flag marks the open one. */
@@ -148,6 +155,7 @@ interface UIState {
   setAgentArchivedSearchLoading: (agentPath: string, loading: boolean) => void;
   setMissionPanelOpen: (open: boolean) => void;
   setPendingRoutineActivityId: (activityId: string | null) => void;
+  setPendingSkillChatActivityId: (activityId: string | null) => void;
   setIntegrationSetupChatAgentId: (agentId: string | null) => void;
   setPaletteOpen: (open: boolean) => void;
   setCheatsheetOpen: (open: boolean) => void;
@@ -199,6 +207,7 @@ export const useUIStore = create<UIState>()(
       agentArchivedSearchLoading: {},
       missionPanelOpen: false,
       pendingRoutineActivityId: null,
+      pendingSkillChatActivityId: null,
       integrationSetupChatAgentId: null,
       paletteOpen: false,
       cheatsheetOpen: false,
@@ -324,6 +333,8 @@ export const useUIStore = create<UIState>()(
       setMissionPanelOpen: (missionPanelOpen) => set({ missionPanelOpen }),
       setPendingRoutineActivityId: (pendingRoutineActivityId) =>
         set({ pendingRoutineActivityId }),
+      setPendingSkillChatActivityId: (pendingSkillChatActivityId) =>
+        set({ pendingSkillChatActivityId }),
       setIntegrationSetupChatAgentId: (integrationSetupChatAgentId) =>
         set({ integrationSetupChatAgentId }),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),

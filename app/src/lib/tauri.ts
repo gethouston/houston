@@ -538,6 +538,7 @@ export const tauriSkills = {
             featured: s.featured ?? false,
             integrations: s.integrations ?? [],
             image: s.image ?? null,
+            setup_activity_id: s.setupActivityId ?? null,
             inputs: (s.inputs ?? []).map((i) => ({
               name: i.name,
               label: i.label,
