@@ -36,10 +36,11 @@ const pi = (await import(
 // The catalog Houston actually serves is pi-ai PLUS the host's backport patches
 // (`GET /v1/catalog` imports them), so apply the same patches here before
 // checking for orphans — an override for a backported model (moonshotai
-// kimi-k3, google gemini-3.6-flash / 3.5-flash-lite) is not drift. Delete each
-// with the pi bump that ships it natively.
+// kimi-k3, google gemini-3.6-flash / 3.5-flash-lite, anthropic claude-opus-5)
+// is not drift. Delete each with the pi bump that ships it natively.
 await import("../../packages/host/src/providers/moonshot-k3-catalog-patch.ts");
 await import("../../packages/host/src/providers/gemini-flash-catalog-patch.ts");
+await import("../../packages/host/src/providers/opus-5-catalog-patch.ts");
 
 // Houston provider id → pi provider id (reverse of PROVIDER_ID_RENAME, which is
 // pi → Houston, e.g. `openai-codex` → `openai`). Identity for every other id.

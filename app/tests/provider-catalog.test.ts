@@ -193,7 +193,7 @@ describe("helpers read the hydrated cache", () => {
   it("normalizeLegacyModel still resolves retired aliases against the cache", () => {
     strictEqual(
       validModelOrNull("anthropic", normalizeLegacyModel("opus")),
-      "claude-opus-4-7",
+      "claude-opus-5",
     );
     strictEqual(
       validModelOrNull("anthropic", normalizeLegacyModel("sonnet")),

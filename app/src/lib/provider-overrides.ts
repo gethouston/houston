@@ -188,6 +188,9 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   anthropic: new Set([
     "claude-sonnet-5",
     "claude-fable-5",
+    // Backported into pi's catalog by the opus-5 catalog patch
+    // (packages/host/src/providers/opus-5-catalog-patch.ts).
+    "claude-opus-5",
     "claude-opus-4-8",
     "claude-opus-4-7",
     "claude-sonnet-4-6",
@@ -312,17 +315,21 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       },
       "claude-fable-5": {
         label: "Fable 5",
-        description: "Most capable model. Costs 2x more credits than Opus 4.8.",
+        description: "Most capable model. Costs 2x more credits than Opus 5.",
+      },
+      "claude-opus-5": {
+        label: "Opus 5",
+        description:
+          "Newest Opus. Deeper reasoning and stronger autonomous work.",
       },
       "claude-opus-4-8": {
         label: "Opus 4.8",
-        description:
-          "Latest Opus. Better alignment and agentic coding than 4.7.",
+        description: "Previous Opus. Strong alignment and agentic coding.",
       },
       "claude-opus-4-7": {
         label: "Opus 4.7",
         description:
-          "Previous flagship. Strong coding autonomy and complex reasoning.",
+          "Older Opus. Strong coding autonomy and complex reasoning.",
       },
       "claude-sonnet-4-6": {
         label: "Sonnet 4.6",

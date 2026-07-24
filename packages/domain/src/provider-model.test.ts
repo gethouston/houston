@@ -38,11 +38,13 @@ const PI_MODELS: Record<string, Set<string>> = {
     "claude-opus-4-6",
     "claude-opus-4-7",
     "claude-opus-4-8",
+    "claude-opus-5",
     "claude-sonnet-4-0",
     "claude-sonnet-4-20250514",
     "claude-sonnet-4-5",
     "claude-sonnet-4-5-20250929",
     "claude-sonnet-4-6",
+    "claude-sonnet-5",
   ]),
   "openai-codex": new Set([
     "gpt-5.3-codex-spark",
@@ -81,7 +83,7 @@ test("the real legacy desktop inputs map to valid pi ids with no diagnostic", ()
 
 test("bare tier aliases resolve to the pi id at the SAME tier (no upgrade)", () => {
   const opus = migrateProviderModel("anthropic", "opus");
-  expect(opus.model).toBe("claude-opus-4-8");
+  expect(opus.model).toBe("claude-opus-5");
   expect(opus.diagnostics).toEqual([]);
   assertValid(opus, "anthropic/opus");
 
