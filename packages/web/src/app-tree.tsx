@@ -13,12 +13,12 @@
  *   I18nextProvider > LanguageGate > DisclaimerGate > App
  */
 
-import App from "@houston/app/App";
 import { AgentFilePreviewHost } from "@houston/app/components/agent-file-preview-host";
 import { DisclaimerGate } from "@houston/app/components/shell/disclaimer-gate";
 import { LanguageGate } from "@houston/app/components/shell/language-gate";
 import { QueryPersistenceProvider } from "@houston/app/components/shell/query-persistence-provider";
 import { WorkspaceLoading } from "@houston/app/components/shell/workspace-loading";
+import { IdentityKeyedApp } from "@houston/app/identity-keyed-app";
 import { analytics, classifyAnalyticsError } from "@houston/app/lib/analytics";
 import { isEngineReady, whenEngineReady } from "@houston/app/lib/engine";
 import { showErrorToast } from "@houston/app/lib/error-toast";
@@ -146,7 +146,7 @@ export default function AppTree() {
                 <PreviewBadge />
                 <LanguageGate>
                   <DisclaimerGate>
-                    <App />
+                    <IdentityKeyedApp />
                     {/* Global workspace-file preview (chat file clicks) —
                         mirrors app/src/main.tsx. */}
                     <AgentFilePreviewHost />

@@ -17,6 +17,7 @@
 // into the TanStack cache, and (2) `SESSION_QUERY_KEY`, the shared `["session"]`
 // cache key those callers write.
 
+import { queryKeys } from "../query-keys.ts";
 import { identityLog } from "./log.ts";
 import { type Session, serializeSession } from "./session.ts";
 import { createSessionLoader, type SessionLoadState } from "./session-load.ts";
@@ -24,8 +25,10 @@ import { isKeychainMode, storage, storageKey } from "./session-storage-kv.ts";
 
 export type { SessionLoadState } from "./session-load.ts";
 
-/** The TanStack Query key holding `Session | null` on both surfaces. */
-export const SESSION_QUERY_KEY = ["session"] as const;
+/** The TanStack Query key holding `Session | null` on both surfaces. Defined
+ *  canonically in `lib/query-keys.ts` (the pure key module) so the space-cache
+ *  purge can reference it without importing this identity chain. */
+export const SESSION_QUERY_KEY = queryKeys.session();
 
 // Monotonic auth epoch, bumped every time the session is cleared (sign-out /
 // terminal refresh). An in-flight refresh captures it before its network call

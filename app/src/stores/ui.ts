@@ -171,7 +171,58 @@ interface UIState {
   toggleSidebarCollapsed: () => void;
   setFilesViewMode: (mode: "grid" | "list") => void;
   setFilePreview: (preview: FilePreviewTarget | null) => void;
+  /**
+   * Reset the ephemeral, identity-scoped view state to its initial values on an
+   * identity change (HOU-903) — the outgoing account's open view, panels,
+   * dialogs, and searches must not greet the next account. The two persisted
+   * device layout prefs (`sidebarCollapsed`, `filesViewMode`) are kept: they are
+   * per-machine, not per-account.
+   */
+  reset: () => void;
 }
+
+/** The initial data state, shared by the store's creator and `reset()` so the
+ *  two can never drift. Excludes the action functions. */
+const initialUIState = {
+  viewMode: "chat",
+  settingsSection: null,
+  assistantPanelOpen: false,
+  activityPanelId: null,
+  activityPanelForceOpen: false,
+  claudeAvailable: null,
+  authRequired: null,
+  toasts: [],
+  createAgentDialogOpen: false,
+  agentWarmingNoticeOpen: false,
+  onStartMission: null,
+  boardActions: [],
+  agentMissionSearchQueries: {},
+  agentMissionSearchLoading: {},
+  agentArchivedSearchQueries: {},
+  agentArchivedSearchLoading: {},
+  missionPanelOpen: false,
+  pendingRoutineActivityId: null,
+  integrationSetupChatAgentId: null,
+  paletteOpen: false,
+  cheatsheetOpen: false,
+  onBoardNavigate: null,
+  onBoardOpen: null,
+  onPanelClose: null,
+  jobDescriptionTarget: null,
+  tutorialActive: false,
+  uiTourActive: false,
+  shareAgentId: null,
+  importFromFriendOpen: false,
+  importSeedPreview: null,
+  storeFocusSlug: null,
+  storeOwnerTab: null,
+  pendingStoreInstallSlug: null,
+  storeCreatorHandle: null,
+  creatorEditorOpen: false,
+  sidebarCollapsed: false,
+  filesViewMode: "grid",
+  filePreview: null,
+} satisfies Partial<UIState>;
 
 let toastCounter = 0;
 // Live dismiss timers by toast id, so a coalesced repeat can RESTART its
@@ -181,44 +232,7 @@ const toastTimers = new Map<string, ReturnType<typeof setTimeout>>();
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
-      viewMode: "chat",
-      settingsSection: null,
-      assistantPanelOpen: false,
-      activityPanelId: null,
-      activityPanelForceOpen: false,
-      claudeAvailable: null,
-      authRequired: null,
-      toasts: [],
-      createAgentDialogOpen: false,
-      agentWarmingNoticeOpen: false,
-      onStartMission: null,
-      boardActions: [],
-      agentMissionSearchQueries: {},
-      agentMissionSearchLoading: {},
-      agentArchivedSearchQueries: {},
-      agentArchivedSearchLoading: {},
-      missionPanelOpen: false,
-      pendingRoutineActivityId: null,
-      integrationSetupChatAgentId: null,
-      paletteOpen: false,
-      cheatsheetOpen: false,
-      onBoardNavigate: null,
-      onBoardOpen: null,
-      onPanelClose: null,
-      jobDescriptionTarget: null,
-      tutorialActive: false,
-      uiTourActive: false,
-      shareAgentId: null,
-      importFromFriendOpen: false,
-      importSeedPreview: null,
-      storeFocusSlug: null,
-      storeOwnerTab: null,
-      pendingStoreInstallSlug: null,
-      storeCreatorHandle: null,
-      creatorEditorOpen: false,
-      sidebarCollapsed: false,
-      filesViewMode: "grid",
-      filePreview: null,
+      ...initialUIState,
 
       setViewMode: (viewMode) => set({ viewMode }),
       setSettingsSection: (settingsSection) => set({ settingsSection }),
@@ -351,6 +365,19 @@ export const useUIStore = create<UIState>()(
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setFilesViewMode: (filesViewMode) => set({ filesViewMode }),
       setFilePreview: (filePreview) => set({ filePreview }),
+
+      reset: () => {
+        // Cancel any live dismiss timers before dropping their toasts, so a
+        // pending timeout can't fire against the next account's store.
+        for (const timer of toastTimers.values()) clearTimeout(timer);
+        toastTimers.clear();
+        set((s) => ({
+          ...initialUIState,
+          // Keep the per-machine layout prefs (not identity-scoped).
+          sidebarCollapsed: s.sidebarCollapsed,
+          filesViewMode: s.filesViewMode,
+        }));
+      },
     }),
     {
       name: "houston-ui",

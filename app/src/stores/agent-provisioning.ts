@@ -85,6 +85,13 @@ interface AgentProvisioningState {
    * current — a probe's own settle must not clear a newer re-mark of the id.
    */
   clearProvisioning: (agentId: string, onlyIf?: ProvisioningEntry) => void;
+  /**
+   * Drop every provisioning entry (and its localStorage mirror) on an identity
+   * change (HOU-903): the marks are keyed by the outgoing account's agent ids
+   * and probe its engine. Live probes self-retire (their exit switch is entry
+   * identity, now absent from the store).
+   */
+  reset: () => void;
 }
 
 /** localStorage access, surfaced to Sentry (no toast — nothing user-blocking
@@ -215,6 +222,12 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
         storageWrite(rest);
         return { provisioning: rest };
       });
+    },
+
+    reset: () => {
+      asleepChecks.clear();
+      storageWrite({});
+      set({ provisioning: {}, sendsVersion: 0 });
     },
   }),
 );

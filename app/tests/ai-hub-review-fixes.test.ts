@@ -134,7 +134,7 @@ describe("provider status cache seeds instant paint", () => {
   it("drops malformed entries rather than trusting a bad paint hint", () => {
     const store = memStore();
     store.setItem(
-      "houston.providerStatusCache.v1",
+      "houston.providerStatusCache.v2.personal",
       JSON.stringify({ good: connectedStatus(), bad: { provider: 1 } }),
     );
     const seeded = loadCachedProviderStatuses(store);
