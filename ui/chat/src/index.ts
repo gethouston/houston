@@ -224,6 +224,13 @@ export {
   DEFAULT_SUGGEST_REUSABLE_LABELS,
   resolveSuggestReusableSaveLabel,
 } from "./chat-suggest-reusable-card-model";
+// === Thinking indicator (HOU-910) ===
+// The pre-reply loading state: a pulsing helmet + rotating astronaut one-liners.
+// i18n-agnostic — the app passes its localized `phrases`; defaults stand alone.
+export {
+  ChatThinkingIndicator,
+  type ChatThinkingIndicatorProps,
+} from "./chat-thinking-indicator";
 export type {
   ConversationMapLabels,
   ConversationMapProps,
@@ -317,6 +324,7 @@ export type { SkillInvocation, SkillInvocationField } from "./skill-message";
 // running a Skill". Decoded into a structured payload so consumers
 // (desktop, mobile) can render the same card.
 export { decodeSkillMessage, resolveSkillImage } from "./skill-message";
+export { DEFAULT_THINKING_PHRASES } from "./thinking-phrases";
 export type { TurnEndSummary } from "./turn-tools";
 export type {
   AuthFailureCause,
