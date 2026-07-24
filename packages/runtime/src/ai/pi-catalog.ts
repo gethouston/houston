@@ -1,13 +1,13 @@
-import type { Api, KnownProvider, Model } from "@earendil-works/pi-ai";
+import type { Api, Model, Provider } from "@earendil-works/pi-ai";
 // `getModels`/`getProviders` are pi-ai's legacy static-catalog reads, preserved
 // on `/compat` (the new `Models`/`Provider` collection API needs an
 // instantiated registry we don't otherwise carry here).
-import { getModels, getProviders } from "@earendil-works/pi-ai/compat";
-import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
-// Side effects: backport models pi-ai 0.80.6 predates into its baked catalog
-// (delete each with the pi bump that ships it natively).
-import "./gemini-flash-catalog-patch";
-import "./moonshot-k3-catalog-patch";
+import {
+  type BuiltinProvider,
+  getModels,
+  getProviders,
+} from "@earendil-works/pi-ai/compat";
+import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
 
 /**
  * pi-ai is the model-catalog source of truth. These predicates read its LIVE
@@ -16,13 +16,23 @@ import "./moonshot-k3-catalog-patch";
  * without touching how the curated providers behave.
  *
  * pi surfaces three facts we key off:
- * - `getProviders()` — every provider id pi knows (~35, and it drifts).
- * - `getOAuthProviders()` — the subset that authenticate by OAuth sign-in
- *   (anthropic, github-copilot, openai-codex); every other pi provider takes a
- *   pasted API key.
+ * - `getProviders()` — every provider id pi's baked catalog knows (~35, and it
+ *   drifts).
+ * - `Provider.auth` — how a provider can authenticate. Since pi 0.81 many
+ *   api-key providers ALSO expose an optional OAuth login (xai, kimi-coding,
+ *   openrouter); Houston's connect surface keeps those on the pasted-key path,
+ *   so "OAuth provider" here means OAuth is the ONLY way in (openai-codex
+ *   today — anthropic/github-copilot are curated `oauth` in providers.ts).
  * - `getModels(id)` — a provider's model catalog (empty for the open gateways
  *   that accept arbitrary ids, e.g. opencode).
  */
+
+/** pi's builtin provider objects, constructed once (auth surface + names). */
+let cachedBuiltins: readonly Provider[] | undefined;
+function piBuiltinProviders(): readonly Provider[] {
+  cachedBuiltins ??= builtinProviders();
+  return cachedBuiltins;
+}
 
 /** Every provider id pi-ai knows (its full, drifting catalog). */
 export function piProviderIds(): string[] {
@@ -35,22 +45,25 @@ export function isPiProvider(id: string): boolean {
 }
 
 /**
- * Whether pi-ai authenticates this provider by OAuth (subscription sign-in) —
- * as opposed to a pasted API key. Only anthropic / github-copilot / openai-codex
- * qualify today; the check reads pi's registry so a future OAuth provider stays
- * on the OAuth path rather than being mistaken for an api-key one.
+ * Whether pi-ai authenticates this provider ONLY by OAuth (subscription
+ * sign-in) — i.e. a pasted API key cannot work. Providers with BOTH auth kinds
+ * (xai, kimi-coding, openrouter since pi 0.81) deliberately read false: an
+ * uncurated provider's pasted key must keep being accepted (login.ts setApiKey
+ * gate) instead of being sent down an OAuth flow the connect UI can't drive.
  */
 export function isPiOAuthProvider(id: string): boolean {
-  return getOAuthProviders().some((p) => p.id === id);
+  return piBuiltinProviders().some(
+    (p) => p.id === id && p.auth.oauth !== undefined && !p.auth.apiKey,
+  );
 }
 
 /**
  * The model ids pi lists for a provider, or `[]` when it has no catalog (the
- * open gateways) or isn't a pi KnownProvider. Never throws — a bad id is `[]`.
+ * open gateways) or isn't a pi builtin. Never throws — a bad id is `[]`.
  */
 export function piModelIds(id: string): string[] {
   try {
-    return getModels(id as KnownProvider).map((m: Model<Api>) => m.id);
+    return getModels(id as BuiltinProvider).map((m: Model<Api>) => m.id);
   } catch {
     return [];
   }

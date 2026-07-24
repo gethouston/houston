@@ -1,6 +1,5 @@
-import type { AuthStorage } from "@earendil-works/pi-coding-agent";
 import { serveModeOn } from "../../auth/serve";
-import { authStorage } from "../../auth/storage";
+import { authStorage, type KeyStore } from "../../auth/storage";
 import { config } from "../../config";
 import {
   clampPercent,
@@ -145,7 +144,7 @@ function configServeSource(): CopilotServeSource | null {
 /** Fetch the connected Copilot account's quota snapshot. */
 export async function fetchCopilotUsage(
   fetchImpl: typeof fetch = fetch,
-  store: Pick<AuthStorage, "get"> = authStorage,
+  store: Pick<KeyStore, "get"> = authStorage,
   serve: CopilotServeSource | null = configServeSource(),
 ): Promise<ProviderUsage> {
   const provider = "github-copilot";

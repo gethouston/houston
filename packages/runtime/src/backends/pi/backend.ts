@@ -1,10 +1,9 @@
 import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import {
-  type AuthStorage,
   type CreateAgentSessionOptions,
   createAgentSession,
-  type ModelRegistry,
+  type ModelRuntime,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import { makeAgentLoader } from "../../session/resource-loader";
@@ -25,8 +24,7 @@ import { PiSession } from "./session";
 export interface PiBackendDeps {
   workspaceDir: string;
   dataDir: string;
-  authStorage: AuthStorage;
-  modelRegistry: ModelRegistry;
+  modelRuntime: ModelRuntime;
   /** Active built-in tool names (pi's tool allowlist). */
   tools: NonNullable<CreateAgentSessionOptions["tools"]>;
   /** SDK custom tools (clamped fs, run-code, integrations). */
@@ -64,8 +62,7 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         agentDir: deps.dataDir,
         model: opts.model as unknown as Model<Api>,
         ...(opts.thinkingLevel ? { thinkingLevel: opts.thinkingLevel } : {}),
-        authStorage: deps.authStorage,
-        modelRegistry: deps.modelRegistry,
+        modelRuntime: deps.modelRuntime,
         sessionManager: SessionManager.continueRecent(
           deps.workspaceDir,
           join(deps.dataDir, "sessions", opts.conversationId),

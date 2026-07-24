@@ -1,9 +1,4 @@
-import {
-  getOAuthProvider,
-  type OAuthDeviceCodeInfo,
-  OPENAI_CODEX_BROWSER_LOGIN_METHOD,
-  OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
-} from "@earendil-works/pi-ai/oauth";
+import type { AuthInteraction, AuthPrompt } from "@earendil-works/pi-ai";
 import type { LoginInfo } from "@houston/runtime-client";
 import {
   type CustomEndpointInput,
@@ -25,7 +20,7 @@ import {
 } from "../backends/claude/credential-status";
 import { runAnthropicSetupTokenLogin } from "./anthropic-setup-token";
 import { preflightCodexCallbackPort } from "./codex-port-preflight";
-import { authStorage, providerConnected } from "./storage";
+import { authStorage, modelRuntime, providerConnected } from "./storage";
 
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
@@ -143,11 +138,21 @@ function armLoginExpiry(provider: ProviderId, state: LoginState): void {
 }
 
 /**
+ * pi-ai's Codex login-method select-option ids. pi ≥0.80.8 stopped exporting
+ * the named constants (the login select is now a generic `AuthPrompt` whose
+ * options carry these ids — see pi-ai auth/oauth/openai-codex.ts), so the
+ * values are pinned by literal here; a drift would surface as pi's own
+ * "Unknown OpenAI Codex login method" error at login time.
+ */
+export const OPENAI_CODEX_BROWSER_LOGIN_METHOD = "browser";
+export const OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD = "device_code";
+
+/**
  * Which Codex OAuth flow to run — decided SOLELY by `deviceAuth`. The
  * browser/loopback login (the user approves in their own browser, no code to
  * type) works even against a headless/remote runtime: pi's loginOpenAICodex
  * races its own local callback server against a manually-relayed code
- * (`onManualCodeInput`, wired below). The desktop client catches the fixed
+ * (the `manual_code` prompt, wired below). The desktop client catches the fixed
  * `http://localhost:1455/auth/callback` redirect and relays code+state via
  * `completeLogin`, and the runtime performs the token exchange — so the loopback
  * never needs to be reachable from the runtime itself. `deviceAuth: false` is
@@ -185,13 +190,35 @@ export function autoPromptAnswer(
 // confirms it is an api-key (not OAuth) provider before storing the key.
 const known = (id: string): id is ProviderId => isProvider(id);
 
+/**
+ * Run the provider-owned OAuth flow and persist its credential — the provider's
+ * `auth.oauth.login` plus the CredentialStore's documented app-login persist
+ * (`modify(provider, async () => credential)`), deliberately NOT
+ * `ModelRuntime.login`: that wrapper follows the store write with a NETWORK
+ * catalog refresh (`refresh({allowNetwork: true})` whenever `PI_OFFLINE` is
+ * unset) which the login abort signal does not cover — on a stalled network a
+ * SUCCESSFUL sign-in would sit unresolved past the 10-minute abandonment
+ * expiry (status flips to "Login timed out"), then late-complete over the
+ * error. Login completeness must depend only on auth + the store write.
+ * Catalog freshness is a separate concern with its own paths.
+ */
+async function runProviderOAuthLogin(
+  provider: ProviderId,
+  interaction: AuthInteraction,
+): Promise<void> {
+  const oauth = modelRuntime.getProvider(provider)?.auth.oauth;
+  if (!oauth) throw new Error(`${provider} has no OAuth sign-in flow`);
+  const credential = await oauth.login(interaction);
+  await authStorage.modify(provider, async () => credential);
+}
+
 /** One /auth/status row for a provider id (curated or uncurated pi). */
 function authStatusRow(id: ProviderId, name: string) {
   const st = active.get(id);
   // Copilot Enterprise: surface the connected credential's company domain so the
   // connect UI can tell the Enterprise card apart from individual Copilot (both
   // are the same engine provider; the domain is the only difference). `get` is
-  // in-memory (pi caches auth.json), so this stays cheap per poll.
+  // in-memory (the store caches auth.json), so this stays cheap per poll.
   const cred = authStorage.get(id) as { enterpriseUrl?: string } | undefined;
   return {
     provider: id,
@@ -280,8 +307,63 @@ export async function startLogin(
   // consumer, which must not crash the process as an unhandled rejection.
   pastePromise.catch(() => {});
 
+  // pi's provider-neutral login interaction (pi ≥0.80.8): providers signal
+  // progress via `notify` events and gather input via typed `prompt`s.
+  // Houston relays the events to the webapp as its LoginInfo shapes and
+  // answers the prompts server-side:
+  // - auth_url → `url` info (the desktop opens it; for the Codex browser flow
+  //   pi races its loopback callback server against the `manual_code` prompt,
+  //   which the desktop resolves by relaying code+state via `completeLogin`);
+  // - device_code → `device_code` info (the user types the one-time code);
+  // - select (Codex's login-method choice) → decided by `deviceAuth`;
+  // - text (Copilot's opening GitHub-Enterprise question) → auto-answered,
+  //   else it would deadlock the flow before the device code appears;
+  // - manual_code → the client-relayed paste promise.
+  const interaction: AuthInteraction = {
+    signal: state.abort?.signal,
+    notify: (event) => {
+      switch (event.type) {
+        case "auth_url":
+          state.info = { kind: "url", url: event.url };
+          state.status = "awaiting_user";
+          resolveInfo(state.info);
+          return;
+        case "device_code":
+          state.info = {
+            kind: "device_code",
+            verificationUri: event.verificationUri,
+            userCode: event.userCode,
+          };
+          state.status = "awaiting_user";
+          resolveInfo(state.info);
+          return;
+        default:
+          console.log(`[oauth:${provider}]`, event.message);
+          return;
+      }
+    },
+    prompt: (p: AuthPrompt) => {
+      if (p.type === "select") {
+        if (provider === "openai-codex")
+          return Promise.resolve(codexLoginMethod({ deviceAuth }));
+        // A provider Houston has no selection policy for: take the flow's
+        // default (first option) and say so, rather than hanging the login.
+        const first = p.options[0]?.id;
+        console.warn(
+          `[oauth:${provider}] auto-selecting "${first}" for: ${p.message}`,
+        );
+        return first
+          ? Promise.resolve(first)
+          : Promise.reject(new Error(`no options for prompt: ${p.message}`));
+      }
+      if (p.type === "manual_code") return pastePromise;
+      const auto = autoPromptAnswer(provider, enterpriseDomain);
+      return auto === null ? pastePromise : Promise.resolve(auto);
+    },
+  };
+
   // Anthropic uses the sanctioned setup-token flow (the direct OAuth replay is
-  // server-blocked), NOT pi's AuthStorage login. It emits the same `auth_code`
+  // server-blocked), NOT pi's OAuth login. It emits the same `auth_code`
   // wire shape and reuses the paste promise, then stores the captured token as an
   // api_key credential — see auth/anthropic-setup-token.ts.
   const login: Promise<unknown> =
@@ -300,40 +382,7 @@ export async function startLogin(
               authStorage.set("anthropic", { type: "api_key", key }),
           },
         )
-      : authStorage.login(provider, {
-          onAuth: ({ url, instructions }) => {
-            // A provider with no loopback server can't catch a redirect — the
-            // user must paste the code back. Signal that to the webapp with
-            // `auth_code` so it shows a paste box.
-            const needsCode =
-              getOAuthProvider(provider)?.usesCallbackServer === false;
-            state.info = needsCode
-              ? { kind: "auth_code", url, instructions }
-              : { kind: "url", url };
-            state.status = "awaiting_user";
-            resolveInfo(state.info);
-          },
-          onDeviceCode: (info: OAuthDeviceCodeInfo) => {
-            state.info = {
-              kind: "device_code",
-              verificationUri: info.verificationUri,
-              userCode: info.userCode,
-            };
-            state.status = "awaiting_user";
-            resolveInfo(state.info);
-          },
-          // Codex offers browser (loopback) or device-code login; let the client
-          // pick so the co-located desktop redirects to the browser to approve
-          // and remote webapp clients type a code (see codexLoginMethod).
-          onSelect: async () => codexLoginMethod({ deviceAuth }),
-          onPrompt: () => {
-            const auto = autoPromptAnswer(provider, enterpriseDomain);
-            return auto === null ? pastePromise : Promise.resolve(auto);
-          },
-          onManualCodeInput: () => pastePromise,
-          onProgress: (m: string) => console.log(`[oauth:${provider}]`, m),
-          signal: state.abort?.signal,
-        });
+      : runProviderOAuthLogin(provider, interaction);
 
   void login
     .then(() => {
@@ -368,11 +417,10 @@ export async function startLogin(
 }
 
 /**
- * Store a pasted API key for an api-key provider. pi's
- * AuthStorage persists it as the `api_key` credential variant; `getApiKey`
- * then returns it for any `getModel(provider, ...)` call against the provider's
- * built-in OpenAI-compatible gateway. There is no OAuth dance and nothing to
- * refresh or scrub.
+ * Store a pasted API key for an api-key provider. The store persists it as
+ * pi's `api_key` credential variant; auth resolution then returns it for any
+ * request against the provider's built-in OpenAI-compatible gateway. There is
+ * no OAuth dance and nothing to refresh or scrub.
  */
 export function setApiKey(providerId: string, key: string): void {
   const trimmed = assertApiKeyConnectable(providerId, key);
@@ -450,16 +498,21 @@ export function completeLogin(providerId: string, code: string): void {
 
 export async function logout(providerId: string): Promise<void> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
-  authStorage.logout(providerId);
+  // `delete` (not the sync `remove`): it queues on the store's per-provider
+  // chain, so a sign-out issued while pi's getAuth is refreshing this
+  // provider's OAuth token inside `modify` cannot be undone when that refresh
+  // lands and re-persists the rotated credential.
+  await authStorage.delete(providerId);
   const state = active.get(providerId);
   if (state) clearLoginExpiry(state);
   active.delete(providerId);
   // Anthropic's primary credential is the browser-login one cached in the shared
   // dir (Keychain / file), NOT auth.json — so clear it via `claude auth logout`
   // and reset the probe cache, else the card would re-read connected on the next
-  // poll. `authStorage.logout` above still clears the degraded fallback token.
+  // poll. `authStorage.remove` above still clears the degraded fallback token.
   if (providerId === "anthropic") await logoutAnthropicCredential();
-  // Disconnecting the local provider also forgets its endpoint, else the next
-  // turn would re-resolve a base URL with no (real) key behind it.
+  // Disconnecting the local provider also forgets its endpoint (else the next
+  // turn would re-resolve a base URL with no (real) key behind it); the
+  // endpoint write also drops its runtime provider registration.
   if (providerId === OPENAI_COMPATIBLE) clearCustomEndpointConfig();
 }
