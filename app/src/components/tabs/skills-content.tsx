@@ -85,6 +85,7 @@ export function SkillsContent({
       : null;
   const tabs = useSkillDiscoveryTabs({
     showCustom: addDialogProps !== null,
+    agentPath: agent.folderPath,
     onAddClick: () => setDialogOpen(true),
     onCreateWithAi: chat.startCreate,
     drafts: chat.drafts,

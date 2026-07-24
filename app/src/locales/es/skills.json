@@ -138,8 +138,7 @@
   "tabs": {
     "store": "Tienda",
     "custom": "Habilidades personalizadas",
-    "customEmptyTitle": "Aún no tienes habilidades personalizadas",
-    "customEmptyDescription": "Describe lo que necesitas y constrúyela junto a tu agente, o agrégala tú mismo desde GitHub o desde cero.",
+    "customEmptyDescription": "Describe lo que necesitas y constrúyela junto a tu agente, agrégala tú mismo, o elige una habilidad lista de la biblioteca de abajo.",
     "createSkill": "Crear habilidad"
   },
   "setupChat": {
@@ -150,5 +149,13 @@
     "editManually": "Editar manualmente",
     "draftInProgress": "Habilidad en construcción. Retoma donde quedaste.",
     "discardDraft": "Descartar borrador"
+  },
+  "library": {
+    "heading": "De los agentes de Houston",
+    "installLabel": "Instalar {{name}}",
+    "installedLabel": "Instalada",
+    "loading": "Cargando habilidades...",
+    "loadFailed": "No se pudo cargar la biblioteca de habilidades.",
+    "retry": "Reintentar"
   }
 }

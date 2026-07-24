@@ -138,8 +138,7 @@
   "tabs": {
     "store": "Store",
     "custom": "Custom skills",
-    "customEmptyTitle": "No custom skills yet",
-    "customEmptyDescription": "Describe what you need and build it together with your agent, or add one yourself from GitHub or from scratch.",
+    "customEmptyDescription": "Describe what you need and build it together with your agent, add one yourself, or pick a ready-made skill from the library below.",
     "createSkill": "Create skill"
   },
   "setupChat": {
@@ -150,5 +149,13 @@
     "editManually": "Edit manually",
     "draftInProgress": "Skill in progress. Pick up where you left off.",
     "discardDraft": "Discard draft"
+  },
+  "library": {
+    "heading": "From Houston's agents",
+    "installLabel": "Install {{name}}",
+    "installedLabel": "Installed",
+    "loading": "Loading skills...",
+    "loadFailed": "Couldn't load the skill library.",
+    "retry": "Retry"
   }
 }

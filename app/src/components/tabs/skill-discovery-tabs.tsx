@@ -20,6 +20,9 @@ import { useSkillMarketplaceSectionLabels } from "./use-skill-surface-labels";
  */
 export function useSkillDiscoveryTabs(opts: {
   showCustom: boolean;
+  /** The agent whose Skills surface this is — the Custom tab's Houston
+   *  library installs into it. */
+  agentPath: string;
   onAddClick: () => void;
   /** Custom tab (HOU-791): start a new agent-guided create chat. */
   onCreateWithAi: () => void;
@@ -83,11 +86,13 @@ export function useSkillDiscoveryTabs(opts: {
             label: t("tabs.custom"),
             content: (
               <SkillCustomTab
+                agentPath={opts.agentPath}
                 drafts={opts.drafts}
                 onResumeDraft={opts.onResumeDraft}
                 onDiscardDraft={opts.onDiscardDraft}
                 onCreateWithAi={opts.onCreateWithAi}
                 onAddClick={opts.onAddClick}
+                installedSkillNames={opts.installedSkillNames}
               />
             ),
           },
