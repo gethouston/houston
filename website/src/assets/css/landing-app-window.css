@@ -144,6 +144,7 @@
 .av-b { background: linear-gradient(150deg, var(--agent-navy-1), var(--agent-navy-2)); }
 .av-g { background: linear-gradient(150deg, var(--agent-forest-1), var(--agent-forest-2)); }
 .av-o { background: linear-gradient(150deg, var(--agent-orange-1), var(--agent-orange-2)); }
+.av-c { background: linear-gradient(150deg, var(--agent-crimson-1), var(--agent-crimson-2)); }
 .agent-row .a-name {
   flex: 1;
   font-size: 13.5px;
@@ -333,6 +334,18 @@
 .col-h .c-menu svg {
   width: 16px;
   height: 16px;
+}
+
+/* Card containers per column — the scripted demo appends into #hd-running and
+   #hd-done; the FLIP animation lives in landing-motion.css. */
+.col-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.card-add + .col-body:not(:empty) {
+  margin-top: 10px;
 }
 
 /* Empty add-card (Running column) */

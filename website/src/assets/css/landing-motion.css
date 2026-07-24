@@ -52,13 +52,64 @@
   --load-delay: 360ms;
 }
 
-/* Reveal delay steps for grouped children. */
-.reveal-d1 {
+/* Reveal delay steps for grouped children (both naming schemes). */
+.reveal-d1,
+.reveal-delay-1 {
   --reveal-delay: 80ms;
 }
-.reveal-d2 {
+.reveal-d2,
+.reveal-delay-2 {
   --reveal-delay: 160ms;
 }
-.reveal-d3 {
+.reveal-d3,
+.reveal-delay-3 {
   --reveal-delay: 240ms;
+}
+
+/* ── Scripted hero demo — card enter + running pulse ──────────────────────
+   Applied only to JS-created cards (hero-demo.js), which never spawn under
+   prefers-reduced-motion (the script no-ops there), so the static board
+   stands. The Running→Done FLIP is a WAAPI transform inside hero-demo.js. */
+@keyframes hd-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.tcard.hd-enter {
+  animation: hd-card-in var(--dur-elegant) var(--ease-entrance);
+}
+.tcard.running .tc-agent::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--app-warning);
+  vertical-align: middle;
+  animation: hd-pulse 1.4s ease-in-out infinite;
+}
+@keyframes hd-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Typing dots (how-it-works phone thread). */
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tcard.hd-enter {
+    animation: none;
+  }
+  .tcard.running .tc-agent::after {
+    animation: none;
+  }
 }
