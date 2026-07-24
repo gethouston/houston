@@ -48,9 +48,18 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   ls: FolderIcon,
 };
 
-export function getToolIcon(name: string): LucideIcon {
+/**
+ * The per-tool icon for a tool name, or undefined when the name isn't one we
+ * map (so callers can choose their own fallback — the process-block header
+ * keeps the Houston helmet rather than showing a generic wrench).
+ */
+export function getMappedToolIcon(name: string): LucideIcon | undefined {
   const short = name.includes("__") ? (name.split("__").pop() ?? name) : name;
-  return TOOL_ICONS[short] ?? WrenchIcon;
+  return TOOL_ICONS[short];
+}
+
+export function getToolIcon(name: string): LucideIcon {
+  return getMappedToolIcon(name) ?? WrenchIcon;
 }
 
 // ---------------------------------------------------------------------------

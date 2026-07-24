@@ -4,6 +4,7 @@ import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import {
   appDisplay,
   fallbackLogo,
+  toolkitOfActionSlug,
 } from "../src/components/integrations/app-display.ts";
 
 const tk = (
@@ -42,5 +43,42 @@ describe("appDisplay logo resolution", () => {
     const app = appDisplay("quickbooks", undefined);
     strictEqual(app.name, "quickbooks");
     strictEqual(app.logoUrl, fallbackLogo("quickbooks"));
+  });
+});
+
+// An action slug carries no toolkit, so the header re-derives it: the longest
+// catalog slug the action starts with, so a multi-word app wins over its first
+// segment; a first-segment fallback when the catalog can't place it.
+describe("toolkitOfActionSlug", () => {
+  const catalog = [
+    "gmail",
+    "google",
+    "google_maps",
+    "active_campaign",
+    "slack",
+  ];
+
+  it("picks the LONGEST prefixing slug over its first segment", () => {
+    strictEqual(
+      toolkitOfActionSlug("GOOGLE_MAPS_SEARCH_PLACES", catalog),
+      "google_maps",
+    );
+    strictEqual(
+      toolkitOfActionSlug("ACTIVE_CAMPAIGN_ADD_CONTACT", catalog),
+      "active_campaign",
+    );
+  });
+
+  it("matches a single-word toolkit", () => {
+    strictEqual(toolkitOfActionSlug("GMAIL_SEND_EMAIL", catalog), "gmail");
+  });
+
+  it("matches an exact-slug action with no verb suffix", () => {
+    strictEqual(toolkitOfActionSlug("SLACK", catalog), "slack");
+  });
+
+  it("falls back to the first underscore segment when the catalog has no match", () => {
+    strictEqual(toolkitOfActionSlug("NOTION_CREATE_PAGE", catalog), "notion");
+    strictEqual(toolkitOfActionSlug("STRIPE_REFUND", []), "stripe");
   });
 });

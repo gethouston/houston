@@ -80,7 +80,7 @@ export interface ChatPanelProps {
   /** Indicator for the gap before the agent's first output (the message is
    *  in flight but nothing is running yet — e.g. the pulsing Houston helmet).
    *  Suppressed the moment an active mission-log header takes over with
-   *  "Mission in progress: <action>" (HOU-724). */
+   *  "Thinking..." or the current step (HOU-724). */
   thinkingIndicator?: ReactNode;
   transformContent?: (content: string) => {
     content: string;

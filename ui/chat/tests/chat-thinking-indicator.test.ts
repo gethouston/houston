@@ -54,8 +54,8 @@ describe("shouldShowThinkingIndicator (HOU-471)", () => {
   });
 
   it("suppresses the indicator while an active process block surfaces progress", () => {
-    // The mission-log header already reads "Mission in progress: <action>", so
-    // a second standalone line would duplicate it.
+    // The mission-log header already reads "Thinking..." or the current step,
+    // so a second standalone line would duplicate it.
     equal(
       shouldShowThinkingIndicator(
         [message("user"), process(true)],
