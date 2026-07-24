@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import type { TurnMode } from "@houston/protocol";
 import type {
   PendingInteraction,
@@ -10,6 +10,7 @@ import type {
   WireFrame,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import { registerCustomProviderIfConfigured } from "../ai/openai-compatible";
 import { classifyProviderError } from "../ai/provider-error";
 import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
 import { createPiBackend } from "../backends/pi/backend";
@@ -128,11 +129,16 @@ export async function runPiTurn(
   // inline card survives a reload of this cloud conversation.
   let providerError: ProviderError | undefined;
   try {
-    const authStorage = AuthStorage.create(join(dataDir, "auth.json"));
-    const modelRegistry = ModelRegistry.create(
-      authStorage,
-      join(dataDir, "models.json"),
-    );
+    // Per-turn model/auth runtime over the hydrated throwaway data dir. The
+    // default file-backed credential store reads the hydrated auth.json; the
+    // local (openai-compatible) provider registers from the dir's own
+    // custom-endpoint config so its model can dispatch (pi 0.82 streams
+    // strictly by registered provider id).
+    const modelRuntime = await ModelRuntime.create({
+      authPath: join(dataDir, "auth.json"),
+      modelsPath: join(dataDir, "models.json"),
+    });
+    registerCustomProviderIfConfigured(modelRuntime, dataDir);
 
     const toolSelection = buildToolSelection({
       codeExecution: config.codeExecution === "remote" ? "remote" : "disabled",
@@ -182,8 +188,7 @@ export async function runPiTurn(
     const backend = createPiBackend({
       workspaceDir,
       dataDir,
-      authStorage,
-      modelRegistry,
+      modelRuntime,
       tools: toolSelection.toolNames,
       customTools: [
         ...makeClampedFileTools(workspaceDir),

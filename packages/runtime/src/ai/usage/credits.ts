@@ -1,9 +1,8 @@
-import type { AuthStorage } from "@earendil-works/pi-coding-agent";
-import { authStorage } from "../../auth/storage";
+import { type KeyStore as FullKeyStore, keyStore } from "../../auth/storage";
 import type { ProviderUsage } from "./types";
 
 /** The slice of the credential store the balance probes read. */
-type KeyStore = Pick<AuthStorage, "has" | "getApiKey">;
+type KeyStore = Pick<FullKeyStore, "has" | "getApiKey">;
 
 /**
  * Prepaid-credit balances for the API-key providers that expose one:
@@ -28,7 +27,7 @@ async function apiKeyFor(
 /** Fetch the OpenRouter account's remaining prepaid credits. */
 export async function fetchOpenRouterUsage(
   fetchImpl: typeof fetch = fetch,
-  store: KeyStore = authStorage,
+  store: KeyStore = keyStore,
 ): Promise<ProviderUsage> {
   const provider = "openrouter";
   const key = await apiKeyFor(store, provider);
@@ -79,7 +78,7 @@ export async function fetchOpenRouterUsage(
 /** Fetch the DeepSeek account's remaining balance (prefers the USD row). */
 export async function fetchDeepSeekUsage(
   fetchImpl: typeof fetch = fetch,
-  store: KeyStore = authStorage,
+  store: KeyStore = keyStore,
 ): Promise<ProviderUsage> {
   const provider = "deepseek";
   const key = await apiKeyFor(store, provider);

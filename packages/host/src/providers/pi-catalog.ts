@@ -1,23 +1,24 @@
 import {
   type Api,
   getSupportedThinkingLevels,
-  type KnownProvider,
   type Model,
 } from "@earendil-works/pi-ai";
 // `getModels`/`getProviders` are pi-ai's legacy static-catalog reads, preserved
 // on `/compat` (the new `Models`/`Provider` collection API needs an
-// instantiated registry we don't otherwise carry here).
-import { getModels, getProviders } from "@earendil-works/pi-ai/compat";
-import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
-// Side effects: backport models pi-ai 0.80.6 predates into its baked catalog
-// (delete each with the pi bump that ships it natively).
-import "./gemini-flash-catalog-patch";
-import "./moonshot-k3-catalog-patch";
+// instantiated registry we don't otherwise carry here). `BuiltinProvider` is
+// the id union those reads accept — `KnownProvider` additionally names purely
+// dynamic providers (radius) with no static catalog entry.
+import {
+  type BuiltinProvider,
+  getModels,
+  getProviders,
+} from "@earendil-works/pi-ai/compat";
 import type {
   CatalogModelEntry,
   CatalogProvider,
   ProviderCatalog,
 } from "@houston/protocol";
+import { piOAuthProviders } from "./pi-oauth";
 
 /**
  * Builds the `GET /v1/catalog` body from pi-ai's static, in-process model
@@ -80,11 +81,12 @@ export function piProviderToCatalog(
 }
 
 /**
- * Provider display name. pi-ai's ONLY per-provider names are the OAuth ones
- * (`getOAuthProviders()` → e.g. "Anthropic (Claude Pro/Max)"); the model
- * registry (`getProviders()`) exposes bare ids. So: use pi-ai's OAuth name when
- * it has one, else a titleized id ("amazon-bedrock" → "Amazon Bedrock"). The
- * frontend owns brand labels/logos; this `name` is a deterministic fallback.
+ * Provider display name. pi-ai's ONLY per-provider names worth surfacing are
+ * the OAuth ones (`piOAuthProviders()` → e.g. "Anthropic (Claude Pro/Max)");
+ * the model registry (`getProviders()`) exposes bare ids. So: use pi-ai's
+ * OAuth name when it has one, else a titleized id ("amazon-bedrock" →
+ * "Amazon Bedrock"). The frontend owns brand labels/logos; this `name` is a
+ * deterministic fallback.
  */
 function providerDisplayName(
   id: string,
@@ -106,16 +108,18 @@ function providerDisplayName(
  * too. Deterministic — no clock, no IO.
  */
 export function buildProviderCatalog(): ProviderCatalog {
-  const oauthProviders = getOAuthProviders();
+  const oauthProviders = piOAuthProviders();
   const oauthIds = new Set(oauthProviders.map((p) => p.id));
-  const oauthNames = new Map(oauthProviders.map((p) => [p.id, p.name]));
+  const oauthNames = new Map<string, string>(
+    oauthProviders.map((p) => [p.id, p.name]),
+  );
 
   const catalog: ProviderCatalog = [];
   for (const id of getProviders()) {
     catalog.push(
       piProviderToCatalog(
         id,
-        getModels(id as KnownProvider),
+        getModels(id as BuiltinProvider),
         oauthIds.has(id),
         providerDisplayName(id, oauthNames),
       ),

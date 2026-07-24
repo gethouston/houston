@@ -7,8 +7,9 @@ import { MemoryTurnBus, type TurnBus } from "./bus";
 /**
  * CP-side device-code connect for cloudrun workspaces. Per-turn runtimes are
  * stateless, so the multi-request OAuth dance cannot live there — it lives
- * here, using pi's own AuthStorage.login (same client id, endpoints, and
- * rotation semantics as the desktop runtime; nothing reimplemented). The
+ * here, using pi's own OAuth login (ModelRuntime.login: same client id,
+ * endpoints, and rotation semantics as the desktop runtime; nothing
+ * reimplemented). The
  * credential lands DIRECTLY in the central store: no refresh token ever
  * touches an agent, which closes the connect-window left by the legacy
  * export/capture/scrub dance.
@@ -107,8 +108,11 @@ export class ConnectManager {
     // Throwaway auth.json: pi's login needs a file; we capture + delete it.
     const dir = mkdtempSync(join(tmpdir(), "houston-connect-"));
     const authPath = join(dir, "auth.json");
-    const { AuthStorage } = await import("@earendil-works/pi-coding-agent");
-    const storage = AuthStorage.create(authPath);
+    const { ModelRuntime } = await import("@earendil-works/pi-coding-agent");
+    const runtime = await ModelRuntime.create({
+      authPath,
+      modelsPath: join(dir, "models.json"),
+    });
 
     let resolveInfo!: (i: ConnectInfo) => void;
     const infoReady = new Promise<ConnectInfo>((r) => (resolveInfo = r));
@@ -121,34 +125,42 @@ export class ConnectManager {
       );
     };
 
-    void storage
-      .login(PROVIDER, {
-        // Codex is device-code only; the URL/paste callbacks exist for other
-        // providers' flows and must never fire here — failing loudly if they do.
-        onAuth: () => {
-          state.status = "error";
-          state.error =
-            "unexpected browser-redirect flow during a device-code connect";
-          mirror(state);
+    void runtime
+      .login(PROVIDER, "oauth", {
+        prompt: async (p) => {
+          // Headless: always the device-code path. The manual-code/text
+          // prompts exist for other providers' flows and must never fire
+          // here — failing loudly if they do.
+          if (p.type === "select") return "device_code";
+          throw new Error(
+            `unexpected ${p.type} prompt during a device-code connect`,
+          );
         },
-        onPrompt: () =>
-          Promise.reject(
-            new Error(
-              "unexpected paste-code prompt during a device-code connect",
-            ),
-          ),
-        onDeviceCode: (info: { verificationUri: string; userCode: string }) => {
-          state.info = {
-            kind: "device_code",
-            verificationUri: info.verificationUri,
-            userCode: info.userCode,
-          };
-          state.status = "awaiting_user";
-          mirror(state);
-          resolveInfo(state.info);
+        notify: (event) => {
+          switch (event.type) {
+            case "auth_url":
+              // Codex is device-code only; a browser-redirect flow must
+              // never start here — failing loudly if it does.
+              state.status = "error";
+              state.error =
+                "unexpected browser-redirect flow during a device-code connect";
+              mirror(state);
+              return;
+            case "device_code":
+              state.info = {
+                kind: "device_code",
+                verificationUri: event.verificationUri,
+                userCode: event.userCode,
+              };
+              state.status = "awaiting_user";
+              mirror(state);
+              resolveInfo(state.info);
+              return;
+            default:
+              console.log(`[connect:${workspaceId}]`, event.message);
+              return;
+          }
         },
-        onSelect: async () => "device_code", // headless: always the device-code path
-        onProgress: (m: string) => console.log(`[connect:${workspaceId}]`, m),
       })
       .then(async () => {
         const auth = JSON.parse(readFileSync(authPath, "utf8")) as Record<

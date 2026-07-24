@@ -1,6 +1,6 @@
 import { DEFAULT_TURN_MODE, type TurnMode } from "@houston/protocol";
 import { resolveModel } from "../ai/providers";
-import { authStorage, modelRegistry } from "../auth/storage";
+import { authStorage, modelRuntime } from "../auth/storage";
 import { createClaudeBackend } from "../backends/claude/backend";
 import { readAnthropicToken } from "../backends/claude/read-token";
 import { createPiBackend } from "../backends/pi/backend";
@@ -123,8 +123,7 @@ const runCodeTool = toolSelection.includeRunCode
 const piBackend = createPiBackend({
   workspaceDir: config.workspaceDir,
   dataDir: config.dataDir,
-  authStorage,
-  modelRegistry,
+  modelRuntime,
   tools: toolSelection.toolNames,
   customTools: [
     ...fileTools,

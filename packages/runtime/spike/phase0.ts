@@ -12,7 +12,7 @@
  *   - ANTHROPIC_API_KEY / OPENAI_API_KEY present -> runs a real one-shot turn.
  */
 
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 // `getModel`/`registerFauxProvider` are pi-ai's legacy global-registry API,
@@ -21,17 +21,15 @@ import { join } from "node:path";
 import {
   type FauxResponseStep,
   fauxAssistantMessage,
+  fauxProvider,
   fauxToolCall,
   getModel,
-  type OAuthDeviceCodeInfo,
-  registerFauxProvider,
 } from "@earendil-works/pi-ai/compat";
 import {
   type AgentSessionEvent,
-  AuthStorage,
   createAgentSession,
   DefaultResourceLoader,
-  ModelRegistry,
+  ModelRuntime,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 
@@ -71,8 +69,8 @@ async function runFauxTurn(opts: {
   section(opts.label);
   const cwd = mkdtempSync(join(tmpdir(), "houston-spike-"));
 
-  // Register an in-process fake model provider — no network, scripted responses.
-  const faux = registerFauxProvider({
+  // An in-process fake model provider — no network, scripted responses.
+  const faux = fauxProvider({
     provider: "faux",
     api: "faux",
     models: [
@@ -81,9 +79,18 @@ async function runFauxTurn(opts: {
   });
   faux.setResponses(opts.responses);
 
-  const authStorage = AuthStorage.inMemory();
-  authStorage.setRuntimeApiKey("faux", "faux-key"); // faux ignores it; satisfies the pre-flight auth gate
-  const modelRegistry = ModelRegistry.inMemory(authStorage);
+  // Seed via auth.json (NOT setRuntimeApiKey: its awaited refresh() hangs in
+  // pi 0.82); faux ignores the key — it just satisfies the pre-flight auth gate.
+  writeFileSync(
+    join(cwd, "auth.json"),
+    JSON.stringify({ faux: { type: "api_key", key: "faux-key" } }),
+    { mode: 0o600 },
+  );
+  const modelRuntime = await ModelRuntime.create({
+    authPath: join(cwd, "auth.json"),
+    modelsPath: join(cwd, "models.json"),
+  });
+  modelRuntime.registerNativeProvider(faux.provider);
   const sessionManager = SessionManager.inMemory(cwd);
   const resourceLoader = makeHeadlessLoader(
     cwd,
@@ -95,8 +102,7 @@ async function runFauxTurn(opts: {
     cwd,
     agentDir: cwd,
     model: faux.getModel(),
-    authStorage,
-    modelRegistry,
+    modelRuntime,
     sessionManager,
     resourceLoader,
     tools: opts.tools,
@@ -127,7 +133,6 @@ async function runFauxTurn(opts: {
   await withTimeout(session.prompt(opts.prompt), 30000, opts.label);
   unsub();
   session.dispose();
-  faux.unregister();
 
   // Summarize the event stream we observed.
   const counts: Record<string, number> = {};
@@ -141,17 +146,24 @@ async function probeCodexDeviceCode() {
   section(
     "Codex device-code login (headless probe; aborts after capturing code)",
   );
-  const { loginOpenAICodexDeviceCode } = await import(
-    "@earendil-works/pi-ai/oauth"
-  );
+  const cwd = mkdtempSync(join(tmpdir(), "houston-spike-oauth-"));
+  const runtime = await ModelRuntime.create({
+    authPath: join(cwd, "auth.json"),
+    modelsPath: join(cwd, "models.json"),
+  });
   const ac = new AbortController();
   try {
-    await loginOpenAICodexDeviceCode({
+    await runtime.login("openai-codex", "oauth", {
       signal: ac.signal,
-      onDeviceCode: (info: OAuthDeviceCodeInfo) => {
+      prompt: async (p) => {
+        if (p.type === "select") return "device_code";
+        return new Promise<string>(() => {}); // never paste — the abort ends it
+      },
+      notify: (event) => {
+        if (event.type !== "device_code") return;
         log("  ✓ device code issued:");
-        log("    verificationUri:", info.verificationUri);
-        log("    userCode:", info.userCode);
+        log("    verificationUri:", event.verificationUri);
+        log("    userCode:", event.userCode);
         log("  (aborting — not waiting for user authorization)");
         ac.abort();
       },
@@ -176,15 +188,21 @@ async function liveTurnIfCreds() {
   }
   section("Live LLM turn");
   const cwd = mkdtempSync(join(tmpdir(), "houston-spike-live-"));
-  const authStorage = AuthStorage.inMemory();
   const provider = hasAnthropic ? "anthropic" : "openai";
   const key = hasAnthropic
     ? process.env.ANTHROPIC_API_KEY
     : process.env.OPENAI_API_KEY;
   if (!key)
     throw new Error(`Expected ${provider.toUpperCase()}_API_KEY to be set`);
-  authStorage.setRuntimeApiKey(provider, key);
-  const modelRegistry = ModelRegistry.inMemory(authStorage);
+  writeFileSync(
+    join(cwd, "auth.json"),
+    JSON.stringify({ [provider]: { type: "api_key", key } }),
+    { mode: 0o600 },
+  );
+  const modelRuntime = await ModelRuntime.create({
+    authPath: join(cwd, "auth.json"),
+    modelsPath: join(cwd, "models.json"),
+  });
   const getModelDynamic = getModel as (
     provider: string,
     modelId: string,
@@ -201,8 +219,7 @@ async function liveTurnIfCreds() {
     cwd,
     agentDir: cwd,
     model,
-    authStorage,
-    modelRegistry,
+    modelRuntime,
     sessionManager: SessionManager.inMemory(cwd),
     resourceLoader,
     tools: ["read", "ls", "bash"],

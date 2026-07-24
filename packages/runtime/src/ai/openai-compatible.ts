@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
+import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { config } from "../config";
 
 /**
@@ -57,6 +58,9 @@ function save(e: StoredEndpoint): void {
   const tmp = `${file}.tmp`;
   writeFileSync(tmp, JSON.stringify(e, null, 2));
   renameSync(tmp, file);
+  // Every endpoint write re-syncs the live runtime's provider registration —
+  // no caller can configure an endpoint the runtime then can't dispatch to.
+  if (liveRegistrar) registerCustomProviderIfConfigured(liveRegistrar);
 }
 
 /** True when a base URL + model are configured (NOT merely that a key exists). */
@@ -232,6 +236,57 @@ export function setCustomEndpointConfig(input: CustomEndpointInput): void {
 /** Forget the endpoint (its key is cleared by auth logout). */
 export function clearCustomEndpointConfig(): void {
   save({});
+}
+
+/** The slice of `ModelRuntime` provider registration takes (test-injectable). */
+export type CustomProviderRegistrar = Pick<
+  ModelRuntime,
+  "registerProvider" | "unregisterProvider" | "getRegisteredProviderConfig"
+>;
+
+/** The long-lived runtime `save()` re-syncs on every endpoint write. */
+let liveRegistrar: CustomProviderRegistrar | undefined;
+
+/**
+ * Bind the process's long-lived runtime (auth/storage.ts, at boot) so every
+ * later endpoint write keeps its provider registration in sync. Also syncs
+ * immediately, covering an endpoint already on disk at boot.
+ */
+export function bindCustomProviderRegistrar(
+  runtime: CustomProviderRegistrar,
+): void {
+  liveRegistrar = runtime;
+  registerCustomProviderIfConfigured(runtime);
+}
+
+/**
+ * Register (or drop) the `openai-compatible` provider on a runtime to match
+ * the stored endpoint config. pi 0.82 dispatches every stream strictly by
+ * REGISTERED provider id (`Models.requireProvider`), so the hand-built local
+ * model only runs when its provider id is registered — the old global
+ * api-registry fallback is gone. The model object still carries the live
+ * baseUrl per turn (`buildActiveCustomModel`), so registration only needs to
+ * exist and name the api; a stale registered baseUrl is never dialed.
+ *
+ * Called at boot (auth/storage.ts, the live runtime), after connect/disconnect
+ * (auth/login.ts), and per-turn for the throwaway cloud runtime
+ * (turn/turn-session.ts, with its hydrated dataDir).
+ */
+export function registerCustomProviderIfConfigured(
+  runtime: CustomProviderRegistrar,
+  dataDir?: string,
+): void {
+  const e = load(dataDir);
+  if (e.baseUrl && e.model) {
+    runtime.registerProvider(OPENAI_COMPATIBLE, {
+      name: e.name || "Local model (OpenAI-compatible)",
+      baseUrl: e.baseUrl,
+      api: "openai-completions",
+      models: [],
+    });
+  } else if (runtime.getRegisteredProviderConfig(OPENAI_COMPATIBLE)) {
+    runtime.unregisterProvider(OPENAI_COMPATIBLE);
+  }
 }
 
 /**

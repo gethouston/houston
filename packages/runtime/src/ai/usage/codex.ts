@@ -1,5 +1,4 @@
-import type { AuthStorage } from "@earendil-works/pi-coding-agent";
-import { authStorage } from "../../auth/storage";
+import { type KeyStore, keyStore } from "../../auth/storage";
 import {
   clampPercent,
   epochSecondsToIso,
@@ -56,11 +55,11 @@ function toWindow(
 /** Fetch the connected Codex account's rate-limit windows. */
 export async function fetchCodexUsage(
   fetchImpl: typeof fetch = fetch,
-  store: Pick<AuthStorage, "get" | "getApiKey"> = authStorage,
+  store: Pick<KeyStore, "get" | "getApiKey"> = keyStore,
 ): Promise<ProviderUsage> {
   const provider = "openai-codex";
-  // getApiKey auto-refreshes the OAuth token under pi's file lock; get() reads
-  // the (non-secret-shaped) account id alongside.
+  // getApiKey auto-refreshes the OAuth token under the store's serialized
+  // modify; get() reads the (non-secret-shaped) account id alongside.
   const token = await store.getApiKey(provider);
   const cred = store.get(provider);
   const accountId =

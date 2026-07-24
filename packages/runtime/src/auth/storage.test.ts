@@ -1,17 +1,27 @@
-import { AuthStorage } from "@earendil-works/pi-coding-agent";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect, test } from "vitest";
 import {
   refreshAnthropicCredential,
   resetAnthropicCredentialCache,
 } from "../backends/claude/credential-status";
+import { HoustonAuthStore } from "./credential-store";
 import { credentialUsable, providerConnected } from "./storage";
 
+/** A fresh file-backed store in an isolated tmp dir (no shared singleton). */
+function tmpStore(): HoustonAuthStore {
+  return new HoustonAuthStore(
+    join(mkdtempSync(join(tmpdir(), "houston-auth-")), "auth.json"),
+  );
+}
+
 test("providerConnected: only a STORED credential counts; connect then logout flips it", () => {
-  const store = AuthStorage.inMemory({});
+  const store = tmpStore();
   expect(providerConnected(store, "openrouter")).toBe(false);
   store.set("openrouter", { type: "api_key", key: "sk-or-stored" });
   expect(providerConnected(store, "openrouter")).toBe(true);
-  store.logout("openrouter");
+  store.remove("openrouter");
   expect(providerConnected(store, "openrouter")).toBe(false);
 });
 
@@ -19,19 +29,18 @@ test("providerConnected: an ambient env API key is NOT a connection, so logout s
   const prev = process.env.OPENROUTER_API_KEY;
   process.env.OPENROUTER_API_KEY = "sk-or-ambient";
   try {
-    const store = AuthStorage.inMemory({});
-    // The trap that broke logout: pi's hasAuth() treats the ambient env key as
-    // usable auth, so the provider reported "configured" forever.
-    expect(store.hasAuth("openrouter")).toBe(true);
-    // Houston must NOT call that connected — the user never connected it here
-    // and "Sign out" cannot clear an env var.
+    const store = tmpStore();
+    // The trap that broke logout: pi's RESOLVED auth treats the ambient env key
+    // as usable (a model request would succeed), so a status derived from it
+    // reported "configured" forever. Houston must NOT call that connected — the
+    // user never connected it here and "Sign out" cannot clear an env var.
     expect(providerConnected(store, "openrouter")).toBe(false);
 
     // A pasted key is a real connection; signing out disconnects even though
     // the env var is still set (the old hasAuth() path stayed stuck on).
     store.set("openrouter", { type: "api_key", key: "sk-or-stored" });
     expect(providerConnected(store, "openrouter")).toBe(true);
-    store.logout("openrouter");
+    store.remove("openrouter");
     expect(providerConnected(store, "openrouter")).toBe(false);
   } finally {
     if (prev === undefined) delete process.env.OPENROUTER_API_KEY;
@@ -40,7 +49,7 @@ test("providerConnected: an ambient env API key is NOT a connection, so logout s
 });
 
 test("providerConnected(anthropic): the shared-dir credential probe counts with no auth.json entry", async () => {
-  const store = AuthStorage.inMemory({});
+  const store = tmpStore();
   resetAnthropicCredentialCache(false);
   // Nothing pasted, shared dir empty → not connected.
   expect(providerConnected(store, "anthropic")).toBe(false);
@@ -54,7 +63,7 @@ test("providerConnected(anthropic): the shared-dir credential probe counts with 
 });
 
 test("providerConnected(anthropic): a pasted setup token also counts (degraded fallback)", async () => {
-  const store = AuthStorage.inMemory({});
+  const store = tmpStore();
   await refreshAnthropicCredential(async () => false); // shared dir empty
   expect(providerConnected(store, "anthropic")).toBe(false);
   store.set("anthropic", { type: "api_key", key: "sk-ant-oat01-x" });
@@ -91,7 +100,7 @@ test("credentialUsable: presence is not connection — a dead serve-written entr
 });
 
 test("providerConnected: an EXPIRED access-only oauth entry no longer counts as connected", async () => {
-  const store = AuthStorage.inMemory({});
+  const store = tmpStore();
   store.set("openai-codex", {
     type: "oauth",
     access: "at",

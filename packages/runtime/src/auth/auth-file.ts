@@ -63,7 +63,11 @@ function writeJsonAtomic(path: string, contents: unknown): void {
   renameSync(tmp, path);
 }
 
-function writeAuthFile(path: string, contents: Record<string, PiCred>): void {
+/** Atomic (0600) overwrite of the auth.json at `path`. */
+export function writeAuthFile(
+  path: string,
+  contents: Record<string, PiCred>,
+): void {
   writeJsonAtomic(path, contents);
 }
 

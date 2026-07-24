@@ -1,9 +1,17 @@
-import { refreshGitHubCopilotToken } from "@earendil-works/pi-ai/oauth";
+import { githubCopilotProvider } from "@earendil-works/pi-ai/providers/github-copilot";
 import {
   type CredentialStore,
   isApiKeyCredential,
   type WorkspaceCredential,
 } from "../ports";
+
+/**
+ * pi-ai's Copilot OAuth flow, reached through the provider's `auth.oauth`
+ * surface (pi ≥0.80.8 removed the standalone `refreshGitHubCopilotToken`
+ * export; the provider's lazy OAuth wrapper loads the same implementation on
+ * first use). Constructed once — the provider object is stateless.
+ */
+const copilotOAuth = githubCopilotProvider().auth.oauth;
 
 /**
  * Central OAuth refresh — the control plane is the SINGLE refresher of each
@@ -66,14 +74,19 @@ export async function refreshCredential(
   // reopened app can't re-mint, so the workspace reads as disconnected. Reuse
   // pi-ai's exact exchange so the headers/skew never drift from the runtime's.
   if (cred.provider === "github-copilot") {
+    if (!copilotOAuth)
+      throw new Error("pi-ai github-copilot provider exposes no OAuth flow");
     // `enterpriseUrl` (set only for GitHub Copilot Enterprise) routes the refresh
     // at the company's GitHub: pi-ai hits `api.<domain>/copilot_internal/v2/token`
     // instead of github.com. Absent => individual Copilot. Preserve it on the
     // refreshed credential so the next refresh keeps targeting the same GHE.
-    const r = await refreshGitHubCopilotToken(
-      cred.refreshToken,
-      cred.enterpriseUrl,
-    );
+    const r = await copilotOAuth.refresh({
+      type: "oauth",
+      access: cred.accessToken,
+      refresh: cred.refreshToken,
+      expires: cred.expiresAt,
+      ...(cred.enterpriseUrl ? { enterpriseUrl: cred.enterpriseUrl } : {}),
+    });
     return {
       workspaceId: cred.workspaceId,
       provider: cred.provider,

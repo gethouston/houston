@@ -13,8 +13,8 @@
     "typecheck": "tsgo -p tsconfig.json"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.80.6",
-    "@earendil-works/pi-coding-agent": "0.80.6",
+    "@earendil-works/pi-ai": "0.82.0",
+    "@earendil-works/pi-coding-agent": "0.82.0",
     "@google-cloud/storage": "7.21.0",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",
