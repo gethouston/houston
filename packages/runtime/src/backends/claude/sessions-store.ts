@@ -7,7 +7,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { claudeBaseDir, claudeProjectsDir, claudeSessionsFile } from "./paths";
 
 // NOTE on isolation: `sessions.json` (the conversationId → session_id map) lives
@@ -25,11 +25,15 @@ import { claudeBaseDir, claudeProjectsDir, claudeSessionsFile } from "./paths";
  * (same discipline as `auth/auth-file.ts`) since it sits beside credential data.
  *
  * The SDK writes each session's transcript JSONL under the SHARED config dir
- * (`<claudeLoginConfigDir>/projects/<cwd-slug>/<session_id>.jsonl`). If
- * that transcript is gone (config dir wiped) a resume would fail, so
- * `resolveResume` verifies the transcript exists by its known filename — no
- * fragile reconstruction of the SDK's project-slug scheme — and drops the dangling
- * mapping so we neither resume into nothing nor warn on every subsequent turn.
+ * (`<claudeLoginConfigDir>/projects/<cwd-slug>/<session_id>.jsonl`), and its
+ * `resume` looks the id up ONLY under the CURRENT cwd's slug. So
+ * `resolveResume` locates the transcript by its known filename and, when it
+ * sits under another slug dir (the agent was renamed, which moved the
+ * workspace cwd — HOU-892), RELOCATES it into the current cwd's slug dir so
+ * the SDK resumes the conversation with its context intact. A transcript
+ * that is gone entirely (config dir wiped), or that cannot be relocated,
+ * drops the dangling mapping so we neither resume into nothing nor warn on
+ * every subsequent turn — the session then starts fresh.
  */
 export interface SessionsStore {
   /** The stored SDK session id for a conversation, if any. */
@@ -49,10 +53,21 @@ export interface SessionsStore {
   resolveResume(conversationId: string): string | undefined;
 }
 
-export function createSessionsStore(dataDir: string): SessionsStore {
+/**
+ * @param cwd The agent's working directory (the SDK session cwd). When given,
+ * `resolveResume` can relocate a transcript stranded under a stale cwd slug;
+ * without it (e.g. the purge-only cleanup path) relocation is skipped.
+ */
+export function createSessionsStore(
+  dataDir: string,
+  cwd?: string,
+): SessionsStore {
   const baseDir = claudeBaseDir(dataDir);
   const filePath = claudeSessionsFile(dataDir);
   const projectsDir = claudeProjectsDir();
+  const currentSlugDir = cwd
+    ? join(projectsDir, sdkProjectSlug(cwd))
+    : undefined;
 
   function read(): Record<string, string> {
     if (!existsSync(filePath)) return {};
@@ -99,25 +114,65 @@ export function createSessionsStore(dataDir: string): SessionsStore {
     resolveResume(conversationId) {
       const sessionId = read()[conversationId];
       if (!sessionId) return undefined;
-      if (transcriptExists(projectsDir, sessionId)) return sessionId;
-      console.warn(
-        `[claude] transcript for conversation ${conversationId} (session ${sessionId}) is missing; starting a fresh session`,
-      );
-      remove(conversationId);
-      return undefined;
+      const located = locateTranscript(projectsDir, sessionId);
+      if (!located) {
+        console.warn(
+          `[claude] transcript for conversation ${conversationId} (session ${sessionId}) is missing; starting a fresh session`,
+        );
+        remove(conversationId);
+        return undefined;
+      }
+      // The SDK resolves `resume` only under the CURRENT cwd's slug dir. A
+      // transcript that sits anywhere else (the agent was renamed → new cwd →
+      // new slug) is moved home so the conversation continues with its
+      // context, instead of the SDK rejecting the id.
+      if (currentSlugDir && dirname(located) !== currentSlugDir) {
+        try {
+          mkdirSync(currentSlugDir, { recursive: true });
+          renameSync(located, join(currentSlugDir, `${sessionId}.jsonl`));
+          console.warn(
+            `[claude] relocated transcript for conversation ${conversationId} (session ${sessionId}) to the current workspace slug`,
+          );
+        } catch (err) {
+          console.warn(
+            `[claude] could not relocate transcript for conversation ${conversationId} (session ${sessionId}); starting a fresh session`,
+            err,
+          );
+          remove(conversationId);
+          return undefined;
+        }
+      }
+      return sessionId;
     },
   };
 }
 
-/** Whether a `<sessionId>.jsonl` transcript exists anywhere under `projectsDir`. */
-function transcriptExists(projectsDir: string, sessionId: string): boolean {
-  if (!existsSync(projectsDir)) return false;
+/**
+ * The SDK's project-slug scheme: the session cwd with every non-alphanumeric
+ * character replaced by `-` (verified against the dirs the SDK writes, e.g.
+ * `/Users/x/.h/ws/Agent 3` → `-Users-x--h-ws-Agent-3`). If the SDK ever
+ * changes the scheme, relocation targets a dir it ignores and resume fails —
+ * which the session-level fresh-retry (session.ts) then absorbs, so drift
+ * degrades to today's start-fresh behavior, never a wedge.
+ */
+function sdkProjectSlug(cwd: string): string {
+  return cwd.replace(/[^A-Za-z0-9]/g, "-");
+}
+
+/** The full path of a `<sessionId>.jsonl` transcript under `projectsDir`, if any. */
+function locateTranscript(
+  projectsDir: string,
+  sessionId: string,
+): string | undefined {
+  if (!existsSync(projectsDir)) return undefined;
   const file = `${sessionId}.jsonl`;
-  if (existsSync(join(projectsDir, file))) return true;
+  const top = join(projectsDir, file);
+  if (existsSync(top)) return top;
   for (const entry of readdirSync(projectsDir)) {
-    if (existsSync(join(projectsDir, entry, file))) return true;
+    const nested = join(projectsDir, entry, file);
+    if (existsSync(nested)) return nested;
   }
-  return false;
+  return undefined;
 }
 
 /**

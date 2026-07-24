@@ -109,6 +109,51 @@ test("a corrupt sessions.json degrades to empty rather than throwing", () => {
   expect(createSessionsStore(dir).getSessionId("c1")).toBeUndefined();
 });
 
+test("a transcript stranded under a stale cwd slug is relocated so the SDK can resume it (HOU-892)", () => {
+  // The agent was renamed: the workspace cwd changed, so the SDK's cwd-scoped
+  // resume lookup misses the transcript written under the OLD slug. resolveResume
+  // must move it into the CURRENT cwd's slug dir — preserving the conversation —
+  // rather than declaring it resumable and letting the SDK reject the id.
+  const cwd = "/ws/Personal/new name";
+  const store = createSessionsStore(dataDir(), cwd);
+  store.setSessionId("c1", "sess-1");
+  writeTranscript("sess-1"); // lands under the unrelated "proj" slug dir
+
+  expect(store.resolveResume("c1")).toBe("sess-1");
+
+  const slugDir = join(claudeProjectsDir(), "-ws-Personal-new-name");
+  expect(existsSync(join(slugDir, "sess-1.jsonl"))).toBe(true);
+  expect(existsSync(join(claudeProjectsDir(), "proj", "sess-1.jsonl"))).toBe(
+    false,
+  );
+  // Mapping survives — the next turn resumes normally with zero moves.
+  expect(store.getSessionId("c1")).toBe("sess-1");
+  expect(store.resolveResume("c1")).toBe("sess-1");
+});
+
+test("a transcript already under the current cwd slug is returned without moving", () => {
+  const cwd = "/ws/Personal/agent";
+  const store = createSessionsStore(dataDir(), cwd);
+  store.setSessionId("c1", "sess-1");
+  const slugDir = join(claudeProjectsDir(), "-ws-Personal-agent");
+  mkdirSync(slugDir, { recursive: true });
+  writeFileSync(join(slugDir, "sess-1.jsonl"), "{}");
+
+  expect(store.resolveResume("c1")).toBe("sess-1");
+  expect(existsSync(join(slugDir, "sess-1.jsonl"))).toBe(true);
+});
+
+test("without a cwd (purge-only store) resolveResume never relocates", () => {
+  const store = createSessionsStore(dataDir());
+  store.setSessionId("c1", "sess-1");
+  writeTranscript("sess-1");
+  expect(store.resolveResume("c1")).toBe("sess-1");
+  // Untouched in place.
+  expect(existsSync(join(claudeProjectsDir(), "proj", "sess-1.jsonl"))).toBe(
+    true,
+  );
+});
+
 test("two agents' transcripts under the shared projects dir don't collide", () => {
   // Different per-agent data dirs, DIFFERENT session ids → each resolves only
   // its own transcript even though the projects tree is shared.
