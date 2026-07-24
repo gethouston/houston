@@ -193,7 +193,12 @@ export class ComposioProvider implements IntegrationProvider {
   async disconnect(userId: string, toolkit: string): Promise<void> {
     // Remove every connected account for the toolkit (a toolkit can have more
     // than one, e.g. two Gmail logins). List, then DELETE all in parallel —
-    // the deletes are independent; any failure still rejects (surfaces).
+    // the deletes are independent; any failure still rejects (surfaces). A 404
+    // on the DELETE is success, not failure: the account is already gone
+    // upstream (Composio expired/removed it, or a retry raced a prior
+    // disconnect), and the user's intent — "this account is disconnected" —
+    // holds. Erroring here wedges the one flow that would clear the stale
+    // entry (HOU-892).
     const accounts = await this.http.call<{ items?: RawConnection[] }>(
       "/api/v3/connected_accounts",
       { query: { user_ids: userId, toolkit_slugs: toolkit, limit: "100" } },
@@ -204,7 +209,7 @@ export class ComposioProvider implements IntegrationProvider {
         .map((id) =>
           this.http.call(
             `/api/v3/connected_accounts/${encodeURIComponent(id)}`,
-            { method: "DELETE" },
+            { method: "DELETE", nullStatuses: [404] },
           ),
         ),
     );
