@@ -373,5 +373,9 @@
     "upgrade": "Fazer upgrade",
     "writeBlockedTitle": "Upgrade necessário",
     "writeBlockedBody": "O teste da sua equipe terminou. Peça ao proprietário para fazer o upgrade para fazer alterações."
+  },
+  "personalSpace": {
+    "inviteBlockedTitle": "Este é o seu espaço pessoal",
+    "inviteBlockedBody": "Seu espaço pessoal é só para você. Crie uma equipe para convidar pessoas."
   }
 }

@@ -21,9 +21,10 @@ import {
  * A shell only: it loads the org once (roster), owns the drill-in state, and
  * consumes a one-shot deep link from {@link usePermissionsNav} (the blocked-app
  * CTA in the agent workspace routes straight into that agent's detail). Rendered
- * ONLY when `canSeeOrganization` (multiplayer owner/admin) — the sidebar hides
- * the entry and `workspace-shell` guards the render for everyone else, so it
- * never mounts in single-player or for a plain member.
+ * ONLY when `canSeeOrganization` (multiplayer owner/admin, and on a Spaces host
+ * a TEAM active space, never the personal one) — the sidebar hides the entry and
+ * `workspace-shell` guards the render for everyone else, so it never mounts in
+ * single-player, for a plain member, or in a personal space.
  */
 export function PermissionsView() {
   const { t } = useTranslation("teams");

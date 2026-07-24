@@ -47,7 +47,7 @@ import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
-import { isNeedsUpgradeError } from "./team-status-model";
+import { isNeedsUpgradeError, isPersonalSpaceError } from "./team-status-model";
 import type {
   Agent,
   CommunitySkillResult,
@@ -142,6 +142,19 @@ async function surfaceError(
     showExpectedStateToast(
       i18n.t("teams:degrade.writeBlockedTitle"),
       i18n.t("teams:degrade.writeBlockedBody"),
+    );
+    return;
+  }
+
+  // Expected business state, not a bug: a member-add attempted on the caller's
+  // personal space (C8 `personal_space`), which is non-invitable by design —
+  // sharing goes through creating a team. Surface the real reason as a plain
+  // info toast, never the red bug pair, so the user learns to create a team.
+  if (isPersonalSpaceError(err)) {
+    const { showExpectedStateToast } = await import("./error-toast");
+    showExpectedStateToast(
+      i18n.t("teams:personalSpace.inviteBlockedTitle"),
+      i18n.t("teams:personalSpace.inviteBlockedBody"),
     );
     return;
   }

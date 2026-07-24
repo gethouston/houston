@@ -32,10 +32,12 @@ import { canSeeAiModelsPage, hasSpaces } from "../../lib/org-roles";
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
 import { shortcutLabel } from "../../lib/shortcuts";
+import { isTeamWorkspace } from "../../lib/space-id";
 import { blockedTopLevelView, isTopLevelView } from "../../lib/top-level-views";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import { useWorkspaceStore } from "../../stores/workspaces";
 import { AgentPersonScopeProvider } from "../agent-person-scope-context";
 import { AgentPersonScopeMenu } from "../agent-person-scope-menu";
 import { AiHubView } from "../ai-hub/ai-hub-view";
@@ -107,9 +109,15 @@ export function WorkspaceShell({
   );
   const { canCreate: canCreateAgents } = useCanCreateAgents();
   const { capabilities } = useCapabilities();
-  // Teams v2: guard the Organization render so a stale `viewMode` can never show
-  // it to a plain member / single-player (the sidebar already hides the entry).
-  const showOrganization = canSeeOrganization(capabilities);
+  const currentWorkspace = useWorkspaceStore((s) => s.current);
+  // Teams v2: guard the Organization + Permissions render so a stale `viewMode`
+  // can never show them to a plain member / single-player (the sidebar already
+  // hides the entry), and on a Spaces host also when the active space is personal
+  // (single-player semantics — Admin + Permissions are team-space surfaces).
+  const isTeam = currentWorkspace
+    ? isTeamWorkspace(currentWorkspace.id)
+    : false;
+  const showOrganization = canSeeOrganization(capabilities, isTeam);
   // Teams v2: same guard for the AI Models hub — owner/admin only in a Teams
   // workspace (org-level providers + admin model policy).
   const showAiModels = canSeeAiModelsPage(capabilities);

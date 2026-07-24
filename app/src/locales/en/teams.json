@@ -373,5 +373,9 @@
     "upgrade": "Upgrade",
     "writeBlockedTitle": "Upgrade needed",
     "writeBlockedBody": "Your team's trial ended. Ask your team's owner to upgrade to make changes."
+  },
+  "personalSpace": {
+    "inviteBlockedTitle": "This is your personal space",
+    "inviteBlockedBody": "Your personal space is just for you. Create a team to invite people."
   }
 }

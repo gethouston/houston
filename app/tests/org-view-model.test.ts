@@ -16,23 +16,56 @@ const ADMIN: Capabilities = { multiplayer: true, role: "admin" };
 const MEMBER: Capabilities = { multiplayer: true, role: "user" };
 // A multiplayer host that (invalidly) omits the role → clamp to least-privileged.
 const NO_ROLE: Capabilities = { multiplayer: true };
+// C8 Spaces hosts: the personal/team split is live, so the gate keys on the
+// active-space boolean too.
+const SPACES_OWNER: Capabilities = {
+  multiplayer: true,
+  spaces: true,
+  role: "owner",
+};
+const SPACES_ADMIN: Capabilities = {
+  multiplayer: true,
+  spaces: true,
+  role: "admin",
+};
+const SPACES_MEMBER: Capabilities = {
+  multiplayer: true,
+  spaces: true,
+  role: "user",
+};
 
 describe("canSeeOrganization", () => {
   it("shows the Organization view to a multiplayer owner and admin", () => {
-    strictEqual(canSeeOrganization(OWNER), true);
-    strictEqual(canSeeOrganization(ADMIN), true);
+    // Non-spaces (legacy Teams v2): the active-space boolean is irrelevant.
+    strictEqual(canSeeOrganization(OWNER, false), true);
+    strictEqual(canSeeOrganization(OWNER, true), true);
+    strictEqual(canSeeOrganization(ADMIN, false), true);
   });
 
   it("hides it from plain members", () => {
-    strictEqual(canSeeOrganization(MEMBER), false);
-    strictEqual(canSeeOrganization(NO_ROLE), false);
+    strictEqual(canSeeOrganization(MEMBER, true), false);
+    strictEqual(canSeeOrganization(NO_ROLE, true), false);
   });
 
   it("hides it entirely in single-player (no org)", () => {
-    strictEqual(canSeeOrganization(SINGLE_PLAYER), false);
-    strictEqual(canSeeOrganization(SINGLE_PLAYER_EXPLICIT), false);
-    strictEqual(canSeeOrganization(null), false);
-    strictEqual(canSeeOrganization(undefined), false);
+    strictEqual(canSeeOrganization(SINGLE_PLAYER, true), false);
+    strictEqual(canSeeOrganization(SINGLE_PLAYER_EXPLICIT, true), false);
+    strictEqual(canSeeOrganization(null, true), false);
+    strictEqual(canSeeOrganization(undefined, true), false);
+  });
+
+  it("hides it in the personal space of a Spaces host, even for an owner", () => {
+    strictEqual(canSeeOrganization(SPACES_OWNER, false), false);
+    strictEqual(canSeeOrganization(SPACES_ADMIN, false), false);
+  });
+
+  it("shows it in a team space of a Spaces host for owner/admin", () => {
+    strictEqual(canSeeOrganization(SPACES_OWNER, true), true);
+    strictEqual(canSeeOrganization(SPACES_ADMIN, true), true);
+  });
+
+  it("hides it from a plain member even in a team space", () => {
+    strictEqual(canSeeOrganization(SPACES_MEMBER, true), false);
   });
 });
 
