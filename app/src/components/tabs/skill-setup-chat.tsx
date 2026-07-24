@@ -1,6 +1,6 @@
 import { Button } from "@houston-ai/core";
 import type { Activity } from "@houston-ai/engine-client";
-import { Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Agent, AgentDefinition } from "../../lib/types";
@@ -71,11 +71,26 @@ export function SkillSetupChat({
       ? t("setupChat.missionTitle")
       : t("setupChat.skillLabel", { name: skillName ?? "" });
 
+  // The way back to the Skills section, always visible at the pane's left —
+  // the same affordance the custom-integration setup chat leads with.
+  const backButton = (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      onClick={onClose}
+      aria-label={t("setupChat.back")}
+    >
+      <ArrowLeft className="size-4" />
+    </Button>
+  );
+
   // Draft still being created, or a skill chat still loading: keep the pane
-  // shape stable over a calm loading state rather than flashing an empty box.
+  // shape stable over a calm loading state rather than flashing an empty box,
+  // with the way back reachable the whole time.
   if (!activity) {
     return (
       <div className="flex h-[36rem] min-h-0 flex-col overflow-hidden rounded-2xl border border-line">
+        <div className="border-line border-b px-4 py-3">{backButton}</div>
         <div className="flex min-h-0 flex-1 items-center justify-center gap-2 text-ink-muted">
           <Loader2 className="size-4 animate-spin" />
           <span className="text-sm">{t("setupChat.opening")}</span>
@@ -105,6 +120,7 @@ export function SkillSetupChat({
           activity={activity}
           sessionKey={sessionKey}
           panelContainer={container}
+          panelLeading={backButton}
           missionLabel={missionLabel}
           panelActions={editManuallyButton}
           onPanelClose={onClose}

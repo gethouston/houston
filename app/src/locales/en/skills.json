@@ -146,6 +146,7 @@
     "missionTitle": "New skill",
     "skillLabel": "Skill: {{name}}",
     "opening": "Opening chat...",
+    "back": "Back to skills",
     "editManually": "Edit manually",
     "draftInProgress": "Skill in progress. Pick up where you left off.",
     "discardDraft": "Discard draft"

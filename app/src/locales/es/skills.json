@@ -146,6 +146,7 @@
     "missionTitle": "Nueva habilidad",
     "skillLabel": "Habilidad: {{name}}",
     "opening": "Abriendo el chat...",
+    "back": "Volver a habilidades",
     "editManually": "Editar manualmente",
     "draftInProgress": "Habilidad en construcción. Retoma donde quedaste.",
     "discardDraft": "Descartar borrador"
