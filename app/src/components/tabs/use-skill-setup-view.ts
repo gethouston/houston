@@ -43,17 +43,16 @@ export function useSkillSetupView(
     (s) => s.setPendingSkillChatActivityId,
   );
   useEffect(() => {
-    if (!pendingActivityId) return;
-    if (!chatSetup.activitiesLoaded || skills === undefined) return;
-    const draft = chatSetup.draftActivities.find(
-      (a) => a.id === pendingActivityId,
-    );
-    const owner = skills.find(
-      (s) => chatSetup.activityFor(s)?.id === pendingActivityId,
-    );
+    if (!pendingActivityId || !chatSetup.activitiesLoaded) return;
+    const activity = chatSetup.activityById(pendingActivityId);
     setPendingSkillChatActivityId(null);
-    if (owner) setSelected({ kind: "skill", slug: owner.name });
-    else if (draft) setSelected({ kind: "draft", activityId: draft.id });
+    if (!activity || activity.status === "archived") return;
+    // The durable reverse stamp names the skill without waiting on the skills
+    // list; an unstamped chat opens as its claiming skill (forward link) or as
+    // a resumable draft — the claim effect below swaps it once skills load.
+    const slug = activity.skill_slug ?? claimedSkillSlug(activity.id, skills);
+    if (slug) setSelected({ kind: "skill", slug });
+    else setSelected({ kind: "draft", activityId: activity.id });
   }, [pendingActivityId, skills, chatSetup, setPendingSkillChatActivityId]);
 
   // Draft → claimed: when the agent creates the skill (its frontmatter

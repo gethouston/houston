@@ -61,7 +61,13 @@ export function SkillsContent({
   const [query, setQuery] = useState("");
   // The chat layer (HOU-791): a row click opens the skill's setup chat; the
   // modal stays the read-only fallback + the chat's Edit-manually target.
-  const chat = useSkillsChatSurface({ agent, skills, readOnly, onEditSkill });
+  const chat = useSkillsChatSurface({
+    agent,
+    skills,
+    loading,
+    readOnly,
+    onEditSkill,
+  });
   const { sorted, installedCount, installed } = useInstalledSkillsStrip(
     skills,
     chat.openRow,

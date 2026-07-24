@@ -17,6 +17,9 @@ import { useSkillSetupView } from "./use-skill-setup-view";
 export function useSkillsChatSurface(opts: {
   agent: Agent;
   skills: SkillSummary[];
+  /** Whether the skills list is still loading — gates the ghost-skill
+   *  deselect so an in-flight (empty) list never closes an open chat. */
+  loading: boolean;
   readOnly: boolean;
   /** Opens the manual markdown edit modal (the read-only fallback, and the
    *  chat header's "Edit manually" escape hatch). */
@@ -32,20 +35,22 @@ export function useSkillsChatSurface(opts: {
   discardDraft: (activityId: string) => void;
   startCreate: () => void;
 } {
-  const { agent, skills, readOnly, onEditSkill } = opts;
+  const { agent, skills, loading, readOnly, onEditSkill } = opts;
   const chatSetup = useSkillChatSetup(agent, skills);
   const view = useSkillSetupView(agent, skills, chatSetup);
   const { selected, deselect } = view;
 
   // A skill deleted while its chat is open (edit modal's delete, an agent
   // cleanup): close the pane instead of stranding a chat for a ghost skill.
+  // Gated on a loaded list — an in-flight fetch reads as [] and must not
+  // close the chat it is about to re-confirm.
   const selectedSkill =
     selected?.kind === "skill"
       ? (skills.find((s) => s.name === selected.slug) ?? null)
       : null;
   useEffect(() => {
-    if (selected?.kind === "skill" && !selectedSkill) deselect();
-  }, [selected, selectedSkill, deselect]);
+    if (!loading && selected?.kind === "skill" && !selectedSkill) deselect();
+  }, [loading, selected, selectedSkill, deselect]);
 
   if (readOnly) {
     return {
