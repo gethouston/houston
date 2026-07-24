@@ -1,0 +1,13 @@
+Fonts self-hosted here are licensed under the SIL Open Font License, Version 1.1.
+
+- Fraunces (fraunces-latin.woff2, fraunces-italic-latin.woff2)
+  Copyright The Fraunces Project Authors (https://github.com/undercasetype/Fraunces)
+- Hanken Grotesk (hanken-grotesk-latin.woff2)
+  Copyright The Hanken Grotesk Project Authors (https://github.com/Rajdhani-Fonts/Hanken-Grotesk)
+
+Both are variable fonts, latin subset, retrieved from Google Fonts (fonts.gstatic.com).
+Full OFL text: https://openfontlicense.org/open-font-license-official-text/
+
+The license permits self-hosting and redistribution with the software. We ship the
+latin subset only (the marketing landing page is English); the es/pt subpages do not
+use these faces.

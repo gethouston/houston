@@ -1,0 +1,502 @@
+/*
+ * Landing hero (dark space), the signature dawn transition, the dark closing
+ * band + per-OS download tiles, and the invite-code download modals.
+ * Palette/type from site-tokens.css. The app-window mock is in its own file.
+ */
+
+/* ── Hero shell ──────────────────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  padding: 128px var(--gutter) clamp(40px, 6vw, 80px);
+  text-align: center;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--night-void);
+}
+/* the panorama, art-directed: warm band sunk LOW so it reads as a horizon */
+.hero-sky {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  overflow: hidden;
+}
+.hero-sky img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 78%;
+  transform: scale(1.06);
+}
+/* directional vignette: darken top + sides so type wins at >=4.5:1;
+   keep the warm band glowing low. Contrast is solved with gradients, not mud. */
+.hero-veil {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120% 80% at 50% 6%,
+      rgba(var(--night-void-rgb), 0.95) 0%,
+      rgba(var(--night-void-rgb), 0.66) 32%,
+      rgba(var(--night-void-rgb), 0.12) 62%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(var(--night-void-rgb), 0.86) 0%,
+      rgba(var(--night-void-rgb), 0) 26%,
+      rgba(var(--night-void-rgb), 0) 74%,
+      rgba(var(--night-void-rgb), 0.86) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(var(--night-void-rgb), 0) 48%,
+      rgba(var(--night-void-rgb), 0.34) 72%,
+      rgba(var(--night-void-rgb), 0.74) 100%
+    );
+}
+/* ember bloom rising from the galactic core — the dawn seed */
+.hero-bloom {
+  position: absolute;
+  left: 50%;
+  bottom: -6%;
+  width: min(1200px, 120%);
+  height: 54%;
+  transform: translateX(-50%);
+  z-index: -2;
+  pointer-events: none;
+  background: radial-gradient(
+    60% 100% at 50% 100%,
+    rgba(var(--ember-rgb), 0.32) 0%,
+    rgba(var(--ember-rgb), 0.11) 38%,
+    rgba(var(--ember-rgb), 0) 68%
+  );
+  mix-blend-mode: screen;
+}
+.hero-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  position: relative;
+}
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 15px 7px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin-bottom: 28px;
+}
+.hero-eyebrow .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 0 3px rgba(var(--ember-rgb), 0.22), 0 0 12px var(--ember);
+}
+.hero h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(38px, 6.2vw, 78px);
+  line-height: 1.03;
+  letter-spacing: -0.035em;
+  color: #fff;
+  text-wrap: balance;
+  margin: 0 auto 24px;
+  max-width: 16ch;
+  text-shadow: 0 2px 44px rgba(0, 0, 0, 0.6);
+}
+.hero h1 .accent {
+  font-style: italic;
+  font-weight: 460;
+  color: var(--dawn);
+}
+.hero-sub {
+  font-size: clamp(16.5px, 1.7vw, 20px);
+  line-height: 1.5;
+  color: rgba(236, 239, 247, 0.9);
+  max-width: 54ch;
+  margin: 0 auto 34px;
+  font-weight: 400;
+  text-shadow: 0 1px 24px rgba(0, 0, 0, 0.55);
+}
+.hero-actions {
+  display: flex;
+  gap: 13px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.hero-proof {
+  position: relative;
+  margin-top: 22px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13.5px;
+  font-weight: 500;
+  flex-wrap: wrap;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.85), 0 0 3px rgba(0, 0, 0, 0.6);
+}
+/* Soft scrim: this row crosses the brightest part of the galactic band, so
+   text-shadow alone can't guarantee 4.5:1 across widths. A wide, feathered
+   radial darkening (fades fully to transparent at the edges) lifts legibility
+   without reading as a bar or pill. Static + gradient-only — no backdrop-filter,
+   no blur (PERFORMANCE.md). */
+.hero-proof::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% + 96px);
+  height: 190%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 58% 52% at 50% 50%,
+    rgba(var(--night-void-rgb), 0.6) 0%,
+    rgba(var(--night-void-rgb), 0.34) 42%,
+    rgba(var(--night-void-rgb), 0) 74%
+  );
+}
+.hero-proof .sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.38);
+}
+
+/* app window floating on the horizon */
+.hero-stage {
+  position: relative;
+  max-width: 1088px;
+  margin: clamp(44px, 6vw, 68px) auto 0;
+  z-index: 1;
+}
+.hero-stage::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -24px;
+  height: 60px;
+  background: radial-gradient(
+    60% 100% at 50% 0,
+    rgba(var(--ember-rgb), 0.5),
+    transparent 72%
+  );
+  filter: blur(8px);
+  z-index: -1;
+}
+
+/* ── Dawn transition (signature) — viewport-relative height ──────────────── */
+.dawn {
+  position: relative;
+  height: clamp(200px, 26vw, 300px);
+  background: linear-gradient(
+    180deg,
+    var(--night-void) 0%,
+    #1a1220 40%,
+    #5a2e1c 66%,
+    var(--dawn) 84%,
+    var(--paper) 100%
+  );
+  overflow: hidden;
+}
+.dawn::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 26%;
+  transform: translateX(-50%);
+  width: 150%;
+  height: 60%;
+  background: radial-gradient(
+    50% 100% at 50% 100%,
+    rgba(240, 168, 118, 0.9),
+    rgba(var(--ember-rgb), 0.3) 45%,
+    transparent 72%
+  );
+  filter: blur(2px);
+}
+.dawn::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 240, 225, 0.9),
+    transparent
+  );
+}
+.dawn-star {
+  position: absolute;
+  background: #fff;
+  border-radius: 50%;
+  opacity: 0.7;
+}
+
+/* ── Final CTA (the launch moment) ───────────────────────────────────────── */
+.cta-band {
+  background: var(--night-void);
+  position: relative;
+  overflow: hidden;
+}
+.cta-band::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -30%;
+  transform: translateX(-50%);
+  width: min(900px, 120%);
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(var(--ember-rgb), 0.3),
+    transparent 66%
+  );
+  pointer-events: none;
+}
+.cta-inner {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: var(--section-pad) var(--gutter);
+  text-align: center;
+  position: relative;
+}
+.cta-inner .eyebrow-mono {
+  margin-bottom: 18px;
+}
+.cta-inner h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(32px, 5vw, 56px);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: #fff;
+  text-wrap: balance;
+  max-width: 17ch;
+  margin: 0 auto 18px;
+}
+.cta-inner p {
+  font-size: clamp(16px, 1.6vw, 18px);
+  color: rgba(233, 236, 245, 0.8);
+  max-width: 48ch;
+  margin: 0 auto 40px;
+  line-height: 1.5;
+}
+.dl-tiles {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.dl-tile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 22px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  min-width: 232px;
+  text-align: left;
+  cursor: pointer;
+  color: #fff;
+  transition: background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-entrance);
+}
+.dl-tile:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(var(--ember-rgb), 0.5);
+  transform: translateY(-2px);
+}
+.dl-tile:active {
+  transform: translateY(0) scale(0.98);
+}
+.dl-tile .os-ic {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+.dl-tile .os-ic svg {
+  width: 32px;
+  height: 32px;
+}
+.dl-tile .t-lbl {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.dl-tile .t-top {
+  font-size: 12.5px;
+  color: rgba(233, 236, 245, 0.62);
+  font-weight: 500;
+}
+.dl-tile .t-name {
+  font-size: 16.5px;
+  color: #fff;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.dl-tile.primary {
+  background: var(--ember);
+  border-color: var(--ember);
+}
+.dl-tile.primary:hover {
+  background: var(--ember-soft);
+  border-color: var(--ember-soft);
+}
+.dl-tile.primary .t-top {
+  color: rgba(255, 255, 255, 0.82);
+}
+.cta-note {
+  margin-top: 28px;
+  font-size: 13px;
+  color: rgba(233, 236, 245, 0.56);
+  font-weight: 500;
+}
+
+/* ── Download gate modal (invite-code closed beta — preserved behaviour) ──── */
+.dl-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.62);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-fast) var(--ease-standard),
+    visibility var(--dur-fast) var(--ease-standard);
+}
+.dl-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+.dl-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--night-orbit);
+  border: 1px solid var(--line-dark);
+  border-radius: 20px;
+  padding: 30px;
+  color: #fff;
+  transform: translateY(8px) scale(0.98);
+  transition: transform var(--dur-elegant) var(--ease-entrance);
+}
+.dl-overlay.open .dl-card {
+  transform: translateY(0) scale(1);
+}
+.dl-card h3 {
+  font-family: var(--serif);
+  font-weight: 460;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+.dl-card > p {
+  font-size: 14.5px;
+  color: var(--on-dark-muted);
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+.dl-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 16px;
+  font-family: var(--sans);
+  margin-bottom: 14px;
+  transition: border-color var(--dur-fast) var(--ease-standard);
+}
+.dl-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+.dl-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.dl-input.valid {
+  border-color: var(--ember);
+  box-shadow: 0 0 0 3px rgba(var(--ember-rgb), 0.2);
+}
+.dl-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dl-actions .btn {
+  width: 100%;
+}
+.btn-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.dl-divider {
+  text-align: center;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 4px 0;
+}
+.dl-fineprint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.5;
+  margin: 8px 0 0;
+  text-align: center;
+}
+.dl-fineprint a {
+  color: rgba(255, 255, 255, 0.62);
+  text-decoration: underline;
+}
+.dl-skip {
+  margin-top: 18px;
+  border-top: 1px solid var(--line-dark);
+  padding-top: 14px;
+}
+.dl-skip summary {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-dark-muted);
+  cursor: pointer;
+  list-style: none;
+}
+.dl-skip summary::-webkit-details-marker {
+  display: none;
+}
+.dl-skip-body {
+  margin-top: 10px;
+}
+.dl-skip-body p {
+  font-size: 13px;
+  color: var(--on-dark-faint);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.dl-skip-body a {
+  font-size: 13px;
+  color: var(--ember-soft);
+  font-weight: 600;
+}

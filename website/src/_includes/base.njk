@@ -25,7 +25,11 @@
 <script type="application/ld+json">
 { "@context":"https://schema.org","@type":"WebSite","name":"Houston","url":"https://gethouston.ai/" }
 </script>
-<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+{# General Sans (Fontshare) is the type for every subpage. It's an overridable
+   block so the rebuilt landing (index.njk), which uses zero General Sans, can
+   drop this render-blocking request. Default keeps it, so all other pages are
+   unchanged. #}
+{% block fonts %}<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">{% endblock %}
 {% block stylesheets %}{% endblock %}
 {% block inlineStyles %}{% endblock %}
 {# Scripts that must run BEFORE analytics init (e.g. stripping a secret query

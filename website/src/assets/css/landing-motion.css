@@ -1,0 +1,79 @@
+/*
+ * Motion — one orchestrated hero load sequence + restrained scroll reveals.
+ * Rules (DESIGN.md §5): transform + opacity only, ease-OUT entrances, never
+ * from scale(0). Everything is wrapped so `prefers-reduced-motion: reduce`
+ * and no-JS both fall back to fully-visible static content (no hidden copy).
+ */
+
+/* Only hide-then-reveal when JS is present AND motion is welcome. Without the
+   `.js` class (script disabled) or under reduced-motion, content is static. */
+@media (prefers-reduced-motion: no-preference) {
+  html.js .hero-load {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: load-up var(--dur-elegant) var(--ease-entrance) forwards;
+    animation-delay: var(--load-delay, 0ms);
+  }
+  html.js .hero-stage.hero-load {
+    transform: translateY(26px) scale(0.985);
+    animation-name: load-up-stage;
+    animation-duration: 833ms;
+  }
+
+  html.js .reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity var(--dur-elegant) var(--ease-entrance),
+      transform var(--dur-elegant) var(--ease-entrance);
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform;
+  }
+  html.js .reveal.visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes load-up {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes load-up-stage {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Staggered delays for the hero load choreography. */
+.hero-eyebrow.hero-load {
+  --load-delay: 60ms;
+}
+.hero h1.hero-load {
+  --load-delay: 140ms;
+}
+.hero-sub.hero-load {
+  --load-delay: 240ms;
+}
+.hero-actions.hero-load {
+  --load-delay: 340ms;
+}
+.hero-proof.hero-load {
+  --load-delay: 420ms;
+}
+.hero-stage.hero-load {
+  --load-delay: 480ms;
+}
+
+/* Reveal delay steps for grouped children. */
+.reveal-d1 {
+  --reveal-delay: 80ms;
+}
+.reveal-d2 {
+  --reveal-delay: 160ms;
+}
+.reveal-d3 {
+  --reveal-delay: 240ms;
+}
