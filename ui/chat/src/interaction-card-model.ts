@@ -2,6 +2,16 @@
 // so the node:test suite can import them; the stepper state machine in
 // interaction-card-logic.ts builds on these, and the .tsx component re-uses them.
 
+/** A presentational app-identity lockup for a branded question card: the app's
+ *  display NAME plus, when the catalog resolved it, a logo URL. Resolved by the
+ *  app (ui/chat stays Composio-unaware) and rendered in the modal's title slot
+ *  the way the connect card renders its identity. A missing `logoUrl` shows the
+ *  name alone — never a broken image. */
+export interface ChatInteractionBrand {
+  name: string;
+  logoUrl?: string;
+}
+
 export interface ChatInteractionOption {
   id: string;
   label: string;
@@ -24,28 +34,15 @@ export type ChatInteractionStep =
        *  answer. Meaningful only when `options` are present — a free-text-only
        *  question ignores it (the field IS the answer). */
       hideFreeText?: boolean;
+      /** A presentational app-identity lockup: when the question concerns an
+       *  integration, the app resolves the toolkit to this brand so the modal's
+       *  title shows the app's logo + name (like the connect card) and the
+       *  question text moves into the body. Absent = a plain question (text in
+       *  the title). ui/chat never resolves it — the app does. */
+      brand?: ChatInteractionBrand;
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }
-  | {
-      kind: "approval";
-      id: string;
-      /** Lowercase toolkit slug, e.g. "gmail". */
-      toolkit: string;
-      /** The action slug, e.g. "GMAIL_SEND_DRAFT". */
-      action: string;
-      /** Display-ready key/values rendered as the card's param rows. */
-      params?: Record<string, string>;
-      /** How many params were dropped past the card's row cap (present only when
-       *  > 0); the card shows a "+N more" line so the user knows the approval
-       *  covers settings the rows don't show. */
-      paramsOmitted?: number;
-      /** Stable digest of (action, params); the step-dedupe key. */
-      paramsHash: string;
-      /** Agent-phrased confirmation question in the user's language
-       *  ("Should I send the 30 invites?"); the card's body when present. */
-      intent?: string;
-    }
   // HOU-550: enter a custom integration's API key in a secure field (the secret
   // never lands in the transcript). `toolkit` is the custom integration's slug.
   | { kind: "credential"; id: string; toolkit: string; reason?: string }
@@ -86,27 +83,6 @@ export function prettifyToolkit(toolkit: string): string {
     .filter((w) => w.length > 0)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
-}
-
-/** A readable action name from a Composio action slug, for the approval step's
- *  title ("GMAIL_SEND_DRAFT" + toolkit "gmail" -> "send draft"). Strips the
- *  toolkit prefix (case-insensitive, matching the `GMAIL_SEND_DRAFT` / `gmail`
- *  convention, incl. multi-word toolkits like `google_maps`), then lowercases
- *  the `_`-joined remainder into words. Falls back to humanizing the whole slug
- *  when it does not carry the toolkit prefix or the prefix is all there is. */
-export function humanizeActionSlug(action: string, toolkit: string): string {
-  const words = (slug: string): string =>
-    slug
-      .split("_")
-      .filter((w) => w.length > 0)
-      .map((w) => w.toLowerCase())
-      .join(" ");
-  const prefix = `${toolkit.toLowerCase()}_`;
-  if (toolkit.length > 0 && action.toLowerCase().startsWith(prefix)) {
-    const remainder = words(action.slice(prefix.length));
-    if (remainder.length > 0) return remainder;
-  }
-  return words(action);
 }
 
 /** The option label for a question step, or null when the id is unknown. */

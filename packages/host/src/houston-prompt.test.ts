@@ -110,6 +110,55 @@ test("the new blocked speech act lands in BOTH the TS prompt and the Rust mirror
   expect(rs).not.toContain(norm("their admin needs to enable"));
 });
 
+test("app-action confirmation is a pre-ask ask_user question (no post-turn card)", () => {
+  const p = houstonSystemPrompt();
+  // The new model: confirm a changing app action UP FRONT with one ask_user
+  // question branded by the app (the question's toolkit), covering the batch.
+  expect(p).toContain(
+    "Before any app action that changes something or reaches other people",
+  );
+  expect(p).toContain("ONE `ask_user` question in the SAME turn");
+  expect(p).toContain("Should I send the 30 invites?");
+  // Read-only actions are never confirmed.
+  expect(p).toContain("Never confirm read-only actions");
+  // The retired model is gone: Houston no longer shows its own card after the
+  // turn, and there is no "do not pre-ask for connected-app actions" carve-out.
+  expect(p).not.toContain("Houston shows its own confirmation card");
+  expect(p).not.toContain("Houston shows the user ONE confirmation card");
+  expect(p).not.toContain("do not pre-ask for those");
+  expect(p).not.toContain("gated by Houston's own confirmation card");
+});
+
+test("the pre-ask confirmation contract mirrors into the Rust integrations prompt", () => {
+  const rust = readFileSync(
+    fileURLToPath(
+      new URL(
+        "../../../app/src-tauri/src/houston_prompt/integrations.rs",
+        import.meta.url,
+      ),
+    ),
+    "utf8",
+  );
+  const ts = norm(houstonSystemPrompt());
+  const rs = norm(rust);
+  for (const phrase of [
+    "Before any app action that changes something or reaches other people",
+    "set that question's `toolkit` to the app's slug",
+    "When `ask_user` is unavailable (Autopilot), act directly.",
+  ]) {
+    const needle = norm(phrase);
+    expect(ts).toContain(needle);
+    expect(rs).toContain(needle);
+  }
+  // The retired confirmation-card copy is gone from both mirrors.
+  expect(rs).not.toContain(
+    norm("Houston shows the user ONE confirmation card"),
+  );
+  expect(ts).not.toContain(
+    norm("Houston shows the user ONE confirmation card"),
+  );
+});
+
 test("blocking questions, choices, and approvals route through the ask_user tool", () => {
   const p = houstonSystemPrompt();
   expect(p).toContain("ask_user");

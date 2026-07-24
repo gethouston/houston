@@ -12,7 +12,7 @@ import { json, readJson } from "./http";
  * credential value crosses ONLY here (HTTPS body → secret store); it never
  * rides the chat transcript.
  *
- * THREE surfaces serve the same routes (the action-approvals precedent):
+ * THREE surfaces serve the same routes:
  *
  *  - `/v1/integrations/custom/definitions*` — the original top-level form, for
  *    the global Integrations page against a direct host.

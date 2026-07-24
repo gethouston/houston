@@ -180,8 +180,8 @@ export function InteractionModal({
       </div>
 
       {footer && (
-        // flex-wrap: a step with several actions (the approval card's three
-        // decisions, longer in es/pt) must wrap onto a second row in a narrow
+        // flex-wrap: a step with several actions (a decline beside a filled CTA,
+        // longer in es/pt) must wrap onto a second row in a narrow
         // panel — the card clips overflow, so an unwrapped row loses buttons.
         <div className="mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
           {footer}

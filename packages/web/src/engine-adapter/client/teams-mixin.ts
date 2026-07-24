@@ -1,5 +1,4 @@
 import * as controlPlane from "../control-plane";
-import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 
 export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
@@ -85,34 +84,6 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<controlPlane.TriggerStatusItem[] | null> {
       if (!this.ctx.cp) return null;
       return controlPlane.agentTriggerStatus(this.ctx.cp, agentId);
-    }
-
-    // ---- per-agent action approvals ----
-    // These are HOST routes that work in BOTH deployments, on the per-agent
-    // DISPATCH surface (`/agents/:id/action-approvals[...]`):
-    // the local/self-host host serves it directly, and the cloud gateway
-    // proxies exactly this surface to the agent's pod (it mounts NO
-    // `/v1/agents/*` route for approvals — calling the `/v1` form 404s at the
-    // gateway and breaks the in-chat approval card). So they route through
-    // `authFetch` against `baseUrl` (bearer + `x-houston-org`, live in both)
-    // — never cp-gated, or the local approval card would break.
-    async grantActionApproval(
-      agentSlugOrId: string,
-      action: string,
-    ): Promise<void> {
-      const res = await this.ctx.authFetch(
-        `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals/grants`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action }),
-        },
-      );
-      if (!res.ok)
-        throw new HoustonEngineError(
-          res.status,
-          await res.json().catch(() => ({})),
-        );
     }
   }
   return Teams;

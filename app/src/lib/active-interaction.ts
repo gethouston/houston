@@ -65,7 +65,6 @@ export function interactionNotificationBodyKey(
   | "sessionComplete.question"
   | "sessionComplete.signin"
   | "sessionComplete.connect"
-  | "sessionComplete.approval"
   | "sessionComplete.credential" {
   if (interactionQuestionCount(interaction) > 0)
     return "sessionComplete.question";
@@ -79,11 +78,6 @@ export function interactionNotificationBodyKey(
     interaction.steps.some((step) => step.kind === "connect")
   )
     return "sessionComplete.connect";
-  if (
-    isPendingInteraction(interaction) &&
-    interaction.steps.some((step) => step.kind === "approval")
-  )
-    return "sessionComplete.approval";
   if (
     isPendingInteraction(interaction) &&
     interaction.steps.some((step) => step.kind === "credential")

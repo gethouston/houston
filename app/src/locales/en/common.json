@@ -47,7 +47,6 @@
       "question_other": "Your agent has questions for you.",
       "signin": "Your agent needs you to sign in.",
       "connect": "Your agent needs you to connect an app.",
-      "approval": "Waiting for your approval to continue.",
       "credential": "Your agent needs an API key to finish."
     }
   }

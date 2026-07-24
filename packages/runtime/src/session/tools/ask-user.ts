@@ -51,6 +51,12 @@ const AskUserParams = Type.Object({
           },
         ),
       ),
+      toolkit: Type.Optional(
+        Type.String({
+          description:
+            "Set when the question concerns a connected app: the exact toolkit slug (e.g. 'gmail'). Houston shows the app's logo on the question card. Always set it when confirming an app action.",
+        }),
+      ),
     }),
     {
       minItems: 1,
@@ -94,6 +100,9 @@ export function makeAskUserTool() {
           id: `q${i + 1}`,
           question: q.question,
           ...(q.options && q.options.length > 0 ? { options: q.options } : {}),
+          // Passed through verbatim: brands the card with the app's logo when
+          // the question confirms a connected-app action.
+          ...(q.toolkit ? { toolkit: q.toolkit } : {}),
         }),
       );
       recordQuestions(questions);

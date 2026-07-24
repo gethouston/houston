@@ -1588,12 +1588,6 @@ export const tauriIntegrations = {
     call("integration_dismiss_reconnect_notice", () =>
       getEngine().dismissIntegrationsReconnectNotice(),
     ),
-  /** Confirm one action on the approval card: grant it so it runs once without
-   *  another confirmation (the host holds the grant for a short window). */
-  grantActionApproval: (agentId: string, action: string) =>
-    call("grant_action_approval", () =>
-      getEngine().grantActionApproval(agentId, action),
-    ),
   // ── custom integrations (HOU-550) ──────────────────────────────────────────
   // The list is a plain read (a React Query hook owns its error surface and
   // `null` = unsupported host); the two mutations go through `call()` so a

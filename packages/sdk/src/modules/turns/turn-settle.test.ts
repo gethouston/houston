@@ -408,20 +408,19 @@ test("finishOk with suggest_reusable co-occurring with a question still settles 
   expect(s.terminal).toBe("needs_you");
 });
 
-test("finishOk with a single approval step settles needs_you (approvals are BLOCKING)", () => {
+test("finishOk with a single branded question step settles needs_you (confirmations are BLOCKING)", () => {
   const { statuses, output } = recorder();
-  const s = newTurnState("Houston/Bo", "activity-approval", output);
+  const s = newTurnState("Houston/Bo", "activity-confirm", output);
   s.text = "Ready to send the email?";
-  // A permission the turn is waiting on — nothing about it is optional, so it
-  // must block completion (unlike a lone suggest_reusable).
+  // A confirmation the turn is waiting on — nothing about it is optional, so
+  // it must block completion (unlike a lone suggest_reusable).
   s.pendingInteraction = {
     steps: [
       {
-        kind: "approval",
-        id: "a1",
+        kind: "question",
+        id: "q1",
+        question: "Should I send the draft?",
         toolkit: "gmail",
-        action: "GMAIL_SEND_DRAFT",
-        paramsHash: "h1",
       },
     ],
   };
@@ -430,20 +429,19 @@ test("finishOk with a single approval step settles needs_you (approvals are BLOC
   expect(statuses).toEqual([["completed", undefined]]);
 });
 
-test("finishOk with an approval step co-occurring with suggest_reusable still settles needs_you", () => {
+test("finishOk with a question step co-occurring with suggest_reusable still settles needs_you", () => {
   const { output } = recorder();
-  const s = newTurnState("Houston/Bo", "activity-approval-mixed", output);
+  const s = newTurnState("Houston/Bo", "activity-confirm-mixed", output);
   s.text = "Ready?";
-  // suggest_reusable only settles `done` when it is ALONE — a blocking approval
-  // beside it means the mission is not done.
+  // suggest_reusable only settles `done` when it is ALONE — a blocking
+  // question beside it means the mission is not done.
   s.pendingInteraction = {
     steps: [
       {
-        kind: "approval",
-        id: "a1",
+        kind: "question",
+        id: "q1",
+        question: "Should I send the draft?",
         toolkit: "gmail",
-        action: "GMAIL_SEND_DRAFT",
-        paramsHash: "h1",
       },
       {
         kind: "suggest_reusable",

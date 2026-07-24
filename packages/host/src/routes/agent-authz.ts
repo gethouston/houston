@@ -9,7 +9,6 @@ import type {
   WorkspaceRuntime,
 } from "../domain/types";
 import type { EventHub } from "../events/hub";
-import type { LocalActionApprovals } from "../integrations/action-approvals";
 import type { CustomIntegrationManager } from "../integrations/custom/manager";
 import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
@@ -72,12 +71,6 @@ export interface AgentRouteDeps {
    * defeat idle-sleep wholesale.
    */
   agentRequestCount?: () => number;
-  /**
-   * Per-agent action approvals (mirrors ControlPlaneDeps.actionApprovals) —
-   * the dispatch-surface routes (`/agents/:id/action-approvals/*`) write here.
-   * Absent → those requests fall through toward the runtime channel (404).
-   */
-  actionApprovals?: LocalActionApprovals;
   /**
    * Custom-integration manager (mirrors ControlPlaneDeps.customIntegrations) —
    * the dispatch-surface user routes (`/agents/:id/integrations/custom/*`)

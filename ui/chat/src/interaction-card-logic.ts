@@ -13,6 +13,7 @@ import {
 
 export type {
   ChatInteractionAnswer,
+  ChatInteractionBrand,
   ChatInteractionOption,
   ChatInteractionStep,
 } from "./interaction-card-model.ts";
@@ -221,17 +222,6 @@ export function advanceConnect(
 
 /** Advance past a signin step once the app reports the user signed in. */
 export function advanceSignin(
-  state: StepperState,
-  steps: ChatInteractionStep[],
-): Transition {
-  return advance(state, steps);
-}
-
-/** Advance past an approval step once the app reports the action resolved — a
- *  DENIED approval is still a completed decision, not a skip, so it advances
- *  exactly like an allowed one (the "allowed" vs "denied" distinction is the
- *  app's accounting; the machine just moves the cursor). */
-export function advanceApproval(
   state: StepperState,
   steps: ChatInteractionStep[],
 ): Transition {

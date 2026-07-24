@@ -119,7 +119,7 @@ test("walks three questions one at a time and composes a single structured reply
   // Answer step 2 by free text -> advances to 3 of 3. A free-text-only question
   // has no options, so its escape row shows the neutral placeholder; Enter in
   // the field commits the draft (there is no footer Next button anymore).
-  const freeText = page.getByPlaceholder("Type another option...");
+  const freeText = page.getByPlaceholder("Type your answer...");
   await freeText.fill("Window seat please");
   await freeText.press("Enter");
   await expect(page.getByText("Morning or evening flight?")).toBeVisible();
@@ -359,7 +359,7 @@ test("advances from a question to a connect step in one sequence", async ({
   // Answer the question (Enter commits the free-text draft) -> advance to the
   // connect step (2 of 2). The app NAME is the identity line, the reason is the
   // foreground body line, and the Connect CTA owns the footer; the question is gone.
-  const freeText = page.getByPlaceholder("Type another option...");
+  const freeText = page.getByPlaceholder("Type your answer...");
   await freeText.fill("john@example.com");
   await freeText.press("Enter");
 
@@ -433,7 +433,7 @@ test("advances from a question to a signin step in a three-step sequence", async
   // Answer the question (Enter commits) -> advance to the SIGNIN step (2 of 3).
   // "Houston" is the identity line, its reason the foreground body line, and the
   // Sign in button the footer; the question is gone, the connect (3 of 3) queued.
-  const freeText = page.getByPlaceholder("Type another option...");
+  const freeText = page.getByPlaceholder("Type your answer...");
   await freeText.fill("john@example.com");
   await freeText.press("Enter");
 
@@ -711,7 +711,7 @@ test("skipping the connect step of a mixed sequence keeps the answers and record
   await expect(
     page.getByText("Who should I send the itinerary to?"),
   ).toBeVisible({ timeout: 15_000 });
-  const freeText = page.getByPlaceholder("Type another option...");
+  const freeText = page.getByPlaceholder("Type your answer...");
   await freeText.fill("john@example.com");
   await freeText.press("Enter");
 

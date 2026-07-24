@@ -246,13 +246,6 @@ export interface HostState {
   /** Per-user preference key -> value (locale, timezone, …). */
   preferences: Map<string, string>;
   /**
-   * agentId -> integration action approvals: `grants` action slugs the user
-   * confirmed ("Do it"), any params. Mirrors the real host's ApprovalRecord
-   * minus the TTL the fake host never needs. A missing key reads as the empty
-   * record.
-   */
-  actionApprovals: Map<string, { grants: string[] }>;
-  /**
    * workspaceId -> the sidebar's order + grouping (real host persists it as the
    * `sidebar_layout` workspace preference). A missing key reads as the default.
    */
@@ -317,7 +310,6 @@ function freshState(): HostState {
     orgMembers: null,
     connections,
     preferences: new Map(),
-    actionApprovals: new Map(),
     sidebarLayouts: new Map(),
     connSeq: 1,
   };

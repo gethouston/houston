@@ -1683,25 +1683,6 @@ export class HoustonClient {
       { days: days.toString() },
     );
   }
-  // ---------- action approvals ----------
-
-  /**
-   * Confirm an action on the approval card: grant this exact action for the
-   * agent, clearing it to run once without another confirmation (the host
-   * holds the grant for a short window; params may be adjusted on re-issue). A
-   * mutation, so it does NOT degrade a 404 to a fake success — a real failure
-   * must reach the user.
-   */
-  async grantActionApproval(
-    agentSlugOrId: string,
-    action: string,
-  ): Promise<void> {
-    await this.request(
-      "POST",
-      `/agents/${this.seg(agentSlugOrId)}/action-approvals/grants`,
-      { action },
-    );
-  }
   /**
    * Retire a conversation's pending interaction by appending a durable stop
    * marker (the stepper X / abandon). A runtime passthrough — like a real Stop,

@@ -53,7 +53,7 @@ interface ChatCredentialInteractionCardProps extends StepChrome {
  * its OWN `InteractionModal` inside the shared `ChatInteractionCard` sequence
  * (via its `renderCredential` prop, wired with the `StepChrome` the stepper hands
  * it — the header pager + dismiss X), so it reads as a first-class sibling of the
- * connect/signin/approval cards. The modal TITLE is the identity lockup — a key
+ * connect/signin cards. The modal TITLE is the identity lockup — a key
  * glyph beside the integration NAME at regular weight — and the body is the
  * agent's REASON in foreground tone ("Add your Acme key") over a muted
  * reassurance line, then the secure key {@link CustomCredentialForm} whose secret

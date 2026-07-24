@@ -22,14 +22,13 @@ import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
 import {
   type ChatInteractionAnswer,
   ChatInteractionCard,
+  type ChatInteractionStep,
   ChatPlanReadyCard,
   type ChatPlanReadyLabels,
   ChatSuggestReusableCard,
   type ChatSuggestReusableLabels,
   decodeAttachmentMessage,
   decodeInteractionAnswersMessage,
-  humanizeActionSlug,
-  prettifyToolkit,
   UserAttachmentMessage,
   type UserAttachmentMessageLabels,
   UserInteractionAnswersMessage,
@@ -81,11 +80,9 @@ import { useDictation } from "../lib/dictation/use-dictation";
 import { genericErrorDescription } from "../lib/error-toast";
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import {
-  type ApprovalOutcome,
   type ConnectOutcome,
   type CredentialOutcome,
   encodeInteractionAnswersMessage,
-  finalApprovalNames,
   finalConnectNames,
   finalCredentialNames,
 } from "../lib/interaction-reply";
@@ -125,7 +122,6 @@ import {
   tauriAttachments,
   tauriChat,
   tauriConfig,
-  tauriIntegrations,
   tauriProvider,
   withAttachmentPaths,
 } from "../lib/tauri";
@@ -138,7 +134,6 @@ import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { newConversationDraftKey, useDraftStore } from "../stores/drafts";
 import { useUIStore } from "../stores/ui";
-import { ChatApprovalInteractionCard } from "./chat-approval-interaction-card";
 import { ChatConnectInteractionCard } from "./chat-connect-interaction-card";
 import { ChatCredentialInteractionCard } from "./chat-credential-interaction-card";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
@@ -175,6 +170,7 @@ import {
 } from "./tabs/provider-auth-feed";
 import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
+import { useToolkitBrandResolver } from "./use-toolkit-brand-resolver";
 import { UserSkillMessage } from "./user-skill-message";
 
 interface UseAgentChatPanelArgs {
@@ -204,7 +200,7 @@ interface AgentChatPanelProps {
   /** Selected Skill chip rendered above the prompt input. */
   composerHeader: AIBoardProps["composerHeader"];
   /** The pending-interaction card shown when the mission is waiting on the user
-   *  (ask_user / request_connection / approval / credential), or a lighter
+   *  (ask_user / request_connection / credential), or a lighter
    *  plan_ready / suggest_reusable offer. Undefined when nothing is pending or a
    *  turn is running. Pair it with {@link composerOverrideMode}. */
   composerOverride: AIBoardProps["composerOverride"];
@@ -1104,6 +1100,12 @@ export function useAgentChatPanel({
     ],
   );
 
+  // Resolves a question step's `toolkit` to the app's presentational brand (logo
+  // + name) so a question that concerns an integration wears the app's identity
+  // in its title. Read-only (no connect side effects); a catalog miss yields the
+  // prettified slug and no logo. Stable across renders unless the catalog moves.
+  const resolveBrand = useToolkitBrandResolver();
+
   const interactionLabels = useMemo(
     () => ({
       placeholder: t("chat:questionCard.placeholder"),
@@ -1161,7 +1163,7 @@ export function useAgentChatPanel({
   // Keyed on the STABLE `selectedActivityId` string (not the `selectedActivity`
   // object), so an activity-query refetch mid-sequence never gives this callback
   // a new reference — which would recompute the composerOverride memo and RESET
-  // the in-progress connect/approval outcome maps the user is walking.
+  // the in-progress connect/credential outcome maps the user is walking.
   const clearPersistedInteraction = useCallback(async () => {
     if (!path) return;
     if (selectedActivityId) {
@@ -1184,7 +1186,7 @@ export function useAgentChatPanel({
       });
   }, [path, selectedActivityId, selectedSessionKey, queryClient, addToast, t]);
 
-  // The stepper's X on ANY step kind (question/signin/connect/approval): "the
+  // The stepper's X on ANY step kind (question/signin/connect/credential): "the
   // user interrupted, nothing was decided" — exactly a Stop. Hide the card at
   // once (the abandoned-key suppresses it), append the durable stop marker on the
   // runtime (its own toast on failure via `call()`; swallow the re-throw so the
@@ -1332,7 +1334,7 @@ export function useAgentChatPanel({
   // reset — while the user walks the steps; a fresh interaction gets a fresh
   // array.
   // The pending-interaction override plus how it composes with the input: the
-  // stepper (question / signin / connect / approval / credential) REPLACES the
+  // stepper (question / signin / connect / credential) REPLACES the
   // composer (its own free-text row is the one input on screen — no competing
   // "Send a follow-up..." below it), while the lighter plan_ready / suggest_reusable
   // offers stay ABOVE the always-mounted composer (they carry no text input, so
@@ -1411,7 +1413,16 @@ export function useAgentChatPanel({
         ),
       };
     }
-    const steps = override.steps;
+    // Map the protocol steps into ui/chat steps, resolving each question step's
+    // optional `toolkit` into a presentational brand (logo + name) so a question
+    // that concerns an integration wears the app's identity in its title. A step
+    // with no toolkit passes through unbranded; a catalog miss keeps the question
+    // plain-titled with a prettified name and no logo — never a crash.
+    const steps: ChatInteractionStep[] = override.steps.map((step) =>
+      step.kind === "question" && step.toolkit
+        ? { ...step, brand: resolveBrand(step.toolkit) }
+        : step,
+    );
     const hasQuestionSteps = steps.some((step) => step.kind === "question");
     // A completed sequence has walked EVERY step, but a signin/connect step may
     // have been SKIPPED — a fact the agent must hear (or it re-asks forever) —
@@ -1424,12 +1435,6 @@ export function useAgentChatPanel({
     // doesn't recompute — and the outcomes don't reset — while the user walks
     // the steps; a fresh interaction starts clean.
     const connectOutcomes = new Map<string, ConnectOutcome>();
-    // Per approval step's FINAL decision (last write wins), recorded in place as
-    // the user acts — like `connectOutcomes`. Lives in the memo body (not a ref)
-    // for the same reason: `deriveActiveInteraction` returns a STABLE reference
-    // so the memo doesn't recompute while the user walks the steps; a fresh
-    // interaction starts clean.
-    const approvalOutcomes = new Map<string, ApprovalOutcome>();
     let signinOutcome: "pending" | "signedIn" | "skipped" = "pending";
     // The user's typed "do this instead" text on a declined sign-in step (the
     // free-text row), relayed to the agent so it hears the redirection. Lives in
@@ -1464,22 +1469,6 @@ export function useAgentChatPanel({
                 steps.filter((s) => s.kind === "connect").map((s) => s.id),
                 connectOutcomes,
               );
-            // Approval decisions ride AFTER the connect lines, in step order. The
-            // flat body the MODEL reads names the RAW slug (so it re-issues the
-            // EXACT same action, or leaves a denied one alone); the VISIBLE
-            // transcript payload names the humanized `display` a non-technical user
-            // can read ("Allowed Gmail to send draft.").
-            const {
-              approvedActions,
-              deniedActions,
-              redoItems,
-              approvedDisplays,
-              deniedDisplays,
-              redoDisplays,
-            } = finalApprovalNames(
-              steps.filter((s) => s.kind === "approval").map((s) => s.id),
-              approvalOutcomes,
-            );
             // Credential outcomes mirror connects: saved keys name "Added the X
             // key.", declined ones "Skipped adding the X key." — FINAL state, so a
             // key skipped then reconsidered reports saved, never a stale skip.
@@ -1496,12 +1485,6 @@ export function useAgentChatPanel({
                 answers,
                 connectedNames,
                 skippedConnectNames,
-                approvedActions,
-                deniedActions,
-                redoItems,
-                approvedDisplays,
-                deniedDisplays,
-                redoDisplays,
                 credentialedNames,
                 skippedCredentialNames,
                 connectRedirects,
@@ -1527,18 +1510,6 @@ export function useAgentChatPanel({
                 signinRedirectLine: (text) =>
                   t("chat:interaction.signinRedirectLine", { text }),
                 signedInFollowup: t("chat:interaction.signedInFollowup"),
-                approvedLine: (action) =>
-                  t("chat:interaction.approvedLine", { action }),
-                deniedLine: (action) =>
-                  t("chat:interaction.deniedLine", { action }),
-                redoLine: (action, text) =>
-                  t("chat:interaction.redoLine", { action, text }),
-                approvedLineDisplay: ({ app, action }) =>
-                  t("chat:interaction.approvedLineDisplay", { app, action }),
-                deniedLineDisplay: ({ app, action }) =>
-                  t("chat:interaction.deniedLineDisplay", { app, action }),
-                redoLineDisplay: ({ app, action }, text) =>
-                  t("chat:interaction.redoLineDisplay", { app, action, text }),
                 credentialedFollowup: t("chat:credential.savedFollowup", {
                   name: credentialedNames.join(", "),
                 }),
@@ -1609,64 +1580,6 @@ export function useAgentChatPanel({
               toolkit={step.toolkit}
             />
           )}
-          renderApproval={(step, api) => {
-            // The recorded decision maps to the card's calm decided-state label
-            // when the user walks Back onto a resolved step.
-            const outcome = approvalOutcomes.get(step.id)?.decision;
-            return (
-              <ChatApprovalInteractionCard
-                key={step.id}
-                stepId={step.id}
-                pager={api.pager}
-                onDismiss={api.onDismiss}
-                dismissLabel={api.dismissLabel}
-                disabled={api.disabled}
-                toolkit={step.toolkit}
-                action={step.action}
-                intent={step.intent}
-                revisited={api.revisited}
-                outcome={outcome}
-                onDecision={(decision) => {
-                  // The RAW slug is what the model re-issues; `display` is the
-                  // humanized app + action the visible transcript line shows a
-                  // non-technical user ("Allowed Gmail to send email.").
-                  const display = {
-                    app: prettifyToolkit(step.toolkit),
-                    action: humanizeActionSlug(step.action, step.toolkit),
-                  };
-                  // "Not now" and "differently" write nothing to the host — they
-                  // resolve synchronously (the model hears the refusal / the redo
-                  // ask). "Do it" grants the action FIRST, then records + advances
-                  // on success; a grant FAILURE keeps the frontier here so the user
-                  // can retry (the tauri `call()` already toasted once — never
-                  // double-toast, never advance on failure).
-                  if (decision !== "doIt") {
-                    approvalOutcomes.set(step.id, {
-                      action: step.action,
-                      decision:
-                        decision === "notNow" ? "notNow" : "differently",
-                      display,
-                      text: decision === "notNow" ? undefined : decision.text,
-                    });
-                    api.onResolve();
-                    return;
-                  }
-                  tauriIntegrations
-                    .grantActionApproval(agent.id, step.action)
-                    .then(() => {
-                      approvalOutcomes.set(step.id, {
-                        action: step.action,
-                        decision: "doIt",
-                        display,
-                      });
-                      api.onResolve();
-                    })
-                    // `call()` toasted; swallow the re-throw and DON'T advance.
-                    .catch(() => {});
-                }}
-              />
-            );
-          }}
           renderCredential={(step, api) => (
             <ChatCredentialInteractionCard
               key={step.id}
@@ -1718,6 +1631,7 @@ export function useAgentChatPanel({
     sendInteractionMessage,
     clearPersistedInteraction,
     dismissActiveInteraction,
+    resolveBrand,
     t,
   ]);
   const composerOverride = composerOverrideState.node;

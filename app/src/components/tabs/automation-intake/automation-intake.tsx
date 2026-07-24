@@ -161,7 +161,6 @@ export function AutomationIntake({
       labels={labels}
       onComplete={onQuestionComplete}
       onDismiss={onDismiss}
-      renderApproval={noRender}
       renderConnect={noRender}
       renderCredential={noRender}
       renderCustom={(_step, api) => renderDetail(api)}

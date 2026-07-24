@@ -8,10 +8,8 @@
 // A turn's steps are the question steps (from one ask_user call, 1 to 3
 // questions) FOLLOWED BY at most one signin step (the user must sign in to
 // Houston first) FOLLOWED BY the connect steps (one per request_connection
-// call, deduped by toolkit) FOLLOWED BY the approval steps (one per
-// integration action awaiting the user's permission). Approvals land LAST:
-// approving an action happens after the toolkit it belongs to is connected.
-// Any single kind alone still yields a valid sequence.
+// call, deduped by toolkit). Any single kind alone still yields a valid
+// sequence.
 //
 // `suggest_reusable` is the ONE exception to "present → needs_you": the model
 // calls it on a clean finish to suggest saving the just-completed work as a
@@ -31,22 +29,23 @@ export interface InteractionOption {
 
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
  *  question steps, `s1` for the single signin step, `c1`..`cN` for connect
- *  steps, `a1`..`aN` for approval steps, `k1`..`kN` for credential steps) so
- *  each step's outcome is addressable. A `question` carries its text + optional
- *  single-select options; a `signin` asks the user to sign in to Houston with an
- *  optional user-facing reason; a `connect` names the toolkit to connect with an
- *  optional user-facing reason; an `approval` names the toolkit + action of an
- *  integration call awaiting the user's permission and, like the other blocking
- *  kinds, drives the board card to `needs_you` (present → needs_you); a
- *  `credential` asks the user to enter a custom integration's API key/token in a
- *  secure field (never into the chat) — `toolkit` is the custom integration's
- *  slug. */
+ *  steps, `k1`..`kN` for credential steps) so each step's outcome is
+ *  addressable. A `question` carries its text + optional single-select options,
+ *  plus an optional `toolkit` slug that brands the card with a connected app's
+ *  logo (set when the question confirms an app action); a `signin` asks the user
+ *  to sign in to Houston with an optional user-facing reason; a `connect` names
+ *  the toolkit to connect with an optional user-facing reason; a `credential`
+ *  asks the user to enter a custom integration's API key/token in a secure field
+ *  (never into the chat) — `toolkit` is the custom integration's slug. */
 export type InteractionStep =
   | {
       kind: "question";
       id: string;
       question: string;
       options?: InteractionOption[];
+      /** Lowercase toolkit slug (e.g. "gmail") when the question concerns a
+       *  connected app: the card shows that app's logo. */
+      toolkit?: string;
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }
@@ -58,33 +57,10 @@ export type InteractionStep =
       reusableKind: "skill" | "routine" | "learning";
       title: string;
       rationale: string;
-    }
-  | {
-      kind: "approval";
-      /** Tool-assigned id: `a1`..`aN`, in first-seen order. */
-      id: string;
-      /** Lowercase toolkit slug, e.g. "gmail". */
-      toolkit: string;
-      /** The action slug, e.g. "GMAIL_SEND_DRAFT". */
-      action: string;
-      /** The agent-phrased confirmation question, in the user's language, covering
-       *  the full scope of what is about to happen (e.g. "Should I send the 30
-       *  invites?"). Optional: absent for actions whose intent the model didn't
-       *  supply; the card falls back to its generic prompt. */
-      intent?: string;
-      /** Display-ready key/values for the card's param rows (values already truncated host-side). */
-      params?: Record<string, string>;
-      /** How many params were dropped past the card's row cap (present only when
-       *  > 0). The card surfaces it so the user knows the hash covers settings
-       *  the rows don't show. */
-      paramsOmitted?: number;
-      /** Stable short digest of (action, raw params), minted host-side; the one-shot allow ticket is keyed by it. */
-      paramsHash: string;
     };
 
 /** The ordered steps the mission is waiting on: question steps first (at most 3),
- *  then at most one signin step, then connect steps, then approval steps (which
- *  land last — approving happens after connecting). Always at least one step. */
+ *  then at most one signin step, then connect steps. Always at least one step. */
 export interface PendingInteraction {
   steps: InteractionStep[];
 }
@@ -95,7 +71,11 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 /** One step, structurally valid. */
 export const isInteractionStep = (v: unknown): v is InteractionStep => {
   if (!isRecord(v) || typeof v.id !== "string") return false;
-  if (v.kind === "question") return typeof v.question === "string";
+  if (v.kind === "question")
+    return (
+      typeof v.question === "string" &&
+      (v.toolkit === undefined || typeof v.toolkit === "string")
+    );
   if (v.kind === "signin")
     return v.reason === undefined || typeof v.reason === "string";
   if (v.kind === "connect") return typeof v.toolkit === "string";
@@ -109,27 +89,28 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
       typeof v.title === "string" &&
       typeof v.rationale === "string"
     );
-  if (v.kind === "approval")
-    return (
-      typeof v.toolkit === "string" &&
-      typeof v.action === "string" &&
-      typeof v.paramsHash === "string" &&
-      (v.intent === undefined || typeof v.intent === "string") &&
-      (v.paramsOmitted === undefined || typeof v.paramsOmitted === "number") &&
-      (v.params === undefined ||
-        (isRecord(v.params) &&
-          Object.values(v.params).every((p) => typeof p === "string")))
-    );
   return false;
 };
 
-/** Structural guard for persisted/wire data. Interactions outlive code: an
- *  activity, chat message, or localStorage entry written by an OLDER build
- *  (the pre-step `{kind, question}` / `{kind, questions}` / `{kind, toolkit}`
- *  shapes) has no `steps` and must be treated as absent, never rendered.
- *  Every seam that READS a persisted interaction goes through this guard. */
+/** Structural parse for persisted/wire data. Interactions outlive code, and a
+ *  mixed-version peer may carry a step KIND this build no longer recognizes
+ *  (e.g. a legacy `approval` step). Unknown or malformed steps are DROPPED, not
+ *  fatal: the remaining valid steps still render. Returns undefined when there
+ *  is no `steps` array or no valid step survives — including the pre-step
+ *  `{kind, question}` / `{kind, questions}` / `{kind, toolkit}` shapes older
+ *  builds wrote, which have no `steps` at all. Read seams should prefer this
+ *  over the boolean guard so the dropped steps never reach the renderer. */
+export const parsePendingInteraction = (
+  v: unknown,
+): PendingInteraction | undefined => {
+  if (!isRecord(v) || !Array.isArray(v.steps)) return undefined;
+  const steps = v.steps.filter(isInteractionStep);
+  return steps.length > 0 ? { steps } : undefined;
+};
+
+/** Boolean guard over {@link parsePendingInteraction}: true when at least one
+ *  recognized step survives. Tolerant by construction — an unknown step kind
+ *  never makes a whole interaction absent. Every seam that READS a persisted
+ *  interaction goes through this (or the parse). */
 export const isPendingInteraction = (v: unknown): v is PendingInteraction =>
-  isRecord(v) &&
-  Array.isArray(v.steps) &&
-  v.steps.length > 0 &&
-  v.steps.every(isInteractionStep);
+  parsePendingInteraction(v) !== undefined;

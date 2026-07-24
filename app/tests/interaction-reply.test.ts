@@ -6,13 +6,10 @@ import type { ChatInteractionAnswer } from "@houston-ai/chat";
 import { decodeInteractionAnswersMessage } from "../../ui/chat/src/interaction-answers-message.ts";
 import { isAutoContinueMessage } from "../src/lib/auto-continue-message.ts";
 import {
-  type ApprovalDisplay,
-  type ApprovalOutcome,
   type ConnectOutcome,
   type CredentialOutcome,
   composeInteractionReply,
   encodeInteractionAnswersMessage,
-  finalApprovalNames,
   finalConnectNames,
   finalCredentialNames,
 } from "../src/lib/interaction-reply.ts";
@@ -27,12 +24,6 @@ const base = {
   answers: [] as ChatInteractionAnswer[],
   connectedNames: [] as string[],
   skippedConnectNames: [] as string[],
-  approvedActions: [] as string[],
-  deniedActions: [] as string[],
-  redoItems: [] as { action: string; text: string }[],
-  approvedDisplays: [] as ApprovalDisplay[],
-  deniedDisplays: [] as ApprovalDisplay[],
-  redoDisplays: [] as { display: ApprovalDisplay; text: string }[],
   credentialedNames: [] as string[],
   skippedCredentialNames: [] as string[],
   connectRedirects: [] as { name: string; text: string }[],
@@ -53,20 +44,6 @@ const base = {
   signedInLine: "Signed in to Houston.",
   skippedSigninLine: "Skipped signing in.",
   signedInFollowup: "I've signed in. Please continue.",
-  // Body factories name the RAW slug (the model re-issues it).
-  approvedLine: (action: string) =>
-    `Approved: go ahead with ${action}. Re-issue it now; it will run without another confirmation.`,
-  deniedLine: (action: string) =>
-    `I chose not to allow ${action}. Do not retry it; continue without it.`,
-  redoLine: (action: string, text: string) =>
-    `For ${action} the user asked for a change: ${text}. Adjust and re-issue it; it will run without another confirmation.`,
-  // Display factories name the humanized app + action (the visible payload).
-  approvedLineDisplay: ({ app, action }: ApprovalDisplay) =>
-    `Allowed ${app} to ${action}.`,
-  deniedLineDisplay: ({ app, action }: ApprovalDisplay) =>
-    `Did not allow ${app} to ${action}.`,
-  redoLineDisplay: ({ app, action }: ApprovalDisplay, text: string) =>
-    `Asked ${app} to ${action} differently: ${text}.`,
   skippedCredentialLine: (name: string) => `Skipped adding the ${name} key.`,
   credentialedFollowup: "I've added the Acme key. Please continue.",
 };
@@ -212,102 +189,6 @@ describe("composeInteractionReply", () => {
     strictEqual(reply.includes("I've signed in. Please continue."), false);
   });
 
-  // ── Approval composition ───────────────────────────────────────────────
-  // An approval-only sequence has no user-typed text, so it resumes the agent
-  // HIDDEN, naming the go-ahead so the model re-issues the SAME action slug.
-  it("hides an approval-only sequence and names the approved action", () => {
-    const reply = composeInteractionReply({
-      ...base,
-      approvedActions: ["GMAIL_SEND_EMAIL"],
-    });
-    strictEqual(isAutoContinueMessage(reply), true);
-    strictEqual(
-      reply.endsWith(
-        "Approved: go ahead with GMAIL_SEND_EMAIL. Re-issue it now; it will run without another confirmation.",
-      ),
-      true,
-    );
-  });
-
-  // A question+approval sequence is visible (the user typed the answers); the
-  // approval line follows the answers, in sequence order.
-  it("appends the approval line after answers in a mixed question+approval sequence", () => {
-    const reply = composeInteractionReply({
-      ...base,
-      answers,
-      approvedActions: ["GMAIL_SEND_EMAIL"],
-      hasQuestionSteps: true,
-    });
-    strictEqual(isAutoContinueMessage(reply), false);
-    strictEqual(
-      reply,
-      "To whom?: john@example.com\nSaying what?: Running late\nApproved: go ahead with GMAIL_SEND_EMAIL. Re-issue it now; it will run without another confirmation.",
-    );
-  });
-
-  // A redirection ("differently") carries user-typed text, so its sequence
-  // resumes VISIBLY (not hidden) even with no question steps — the transcript
-  // should show what the user asked, and the flat body names the RAW slug.
-  it("resumes a redirection-only sequence VISIBLY naming the raw slug and text", () => {
-    const reply = composeInteractionReply({
-      ...base,
-      redoItems: [{ action: "GMAIL_SEND_EMAIL", text: "use a warmer tone" }],
-    });
-    strictEqual(isAutoContinueMessage(reply), false);
-    strictEqual(
-      reply,
-      "For GMAIL_SEND_EMAIL the user asked for a change: use a warmer tone. Adjust and re-issue it; it will run without another confirmation.",
-    );
-  });
-
-  // A denied action is a fact the agent MUST hear (do not retry): it rides the
-  // hidden resume for an approval-only sequence.
-  it("hides a denied approval-only sequence but names the refusal", () => {
-    const reply = composeInteractionReply({
-      ...base,
-      deniedActions: ["GMAIL_SEND_EMAIL"],
-    });
-    strictEqual(isAutoContinueMessage(reply), true);
-    strictEqual(
-      reply.endsWith(
-        "I chose not to allow GMAIL_SEND_EMAIL. Do not retry it; continue without it.",
-      ),
-      true,
-    );
-  });
-
-  // Approvals come AFTER the connect lines, approved before denied, in order.
-  it("orders approvals after connects, approved before denied", () => {
-    const reply = composeInteractionReply({
-      ...base,
-      answers,
-      connectedNames: ["Gmail"],
-      approvedActions: ["GMAIL_SEND_EMAIL"],
-      deniedActions: ["GMAIL_DELETE_EMAIL"],
-      hasQuestionSteps: true,
-    });
-    strictEqual(
-      reply,
-      "To whom?: john@example.com\nSaying what?: Running late\nConnected Gmail.\nApproved: go ahead with GMAIL_SEND_EMAIL. Re-issue it now; it will run without another confirmation.\nI chose not to allow GMAIL_DELETE_EMAIL. Do not retry it; continue without it.",
-    );
-  });
-
-  // Confirmed, declined, and redirected in ONE sequence: the redo line rides
-  // after the denied line, and the sequence is visible (a redirection has text).
-  it("orders a redirection after approved and denied lines", () => {
-    const reply = composeInteractionReply({
-      ...base,
-      approvedActions: ["GMAIL_SEND_EMAIL"],
-      deniedActions: ["GMAIL_DELETE_EMAIL"],
-      redoItems: [{ action: "SLACK_POST", text: "post it to #general" }],
-    });
-    strictEqual(isAutoContinueMessage(reply), false);
-    strictEqual(
-      reply,
-      "Approved: go ahead with GMAIL_SEND_EMAIL. Re-issue it now; it will run without another confirmation.\nI chose not to allow GMAIL_DELETE_EMAIL. Do not retry it; continue without it.\nFor SLACK_POST the user asked for a change: post it to #general. Adjust and re-issue it; it will run without another confirmation.",
-    );
-  });
-
   // A connect step declined WITH typed text carries the user's instruction, so
   // the sequence resumes VISIBLY (not the hidden connect-only auto-continue).
   it("resumes a connect decline-with-text VISIBLY naming the instruction", () => {
@@ -352,105 +233,7 @@ describe("composeInteractionReply", () => {
   });
 });
 
-describe("finalApprovalNames", () => {
-  const outcomes = (
-    entries: [string, ApprovalOutcome][],
-  ): Map<string, ApprovalOutcome> => new Map(entries);
-  /** A display pair from the slug, mirroring the panel's humanization. */
-  const disp = (app: string, action: string): ApprovalDisplay => ({
-    app,
-    action,
-  });
-
-  it("splits final decisions into confirmed + declined + redirected, in step order", () => {
-    const {
-      approvedActions,
-      deniedActions,
-      redoItems,
-      approvedDisplays,
-      deniedDisplays,
-      redoDisplays,
-    } = finalApprovalNames(
-      ["a1", "a2", "a3"],
-      outcomes([
-        [
-          "a1",
-          {
-            action: "GMAIL_SEND_EMAIL",
-            decision: "doIt",
-            display: disp("Gmail", "send email"),
-          },
-        ],
-        [
-          "a2",
-          {
-            action: "GMAIL_DELETE_EMAIL",
-            decision: "notNow",
-            display: disp("Gmail", "delete email"),
-          },
-        ],
-        [
-          "a3",
-          {
-            action: "SLACK_POST",
-            decision: "differently",
-            display: disp("Slack", "post"),
-            text: "to #general",
-          },
-        ],
-      ]),
-    );
-    deepStrictEqual(approvedActions, ["GMAIL_SEND_EMAIL"]);
-    deepStrictEqual(deniedActions, ["GMAIL_DELETE_EMAIL"]);
-    deepStrictEqual(redoItems, [{ action: "SLACK_POST", text: "to #general" }]);
-    // Displays stay aligned with their slug list, in step order.
-    deepStrictEqual(approvedDisplays, [disp("Gmail", "send email")]);
-    deepStrictEqual(deniedDisplays, [disp("Gmail", "delete email")]);
-    deepStrictEqual(redoDisplays, [
-      { display: disp("Slack", "post"), text: "to #general" },
-    ]);
-  });
-
-  // Last decision wins: declined then re-confirmed records the confirmation only.
-  it("reports confirmed for a step declined then re-confirmed (last write wins)", () => {
-    const map = outcomes([
-      [
-        "a1",
-        {
-          action: "SLACK_POST",
-          decision: "notNow",
-          display: disp("Slack", "post"),
-        },
-      ],
-    ]);
-    map.set("a1", {
-      action: "SLACK_POST",
-      decision: "doIt",
-      display: disp("Slack", "post"),
-    });
-    const { approvedActions, deniedActions } = finalApprovalNames(["a1"], map);
-    deepStrictEqual(approvedActions, ["SLACK_POST"]);
-    deepStrictEqual(deniedActions, []);
-  });
-
-  it("omits an approval step that was never reached", () => {
-    const { approvedActions, deniedActions } = finalApprovalNames(
-      ["a1", "a2"],
-      outcomes([
-        [
-          "a1",
-          {
-            action: "GMAIL_SEND_EMAIL",
-            decision: "doIt",
-            display: disp("Gmail", "send email"),
-          },
-        ],
-      ]),
-    );
-    deepStrictEqual(approvedActions, ["GMAIL_SEND_EMAIL"]);
-    deepStrictEqual(deniedActions, []);
-  });
-
+describe("credential composition", () => {
   // ── Credential composition (HOU-550) ───────────────────────────────────
   // A credential-only sequence mirrors signin-only: no factual line to relay,
   // so it resumes with the dedicated hidden followup naming the integration.
@@ -737,61 +520,6 @@ describe("encodeInteractionAnswersMessage", () => {
     });
     strictEqual(isAutoContinueMessage(encoded), true);
     strictEqual(decodeInteractionAnswersMessage(encoded), null);
-  });
-
-  // The model reads the RAW slug in the flat body, but the VISIBLE Q&A payload a
-  // non-technical user sees names the humanized app + action.
-  it("keeps the slug in the body but humanizes the approval line in the payload", () => {
-    const shared = {
-      ...base,
-      answers,
-      approvedActions: ["GMAIL_SEND_DRAFT"],
-      deniedActions: ["GMAIL_DELETE_EMAIL"],
-      approvedDisplays: [{ app: "Gmail", action: "send draft" }],
-      deniedDisplays: [{ app: "Gmail", action: "delete email" }],
-      hasQuestionSteps: true,
-    };
-    const encoded = encodeInteractionAnswersMessage(shared);
-    const flat = composeInteractionReply(shared);
-    // Body (what the model reads): the raw slug, verbatim.
-    strictEqual(flat.includes("go ahead with GMAIL_SEND_DRAFT."), true);
-    strictEqual(encoded.endsWith(`\n\n${flat}`), true);
-    // Payload (what the user reads): the humanized line, no slug.
-    const payload = decodeInteractionAnswersMessage(encoded);
-    deepStrictEqual(payload?.lines.slice(-2), [
-      { answer: "Allowed Gmail to send draft." },
-      { answer: "Did not allow Gmail to delete email." },
-    ]);
-  });
-
-  // A redirection keeps the RAW slug + verbatim text in the model-facing body,
-  // but the VISIBLE payload names the humanized app + action plus the text.
-  it("keeps the slug in the body but humanizes the redirection line in the payload", () => {
-    const shared = {
-      ...base,
-      redoItems: [{ action: "GMAIL_SEND_DRAFT", text: "make it shorter" }],
-      redoDisplays: [
-        {
-          display: { app: "Gmail", action: "send draft" },
-          text: "make it shorter",
-        },
-      ],
-    };
-    const encoded = encodeInteractionAnswersMessage(shared);
-    const flat = composeInteractionReply(shared);
-    // Body (what the model reads): the raw slug + text, verbatim.
-    strictEqual(
-      flat.includes(
-        "For GMAIL_SEND_DRAFT the user asked for a change: make it shorter.",
-      ),
-      true,
-    );
-    strictEqual(encoded.endsWith(`\n\n${flat}`), true);
-    // Payload (what the user reads): the humanized line, no slug.
-    const payload = decodeInteractionAnswersMessage(encoded);
-    deepStrictEqual(payload?.lines.slice(-1), [
-      { answer: "Asked Gmail to send draft differently: make it shorter." },
-    ]);
   });
 
   it("does NOT mark a hidden credential-only sequence", () => {

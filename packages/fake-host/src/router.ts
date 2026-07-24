@@ -18,7 +18,6 @@ import {
 } from "./chat-controls";
 import { CORS, json } from "./http";
 import { handleAgents } from "./routes";
-import { handleActionApprovals } from "./routes-action-approvals";
 import { handleUserRoutes } from "./routes-integrations";
 import { handleSetupRuntime } from "./routes-setup-runtime";
 import { handleTeamsRoutes } from "./routes-teams";
@@ -181,12 +180,6 @@ export async function handle(req: Request): Promise<Response> {
       agents: state.listAgents(),
     });
   }
-  // Read back the action-approval writes the interaction card made: the granted
-  // action slugs (the product grants route never reads back). Lets an e2e assert
-  // the confirm card posted the step's action.
-  if (path === "/__test__/action-approvals" && method === "GET") {
-    return json(state.approvalsSnapshot());
-  }
   // Flip a pending connection to active (models the OAuth completing).
   if (path === "/__test__/integrations-activate" && method === "POST") {
     const body = await parseBody(req);
@@ -228,10 +221,6 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/v1/catalog" && method === "GET") {
     return json(buildProviderCatalog());
   }
-  // --- per-agent integration action approvals (owner routes, both deployments) ---
-  const approvalRoute = handleActionApprovals(method, segs, body);
-  if (approvalRoute) return approvalRoute;
-
   // --- user-scoped gateway routes (integrations, preferences, locale) ---
   const userRoute = handleUserRoutes(method, segs, body);
   if (userRoute) return userRoute;

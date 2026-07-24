@@ -2,7 +2,7 @@ import { useEffect } from "react";
 
 /**
  * The shared capture-phase Enter/Esc handler for an interaction step's card
- * (approval / connect / signin), which each previously carried a near-verbatim
+ * (connect / signin / credential), which each previously carried a near-verbatim
  * copy of this window listener.
  *
  * While `enabled`, a bare Enter fires `onEnter` and a bare Escape fires

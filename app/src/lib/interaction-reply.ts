@@ -27,19 +27,9 @@ import {
  * actually typed.
  *
  * A SIGNIN-ONLY sequence that actually signed in (no questions, no connect
- * steps walked or skipped, no approval decided) has nothing factual to relay, so
+ * steps walked or skipped) has nothing factual to relay, so
  * it resumes the agent with the dedicated hidden `signedInFollowup` ("I've signed
  * in. Please continue.") instead of the bare status line.
- *
- * After the connect lines come the APPROVAL decisions, in step order: a confirmed
- * action ("Do it") contributes `approvedLine(action)`, a declined one ("Not now")
- * `deniedLine(action)`, and a redirected one ("differently") `redoLine(action,
- * text)` — the RAW action slug, because the model reads this flat body and
- * re-issues the action (adjusting it for a redirection), so it names it verbatim.
- * (The VISIBLE transcript payload names the humanized action instead — see
- * {@link encodeInteractionAnswersMessage}.) A confirm/decline-only sequence (no
- * questions) resumes the agent hidden, like a connect-only one; a redirection
- * carries user-typed text, so its sequence resumes VISIBLY.
  *
  * A saved custom-integration key adds `credentialedLine(name)` ("Added the X
  * key."), a declined one `skippedCredentialLine(name)` ("Skipped adding the X
@@ -52,27 +42,20 @@ import {
  * connect / sign-in / credential step WITH typed text records a
  * decline-with-instruction, contributing `connectRedirectLine(name, text)` /
  * `signinRedirectLine(text)` / `credentialRedirectLine(name, text)` — the user's
- * verbatim "do this instead", which the agent reads and reacts to. Like an
- * approval redirection it carries user text, so its sequence resumes VISIBLY.
+ * verbatim "do this instead", which the agent reads and reacts to. Because it
+ * carries user text, its sequence resumes VISIBLY.
  *
  * The line factories (`connectedLine` / `skippedConnectLine` / `connectRedirectLine`
  * / `signedInLine` / `skippedSigninLine` / `signinRedirectLine` / `signedInFollowup`
- * / `approvedLine` / `deniedLine` / `redoLine` / `credentialedLine` /
- * `skippedCredentialLine` / `credentialRedirectLine`) are injected so this stays
- * i18n-agnostic and unit-testable — the caller passes the `t(...)` results.
+ * / `credentialedLine` / `skippedCredentialLine` / `credentialRedirectLine`) are
+ * injected so this stays i18n-agnostic and unit-testable — the caller passes the
+ * `t(...)` results.
  */
 export function composeInteractionReply(args: {
   answers: ChatInteractionAnswer[];
   connectedNames: string[];
   /** Apps whose connect step the user skipped, in skip order. */
   skippedConnectNames: string[];
-  /** Actions the user confirmed ("Do it"), raw slugs in step order. */
-  approvedActions: string[];
-  /** Actions the user declined ("Not now"), raw slugs in step order. */
-  deniedActions: string[];
-  /** Actions the user redirected ("differently"): the raw slug plus the verbatim
-   *  text of what to do instead, in step order. */
-  redoItems: { action: string; text: string }[];
   /** Custom integrations whose secret the user saved during THIS sequence. */
   credentialedNames: string[];
   /** Custom integrations whose credential step the user skipped, in skip order —
@@ -106,13 +89,6 @@ export function composeInteractionReply(args: {
   skippedSigninLine: string;
   /** The hidden resume message for a signin-ONLY sequence (nothing else to say). */
   signedInFollowup: string;
-  /** The go-ahead line a confirmed action contributes (raw slug). */
-  approvedLine: (action: string) => string;
-  /** The refusal line a declined action contributes (raw slug). */
-  deniedLine: (action: string) => string;
-  /** The redirection line a "differently" action contributes: the raw slug plus
-   *  the user's verbatim text (the model adjusts and re-issues). */
-  redoLine: (action: string, text: string) => string;
   /** The line a connect step declined-with-text contributes: the app name plus
    *  the user's verbatim instruction (model-facing AND visible — the app name is
    *  already human, so ONE line serves both, like `connectedLine`). */
@@ -125,16 +101,13 @@ export function composeInteractionReply(args: {
   credentialedFollowup: string;
 }): string {
   // Signin-only, actually signed in: no answers to relay, no connection and no
-  // skip to name, and no approval decided, so send the friendlier hidden followup
-  // rather than a lone "Signed in to Houston." line.
+  // skip to name, so send the friendlier hidden followup rather than a lone
+  // "Signed in to Houston." line.
   if (
     !args.hasQuestionSteps &&
     args.signedIn &&
     args.connectedNames.length === 0 &&
     args.skippedConnectNames.length === 0 &&
-    args.approvedActions.length === 0 &&
-    args.deniedActions.length === 0 &&
-    args.redoItems.length === 0 &&
     args.credentialedNames.length === 0 &&
     args.skippedCredentialNames.length === 0
   )
@@ -151,7 +124,6 @@ export function composeInteractionReply(args: {
     args.skippedConnectNames.length === 0 &&
     args.skippedCredentialNames.length === 0 &&
     args.credentialRedirects.length === 0 &&
-    args.redoItems.length === 0 &&
     args.credentialedNames.length > 0
   )
     return encodeAutoContinueMessage(args.credentialedFollowup);
@@ -166,11 +138,6 @@ export function composeInteractionReply(args: {
     lines.push(args.skippedConnectLine(name));
   for (const r of args.connectRedirects)
     lines.push(args.connectRedirectLine(r.name, r.text));
-  for (const action of args.approvedActions)
-    lines.push(args.approvedLine(action));
-  for (const action of args.deniedActions) lines.push(args.deniedLine(action));
-  for (const item of args.redoItems)
-    lines.push(args.redoLine(item.action, item.text));
   for (const name of args.credentialedNames)
     lines.push(args.credentialedLine(name));
   for (const name of args.skippedCredentialNames)
@@ -183,7 +150,6 @@ export function composeInteractionReply(args: {
   // like a question sequence.
   const visible =
     args.hasQuestionSteps ||
-    args.redoItems.length > 0 ||
     args.connectRedirects.length > 0 ||
     args.credentialRedirects.length > 0 ||
     args.signinDeclineText != null;
@@ -285,92 +251,6 @@ export function finalCredentialNames(
   return { credentialedNames, skippedCredentialNames, credentialRedirects };
 }
 
-/** Humanized display parts for one approval's VISIBLE transcript line: the app
- *  name (`prettifyToolkit`) and the humanized action (`humanizeActionSlug`). The
- *  model reads the raw slug; the user reads these. */
-export interface ApprovalDisplay {
-  app: string;
-  action: string;
-}
-
-/** One approval step's FINAL decision in a walked sequence: the RAW action slug
- *  (what the model re-issues), a humanized `display` (what the user reads), the
- *  decision (confirmed "doIt", declined "notNow", or redirected "differently"),
- *  and — for a redirection — the verbatim `text` of what to do instead. A step
- *  decided more than once (walked Back and re-decided) records the LAST decision
- *  — the panel keys the outcome by step id, so one entry survives per step. */
-export interface ApprovalOutcome {
-  action: string;
-  decision: "doIt" | "notNow" | "differently";
-  display: ApprovalDisplay;
-  /** The redirection text, present only when `decision === "differently"`. */
-  text?: string;
-}
-
-/** One redirected approval's verbatim body item: the RAW slug the model
- *  re-issues plus the user's text. */
-export interface RedoItem {
-  action: string;
-  text: string;
-}
-
-/** One redirected approval's VISIBLE display: the humanized app + action plus
- *  the user's text. */
-export interface RedoDisplay {
-  display: ApprovalDisplay;
-  text: string;
-}
-
-/**
- * Split the approval steps' FINAL decisions into the confirmed + declined +
- * redirected lists the reply names, in step order — the RAW slugs (for the flat
- * body the model reads) paired with the humanized `display`s (for the visible
- * transcript payload). Keyed by step id, so re-deciding the SAME step yields
- * exactly one entry per step, in exactly one list. Steps with no recorded
- * decision (never reached) are omitted. Mirrors {@link finalConnectNames}.
- */
-export function finalApprovalNames(
-  approvalStepIds: string[],
-  outcomes: Map<string, ApprovalOutcome>,
-): {
-  approvedActions: string[];
-  deniedActions: string[];
-  redoItems: RedoItem[];
-  approvedDisplays: ApprovalDisplay[];
-  deniedDisplays: ApprovalDisplay[];
-  redoDisplays: RedoDisplay[];
-} {
-  const approvedActions: string[] = [];
-  const deniedActions: string[] = [];
-  const redoItems: RedoItem[] = [];
-  const approvedDisplays: ApprovalDisplay[] = [];
-  const deniedDisplays: ApprovalDisplay[] = [];
-  const redoDisplays: RedoDisplay[] = [];
-  for (const id of approvalStepIds) {
-    const outcome = outcomes.get(id);
-    if (!outcome) continue;
-    if (outcome.decision === "notNow") {
-      deniedActions.push(outcome.action);
-      deniedDisplays.push(outcome.display);
-    } else if (outcome.decision === "differently") {
-      const text = outcome.text ?? "";
-      redoItems.push({ action: outcome.action, text });
-      redoDisplays.push({ display: outcome.display, text });
-    } else {
-      approvedActions.push(outcome.action);
-      approvedDisplays.push(outcome.display);
-    }
-  }
-  return {
-    approvedActions,
-    deniedActions,
-    redoItems,
-    approvedDisplays,
-    deniedDisplays,
-    redoDisplays,
-  };
-}
-
 const MARKER_PREFIX = "<!--houston:interaction-answers ";
 const MARKER_SUFFIX = "-->";
 
@@ -387,30 +267,9 @@ const MARKER_SUFFIX = "-->";
  * A hidden auto-continue sequence (connect-only / signin-only, no questions)
  * never renders a user bubble, so there is nothing to structure-render: the
  * flat reply is returned unchanged, no marker added.
- *
- * The one place the payload DIVERGES from the flat body: approval lines. The
- * body names the RAW slug (the model must re-issue it), but the VISIBLE payload
- * a non-technical user reads uses the humanized `*LineDisplay` factories ("Allowed
- * Gmail to send draft." instead of "…GMAIL_SEND_DRAFT."), so the extra `*Displays`
- * + `*LineDisplay` args here carry that human phrasing.
  */
 export function encodeInteractionAnswersMessage(
-  args: Parameters<typeof composeInteractionReply>[0] & {
-    /** Humanized display parts for approved actions, aligned with the body's
-     *  `approvedActions` (step order); the payload names these, not the slug. */
-    approvedDisplays: ApprovalDisplay[];
-    deniedDisplays: ApprovalDisplay[];
-    /** Humanized display + text for redirected actions, aligned with the body's
-     *  `redoItems` (step order). */
-    redoDisplays: RedoDisplay[];
-    /** The VISIBLE transcript line for a confirmed action (humanized app + action). */
-    approvedLineDisplay: (display: ApprovalDisplay) => string;
-    /** The VISIBLE transcript line for a declined action (humanized app + action). */
-    deniedLineDisplay: (display: ApprovalDisplay) => string;
-    /** The VISIBLE transcript line for a redirected action (humanized app +
-     *  action, plus the user's verbatim text). */
-    redoLineDisplay: (display: ApprovalDisplay, text: string) => string;
-  },
+  args: Parameters<typeof composeInteractionReply>[0],
 ): string {
   const body = composeInteractionReply(args);
   // Hidden (no visible bubble) → leave the flat reply untouched.
@@ -432,13 +291,6 @@ export function encodeInteractionAnswersMessage(
   // and the user (the app name is already human), so ONE factory serves both.
   for (const r of args.connectRedirects)
     lines.push({ answer: args.connectRedirectLine(r.name, r.text) });
-  // The visible line names the humanized action + app, not the raw slug.
-  for (const display of args.approvedDisplays)
-    lines.push({ answer: args.approvedLineDisplay(display) });
-  for (const display of args.deniedDisplays)
-    lines.push({ answer: args.deniedLineDisplay(display) });
-  for (const rd of args.redoDisplays)
-    lines.push({ answer: args.redoLineDisplay(rd.display, rd.text) });
   for (const name of args.credentialedNames)
     lines.push({ answer: args.credentialedLine(name) });
   for (const name of args.skippedCredentialNames)

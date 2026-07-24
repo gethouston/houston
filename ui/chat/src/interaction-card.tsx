@@ -2,7 +2,6 @@
 
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import {
-  advanceApproval,
   advanceConnect,
   advanceCredential,
   advanceCustom,
@@ -23,7 +22,7 @@ import {
   skipStep,
   type Transition,
 } from "./interaction-card-logic";
-import { QuestionStepBody } from "./interaction-card-parts";
+import { BrandLogo, QuestionStepBody } from "./interaction-card-parts";
 import {
   InteractionModal,
   type InteractionModalPager,
@@ -32,13 +31,13 @@ import {
 
 export type {
   ChatInteractionAnswer,
+  ChatInteractionBrand,
   ChatInteractionOption,
   ChatInteractionStep,
 } from "./interaction-card-logic";
 
 type ConnectStep = Extract<ChatInteractionStep, { kind: "connect" }>;
 type SigninStep = Extract<ChatInteractionStep, { kind: "signin" }>;
-type ApprovalStep = Extract<ChatInteractionStep, { kind: "approval" }>;
 type CredentialStep = Extract<ChatInteractionStep, { kind: "credential" }>;
 type CustomStep = Extract<ChatInteractionStep, { kind: "custom" }>;
 
@@ -76,15 +75,6 @@ export interface ChatInteractionCardProps {
   renderSignin: (
     step: SigninStep,
     api: StepFooterApi & StepChrome & { onSignedIn: () => void },
-  ) => ReactNode;
-  /** Renders an approval step as its OWN {@link InteractionModal} (see
-   *  {@link renderConnect}): the action's `(icon) name` header, the param rows,
-   *  and the footer's Deny + Allow CTAs. Both Allow and Deny resolve the step —
-   *  the APP records which decision before calling `api.onResolve` to advance.
-   *  ui/chat stays Composio-unaware, so the app supplies the reactive card. */
-  renderApproval: (
-    step: ApprovalStep,
-    api: StepFooterApi & StepChrome & { onResolve: () => void },
   ) => ReactNode;
   /** Renders a credential step as its OWN {@link InteractionModal} (see
    *  {@link renderConnect}): the integration's `(icon) name` header, the reason
@@ -160,16 +150,19 @@ export interface StepFooterApi {
  * header row, footer row); the stepper decides what fills the title / body /
  * footer for the current step.
  *
- * A question step routes its text into the modal TITLE, renders its option rows
- * (LEFT number badge = keyboard shortcut, regular-weight label, optional
+ * A plain question step routes its text into the modal TITLE, renders its option
+ * rows (LEFT number badge = keyboard shortcut, regular-weight label, optional
  * Recommended chip) plus the free-text ESCAPE field as the body, and puts the
  * card-wide decline ("Skip" + Esc) ALONE in the footer — questions have no
  * primary CTA because clicking an option answers and advances. Typing + Enter in
- * the escape field submits; "Skip" (or Esc) skips the step.
+ * the escape field submits; "Skip" (or Esc) skips the step. A question carrying a
+ * `brand` (it concerns an integration) instead puts the app's logo + NAME in the
+ * title (like the connect card) and moves the question text into the body above
+ * the options — one asking system, branded when the app resolved an identity.
  *
- * A signin/connect/approval step's reactive body — its `(icon) name` header
- * title, the reason/params body, and the footer's decline + filled CTA — is
- * app-supplied via `renderSignin` / `renderConnect` / `renderApproval`, which
+ * A signin/connect step's reactive body — its `(icon) name` header
+ * title, the reason body, and the footer's decline + filled CTA — is
+ * app-supplied via `renderSignin` / `renderConnect`, which
  * render their OWN {@link InteractionModal} wired with the {@link StepChrome}
  * this stepper hands them, so the card stays Composio/auth-unaware while every
  * step shares one shell. Every non-question step also carries an always-visible
@@ -184,7 +177,6 @@ export function ChatInteractionCard({
   onComplete,
   renderConnect,
   renderSignin,
-  renderApproval,
   renderCredential,
   renderCustom,
   onDismiss,
@@ -280,10 +272,6 @@ export function ChatInteractionCard({
     apply(advanceSignin(state, steps));
   }, [apply, state, steps]);
 
-  const onResolve = useCallback(() => {
-    apply(advanceApproval(state, steps));
-  }, [apply, state, steps]);
-
   const onSaved = useCallback(() => {
     apply(advanceCredential(state, steps));
   }, [apply, state, steps]);
@@ -324,9 +312,6 @@ export function ChatInteractionCard({
   if (step.kind === "connect") {
     return renderConnect(step, { ...footerApi, ...chrome, onConnected });
   }
-  if (step.kind === "approval") {
-    return renderApproval(step, { ...footerApi, ...chrome, onResolve });
-  }
   if (step.kind === "credential") {
     return renderCredential(step, { ...footerApi, ...chrome, onSaved });
   }
@@ -340,6 +325,27 @@ export function ChatInteractionCard({
   }
 
   const optionsPresent = hasSelectableOptions(step.options);
+  // A branded question wears the app's identity in the title (logo + name, like
+  // the connect card) and moves the question text into the body; a plain one
+  // keeps the question in the title with no body lead. Either way the options
+  // come FIRST and the free-text row sits below (QuestionStepBody's order).
+  const brand = step.brand;
+  const questionBody = (
+    <QuestionStepBody
+      disabled={disabled}
+      draft={draft}
+      hideFreeText={optionsPresent && step.hideFreeText === true}
+      onDraftChange={(value) => setState((s) => setDraft(s, stepId, value))}
+      onOption={onOption}
+      onSubmit={onSend}
+      options={step.options}
+      placeholder={optionsPresent ? escapePlaceholder : neutralPlaceholder}
+      recommendedLabel={recommendedLabel}
+      selectedId={selectedId}
+      sendLabel={sendLabel}
+      skip={{ label: skipLabel, escLabel, onSkip, disabled }}
+    />
+  );
 
   return (
     <InteractionModal
@@ -349,25 +355,34 @@ export function ChatInteractionCard({
       onDismiss={onDismiss}
       pager={pager}
       title={
-        <InteractionModalTitle className="text-balance">
-          {step.question}
-        </InteractionModalTitle>
+        brand ? (
+          <InteractionModalTitle
+            className="flex-1 truncate"
+            icon={
+              brand.logoUrl ? (
+                <BrandLogo name={brand.name} url={brand.logoUrl} />
+              ) : undefined
+            }
+          >
+            {brand.name}
+          </InteractionModalTitle>
+        ) : (
+          <InteractionModalTitle className="text-balance">
+            {step.question}
+          </InteractionModalTitle>
+        )
       }
       body={
-        <QuestionStepBody
-          disabled={disabled}
-          draft={draft}
-          hideFreeText={optionsPresent && step.hideFreeText === true}
-          onDraftChange={(value) => setState((s) => setDraft(s, stepId, value))}
-          onOption={onOption}
-          onSubmit={onSend}
-          options={step.options}
-          placeholder={optionsPresent ? escapePlaceholder : neutralPlaceholder}
-          recommendedLabel={recommendedLabel}
-          selectedId={selectedId}
-          sendLabel={sendLabel}
-          skip={{ label: skipLabel, escLabel, onSkip, disabled }}
-        />
+        brand ? (
+          <div className="flex flex-col gap-2.5">
+            <p className="text-balance text-ink text-sm leading-snug">
+              {step.question}
+            </p>
+            {questionBody}
+          </div>
+        ) : (
+          questionBody
+        )
       }
     />
   );

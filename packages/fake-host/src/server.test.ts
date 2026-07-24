@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SEED_AGENT_ID, SEED_WORKSPACE_ID } from "./config";
 import { type FakeHost, startFakeHost } from "./server";
-import { isGranted } from "./state";
 
 /**
  * Covers the package's new lifecycle surface — `startFakeHost` / `FakeHost.stop`
@@ -185,77 +184,39 @@ describe("startFakeHost", () => {
     expect(res.status).toBe(404);
   });
 
-  it("round-trips the per-agent action-approval grant route", async () => {
-    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
-    const grants = `${host.url}/v1/agents/${SEED_AGENT_ID}/action-approvals/grants`;
-    const snapshot = `${host.url}/__test__/action-approvals`;
-    const jsonHeaders = { "content-type": "application/json" };
-
-    // Unset → nothing granted.
-    expect(await (await fetch(snapshot)).json()).toEqual({ grants: [] });
-
-    // Confirming grants the slug and echoes ok.
-    const allow = await fetch(grants, {
-      method: "POST",
-      headers: jsonHeaders,
-      body: JSON.stringify({ action: "GMAIL_SEND_DRAFT" }),
-    });
-    expect(allow.status).toBe(200);
-    expect(await allow.json()).toEqual({ ok: true });
-    // A re-grant dedupes case-insensitively; the snapshot reflects the stored list.
-    await fetch(grants, {
-      method: "POST",
-      headers: jsonHeaders,
-      body: JSON.stringify({ action: "gmail_send_draft" }),
-    });
-    expect(await (await fetch(snapshot)).json()).toEqual({
-      grants: ["GMAIL_SEND_DRAFT"],
-    });
-
-    // An invalid action slug is a clean 400, never a swallowed accept.
-    const badAction = await fetch(grants, {
-      method: "POST",
-      headers: jsonHeaders,
-      body: JSON.stringify({ action: "bad slug!" }),
-    });
-    expect(badAction.status).toBe(400);
-
-    // The grant is readable through the state helper.
-    expect(isGranted(SEED_AGENT_ID, "gmail_send_draft")).toBe(true);
-    expect(isGranted(SEED_AGENT_ID, "SLACK_POST")).toBe(false);
-  });
-
   it("dismiss-interaction stops the transcript and clears the activity", async () => {
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     const agentBase = `${host.url}/agents/${SEED_AGENT_ID}`;
     const jsonHeaders = { "content-type": "application/json" };
-    const approval = {
+    const interaction = {
       steps: [
         {
-          kind: "approval",
-          id: "a1",
+          kind: "question",
+          id: "q1",
+          question: "Should I send the draft?",
           toolkit: "gmail",
-          action: "GMAIL_SEND_DRAFT",
-          params: { to: "a@b.com" },
-          paramsHash: "0123456789abcdef",
+          options: [
+            { id: "send", label: "Send it", recommended: true },
+            { id: "dont", label: "Don't send" },
+          ],
         },
       ],
     };
 
-    // Bind a conversation to the seeded activity and persist the approval
+    // Bind a conversation to the seeded activity and persist the question
     // interaction VERBATIM (covers the kind-agnostic PATCH set path).
     const patched = await fetch(`${agentBase}/activities/act-1`, {
       method: "PATCH",
       headers: jsonHeaders,
       body: JSON.stringify({
         session_key: "conv-1",
-        pending_interaction: approval,
+        pending_interaction: interaction,
       }),
     });
     const patchedBody = (await patched.json()) as {
       pending_interaction?: unknown;
     };
-    expect(patchedBody.pending_interaction).toEqual(approval);
+    expect(patchedBody.pending_interaction).toEqual(interaction);
 
     // Dismiss: append the stop marker + retire the pending interaction.
     const dismissed = await fetch(
@@ -287,22 +248,14 @@ describe("startFakeHost", () => {
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     const url = `${host.url}/agents/${SEED_AGENT_ID}/activities/act-1`;
     const jsonHeaders = { "content-type": "application/json" };
-    const approval = {
-      steps: [
-        {
-          kind: "approval",
-          id: "a1",
-          toolkit: "gmail",
-          action: "X",
-          paramsHash: "0123456789abcdef",
-        },
-      ],
+    const interaction = {
+      steps: [{ kind: "question", id: "q1", question: "X?", toolkit: "gmail" }],
     };
 
     await fetch(url, {
       method: "PATCH",
       headers: jsonHeaders,
-      body: JSON.stringify({ pending_interaction: approval }),
+      body: JSON.stringify({ pending_interaction: interaction }),
     });
     // Explicit null clears it — the key is DELETED, not stored as null.
     const cleared = await fetch(url, {
