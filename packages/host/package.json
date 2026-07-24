@@ -19,8 +19,8 @@
     "typecheck": "tsgo -p tsconfig.json"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.80.6",
-    "@earendil-works/pi-coding-agent": "0.80.6",
+    "@earendil-works/pi-ai": "0.82.0",
+    "@earendil-works/pi-coding-agent": "0.82.0",
     "@executor-js/plugin-mcp": "1.5.32",
     "@executor-js/plugin-openapi": "1.5.32",
     "@executor-js/sdk": "1.5.32",

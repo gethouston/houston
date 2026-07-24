@@ -1,5 +1,5 @@
-import type { AuthStorage } from "@earendil-works/pi-coding-agent";
 import { ANTHROPIC_TOKEN_PREFIXES } from "../../auth/anthropic-setup-token";
+import type { HoustonAuthStore } from "../../auth/credential-store";
 import type { ClaudeToken } from "./backend";
 
 /**
@@ -38,12 +38,24 @@ function classify(value: string): ClaudeToken | undefined {
 }
 
 export function readAnthropicToken(
-  store: Pick<AuthStorage, "get">,
+  store: Pick<HoustonAuthStore, "get">,
 ): ClaudeToken | undefined {
   const cred = store.get("anthropic");
   if (!cred) return undefined; // not connected — no credential to read
 
-  if (cred.type === "api_key") return classify(cred.key.trim());
+  if (cred.type === "api_key") {
+    // pi ≥0.81 allows a keyless `api_key` entry (provider-env-only, e.g. an
+    // AWS profile). Anthropic's setup-token flow always stores a key, so an
+    // empty one is a corrupt entry — surface it, don't classify "".
+    const key = cred.key?.trim();
+    if (!key) {
+      console.warn(
+        `[claude] stored "anthropic" api_key credential has no key; refusing to use it`,
+      );
+      return undefined;
+    }
+    return classify(key);
+  }
   if (cred.type === "oauth") {
     const access = cred.access?.trim();
     if (!access) {

@@ -1,10 +1,12 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Api, KnownProvider, Model } from "@earendil-works/pi-ai";
+import type { Api, Model } from "@earendil-works/pi-ai";
 // `getModel` is pi-ai's legacy static-catalog read, preserved on `/compat`
 // (the new `Models`/`Provider` collection API needs an instantiated registry
-// we don't otherwise carry here).
-import { getModel } from "@earendil-works/pi-ai/compat";
+// we don't otherwise carry here). `BuiltinProvider` is the id union that read
+// accepts — narrower than `KnownProvider`, which since pi 0.82 also names
+// purely dynamic providers (radius) with no static catalog entry.
+import { type BuiltinProvider, getModel } from "@earendil-works/pi-ai/compat";
 import { authFailureActive } from "../auth/credential-health";
 import { authStorage, providerConnected } from "../auth/storage";
 import { config } from "../config";
@@ -418,7 +420,7 @@ export function safeGetModel(
   modelId: string,
   pinned: boolean,
 ) {
-  const pp = provider as KnownProvider;
+  const pp = provider as BuiltinProvider;
   const mp = modelId as Parameters<typeof getModel>[1];
   if (pinned) {
     // pi-ai's getModel returns `undefined` (it never throws) for an id the

@@ -1,9 +1,8 @@
 import {
   type AgentSessionEvent,
-  type AuthStorage,
   createAgentSession,
   DefaultResourceLoader,
-  type ModelRegistry,
+  type ModelRuntime,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import type { PiThinkingLevel } from "../ai/effort";
@@ -11,8 +10,7 @@ import type { PiThinkingLevel } from "../ai/effort";
 export interface OneShotOptions {
   cwd: string;
   model: unknown;
-  authStorage: AuthStorage;
-  modelRegistry: ModelRegistry;
+  modelRuntime: ModelRuntime;
   systemPrompt: string;
   prompt: string;
   /** Reasoning level for the turn. Omit to leave pi's own default in place
@@ -44,8 +42,7 @@ export async function oneShotText(opts: OneShotOptions): Promise<string> {
     cwd: opts.cwd,
     agentDir: opts.cwd,
     model: opts.model as never,
-    authStorage: opts.authStorage,
-    modelRegistry: opts.modelRegistry,
+    modelRuntime: opts.modelRuntime,
     sessionManager: SessionManager.inMemory(opts.cwd),
     resourceLoader: loader,
     tools: [],

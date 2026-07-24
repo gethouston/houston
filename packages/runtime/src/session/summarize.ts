@@ -1,10 +1,7 @@
-import type {
-  AuthStorage,
-  ModelRegistry,
-} from "@earendil-works/pi-coding-agent";
+import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import type { ChatMessage } from "@houston/runtime-client";
 import { activeProvider, resolveModel } from "../ai/providers";
-import { authStorage, modelRegistry } from "../auth/storage";
+import { authStorage, modelRuntime } from "../auth/storage";
 import { ClaudeBackendUnavailableError } from "../backends/claude/backend";
 import { readAnthropicToken } from "../backends/claude/read-token";
 import { titleWithClaude } from "../backends/claude/title";
@@ -38,15 +35,13 @@ export function buildExcerpt(messages: ChatMessage[]): string {
 export async function generateTitle(opts: {
   cwd: string;
   model: unknown;
-  authStorage: AuthStorage;
-  modelRegistry: ModelRegistry;
+  modelRuntime: ModelRuntime;
   excerpt: string;
 }): Promise<string> {
   const text = await oneShotText({
     cwd: opts.cwd,
     model: opts.model,
-    authStorage: opts.authStorage,
-    modelRegistry: opts.modelRegistry,
+    modelRuntime: opts.modelRuntime,
     systemPrompt: TITLE_PROMPT,
     prompt: opts.excerpt,
   });
@@ -117,8 +112,7 @@ function titleRunners(
       generateTitle({
         cwd: config.workspaceDir,
         model: model ?? resolveModel(),
-        authStorage,
-        modelRegistry,
+        modelRuntime,
         excerpt,
       }),
   };

@@ -1,12 +1,10 @@
-import type {
-  AuthCredential,
-  AuthStorage,
-} from "@earendil-works/pi-coding-agent";
+import type { Credential } from "@earendil-works/pi-ai";
 import { beforeEach, expect, test, vi } from "vitest";
+import type { HoustonAuthStore } from "../../auth/credential-store";
 import { readAnthropicToken } from "./read-token";
 
-/** A minimal AuthStorage stub: only `get("anthropic")` is exercised. */
-function store(cred: AuthCredential | undefined): Pick<AuthStorage, "get"> {
+/** A minimal credential-store stub: only `get("anthropic")` is exercised. */
+function store(cred: Credential | undefined): Pick<HoustonAuthStore, "get"> {
   return { get: (id: string) => (id === "anthropic" ? cred : undefined) };
 }
 
@@ -116,7 +114,7 @@ test("an oauth credential with an unrecognized prefix returns undefined AND logs
 
 test("an unknown stored variant returns undefined AND logs", () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-  const bogus = { type: "wat" } as unknown as AuthCredential;
+  const bogus = { type: "wat" } as unknown as Credential;
   expect(readAnthropicToken(store(bogus))).toBeUndefined();
   expect(warn).toHaveBeenCalledWith(
     expect.stringContaining("expected api_key or oauth"),

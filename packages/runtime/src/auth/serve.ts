@@ -185,7 +185,7 @@ async function runServedSync(): Promise<string[]> {
   }
   if (manifestDirty)
     writeServedProvidersAt(servedManifestPathFor(), [...manifest]);
-  // pi's AuthStorage caches auth.json in memory at startup; a direct write is
+  // Houston's auth store caches auth.json in memory at startup; a direct write is
   // invisible to hasAuth()/resolveModel() until we re-read it. This is the line
   // that makes a never-connected agent actually see the served credential.
   if (applied.length || removed.length) authStorage.reload();
