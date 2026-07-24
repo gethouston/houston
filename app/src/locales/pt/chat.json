@@ -2,6 +2,9 @@
   "welcome": {
     "greeting": "Olá! Eu sou {{name}}, seu novo agente. Me conte com o que você gostaria de ajuda: você pode descrever uma tarefa com as suas palavras, compartilhar alguns detalhes sobre como gosta que as coisas sejam feitas ou anexar arquivos que me deem contexto. Quanto mais você me contar, melhor o meu trabalho vai se encaixar no que você precisa. Com o que você gostaria de começar?"
   },
+  "setupGreeting": {
+    "text": "Oi! Eu sou {{name}}. Estou preparando tudo por aqui, me dê um instante e já me apresento direitinho."
+  },
   "composer": {
     "placeholder": "Pergunte qualquer coisa...",
     "fileAlreadyInChat": "Arquivo já está no chat",

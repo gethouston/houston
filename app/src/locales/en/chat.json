@@ -2,6 +2,9 @@
   "welcome": {
     "greeting": "Hi! I'm {{name}}, your new agent. Tell me about what you'd like help with: you can describe a task in your own words, share a few details about how you like things done, or attach files that give me context. The more you tell me, the better my work will fit what you need. What would you like to start with?"
   },
+  "setupGreeting": {
+    "text": "Hi! I'm {{name}}. I'm getting everything ready on my end, give me a moment and I'll introduce myself properly."
+  },
   "composer": {
     "placeholder": "Ask anything...",
     "fileAlreadyInChat": "File already in chat",
