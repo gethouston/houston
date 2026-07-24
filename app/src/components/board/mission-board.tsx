@@ -180,6 +180,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           chatEmptyState={panel.chatEmptyState}
           composerHeader={panel.composerHeader}
           composerOverride={panel.composerOverride}
+          composerOverrideMode={panel.composerOverrideMode}
           canSendEmpty={panel.canSendEmpty}
           onComposerSubmit={panel.onComposerSubmit}
           footer={panel.footer}

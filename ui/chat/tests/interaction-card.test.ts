@@ -96,6 +96,29 @@ describe("normalizeAnswer", () => {
   });
 });
 
+// The shared single-line free-text row (`InlineTextRow`) every non-question step
+// carries — approval redirection, or connect/sign-in/credential
+// decline-with-instruction — gates its send button and its `onSubmit` on the
+// SAME `normalizeAnswer`: the send lights up (and fires the TRIMMED text) only
+// when there is non-whitespace content, so a bare skip never masquerades as an
+// instruction. This locks that contract for the row's four consumers.
+describe("InlineTextRow send guard", () => {
+  /** Mirrors the row: `null` = button disabled / no submit; a string = the
+   *  trimmed text `onSubmit` fires. */
+  const rowSend = (value: string): string | null => normalizeAnswer(value);
+
+  it("stays disabled for empty or whitespace-only text", () => {
+    assert.equal(rowSend(""), null);
+    assert.equal(rowSend("    "), null);
+    assert.equal(rowSend("\n\t"), null);
+  });
+
+  it("submits the trimmed instruction once there is content", () => {
+    assert.equal(rowSend("  use my work account  "), "use my work account");
+    assert.equal(rowSend("read it from env"), "read it from env");
+  });
+});
+
 describe("optionLabel", () => {
   it("resolves a known option id", () => {
     assert.equal(optionLabel(Q1, "o2"), "Jane");

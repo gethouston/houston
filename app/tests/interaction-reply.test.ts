@@ -35,11 +35,20 @@ const base = {
   redoDisplays: [] as { display: ApprovalDisplay; text: string }[],
   credentialedNames: [] as string[],
   skippedCredentialNames: [] as string[],
+  connectRedirects: [] as { name: string; text: string }[],
+  credentialRedirects: [] as { name: string; text: string }[],
+  signinDeclineText: undefined as string | undefined,
   hasQuestionSteps: false,
   signedIn: false,
   signinSkipped: false,
   connectedLine: (name: string) => `Connected ${name}.`,
   skippedConnectLine: (name: string) => `Skipped connecting ${name}.`,
+  connectRedirectLine: (name: string, text: string) =>
+    `I didn't connect ${name}. Instead, do this: ${text}`,
+  credentialRedirectLine: (name: string, text: string) =>
+    `I didn't add the ${name} key. Instead, do this: ${text}`,
+  signinRedirectLine: (text: string) =>
+    `I didn't sign in. Instead, do this: ${text}`,
   credentialedLine: (name: string) => `Added the ${name} key.`,
   signedInLine: "Signed in to Houston.",
   skippedSigninLine: "Skipped signing in.",
@@ -298,6 +307,49 @@ describe("composeInteractionReply", () => {
       "Approved: go ahead with GMAIL_SEND_EMAIL. Re-issue it now; it will run without another confirmation.\nI chose not to allow GMAIL_DELETE_EMAIL. Do not retry it; continue without it.\nFor SLACK_POST the user asked for a change: post it to #general. Adjust and re-issue it; it will run without another confirmation.",
     );
   });
+
+  // A connect step declined WITH typed text carries the user's instruction, so
+  // the sequence resumes VISIBLY (not the hidden connect-only auto-continue).
+  it("resumes a connect decline-with-text VISIBLY naming the instruction", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      connectRedirects: [{ name: "Slack", text: "use my work account" }],
+    });
+    strictEqual(isAutoContinueMessage(reply), false);
+    strictEqual(
+      reply,
+      "I didn't connect Slack. Instead, do this: use my work account",
+    );
+  });
+
+  // A sign-in step declined WITH typed text resumes visibly too.
+  it("resumes a sign-in decline-with-text VISIBLY", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      signinSkipped: true,
+      signinDeclineText: "keep working signed out",
+    });
+    strictEqual(isAutoContinueMessage(reply), false);
+    strictEqual(
+      reply,
+      "Skipped signing in.\nI didn't sign in. Instead, do this: keep working signed out",
+    );
+  });
+
+  // A credential decline-with-text overrides the credential-only hidden followup:
+  // one key saved + one redirected must resume VISIBLY and keep BOTH lines.
+  it("keeps a saved key AND a credential redirect, resuming VISIBLY", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      credentialedNames: ["Acme"],
+      credentialRedirects: [{ name: "Globex", text: "read it from env" }],
+    });
+    strictEqual(isAutoContinueMessage(reply), false);
+    strictEqual(
+      reply,
+      "Added the Acme key.\nI didn't add the Globex key. Instead, do this: read it from env",
+    );
+  });
 });
 
 describe("finalApprovalNames", () => {
@@ -510,6 +562,38 @@ describe("finalConnectNames", () => {
     deepStrictEqual(connectedNames, ["Gmail"]);
     deepStrictEqual(skippedConnectNames, []);
   });
+
+  // A decline WITH typed text lands in connectRedirects (carries user text, so
+  // the sequence resumes visibly), never the plain skipped list. A bare skip
+  // (no message, or whitespace-only) stays a plain skip.
+  it("routes a decline-with-text into connectRedirects, not skipped", () => {
+    const { connectedNames, skippedConnectNames, connectRedirects } =
+      finalConnectNames(
+        ["c1", "c2", "c3"],
+        outcomes([
+          ["c1", { name: "Gmail", connected: true }],
+          [
+            "c2",
+            { name: "Slack", connected: false, message: "use my work one" },
+          ],
+          ["c3", { name: "GitHub", connected: false }],
+        ]),
+      );
+    deepStrictEqual(connectedNames, ["Gmail"]);
+    deepStrictEqual(skippedConnectNames, ["GitHub"]);
+    deepStrictEqual(connectRedirects, [
+      { name: "Slack", text: "use my work one" },
+    ]);
+  });
+
+  it("treats an empty decline message as a plain skip", () => {
+    const { skippedConnectNames, connectRedirects } = finalConnectNames(
+      ["c1"],
+      outcomes([["c1", { name: "Slack", connected: false, message: "" }]]),
+    );
+    deepStrictEqual(skippedConnectNames, ["Slack"]);
+    deepStrictEqual(connectRedirects, []);
+  });
 });
 
 describe("finalCredentialNames", () => {
@@ -551,6 +635,23 @@ describe("finalCredentialNames", () => {
     deepStrictEqual(credentialedNames, ["Acme"]);
     deepStrictEqual(skippedCredentialNames, []);
   });
+
+  // A decline WITH typed text lands in credentialRedirects (mirrors connect).
+  it("routes a decline-with-text into credentialRedirects, not skipped", () => {
+    const { credentialedNames, skippedCredentialNames, credentialRedirects } =
+      finalCredentialNames(
+        ["k1", "k2"],
+        outcomes([
+          ["k1", { name: "Acme", saved: false, message: "read it from env" }],
+          ["k2", { name: "Globex", saved: false }],
+        ]),
+      );
+    deepStrictEqual(credentialedNames, []);
+    deepStrictEqual(skippedCredentialNames, ["Globex"]);
+    deepStrictEqual(credentialRedirects, [
+      { name: "Acme", text: "read it from env" },
+    ]);
+  });
 });
 
 describe("encodeInteractionAnswersMessage", () => {
@@ -587,6 +688,35 @@ describe("encodeInteractionAnswersMessage", () => {
         { answer: "Connected Gmail." },
         { answer: "Skipped connecting Slack." },
         { answer: "Added the Acme key." },
+      ],
+    });
+  });
+
+  // A decline-with-instruction rides the VISIBLE structured payload too — the
+  // connect/credential/signin redirect lines read the same for model and user.
+  it("carries the decline-with-instruction lines in the payload, in order", () => {
+    const encoded = encodeInteractionAnswersMessage({
+      ...base,
+      signinSkipped: true,
+      signinDeclineText: "keep working signed out",
+      connectRedirects: [{ name: "Slack", text: "use my work account" }],
+      credentialRedirects: [{ name: "Acme", text: "read it from env" }],
+    });
+    const payload = decodeInteractionAnswersMessage(encoded);
+    deepStrictEqual(payload, {
+      lines: [
+        { answer: "Skipped signing in." },
+        {
+          answer: "I didn't sign in. Instead, do this: keep working signed out",
+        },
+        {
+          answer:
+            "I didn't connect Slack. Instead, do this: use my work account",
+        },
+        {
+          answer:
+            "I didn't add the Acme key. Instead, do this: read it from env",
+        },
       ],
     });
   });

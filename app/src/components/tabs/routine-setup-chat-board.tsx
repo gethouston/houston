@@ -167,6 +167,7 @@ export function RoutineSetupChatBoard({
         // turn settles needs_you — the interview IS this card, so dropping
         // it turns the guided setup into a dead chat.
         composerOverride={panel.composerOverride}
+        composerOverrideMode={panel.composerOverrideMode}
         composerLabels={composerLabels}
         prepareAttachments={attachmentValidation.prepareAttachments}
         onAttachmentRejections={attachmentValidation.onAttachmentRejections}

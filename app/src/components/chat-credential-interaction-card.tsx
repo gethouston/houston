@@ -1,9 +1,10 @@
 import {
+  InlineTextRow,
   InteractionModal,
   InteractionModalTitle,
   type StepChrome,
 } from "@houston-ai/chat";
-import { Button, Kbd } from "@houston-ai/core";
+import { Button } from "@houston-ai/core";
 import { Check, CornerDownLeft, KeyRound, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +13,7 @@ import {
   useSubmitCustomCredential,
 } from "../hooks/queries";
 import { useUIStore } from "../stores/ui";
+import { ChatStepDeclineButton } from "./chat-step-decline-button";
 import { CustomCredentialForm } from "./integrations/custom-credential-form";
 import { customAuthMethod } from "./integrations/custom-integrations-model";
 import { useInteractionStepKeys } from "./use-interaction-step-keys";
@@ -33,10 +35,12 @@ interface ChatCredentialInteractionCardProps extends StepChrome {
   /** Fired once the secret is stored — the panel records the integration's name
    *  and advances; the composed reply resumes the agent at the LAST step. */
   onSaved: (name: string) => void;
-  /** Fired when the user declines this credential step ("Skip", live frontier or
-   *  a reconsidered skip). The panel records the decline so the composed reply
-   *  tells the agent the user skipped the key, then advances. */
-  onSkip: (name: string) => void;
+  /** Fired when the user declines this credential step: "Skip" (live frontier or
+   *  a reconsidered skip) passes no `message`; typing an instruction into the
+   *  free-text row and sending passes that verbatim text. The panel records the
+   *  decline (with the message, if any, so the composed reply relays it) then
+   *  advances. */
+  onSkip: (name: string, message?: string) => void;
   /** True when the user walked BACK onto this already-reached step via the pager.
    *  A revisited step whose key is saved shows the calm saved state with no
    *  footer (the pager's forward chevron is the way onward); a revisited SKIPPED
@@ -172,23 +176,25 @@ export function ChatCredentialInteractionCard({
                 onReadyChange={setReady}
               />
             </div>
+            {/* Save the key, or tell it what to do instead. */}
+            <InlineTextRow
+              disabled={submit.isPending}
+              onSubmit={(text) => onSkip(name, text)}
+              placeholder={t("interaction.declinePlaceholder")}
+              sendLabel={t("questionCard.send")}
+            />
           </div>
         )
       }
       footer={
         isSaved ? undefined : (
           <>
-            <Button
-              className="gap-1.5 text-ink-muted"
+            <ChatStepDeclineButton
               disabled={submit.isPending}
+              escLabel={t("interaction.esc")}
+              label={t("interaction.skip")}
               onClick={() => onSkip(name)}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              {t("interaction.skip")}
-              <Kbd>{t("interaction.esc")}</Kbd>
-            </Button>
+            />
             <Button
               className="gap-1.5"
               disabled={!ready || submit.isPending}

@@ -7,7 +7,8 @@ import { expect, test } from "./support/fixtures";
  * host queued for the user's go-ahead. The turn ends on a `PendingInteraction`
  * whose step is `{ kind:"approval", id, toolkit, action, intent?, params?,
  * paramsHash }`; the SDK settles the board to `needs_you` and the app shows the
- * shared `InteractionModal` above the composer as a `ChatApprovalInteractionCard`
+ * shared `InteractionModal` in the composer's slot (REPLACING it, HOU-870) as a
+ * `ChatApprovalInteractionCard`
  * — the app identity lockup header, a plain confirmation question (the agent's
  * `intent` when it phrased one, else the generic "{action} with {app}?" fallback;
  * the raw params ride the wire but never render), an always-visible free-text row

@@ -172,9 +172,12 @@ export interface StepFooterApi {
  * app-supplied via `renderSignin` / `renderConnect` / `renderApproval`, which
  * render their OWN {@link InteractionModal} wired with the {@link StepChrome}
  * this stepper hands them, so the card stays Composio/auth-unaware while every
- * step shares one shell.
- * It renders ABOVE the real composer (which the caller keeps mounted alongside
- * it) — typing directly into that composer is the caller's implicit abandon.
+ * step shares one shell. Every non-question step also carries an always-visible
+ * free-text row (the app supplies it): typing an instruction there and sending
+ * declines the step WITH that message, which the caller relays to the agent.
+ * The caller seats this card in the composer's slot (replacing it), so its
+ * per-step free-text row is the one text input on screen; the card's dismiss X
+ * restores the composer.
  */
 export function ChatInteractionCard({
   steps,

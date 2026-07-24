@@ -59,6 +59,8 @@
     "signedInFollowup": "I've signed in. Please continue.",
     "skippedConnectLine": "Skipped connecting {{name}}.",
     "skippedSigninLine": "Skipped signing in.",
+    "connectRedirectLine": "I didn't connect {{name}}. Instead, do this: {{text}}",
+    "signinRedirectLine": "I didn't sign in. Instead, do this: {{text}}",
     "approvedLine": "Approved: go ahead with {{action}}. Re-issue it now; it will run without another confirmation.",
     "deniedLine": "I chose not to allow {{action}}. Do not retry it; continue without it.",
     "redoLine": "For {{action}} the user asked for a change: {{text}}. Adjust and re-issue it; it will run without another confirmation.",
@@ -75,6 +77,7 @@
     "confirmed": "Confirmed",
     "changed": "Changed",
     "differentlyPlaceholder": "Or tell it what to do differently...",
+    "declinePlaceholder": "Or tell it what to do instead...",
     "recommended": "Recommended",
     "skip": "Skip",
     "notNow": "Not now",
@@ -260,6 +263,7 @@
     "savedToast": "{{name}} is ready to use",
     "savedLine": "Added the {{name}} key.",
     "skippedLine": "Skipped adding the {{name}} key.",
+    "redirectLine": "I didn't add the {{name}} key. Instead, do this: {{text}}",
     "savedFollowup": "I've added the {{name}} key. Please continue.",
     "savedUnverifiedToast": "Key saved for {{name}}. The service hasn't confirmed it yet, so I'll flag it if calls fail."
   }

@@ -284,6 +284,9 @@ export type {
 } from "./interaction-card";
 export { ChatInteractionCard } from "./interaction-card";
 export { humanizeActionSlug, prettifyToolkit } from "./interaction-card-model";
+// The always-visible single-line free-text row every non-question step carries
+// (approval redirection / connect-signin-credential decline-with-instruction).
+export { InlineTextRow } from "./interaction-decline-row";
 // The shared modal shell every interaction step composes (a signin/connect body
 // renders its own, wired with the StepChrome the stepper hands it) so the whole
 // family shares one surface, header row, and footer row.

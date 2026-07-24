@@ -1,12 +1,14 @@
 import {
+  InlineTextRow,
   InteractionModal,
   InteractionModalTitle,
   type StepChrome,
 } from "@houston-ai/chat";
-import { Button, Kbd } from "@houston-ai/core";
+import { Button } from "@houston-ai/core";
 import { CornerDownLeft, Loader2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { ChatStepDeclineButton } from "./chat-step-decline-button";
 import { useIntegrationsGate } from "./integrations/use-integrations-gate";
 import { HoustonLogo } from "./shell/agent-avatar";
 import { useInteractionStepKeys } from "./use-interaction-step-keys";
@@ -21,10 +23,11 @@ interface ChatSigninInteractionCardProps extends StepChrome {
   /** Fired once the gate resolves `ready` (the Houston session landed) so the
    *  interaction sequence advances past this step. */
   onSignedIn: () => void;
-  /** Fired when the user declines this sign-in step ("Not now", live frontier
-   *  only). The panel records the skip so the composed reply tells the agent the
-   *  user declined, then advances the sequence. */
-  onSkip: () => void;
+  /** Fired when the user declines this sign-in step: "Not now" (live frontier
+   *  only) passes no `message`; typing an instruction into the free-text row and
+   *  sending passes that verbatim text. The panel records the decline (with the
+   *  message, if any, so the composed reply relays it) then advances. */
+  onSkip: (message?: string) => void;
   /** True when the user walked BACK onto this already-reached step via the pager.
    *  Already signed in -> the footer drops (the pager's forward chevron is the
    *  way onward); skipped -> the Sign in CTA returns so the user can reconsider. */
@@ -160,7 +163,8 @@ export function ChatSigninInteractionCard({
         </InteractionModalTitle>
       }
       // Two-field body: the agent's REASON (foreground "why") over the muted
-      // explainer line.
+      // explainer line, then the always-visible free-text row (until signed in)
+      // — sign in, or tell it what to do instead.
       body={
         <div className="flex flex-col gap-1">
           <p className="text-balance text-ink text-sm leading-snug">
@@ -169,23 +173,26 @@ export function ChatSigninInteractionCard({
           <p className="text-ink-muted text-sm">
             {t("interaction.signinDescription")}
           </p>
+          {showSignin && (
+            <InlineTextRow
+              disabled={pending}
+              onSubmit={(text) => onSkip(text)}
+              placeholder={t("interaction.declinePlaceholder")}
+              sendLabel={t("questionCard.send")}
+            />
+          )}
         </div>
       }
       footer={
         showSignin ? (
           <>
             {showNotNow && (
-              <Button
-                className="gap-1.5 text-ink-muted"
+              <ChatStepDeclineButton
                 disabled={pending}
-                onClick={onSkip}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                {t("interaction.skip")}
-                <Kbd>{t("interaction.esc")}</Kbd>
-              </Button>
+                escLabel={t("interaction.esc")}
+                label={t("interaction.skip")}
+                onClick={() => onSkip()}
+              />
             )}
             {signInButton}
           </>

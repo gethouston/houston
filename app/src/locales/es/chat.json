@@ -59,6 +59,8 @@
     "signedInFollowup": "Ya inicié sesión. Continúa, por favor.",
     "skippedConnectLine": "Omitiste conectar {{name}}.",
     "skippedSigninLine": "Omitiste iniciar sesión.",
+    "connectRedirectLine": "No conecté {{name}}. En vez de eso, haz esto: {{text}}",
+    "signinRedirectLine": "No inicié sesión. En vez de eso, haz esto: {{text}}",
     "approvedLine": "Aprobado: adelante con {{action}}. Vuelve a enviarlo ahora; se ejecutará sin otra confirmación.",
     "deniedLine": "Decidí no permitir {{action}}. No lo reintentes; continúa sin eso.",
     "redoLine": "Para {{action}} el usuario pidió un cambio: {{text}}. Ajústalo y vuelve a enviarlo; se ejecutará sin otra confirmación.",
@@ -75,6 +77,7 @@
     "confirmed": "Confirmado",
     "changed": "Cambiado",
     "differentlyPlaceholder": "O dile qué hacer diferente...",
+    "declinePlaceholder": "O dile qué hacer en vez de eso...",
     "recommended": "Recomendado",
     "skip": "Omitir",
     "notNow": "Ahora no",
@@ -260,6 +263,7 @@
     "savedToast": "{{name}} está listo para usarse",
     "savedLine": "Agregué la clave de {{name}}.",
     "skippedLine": "Omití agregar la clave de {{name}}.",
+    "redirectLine": "No agregué la clave de {{name}}. En vez de eso, haz esto: {{text}}",
     "savedFollowup": "Agregué la clave de {{name}}. Por favor continúa.",
     "savedUnverifiedToast": "Clave guardada para {{name}}. El servicio aún no la ha confirmado, te avisaré si las llamadas fallan."
   }

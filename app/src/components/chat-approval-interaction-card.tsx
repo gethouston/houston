@@ -1,13 +1,14 @@
 import {
   humanizeActionSlug,
+  InlineTextRow,
   InteractionModal,
   InteractionModalTitle,
   type StepChrome,
 } from "@houston-ai/chat";
-import { Button, Kbd } from "@houston-ai/core";
+import { Button } from "@houston-ai/core";
 import { Check, CornerDownLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { ChatApprovalRedirectRow } from "./chat-approval-redirect-row";
+import { ChatStepDeclineButton } from "./chat-step-decline-button";
 import { AppLogo } from "./integrations";
 import { useIntegrationAppDisplay } from "./use-integration-app-display";
 import { useInteractionStepKeys } from "./use-interaction-step-keys";
@@ -135,9 +136,11 @@ export function ChatApprovalInteractionCard({
               </span>
             )
           ) : (
-            <ChatApprovalRedirectRow
+            <InlineTextRow
               disabled={disabled ?? false}
               onSubmit={(text) => onDecision({ kind: "differently", text })}
+              placeholder={t("interaction.differentlyPlaceholder")}
+              sendLabel={t("questionCard.send")}
             />
           )}
         </div>
@@ -145,17 +148,12 @@ export function ChatApprovalInteractionCard({
       footer={
         decided ? undefined : (
           <>
-            <Button
-              className="gap-1.5"
-              disabled={disabled}
+            <ChatStepDeclineButton
+              escLabel={t("interaction.esc")}
+              label={t("interaction.notNow")}
               onClick={() => onDecision("notNow")}
-              size="sm"
-              type="button"
               variant="outline"
-            >
-              {t("interaction.notNow")}
-              <Kbd>{t("interaction.esc")}</Kbd>
-            </Button>
+            />
             <Button
               className="gap-1.5"
               disabled={disabled}
