@@ -373,5 +373,9 @@
     "upgrade": "Mejorar",
     "writeBlockedTitle": "Necesitas mejorar el plan",
     "writeBlockedBody": "La prueba de tu equipo terminó. Pídele al propietario que mejore el plan para hacer cambios."
+  },
+  "personalSpace": {
+    "inviteBlockedTitle": "Este es tu espacio personal",
+    "inviteBlockedBody": "Tu espacio personal es solo para ti. Crea un equipo para invitar a otras personas."
   }
 }

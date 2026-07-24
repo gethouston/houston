@@ -121,9 +121,22 @@ Top-level view labelled **"Admin"** in the UI (`teams:org.nav`/`org.title`;
 "Admin" / "Administración" / "Administração"). The internal id, dir, and gate are
 UNCHANGED: `ORGANIZATION_VIEW_ID = "organization"`
 (`app/src/components/organization/`), rendered only when
-`canSeeOrganization(caps)` (multiplayer owner/admin). The sidebar nav entry and
-the `workspace-shell` render branch both guard on it, so it never mounts for a
-plain member or single-player.
+`canSeeOrganization(caps, activeSpaceIsTeam)` (multiplayer owner/admin, AND — on
+a Spaces host — a TEAM active space). The sidebar nav entry and the
+`workspace-shell` render branch both guard on it, so it never mounts for a plain
+member, single-player, or in the personal space of a Spaces host.
+
+**Personal space hides Admin + Permissions (HOU-824).** On a C8 Spaces host the
+personal space is single-player semantics: non-invitable (the gateway 403s a
+member-add with `personal_space`), no roster, no policy. So Admin and Permissions
+are TEAM-space surfaces there — `canSeeOrganization` returns false whenever the
+active space is personal (`!isTeamWorkspace(current.id)`), whatever the role. The
+two call sites (`workspace-shell.tsx`, `sidebar.tsx`) derive `activeSpaceIsTeam`
+from the active workspace id and thread the resulting `showOrganization` boolean
+everywhere it gates (the render branches, the `blockedTopLevelView` fallback that
+resets a stale personal-space `viewMode` to the dashboard, and the org/permissions
+UI tour steps). On a non-spaces multiplayer host (legacy Teams v2, exactly one
+org) `activeSpaceIsTeam` is irrelevant and behavior is unchanged.
 
 **Now membership + insights + billing ONLY.** All policy (per-agent access and
 per-agent ceilings) moved OUT to the new top-level **Permissions** view (next
@@ -194,8 +207,10 @@ pick an agent, then manage who can use it and what it can use.
 `PERMISSIONS_VIEW_ID = "permissions"`
 (`app/src/components/permissions/id.ts`), registered in
 `app/src/lib/top-level-views.ts` (`TOP_LEVEL_VIEWS` + `blockedTopLevelView`, which
-shares the Organization gate exactly). Gated by `canSeeOrganization(caps)`
-(multiplayer owner/admin) — the IDENTICAL gate to the Organization view. The sidebar
+shares the Organization gate exactly). Gated by `canSeeOrganization(caps,
+activeSpaceIsTeam)` (multiplayer owner/admin, and a TEAM active space on a Spaces
+host) — the IDENTICAL gate to the Organization view, threaded through the same
+`showOrganization` boolean. The sidebar
 nav item (`app/src/components/shell/sidebar-chrome.tsx`, `buildSidebarNavItems`) is a
 `ShieldCheck` lucide icon, label `shell:sidebar.permissions`, placed right BEFORE the
 Organization item (both inside the `showOrganization` block). Render branch + tour
@@ -433,6 +448,15 @@ team-space-only:
   into an expired team) is an EXPECTED business state, not a bug.
   `isNeedsUpgradeError` (`team-status-model.ts`) routes it to a plain
   informational toast instead of the red "report a bug" toast.
+- **`personal_space` invite failures**: a `403 personal_space` (a member-add on
+  the caller's personal space, which is non-invitable by design — share via
+  creating a team) is likewise EXPECTED, not a bug. `isPersonalSpaceError`
+  (`team-status-model.ts`) is routed in `tauri.ts` `surfaceError` exactly like
+  `needs_upgrade` to an informational toast (`teams:personalSpace.inviteBlocked*`:
+  "This is your personal space" / "Your personal space is just for you. Create a
+  team to invite people."). Defense in depth: the org-surface gate (HOU-824) now
+  hides the invite box in the personal space, so this toast is the fallback for
+  any invite that still reaches the gateway.
 
 **No push on expiry.** The effective status is a DERIVED gateway read, so the
 client re-reads on entering a team space (the switch cache-drop refetches
@@ -565,8 +589,10 @@ hides the "Add models" list, all copy passed in.
 
 ## Invites, members, audit, usage
 
-- **Invites**: `addOrgMember(email, role)` → `POST /org/members` (targets the
-  ACTIVE space; `403 personal_space` on a personal one). A known user is added
+- **Invites**: `addOrgMember(email, role)` → `POST /v1/org/members` (the shipped
+  adapter path, `packages/web/src/engine-adapter/cp/orgs.ts`; targets the ACTIVE
+  space; `403 personal_space` on a personal one — surfaced as the friendly
+  `personalSpace` toast, and the invite box is hidden there per HOU-824). A known user is added
   directly (`AddOrgMemberResult.userId`); an unknown email creates a pending
   invite and the host answers **202 `{invited:true}`**. `OrgInvite` rows surface
   on `GET /org` for owner/admin; `deleteOrgInvite` revokes (owner only).

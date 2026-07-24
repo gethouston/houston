@@ -1,5 +1,5 @@
 import type { AuditEntry, Capabilities } from "@houston-ai/engine-client";
-import { canSeeMembers } from "../../lib/org-roles.ts";
+import { canSeeMembers, hasSpaces } from "../../lib/org-roles.ts";
 
 /**
  * Pure, DOM-free logic for the Organization dashboard (Teams v2 + C8 billing).
@@ -38,16 +38,27 @@ export function orgTabIds(gates: { billing: boolean }): readonly OrgTabId[] {
 
 /**
  * Whether the Organization view — and its sidebar nav entry — should render at
- * all. True only for a multiplayer owner/admin; single-player and plain members
- * never see it. This is exactly the members-roster gate (`canSeeMembers` is
- * already "multiplayer AND owner|admin": `orgRole` returns null off-multiplayer
- * and the least-privileged `user` otherwise), so the dashboard and the roster
- * share one source of truth. The gateway is the real enforcer; this only hides
- * an affordance the user can't act on.
+ * all, plus the Permissions view, which shares this gate exactly.
+ *
+ * On a C8 Spaces host the personal space is single-player semantics
+ * (non-invitable, no roster, no policy — the gateway 403s a member-add with
+ * `personal_space`), so the org dashboard and Permissions are TEAM-space
+ * surfaces: they hide whenever the active space is personal, whatever the role.
+ * On a non-spaces multiplayer host (legacy Teams v2, exactly one org) there is
+ * no personal/team split, so `activeSpaceIsTeam` is irrelevant and behavior is
+ * unchanged — the gate falls through to the members-roster rule.
+ *
+ * That base rule is exactly the members-roster gate (`canSeeMembers` is already
+ * "multiplayer AND owner|admin": `orgRole` returns null off-multiplayer and the
+ * least-privileged `user` otherwise), so the dashboard and the roster share one
+ * source of truth. The gateway is the real enforcer; this only hides an
+ * affordance the user can't act on.
  */
 export function canSeeOrganization(
   caps: Capabilities | null | undefined,
+  activeSpaceIsTeam: boolean,
 ): boolean {
+  if (hasSpaces(caps) && !activeSpaceIsTeam) return false;
   return canSeeMembers(caps);
 }
 
