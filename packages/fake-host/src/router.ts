@@ -260,7 +260,7 @@ export async function handle(req: Request): Promise<Response> {
   if (userRoute) return userRoute;
 
   // --- Teams v2 gateway routes (agent + org settings / allowlist ceilings) ---
-  const teamsRoute = handleTeamsRoutes(method, segs, body);
+  const teamsRoute = handleTeamsRoutes(method, segs, body, url);
   if (teamsRoute) return teamsRoute;
 
   // --- everything under /agents/* ---

@@ -1,15 +1,15 @@
 /**
  * Pure, import-free wire-shape helpers for the per-mission attribution face
  * stacks and the filter-by-person control (hosted Teams). Kept dependency-free
- * so the row->Map translation and id normalization are unit-tested under
- * `node --test` without pulling a live Supabase client.
+ * so the result->Map translation and id normalization are unit-tested under
+ * `node --test` without pulling a live client.
  */
 
 /**
- * Public-facing profile of a human org member. The `profiles` table grants anon
- * a COLUMN-SCOPED select on exactly these fields (see
- * `supabase/migrations/20260628000000_profiles_anon_column_scope.sql`), so this
- * is a designed public surface, not a leak.
+ * A human org member's resolved display face, as the app's face-stack / roster
+ * consumers read it. Sourced from the gateway's `GET /v1/org/profiles` (its
+ * stored GCIP name + photo); a member who never set a name/photo maps to
+ * explicit `null` so a consumer falls back to initials or a short id.
  */
 export interface UserProfile {
   userId: string;
@@ -17,15 +17,8 @@ export interface UserProfile {
   avatarUrl: string | null;
 }
 
-/** The column-scoped row shape returned by the anon `profiles` select. */
-export interface ProfileRow {
-  user_id: string;
-  name: string | null;
-  avatar_url: string | null;
-}
-
 /**
- * Sorted, de-duplicated ids. Both the query key and the `.in()` argument use
+ * Sorted, de-duplicated ids. Both the query key and the request argument use
  * this so the same set of contributors — in any order, with any repeats — hits
  * one stable cache entry instead of thrashing a new fetch per card render.
  */
@@ -45,7 +38,7 @@ export function normalizeUserIds(ids: string[]): string[] {
  * - Otherwise (teammate face stacks / person filter) it stays multiplayer-gated:
  *   single-player has no roster to resolve.
  *
- * Both paths still require at least one id and a configured Supabase client.
+ * Both paths still require at least one id and a configured identity backend.
  */
 export function profilesQueryEnabled(input: {
   idCount: number;
@@ -58,18 +51,20 @@ export function profilesQueryEnabled(input: {
 }
 
 /**
- * Pure rows -> Map mapping, keyed by `user_id`. A row whose `name`/`avatar_url`
- * is absent (never signed up under a display name, no uploaded avatar) maps to
- * explicit `null`, so a consumer can fall back to initials or a short id rather
- * than render an empty face.
+ * Pure `GET /v1/org/profiles` result -> Map mapping, keyed by user id. Renames
+ * the wire `displayName`/`photoUrl` to the app's `name`/`avatarUrl`, mapping an
+ * absent field to explicit `null` (the member set no name/photo) so a consumer
+ * falls back to initials or a short id rather than render an empty face.
  */
-export function mapProfileRows(rows: ProfileRow[]): Map<string, UserProfile> {
+export function mapProfilesResult(
+  profiles: Record<string, { displayName?: string; photoUrl?: string }>,
+): Map<string, UserProfile> {
   const map = new Map<string, UserProfile>();
-  for (const row of rows) {
-    map.set(row.user_id, {
-      userId: row.user_id,
-      name: row.name ?? null,
-      avatarUrl: row.avatar_url ?? null,
+  for (const [userId, p] of Object.entries(profiles)) {
+    map.set(userId, {
+      userId,
+      name: p.displayName ?? null,
+      avatarUrl: p.photoUrl ?? null,
     });
   }
   return map;

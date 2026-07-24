@@ -719,25 +719,50 @@ i18n-agnostic (label passed in). Alongside the agent filter, the app adds
 on the board** (roster from `distinctBoardPeople`), itself gated on
 `isMultiplayer` and a signed-in user.
 
-**Teammate names + photos.** The Supabase `public.profiles` table + avatar storage
-that used to back these were **retired with Supabase auth** — RLS `auth.uid()` can't
-match Firebase (GCIP) uids, so the profiles source no longer resolves (see
-`knowledge-base/auth-migration.md`). `useUserProfiles`
-(`app/src/hooks/queries/use-user-profiles.ts`) is therefore **stubbed**: teammate
-names fall back to **initials** (from the stored `name` or the id slice) until a
-gateway-backed profile source lands, and avatars are absent. i18n:
+**Teammate names + photos — gateway-backed (HOU-876).** The Supabase `public.profiles`
+table + avatar storage were retired with Supabase auth (RLS `auth.uid()` can't match a
+GCIP uid; see `knowledge-base/auth-migration.md`). The source is now the **gateway**,
+which stores each user's GCIP `name`/`picture` and serves them two ways:
+
+- **Inline on the roster.** `GET /v1/org` members each carry optional
+  `displayName?`/`photoUrl?` (`OrgMember`). The **People roster**
+  (`people-roster.tsx`) reads these directly — display name is the primary label,
+  the email drops to a muted secondary line, and `photoUrl` is the avatar (initials
+  fallback via the design system's `Avatar`/`AvatarFallback`). No profiles fetch there.
+- **By id for face stacks.** `GET /v1/org/profiles?ids=<csv>` (`getOrgProfiles`,
+  `cp/orgs.ts` + `orgs-mixin.ts`, `tauriOrg.profiles`) resolves display profiles for any
+  contributor id, `200 {"profiles":{"<id>":{displayName?,photoUrl?}}}`. `useUserProfiles`
+  (`app/src/hooks/queries/use-user-profiles.ts`) is a real TanStack Query over it —
+  multiplayer-gated (`alwaysEnabled` for the caller's own id in `useMyProfile`), ids
+  deduped+sorted into a stable key `[USER_PROFILES_KEY, ...ids]`, `staleTime` 5 min. It
+  backs the mission face stacks (`mission-people.ts`, `KanbanPeople`), the person filter,
+  the Share dialogs, and the agent People tab (avatars). Wire→app mapping
+  (`displayName`/`photoUrl` → `name`/`avatarUrl`, absent → `null`) is the pure
+  `mapProfilesResult` (`user-profiles-map.ts`).
+
+**Privacy boundary.** The gateway is the sole enforcer: `/v1/org/profiles` returns a
+profile ONLY for a **co-member of the caller's active space** (≤100 ids/request);
+non-co-members are omitted, and a **personal space resolves only the caller**. Off-gateway
+(desktop/self-host) and on a pre-feature gateway (404) both reads degrade to an empty map —
+faces fall back to initials, `useMyProfile` collapses to the session's displayName/photoUrl
+— so a single-player `activity.json`/roster stays byte-identical. It is a cosmetic,
+non-user-initiated read: `tauriOrg.profiles` runs with `{toast:false,capture:false}`, so a
+rare hard failure stays silent and consumers fall back via React Query's `isError`. i18n:
 `dashboard:peopleFilter.*`, `board:people.label` (en/es/pt).
 
 ## engine-client types + methods
 
-Wire types in `ui/engine-client/src/types.ts`: `OrgRole`, `OrgMember`,
-`OrgInfo`, `OrgInvite`, `AddOrgMemberResult`, `AgentAccess`, `AgentAssignment`,
+Wire types in `ui/engine-client/src/types.ts`: `OrgRole`, `OrgMember`
+(+ optional `displayName`/`photoUrl`), `UserProfile`/`UserProfilesResult` (the
+`GET /v1/org/profiles` shape), `OrgInfo`, `OrgInvite`, `AddOrgMemberResult`,
+`AgentAccess`, `AgentAssignment`,
 `AgentSettings` (`allowedToolkits` + `allowedModels` — the agent's whole ceilings;
 policy is per agent only, there is no `OrgSettings` type), `AuditEntry`, `UsageRow`,
 `AgentModelChoice` / `AgentModelChoiceInfo`. `Agent` gains multiplayer-only
 `assigned` / `assignedUserIds` / `access` / `assignments`. All hand-maintained
 against the gateway (the server is source of truth). Methods in `client.ts`:
-`getOrg`, `addOrgMember`, `deleteOrgInvite`, `removeOrgMember`, `setOrgMemberRole`,
+`getOrg`, `getOrgProfiles` (404-degrades to `{}`), `addOrgMember`, `deleteOrgInvite`,
+`removeOrgMember`, `setOrgMemberRole`,
 `setAgentAssignments` (v2 `{assignments}` or legacy `{userIds}`), `getAgentSettings`
 / `setAgentSettings`, `getAgentModelChoice` /
 `setAgentModelChoice`, `orgAudit`, `orgUsage`, and

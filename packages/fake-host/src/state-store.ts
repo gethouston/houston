@@ -116,6 +116,10 @@ export interface FakeMember {
   userId: string;
   email?: string;
   role: OrgRole;
+  /** GCIP display name, when the gateway has one stored (Teams profiles). */
+  displayName?: string;
+  /** GCIP profile photo URL, when the gateway has one stored. */
+  photoUrl?: string;
 }
 
 /** A pending org invite (the `OrgInvite` wire shape) `GET /v1/org` surfaces to

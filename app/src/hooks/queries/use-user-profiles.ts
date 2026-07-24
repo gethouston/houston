@@ -1,38 +1,74 @@
-import type { UserProfile } from "./user-profiles-map";
+import { useQuery } from "@tanstack/react-query";
+import { isIdentityConfigured } from "../../lib/identity";
+import { isMultiplayer } from "../../lib/org-roles";
+import { tauriOrg } from "../../lib/tauri";
+import { useCapabilities } from "../use-capabilities";
+import {
+  mapProfilesResult,
+  normalizeUserIds,
+  profilesQueryEnabled,
+  type UserProfile,
+} from "./user-profiles-map";
 
 export type { UserProfile } from "./user-profiles-map";
 
 /**
- * Shared query-key prefix for the per-contributor `user-profiles` cache entries.
- * The Supabase `profiles` read died with Supabase auth (its RLS matched
- * `auth.uid()`, which cannot match a Firebase uid), so this hook is a stub today
- * and nothing populates the cache — but the key stays exported for the gateway
- * profile store that will repopulate it (follow-up tracked in
- * knowledge-base/auth-migration.md).
+ * Shared query-key prefix for every per-contributor `user-profiles` cache entry
+ * (each is `[USER_PROFILES_KEY, ...ids]`). Exported so a profile change can
+ * invalidate ALL of them with one prefix match, repainting face stacks.
  */
 export const USER_PROFILES_KEY = "user-profiles";
 
-// Stable empty-map identity so consumers don't get a fresh Map every render
-// (which would defeat memoized face-stack children).
+// Stable empty-map identity so a disabled/loading hook doesn't hand consumers a
+// fresh Map every render (which would defeat memoized face-stack children).
 const EMPTY_PROFILES: ReadonlyMap<string, UserProfile> = new Map();
 
 /**
- * Resolve display profiles for a set of contributor user ids.
+ * Resolve display profiles (name + photo) for a set of contributor user ids via
+ * the gateway's `GET /v1/org/profiles` (its stored GCIP name/picture). Teammate
+ * face stacks / the person filter are multiplayer-gated (hosted Teams) —
+ * single-player has no roster to resolve. Pass `alwaysEnabled` for the caller's
+ * OWN-profile lookup ({@link useMyProfile}): it fires regardless of multiplayer
+ * so a signed-in user resolves their own face; off-gateway the read degrades to
+ * an empty map and the self-face falls back to the session's displayName/
+ * photoUrl. Either way, at least one id and a configured identity backend are
+ * required — see {@link profilesQueryEnabled}.
  *
- * DEGRADED (Wave 2a): the Supabase `profiles` table + avatar storage retired
- * with Supabase auth, so there is no roster source to read yet. This keeps its
- * signature and always resolves the stable empty map; teammate face stacks fall
- * back to initials and the self-face falls back to the identity session's
- * displayName/photoUrl (see {@link useMyProfile}). When the gateway profile
- * store lands it repopulates this hook without touching any consumer.
+ * The ids are deduped + sorted into a stable query key so the same contributor
+ * set (in any order, with repeats) hits one cache entry. Cached generously
+ * (profiles change rarely); the query key is NOT org-scoped because a space
+ * switch drops the whole query cache (see knowledge-base/teams.md §Spaces).
  */
 export function useUserProfiles(
-  _userIds: string[],
-  _opts?: { alwaysEnabled?: boolean },
+  userIds: string[],
+  opts?: { alwaysEnabled?: boolean },
 ): {
   profiles: ReadonlyMap<string, UserProfile>;
   isLoading: boolean;
   isError: boolean;
 } {
-  return { profiles: EMPTY_PROFILES, isLoading: false, isError: false };
+  const { capabilities } = useCapabilities();
+  const ids = normalizeUserIds(userIds);
+  const enabled = profilesQueryEnabled({
+    idCount: ids.length,
+    authConfigured: isIdentityConfigured(),
+    multiplayer: isMultiplayer(capabilities),
+    alwaysEnabled: opts?.alwaysEnabled === true,
+  });
+
+  const query = useQuery({
+    queryKey: [USER_PROFILES_KEY, ...ids],
+    queryFn: () =>
+      tauriOrg
+        .profiles(ids)
+        .then((result) => mapProfilesResult(result.profiles)),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+
+  return {
+    profiles: query.data ?? EMPTY_PROFILES,
+    isLoading: enabled && query.isLoading,
+    isError: query.isError,
+  };
 }

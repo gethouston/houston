@@ -1,16 +1,16 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  mapProfileRows,
+  mapProfilesResult,
   normalizeUserIds,
   profilesQueryEnabled,
 } from "../src/hooks/queries/user-profiles-map.ts";
 
-describe("mapProfileRows", () => {
-  it("keys the map by user_id and renames to camelCase", () => {
-    const map = mapProfileRows([
-      { user_id: "u1", name: "Maria", avatar_url: "https://cdn/x.png" },
-    ]);
+describe("mapProfilesResult", () => {
+  it("keys the map by user id and renames the wire fields", () => {
+    const map = mapProfilesResult({
+      u1: { displayName: "Maria", photoUrl: "https://cdn/x.png" },
+    });
     deepStrictEqual(map.get("u1"), {
       userId: "u1",
       name: "Maria",
@@ -18,10 +18,8 @@ describe("mapProfileRows", () => {
     });
   });
 
-  it("preserves explicit null name/avatar for a bare profile", () => {
-    const map = mapProfileRows([
-      { user_id: "u2", name: null, avatar_url: null },
-    ]);
+  it("maps an absent displayName/photoUrl to explicit null", () => {
+    const map = mapProfilesResult({ u2: {} });
     deepStrictEqual(map.get("u2"), {
       userId: "u2",
       name: null,
@@ -29,17 +27,17 @@ describe("mapProfileRows", () => {
     });
   });
 
-  it("last row wins on a duplicate user_id", () => {
-    const map = mapProfileRows([
-      { user_id: "u1", name: "Old", avatar_url: null },
-      { user_id: "u1", name: "New", avatar_url: null },
-    ]);
-    deepStrictEqual(map.get("u1")?.name, "New");
-    deepStrictEqual(map.size, 1);
+  it("maps just a name, avatar staying null", () => {
+    const map = mapProfilesResult({ u3: { displayName: "Ana" } });
+    deepStrictEqual(map.get("u3"), {
+      userId: "u3",
+      name: "Ana",
+      avatarUrl: null,
+    });
   });
 
-  it("returns an empty map for no rows", () => {
-    deepStrictEqual(mapProfileRows([]).size, 0);
+  it("returns an empty map for no profiles", () => {
+    deepStrictEqual(mapProfilesResult({}).size, 0);
   });
 });
 

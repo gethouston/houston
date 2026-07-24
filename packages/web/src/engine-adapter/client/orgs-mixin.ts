@@ -9,6 +9,16 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("multiplayer requires the hosted gateway");
       return controlPlane.getOrg(this.ctx.cp);
     }
+    // Teammate display profiles (name + photo) for a set of member ids. Off-cloud
+    // (`this.cp === null`) there is no roster to resolve, so this degrades to an
+    // empty map (faces fall back to initials) rather than throwing — a cosmetic
+    // read, unlike the org mutators above. Mirrors `getBilling`/`listOrgs`.
+    async getOrgProfiles(
+      ids: string[],
+    ): Promise<controlPlane.UserProfilesResult> {
+      if (!this.ctx.cp) return { profiles: {} };
+      return controlPlane.getOrgProfiles(this.ctx.cp, ids);
+    }
     async addOrgMember(
       email: string,
       role: controlPlane.OrgRole,
