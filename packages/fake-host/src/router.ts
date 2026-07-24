@@ -181,9 +181,9 @@ export async function handle(req: Request): Promise<Response> {
       agents: state.listAgents(),
     });
   }
-  // Read back the action-approval writes the interaction card made: the
-  // always-allow slugs AND the "Allow once" ticket hashes (the product tickets
-  // route never reads back). Lets an e2e assert Allow once posted the step's hash.
+  // Read back the action-approval writes the interaction card made: the granted
+  // action slugs (the product grants route never reads back). Lets an e2e assert
+  // the confirm card posted the step's action.
   if (path === "/__test__/action-approvals" && method === "GET") {
     return json(state.approvalsSnapshot());
   }

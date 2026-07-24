@@ -3,7 +3,7 @@ import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Capabilities } from "@houston/protocol";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { MemoryActionApprovalStore } from "../integrations/action-approval-store";
@@ -416,11 +416,13 @@ test("action-approval gate: a read-only action runs ungated (no ticket, no alway
   }
 });
 
-test("action-approval circle: 'Always allow' on the dispatch route lets the same action execute", async () => {
-  // The full user flow: the card's Always-allow POSTs the dispatch surface
-  // (what the shipped clients call), the model re-issues the exact action, and
-  // the sandbox gate must pass on the stored always record — proving the route
-  // and the gate address the SAME record for the SAME agent id.
+test("action-approval circle: confirming on the dispatch route lets the SAME action execute (any params)", async () => {
+  // The full user flow: the card's confirm ("Do it") POSTs the dispatch surface
+  // (what the shipped clients call), the model re-issues the action, and the
+  // sandbox gate must pass on the stored grant — proving the route and the gate
+  // address the SAME record for the SAME agent id. The grant is ACTION-scoped,
+  // so a follow-up call of the same action with DIFFERENT params passes too (the
+  // batch / chained draft→send case the old params-exact ticket re-asked on).
   const { base, ws, store, vault, stop } = await setup({ withApprovals: true });
   try {
     const agent = await store.createAgent({
@@ -428,7 +430,7 @@ test("action-approval circle: 'Always allow' on the dispatch route lets the same
       name: "Assistant",
     });
     const post = await fetch(
-      `${base}/agents/${encodeURIComponent(agent.id)}/action-approvals/always`,
+      `${base}/agents/${encodeURIComponent(agent.id)}/action-approvals/grants`,
       {
         method: "POST",
         headers: auth,
@@ -436,25 +438,32 @@ test("action-approval circle: 'Always allow' on the dispatch route lets the same
       },
     );
     expect(post.status).toBe(200);
-    expect((await post.json()).always).toContain("GMAIL_SEND_EMAIL");
+    expect((await post.json()).ok).toBe(true);
 
     const sb = vault.sandboxToken(ws.id, agent.id);
-    const res = await fetch(`${base}/sandbox/integrations/execute`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${sb}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
-    });
-    expect(res.status).toBe(200);
-    expect((await res.json()).successful).toBe(true);
+    const execute = (params: Record<string, unknown>) =>
+      fetch(`${base}/sandbox/integrations/execute`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sb}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params }),
+      });
+
+    const first = await execute({ to: "a@b.com" });
+    expect(first.status).toBe(200);
+    expect((await first.json()).successful).toBe(true);
+    // DIFFERENT params — the action grant still covers it (no re-ask).
+    const second = await execute({ to: "c@d.com", subject: "Hi" });
+    expect(second.status).toBe(200);
+    expect((await second.json()).successful).toBe(true);
   } finally {
     stop();
   }
 });
 
-test("action-approval gate: a write action still 409s approval_required without a ticket", async () => {
+test("action-approval gate: a write action 409s approval_required without a grant", async () => {
   const { base, ws, vault, stop } = await setup({ withApprovals: true });
   try {
     const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
@@ -468,6 +477,82 @@ test("action-approval gate: a write action still 409s approval_required without 
     });
     expect(res.status).toBe(409);
     expect((await res.json()).code).toBe("approval_required");
+  } finally {
+    stop();
+  }
+});
+
+test("action-approval gate: a grant expires after the TTL (the gate 409s again)", async () => {
+  // Fake only Date so the grant's ts and the gate's clock advance together while
+  // the HTTP server + fetch keep real timers.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  const { base, ws, store, vault, stop } = await setup({ withApprovals: true });
+  try {
+    const agent = await store.createAgent({
+      workspaceId: ws.id,
+      name: "Assistant",
+    });
+    await fetch(
+      `${base}/agents/${encodeURIComponent(agent.id)}/action-approvals/grants`,
+      {
+        method: "POST",
+        headers: auth,
+        body: JSON.stringify({ action: "GMAIL_SEND_EMAIL" }),
+      },
+    );
+    const sb = vault.sandboxToken(ws.id, agent.id);
+    const execute = () =>
+      fetch(`${base}/sandbox/integrations/execute`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sb}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
+      });
+
+    // Within the window → runs.
+    expect((await execute()).status).toBe(200);
+    // Past the TTL → the grant is stale, the gate asks again.
+    vi.setSystemTime(Date.now() + LocalActionApprovals.GRANT_TTL_MS + 1);
+    const expired = await execute();
+    expect(expired.status).toBe(409);
+    expect((await expired.json()).code).toBe("approval_required");
+  } finally {
+    stop();
+    vi.useRealTimers();
+  }
+});
+
+test("action-approval gate: the agent's intent rides the 409 (trimmed, truncated, else omitted)", async () => {
+  const { base, ws, vault, stop } = await setup({ withApprovals: true });
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const execute = (extra: Record<string, unknown>) =>
+      fetch(`${base}/sandbox/integrations/execute`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sb}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "GMAIL_SEND_EMAIL",
+          params: {},
+          ...extra,
+        }),
+      });
+
+    // A real intent is trimmed and echoed.
+    const withIntent = await execute({ intent: "  Send the invite  " });
+    expect((await withIntent.json()).approval.intent).toBe("Send the invite");
+    // Over-long is truncated to 200 chars.
+    const long = await execute({ intent: "x".repeat(500) });
+    expect((await long.json()).approval.intent).toHaveLength(200);
+    // Absent / blank → the field is omitted entirely.
+    const none = await execute({});
+    expect((await none.json()).approval).not.toHaveProperty("intent");
+    const blank = await execute({ intent: "   " });
+    expect((await blank.json()).approval).not.toHaveProperty("intent");
   } finally {
     stop();
   }

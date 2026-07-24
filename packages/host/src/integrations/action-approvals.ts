@@ -6,23 +6,23 @@ import type {
 
 /**
  * The action-approval policy over the store. Before an agent's
- * `integration_execute` runs, the sandbox proxy consults this:
- *   - `isAlways` → the user blessed this action for any params ("Always allow").
- *   - `consumeTicket` → a fresh one-shot ticket matches this exact call ("Allow
- *     once"); consumed on use so a re-issue of the same call re-asks.
- * Tickets expire after TICKET_TTL_MS and are pruned on every read/write path, so
- * a stale ticket never silently authorizes a later identical call.
+ * `integration_execute` runs, the sandbox proxy consults `isGranted`: the user
+ * confirmed this action ("Do it") within the last GRANT_TTL_MS, so it — and any
+ * follow-up call of the SAME action (a batch, or a chained draft→send) — runs
+ * without re-asking. `grant` records the confirmation. Grants expire after
+ * GRANT_TTL_MS and are pruned on every read/write path, so a stale confirmation
+ * never silently authorizes a much-later call.
  *
- * Every MUTATING op (allowAlways / addTicket / consumeTicket) is a read → mutate
- * → write across awaits, so two concurrent calls for one agent could interleave
- * and resurrect a consumed ticket or double-consume. They are therefore
- * serialized per agent through a promise-chain tail (mirroring the inflight-map
- * idiom in grants.ts), so an agent's writes never race each other.
+ * `grant` is a read → mutate → write across awaits, so two concurrent grants
+ * for one agent could interleave and lose a write. Mutations are therefore
+ * serialized per agent through a promise-chain tail (`chains`), so an agent's
+ * writes never race each other.
  */
 export class LocalActionApprovals {
-  /** One-shot tickets live 15 minutes — long enough to click through the card,
-   *  short enough that a forgotten approval never authorizes a much-later call. */
-  static readonly TICKET_TTL_MS = 15 * 60_000;
+  /** A confirmed action stays granted 15 minutes — long enough to cover a batch
+   *  or a chained draft→send double-ask, short enough that a forgotten
+   *  confirmation never authorizes a much-later call. */
+  static readonly GRANT_TTL_MS = 15 * 60_000;
 
   private readonly store: ActionApprovalStore;
   /** Per-agent serialization tail: each mutating op chains onto the previous so
@@ -50,102 +50,41 @@ export class LocalActionApprovals {
     return run;
   }
 
-  /** Is the action on the agent's always-allow list (case-insensitive)? */
-  async isAlways(agentId: AgentId, action: string): Promise<boolean> {
+  /** Is a FRESH (within TTL) grant for this action recorded (case-insensitive)? */
+  async isGranted(
+    agentId: AgentId,
+    action: string,
+    now = Date.now(),
+  ): Promise<boolean> {
     const record = await this.store.get(agentId);
     const a = action.toLowerCase();
-    return record.always.some((x) => x.toLowerCase() === a);
+    return record.grants.some(
+      (g) => g.action.toLowerCase() === a && !this.isStale(g.ts, now),
+    );
   }
 
-  /** The agent's always-allow list. */
-  async always(agentId: AgentId): Promise<string[]> {
-    return (await this.store.get(agentId)).always;
-  }
-
-  /** Add an action to the always-allow list (dedupe case-insensitively, keep the
-   *  first casing), persist, and return the resulting list. */
-  async allowAlways(agentId: AgentId, action: string): Promise<string[]> {
-    return this.serialize(agentId, async () => {
-      const record = await this.store.get(agentId);
-      const a = action.toLowerCase();
-      if (!record.always.some((x) => x.toLowerCase() === a)) {
-        record.always.push(action);
-      }
-      const next = this.pruned(record);
-      await this.store.put(agentId, next);
-      return next.always;
-    });
-  }
-
-  /** Remove an action from the always-allow list (case-insensitive match),
-   *  persist, and return the resulting list. A clean miss (the action was not
-   *  present) skips the redundant put and returns the current list unchanged,
-   *  mirroring consumeTicket's clean-miss skip. */
-  async disallowAlways(agentId: AgentId, action: string): Promise<string[]> {
-    return this.serialize(agentId, async () => {
-      const record = await this.store.get(agentId);
-      const a = action.toLowerCase();
-      const kept = record.always.filter((x) => x.toLowerCase() !== a);
-      // Nothing removed → nothing changed on disk; skip the redundant write.
-      if (kept.length === record.always.length) return record.always;
-      const next = this.pruned({ always: kept, tickets: record.tickets });
-      await this.store.put(agentId, next);
-      return next.always;
-    });
-  }
-
-  /** Write a one-shot ticket for a params-fingerprint hash (replacing an existing
-   *  same-hash ticket's ts), pruning stale tickets, and persist. */
-  async addTicket(
+  /** Grant this action for the TTL window: refresh an existing same-action grant's
+   *  ts (case-insensitive) or add one, drop stale grants, and persist. */
+  async grant(
     agentId: AgentId,
-    hash: string,
+    action: string,
     now = Date.now(),
   ): Promise<void> {
     return this.serialize(agentId, async () => {
       const record = await this.store.get(agentId);
-      record.tickets = record.tickets.filter((t) => t.hash !== hash);
-      record.tickets.push({ hash, ts: now });
-      await this.store.put(agentId, this.pruned(record, now));
-    });
-  }
-
-  /**
-   * Consume a one-shot ticket: true iff a FRESH (within TTL) ticket with that
-   * hash exists — it is then removed (single use). Stale or missing → false. The
-   * record is persisted ONLY when it actually changed (a fresh ticket consumed
-   * OR stale tickets pruned), so a clean miss never does a redundant write.
-   */
-  async consumeTicket(
-    agentId: AgentId,
-    hash: string,
-    now = Date.now(),
-  ): Promise<boolean> {
-    return this.serialize(agentId, async () => {
-      const record = await this.store.get(agentId);
-      const fresh = record.tickets.find(
-        (t) => t.hash === hash && !this.isStale(t.ts, now),
-      );
-      const kept = record.tickets.filter(
-        (t) => t !== fresh && !this.isStale(t.ts, now),
-      );
-      // A write is warranted only if we removed the consumed ticket or dropped
-      // at least one stale one; otherwise nothing changed on disk.
-      if (fresh || kept.length !== record.tickets.length) {
-        await this.store.put(agentId, { always: record.always, tickets: kept });
-      }
-      return !!fresh;
+      const a = action.toLowerCase();
+      const kept = record.grants.filter((g) => g.action.toLowerCase() !== a);
+      kept.push({ action, ts: now });
+      await this.store.put(agentId, this.pruned({ grants: kept }, now));
     });
   }
 
   private isStale(ts: number, now: number): boolean {
-    return now - ts > LocalActionApprovals.TICKET_TTL_MS;
+    return now - ts > LocalActionApprovals.GRANT_TTL_MS;
   }
 
-  /** Drop expired tickets so persisted state never accumulates dead grants. */
-  private pruned(record: ApprovalRecord, now = Date.now()): ApprovalRecord {
-    return {
-      always: record.always,
-      tickets: record.tickets.filter((t) => !this.isStale(t.ts, now)),
-    };
+  /** Drop expired grants so persisted state never accumulates dead confirmations. */
+  private pruned(record: ApprovalRecord, now: number): ApprovalRecord {
+    return { grants: record.grants.filter((g) => !this.isStale(g.ts, now)) };
   }
 }

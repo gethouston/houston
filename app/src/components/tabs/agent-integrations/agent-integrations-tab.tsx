@@ -120,7 +120,6 @@ export default function IntegrationsTab({ agent }: TabProps) {
             <AgentIntegrationsBody
               key={agent.id}
               view={view}
-              agentId={agent.id}
               catalog={catalog.data ?? []}
               allowlist={allowlist}
               connections={connections.data ?? []}

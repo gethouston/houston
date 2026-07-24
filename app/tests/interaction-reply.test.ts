@@ -29,8 +29,10 @@ const base = {
   skippedConnectNames: [] as string[],
   approvedActions: [] as string[],
   deniedActions: [] as string[],
+  redoItems: [] as { action: string; text: string }[],
   approvedDisplays: [] as ApprovalDisplay[],
   deniedDisplays: [] as ApprovalDisplay[],
+  redoDisplays: [] as { display: ApprovalDisplay; text: string }[],
   credentialedNames: [] as string[],
   skippedCredentialNames: [] as string[],
   hasQuestionSteps: false,
@@ -44,14 +46,18 @@ const base = {
   signedInFollowup: "I've signed in. Please continue.",
   // Body factories name the RAW slug (the model re-issues it).
   approvedLine: (action: string) =>
-    `Approved: go ahead with ${action}. Use exactly the same parameters as before.`,
+    `Approved: go ahead with ${action}. Re-issue it now; it will run without another confirmation.`,
   deniedLine: (action: string) =>
     `I chose not to allow ${action}. Do not retry it; continue without it.`,
+  redoLine: (action: string, text: string) =>
+    `For ${action} the user asked for a change: ${text}. Adjust and re-issue it; it will run without another confirmation.`,
   // Display factories name the humanized app + action (the visible payload).
   approvedLineDisplay: ({ app, action }: ApprovalDisplay) =>
     `Allowed ${app} to ${action}.`,
   deniedLineDisplay: ({ app, action }: ApprovalDisplay) =>
     `Did not allow ${app} to ${action}.`,
+  redoLineDisplay: ({ app, action }: ApprovalDisplay, text: string) =>
+    `Asked ${app} to ${action} differently: ${text}.`,
   skippedCredentialLine: (name: string) => `Skipped adding the ${name} key.`,
   credentialedFollowup: "I've added the Acme key. Please continue.",
 };
@@ -208,7 +214,7 @@ describe("composeInteractionReply", () => {
     strictEqual(isAutoContinueMessage(reply), true);
     strictEqual(
       reply.endsWith(
-        "Approved: go ahead with GMAIL_SEND_EMAIL. Use exactly the same parameters as before.",
+        "Approved: go ahead with GMAIL_SEND_EMAIL. Re-issue it now; it will run without another confirmation.",
       ),
       true,
     );
@@ -226,7 +232,22 @@ describe("composeInteractionReply", () => {
     strictEqual(isAutoContinueMessage(reply), false);
     strictEqual(
       reply,
-      "To whom?: john@example.com\nSaying what?: Running late\nApproved: go ahead with GMAIL_SEND_EMAIL. Use exactly the same parameters as before.",
+      "To whom?: john@example.com\nSaying what?: Running late\nApproved: go ahead with GMAIL_SEND_EMAIL. Re-issue it now; it will run without another confirmation.",
+    );
+  });
+
+  // A redirection ("differently") carries user-typed text, so its sequence
+  // resumes VISIBLY (not hidden) even with no question steps — the transcript
+  // should show what the user asked, and the flat body names the RAW slug.
+  it("resumes a redirection-only sequence VISIBLY naming the raw slug and text", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      redoItems: [{ action: "GMAIL_SEND_EMAIL", text: "use a warmer tone" }],
+    });
+    strictEqual(isAutoContinueMessage(reply), false);
+    strictEqual(
+      reply,
+      "For GMAIL_SEND_EMAIL the user asked for a change: use a warmer tone. Adjust and re-issue it; it will run without another confirmation.",
     );
   });
 
@@ -258,7 +279,23 @@ describe("composeInteractionReply", () => {
     });
     strictEqual(
       reply,
-      "To whom?: john@example.com\nSaying what?: Running late\nConnected Gmail.\nApproved: go ahead with GMAIL_SEND_EMAIL. Use exactly the same parameters as before.\nI chose not to allow GMAIL_DELETE_EMAIL. Do not retry it; continue without it.",
+      "To whom?: john@example.com\nSaying what?: Running late\nConnected Gmail.\nApproved: go ahead with GMAIL_SEND_EMAIL. Re-issue it now; it will run without another confirmation.\nI chose not to allow GMAIL_DELETE_EMAIL. Do not retry it; continue without it.",
+    );
+  });
+
+  // Confirmed, declined, and redirected in ONE sequence: the redo line rides
+  // after the denied line, and the sequence is visible (a redirection has text).
+  it("orders a redirection after approved and denied lines", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      approvedActions: ["GMAIL_SEND_EMAIL"],
+      deniedActions: ["GMAIL_DELETE_EMAIL"],
+      redoItems: [{ action: "SLACK_POST", text: "post it to #general" }],
+    });
+    strictEqual(isAutoContinueMessage(reply), false);
+    strictEqual(
+      reply,
+      "Approved: go ahead with GMAIL_SEND_EMAIL. Re-issue it now; it will run without another confirmation.\nI chose not to allow GMAIL_DELETE_EMAIL. Do not retry it; continue without it.\nFor SLACK_POST the user asked for a change: post it to #general. Adjust and re-issue it; it will run without another confirmation.",
     );
   });
 });
@@ -273,62 +310,70 @@ describe("finalApprovalNames", () => {
     action,
   });
 
-  it("splits final decisions into approved + denied slugs + displays, in step order", () => {
-    const { approvedActions, deniedActions, approvedDisplays, deniedDisplays } =
-      finalApprovalNames(
-        ["a1", "a2", "a3"],
-        outcomes([
-          [
-            "a1",
-            {
-              action: "GMAIL_SEND_EMAIL",
-              decision: "allowOnce",
-              display: disp("Gmail", "send email"),
-            },
-          ],
-          [
-            "a2",
-            {
-              action: "GMAIL_DELETE_EMAIL",
-              decision: "deny",
-              display: disp("Gmail", "delete email"),
-            },
-          ],
-          [
-            "a3",
-            {
-              action: "SLACK_POST",
-              decision: "alwaysAllow",
-              display: disp("Slack", "post"),
-            },
-          ],
-        ]),
-      );
-    deepStrictEqual(approvedActions, ["GMAIL_SEND_EMAIL", "SLACK_POST"]);
+  it("splits final decisions into confirmed + declined + redirected, in step order", () => {
+    const {
+      approvedActions,
+      deniedActions,
+      redoItems,
+      approvedDisplays,
+      deniedDisplays,
+      redoDisplays,
+    } = finalApprovalNames(
+      ["a1", "a2", "a3"],
+      outcomes([
+        [
+          "a1",
+          {
+            action: "GMAIL_SEND_EMAIL",
+            decision: "doIt",
+            display: disp("Gmail", "send email"),
+          },
+        ],
+        [
+          "a2",
+          {
+            action: "GMAIL_DELETE_EMAIL",
+            decision: "notNow",
+            display: disp("Gmail", "delete email"),
+          },
+        ],
+        [
+          "a3",
+          {
+            action: "SLACK_POST",
+            decision: "differently",
+            display: disp("Slack", "post"),
+            text: "to #general",
+          },
+        ],
+      ]),
+    );
+    deepStrictEqual(approvedActions, ["GMAIL_SEND_EMAIL"]);
     deepStrictEqual(deniedActions, ["GMAIL_DELETE_EMAIL"]);
+    deepStrictEqual(redoItems, [{ action: "SLACK_POST", text: "to #general" }]);
     // Displays stay aligned with their slug list, in step order.
-    deepStrictEqual(approvedDisplays, [
-      disp("Gmail", "send email"),
-      disp("Slack", "post"),
-    ]);
+    deepStrictEqual(approvedDisplays, [disp("Gmail", "send email")]);
     deepStrictEqual(deniedDisplays, [disp("Gmail", "delete email")]);
+    deepStrictEqual(redoDisplays, [
+      { display: disp("Slack", "post"), text: "to #general" },
+    ]);
   });
 
-  // Last decision wins: denied then re-approved records the approval only.
-  it("reports approved for a step denied then re-approved (last write wins)", () => {
+  // Last decision wins: declined then re-confirmed records the confirmation only.
+  it("reports confirmed for a step declined then re-confirmed (last write wins)", () => {
     const map = outcomes([
       [
         "a1",
         {
           action: "SLACK_POST",
-          decision: "deny",
+          decision: "notNow",
           display: disp("Slack", "post"),
         },
       ],
     ]);
     map.set("a1", {
       action: "SLACK_POST",
-      decision: "allowOnce",
+      decision: "doIt",
       display: disp("Slack", "post"),
     });
     const { approvedActions, deniedActions } = finalApprovalNames(["a1"], map);
@@ -344,7 +389,7 @@ describe("finalApprovalNames", () => {
           "a1",
           {
             action: "GMAIL_SEND_EMAIL",
-            decision: "alwaysAllow",
+            decision: "doIt",
             display: disp("Gmail", "send email"),
           },
         ],
@@ -586,6 +631,36 @@ describe("encodeInteractionAnswersMessage", () => {
     deepStrictEqual(payload?.lines.slice(-2), [
       { answer: "Allowed Gmail to send draft." },
       { answer: "Did not allow Gmail to delete email." },
+    ]);
+  });
+
+  // A redirection keeps the RAW slug + verbatim text in the model-facing body,
+  // but the VISIBLE payload names the humanized app + action plus the text.
+  it("keeps the slug in the body but humanizes the redirection line in the payload", () => {
+    const shared = {
+      ...base,
+      redoItems: [{ action: "GMAIL_SEND_DRAFT", text: "make it shorter" }],
+      redoDisplays: [
+        {
+          display: { app: "Gmail", action: "send draft" },
+          text: "make it shorter",
+        },
+      ],
+    };
+    const encoded = encodeInteractionAnswersMessage(shared);
+    const flat = composeInteractionReply(shared);
+    // Body (what the model reads): the raw slug + text, verbatim.
+    strictEqual(
+      flat.includes(
+        "For GMAIL_SEND_DRAFT the user asked for a change: make it shorter.",
+      ),
+      true,
+    );
+    strictEqual(encoded.endsWith(`\n\n${flat}`), true);
+    // Payload (what the user reads): the humanized line, no slug.
+    const payload = decodeInteractionAnswersMessage(encoded);
+    deepStrictEqual(payload?.lines.slice(-1), [
+      { answer: "Asked Gmail to send draft differently: make it shorter." },
     ]);
   });
 

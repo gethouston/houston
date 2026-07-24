@@ -6,27 +6,25 @@ import type { WorkspaceStore } from "../ports";
 import { json, readJson } from "./http";
 
 /**
- * Per-agent integration action approvals — the USER routes. The app writes
- * here after the runtime surfaces an approval step on the interaction card:
- * "Always allow" appends the action slug; "Allow once" writes a one-shot ticket
- * for the params-fingerprint hash. Then the model re-issues the same execute and
- * the sandbox gate (integrations-sandbox.ts) lets it through.
+ * Per-agent integration action approvals — the ONE user route. When the user
+ * confirms the approval card ("Do it"), the app POSTs the action slug here and
+ * the host grants it for a short window (LocalActionApprovals.GRANT_TTL_MS), so
+ * the re-issued execute — and any follow-up call of the same action (a batch, a
+ * chained draft→send) — passes the sandbox gate (integrations-sandbox.ts)
+ * without re-asking.
  *
- * TWO surfaces serve the same three routes (the skills-marketplace precedent):
- * the top-level `/v1/agents/:agentId/action-approvals/*` for direct API callers,
- * and the per-agent dispatch `/agents/:agentId/action-approvals/*` — the ONE
- * per-agent surface the hosted gateway proxies to a pod (it forwards
- * `/agents/{slug}/<rest>` and mounts no `/v1/agents/*` route for approvals), so
- * the shipped clients call the dispatch form in both deployments.
+ * TWO surfaces serve the SAME route (the skills-marketplace precedent): the
+ * top-level `/v1/agents/:agentId/action-approvals/grants` for direct API
+ * callers, and the per-agent dispatch `/agents/:agentId/action-approvals/grants`
+ * — the ONE per-agent surface the hosted gateway proxies to a pod (it forwards
+ * `/agents/{slug}/<rest>`), so the shipped clients call the dispatch form in
+ * both deployments.
  *
  * Mounted only when `actionApprovals` is wired (see local/host.ts). Absent
  * dep → these handlers fall through, which the client reads as
  * "approvals unsupported" and degrades without a toast.
  *
- *   GET    …/action-approvals          -> {always}
- *   POST   …/action-approvals/always    {action} -> {always}
- *   DELETE …/action-approvals/always    {action} -> {always}  (revoke, review UI)
- *   POST   …/action-approvals/tickets   {hash}   -> {ok:true}
+ *   POST …/action-approvals/grants   {action} -> {ok:true}
  */
 export interface ActionApprovalsDeps {
   store: WorkspaceStore;
@@ -36,8 +34,6 @@ export interface ActionApprovalsDeps {
 /** Action slugs are `<TOOLKIT>_<REST>` (letters/digits/underscores); a hyphen is
  *  tolerated for parity with the grant slug charset. */
 const ACTION = /^[A-Za-z0-9_-]+$/;
-/** A params fingerprint from hashActionParams: sha256 truncated to 16 hex chars. */
-const HASH = /^[a-f0-9]{16}$/;
 
 /** Ownership check mirroring the other agent routes (personal tier = owner-only). */
 async function authorize(
@@ -56,10 +52,9 @@ async function authorize(
   };
 }
 
-/** The surface-agnostic core: serve one action-approvals request for an agent
- *  the caller is ALREADY authorized on. `sub` is undefined (the always-set
- *  read), "always", or "tickets". Returns false when method+sub name no route
- *  in this family (the caller falls through). */
+/** The surface-agnostic core: serve the `grants` POST for an agent the caller is
+ *  ALREADY authorized on. Returns false when method+sub name no route in this
+ *  family (the caller falls through). */
 async function serve(
   approvals: LocalActionApprovals,
   agentId: string,
@@ -68,43 +63,15 @@ async function serve(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<boolean> {
-  if (!sub && method === "GET") {
-    json(res, 200, { always: await approvals.always(agentId) });
+  if (sub !== "grants" || method !== "POST") return false;
+  const { action } = await readJson(req);
+  if (typeof action !== "string" || !action || !ACTION.test(action)) {
+    json(res, 400, { error: "missing or invalid 'action'" });
     return true;
   }
-
-  if (sub === "always" && method === "POST") {
-    const { action } = await readJson(req);
-    if (typeof action !== "string" || !action || !ACTION.test(action)) {
-      json(res, 400, { error: "missing or invalid 'action'" });
-      return true;
-    }
-    json(res, 200, { always: await approvals.allowAlways(agentId, action) });
-    return true;
-  }
-
-  if (sub === "always" && method === "DELETE") {
-    const { action } = await readJson(req);
-    if (typeof action !== "string" || !action || !ACTION.test(action)) {
-      json(res, 400, { error: "missing or invalid 'action'" });
-      return true;
-    }
-    json(res, 200, { always: await approvals.disallowAlways(agentId, action) });
-    return true;
-  }
-
-  if (sub === "tickets" && method === "POST") {
-    const { hash } = await readJson(req);
-    if (typeof hash !== "string" || !hash || !HASH.test(hash)) {
-      json(res, 400, { error: "missing or invalid 'hash'" });
-      return true;
-    }
-    await approvals.addTicket(agentId, hash);
-    json(res, 200, { ok: true });
-    return true;
-  }
-
-  return false;
+  await approvals.grant(agentId, action);
+  json(res, 200, { ok: true });
+  return true;
 }
 
 export async function handleActionApprovals(
@@ -116,7 +83,7 @@ export async function handleActionApprovals(
   res: ServerResponse,
 ): Promise<boolean> {
   const match = path.match(
-    /^\/v1\/agents\/([^/]+)\/action-approvals(?:\/(always|tickets))?$/,
+    /^\/v1\/agents\/([^/]+)\/action-approvals(?:\/(grants))?$/,
   );
   if (!match) return false;
   // Not wired → fall through to a 404 so the client degrades to "unsupported".
@@ -133,8 +100,8 @@ export async function handleActionApprovals(
 }
 
 /**
- * The SAME three routes on the per-agent dispatch surface
- * (`/agents/:agentId/action-approvals[...]`), matched on the dispatch `rest`
+ * The SAME route on the per-agent dispatch surface
+ * (`/agents/:agentId/action-approvals/grants`), matched on the dispatch `rest`
  * inside handleAgents — which has ALREADY run the ownership check, so no authz
  * here. This is the surface the hosted gateway proxies (scope: use), and the
  * one the shipped clients call in both deployments. Unwired approvals → false,
@@ -149,7 +116,7 @@ export async function handleActionApprovalsDispatch(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<boolean> {
-  const match = rest.match(/^action-approvals(?:\/(always|tickets))?$/);
+  const match = rest.match(/^action-approvals(?:\/(grants))?$/);
   if (!match || !approvals) return false;
   return serve(approvals, agentId, method, match[1], req, res);
 }

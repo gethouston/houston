@@ -7,63 +7,60 @@ import {
 import { Button, Kbd } from "@houston-ai/core";
 import { Check, CornerDownLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ChatApprovalRedirectRow } from "./chat-approval-redirect-row";
 import { AppLogo } from "./integrations";
 import { useIntegrationAppDisplay } from "./use-integration-app-display";
 import { useInteractionStepKeys } from "./use-interaction-step-keys";
+
+/** The user's answer: go ahead, not now, or a redirection with the verbatim
+ *  text of what to do differently. */
+export type ApprovalDecision =
+  | "doIt"
+  | "notNow"
+  | { kind: "differently"; text: string };
 
 interface ChatApprovalInteractionCardProps extends StepChrome {
   /** The approval step's stable id — fades the modal body on a step swap. */
   stepId: string;
   /** Lowercase toolkit slug, e.g. "gmail" — resolves the app identity lockup. */
   toolkit: string;
-  /** The raw Composio action slug, e.g. "GMAIL_SEND_DRAFT", humanized for the
-   *  permission question ("send draft"). */
+  /** The raw Composio action slug, e.g. "GMAIL_SEND_EMAIL", humanized for the
+   *  fallback confirmation question. */
   action: string;
-  /** True when the user walked BACK onto this already-reached step via the pager. */
+  /** The agent-phrased confirmation ("Should I send the 30 invites?"). When
+   *  present it IS the body question; absent falls back to "{{action}} with
+   *  {{app}}?". */
+  intent?: string;
+  /** True when the user walked BACK onto this already-reached step. */
   revisited: boolean;
-  /** The outcome already recorded for this step (walking Back onto a resolved
-   *  step shows the calm decided state instead of re-offering the buttons). */
-  outcome?: "allowedOnce" | "alwaysAllowed" | "denied";
-  /** Fired with the decision; the panel records it, performs the store write,
-   *  and advances the stepper. */
-  onDecision: (decision: "allowOnce" | "alwaysAllow" | "deny") => void;
+  /** The decision already recorded for this step (a revisit shows the calm
+   *  decided state instead of re-offering the controls). */
+  outcome?: "doIt" | "notNow" | "differently";
+  /** Fired with the decision; the panel records it, grants the action on "Do
+   *  it", and advances the stepper. */
+  onDecision: (decision: ApprovalDecision) => void;
 }
 
 /**
- * The approval-step content for an `approval` interaction, rendered as its OWN
+ * The confirmation content for an `approval` interaction, rendered as its OWN
  * `InteractionModal` inside the shared `ChatInteractionCard` sequence (via its
- * `renderApproval` prop, wired with the `StepChrome` the stepper hands it — the
- * header pager + dismiss X). A tool call needs the user's go-ahead before it
- * runs, so the host queued this step; the card asks the permission question and
- * records the answer.
+ * `renderApproval` prop + the `StepChrome` the stepper hands it). A queued tool
+ * call needs the user's go-ahead; the card asks a plain, non-technical
+ * confirmation and records the answer.
  *
- * Following the reference "Coworker card" language, the modal TITLE is the app
- * identity lockup — the real brand logo beside the integration NAME at regular
- * weight — over a deliberately NON-technical body: just the permission question
- * ("Allow Gmail to send draft?") in foreground tone. The tool's raw params are
- * NEVER shown (the target user is non-technical); the approval still covers the
- * exact call via paramsHash.
- *
- * THREE decisions, all made from the footer:
- *   - "Allow once"    — run this call, ask again next time (Enter).
- *   - "Always allow"  — run it and stop asking for this action (pushed LEFT).
- *   - "Deny"          — decline this call; the model hears the refusal (Esc).
- * Every choice resolves the step, so the app records which decision before
- * advancing. Esc = Deny (NOT skip): declining here is a real decision the model
- * is told about, unlike a connect/signin "Not now" that merely defers. Enter =
- * Allow once mirrors the footer's return-key glyph (both wired through the shared
- * {@link useInteractionStepKeys}, which owns the text-field guard + capture-phase
- * pre-emption of the global Escape-closes-the-panel shortcut).
- *
- * The header X (dismiss) is NOT a Deny — it interrupts the WHOLE interaction
- * sequence (handled by the stepper), leaving this call unanswered rather than
- * refused. The header pager owns Back/Forward, so a REVISITED step that is
- * already decided shows the calm decided state (a check + "Allowed", or a muted
- * "Denied") with no footer; the pager's forward chevron is the way onward.
+ * TITLE: the app lockup (logo + NAME). BODY: the QUESTION (the agent's `intent`,
+ * else the "{{action}} with {{app}}?" fallback) over an always-visible free-text
+ * row; raw params are NEVER shown. Three answers: "Do it" (Enter) grants the
+ * action and resumes; "Not now" (Esc) declines; typing + send is "differently"
+ * (the model gets the verbatim ask, no host write). Enter/Esc ride {@link
+ * useInteractionStepKeys}, whose guard keeps Enter inside the row on its own
+ * submit. The header X is a Stop, not a "Not now". A REVISITED decided step
+ * shows the calm state (check + "Confirmed", or muted "Not now" / "Changed").
  */
 export function ChatApprovalInteractionCard({
   toolkit,
   action,
+  intent,
   revisited,
   outcome,
   onDecision,
@@ -75,23 +72,29 @@ export function ChatApprovalInteractionCard({
 }: ChatApprovalInteractionCardProps) {
   const { t } = useTranslation("chat");
 
-  // The app identity for the title lockup (name + logo), resolved WITHOUT any
-  // connect side effects — the approval card shows the app but never starts OAuth.
+  // The app identity for the title lockup, resolved WITHOUT connect side effects
+  // — the card shows the app but never starts OAuth.
   const app = useIntegrationAppDisplay(toolkit);
 
-  // A revisited step that was already decided shows the calm decided state and
-  // no footer; the pager's forward chevron is the way onward. The decision
-  // buttons only offer on the live frontier.
+  // A revisited, already-decided step shows the calm decided state and no footer;
+  // the controls only offer on the live frontier.
   const decided = revisited && outcome != null;
 
-  // Enter allows once, Esc denies — mirroring the footer's return glyph + Esc
-  // hint. Inert once the step is decided or the card is disabled (the shared
-  // hook owns the editable-target guard + capture-phase pre-emption).
+  // Enter confirms, Esc declines — mirroring the footer hints. Inert once decided
+  // or disabled; the shared hook's editable-target guard keeps Enter inside the
+  // redirection row on its own submit and pre-empts the global Escape shortcut.
   useInteractionStepKeys({
     enabled: !disabled && !decided,
-    onEnter: () => onDecision("allowOnce"),
-    onEscape: () => onDecision("deny"),
+    onEnter: () => onDecision("doIt"),
+    onEscape: () => onDecision("notNow"),
   });
+
+  const question =
+    intent ??
+    t("interaction.confirmFallback", {
+      app: app.name,
+      action: humanizeActionSlug(action, toolkit),
+    });
 
   return (
     <InteractionModal
@@ -100,8 +103,6 @@ export function ChatApprovalInteractionCard({
       dismissLabel={dismissLabel}
       onDismiss={onDismiss}
       pager={pager}
-      // Title: the app icon beside the integration NAME (regular weight), the
-      // card's identity line.
       title={
         <InteractionModalTitle
           className="flex-1 truncate"
@@ -112,60 +113,57 @@ export function ChatApprovalInteractionCard({
       }
       body={
         <div className="flex flex-col">
-          {/* The permission question, the prominent regular-weight line. */}
+          {/* The confirmation question, the prominent regular-weight line. */}
           <p className="text-balance text-ink text-sm leading-snug">
-            {t("interaction.approvalTitle", {
-              app: app.name,
-              action: humanizeActionSlug(action, toolkit),
-            })}
+            {question}
           </p>
-          {decided &&
-            (outcome === "denied" ? (
-              // Denied: a muted line, no check, no red — a calm decision record.
-              <span className="mt-3 text-ink-muted text-sm">
-                {t("interaction.approvalDenied")}
-              </span>
-            ) : (
-              // Allowed (once or always): the connect card's decided-state tone.
+          {decided ? (
+            outcome === "doIt" ? (
+              // Confirmed: the calm decided-state tone shared with connect.
               <span className="mt-3 inline-flex items-center gap-1 font-medium text-emerald-600 text-sm dark:text-emerald-400">
                 <Check className="size-3.5" />
-                {t("interaction.approvalAllowed")}
+                {t("interaction.confirmed")}
               </span>
-            ))}
+            ) : (
+              // Not now / Changed: a muted decision record, no check.
+              <span className="mt-3 text-ink-muted text-sm">
+                {t(
+                  outcome === "notNow"
+                    ? "interaction.notNow"
+                    : "interaction.changed",
+                )}
+              </span>
+            )
+          ) : (
+            <ChatApprovalRedirectRow
+              disabled={disabled ?? false}
+              onSubmit={(text) => onDecision({ kind: "differently", text })}
+            />
+          )}
         </div>
       }
       footer={
         decided ? undefined : (
           <>
             <Button
-              className="mr-auto"
-              disabled={disabled}
-              onClick={() => onDecision("alwaysAllow")}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              {t("interaction.alwaysAllow")}
-            </Button>
-            <Button
               className="gap-1.5"
               disabled={disabled}
-              onClick={() => onDecision("deny")}
+              onClick={() => onDecision("notNow")}
               size="sm"
               type="button"
               variant="outline"
             >
-              {t("interaction.deny")}
+              {t("interaction.notNow")}
               <Kbd>{t("interaction.esc")}</Kbd>
             </Button>
             <Button
               className="gap-1.5"
               disabled={disabled}
-              onClick={() => onDecision("allowOnce")}
+              onClick={() => onDecision("doIt")}
               size="sm"
               type="button"
             >
-              {t("interaction.allowOnce")}
+              {t("interaction.doIt")}
               <CornerDownLeft className="size-3.5 opacity-70" />
             </Button>
           </>

@@ -263,6 +263,7 @@ export function recordSuggestReusable(input: {
 export function recordApproval(input: {
   toolkit: string;
   action: string;
+  intent?: string;
   params?: Record<string, string>;
   paramsOmitted?: number;
   paramsHash: string;
@@ -275,6 +276,7 @@ export function recordApproval(input: {
     id: `a${holder.approvals.length + 1}`,
     toolkit: input.toolkit,
     action: input.action,
+    ...(input.intent ? { intent: input.intent } : {}),
     ...(input.params ? { params: input.params } : {}),
     ...(input.paramsOmitted !== undefined
       ? { paramsOmitted: input.paramsOmitted }

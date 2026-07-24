@@ -265,9 +265,13 @@ removed for free whenever the agent dir is deleted.
 ## 2b. Action approvals — the execute-time permission gate
 
 The ALLOWLIST answers "which toolkit may this agent touch at all" (§2, gateway);
-APPROVALS answer "may this specific action call, with these params, run right
-now". Distinct concepts, distinct store. An `integration_execute` the user has
-not pre-blessed pauses the turn on an approval card instead of firing silently.
+APPROVALS answer "may this action run right now". Distinct concepts, distinct
+store. An `integration_execute` the user has not confirmed pauses the turn on a
+plain confirmation card ("Do it" / "Not now") instead of firing silently.
+Confirming GRANTS the action SLUG for ~15 minutes — so a batch ("send 30
+invites") or a chained draft→send double-ask runs without re-asking per call. The
+old Always-allow / one-shot-ticket model is DELETED (grants are action-scoped and
+time-boxed, not params-exact).
 
 **The gate** — `packages/host/src/routes/integrations-sandbox.ts`, in the execute
 branch, evaluated in strict PRECEDENCE (skipped wholesale when `deps.actionApprovals`
@@ -287,23 +291,24 @@ is unwired, so existing installs/tests execute untouched):
    turn-mode `AsyncLocalStorage`, `packages/runtime/src/session/turn-mode-context.ts`)
    ONLY on an Autopilot turn; the sandbox HMAC already authenticated the runtime,
    so the header is trusted. Fire-and-forget can never wait on the user.
-2. **Always-allow record** — the action slug is on the agent's always list → runs.
-3. **One-shot ticket** — a FRESH ticket matching `hashActionParams(action, params)`
-   is consumed (single use) → runs. The hash is canonical JSON with recursively
-   SORTED keys → sha256 → 16 hex chars, so re-serializing the same call re-hashes
-   identically, yet ANY param drift changes the hash → a new card (drift is safe,
-   never silently pre-approved).
-4. **Else 409** `{error, code:"approval_required", approval:{toolkit, action,
-   params, paramsOmitted?, paramsHash}}`. `params` is display-ready
+2. **Fresh grant** — `isGranted(agentId, action)`: the user confirmed THIS action
+   (case-insensitive) within the TTL → runs. Action-scoped, so a follow-up call of
+   the same action with DIFFERENT params passes too (no params-exact re-ask).
+3. **Else 409** `{error, code:"approval_required", approval:{toolkit, action,
+   params, paramsOmitted?, paramsHash, intent?}}`. `params` is display-ready
    (`displayParams` returns `{params, omitted}`: strings pass, else JSON; each
    value truncated to 80 chars, at most the first 8 keys). `paramsOmitted` (only
-   when > 0) is how many params were dropped past that cap — the card surfaces it
-   ("And N more settings") so the user knows the hash covers settings the rows
-   don't show. `toolkit` is best-effort (`resolveToolkit`, 409-path only: the
-   LONGEST matching slug among the acting user's CONNECTIONS — fault-tolerant, so
-   a `listConnections` failure falls through — else the segment before the first
-   `_`; display-only, `paramsHash` + `action` are what gate). Its slug-attribution
-   helper (`actionInToolkit`) is inlined into `integrations-sandbox.ts`.
+   when > 0) is how many params were dropped past that cap. `paramsHash`
+   (`hashActionParams`: canonical JSON, recursively sorted keys → sha256 → 16 hex)
+   stays in the payload so the app dedupes approval STEPS by the exact call.
+   `intent` is the agent's optional one-line reason, read from the request BODY,
+   trimmed + truncated to 200 chars, echoed for the card (omitted when
+   absent/blank/non-string). `toolkit` is best-effort (`resolveToolkit`, 409-path
+   only: the LONGEST matching slug among the acting user's CONNECTIONS —
+   fault-tolerant, so a `listConnections` failure falls through — else the segment
+   before the first `_`; display-only, `action` is what gates). Its
+   slug-attribution helper (`actionInToolkit`) is inlined into
+   `integrations-sandbox.ts`.
 
 The runtime's `integration_execute` classifies the 409 by its `code` (never the
 bare status), records an `approval` step on the turn holder (`recordApproval`,
@@ -314,20 +319,18 @@ lifecycle).
 
 **The store** — `packages/host/src/integrations/{action-approval-store.ts,
 action-approvals.ts, approvals.ts}`. `FileActionApprovalStore` persists per-agent
-JSON at `<agent>/.houston/action-approvals.json` `{always: string[], tickets:
-[{hash, ts}]}` (atomic tmp+rename; missing/corrupt reads as the empty record,
-never a crash; removed for free on agent deletion). It derives the agent-dir path
-+ atomic write via `agent-file.ts` (`agentDotHoustonFile` + `atomicWriteJson`). `LocalActionApprovals` is the
-policy over it: `isAlways` / `allowAlways` (case-insensitive dedupe) /
-`disallowAlways` (case-insensitive REMOVE for the review UI — read→filter→prune→
-put→return next.always, skipping the redundant put on a clean miss like
-`consumeTicket`), `addTicket` / `consumeTicket` (consume-once). Tickets have a **15-minute TTL**
-(`TICKET_TTL_MS`) and are PRUNED on every read/write path, so a stale ticket never
-silently authorizes a later identical call. Every MUTATING op is a read→mutate→
-write across awaits, so they are **serialized per agent** through a promise-chain
-tail (`chains` map) — two concurrent `consumeTicket`s for one fresh ticket can't
-both win (no double-consume / resurrection); `consumeTicket` also skips the
-redundant `put` on a clean miss (nothing pruned or removed).
+JSON at `<agent>/.houston/action-approvals.json` `{grants: [{action, ts}]}` (atomic
+tmp+rename; missing/corrupt/LEGACY-shaped reads as the empty record — the old
+`{always, tickets}` file has no `grants` and drops harmlessly, no migration;
+removed for free on agent deletion). It derives the agent-dir path + atomic write
+via `agent-file.ts` (`agentDotHoustonFile` + `atomicWriteJson`).
+`LocalActionApprovals` is the policy over it: `grant` (record/refresh a grant's ts,
+case-insensitive dedupe, drop stale, persist) and `isGranted` (a FRESH grant, TTL
+checked in-memory). Grants have a **15-minute TTL** (`GRANT_TTL_MS`) and are pruned
+on every write, so a stale grant never authorizes a much-later call. `grant` is a
+read→mutate→write across awaits, so mutations are **serialized per agent** through a
+promise-chain tail (`chains` map) — concurrent grants for one agent never lose a
+write.
 
 **Pod-side in v1 (NOT gated on gatewayFronted).** Wired in `local/host.ts`
 whenever `registry` exists — it does NOT check `!gatewayFronted`, so a managed
@@ -335,29 +338,24 @@ cloud pod still enforces the gate pod-side per agent (the gateway does not own
 action approvals yet). Per-user approval scoping for Teams is a known cloud
 follow-up.
 
-**User routes** — `packages/host/src/routes/action-approvals.ts` (authorize =
-`canUseAgent`; dep absent → the handler falls through to 404 → client reads
-"unsupported" and degrades without a toast):
+**User route** — `packages/host/src/routes/action-approvals.ts`, the ONE remaining
+route (authorize = `canUseAgent`; dep absent → the handler falls through to 404 →
+client reads "unsupported" and degrades without a toast). ALL other
+action-approvals routes (GET, POST/DELETE always, POST tickets) are DELETED:
 
-- `GET    /v1/agents/:agentId/action-approvals` → `{always}`
-- `POST   /v1/agents/:agentId/action-approvals/always`   `{action}` → `{always}`
-- `DELETE /v1/agents/:agentId/action-approvals/always`   `{action}` → `{always}` (revoke)
-- `POST   /v1/agents/:agentId/action-approvals/tickets`  `{hash}`   → `{ok:true}`
+- `POST /v1/agents/:agentId/action-approvals/grants`  `{action}` → `{ok:true}`
 
-The shared `serve()` core handles all four on BOTH surfaces (the `/v1` wrapper and
-the per-agent dispatch), DELETE validating the slug with the same 400 shape as the
-POST. The engine-client method is `disallowActionAlways` (DELETE with a JSON body,
-no 404-degrade on a mutation), surfaced through `tauriIntegrations.revokeActionAlways`.
-
-The app calls `tickets` on "Allow once", `always` on "Always allow" (the card also
-invalidates `queryKeys.actionApprovals(agentId)` on a successful always-allow so the
-review list below stays live), and DELETE `always` on the agent tab's **Runs without
-asking** review (§3). The model then re-issues the same execute and the gate lets it
-through. **The prompt no
-longer pre-asks** via `ask_user` for connected-app actions (`houston-prompt.ts` +
-the Rust mirror `houston_prompt/base.rs`): "For connected-app actions, do not ask.
+The shared `serve()` core serves it on BOTH surfaces (the `/v1` wrapper and the
+per-agent dispatch the hosted gateway proxies), validating the slug with the
+`ACTION` regex (same 400 shape). The cloud gateway allowlists by the
+`action-approvals` path family, so its scope rules are untouched. **The prompt does
+not pre-ask** via `ask_user` for connected-app actions (`houston-prompt.ts` + the
+Rust mirror `houston_prompt/base.rs`): "For connected-app actions, do not ask.
 Houston shows its own approval card after your turn, so just call
 `integration_execute`."
+
+> **Breaking change (beta, auto-updater):** an old desktop POSTing `always` /
+> `tickets` against a new host 404s — accepted, no compat shim.
 
 ---
 

@@ -31,13 +31,15 @@ import {
  * it resumes the agent with the dedicated hidden `signedInFollowup` ("I've signed
  * in. Please continue.") instead of the bare status line.
  *
- * After the connect lines come the APPROVAL decisions, in step order: an approved
- * action (allow once OR always allow) contributes `approvedLine(action)`, a denied
- * one `deniedLine(action)` — the RAW action slug, because the model reads this
- * flat body and must re-issue the exact same action, so it names it verbatim. (The
- * VISIBLE transcript payload names the humanized action instead — see
- * {@link encodeInteractionAnswersMessage}.) An approval-only sequence (no
- * questions) resumes the agent hidden, like a connect-only one.
+ * After the connect lines come the APPROVAL decisions, in step order: a confirmed
+ * action ("Do it") contributes `approvedLine(action)`, a declined one ("Not now")
+ * `deniedLine(action)`, and a redirected one ("differently") `redoLine(action,
+ * text)` — the RAW action slug, because the model reads this flat body and
+ * re-issues the action (adjusting it for a redirection), so it names it verbatim.
+ * (The VISIBLE transcript payload names the humanized action instead — see
+ * {@link encodeInteractionAnswersMessage}.) A confirm/decline-only sequence (no
+ * questions) resumes the agent hidden, like a connect-only one; a redirection
+ * carries user-typed text, so its sequence resumes VISIBLY.
  *
  * A saved custom-integration key adds `credentialedLine(name)` ("Added the X
  * key."), a declined one `skippedCredentialLine(name)` ("Skipped adding the X
@@ -48,18 +50,21 @@ import {
  *
  * The line factories (`connectedLine` / `skippedConnectLine` / `signedInLine` /
  * `skippedSigninLine` / `signedInFollowup` / `approvedLine` / `deniedLine` /
- * `credentialedLine` / `skippedCredentialLine`) are injected so this stays
- * i18n-agnostic and unit-testable — the caller passes the `t(...)` results.
+ * `redoLine` / `credentialedLine` / `skippedCredentialLine`) are injected so this
+ * stays i18n-agnostic and unit-testable — the caller passes the `t(...)` results.
  */
 export function composeInteractionReply(args: {
   answers: ChatInteractionAnswer[];
   connectedNames: string[];
   /** Apps whose connect step the user skipped, in skip order. */
   skippedConnectNames: string[];
-  /** Actions the user approved (allow once OR always), raw slugs in step order. */
+  /** Actions the user confirmed ("Do it"), raw slugs in step order. */
   approvedActions: string[];
-  /** Actions the user denied, raw slugs in step order. */
+  /** Actions the user declined ("Not now"), raw slugs in step order. */
   deniedActions: string[];
+  /** Actions the user redirected ("differently"): the raw slug plus the verbatim
+   *  text of what to do instead, in step order. */
+  redoItems: { action: string; text: string }[];
   /** Custom integrations whose secret the user saved during THIS sequence. */
   credentialedNames: string[];
   /** Custom integrations whose credential step the user skipped, in skip order —
@@ -83,10 +88,13 @@ export function composeInteractionReply(args: {
   skippedSigninLine: string;
   /** The hidden resume message for a signin-ONLY sequence (nothing else to say). */
   signedInFollowup: string;
-  /** The go-ahead line an approved action contributes (raw slug). */
+  /** The go-ahead line a confirmed action contributes (raw slug). */
   approvedLine: (action: string) => string;
-  /** The refusal line a denied action contributes (raw slug). */
+  /** The refusal line a declined action contributes (raw slug). */
   deniedLine: (action: string) => string;
+  /** The redirection line a "differently" action contributes: the raw slug plus
+   *  the user's verbatim text (the model adjusts and re-issues). */
+  redoLine: (action: string, text: string) => string;
   /** The hidden resume message for a credential-ONLY sequence (secret saved). */
   credentialedFollowup: string;
 }): string {
@@ -100,6 +108,7 @@ export function composeInteractionReply(args: {
     args.skippedConnectNames.length === 0 &&
     args.approvedActions.length === 0 &&
     args.deniedActions.length === 0 &&
+    args.redoItems.length === 0 &&
     args.credentialedNames.length === 0 &&
     args.skippedCredentialNames.length === 0
   )
@@ -115,6 +124,7 @@ export function composeInteractionReply(args: {
     args.connectedNames.length === 0 &&
     args.skippedConnectNames.length === 0 &&
     args.skippedCredentialNames.length === 0 &&
+    args.redoItems.length === 0 &&
     args.credentialedNames.length > 0
   )
     return encodeAutoContinueMessage(args.credentialedFollowup);
@@ -128,12 +138,17 @@ export function composeInteractionReply(args: {
   for (const action of args.approvedActions)
     lines.push(args.approvedLine(action));
   for (const action of args.deniedActions) lines.push(args.deniedLine(action));
+  for (const item of args.redoItems)
+    lines.push(args.redoLine(item.action, item.text));
   for (const name of args.credentialedNames)
     lines.push(args.credentialedLine(name));
   for (const name of args.skippedCredentialNames)
     lines.push(args.skippedCredentialLine(name));
   const body = lines.join("\n");
-  return args.hasQuestionSteps ? body : encodeAutoContinueMessage(body);
+  // A redirection carries user-typed text, so its sequence resumes VISIBLY
+  // (the transcript should show what the user asked), like a question sequence.
+  const visible = args.hasQuestionSteps || args.redoItems.length > 0;
+  return visible ? body : encodeAutoContinueMessage(body);
 }
 
 /** One connect step's FINAL outcome in a walked sequence: the app's display
@@ -210,22 +225,39 @@ export interface ApprovalDisplay {
 }
 
 /** One approval step's FINAL decision in a walked sequence: the RAW action slug
- *  (what the model must re-issue), a humanized `display` (what the user reads),
- *  and whether the user allowed it (once OR always) or denied it. A step decided
- *  more than once (walked Back and re-decided) records the LAST decision — the
- *  panel keys the outcome by step id, so exactly one entry survives per step. */
+ *  (what the model re-issues), a humanized `display` (what the user reads), the
+ *  decision (confirmed "doIt", declined "notNow", or redirected "differently"),
+ *  and — for a redirection — the verbatim `text` of what to do instead. A step
+ *  decided more than once (walked Back and re-decided) records the LAST decision
+ *  — the panel keys the outcome by step id, so one entry survives per step. */
 export interface ApprovalOutcome {
   action: string;
-  decision: "allowOnce" | "alwaysAllow" | "deny";
+  decision: "doIt" | "notNow" | "differently";
   display: ApprovalDisplay;
+  /** The redirection text, present only when `decision === "differently"`. */
+  text?: string;
+}
+
+/** One redirected approval's verbatim body item: the RAW slug the model
+ *  re-issues plus the user's text. */
+export interface RedoItem {
+  action: string;
+  text: string;
+}
+
+/** One redirected approval's VISIBLE display: the humanized app + action plus
+ *  the user's text. */
+export interface RedoDisplay {
+  display: ApprovalDisplay;
+  text: string;
 }
 
 /**
- * Split the approval steps' FINAL decisions into the approved + denied lists the
- * reply names, in step order — the RAW slugs (for the flat body the model reads)
- * paired with the humanized `display`s (for the visible transcript payload).
- * Keyed by step id, so re-deciding the SAME step yields exactly one entry per
- * step, in the approved OR the denied list, never both. Steps with no recorded
+ * Split the approval steps' FINAL decisions into the confirmed + declined +
+ * redirected lists the reply names, in step order — the RAW slugs (for the flat
+ * body the model reads) paired with the humanized `display`s (for the visible
+ * transcript payload). Keyed by step id, so re-deciding the SAME step yields
+ * exactly one entry per step, in exactly one list. Steps with no recorded
  * decision (never reached) are omitted. Mirrors {@link finalConnectNames}.
  */
 export function finalApprovalNames(
@@ -234,25 +266,40 @@ export function finalApprovalNames(
 ): {
   approvedActions: string[];
   deniedActions: string[];
+  redoItems: RedoItem[];
   approvedDisplays: ApprovalDisplay[];
   deniedDisplays: ApprovalDisplay[];
+  redoDisplays: RedoDisplay[];
 } {
   const approvedActions: string[] = [];
   const deniedActions: string[] = [];
+  const redoItems: RedoItem[] = [];
   const approvedDisplays: ApprovalDisplay[] = [];
   const deniedDisplays: ApprovalDisplay[] = [];
+  const redoDisplays: RedoDisplay[] = [];
   for (const id of approvalStepIds) {
     const outcome = outcomes.get(id);
     if (!outcome) continue;
-    if (outcome.decision === "deny") {
+    if (outcome.decision === "notNow") {
       deniedActions.push(outcome.action);
       deniedDisplays.push(outcome.display);
+    } else if (outcome.decision === "differently") {
+      const text = outcome.text ?? "";
+      redoItems.push({ action: outcome.action, text });
+      redoDisplays.push({ display: outcome.display, text });
     } else {
       approvedActions.push(outcome.action);
       approvedDisplays.push(outcome.display);
     }
   }
-  return { approvedActions, deniedActions, approvedDisplays, deniedDisplays };
+  return {
+    approvedActions,
+    deniedActions,
+    redoItems,
+    approvedDisplays,
+    deniedDisplays,
+    redoDisplays,
+  };
 }
 
 const MARKER_PREFIX = "<!--houston:interaction-answers ";
@@ -284,10 +331,16 @@ export function encodeInteractionAnswersMessage(
      *  `approvedActions` (step order); the payload names these, not the slug. */
     approvedDisplays: ApprovalDisplay[];
     deniedDisplays: ApprovalDisplay[];
-    /** The VISIBLE transcript line for an approved action (humanized app + action). */
+    /** Humanized display + text for redirected actions, aligned with the body's
+     *  `redoItems` (step order). */
+    redoDisplays: RedoDisplay[];
+    /** The VISIBLE transcript line for a confirmed action (humanized app + action). */
     approvedLineDisplay: (display: ApprovalDisplay) => string;
-    /** The VISIBLE transcript line for a denied action (humanized app + action). */
+    /** The VISIBLE transcript line for a declined action (humanized app + action). */
     deniedLineDisplay: (display: ApprovalDisplay) => string;
+    /** The VISIBLE transcript line for a redirected action (humanized app +
+     *  action, plus the user's verbatim text). */
+    redoLineDisplay: (display: ApprovalDisplay, text: string) => string;
   },
 ): string {
   const body = composeInteractionReply(args);
@@ -309,6 +362,8 @@ export function encodeInteractionAnswersMessage(
     lines.push({ answer: args.approvedLineDisplay(display) });
   for (const display of args.deniedDisplays)
     lines.push({ answer: args.deniedLineDisplay(display) });
+  for (const rd of args.redoDisplays)
+    lines.push({ answer: args.redoLineDisplay(rd.display, rd.text) });
   for (const name of args.credentialedNames)
     lines.push({ answer: args.credentialedLine(name) });
   for (const name of args.skippedCredentialNames)

@@ -15,8 +15,9 @@ import {
 
 /**
  * The file-backed action-approval store: round-trip, atomic-write validity,
- * corrupt/missing-file resilience, and agent-id validation — persisting the
- * {always, tickets} record.
+ * corrupt/missing-file resilience, tolerant reading of the deleted legacy
+ * `{always, tickets}` shape, and agent-id validation — persisting the {grants}
+ * record.
  */
 
 const roots: string[] = [];
@@ -37,8 +38,7 @@ test("round-trips the record through disk", async () => {
   const root = tmpRoot();
   const store = new FileActionApprovalStore(root);
   const record: ApprovalRecord = {
-    always: ["GMAIL_SEND"],
-    tickets: [{ hash: "0123456789abcdef", ts: 1000 }],
+    grants: [{ action: "GMAIL_SEND", ts: 1000 }],
   };
   await store.put(AGENT, record);
   expect(await store.get(AGENT)).toEqual(record);
@@ -46,13 +46,13 @@ test("round-trips the record through disk", async () => {
 
 test("a missing file reads as the empty record", async () => {
   const store = new FileActionApprovalStore(tmpRoot());
-  expect(await store.get(AGENT)).toEqual({ always: [], tickets: [] });
+  expect(await store.get(AGENT)).toEqual({ grants: [] });
 });
 
 test("the on-disk file is valid, pretty JSON (atomic tmp+rename left no debris)", async () => {
   const root = tmpRoot();
   const store = new FileActionApprovalStore(root);
-  await store.put(AGENT, { always: ["A"], tickets: [] });
+  await store.put(AGENT, { grants: [{ action: "A", ts: 1 }] });
   const raw = readFileSync(fileFor(root), "utf8");
   expect(() => JSON.parse(raw)).not.toThrow();
   expect(raw).toContain("\n"); // pretty-printed
@@ -65,23 +65,36 @@ test("a corrupt file reads as the empty record (never crashes)", async () => {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, "{ not json");
   const store = new FileActionApprovalStore(root);
-  expect(await store.get(AGENT)).toEqual({ always: [], tickets: [] });
+  expect(await store.get(AGENT)).toEqual({ grants: [] });
 });
 
-test("a structurally-wrong file drops the bad fields to empty", async () => {
+test("a legacy {always, tickets} file reads as the empty record", async () => {
   const root = tmpRoot();
   const path = fileFor(root);
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify({ always: "nope", tickets: [{ ts: 1 }] }));
+  // The deleted model — no `grants` field, so the tolerant reader drops it.
+  writeFileSync(
+    path,
+    JSON.stringify({ always: ["GMAIL_SEND"], tickets: [{ hash: "x", ts: 1 }] }),
+  );
   const store = new FileActionApprovalStore(root);
-  expect(await store.get(AGENT)).toEqual({ always: [], tickets: [] });
+  expect(await store.get(AGENT)).toEqual({ grants: [] });
+});
+
+test("a structurally-wrong grants field drops to empty", async () => {
+  const root = tmpRoot();
+  const path = fileFor(root);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify({ grants: [{ action: 42 }] }));
+  const store = new FileActionApprovalStore(root);
+  expect(await store.get(AGENT)).toEqual({ grants: [] });
 });
 
 test("an invalid agent id reads empty and refuses to write", async () => {
   const store = new FileActionApprovalStore(tmpRoot());
   for (const bad of ["nowsplit", "../escape/x", "a/b/c"]) {
-    expect(await store.get(bad)).toEqual({ always: [], tickets: [] });
-    await expect(store.put(bad, { always: [], tickets: [] })).rejects.toThrow(
+    expect(await store.get(bad)).toEqual({ grants: [] });
+    await expect(store.put(bad, { grants: [] })).rejects.toThrow(
       /invalid agent id/,
     );
   }

@@ -47,8 +47,8 @@ export async function handleSandboxIntegrations(
     integrations?: IntegrationDeps;
     /**
      * Per-agent action-approval policy (LOCAL / self-host + managed pods). When
-     * present, execute is gated on user approval unless the turn runs in
-     * Autopilot (auto header) — see the gate below. Absent → no gate (existing
+     * present, execute is gated on a fresh per-action grant unless the turn runs
+     * in Autopilot (auto header) — see the gate below. Absent → no gate (existing
      * installs/tests execute untouched).
      */
     actionApprovals?: LocalActionApprovals;
@@ -163,9 +163,10 @@ export async function handleSandboxIntegrations(
     // (isReadOnlyAction, conservative: ambiguous = not read-only); (1) an
     // Autopilot turn auto-approves — the runtime stamps x-houston-turn-mode:auto
     // and the sandbox HMAC already authenticated the runtime, so the header is
-    // trusted; (2) an always-allow record for THIS action runs; (3) a fresh
-    // one-shot ticket matching hash(action, params) is consumed (single use)
-    // and runs; else (4) 409 approval_required with a display payload the
+    // trusted; (2) a FRESH grant for THIS action (the user confirmed "Do it"
+    // within the TTL) runs — the grant is action-scoped, so a follow-up call of
+    // the same action with DIFFERENT params (a batch, a chained draft→send)
+    // passes too; else (3) 409 approval_required with a display payload the
     // runtime turns into an approval step on the interaction card. Skipped
     // wholesale when the policy is unwired (deps.actionApprovals absent →
     // existing installs unchanged).
@@ -173,31 +174,29 @@ export async function handleSandboxIntegrations(
     if (
       approvals &&
       !isReadOnlyAction(action) &&
-      header(req, "x-houston-turn-mode") !== "auto"
+      header(req, "x-houston-turn-mode") !== "auto" &&
+      !(await approvals.isGranted(claim.agentId, action))
     ) {
-      if (!(await approvals.isAlways(claim.agentId, action))) {
-        const hash = hashActionParams(action, params);
-        if (!(await approvals.consumeTicket(claim.agentId, hash))) {
-          const display = displayParams(params);
-          json(res, 409, {
-            error: "approval required",
-            code: "approval_required",
-            approval: {
-              toolkit: await resolveToolkit(action, provider, ws.ownerUserId),
-              action,
-              params: display.params,
-              paramsHash: hash,
-              // The user approves the full call; when the card caps its param
-              // rows, tell it how many settings it isn't showing so it can say so
-              // (present only when > 0 — omitted from the common no-cap case).
-              ...(display.omitted > 0
-                ? { paramsOmitted: display.omitted }
-                : {}),
-            },
-          });
-          return true;
-        }
-      }
+      const display = displayParams(params);
+      const intent = parseIntent(body.intent);
+      json(res, 409, {
+        error: "approval required",
+        code: "approval_required",
+        approval: {
+          toolkit: await resolveToolkit(action, provider, ws.ownerUserId),
+          action,
+          params: display.params,
+          paramsHash: hashActionParams(action, params),
+          // The user approves the action; when the card caps its param rows,
+          // tell it how many settings it isn't showing so it can say so (present
+          // only when > 0 — omitted from the common no-cap case).
+          ...(display.omitted > 0 ? { paramsOmitted: display.omitted } : {}),
+          // The agent's one-line reason for this call, when it sent one — echoed
+          // for the card to show ("why"). Omitted when absent/malformed.
+          ...(intent ? { intent } : {}),
+        },
+      });
+      return true;
     }
 
     json(
@@ -214,6 +213,21 @@ export async function handleSandboxIntegrations(
     if (relayIntegrationUpstreamError(res, err)) return true;
     throw err;
   }
+}
+
+const MAX_INTENT_LEN = 200;
+
+/** The agent's optional one-line reason for an execute, off the request body:
+ *  a non-empty string, trimmed and truncated to 200 chars for the approval card.
+ *  Anything else (absent, non-string, blank) → undefined, so the payload omits
+ *  the field entirely. Display-only — it never gates the call. */
+function parseIntent(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > MAX_INTENT_LEN
+    ? trimmed.slice(0, MAX_INTENT_LEN)
+    : trimmed;
 }
 
 /**

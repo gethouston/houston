@@ -4,24 +4,20 @@ import { agentDotHoustonFile, atomicWriteJson } from "./agent-file";
 
 /**
  * Per-agent action-approval state (LOCAL / self-host + managed pods). Records
- * which integration ACTIONS the user has blessed for THIS agent:
- *   - `always`: action slugs the user chose "Always allow" for (any params).
- *   - `tickets`: one-shot "Allow once" grants, each a params-fingerprint hash
- *     with the ts it was written; consumed on the matching execute, TTL-pruned.
- * An empty record `{always:[], tickets:[]}` means "nothing pre-approved" — the
- * gate then asks. Distinct from integration GRANTS (which toolkit an agent may
- * touch at all); approvals gate the individual action call.
+ * which integration ACTIONS the user has confirmed for THIS agent: each grant
+ * is an action slug with the ts it was blessed. Confirming an action ("Do it")
+ * grants that SLUG for a short window (GRANT_TTL_MS), so a batch — "send 30
+ * invites" — or a chained draft→send flow does not re-ask per call. An empty
+ * record `{grants:[]}` means "nothing confirmed" — the gate then asks. Distinct
+ * from integration GRANTS (which toolkit an agent may touch at all); approvals
+ * gate the individual action call.
  */
 export interface ApprovalRecord {
-  always: string[];
-  tickets: { hash: string; ts: number }[];
+  grants: { action: string; ts: number }[];
 }
 
-/** The empty record — the safe read for a missing/corrupt file (never a crash). */
-export const EMPTY_APPROVAL_RECORD: ApprovalRecord = {
-  always: [],
-  tickets: [],
-};
+/** The empty record — the safe read for a missing/corrupt/legacy file. */
+export const EMPTY_APPROVAL_RECORD: ApprovalRecord = { grants: [] };
 
 export interface ActionApprovalStore {
   /** The agent's stored approval record, or the empty record when none exists. */
@@ -48,8 +44,9 @@ export class MemoryActionApprovalStore implements ActionApprovalStore {
  * File-backed store for the desktop/pod tree: the record lives INSIDE the
  * agent's own directory (`<workspacesRoot>/<Workspace>/<Agent>/.houston/
  * action-approvals.json`), so it survives restarts and is removed for free when
- * the agent dir is deleted — no separate cleanup on the delete flow. A missing
- * or corrupt file reads as the empty record (re-materialize), never a crash.
+ * the agent dir is deleted — no separate cleanup on the delete flow. A missing,
+ * corrupt, OR legacy-shaped file (the deleted `{always, tickets}` model) reads
+ * as the empty record, never a crash.
  */
 export class FileActionApprovalStore implements ActionApprovalStore {
   constructor(private readonly workspacesRoot: string) {}
@@ -68,26 +65,23 @@ export class FileActionApprovalStore implements ActionApprovalStore {
     if (!path || !existsSync(path)) return clone(EMPTY_APPROVAL_RECORD);
     try {
       const parsed = JSON.parse(readFileSync(path, "utf8")) as {
-        always?: unknown;
-        tickets?: unknown;
+        grants?: unknown;
       };
-      const always =
-        Array.isArray(parsed.always) &&
-        parsed.always.every((a) => typeof a === "string")
-          ? (parsed.always as string[])
-          : [];
-      const tickets =
-        Array.isArray(parsed.tickets) &&
-        parsed.tickets.every(
-          (t) =>
-            t &&
-            typeof t === "object" &&
-            typeof (t as { hash?: unknown }).hash === "string" &&
-            typeof (t as { ts?: unknown }).ts === "number",
+      // Tolerant reader (beta, feature reshaped): only the new `grants` array is
+      // honored — a legacy `{always, tickets}` file has no `grants` and reads
+      // as empty, dropping the old model harmlessly.
+      const grants =
+        Array.isArray(parsed.grants) &&
+        parsed.grants.every(
+          (g) =>
+            g &&
+            typeof g === "object" &&
+            typeof (g as { action?: unknown }).action === "string" &&
+            typeof (g as { ts?: unknown }).ts === "number",
         )
-          ? (parsed.tickets as { hash: string; ts: number }[])
+          ? (parsed.grants as { action: string; ts: number }[])
           : [];
-      return { always, tickets };
+      return { grants };
     } catch {
       // Corrupt/partial file → empty record so a later write re-materializes.
       return clone(EMPTY_APPROVAL_RECORD);
@@ -103,8 +97,5 @@ export class FileActionApprovalStore implements ActionApprovalStore {
 }
 
 function clone(record: ApprovalRecord): ApprovalRecord {
-  return {
-    always: [...record.always],
-    tickets: record.tickets.map((t) => ({ ...t })),
-  };
+  return { grants: record.grants.map((g) => ({ ...g })) };
 }

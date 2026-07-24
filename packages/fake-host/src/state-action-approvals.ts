@@ -1,13 +1,10 @@
 /**
  * Per-agent integration action approvals — the in-memory store behind the
- * `/v1/agents/:id/action-approvals[...]` routes (routes-action-approvals.ts).
- * Mirrors the real host's `LocalActionApprovals`/`ActionApprovalStore`:
- *   - `always`: action slugs the user chose "Always allow" for (any params),
- *     deduped case-insensitively (first casing kept);
- *   - `tickets`: one-shot "Allow once" grants, each a params-fingerprint hash,
- *     consumed on the matching execute. The fake host runs no real turns, so
- *     nothing consumes a ticket over HTTP — `consumeTicket` exists so a test
- *     can assert the consume-once semantic directly.
+ * `/v1/agents/:id/action-approvals/grants` route (routes-action-approvals.ts).
+ * Mirrors the real host's `LocalActionApprovals`/`ActionApprovalStore`: the
+ * approval card's confirm ("Do it") GRANTS an action slug (any params), deduped
+ * case-insensitively. The fake host runs no real turns and needs no TTL, so a
+ * grant simply persists until reset.
  *
  * A missing agent key reads as the empty record; the seed carries none.
  */
@@ -15,69 +12,41 @@
 import { state } from "./state-store";
 
 /** The agent's record, materializing the empty one on first touch. */
-function record(agentId: string): { always: string[]; tickets: string[] } {
+function record(agentId: string): { grants: string[] } {
   let rec = state.actionApprovals.get(agentId);
   if (!rec) {
-    rec = { always: [], tickets: [] };
+    rec = { grants: [] };
     state.actionApprovals.set(agentId, rec);
   }
   return rec;
 }
 
-/** The agent's always-allow action slugs (a fresh copy). */
-export function alwaysAllowed(agentId: string): string[] {
-  return [...record(agentId).always];
+/** The agent's granted action slugs (a fresh copy). */
+export function grantedActions(agentId: string): string[] {
+  return [...record(agentId).grants];
 }
 
-/** Append an action to the always-allow list (dedupe case-insensitively, keep
- *  the first casing) and return the resulting list. */
-export function allowAlways(agentId: string, action: string): string[] {
+/** Grant an action (dedupe case-insensitively, keep the first casing) and return
+ *  the resulting list. */
+export function grant(agentId: string, action: string): string[] {
   const rec = record(agentId);
   const a = action.toLowerCase();
-  if (!rec.always.some((x) => x.toLowerCase() === a)) rec.always.push(action);
-  return [...rec.always];
+  if (!rec.grants.some((x) => x.toLowerCase() === a)) rec.grants.push(action);
+  return [...rec.grants];
 }
 
-/** Remove an action from the always-allow list (case-insensitive) and return
- *  the resulting list. A clean miss returns the list unchanged. Mirrors the real
- *  host's `LocalActionApprovals.disallowAlways` for the revoke/review UI. */
-export function disallowAlways(agentId: string, action: string): string[] {
-  const rec = record(agentId);
+/** Is the action granted for this agent (case-insensitive)? */
+export function isGranted(agentId: string, action: string): boolean {
   const a = action.toLowerCase();
-  rec.always = rec.always.filter((x) => x.toLowerCase() !== a);
-  return [...rec.always];
+  return record(agentId).grants.some((x) => x.toLowerCase() === a);
 }
 
-/** Write a one-shot ticket for a params-fingerprint hash (replacing an existing
- *  same-hash ticket, so a re-approve stays single-use). */
-export function addTicket(agentId: string, hash: string): void {
-  const rec = record(agentId);
-  rec.tickets = rec.tickets.filter((t) => t !== hash);
-  rec.tickets.push(hash);
-}
-
-/** Consume a one-shot ticket: true iff one with that hash existed — it is then
- *  removed (single use). Missing → false. */
-export function consumeTicket(agentId: string, hash: string): boolean {
-  const rec = record(agentId);
-  const i = rec.tickets.indexOf(hash);
-  if (i === -1) return false;
-  rec.tickets.splice(i, 1);
-  return true;
-}
-
-/** Test-observability snapshot: every agent's always-slugs and pending "Allow
- *  once" ticket hashes, flattened across agents. The real `tickets` route is
- *  write-only by design (a granted ticket is a secret the client never reads
- *  back), so an e2e that must confirm "Allow once posted the step's hash" has no
- *  product route to assert against — this `/__test__` window is the harness
- *  equivalent of the in-process `consumeTicket` unit hook. */
-export function approvalsSnapshot(): { always: string[]; tickets: string[] } {
-  const always: string[] = [];
-  const tickets: string[] = [];
-  for (const rec of state.actionApprovals.values()) {
-    always.push(...rec.always);
-    tickets.push(...rec.tickets);
-  }
-  return { always, tickets };
+/** Test-observability snapshot: every agent's granted action slugs, flattened
+ *  across agents. Lets an e2e confirm the confirm-card posted the step's action
+ *  (the grants route is write-only by design — a client never reads grants back,
+ *  so this `/__test__` window is the harness's read side). */
+export function approvalsSnapshot(): { grants: string[] } {
+  const grants: string[] = [];
+  for (const rec of state.actionApprovals.values()) grants.push(...rec.grants);
+  return { grants };
 }

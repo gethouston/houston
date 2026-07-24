@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 
 /**
  * Pure helpers for the integration action-approval gate. `hashActionParams`
- * fingerprints an execute call so a one-shot approval ticket can be matched to
- * the EXACT action+params the user approved (any drift → a new hash → re-ask);
+ * fingerprints an execute call so the app can dedupe approval STEPS by the exact
+ * action+params on the turn holder (it rides the 409 payload as `paramsHash`);
  * `displayParams` renders the params into card-ready rows (plus the count of
  * rows dropped past the cap) for the approval prompt the runtime shows on the
  * interaction card.
@@ -28,7 +28,7 @@ function sortKeysDeep(value: unknown): unknown {
  * recursively SORTED object keys, sha256, truncated to 16 hex chars. Stable
  * across key-order permutations (so re-serializing the same call re-hashes
  * identically) yet sensitive to any value drift. 16 chars (64 bits) is ample
- * for the single-agent, minutes-lived ticket space this gates.
+ * for the per-agent approval-step space the app dedupes with it.
  */
 export function hashActionParams(
   action: string,

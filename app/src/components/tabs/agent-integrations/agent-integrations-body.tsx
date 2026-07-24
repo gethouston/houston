@@ -25,8 +25,6 @@ import {
 
 interface AgentIntegrationsBodyProps {
   view: AgentIntegrationsView;
-  /** This agent's id, for the approved-actions review + connect flow. */
-  agentId: string;
   /** The full toolkit catalog (drives the category filter + browse list). */
   catalog: IntegrationToolkit[];
   /** The effective Teams allowlist (`null` = unrestricted). Apps outside it show
@@ -63,7 +61,6 @@ interface AgentIntegrationsBodyProps {
  */
 export function AgentIntegrationsBody({
   view,
-  agentId,
   catalog,
   allowlist,
   connections,
@@ -127,12 +124,7 @@ export function AgentIntegrationsBody({
           allowlist={allowlist}
           lockedFix={permissionsFix}
         >
-          <AgentCatalogSections
-            view={view}
-            agentId={agentId}
-            catalog={catalog}
-            permissionsFix={permissionsFix}
-          />
+          <AgentCatalogSections view={view} permissionsFix={permissionsFix} />
         </CatalogPane>
       ),
     },

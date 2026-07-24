@@ -10,11 +10,11 @@ import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 
 /**
- * The user-facing action-approvals routes over real HTTP: ownership, body
- * validation, the always-allow + ticket writes, and the unwired-dep 404 —
- * on BOTH surfaces: the top-level `/v1/agents/:id/action-approvals/*` and the
- * per-agent dispatch `/agents/:id/action-approvals/*` (the one the hosted
- * gateway proxies to a pod, so the shipped clients call it).
+ * The user-facing action-approvals route over real HTTP: ownership, body
+ * validation, the grant write, and the unwired-dep 404 — on BOTH surfaces: the
+ * top-level `/v1/agents/:id/action-approvals/grants` and the per-agent dispatch
+ * `/agents/:id/action-approvals/grants` (the one the hosted gateway proxies to a
+ * pod, so the shipped clients call it).
  */
 
 const USER = "alice";
@@ -40,7 +40,9 @@ async function setup(opts: { withApprovals?: boolean } = {}) {
     },
   };
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
-  const approvalStore = new MemoryActionApprovalStore();
+  const approvals = new LocalActionApprovals({
+    store: new MemoryActionApprovalStore(),
+  });
   const deps: ControlPlaneDeps = {
     verifier,
     store,
@@ -48,9 +50,7 @@ async function setup(opts: { withApprovals?: boolean } = {}) {
     vault: new EnvCredentialVault({ secret: "test-secret" }),
     channels: {},
     capabilities: CAPS,
-    actionApprovals: withApprovals
-      ? new LocalActionApprovals({ store: approvalStore })
-      : undefined,
+    actionApprovals: withApprovals ? approvals : undefined,
     corsOrigin: "*",
   };
   const server: Server = createControlPlaneServer(deps);
@@ -62,51 +62,40 @@ async function setup(opts: { withApprovals?: boolean } = {}) {
     workspaceId: ws.id,
     name: "Assistant",
   });
-  return { base, ws, agent, approvalStore, stop: () => server.close() };
+  return { base, ws, agent, approvals, stop: () => server.close() };
 }
 
 const auth = {
   Authorization: "Bearer tok",
   "Content-Type": "application/json",
 };
-const url = (base: string, agentId: string, sub = "") =>
-  `${base}/v1/agents/${encodeURIComponent(agentId)}/action-approvals${sub}`;
-/** The dispatch-surface form of the same routes (what the shipped clients call). */
-const dispatchUrl = (base: string, agentId: string, sub = "") =>
-  `${base}/agents/${encodeURIComponent(agentId)}/action-approvals${sub}`;
+const url = (base: string, agentId: string) =>
+  `${base}/v1/agents/${encodeURIComponent(agentId)}/action-approvals/grants`;
+/** The dispatch-surface form of the same route (what the shipped clients call). */
+const dispatchUrl = (base: string, agentId: string) =>
+  `${base}/agents/${encodeURIComponent(agentId)}/action-approvals/grants`;
 
-test("GET returns the always list; POST /always appends (deduped)", async () => {
-  const { base, agent, stop } = await setup();
+test("POST /grants grants the action (readable back through isGranted)", async () => {
+  const { base, agent, approvals, stop } = await setup();
   try {
-    const empty = await fetch(url(base, agent.id), { headers: auth });
-    expect(empty.status).toBe(200);
-    expect((await empty.json()).always).toEqual([]);
-
-    const post = (action: unknown) =>
-      fetch(url(base, agent.id, "/always"), {
-        method: "POST",
-        headers: auth,
-        body: JSON.stringify({ action }),
-      });
-    expect((await (await post("GMAIL_SEND")).json()).always).toEqual([
-      "GMAIL_SEND",
-    ]);
-    // Case-insensitive dedupe keeps the first casing.
-    expect((await (await post("gmail_send")).json()).always).toEqual([
-      "GMAIL_SEND",
-    ]);
-    const get = await fetch(url(base, agent.id), { headers: auth });
-    expect((await get.json()).always).toEqual(["GMAIL_SEND"]);
+    const res = await fetch(url(base, agent.id), {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ action: "GMAIL_SEND" }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).ok).toBe(true);
+    expect(await approvals.isGranted(agent.id, "gmail_send")).toBe(true);
   } finally {
     stop();
   }
 });
 
-test("POST /always validates the action slug", async () => {
+test("POST /grants validates the action slug", async () => {
   const { base, agent, stop } = await setup();
   try {
     const post = (body: unknown) =>
-      fetch(url(base, agent.id, "/always"), {
+      fetch(url(base, agent.id), {
         method: "POST",
         headers: auth,
         body: JSON.stringify(body),
@@ -120,69 +109,18 @@ test("POST /always validates the action slug", async () => {
   }
 });
 
-test("DELETE /always revokes an action (case-insensitive); validates the slug", async () => {
-  const { base, agent, stop } = await setup();
-  try {
-    const post = (action: string) =>
-      fetch(url(base, agent.id, "/always"), {
-        method: "POST",
-        headers: auth,
-        body: JSON.stringify({ action }),
-      });
-    const del = (body: unknown) =>
-      fetch(url(base, agent.id, "/always"), {
-        method: "DELETE",
-        headers: auth,
-        body: JSON.stringify(body),
-      });
-    await post("GMAIL_SEND");
-    await post("SLACK_POST");
-    // A different casing still matches the stored slug; only it is removed.
-    const removed = await del({ action: "gmail_send" });
-    expect(removed.status).toBe(200);
-    expect((await removed.json()).always).toEqual(["SLACK_POST"]);
-    const get = await fetch(url(base, agent.id), { headers: auth });
-    expect((await get.json()).always).toEqual(["SLACK_POST"]);
-
-    // Same validation as the POST — a bad body is a 400, not a silent no-op.
-    expect((await del({})).status).toBe(400); // missing
-    expect((await del({ action: "" })).status).toBe(400); // empty
-    expect((await del({ action: "bad slug!" })).status).toBe(400); // charset
-  } finally {
-    stop();
-  }
-});
-
-test("POST /tickets writes a one-shot ticket; validates the hash", async () => {
-  const { base, agent, approvalStore, stop } = await setup();
-  try {
-    const post = (body: unknown) =>
-      fetch(url(base, agent.id, "/tickets"), {
-        method: "POST",
-        headers: auth,
-        body: JSON.stringify(body),
-      });
-    const ok = await post({ hash: "0123456789abcdef" });
-    expect(ok.status).toBe(200);
-    expect((await ok.json()).ok).toBe(true);
-    const record = await approvalStore.get(agent.id);
-    expect(record.tickets.map((t) => t.hash)).toEqual(["0123456789abcdef"]);
-
-    expect((await post({})).status).toBe(400); // missing
-    expect((await post({ hash: "SHORT" })).status).toBe(400); // charset/length
-    expect((await post({ hash: "0123456789ABCDEF" })).status).toBe(400); // uppercase rejected
-  } finally {
-    stop();
-  }
-});
-
-test("a foreign user cannot touch another user's agent (403)", async () => {
+test("a foreign user cannot grant on another user's agent (403)", async () => {
   const { base, agent, stop } = await setup();
   try {
     const res = await fetch(url(base, agent.id), {
-      headers: { Authorization: "Bearer other" },
+      method: "POST",
+      headers: {
+        Authorization: "Bearer other",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "GMAIL_SEND" }),
     });
-    expect(res.status).toBe(403); // owns the workspace? no → "not your agent"
+    expect(res.status).toBe(403);
   } finally {
     stop();
   }
@@ -191,85 +129,8 @@ test("a foreign user cannot touch another user's agent (403)", async () => {
 test("unknown agent → 404", async () => {
   const { base, ws, stop } = await setup();
   try {
-    const res = await fetch(url(base, `${ws.id}/Ghost`), { headers: auth });
-    expect(res.status).toBe(404);
-  } finally {
-    stop();
-  }
-});
-
-test("dispatch surface serves the same three routes (GET / always / tickets)", async () => {
-  const { base, agent, approvalStore, stop } = await setup();
-  try {
-    const empty = await fetch(dispatchUrl(base, agent.id), { headers: auth });
-    expect(empty.status).toBe(200);
-    expect((await empty.json()).always).toEqual([]);
-
-    const always = await fetch(dispatchUrl(base, agent.id, "/always"), {
+    const res = await fetch(url(base, `${ws.id}/Ghost`), {
       method: "POST",
-      headers: auth,
-      body: JSON.stringify({ action: "GMAIL_SEND" }),
-    });
-    expect(always.status).toBe(200);
-    expect((await always.json()).always).toEqual(["GMAIL_SEND"]);
-
-    const ticket = await fetch(dispatchUrl(base, agent.id, "/tickets"), {
-      method: "POST",
-      headers: auth,
-      body: JSON.stringify({ hash: "0123456789abcdef" }),
-    });
-    expect(ticket.status).toBe(200);
-    expect((await ticket.json()).ok).toBe(true);
-    const record = await approvalStore.get(agent.id);
-    expect(record.tickets.map((t) => t.hash)).toEqual(["0123456789abcdef"]);
-
-    // Both surfaces read the SAME store.
-    const get = await fetch(url(base, agent.id), { headers: auth });
-    expect((await get.json()).always).toEqual(["GMAIL_SEND"]);
-  } finally {
-    stop();
-  }
-});
-
-test("dispatch surface serves DELETE /always (revoke)", async () => {
-  const { base, agent, stop } = await setup();
-  try {
-    await fetch(dispatchUrl(base, agent.id, "/always"), {
-      method: "POST",
-      headers: auth,
-      body: JSON.stringify({ action: "GMAIL_SEND" }),
-    });
-    const removed = await fetch(dispatchUrl(base, agent.id, "/always"), {
-      method: "DELETE",
-      headers: auth,
-      body: JSON.stringify({ action: "GMAIL_SEND" }),
-    });
-    expect(removed.status).toBe(200);
-    expect((await removed.json()).always).toEqual([]);
-    // The /v1 surface reads the SAME store back as empty.
-    const get = await fetch(url(base, agent.id), { headers: auth });
-    expect((await get.json()).always).toEqual([]);
-
-    // A foreign user cannot revoke on someone else's agent.
-    const foreign = await fetch(dispatchUrl(base, agent.id, "/always"), {
-      method: "DELETE",
-      headers: {
-        Authorization: "Bearer other",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ action: "GMAIL_SEND" }),
-    });
-    expect(foreign.status).toBe(403);
-  } finally {
-    stop();
-  }
-});
-
-test("DELETE /always on an unknown agent → 404", async () => {
-  const { base, ws, stop } = await setup();
-  try {
-    const res = await fetch(url(base, `${ws.id}/Ghost`, "/always"), {
-      method: "DELETE",
       headers: auth,
       body: JSON.stringify({ action: "GMAIL_SEND" }),
     });
@@ -279,37 +140,31 @@ test("DELETE /always on an unknown agent → 404", async () => {
   }
 });
 
-test("unwired dep → DELETE /always falls through past the approval routes", async () => {
-  const { base, agent, stop } = await setup({ withApprovals: false });
+test("dispatch surface serves the SAME grant route into the SAME store", async () => {
+  const { base, agent, approvals, stop } = await setup();
   try {
-    // No approval store → the family is not served here; the request keeps
-    // falling toward the runtime channel (none wired → 503), never a 200.
-    const res = await fetch(dispatchUrl(base, agent.id, "/always"), {
-      method: "DELETE",
+    const res = await fetch(dispatchUrl(base, agent.id), {
+      method: "POST",
       headers: auth,
       body: JSON.stringify({ action: "GMAIL_SEND" }),
     });
-    expect(res.status).toBe(503);
+    expect(res.status).toBe(200);
+    expect((await res.json()).ok).toBe(true);
+    expect(await approvals.isGranted(agent.id, "GMAIL_SEND")).toBe(true);
   } finally {
     stop();
   }
 });
 
-test("dispatch surface validates bodies like the /v1 surface", async () => {
+test("dispatch surface validates the body like the /v1 surface", async () => {
   const { base, agent, stop } = await setup();
   try {
-    const always = await fetch(dispatchUrl(base, agent.id, "/always"), {
+    const res = await fetch(dispatchUrl(base, agent.id), {
       method: "POST",
       headers: auth,
       body: JSON.stringify({ action: "bad slug!" }),
     });
-    expect(always.status).toBe(400);
-    const ticket = await fetch(dispatchUrl(base, agent.id, "/tickets"), {
-      method: "POST",
-      headers: auth,
-      body: JSON.stringify({ hash: "SHORT" }),
-    });
-    expect(ticket.status).toBe(400);
+    expect(res.status).toBe(400);
   } finally {
     stop();
   }
@@ -319,7 +174,12 @@ test("dispatch surface enforces the same ownership check (403)", async () => {
   const { base, agent, stop } = await setup();
   try {
     const res = await fetch(dispatchUrl(base, agent.id), {
-      headers: { Authorization: "Bearer other" },
+      method: "POST",
+      headers: {
+        Authorization: "Bearer other",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "GMAIL_SEND" }),
     });
     expect(res.status).toBe(403);
   } finally {
@@ -327,16 +187,15 @@ test("dispatch surface enforces the same ownership check (403)", async () => {
   }
 });
 
-test("unwired dep → dispatch requests fall through past the approval routes", async () => {
+test("unwired dep → dispatch grant falls through past the approval route (503)", async () => {
   const { base, agent, stop } = await setup({ withApprovals: false });
   try {
-    // With no approval store the family is not served here; the request keeps
-    // falling toward the runtime channel (none wired in this harness → 503),
-    // never a 200 pretending the write landed.
-    const res = await fetch(dispatchUrl(base, agent.id, "/tickets"), {
+    // No approval store → the family is not served here; the request keeps
+    // falling toward the runtime channel (none wired → 503), never a 200.
+    const res = await fetch(dispatchUrl(base, agent.id), {
       method: "POST",
       headers: auth,
-      body: JSON.stringify({ hash: "0123456789abcdef" }),
+      body: JSON.stringify({ action: "GMAIL_SEND" }),
     });
     expect(res.status).toBe(503);
   } finally {
@@ -344,18 +203,15 @@ test("unwired dep → dispatch requests fall through past the approval routes", 
   }
 });
 
-test("unwired dep → routes 404 (approvals unsupported)", async () => {
+test("unwired dep → /v1 grant 404s (approvals unsupported)", async () => {
   const { base, agent, stop } = await setup({ withApprovals: false });
   try {
-    expect((await fetch(url(base, agent.id), { headers: auth })).status).toBe(
-      404,
-    );
-    const post = await fetch(url(base, agent.id, "/always"), {
+    const res = await fetch(url(base, agent.id), {
       method: "POST",
       headers: auth,
       body: JSON.stringify({ action: "GMAIL_SEND" }),
     });
-    expect(post.status).toBe(404);
+    expect(res.status).toBe(404);
   } finally {
     stop();
   }

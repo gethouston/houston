@@ -96,71 +96,16 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
     // gateway and breaks the in-chat approval card). So they route through
     // `authFetch` against `baseUrl` (bearer + `x-houston-org`, live in both)
     // — never cp-gated, or the local approval card would break.
-    async agentActionApprovals(
-      agentSlugOrId: string,
-    ): Promise<{ always: string[] }> {
-      const res = await this.ctx.authFetch(
-        `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals`,
-      );
-      // A host that does not serve the gate answers 404 → nothing pre-approved.
-      // The card only shows where the gate exists, so degrade rather than throw
-      // (mirrors the shim's `agentActionApprovals`).
-      if (res.status === 404) return { always: [] };
-      if (!res.ok)
-        throw new HoustonEngineError(
-          res.status,
-          await res.json().catch(() => ({})),
-        );
-      return (await res.json()) as { always: string[] };
-    }
-    async allowActionAlways(
+    async grantActionApproval(
       agentSlugOrId: string,
       action: string,
-    ): Promise<{ always: string[] }> {
-      const res = await this.ctx.authFetch(
-        `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals/always`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action }),
-        },
-      );
-      if (!res.ok)
-        throw new HoustonEngineError(
-          res.status,
-          await res.json().catch(() => ({})),
-        );
-      return (await res.json()) as { always: string[] };
-    }
-    async disallowActionAlways(
-      agentSlugOrId: string,
-      action: string,
-    ): Promise<{ always: string[] }> {
-      const res = await this.ctx.authFetch(
-        `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals/always`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action }),
-        },
-      );
-      if (!res.ok)
-        throw new HoustonEngineError(
-          res.status,
-          await res.json().catch(() => ({})),
-        );
-      return (await res.json()) as { always: string[] };
-    }
-    async addActionApprovalTicket(
-      agentSlugOrId: string,
-      hash: string,
     ): Promise<void> {
       const res = await this.ctx.authFetch(
-        `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals/tickets`,
+        `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/action-approvals/grants`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ hash }),
+          body: JSON.stringify({ action }),
         },
       );
       if (!res.ok)

@@ -245,6 +245,30 @@ test("an approval step alone yields a valid pending sequence", () => {
   });
 });
 
+test("recordApproval carries the agent-phrased intent onto the step", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () =>
+    recordApproval({
+      toolkit: "gmail",
+      action: "GMAIL_SEND_EMAIL",
+      intent: "Should I send the 30 invites?",
+      paramsHash: "h1",
+    }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "approval",
+        id: "a1",
+        toolkit: "gmail",
+        action: "GMAIL_SEND_EMAIL",
+        intent: "Should I send the 30 invites?",
+        paramsHash: "h1",
+      },
+    ],
+  });
+});
+
 test("pending order is questions -> signin -> connects -> approvals", () => {
   const holder = newInteractionHolder();
   runWithInteractionCapture(holder, () => {

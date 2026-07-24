@@ -95,13 +95,7 @@
     "disconnect": "Desconectar"
   },
   "agentTab": {
-    "manageAll": "Administrar todas las integraciones",
-    "runsWithoutAsking": {
-      "heading": "Se ejecuta sin preguntar",
-      "subtitle": "Permitiste que este agente ejecute estas acciones de apps sin consultarte antes. Quita una y Houston volverá a preguntar.",
-      "remove": "Quitar",
-      "removeFor": "Dejar de ejecutar {{action}} sin preguntar"
-    }
+    "manageAll": "Administrar todas las integraciones"
   },
   "custom": {
     "title": "Integraciones personalizadas",

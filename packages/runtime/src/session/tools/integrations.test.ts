@@ -383,7 +383,7 @@ test("a 409 (approval_required) queues an approval step and returns a NORMAL ins
   // It RETURNS (does not throw) — being gated is a normal, expected state.
   const text = (out.content[0] as { text: string }).text;
   expect(text).toBe(
-    'This action needs the user\'s permission. Houston queued an approval card for "GMAIL_SEND_EMAIL" that the user will see when you end your turn. Do not run this action again now and do not ask for permission in text. Queue anything else the task needs (ask_user questions, request_connection) in this same turn, then end your turn. Houston sends you a message automatically once the user decides.',
+    'This action needs the user\'s go-ahead. Houston queued a confirmation card for "GMAIL_SEND_EMAIL" that the user will see when you end your turn. Do not run this action again now and do not ask for confirmation in text. Queue anything else the task needs (ask_user questions, request_connection) in this same turn, then end your turn. Once the user confirms, Houston clears "GMAIL_SEND_EMAIL" for a short while and sends you a message — then re-issue it (including any repeats of this same action in the batch) without asking again.',
   );
   expect(out.details).toEqual({
     action: "GMAIL_SEND_EMAIL",
@@ -398,6 +398,90 @@ test("a 409 (approval_required) queues an approval step and returns a NORMAL ins
         toolkit: "gmail",
         action: "GMAIL_SEND_EMAIL",
         params: { to: "a@b.com", subject: "Hi" },
+        paramsHash: "h7f3a1",
+      },
+    ],
+  });
+});
+
+test("execute forwards the agent-phrased intent in the POST body", async () => {
+  const calls = mockFetch(() => ({ body: { successful: true } }));
+  await run(execute, {
+    action: "GMAIL_SEND_EMAIL",
+    params: { to: "a@b.com" },
+    intent: "Should I send the 30 invites?",
+  });
+  expect(calls[0]?.body).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    params: { to: "a@b.com" },
+    intent: "Should I send the 30 invites?",
+  });
+
+  // Omitted for pure reads: no intent key rides along.
+  const reads = mockFetch(() => ({ body: { successful: true } }));
+  await run(execute, { action: "GMAIL_LIST_MESSAGES" });
+  expect(reads[0]?.body).toEqual({ action: "GMAIL_LIST_MESSAGES", params: {} });
+});
+
+test("a 409 (approval_required) carries the intent onto the recorded step", async () => {
+  mockFetch(() => ({
+    status: 409,
+    body: {
+      code: "approval_required",
+      approval: {
+        toolkit: "gmail",
+        action: "GMAIL_SEND_EMAIL",
+        intent: "Should I send the 30 invites?",
+        paramsHash: "h7f3a1",
+      },
+    },
+  }));
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () =>
+    run(execute, {
+      action: "GMAIL_SEND_EMAIL",
+      intent: "Should I send the 30 invites?",
+    }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "approval",
+        id: "a1",
+        toolkit: "gmail",
+        action: "GMAIL_SEND_EMAIL",
+        intent: "Should I send the 30 invites?",
+        paramsHash: "h7f3a1",
+      },
+    ],
+  });
+});
+
+test("a 409 approval with a missing or malformed intent is tolerated", async () => {
+  // A non-string intent is dropped, never a parse failure: the card still queues.
+  mockFetch(() => ({
+    status: 409,
+    body: {
+      code: "approval_required",
+      approval: {
+        toolkit: "gmail",
+        action: "GMAIL_SEND_EMAIL",
+        intent: 42,
+        paramsHash: "h7f3a1",
+      },
+    },
+  }));
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () =>
+    run(execute, { action: "GMAIL_SEND_EMAIL" }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "approval",
+        id: "a1",
+        toolkit: "gmail",
+        action: "GMAIL_SEND_EMAIL",
         paramsHash: "h7f3a1",
       },
     ],

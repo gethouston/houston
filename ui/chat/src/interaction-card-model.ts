@@ -40,8 +40,11 @@ export type ChatInteractionStep =
        *  > 0); the card shows a "+N more" line so the user knows the approval
        *  covers settings the rows don't show. */
       paramsOmitted?: number;
-      /** Stable digest of (action, params); the one-shot allow ticket's key. */
+      /** Stable digest of (action, params); the step-dedupe key. */
       paramsHash: string;
+      /** Agent-phrased confirmation question in the user's language
+       *  ("Should I send the 30 invites?"); the card's body when present. */
+      intent?: string;
     }
   // HOU-550: enter a custom integration's API key in a secure field (the secret
   // never lands in the transcript). `toolkit` is the custom integration's slug.

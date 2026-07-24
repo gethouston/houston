@@ -644,8 +644,11 @@ export type InteractionStep =
        *  > 0). The card surfaces it so the user knows the hash covers settings
        *  the rows don't show. */
       paramsOmitted?: number;
-      /** Stable short digest of (action, raw params), minted host-side; the one-shot allow ticket is keyed by it. */
+      /** Stable short digest of (action, raw params), minted host-side; the step-dedupe key. */
       paramsHash: string;
+      /** Agent-phrased confirmation question in the user's language
+       *  ("Should I send the 30 invites?"); the card's body when present. */
+      intent?: string;
     };
 
 /**

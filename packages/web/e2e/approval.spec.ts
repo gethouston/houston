@@ -1,27 +1,30 @@
-import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
+import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 
 /**
  * The `approval` interaction step (element 4, approval kind): a tool call the
  * host queued for the user's go-ahead. The turn ends on a `PendingInteraction`
- * whose step is `{ kind:"approval", id, toolkit, action, params?, paramsHash }`;
- * the SDK settles the board to `needs_you` and the app shows the shared
- * `InteractionModal` above the composer as a `ChatApprovalInteractionCard` — the
- * app identity lockup header, an "Allow {app} to {action}?" body (the raw
- * params ride the wire but never render), and a three-way footer:
- * "Always allow" (outline, far LEFT), "Deny" (outline + Esc), "Allow once"
- * (filled + return glyph). Enter = Allow once, Esc = Deny.
+ * whose step is `{ kind:"approval", id, toolkit, action, intent?, params?,
+ * paramsHash }`; the SDK settles the board to `needs_you` and the app shows the
+ * shared `InteractionModal` above the composer as a `ChatApprovalInteractionCard`
+ * — the app identity lockup header, a plain confirmation question (the agent's
+ * `intent` when it phrased one, else the generic "{action} with {app}?" fallback;
+ * the raw params ride the wire but never render), an always-visible free-text row
+ * (confirm, or type what to do differently), and a two-way footer: "Not now"
+ * (outline + Esc) and "Do it" (filled + return glyph). Enter = Do it, Esc = Not
+ * now. There is NO "Always allow" — a confirmation, not a durable grant UI.
  *
- * Deciding advances the stepper; an approval-ONLY sequence resumes the agent with
- * a HIDDEN auto-continue message (no user bubble; the fake host still RECEIVES it
- * and echoes it, which is what these specs assert on): approved →
- * "Approved: go ahead with <ACTION>.", denied →
- * "I chose not to allow <ACTION>. Do not retry it; continue without it.".
- * "Allow once" first POSTs `.../action-approvals/tickets {hash}`; "Always allow"
- * POSTs `.../action-approvals/always {action}` — the fake host records both, and
- * the `/__test__/action-approvals` window reads them back. The header X is NOT a
- * Deny: it interrupts the whole sequence (a Stop), covered by the dismiss specs.
+ * Deciding advances the stepper. A confirm/decline-only sequence resumes the
+ * agent with a HIDDEN auto-continue message (no user bubble; the fake host still
+ * RECEIVES it and echoes it, which is what these specs assert on): "Do it" →
+ * "Approved: go ahead with <ACTION>. ...", "Not now" →
+ * "I chose not to allow <ACTION>. Do not retry it; continue without it.". A
+ * "differently" redirection carries user-typed text, so it resumes VISIBLY. Only
+ * "Do it" writes to the host: it POSTs `.../action-approvals/grants {action}`,
+ * which the fake host records and the `/__test__/action-approvals` window reads
+ * back as `{ grants }`. The header X is NOT a "Not now": it interrupts the whole
+ * sequence (a Stop), covered by the dismiss specs.
  *
  * These drive the fake host's `/__test__/chat-interaction` control with the
  * `approval` step verbatim (the control is kind-agnostic), mirroring the
@@ -42,14 +45,14 @@ async function startMission(page: Page, text: string) {
 }
 
 /**
- * The canonical lone Gmail approval step from the reference "Coworker card".
+ * The canonical lone Gmail approval step from the reference "Coworker card". No
+ * `intent`, so the card renders the generic "{action} with {app}?" fallback
+ * ("send draft with Gmail?").
  *
- * `params` carry the DISPLAY-READY keys the host emits: the sandbox route runs
- * `displayParams`/`humanizeParamKey` before it puts the approval on the wire
- * ("draft_id" -> "Draft id", "to" -> "To"). The card no longer renders them
- * (they're technical detail), but the wire payload shape is unchanged, so the
- * step injected straight as a `pendingInteraction` here still mirrors
- * production's humanized display form faithfully.
+ * `params` carry the DISPLAY-READY keys the host emits; the card no longer
+ * renders them (they're technical detail), but the wire payload shape is
+ * unchanged, so the step injected straight as a `pendingInteraction` here still
+ * mirrors production's humanized display form faithfully.
  */
 const gmailApprovalStep = {
   kind: "approval",
@@ -66,42 +69,41 @@ async function armInteraction(page: Page, steps: unknown[]) {
   });
 }
 
-/** The fake host's read-back of the action-approval writes the card made. */
-async function readApprovals(
-  page: Page,
-): Promise<{ always: string[]; tickets: string[] }> {
+/** The fake host's read-back of the action-approval grants the card made. */
+async function readGrants(page: Page): Promise<string[]> {
   const res = await page.request.get(
     `${FAKE_HOST_URL}/__test__/action-approvals`,
   );
-  return (await res.json()) as { always: string[]; tickets: string[] };
+  return ((await res.json()) as { grants: string[] }).grants;
 }
 
 /** The interaction card container (the shared InteractionModal surface). */
 function approvalCard(page: Page) {
   return page
     .locator("div.overflow-clip")
-    .filter({ hasText: "Allow Gmail to send draft?" });
+    .filter({ hasText: "send draft with Gmail?" });
 }
 
 /**
  * (1) The lone approval card renders the calm reference lockup: the app NAME in
- * the header, the "Allow Gmail to send draft?" permission question, and the
- * three footer buttons — and NO technical param rows (dropped by design; the
- * wire still carries params, the card never shows them).
+ * the header, the "send draft with Gmail?" confirmation question, the free-text
+ * redirection row, and the two footer buttons — NO "Always allow", and NO
+ * technical param rows (dropped by design; the wire still carries params, the
+ * card never shows them).
  */
-test("renders the approval card with only the permission question and three footer buttons", async ({
+test("renders the confirmation card with the question, redirection row, and two footer buttons", async ({
   page,
 }) => {
   await armInteraction(page, [gmailApprovalStep]);
   await startMission(page, "send the draft");
 
-  await expect(page.getByText("Allow Gmail to send draft?")).toBeVisible({
+  await expect(page.getByText("send draft with Gmail?")).toBeVisible({
     timeout: 15_000,
   });
   const card = approvalCard(page);
 
   // Header identity line: the app NAME (its own node, distinct from the "Gmail"
-  // inside the permission question).
+  // inside the confirmation question).
   await expect(card.getByText("Gmail", { exact: true })).toBeVisible();
 
   // The technical param rows are gone by design: the step's params ride the
@@ -110,19 +112,32 @@ test("renders the approval card with only the permission question and three foot
   await expect(card.getByText("r-3003489618794597896")).toHaveCount(0);
   await expect(card.getByText("john@acme.com")).toHaveCount(0);
 
-  // The three footer decisions, correct copy.
+  // The always-visible redirection row (never hover-gated).
   await expect(
-    page.getByRole("button", { name: "Always allow" }),
+    card.getByPlaceholder("Or tell it what to do differently..."),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: /Deny/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Allow once/ })).toBeVisible();
 
-  // Reference screenshots (default light theme): the card element, then a
-  // wider crop of the chat panel it sits in.
-  await page
-    .locator("div.overflow-clip")
-    .filter({ hasText: "Allow Gmail to send draft?" })
-    .scrollIntoViewIfNeeded();
+  // The two footer decisions, correct copy — and NO "Always allow".
+  await expect(page.getByRole("button", { name: /Not now/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Do it/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Always allow" })).toHaveCount(
+    0,
+  );
+});
+
+/** A step whose agent phrased an `intent` shows THAT question, not the generic
+ *  "{action} with {app}?" fallback. */
+test("renders the agent-phrased intent when present", async ({ page }) => {
+  await armInteraction(page, [
+    { ...gmailApprovalStep, intent: "Should I send the draft to John?" },
+  ]);
+  await startMission(page, "send the draft");
+
+  await expect(page.getByText("Should I send the draft to John?")).toBeVisible({
+    timeout: 15_000,
+  });
+  // The generic fallback is NOT shown when an intent is supplied.
+  await expect(page.getByText("send draft with Gmail?")).toHaveCount(0);
 });
 
 /** Hovering either footer action keeps it enabled and clickable (no
@@ -130,26 +145,24 @@ test("renders the approval card with only the permission question and three foot
 test("footer actions stay enabled under hover", async ({ page }) => {
   await armInteraction(page, [gmailApprovalStep]);
   await startMission(page, "send the draft");
-  await expect(page.getByText("Allow Gmail to send draft?")).toBeVisible({
+  await expect(page.getByText("send draft with Gmail?")).toBeVisible({
     timeout: 15_000,
   });
 
-  const allowOnce = page.getByRole("button", { name: /Allow once/ });
-  await allowOnce.hover();
-  await expect(allowOnce).toBeEnabled();
+  const doIt = page.getByRole("button", { name: /Do it/ });
+  await doIt.hover();
+  await expect(doIt).toBeEnabled();
 
-  const alwaysAllow = page.getByRole("button", { name: "Always allow" });
-  await alwaysAllow.hover();
-  await expect(alwaysAllow).toBeEnabled();
+  const notNow = page.getByRole("button", { name: /Not now/ });
+  await notNow.hover();
+  await expect(notNow).toBeEnabled();
 });
 
 /**
  * The header resolves the app's REAL brand logo once the toolkits catalog
  * settles (integrations armed): the fake host seeds gmail with an inline
  * data-URI PNG, mirroring production's Composio `meta.logo`. Without a catalog
- * (integrations off) the card shows the calm letter avatar instead — never a
- * broken image. This captures the faithful, reference-matching lockup and pins
- * that the approval card shares the connect card's logo-resolution path.
+ * the card shows the calm letter avatar instead — never a broken image.
  */
 test("renders the app's real logo in the header once the catalog resolves", async ({
   page,
@@ -159,7 +172,7 @@ test("renders the app's real logo in the header once the catalog resolves", asyn
   });
   await armInteraction(page, [gmailApprovalStep]);
   await startMission(page, "send the draft");
-  await expect(page.getByText("Allow Gmail to send draft?")).toBeVisible({
+  await expect(page.getByText("send draft with Gmail?")).toBeVisible({
     timeout: 15_000,
   });
   const card = approvalCard(page);
@@ -169,26 +182,25 @@ test("renders the app's real logo in the header once the catalog resolves", asyn
 });
 
 /**
- * (2) Allow once: POSTs the step's fingerprint as a one-shot ticket (never an
- * always-allow), then resumes the agent with the HIDDEN approved continue — no
+ * (2) Do it: grants the step's action (cleared to run without another
+ * confirmation), then resumes the agent with the HIDDEN approved continue — no
  * visible user bubble, but the fake host received (and echoes) the go-ahead.
  */
-test("allow once posts the ticket and sends the hidden approved continue", async ({
+test("do it grants the action and sends the hidden approved continue", async ({
   page,
 }) => {
   await armInteraction(page, [gmailApprovalStep]);
   await startMission(page, "send the draft");
-  await expect(page.getByText("Allow Gmail to send draft?")).toBeVisible({
+  await expect(page.getByText("send draft with Gmail?")).toBeVisible({
     timeout: 15_000,
   });
 
-  await page.getByRole("button", { name: /Allow once/ }).click();
+  await page.getByRole("button", { name: /Do it/ }).click();
 
-  // The one-shot ticket for THIS step's hash landed; nothing was always-allowed.
+  // The action was granted for this agent.
   await expect
-    .poll(async () => (await readApprovals(page)).tickets, { timeout: 10_000 })
-    .toContain("0123456789abcdef");
-  expect((await readApprovals(page)).always).toEqual([]);
+    .poll(async () => readGrants(page), { timeout: 10_000 })
+    .toContain("GMAIL_SEND_DRAFT");
 
   // The approved continue is HIDDEN: no user bubble carries it...
   await expect(
@@ -198,53 +210,51 @@ test("allow once posts the ticket and sends the hidden approved continue", async
   await expect(
     page.getByText(/Approved: go ahead with GMAIL_SEND_DRAFT\./),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Allow Gmail to send draft?")).toHaveCount(0);
+  await expect(page.getByText("send draft with Gmail?")).toHaveCount(0);
 });
 
 /**
- * (3a) Deny via the button: no ticket and no always-allow write, and the agent
- * hears the refusal through the hidden denied continue (which names the RAW
- * action slug so the model does not retry it).
+ * (3a) Not now via the button: no grant write, and the agent hears the refusal
+ * through the hidden denied continue (which names the RAW action slug so the
+ * model does not retry it).
  */
-test("deny via the button writes nothing and sends the denied continue", async ({
+test("not now via the button writes nothing and sends the denied continue", async ({
   page,
 }) => {
   await armInteraction(page, [gmailApprovalStep]);
   await startMission(page, "send the draft");
-  await expect(page.getByText("Allow Gmail to send draft?")).toBeVisible({
+  await expect(page.getByText("send draft with Gmail?")).toBeVisible({
     timeout: 15_000,
   });
 
-  await page.getByRole("button", { name: /Deny/ }).click();
+  await page.getByRole("button", { name: /Not now/ }).click();
 
   await expect(
     page.getByText(
       /I chose not to allow GMAIL_SEND_DRAFT\. Do not retry it; continue without it\./,
     ),
   ).toBeVisible({ timeout: 15_000 });
-  // Deny is a decision, not a store write: neither list gained an entry.
-  const approvals = await readApprovals(page);
-  expect(approvals.tickets).toEqual([]);
-  expect(approvals.always).toEqual([]);
+  // Not now is a decision, not a grant write: nothing was granted.
+  expect(await readGrants(page)).toEqual([]);
   // Hidden: no visible user bubble carried the refusal.
   await expect(
     page.locator(".is-user").filter({ hasText: "I chose not to allow" }),
   ).toHaveCount(0);
-  await expect(page.getByText("Allow Gmail to send draft?")).toHaveCount(0);
+  await expect(page.getByText("send draft with Gmail?")).toHaveCount(0);
 });
 
 /**
- * (3b) Deny via Esc: with focus off the composer, Escape fires the Deny path
- * (mirroring the footer's Esc keycap) — same refusal, no store write.
+ * (3b) Not now via Esc: with focus off the composer, Escape fires the Not now
+ * path (mirroring the footer's Esc keycap) — same refusal, no grant write.
  */
-test("deny via Esc sends the denied continue", async ({ page }) => {
+test("not now via Esc sends the denied continue", async ({ page }) => {
   await armInteraction(page, [gmailApprovalStep]);
   await startMission(page, "send the draft");
-  const title = page.getByText("Allow Gmail to send draft?");
+  const title = page.getByText("send draft with Gmail?");
   await expect(title).toBeVisible({ timeout: 15_000 });
 
   // Move focus off the real composer (the Enter/Esc shortcuts are ignored while
-  // a text field has focus), then press Escape to deny.
+  // a text field has focus), then press Escape to decline.
   await title.click();
   await page.keyboard.press("Escape");
 
@@ -253,44 +263,53 @@ test("deny via Esc sends the denied continue", async ({ page }) => {
       /I chose not to allow GMAIL_SEND_DRAFT\. Do not retry it; continue without it\./,
     ),
   ).toBeVisible({ timeout: 15_000 });
-  const approvals = await readApprovals(page);
-  expect(approvals.tickets).toEqual([]);
-  expect(approvals.always).toEqual([]);
+  expect(await readGrants(page)).toEqual([]);
   await expect(title).toHaveCount(0);
 });
 
 /**
- * (4) Always allow: POSTs the action to the always-allow list (no per-call
- * ticket), then resumes the agent with the same hidden approved continue.
+ * (4) Differently: typing a redirection into the free-text row and sending it
+ * writes NO grant, resumes the agent VISIBLY (the user typed content the
+ * transcript should show), and the visible bubble names the HUMANIZED action
+ * plus the verbatim text — never the raw slug (that rides the hidden body the
+ * model reads and re-issues an adjusted call from).
  */
-test("always allow posts the action and sends the approved continue", async ({
+test("differently sends the redirection visibly and writes no grant", async ({
   page,
 }) => {
   await armInteraction(page, [gmailApprovalStep]);
   await startMission(page, "send the draft");
-  await expect(page.getByText("Allow Gmail to send draft?")).toBeVisible({
+  await expect(page.getByText("send draft with Gmail?")).toBeVisible({
     timeout: 15_000,
   });
 
-  await page.getByRole("button", { name: "Always allow" }).click();
+  const row = page.getByPlaceholder("Or tell it what to do differently...");
+  await row.fill("make it shorter and add a greeting");
+  await row.press("Enter");
 
-  await expect
-    .poll(async () => (await readApprovals(page)).always, { timeout: 10_000 })
-    .toContain("GMAIL_SEND_DRAFT");
-  expect((await readApprovals(page)).tickets).toEqual([]);
+  // Visible: the user's redirection shows as a user bubble with the HUMANIZED
+  // line (no raw slug).
+  const composed = page
+    .locator(".is-user")
+    .filter({ hasText: "make it shorter and add a greeting" });
+  await expect(composed).toHaveCount(1, { timeout: 15_000 });
+  await expect(composed).toContainText(
+    "Asked Gmail to send draft differently:",
+  );
+  await expect(composed).not.toContainText("GMAIL_SEND_DRAFT");
 
-  await expect(
-    page.getByText(/Approved: go ahead with GMAIL_SEND_DRAFT\./),
-  ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Allow Gmail to send draft?")).toHaveCount(0);
+  // No grant was written — a redirection is not a confirmation.
+  expect(await readGrants(page)).toEqual([]);
+  await expect(page.getByText("send draft with Gmail?")).toHaveCount(0);
 });
 
 /**
- * The pager's decided state: in a two-approval sequence, denying step 1 advances
- * to step 2; walking Back onto step 1 shows the calm "Denied" record (no footer)
- * instead of re-offering the buttons — the forward chevron is the way onward.
+ * The pager's decided state: in a two-approval sequence, declining step 1
+ * advances to step 2; walking Back onto step 1 shows the calm "Not now" record
+ * (no footer) instead of re-offering the controls — the forward chevron is the
+ * way onward.
  */
-test("walking Back onto a denied approval shows the calm decided state", async ({
+test("walking Back onto a declined approval shows the calm decided state", async ({
   page,
 }) => {
   await armInteraction(page, [
@@ -306,46 +325,41 @@ test("walking Back onto a denied approval shows the calm decided state", async (
   ]);
   await startMission(page, "send the draft then file the issue");
 
-  // 1 of 2: deny the Gmail step -> advance to the GitHub step (2 of 2).
-  await expect(page.getByText("Allow Gmail to send draft?")).toBeVisible({
+  // 1 of 2: decline the Gmail step -> advance to the GitHub step (2 of 2).
+  await expect(page.getByText("send draft with Gmail?")).toBeVisible({
     timeout: 15_000,
   });
   await expect(page.getByText("1 of 2")).toBeVisible();
-  await page.getByRole("button", { name: /Deny/ }).click();
+  await page.getByRole("button", { name: /Not now/ }).click();
   await expect(page.getByText("2 of 2")).toBeVisible();
-  await expect(page.getByText("Allow Github to create issue?")).toBeVisible();
+  await expect(page.getByText("create issue with Github?")).toBeVisible();
 
-  // Back onto the denied Gmail step: the calm "Denied" record, no footer buttons.
+  // Back onto the declined Gmail step: the calm "Not now" record, no footer.
   await page.getByRole("button", { name: "Back" }).click();
   await expect(page.getByText("1 of 2")).toBeVisible();
   const card = approvalCard(page);
-  await expect(card.getByText("Denied", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Deny/ })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Always allow" })).toHaveCount(
-    0,
-  );
+  await expect(card.getByText("Not now", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Do it/ })).toHaveCount(0);
 });
 
 /**
- * (5a) Dismiss X on an approval step = user interruption (a Stop, NOT a Deny):
- * the card vanishes at once, the transcript shows the standard "Stopped by user"
- * line, and after a reload the persisted interaction is gone — reopening the
- * mission shows no card, only the stop marker. (A non-dismissed interaction
- * WOULD reappear on reopen; the persist path is real.)
+ * (5a) Dismiss X on an approval step = user interruption (a Stop, NOT a Not
+ * now): the card vanishes at once, the transcript shows the standard "Stopped by
+ * user" line, and after a reload the persisted interaction is gone.
  */
 test("dismiss X on an approval step interrupts and clears the persisted card", async ({
   page,
 }) => {
   await armInteraction(page, [gmailApprovalStep]);
   await startMission(page, "send the quarterly report");
-  await expect(page.getByText("Allow Gmail to send draft?")).toBeVisible({
+  await expect(page.getByText("send draft with Gmail?")).toBeVisible({
     timeout: 15_000,
   });
 
   await page.getByRole("button", { name: "Dismiss" }).click();
 
   // Card gone instantly; the transcript reads the standard stop line.
-  await expect(page.getByText("Allow Gmail to send draft?")).toHaveCount(0);
+  await expect(page.getByText("send draft with Gmail?")).toHaveCount(0);
   await expect(page.getByText("Stopped by user")).toBeVisible();
 
   // Reload + reopen the mission from the board: the card stays gone (persisted
@@ -355,7 +369,7 @@ test("dismiss X on an approval step interrupts and clears the persisted card", a
   await expect(page.getByText("Stopped by user")).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByText("Allow Gmail to send draft?")).toHaveCount(0);
+  await expect(page.getByText("send draft with Gmail?")).toHaveCount(0);
 });
 
 /**
@@ -397,13 +411,13 @@ test("dismiss X on a question step interrupts and clears the persisted card", as
 
 /**
  * (6) A mixed compose (question THEN approval): answering the question then
- * allowing the approval completes the sequence as ONE VISIBLE structured user
+ * confirming the approval completes the sequence as ONE VISIBLE structured user
  * message that carries BOTH the typed answer and the HUMANIZED approved line (a
- * sequence with questions sends visibly, unlike an approval-only one). The
- * visible bubble reads "Allowed Gmail to send draft." for a non-technical user;
- * the raw slug the model re-issues rides the hidden body, not this bubble.
+ * sequence with questions sends visibly, unlike a confirm-only one). The visible
+ * bubble reads "Allowed Gmail to send draft." for a non-technical user; the raw
+ * slug the model re-issues rides the hidden body, not this bubble.
  */
-test("composes one visible message from a question then an approval", async ({
+test("composes one visible message from a question then a confirmation", async ({
   page,
 }) => {
   await armInteraction(page, [
@@ -425,10 +439,10 @@ test("composes one visible message from a question then an approval", async ({
   await freeText.fill("john@acme.com");
   await freeText.press("Enter");
 
-  // 2 of 2: the approval. Allow once completes and composes the one message.
+  // 2 of 2: the approval. Do it completes and composes the one message.
   await expect(page.getByText("2 of 2")).toBeVisible();
-  await expect(page.getByText("Allow Gmail to send draft?")).toBeVisible();
-  await page.getByRole("button", { name: /Allow once/ }).click();
+  await expect(page.getByText("send draft with Gmail?")).toBeVisible();
+  await page.getByRole("button", { name: /Do it/ }).click();
 
   // Exactly ONE visible user message, carrying the answer AND the HUMANIZED
   // approved line (the raw slug lives only in the hidden model-facing body).
@@ -438,66 +452,11 @@ test("composes one visible message from a question then an approval", async ({
   await expect(composed).toHaveCount(1, { timeout: 15_000 });
   await expect(composed).toContainText("Allowed Gmail to send draft.");
   await expect(composed).not.toContainText("GMAIL_SEND_DRAFT");
-  await expect(page.getByText("Allow Gmail to send draft?")).toHaveCount(0);
+  await expect(page.getByText("send draft with Gmail?")).toHaveCount(0);
 });
 
 /**
- * (7) The revoke stack: the agent Integrations tab's "Runs without asking"
- * review lists the actions the chat card's "Always allow" blessed, each with a
- * visible Remove that DELETEs the always-allow so Houston asks again. We seed
- * the always-allow through the SAME per-agent route the card POSTs to (proving
- * the card's write shows up here live), open the tab, then Remove one: the
- * section empties, the host's always list clears, and a reload proves the revoke
- * reached the host (persistence), not just the client cache.
- */
-test("the agent tab reviews an always-allowed action and Remove revokes it", async ({
-  page,
-}) => {
-  await page.request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
-    data: { integrations: ["composio"] },
-  });
-  // The card's "Always allow" write landed for this agent (identical route).
-  await page.request.post(
-    `${FAKE_HOST_URL}/v1/agents/${SEED_AGENT_ID}/action-approvals/always`,
-    { data: { action: "GMAIL_SEND_DRAFT" } },
-  );
-
-  await page.goto("/");
-  await page.locator('[data-tour-target="tab-integrations"]').click();
-
-  // The review section shows the app's HUMANIZED action and a visible Remove.
-  await expect(
-    page.getByRole("heading", { name: "Runs without asking" }),
-  ).toBeVisible();
-  const section = page
-    .locator("section")
-    .filter({ hasText: "Runs without asking" });
-  await expect(section.getByText("send draft")).toBeVisible();
-  const remove = section.getByRole("button", {
-    name: /Stop send draft running without asking/,
-  });
-  await expect(remove).toBeVisible();
-
-  await remove.click();
-
-  // The DELETE fired: the host's always list emptied and the section is gone.
-  await expect
-    .poll(async () => (await readApprovals(page)).always, { timeout: 10_000 })
-    .toEqual([]);
-  await expect(
-    page.getByRole("heading", { name: "Runs without asking" }),
-  ).toHaveCount(0);
-
-  // Reload proves the revoke reached the host, not just the client cache.
-  await page.reload();
-  await page.locator('[data-tour-target="tab-integrations"]').click();
-  await expect(
-    page.getByRole("heading", { name: "Runs without asking" }),
-  ).toHaveCount(0);
-});
-
-/**
- * (4, owner design tweak) The QUESTION card's "Skip" beside the free-text field
+ * (7, owner design tweak) The QUESTION card's "Skip" beside the free-text field
  * is a bordered outline pill with an Esc keycap — a clickable affordance, not a
  * quiet ghost link. Captured at rest and on hover for the visual review.
  */

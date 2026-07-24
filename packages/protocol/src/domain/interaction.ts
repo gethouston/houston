@@ -67,6 +67,11 @@ export type InteractionStep =
       toolkit: string;
       /** The action slug, e.g. "GMAIL_SEND_DRAFT". */
       action: string;
+      /** The agent-phrased confirmation question, in the user's language, covering
+       *  the full scope of what is about to happen (e.g. "Should I send the 30
+       *  invites?"). Optional: absent for actions whose intent the model didn't
+       *  supply; the card falls back to its generic prompt. */
+      intent?: string;
       /** Display-ready key/values for the card's param rows (values already truncated host-side). */
       params?: Record<string, string>;
       /** How many params were dropped past the card's row cap (present only when
@@ -109,6 +114,7 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
       typeof v.toolkit === "string" &&
       typeof v.action === "string" &&
       typeof v.paramsHash === "string" &&
+      (v.intent === undefined || typeof v.intent === "string") &&
       (v.paramsOmitted === undefined || typeof v.paramsOmitted === "number") &&
       (v.params === undefined ||
         (isRecord(v.params) &&

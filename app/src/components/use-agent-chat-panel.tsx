@@ -1442,8 +1442,10 @@ export function useAgentChatPanel({
           const {
             approvedActions,
             deniedActions,
+            redoItems,
             approvedDisplays,
             deniedDisplays,
+            redoDisplays,
           } = finalApprovalNames(
             steps.filter((s) => s.kind === "approval").map((s) => s.id),
             approvalOutcomes,
@@ -1463,8 +1465,10 @@ export function useAgentChatPanel({
               skippedConnectNames,
               approvedActions,
               deniedActions,
+              redoItems,
               approvedDisplays,
               deniedDisplays,
+              redoDisplays,
               credentialedNames,
               skippedCredentialNames,
               hasQuestionSteps,
@@ -1485,10 +1489,14 @@ export function useAgentChatPanel({
                 t("chat:interaction.approvedLine", { action }),
               deniedLine: (action) =>
                 t("chat:interaction.deniedLine", { action }),
+              redoLine: (action, text) =>
+                t("chat:interaction.redoLine", { action, text }),
               approvedLineDisplay: ({ app, action }) =>
                 t("chat:interaction.approvedLineDisplay", { app, action }),
               deniedLineDisplay: ({ app, action }) =>
                 t("chat:interaction.deniedLineDisplay", { app, action }),
+              redoLineDisplay: ({ app, action }, text) =>
+                t("chat:interaction.redoLineDisplay", { app, action, text }),
               credentialedFollowup: t("chat:credential.savedFollowup", {
                 name: credentialedNames.join(", "),
               }),
@@ -1550,14 +1558,7 @@ export function useAgentChatPanel({
         renderApproval={(step, api) => {
           // The recorded decision maps to the card's calm decided-state label
           // when the user walks Back onto a resolved step.
-          const recorded = approvalOutcomes.get(step.id);
-          const outcome = recorded
-            ? recorded.decision === "deny"
-              ? "denied"
-              : recorded.decision === "alwaysAllow"
-                ? "alwaysAllowed"
-                : "allowedOnce"
-            : undefined;
+          const outcome = approvalOutcomes.get(step.id)?.decision;
           return (
             <ChatApprovalInteractionCard
               key={step.id}
@@ -1568,54 +1569,41 @@ export function useAgentChatPanel({
               disabled={api.disabled}
               toolkit={step.toolkit}
               action={step.action}
+              intent={step.intent}
               revisited={api.revisited}
               outcome={outcome}
               onDecision={(decision) => {
                 // The RAW slug is what the model re-issues; `display` is the
                 // humanized app + action the visible transcript line shows a
-                // non-technical user ("Allowed Gmail to send draft.").
+                // non-technical user ("Allowed Gmail to send email.").
                 const display = {
                   app: prettifyToolkit(step.toolkit),
                   action: humanizeActionSlug(step.action, step.toolkit),
                 };
-                // FIRST the store write (deny writes nothing), THEN on success
-                // record the outcome and advance. Deny resolves synchronously.
-                // A write FAILURE keeps the frontier here so the user can retry
-                // (the tauri `call()` already toasted once — never double-toast,
-                // never advance on failure).
-                if (decision === "deny") {
+                // "Not now" and "differently" write nothing to the host — they
+                // resolve synchronously (the model hears the refusal / the redo
+                // ask). "Do it" grants the action FIRST, then records + advances
+                // on success; a grant FAILURE keeps the frontier here so the user
+                // can retry (the tauri `call()` already toasted once — never
+                // double-toast, never advance on failure).
+                if (decision !== "doIt") {
                   approvalOutcomes.set(step.id, {
                     action: step.action,
-                    decision,
+                    decision: decision === "notNow" ? "notNow" : "differently",
                     display,
+                    text: decision === "notNow" ? undefined : decision.text,
                   });
                   api.onResolve();
                   return;
                 }
-                const write =
-                  decision === "allowOnce"
-                    ? tauriIntegrations.addApprovalTicket(
-                        agent.id,
-                        step.paramsHash,
-                      )
-                    : tauriIntegrations.allowActionAlways(
-                        agent.id,
-                        step.action,
-                      );
-                write
+                tauriIntegrations
+                  .grantActionApproval(agent.id, step.action)
                   .then(() => {
                     approvalOutcomes.set(step.id, {
                       action: step.action,
-                      decision,
+                      decision: "doIt",
                       display,
                     });
-                    // Keep the agent tab's "Runs without asking" review live:
-                    // an always-allow just extended the set the section reads.
-                    if (decision === "alwaysAllow") {
-                      queryClient.invalidateQueries({
-                        queryKey: queryKeys.actionApprovals(agent.id),
-                      });
-                    }
                     api.onResolve();
                   })
                   // `call()` toasted; swallow the re-throw and DON'T advance.
@@ -1668,7 +1656,6 @@ export function useAgentChatPanel({
     sendInteractionMessage,
     clearPersistedInteraction,
     dismissActiveInteraction,
-    queryClient,
     t,
   ]);
 

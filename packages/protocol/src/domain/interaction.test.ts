@@ -145,6 +145,38 @@ test("isPendingInteraction validates approval steps", () => {
     }),
   ).toBe(true);
 
+  // `intent` is optional: the agent-phrased confirmation question is accepted.
+  expect(
+    isPendingInteraction({
+      steps: [
+        {
+          kind: "approval",
+          id: "a1",
+          toolkit: "gmail",
+          action: "GMAIL_SEND_DRAFT",
+          intent: "Should I send the 30 invites?",
+          paramsHash: "h7f3a1",
+        },
+      ],
+    }),
+  ).toBe(true);
+
+  // A non-string `intent` is invalid.
+  expect(
+    isPendingInteraction({
+      steps: [
+        {
+          kind: "approval",
+          id: "a1",
+          toolkit: "gmail",
+          action: "GMAIL_SEND_DRAFT",
+          intent: 42,
+          paramsHash: "h7f3a1",
+        },
+      ],
+    }),
+  ).toBe(false);
+
   // A missing paramsHash is invalid.
   expect(
     isPendingInteraction({

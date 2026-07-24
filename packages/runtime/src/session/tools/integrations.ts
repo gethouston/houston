@@ -36,6 +36,13 @@ const ExecuteParams = Type.Object({
         "Arguments for the action, matching its input parameters from integration_search.",
     }),
   ),
+  intent: Type.Optional(
+    Type.String({
+      maxLength: 200,
+      description:
+        'REQUIRED whenever this action changes something (send/create/delete/update): ONE short confirmation question, in the USER\'S language, covering the FULL scope of what is about to happen — e.g. "Should I send the 30 invites?" or "¿Borro los 5 eventos?". Houston shows it on a single confirmation card. Omit for pure reads.',
+    }),
+  ),
 });
 type ExecuteParams = Static<typeof ExecuteParams>;
 
@@ -87,6 +94,10 @@ function signalCode(detail: string): string | undefined {
 interface ApprovalPayload {
   toolkit: string;
   action: string;
+  /** The agent-phrased confirmation question the host echoed back from the
+   *  `execute` call's `intent`; carried onto the approval step so the card asks
+   *  it in the user's words. Absent when the model supplied none. */
+  intent?: string;
   params?: Record<string, string>;
   /** How many params the host dropped past the card's row cap (present only when
    *  > 0); passed through to the approval step so the card can surface it. */
@@ -97,9 +108,10 @@ interface ApprovalPayload {
 /**
  * Parse the `approval` object off a 409 body, TOLERANTLY: toolkit/action/
  * paramsHash must be strings, params (optional) a record of strings,
- * paramsOmitted (optional) a number. A malformed payload returns undefined so
- * the caller falls through to the generic error throw rather than queueing a
- * broken approval card.
+ * paramsOmitted (optional) a number, intent (optional) a string (any other type
+ * is simply dropped, never a parse failure). A malformed payload returns
+ * undefined so the caller falls through to the generic error throw rather than
+ * queueing a broken approval card.
  */
 function parseApproval(detail: string): ApprovalPayload | undefined {
   try {
@@ -107,13 +119,15 @@ function parseApproval(detail: string): ApprovalPayload | undefined {
     if (!body || typeof body !== "object") return undefined;
     const { approval } = body as { approval?: unknown };
     if (!approval || typeof approval !== "object") return undefined;
-    const { toolkit, action, params, paramsOmitted, paramsHash } = approval as {
-      toolkit?: unknown;
-      action?: unknown;
-      params?: unknown;
-      paramsOmitted?: unknown;
-      paramsHash?: unknown;
-    };
+    const { toolkit, action, intent, params, paramsOmitted, paramsHash } =
+      approval as {
+        toolkit?: unknown;
+        action?: unknown;
+        intent?: unknown;
+        params?: unknown;
+        paramsOmitted?: unknown;
+        paramsHash?: unknown;
+      };
     if (
       typeof toolkit !== "string" ||
       typeof action !== "string" ||
@@ -138,6 +152,8 @@ function parseApproval(detail: string): ApprovalPayload | undefined {
       toolkit,
       action,
       paramsHash,
+      // Tolerant: keep a string intent, drop anything else silently.
+      ...(typeof intent === "string" ? { intent } : {}),
       ...(parsedParams ? { params: parsedParams } : {}),
       ...(paramsOmitted !== undefined ? { paramsOmitted } : {}),
     };
@@ -422,7 +438,13 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       try {
         result = await post<ActionResult>(
           "execute",
-          { action: params.action, params: params.params ?? {} },
+          {
+            action: params.action,
+            params: params.params ?? {},
+            // The agent-phrased confirmation question; the host echoes it back on
+            // the 409 approval payload so the card asks it in the user's words.
+            ...(params.intent ? { intent: params.intent } : {}),
+          },
           signal,
         );
       } catch (err) {
@@ -438,7 +460,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
             content: [
               {
                 type: "text" as const,
-                text: `This action needs the user's permission. Houston queued an approval card for "${action}" that the user will see when you end your turn. Do not run this action again now and do not ask for permission in text. Queue anything else the task needs (ask_user questions, request_connection) in this same turn, then end your turn. Houston sends you a message automatically once the user decides.`,
+                text: `This action needs the user's go-ahead. Houston queued a confirmation card for "${action}" that the user will see when you end your turn. Do not run this action again now and do not ask for confirmation in text. Queue anything else the task needs (ask_user questions, request_connection) in this same turn, then end your turn. Once the user confirms, Houston clears "${action}" for a short while and sends you a message — then re-issue it (including any repeats of this same action in the batch) without asking again.`,
               },
             ],
             details: { action, queuedApproval: true },
