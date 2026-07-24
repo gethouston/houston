@@ -6,6 +6,8 @@ import { getEngine } from "../../../lib/engine";
 import { reportError } from "../../../lib/error-toast";
 import { cropAvatarToBlob } from "../../../lib/image-crop";
 import { useUIStore } from "../../../stores/ui";
+import { gatewayErrorCode } from "./save-error";
+import { avatarErrorKey } from "./save-error-map";
 
 /** Image types the gateway accepts for an avatar (`POST /me/avatar`). */
 const ALLOWED_AVATAR_TYPES = ["image/png", "image/jpeg", "image/webp"];
@@ -48,8 +50,9 @@ export function AvatarUploadField({
   const locked = busy || disabled || claiming;
 
   const fail = (command: string, message: string, err: unknown) => {
-    reportError(command, message, err);
-    addToast({ title: t("profile.saveFailed"), variant: "error" });
+    const code = gatewayErrorCode(err);
+    reportError(command, `${message} (${code ?? "unknown"})`, err);
+    addToast({ title: t(avatarErrorKey(code)), variant: "error" });
   };
 
   const handlePick = async (file: File) => {

@@ -276,7 +276,12 @@ Houston surfaces (SDK: profile/creator/analytics methods on
   app-wide from the user menu, opened via the `creatorEditorOpen` ui-store flag
   (user menu, My agents header, publish wizard). Handle picker with debounced
   availability, avatar pick → `app/src/lib/image-crop.ts` (pure canvas
-  center-crop to 512px, no deps) → upload, socials, bio.
+  center-crop to 512px, no deps) → upload, socials, bio. Failure surfacing
+  (HOU-864/865): every known gateway token maps to specific copy via the pure
+  maps in `store-view/profile/save-error-map.ts` (handle tokens → field-level
+  message; other save tokens + avatar tokens → specific toasts; unknowns fall
+  back to a save-scoped or photo-scoped generic — never cross-labeled).
+  `save-error.ts` holds only the engine-client token reader.
 - **In-app creator pane** `store-view/creator/` — full-pane profile (agents
   grid, socials, `VerifiedBadge` from `@houston-ai/core` — inventory-tracked)
   opened via the `storeCreatorHandle` one-shot: from creator chips on rows and
