@@ -3,7 +3,7 @@ import { User } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getEngine } from "../../../lib/engine";
-import { reportError } from "../../../lib/error-toast";
+import { reportError } from "../../../lib/error-report";
 import { cropAvatarToBlob } from "../../../lib/image-crop";
 import { useUIStore } from "../../../stores/ui";
 import { gatewayErrorCode } from "./save-error";

@@ -5,7 +5,7 @@ import { useActivity, useAllConversations } from "../../hooks/queries";
 import { readAgentModelOverrides } from "../../lib/agent-model-overrides";
 import { analytics } from "../../lib/analytics";
 import { createMission } from "../../lib/create-mission";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import {
   encodeIntegrationSetupMessage,
   findDraftIntegrationSetupActivity,

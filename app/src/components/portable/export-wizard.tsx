@@ -24,7 +24,7 @@ import { useSession } from "../../hooks/use-session";
 import { analytics } from "../../lib/analytics";
 import { signInWithGoogle } from "../../lib/auth";
 import { getEngine } from "../../lib/engine";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import { isIdentityConfigured } from "../../lib/identity";
 import { osRevealPath } from "../../lib/os-bridge";
 import {

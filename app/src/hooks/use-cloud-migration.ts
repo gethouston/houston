@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import type { LegacyDetection } from "../lib/cloud-migration";
 import { DEMO_DETECTION, isMigrationDemo } from "../lib/cloud-migration-demo";
 import { isHostedGatewayEngine } from "../lib/engine";
-import { reportError } from "../lib/error-toast";
+import { reportError } from "../lib/error-report";
 import { osDetectLegacyHouston, osIsTauri } from "../lib/os-bridge";
 import { queryKeys } from "../lib/query-keys";
 import {

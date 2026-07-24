@@ -9,6 +9,13 @@
     "reportBug": "Reportar bug",
     "danger": "Eliminar espacio"
   },
+  "workspaceGate": {
+    "failedTitle": "No pudimos cargar tu configuración",
+    "failedBody": "Tu espacio no llegó. Revisa tu conexión e inténtalo de nuevo.",
+    "emptyTitle": "No hay ningún espacio disponible",
+    "emptyBody": "Houston no encontró un espacio para tu cuenta. Inténtalo de nuevo o reinicia la aplicación.",
+    "retry": "Reintentar"
+  },
   "account": {
     "title": "Cuenta",
     "signOut": "Cerrar sesión",

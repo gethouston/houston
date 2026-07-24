@@ -2,7 +2,7 @@ import { Button } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useReasoningToggle } from "../../hooks/use-reasoning-toggle";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import { connectManualEndpoint } from "../../lib/local-model-connect";
 import { ReasoningToggle } from "./local-model-dialog-parts";
 import { ShareEndpointToggle } from "./local-model-share-toggle";

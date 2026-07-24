@@ -7,30 +7,9 @@ import {
 } from "./sentry";
 import { devNoSendToastSpec } from "./sentry-dev";
 import { createSentryReportError } from "./sentry-report-error";
+import { markReportedToSentry } from "./sentry-reported-mark";
 
 const GREEN_TOAST_DELAY_MS = 700;
-
-/**
- * Capture an error to Sentry WITHOUT showing a toast. For engine-call paths
- * that surface the failure with their own inline UI (a toast would be
- * redundant) but must still reach Sentry — the report is what lets us fix it.
- * Capture is decoupled from the toast so `{ toast: false }` callers aren't
- * silently invisible to crash reporting. Returns immediately; flush failures
- * are logged, never thrown.
- */
-export function reportError(
-  command: string,
-  message: string,
-  originalError?: unknown,
-): void {
-  const error = createSentryReportError(command, message, originalError);
-  void sentryCapture(error, {
-    source: command,
-    error_kind: classifyAnalyticsError(message),
-  }).catch((flushErr: unknown) => {
-    console.error("[sentry] failed to flush captured error", flushErr);
-  });
-}
 
 /**
  * Surface an error to the user as a toast pair:
@@ -90,17 +69,6 @@ export interface ErrorToastOptions {
 }
 
 /**
- * Localized generic body for an ad-hoc error toast whose title already names
- * the failed action. Logs the raw diagnostic first (console.error is mirrored
- * to the frontend log) so the friendlier copy never costs us the detail.
- */
-export function genericErrorDescription(command: string, err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err);
-  console.error(`[${command}] ${raw}`);
-  return i18n.t("shell:errorToast.genericDescription");
-}
-
-/**
  * Surface an EXPECTED, explainable business state as a plain informational
  * toast — NOT the red "we have a problem" + auto-report pair. Used for gateway
  * states a user can understand and act on (C8 `needs_upgrade`: a write blocked
@@ -136,6 +104,7 @@ export function showErrorToast(
     // failing on one root cause (HOU-687) would N-count a single problem.
     const error = createSentryReportError(command, message, originalError);
     if (!sentrySuppressedInDev) {
+      markReportedToSentry(originalError);
       void sentryCapture(error, {
         source: command,
         error_kind: classifyAnalyticsError(message),
@@ -167,6 +136,7 @@ export function showErrorToast(
     return;
   }
 
+  markReportedToSentry(originalError);
   const error = createSentryReportError(command, message, originalError);
   void sentryCapture(error, {
     source: command,

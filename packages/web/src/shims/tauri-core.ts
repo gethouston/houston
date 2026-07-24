@@ -18,6 +18,8 @@
  * scripts/check-tauri-shims.mjs (every invoke("X") in app/src must appear here).
  */
 
+import { gatewayAuthFetch } from "../engine-adapter/cp/fetch";
+
 /** Mirror of `@tauri-apps/api`'s `isTauri()` — always false in the web build. */
 export function isTauri(): boolean {
   return false;
@@ -157,14 +159,26 @@ export async function invoke<T = unknown>(
       // there is nowhere to send it, so fall through to the desktop-only error.
       const cp = window.__HOUSTON_CP__ ? window.__HOUSTON_ENGINE__ : undefined;
       if (!cp?.baseUrl) return notAvailable(cmd);
-      const res = await fetch(`${cp.baseUrl.replace(/\/+$/, "")}/feedback`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${cp.token ?? ""}`,
-          "Content-Type": "application/json",
+      // Same transport as every other control-plane call: the bearer is read
+      // LIVE per attempt and a 401 triggers one single-flight session refresh
+      // plus a replay, so a report filed after the tab idled past token expiry
+      // still lands instead of failing as "unauthorized" (HOU-818). A blank or
+      // absent token is just the empty-bearer case that refresh path handles.
+      //
+      // NO org getter, so no `x-houston-org`: the gateway's ResolveOrg 403s
+      // `not_member` on a stale selector, and `/feedback` never reads the org
+      // anyway. Pinning the active space would mean a user removed from their
+      // team could no longer tell us anything — the exact moment they most
+      // need to. `X-Houston-App-Version` still rides along (build identity).
+      const gatewayFetch = gatewayAuthFetch(cp.token);
+      const res = await gatewayFetch(
+        `${cp.baseUrl.replace(/\/+$/, "")}/feedback`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(args?.payload ?? {}),
         },
-        body: JSON.stringify(args?.payload ?? {}),
-      });
+      );
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error || `feedback failed (${res.status})`);

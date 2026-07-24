@@ -16,7 +16,7 @@ import { Link2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getEngine } from "../../lib/engine";
-import { reportError } from "../../lib/error-toast";
+import { reportError } from "../../lib/error-report";
 
 interface InstallFromLinkPanelProps {
   /** Called with the fetched preview; the wizard takes over from here. */

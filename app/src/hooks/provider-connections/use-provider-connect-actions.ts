@@ -1,5 +1,5 @@
 import { type Dispatch, type SetStateAction, useCallback } from "react";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
 import type {

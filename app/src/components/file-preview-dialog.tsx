@@ -10,7 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSaveDownload } from "../hooks/use-save-download";
-import { genericErrorDescription } from "../lib/error-toast";
+import { genericErrorDescription } from "../lib/error-report";
 import { tauriFiles } from "../lib/tauri";
 
 /**

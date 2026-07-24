@@ -13,7 +13,7 @@ import type {
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getEngine } from "../../lib/engine";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import type { WizardSelection } from "../../lib/portable-share";
 import { type AnonymizeAccept, acceptFor } from "../../lib/portable-share";
 import { useUIStore } from "../../stores/ui";

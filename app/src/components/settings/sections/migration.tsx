@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useSession } from "../../../hooks/use-session";
 import { isHostedGatewayEngine } from "../../../lib/engine";
-import { reportError } from "../../../lib/error-toast";
+import { reportError } from "../../../lib/error-report";
 import { osDetectLegacyHouston, osIsTauri } from "../../../lib/os-bridge";
 import { queryKeys } from "../../../lib/query-keys";
 

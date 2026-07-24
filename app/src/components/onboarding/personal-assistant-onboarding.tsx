@@ -6,7 +6,7 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import { useOnboardingCompleted } from "../../hooks/use-onboarding-completed";
 import { useOnboardingPending } from "../../hooks/use-onboarding-pending";
 import { analytics } from "../../lib/analytics";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import { getDefaultModel } from "../../lib/providers";
 import { stepPosition } from "../../lib/setup-steps";
 import { useUIStore } from "../../stores/ui";

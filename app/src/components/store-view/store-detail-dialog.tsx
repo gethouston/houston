@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FlagIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { reportError } from "../../lib/error-toast";
+import { reportError } from "../../lib/error-report";
 import { skillIntegrationSlugs } from "../../lib/skill-integrations";
 import {
   isStoreCategory,

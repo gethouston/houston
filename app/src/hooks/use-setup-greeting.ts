@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { reportError } from "../lib/error-toast";
+import { reportError } from "../lib/error-report";
 import {
   type SetupGreetingEntry,
   SetupGreetingRegistry,

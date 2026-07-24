@@ -9,7 +9,7 @@ import { Button } from "@houston-ai/core";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import { osOpenUrl } from "../../lib/os-bridge";
 import { useUIStore } from "../../stores/ui";
 

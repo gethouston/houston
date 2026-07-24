@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { reportBug } from "../../../lib/bug-report";
 import { getCurrentUserEmail } from "../../../lib/current-user";
+import { logAndReportError } from "../../../lib/error-report";
 import { getProvider } from "../../../lib/providers";
 import { tauriSystem } from "../../../lib/tauri";
 import { useUIStore } from "../../../stores/ui";
@@ -127,7 +128,14 @@ export function ReportBugButton({
         description: t("shell:toolRuntimeError.reportSuccessDescription"),
         variant: "success",
       });
-    } catch {
+    } catch (err) {
+      // The card owns the copy, so this can't go through
+      // genericErrorDescription — but the reason still has to reach the log and
+      // Sentry: a bug report that fails to send is exactly the failure we would
+      // otherwise never hear about. The tag is the flat, snake_case command
+      // every other report site uses; composing in the per-card `command` would
+      // fan one issue out into unbounded Sentry groups.
+      logAndReportError("report_bug", err);
       addToast({
         title: t("shell:toolRuntimeError.reportErrorTitle"),
         description: t("shell:toolRuntimeError.reportErrorDescription"),

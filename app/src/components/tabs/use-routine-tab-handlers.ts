@@ -8,7 +8,7 @@ import {
   useUpdateRoutine,
 } from "../../hooks/queries";
 import { useTimezonePreference } from "../../hooks/use-timezone-preference";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 

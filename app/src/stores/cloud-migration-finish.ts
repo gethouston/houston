@@ -8,7 +8,7 @@
 import { analytics } from "../lib/analytics";
 import type { MigrationTask } from "../lib/cloud-migration";
 import type { AgentMigrationProgress } from "../lib/cloud-migration-progress";
-import { reportError } from "../lib/error-toast";
+import { reportError } from "../lib/error-report";
 import { osStopMigrationSourceHost } from "../lib/os-bridge";
 import { useAgentStore } from "./agents";
 import { useWorkspaceStore } from "./workspaces";

@@ -7,7 +7,7 @@ import {
 import type { SuggestedRoutine } from "@houston-ai/engine-client";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import { tauriAgents } from "../../lib/tauri";
 import { ChatModelSelector } from "../chat-model-selector";
 import { AgentBriefForm } from "./agent-brief-form";

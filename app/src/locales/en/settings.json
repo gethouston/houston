@@ -9,6 +9,13 @@
     "reportBug": "Report bug",
     "danger": "Delete workspace"
   },
+  "workspaceGate": {
+    "failedTitle": "We couldn't load your settings",
+    "failedBody": "Your workspace didn't come through. Check your connection and try again.",
+    "emptyTitle": "No workspace available",
+    "emptyBody": "Houston could not find a workspace for your account. Try again or restart the app.",
+    "retry": "Try again"
+  },
   "account": {
     "title": "Account",
     "signOut": "Sign out",

@@ -167,7 +167,10 @@ async function surfaceError(
   );
   if (!shouldToast && !shouldCapture) return;
 
-  const { showErrorToast, reportError } = await import("./error-toast");
+  const [{ showErrorToast }, { reportError }] = await Promise.all([
+    import("./error-toast"),
+    import("./error-report"),
+  ]);
   if (shouldToast) {
     // Pass the real error so Sentry records the true failure stack (the
     // engine-client frame), not a synthetic one — this also fixes Sentry

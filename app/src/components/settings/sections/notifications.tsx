@@ -2,7 +2,7 @@ import { Switch } from "@houston-ai/core";
 import { Bell } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { genericErrorDescription } from "../../../lib/error-toast";
+import { genericErrorDescription } from "../../../lib/error-report";
 import {
   type NotificationRowState,
   notificationRowState,

@@ -17,7 +17,7 @@ import {
 import type { ReportInput, ReportReason } from "@houston-ai/engine-client";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { reportError } from "../../lib/error-toast";
+import { reportError } from "../../lib/error-report";
 import { useUIStore } from "../../stores/ui";
 
 /** The moderation vocabulary the gateway accepts (shared by agent + creator reports). */

@@ -8,7 +8,7 @@ import { fetchStoreAgent, fetchStoreCatalog } from "@houston-ai/engine-client";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { reportError } from "../../lib/error-toast";
+import { reportError } from "../../lib/error-report";
 import { useUIStore } from "../../stores/ui";
 import { StoreCatalogResults } from "./store-catalog-results";
 import { StoreDetailDialog } from "./store-detail-dialog";

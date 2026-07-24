@@ -6,7 +6,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { reportError } from "../../lib/error-toast";
+import { reportError } from "../../lib/error-report";
 import {
   resolveStoreCategoryLabel,
   STORE_CATEGORIES,

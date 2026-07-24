@@ -3,7 +3,7 @@ import { type Dispatch, type SetStateAction, useEffect } from "react";
 import { claimProviderLoginSurface } from "../../components/shell/provider-login-surface";
 import { shouldOpenLoginUrlDirectly } from "../../components/shell/provider-login-url";
 import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import { localizedProviderLoginError } from "../../lib/provider-login-error";

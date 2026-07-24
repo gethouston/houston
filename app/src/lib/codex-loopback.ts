@@ -16,7 +16,7 @@
 
 import { shouldUseCodexLoopback } from "../components/shell/provider-login-url";
 import { useUIStore } from "../stores/ui";
-import { genericErrorDescription } from "./error-toast";
+import { genericErrorDescription } from "./error-report";
 import i18n from "./i18n";
 import {
   legacyListen,

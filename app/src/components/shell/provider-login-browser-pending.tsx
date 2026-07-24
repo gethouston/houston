@@ -10,7 +10,7 @@ import {
 import { ExternalLink, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriSystem } from "../../lib/tauri";
 
