@@ -39,4 +39,30 @@ describe("resetCacheForSpaceChange", () => {
       { id: "same-space-agent" },
     ]);
   });
+
+  it("preserves user-scoped, space-invariant keys on a real change (HOU-907)", () => {
+    // Tenant data (per-space) — must be dropped.
+    queryClient.setQueryData(["agents"], [{ id: "prior-space-agent" }]);
+    queryClient.setQueryData(["capabilities"], { role: "owner" });
+    // User-scoped, space-invariant — must SURVIVE (purging them flaps the
+    // auth/onboarding gates and re-blanks the shell mid-switch).
+    queryClient.setQueryData(["session"], { uid: "u1" });
+    queryClient.setQueryData(["onboarding-pending"], false);
+    queryClient.setQueryData(["onboarding-completed", "u1"], true);
+
+    resetCacheForSpaceChange(queryClient, true);
+
+    // Tenant keys gone.
+    assert.strictEqual(queryClient.getQueryData(["agents"]), undefined);
+    assert.strictEqual(queryClient.getQueryData(["capabilities"]), undefined);
+    // User-scoped keys intact.
+    assert.deepStrictEqual(queryClient.getQueryData(["session"]), {
+      uid: "u1",
+    });
+    assert.strictEqual(queryClient.getQueryData(["onboarding-pending"]), false);
+    assert.strictEqual(
+      queryClient.getQueryData(["onboarding-completed", "u1"]),
+      true,
+    );
+  });
 });

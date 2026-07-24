@@ -3,7 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Component, type ReactNode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
-import App from "./App";
+import { IdentityKeyedApp } from "./identity-keyed-app";
 import { queryClient } from "./lib/query-client";
 import "./styles/globals.css";
 import { AgentFilePreviewHost } from "./components/agent-file-preview-host";
@@ -156,7 +156,7 @@ createRoot(rootElement).render(
               <QueryPersistenceProvider>
                 <LanguageGate>
                   <DisclaimerGate>
-                    <App />
+                    <IdentityKeyedApp />
                     {/* Global workspace-file preview (chat file clicks) — a
                         sibling of App so it overlays every screen, onboarding
                         included. Mirrored in packages/web/src/app-tree.tsx. */}

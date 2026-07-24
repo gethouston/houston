@@ -19,6 +19,9 @@ interface WorkspaceState {
   rename: (id: string, newName: string) => Promise<void>;
   /** Set (or clear, with null) the workspace's UI-locale override. */
   setLocale: (id: string, locale: string | null) => Promise<void>;
+  /** Drop the workspace list back to its initial (loading) state on an identity
+   *  change (HOU-903); the incoming account re-loads its own spaces on boot. */
+  reset: () => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
@@ -106,4 +109,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       current: s.current?.id === id ? updated : s.current,
     }));
   },
+
+  // Mirrors the initial state (loading: true) so the shell shows its splash, not
+  // a stale list, until the incoming account's loadWorkspaces() resolves.
+  reset: () => set({ workspaces: [], current: null, loading: true }),
 }));

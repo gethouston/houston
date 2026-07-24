@@ -20,21 +20,9 @@ import { expect, test } from "./support/fixtures";
  * rows the C8 workspaces bridge serves at `GET /v1/workspaces`). See
  * `@houston/fake-host` README + `knowledge-base/ui-testing.md`.
  *
- * ── Why the team-space cases are `test.fixme` ─────────────────────────────────
- * The switcher lists whatever `getEngine().listWorkspaces()` returns. In the web
- * engine-adapter that BOTH desktop and web run on
- * (`packages/web/src/engine-adapter/client/workspaces-mixin.ts`), `listWorkspaces`
- * returns a SINGLE hard-coded synthetic personal workspace and never fetches
- * `GET /v1/workspaces` — so the armed team rows the fake host now serves cannot
- * bridge into the switcher, and there is no way (UI switch OR persisted-last +
- * reload via `resolveActiveWorkspace`) to make the active space a team. Both the
- * reload path and the UI path require the team row to be in that list.
- *
- * The fake-host arming (below) is complete and ready. Once the adapter's
- * `listWorkspaces` fetches the C8 workspaces bridge (personal + team rows) in
- * host/CP mode, drop `.fixme` from the three team-space cases — they should pass
- * against the arming as written. Empirically verified today: with the team armed,
- * the switcher dropdown shows only the personal workspace.
+ * The team-space cases drive the REAL switcher UI against the fake host's
+ * armed team rows — live since the adapter's `listWorkspaces` bridges the C8
+ * workspaces surface (HOU-881).
  */
 
 /** A Spaces owner: multiplayer + Teams + Spaces, top role. */
@@ -112,9 +100,6 @@ test("regression: a non-spaces Teams host still shows Admin on the personal work
   await expect(adminNav(page)).toBeVisible();
   await expect(permissionsNav(page)).toBeVisible();
 });
-
-// ── Team-space direction: blocked on the adapter's `listWorkspaces` (see the
-// file header). Remove `.fixme` once the C8 workspaces bridge is wired. ──
 
 test("spaces host: switching to a team space reveals Admin and Permissions", async ({
   page,

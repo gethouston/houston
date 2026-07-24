@@ -49,6 +49,26 @@ export const queryKeys = {
   capabilities: () => ["capabilities"] as const,
 
   /**
+   * Durable onboarding flags — USER-scoped and space-INVARIANT (engine prefs on
+   * the user's own store, mirrored per uid). Centralized here so the space-cache
+   * purge (`resetCacheForSpaceChange`) can preserve them by their root segment
+   * without importing the hooks. `onboarding-pending` is the interrupted-flow
+   * resume bit; `onboarding-completed` is the "already onboarded" bit, keyed by
+   * uid so a user switch can't inherit a stale value.
+   */
+  onboardingPending: () => ["onboarding-pending"] as const,
+  onboardingCompleted: (uid: string | null) =>
+    ["onboarding-completed", uid] as const,
+
+  /**
+   * The identity `Session | null` cache key, shared by `useSession` on both
+   * surfaces. Defined here (the pure key module) as the single source of truth
+   * and re-exported as `SESSION_QUERY_KEY` from `identity/session-store`, so the
+   * space-cache purge can preserve it without importing the identity chain.
+   */
+  session: () => ["session"] as const,
+
+  /**
    * Live per-account provider usage (the AI Hub's Usage tab): rate-limit
    * windows + prepaid balances from each provider's own usage API. App-scoped
    * (credentials are workspace-central); refreshed on an interval while the

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { queryKeys } from "../lib/query-keys";
 import { tauriPreferences } from "../lib/tauri";
 
 /**
@@ -9,7 +10,7 @@ import { tauriPreferences } from "../lib/tauri";
  */
 export const ONBOARDING_PENDING_KEY = "onboarding_pending";
 
-const queryKey = ["onboarding-pending"] as const;
+const queryKey = queryKeys.onboardingPending();
 
 export interface OnboardingPendingState {
   /** True while the flow is mid-flight (set on mount, cleared on any terminal

@@ -68,6 +68,9 @@ interface AgentState {
     id: string,
     color: string,
   ) => Promise<void>;
+  /** Drop the agent list back to its initial (unloaded) state on an identity
+   *  change (HOU-903); the incoming account re-loads its own agents on boot. */
+  reset: () => void;
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -188,4 +191,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       current: s.current?.id === id ? updated : s.current,
     }));
   },
+
+  reset: () =>
+    set({ agents: [], current: null, loading: false, loaded: false }),
 }));

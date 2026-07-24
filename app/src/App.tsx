@@ -185,6 +185,18 @@ export default function App() {
   const agentLoading = useAgentStore((s) => s.loading);
   const agents = useAgentStore((s) => s.agents);
   const agentsLoaded = useAgentStore((s) => s.loaded);
+  // First-boot latch (HOU-907). The workspace-boot splash below is a FIRST-BOOT
+  // affordance only: once the full gate has cleared once for this App mount, a
+  // space switch must never re-blank the shell. A switch flips capabilities +
+  // both onboarding flags to loading (the space-cache reset) and re-runs
+  // loadAgents — but the chrome is zustand-backed and every pane is
+  // skeleton-capable + capabilities-undefined-safe, so it tolerates the
+  // transition in place. Reset is natural, not manual: on sign-out / account
+  // change the HOU-903 identity reset drops the session, so <HostedEngineGate>
+  // (which wraps <App/> in main.tsx) swaps to the sign-in screen and UNMOUNTS
+  // this subtree — the next identity remounts App with the latch back at false,
+  // so a genuinely fresh identity still gets its first-boot splash.
+  const bootedRef = useRef(false);
   const toasts = useUIStore((s) => s.toasts);
   const dismissToast = useUIStore((s) => s.dismissToast);
   const tutorialActive = useUIStore((s) => s.tutorialActive);
@@ -325,16 +337,20 @@ export default function App() {
   // guaranteed to run and settle `loaded`. The legacy Rust wire gates on
   // workspaces alone and skips this wait (zero-workspace first runs never load
   // agents, so `loaded` would hang false there).
-  if (
+  const bootGateActive =
     agentLoading ||
     wsLoading ||
     capabilitiesLoading ||
     onboardingPendingLoading ||
     onboardingCompletedLoading ||
-    (newEngineActive() && !agentsLoaded)
-  ) {
+    (newEngineActive() && !agentsLoaded);
+  // First boot only: block on the splash until every gate input has settled
+  // once. After that, a space switch re-flips these (see `bootedRef`) but the
+  // shell stays mounted and its panes skeleton in place instead of unmounting.
+  if (!bootedRef.current && bootGateActive) {
     return <WorkspaceLoading />;
   }
+  bootedRef.current = true;
 
   // First-run signal differs by wire (HOU-653): the legacy Rust engine uses
   // zero WORKSPACES, but the v3 control plane has no workspace CRUD — the

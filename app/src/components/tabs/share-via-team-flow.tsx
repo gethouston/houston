@@ -49,6 +49,7 @@ import {
 } from "../../lib/share-via-team";
 import { orgSlugFromWorkspaceId } from "../../lib/space-id";
 import type { Agent } from "../../lib/types";
+import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { InviteStep } from "./share-via-team-invite";
 import {
@@ -91,6 +92,7 @@ export function ShareViaTeamFlow({
   const addMember = useAddMember();
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
+  const loadAgents = useAgentStore((s) => s.loadAgents);
 
   const moveId = state.step === "moving" ? state.moveId : null;
   const moveStatus = useAgentMoveStatus(
@@ -157,6 +159,12 @@ export function ShareViaTeamFlow({
           return;
         }
         setCurrentWorkspace(ws);
+        // Load the new space's agents before declaring the switch done — every
+        // switch path must settle the agent store, or consumers gated on it
+        // (the provider-status re-probe) fire against the OLD space's agent
+        // under the new x-houston-org header.
+        await loadAgents(ws.id);
+        if (cancelled) return;
         setState((s) => switchDone(s));
       } catch {
         if (!cancelled) setState((s) => switchFailed(s));
@@ -165,7 +173,7 @@ export function ShareViaTeamFlow({
     return () => {
       cancelled = true;
     };
-  }, [state, loadWorkspaces, setCurrentWorkspace]);
+  }, [state, loadWorkspaces, setCurrentWorkspace, loadAgents]);
 
   const handleCreate = async (name: string) => {
     try {
