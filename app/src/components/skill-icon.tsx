@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { fluentEmojiUrl, resolveSkillImageUrl } from "../lib/skill-image";
 
 interface Props {
-  /** Image URL or Microsoft Fluent 3D Emoji slug. Bare slugs auto-resolve to the jsDelivr CDN. */
+  /** Image URL or Microsoft Fluent Emoji slug. Bare slugs auto-resolve to the jsDelivr CDN. */
   image?: string | null;
   /** Outer bubble class. Default: 48px round, muted-gray background. */
   bubbleClassName?: string;
@@ -14,7 +14,7 @@ const FALLBACK_SLUG = "sparkles";
  * Circular avatar bubble for skill cards. Renders the image desaturated
  * (grayscale) so cards stay sober against the secondary background.
  *
- * Accepts either a full URL or a Microsoft Fluent 3D Emoji slug
+ * Accepts either a full URL or a Microsoft Fluent Emoji slug
  * (e.g. `rocket`, `magnifying-glass-tilted-left`). Falls back to the
  * `sparkles` slug if the value is missing or fails to load.
  *
