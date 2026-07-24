@@ -4,6 +4,7 @@ import {
 } from "@houston-ai/chat";
 import type { SkillInvocation } from "../lib/skill-message";
 import { SkillIcon } from "./skill-icon";
+import { skillIntegrationChips } from "./skill-integration-chips";
 
 interface Props {
   invocation: SkillInvocation;
@@ -20,8 +21,16 @@ interface Props {
  * bubbles live) so the speaker attribution stays the same.
  */
 export function UserSkillMessage({ invocation, attachmentLabels }: Props) {
-  const { displayName, image, description, fields, message, attachments } =
-    invocation;
+  const {
+    displayName,
+    image,
+    description,
+    integrations,
+    fields,
+    message,
+    attachments,
+  } = invocation;
+  const chips = skillIntegrationChips(integrations);
   return (
     <div className="flex max-w-md flex-col items-end gap-2">
       <div className="inline-block rounded-2xl bg-chip p-4 text-left">
@@ -34,6 +43,7 @@ export function UserSkillMessage({ invocation, attachmentLabels }: Props) {
                 {description}
               </p>
             )}
+            {chips && <div className="mt-2">{chips}</div>}
           </div>
         </div>
 

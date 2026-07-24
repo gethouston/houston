@@ -48,6 +48,22 @@
       "signin": "Your agent needs you to sign in.",
       "connect": "Your agent needs you to connect an app.",
       "credential": "Your agent needs an API key to finish."
-    }
+    },
+    "preprompt": {
+      "title": "Want a ping when your agent finishes?",
+      "body": "Turn on notifications and Houston will let you know the moment a mission finishes or needs you.",
+      "cta": "Turn on notifications"
+    },
+    "catchNet": {
+      "title": "You missed a heads-up",
+      "body": "Turn on notifications so Houston can ping you when a mission finishes.",
+      "cta": "Turn on notifications"
+    },
+    "granted": "Notifications are on.",
+    "blocked": "Notifications are blocked. Open your system settings to turn them on.",
+    "blockedBrowser": "Notifications are blocked. Turn them on in your browser settings.",
+    "openSettings": "Open System Settings",
+    "openSettingsFailed": "Could not open system settings. {{error}}",
+    "requestFailed": "Could not turn on notifications. {{error}}"
   }
 }

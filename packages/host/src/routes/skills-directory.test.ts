@@ -66,9 +66,17 @@ test("community preview reads the real SKILL.md detail", async () => {
     body: JSON.stringify({ source: "owner/repo", skillId: "research" }),
   });
   expect(res.status).toBe(200);
-  const preview = (await res.json()) as { description: string; tags: string[] };
+  const preview = (await res.json()) as {
+    description: string;
+    tags: string[];
+    integrations: string[];
+    content: string | null;
+  };
   expect(preview.description).toBe("Deep research");
   expect(preview.tags).toEqual([]);
+  // The instructions + connected apps survive the wire, not just the parse.
+  expect(preview.integrations).toEqual([]);
+  expect(preview.content).toBe("\n# Research\n\nSteps.");
 });
 
 test("community preview 400s when skillId is missing", async () => {

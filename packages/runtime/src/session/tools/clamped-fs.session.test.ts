@@ -4,8 +4,8 @@ import { join } from "node:path";
 // `getModel` is pi-ai's legacy static-catalog read, preserved on `/compat`.
 import { getModel } from "@earendil-works/pi-ai/compat";
 import {
-  AuthStorage,
   createAgentSession,
+  ModelRuntime,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
@@ -32,7 +32,10 @@ test("clamped tools shadow pi builtins inside a real AgentSession", async () => 
   const { session } = await createAgentSession({
     cwd: ws,
     agentDir,
-    authStorage: AuthStorage.create(join(agentDir, "auth.json")),
+    modelRuntime: await ModelRuntime.create({
+      authPath: join(agentDir, "auth.json"),
+      modelsPath: join(agentDir, "models.json"),
+    }),
     model: getModel("anthropic", "claude-sonnet-4-5") as never,
     sessionManager: SessionManager.inMemory(),
     tools: [...CLAMPED_FILE_TOOL_NAMES],

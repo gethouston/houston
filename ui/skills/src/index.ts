@@ -22,11 +22,9 @@ export type {
   SkillCategorySelectProps,
 } from "./skill-category-select";
 export { SkillCategorySelect } from "./skill-category-select";
-export type {
-  SkillEditModalLabels,
-  SkillEditModalProps,
-} from "./skill-edit-modal";
+export type { SkillEditModalProps } from "./skill-edit-modal";
 export { SkillEditModal } from "./skill-edit-modal";
+export type { SkillEditModalLabels } from "./skill-edit-modal-labels";
 export type { SkillErrorKind } from "./skill-error-kinds";
 export { classifySkillError, getSkillErrorKind } from "./skill-error-kinds";
 export type {
@@ -69,10 +67,10 @@ export type { SkillOwnerAvatarProps } from "./skill-owner-avatar";
 export { SkillOwnerAvatar } from "./skill-owner-avatar";
 export type {
   SkillPreviewModalProps,
-  SkillPreviewSheetLabels,
   SkillPreviewState,
 } from "./skill-preview-modal";
 export { SkillPreviewModal } from "./skill-preview-modal";
+export type { SkillPreviewSheetLabels } from "./skill-preview-modal-labels";
 export type { SkillRowProps } from "./skill-row";
 export { SkillRow } from "./skill-row";
 export type { SkillsGridProps } from "./skills-grid";

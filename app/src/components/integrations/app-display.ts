@@ -47,3 +47,27 @@ export function connectionRows(
 export function fallbackLogo(toolkit: string): string {
   return `https://www.google.com/s2/favicons?domain=${toolkit}.com&sz=128`;
 }
+
+/**
+ * Best-effort toolkit slug for a bare Composio action slug. Tools carry only the
+ * ACTION (e.g. `GMAIL_SEND_EMAIL`, `GOOGLE_MAPS_SEARCH`), so a display surface
+ * must re-derive which app it belongs to. We pick the LONGEST catalog slug the
+ * action starts with, so a multi-word slug (`google_maps`) wins over its first
+ * segment (`google`) — mirroring the host's execute-time `resolveToolkit`. Falls
+ * back to the segment before the first underscore when the catalog has no match
+ * (or has not loaded yet). Pure + node-tested; the visible label is HUMANIZED
+ * from this result, never the raw slug.
+ */
+export function toolkitOfActionSlug(
+  action: string,
+  catalogSlugs: string[],
+): string {
+  const a = action.toLowerCase();
+  let best: string | null = null;
+  for (const slug of catalogSlugs) {
+    const s = slug.toLowerCase();
+    if ((a === s || a.startsWith(`${s}_`)) && (!best || s.length > best.length))
+      best = s;
+  }
+  return best ?? a.split("_")[0] ?? "";
+}

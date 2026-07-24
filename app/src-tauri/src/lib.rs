@@ -14,6 +14,7 @@ mod local_bridge;
 mod logging;
 mod loopback_util;
 mod notification;
+mod notification_settings;
 mod oauth_loopback;
 mod shell_env;
 mod store_deep_link;
@@ -457,6 +458,9 @@ pub fn run() {
             // the window forward + emits `app-activated` (macOS uses the JS
             // notification plugin — see session-notifications.ts).
             notification::show_session_notification,
+            // Open the OS notification-settings pane when the user's OS blocked
+            // Houston's completion notifications (macOS/Windows; Linux errs).
+            notification_settings::open_notification_settings,
             // Native network delivery for bug reports. Avoids webview CORS and
             // keeps Linear credentials out of the JavaScript bundle.
             bug_report::report_bug,

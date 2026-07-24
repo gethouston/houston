@@ -48,6 +48,22 @@
       "signin": "Tu agente necesita que inicies sesión.",
       "connect": "Tu agente necesita que conectes una aplicación.",
       "credential": "Tu agente necesita una clave de API para terminar."
-    }
+    },
+    "preprompt": {
+      "title": "¿Quieres un aviso cuando tu agente termine?",
+      "body": "Activa las notificaciones y Houston te avisará en cuanto una misión termine o te necesite.",
+      "cta": "Activar notificaciones"
+    },
+    "catchNet": {
+      "title": "Te perdiste un aviso",
+      "body": "Activa las notificaciones para que Houston pueda avisarte cuando una misión termine.",
+      "cta": "Activar notificaciones"
+    },
+    "granted": "Las notificaciones están activadas.",
+    "blocked": "Las notificaciones están bloqueadas. Abre la configuración del sistema para activarlas.",
+    "blockedBrowser": "Las notificaciones están bloqueadas. Actívalas en la configuración de tu navegador.",
+    "openSettings": "Abrir configuración del sistema",
+    "openSettingsFailed": "No se pudo abrir la configuración del sistema. {{error}}",
+    "requestFailed": "No se pudieron activar las notificaciones. {{error}}"
   }
 }

@@ -9,6 +9,8 @@ const EMPTY_PREVIEW: CommunitySkillPreview = {
   image: null,
   category: null,
   tags: [],
+  integrations: [],
+  content: null,
 };
 
 /**

@@ -1,6 +1,6 @@
 // `getProviders` is pi-ai's legacy static-catalog read, preserved on `/compat`.
 import { getProviders } from "@earendil-works/pi-ai/compat";
-import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
+import { piOAuthProviders } from "./pi-oauth";
 
 /**
  * The generic api-key-provider predicate, derived from pi-ai's own registries so
@@ -23,7 +23,7 @@ const PI_PROVIDER_IDS: ReadonlySet<string> = new Set<string>(getProviders());
  * through the OAuth flow, never the api-key connect route.
  */
 const PI_OAUTH_IDS: ReadonlySet<string> = new Set(
-  getOAuthProviders().map((p) => p.id),
+  piOAuthProviders().map((p) => p.id),
 );
 
 /**

@@ -10,7 +10,7 @@ import {
   resolveModel,
   safeGetModel,
 } from "../ai/providers";
-import { authStorage, modelRegistry } from "../auth/storage";
+import { modelRuntime } from "../auth/storage";
 import { config } from "../config";
 import { parseGenerateResult } from "./generate-agent-parse";
 import { oneShotText } from "./one-shot";
@@ -96,8 +96,7 @@ export async function generateAgentInstructions(
   const raw = await oneShotText({
     cwd: config.workspaceDir,
     model,
-    authStorage,
-    modelRegistry,
+    modelRuntime,
     systemPrompt: GENERATE_PROMPT,
     prompt: description,
     thinkingLevel: generateThinkingLevel(model),

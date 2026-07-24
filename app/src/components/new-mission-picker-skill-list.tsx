@@ -2,6 +2,7 @@ import { Spinner } from "@houston-ai/core";
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import type { SkillSummary } from "../lib/types";
 import { SkillCard } from "./skill-card";
+import { skillIntegrationChips } from "./skill-integration-chips";
 
 export function SkillList({
   agentReady,
@@ -45,6 +46,7 @@ export function SkillList({
           image={s.image}
           title={skillDisplayTitle(s)}
           description={s.description}
+          footer={skillIntegrationChips(s.integrations)}
           onClick={() => onSkill(s.name)}
         />
       ))}

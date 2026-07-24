@@ -39,7 +39,7 @@ export interface AgentConfig {
   category?: AgentCategory;
   author?: string; // e.g. "Houston" for official, user name for community
   tags?: string[]; // Searchable tags
-  integrations?: string[]; // Legacy toolkit slugs declared by bundled agents (display-only metadata)
+  integrations?: string[]; // Composio toolkit slugs, rendered as the connected-apps chips row
   claudeMd?: string; // CLAUDE.md content template
   systemPrompt?: string; // System prompt for the assistant
   agentSeeds?: Record<string, string>; // Files to seed in new agents
@@ -120,7 +120,7 @@ export interface SkillSummary {
   category: string | null;
   /** Surface on the Featured tab of the New Mission picker. */
   featured: boolean;
-  /** Legacy toolkit slugs declared in skill frontmatter (display-only metadata). */
+  /** Composio toolkit slugs from skill frontmatter, rendered as the connected-apps row. */
   integrations: string[];
   /** Image URL or Microsoft Fluent Emoji slug (e.g. "rocket"). */
   image: string | null;

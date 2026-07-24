@@ -1,13 +1,14 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
-import { bedrockOptionsWithBearerToken } from "./bedrock";
+import { HoustonAuthStore } from "../auth/credential-store";
 import {
   buildOpenAiCompatibleModel,
   localOverrideError,
   OPENAI_COMPATIBLE,
+  registerCustomProviderIfConfigured,
   setCustomEndpointConfig,
 } from "./openai-compatible";
 import {
@@ -107,17 +108,6 @@ test("MiniMax uses pi-ai's global minimax provider and model catalog", () => {
   expect(
     (safeGetModel("minimax", "MiniMax-M3", false) as { id?: string }).id,
   ).toBe("MiniMax-M3");
-});
-
-test("bedrockOptionsWithBearerToken maps Houston's stored key to Bedrock bearer auth", () => {
-  expect(bedrockOptionsWithBearerToken(undefined)).toBeUndefined();
-  expect(bedrockOptionsWithBearerToken({ apiKey: "br_test" })).toEqual({
-    apiKey: "br_test",
-    bearerToken: "br_test",
-  });
-  expect(
-    bedrockOptionsWithBearerToken({ apiKey: "stored", bearerToken: "direct" }),
-  ).toEqual({ apiKey: "stored", bearerToken: "direct" });
 });
 
 test("safeGetModel keeps a valid saved id but falls back on a stale one", () => {
@@ -326,12 +316,22 @@ test("the built local model's provider matches the auth-store key, so pi resolve
   // The whole keyless-server design rests on a string match: setCustomEndpoint
   // stores the key under OPENAI_COMPATIBLE, and the hand-built model carries
   // provider=OPENAI_COMPATIBLE. pi resolves a request's key via
-  // ModelRegistry.getApiKeyAndHeaders -> authStorage.getApiKey(model.provider).
-  // Drive that exact path with an isolated AuthStorage/ModelRegistry (no shared
-  // singleton, no real ~/.houston) to prove the placeholder key actually resolves.
+  // ModelRuntime.getAuth(model) -> the credential stored under model.provider.
+  // Drive that exact path with an isolated store/runtime (no shared singleton,
+  // no real ~/.houston) to prove the placeholder key actually resolves — and
+  // that the registered custom provider is what makes the model dispatchable.
   const dir = mkdtempSync(join(tmpdir(), "houston-oac-"));
-  const authStorage = AuthStorage.create(join(dir, "auth.json"));
-  const registry = ModelRegistry.create(authStorage, join(dir, "models.json"));
+  const authStorage = new HoustonAuthStore(join(dir, "auth.json"));
+  const runtime = await ModelRuntime.create({
+    credentials: authStorage,
+    modelsPath: join(dir, "models.json"),
+  });
+  runtime.registerProvider(OPENAI_COMPATIBLE, {
+    name: "Local model (OpenAI-compatible)",
+    baseUrl: "http://localhost:11434/v1",
+    api: "openai-completions",
+    models: [],
+  });
   authStorage.set(OPENAI_COMPATIBLE, {
     type: "api_key",
     key: "houston-local",
@@ -340,9 +340,23 @@ test("the built local model's provider matches the auth-store key, so pi resolve
     baseUrl: "http://localhost:11434/v1",
     model: "llama3.1",
   });
-  const auth = await registry.getApiKeyAndHeaders(model);
-  expect(auth.ok).toBe(true);
-  if (auth.ok) expect(auth.apiKey).toBe("houston-local");
+  const auth = await runtime.getAuth(model);
+  expect(auth?.auth.apiKey).toBe("houston-local");
+});
+
+test("registerCustomProviderIfConfigured mirrors the endpoint config onto a runtime", () => {
+  // pi 0.82 streams strictly by registered provider id, so a configured
+  // endpoint must register the provider and a cleared one must drop it.
+  const registered = new Map<string, unknown>();
+  const runtime = {
+    registerProvider: (id: string, cfg: unknown) => registered.set(id, cfg),
+    unregisterProvider: (id: string) => registered.delete(id),
+    getRegisteredProviderConfig: (id: string) => registered.get(id),
+  };
+  const dir = mkdtempSync(join(tmpdir(), "houston-oac-reg-"));
+  // Nothing configured in this dataDir: no registration appears.
+  registerCustomProviderIfConfigured(runtime as never, dir);
+  expect(registered.has(OPENAI_COMPATIBLE)).toBe(false);
 });
 
 test("localOverrideError refuses a foreign per-turn model on the local endpoint", () => {

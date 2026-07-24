@@ -96,7 +96,11 @@
       "bySource": "de {{owner}} · {{repo}}",
       "installsCount_one": "{{formatted}} instalação",
       "installsCount_other": "{{formatted}} instalações",
+      "categoryHeading": "Categoria",
       "tagsHeading": "Etiquetas",
+      "viewInstructions": "Ver instruções completas",
+      "hideInstructions": "Ocultar instruções completas",
+      "instructionsHeading": "Instruções completas",
       "alsoMatches": "Também corresponde a: {{keywords}}"
     }
   },
@@ -110,7 +114,8 @@
     "loadFailed": "Não foi possível carregar as instruções deste skill.",
     "deleteTitle": "Excluir \"{{name}}\"?",
     "deleteDescription": "Isso remove o skill do seu agente. Você pode reinstalar depois.",
-    "instructionsPlaceholder": "Instruções para este skill..."
+    "instructionsPlaceholder": "Instruções para este skill...",
+    "integrations": "Funciona com"
   },
   "categories": {
     "Advisory": "Consultoria",

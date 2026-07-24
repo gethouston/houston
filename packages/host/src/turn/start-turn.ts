@@ -41,6 +41,7 @@ export async function freshCredential(
 export type TurnStart =
   | { status: "accepted" }
   | { status: "busy" }
+  | { status: "duplicate" }
   | { status: "quota"; message: string };
 
 /**
@@ -74,9 +75,10 @@ export async function dispatchTurn(
       return { status: "quota", message: err.message };
     throw err;
   }
+  const key = `${agent.id}/${cid}`;
   const started = await deps.relay.start(
     agent.id,
-    `${agent.id}/${cid}`,
+    key,
     async (publish, signal) => {
       try {
         const cred = await freshCredential(deps, ws.id, provider);
@@ -132,9 +134,16 @@ export async function dispatchTurn(
         await release();
       }
     },
+    nonce,
   );
   if (!started) {
     await release();
+    // A re-send of the turn we are ALREADY pumping (same conversation, same
+    // nonce) is a caller retrying a send whose response it lost — a torn
+    // connection during pod boot, a proxy blip. The turn is running; telling
+    // that caller "busy" fails work that actually succeeded (HOU-807).
+    if (nonce && deps.relay.duplicateSend(agent.id, key, nonce))
+      return { status: "duplicate" };
     return { status: "busy" };
   }
   return { status: "accepted" };
@@ -167,5 +176,7 @@ export async function startTurn(
     return json(res, 409, {
       error: "a turn is already running for this agent",
     });
+  // "duplicate" answers exactly like the accept it replays: the original send
+  // started this turn; the retry must not read as a failure.
   return json(res, 202, { ok: true });
 }

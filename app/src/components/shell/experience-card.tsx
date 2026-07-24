@@ -1,6 +1,6 @@
 import type { AgentConfig } from "../../lib/types";
-import { AgentIntegrationChips } from "../agent-integration-chips";
 import { SkillCard } from "../skill-card";
+import { skillIntegrationChips } from "../skill-integration-chips";
 import { AgentAvatar } from "./agent-avatar";
 
 export {
@@ -35,11 +35,7 @@ export function AgentCard({
       }
       title={title ?? config.name}
       description={description ?? config.description}
-      footer={
-        config.integrations?.length ? (
-          <AgentIntegrationChips slugs={config.integrations} />
-        ) : undefined
-      }
+      footer={skillIntegrationChips(config.integrations)}
       className="min-h-[132px]"
       onClick={() => onSelect(config.id)}
     />

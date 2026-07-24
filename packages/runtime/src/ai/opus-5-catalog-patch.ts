@@ -2,14 +2,14 @@ import type { Model } from "@earendil-works/pi-ai";
 import { ANTHROPIC_MODELS } from "@earendil-works/pi-ai/providers/anthropic.models";
 
 /**
- * Backport Claude Opus 5 into pi-ai 0.80.6's baked Anthropic catalog, so the
+ * Backport Claude Opus 5 into pi-ai 0.82.0's baked Anthropic catalog, so the
  * `anthropic` provider offers it and a turn can run on it. Opus 5 shipped
- * after 0.80.6 was cut; the pi bump carrying it is blocked behind the same
- * 0.80.7+ AuthStorage migration as the Kimi K3 backport.
+ * 2026-07-24, after 0.82.0 was cut, so the current pin does not carry it.
  *
- * The entry mirrors 0.80.6's own `claude-opus-4-8` — Opus 5 is a drop-in at
+ * The entry mirrors 0.82.0's own `claude-opus-4-8` — Opus 5 is a drop-in at
  * that tier. Idempotent. The host has a twin (packages/host/src/providers/
- * opus-5-catalog-patch.ts) — DELETE BOTH when the pi bump lands.
+ * opus-5-catalog-patch.ts) — DELETE BOTH when a pi bump ships it natively, the
+ * way the 0.82 bump retired the gemini-flash and moonshot-k3 patches.
  */
 const CLAUDE_OPUS_5: Model<"anthropic-messages"> = {
   id: "claude-opus-5",

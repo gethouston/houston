@@ -40,6 +40,8 @@ export {
 } from "./connection-status-badge";
 export { CustomIntegrationsSection } from "./custom-integrations-section";
 export { EnableInPermissionsButton } from "./enable-in-permissions-button";
+export { IntegrationBadges } from "./integration-badges";
+export { IntegrationChips } from "./integration-chips";
 export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
 export {
   INTEGRATION_PROVIDER,

@@ -1,15 +1,10 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-// `registerFauxProvider` is pi-ai's legacy global-registry test provider,
-// preserved on `/compat`; `fauxAssistantMessage` must come from the same
-// entrypoint so both read/write the one registry instance.
-import {
-  fauxAssistantMessage,
-  registerFauxProvider,
-} from "@earendil-works/pi-ai/compat";
-import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import { fauxAssistantMessage, fauxProvider } from "@earendil-works/pi-ai";
+import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { expect, test, vi } from "vitest";
+import { HoustonAuthStore } from "../auth/credential-store";
 import {
   buildExcerpt,
   dispatchTitle,
@@ -101,7 +96,7 @@ test("titlePlan falls back to the active provider when the session is not cached
 
 test("generateTitle runs a faux turn and returns a single trimmed line", async () => {
   const cwd = mkdtempSync(join(tmpdir(), "houston-title-"));
-  const faux = registerFauxProvider({
+  const faux = fauxProvider({
     provider: "faux",
     api: "faux",
     models: [
@@ -114,20 +109,22 @@ test("generateTitle runs a faux turn and returns a single trimmed line", async (
     }),
   ]);
 
-  const authStorage = AuthStorage.inMemory();
-  authStorage.setRuntimeApiKey("faux", "faux-key");
-  const modelRegistry = ModelRegistry.inMemory(authStorage);
+  // Seed the credential through the store (NOT setRuntimeApiKey: its awaited
+  // refresh() hangs in pi 0.82 — and Houston's own connect flows write the
+  // store too, so this is also the more production-shaped path).
+  const authStorage = new HoustonAuthStore(join(cwd, "auth.json"));
+  authStorage.set("faux", { type: "api_key", key: "faux-key" });
+  const modelRuntime = await ModelRuntime.create({
+    credentials: authStorage,
+    modelsPath: join(cwd, "models.json"),
+  });
+  modelRuntime.registerNativeProvider(faux.provider);
 
-  try {
-    const title = await generateTitle({
-      cwd,
-      model: faux.getModel(),
-      authStorage,
-      modelRegistry,
-      excerpt: "user: please build me a sales deck for Q2",
-    });
-    expect(title).toBe("Quarterly Sales Deck");
-  } finally {
-    faux.unregister();
-  }
+  const title = await generateTitle({
+    cwd,
+    model: faux.getModel(),
+    modelRuntime,
+    excerpt: "user: please build me a sales deck for Q2",
+  });
+  expect(title).toBe("Quarterly Sales Deck");
 });

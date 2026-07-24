@@ -32,8 +32,14 @@ const cancelChannel = (agentId: string) => `turn:cancel:${agentId}`;
 
 export class TurnRelay {
   private readonly channels: RelayChannels;
-  /** Agents whose turn THIS replica is pumping right now → the conversation key. */
-  private inflightLocal = new Map<string, string>();
+  /** Agents whose turn THIS replica is pumping right now → the conversation
+   *  key plus the send nonce that started it (nonce absent for routine fires).
+   *  The nonce makes a client's wake-retry re-send recognizable as the SAME
+   *  request (see duplicateSend) instead of a spurious busy-409. */
+  private inflightLocal = new Map<
+    string,
+    { key: string; nonce: string | undefined }
+  >();
   /** In-flight dead-turn heals, deduped per conversation (see reapIfDead). */
   private healing = new Map<string, Promise<boolean>>();
 
@@ -62,6 +68,7 @@ export class TurnRelay {
       publish: (e: WireFrame) => Promise<void>,
       signal: AbortSignal,
     ) => Promise<void>,
+    nonce?: string,
   ): Promise<boolean> {
     if (this.inflightLocal.has(agentId)) return false;
     // The lease VALUE is the conversation key, so a conversation-scoped cancel
@@ -70,7 +77,7 @@ export class TurnRelay {
       !(await this.bus.setNx(inflightKey(agentId), conversationKey, LEASE_SEC))
     )
       return false;
-    this.inflightLocal.set(agentId, conversationKey);
+    this.inflightLocal.set(agentId, { key: conversationKey, nonce });
 
     const ctrl = new AbortController();
     const unsubCancel = this.bus.subscribe(cancelChannel(agentId), () =>
@@ -169,12 +176,32 @@ export class TurnRelay {
    */
   async cancel(agentId: string, conversationKey?: string): Promise<boolean> {
     const inflight =
-      this.inflightLocal.get(agentId) ??
+      this.inflightLocal.get(agentId)?.key ??
       (await this.bus.get(inflightKey(agentId)));
     if (inflight === null || inflight === undefined) return false;
     if (conversationKey && inflight !== conversationKey) return false;
     await this.bus.publish(cancelChannel(agentId), "cancel");
     return true;
+  }
+
+  /**
+   * Whether a send is a REPLAY of the turn this replica is pumping right now:
+   * same conversation, same non-empty nonce. A caller that lost the response
+   * to its accepted send (a torn connection mid-pod-boot) retries the same
+   * request; answering that retry "busy" fails a turn that is actually running
+   * — the caller should hear "accepted" again instead (HOU-807).
+   */
+  duplicateSend(
+    agentId: string,
+    conversationKey: string,
+    nonce: string,
+  ): boolean {
+    const inflight = this.inflightLocal.get(agentId);
+    return (
+      nonce !== "" &&
+      inflight?.key === conversationKey &&
+      inflight?.nonce === nonce
+    );
   }
 
   /** Sequence + broadcast one frame (see RelayChannels.publish). */

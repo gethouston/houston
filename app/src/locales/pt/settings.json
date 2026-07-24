@@ -74,6 +74,18 @@
     "light": "Claro",
     "dark": "Escuro"
   },
+  "notifications": {
+    "title": "Notificações",
+    "description": "Receba um aviso quando uma missão terminar ou precisar de você",
+    "state": {
+      "on": "Ativadas",
+      "off": "Desativadas",
+      "osBlocked": "Desativadas no macOS",
+      "browserBlocked": "Bloqueadas no seu navegador"
+    },
+    "openSettings": "Abrir configurações do sistema",
+    "toggleFailed": "Não foi possível salvar sua preferência de notificações."
+  },
   "dangerZone": {
     "title": "Zona de perigo",
     "description": "Exclui este espaço de trabalho e todos os seus agentes de forma permanente.",

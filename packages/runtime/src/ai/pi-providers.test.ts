@@ -30,7 +30,7 @@ afterEach(() => {
   // Reset credentials + saved settings so each test starts from a clean store
   // (the singletons persist across tests in the file).
   for (const id of ["groq", "anthropic", "openrouter"])
-    storage.authStorage.logout(id);
+    storage.authStorage.remove(id);
   rmSync(settingsFile, { force: true });
 });
 

@@ -1,5 +1,5 @@
 import { activeProvider, resolveModel } from "../ai/providers";
-import { authStorage, modelRegistry } from "../auth/storage";
+import { authStorage, modelRuntime } from "../auth/storage";
 import { oneShotWithClaude } from "../backends/claude/one-shot";
 import { readAnthropicToken } from "../backends/claude/read-token";
 import { config } from "../config";
@@ -72,8 +72,7 @@ export async function anonymizeTexts(
       : await oneShotText({
           cwd: config.workspaceDir,
           model: resolveModel(),
-          authStorage,
-          modelRegistry,
+          modelRuntime,
           systemPrompt: ANONYMIZE_PROMPT,
           prompt,
         });

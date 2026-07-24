@@ -68,11 +68,59 @@ export function normalizeUsage(u: unknown): TokenUsage | null {
 }
 
 /**
+ * A stateful per-subscription translator over {@link toWire}: injects the
+ * paragraph break between CONTENT BLOCKS that the flat delta stream otherwise
+ * loses (HOU-857). A turn shaped text → tool call → text streams as two
+ * distinct blocks (pi emits `text_start` for each), but every downstream
+ * consumer — the live feed, the persisted transcript — concatenates the bare
+ * deltas, gluing the second block onto the first mid-sentence ("…for you
+ * now.Go ahead…"). When a new text block starts after this turn already
+ * streamed text, the block's FIRST delta is prefixed with "\n\n"; same for
+ * thinking blocks. The separator rides a delta (never emitted standalone), so
+ * an empty block can't leave a dangling break. State resets on `agent_start`
+ * so a long-lived subscriber never bleeds one turn's blocks into the next.
+ */
+export function createWireTranslator(): (
+  e: AgentSessionEvent,
+) => WireEvent | null {
+  let sawText = false;
+  let sawThinking = false;
+  let sepText = false;
+  let sepThinking = false;
+  return (e) => {
+    if (e.type === "agent_start") {
+      sawText = sawThinking = sepText = sepThinking = false;
+    } else if (e.type === "message_update") {
+      const t = e.assistantMessageEvent.type;
+      if (t === "text_start" && sawText) sepText = true;
+      if (t === "thinking_start" && sawThinking) sepThinking = true;
+    }
+    const wire = toWire(e);
+    if (wire?.type === "text") {
+      sawText = true;
+      if (sepText) {
+        sepText = false;
+        return { ...wire, data: `\n\n${wire.data}` };
+      }
+    } else if (wire?.type === "thinking") {
+      sawThinking = true;
+      if (sepThinking) {
+        sepThinking = false;
+        return { ...wire, data: `\n\n${wire.data}` };
+      }
+    }
+    return wire;
+  };
+}
+
+/**
  * Map a pi AgentSession event to our wire event (or null to drop it). Shared
  * by the long-lived server (chat.ts) and the per-turn cloud runtime — the two
  * MUST emit identical frames, since the web client and the control-plane relay
  * speak this one dialect. Typed against pi's own `AgentSessionEvent` union so
- * the `switch` narrows each arm to the exact event shape.
+ * the `switch` narrows each arm to the exact event shape. Subscriptions go
+ * through {@link createWireTranslator}, which wraps this pure mapping with the
+ * per-turn block-boundary state.
  */
 export function toWire(e: AgentSessionEvent): WireEvent | null {
   switch (e.type) {

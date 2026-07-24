@@ -23,6 +23,7 @@ import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync"
 import { useLocalBridgeAutoReconnect } from "./hooks/use-local-bridge-autoreconnect";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
 import { useMoveResume } from "./hooks/use-move-resume";
+import { useNotificationNudges } from "./hooks/use-notification-nudges";
 import { useOnboardingCompleted } from "./hooks/use-onboarding-completed";
 import { useOnboardingPending } from "./hooks/use-onboarding-pending";
 import { useOnboardingSegment } from "./hooks/use-onboarding-segment";
@@ -58,6 +59,7 @@ export default function App() {
   const authConfigured = isIdentityConfigured();
   useHoustonInit();
   useSessionEvents();
+  useNotificationNudges();
   useAgentInvalidation();
   useAnalyticsSubscriber();
   useIntegrationSessionSync();

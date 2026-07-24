@@ -96,7 +96,11 @@
       "bySource": "by {{owner}} · {{repo}}",
       "installsCount_one": "{{formatted}} install",
       "installsCount_other": "{{formatted}} installs",
+      "categoryHeading": "Category",
       "tagsHeading": "Tags",
+      "viewInstructions": "View full instructions",
+      "hideInstructions": "Hide full instructions",
+      "instructionsHeading": "Full instructions",
       "alsoMatches": "Also matches: {{keywords}}"
     }
   },
@@ -110,7 +114,8 @@
     "loadFailed": "Couldn't load this skill's instructions.",
     "deleteTitle": "Delete \"{{name}}\"?",
     "deleteDescription": "This removes the skill from your agent. You can reinstall it later.",
-    "instructionsPlaceholder": "Instructions for this skill..."
+    "instructionsPlaceholder": "Instructions for this skill...",
+    "integrations": "Works with"
   },
   "categories": {
     "Advisory": "Advisory",

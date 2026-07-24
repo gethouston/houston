@@ -5,12 +5,25 @@ import { normalizeSource } from "./github-parse";
 import { SkillRemoteError } from "./remote-error";
 
 /**
+ * Upper bound on the returned `content` body. A preview modal never needs more
+ * than this, and the cap keeps the process-wide preview cache byte-bounded
+ * (a community SKILL.md is author-controlled input of arbitrary size).
+ */
+export const MAX_PREVIEW_CONTENT_CHARS = 60_000;
+
+/** Appended when a body was clipped at the cap, so the cut is never silent. */
+export const PREVIEW_CONTENT_CLIPPED_MARKER = "\n\n[...]";
+
+/**
  * Read-only preview of a community skill: fetch the SAME SKILL.md the install
  * flow would use (via the shared `locateSkillMd`) and parse the author's real
  * frontmatter, so the marketplace can show a true description/title/image/
- * category BEFORE the user commits to installing. No vfs write, no workspace.
- * A SKILL.md that fails to parse yields the empty shape rather than throwing —
- * a preview should degrade to "no detail", never error the browse.
+ * category BEFORE the user commits to installing. Also returns the frontmatter
+ * `integrations:` slugs (the apps the skill connects to) and the SKILL.md body
+ * with frontmatter stripped, so the modal can show the real instructions.
+ * No vfs write, no workspace. A SKILL.md that fails to parse yields the empty
+ * shape rather than throwing — a preview should degrade to "no detail", never
+ * error the browse.
  */
 export async function previewCommunitySkill(
   fetchImpl: typeof fetch,
@@ -36,6 +49,8 @@ export async function previewCommunitySkill(
       image: null,
       category: null,
       tags: [],
+      integrations: [],
+      content: null,
     };
   }
   return {
@@ -44,11 +59,23 @@ export async function previewCommunitySkill(
     image: parsed.summary.image,
     category: parsed.summary.category,
     tags: parsed.summary.tags,
+    integrations: parsed.summary.integrations,
+    // `parseSkillMd` already split the file — `body` IS the markdown with the
+    // YAML frontmatter removed, so the modal never re-parses or re-strips it.
+    content: clipContent(parsed.body),
   };
+}
+
+function clipContent(body: string): string {
+  if (body.length <= MAX_PREVIEW_CONTENT_CHARS) return body;
+  return (
+    body.slice(0, MAX_PREVIEW_CONTENT_CHARS) + PREVIEW_CONTENT_CLIPPED_MARKER
+  );
 }
 
 const PREVIEW_FRESH_TTL_MS = 24 * 60 * 60_000;
 const PREVIEW_FAILURE_TTL_MS = 10 * 60_000;
+const PREVIEW_MAX_ENTRIES = 256;
 
 interface CachedPreview {
   /** The resolved preview, or the SkillRemoteError to re-throw (negative cache). */
@@ -60,6 +87,7 @@ export interface PreviewDirectoryOptions {
   now?: () => number;
   freshTtlMs?: number;
   failureTtlMs?: number;
+  maxEntries?: number;
 }
 
 /**
@@ -77,12 +105,29 @@ export class PreviewDirectory {
   private readonly now: () => number;
   private readonly freshTtlMs: number;
   private readonly failureTtlMs: number;
+  private readonly maxEntries: number;
   private readonly entries = new Map<string, CachedPreview>();
 
   constructor(opts: PreviewDirectoryOptions = {}) {
     this.now = opts.now ?? Date.now;
     this.freshTtlMs = opts.freshTtlMs ?? PREVIEW_FRESH_TTL_MS;
     this.failureTtlMs = opts.failureTtlMs ?? PREVIEW_FAILURE_TTL_MS;
+    this.maxEntries = opts.maxEntries ?? PREVIEW_MAX_ENTRIES;
+  }
+
+  /**
+   * Insert with FIFO eviction: entries now carry full SKILL.md bodies, and
+   * nothing else ever sweeps the map (TTLs are only checked on read of the
+   * SAME key), so the cap is what keeps a long browse session byte-bounded.
+   * Re-setting an existing key refreshes its insertion order.
+   */
+  private store(key: string, value: CachedPreview): void {
+    this.entries.delete(key);
+    if (this.entries.size >= this.maxEntries) {
+      const oldest = this.entries.keys().next();
+      if (!oldest.done) this.entries.delete(oldest.value);
+    }
+    this.entries.set(key, value);
   }
 
   async preview(
@@ -102,11 +147,11 @@ export class PreviewDirectory {
     }
     try {
       const result = await previewCommunitySkill(fetchImpl, source, skillId);
-      this.entries.set(key, { result, fetchedAt: this.now() });
+      this.store(key, { result, fetchedAt: this.now() });
       return result;
     } catch (err) {
       if (err instanceof SkillRemoteError && err.kind !== "invalid_repo_source")
-        this.entries.set(key, {
+        this.store(key, {
           result: { error: err },
           fetchedAt: this.now(),
         });

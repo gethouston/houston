@@ -13,8 +13,9 @@
  * open), and its on-demand preview fetch.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { PoweredByVercelBadge } from "./powered-by-vercel-badge";
+import { SkillMarketplaceDetail } from "./skill-marketplace-detail";
 import { SkillMarketplaceGrid } from "./skill-marketplace-grid";
 import {
   DEFAULT_SKILL_MARKETPLACE_SECTION_LABELS,
@@ -22,7 +23,6 @@ import {
 } from "./skill-marketplace-section-labels";
 import { SkillMarketplaceShelves } from "./skill-marketplace-shelves";
 import { CATEGORY_ALL, showsShelves } from "./skill-marketplace-state-model";
-import { SkillPreviewModal } from "./skill-preview-modal";
 import type { CommunitySkill, CommunitySkillPreview } from "./types";
 import { useSkillMarketplaceShelves } from "./use-skill-marketplace-shelves";
 import { useSkillMarketplaceState } from "./use-skill-marketplace-state";
@@ -47,6 +47,13 @@ export interface SkillMarketplaceSectionProps {
   /** Lowercase set of slugs already installed locally. */
   installedSkillNames?: Set<string>;
   /**
+   * Renders the apps a previewed skill connects to, from its frontmatter
+   * toolkit slugs. Owned by the consumer because resolving a slug to a real app
+   * name + logo is a Composio-catalog concern; without it the detail modal
+   * simply omits the section.
+   */
+  renderIntegrations?: (slugs: string[]) => ReactNode;
+  /**
    * Controlled search query. When provided the section renders no search box of
    * its own and mirrors this value, so a page can drive it from one shared
    * field over multiple sections. Omit for the self-contained behavior (the
@@ -63,6 +70,7 @@ export function SkillMarketplaceSection({
   onInstall,
   onPreview,
   installedSkillNames,
+  renderIntegrations,
   query: controlledQuery,
   onQueryChange,
   labels,
@@ -110,17 +118,6 @@ export function SkillMarketplaceSection({
     active,
     onPreview,
   );
-
-  const detailSlug = detailSkill
-    ? (detailSkill.skillId || detailSkill.name).toLowerCase()
-    : null;
-  const detailEntry = detailSkill
-    ? installState.get(detailSkill.id)
-    : undefined;
-  const detailInstalled = detailSkill
-    ? detailEntry === "installed" ||
-      (detailSlug !== null && (installedSkillNames?.has(detailSlug) ?? false))
-    : false;
 
   // The browse shelves show only in the default view: nothing typed AND "All
   // categories" selected. A typed query or a picked category swaps in the flat
@@ -178,16 +175,14 @@ export function SkillMarketplaceSection({
         labels={l}
       />
 
-      <SkillPreviewModal
-        open={detailSkill !== null}
-        onOpenChange={(o) => {
-          if (!o) closeDetail();
-        }}
+      <SkillMarketplaceDetail
         skill={detailSkill}
         preview={preview}
-        installing={detailEntry === "installing"}
-        installed={detailInstalled}
-        onInstall={() => detailSkill && install(detailSkill)}
+        installState={installState}
+        installedSkillNames={installedSkillNames}
+        onInstall={install}
+        onClose={closeDetail}
+        renderIntegrations={renderIntegrations}
         labels={l.preview}
       />
     </div>

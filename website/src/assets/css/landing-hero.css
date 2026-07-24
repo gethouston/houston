@@ -18,13 +18,12 @@
 }
 .hero h1 {
   font-weight: 600;
-  font-size: clamp(38px, 6vw, 74px);
-  line-height: 1.04;
-  letter-spacing: -0.038em;
+  font-size: clamp(22px, 4.6vw, 54px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
   color: var(--ink-strong);
-  text-wrap: balance;
   margin: 0 auto 22px;
-  max-width: 16ch;
+  max-width: 22ch;
 }
 .hero-sub {
   font-size: clamp(16.5px, 1.7vw, 20px);
@@ -42,22 +41,54 @@
   align-items: center;
   flex-wrap: wrap;
 }
-.hero-proof {
-  margin-top: 22px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-subtle);
-  font-size: 13.5px;
-  font-weight: 500;
-  flex-wrap: wrap;
+
+/* ── Cycling headline word (blur-letter-stagger) ─────────────────────────── */
+.hero-cycling-word {
+  display: inline;
+  position: relative;
+  vertical-align: bottom;
 }
-.hero-proof .sep {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--line-strong);
+.hero-cycling-word .cycling-word {
+  display: inline-block;
+  position: relative;
+  white-space: nowrap;
+}
+.hero-cycling-word .cycling-word.is-exiting {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.hero-cycling-word .cycling-letter {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(12px);
+  transform: translateY(6px);
+  transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    filter 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: opacity, filter, transform;
+}
+.hero-cycling-word .cycling-letter.is-visible {
+  opacity: 1;
+  filter: blur(0px);
+  transform: translateY(0);
+}
+.hero-cycling-word .cycling-letter.is-exiting {
+  opacity: 0;
+  filter: blur(12px);
+  transform: translateY(-16px) scale(1.08);
+  transition: opacity 0.22s cubic-bezier(0.55, 0.085, 0.68, 0.53),
+    filter 0.28s cubic-bezier(0.55, 0.085, 0.68, 0.53),
+    transform 0.28s cubic-bezier(0.55, 0.085, 0.68, 0.53);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-cycling-word .cycling-letter {
+    transition: none;
+    filter: none;
+    transform: none;
+  }
 }
 
 /* ── App window on its soft-rounded panel with one layered shadow ────────── */
@@ -80,118 +111,6 @@
   box-shadow: 0 2px 4px rgba(13, 13, 13, 0.04),
     0 24px 48px -20px rgba(13, 13, 13, 0.22),
     0 48px 96px -40px rgba(13, 13, 13, 0.24);
-}
-
-/* ── Closing band (ink) ──────────────────────────────────────────────────── */
-.cta-band {
-  background: var(--ink-strong);
-  position: relative;
-}
-.cta-inner {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: var(--section-pad) var(--gutter);
-  text-align: center;
-  position: relative;
-}
-.cta-inner .eyebrow-mono {
-  color: var(--on-ink-faint);
-  margin-bottom: 18px;
-}
-.cta-inner h2 {
-  font-weight: 600;
-  font-size: clamp(32px, 5vw, 54px);
-  line-height: 1.06;
-  letter-spacing: -0.035em;
-  color: #fff;
-  text-wrap: balance;
-  max-width: 17ch;
-  margin: 0 auto 16px;
-}
-.cta-inner p {
-  font-size: clamp(16px, 1.6vw, 18px);
-  color: var(--on-ink-muted);
-  max-width: 48ch;
-  margin: 0 auto 38px;
-  line-height: 1.5;
-}
-.dl-tiles {
-  display: flex;
-  gap: 14px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.dl-tile {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 15px 22px;
-  border-radius: 16px;
-  background: transparent;
-  border: 1px solid var(--line-on-ink);
-  min-width: 228px;
-  text-align: left;
-  cursor: pointer;
-  color: #fff;
-  transition: background-color var(--dur-fast) var(--ease-standard),
-    border-color var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-entrance);
-}
-.dl-tile:hover {
-  border-color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateY(-2px);
-}
-.dl-tile:active {
-  transform: translateY(0) scale(0.98);
-}
-.dl-tile .os-ic {
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
-}
-.dl-tile .os-ic svg {
-  width: 30px;
-  height: 30px;
-}
-.dl-tile .t-lbl {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-.dl-tile .t-top {
-  font-size: 12.5px;
-  color: var(--on-ink-faint);
-  font-weight: 500;
-}
-.dl-tile .t-name {
-  font-size: 16.5px;
-  color: #fff;
-  font-weight: 600;
-  margin-top: 2px;
-}
-/* Primary tile: the white pill/plate (macOS) */
-.dl-tile.primary {
-  background: #fff;
-  border-color: #fff;
-  color: var(--ink-strong);
-}
-.dl-tile.primary:hover {
-  background: #ececec;
-  border-color: #ececec;
-  transform: translateY(-2px);
-}
-.dl-tile.primary .t-top {
-  color: var(--ink-muted);
-}
-.dl-tile.primary .t-name {
-  color: var(--ink-strong);
-}
-.cta-note {
-  margin-top: 26px;
-  font-size: 13px;
-  color: var(--on-ink-faint);
-  font-weight: 500;
 }
 
 /* ── Download gate modal (invite-code closed beta — light, behaviour kept) ── */

@@ -80,9 +80,9 @@ export function ChatMessages({
     return () => window.clearTimeout(timeout);
   }, [highlightedMessageKey]);
 
-  // HOU-471: show the standalone "Mission in progress..." line only when no
-  // active process block is already surfacing it (see the helper) — otherwise
-  // the two would duplicate while the agent runs tools.
+  // HOU-471: show the standalone thinking indicator only when no active process
+  // block is already surfacing progress (see the helper) — otherwise the two
+  // would duplicate while the agent runs tools.
   const showThinkingIndicator = shouldShowThinkingIndicator(
     displayItems,
     status,

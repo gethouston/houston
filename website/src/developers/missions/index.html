@@ -101,6 +101,12 @@ lang: en
   "status": "running",
   "createdAt": "2026-07-12T09:31:07.482Z"
 }{% endraw %}</code></pre></div>
+        <p>
+          An agent runs one turn at a time. If it is already working, for
+          example on another mission or a chat, you get
+          <code>409 Conflict</code>; retry once the current work finishes.
+        </p>
+        <div class="codeblock"><pre><code>{% raw %}{ "code": "agent_busy" }{% endraw %}</code></pre></div>
 
         <h2 id="list">List missions</h2>
         <div class="endpoint">

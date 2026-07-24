@@ -14,8 +14,8 @@ export interface ChatMessagesProps {
   status: "ready" | "streaming" | "submitted";
   /** Shown while a turn is `"submitted"` and no active mission-log header is
    *  on screen yet — the pre-first-output loading gap. Once the agent is
-   *  actually working, the active process block's "Mission in progress:
-   *  <action>" line is the only indicator (HOU-724). */
+   *  actually working, the active process block's "Thinking..." / current-step
+   *  line is the only indicator (HOU-724). */
   thinkingIndicator: ReactNode;
   transformContent?: (content: string) => {
     content: string;

@@ -144,4 +144,14 @@
     }
   })();
 </script>
+
+<!-- Landing behaviours as standalone deferred assets. Order matters for the
+     hero demo: data + clock + stage define the globals hero-demo.js reads.
+     Each guards prefers-reduced-motion itself and no-ops without its markup. -->
+<script defer src="/assets/hero-demo-data.js"></script>
+<script defer src="/assets/hero-demo-clock.js"></script>
+<script defer src="/assets/hero-demo-stage.js"></script>
+<script defer src="/assets/hero-demo.js"></script>
+<script defer src="/assets/hero-cycling.js"></script>
+<script defer src="/assets/how-it-works.js"></script>
 {% include "landing/scripts-download.njk" %}

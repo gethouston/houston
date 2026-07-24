@@ -10,6 +10,8 @@ import type { CommunitySkill, CommunitySkillPreview } from "@houston-ai/skills";
 import { SkillMarketplaceSection } from "@houston-ai/skills";
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { skillIntegrationSlugs } from "../../lib/skill-integrations";
+import { IntegrationBadges } from "../integrations";
 import { useSkillMarketplaceSectionLabels } from "./use-skill-surface-labels";
 
 /**
@@ -53,6 +55,15 @@ export function useSkillDiscoveryTabs(opts: {
                 onInstall={onInstallCommunity}
                 onPreview={opts.onPreviewCommunity}
                 installedSkillNames={opts.installedSkillNames}
+                // Named badges, the same "Works with" row the installed
+                // skill's edit modal carries: `ui/skills` never resolves a
+                // Composio slug itself, so the app hands the renderer in.
+                renderIntegrations={(slugs) => (
+                  <IntegrationBadges
+                    toolkits={skillIntegrationSlugs(slugs)}
+                    label={t("detail.integrations")}
+                  />
+                )}
                 query={opts.query}
                 onQueryChange={opts.onQueryChange}
                 // The page's "Available" section header names this area, so the

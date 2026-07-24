@@ -4,7 +4,10 @@ import {
   DEFAULT_SHELVES,
   type MarketplaceShelf,
 } from "./skill-marketplace-shelves-model";
-import type { SkillPreviewSheetLabels } from "./skill-preview-modal";
+import {
+  DEFAULT_SKILL_PREVIEW_LABELS,
+  type SkillPreviewSheetLabels,
+} from "./skill-preview-modal-labels";
 
 /**
  * Every label the inline marketplace section needs, composed from its
@@ -34,19 +37,6 @@ export interface SkillMarketplaceSectionLabels
   shelves?: MarketplaceShelf[];
 }
 
-const DEFAULT_PREVIEW_LABELS: Required<SkillPreviewSheetLabels> = {
-  install: "Install",
-  installing: "Installing...",
-  installed: "Installed",
-  loadFailed: "Couldn't load the full description. You can still install.",
-  noDescription: "No description provided.",
-  bySource: (owner, repo) => `by ${owner} · ${repo}`,
-  installsCount: (count, formatted) =>
-    count === 1 ? `${formatted} install` : `${formatted} installs`,
-  tagsHeading: "Tags",
-  description: {},
-};
-
 export const DEFAULT_SKILL_MARKETPLACE_SECTION_LABELS: Required<SkillMarketplaceSectionLabels> =
   {
     heading: "Discover skills",
@@ -72,5 +62,5 @@ export const DEFAULT_SKILL_MARKETPLACE_SECTION_LABELS: Required<SkillMarketplace
     poweredByVercel: "Powered by Vercel",
     shelves: DEFAULT_SHELVES,
     card: DEFAULT_CARD_LABELS,
-    preview: DEFAULT_PREVIEW_LABELS,
+    preview: DEFAULT_SKILL_PREVIEW_LABELS,
   };

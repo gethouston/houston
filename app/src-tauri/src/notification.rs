@@ -111,6 +111,10 @@ mod linux {
                     .summary(&title)
                     .body(&body)
                     .appname("Houston")
+                    // Match macOS's "Glass" ping: the freedesktop default
+                    // "message" sound so a finished mission is audible, not
+                    // silent. Daemons without the theme sound just stay quiet.
+                    .sound_name("message-new-instant")
                     .action("default", "Open")
                     .show()
                 {
@@ -131,7 +135,7 @@ mod linux {
 mod windows {
     use super::activate_main_window;
     use tauri::AppHandle;
-    use tauri_winrt_notification::Toast;
+    use tauri_winrt_notification::{Sound, Toast};
 
     /// Pick the toast's Application User Model ID. Installed builds register the
     /// `com.houston.app` AUMID so the toast carries Houston's icon + name;
@@ -153,6 +157,9 @@ mod windows {
         Toast::new(&app_id)
             .title(&title)
             .text1(&body)
+            // Match macOS's "Glass" ping: the platform default toast sound so a
+            // finished mission is audible, not silent.
+            .sound(Some(Sound::Default))
             .on_activated(move |_arg| {
                 activate_main_window(&activate);
                 Ok(())

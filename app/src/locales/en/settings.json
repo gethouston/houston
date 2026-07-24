@@ -74,6 +74,18 @@
     "light": "Light",
     "dark": "Dark"
   },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Get pinged when a mission finishes or needs you",
+    "state": {
+      "on": "On",
+      "off": "Off",
+      "osBlocked": "Off in macOS",
+      "browserBlocked": "Blocked in your browser"
+    },
+    "openSettings": "Open System Settings",
+    "toggleFailed": "Could not save your notification preference."
+  },
   "dangerZone": {
     "title": "Danger zone",
     "description": "Permanently delete this workspace and all its agents.",
