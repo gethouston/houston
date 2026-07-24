@@ -96,7 +96,11 @@
       "bySource": "de {{owner}} · {{repo}}",
       "installsCount_one": "{{formatted}} instalação",
       "installsCount_other": "{{formatted}} instalações",
+      "categoryHeading": "Categoria",
       "tagsHeading": "Etiquetas",
+      "viewInstructions": "Ver instruções completas",
+      "hideInstructions": "Ocultar instruções completas",
+      "instructionsHeading": "Instruções completas",
       "alsoMatches": "Também corresponde a: {{keywords}}"
     }
   },

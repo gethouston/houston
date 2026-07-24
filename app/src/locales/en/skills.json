@@ -96,7 +96,11 @@
       "bySource": "by {{owner}} · {{repo}}",
       "installsCount_one": "{{formatted}} install",
       "installsCount_other": "{{formatted}} installs",
+      "categoryHeading": "Category",
       "tagsHeading": "Tags",
+      "viewInstructions": "View full instructions",
+      "hideInstructions": "Hide full instructions",
+      "instructionsHeading": "Full instructions",
       "alsoMatches": "Also matches: {{keywords}}"
     }
   },

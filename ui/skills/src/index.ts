@@ -67,10 +67,10 @@ export type { SkillOwnerAvatarProps } from "./skill-owner-avatar";
 export { SkillOwnerAvatar } from "./skill-owner-avatar";
 export type {
   SkillPreviewModalProps,
-  SkillPreviewSheetLabels,
   SkillPreviewState,
 } from "./skill-preview-modal";
 export { SkillPreviewModal } from "./skill-preview-modal";
+export type { SkillPreviewSheetLabels } from "./skill-preview-modal-labels";
 export type { SkillRowProps } from "./skill-row";
 export { SkillRow } from "./skill-row";
 export type { SkillsGridProps } from "./skills-grid";

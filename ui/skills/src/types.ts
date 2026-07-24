@@ -23,6 +23,10 @@ export interface CommunitySkillPreview {
   image: string | null;
   category: string | null;
   tags: string[];
+  /** Composio toolkit slugs declared in the skill's frontmatter (e.g. "gmail"). */
+  integrations: string[];
+  /** Full SKILL.md markdown body with frontmatter stripped; null when unavailable. */
+  content: string | null;
 }
 
 /** A skill discovered in a GitHub repo */
