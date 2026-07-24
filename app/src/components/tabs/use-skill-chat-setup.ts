@@ -15,6 +15,7 @@ import {
   findDraftSkillChatActivities,
   findSkillChatActivity,
   findSkillChatHeal,
+  isSkillSetupMode,
   SKILL_SETUP_AGENT_MODE,
 } from "../../lib/skill-chat-setup";
 import { tauriActivity } from "../../lib/tauri";
@@ -50,6 +51,16 @@ export function useSkillChatSetup(
   // The persisted chat attached to a skill, or null if it has none yet.
   const activityFor = useCallback(
     (skill: SkillSummary) => findSkillChatActivity(rawItems, skill),
+    [rawItems],
+  );
+
+  // A skill-setup chat by its activity id (notification nav): the activity's
+  // own `skill_slug` stamp resolves its skill without waiting on the skills
+  // list, so the deep link works even mid-load.
+  const activityById = useCallback(
+    (id: string) =>
+      (rawItems ?? []).find((a) => a.id === id && isSkillSetupMode(a.agent)) ??
+      null,
     [rawItems],
   );
 
@@ -157,6 +168,7 @@ export function useSkillChatSetup(
   return {
     draftActivities,
     activityFor,
+    activityById,
     /** Whether the activity query has resolved (vs. still loading) — lets the
      *  surface distinguish "no match yet" from "loaded, genuinely no match". */
     activitiesLoaded: rawItems !== undefined,
