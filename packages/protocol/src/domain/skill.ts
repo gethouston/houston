@@ -23,7 +23,7 @@ export interface SkillSummary {
   featured: boolean;
   /** Integration slugs this skill touches. */
   integrations: string[];
-  /** Image URL or Microsoft Fluent 3D Emoji slug (e.g. "rocket"). */
+  /** Image URL or Microsoft Fluent Emoji slug (e.g. "rocket"). */
   image: string | null;
 }
 

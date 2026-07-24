@@ -55,7 +55,7 @@ last_used: 2026-04-25
 category: research                 # tab in picker; missing = "Other"
 featured: yes                      # showcase on chat empty-state cards
 image: magnifying-glass-tilted-left
-                                   # Fluent 3D emoji slug OR full https URL
+                                   # Fluent emoji slug (flat 2D) OR full https URL
 integrations: [tavily, gmail]      # Composio toolkit slugs (lowercase)
 ---
 
@@ -74,7 +74,7 @@ Step-by-step instructions Claude follows when the Skill runs.
 | `created` / `last_used` | string | unset | YYYY-MM-DD. Engine maintains. |
 | `category` | string | unset | Picker tab grouping. Missing → falls under "Other". |
 | `featured` | bool | `false` | Accepts `yes` / `true` / `1` / `on`. Surfaces on the empty-chat showcase. |
-| `image` | string | unset | Either an `https://...` URL OR a Fluent 3D Emoji slug (lowercased folder name from [microsoft/fluentui-emoji/assets](https://github.com/microsoft/fluentui-emoji/tree/main/assets), spaces → dashes). Resolved frontend-side via `resolveSkillImage`. |
+| `image` | string | unset | Either an `https://...` URL OR a Fluent Emoji slug (rendered as the flat 2D variant) (lowercased folder name from [microsoft/fluentui-emoji/assets](https://github.com/microsoft/fluentui-emoji/tree/main/assets), spaces → dashes). Resolved frontend-side via `resolveSkillImage`. |
 | `integrations` | string[] | `[]` | Composio toolkit slugs. Drives the small logo row on the card. |
 
 ## Render pipeline
@@ -353,7 +353,7 @@ When the user asks "create a skill that does X", Claude should:
 2. Write `~/.houston/workspaces/<Workspace>/<Agent>/.agents/skills/<slug>/SKILL.md` with the full frontmatter schema above.
 3. Set `description` carefully — it's the trigger phrase Claude itself will use for tool matching later.
 4. Default to `featured: yes` for new Skills until proven otherwise (so the user actually finds them).
-5. Include an `image` slug — pick a relevant Fluent 3D emoji (browse the assets folder).
+5. Include an `image` slug — pick a relevant Fluent emoji (browse the assets folder).
 6. Body: at least an `## Instructions` or `## Procedure` section.
 
 ### Naming rules — non-technical users only

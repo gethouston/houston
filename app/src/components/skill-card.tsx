@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { SkillIcon } from "./skill-icon";
 
 interface Props {
-  /** Image URL or Microsoft Fluent 3D Emoji slug. */
+  /** Image URL or Microsoft Fluent Emoji slug. */
   image?: string | null;
   /** Card heading. */
   title: string;

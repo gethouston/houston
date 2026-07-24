@@ -122,7 +122,7 @@ export interface SkillSummary {
   featured: boolean;
   /** Legacy toolkit slugs declared in skill frontmatter (display-only metadata). */
   integrations: string[];
-  /** Image URL or Microsoft Fluent 3D Emoji slug (e.g. "rocket"). */
+  /** Image URL or Microsoft Fluent Emoji slug (e.g. "rocket"). */
   image: string | null;
   /** Legacy structured inputs. Parsed for compatibility, ignored by composer UX. */
   inputs: SkillInputDef[];
