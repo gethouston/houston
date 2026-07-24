@@ -136,6 +136,7 @@ Skill rules:
 - \`description\` is shown to the user and drives tool matching. Lead with the outcome in plain language.
 - \`image\` should be a Fluent emoji slug or a full https URL.
 - \`featured: yes\` makes the Skill visible in the chat empty state.
+- If the frontmatter has a \`setup_activity_id\` field, keep it unchanged when editing — it links the Skill to the conversation it was built in.
 - If a Skill needs missing details, the procedure should ask for them together through the \`ask_user\` tool, up to 3 questions in one call, and continue when the answers arrive.
 
 The Skill body is allowed to contain technical procedure details. But any text it tells the AI to say to the user must follow the user-voice rules above.

@@ -25,6 +25,11 @@ export interface SkillSummary {
   integrations: string[];
   /** Image URL or Microsoft Fluent 3D Emoji slug (e.g. "rocket"). */
   image: string | null;
+  /** Frontmatter `setup_activity_id:` — the setup chat this skill was built
+   *  in (HOU-791). Forward direction of the skill <-> chat link, written by
+   *  the agent at create time; the durable reverse link is the activity's
+   *  `skill_slug` (mirrors the routine `setup_activity_id` pattern). */
+  setupActivityId?: string | null;
 }
 
 export interface SkillDetail {

@@ -111,6 +111,11 @@ export type AnalyticsEventName =
   | "routine_scheduled"
   | "routine_executed"
   | "routine_chat_setup_started"
+  // HOU-791: the guided skill-build chat — "Create with AI" was clicked
+  // (`skill_chat_create_clicked`) and the draft chat actually started
+  // (`skill_chat_setup_started`).
+  | "skill_chat_create_clicked"
+  | "skill_chat_setup_started"
   // Create-intake funnel: the locally-driven question cards (before any model
   // call) either resolved into a draft (`source`: custom flow / template pick /
   // composer escape hatch; `template_id` when a template) or were dismissed.

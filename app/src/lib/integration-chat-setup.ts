@@ -15,6 +15,7 @@
 
 import { encodeAutoContinueMessage } from "./auto-continue-message.ts";
 import { isRoutineSetupMode } from "./routine-chat-setup.ts";
+import { isSkillSetupMode } from "./skill-chat-setup.ts";
 
 /**
  * Sentinel stored in the activity's `agent` (mode) field so every mission
@@ -32,12 +33,16 @@ export function isIntegrationSetupMode(
 }
 
 /**
- * True for EITHER guided-setup sentinel (routine or integration). This is the
- * one predicate every board / badge / notification filter uses so the two
+ * True for ANY guided-setup sentinel (routine, integration, or skill). This
+ * is the one predicate every board / badge / notification filter uses so the
  * hidden-chat kinds are handled by the same mechanism, never forked.
  */
 export function isSetupChatMode(agent: string | null | undefined): boolean {
-  return isRoutineSetupMode(agent) || isIntegrationSetupMode(agent);
+  return (
+    isRoutineSetupMode(agent) ||
+    isIntegrationSetupMode(agent) ||
+    isSkillSetupMode(agent)
+  );
 }
 
 interface IntegrationSetupActivityLike {

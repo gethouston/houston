@@ -13,6 +13,7 @@ import { isMac } from "../lib/platform";
 import { queryClient } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
 import { isRoutineSetupMode } from "../lib/routine-chat-setup";
+import { isSkillSetupMode } from "../lib/skill-chat-setup";
 import { tauriActivity } from "../lib/tauri";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
@@ -36,7 +37,7 @@ async function resolveActivityTarget(
   sessionKey: string,
 ): Promise<{
   activityId: string;
-  setupKind: "routine" | "integration" | null;
+  setupKind: "routine" | "integration" | "skill" | null;
 } | null> {
   try {
     const activities = await queryClient.fetchQuery({
@@ -50,7 +51,9 @@ async function resolveActivityTarget(
       ? "routine"
       : isIntegrationSetupMode(activity?.agent)
         ? "integration"
-        : null;
+        : isSkillSetupMode(activity?.agent)
+          ? "skill"
+          : null;
     return { activityId, setupKind };
   } catch (e) {
     // Log-only (no toast): nav is best-effort and this same path fires on a
@@ -107,6 +110,14 @@ export async function consumePendingNav() {
     // the global Integrations page, where the panel reopens for this agent.
     useUIStore.getState().setViewMode(INTEGRATIONS_VIEW_ID);
     useUIStore.getState().setIntegrationSetupChatAgentId(agent.id);
+    return;
+  }
+  if (target.setupKind === "skill") {
+    // A skill-setup chat has no board card either: its home is the agent's
+    // Skills section (Agent Settings), where the chat reopens on the spot.
+    useUIStore.getState().setViewMode("job-description");
+    useUIStore.getState().setJobDescriptionTarget("skills");
+    useUIStore.getState().setPendingSkillChatActivityId(target.activityId);
     return;
   }
   useUIStore.getState().setViewMode("activity");

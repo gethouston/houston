@@ -134,6 +134,15 @@
     "store": "Store",
     "custom": "Custom skills",
     "customEmptyTitle": "No custom skills yet",
-    "customEmptyDescription": "Create your own skill from scratch or import one from GitHub."
+    "customEmptyDescription": "Describe what you need and build it together with your agent, or add one yourself from GitHub or from scratch.",
+    "createWithAi": "Create with AI"
+  },
+  "setupChat": {
+    "missionTitle": "New skill",
+    "skillLabel": "Skill: {{name}}",
+    "opening": "Opening chat...",
+    "editManually": "Edit manually",
+    "draftInProgress": "Skill in progress. Pick up where you left off.",
+    "discardDraft": "Discard draft"
   }
 }

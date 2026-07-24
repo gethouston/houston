@@ -1,22 +1,13 @@
 import { CatalogSearchField, CatalogShell, Spinner } from "@houston-ai/core";
-import type {
-  CommunitySkill,
-  CommunitySkillPreview,
-  InstalledSkillEditorState,
-  RepoSkill,
-  SkillEditModalLabels,
-} from "@houston-ai/skills";
 import { AddSkillDialog } from "@houston-ai/skills";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { SkillSummary } from "../../lib/types";
 import { useInstalledSkillsStrip } from "./installed-skills-strip";
 import { useSkillDiscoveryTabs } from "./skill-discovery-tabs";
-import {
-  type DeleteConfirmLabels,
-  SkillEditorDialogs,
-} from "./skill-editor-dialogs";
+import { SkillEditorDialogs } from "./skill-editor-dialogs";
+import type { SkillsContentProps } from "./skills-content-props";
 import { useSkillDialogLabels } from "./use-skill-surface-labels";
+import { useSkillsChatSurface } from "./use-skills-chat-surface";
 
 /** Approximate size of the skills.sh store, shown verbatim on the Available chip
  * (the store is async with no cheap total, so we label the ballpark). */
@@ -34,8 +25,15 @@ const SKILL_STORE_SIZE_LABEL = "9000+";
  * query filters the strip AND the store; a strip with no matches is dropped.
  * Read-only mode (managed agent, non-manager) drops the tabs entirely and keeps
  * just the strip.
+ *
+ * HOU-791: a skill's primary surface is its persistent setup CHAT (the
+ * Automations-tab experience) — a row click opens it inline in place of the
+ * catalog, `useSkillsChatSurface` owns the lifecycle, and the raw-markdown
+ * modal stays reachable via the chat header's "Edit manually" (and stays the
+ * row behavior in read-only mode).
  */
 export function SkillsContent({
+  agent,
   skills,
   loading,
   readOnly = false,
@@ -54,54 +52,25 @@ export function SkillsContent({
   onInstallFromRepo,
   onCreateFromScratch,
   installedSkillNames,
-}: {
-  skills: SkillSummary[];
-  loading: boolean;
-  /**
-   * Managed-agent read-only mode (matrix v2): a non-manager may view skills but
-   * not add/create/install any. Hides the discovery tabs and the add CTA.
-   * The gateway 403s writes regardless.
-   */
-  readOnly?: boolean;
-  /** Name of the installed skill whose edit modal is open, if any. */
-  editingSkillName: string | null;
-  editorState: InstalledSkillEditorState;
-  onEditSkill: (name: string) => void;
-  onCloseEdit: () => void;
-  onSaveEditing: (content: string) => Promise<void>;
-  onDeleteSkill: (name: string) => Promise<void>;
-  editModalLabels: SkillEditModalLabels;
-  deleteConfirm: DeleteConfirmLabels;
-  onSearch?: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>;
-  onInstallCommunity?: (
-    skill: CommunitySkill,
-    signal?: AbortSignal,
-  ) => Promise<string>;
-  onPreviewCommunity?: (
-    skill: CommunitySkill,
-    signal?: AbortSignal,
-  ) => Promise<CommunitySkillPreview>;
-  onListFromRepo?: (source: string) => Promise<RepoSkill[]>;
-  onInstallFromRepo?: (
-    source: string,
-    skills: RepoSkill[],
-  ) => Promise<string[]>;
-  onCreateFromScratch?: (input: {
-    name: string;
-    description: string;
-    content: string;
-  }) => Promise<string>;
-  installedSkillNames?: Set<string>;
-}) {
+}: SkillsContentProps) {
   const { t } = useTranslation("skills");
   const dialogLabels = useSkillDialogLabels();
   const [tab, setTab] = useState("store");
   const [dialogOpen, setDialogOpen] = useState(false);
   // The ONE page search: it filters the installed strip AND drives the Store.
   const [query, setQuery] = useState("");
+  // The chat layer (HOU-791): a row click opens the skill's setup chat; the
+  // modal stays the read-only fallback + the chat's Edit-manually target.
+  const chat = useSkillsChatSurface({
+    agent,
+    skills,
+    loading,
+    readOnly,
+    onEditSkill,
+  });
   const { sorted, installedCount, installed } = useInstalledSkillsStrip(
     skills,
-    onEditSkill,
+    chat.openRow,
     query,
   );
   const editingSkill = sorted.find((s) => s.name === editingSkillName) ?? null;
@@ -117,6 +86,10 @@ export function SkillsContent({
   const tabs = useSkillDiscoveryTabs({
     showCustom: addDialogProps !== null,
     onAddClick: () => setDialogOpen(true),
+    onCreateWithAi: chat.startCreate,
+    drafts: chat.drafts,
+    onResumeDraft: chat.resumeDraft,
+    onDiscardDraft: chat.discardDraft,
     query,
     onQueryChange: setQuery,
     // Read-only mode never offers the Store either: no community callbacks.
@@ -143,33 +116,42 @@ export function SkillsContent({
 
   return (
     <>
-      {/* Read-only mode yields zero tabs: the shell then renders only the
-          installed strip (or nothing at all when there are no skills). */}
-      <CatalogShell
-        controls={
-          (tabs.length > 0 || sorted.length > 0) && (
-            <CatalogSearchField
-              value={query}
-              onChange={setQuery}
-              label={t("grid.searchSkills")}
-            />
-          )
-        }
-        installedTitle={t("grid.yourSkillsHeading")}
-        installedCount={installedCount}
-        installed={installed}
-        availableTitle={t("grid.availableHeading")}
-        // The store-size label belongs to the Store tab only; on Custom the
-        // chip would contradict the visible content.
-        availableCount={tab === "store" ? SKILL_STORE_SIZE_LABEL : undefined}
-        tabs={tabs}
-        value={tab}
-        onValueChange={setTab}
-      />
-      {noInstalledMatches && (
-        <p className="text-[13px] text-ink-muted">
-          {t("grid.noMatchingSkills")}
-        </p>
+      {/* An open setup chat owns the section (HOU-791): the catalog steps
+          aside so the conversation gets the room, and closing the chat
+          returns it. The dialogs below stay mounted — the chat header's
+          Edit-manually opens the modal over the chat. */}
+      {chat.chatNode}
+      {!chat.chatNode && (
+        <>
+          <CatalogShell
+            controls={
+              (tabs.length > 0 || sorted.length > 0) && (
+                <CatalogSearchField
+                  value={query}
+                  onChange={setQuery}
+                  label={t("grid.searchSkills")}
+                />
+              )
+            }
+            installedTitle={t("grid.yourSkillsHeading")}
+            installedCount={installedCount}
+            installed={installed}
+            availableTitle={t("grid.availableHeading")}
+            // The store-size label belongs to the Store tab only; on Custom
+            // the chip would contradict the visible content.
+            availableCount={
+              tab === "store" ? SKILL_STORE_SIZE_LABEL : undefined
+            }
+            tabs={tabs}
+            value={tab}
+            onValueChange={setTab}
+          />
+          {noInstalledMatches && (
+            <p className="text-[13px] text-ink-muted">
+              {t("grid.noMatchingSkills")}
+            </p>
+          )}
+        </>
       )}
       {addDialogProps && (
         <AddSkillDialog

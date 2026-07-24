@@ -134,6 +134,15 @@
     "store": "Loja",
     "custom": "Habilidades personalizadas",
     "customEmptyTitle": "Você ainda não tem habilidades personalizadas",
-    "customEmptyDescription": "Crie sua própria habilidade do zero ou importe uma do GitHub."
+    "customEmptyDescription": "Descreva o que você precisa e construa junto com seu agente, ou adicione você mesmo do GitHub ou do zero.",
+    "createWithAi": "Criar com IA"
+  },
+  "setupChat": {
+    "missionTitle": "Nova habilidade",
+    "skillLabel": "Habilidade: {{name}}",
+    "opening": "Abrindo o chat...",
+    "editManually": "Editar manualmente",
+    "draftInProgress": "Habilidade em construção. Continue de onde parou.",
+    "discardDraft": "Descartar rascunho"
   }
 }
