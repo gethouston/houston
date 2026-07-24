@@ -138,16 +138,18 @@
 #features.section {
   padding-block: clamp(44px, 5vw, 64px);
 }
+/* Heading lives inside the left column: full two-side split. */
 .hiw-head {
-  text-align: center;
-  margin-bottom: 8px;
+  text-align: left;
+  margin-bottom: 4px;
 }
 .hiw-head .eyebrow-mono {
   margin-bottom: 14px;
+  justify-content: flex-start;
 }
 .hiw-head .sec-title {
   max-width: none;
-  margin: 0 auto;
+  margin: 0;
 }
 .hiw-tabs {
   display: flex;
@@ -191,7 +193,6 @@
   grid-template-columns: 1.05fr 0.95fr;
   gap: clamp(32px, 5vw, 60px);
   align-items: center;
-  margin-top: 24px;
 }
 .hiw-left {
   display: flex;
