@@ -1,0 +1,389 @@
+/*
+ * Landing page — base, chrome (nav + footer), buttons, section primitives.
+ * Monochrome editorial: white ground, ink type, one black pill CTA.
+ * Palette + type come from site-tokens.css. Hero / app-window / body-sections
+ * / motion live in their own files.
+ */
+
+/* ── Reset (landing page only loads this) ─────────────────────────────────── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+  background: var(--ground);
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  font-family: var(--sans);
+  background: var(--ground);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+img {
+  max-width: 100%;
+  display: block;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 200;
+  background: var(--ink-strong);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: top var(--dur-fast) var(--ease-entrance);
+}
+.skip-link:focus {
+  top: 12px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  height: 50px;
+  padding: 0 24px;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 15.5px;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform var(--dur-fast) var(--ease-entrance),
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.btn-sm {
+  height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+/* Primary: the black pill (on light grounds) */
+.btn-ink {
+  background: var(--action);
+  color: var(--action-text);
+}
+.btn-ink:hover {
+  background: var(--action-hover);
+}
+/* Secondary: quiet outline on light */
+.btn-outline {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+.btn-outline:hover {
+  border-color: var(--ink);
+}
+/* White pill — the primary on the ink closing band */
+.btn-white {
+  background: #fff;
+  color: var(--ink-strong);
+}
+.btn-white:hover {
+  background: #ececec;
+}
+/* Ghost on ink — the quiet secondary on the closing band */
+.btn-ghost {
+  background: transparent;
+  color: #fff;
+  border-color: var(--line-on-ink);
+}
+.btn-ghost:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Section primitives ──────────────────────────────────────────────────── */
+.section {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: var(--section-pad) var(--gutter);
+}
+/* A soft-rounded light-gray panel on the white page (the recurring editorial
+   surface, echoing the hero frame). Adds only the surface — width + interior
+   padding stay identical to a plain section so content aligns across bands. */
+.section.is-panel {
+  background: var(--panel);
+  border-radius: var(--panel-radius);
+  margin-block: clamp(10px, 2vw, 24px);
+}
+.eyebrow-mono {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ink-subtle);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.sec-title {
+  font-weight: 600;
+  font-size: clamp(28px, 3.8vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: var(--ink-strong);
+  text-wrap: balance;
+  max-width: 20ch;
+}
+.sec-lead {
+  font-size: clamp(16px, 1.6vw, 18px);
+  line-height: 1.56;
+  color: var(--ink-muted);
+  max-width: 54ch;
+  margin-top: 16px;
+}
+
+/* ── Nav (white, ink logo, black pill Download) ──────────────────────────── */
+.lnav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px var(--gutter);
+  background: rgba(255, 255, 255, 0.85);
+  transition: box-shadow var(--dur-elegant) var(--ease-standard),
+    background-color var(--dur-elegant) var(--ease-standard);
+  border-bottom: 1px solid transparent;
+}
+/* Solid white + hairline once scrolled. No backdrop blur (PERFORMANCE.md:
+   blur over a moving backdrop re-rasterizes every frame). */
+.lnav.scrolled {
+  background: #fff;
+  border-bottom-color: var(--line);
+}
+.lnav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ink-strong);
+  font-weight: 600;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+}
+.lnav-mark {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: block;
+}
+.lnav-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.lnav-links a {
+  color: var(--ink-muted);
+  font-size: 14.5px;
+  font-weight: 500;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.lnav-links a:hover {
+  color: var(--ink-strong);
+}
+.lnav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.lnav-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-muted);
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.lnav-icon:hover {
+  color: var(--ink-strong);
+}
+.lnav-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--action);
+  border: 1px solid var(--action);
+  color: var(--action-text);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+.lnav-cta:hover {
+  background: var(--action-hover);
+}
+.lnav-burger {
+  display: none;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  cursor: pointer;
+}
+.lnav-burger svg {
+  width: 20px;
+  height: 20px;
+}
+.lnav-drop {
+  position: fixed;
+  top: 64px;
+  left: var(--gutter);
+  right: var(--gutter);
+  z-index: 59;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: 0 20px 48px -24px rgba(13, 13, 13, 0.28);
+  flex-direction: column;
+  gap: 2px;
+  display: none;
+}
+.lnav-drop.open {
+  display: flex;
+}
+.lnav-drop a {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+.lnav-drop a:hover {
+  background: var(--panel);
+  color: var(--ink-strong);
+}
+@media (max-width: 860px) {
+  .lnav-links {
+    display: none;
+  }
+  .lnav-burger {
+    display: inline-flex;
+  }
+}
+
+/* ── Footer (ink, continuous with the closing band) ──────────────────────── */
+.lfoot {
+  background: var(--ink-strong);
+  color: var(--on-ink-faint);
+  padding: 56px var(--gutter) 40px;
+}
+.lfoot-inner {
+  max-width: var(--measure);
+  margin: 0 auto;
+}
+.lfoot-top {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  gap: 40px;
+  padding-bottom: 36px;
+  border-bottom: 1px solid var(--line-on-ink);
+}
+.lfoot-brand .lnav-brand {
+  color: #fff;
+  margin-bottom: 12px;
+}
+.lfoot-brand p {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--on-ink-faint);
+  max-width: 30ch;
+  margin-bottom: 18px;
+}
+.lfoot-col h4 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 14px;
+}
+.lfoot-col a {
+  display: block;
+  font-size: 13.5px;
+  color: var(--on-ink-muted);
+  padding: 5px 0;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.lfoot-col a:hover {
+  color: #fff;
+}
+.lfoot-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+  font-size: 12.5px;
+  color: var(--on-ink-faint);
+}
+.lfoot-bottom a {
+  color: var(--on-ink-muted);
+}
+.lfoot-bottom a:hover {
+  color: #fff;
+}
+.lfoot-legal {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.lfoot-credit {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+@media (max-width: 760px) {
+  .lfoot-top {
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+}
+@media (max-width: 460px) {
+  .lfoot-top {
+    grid-template-columns: 1fr;
+  }
+}

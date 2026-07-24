@@ -40,7 +40,7 @@ export interface SkillInvocation {
   /** Title-cased display name shown on the card. */
   displayName: string;
   /**
-   * Either a full image URL or a Microsoft Fluent 3D Emoji slug. The
+   * Either a full image URL or a Microsoft Fluent Emoji slug. The
    * renderer is responsible for resolving slugs to URLs.
    */
   image: string | null;
@@ -105,8 +105,8 @@ export function resolveSkillImage(
     parts[0].charAt(0).toUpperCase() +
     parts[0].slice(1) +
     (parts.length > 1 ? ` ${parts.slice(1).join(" ")}` : "");
-  const file = `${parts.join("_")}_3d.png`;
-  return `https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/${encodeURIComponent(folder)}/3D/${file}`;
+  const file = `${parts.join("_")}_flat.svg`;
+  return `https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/${encodeURIComponent(folder)}/Flat/${file}`;
 }
 
 function humanize(slug: string): string {

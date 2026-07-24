@@ -1,7 +1,8 @@
 /**
- * Folder attachments (HOU-808).
+ * Folder uploads (HOU-808 composer attachments, HOU-889 Files tab) — shared
+ * by every surface that accepts a whole folder from the user.
  *
- * A folder can enter the composer two ways:
+ * A folder can enter a surface two ways:
  *  - the folder picker (`<input webkitdirectory>`): the browser sets each
  *    File's `webkitRelativePath` natively;
  *  - drag-and-drop: `DataTransfer.files` flattens a folder to nothing, so the

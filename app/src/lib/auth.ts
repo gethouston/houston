@@ -32,6 +32,8 @@ import {
   googleDesktopSession,
   microsoftDesktopSession,
 } from "./identity/desktop-signin";
+import { identityChanged } from "./identity-change";
+import { resetForIdentityChange } from "./identity-reset";
 import { writeLastSignIn } from "./last-sign-in";
 import { logger } from "./logger";
 import { osIsTauri } from "./os-bridge";
@@ -40,7 +42,24 @@ import { clearPersistedLocalData } from "./query-persist";
 
 setSessionSink((session) => cacheSession(session)); // refresh.ts → app cache
 
+// The Firebase uid whose world the app's in-memory caches/stores currently hold.
+// Tracked HERE rather than read from the session query cache because the
+// session-store clear notifies `useSession` — nulling that cache — BEFORE
+// `signOut()`'s `cacheSession(null)` runs, so a cache read would miss the
+// outgoing uid. Seeded by `cacheSession` on sign-in/refresh; nulled by `signOut`.
+let activeIdentityUid: string | null = null;
+
 function cacheSession(session: Session | null): void {
+  const nextUid = session?.uid ?? null;
+  // A different account signing in (an account switch with no explicit
+  // sign-out) must drop the outgoing identity's world before the new one loads
+  // (HOU-903). Sign-out is handled directly in `signOut` (it nulls
+  // `activeIdentityUid` first, so this stays a no-op there — no double reset);
+  // a token refresh keeps the same uid, so this is a no-op then too.
+  if (identityChanged(activeIdentityUid, nextUid)) {
+    resetForIdentityChange();
+  }
+  activeIdentityUid = nextUid;
   queryClient.setQueryData<Session | null>(SESSION_QUERY_KEY, session);
 }
 
@@ -237,11 +256,19 @@ export async function signOut(): Promise<void> {
   } catch (e) {
     logger.warn(`[auth] sign-out clear failed; local cleanup continues: ${e}`);
   }
-  cacheSession(null);
   // Wipe locally persisted per-user data so nothing lingers after sign-out (HOU-712).
   await clearPersistedLocalData();
   analytics.track("user_signed_out");
   analytics.reset();
+  // Drop the outgoing identity's in-memory world — query cache, zustand stores,
+  // active-org pin — so the next account never inherits it (HOU-903). Done here
+  // rather than relying on cacheSession's guard because the session-store clear
+  // above already nulled the session query cache, so the guard would compare
+  // null → null and miss the sign-out. Nulling `activeIdentityUid` first keeps
+  // the `cacheSession(null)` below a no-op (no double reset).
+  resetForIdentityChange();
+  activeIdentityUid = null;
+  cacheSession(null);
 }
 
 function requireConfigured(): void {

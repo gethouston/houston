@@ -1,0 +1,44 @@
+<!-- Mac download gate (invite-code closed beta — behaviour preserved) -->
+<div class="dl-overlay" id="dl-overlay" role="dialog" aria-modal="true" aria-labelledby="dl-title">
+  <div class="dl-card">
+    <h3 id="dl-title">We're on a closed beta</h3>
+    <p>If you were invited, paste your code and download the app.</p>
+    <input type="text" class="dl-input" id="dl-code" placeholder="Paste your invite code" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Invite code">
+    <div class="dl-actions">
+      <a id="dl-btn" class="btn btn-ink btn-disabled"><svg viewBox="0 0 384 512" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Download for Mac</a>
+      <span class="dl-divider">or join our waiting list to get access</span>
+      <a id="dl-waitlist" href="/waitlist/" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Join the waiting list</a>
+      <p class="dl-fineprint">By joining you agree to receive product updates from Houston. Unsubscribe anytime. See our <a href="/privacy/">Privacy Policy</a>.</p>
+    </div>
+    <details class="dl-skip" id="dl-skip">
+      <summary>Want to skip the waitlist?</summary>
+      <div class="dl-skip-body">
+        <p>We ship new features daily and post them on X. Follow along, DM me, I'll send you a code.</p>
+        <a id="dl-x-link" href="https://x.com/ja818_" target="_blank" rel="noopener noreferrer">Follow @ja818_ on X →</a>
+      </div>
+    </details>
+  </div>
+</div>
+
+<!-- Windows download gate -->
+<div class="dl-overlay" id="dl-overlay-windows" role="dialog" aria-modal="true" aria-labelledby="dl-title-windows">
+  <div class="dl-card">
+    <h3 id="dl-title-windows">We're on a closed beta</h3>
+    <p>If you were invited, paste your code and pick your Windows version.</p>
+    <input type="text" class="dl-input" id="dl-windows-code" placeholder="Paste your invite code" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Invite code">
+    <div class="dl-actions">
+      <a id="dl-windows-x64-btn" class="btn btn-ink btn-disabled"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Windows (x64 / Intel / AMD)</a>
+      <a id="dl-windows-arm64-btn" class="btn btn-outline btn-disabled"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Windows (ARM64 / Surface, Snapdragon)</a>
+      <span class="dl-divider">or join our waiting list to get access</span>
+      <a id="dl-windows-waitlist" href="/waitlist/" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Join the waiting list</a>
+      <p class="dl-fineprint">By joining you agree to receive product updates from Houston. Unsubscribe anytime. See our <a href="/privacy/">Privacy Policy</a>.</p>
+    </div>
+    <details class="dl-skip" id="dl-windows-skip">
+      <summary>Not sure which one to pick?</summary>
+      <div class="dl-skip-body">
+        <p>Most laptops and desktops are x64 (Intel or AMD CPUs). Only a Surface Pro X, Surface Pro 9 5G, a Snapdragon X laptop, or another ARM-based Windows machine needs ARM64. On first install you'll see one SmartScreen "Run anyway" prompt; we're working on full code-signing.</p>
+        <a href="#" id="dl-windows-switch-arch">Wrong one? Switch to the other version →</a>
+      </div>
+    </details>
+  </div>
+</div>

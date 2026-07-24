@@ -1,0 +1,55 @@
+---
+permalink: /index.html
+---
+{% extends "base.njk" %}
+{% block title %}Houston — AI agents that actually do the work{% endblock %}
+{% block favicon %}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{% endblock %}
+{# The landing self-hosts a single family (Hanken Grotesk) and uses zero
+   General Sans, so drop base.njk's render-blocking Fontshare stylesheet. #}
+{% block fonts %}{% endblock %}
+{% block meta %}
+<meta name="description" content="AI agents that do the work for you. One free desktop app that runs on the ChatGPT or Claude plan you already pay for. 1,000+ integrations.">
+<!-- Open Graph / Facebook / Slack / LinkedIn -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gethouston.ai/">
+<meta property="og:title" content="Houston — AI agents that actually do the work">
+<meta property="og:description" content="AI agents that do the work for you. One free desktop app that runs on the ChatGPT or Claude plan you already pay for. 1,000+ integrations.">
+<meta property="og:site_name" content="Houston">
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="https://gethouston.ai/">
+<meta name="twitter:title" content="Houston — AI agents that actually do the work">
+<meta name="twitter:description" content="AI agents that do the work for you. One free desktop app that runs on the ChatGPT or Claude plan you already pay for. 1,000+ integrations.">
+<meta name="twitter:creator" content="@ja818_">
+
+<script type="application/ld+json">
+{ "@context":"https://schema.org","@type":"SoftwareApplication","name":"Houston","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/gethouston/houston/releases","softwareVersion":"beta","description":"Free desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,000 integrations." }
+</script>
+{% endblock %}
+{% block headScripts %}
+<script>document.documentElement.className += " js";</script>
+{% endblock %}
+{% block stylesheets %}
+<link rel="preload" href="/assets/fonts/hanken-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/css/site-tokens.css">
+<link rel="stylesheet" href="/assets/css/landing.css">
+<link rel="stylesheet" href="/assets/css/landing-hero.css">
+<link rel="stylesheet" href="/assets/css/landing-app-window.css">
+<link rel="stylesheet" href="/assets/css/landing-body.css">
+<link rel="stylesheet" href="/assets/css/landing-marketing.css">
+<link rel="stylesheet" href="/assets/css/landing-motion.css">
+{% endblock %}
+{% block body %}
+{% include "landing/nav.njk" %}
+<main id="main">
+{% include "landing/hero.njk" %}
+{% include "landing/agents.njk" %}
+{% include "landing/how.njk" %}
+{% include "landing/usb.njk" %}
+{% include "landing/pricing.njk" %}
+{% include "landing/faq.njk" %}
+</main>
+{% include "landing/footer.njk" %}
+{% include "landing/download-modals.njk" %}
+{% include "landing/scripts.njk" %}
+{% endblock %}

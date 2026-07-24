@@ -162,6 +162,7 @@ import {
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
 import { SkillCard } from "./skill-card";
+import { skillIntegrationChips } from "./skill-integration-chips";
 import { isSharedWithOthers } from "./tabs/agent-access-model";
 import {
   filterProviderAuthFeedItems,
@@ -1900,6 +1901,7 @@ export function useAgentChatPanel({
               image={s.image}
               title={skillDisplayTitle(s)}
               description={s.description}
+              footer={skillIntegrationChips(s.integrations)}
               onClick={() => applySkill(s)}
             />
           ))}

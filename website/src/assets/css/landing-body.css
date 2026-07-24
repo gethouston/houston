@@ -1,0 +1,409 @@
+/*
+ * Editorial body — part 1: the agent roster grid (#agents) and the
+ * interactive "How it works" (#features): agent-selector tabs, three numbered
+ * steps, and a light phone mock replaying the conversation. Monochrome:
+ * white/gray grounds, hairlines, ink type. The only colour is the real tool
+ * brand marks on the agent cards. Palette/type from site-tokens.css.
+ */
+
+/* ── Agent roster grid (#agents) ──────────────────────────────────────────── */
+.agents-head {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 8px;
+}
+.agents-head .eyebrow-mono {
+  margin-bottom: 14px;
+}
+.agents-head .sec-title {
+  max-width: none;
+  margin: 0 auto;
+}
+.agents-head .sec-lead {
+  margin: 16px auto 0;
+}
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 52px;
+}
+.agent-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  text-align: left;
+  transition: border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-entrance);
+}
+.agent-card:hover {
+  border-color: var(--line-strong);
+  box-shadow: 0 18px 44px -30px rgba(13, 13, 13, 0.24);
+  transform: translateY(-3px);
+}
+.agent-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink-strong);
+}
+.agent-avatar svg {
+  width: 24px;
+  height: 24px;
+}
+.agent-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.agent-card-content h4 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  letter-spacing: -0.01em;
+}
+.agent-card-content p {
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.agent-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.agent-tool {
+  display: inline-flex;
+  align-items: center;
+}
+.agent-tool svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+.agent-more {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 22px 24px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+.agent-more span {
+  font-size: 15px;
+  color: var(--ink-muted);
+}
+.agent-more strong {
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+@media (max-width: 720px) {
+  .agent-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── How it works (#features) — tabs + steps + phone ──────────────────────── */
+.hiw-head {
+  text-align: center;
+  margin-bottom: 8px;
+}
+.hiw-head .eyebrow-mono {
+  margin-bottom: 14px;
+}
+.hiw-head .sec-title {
+  max-width: none;
+  margin: 0 auto;
+}
+.hiw-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 30px auto 48px;
+  max-width: 760px;
+}
+.hiw-tab {
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--card);
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-weight: 500;
+  font-family: var(--sans);
+  transition: background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-entrance);
+}
+.hiw-tab:hover {
+  border-color: var(--ink);
+  color: var(--ink-strong);
+}
+.hiw-tab:active {
+  transform: scale(0.96);
+}
+.hiw-tab.active {
+  background: var(--action);
+  color: var(--action-text);
+  border-color: var(--action);
+}
+.feature-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(32px, 5vw, 60px);
+  align-items: center;
+}
+.hiw-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.hiw-step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 22px 24px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+.hiw-n {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.hiw-step-t {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  margin-bottom: 4px;
+}
+.hiw-step p {
+  font-size: 14px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+/* Phone mock — real titanium frame, light Houston app inside. */
+.iphone {
+  position: relative;
+  width: 322px;
+  max-width: 100%;
+  margin: 0 auto;
+  aspect-ratio: 322 / 656;
+  border-radius: 56px;
+  padding: 11px;
+  background: linear-gradient(
+    145deg,
+    #dfe3e9 0%, #aab0bb 16%, #71787f 33%,
+    #c3c8d0 50%, #5a6068 67%, #9ba1ab 84%, #d6dae1 100%
+  );
+  box-shadow: 0 2px 2px rgba(255, 255, 255, 0.4) inset,
+    0 0 0 1.5px rgba(13, 13, 13, 0.28),
+    0 42px 80px -30px rgba(13, 13, 13, 0.42),
+    0 12px 28px -16px rgba(13, 13, 13, 0.3);
+}
+.iphone::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50px;
+  background: #0a0a0a;
+  z-index: 0;
+}
+.iphone-screen {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  border-radius: 46px;
+  overflow: hidden;
+  background: var(--app-screen);
+  display: flex;
+  flex-direction: column;
+}
+.iphone-island {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 98px;
+  height: 28px;
+  background: #000;
+  border-radius: 999px;
+  z-index: 6;
+}
+.iphone-btn {
+  position: absolute;
+  z-index: 0;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #c4c9d2 0%, #7d838d 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.iphone-btn.action { left: -2px; top: 17.5%; width: 3px; height: 4.2%; }
+.iphone-btn.vol-up { left: -2px; top: 24.5%; width: 3px; height: 6.7%; }
+.iphone-btn.vol-dn { left: -2px; top: 32.5%; width: 3px; height: 6.7%; }
+.iphone-btn.power  { right: -2px; top: 25.5%; width: 3px; height: 10%; }
+.iphone-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 30px 7px;
+  flex-shrink: 0;
+  color: var(--app-ink);
+}
+.iphone-statusbar .ip-time {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.iphone-statusbar .ip-icons {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.iphone-statusbar .ip-icons svg {
+  display: block;
+}
+.iphone-appbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px 12px;
+  border-bottom: 1px solid var(--app-line);
+  flex-shrink: 0;
+}
+.iphone-appbar .hiw-head-logo {
+  display: inline-flex;
+  color: var(--app-ink);
+  flex-shrink: 0;
+}
+.iphone-appbar .ip-appbar-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-ink);
+  line-height: 1.2;
+}
+.iphone-appbar .ip-appbar-mission {
+  font-size: 11px;
+  color: var(--app-ink-muted);
+  line-height: 1.3;
+}
+.chat-mockup {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.ip-chat {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 14px 16px 16px;
+}
+.chat-msg {
+  max-width: 82%;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.chat-msg.user {
+  align-self: flex-end;
+  background: var(--app-chip);
+  padding: 9px 15px;
+  border-radius: 20px;
+  color: var(--app-ink);
+}
+.chat-msg.assistant {
+  align-self: flex-start;
+  color: var(--app-ink-muted);
+  padding: 3px 0;
+}
+.typing-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 8px 0 2px;
+}
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--app-ink-muted);
+  animation: typing-bounce 1.4s ease infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+.chat-composer-mock {
+  border-radius: 20px;
+  padding: 10px 14px;
+  background: var(--app-input);
+  border: 1px solid var(--app-line-input);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+.chat-composer-mock .placeholder {
+  flex: 1;
+  font-size: 13.5px;
+  color: var(--app-ink-muted);
+}
+.chat-composer-mock .send-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--app-action);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.chat-composer-mock .send-btn svg {
+  width: 15px;
+  height: 15px;
+  color: var(--app-action-text);
+}
+@media (max-width: 840px) {
+  .feature-row {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing-dots span {
+    animation: none;
+  }
+}

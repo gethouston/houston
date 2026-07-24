@@ -78,10 +78,13 @@ export async function getMoveStatus(
 
 /**
  * The active team's billing summary. Degrades to `null` for the NOT-ENTITLED
- * cases — a gateway that predates billing (404) and a caller it refuses billing
- * detail (403 `personal_space` or plain member) — so the billing UI renders
- * nothing and the degrade surfaces take over. Every other error throws (mirrors
- * `getAgentModelChoice`'s 404 swallow).
+ * cases — a gateway that predates billing (404), a caller it refuses billing
+ * detail (403 `personal_space` or plain member), and a billing-off deployment
+ * (503 `billing not configured`: no `GW_STRIPE_*` set — every prod gateway with
+ * no Stripe, and the kind loop, run this way) — so the billing UI renders
+ * nothing and the degrade surfaces take over. Every other error throws. Mirrors
+ * the engine-client shim's `getBilling` (same 404/403/503 status set), which is
+ * what keeps the 503 from surfacing the red bug toast on team entry (HOU-904).
  */
 export async function getBilling(
   cfg: ControlPlaneConfig,
@@ -92,7 +95,7 @@ export async function getBilling(
   } catch (err) {
     if (
       err instanceof HoustonEngineError &&
-      (err.status === 404 || err.status === 403)
+      (err.status === 404 || err.status === 403 || err.status === 503)
     ) {
       return null;
     }

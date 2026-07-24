@@ -62,6 +62,7 @@ export function handleWorkspaceFiles(
     const files = (Array.isArray(body?.files) ? body.files : []) as {
       name: string;
       contentBase64: string;
+      relPath?: string;
     }[];
     const dir = typeof body?.dir === "string" && body.dir ? body.dir : null;
     return json({ paths: state.importWorkspaceFiles(id, dir, files) });

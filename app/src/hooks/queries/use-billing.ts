@@ -31,8 +31,8 @@ import { useCapabilities } from "../use-capabilities";
 
 /**
  * The active team's billing summary, or `null` when off-entitlement (the wire
- * swallows the not-entitled 404/403 → null). Enabled only for an owner/admin on
- * a team space of a Spaces-capable host.
+ * swallows the not-entitled 404/403 and the billing-off 503 → null). Enabled
+ * only for an owner/admin on a team space of a Spaces-capable host.
  */
 export function useBilling() {
   const { capabilities } = useCapabilities();

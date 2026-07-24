@@ -6,12 +6,13 @@ import { FlagIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { reportError } from "../../lib/error-toast";
+import { skillIntegrationSlugs } from "../../lib/skill-integrations";
 import {
   isStoreCategory,
   storeCategoryLabelKey,
 } from "../../lib/store-categories";
 import { useUIStore } from "../../stores/ui";
-import { AppLogo, appDisplay, useToolkitBySlug } from "../integrations";
+import { IntegrationBadges } from "../integrations";
 import { CreatorChip } from "./creator/creator-chip";
 import { StoreAgentIcon } from "./store-agent-icon";
 import { StoreReportDialog } from "./store-report-dialog";
@@ -138,14 +139,10 @@ export function StoreDetailDialog({
               </div>
             </div>
           )}
-          {agent.integrations.length > 0 && (
-            <div>
-              <p className="mb-1.5 font-medium text-ink">
-                {t("detail.integrations")}
-              </p>
-              <IntegrationBadges toolkits={agent.integrations} />
-            </div>
-          )}
+          <IntegrationBadges
+            toolkits={skillIntegrationSlugs(agent.integrations)}
+            label={t("detail.integrations")}
+          />
           {learnings.length > 0 && (
             <p className="text-ink-muted">
               {t("detail.learnings", { count: learnings.length })}
@@ -161,35 +158,5 @@ export function StoreDetailDialog({
         />
       )}
     </>
-  );
-}
-
-/**
- * The "works with" apps, resolved to real names and logos through the Composio
- * toolkit catalog (the same `appDisplay` path the Integrations tab uses) so the
- * detail dialog never shows a machine slug. While the catalog hasn't loaded, or
- * on a deployment with no integration provider wired, `appDisplay` degrades to
- * a favicon guess and the slug as its name.
- */
-function IntegrationBadges({ toolkits }: { toolkits: string[] }) {
-  const bySlug = useToolkitBySlug();
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {toolkits.map((toolkit) => {
-        const slug = toolkit.toLowerCase();
-        const display = appDisplay(slug, bySlug.get(slug));
-        return (
-          <Badge
-            key={toolkit}
-            variant="outline"
-            className="gap-1.5 py-0.5 pl-1"
-          >
-            <AppLogo display={display} size="sm" className="size-4" />
-            {display.name}
-          </Badge>
-        );
-      })}
-    </div>
   );
 }

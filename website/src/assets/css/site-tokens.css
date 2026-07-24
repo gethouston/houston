@@ -1,0 +1,100 @@
+/*
+ * Houston marketing site — the ONE token layer for the landing page.
+ * =====================================================================
+ * Monochrome editorial system: a white ground, one light-gray section panel,
+ * an ink ladder (near-black #0d0d0d family), hairlines, and a single black
+ * pill CTA. The brand is INK — no accent hue anywhere on the marketing chrome.
+ *
+ * The ONLY colour on the page lives inside the in-hero app mockup, where it is
+ * the product's OWN semantic palette (agent avatars, status dots, the black
+ * primary action). Those values are lifted verbatim from the app's design
+ * tokens (packages/design-tokens) so the mock reads as the real product; each
+ * is documented inline against its DESIGN.md role. They are NOT part of the
+ * marketing palette and never appear on marketing content.
+ *
+ * Single self-hosted family: Hanken Grotesk (OFL, latin subset, variable
+ * 400–700 — covers 400 body + 600 display). No serif, no Google CDN.
+ */
+
+/* ── Self-hosted font (OFL, latin subset, no runtime CDN) ─────────────────── */
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 400 700;              /* variable: body 400 + display 600 */
+  font-display: swap;
+  src: url("/assets/fonts/hanken-grotesk-latin.woff2") format("woff2");
+}
+
+:root {
+  /* ── Monochrome ground + panels ──────────────────────────────────────── */
+  --ground: #ffffff;                 /* the page */
+  --panel: #f4f5f7;                  /* THE one light-gray section panel tone */
+  --panel-raised: #ebedf1;           /* a half-step deeper for nested recess */
+  --card: #ffffff;                   /* cards floating on any ground */
+
+  /* ── Ink ladder (near-black #0d0d0d family) ──────────────────────────── */
+  --ink-strong: #0d0d0d;             /* headlines, the CTA fill — brand ink */
+  --ink: #1c1d21;                    /* primary body text */
+  --ink-muted: #5b5f66;              /* secondary text — 6.0:1 on white, 5.6:1 on panel */
+  --ink-subtle: #6b7078;             /* quiet captions — 5.0:1 on white, 4.6:1 on panel */
+
+  /* ── Hairlines ───────────────────────────────────────────────────────── */
+  --line: rgba(13, 13, 13, 0.09);    /* default hairline on light */
+  --line-strong: rgba(13, 13, 13, 0.14);
+
+  /* ── Black pill CTA + focus ──────────────────────────────────────────── */
+  --action: #0d0d0d;
+  --action-hover: #2a2a2a;
+  --action-text: #ffffff;
+  --focus: #0d0d0d;
+
+  /* ── On-ink text (closing band + footer, ground #0d0d0d) ─────────────── */
+  --on-ink: #ffffff;
+  --on-ink-muted: rgba(255, 255, 255, 0.72);   /* 8.9:1 on #0d0d0d */
+  --on-ink-faint: rgba(255, 255, 255, 0.6);    /* 6.9:1 on #0d0d0d */
+  --line-on-ink: rgba(255, 255, 255, 0.14);
+
+  /* ═══ App mockup — the product's OWN palette (DESIGN.md §4). ══════════════
+     Colour appears ONLY here. Each value is the app's real token. */
+  --app-gutter: #eef1f7;                    /* bg-gutter / --ht-base */
+  --app-screen: #fcfcfc;                    /* bg-background / neutral.50 (the floating screen) */
+  --app-input: #ffffff;                     /* bg-input / base.white */
+  --app-card: rgba(255, 255, 255, 0.68);    /* bg-card / glass.white-68 (cards over the screen) */
+  --app-chip: rgba(13, 13, 13, 0.035);      /* bg-chip / board columns (ink-a035) */
+  --app-hover: rgba(13, 13, 13, 0.05);      /* row / sidebar hover fill */
+  --app-active: rgba(13, 13, 13, 0.06);     /* sidebar selected-row fill */
+  --app-ink: #14161d;                       /* text-ink / cool.ink */
+  --app-ink-muted: #8e8e8e;                 /* text-ink-muted / neutral.500 */
+  --app-line: rgba(60, 70, 120, 0.1);       /* border-line / brand.border-wash */
+  --app-line-input: #e3e3e3;                /* border-line-input */
+  --app-action: #0d0d0d;                    /* bg-action / neutral.950 */
+  --app-action-text: #ffffff;               /* text-action-text */
+  --app-success: #00a240;                   /* status success (light) — the live dot */
+  --app-danger: #e02e2a;                    /* status danger (light) */
+  --app-warning: #e0ac00;                   /* status warning (light) */
+  /* agent-avatar palette (DESIGN.md §4 agent.* — light base, brightened to a
+     gradient top exactly as HoustonAvatar renders it in the product) */
+  --agent-purple-1: #a78bfa;  --agent-purple-2: #5b21b6;
+  --agent-navy-1: #60a5fa;    --agent-navy-2: #1e4d8c;
+  --agent-forest-1: #4ade80;  --agent-forest-2: #1b6b3a;
+  --agent-orange-1: #fb923c;  --agent-orange-2: #b45309;
+  --agent-golden-1: #fbbf24;  --agent-golden-2: #a16207;
+  --agent-crimson-1: #f87171; --agent-crimson-2: #a3261a;
+
+  /* ── Type ────────────────────────────────────────────────────────────── */
+  --sans: "Hanken Grotesk", ui-sans-serif, -apple-system, system-ui,
+    "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "SFMono-Regular", "Menlo", monospace;
+
+  /* ── Rhythm ──────────────────────────────────────────────────────────── */
+  --section-pad: clamp(64px, 9vw, 108px);
+  --gutter: clamp(20px, 5vw, 52px);
+  --measure: 1120px;
+  --panel-radius: clamp(24px, 3vw, 40px);
+
+  /* ── Motion (mirrors DESIGN.md scale/motion) ─────────────────────────── */
+  --dur-fast: 200ms;
+  --dur-elegant: 582ms;
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+}

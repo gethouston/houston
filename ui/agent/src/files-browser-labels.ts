@@ -25,6 +25,10 @@ export interface FilesBrowserLabels {
   breadcrumbs?: string;
   /** Header action labels (promoted from the old status-bar footer). */
   uploadFiles?: string;
+  /** The Upload pill when it opens the files/folder menu (HOU-889). */
+  upload?: string;
+  /** Menu item / empty-state CTA for uploading a whole folder (HOU-889). */
+  uploadFolder?: string;
   openInFileManager?: string;
   downloadAll?: string;
 }
@@ -80,6 +84,8 @@ export const DEFAULT_FILES_BROWSER_LABELS: Required<FilesBrowserLabels> = {
   menuButton: "More actions",
   breadcrumbs: "Folder path",
   uploadFiles: "Upload files",
+  upload: "Upload",
+  uploadFolder: "Upload folder",
   openInFileManager: "Open in File Manager",
   downloadAll: "Download all",
 };

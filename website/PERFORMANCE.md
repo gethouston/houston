@@ -1,10 +1,24 @@
-# Landing performance constraints
+# Space-photo performance constraints
 
-The landing (`src/index.html` + `src/assets/space.*`) renders a full-page space
-photo behind many dark-glass panels. Two hard rules keep it smooth, learned from
-a real regression: the live page was unusable in **Zen (Gecko/Firefox)** —
-~40 fps idle, ~24 fps on scroll, heavy jank — while Chromium and WebKit looked
-fine. Prior verification only tested Chromium + WebKit and missed it.
+These rules were learned on the landing page, which once rendered a full-page,
+`position: fixed` space photo behind many dark-glass panels. That page is now
+**`src/index.njk` + its `src/_includes/landing/` partials + `src/assets/css/landing-*.css`**,
+and its space photo is **hero-only** — the `.hero-sky` layer inside the first
+viewport, not a full-page fixed background. So the specific "full-page fixed
+layer" failure modes below no longer apply to the landing itself.
+
+They still bind everywhere the shared full-page background lives:
+**`src/_includes/space-bg.njk`** (the fixed `.space-bg` photo + scrim + stars,
+styled by **`src/assets/space.css`** and parallaxed by
+**`src/assets/space-scroll.js`**) on every subpage that includes it, and the
+**`.dl-overlay`** download modal (see Rule 2). Treat "the landing page" in the
+rules below as "any surface carrying the full-page space background or the
+download modal."
+
+The two hard rules were learned from a real regression: the live page was
+unusable in **Zen (Gecko/Firefox)** — ~40 fps idle, ~24 fps on scroll, heavy
+jank — while Chromium and WebKit looked fine. Prior verification only tested
+Chromium + WebKit and missed it.
 
 ## Rule 1 — no continuous/idle animation on the full-page background
 
@@ -42,17 +56,16 @@ full-viewport blur during the fade janked the animation itself. Measured
 
 ## Hero mockup aurora — faithful colours, but static and blur-free
 
-The hero `.app-mockup` reproduces the real app's dark theme EXACTLY: the #141416
-gutter base plus the app-shell aurora glow (blue + warm-orange + indigo radial
-gradients, copied verbatim from `app/src/styles/futuristic.css`
-`[data-theme="dark"] body::before`), with translucent board/chat panels
-(`--m-panel`, the `layer-1` token) letting it bleed through. Two
-deliberate deviations from the real app keep both rules above intact: the aurora
-is **static** (the app slowly drifts it — we do not, so it never re-composites
-under the scripted demo), and the translucent panels carry **no
+The hero app-window is a pure-CSS Houston Mission Control (`.win` in
+`src/assets/css/landing-app-window.css`) — no image, no canvas, and **no scripted
+demo** (the old motion-driven `hero-demo.*` mock is gone). It reproduces the real
+app's dark theme: a dark gutter base (`--w-canvas`) plus an aurora bleed, with
+translucent board/chat panels (`--w-panel`) letting it show through. Two
+properties keep both rules above intact: the aurora is **static** (no drift, so
+it never re-composites), and the translucent panels carry **no
 `backdrop-filter`** (the smooth gradient behind them needs no blur to look
-clean). Do not "restore" the drift or the blur — that reintroduces Rule 1/Rule 2
-costs for zero visual gain.
+clean). Do not add a drift or a blur — that reintroduces Rule 1/Rule 2 costs for
+zero visual gain.
 
 ## Gecko can't pan a full-bleed layer at 60 fps
 

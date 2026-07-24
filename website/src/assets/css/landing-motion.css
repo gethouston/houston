@@ -1,0 +1,115 @@
+/*
+ * Motion — a restrained load fade-in for the hero, plus scroll reveals.
+ * Rules (DESIGN.md §5): transform + opacity only, ease-OUT entrances, never
+ * from scale(0). Everything is wrapped so `prefers-reduced-motion: reduce`
+ * and no-JS both fall back to fully-visible static content (no hidden copy).
+ * Toned down: a subtle fade/rise, no hero orchestration theatrics.
+ */
+
+@media (prefers-reduced-motion: no-preference) {
+  html.js .hero-load {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: load-up var(--dur-elegant) var(--ease-entrance) forwards;
+    animation-delay: var(--load-delay, 0ms);
+  }
+
+  html.js .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity var(--dur-elegant) var(--ease-entrance),
+      transform var(--dur-elegant) var(--ease-entrance);
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform;
+  }
+  html.js .reveal.visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes load-up {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A gentle stagger for the hero load — headline first, window last. */
+.hero h1.hero-load {
+  --load-delay: 40ms;
+}
+.hero-sub.hero-load {
+  --load-delay: 120ms;
+}
+.hero-actions.hero-load {
+  --load-delay: 200ms;
+}
+.hero-proof.hero-load {
+  --load-delay: 280ms;
+}
+.hero-frame.hero-load {
+  --load-delay: 360ms;
+}
+
+/* Reveal delay steps for grouped children (both naming schemes). */
+.reveal-d1,
+.reveal-delay-1 {
+  --reveal-delay: 80ms;
+}
+.reveal-d2,
+.reveal-delay-2 {
+  --reveal-delay: 160ms;
+}
+.reveal-d3,
+.reveal-delay-3 {
+  --reveal-delay: 240ms;
+}
+
+/* ── Scripted hero demo — card enter + running pulse ──────────────────────
+   Applied only to JS-created cards (hero-demo.js), which never spawn under
+   prefers-reduced-motion (the script no-ops there), so the static board
+   stands. The Running→Done FLIP is a WAAPI transform inside hero-demo.js. */
+@keyframes hd-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.tcard.hd-enter {
+  animation: hd-card-in var(--dur-elegant) var(--ease-entrance);
+}
+.tcard.running .tc-agent::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--app-warning);
+  vertical-align: middle;
+  animation: hd-pulse 1.4s ease-in-out infinite;
+}
+@keyframes hd-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Typing dots (how-it-works phone thread). */
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tcard.hd-enter {
+    animation: none;
+  }
+  .tcard.running .tc-agent::after {
+    animation: none;
+  }
+}

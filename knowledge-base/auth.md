@@ -309,6 +309,25 @@ failed remote/Keychain clear is logged, never silent, and never blocks local
 cleanup. The desktop hosted-mode **engine bearer clears reactively**: `cacheSession(null)`
 → `["session"]` null → `HostedEngineGate` effect calls `setHostedEngineSessionToken(null)`.
 
+### Identity reset — in-place, no cross-account bleed (HOU-903)
+
+When the signed-in identity CHANGES — a different account signs in, or the current
+one signs out — `resetForIdentityChange()` (`app/src/lib/identity-reset.ts`, called
+from `cacheSession` on a uid change and from `signOut` in `app/src/lib/auth.ts`)
+wipes the whole client-side world so the incoming account never inherits the
+outgoing one's memory. Three things outlive an identity swap and are reset:
+(1) the in-memory query cache via `queryClient.clear()` (stronger than the
+space-switch's scoped `removeQueries` — query keys are resolved from the bearer +
+`x-houston-org`, so EVERY cached read belongs to the outgoing identity);
+(2) the zustand stores (`agents`, `workspaces`, `ui`, `drafts`, `agent-provisioning`
+— they live outside React and survive the sign-out unmount); and (3) the active-space
+pin via `setActiveOrg(null)` (a stale team slug would ride the next account's first
+requests and 403 `not_member`). This is a client-side stale-memory wipe only — the
+gateway is the sole tenancy enforcer and never serves cross-tenant data. On sign-out
+the `<HostedEngineGate>` also swaps `<App/>` for the sign-in screen, so App
+UNMOUNTS; the next identity remounts it fresh (this is also what naturally resets
+App's first-boot splash latch — see teams.md **Spaces > The switcher**).
+
 ## The `identity/` module map (`app/src/lib/identity/`)
 
 | Module | Role |

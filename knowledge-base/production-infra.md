@@ -214,7 +214,22 @@ CI also needs as Secrets:
 - `APPLE_CERTIFICATE` — base64 `.p12`
 - `APPLE_CERTIFICATE_PASSWORD` — password for `.p12`
 
+Windows Authenticode signing (CI-only Secrets, all six or the MSI ships unsigned + a `::warning::`):
+- `AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` — Entra app registration `houston-release-signer` holding the "Artifact Signing Certificate Profile Signer" role on the signing account (client secret expires ~July 2028 — rotate via `az ad app credential reset`)
+- `AZURE_SIGNING_ENDPOINT` — region endpoint, `https://eus.codesigning.azure.net`
+- `AZURE_SIGNING_ACCOUNT` / `AZURE_SIGNING_PROFILE` — Artifact Signing account (`gethouston`, resource group `houston-signing`, eastus) + Public Trust certificate profile (`houston-public-trust`)
+
 **Never hardcode.** Read via `option_env!()` in Rust (compile-time). Pass as env vars in CI.
+
+## Windows Authenticode signing (Azure Artifact Signing)
+
+The SmartScreen "Windows protected your PC" interstitial on the downloaded MSI is a signing + reputation problem, solved in `release.yml`'s `build-windows` job:
+
+- **Service:** Azure Artifact Signing (formerly "Trusted Signing"), account `gethouston` under Taxflow Inc.'s validated org identity. Managed Authenticode certs (short-lived, auto-rotated), Microsoft is the CA.
+- **Wiring:** when the six `AZURE_*` secrets are set, a CI-generated Tauri config overlay sets `bundle.windows.signCommand` to `artifact-signing-cli` (pinned via `cargo install`; overlay written with node because jq is absent on `windows-11-arm`). Tauri then signs every bundled binary (houston-app.exe, sidecars, the MSI itself) during `tauri build` — not a post-hoc MSI-only pass. An overlay, not `tauri.conf.json`, so local builds never touch Azure. Secrets absent → loud `::warning::`, unsigned build stays green; `AZURE_CLIENT_SECRET` set but any sibling var empty → hard `::error::`.
+- **Verification:** a post-build pwsh step hard-fails the release if the MSI signature isn't `Valid` + timestamped (mirrors the macOS notarization checks). Expect signer `CN=Taxflow Inc., O=Taxflow Inc.`.
+- **Two signatures, different jobs:** Authenticode (this section) satisfies Windows/SmartScreen; the Tauri updater minisign `.sig` (`TAURI_SIGNING_PRIVATE_KEY`) satisfies the in-app updater. Both required.
+- **Reputation:** SmartScreen warnings fade as download history accrues per certificate + file hash. To accelerate after the first signed release, submit the MSI at https://www.microsoft.com/wdsi/filesubmission (software-developer flow). Never rotate/delete the Azure signing identity casually — reputation is bound to it.
 
 ## CI/CD (GitHub Actions)
 
@@ -236,7 +251,15 @@ Every `cloud-v*` release builds a SECOND macOS DMG, `Houston_staging_<version>_u
 
 ### Daily cloud cut (`daily-cloud-cut.yml`)
 
-Cuts the `cloud-v*` release automatically at 12:30 UTC Mon–Fri (07:30 America/Bogota, no DST) so the draft is built before the 08:30 daily. Replicates the manual cut: branch from main tip → `scripts/version.sh` → `release: v<version>` commit (lives only under the tag, never pushed to protected main) → annotated `cloud-v<version>` tag pushed with the `RELEASE_CUT_TOKEN` fine-grained PAT (a default-GITHUB_TOKEN tag push would not trigger `release.yml` — recursive-workflow guard). Guards: skips quietly when main has no new commits since the last cut; refuses to cut a red main (failed completed check-runs) and pings the release Slack webhook. Manual/off-schedule cuts: `workflow_dispatch`, optional `version` override.
+Cuts the `cloud-v*` release automatically at 11:52 UTC Mon–Fri (06:52 America/Bogota, no DST) so the draft is built before the 08:30 daily. The early, off-round-minute slot is deliberate: GitHub's `schedule` queue is best-effort and routinely fires 30–120 min late (worst at :00/:30), so never trust it for a hard deadline. Replicates the manual cut: branch from main tip → `scripts/version.sh` → `release: v<version>` commit (lives only under the tag, never pushed to protected main) → annotated `cloud-v<version>` tag pushed with the `RELEASE_CUT_TOKEN` fine-grained PAT (a default-GITHUB_TOKEN tag push would not trigger `release.yml` — recursive-workflow guard). Guards: skips quietly when main has no new commits since the last cut; refuses to cut a red main (failed completed check-runs) and pings the release Slack webhook. After tagging it deletes every never-published `cloud-v*` draft below the new version (release + tag) — an unshipped train's work rolls forward into the new one, and stale drafts risk the operator publishing the wrong build. Manual/off-schedule cuts: `workflow_dispatch`, optional `version` override.
+
+### Linear release stamp (`linear-release-stamp.yml` + `scripts/linear-release-stamp.mjs`)
+
+The train's Linear bookkeeping, as an observer (script exits 0 on Linear failure — a tracker outage can never block a cut or a ship). Two moments:
+- **Cut (tag push):** labels the train `cloud-vX.Y.Z` (exclusive `Release` label group; a stale label from an unshipped draft is swapped). The train = issues the train's PRs resolve via magic words (both squash `(#N)` and `Merge pull request #N` subjects are parsed) **plus everything in App Review at cut time** — App Review means merged-awaiting-verification, so it ships in this build even when a PR forgot the magic words. The label IS the membership record; QA filter = App Review + label.
+- **Publish (ship button):** moves the label's carriers still in App Review (plus magic-word issues from any open state) to Released, comments the release link, appends the internal + WhatsApp changelogs to the release body. Issues merged after the cut lack the label and wait for the next train; an issue QA bounced back to In Progress stays put.
+
+Pure logic lives in `scripts/lib/release-train.mjs` (tested: `scripts/lib/release-train.test.mjs`, wired into the CI vitest list); Linear actions in `scripts/lib/release-stamp-actions.mjs`. Note: at publish, the workflow runs from the **tag's** commit, so stamp fixes only apply to tags cut after they merged.
 
 ### Ship train (`ship-train.yml`) — publish is the ship button
 

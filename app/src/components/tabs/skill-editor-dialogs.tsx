@@ -5,8 +5,11 @@ import type {
 } from "@houston-ai/skills";
 import { SkillEditModal } from "@houston-ai/skills";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { skillDisplayTitle } from "../../lib/humanize-skill-name";
+import { skillIntegrationSlugs } from "../../lib/skill-integrations";
 import type { SkillSummary } from "../../lib/types";
+import { IntegrationBadges } from "../integrations";
 
 /** Copy for the two-step delete: the confirm dialog's title (named by skill),
  *  body, and confirm button. */
@@ -18,8 +21,9 @@ export interface DeleteConfirmLabels {
 
 /**
  * The installed skill's two modal surfaces: its edit modal (the one detail
- * surface, whose footer carries Save/Cancel and — outside read-only mode — the
- * destructive Delete) and the confirm-gated delete that Delete opens. Owns the
+ * surface, whose header names the apps the skill works with and whose footer
+ * carries Save/Cancel and — outside read-only mode — the destructive Delete)
+ * and the confirm-gated delete that Delete opens. Owns the
  * pending-delete handshake so the parent only supplies the open editor + the
  * mutations. In read-only mode the edit modal shows no Delete and the confirm
  * never opens.
@@ -43,7 +47,12 @@ export function SkillEditorDialogs({
   editModalLabels: SkillEditModalLabels;
   deleteConfirm: DeleteConfirmLabels;
 }) {
+  const { t } = useTranslation("skills");
   const [pendingDelete, setPendingDelete] = useState<SkillSummary | null>(null);
+  // Named badges rather than the bare logo pips the cards and rows carry: the
+  // modal is the skill's ONE detail surface, so it has room to spell each app
+  // out. Undefined when the skill declares none, so the header keeps its shape.
+  const integrationSlugs = skillIntegrationSlugs(editingSkill?.integrations);
 
   // The delete mutation surfaces its own error toast via the `call` wrapper, so
   // the row action stays quiet on failure; catch here only to keep the
@@ -67,6 +76,12 @@ export function SkillEditorDialogs({
         }}
         displayName={editingSkill ? skillDisplayTitle(editingSkill) : ""}
         description={editingSkill?.description ?? ""}
+        integrationsSlot={
+          <IntegrationBadges
+            toolkits={integrationSlugs}
+            label={t("detail.integrations")}
+          />
+        }
         editor={editorState}
         onSave={onSaveEditing}
         onDelete={

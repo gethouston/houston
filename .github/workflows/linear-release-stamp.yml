@@ -1,15 +1,19 @@
 # Linear release stamp — the release train's bookkeeping, at both of its moments.
 #
-#   TAG PUSH (cloud-v*)   = the 07:45 cut. Labels the train's Linear issues
-#                           `cloud-vX.Y.Z` so the 08:30 QA review is a filter
-#                           (App Review + that label). GitHub Actions never fires
-#                           on draft-release creation, but the tag push that
+#   TAG PUSH (cloud-v*)   = the morning cut. Labels the train `cloud-vX.Y.Z` —
+#                           issues resolved by the train's PRs (magic words)
+#                           plus everything sitting in App Review at cut time —
+#                           so the 08:30 QA review is a filter (App Review +
+#                           that label). GitHub Actions never fires on
+#                           draft-release creation, but the tag push that
 #                           births the draft does — and it's PAT-authenticated
 #                           (RELEASE_CUT_TOKEN), so it triggers workflows.
 #   RELEASE PUBLISHED     = the ship button (same trigger as
 #                           cloud-updater-manifest.yml / ship-train.yml). Moves
-#                           issues to Released, comments, appends the internal +
-#                           WhatsApp changelogs to the release body.
+#                           the label's carriers still in App Review (plus the
+#                           magic-word issues) to Released, comments, appends
+#                           the internal + WhatsApp changelogs to the release
+#                           body.
 #
 # See scripts/linear-release-stamp.mjs for full behavior. Deliberately an
 # OBSERVER: needs no build outputs, runs beside the train, and the script exits

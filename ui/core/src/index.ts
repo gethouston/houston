@@ -48,6 +48,7 @@ export * from "./components/textarea";
 export * from "./components/toast-container";
 export * from "./components/tooltip";
 export * from "./components/verified-badge";
+export * from "./folder-upload";
 export * from "./hooks/use-houston-event";
 export * from "./hooks/use-mobile";
 export * from "./hooks/use-session-events";

@@ -1,0 +1,157 @@
+{% include "installer-urls.njk" %}
+<script>
+  // Nav scroll state — transparent over the hero, frosted once scrolled.
+  (function () {
+    var nav = document.getElementById("lnav");
+    if (!nav) return;
+    function check() {
+      nav.classList.toggle("scrolled", window.scrollY > 10);
+    }
+    window.addEventListener("scroll", check, { passive: true });
+    check();
+  })();
+
+  // Mobile menu toggle.
+  (function () {
+    var burger = document.getElementById("lnav-burger");
+    var drop = document.getElementById("lnav-drop");
+    var icon = document.getElementById("lnav-burger-icon");
+    if (!burger || !drop) return;
+    burger.addEventListener("click", function () {
+      var open = drop.classList.toggle("open");
+      burger.setAttribute("aria-expanded", open ? "true" : "false");
+      icon.innerHTML = open
+        ? '<path d="M18 6L6 18M6 6l12 12"/>'
+        : '<path d="M4 6h16M4 12h16M4 18h16"/>';
+    });
+    drop.querySelectorAll("a").forEach(function (a) {
+      a.addEventListener("click", function () {
+        drop.classList.remove("open");
+        burger.setAttribute("aria-expanded", "false");
+        icon.innerHTML = '<path d="M4 6h16M4 12h16M4 18h16"/>';
+      });
+    });
+  })();
+
+  // Scroll reveal (opacity/transform only; CSS gates it behind html.js +
+  // prefers-reduced-motion, so this is a no-op visual when motion is reduced).
+  (function () {
+    var els = document.querySelectorAll(".reveal");
+    if (!("IntersectionObserver" in window) || !els.length) {
+      els.forEach(function (el) {
+        el.classList.add("visible");
+      });
+      return;
+    }
+    var obs = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            obs.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -60px 0px" }
+    );
+    els.forEach(function (el) {
+      obs.observe(el);
+    });
+  })();
+
+  // Smooth scroll for in-page anchors.
+  document.querySelectorAll('a[href^="#"]').forEach(function (link) {
+    link.addEventListener("click", function (e) {
+      var id = link.getAttribute("href");
+      if (id.length < 2) return;
+      var target = document.querySelector(id);
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+
+  // Analytics — forwards each conversion event to PostHog and GA4 (globals used
+  // by the download gate below). Each sink is independent; pageviews come from
+  // the base layout, not here.
+  function track(name, props) {
+    if (typeof window === "undefined") return;
+    var payload = props || {};
+    if (window.posthog && window.posthog.capture) {
+      try {
+        window.posthog.capture(name, payload);
+      } catch (e) {}
+    }
+    if (typeof window.gtag === "function") {
+      try {
+        window.gtag("event", name, payload);
+      } catch (e) {}
+    }
+  }
+
+  // OS detection — decides which gated modal a download trigger opens, unless
+  // the trigger pins one explicitly via data-dl-os (the per-OS CTA tiles do).
+  function detectOs() {
+    var uaData = navigator.userAgentData;
+    var hay =
+      ((uaData && uaData.platform ? uaData.platform : "") +
+        " " +
+        (navigator.userAgent || "")).toLowerCase();
+    if (hay.indexOf("win") !== -1) return "windows";
+    if (hay.indexOf("mac") !== -1) return "mac";
+    return "other";
+  }
+
+  // Windows x64 vs ARM64: show exactly ONE arch button, default x64, reveal
+  // ARM64 only on a positive signal. The help accordion's "Wrong one?" link is
+  // the one-click escape hatch.
+  (function () {
+    var x64 = document.getElementById("dl-windows-x64-btn");
+    var arm64 = document.getElementById("dl-windows-arm64-btn");
+    if (!x64 || !arm64) return;
+    function show(shown, hidden) {
+      shown.classList.remove("btn-outline");
+      shown.classList.add("btn-ink");
+      shown.style.display = "";
+      hidden.classList.remove("btn-ink");
+      hidden.classList.add("btn-outline");
+      hidden.style.display = "none";
+    }
+    arm64.style.display = "none";
+    var ua = (navigator.userAgent || "").toLowerCase();
+    if (ua.indexOf("arm64") !== -1 || ua.indexOf("aarch64") !== -1) {
+      show(arm64, x64);
+    } else {
+      var uaData = navigator.userAgentData;
+      if (uaData && uaData.getHighEntropyValues) {
+        uaData
+          .getHighEntropyValues(["architecture"])
+          .then(function (info) {
+            if (info && info.architecture === "arm") show(arm64, x64);
+          })
+          .catch(function () {});
+      }
+    }
+    var switchLink = document.getElementById("dl-windows-switch-arch");
+    if (switchLink) {
+      switchLink.addEventListener("click", function (e) {
+        e.preventDefault();
+        if (arm64.style.display === "none") show(arm64, x64);
+        else show(x64, arm64);
+        track("windows_arch_switched", {});
+      });
+    }
+  })();
+</script>
+
+<!-- Landing behaviours as standalone deferred assets. Order matters for the
+     hero demo: data + clock + stage define the globals hero-demo.js reads.
+     Each guards prefers-reduced-motion itself and no-ops without its markup. -->
+<script defer src="/assets/hero-demo-data.js"></script>
+<script defer src="/assets/hero-demo-clock.js"></script>
+<script defer src="/assets/hero-demo-stage.js"></script>
+<script defer src="/assets/hero-demo.js"></script>
+<script defer src="/assets/hero-cycling.js"></script>
+<script defer src="/assets/how-it-works.js"></script>
+{% include "landing/scripts-download.njk" %}

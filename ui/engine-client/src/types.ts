@@ -961,7 +961,7 @@ export interface SkillSummary {
   featured: boolean;
   /** Composio toolkit slugs this skill touches (e.g. ["gmail", "slack"]). */
   integrations: string[];
-  /** Image URL or Microsoft Fluent 3D Emoji slug (e.g. "rocket"). */
+  /** Image URL or Microsoft Fluent Emoji slug (e.g. "rocket"). */
   image: string | null;
   /** Legacy structured inputs. Parsed for compatibility, ignored by composer UX. */
   inputs: SkillInputDef[];

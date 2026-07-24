@@ -156,6 +156,9 @@
       "cancel": "Cancelar"
     },
     "uploadFiles": "Enviar arquivos",
+    "upload": "Enviar",
+    "uploadFolder": "Enviar pasta",
+    "folderDropFailed": "Não conseguimos ler essa pasta. Tente o botão Enviar.",
     "downloadAll": "Baixar tudo",
     "columns": {
       "name": "Nome",

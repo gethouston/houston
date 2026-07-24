@@ -156,6 +156,9 @@
       "cancel": "Cancel"
     },
     "uploadFiles": "Upload files",
+    "upload": "Upload",
+    "uploadFolder": "Upload folder",
+    "folderDropFailed": "We could not read that folder. Try the Upload button instead.",
     "downloadAll": "Download all",
     "columns": {
       "name": "Name",

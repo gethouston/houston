@@ -6,9 +6,9 @@
  * - mergeUniqueFiles: append-and-dedupe helper for File[] state.
  */
 
+import { collectDroppedItems, resolveDroppedFiles } from "@houston-ai/core";
 import type { DragEvent, DragEventHandler } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { collectDroppedItems, resolveDroppedFiles } from "./attachment-folders";
 import { fileIdentityKey } from "./clipboard-files";
 
 /**

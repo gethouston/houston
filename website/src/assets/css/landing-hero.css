@@ -1,0 +1,246 @@
+/*
+ * Landing hero (clean, white, editorial), the ink closing band + per-OS
+ * download tiles, and the invite-code download modals. Palette/type from
+ * site-tokens.css. The app-window mock lives in its own file.
+ */
+
+/* ── Hero ────────────────────────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  padding: clamp(120px, 15vw, 168px) var(--gutter) 0;
+  text-align: center;
+  background: var(--ground);
+}
+.hero-inner {
+  max-width: 880px;
+  margin: 0 auto;
+  position: relative;
+}
+.hero h1 {
+  font-weight: 600;
+  font-size: clamp(22px, 4.6vw, 54px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  color: var(--ink-strong);
+  margin: 0 auto 22px;
+  max-width: 22ch;
+}
+.hero-sub {
+  font-size: clamp(16.5px, 1.7vw, 20px);
+  line-height: 1.5;
+  color: var(--ink-muted);
+  max-width: 52ch;
+  margin: 0 auto 30px;
+  font-weight: 400;
+  text-wrap: balance;
+}
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ── Cycling headline word (blur-letter-stagger) ─────────────────────────── */
+.hero-cycling-word {
+  display: inline;
+  position: relative;
+  vertical-align: bottom;
+}
+.hero-cycling-word .cycling-word {
+  display: inline-block;
+  position: relative;
+  white-space: nowrap;
+}
+.hero-cycling-word .cycling-word.is-exiting {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.hero-cycling-word .cycling-letter {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(12px);
+  transform: translateY(6px);
+  transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    filter 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: opacity, filter, transform;
+}
+.hero-cycling-word .cycling-letter.is-visible {
+  opacity: 1;
+  filter: blur(0px);
+  transform: translateY(0);
+}
+.hero-cycling-word .cycling-letter.is-exiting {
+  opacity: 0;
+  filter: blur(12px);
+  transform: translateY(-16px) scale(1.08);
+  transition: opacity 0.22s cubic-bezier(0.55, 0.085, 0.68, 0.53),
+    filter 0.28s cubic-bezier(0.55, 0.085, 0.68, 0.53),
+    transform 0.28s cubic-bezier(0.55, 0.085, 0.68, 0.53);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-cycling-word .cycling-letter {
+    transition: none;
+    filter: none;
+    transform: none;
+  }
+}
+
+/* ── App window on its soft-rounded panel with one layered shadow ────────── */
+.hero-frame {
+  position: relative;
+  max-width: calc(var(--measure) + 2 * var(--gutter));
+  margin: clamp(44px, 6vw, 72px) auto 0;
+  padding: clamp(18px, 3vw, 40px) clamp(18px, 3vw, 40px) 0;
+  background: var(--panel);
+  border-top-left-radius: var(--panel-radius);
+  border-top-right-radius: var(--panel-radius);
+}
+.hero-stage {
+  position: relative;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+/* One believable layered shadow that lifts the window off the panel. */
+.hero-stage .win {
+  box-shadow: 0 2px 4px rgba(13, 13, 13, 0.04),
+    0 24px 48px -20px rgba(13, 13, 13, 0.22),
+    0 48px 96px -40px rgba(13, 13, 13, 0.24);
+}
+
+/* ── Download gate modal (invite-code closed beta — light, behaviour kept) ── */
+.dl-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(13, 13, 13, 0.42);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-fast) var(--ease-standard),
+    visibility var(--dur-fast) var(--ease-standard);
+}
+.dl-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+.dl-card {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 30px;
+  color: var(--ink);
+  box-shadow: 0 32px 80px -32px rgba(13, 13, 13, 0.4);
+  transform: translateY(8px) scale(0.98);
+  transition: transform var(--dur-elegant) var(--ease-entrance);
+}
+.dl-overlay.open .dl-card {
+  transform: translateY(0) scale(1);
+}
+.dl-card h3 {
+  font-weight: 600;
+  font-size: 23px;
+  letter-spacing: -0.02em;
+  color: var(--ink-strong);
+  margin-bottom: 8px;
+}
+.dl-card > p {
+  font-size: 14.5px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+.dl-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: var(--ground);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  font-size: 16px;
+  font-family: var(--sans);
+  margin-bottom: 14px;
+  transition: border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+}
+.dl-input::placeholder {
+  color: var(--ink-subtle);
+}
+.dl-input:focus {
+  outline: none;
+  border-color: var(--ink-strong);
+}
+.dl-input.valid {
+  border-color: var(--ink-strong);
+  box-shadow: 0 0 0 3px rgba(13, 13, 13, 0.12);
+}
+.dl-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dl-actions .btn {
+  width: 100%;
+}
+.btn-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.dl-divider {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-subtle);
+  margin: 4px 0;
+}
+.dl-fineprint {
+  font-size: 11px;
+  color: var(--ink-subtle);
+  line-height: 1.5;
+  margin: 8px 0 0;
+  text-align: center;
+}
+.dl-fineprint a {
+  color: var(--ink-muted);
+  text-decoration: underline;
+}
+.dl-skip {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.dl-skip summary {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  list-style: none;
+}
+.dl-skip summary::-webkit-details-marker {
+  display: none;
+}
+.dl-skip-body {
+  margin-top: 10px;
+}
+.dl-skip-body p {
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.dl-skip-body a {
+  font-size: 13px;
+  color: var(--ink-strong);
+  font-weight: 600;
+  text-decoration: underline;
+}

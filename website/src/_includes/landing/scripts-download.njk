@@ -1,0 +1,198 @@
+<script>
+  // Download gate modals (invite-code closed beta) — Mac + Windows. Uses the
+  // global track()/detectOs() helpers defined in scripts.njk (loaded first).
+  (function () {
+    var CODE = "{{ env.downloadCode }}";
+    var overlay = document.getElementById("dl-overlay");
+    var input = document.getElementById("dl-code");
+    var btn = document.getElementById("dl-btn");
+    var waitlistLink = document.getElementById("dl-waitlist");
+    var skipDetails = document.getElementById("dl-skip");
+    var xLink = document.getElementById("dl-x-link");
+    var dmgUrl = null;
+    var winX64Url = null;
+    var winArm64Url = null;
+    var unlockedFired = false;
+    var winUnlockedFired = false;
+    var lastSource = "unknown";
+    var winOverlay = document.getElementById("dl-overlay-windows");
+    var winInput = document.getElementById("dl-windows-code");
+    var winLastSource = "unknown";
+    var winX64Btn = document.getElementById("dl-windows-x64-btn");
+    var winArm64Btn = document.getElementById("dl-windows-arm64-btn");
+    var winWaitlist = document.getElementById("dl-windows-waitlist");
+    var winSkipDetails = document.getElementById("dl-windows-skip");
+    if (!overlay || !input || !btn) return;
+
+    function openMacModal(source) {
+      lastSource = source || "unknown";
+      track("app_download_clicked", { os: "mac" });
+      track("download_clicked", { source: lastSource });
+      overlay.classList.add("open");
+      setTimeout(function () {
+        input.focus();
+      }, 200);
+    }
+    function openWindowsModal(source) {
+      if (!winOverlay) return;
+      winLastSource = source || "unknown";
+      track("app_download_clicked", { os: "windows" });
+      track("windows_modal_opened", { source: winLastSource });
+      winOverlay.classList.add("open");
+      setTimeout(function () {
+        if (winInput) winInput.focus();
+      }, 200);
+    }
+    function codeMatches(el) {
+      return el.value.trim().toLowerCase() === CODE.toLowerCase();
+    }
+    function refreshMacGate() {
+      var match = codeMatches(input);
+      input.classList.toggle("valid", match);
+      if (match && dmgUrl) {
+        btn.href = dmgUrl;
+        btn.classList.remove("btn-disabled");
+        if (!unlockedFired) {
+          unlockedFired = true;
+          track("download_unlocked", { source: lastSource });
+        }
+      } else {
+        btn.removeAttribute("href");
+        btn.classList.add("btn-disabled");
+      }
+    }
+    function setWinButton(button, url, match) {
+      if (!button) return;
+      if (match && url) {
+        button.href = url;
+        button.classList.remove("btn-disabled");
+      } else {
+        button.removeAttribute("href");
+        button.classList.add("btn-disabled");
+      }
+    }
+    function refreshWinGate() {
+      if (!winInput) return;
+      var match = codeMatches(winInput);
+      winInput.classList.toggle("valid", match);
+      setWinButton(winX64Btn, winX64Url, match);
+      setWinButton(winArm64Btn, winArm64Url, match);
+      if (match && !winUnlockedFired) {
+        winUnlockedFired = true;
+        track("windows_download_unlocked", { source: winLastSource });
+      }
+    }
+
+    // Resolve installer URLs; re-run both gates on every path (success, missing
+    // asset, network error, rate-limit) so a code typed while in flight unlocks.
+    var RELEASES_PAGE = "https://github.com/gethouston/houston/releases";
+    window
+      .houstonInstallerUrls()
+      .then(function (urls) {
+        dmgUrl = urls.dmg;
+        winX64Url = urls.winX64;
+        winArm64Url = urls.winArm64;
+      })
+      .catch(function () {})
+      .then(function () {
+        dmgUrl = dmgUrl || RELEASES_PAGE;
+        winX64Url = winX64Url || RELEASES_PAGE;
+        winArm64Url = winArm64Url || RELEASES_PAGE;
+        refreshMacGate();
+        refreshWinGate();
+      });
+
+    // Triggers. data-dl-os pins a modal (the CTA tiles); otherwise detectOs.
+    document.querySelectorAll("[data-dl-trigger]").forEach(function (el) {
+      el.addEventListener("click", function (e) {
+        e.preventDefault();
+        var source = el.getAttribute("data-dl-source") || "nav";
+        var os = el.getAttribute("data-dl-os") || detectOs();
+        if (os === "windows") openWindowsModal(source);
+        else openMacModal(source);
+      });
+    });
+
+    overlay.addEventListener("click", function (e) {
+      if (e.target === overlay) overlay.classList.remove("open");
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        overlay.classList.remove("open");
+        if (winOverlay) winOverlay.classList.remove("open");
+      }
+    });
+    input.addEventListener("input", refreshMacGate);
+    btn.addEventListener("click", function (e) {
+      if (btn.classList.contains("btn-disabled")) {
+        e.preventDefault();
+        return;
+      }
+      track("download_started", { source: lastSource, dmg_url: dmgUrl || "" });
+    });
+    if (waitlistLink) {
+      waitlistLink.addEventListener("click", function () {
+        track("waitlist_clicked", { source: lastSource });
+      });
+    }
+    if (skipDetails) {
+      skipDetails.addEventListener("toggle", function () {
+        if (skipDetails.open) track("skip_waitlist_expanded", { source: lastSource });
+      });
+    }
+    if (xLink) {
+      xLink.addEventListener("click", function () {
+        track("x_follow_clicked", { source: lastSource });
+      });
+    }
+
+    if (winOverlay) {
+      winOverlay.addEventListener("click", function (e) {
+        if (e.target === winOverlay) winOverlay.classList.remove("open");
+      });
+      if (winInput) winInput.addEventListener("input", refreshWinGate);
+      if (winX64Btn) {
+        winX64Btn.addEventListener("click", function (e) {
+          if (winX64Btn.classList.contains("btn-disabled")) {
+            e.preventDefault();
+            return;
+          }
+          track("windows_download_started", {
+            source: winLastSource,
+            arch: "x64",
+            msi_url: winX64Url || "",
+          });
+        });
+      }
+      if (winArm64Btn) {
+        winArm64Btn.addEventListener("click", function (e) {
+          if (winArm64Btn.classList.contains("btn-disabled")) {
+            e.preventDefault();
+            return;
+          }
+          track("windows_download_started", {
+            source: winLastSource,
+            arch: "arm64",
+            msi_url: winArm64Url || "",
+          });
+        });
+      }
+      if (winWaitlist) {
+        winWaitlist.addEventListener("click", function () {
+          track("windows_waitlist_clicked", { source: winLastSource });
+        });
+      }
+      if (winSkipDetails) {
+        winSkipDetails.addEventListener("toggle", function () {
+          if (winSkipDetails.open)
+            track("windows_arch_help_expanded", { source: winLastSource });
+        });
+      }
+    }
+
+    // Auto-open the Mac gate when arriving via /#download.
+    if (window.location.hash === "#download") {
+      openMacModal("hash");
+    }
+  })();
+</script>

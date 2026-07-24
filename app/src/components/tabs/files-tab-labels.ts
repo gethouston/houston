@@ -25,6 +25,8 @@ export function buildBrowserLabels(t: TFunction<"agents">): FilesBrowserLabels {
     menuButton: t("files.menuButton"),
     breadcrumbs: t("files.breadcrumbs"),
     uploadFiles: t("files.uploadFiles"),
+    upload: t("files.upload"),
+    uploadFolder: t("files.uploadFolder"),
     openInFileManager: t("files.openInFileManager"),
     downloadAll: t("files.downloadAll"),
   };

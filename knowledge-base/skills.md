@@ -55,7 +55,7 @@ last_used: 2026-04-25
 category: research                 # tab in picker; missing = "Other"
 featured: yes                      # showcase on chat empty-state cards
 image: magnifying-glass-tilted-left
-                                   # Fluent 3D emoji slug OR full https URL
+                                   # Fluent emoji slug (flat 2D) OR full https URL
 integrations: [tavily, gmail]      # Composio toolkit slugs (lowercase)
 ---
 
@@ -74,8 +74,46 @@ Step-by-step instructions Claude follows when the Skill runs.
 | `created` / `last_used` | string | unset | YYYY-MM-DD. Engine maintains. |
 | `category` | string | unset | Picker tab grouping. Missing → falls under "Other". |
 | `featured` | bool | `false` | Accepts `yes` / `true` / `1` / `on`. Surfaces on the empty-chat showcase. |
-| `image` | string | unset | Either an `https://...` URL OR a Fluent 3D Emoji slug (lowercased folder name from [microsoft/fluentui-emoji/assets](https://github.com/microsoft/fluentui-emoji/tree/main/assets), spaces → dashes). Resolved frontend-side via `resolveSkillImage`. |
-| `integrations` | string[] | `[]` | Composio toolkit slugs. Drives the small logo row on the card. |
+| `image` | string | unset | Either an `https://...` URL OR a Fluent Emoji slug (rendered as the flat 2D variant) (lowercased folder name from [microsoft/fluentui-emoji/assets](https://github.com/microsoft/fluentui-emoji/tree/main/assets), spaces → dashes). Resolved frontend-side via `resolveSkillImage`. |
+| `integrations` | string[] | `[]` | Composio toolkit slugs. Drives the logo row on every skill surface (see "Connected apps on skill surfaces"). |
+
+## Connected apps on skill surfaces (`integrations:`)
+
+The frontmatter's `integrations:` slugs are rendered on **four** surfaces, all
+from one normalizer and two shared app components (HOU-794):
+
+- `app/src/lib/skill-integrations.ts` — `skillIntegrationSlugs()` trims,
+  lowercases, drops blanks and dedupes the hand-authored YAML list, preserving
+  author order. The Composio catalog is keyed by lowercase slug, so an
+  un-normalized `Gmail` silently misses it and degrades to the favicon guess.
+  Pure, node:test-covered (`app/tests/skill-integrations.test.ts`).
+- `app/src/components/integrations/integration-chips.tsx` — `IntegrationChips`,
+  the 16px logo pips + "+N" overflow (renamed from `AgentIntegrationChips` and
+  moved into `integrations/`; the new-agent store cards use the same component).
+  Pips resolve through `appDisplay` + `useToolkitBySlug` and reuse `AppLogo`
+  (new `xs` size) for its per-URL failure latch; each pip's tooltip is the app's
+  REAL name, never the slug.
+- `app/src/components/integrations/integration-badges.tsx` — `IntegrationBadges`,
+  the richer Badge + logo + name row for detail surfaces, extracted from
+  `store-view/store-detail-dialog.tsx` and now shared with the skill edit modal.
+- `app/src/components/skill-integration-chips.tsx` — `skillIntegrationChips()`
+  returns the chips node **or `undefined`**, because every host puts it in an
+  optional slot with its own spacing; a skill with no integrations must lay out
+  exactly as before.
+
+| Surface | Component | Where |
+|---|---|---|
+| Skill cards (chat empty state, New Mission picker) | pips in `SkillCard`'s `footer` slot | `use-agent-chat-panel.tsx`, `new-mission-picker-skill-list.tsx` |
+| Installed-skills strip rows | pips in `CatalogRow`'s `trailing`, before the chevron (cap 3) | `tabs/installed-skills-strip.tsx` |
+| Skill edit modal | named badges under the description | `tabs/skill-editor-dialogs.tsx` → `SkillEditModal`'s `integrationsSlot` |
+| Chat skill invocation card | pips under the description | `user-skill-message.tsx` (from the marker's `integrations`) |
+
+`SkillEditModal` (`ui/skills/`) stays props-only: it takes `integrationsSlot?:
+ReactNode`, never slugs, because resolving a slug to a name/logo is a
+Composio-catalog concern that belongs to `app/`. Its heading copy is
+`skills:detail.integrations` ("Works with"). The modal was split to hold the
+200-line law: `skill-edit-modal-labels.ts` (labels + defaults) and
+`skill-edit-modal-parts.tsx` (the body/footer states).
 
 ## Render pipeline
 
@@ -184,10 +222,17 @@ save/delete) lives in `useSkillSurface` (`editingSkillName` + `editorState`); la
 `SkillDetailPage` / `SkillDetailHeaderActions` components were **deleted**; the
 previous inline-editor panel (`installed-skill-editor.tsx`, `col-span-full` expansion)
 was **replaced** by the modal.
-The modal fetches the skill's real SKILL.md description on demand via the
+The modal fetches the skill's real SKILL.md on demand via the
 `POST .../skills/community/preview` route (`packages/host/src/skills/preview.ts`,
 read-only, no vfs) before the user commits to install; install stays enabled
-even if that fetch fails. The shared
+even if that fetch fails. `CommunitySkillPreview` (`packages/protocol/src/domain/skill.ts`,
+mirrored in `ui/engine-client/src/types.ts` + `ui/skills/src/types.ts`) carries
+`title/description/image/category/tags` PLUS `integrations` (the frontmatter
+`integrations:` toolkit slugs, so the modal can show which apps the skill
+connects) and `content` (the SKILL.md body with frontmatter stripped — the
+`body` half of `parseSkillMd`, never re-stripped client-side; `null` only when
+the frontmatter failed to parse and the preview degraded to the empty shape).
+The shared
 `locateSkillMd` (`github-lookup.ts`) resolves the SKILL.md in three cost-ordered
 tiers — cheap raw-CDN path guesses, then a shallow tree scan (≤2 small
 non-recursive `api.github.com` calls that fuzzy-match `skills/*` dir names and
@@ -353,7 +398,7 @@ When the user asks "create a skill that does X", Claude should:
 2. Write `~/.houston/workspaces/<Workspace>/<Agent>/.agents/skills/<slug>/SKILL.md` with the full frontmatter schema above.
 3. Set `description` carefully — it's the trigger phrase Claude itself will use for tool matching later.
 4. Default to `featured: yes` for new Skills until proven otherwise (so the user actually finds them).
-5. Include an `image` slug — pick a relevant Fluent 3D emoji (browse the assets folder).
+5. Include an `image` slug — pick a relevant Fluent emoji (browse the assets folder).
 6. Body: at least an `## Instructions` or `## Procedure` section.
 
 ### Naming rules — non-technical users only

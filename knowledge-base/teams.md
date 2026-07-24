@@ -376,17 +376,44 @@ per team, each `{ id: "org:" + slug, kind: "org" }` where `slug` is `[a-f0-9]{16
   recorded on `window.__HOUSTON_ACTIVE_ORG__` and pushed into the live client in
   place (no rebuild); a fresh/repointed client re-applies it (`applyConfig`), and
   the local host's header-free `/v1/ws` transport ignores it.
-- **Switch = full cache drop** (`app/src/stores/workspaces.ts` `setCurrent` →
-  `resetCacheForSpaceChange`, `app/src/lib/space-cache.ts`): query keys are NOT
-  org-scoped (the active space is only a request header), so team A and team B
+- **Switch = scoped cache drop** (`app/src/stores/workspaces.ts` `setCurrent` →
+  `resetCacheForSpaceChange`, `app/src/lib/space-cache.ts`): tenant query keys are
+  NOT org-scoped (the active space is only a request header), so team A and team B
   collide on the same key. On a REAL space change `setActiveOrg` returns `true`
-  and the store calls `queryClient.removeQueries()` (not `invalidate`, which would
+  and the store `removeQueries` with a predicate that drops every key EXCEPT the
+  user-scoped, space-INVARIANT ones (`removeQueries` not `invalidate`, which would
   leave inactive-query data serving the prior space's rows on navigation, a
-  cross-tenant flash). Everything (including `capabilities`, whose `role` is
-  per-space) refetches clean under the new space, and the event stream is
-  re-established so the new `?org=` applies. A same-space reselect, and every
-  switch on a personal-only host (every id maps to `null`), is a no-op. First
-  load pins the active space before the first fetches fire (no reset needed then).
+  cross-tenant flash). Tenant reads (including `capabilities`, whose `role` is
+  per-space) refetch clean under the new space; the event stream re-establishes so
+  the new `?org=` applies. **Preserved (HOU-907):** `["session"]` and the durable
+  onboarding flags (`["onboarding-pending"]`, `["onboarding-completed", uid]`) —
+  purging them would flap the App.tsx auth/onboarding gates and re-blank the shell
+  mid-switch, and they're identical across spaces (not tenant data). Their roots
+  are centralized in `app/src/lib/query-keys.ts` (`session`/`onboardingPending`/
+  `onboardingCompleted`) so the predicate references them without importing the
+  hooks. A same-space reselect, and every switch on a personal-only host (every id
+  maps to `null`), is a no-op. First load pins the active space before the first
+  fetches fire (no reset needed then).
+- **The switch is IN-PLACE — no splash (HOU-907).** `App.tsx`'s
+  `WorkspaceLoading` splash is FIRST-BOOT only: a `bootedRef` latch flips once the
+  full boot gate (agents/workspaces/capabilities/onboarding flags loaded) clears,
+  and the gate is `!booted && <condition>` thereafter. A switch re-flips
+  capabilities + onboarding-flag loading and re-runs `loadAgents`, but the chrome
+  is zustand-backed and every pane is skeleton-capable + capabilities-undefined-
+  safe, so it transitions in place instead of unmounting the shell. The latch
+  resets naturally on an identity change: sign-out drops the session, so
+  `<HostedEngineGate>` (which wraps `<App/>`) swaps to the sign-in screen and
+  unmounts the subtree — the next identity remounts App with `booted` back at
+  false. E2E: `spaces-gating.spec.ts` switches spaces through the real UI.
+- **Provider-connection state is PER-SPACE** (`app/src/lib/provider-status-cache.ts`,
+  HOU-906). Provider "connected" cards seed from a localStorage snapshot the query
+  reset can't reach; that snapshot is now keyed by the active org slug
+  (`houston.providerStatusCache.v2.<scope>`, personal ⇒ `"personal"`, resolved
+  from `window.__HOUSTON_ACTIVE_ORG__`) so a switch reads the NEW space's own
+  snapshot (or none ⇒ loading skeleton). `use-provider-statuses.ts` re-seeds and
+  re-probes on a workspace-id change, gating the live probe on the new space's
+  agents having loaded (the probe routes per-agent, so it must not fire at the old
+  agent under the new org header). The old un-scoped `.v1` key is orphaned + purged.
 - **Restore last space**: `resolveActiveWorkspace` (`app/src/lib/workspace-switch.ts`)
   restores the persisted `last_workspace_id`, else default, else first.
 

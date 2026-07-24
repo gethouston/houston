@@ -3,10 +3,11 @@ import { expect, test } from "./support/fixtures";
 /**
  * The Files tab on the host adapter (HOU-677 follow-through): the default
  * Drive-style card grid with per-folder navigation, the Finder-style list
- * view behind the toggle, uploads through the header button, context-menu
- * rename + delete, and the browser-mode header action ("Download all" —
- * reveal-in-OS only exists on a co-located desktop). The fake host models
- * the real host's `files*` routes (see `@houston/fake-host` routes-files.ts).
+ * view behind the toggle, uploads through the header's Upload menu (files or
+ * a whole folder, HOU-889), context-menu rename + delete, and the
+ * browser-mode header action ("Download all" — reveal-in-OS only exists on a
+ * co-located desktop). The fake host models the real host's `files*` routes
+ * (see `@houston/fake-host` routes-files.ts).
  */
 
 async function openFilesTab(page: import("@playwright/test").Page) {
@@ -14,6 +15,21 @@ async function openFilesTab(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Files", exact: true }).click();
   // Seeded workspace: Q3 report.pdf + Docs/sales.csv.
   await expect(page.getByText("Q3 report.pdf")).toBeVisible();
+}
+
+/** Open the header's Upload menu and pick an item, resolving its filechooser. */
+async function openUploadChooser(
+  page: import("@playwright/test").Page,
+  item: "Upload files" | "Upload folder",
+) {
+  const [chooser] = await Promise.all([
+    page.waitForEvent("filechooser"),
+    (async () => {
+      await page.getByRole("button", { name: "Upload", exact: true }).click();
+      await page.getByRole("menuitem", { name: item }).click();
+    })(),
+  ]);
+  return chooser;
 }
 
 test("grid is the default: cards, folder navigation, breadcrumbs", async ({
@@ -55,9 +71,9 @@ test("list view keeps kind, size, and both date columns", async ({ page }) => {
   await expect(page.getByText("PDF Document")).toBeVisible();
 
   // Browser build: no OS file manager — the header offers Download all +
-  // Upload files, never "Open in File Manager".
+  // the Upload menu, never "Open in File Manager".
   await expect(
-    page.getByRole("button", { name: "Upload files" }),
+    page.getByRole("button", { name: "Upload", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Download all" }),
@@ -65,13 +81,10 @@ test("list view keeps kind, size, and both date columns", async ({ page }) => {
   await expect(page.getByText("Open in File Manager")).toHaveCount(0);
 });
 
-test("uploads a file through the header button", async ({ page }) => {
+test("uploads a file through the header's Upload menu", async ({ page }) => {
   await openFilesTab(page);
 
-  const [chooser] = await Promise.all([
-    page.waitForEvent("filechooser"),
-    page.getByRole("button", { name: "Upload files" }).click(),
-  ]);
+  const chooser = await openUploadChooser(page, "Upload files");
   await chooser.setFiles({
     name: "notes.md",
     mimeType: "text/markdown",
@@ -83,6 +96,33 @@ test("uploads a file through the header button", async ({ page }) => {
   // The list view knows its Finder-style kind label.
   await page.getByRole("button", { name: "List view" }).click();
   await expect(page.getByText("Markdown", { exact: true })).toBeVisible();
+});
+
+test("uploads a whole folder with its structure intact, hidden files skipped", async ({
+  page,
+}, testInfo) => {
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  // A real on-disk folder: nested subfolder + a hidden file the intake drops.
+  const folder = join(testInfo.outputPath(), "Brand assets");
+  mkdirSync(join(folder, "docs"), { recursive: true });
+  writeFileSync(join(folder, "logo.svg"), "<svg/>");
+  writeFileSync(join(folder, "docs", "intro.md"), "# intro");
+  writeFileSync(join(folder, ".DS_Store"), "junk");
+
+  await openFilesTab(page);
+  const chooser = await openUploadChooser(page, "Upload folder");
+  await chooser.setFiles(folder);
+
+  // The folder lands as a navigable tree, structure preserved.
+  await page.getByText("Brand assets", { exact: true }).click();
+  await expect(page.getByText("logo.svg")).toBeVisible();
+  await expect(page.getByText(".DS_Store")).toHaveCount(0);
+  await page.getByText("docs", { exact: true }).click();
+  await expect(page.getByText("intro.md")).toBeVisible();
+  const crumbs = page.getByRole("navigation", { name: "Folder path" });
+  await expect(crumbs.getByText("Brand assets", { exact: true })).toBeVisible();
+  await expect(crumbs.getByText("docs", { exact: true })).toBeVisible();
 });
 
 test("renames and deletes a file from the context menu", async ({ page }) => {
@@ -163,10 +203,7 @@ test("a move that collides on a name offers Keep both instead of erroring", asyn
   await expect(page.getByText("Q3 report.pdf")).toHaveCount(0);
 
   // Re-create the same name at the root.
-  const [chooser] = await Promise.all([
-    page.waitForEvent("filechooser"),
-    page.getByRole("button", { name: "Upload files" }).click(),
-  ]);
+  const chooser = await openUploadChooser(page, "Upload files");
   await chooser.setFiles({
     name: "Q3 report.pdf",
     mimeType: "application/pdf",
