@@ -113,9 +113,14 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
         })
       ).json()) as { created: string };
     }
-    /** Upload browser Files into the workspace (Files tab drag-drop / Browse),
-     * optionally into a subfolder. One request per file, so each request stays
-     * within the host's upload cap regardless of how many files were dropped. */
+    /** Upload browser Files into the workspace (Files tab drag-drop / Browse /
+     * folder pick), optionally into a subfolder. Folder-derived files carry
+     * `webkitRelativePath`, forwarded as `relPath` so the host stores them
+     * nested and the folder structure survives (HOU-889); hosts predating it
+     * ignore the field and store the flat name. Small files batch together
+     * (the same size-budgeted plan attachments use) so a many-file folder
+     * doesn't turn into hundreds of round trips, while every request stays
+     * within the host's upload cap. */
     async uploadProjectFiles(
       agentPath: string,
       files: File[],
@@ -124,15 +129,20 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
       if (files.length === 0) return;
       if (!this.ctx.cp)
         throw new Error("Uploading files needs a connected host.");
-      for (const f of files) {
-        const contentBase64 = controlPlane.bytesToBase64(
-          new Uint8Array(await f.arrayBuffer()),
-        );
+      for (const batch of controlPlane.planAttachmentBatches(files)) {
         await this.cpFilesFetch(agentPath, "files/import", {
           method: "POST",
           body: JSON.stringify({
             dir: targetDir ?? null,
-            files: [{ name: f.name, contentBase64 }],
+            files: await Promise.all(
+              batch.map(async (f) => ({
+                name: f.name,
+                contentBase64: controlPlane.bytesToBase64(
+                  new Uint8Array(await f.arrayBuffer()),
+                ),
+                relPath: controlPlane.uploadRelPath(f),
+              })),
+            ),
           }),
         });
       }

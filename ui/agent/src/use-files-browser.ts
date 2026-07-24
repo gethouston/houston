@@ -18,12 +18,20 @@ export function useFilesBrowser(opts: {
   onSelect?: (file: FileEntry) => void;
   onCreateFolder?: (name: string) => void;
   onFilesDropped?: (files: File[], targetFolder?: string) => void;
+  /** Surfaces dropped-folder expansion failures (see DropZoneOptions). */
+  onDropError?: (error: unknown) => void;
   onMove?: (sourcePath: string, targetFolder: string | null) => void;
 }) {
   const [internalView, setInternalView] = useState<FilesViewMode>("grid");
   const view = opts.controlledView ?? internalView;
-  const { onViewChange, onSelect, onCreateFolder, onFilesDropped, onMove } =
-    opts;
+  const {
+    onViewChange,
+    onSelect,
+    onCreateFolder,
+    onFilesDropped,
+    onDropError,
+    onMove,
+  } = opts;
   const changeView = useCallback(
     (v: FilesViewMode) => {
       setInternalView(v);
@@ -80,17 +88,16 @@ export function useFilesBrowser(opts: {
     if (hovered != null) return hovered;
     return view === "grid" && resolvedPath ? resolvedPath : null;
   }, [view, resolvedPath]);
-  const handleDrop = useCallback(
-    (dropped: File[]) => {
-      onFilesDropped?.(dropped, resolveDropTarget() ?? undefined);
-    },
-    [onFilesDropped, resolveDropTarget],
-  );
   const handleMove = useCallback(
     (src: string) => onMove?.(src, resolveDropTarget()),
     [onMove, resolveDropTarget],
   );
-  const { isDragging, dragHandlers } = useDropZone(handleDrop, handleMove);
+  const { isDragging, dragHandlers } = useDropZone({
+    onFilesDropped,
+    onDropError,
+    onMove: handleMove,
+    resolveTargetFolder: () => resolveDropTarget() ?? undefined,
+  });
   const isBgDropTarget = isDragging && folderTargetRef.current === null;
 
   const handleSort = useCallback((key: SortKey) => {

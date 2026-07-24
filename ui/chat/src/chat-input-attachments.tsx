@@ -1,4 +1,9 @@
-import { Popover, PopoverContent, PopoverTrigger } from "@houston-ai/core";
+import {
+  attachmentFolderRoot,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@houston-ai/core";
 import { Plus } from "lucide-react";
 import type {
   ChangeEvent,
@@ -8,7 +13,6 @@ import type {
 } from "react";
 import { useState } from "react";
 import { AttachmentChip, FolderAttachmentChip } from "./attachment-chip";
-import { attachmentFolderRoot } from "./attachment-folders";
 import { fileIdentityKey } from "./clipboard-files";
 
 // Non-standard attribute (WebKit lineage, supported by every engine we ship

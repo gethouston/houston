@@ -3,9 +3,10 @@
  * Follows the Vercel AI Elements chatbot example exactly.
  * Generic version: accepts feedItems/status as props, no store dependencies.
  */
+
+import { TooManyAttachmentFilesError } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Shimmer } from "./ai-elements/shimmer";
-import { TooManyAttachmentFilesError } from "./attachment-folders";
 import { ChatDropOverlay } from "./chat-drop-overlay";
 import { feedItemsToMessages } from "./chat-helpers";
 import { ChatInput } from "./chat-input";
