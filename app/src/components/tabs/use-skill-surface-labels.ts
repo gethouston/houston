@@ -3,6 +3,7 @@ import type {
   SkillMarketplaceSectionLabels,
 } from "@houston-ai/skills";
 import { useTranslation } from "react-i18next";
+import { localizeSkillCategory } from "../../lib/localize-skill-category";
 
 /**
  * Labels for the edit modal (the installed tiles' one detail surface — its
@@ -134,7 +135,12 @@ export function useSkillMarketplaceSectionLabels(): SkillMarketplaceSectionLabel
         t("store.preview.bySource", { owner, repo }),
       installsCount: (count: number, formatted: string) =>
         t("store.preview.installsCount", { count, formatted }),
+      categoryHeading: t("store.preview.categoryHeading"),
       tagsHeading: t("store.preview.tagsHeading"),
+      viewInstructions: t("store.preview.viewInstructions"),
+      hideInstructions: t("store.preview.hideInstructions"),
+      instructionsHeading: t("store.preview.instructionsHeading"),
+      formatCategory: (category: string) => localizeSkillCategory(category, t),
       description: {
         alsoMatches: (keywords: string) =>
           t("store.preview.alsoMatches", { keywords }),

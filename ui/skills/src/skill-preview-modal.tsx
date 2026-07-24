@@ -7,11 +7,9 @@ import {
   DialogTitle,
 } from "@houston-ai/core";
 import { AlertCircle } from "lucide-react";
+import type { ReactNode } from "react";
 import { InstallStatusIcon } from "./install-status-icon";
-import {
-  SkillDescription,
-  type SkillDescriptionLabels,
-} from "./skill-description";
+import { SkillDescription } from "./skill-description";
 import {
   formatInstalls,
   kebabToTitle,
@@ -19,24 +17,21 @@ import {
   repoOf,
 } from "./skill-marketplace-util";
 import { SkillOwnerAvatar } from "./skill-owner-avatar";
+import {
+  DEFAULT_SKILL_PREVIEW_LABELS,
+  type SkillPreviewSheetLabels,
+} from "./skill-preview-modal-labels";
+import {
+  SkillPreviewInstructions,
+  SkillPreviewTaxonomy,
+} from "./skill-preview-sections";
+import { skillPreviewSections } from "./skill-preview-sections-model";
 import type { CommunitySkill, CommunitySkillPreview } from "./types";
 
 export type SkillPreviewState =
   | { status: "loading" }
   | { status: "loaded"; preview: CommunitySkillPreview }
   | { status: "error" };
-
-export interface SkillPreviewSheetLabels {
-  install?: string;
-  installing?: string;
-  installed?: string;
-  loadFailed?: string;
-  noDescription?: string;
-  bySource?: (owner: string, repo: string) => string;
-  installsCount?: (count: number, formatted: string) => string;
-  tagsHeading?: string;
-  description?: SkillDescriptionLabels;
-}
 
 export interface SkillPreviewModalProps {
   open: boolean;
@@ -46,29 +41,25 @@ export interface SkillPreviewModalProps {
   installing: boolean;
   installed: boolean;
   onInstall: () => void;
+  /**
+   * Renders the apps the skill connects to, from its frontmatter toolkit slugs.
+   * Optional because resolving a slug to a real app name + logo is a Composio
+   * catalog concern owned by `app/`; without it the section simply doesn't show.
+   */
+  renderIntegrations?: (slugs: string[]) => ReactNode;
   labels?: SkillPreviewSheetLabels;
 }
-
-const DEFAULT_LABELS: Required<SkillPreviewSheetLabels> = {
-  install: "Install",
-  installing: "Installing...",
-  installed: "Installed",
-  loadFailed: "Couldn't load the full description. You can still install.",
-  noDescription: "No description provided.",
-  bySource: (owner, repo) => `by ${owner} · ${repo}`,
-  installsCount: (count, formatted) =>
-    count === 1 ? `${formatted} install` : `${formatted} installs`,
-  tagsHeading: "Tags",
-  description: {},
-};
 
 /**
  * SkillPreviewModal — the overlay detail modal for a marketplace skill,
  * replacing the old in-dialog body-swap sheet. It shows the owner avatar +
  * title + source, then the skill's plain-text SKILL.md description (loading
- * skeletons, then the parsed description or a "no description" note), any tags,
- * and a full-width install button. Install stays enabled even when the
- * description fetch fails, so a load error never blocks installing.
+ * skeletons, then the parsed description or a "no description" note), the apps
+ * it works with, its category + tags, the full SKILL.md body behind an
+ * expander, and a full-width install button. Every one of those sections shows
+ * only when the loaded preview carries it, so a bare skill looks exactly as it
+ * did before. Install stays enabled even when the description fetch fails, so a
+ * load error never blocks installing.
  */
 export function SkillPreviewModal({
   open,
@@ -78,20 +69,23 @@ export function SkillPreviewModal({
   installing,
   installed,
   onInstall,
+  renderIntegrations,
   labels,
 }: SkillPreviewModalProps) {
-  const l = { ...DEFAULT_LABELS, ...labels };
+  const l = { ...DEFAULT_SKILL_PREVIEW_LABELS, ...labels };
   const owner = skill ? ownerOf(skill.source) : "";
   const repo = skill ? repoOf(skill.source) : "";
+  const loaded = preview.status === "loaded" ? preview.preview : null;
   const title = skill
-    ? preview.status === "loaded" && preview.preview.title
-      ? preview.preview.title
-      : kebabToTitle(skill.skillId || skill.name)
+    ? loaded?.title || kebabToTitle(skill.skillId || skill.name)
     : "";
+  const sections = skillPreviewSections(loaded);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      {/* Capped to the viewport: an expanded instructions block (itself
+          height-capped) must never push the dialog past the window. */}
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         {skill && (
           <>
             <DialogHeader>
@@ -103,7 +97,7 @@ export function SkillPreviewModal({
                     {l.bySource(owner, repo)}
                   </DialogDescription>
                   {skill.installs > 0 && (
-                    <p className="truncate text-xs text-ink-muted">
+                    <p className="truncate text-ink-muted text-xs">
                       {l.installsCount(
                         skill.installs,
                         formatInstalls(skill.installs),
@@ -117,44 +111,43 @@ export function SkillPreviewModal({
             <div>
               {preview.status === "loading" && (
                 <div className="space-y-2">
-                  <div className="animate-pulse bg-chip rounded h-3 w-full" />
-                  <div className="animate-pulse bg-chip rounded h-3 w-11/12" />
-                  <div className="animate-pulse bg-chip rounded h-3 w-2/3" />
+                  <div className="h-3 w-full animate-pulse rounded bg-chip" />
+                  <div className="h-3 w-11/12 animate-pulse rounded bg-chip" />
+                  <div className="h-3 w-2/3 animate-pulse rounded bg-chip" />
                 </div>
               )}
-              {preview.status === "loaded" &&
-                (preview.preview.description ? (
+              {loaded &&
+                (loaded.description ? (
                   <SkillDescription
-                    description={preview.preview.description}
+                    description={loaded.description}
                     labels={l.description}
                   />
                 ) : (
-                  <p className="text-sm text-ink-muted">{l.noDescription}</p>
+                  <p className="text-ink-muted text-sm">{l.noDescription}</p>
                 ))}
               {preview.status === "error" && (
-                <div className="flex items-start gap-2 text-sm text-amber-600 dark:text-amber-500">
-                  <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 text-amber-600 text-sm dark:text-amber-500">
+                  <AlertCircle className="mt-0.5 size-4 shrink-0" />
                   <span>{l.loadFailed}</span>
                 </div>
               )}
             </div>
 
-            {preview.status === "loaded" && preview.preview.tags.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-ink-muted mb-2">
-                  {l.tagsHeading}
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {preview.preview.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-chip px-2.5 py-0.5 text-xs text-ink"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
+            {renderIntegrations &&
+              sections.integrations.length > 0 &&
+              renderIntegrations(sections.integrations)}
+
+            <SkillPreviewTaxonomy
+              category={sections.category}
+              tags={sections.tags}
+              labels={l}
+            />
+
+            {sections.instructions && (
+              <SkillPreviewInstructions
+                content={sections.instructions}
+                labels={l}
+              />
             )}
 
             <div>
@@ -163,7 +156,7 @@ export function SkillPreviewModal({
                 onClick={onInstall}
                 disabled={installing || installed}
                 className={cn(
-                  "w-full h-11 flex items-center justify-center gap-2 rounded-full bg-action text-action-text text-sm font-medium hover:bg-action/90 transition-colors",
+                  "flex h-11 w-full items-center justify-center gap-2 rounded-full bg-action font-medium text-action-text text-sm transition-colors hover:bg-action/90",
                   (installing || installed) && "opacity-60",
                   installing && "cursor-wait",
                 )}

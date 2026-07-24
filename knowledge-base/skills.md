@@ -106,6 +106,7 @@ from one normalizer and two shared app components (HOU-794):
 | Skill cards (chat empty state, New Mission picker) | pips in `SkillCard`'s `footer` slot | `use-agent-chat-panel.tsx`, `new-mission-picker-skill-list.tsx` |
 | Installed-skills strip rows | pips in `CatalogRow`'s `trailing`, before the chevron (cap 3) | `tabs/installed-skills-strip.tsx` |
 | Skill edit modal | named badges under the description | `tabs/skill-editor-dialogs.tsx` → `SkillEditModal`'s `integrationsSlot` |
+| Marketplace preview modal (skills.sh) | named badges under the description, from the preview's `integrations` | `tabs/skill-discovery-tabs.tsx` → `SkillMarketplaceSection`'s `renderIntegrations` → `SkillPreviewModal` |
 | Chat skill invocation card | pips under the description | `user-skill-message.tsx` (from the marker's `integrations`) |
 
 `SkillEditModal` (`ui/skills/`) stays props-only: it takes `integrationsSlot?:
@@ -167,6 +168,29 @@ install action, becoming a quiet check mark once installed — the old labeled
 Add pill and the separate info button are gone. Publisher-derived filter chips
 (skills.sh has no real categories, so `topPublishers` derives them from the
 `owner/repo` source) render in search mode only.
+
+**What the preview modal shows** (top to bottom): owner avatar + title +
+`by owner · repo` + install count; the parsed SKILL.md description (skeletons
+while loading, the load-error note otherwise); the **connected apps** the skill
+declares; its authored **category** (an outlined chip, visually distinct from
+the soft filled tag pills) and **tags**; the **full SKILL.md body** behind a
+collapsed-by-default "View full instructions" expander (raw markdown in a
+height-capped, scrollable monospace block — the same read-only treatment as
+`SkillEditModal`, no markdown renderer); then the install button. Every section
+below the description renders only when the loaded preview carries it, so a bare
+skill looks exactly as it did before, and the loading/error/empty states are
+untouched. The dialog is capped at `max-h-[85vh]` so an expanded body can never
+push it past the window. Connected apps arrive through the optional
+`renderIntegrations?: (slugs: string[]) => ReactNode` prop
+(`SkillMarketplaceSection` → `SkillMarketplaceDetail` → `SkillPreviewModal`):
+`ui/skills` never resolves a Composio slug, so `skill-discovery-tabs.tsx` passes
+`<IntegrationBadges toolkits={skillIntegrationSlugs(slugs)} label={t("detail.integrations")} />`,
+the same "Works with" row the edit modal carries. The modal's own files:
+`skill-preview-modal.tsx` (composition), `skill-preview-modal-labels.ts` (the
+labels type + English defaults, reused as the section's `preview` defaults),
+`skill-preview-sections.tsx` (taxonomy + instructions blocks), and the pure
+`skill-preview-sections-model.ts` (`skillPreviewSections` trims/dedupes the
+hand-authored frontmatter and decides which sections exist — node:test-covered).
 
 ### Installed skills — strip rows with an edit modal (no separate detail screen)
 
