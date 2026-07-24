@@ -43,6 +43,7 @@ export function EmailSignIn({
   autoSubmit?: { email: string; token: number };
 }) {
   const { t } = useTranslation("errors");
+  const { t: tAuth } = useTranslation("auth");
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -113,7 +114,9 @@ export function EmailSignIn({
       size="icon"
       variant={submitFilled ? "default" : "secondary"}
       disabled={disabled}
-      aria-label={step === "code" ? "Verify code" : "Send code"}
+      aria-label={
+        step === "code" ? tAuth("email.verifyCode") : tAuth("email.sendCode")
+      }
       className="size-10 shrink-0 rounded-full border-none!"
     >
       {pending ? (
