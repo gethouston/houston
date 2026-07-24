@@ -56,6 +56,20 @@
 #   SENTRY_AUTH_TOKEN                  — Sentry CLI auth token (org-scoped, perms: project:releases, project:read, org:read). Used to upload source maps + Rust debug symbols and create/finalize releases. Empty → skip the Sentry upload step (forks, personal builds).
 #   POSTHOG_PERSONAL_API_KEY           — PostHog personal API key (scope: annotation:write) used by the finalize job to mark every release on PostHog charts. Empty → skip the annotation step.
 #   POSTHOG_PROJECT_ID                 — PostHog project ID (numeric) the annotation lands under.
+#
+# Windows Authenticode signing (Azure Artifact Signing, formerly "Trusted
+# Signing") — ALL SIX must be set or the MSI ships UNSIGNED (SmartScreen
+# warns users; the build still succeeds with a ::warning::):
+#   AZURE_TENANT_ID                    — Entra tenant ID
+#   AZURE_CLIENT_ID                    — App registration (service principal) client ID with the "Artifact Signing Certificate Profile Signer" role on the signing account
+#   AZURE_CLIENT_SECRET                — Client secret for that app registration
+#   AZURE_SIGNING_ENDPOINT             — Region endpoint URI, e.g. https://eus.codesigning.azure.net
+#   AZURE_SIGNING_ACCOUNT              — Artifact Signing account name
+#   AZURE_SIGNING_PROFILE              — Certificate profile name (Public Trust)
+#   NOTE: Authenticode and the Tauri updater minisign .sig
+#   (TAURI_SIGNING_PRIVATE_KEY) are SEPARATE mechanisms — Authenticode
+#   satisfies Windows/SmartScreen, the .sig satisfies the in-app updater.
+#   Both are required.
 
 name: Release
 
@@ -1200,11 +1214,15 @@ jobs:
   #
   # Scope:
   #   * Windows x86_64 + aarch64 (matrix), MSI installers.
-  #   * No SignPath signing — the MSI ships UNSIGNED. Windows users will see
-  #     a SmartScreen warning ("Don't run / More info → Run anyway") on
-  #     first install. This is acceptable for personal testing; before we
-  #     ship to actual users we'll wire SignPath Foundation (free OSS) into
-  #     a `sign-windows` job between this and the upload step.
+  #   * Authenticode signing (Azure Artifact Signing, formerly "Trusted
+  #     Signing"): when the six AZURE_* secrets are set (see the header
+  #     comment), a config overlay wires `bundle.windows.signCommand` to
+  #     `artifact-signing-cli`, so Tauri signs EVERY bundled binary
+  #     (houston-app.exe, the sidecars, the MSI itself) — not a post-hoc
+  #     MSI-only pass. Without the secrets the MSI ships UNSIGNED
+  #     (SmartScreen warns users) and the job emits a ::warning:: so the
+  #     gap is loud, not silent. SmartScreen reputation accrues per
+  #     certificate + file hash after signing goes live.
   #
   # Build pipeline (runs once per matrix arch, x86_64 + aarch64):
   #   1. Bun-compile the Houston HOST sidecar for the matrix target via
@@ -1226,8 +1244,18 @@ jobs:
     timeout-minutes: 90
     # Job-level so the upload step's `if: ${{ env.SENTRY_AUTH_TOKEN != '' }}`
     # can see it — same step-`if`-can't-read-step-env footgun as build-macos.
+    # The AZURE_* vars are job-level for the same reason (signing steps gate
+    # on `env.AZURE_CLIENT_SECRET`) AND because the tauri-action step's child
+    # process tree (tauri → artifact-signing-cli) reads the credentials from
+    # the environment.
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+      AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+      AZURE_SIGNING_PROFILE: ${{ secrets.AZURE_SIGNING_PROFILE }}
       # See build-macos: cloud channel bakes the managed gateway URL (a secret)
       # so cloud users just sign in with Google. Empty on the local `v*` channel.
       IS_CLOUD: ${{ startsWith(github.ref_name, 'cloud-') }}
@@ -1350,11 +1378,57 @@ jobs:
         shell: bash
         run: bash scripts/ci/point-updater-at-cloud-manifest.sh
 
+      # Authenticode signing via Azure Artifact Signing. Gated on the
+      # AZURE_* secrets so forks and pre-onboarding releases still build
+      # (unsigned, with a loud ::warning:: below). `cargo install` compiles
+      # ~2-4 min on a cold runner; ~/.cargo/registry is in the cache above
+      # so warm runs are faster. Pinned — bump deliberately. Needs the .NET
+      # runtime + Windows SDK signtool, both preinstalled on GitHub's
+      # windows-latest AND windows-11-arm runners.
+      - name: Install artifact-signing-cli
+        if: ${{ env.AZURE_CLIENT_SECRET != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo install artifact-signing-cli --version 0.11.0 --locked
+          artifact-signing-cli --help > /dev/null
+
+      # Tauri config overlay that turns on `bundle.windows.signCommand`.
+      # An overlay (not tauri.conf.json) so local `pnpm tauri build` on dev
+      # machines never tries to reach Azure. `%1` is Tauri's placeholder
+      # for the file being signed; the CLI reads AZURE_TENANT_ID /
+      # AZURE_CLIENT_ID / AZURE_CLIENT_SECRET from the job env and
+      # timestamps against Microsoft's TSA automatically. The overlay is
+      # written with node, not jq — jq is absent on windows-11-arm.
+      - name: Enable Authenticode signing (config overlay)
+        id: signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${AZURE_CLIENT_SECRET:-}" ]; then
+            echo "::warning::AZURE_* signing secrets not set — Windows MSI ships UNSIGNED and SmartScreen will warn users. See the header comment in release.yml."
+            echo "config_arg=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          for v in AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_SIGNING_ENDPOINT AZURE_SIGNING_ACCOUNT AZURE_SIGNING_PROFILE; do
+            if [ -z "$(eval echo "\${$v:-}")" ]; then
+              echo "::error::AZURE_CLIENT_SECRET is set but $v is empty — signing config incomplete. Set all six AZURE_* secrets."
+              exit 1
+            fi
+          done
+          OVERLAY="$RUNNER_TEMP/windows-signing.conf.json"
+          node -e '
+            const cmd = `artifact-signing-cli -e ${process.env.AZURE_SIGNING_ENDPOINT} -a ${process.env.AZURE_SIGNING_ACCOUNT} -c ${process.env.AZURE_SIGNING_PROFILE} %1`;
+            require("fs").writeFileSync(process.argv[1], JSON.stringify({ bundle: { windows: { signCommand: cmd } } }));
+          ' "$OVERLAY"
+          echo "config_arg=--config $OVERLAY" >> "$GITHUB_OUTPUT"
+          echo "Authenticode signing ENABLED (account: $AZURE_SIGNING_ACCOUNT, profile: $AZURE_SIGNING_PROFILE)"
+
       - name: Build Tauri app (Windows MSI)
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: app
-          args: --target ${{ matrix.target }}
+          args: --target ${{ matrix.target }} ${{ steps.signing.outputs.config_arg }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # The Tauri updater key signs the MSI for the auto-updater
@@ -1405,6 +1479,29 @@ jobs:
           echo "Artifacts:"
           echo "  .msi:     $MSI ($(du -sh "$MSI" | cut -f1))"
           echo "  .msi.sig: $SIG ($(wc -c < "$SIG") bytes)"
+
+      # Mirrors the macOS job's signature/notarization verification: if we
+      # asked for Authenticode signing, PROVE the MSI actually carries a
+      # valid, timestamped signature before it reaches the draft release.
+      # (The .msi.sig above is the SEPARATE Tauri-updater minisign signature.)
+      - name: Verify Authenticode signature on MSI
+        if: ${{ env.AZURE_CLIENT_SECRET != '' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $msi = "${{ steps.artifacts-windows.outputs.msi }}"
+          $sig = Get-AuthenticodeSignature $msi
+          Write-Host "Status:    $($sig.Status)"
+          Write-Host "Signer:    $($sig.SignerCertificate.Subject)"
+          Write-Host "Timestamp: $($sig.TimeStamperCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') {
+            Write-Error "MSI Authenticode signature is $($sig.Status), expected Valid. Signing was requested (AZURE_* secrets set) so this is a hard failure."
+            exit 1
+          }
+          if (-not $sig.TimeStamperCertificate) {
+            Write-Error "MSI signature has no timestamp — it would expire with the certificate. Hard failure."
+            exit 1
+          }
 
       # Sentry upload (Windows): Rust debug symbols for the Tauri app binary
       # and matrix-arch houston-engine.exe. MSVC emits PDBs alongside both
