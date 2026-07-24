@@ -77,12 +77,11 @@ export function InstalledStrip({
       icon: <AppLogo display={row.app} size="lg" className="rounded-lg" />,
       title: row.app.name,
       description: row.app.description,
-      statusDot: (
-        <StatusDot
-          status={row.connection.status}
-          srLabel={t(`status.${row.connection.status}`)}
-        />
-      ),
+      // Every catalog row here IS active — both callers partition pending and
+      // errored connections into recovery rows before this strip sees them, so
+      // the dot is green by construction rather than by a status lookup that
+      // could never resolve to anything else.
+      statusDot: <StatusDot status="active" srLabel={t("status.active")} />,
       onClick: () => onOpen(row.connection),
     })),
     ...custom.map((integration) => ({
@@ -144,24 +143,6 @@ export function InstalledStrip({
           {t("home.showAllApps", { count: items.length })}
         </CatalogShowMore>
       )}
-    </div>
-  );
-}
-
-/** A row placeholder while the connections settle. Mirrors the installed row
- *  shape (a two-column grid of icon + two text lines). Decorative only. */
-export function InstalledSkeleton() {
-  return (
-    <div aria-hidden className="grid grid-cols-1 gap-1 lg:grid-cols-2">
-      {[0, 1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="flex items-center gap-3 px-3 py-2.5">
-          <div className="size-10 shrink-0 animate-pulse rounded-lg bg-chip" />
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="h-3.5 w-24 animate-pulse rounded bg-chip" />
-            <div className="h-3 w-36 animate-pulse rounded bg-chip" />
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

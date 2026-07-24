@@ -6,6 +6,7 @@
 // failure is a typed `IdentityError`: user calls emit its `.code` to `onAuthError`
 // AND rethrow for the caller's `catch`.
 
+import { cancelAllConnectFlows } from "../stores/connect-flow";
 import { analytics } from "./analytics";
 import { emitAuthError, onAuthError } from "./auth-error-bus";
 import { gatewayUrl } from "./auth-gateway";
@@ -245,6 +246,10 @@ export function verifyEmailOtp(email: string, code: string): Promise<void> {
 // wipe local per-user data and reset analytics. A failed remote/keychain clear is
 // logged (never silent) but never blocks local cleanup.
 export async function signOut(): Promise<void> {
+  // Before the session goes: a connect poll survives navigation by design, but
+  // surviving sign-out would mean it keeps calling the gateway as (and toasting
+  // at) a user who has left.
+  cancelAllConnectFlows();
   try {
     if (osIsTauri()) {
       stopProactiveRefresh();

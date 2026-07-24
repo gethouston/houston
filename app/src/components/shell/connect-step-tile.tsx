@@ -11,8 +11,6 @@ interface ConnectStepTileProps {
   connected: boolean;
   /** THIS tile's connect flow (OAuth hop + poll) is in flight. */
   connecting: boolean;
-  /** Another tile owns the single-flight connect flow; disable this one. */
-  disabled: boolean;
   /** Start this tile's connect flow. Returns the poll promise so AsyncButton's
    *  in-flight guard covers the whole OAuth hop (no double-mint on rage clicks). */
   onConnect: () => Promise<unknown>;
@@ -26,12 +24,13 @@ interface ConnectStepTileProps {
  * (with a Cancel) while its OAuth runs and a muted "Connected" pill once the
  * toolkit lands active. Styled to match the onboarding `OptionCard`, but a
  * plain row (not a select button) so the trailing Connect button never nests.
+ * Tiles are independent: connects run per toolkit and concurrently, so handing
+ * off one app never dims the rest of the offer.
  */
 export function ConnectStepTile({
   display,
   connected,
   connecting,
-  disabled,
   onConnect,
   onCancel,
 }: ConnectStepTileProps) {
@@ -81,7 +80,6 @@ export function ConnectStepTile({
             size="sm"
             spinner={false}
             className="rounded-full"
-            disabled={disabled}
             onClick={() => onConnect()}
           >
             {t("connect.connect")}

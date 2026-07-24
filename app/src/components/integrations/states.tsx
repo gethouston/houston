@@ -6,36 +6,48 @@ import {
   EmptyTitle,
 } from "@houston-ai/core";
 import { Loader2, ShieldCheck } from "lucide-react";
-import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { HoustonLogo } from "../shell/experience-card";
 
-/** First load: logo pulse + a slow fill bar (the catalog fetch takes a beat). */
+/**
+ * The BOOT gate only: Houston is still working out whether this deployment even
+ * serves integrations. Once the surface is up, a data refresh shows skeletons
+ * that mirror the real sections instead (`integrations-view/catalog-skeletons`).
+ *
+ * The pulse is the whole animation. It replaced a 5s `transition: width` fill
+ * bar, which both animated layout (banned: transform and opacity only) and lied
+ * about progress by pretending to know how long the fetch would take. Opacity
+ * only, and it stops entirely under `prefers-reduced-motion` — the copy above
+ * already says what is happening, so nothing is lost when it does.
+ */
+
+/** The three staggered dots, named so their keys are identities rather than the
+ *  animation delay they happen to carry (the first delay is the empty string). */
+const LOADING_DOTS = [
+  { id: "first", delay: "" },
+  { id: "second", delay: "[animation-delay:200ms]" },
+  { id: "third", delay: "[animation-delay:400ms]" },
+] as const;
+
 export function LoadingState() {
   const { t } = useTranslation("integrations");
-  const barRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Next frame: flip width to 100% so the transition actually animates.
-    const raf = requestAnimationFrame(() => {
-      if (barRef.current) barRef.current.style.width = "100%";
-    });
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
   return (
     <Empty className="border-0">
-      <HoustonLogo size={48} className="mb-2 animate-pulse" />
+      <HoustonLogo
+        size={48}
+        className="mb-2 animate-pulse motion-reduce:animate-none"
+      />
       <EmptyHeader>
         <EmptyTitle>{t("loading.title")}</EmptyTitle>
         <EmptyDescription>{t("loading.body")}</EmptyDescription>
       </EmptyHeader>
-      <div className="h-[2px] w-48 overflow-hidden rounded-full bg-ink/10">
-        <div
-          ref={barRef}
-          className="h-full rounded-full bg-ink"
-          style={{ width: "0%", transition: "width 5s linear" }}
-        />
+      <div aria-hidden className="flex gap-1.5">
+        {LOADING_DOTS.map((dot) => (
+          <span
+            key={dot.id}
+            className={`size-1.5 animate-pulse rounded-full bg-ink-muted motion-reduce:animate-none ${dot.delay}`}
+          />
+        ))}
       </div>
     </Empty>
   );

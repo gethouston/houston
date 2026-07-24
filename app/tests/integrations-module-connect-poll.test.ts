@@ -1,4 +1,5 @@
-import { rejects, strictEqual } from "node:assert";
+import { ok, rejects, strictEqual } from "node:assert";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import type { IntegrationConnection } from "@houston-ai/engine-client";
 import {
@@ -165,5 +166,107 @@ describe("poll loop driven by a Waker (checkNow / cancel)", () => {
     waker.wake(); // cancel() → loop checks isCancelled after the wait
     strictEqual(await p, "cancelled");
     strictEqual(polls, 0);
+  });
+});
+
+/**
+ * The catalog surfaces' connect UX (HOU-847). These read the sources rather
+ * than render them, so the rules that make the flow calm cannot silently
+ * regress: state belongs to the ROW the user clicked, no surface is disabled
+ * because a different app is connecting, and the flow state is app-wide.
+ */
+describe("connect surfaces", () => {
+  const read = (rel: string) =>
+    readFileSync(new URL(rel, import.meta.url), "utf8");
+
+  it("the catalog has no page-level waiting panel and no whole-surface lockout", () => {
+    const catalog = read(
+      "../src/components/integrations-view/category-catalog.tsx",
+    );
+    ok(
+      !catalog.includes("ConnectWaitingPanel"),
+      "the banner that shoved the sections down is gone",
+    );
+    ok(
+      !catalog.includes("Object.keys(states).length"),
+      "no 'any connect is running' flag disables every other row",
+    );
+    ok(
+      catalog.includes("info.toolkit.slug in connectFlow.states"),
+      "the detail modal's CTA is gated on ITS OWN app only",
+    );
+  });
+
+  it("each row owns its connect state, inline", () => {
+    const row = read("../src/components/integrations-view/plane-app-row.tsx");
+    ok(row.includes("ConnectFlowInline"), "the row renders the inline state");
+    ok(
+      row.includes("display.toolkit in connectFlow.states"),
+      "the + spins for THIS app only",
+    );
+    ok(!row.includes("busy={busy}"), "no cross-row disable prop survives");
+  });
+
+  it("the inline state gates the 'we opened your browser' copy on the waiting phase", () => {
+    const inline = read(
+      "../src/components/integrations/connect-flow-inline.tsx",
+    );
+    ok(
+      inline.includes('step === "waiting"'),
+      "waiting copy needs the waiting phase",
+    );
+    ok(inline.includes("waiting.opening"), "starting has its own honest copy");
+    ok(
+      inline.includes('role="status"'),
+      "a polite live region announces phases",
+    );
+    ok(inline.includes('aria-live="polite"'));
+    ok(
+      inline.includes("AsyncButton") && inline.includes("Button"),
+      "actions are core primitives, not hand-rolled buttons",
+    );
+  });
+
+  it("the flow reads ONE app-wide store and never bulk-cancels on unmount", () => {
+    const hook = read("../src/components/integrations/use-connect-flow.ts");
+    ok(
+      hook.includes("useConnectFlowStore"),
+      "state comes from the shared store",
+    );
+    ok(hook.includes("connectFlowRegistry"), "so does the registry");
+    ok(!hook.includes("createRegistry("), "no per-consumer registry is minted");
+    ok(
+      hook.includes("flowPromise(connectFlowRegistry"),
+      "a second caller joins the running flow",
+    );
+  });
+
+  it("outcomes are announced once, from the flow, with the right severity", () => {
+    const hook = read("../src/components/integrations/use-connect-flow.ts");
+    ok(hook.includes("connectResult.connected"), "success is announced");
+    ok(
+      hook.includes('variant: "info"'),
+      "an abandoned OAuth is neutral, not an error",
+    );
+    ok(
+      !hook.includes("showErrorToast"),
+      "no branded crash toast + Sentry report for a user walking away",
+    );
+    const card = read("../src/components/use-integration-connect.tsx");
+    ok(
+      !card.includes("verifiedToast"),
+      "the chat card no longer double-toasts the shared flow's success",
+    );
+  });
+
+  it("recovery actions are per toolkit, on core buttons", () => {
+    const callout = read(
+      "../src/components/integrations/pending-connection-callout.tsx",
+    );
+    ok(callout.includes("AsyncButton"), "the primary holds the whole hand-off");
+    ok(
+      !callout.includes("Object.keys(connectFlow.states).length"),
+      "a recovery row never freezes because another app is connecting",
+    );
   });
 });

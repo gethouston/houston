@@ -16,8 +16,9 @@ import {
 import { PageHeader } from "../shell/page-shell";
 import { CatalogControls } from "./catalog-controls";
 import { CatalogPane } from "./catalog-pane";
+import { InstalledSkeleton } from "./catalog-skeletons";
 import { ConnectedAppDialogs } from "./connected-app-dialogs";
-import { InstalledSkeleton, InstalledStrip } from "./installed-strip";
+import { InstalledStrip } from "./installed-strip";
 import { useCatalogSurface } from "./use-catalog-surface";
 
 interface IntegrationsReadyProps {
@@ -47,9 +48,11 @@ interface IntegrationsReadyProps {
  * MODAL (`AppDetailDialog`, the same `CatalogDetailDialog` the browse rows use
  * — never a slideover): view + reconnect + disconnect for that personal
  * connection. Which agents may use an app is managed in one place (the
- * Permissions view), never here. ONE connect flow lives here (connect-only) and
- * is handed to the catalog, the recovery rows, and the detail modal so closing
- * any of them, or switching tabs, never kills an in-flight OAuth poll.
+ * Permissions view), never here. The connect flow is bound here (connect-only)
+ * and handed to the catalog, the recovery rows, and the detail modal; its state
+ * is app-wide and shared, so closing any of them, switching tabs, or leaving
+ * the page entirely never kills an in-flight OAuth poll, and a connect started
+ * from chat shows up on these rows.
  *
  * The catalog shows the FULL Houston catalog. Policy is per agent only (the
  * org-wide app ceiling was removed), so the global page has no ceiling to apply
@@ -104,6 +107,7 @@ export function IntegrationsReady({
         <CatalogPane
           catalog={apps.catalogData}
           connections={apps.connData}
+          surface="integrations"
           query={query}
           category={category}
           recovering={apps.recoveringRows}

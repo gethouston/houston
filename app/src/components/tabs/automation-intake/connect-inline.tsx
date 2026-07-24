@@ -1,11 +1,11 @@
 import { Button } from "@houston-ai/core";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   useAgentCustomIntegrations,
   useSubmitCustomCredential,
 } from "../../../hooks/queries";
-import { ConnectWaitingPanel } from "../../integrations/connect-waiting-panel";
+import { ConnectFlowInline } from "../../integrations/connect-flow-inline";
 import { CustomCredentialForm } from "../../integrations/custom-credential-form";
 import {
   customAuthMethod,
@@ -60,10 +60,15 @@ function OAuthConnect({
   // Per-slug flow states (main's multi-connect API): this card only ever drives
   // ONE toolkit, so "busy" is scoped to it rather than any in-flight connect.
   const busy = toolkit in connectFlow.states;
-  const waiting = connectFlow.states[toolkit] === "waiting";
+  // The inline block covers the whole flow, settled outcome included — but a
+  // settled notice must never gate the retry: the Connect button stays up
+  // whenever no flow is LIVE, so a failed attempt can be retried immediately
+  // while its outcome line is still visible above the button.
+  const showFlow =
+    toolkit in connectFlow.states || toolkit in connectFlow.notices;
 
   const start = async () => {
-    const outcome = await connectFlow.connect(toolkit);
+    const { outcome } = await connectFlow.connect(toolkit, `intake:${toolkit}`);
     if (outcome === "active") onConnected();
   };
 
@@ -72,22 +77,21 @@ function OAuthConnect({
       <p className="text-balance text-ink text-sm leading-snug">
         {t("triggerStep.connectReason", { app: appName })}
       </p>
-      {waiting ? (
-        <ConnectWaitingPanel
+      {showFlow && (
+        <ConnectFlowInline
           appName={appName}
           connectFlow={connectFlow}
           toolkit={toolkit}
         />
-      ) : (
+      )}
+      {!busy && (
         <Button
           className="gap-1.5 self-start"
-          disabled={busy}
           onClick={() => void start()}
           size="sm"
           type="button"
         >
-          {busy && <Loader2 className="size-3.5 animate-spin" />}
-          {busy ? t("triggerStep.connecting") : t("triggerStep.connect")}
+          {t("triggerStep.connect")}
         </Button>
       )}
       <BackButton disabled={busy} onBack={onBack} />

@@ -1,9 +1,6 @@
-import { type ChatInteractionBrand, prettifyToolkit } from "@houston-ai/chat";
+import type { ChatInteractionBrand } from "@houston-ai/chat";
 import { useCallback } from "react";
-import {
-  findCatalogToolkit,
-  normalizeToolkitSlug,
-} from "./integration-connect-card-state";
+import { findCatalogToolkit } from "./integration-connect-card-state";
 import { appDisplay, useReadyToolkitCatalog } from "./integrations";
 
 /**
@@ -27,11 +24,15 @@ export function useToolkitBrandResolver(): (
   return useCallback(
     (toolkit) => {
       if (!toolkit) return undefined;
-      const slug = normalizeToolkitSlug(toolkit);
       const found = findCatalogToolkit(data, toolkit);
-      const resolved = appDisplay(slug, found);
+      // ONE fallback owner: `appDisplay` already prettifies a catalog miss, so
+      // there is no second rule to write here. It is handed the toolkit exactly
+      // as the agent wrote it — the catalog lookup above is already
+      // casing-insensitive, and lowercasing first is what turned an authored
+      // "GoogleSheets" into "Googlesheets".
+      const resolved = appDisplay(toolkit, found);
       return {
-        name: found ? resolved.name : prettifyToolkit(toolkit),
+        name: resolved.name,
         // Only a resolved catalog entry carries a logo, and only once the
         // catalog has settled; a miss shows the name alone.
         logoUrl: found && isFetched ? resolved.logoUrl : undefined,

@@ -54,7 +54,10 @@ export function AgentIntegrationsChrome({
           display={detailRow.app}
           connection={detailRow.connection}
           onReconnect={() => {
-            void connectFlow.connect(detailRow.connection.toolkit);
+            void connectFlow.connect(
+              detailRow.connection.toolkit,
+              `agentDetail:${detailRow.connection.toolkit}`,
+            );
             setDetailRow(null);
           }}
           onDisconnect={() => {

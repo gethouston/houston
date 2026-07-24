@@ -63,7 +63,6 @@
     "connectReason": "Conecte {{app}} para observar seus eventos",
     "connectKeyReason": "Adicione sua chave do {{app}} para observar seus eventos",
     "connect": "Conectar",
-    "connecting": "Conectando",
     "saveKey": "Salvar chave",
     "savingKey": "Salvando",
     "back": "Escolher outro app",

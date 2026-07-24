@@ -20,7 +20,9 @@ export function AppInfoDialog({
   toolkit: IntegrationToolkit | null;
   onClose: () => void;
   onConnect: (toolkit: string) => void;
-  /** ANY connect is in flight — the CTA disables rather than double-firing. */
+  /** THIS app's own hand-off is already running (the user started it from its
+   *  row, or from another surface) — the CTA disables rather than double-firing.
+   *  Never gated on some other app's connect: flows are per toolkit. */
   busy: boolean;
 }) {
   const { t } = useTranslation("integrations");

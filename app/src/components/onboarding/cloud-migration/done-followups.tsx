@@ -189,7 +189,9 @@ export function DoneStepApps({ integrations }: { integrations: string[] }) {
                     variant="secondary"
                     size="sm"
                     className="rounded-full"
-                    onClick={() => void flow.connect(slug)}
+                    onClick={() =>
+                      void flow.connect(slug, `migrationFollowup:${slug}`)
+                    }
                   >
                     {t("done.connect")}
                   </Button>

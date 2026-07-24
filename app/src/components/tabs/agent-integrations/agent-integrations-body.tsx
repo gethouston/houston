@@ -33,6 +33,9 @@ interface AgentIntegrationsBodyProps {
   /** The account's connections, so browse can hide already-connected apps. */
   connections: IntegrationConnection[];
   connectFlow: ConnectFlow;
+  /** This surface's half of every catalog row's connect-flow origin key, so an
+   *  agent tab's rows are never confused with the global page's. */
+  surface: string;
   /** The catalog is still fetching (browse shows a loader, not "no apps"). */
   catalogLoading: boolean;
   onDisconnect: (toolkit: string) => void;
@@ -65,6 +68,7 @@ export function AgentIntegrationsBody({
   allowlist,
   connections,
   connectFlow,
+  surface,
   catalogLoading,
   onDisconnect,
   onManageAll,
@@ -115,6 +119,7 @@ export function AgentIntegrationsBody({
         <CatalogPane
           catalog={catalog}
           connections={connections}
+          surface={surface}
           query={query}
           category={category}
           recovering={recovering}

@@ -10,9 +10,6 @@ interface EmailProviderRowProps {
   connected: boolean;
   /** This row's OAuth connect is in flight. */
   loading: boolean;
-  /** Another row's connect is in flight: this row's Connect is inert (the step
-   *  connects one email provider at a time by design). */
-  disabled: boolean;
   labels: {
     connect: string;
     connecting: string;
@@ -28,7 +25,8 @@ interface EmailProviderRowProps {
  * logo + name (`AppRow`) with a trailing rounded-full secondary Connect pill.
  * The three states mirror the integrations surfaces exactly (see
  * `cloud-migration/done-followups.tsx`):
- *  - idle: a secondary Connect pill; disabled while the other row connects.
+ *  - idle: a secondary Connect pill. Rows are independent (connects run per
+ *    toolkit, concurrently), so it never dims because the other row is busy.
  *  - in-flight: a live "Connecting" line with a per-row Cancel.
  *  - connected: a success check + label, so the row settles instead of offering
  *    a dead action.
@@ -37,7 +35,6 @@ export function EmailProviderRow({
   display,
   connected,
   loading,
-  disabled,
   labels,
   onConnect,
   onCancel,
@@ -68,7 +65,6 @@ export function EmailProviderRow({
             variant="secondary"
             size="sm"
             className="rounded-full"
-            disabled={disabled}
             onClick={onConnect}
           >
             {labels.connect}

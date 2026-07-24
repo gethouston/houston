@@ -4,6 +4,7 @@ import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import {
   appDisplay,
   fallbackLogo,
+  prettifyToolkit,
   toolkitOfActionSlug,
 } from "../src/components/integrations/app-display.ts";
 
@@ -39,10 +40,34 @@ describe("appDisplay logo resolution", () => {
     strictEqual(app.logoUrl, fallbackLogo("slack"));
   });
 
-  it("falls back to slug name + favicon guess when the toolkit is absent entirely", () => {
+  it("falls back to a HUMAN name + favicon guess when the toolkit is absent", () => {
     const app = appDisplay("quickbooks", undefined);
-    strictEqual(app.name, "quickbooks");
+    // Never the raw machine slug: a catalog miss must still read as a product.
+    strictEqual(app.name, "Quickbooks");
     strictEqual(app.logoUrl, fallbackLogo("quickbooks"));
+  });
+
+  it("prettifies a multi-word slug on a catalog miss", () => {
+    strictEqual(appDisplay("google-sheets", undefined).name, "Google Sheets");
+    strictEqual(appDisplay("googlesheets", undefined).name, "Googlesheets");
+  });
+
+  it("an empty catalog name is treated as a miss, not as a blank label", () => {
+    const app = appDisplay("notion", { ...tk("notion", ""), name: "" });
+    strictEqual(app.name, "Notion");
+  });
+});
+
+describe("prettifyToolkit", () => {
+  it("title-cases every word across the slug separators", () => {
+    strictEqual(prettifyToolkit("google_sheets"), "Google Sheets");
+    strictEqual(prettifyToolkit("google-sheets"), "Google Sheets");
+    strictEqual(prettifyToolkit("  slack  "), "Slack");
+  });
+
+  it("collapses repeated separators instead of emitting blanks", () => {
+    strictEqual(prettifyToolkit("google--sheets"), "Google Sheets");
+    strictEqual(prettifyToolkit(""), "");
   });
 });
 
