@@ -81,8 +81,8 @@
   },
   "planReady": {
     "title": "Plan ready",
-    "coworkerTitle": "Continue in Coworker mode",
-    "coworkerDescription": "Works with you and asks when unsure.",
+    "askFirstTitle": "Continue in Ask first mode",
+    "askFirstDescription": "Gets things done, asks before sensitive actions.",
     "autopilotTitle": "Continue in Autopilot mode",
     "autopilotDescription": "Finishes it on its own. No questions asked.",
     "keepPlanningTitle": "Keep planning",
@@ -145,8 +145,8 @@
   "modeSelector": {
     "mode": "Mode",
     "modeValue": "Mode: {{mode}}",
-    "coworker": "Coworker",
-    "coworkerDescription": "Works with you: gets things done and asks when unsure.",
+    "askFirst": "Ask first",
+    "askFirstDescription": "Gets things done, asks before sensitive actions.",
     "planner": "Planner",
     "plannerDescription": "Writes a plan for you to approve first. Makes no changes.",
     "autopilot": "Autopilot",

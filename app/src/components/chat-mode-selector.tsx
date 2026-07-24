@@ -27,22 +27,23 @@ interface ChatModeSelectorProps {
   agent?: Pick<Agent, "access"> | null;
 }
 
-/** Coworker = execute (works with you, asks when unsure), Planner = plan
- *  (read-only, writes a plan), Autopilot = auto (fire-and-forget, no blocking
- *  tools). Wire values stay `execute`/`plan`/`auto`; only the labels change. */
+/** Ask first = execute (gets things done, asks before sensitive actions),
+ *  Planner = plan (read-only, writes a plan), Autopilot = auto (fire-and-forget,
+ *  no blocking tools). Wire values stay `execute`/`plan`/`auto`; only the labels
+ *  change. */
 const MODE_ICONS: Record<TurnMode, LucideIcon> = {
   execute: Handshake,
   plan: ListTodo,
   auto: Rocket,
 };
 
-// Top→bottom as an autonomy dial: Planner (looks, doesn't touch) → Coworker
-// (acts, asks when unsure) → Autopilot (acts and never stops to ask).
+// Top→bottom as an autonomy dial: Planner (looks, doesn't touch) → Ask first
+// (acts, asks before sensitive actions) → Autopilot (acts and never stops to ask).
 const MODE_ORDER: readonly TurnMode[] = ["plan", "execute", "auto"];
 
 /**
  * "Mode" picker, rendered beside {@link ChatModelSelector} in the composer.
- * Three modes — Planner (read-only planning), Coworker (execute), and
+ * Three modes — Planner (read-only planning), Ask first (execute), and
  * Autopilot (auto, fire-and-forget) — each with an icon in a soft tile, a
  * name, and a one-line description. The trigger is the
  * same h-7 muted pill as the model + effort selectors; the menu matches the
@@ -60,12 +61,12 @@ export function ChatModeSelector({
   if (!modelSelectorDecision(capabilities, agent).show) return null;
 
   const labels: Record<TurnMode, string> = {
-    execute: t("modeSelector.coworker"),
+    execute: t("modeSelector.askFirst"),
     plan: t("modeSelector.planner"),
     auto: t("modeSelector.autopilot"),
   };
   const descriptions: Record<TurnMode, string> = {
-    execute: t("modeSelector.coworkerDescription"),
+    execute: t("modeSelector.askFirstDescription"),
     plan: t("modeSelector.plannerDescription"),
     auto: t("modeSelector.autopilotDescription"),
   };

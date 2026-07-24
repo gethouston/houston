@@ -192,7 +192,7 @@ interface UseAgentChatPanelArgs {
   /** Seeds the composer's turn mode for THIS surface and suppresses the
    *  per-agent config mode from overwriting it, so the surface opens on the
    *  given mode and keeps it until the user changes it in-session. The routine
-   *  setup chat passes `"execute"` (Coworker) — its kickoff turn runs Coworker,
+   *  setup chat passes `"execute"` (Ask first) — its kickoff turn runs Ask first,
    *  so the live composer must match. Omit to keep today's behavior exactly
    *  (seed the global default, then load the agent's remembered mode). */
   initialTurnMode?: TurnMode;
@@ -400,7 +400,7 @@ export function useAgentChatPanel({
   //
   // `initialTurnMode` (when a surface passes one) seeds this AND wins over the
   // per-agent config, so the surface opens on that mode and holds it until the
-  // user changes it in-session (the setup chat opens on Coworker). Absent, the
+  // user changes it in-session (the setup chat opens on Ask first). Absent, the
   // behavior is unchanged: the global default, then the agent's remembered mode.
   const [turnMode, setTurnMode] = useState<TurnMode>(
     initialTurnMode ?? DEFAULT_TURN_MODE,
@@ -758,7 +758,7 @@ export function useAgentChatPanel({
       setTurnMode(mode);
       if (turnRunning && path && selectedSessionKey && mode !== turnMode) {
         const modeLabels: Record<TurnMode, string> = {
-          execute: t("chat:modeSelector.coworker"),
+          execute: t("chat:modeSelector.askFirst"),
           plan: t("chat:modeSelector.planner"),
           auto: t("chat:modeSelector.autopilot"),
         };
@@ -1235,8 +1235,8 @@ export function useAgentChatPanel({
   const planReadyLabels = useMemo<ChatPlanReadyLabels>(
     () => ({
       title: t("chat:planReady.title"),
-      coworkerTitle: t("chat:planReady.coworkerTitle"),
-      coworkerDescription: t("chat:planReady.coworkerDescription"),
+      askFirstTitle: t("chat:planReady.askFirstTitle"),
+      askFirstDescription: t("chat:planReady.askFirstDescription"),
       autopilotTitle: t("chat:planReady.autopilotTitle"),
       autopilotDescription: t("chat:planReady.autopilotDescription"),
       keepPlanningTitle: t("chat:planReady.keepPlanningTitle"),

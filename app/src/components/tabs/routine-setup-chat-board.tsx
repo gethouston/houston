@@ -72,9 +72,9 @@ export function RoutineSetupChatBoard({
     agentDef,
     selectedSessionKey: sessionKey,
     onSelectSession: noop,
-    // The setup chat's kickoff turn runs Coworker (execute) — the interview
+    // The setup chat's kickoff turn runs Ask first (execute) — the interview
     // needs ask_user and must never open read-only in Planner — so the live
-    // composer opens on Coworker too. The user can still switch modes here.
+    // composer opens on Ask first too. The user can still switch modes here.
     initialTurnMode: "execute",
   });
   const attachmentValidation = useAttachmentRejectionDialog({

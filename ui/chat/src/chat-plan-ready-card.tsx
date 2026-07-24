@@ -26,7 +26,7 @@ export interface ChatPlanReadyCardProps {
   labels: ChatPlanReadyLabels;
 }
 
-/** Each option's icon, matching the composer mode selector: Coworker
+/** Each option's icon, matching the composer mode selector: Ask first
  *  (execute) = Handshake, Autopilot (auto) = Rocket, Keep planning = ListTodo.
  *  Internal to the card so the labels contract stays icon-free. */
 const ACTION_ICONS: Record<PlanReadyActionKey, LucideIcon> = {

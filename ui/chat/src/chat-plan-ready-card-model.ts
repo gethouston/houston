@@ -10,8 +10,8 @@
  *  one-line description on its own line, matching the composer mode menu. */
 export interface ChatPlanReadyLabels {
   title: string;
-  coworkerTitle: string;
-  coworkerDescription: string;
+  askFirstTitle: string;
+  askFirstDescription: string;
   autopilotTitle: string;
   autopilotDescription: string;
   keepPlanningTitle: string;
@@ -22,8 +22,8 @@ export interface ChatPlanReadyLabels {
  *  No em dashes. */
 export const DEFAULT_PLAN_READY_LABELS: ChatPlanReadyLabels = {
   title: "Plan ready",
-  coworkerTitle: "Continue in Coworker mode",
-  coworkerDescription: "Works with you and asks when unsure.",
+  askFirstTitle: "Continue in Ask first mode",
+  askFirstDescription: "Gets things done, asks before sensitive actions.",
   autopilotTitle: "Continue in Autopilot mode",
   autopilotDescription: "Finishes it on its own. No questions asked.",
   keepPlanningTitle: "Keep planning",
@@ -46,7 +46,7 @@ export interface PlanReadyAction {
 }
 
 /**
- * The three options in render order: Continue in Coworker mode (execute) ->
+ * The three options in render order: Continue in Ask first mode (execute) ->
  * Continue in Autopilot mode (auto) -> Keep planning (dismiss). Rendered as
  * full-width mode-menu rows (icon inline with the title, description below).
  * Primary emphasis comes from row order + title weight, not a filled button.
@@ -61,8 +61,8 @@ export function resolvePlanReadyActions(
   return [
     {
       key: "startWorking",
-      title: labels.coworkerTitle,
-      description: labels.coworkerDescription,
+      title: labels.askFirstTitle,
+      description: labels.askFirstDescription,
       disabled,
     },
     {

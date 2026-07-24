@@ -98,7 +98,7 @@ export function useRoutineChatSetup(
           agentMode: mode,
           // Pin the agent's configured brain onto the kickoff turn (see helper).
           ...(await readAgentRunOverrides(path)),
-          // Setup chats always run as Coworker: the interview needs ask_user
+          // Setup chats always run as Ask first: the interview needs ask_user
           // (auto strips it) and must never open read-only in Planner.
           modeOverride: "execute",
           buildPrompt: (activityId) =>
@@ -142,7 +142,7 @@ export function useRoutineChatSetup(
             title: routine.name,
             agentMode: mode,
             // Same brain pin as startDraft (see readAgentRunOverrides), and the
-            // same Coworker pin — setup chats are interactive by design.
+            // same Ask first pin — setup chats are interactive by design.
             ...(await readAgentRunOverrides(path)),
             modeOverride: "execute",
           },

@@ -81,8 +81,8 @@
   },
   "planReady": {
     "title": "Plan listo",
-    "coworkerTitle": "Continuar en modo Compañero",
-    "coworkerDescription": "Trabaja contigo y te pregunta si tiene dudas.",
+    "askFirstTitle": "Continuar en modo Preguntar antes",
+    "askFirstDescription": "Hace las cosas y te pregunta antes de acciones delicadas.",
     "autopilotTitle": "Continuar en modo Piloto automático",
     "autopilotDescription": "Lo termina por su cuenta. Sin preguntas.",
     "keepPlanningTitle": "Seguir planificando",
@@ -145,8 +145,8 @@
   "modeSelector": {
     "mode": "Modo",
     "modeValue": "Modo: {{mode}}",
-    "coworker": "Compañero",
-    "coworkerDescription": "Trabaja contigo: hace las cosas y te pregunta si tiene dudas.",
+    "askFirst": "Preguntar antes",
+    "askFirstDescription": "Hace las cosas y te pregunta antes de acciones delicadas.",
     "planner": "Planificador",
     "plannerDescription": "Primero escribe un plan para que lo apruebes. No hace cambios.",
     "autopilot": "Piloto automático",
