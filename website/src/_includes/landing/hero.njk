@@ -1,30 +1,13 @@
 <header class="hero">
-  <div class="hero-sky" aria-hidden="true">
-    <picture>
-      <source type="image/avif" sizes="100vw"
-              srcset="/assets/space/milkyway-1280.avif 1280w, /assets/space/milkyway-1920.avif 1920w, /assets/space/milkyway-2560.avif 2560w">
-      <source type="image/webp" sizes="100vw"
-              srcset="/assets/space/milkyway-1280.webp 1280w, /assets/space/milkyway-1920.webp 1920w, /assets/space/milkyway-2560.webp 2560w">
-      <img src="/assets/space/milkyway-1920.jpg" sizes="100vw"
-           srcset="/assets/space/milkyway-1280.jpg 1280w, /assets/space/milkyway-1920.jpg 1920w, /assets/space/milkyway-2560.jpg 2560w"
-           width="2560" height="1440"
-           alt="The Milky Way arching over a dark horizon"
-           decoding="async" fetchpriority="high">
-    </picture>
-  </div>
-  <div class="hero-veil" aria-hidden="true"></div>
-  <div class="hero-bloom" aria-hidden="true"></div>
-
   <div class="hero-inner">
-    <span class="hero-eyebrow hero-load"><span class="dot" aria-hidden="true"></span>Mission control for your work</span>
-    <h1 class="hero-load">Get real work done for you, <span class="accent">without the busywork</span>.</h1>
+    <h1 class="hero-load">Get real work done for you, without the busywork.</h1>
     <p class="hero-sub hero-load">Houston is a tiny desktop app where you hire a team of AI agents that actually do the work. Built for people who don't code, with no prompts to engineer and no one new to manage.</p>
     <div class="hero-actions hero-load">
-      <button class="btn btn-white" data-dl-trigger data-dl-source="hero">
+      <button class="btn btn-ink" data-dl-trigger data-dl-source="hero">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.5 3c.1 1-.3 2-1 2.8-.7.8-1.7 1.4-2.7 1.3-.1-1 .4-2 1-2.7.7-.8 1.9-1.4 2.7-1.4zM19 17.4c-.4 1-.6 1.4-1.1 2.3-.8 1.3-1.9 2.9-3.3 2.9-1.2 0-1.5-.8-3.2-.8s-2 .8-3.2.8c-1.4 0-2.4-1.4-3.2-2.7C2.5 16.8 2.3 12.7 4 10.5c.9-1.2 2.3-1.9 3.6-1.9 1.4 0 2.2.8 3.3.8 1.1 0 1.7-.8 3.3-.8 1.2 0 2.4.6 3.3 1.7-2.9 1.6-2.4 5.7.5 7.1z"/></svg>
         Download App
       </button>
-      <a class="btn btn-ghost" href="#how">See how it works</a>
+      <a class="btn btn-outline" href="#how">See how it works</a>
     </div>
     <div class="hero-proof hero-load">
       <span>Free to start</span><span class="sep" aria-hidden="true"></span>
@@ -33,57 +16,65 @@
     </div>
   </div>
 
-  <div class="hero-stage hero-load" role="img" aria-label="Houston Mission Control: an agent moving tasks across a board while it works">
-    <div class="win">
-      <div class="win-bar">
-        <span class="lights" aria-hidden="true"><i class="tl-r"></i><i class="tl-y"></i><i class="tl-g"></i></span>
-        <span class="win-title">Houston — Acme Studio</span>
-      </div>
-      <div class="win-body">
-        <aside class="sb">
-          <div class="sb-ws">
-            <span class="ws-badge" aria-hidden="true">A</span>
-            <span class="ws-name">Acme Studio<small>Personal workspace</small></span>
-          </div>
-          <div class="nav-item on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Mission board</div>
-          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chats</div>
-          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Files</div>
-          <div class="sb-group">Agents</div>
-          <div class="agent-row on"><span class="av av-o" aria-hidden="true">RO</span><span class="a-name">Rosa · Ops</span><span class="a-live" aria-hidden="true"></span></div>
-          <div class="agent-row"><span class="av av-b" aria-hidden="true">LE</span><span class="a-name">Leo · Research</span><span class="a-count">4</span></div>
-          <div class="agent-row"><span class="av av-p" aria-hidden="true">MI</span><span class="a-name">Mira · Finance</span><span class="a-count">2</span></div>
-          <div class="agent-row"><span class="av av-g" aria-hidden="true">SA</span><span class="a-name">Sam · Outreach</span><span class="a-count">7</span></div>
-        </aside>
-        <section class="board">
-          <div class="board-head">
-            <div>
-              <h3>Rosa · Operations</h3>
-              <div class="b-sub">Working across Gmail, Notion, and Stripe</div>
+  <div class="hero-frame hero-load">
+    <div class="hero-stage" role="img" aria-label="Houston, the desktop app: a mission board where an agent moves tasks across Running, Needs you, and Done columns">
+      <div class="win">
+        <div class="win-body">
+          <aside class="sb">
+            <span class="sb-lights" aria-hidden="true"><i class="tl-r"></i><i class="tl-y"></i><i class="tl-g"></i></span>
+            <div class="sb-ws">
+              <span class="ws-name">Personal<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span>
+              <svg class="ws-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
             </div>
-            <span class="pill"><span class="a-live" aria-hidden="true"></span>Live</span>
-          </div>
-          <div class="cols">
-            <div class="col">
-              <div class="col-h"><span class="cdot cd-todo" aria-hidden="true"></span>To do</div>
-              <div class="card"><div class="c-title">Draft Q3 vendor renewal emails</div><div class="c-foot"><span class="c-tag">Gmail</span></div></div>
-              <div class="card"><div class="c-title">Reconcile last week's expenses</div><div class="c-foot"><span class="c-tag">Stripe</span></div></div>
+            <div class="nav-item on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Mission Control</div>
+            <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5 7h4V3h6v4h4v6h-4v-2a2 2 0 0 0-4 0v2H5z"/><path d="M5 13h4a2 2 0 0 1 0 4H5v4h6"/></svg>Integrations</div>
+            <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4z"/><circle cx="18" cy="17" r="2"/><circle cx="6" cy="17" r="2"/></svg>AI Models</div>
+            <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M3 12a9 9 0 1 1 18 0"/><path d="M12 12l4-2"/></svg>Usage</div>
+            <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 8h16l-1 3a3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/><path d="M5 11v9h14v-9"/><path d="M4 8l2-4h12l2 4"/></svg>Agent Store</div>
+            <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.3-2.5H10l-.3 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.3 2.5h3.6l.3-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z"/></svg>Settings</div>
+            <div class="sb-group"><span class="sg-label">Your Agents</span><svg class="sg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M17 8h5M19.5 5.5v5"/></svg><svg class="sg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></div>
+            <div class="agent-row on"><span class="av av-p" aria-hidden="true">H</span><span class="a-name">Houston</span><span class="a-count">1</span></div>
+          </aside>
+
+          <section class="screen">
+            <div class="screen-head">
+              <span class="sh-title">Houston</span>
+              <span class="sh-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>Search missions</span>
+              <span class="sh-guide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>Guide me</span>
+              <span class="sh-new"><span class="glyph" aria-hidden="true"></span>New mission</span>
             </div>
-            <div class="col">
-              <div class="col-h"><span class="cdot cd-prog" aria-hidden="true"></span>In progress</div>
-              <div class="card running">
-                <div class="c-title">Compile the investor update from this month's metrics</div>
-                <span class="run-tag"><span class="rdot" aria-hidden="true"></span>Rosa is working</span>
-                <div class="bar" aria-hidden="true"><i></i></div>
+            <div class="tabs">
+              <span class="tab on">Activity<span class="t-count">1</span></span>
+              <span class="tab">Routines</span>
+              <span class="tab">Integrations</span>
+              <span class="tab">Files</span>
+              <span class="tab">Archived</span>
+              <span class="tab">Agent Settings</span>
+            </div>
+            <div class="cols">
+              <div class="col">
+                <div class="col-h">Running</div>
+                <div class="card-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></div>
               </div>
-              <div class="card"><div class="c-title">Schedule 6 customer calls for Thursday</div><div class="c-foot"><span class="c-tag">Calendar</span></div></div>
+              <div class="col">
+                <div class="col-h">Needs you<span class="c-count">1</span><span class="c-menu" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span></div>
+                <div class="tcard">
+                  <div class="tc-head"><span class="av av-p" aria-hidden="true">H</span><span class="tc-agent">Houston</span><span class="tc-actions" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></span></div>
+                  <div class="tc-title">Plan a trip to Tokyo</div>
+                  <div class="tc-desc">Research flights and hotels for the spring</div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="col-h">Done<span class="c-count">1</span><span class="c-menu" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span></div>
+                <div class="tcard">
+                  <div class="tc-head"><span class="av av-p" aria-hidden="true">H</span><span class="tc-agent">Houston</span><span class="tc-actions" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></span></div>
+                  <div class="tc-title">Draft the launch email</div>
+                  <div class="tc-desc">Write the beta announcement to the waitlist</div>
+                </div>
+              </div>
             </div>
-            <div class="col col-done">
-              <div class="col-h"><span class="cdot cd-done" aria-hidden="true"></span>Done</div>
-              <div class="card"><div class="c-title">Sorted 214 support tickets into themes</div><div class="c-foot"><span class="c-tag">Notion</span></div></div>
-              <div class="card"><div class="c-title">Published the weekly team digest</div><div class="c-foot"><span class="c-tag">Slack</span></div></div>
-            </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   </div>

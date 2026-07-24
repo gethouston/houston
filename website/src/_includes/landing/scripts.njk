@@ -111,11 +111,11 @@
     var arm64 = document.getElementById("dl-windows-arm64-btn");
     if (!x64 || !arm64) return;
     function show(shown, hidden) {
-      shown.classList.remove("btn-ghost");
-      shown.classList.add("btn-ember");
+      shown.classList.remove("btn-outline");
+      shown.classList.add("btn-ink");
       shown.style.display = "";
-      hidden.classList.remove("btn-ember");
-      hidden.classList.add("btn-ghost");
+      hidden.classList.remove("btn-ink");
+      hidden.classList.add("btn-outline");
       hidden.style.display = "none";
     }
     arm64.style.display = "none";
