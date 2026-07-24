@@ -1,5 +1,4 @@
 import { AgentAccessSection } from "../agent-access-section";
-import { AgentAdminConnect } from "./agent-admin-connect";
 import { AgentAdminInstructions } from "./agent-admin-instructions";
 import { AgentAdminKnowledge } from "./agent-admin-knowledge";
 import type {
@@ -25,8 +24,6 @@ export function AgentAdminScreenView({
       return <AgentAdminSkills agent={agent} />;
     case "knowledge":
       return <AgentAdminKnowledge agent={agent} />;
-    case "connect":
-      return <AgentAdminConnect agent={agent} />;
     case "people":
       return (
         <div className="mx-auto w-full max-w-xl px-8 py-10">

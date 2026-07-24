@@ -1,5 +1,4 @@
 import type { Capabilities } from "@houston-ai/engine-client";
-import { apiKeysSupported } from "../../../lib/api-keys-model.ts";
 import { isMultiplayer } from "../../../lib/org-roles.ts";
 import type { Agent } from "../../../lib/types";
 
@@ -14,15 +13,14 @@ export type AgentAdminScreen =
   | "instructions"
   | "skills"
   | "knowledge"
-  | "people"
-  | "connect";
+  | "people";
 
 /** Shared props for every Agent Settings section component. */
 export interface AgentAdminScreenProps {
   agent: Agent;
 }
 
-export type AgentAdminCardId = "configuration" | "access" | "connect";
+export type AgentAdminCardId = "configuration" | "access";
 
 export interface AgentAdminCard {
   id: AgentAdminCardId;
@@ -38,9 +36,10 @@ export interface AgentAdminCard {
  *   (allowed integrations + allowed models) moved OUT of Agent Settings — they
  *   live in the one Permissions view now — so this card is just "who can use
  *   this agent".
- * - **Connect** (hosted public API only, `capabilities.apiKeys` — C10): use the
- *   agent from other apps (MCP / A2A / missions REST). Absent on desktop-local,
- *   self-host, and gateways that predate the public API.
+ * The public-API "Connect" card (C10, `capabilities.apiKeys`) was removed from
+ * this screen (HOU-806): connecting external apps is a Routines concern now.
+ * The underlying model (`lib/agent-connect-model.ts`) and Settings > API keys
+ * stay.
  *
  * Single-player / self-host gets Configuration only — no Access card (no sharing
  * / no ceilings). Only managers/owners (or the single-player sole user) ever
@@ -59,10 +58,6 @@ export function agentAdminCards(
 
   if (isMultiplayer(caps)) {
     cards.push({ id: "access", rows: ["people"] });
-  }
-
-  if (apiKeysSupported(caps ?? null)) {
-    cards.push({ id: "connect", rows: ["connect"] });
   }
 
   return cards;
