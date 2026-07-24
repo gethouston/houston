@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useLegalAcceptance } from "../../hooks/use-legal-acceptance";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
 import { analytics } from "../../lib/analytics";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import { FirstRunScreen } from "../onboarding/first-run-screen";
 import { SetupCard } from "../onboarding/setup-card";
 

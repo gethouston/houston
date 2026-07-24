@@ -6,7 +6,7 @@ import {
 import type { HandleAvailability } from "@houston-ai/engine-client";
 import { useEffect, useState } from "react";
 import { getEngine } from "../lib/engine";
-import { reportError } from "../lib/error-toast";
+import { reportError } from "../lib/error-report";
 
 /** Live availability state for the handle the user is typing. */
 export type HandleStatus =

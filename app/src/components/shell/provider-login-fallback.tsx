@@ -2,7 +2,7 @@ import type { HoustonEvent } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import { PROVIDERS, type ProviderInfo } from "../../lib/providers";

@@ -5,7 +5,7 @@ import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
 import { getEngine } from "./engine";
-import { reportError } from "./error-toast";
+import { reportError } from "./error-report";
 import { subscribeStoreDeepLinks } from "./store-deeplink-ingress";
 import {
   decideStoreInstallDrive,

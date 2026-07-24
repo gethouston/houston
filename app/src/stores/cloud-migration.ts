@@ -26,7 +26,7 @@ import {
   runMigrationTask,
 } from "../lib/cloud-migration-runner";
 import type { SourceHostHandshake } from "../lib/cloud-migration-transport";
-import { reportError } from "../lib/error-toast";
+import { reportError } from "../lib/error-report";
 import {
   osBackupHoustonData,
   osStartMigrationSourceHost,

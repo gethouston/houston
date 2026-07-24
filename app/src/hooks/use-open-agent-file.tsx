@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { fileNameOf, toWorkspaceRelative } from "../lib/agent-file-paths";
 import { isCoLocatedEngine, newEngineActive } from "../lib/engine";
-import { genericErrorDescription } from "../lib/error-toast";
+import { genericErrorDescription } from "../lib/error-report";
 import { logger } from "../lib/logger";
 import { looksLikeUrl } from "../lib/open-href";
 import { tauriFiles, tauriSystem } from "../lib/tauri";

@@ -182,7 +182,11 @@ export default function App() {
     return () => document.removeEventListener("contextmenu", handler);
   }, []);
 
-  const wsLoading = useWorkspaceStore((s) => s.loading);
+  // `loaded` (a load attempt has settled at least once), NOT `loading`: the
+  // splash below must cover only the INITIAL load. Reading raw `loading` made
+  // every later `loadWorkspaces()` — the Settings retry, a create-team refresh
+  // — swap the whole app for the full-screen splash and remount the shell.
+  const wsLoaded = useWorkspaceStore((s) => s.loaded);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const agentLoading = useAgentStore((s) => s.loading);
   const agents = useAgentStore((s) => s.agents);
@@ -231,7 +235,7 @@ export default function App() {
     (!authConfigured || (!sessionLoading && Boolean(session))) &&
     !tutorialActive &&
     !agentLoading &&
-    !wsLoading &&
+    wsLoaded &&
     !capabilitiesLoading &&
     !(newEngineActive() && !agentsLoaded) &&
     firstRunCandidate &&
@@ -317,10 +321,10 @@ export default function App() {
 
   // First-run tutorial. Held in front of the shell while the orchestrator is
   // mid-flight, even after the workspace and agent have been created (M2+).
-  // Checked BEFORE the loading splash on purpose: when M2 (Brain) creates the
-  // workspace it triggers `loadWorkspaces()` which flips `wsLoading` to true.
-  // If the splash rendered here it would unmount the orchestrator, fire its
-  // cleanup, and clear `tutorialActive` — kicking the user out of the tutorial.
+  // Checked BEFORE the loading splash on purpose: the tutorial runs before the
+  // first load has ever settled, and letting the splash win here would unmount
+  // the orchestrator, fire its cleanup, and clear `tutorialActive` — kicking
+  // the user out of the tutorial.
   if (tutorialActive) {
     return (
       <PersonalAssistantOnboarding
@@ -341,7 +345,7 @@ export default function App() {
   // agents, so `loaded` would hang false there).
   const bootGateActive =
     agentLoading ||
-    wsLoading ||
+    !wsLoaded ||
     capabilitiesLoading ||
     onboardingPendingLoading ||
     onboardingCompletedLoading ||
@@ -358,7 +362,7 @@ export default function App() {
   // zero WORKSPACES, but the v3 control plane has no workspace CRUD — the
   // adapter always reports one synthetic workspace — so there first-run is
   // zero AGENTS. Both counts are settled here (the splash above waited on
-  // wsLoading + agentLoading).
+  // wsLoaded + agentLoading).
   const firstRun = isFirstRun({
     controlPlane: newEngineActive(),
     workspaceCount: workspaces.length,

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getEngine } from "../../lib/engine";
-import { reportError } from "../../lib/error-toast";
+import { reportError } from "../../lib/error-report";
 import { useUIStore } from "../../stores/ui";
 
 /** The owner-dashboard query key, invalidated after every owner mutation. */

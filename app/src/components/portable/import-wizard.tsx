@@ -41,7 +41,7 @@ import { finishAgentSetup } from "../../lib/agent-setup";
 import { startAgentSetupMission } from "../../lib/agent-setup-mission";
 import { analytics } from "../../lib/analytics";
 import { getEngine } from "../../lib/engine";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriProvider, toAgent } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";

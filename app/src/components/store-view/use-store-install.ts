@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { getEngine } from "../../lib/engine";
-import { reportError } from "../../lib/error-toast";
+import { reportError } from "../../lib/error-report";
 import { useUIStore } from "../../stores/ui";
 
 /**

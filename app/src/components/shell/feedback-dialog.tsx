@@ -11,7 +11,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { reportBug } from "../../lib/bug-report";
 import { getCurrentUserEmail } from "../../lib/current-user";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import { useUIStore } from "../../stores/ui";
 
 /**

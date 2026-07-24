@@ -1,6 +1,6 @@
 import { STORE_VIEW_ID } from "../components/store-view/id.ts";
 import { useUIStore } from "../stores/ui";
-import { reportError } from "./error-toast";
+import { reportError } from "./error-report";
 import {
   legacyListen,
   osIsTauri,

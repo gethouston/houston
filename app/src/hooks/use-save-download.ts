@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { genericErrorDescription } from "../lib/error-toast";
+import { genericErrorDescription } from "../lib/error-report";
 import { logger } from "../lib/logger";
 import { osRevealPath } from "../lib/os-bridge";
 import { saveBlob } from "../lib/save-blob";

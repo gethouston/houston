@@ -11,7 +11,18 @@ import { resolveActiveWorkspace } from "../lib/workspace-switch";
 interface WorkspaceState {
   workspaces: Workspace[];
   current: Workspace | null;
+  /** A load is in flight — the FIRST one or any later retry/refresh. */
   loading: boolean;
+  /** At least one load attempt has settled, success or failure. Distinct from
+   *  `!loading`: it stays true across every later retry, which is what lets the
+   *  boot splash cover only the initial load (App.tsx) while a retry spins in
+   *  place inside whichever screen asked for it. */
+  loaded: boolean;
+  /** The last settled load threw. Cleared on success, so a settled state with
+   *  no current workspace can be told apart: `loadError` = the load failed
+   *  (blame the connection, offer a retry), no error = the account genuinely
+   *  has no workspace (a neutral empty state). */
+  loadError: boolean;
   loadWorkspaces: () => Promise<void>;
   setCurrent: (ws: Workspace) => void;
   create: (name: string) => Promise<Workspace>;
@@ -27,12 +38,16 @@ interface WorkspaceState {
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   workspaces: [],
   current: null,
-  // Start true so App.tsx renders the loading splash on first paint instead of
-  // the tutorial. Returning users with an existing workspace would otherwise
-  // briefly fall through the `workspaces.length === 0` gate and mount the
-  // onboarding orchestrator before `loadWorkspaces()` resolves, which then
-  // pinned `tutorialActive=true` and trapped them in the tutorial.
+  // Start "not settled" so App.tsx renders the loading splash on first paint
+  // instead of the tutorial. Returning users with an existing workspace would
+  // otherwise briefly fall through the `workspaces.length === 0` gate and mount
+  // the onboarding orchestrator before `loadWorkspaces()` resolves, which then
+  // pinned `tutorialActive=true` and trapped them in the tutorial. The splash
+  // reads `loaded` (never-loaded-yet), NOT `loading`: a retry or a refresh must
+  // not swap the whole app for the splash and remount the shell under the user.
   loading: true,
+  loaded: false,
+  loadError: false,
 
   loadWorkspaces: async () => {
     set({ loading: true });
@@ -49,10 +64,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       // they carry the right x-houston-org from the start (no header for
       // personal). No cache reset here — nothing has been fetched yet.
       setActiveOrg(current ? orgSlugFromWorkspaceId(current.id) : null);
-      set({ workspaces, current, loading: false });
-    } catch (e) {
-      console.error("[workspaces] Failed to load:", e);
-      set({ loading: false });
+      set({ workspaces, current, loadError: false });
+    } catch {
+      // No reporting here: both awaited calls run through `call()`
+      // (`lib/tauri.ts`), which already toasts the failure AND captures it to
+      // Sentry. This catch only settles state — it records that the attempt
+      // failed so a gated screen can offer a retry (SettingsView) instead of
+      // spinning, and can tell "the load broke" from "there is nothing here".
+      set({ loadError: true });
+    } finally {
+      set({ loading: false, loaded: true });
     }
   },
 

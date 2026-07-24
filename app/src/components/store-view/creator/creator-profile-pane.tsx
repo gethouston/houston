@@ -7,7 +7,7 @@ import {
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { reportError } from "../../../lib/error-toast";
+import { reportError } from "../../../lib/error-report";
 import { ReportDialog } from "../report-dialog";
 import { StoreCatalogResults } from "../store-catalog-results";
 import { StoreDetailDialog } from "../store-detail-dialog";

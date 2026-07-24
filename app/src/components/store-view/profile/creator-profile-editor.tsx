@@ -19,7 +19,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMyStoreProfile } from "../../../hooks/use-my-store-profile";
 import { getEngine } from "../../../lib/engine";
-import { reportError } from "../../../lib/error-toast";
+import { reportError } from "../../../lib/error-report";
 import { useUIStore } from "../../../stores/ui";
 import { AvatarUploadField } from "./avatar-upload-field";
 import { BioField } from "./bio-field";

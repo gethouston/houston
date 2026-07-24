@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import { useUIStore } from "../../stores/ui";
 import { ProviderBrowser } from "../provider-browser/provider-browser";
 import { useProviderBrowserData } from "../provider-browser/use-provider-browser-data";

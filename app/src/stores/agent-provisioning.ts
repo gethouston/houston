@@ -25,7 +25,8 @@ import {
   runProvisioningProbe,
 } from "../lib/agent-provisioning";
 import { getEngine, isCoLocatedEngine, whenEngineReady } from "../lib/engine";
-import { reportError, showErrorToast } from "../lib/error-toast";
+import { reportError } from "../lib/error-report";
+import { showErrorToast } from "../lib/error-toast";
 import i18n from "../lib/i18n";
 import { queryClient } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";

@@ -18,7 +18,7 @@ import {
   isKeyLimitError,
   MAX_KEY_NAME_LENGTH,
 } from "../../../lib/api-keys-model";
-import { genericErrorDescription } from "../../../lib/error-toast";
+import { genericErrorDescription } from "../../../lib/error-report";
 import { useUIStore } from "../../../stores/ui";
 
 interface ApiKeyCreateDialogProps {

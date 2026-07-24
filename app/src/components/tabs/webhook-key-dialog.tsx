@@ -11,7 +11,7 @@ import type { WebhookKeyReveal } from "@houston-ai/engine-client";
 import { Check, Copy, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { genericErrorDescription } from "../../lib/error-toast";
+import { genericErrorDescription } from "../../lib/error-report";
 import { useUIStore } from "../../stores/ui";
 
 interface Props {

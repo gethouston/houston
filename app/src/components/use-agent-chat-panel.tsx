@@ -78,7 +78,7 @@ import {
 import { createMission } from "../lib/create-mission";
 import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
-import { genericErrorDescription } from "../lib/error-toast";
+import { genericErrorDescription } from "../lib/error-report";
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import {
   type ConnectOutcome,
