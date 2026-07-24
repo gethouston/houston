@@ -277,6 +277,16 @@ export function osShowSessionNotification(
   return invoke<void>("show_session_notification", { title, body });
 }
 
+/** Open the OS notification-settings pane so a user whose OS/browser blocked
+ * Houston can grant delivery (macOS System Settings → Notifications; Windows
+ * Settings → Notifications). Resolves false on web (no OS pane) and on Linux
+ * (the native command reports it unsupported), which the caller reads as "hide
+ * the button". Rejects only on an unexpected native failure so it surfaces. */
+export async function osOpenNotificationSettings(): Promise<boolean> {
+  if (!isTauri()) return false;
+  return invoke<boolean>("open_notification_settings");
+}
+
 /** Read the last N lines from backend + frontend log files. */
 export function osReadRecentLogs(
   lines = 50,

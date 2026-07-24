@@ -206,7 +206,7 @@ export {
   DEFAULT_PLAN_READY_LABELS,
   resolvePlanReadyActions,
 } from "./chat-plan-ready-card-model";
-export type { ChatProcessLabels } from "./chat-process-block";
+export type { ChatActionBrand, ChatProcessLabels } from "./chat-process-block";
 export type { ChatSidebarProps } from "./chat-sidebar";
 export { ChatSidebar } from "./chat-sidebar";
 export type { ChatStatusLineProps } from "./chat-status-line";
@@ -223,6 +223,13 @@ export {
   DEFAULT_SUGGEST_REUSABLE_LABELS,
   resolveSuggestReusableSaveLabel,
 } from "./chat-suggest-reusable-card-model";
+// === Thinking indicator (HOU-910) ===
+// The pre-reply loading state: a pulsing helmet + rotating astronaut one-liners.
+// i18n-agnostic — the app passes its localized `phrases`; defaults stand alone.
+export {
+  ChatThinkingIndicator,
+  type ChatThinkingIndicatorProps,
+} from "./chat-thinking-indicator";
 export type {
   ConversationMapLabels,
   ConversationMapProps,
@@ -283,7 +290,10 @@ export type {
   StepFooterApi,
 } from "./interaction-card";
 export { ChatInteractionCard } from "./interaction-card";
-export { prettifyToolkit } from "./interaction-card-model";
+export {
+  humanizeActionGerund,
+  prettifyToolkit,
+} from "./interaction-card-model";
 // The always-visible single-line free-text row every non-question step carries
 // (connect / sign-in / credential decline-with-instruction).
 export { InlineTextRow } from "./interaction-decline-row";
@@ -313,6 +323,7 @@ export type { SkillInvocation, SkillInvocationField } from "./skill-message";
 // running a Skill". Decoded into a structured payload so consumers
 // (desktop, mobile) can render the same card.
 export { decodeSkillMessage, resolveSkillImage } from "./skill-message";
+export { DEFAULT_THINKING_PHRASES } from "./thinking-phrases";
 export type { TurnEndSummary } from "./turn-tools";
 export type {
   AuthFailureCause,

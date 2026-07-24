@@ -183,6 +183,12 @@ export async function invoke<T = unknown>(
     case "focus_main_window":
       // The web build is a single browser tab; there's no OS window to raise.
       return undefined as T;
+    case "open_notification_settings":
+      // No OS notification-settings pane to open from a browser tab. `false`
+      // means "unsupported", which the caller reads as "hide the button" — the
+      // same contract the native Linux arm returns. `osOpenNotificationSettings`
+      // already short-circuits off-Tauri; this keeps shim parity intact.
+      return false as T;
     case "saved_bridge_target":
       // The web app never runs a local-model bridge (no native frpc), so it can
       // never own a saved target. Returning null is the honest answer and keeps

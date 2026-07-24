@@ -6,13 +6,13 @@
 
 import { TooManyAttachmentFilesError } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { Shimmer } from "./ai-elements/shimmer";
 import { ChatDropOverlay } from "./chat-drop-overlay";
 import { feedItemsToMessages } from "./chat-helpers";
 import { ChatInput } from "./chat-input";
 import { ChatMessages } from "./chat-messages";
 import type { ChatPanelProps } from "./chat-panel-types";
 import { deriveStatus } from "./chat-status";
+import { ChatThinkingIndicator } from "./chat-thinking-indicator";
 import {
   DEFAULT_TOO_MANY_FILES_NOTICE,
   useAttachmentIntake,
@@ -21,11 +21,7 @@ import { useControllable, useFileDropZone } from "./use-file-drop-zone";
 
 export type { ChatPanelProps } from "./chat-panel-types";
 
-const DefaultThinkingIndicator = () => (
-  <div className="py-1">
-    <Shimmer duration={2}>Thinking...</Shimmer>
-  </div>
-);
+const DefaultThinkingIndicator = () => <ChatThinkingIndicator />;
 
 export function ChatPanel({
   sessionKey,

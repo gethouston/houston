@@ -1,8 +1,8 @@
 /**
  * Tool-name → human label resolution. Pure (no React imports) so the exact
  * same verb that a `ToolBlock` row shows ("Reading file", "Running command")
- * can also drive the process-block header ("Mission in progress: Reading
- * file"), and so it can be unit-tested under `node:test` without a DOM.
+ * can also drive the process-block header, and so it can be unit-tested under
+ * `node:test` without a DOM.
  *
  * These labels are intentionally English: `ui/` stays i18n-agnostic, and the
  * app does not pass `toolLabels`, so tool verbs read in English in every
@@ -31,6 +31,21 @@ const ACTIVE_LABELS: Record<string, string> = {
   find: "Searching files",
   grep: "Searching code",
   ls: "Listing files",
+  // Houston product tools (MCP-prefixed on the wire, resolved by short name).
+  // Plain human verbs so the mission-log ROW never leaks a raw underscored
+  // name; the process-block HEADER upgrades an execute to a branded
+  // "Gmail · Sending email" line when the app resolves it.
+  integration_execute: "Using an app",
+  integration_search: "Looking through your apps",
+  ask_user: "Checking with you",
+  request_connection: "Asking to connect an app",
+  request_credential: "Asking for access",
+  suggest_reusable: "Offering to save this",
+  save_routine: "Saving a routine",
+  run_code: "Running code",
+  custom_integration_detect: "Inspecting a custom app",
+  custom_integration_add: "Adding a custom app",
+  plan_ready: "Sharing the plan",
 };
 
 const DONE_LABELS: Record<string, string> = {
@@ -51,6 +66,17 @@ const DONE_LABELS: Record<string, string> = {
   find: "Searched files",
   grep: "Searched code",
   ls: "Listed files",
+  integration_execute: "Used an app",
+  integration_search: "Looked through your apps",
+  ask_user: "Checked with you",
+  request_connection: "Asked to connect an app",
+  request_credential: "Asked for access",
+  suggest_reusable: "Offered to save this",
+  save_routine: "Saved a routine",
+  run_code: "Ran code",
+  custom_integration_detect: "Inspected a custom app",
+  custom_integration_add: "Added a custom app",
+  plan_ready: "Shared the plan",
 };
 
 /** The bare tool name with any MCP `server__tool` prefix stripped. */

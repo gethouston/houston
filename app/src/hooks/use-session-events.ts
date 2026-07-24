@@ -77,10 +77,10 @@ export function useSessionEvents() {
   );
 
   useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-
+    // Permission is NOT requested here anymore: a context-less prompt on load
+    // is exactly what this feature replaces. The ask now happens with context
+    // through the first-mission pre-prompt, the settings row, and the
+    // missed-ping catch-net (see `notification-nudge.ts`).
     const unlisten = subscribeHoustonEvents((payload: HoustonEvent) => {
       const h = handlersRef.current;
 

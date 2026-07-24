@@ -8,7 +8,12 @@ import {
   shouldArmNotificationNav,
   shouldNavigateOnAppActivation,
 } from "../lib/notification-nav";
-import { osShowSessionNotification } from "../lib/os-bridge";
+import {
+  isSessionNotificationEnabled,
+  readOsPermissionGranted,
+  recordMissedPing,
+} from "../lib/notification-settings";
+import { osIsTauri, osShowSessionNotification } from "../lib/os-bridge";
 import { isMac } from "../lib/platform";
 import { queryClient } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
@@ -121,28 +126,31 @@ export async function sendSessionNotification(
   nav?: NotificationNav,
 ) {
   try {
-    if (isMac) {
-      // macOS: the JS notification plugin's click activates the app, which
-      // fires the focus event the listener below consumes. Unchanged.
-      const {
-        isPermissionGranted,
-        requestPermission,
-        sendNotification: notify,
-      } = await import("@tauri-apps/plugin-notification");
+    // The send chokepoint gate: the in-app toggle OFF suppresses everything.
+    if (!isSessionNotificationEnabled()) return;
 
-      let granted = await isPermissionGranted();
-      if (!granted) {
-        const perm = await requestPermission();
-        granted = perm === "granted";
-      }
-      if (!granted) return;
+    // If the OS/browser won't deliver, record a missed ping for the catch-net
+    // and stop. We deliberately no longer force a context-less permission prompt
+    // here — the ask now happens through the pre-prompt, the settings row, and
+    // the catch-net CTAs, so the permission is always requested WITH context.
+    if (!(await readOsPermissionGranted())) {
+      await recordMissedPing();
+      return;
+    }
 
+    if (isMac || !osIsTauri()) {
+      // macOS + web: the JS notification plugin (shimmed to the browser
+      // Notification API on web) whose click activates the app, firing the
+      // focus event the listener below consumes.
+      const { sendNotification: notify } = await import(
+        "@tauri-apps/plugin-notification"
+      );
       notify({ title, body, sound: "Glass" });
     } else {
-      // Linux/Windows: the plugin is fire-and-forget (no click event) and a
-      // notification click doesn't focus the window, so the focus path never
-      // fires. The Rust command shows a native notification whose click raises
-      // the window and emits `notification-clicked`.
+      // Linux/Windows desktop: the plugin is fire-and-forget (no click event)
+      // and a notification click doesn't focus the window, so the focus path
+      // never fires. The Rust command shows a native notification whose click
+      // raises the window and emits `notification-clicked`.
       await osShowSessionNotification(title, body);
     }
 

@@ -7,6 +7,7 @@ import { analytics } from "../../lib/analytics";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { createMission } from "../../lib/create-mission";
 import { classifyFileKind } from "../../lib/file-kind";
+import { maybeShowFirstMissionPrompt } from "../../lib/notification-nudge";
 import { queryKeys } from "../../lib/query-keys";
 import { formatVisibleMessageText } from "../../lib/queued-chat";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
@@ -38,7 +39,7 @@ export function useAgentBoardSend({
   pendingAgentMode: string | null;
   setPendingAgentMode: (mode: string | null) => void;
 }) {
-  const { t } = useTranslation(["board", "chat"]);
+  const { t } = useTranslation(["board", "chat", "common"]);
   const path = agent.folderPath;
   const agentModes = agentDef.config.agents;
   const addToast = useUIStore((s) => s.addToast);
@@ -120,6 +121,11 @@ export function useAgentBoardSend({
       // parked message shows the standard in-flight indicator (HOU-713).
       setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       setPendingAgentMode(null);
+      // First-mission pre-prompt: a contextual, one-time nudge to turn on
+      // completion notifications, shown here — the moment a user kicks off a
+      // mission — only when delivery isn't already granted and we've never
+      // asked. Fire-and-forget; its own flags keep it one-time.
+      void maybeShowFirstMissionPrompt({ addToast, t });
       // createMission bypassed useCreateActivity so invalidate manually.
       queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
       analytics.track("mission_created", {
@@ -143,6 +149,7 @@ export function useAgentBoardSend({
       pendingAgentMode,
       agentModes,
       queryClient,
+      addToast,
       t,
       setPendingAgentMode,
     ],

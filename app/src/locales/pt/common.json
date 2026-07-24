@@ -48,6 +48,22 @@
       "signin": "Seu agente precisa que você entre.",
       "connect": "Seu agente precisa que você conecte um aplicativo.",
       "credential": "Seu agente precisa de uma chave de API para terminar."
-    }
+    },
+    "preprompt": {
+      "title": "Quer um aviso quando seu agente terminar?",
+      "body": "Ative as notificações e o Houston avisa você assim que uma missão terminar ou precisar de você.",
+      "cta": "Ativar notificações"
+    },
+    "catchNet": {
+      "title": "Você perdeu um aviso",
+      "body": "Ative as notificações para o Houston avisar você quando uma missão terminar.",
+      "cta": "Ativar notificações"
+    },
+    "granted": "As notificações estão ativadas.",
+    "blocked": "As notificações estão bloqueadas. Abra as configurações do sistema para ativá-las.",
+    "blockedBrowser": "As notificações estão bloqueadas. Ative-as nas configurações do seu navegador.",
+    "openSettings": "Abrir configurações do sistema",
+    "openSettingsFailed": "Não foi possível abrir as configurações do sistema. {{error}}",
+    "requestFailed": "Não foi possível ativar as notificações. {{error}}"
   }
 }
