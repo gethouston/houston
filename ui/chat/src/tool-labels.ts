@@ -31,12 +31,21 @@ const ACTIVE_LABELS: Record<string, string> = {
   find: "Searching files",
   grep: "Searching code",
   ls: "Listing files",
-  // Composio integration tools (MCP-prefixed on the wire, resolved by short
-  // name). Generic verbs so the mission-log ROW never leaks the raw
-  // `integration_execute` underscores; the process-block HEADER upgrades an
-  // execute to a branded "Gmail · Sending email" line when the app resolves it.
+  // Houston product tools (MCP-prefixed on the wire, resolved by short name).
+  // Plain human verbs so the mission-log ROW never leaks a raw underscored
+  // name; the process-block HEADER upgrades an execute to a branded
+  // "Gmail · Sending email" line when the app resolves it.
   integration_execute: "Using an app",
-  integration_search: "Finding app actions",
+  integration_search: "Looking through your apps",
+  ask_user: "Checking with you",
+  request_connection: "Asking to connect an app",
+  request_credential: "Asking for access",
+  suggest_reusable: "Offering to save this",
+  save_routine: "Saving a routine",
+  run_code: "Running code",
+  custom_integration_detect: "Inspecting a custom app",
+  custom_integration_add: "Adding a custom app",
+  plan_ready: "Sharing the plan",
 };
 
 const DONE_LABELS: Record<string, string> = {
@@ -58,7 +67,16 @@ const DONE_LABELS: Record<string, string> = {
   grep: "Searched code",
   ls: "Listed files",
   integration_execute: "Used an app",
-  integration_search: "Found app actions",
+  integration_search: "Looked through your apps",
+  ask_user: "Checked with you",
+  request_connection: "Asked to connect an app",
+  request_credential: "Asked for access",
+  suggest_reusable: "Offered to save this",
+  save_routine: "Saved a routine",
+  run_code: "Ran code",
+  custom_integration_detect: "Inspected a custom app",
+  custom_integration_add: "Added a custom app",
+  plan_ready: "Shared the plan",
 };
 
 /** The bare tool name with any MCP `server__tool` prefix stripped. */
