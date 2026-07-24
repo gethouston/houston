@@ -85,6 +85,7 @@ The phases themselves are in the workspace CLAUDE.md. In this repo they mean:
 | host / runtime / domain | `pnpm --filter @houston/host --filter @houston/runtime --filter @houston/domain test` (vitest) | — | `scripts/build-host-sidecar.sh <triple>` (bun-compile the desktop sidecar) |
 | boundaries | `pnpm check:boundaries` | — | — |
 | app/ | `cd app && pnpm tsgo --noEmit` | `cd app/src-tauri && cargo check` (the Tauri shell) | `cd app && pnpm tauri build` |
+| app/ unit tests | `cd app && pnpm test` (node:test over `tests/*.test.ts` — CI's "App (node:test unit tests)" job; run it whenever `app/src` logic or `app/tests` change) | — | — |
 | app/ Win MSI | — | — | `cd app && pnpm tauri build --target x86_64-pc-windows-msvc` (needs Windows host or `xwin` SDK) |
 | app/ i18n | `cd app && pnpm check-locales` | — | — |
 | packages/web | `pnpm --filter houston-web typecheck` (runs Tauri shim-parity guard + tsgo) | — | `pnpm --filter houston-web build` |
