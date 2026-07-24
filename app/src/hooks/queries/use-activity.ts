@@ -33,11 +33,17 @@ export function useActivity(agentPath: string | undefined) {
     // Placeholder semantics keep the contract above: never persisted,
     // replaced by the held read when the pod answers, and `undefined`
     // (still loading) when nothing is cached — never a fabricated `[]`.
-    placeholderData: (previousData) =>
-      previousData ??
-      (agentPath
+    //
+    // The placeholder must ignore `placeholderData`'s previous-data argument
+    // (HOU-858): that argument carries the PREVIOUS query key's data, and the
+    // only way this key changes is an agent switch — so "previous data" is
+    // always the previous AGENT's board, and serving it painted the old
+    // agent's mission cards under the new agent until the fetch landed. Only
+    // the agent-scoped cache lookup may seed the placeholder.
+    placeholderData: () =>
+      agentPath
         ? latestCachedAgentActivities(queryClient, agentPath)
-        : undefined),
+        : undefined,
   });
 }
 
