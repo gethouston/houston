@@ -1,5 +1,5 @@
+import { MAX_ATTACHMENT_FILES } from "@houston-ai/core";
 import { useCallback } from "react";
-import { MAX_ATTACHMENT_FILES } from "./attachment-folders";
 import type {
   AttachmentRejection,
   PrepareAttachments,

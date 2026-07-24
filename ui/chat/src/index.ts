@@ -1,5 +1,11 @@
 // === Types ===
 
+export {
+  attachmentFolderRoot,
+  attachmentRelativePath,
+  MAX_ATTACHMENT_FILES,
+  TooManyAttachmentFilesError,
+} from "@houston-ai/core";
 export type {
   ConversationContentProps,
   ConversationDownloadProps,
@@ -135,7 +141,6 @@ export type {
   ReasoningProps,
   ReasoningTriggerProps,
 } from "./ai-elements/reasoning";
-
 // === AI Elements: Reasoning ===
 export {
   Reasoning,
@@ -152,12 +157,6 @@ export type {
 } from "./ai-elements/suggestion";
 // === AI Elements: Suggestion ===
 export { Suggestion, Suggestions } from "./ai-elements/suggestion";
-export {
-  attachmentFolderRoot,
-  attachmentRelativePath,
-  MAX_ATTACHMENT_FILES,
-  TooManyAttachmentFilesError,
-} from "./attachment-folders";
 export type {
   AttachmentInvocation,
   AttachmentReference,

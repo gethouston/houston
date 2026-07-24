@@ -156,6 +156,9 @@
       "cancel": "Cancelar"
     },
     "uploadFiles": "Subir archivos",
+    "upload": "Subir",
+    "uploadFolder": "Subir carpeta",
+    "folderDropFailed": "No pudimos leer esa carpeta. Intenta con el botón Subir.",
     "downloadAll": "Descargar todo",
     "columns": {
       "name": "Nombre",

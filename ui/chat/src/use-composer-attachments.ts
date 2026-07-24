@@ -1,6 +1,6 @@
+import { visibleAttachmentFiles } from "@houston-ai/core";
 import type { ChangeEvent, ClipboardEvent, RefObject } from "react";
 import { useCallback, useRef } from "react";
-import { visibleAttachmentFiles } from "./attachment-folders";
 import type {
   AttachmentRejection,
   ChatComposerLabels,

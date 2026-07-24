@@ -736,7 +736,8 @@ export class HoustonClient {
   }
   /** Upload browser Files into the agent's workspace (Files tab drag-drop /
    * Browse). This engine's import route takes one file per request and has no
-   * target-folder parameter, so uploads land at the workspace root. */
+   * target-folder or relPath parameter, so uploads land flat at the workspace
+   * root (the Files tab hides the folder-upload affordance on this engine). */
   async uploadProjectFiles(
     agentPath: string,
     files: File[],

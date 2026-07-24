@@ -13,9 +13,9 @@ import {
   FolderOpen,
   FolderPlus,
   House,
-  Upload,
 } from "lucide-react";
 import { CrumbButton } from "./crumb-button";
+import { FilesHeaderUpload } from "./files-header-upload";
 import { crumbsForPath } from "./grid-utils";
 import { SortMenu, type SortMenuLabels } from "./sort-menu";
 import type { FilesViewMode } from "./types";
@@ -43,6 +43,9 @@ export function FilesHeader({
   newFolderLabel,
   onUpload,
   uploadLabel,
+  onUploadFolder,
+  uploadFilesLabel,
+  uploadFolderLabel,
   onRevealAgent,
   revealAgentLabel,
   onDownloadAll,
@@ -67,6 +70,11 @@ export function FilesHeader({
   /** Pick files to upload (filled primary pill). */
   onUpload?: () => void;
   uploadLabel: string;
+  /** Pick a whole folder to upload. When set, the Upload pill opens a menu
+   *  offering files or a folder instead of jumping straight to the picker. */
+  onUploadFolder?: () => void;
+  uploadFilesLabel: string;
+  uploadFolderLabel: string;
   /** Reveal the agent's folder in the OS file manager (co-located desktop). */
   onRevealAgent?: () => void;
   revealAgentLabel: string;
@@ -154,9 +162,13 @@ export function FilesHeader({
         </button>
       )}
       {onUpload && (
-        <Button size="sm" onClick={onUpload} className="shrink-0">
-          <Upload aria-hidden /> {uploadLabel}
-        </Button>
+        <FilesHeaderUpload
+          onUpload={onUpload}
+          uploadLabel={uploadLabel}
+          onUploadFolder={onUploadFolder}
+          uploadFilesLabel={uploadFilesLabel}
+          uploadFolderLabel={uploadFolderLabel}
+        />
       )}
       {secondary && (
         <Button

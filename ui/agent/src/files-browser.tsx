@@ -39,6 +39,10 @@ export interface FilesBrowserProps {
   onDownloadFolder?: (folder: FileEntry) => void;
   onDelete?: (file: FileEntry) => void;
   onFilesDropped?: (files: File[], targetFolder?: string) => void;
+  /** Surfaces dropped-folder expansion failures (unreadable entries, too many
+   *  files). Pass whenever onFilesDropped is set — the async folder walk has
+   *  nowhere to throw to, and errors must never be swallowed. */
+  onDropError?: (error: unknown) => void;
   /** Move a file/folder to a new location (null = root) */
   onMove?: (sourcePath: string, targetFolder: string | null) => void;
   onRename?: (file: FileEntry, newName: string) => void;
@@ -49,6 +53,8 @@ export interface FilesBrowserProps {
   emptyDescription?: string;
   /** Pick files to upload (header's filled primary pill). */
   onUpload?: () => void;
+  /** Pick a whole folder to upload (turns the pill into a files/folder menu). */
+  onUploadFolder?: () => void;
   /** Reveal the agent's folder in the OS file manager (co-located desktop). */
   onRevealAgent?: () => void;
   /** Download the whole workspace as one zip (browser/remote builds). */
@@ -70,6 +76,7 @@ export function FilesBrowser(props: FilesBrowserProps) {
     onSelect: props.onSelect,
     onCreateFolder: props.onCreateFolder,
     onFilesDropped: props.onFilesDropped,
+    onDropError: props.onDropError,
     onMove: props.onMove,
   });
 
@@ -83,6 +90,8 @@ export function FilesBrowser(props: FilesBrowserProps) {
         }
         browseLabel={l.browseFiles}
         onBrowse={props.onBrowse}
+        folderLabel={l.uploadFolder}
+        onBrowseFolder={props.onUploadFolder}
       />
     );
   }
@@ -111,7 +120,10 @@ export function FilesBrowser(props: FilesBrowserProps) {
         }
         newFolderLabel={l.newFolder}
         onUpload={props.onUpload}
-        uploadLabel={l.uploadFiles}
+        uploadLabel={props.onUploadFolder ? l.upload : l.uploadFiles}
+        onUploadFolder={props.onUploadFolder}
+        uploadFilesLabel={l.uploadFiles}
+        uploadFolderLabel={l.uploadFolder}
         onRevealAgent={props.onRevealAgent}
         revealAgentLabel={l.openInFileManager}
         onDownloadAll={props.onDownloadAll}

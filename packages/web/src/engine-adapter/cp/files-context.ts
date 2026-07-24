@@ -95,7 +95,7 @@ export async function saveAttachments(
         batch.map(async (f) => ({
           name: f.name,
           contentBase64: bytesToBase64(new Uint8Array(await f.arrayBuffer())),
-          relPath: attachmentRelPath(f),
+          relPath: uploadRelPath(f),
         })),
       ),
     };
@@ -140,9 +140,10 @@ export function planAttachmentBatches(files: readonly File[]): File[][] {
 /**
  * The upload-relative path for a folder-derived file, or undefined for a plain
  * file. Normalized to forward slashes with no leading slash; a value without a
- * `/` carries no structure and is treated as plain.
+ * `/` carries no structure and is treated as plain. Shared by composer
+ * attachments and the Files tab's folder upload (HOU-889).
  */
-function attachmentRelPath(f: File): string | undefined {
+export function uploadRelPath(f: File): string | undefined {
   const raw = f.webkitRelativePath;
   if (!raw) return undefined;
   const normalized = raw.replace(/\\/g, "/").replace(/^\/+/, "");

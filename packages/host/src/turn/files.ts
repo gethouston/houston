@@ -8,9 +8,9 @@ import { archiveWorkspace } from "./files-archive";
 import {
   importWorkspaceFiles,
   MAX_UPLOAD_BODY_BYTES,
-  moveWorkspaceEntry,
   parseImportBody,
 } from "./files-import";
+import { moveWorkspaceEntry } from "./files-move";
 import {
   createWorkspaceFolder,
   deleteWorkspaceFile,

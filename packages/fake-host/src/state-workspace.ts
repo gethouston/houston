@@ -106,12 +106,15 @@ export function readWorkspaceFile(
 export function importWorkspaceFiles(
   agentId: string,
   dir: string | null,
-  files: { name: string; contentBase64: string }[],
+  files: { name: string; contentBase64: string; relPath?: string }[],
 ): string[] {
   const now = Date.now();
   const paths: string[] = [];
   for (const f of files) {
-    let rel = dir ? `${dir}/${f.name}` : f.name;
+    // Folder uploads (HOU-889) send the folder-relative path; nested keys
+    // synthesize their directory rows in listWorkspaceFiles, like the real host.
+    const name = f.relPath ?? f.name;
+    let rel = dir ? `${dir}/${name}` : name;
     const dot = rel.lastIndexOf(".");
     for (let n = 1; state.workspace.has(key(agentId, rel)); n++) {
       const stem = dot > 0 ? rel.slice(0, dot) : rel;

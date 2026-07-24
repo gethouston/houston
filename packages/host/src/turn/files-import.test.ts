@@ -3,9 +3,9 @@ import { MemoryVfs } from "../vfs";
 import {
   importWorkspaceFiles,
   MAX_UPLOAD_BYTES,
-  moveWorkspaceEntry,
   parseImportBody,
 } from "./files-import";
+import { moveWorkspaceEntry } from "./files-move";
 import { FileOpError, FilePathError, listWorkspace } from "./files-ops";
 
 /**
@@ -77,6 +77,71 @@ test("upload names are single segments: traversal, separators, dot-files refused
       { name: "ok.txt", contentBase64: b64("x") },
     ]),
   ).rejects.toThrow(FilePathError);
+});
+
+test("folder uploads (relPath) keep their structure, at the root and under a dir", async () => {
+  const vfs = new MemoryVfs();
+  const paths = await importWorkspaceFiles(vfs, ROOT, null, [
+    {
+      name: "intro.md",
+      contentBase64: b64("i"),
+      relPath: "docs/guide/intro.md",
+    },
+    { name: "logo.png", contentBase64: b64("p"), relPath: "docs/logo.png" },
+  ]);
+  expect(paths).toEqual(["docs/guide/intro.md", "docs/logo.png"]);
+  expect(await vfs.readText(`${ROOT}/docs/guide/intro.md`)).toBe("i");
+  const nested = await importWorkspaceFiles(vfs, ROOT, "Reports", [
+    { name: "a.txt", contentBase64: b64("a"), relPath: "docs/a.txt" },
+  ]);
+  expect(nested).toEqual(["Reports/docs/a.txt"]);
+  expect(await vfs.readText(`${ROOT}/Reports/docs/a.txt`)).toBe("a");
+});
+
+test("re-uploading a folder merges directories but never overwrites files", async () => {
+  const vfs = new MemoryVfs();
+  await vfs.writeText(`${ROOT}/docs/a.txt`, "original");
+  const paths = await importWorkspaceFiles(vfs, ROOT, null, [
+    { name: "a.txt", contentBase64: b64("second"), relPath: "docs/a.txt" },
+    { name: "b.txt", contentBase64: b64("new"), relPath: "docs/b.txt" },
+  ]);
+  expect(paths).toEqual(["docs/a (1).txt", "docs/b.txt"]);
+  expect(await vfs.readText(`${ROOT}/docs/a.txt`)).toBe("original");
+  expect(await vfs.readText(`${ROOT}/docs/a (1).txt`)).toBe("second");
+});
+
+test("relPaths are validated per segment; one bad path fails the whole batch unwritten", async () => {
+  const vfs = new MemoryVfs();
+  for (const relPath of [
+    "../evil.txt", // 2 segments but traversal
+    "docs/../evil.txt",
+    "docs/.env", // hidden segment
+    "docs//a.txt", // empty segment
+    "docs\\a.txt", // backslash (single segment → plain-name rules)
+    "plain.txt", // 1 segment must arrive as `name`
+    `${"d/".repeat(33)}a.txt`, // too deep
+  ]) {
+    await expect(
+      importWorkspaceFiles(vfs, ROOT, null, [
+        { name: "good.txt", contentBase64: b64("ok") },
+        { name: "a.txt", contentBase64: b64("x"), relPath },
+      ]),
+    ).rejects.toThrow(FilePathError);
+  }
+  // Batch-level atomicity: the valid sibling was never written.
+  expect(await vfs.readBytes(`${ROOT}/good.txt`)).toBeNull();
+});
+
+test("parseImportBody rejects a non-string relPath and passes a valid one through", () => {
+  expect(() =>
+    parseImportBody({
+      files: [{ name: "a.txt", contentBase64: b64("x"), relPath: 42 }],
+    }),
+  ).toThrow("'relPath' must be a string");
+  const ok = parseImportBody({
+    files: [{ name: "a.txt", contentBase64: b64("x"), relPath: "docs/a.txt" }],
+  });
+  expect(ok.files[0]?.relPath).toBe("docs/a.txt");
 });
 
 test("move takes a file into a folder and back to the root", async () => {

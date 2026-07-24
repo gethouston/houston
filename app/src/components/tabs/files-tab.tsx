@@ -1,5 +1,6 @@
 import { type FileEntry, FilesBrowser } from "@houston-ai/agent";
 import { isTauri } from "@tauri-apps/api/core";
+import type { InputHTMLAttributes } from "react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -20,6 +21,14 @@ import { useUIStore } from "../../stores/ui";
 import { FilePreviewDialog } from "../file-preview-dialog";
 import { MoveConflictDialog } from "../move-conflict-dialog";
 import { buildBrowserLabels, buildMenuLabels } from "./files-tab-labels";
+import { buildUploadIntake } from "./files-upload-intake";
+
+// Non-standard attribute (WebKit lineage, supported by every engine we ship
+// on): turns the picker into a directory picker. Unknown to React's typings,
+// hence the cast; engines without it fall back to a plain file picker.
+const FOLDER_INPUT_PROPS = {
+  webkitdirectory: "",
+} as InputHTMLAttributes<HTMLInputElement>;
 
 export default function FilesTab({ agent }: TabProps) {
   const { t } = useTranslation("agents");
@@ -41,6 +50,7 @@ export default function FilesTab({ agent }: TabProps) {
     osDir !== undefined;
   const [preview, setPreview] = useState<FileEntry | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
   const browserLabels = buildBrowserLabels(t);
   const menuLabels = buildMenuLabels(t, canUseLocalFiles);
   const path = agent.folderPath;
@@ -76,6 +86,10 @@ export default function FilesTab({ agent }: TabProps) {
       .catch(() => {});
   };
   const pickFiles = () => fileInput.current?.click();
+  const pickFolder = () => folderInput.current?.click();
+  const { ingest, onDropError } = buildUploadIntake(t, (picked, targetDir) =>
+    uploadFiles.mutate({ files: picked, targetDir }),
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -85,10 +99,20 @@ export default function FilesTab({ agent }: TabProps) {
         multiple
         className="hidden"
         onChange={(e) => {
-          const picked = Array.from(e.currentTarget.files ?? []);
-          if (picked.length > 0) uploadFiles.mutate({ files: picked });
+          ingest(Array.from(e.currentTarget.files ?? []));
           e.currentTarget.value = ""; // allow re-picking the same file
         }}
+      />
+      <input
+        ref={folderInput}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          ingest(Array.from(e.currentTarget.files ?? []));
+          e.currentTarget.value = ""; // allow re-picking the same folder
+        }}
+        {...FOLDER_INPUT_PROPS}
       />
       <FilesBrowser
         files={files ?? []}
@@ -115,11 +139,9 @@ export default function FilesTab({ agent }: TabProps) {
         }
         onCreateFolder={(name) => createFolder.mutate(name)}
         onFilesDropped={(dropped, targetFolder) =>
-          uploadFiles.mutate({
-            files: dropped,
-            targetDir: targetFolder ?? null,
-          })
+          ingest(dropped, targetFolder ?? null)
         }
+        onDropError={onDropError}
         onMove={
           // Drag-move needs the TS host's move route; the legacy engine has none.
           newEngineActive() ? move.requestMove : undefined
@@ -130,6 +152,11 @@ export default function FilesTab({ agent }: TabProps) {
         labels={browserLabels}
         menuLabels={menuLabels}
         onUpload={pickFiles}
+        onUploadFolder={
+          // Folder structure needs the TS host's relPath-aware import route;
+          // the legacy engine's import flattens everything to the root.
+          newEngineActive() ? pickFolder : undefined
+        }
         onRevealAgent={
           canUseLocalFiles && osDir
             ? () => tauriFiles.revealAgent(osDir)
