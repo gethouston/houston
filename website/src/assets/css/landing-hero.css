@@ -17,10 +17,10 @@
   position: relative;
 }
 .hero h1 {
-  font-weight: 600;
+  font-weight: 300;                  /* Mercury: light, airy, low-contrast display */
   font-size: clamp(22px, 4.6vw, 54px);
   line-height: 1.08;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.012em;          /* relaxed from the old tight ink tracking */
   color: var(--ink-strong);
   margin: 0 auto 22px;
   max-width: 22ch;
@@ -106,11 +106,12 @@
   max-width: 1080px;
   margin: 0 auto;
 }
-/* One believable layered shadow that lifts the window off the panel. */
+/* One believable layered shadow that lifts the light window off the dark panel
+   — deepened for the dark ground so the product shot reads raised, Mercury-style. */
 .hero-stage .win {
-  box-shadow: 0 2px 4px rgba(13, 13, 13, 0.04),
-    0 24px 48px -20px rgba(13, 13, 13, 0.22),
-    0 48px 96px -40px rgba(13, 13, 13, 0.24);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2),
+    0 28px 56px -20px rgba(0, 0, 0, 0.55),
+    0 56px 112px -40px rgba(0, 0, 0, 0.6);
 }
 
 /* ── Download gate modal (invite-code closed beta — light, behaviour kept) ── */
@@ -122,7 +123,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(13, 13, 13, 0.42);
+  background: rgba(0, 0, 0, 0.62);
   opacity: 0;
   visibility: hidden;
   transition: opacity var(--dur-fast) var(--ease-standard),
@@ -135,12 +136,12 @@
 .dl-card {
   width: 100%;
   max-width: 420px;
-  background: #fff;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 30px;
   color: var(--ink);
-  box-shadow: 0 32px 80px -32px rgba(13, 13, 13, 0.4);
+  box-shadow: 0 32px 80px -32px rgba(0, 0, 0, 0.7);
   transform: translateY(8px) scale(0.98);
   transition: transform var(--dur-elegant) var(--ease-entrance);
 }
@@ -179,11 +180,11 @@
 }
 .dl-input:focus {
   outline: none;
-  border-color: var(--ink-strong);
+  border-color: var(--action);
 }
 .dl-input.valid {
-  border-color: var(--ink-strong);
-  box-shadow: 0 0 0 3px rgba(13, 13, 13, 0.12);
+  border-color: var(--action);
+  box-shadow: 0 0 0 3px rgba(82, 102, 235, 0.3);
 }
 .dl-actions {
   display: flex;
@@ -211,7 +212,7 @@
   text-align: center;
 }
 .dl-fineprint a {
-  color: var(--ink-muted);
+  color: var(--link);
   text-decoration: underline;
 }
 .dl-skip {
@@ -240,7 +241,7 @@
 }
 .dl-skip-body a {
   font-size: 13px;
-  color: var(--ink-strong);
+  color: var(--link);
   font-weight: 600;
   text-decoration: underline;
 }

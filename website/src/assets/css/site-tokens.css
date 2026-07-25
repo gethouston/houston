@@ -1,57 +1,69 @@
 /*
  * Houston marketing site — the ONE token layer for the landing page.
  * =====================================================================
- * Monochrome editorial system: a white ground, one light-gray section panel,
- * an ink ladder (near-black #0d0d0d family), hairlines, and a single black
- * pill CTA. The brand is INK — no accent hue anywhere on the marketing chrome.
+ * PROTOTYPE SKIN — Mercury-inspired dark system (partnership review build,
+ * NOT deployed). Deep ink-navy ground, half-step panels, a periwinkle/lavender
+ * accent for CTAs/links (Mercury's signature pill), and an ON-DARK ink ladder
+ * (a light near-white family). Token NAMES + architecture are unchanged from
+ * the original monochrome editorial layer; only VALUES are swapped, so every
+ * component keeps working through the same variables.
  *
- * The ONLY colour on the page lives inside the in-hero app mockup, where it is
- * the product's OWN semantic palette (agent avatars, status dots, the black
- * primary action). Those values are lifted verbatim from the app's design
- * tokens (packages/design-tokens) so the mock reads as the real product; each
- * is documented inline against its DESIGN.md role. They are NOT part of the
- * marketing palette and never appear on marketing content.
+ * Contrast: every text/ground pair below is computed to pass WCAG AA
+ * (≥4.5:1 body, ≥3:1 large/graphical). Mercury's real site runs low-contrast;
+ * where their exact look would fail AA we bias to the accessible end (e.g. the
+ * on-dark ink ladder is lifted a step, links use a lighter lavender). The
+ * lavender pill (#5266eb, sampled from mercury.com) is kept verbatim because
+ * white-on-#5266eb measures 4.71:1 — it clears AA for button text as-is.
+ *
+ * The in-hero app mockup keeps its OWN light palette (--app-* / --agent-*,
+ * lifted from packages/design-tokens) UNTOUCHED — the light app floating on the
+ * dark ground reads exactly like Mercury's muted product-shot cards.
  *
  * Single self-hosted family: Hanken Grotesk (OFL, latin subset, variable
- * 400–700 — covers 400 body + 600 display). No serif, no Google CDN.
+ * 100–900 axis — here declared 300–800: a LIGHT 300 display + 400 body + 600
+ * UI, recreating Mercury's airy low-contrast display voice from one humanist
+ * grotesque, exactly as Mercury drives its whole page from a single family).
+ * No serif, no Google CDN.
  */
 
 /* ── Self-hosted font (OFL, latin subset, no runtime CDN) ─────────────────── */
 @font-face {
   font-family: "Hanken Grotesk";
   font-style: normal;
-  font-weight: 400 700;              /* variable: body 400 + display 600 */
+  font-weight: 300 800;              /* variable: light 300 display + 400 body + 600 UI */
   font-display: swap;
   src: url("/assets/fonts/hanken-grotesk-latin.woff2") format("woff2");
 }
 
 :root {
-  /* ── Monochrome ground + panels ──────────────────────────────────────── */
-  --ground: #ffffff;                 /* the page */
-  --panel: #f4f5f7;                  /* THE one light-gray section panel tone */
-  --panel-raised: #ebedf1;           /* a half-step deeper for nested recess */
-  --card: #ffffff;                   /* cards floating on any ground */
+  /* ── Deep ink-navy ground + panels (sampled ~#1c1c26 from mercury.com) ── */
+  --ground: #1b1b24;                 /* the page — deep ink navy */
+  --panel: #23232e;                  /* THE one raised section panel tone */
+  --panel-raised: #2c2c38;           /* a half-step lighter for nested chips */
+  --card: #22222d;                   /* cards floating on the dark ground */
+  --ground-deep: #16161f;            /* nav + footer — a step below the ground */
 
-  /* ── Ink ladder (near-black #0d0d0d family) ──────────────────────────── */
-  --ink-strong: #0d0d0d;             /* headlines, the CTA fill — brand ink */
-  --ink: #1c1d21;                    /* primary body text */
-  --ink-muted: #5b5f66;              /* secondary text — 6.0:1 on white, 5.6:1 on panel */
-  --ink-subtle: #6b7078;             /* quiet captions — 5.0:1 on white, 4.6:1 on panel */
+  /* ── On-dark ink ladder (light near-white family) ────────────────────── */
+  --ink-strong: #f4f4f8;             /* headlines — 15.6:1 on ground */
+  --ink: #dedee6;                    /* primary body text — 12.8:1 on ground */
+  --ink-muted: #b6b6c4;              /* secondary — 8.5:1 ground, 7.9:1 card */
+  --ink-subtle: #9a9aac;             /* quiet captions — 6.2:1 ground, 5.0:1 panel-raised */
 
-  /* ── Hairlines ───────────────────────────────────────────────────────── */
-  --line: rgba(13, 13, 13, 0.09);    /* default hairline on light */
-  --line-strong: rgba(13, 13, 13, 0.14);
+  /* ── Hairlines (thin light lines on dark) ────────────────────────────── */
+  --line: rgba(255, 255, 255, 0.09); /* default hairline on dark */
+  --line-strong: rgba(255, 255, 255, 0.15);
 
-  /* ── Black pill CTA + focus ──────────────────────────────────────────── */
-  --action: #0d0d0d;
-  --action-hover: #2a2a2a;
+  /* ── Lavender pill CTA + links + focus (Mercury periwinkle) ───────────── */
+  --action: #5266eb;                 /* sampled pill — white text = 4.71:1 (AA) */
+  --action-hover: #6376ef;           /* Mercury lightens the pill on hover */
   --action-text: #ffffff;
-  --focus: #0d0d0d;
+  --link: #9fabf7;                   /* lighter lavender text link — 7.9:1 on ground */
+  --focus: #8f9cf2;                  /* visible lavender ring on dark — 6.7:1 */
 
-  /* ── On-ink text (closing band + footer, ground #0d0d0d) ─────────────── */
+  /* ── On-ink text (nav + footer, the deepest ground #16161f) ──────────── */
   --on-ink: #ffffff;
-  --on-ink-muted: rgba(255, 255, 255, 0.72);   /* 8.9:1 on #0d0d0d */
-  --on-ink-faint: rgba(255, 255, 255, 0.6);    /* 6.9:1 on #0d0d0d */
+  --on-ink-muted: rgba(255, 255, 255, 0.72);   /* 9.6:1 on #16161f */
+  --on-ink-faint: rgba(255, 255, 255, 0.6);    /* 7.0:1 on #16161f */
   --line-on-ink: rgba(255, 255, 255, 0.14);
 
   /* ═══ App mockup — the product's OWN palette (DESIGN.md §4). ══════════════

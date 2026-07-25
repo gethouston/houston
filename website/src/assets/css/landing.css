@@ -47,8 +47,8 @@ img {
   left: 12px;
   top: -60px;
   z-index: 200;
-  background: var(--ink-strong);
-  color: #fff;
+  background: var(--action);
+  color: var(--action-text);
   padding: 10px 16px;
   border-radius: 8px;
   font-weight: 600;
@@ -108,15 +108,15 @@ img {
 .btn-outline:hover {
   border-color: var(--ink);
 }
-/* White pill — the primary on the ink closing band */
+/* White pill — a light primary that reads on the dark ground (dark label) */
 .btn-white {
   background: #fff;
-  color: var(--ink-strong);
+  color: var(--ground);
 }
 .btn-white:hover {
   background: #ececec;
 }
-/* Ghost on ink — the quiet secondary on the closing band */
+/* Ghost on dark — the quiet secondary on the dark ground */
 .btn-ghost {
   background: transparent;
   color: #fff;
@@ -151,10 +151,10 @@ img {
   gap: 8px;
 }
 .sec-title {
-  font-weight: 600;
+  font-weight: 440;                  /* Mercury: light, refined display */
   font-size: clamp(28px, 3.8vw, 44px);
   line-height: 1.08;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.015em;          /* airier tracking than the old tight ink */
   color: var(--ink-strong);
   text-wrap: balance;
   max-width: 20ch;
@@ -178,15 +178,15 @@ img {
   align-items: center;
   justify-content: space-between;
   padding: 15px var(--gutter);
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(22, 22, 31, 0.72);
   transition: box-shadow var(--dur-elegant) var(--ease-standard),
     background-color var(--dur-elegant) var(--ease-standard);
   border-bottom: 1px solid transparent;
 }
-/* Solid white + hairline once scrolled. No backdrop blur (PERFORMANCE.md:
+/* Solid deep-navy + hairline once scrolled. No backdrop blur (PERFORMANCE.md:
    blur over a moving backdrop re-rasterizes every frame). */
 .lnav.scrolled {
-  background: #fff;
+  background: var(--ground-deep);
   border-bottom-color: var(--line);
 }
 .lnav-brand {
@@ -203,6 +203,9 @@ img {
   height: 22px;
   flex-shrink: 0;
   display: block;
+  /* The mark ships as a single near-black fill; on the dark nav render it as a
+     clean white glyph (no white asset needed, art preserved). */
+  filter: brightness(0) invert(1);
 }
 .lnav-links {
   display: flex;
@@ -272,11 +275,11 @@ img {
   left: var(--gutter);
   right: var(--gutter);
   z-index: 59;
-  background: #fff;
+  background: var(--ground-deep);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 8px;
-  box-shadow: 0 20px 48px -24px rgba(13, 13, 13, 0.28);
+  box-shadow: 0 20px 48px -24px rgba(0, 0, 0, 0.6);
   flex-direction: column;
   gap: 2px;
   display: none;
@@ -304,9 +307,9 @@ img {
   }
 }
 
-/* ── Footer (ink, continuous with the closing band) ──────────────────────── */
+/* ── Footer (the deepest ground, a step below the page) ──────────────────── */
 .lfoot {
-  background: var(--ink-strong);
+  background: var(--ground-deep);
   color: var(--on-ink-faint);
   padding: 56px var(--gutter) 40px;
 }

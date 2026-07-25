@@ -34,10 +34,10 @@
   border: 1px solid var(--line);
   background: var(--card);
 }
-/* Houston side: emphasised in ink, not colour. */
+/* Houston side: emphasised in the lavender accent (Mercury highlights featured). */
 .usb-card.is-houston {
-  border-color: var(--ink-strong);
-  box-shadow: 0 20px 52px -30px rgba(13, 13, 13, 0.3);
+  border-color: var(--action);
+  box-shadow: 0 20px 52px -28px rgba(0, 0, 0, 0.6);
 }
 .usb-badge {
   position: absolute;
@@ -47,11 +47,12 @@
   font-weight: 600;
   padding: 4px 14px;
   border-radius: 999px;
-  background: var(--ink-subtle);
-  color: #fff;
+  background: var(--panel-raised);
+  color: var(--ink-muted);
 }
 .usb-card.is-houston .usb-badge {
-  background: var(--ink-strong);
+  background: var(--action);
+  color: var(--action-text);
 }
 .usb-card h3 {
   font-size: 16px;
@@ -83,8 +84,8 @@
   color: var(--ink-muted);
 }
 .usb-card.is-houston .usb-step .n {
-  background: var(--ink-strong);
-  color: #fff;
+  background: var(--action);
+  color: var(--action-text);
 }
 .usb-step p {
   font-size: 13.5px;
@@ -138,10 +139,10 @@
   border-radius: 20px;
   padding: 30px 28px;
 }
-/* Featured plan: emphasised in ink. */
+/* Featured plan: emphasised in the lavender accent. */
 .price-col.featured {
-  border-color: var(--ink-strong);
-  box-shadow: 0 20px 52px -30px rgba(13, 13, 13, 0.28);
+  border-color: var(--action);
+  box-shadow: 0 20px 52px -28px rgba(0, 0, 0, 0.6);
 }
 .price-name {
   font-size: 15px;
