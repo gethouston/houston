@@ -66,6 +66,21 @@ Change only what the user asked about and keep everything else exactly as it alr
 }
 
 /**
+ * The per-TURN context prefix for an existing skill's chat. The kickoff names
+ * the bound skill once, but a model can lose first-message context (long
+ * histories, compaction, or plain inattention — observed: "which skill should
+ * I rename?" asked INSIDE a skill's own chat). Every send re-asserts the
+ * binding on the model-facing prompt; the user's bubble stays their own words
+ * (`displayText`).
+ */
+export function skillChatTurnContext(skill: {
+  slug: string;
+  displayName: string;
+}): string {
+  return `[Houston context — not written by the user: this conversation manages ONE skill, the one stored under ".agents/skills/${skill.slug}/" (the user knows it as "${skill.displayName}"). Any request about "this skill" or "the skill" — renaming it, changing its description, steps, tone, anything — refers to exactly that skill. Never ask which skill is meant, and never touch a different skill unless the user explicitly names another one. A rename means the frontmatter "title" field; never rename the folder or the "name" field. Reply to the message below.]`;
+}
+
+/**
  * The full first-message body for a new-skill chat: marker (hides the bubble)
  * + create kickoff (what the model acts on).
  */

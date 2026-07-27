@@ -32,12 +32,20 @@ export function useAgentBoardSend({
   rawItems,
   pendingAgentMode,
   setPendingAgentMode,
+  promptContext,
 }: {
   agent: Agent;
   agentDef: AgentDefinition;
   rawItems: Activity[] | undefined;
   pendingAgentMode: string | null;
   setPendingAgentMode: (mode: string | null) => void;
+  /**
+   * Model-facing context prepended to EVERY outgoing prompt, hidden from the
+   * chat (the bubble keeps the user's words via `displayText` / the
+   * attachment marker). The skill setup chat pins its bound skill with this
+   * so the model never has to remember it from the kickoff alone.
+   */
+  promptContext?: string;
 }) {
   const { t } = useTranslation(["board", "chat", "common"]);
   const path = agent.folderPath;
@@ -180,11 +188,22 @@ export function useAgentBoardSend({
           agentPath: path,
           sessionKey,
           text,
+          // A builder also runs for a bare context send: the flush then
+          // persists the clean `text` as the bubble (displayText), exactly
+          // like the attachment case.
           buildPrompt:
-            files.length > 0
+            files.length > 0 || promptContext
               ? async () => {
-                  const saved = await tauriAttachments.save(scopeId, files);
-                  return buildAttachmentPrompt(text, files, saved);
+                  const saved =
+                    files.length > 0
+                      ? await tauriAttachments.save(scopeId, files)
+                      : [];
+                  return buildAttachmentPrompt(
+                    text,
+                    files,
+                    saved,
+                    promptContext,
+                  );
                 }
               : undefined,
           promptFile: warmingMode?.promptFile,
@@ -214,7 +233,7 @@ export function useAgentBoardSend({
       }
       try {
         const paths = await tauriAttachments.save(scopeId, files);
-        const prompt = buildAttachmentPrompt(text, files, paths);
+        const prompt = buildAttachmentPrompt(text, files, paths, promptContext);
         const mode = agentModes?.find((m) => m.id === activity?.agent);
         await tauriChat.send(path, prompt, sessionKey, {
           mode: mode?.promptFile,
@@ -222,6 +241,10 @@ export function useAgentBoardSend({
           modelOverride: overrides.modelOverride,
           modeOverride: overrides.modeOverride,
           mentions: overrides.mentions,
+          // A context-prefixed prompt with no attachment marker would render
+          // raw — persist the user's words as the bubble instead. (With
+          // attachments the marker already carries them.)
+          displayText: promptContext && files.length === 0 ? text : undefined,
           // If the conversation is mid-turn the adapter holds this send; the
           // queued bubble shows the user's words, not the built prompt.
           queuedPreview: {
@@ -247,7 +270,7 @@ export function useAgentBoardSend({
         throw err;
       }
     },
-    [path, agent.id, addToast, rawItems, agentModes, t],
+    [path, agent.id, addToast, rawItems, agentModes, t, promptContext],
   );
 
   const stopSession = useCallback(

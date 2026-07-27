@@ -71,6 +71,7 @@ export function useSkillsChatSurface(opts: {
         activity={chatSetup.activityFor(selectedSkill)}
         kind="skill"
         skillName={skillDisplayTitle(selectedSkill)}
+        skillSlug={selectedSkill.name}
         onClose={deselect}
         onEditManually={() => onEditSkill(selectedSkill.name)}
       />

@@ -1,6 +1,7 @@
 import { deepStrictEqual, ok } from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildAgentActivitySummaries } from "../src/components/shell/agent-activity-summary-model.ts";
+import { buildAttachmentPrompt } from "../src/lib/attachment-message.ts";
 import {
   filterAutoContinueFeedItems,
   isAutoContinueMessage,
@@ -11,6 +12,7 @@ import { selectActive, selectArchived } from "../src/lib/mission-selection.ts";
 import {
   encodeSkillModifyMessage,
   encodeSkillSetupMessage,
+  skillChatTurnContext,
   skillModifyPrompt,
   skillSetupPrompt,
 } from "../src/lib/skill-chat-prompts.ts";
@@ -397,6 +399,43 @@ describe("skill chat setup message", () => {
       claimNewlyCreatedSkill(new Set(["existing"]), [{ name: "existing" }], []),
       null,
     );
+  });
+
+  it("per-turn context pins the bound skill on every send, hidden from the bubble", () => {
+    // The reported bug: inside "Audit my books"'s own chat, the model asked
+    // "which skill should I rename?" — first-message context alone is not
+    // reliable, so every outgoing prompt re-asserts the binding.
+    const ctx = skillChatTurnContext({
+      slug: "audit-my-books",
+      displayName: "Audit my books",
+    });
+    for (const needle of [
+      "not written by the user",
+      '".agents/skills/audit-my-books/"',
+      '"Audit my books"',
+      "Never ask which skill is meant",
+      'frontmatter "title" field',
+      'never rename the folder or the "name" field',
+    ]) {
+      ok(ctx.includes(needle), `context must mention: ${needle}`);
+    }
+    // No files: the model prompt is context + the user's words (the bubble is
+    // the caller's displayText, not this).
+    const prompt = buildAttachmentPrompt("rename it", [], [], ctx);
+    ok(prompt.startsWith(ctx));
+    ok(prompt.endsWith("rename it"));
+    // With files: the attachment marker's `message` keeps ONLY the user's
+    // words — the context never leaks into the rendered bubble.
+    const withFile = buildAttachmentPrompt(
+      "rename it",
+      [{ name: "notes.txt" } as File],
+      ["/tmp/notes.txt"],
+      ctx,
+    );
+    const marker = withFile.split("\n")[0] ?? "";
+    ok(marker.startsWith("<!--houston:attachments"));
+    ok(!marker.includes("Houston context"));
+    ok(withFile.includes(ctx));
   });
 
   it("title heal keeps a skill's chat named after the skill", () => {

@@ -3,6 +3,7 @@ import type { Activity } from "@houston-ai/engine-client";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { skillChatTurnContext } from "../../lib/skill-chat-prompts";
 import type { Agent, AgentDefinition } from "../../lib/types";
 import { RoutineSetupChatBoard } from "./routine-setup-chat-board";
 
@@ -21,6 +22,9 @@ interface Props {
   /** The skill's display name, for the "Skill: {name}" header. Unused for
    *  drafts (the header shows the create title). */
   skillName?: string;
+  /** The skill's directory slug — pins the per-turn model context to the
+   *  bound skill. Unused for drafts (nothing exists to pin yet). */
+  skillSlug?: string;
   /** Close the pane and clear the selection (the catalog stays put). Wired
    *  to the panel chrome's close X. */
   onClose: () => void;
@@ -48,6 +52,7 @@ export function SkillSetupChat({
   activity,
   kind,
   skillName,
+  skillSlug,
   onClose,
   onEditManually,
 }: Props) {
@@ -124,6 +129,17 @@ export function SkillSetupChat({
           missionLabel={missionLabel}
           panelActions={editManuallyButton}
           onPanelClose={onClose}
+          // Every send re-asserts which skill this chat manages — the model
+          // must never have to remember it from the kickoff alone (it was
+          // observed asking "which skill?" inside a skill's own chat).
+          promptContext={
+            kind === "skill" && skillSlug
+              ? skillChatTurnContext({
+                  slug: skillSlug,
+                  displayName: skillName ?? "",
+                })
+              : undefined
+          }
         />
       </div>
     </div>
