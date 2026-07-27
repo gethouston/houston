@@ -10,11 +10,9 @@ import { useAllConversations } from "../../hooks/queries";
 import { useUserProfiles } from "../../hooks/queries/use-user-profiles";
 import { useReadCursorStore } from "../../hooks/use-read-cursors";
 import { useSession } from "../../hooks/use-session";
-import { activityIdForSessionKey } from "../../lib/notification-nav";
 import type { Agent } from "../../lib/types";
-import { useAgentStore } from "../../stores/agents";
-import { useUIStore } from "../../stores/ui";
 import { MissionControlToolbar } from "../mission-control-toolbar";
+import { openMentionRow } from "./mention-row-nav";
 import {
   buildMentionInbox,
   type MentionInboxConversation,
@@ -97,21 +95,7 @@ export function MentionsInbox({
   );
 
   const openRow = useCallback(
-    (row: MentionInboxRow) => {
-      // Rows are built from these very agents' conversations, so the lookup
-      // always hits; the guard only keeps a roster reload mid-click harmless.
-      const agent = agents.find((a) => a.folderPath === row.agentPath);
-      if (!agent) return;
-      const activityId =
-        activityIdForSessionKey(
-          conversations.filter((c) => c.agent_path === row.agentPath),
-          row.sessionKey,
-        ) ?? row.conversationId;
-      // The same three-step nav a completion notification performs.
-      useAgentStore.getState().setCurrent(agent);
-      useUIStore.getState().setViewMode("activity");
-      useUIStore.getState().setActivityPanelId(activityId, { forceOpen: true });
-    },
+    (row: MentionInboxRow) => openMentionRow(agents, conversations, row),
     [agents, conversations],
   );
 

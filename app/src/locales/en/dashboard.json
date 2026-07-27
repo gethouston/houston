@@ -18,6 +18,9 @@
     "empty": {
       "title": "No mentions yet",
       "description": "When a teammate names you in a mission, it shows up here."
+    },
+    "bell": {
+      "label": "Notifications"
     }
   },
   "filter": {

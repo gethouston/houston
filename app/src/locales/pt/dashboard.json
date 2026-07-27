@@ -18,6 +18,9 @@
     "empty": {
       "title": "Ainda não há menções",
       "description": "Quando alguém do time citar você em uma missão, aparece aqui."
+    },
+    "bell": {
+      "label": "Notificações"
     }
   },
   "filter": {

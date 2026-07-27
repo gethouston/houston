@@ -144,7 +144,6 @@
       "body": "Add a teammate to let them chat with this agent."
     },
     "conversationNote": "Everyone with access shares this agent's conversation.",
-    "chatNote": "Shared agent. Everyone with access sees this conversation.",
     "you": "You",
     "ownerAccess": "Owner, always has access",
     "remove": "Remove",

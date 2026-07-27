@@ -56,13 +56,13 @@ import { ImportAgentWizard } from "../portable/import-wizard";
 import { SettingsView } from "../settings/settings-view";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
 import { STORE_VIEW_ID, StoreView } from "../store-view";
-import { AgentShareButton } from "../tabs/agent-share-button";
 import { USAGE_VIEW_ID, UsageView } from "../usage-view";
 import { AgentWarmingDialog } from "./agent-warming-dialog";
 import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { HoustonLogo } from "./experience-card";
 import { AgentRenderer } from "./experience-renderer";
+import { NotificationsBell } from "./notifications-bell";
 import { Sidebar } from "./sidebar";
 import { TeamStatusBanner } from "./team-status-banner";
 import { UiTour, type UiTourStep } from "./ui-tour";
@@ -295,8 +295,7 @@ export function WorkspaceShell({
                                   agent={currentAgent}
                                   collapsed={missionPanelOpen}
                                 />
-                                <AgentShareButton
-                                  agent={currentAgent}
+                                <NotificationsBell
                                   collapsed={missionPanelOpen}
                                 />
                                 <Tooltip>

@@ -993,6 +993,14 @@ queue (a parked message keeps its chips across a relaunch). E2E:
 
 ## Relevance-scoped notifications (HOU-945)
 
+**The header bell (HOU-963).** The per-agent header's old Share button is now a
+notifications bell: badge = the outstanding-mention count, the menu = the same
+rows/model/nav as the Mission Control inbox (`shell/notifications-bell.tsx`
+reusing `mentions-inbox-row`, `mentions-inbox-view-model`, and the shared
+`board/mention-row-nav.ts` `openMentionRow`), multiplayer-gated. Sharing stayed
+reachable from Agent Settings and the Permissions People tab. The composer's
+"Shared agent" banner was removed with it (`teams:share.chatNote` deleted).
+
 With many agents running in parallel, a user must only be signalled when it
 matters to THEM. There is **no settings toggle** (features-default-ON): relevance
 IS the behaviour, and the existing global notifications on/off switch is

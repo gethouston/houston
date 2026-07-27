@@ -18,6 +18,9 @@
     "empty": {
       "title": "Aún no hay menciones",
       "description": "Cuando alguien de tu equipo te nombre en una misión, aparece aquí."
+    },
+    "bell": {
+      "label": "Notificaciones"
     }
   },
   "filter": {
