@@ -1,7 +1,7 @@
 ---
 lang: es
 ---
-{% extends "base.njk" %}
+{% extends "subpage.njk" %}
 {% block title %}Guía paso a paso · Crea tu Agente de Revenue Management con Houston{% endblock %}
 {% block meta %}
 <meta name="description" content="Guía oficial de Houston: instala la app, conecta Apify, Anakin.io y Google Sheets, e instala el agente que hace tu investigación de mercado hotelero por ti.">
@@ -15,44 +15,37 @@ lang: es
 <link rel="alternate" hreflang="es" href="https://gethouston.ai/guides/es/revenue-manager/">
 <link rel="alternate" hreflang="x-default" href="https://gethouston.ai/guides/revenue-manager/">
 {% endblock %}
-{% block inlineStyles %}
+{% block subpageStyles %}
 <style>
   :root{
-    --ink:rgba(255,255,255,0.92); --muted:rgba(255,255,255,0.6); --gray6:rgba(255,255,255,0.55); --gray7:rgba(255,255,255,0.78);
-    --bg:transparent; --border:rgba(255,255,255,0.12); --soft:rgba(255,255,255,0.06);
-    --blue:#8ab4ff; --indigo:#a5b4fc; --orange:#fdba74; --gold:#fbbf24; --green:#4ade80;
-    --grad:linear-gradient(100deg,#60a5fa 0%,#a5b4fc 42%,#fb923c 100%);
-    --panel:rgba(13,15,24,0.86); --panel-solid:#0b0c13; --code-bg:rgba(8,9,15,0.92);
-    --font:ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
-    --maxw:820px;
+    --ink: var(--ink-strong);
+    --muted: var(--ink-muted);
+    --gray6: var(--ink-subtle);
+    --gray7: var(--ink-muted);
+    --bg: transparent;
+    --border: var(--line);
+    --soft: var(--panel);
+    --blue: var(--ink-strong);
+    --indigo: var(--ink-strong);
+    --orange: var(--ink-strong);
+    --gold: var(--ink-strong);
+    --green: var(--ink-strong);
+    --grad: var(--ink-strong);
+    --panel: var(--card);
+    --panel-solid: var(--card);
+    --code-bg: var(--ground-deep);
+    --font: var(--sans);
+    --maxw: 820px;
   }
-  *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  body{
-    margin:0; font-family:var(--font); color:var(--ink); background:var(--bg);
-    line-height:1.6; -webkit-font-smoothing:antialiased;
-  }
-  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
-
-  /* top bar */
-  .topbar{
-    position:sticky; top:0; z-index:20;
-    background:rgba(11,12,19,0.94); border-bottom:1px solid rgba(255,255,255,0.08);
-  }
-  .topbar .wrap{display:flex; align-items:center; justify-content:space-between; height:58px}
-  .lockup{display:flex; align-items:center; gap:9px; text-decoration:none; color:var(--ink)}
-  .mark{width:22px; height:24px}
-  .wordmark{font-family:'General Sans',sans-serif; font-weight:600; letter-spacing:-0.02em; font-size:19px}
-  .topbar .tag{font-size:12.5px; color:var(--muted); font-weight:500}
 
   /* hero */
   .hero{padding:64px 0 34px}
   .eyebrow{
     display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600;
-    letter-spacing:.02em; color:var(--gray7); background:var(--panel); border:1px solid var(--border);
+    letter-spacing:.02em; color:var(--ink-muted); background:var(--panel); border:1px solid var(--line);
     border-radius:999px; padding:7px 14px; text-transform:uppercase;
   }
-  .eyebrow .dot{width:7px; height:7px; border-radius:50%; background:var(--grad)}
+  .eyebrow .dot{width:7px; height:7px; border-radius:50%; background:var(--ink-strong)}
   h1{
     font-weight:400; letter-spacing:-0.035em; line-height:1.05; font-size:52px;
     margin:20px 0 0;
@@ -86,10 +79,10 @@ lang: es
     background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px 16px;
     transition:.15s border-color, .15s transform;
   }
-  .road a:hover{border-color:rgba(255,255,255,0.28); transform:translateY(-1px)}
+  .road a:hover{border-color:var(--line-strong); transform:translateY(-1px)}
   .road .n{
     flex:none; width:30px; height:30px; border-radius:9px; font-weight:600; font-size:14px;
-    display:grid; place-items:center; color:#0d0d0d; background:var(--ink);
+    display:grid; place-items:center; color:var(--action-text); background:var(--ink);
   }
   .road .t{font-weight:600}
   .road .d{color:var(--muted); font-size:14px}
@@ -100,7 +93,7 @@ lang: es
   .step-head{display:flex; align-items:flex-start; gap:16px; margin-bottom:6px}
   .badge{
     flex:none; width:46px; height:46px; border-radius:13px; display:grid; place-items:center;
-    background:var(--ink); color:#0d0d0d; font-weight:700; font-size:19px; letter-spacing:-0.02em;
+    background:var(--ink); color:var(--action-text); font-weight:700; font-size:19px; letter-spacing:-0.02em;
   }
   .step-head .est{color:var(--gray6); font-size:13px; font-weight:500; margin-top:3px}
 
@@ -118,17 +111,17 @@ lang: es
   }
   ol.steps>li b{font-weight:600}
   code.ui{
-    background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:6px; padding:1px 7px;
+    background:var(--panel-raised); border:1px solid var(--border); border-radius:6px; padding:1px 7px;
     font-family:var(--font); font-weight:600; font-size:.92em; white-space:nowrap;
   }
 
   /* checkpoint */
   .check{
     display:flex; gap:11px; align-items:flex-start; margin:14px 0 4px; padding:12px 15px;
-    background:rgba(74,222,128,0.09); border:1px solid rgba(74,222,128,0.3); border-radius:12px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
   }
   .check svg{width:20px; height:20px; flex:none; margin-top:1px}
-  .check .lbl{font-weight:700; color:var(--green); font-size:12.5px; letter-spacing:.04em; text-transform:uppercase; display:block; margin-bottom:1px}
+  .check .lbl{font-weight:700; color:var(--ink-strong); font-size:12.5px; letter-spacing:.04em; text-transform:uppercase; display:block; margin-bottom:1px}
   .check p{margin:0; font-size:15px}
 
   /* callouts */
@@ -136,12 +129,12 @@ lang: es
   .call svg{width:19px; height:19px; flex:none; margin-top:2px}
   .call .lbl{font-weight:700; font-size:12px; letter-spacing:.05em; text-transform:uppercase; display:block; margin-bottom:2px}
   .call p{margin:0}
-  .tip{background:rgba(96,165,250,0.1); border:1px solid rgba(96,165,250,0.32)}
-  .tip .lbl{color:var(--blue)}
-  .warn{background:rgba(251,146,60,0.1); border:1px solid rgba(251,146,60,0.32)}
-  .warn .lbl{color:var(--orange)}
-  .note{background:var(--soft); border:1px solid var(--border)}
-  .note .lbl{color:var(--gray7)}
+  .tip{background:var(--panel); border:1px solid var(--line)}
+  .tip .lbl{color:var(--ink-strong)}
+  .warn{background:var(--panel); border:1px solid var(--line)}
+  .warn .lbl{color:var(--ink-strong)}
+  .note{background:var(--panel); border:1px solid var(--line)}
+  .note .lbl{color:var(--ink-strong)}
 
   /* prompt block */
   .prompt{
@@ -155,7 +148,7 @@ lang: es
   /* screenshot placeholder */
   .shot{
     display:flex; gap:14px; align-items:center; margin:16px 0; padding:14px 16px;
-    background:var(--panel); border:1.5px dashed rgba(255,255,255,0.25); border-radius:14px;
+    background:var(--panel); border:1.5px dashed var(--line-strong); border-radius:14px;
   }
   .shot .cam{
     flex:none; width:40px; height:40px; border-radius:10px; display:grid; place-items:center;
@@ -164,7 +157,7 @@ lang: es
   .shot .cam svg{width:20px; height:20px}
   .shot .num{font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue)}
   figure.shot-real{margin:16px 0}
-  .shot-real img{width:100%; display:block; border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,0.35)}
+  .shot-real img{width:100%; display:block; border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 24px rgba(40,36,28,0.16)}
   .shot-real figcaption{font-size:13px; color:var(--gray6); margin-top:8px}
   .shot-real figcaption .num{font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue); margin-right:8px}
   .shot-real.narrow img{max-width:360px; margin:0 auto}
@@ -184,7 +177,7 @@ lang: es
     display:flex; gap:11px; align-items:flex-start;
   }
   details.ts summary::-webkit-details-marker{display:none}
-  details.ts summary .q{flex:none; width:22px; height:22px; border-radius:6px; background:rgba(251,146,60,0.15); color:var(--orange); font-weight:700; font-size:13px; display:grid; place-items:center; margin-top:1px}
+  details.ts summary .q{flex:none; width:22px; height:22px; border-radius:6px; background:var(--panel-raised); color:var(--ink-strong); font-weight:700; font-size:13px; display:grid; place-items:center; margin-top:1px}
   details.ts[open] summary{border-bottom:1px solid var(--border)}
   details.ts .ans{padding:4px 0 16px 33px; color:var(--gray7); font-size:15px}
   details.ts .ans code.ui{white-space:normal}
@@ -194,7 +187,7 @@ lang: es
   .final ul{list-style:none; padding:0; margin:0}
   .final li{display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); font-size:15.5px}
   .final li:last-child{border-bottom:none}
-  .final .box{flex:none; width:22px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,0.28)}
+  .final .box{flex:none; width:22px; height:22px; border-radius:6px; border:2px solid var(--line-strong)}
 
   /* shot index */
   .idx{background:var(--soft); border:1px solid var(--border); border-radius:14px; padding:6px 20px}
@@ -204,37 +197,27 @@ lang: es
   .idx td.c1{font-weight:700; color:var(--blue); white-space:nowrap; width:78px}
   .idx td.c3{color:var(--gray6); white-space:nowrap; width:70px; text-align:right}
 
-  /* footer */
-  footer{border-top:1px solid var(--border); padding:40px 0 60px; margin-top:20px}
-  .foot-card{background:var(--panel); color:#fff; border:1px solid var(--border); border-radius:18px; padding:30px 32px}
-  .foot-card h3{margin:0 0 6px; font-size:22px; font-weight:600; letter-spacing:-0.02em}
-  .foot-card p{margin:0; color:#c7c9cf; font-size:15px}
-  .foot-card .fl{display:flex; align-items:center; gap:9px; margin-top:18px; color:#fff}
-  .foot-card .mark use{fill:#fff}
-  .foot-meta{display:flex; justify-content:space-between; align-items:center; margin-top:22px; color:var(--gray6); font-size:13px}
-
-  a.inline{color:var(--blue); text-decoration:none; font-weight:500; word-break:break-all}
-  a.inline:hover{text-decoration:underline}
-  .ph{background:rgba(251,191,36,0.16); border:1px solid rgba(251,191,36,0.5); border-radius:6px; padding:1px 7px; font-weight:600; font-size:.92em; color:var(--gold); white-space:nowrap}
+  a.inline{color:var(--link); text-decoration:underline; text-underline-offset:3px; font-weight:500; word-break:break-all}
+  a.inline:hover{text-decoration-color:var(--ink-strong)}
+  .ph{background:var(--panel-raised); border:1px solid var(--line-strong); border-radius:6px; padding:1px 7px; font-weight:600; font-size:.92em; color:var(--ink-strong); white-space:nowrap}
 
   /* review additions */
   .stepno{font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--blue); margin:2px 0 2px}
   .subh{font-weight:600; font-size:18px; margin:22px 0 0}
-  .btnlink{display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#0d0d0d; border-radius:999px; padding:11px 22px; font-weight:500; font-size:14.5px; text-decoration:none; letter-spacing:-0.01em; margin:8px 0 0}
+  .btnlink{display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:var(--action-text); border-radius:999px; padding:11px 22px; font-weight:500; font-size:14.5px; text-decoration:none; letter-spacing:-0.01em; margin:8px 0 0}
   .btnlink:hover{opacity:.88}
   .urlnote{display:block; font-size:12.5px; color:var(--gray6); margin-top:7px; word-break:break-all}
   .prompt .copybtn{position:absolute; top:10px; right:10px; background:#fff; color:#0d0d0d; border:none; border-radius:999px; padding:6px 15px; font-family:var(--font); font-weight:600; font-size:12.5px; cursor:pointer}
-  .prompt .copybtn.ok{background:var(--green); color:#0d0d0d}
+  .prompt .copybtn.ok{background:#fff; color:#0d0d0d}
   .prompt .pl{padding-right:78px}
   details.ts summary{position:relative; padding-right:32px}
   details.ts summary::after{content:""; position:absolute; right:6px; top:21px; width:8px; height:8px; border-right:2px solid var(--gray6); border-bottom:2px solid var(--gray6); transform:rotate(45deg); transition:.18s transform}
   details.ts[open] summary::after{transform:rotate(-135deg); top:25px}
   .final label{display:flex; gap:12px; align-items:center; cursor:pointer; width:100%}
-  .final input[type=checkbox]{appearance:none; -webkit-appearance:none; flex:none; width:22px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,0.28); cursor:pointer; margin:0; display:grid; place-items:center; background:rgba(255,255,255,0.06); transition:.12s}
+  .final input[type=checkbox]{appearance:none; -webkit-appearance:none; flex:none; width:22px; height:22px; border-radius:6px; border:2px solid var(--line-strong); cursor:pointer; margin:0; display:grid; place-items:center; background:var(--panel); transition:.12s}
   .final input[type=checkbox]:checked{background:var(--green); border-color:var(--green)}
-  .final input[type=checkbox]:checked::after{content:""; width:10px; height:5px; border-left:2.5px solid #0d0d0d; border-bottom:2.5px solid #0d0d0d; transform:rotate(-45deg) translate(0,-1px)}
+  .final input[type=checkbox]:checked::after{content:""; width:10px; height:5px; border-left:2.5px solid var(--action-text); border-bottom:2.5px solid var(--action-text); transform:rotate(-45deg) translate(0,-1px)}
   .final input[type=checkbox]:checked~span{color:var(--gray6)}
-  .foot-card .mark{filter:brightness(0) invert(1)}
 
   @media (max-width:640px){
     h1{font-size:36px} h2{font-size:24px} .hero{padding:44px 0 24px}
@@ -260,9 +243,8 @@ lang: es
       -webkit-background-clip:initial !important; background-clip:initial !important;
       -webkit-text-fill-color:#3b82f6 !important; color:#3b82f6 !important;
     }
-    .space-bg,.space-scrim,.space-stars,.copybtn,figure.shot{display:none} body{background:#fff}
+    .copybtn,figure.shot{display:none} body{background:#fff}
     .glayout{width:auto; margin:0 auto; padding:0 24px; background:none; border:none; border-radius:0}
-    .topbar{position:static; background:#fff}
     .hero{padding-top:34px}
     *{-webkit-print-color-adjust:exact; print-color-adjust:exact}
     .step{break-inside:auto} .step-head{break-after:avoid}
@@ -274,36 +256,8 @@ lang: es
     details.ts summary::after{display:none}
   }
 
-  /* nav utilities (rendered into the shared top menu via navUtilities;
-     the menu itself lives in nav-docs.njk) */
-  .site-nav .pdfbtn2{display:inline-flex; align-items:center; gap:7px; background:transparent;
-    color:rgba(255,255,255,0.92); border:1px solid rgba(255,255,255,0.22);
-    border-radius:999px; padding:7px 15px; font-weight:600; font-size:13px; text-decoration:none;
-    transition:background 0.15s, border-color 0.15s}
-  .site-nav .pdfbtn2:hover{background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.35)}
-  .site-nav .pdfbtn2 svg{width:14px; height:14px}
-  /* language picker (shows current language) */
-  .site-nav .langdd{position:relative}
-  .site-nav .langdd summary{list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
-    font-size:12.5px; font-weight:700; color:var(--gray7); border:1px solid var(--border); border-radius:999px;
-    padding:6px 12px; letter-spacing:.02em}
-  .site-nav .langdd summary::-webkit-details-marker{display:none}
-  .site-nav .langdd summary:hover{border-color:rgba(255,255,255,0.28); color:#fff}
-  .site-nav .langdd summary svg{width:18px; height:13px; display:block}
-  .site-nav .langdd summary .chev{width:7px; height:7px; border-right:1.5px solid var(--gray6); border-bottom:1.5px solid var(--gray6); transform:rotate(45deg); margin-top:-3px}
-  .site-nav .langdd[open] summary .chev{transform:rotate(-135deg); margin-top:3px}
-  .site-nav .langdd .menu{position:absolute; right:0; top:calc(100% + 8px); background:var(--panel-solid); border:1px solid var(--border);
-    border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.5); padding:6px; min-width:160px; z-index:200}
-  .site-nav .langdd .menu a{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px;
-    font-size:13.5px; color:var(--gray7); text-decoration:none; font-weight:500}
-  .site-nav .langdd .menu a svg{width:18px; height:13px; display:block}
-  .site-nav .langdd .menu a:hover{background:rgba(255,255,255,0.1); color:#fff}
-  .site-nav .langdd .menu a.on{color:#fff; font-weight:600}
-  .site-nav .langdd .menu a.on::after{content:"✓"; margin-left:auto; font-size:12px; color:var(--green)}
-  @media (max-width:640px){ .site-nav .pdfbtn2{display:none} }
-
   /* ---------- step mode (focus view) ---------- */
-  .glayout{max-width:1150px; margin:0 auto; padding:0 24px; display:grid; grid-template-columns:255px minmax(0,1fr); gap:44px; align-items:start}
+  .glayout{width:min(1150px, calc(100% - 32px)); margin:28px auto 72px; padding:40px 40px 64px; background:var(--card); border:1px solid var(--line); border-radius:20px; display:grid; grid-template-columns:255px minmax(0,1fr); gap:44px; align-items:start}
   .gmain{max-width:var(--maxw); min-width:0}
   .gside{position:sticky; top:84px; padding:18px 0 24px}
   .gside .gs-head{font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--gray6); margin:0 0 10px 2px}
@@ -316,14 +270,14 @@ lang: es
   .gside .gs-m{display:block; font-size:11.5px; color:var(--gray6); font-weight:400}
   .gside .gs-item.on{background:var(--panel); box-shadow:inset 0 0 0 1px var(--border)}
   .gside .gs-item.on .gs-t{font-weight:600; color:var(--ink)}
-  .gside .gs-item.on .gs-num{border-color:transparent; background:var(--grad); color:#fff}
-  .gside .gs-item.done .gs-num{border-color:rgba(74,222,128,0.4); background:rgba(74,222,128,0.1); color:var(--green)}
+  .gside .gs-item.on .gs-num{border-color:transparent; background:var(--grad); color:var(--action-text)}
+  .gside .gs-item.done .gs-num{border-color:var(--line-strong); background:var(--panel-raised); color:var(--ink-strong)}
   .gside .gs-item.done .gs-num::before{content:"✓"; font-size:12px}
   .gside .gs-item.done .gs-num span{display:none}
   .gside .gs-foot{margin-top:14px; padding:0 2px}
   .gside .gs-toggle{background:none; border:none; padding:0; font-family:var(--font); font-size:12.5px; font-weight:600; color:var(--gray6); cursor:pointer; text-decoration:underline; text-underline-offset:3px}
   .gside .gs-toggle:hover{color:var(--ink)}
-  .gprog{position:fixed; top:64px; left:0; height:2.5px; background:var(--grad); z-index:99; transition:width .25s; width:0}
+  .gprog{position:fixed; top:68px; left:0; height:2.5px; background:var(--grad); z-index:99; transition:width .25s; width:0}
   /* hide all panes except active in step mode */
   body.stepper [data-pane]{display:none}
   body.stepper [data-pane].on{display:block}
@@ -333,8 +287,8 @@ lang: es
   /* step nav buttons */
   .gnav{display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 0 70px}
   .gnav .gprev{background:none; border:1px solid var(--border); color:var(--gray7); border-radius:999px; padding:11px 20px; font-family:var(--font); font-weight:500; font-size:14px; cursor:pointer}
-  .gnav .gprev:hover{border-color:rgba(255,255,255,0.28); color:var(--ink)}
-  .gnav .gnext{margin-left:auto; display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#0d0d0d; border:none; border-radius:999px; padding:13px 26px; font-family:var(--font); font-weight:600; font-size:14.5px; cursor:pointer; letter-spacing:-0.01em}
+  .gnav .gprev:hover{border-color:var(--line-strong); color:var(--ink)}
+  .gnav .gnext{margin-left:auto; display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:var(--action-text); border:none; border-radius:999px; padding:13px 26px; font-family:var(--font); font-weight:600; font-size:14.5px; cursor:pointer; letter-spacing:-0.01em}
   .gnav .gnext:hover{opacity:.88}
   .gnav .gdone-msg{margin-left:auto; font-weight:600; color:var(--green); font-size:15px}
   /* full view: everything visible, no step chrome */
@@ -344,8 +298,8 @@ lang: es
   body.fullview .gprog{display:none}
   body.fullview section[data-pane]{border-top:1px solid var(--border)}
   @media (max-width:920px){
-    .glayout{display:block}
-    .gside{position:sticky; top:64px; z-index:40; background:rgba(11,12,19,0.94); margin:0 -24px; padding:10px 24px; border-bottom:1px solid var(--border)}
+    .glayout{display:block; width:calc(100% - 24px); margin-top:12px; padding:8px 18px 48px}
+    .gside{position:sticky; top:68px; z-index:40; background:var(--ground); margin:0 -18px; padding:10px 18px; border-bottom:1px solid var(--border)}
     .gside .gs-head, .gside .gs-m, .gside .gs-foot{display:none}
     .gside ul{flex-direction:row; overflow-x:auto; gap:6px; scrollbar-width:none}
     .gside ul::-webkit-scrollbar{display:none}
@@ -366,27 +320,32 @@ lang: es
   .gvideo{margin:22px 0 4px}
   .gvideo .vlabel{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--gray7); margin-bottom:10px}
   .gvideo .vlabel svg{width:16px; height:16px}
-  .gvideo .vframe{position:relative; width:100%; aspect-ratio:16/9; border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:0 6px 24px rgba(0,0,0,0.35); background:#0f1115}
+  .gvideo .vframe{position:relative; width:100%; aspect-ratio:16/9; border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:0 6px 24px rgba(40,36,28,0.16); background:#0f1115}
   .gvideo .vframe iframe{position:absolute; inset:0; width:100%; height:100%; border:0}
+
+  /* in-content toolbar + closing CTA, centered to the stepper card width */
+  .guide-shell{width:min(1150px, calc(100% - 32px)); margin:0 auto; padding:0 40px}
+  .guide-cta p + p{margin-top:10px}
+  .guide-cta-links{font-size:14px}
+  .guide-cta a{color:var(--on-ink); text-decoration:underline; text-underline-offset:3px}
+  .guide-cta .btn-white{color:var(--ground-deep)}
+  @media (max-width:920px){ .guide-shell{width:calc(100% - 24px); padding:0 18px} }
 </style>
 {% endblock %}
-{% block body %}
-{% include "space-bg.njk" %}
+{% block subpageContent %}
 
-<!-- inline logo symbol -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="hlogo" viewBox="0 0 412.248 448.898">
-<path d="M54.438,370.05a372.979,372.979,0,0,0,36.546,16.539c42.934,16.457,81.036,26.955,127.045,32.718,38.952,4.879,98.013,6.119,133.934-9.694l.22-28.709,10.9-4.2.1,7.633c.131,9.532,10.175,10.024,10.111,16.564l-.19,19.454a10.892,10.892,0,0,1-5.271,8.79A125.921,125.921,0,0,1,333.1,442.267c-27.35,5.945-54.827,7.61-83.009,6.115A501.786,501.786,0,0,1,135.308,429.09C98.277,418.317,63.295,404.2,30.364,384.378c-1.82-1.1-4.62-4.1-4.586-5.833l.486-25.225,11.07-8.41c1.485-34.5-.533-22.947-14.764-49.9-27.447-52-29.2-106.518-8.847-163.015,9.56,20.2,21.153,38.25,37.42,52.877C37.675,162.726,27.2,139.979,22.078,114.644,58.63,40.233,137.3-5.66,220.15.562c51,3.831,94.258,25.571,130.394,61.982-11.956-3.184-22.192-5.554-33.74-6.752C275.709,24.666,227.275,10.9,176.055,19.538c-20.923,3.528-34,6.957-50.682,16.877L139.5,33.929l15.86-2.793c8.528-1.5,24.632-1.04,33.836-.192,22.661,2.088,53.554,13.706,71.674,28.987-12.6,3.789-24.839,7.031-37.177,12.526C168.9,96.859,123.836,137.377,92.651,188.4c-7.872-2.92-15.5-4.417-23.465-2.461,29.782,6.032,38.956,41.129,31.8,67.976-2.394,8.985-7.428,16.16-14.663,22.377a346.506,346.506,0,0,0,147.25,97.184l12.006,21.237c1.847,3.267.35,10.053.346,14.518C191.213,405.71,137.381,395,88.063,371.576L54.751,355.753a55.521,55.521,0,0,0-.313,14.3m15.8-103.638c8.757-2.088,12.715-9.164,15.688-16.5,3.95-12.971,2.434-27.431-5.321-38.706-5.394-7.843-14.789-12.194-23.84-9.339A20.8,20.8,0,0,0,43.4,214.587c8.355-7.946,19.246-8.317,27.089-.185,12.642,13.106,13.272,37.962-.251,52.01M56.2,335.674c19.3,9.688,37.093,17.6,57.609,25.556l.46-40.938c.063-5.627-7.1-8.159-10.894-7.39-13.274,2.69-5.888,17.088-7.963,29.218L55.617,322.693c-1,4.557-1.287,9.423.582,12.981m139.579,48.288c1.144-4.393,1.22-8.69-.783-11.451a512.739,512.739,0,0,1-66.018-17.972,16.313,16.313,0,0,0-.129,12.157c8.276,2.7,16.239,5.339,24.7,7.329Z" fill="#161615"/>
-<path d="M325.964,373.522c-78.683,7.33-171.286-41.71-224.763-98.653,20.982-21.383,19.582-56.385,1.375-79.483,14.126-22.058,29.682-42,48.543-59.74C194.08,95.233,252.771,65.207,312.936,67.539c31.512,1.812,71.082,11.318,70.475,49.792a215.176,215.176,0,0,1,7.448,201.107c3.547,38.249-33.525,51.774-64.9,55.084m-156.623-69.56c44.588,29.3,106.347,54.129,159.883,46.515,8.458-1.2,16.5-3.934,24.588-6.324,5-1.476,7.137-5.17,9.631-9.01,48.185-74.159,42.9-170.662-13.764-238.39C301.111,78.61,245.166,94.247,202.936,121.54c-16.981,10.974-32.909,23.164-46.245,38.481-14.795,16.993-20.759,39.234-21.865,61.356-1.175,23.493,5.307,45.09,17.461,64.8a53.6,53.6,0,0,0,17.054,17.788" fill="#161615"/>
-<path d="M298.533,409.094c-4.467.414-7.883-1.707-9.4-5.237a12.287,12.287,0,0,1,1.075-10.992c1.473-2.484,5.351-4.9,8.887-5.18l31.941-2.488a8.616,8.616,0,0,1,9.262,6.052c.913,3.365.494,9.3-3.5,10.617-12.359,4.06-24.719,5.973-38.264,7.228" fill="#161615"/>
-<rect width="15.334" height="16.211" transform="translate(258.6 409.939) rotate(-89.717)" fill="#161615"/>
-<path d="M370.408,283.292c-6.086,17.577-13.539,33.4-26.392,47.208,26.021-57.679,30.288-124.219,4.132-182.266-6.661-14.783-15.007-27.347-24.809-41.076,5.144.8,12.975.86,16.972,4.164,7.836,6.477,12.518,15.527,17.384,24.5,24.5,45.2,29.763,98.227,12.713,147.465" fill="#161615"/>
-</symbol></svg>
-
-{% set navActive = "guides" %}
-{% set navDownloadLabel = "Descargar" %}
-{% set navUtilities %}<details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>ES<span class="chev"></span></summary><div class="menu"><a href="/guides/revenue-manager/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a class="on" href="/guides/es/revenue-manager/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details><a class="pdfbtn2 nav-util" href="/guides/downloads/houston-revenue-manager-guide-es.pdf" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>Descargar PDF</a>{% endset %}
-{% set navDropdownExtra %}<a href="/guides/revenue-manager/">English</a><a href="/guides/downloads/houston-revenue-manager-guide-es.pdf" download>Descargar PDF</a>{% endset %}
-{% include "nav-docs.njk" %}
+<div class="guide-shell">
+  <div class="guide-toolbar">
+    <div class="lang-toggle">
+      <a href="/guides/revenue-manager/">English</a>
+      <a class="is-active" href="/guides/es/revenue-manager/" aria-current="page">Español</a>
+    </div>
+    <a class="pdfbtn" href="/guides/downloads/houston-revenue-manager-guide-es.pdf" download>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Descargar PDF
+    </a>
+  </div>
+</div>
 
 <div class="gprog" id="gprog"></div>
 <div class="glayout" id="top">
@@ -821,22 +780,14 @@ lang: es
 </div>
 </div>
 
-<footer>
-  <div class="wrap">
-    <div class="foot-card">
-      <h3>¿Te atascaste en algún paso?</h3>
-      <p>Escríbenos en la comunidad de WhatsApp de Houston LATAM y lo resolvemos contigo. Nadie se queda sin su Revenue Manager andando.</p>
-      <div style="margin-top:16px">
-        <a href="https://chat.whatsapp.com/LDytsBEAL3OBTpoGn2X061?s=cl&amp;p=i&amp;mlu=4" style="display:inline-flex; align-items:center; gap:8px; background:#fff; color:#0d0d0d; border-radius:999px; padding:11px 22px; font-weight:600; font-size:14.5px; text-decoration:none" target="_blank" rel="noopener noreferrer">Unirme a la comunidad Houston LATAM</a>
-      </div>
-      <div class="fl"><svg class="mark"><use href="#hlogo"/></svg><span class="wordmark">houston</span></div>
-    </div>
-    <div class="foot-meta">
-      <span>Guía del workshop · Crea tu Agente de Revenue Management</span>
-      <span>gethouston.ai</span>
-    </div>
+<div class="guide-shell">
+  <div class="guide-cta">
+    <h3>¿Te atascaste en algún paso?</h3>
+    <p>Escríbenos en la comunidad de WhatsApp de Houston LATAM y lo resolvemos contigo. Nadie se queda sin su Revenue Manager andando.</p>
+    <p class="guide-cta-links"><a href="https://chat.whatsapp.com/LDytsBEAL3OBTpoGn2X061?s=cl&amp;p=i&amp;mlu=4" target="_blank" rel="noopener noreferrer">Unirme a la comunidad Houston LATAM</a></p>
+    <button class="btn btn-white" data-dl-trigger data-dl-source="guide-revenue-manager">Descargar Houston</button>
   </div>
-</footer>
+</div>
 
 <script>
 (function(){

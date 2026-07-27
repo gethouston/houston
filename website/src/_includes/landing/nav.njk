@@ -1,12 +1,12 @@
 <a class="skip-link" href="#main">Skip to content</a>
-<nav class="lnav" id="lnav" aria-label="Primary">
+<nav class="lnav{% if subpage %} lnav-solid{% endif %}" id="lnav" aria-label="Primary">
   <a class="lnav-brand" href="/">Houston</a>
   <div class="lnav-links">
-    <a href="#multiplayer">Multiplayer</a>
-    <a href="#agents">Agents</a>
-    <a href="#compound">Learnings</a>
-    <a href="#pricing">Pricing</a>
-    <a href="#faq">Questions</a>
+    <a href="{{ root }}#multiplayer">Multiplayer</a>
+    <a href="{{ root }}#agents">Agents</a>
+    <a href="{{ root }}#compound">Features</a>
+    <a href="{{ root }}#pricing">Pricing</a>
+    <a href="{{ root }}#faq">Questions</a>
     {# Resources: everything that leaves the page, one quiet menu. #}
     <div class="lnav-res" id="lnav-res">
       <button class="lnav-res-btn" id="lnav-res-btn" aria-haspopup="true" aria-expanded="false" aria-controls="lnav-res-menu">Resources<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
@@ -29,11 +29,11 @@
   </div>
 </nav>
 <div class="lnav-drop" id="lnav-drop">
-  <a href="#multiplayer">Multiplayer</a>
-  <a href="#agents">Agents</a>
-  <a href="#compound">Learnings</a>
-  <a href="#pricing">Pricing</a>
-  <a href="#faq">Questions</a>
+  <a href="{{ root }}#multiplayer">Multiplayer</a>
+  <a href="{{ root }}#agents">Agents</a>
+  <a href="{{ root }}#compound">Features</a>
+  <a href="{{ root }}#pricing">Pricing</a>
+  <a href="{{ root }}#faq">Questions</a>
   <a href="https://agents.gethouston.ai">Agent Store</a>
   <a href="/guides/">Guides</a>
   <a href="/vision/">Vision</a>

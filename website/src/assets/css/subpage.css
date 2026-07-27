@@ -1,0 +1,396 @@
+/*
+ * Subpage shell — shared content typography for every Resources + legal page
+ * (guides, vision, changelog, privacy, terms), in the v4 landing voice:
+ * warm bone ground, warm-ink type ladder, Hanken Grotesk, one ink pill CTA.
+ * Palette + type + chrome (nav/footer/buttons) come from site-tokens.css +
+ * landing.css; this file adds only the page frame and the prose system.
+ * Page-specific layout (essay width, legal TOC, changelog timeline) lives in
+ * each page's own block; this stays the shared spine.
+ */
+
+/* ── Navbar: solid from the start (subpages have no hero to float over) ────── */
+.lnav-solid {
+  background: var(--ground);
+  border-bottom: 1px solid var(--line);
+}
+.lnav-solid::before {
+  display: none;
+}
+
+/* ── Page frame ───────────────────────────────────────────────────────────
+   The fixed navbar is ~68px tall; clear it, then breathe. */
+.subpage {
+  padding-top: clamp(92px, 12vh, 128px);
+  padding-bottom: clamp(72px, 10vw, 112px);
+}
+.subpage-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+.subpage-wrap-wide {
+  max-width: var(--measure);
+}
+
+/* ── Page header (eyebrow + display title + lead) ─────────────────────────── */
+.subpage-header {
+  max-width: 760px;
+  margin: 0 auto clamp(36px, 5vw, 56px);
+  padding: 0 var(--gutter);
+}
+.subpage-header.is-center {
+  text-align: center;
+}
+.subpage-eyebrow {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  margin-bottom: 18px;
+}
+.subpage-header h1 {
+  font-weight: 340;
+  font-size: clamp(34px, 5vw, 54px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink-strong);
+  text-wrap: balance;
+}
+.subpage-lead {
+  font-size: clamp(16px, 1.6vw, 19px);
+  line-height: 1.55;
+  color: var(--ink-muted);
+  margin-top: 20px;
+  max-width: 60ch;
+  text-wrap: pretty;
+}
+.subpage-header.is-center .subpage-lead {
+  margin-left: auto;
+  margin-right: auto;
+}
+.subpage-meta {
+  margin-top: 22px;
+  font-size: 13.5px;
+  color: var(--ink-subtle);
+}
+
+/* ── The bone content card the prose sits in ──────────────────────────────── */
+.subpage-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--panel-radius);
+  padding: clamp(32px, 5vw, 64px) clamp(24px, 5vw, 56px)
+    clamp(40px, 6vw, 72px);
+  box-shadow: 0 30px 60px -48px rgba(40, 36, 28, 0.28);
+}
+.subpage-card > :first-child {
+  margin-top: 0;
+}
+
+/* ── Prose — the shared reading voice (legal, essay, changelog bodies) ─────── */
+.prose {
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.7;
+}
+.prose > :first-child {
+  margin-top: 0;
+}
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  color: var(--ink-strong);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.prose h1 {
+  font-weight: 340;
+  font-size: clamp(28px, 3.4vw, 38px);
+  margin: 0 0 20px;
+}
+.prose h2 {
+  font-weight: 500;
+  font-size: clamp(22px, 2.4vw, 27px);
+  margin: 52px 0 14px;
+  scroll-margin-top: 96px;
+}
+.prose h3 {
+  font-weight: 600;
+  font-size: 17px;
+  margin: 28px 0 10px;
+}
+.prose h4 {
+  font-weight: 600;
+  font-size: 15px;
+  margin: 22px 0 8px;
+}
+.prose p {
+  margin: 0 0 16px;
+}
+.prose ul,
+.prose ol {
+  margin: 0 0 18px;
+  padding-left: 24px;
+}
+.prose li {
+  margin-bottom: 9px;
+}
+.prose li::marker {
+  color: var(--ink-subtle);
+}
+.prose strong {
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+.prose em {
+  font-style: italic;
+}
+/* Link styling skips button-like anchors (.btn pills, the X pill) so their
+   own label colour/decoration isn't clobbered by the prose link rule. */
+.prose a:not(.btn):not(.x-btn) {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--dur-fast) var(--ease-standard);
+}
+.prose a:not(.btn):not(.x-btn):hover {
+  text-decoration-color: var(--ink-strong);
+}
+.prose code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  padding: 2px 6px;
+  background: var(--panel-raised);
+  border-radius: 5px;
+  color: var(--ink-strong);
+}
+.prose pre {
+  background: var(--ground-deep);
+  color: var(--on-ink);
+  border-radius: 12px;
+  padding: 16px 18px;
+  overflow-x: auto;
+  font-size: 13.5px;
+  line-height: 1.6;
+  margin: 0 0 18px;
+}
+.prose pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+.prose blockquote {
+  border-left: 3px solid var(--line-strong);
+  padding-left: 18px;
+  margin: 0 0 18px;
+  color: var(--ink-muted);
+}
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 32px 0;
+}
+.prose img {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 20px;
+  font-size: 14.5px;
+}
+.prose th,
+.prose td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.prose th {
+  color: var(--ink-strong);
+  font-weight: 600;
+  border-bottom-color: var(--line-strong);
+}
+
+/* ── Inline table of contents / index card (legal + essay) ────────────────── */
+.subpage-toc {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px 26px;
+  margin: 28px 0 44px;
+}
+.subpage-toc-label {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  margin-bottom: 14px;
+}
+.subpage-toc ol {
+  list-style: none;
+  counter-reset: toc;
+  margin: 0;
+  padding: 0;
+}
+.subpage-toc li {
+  counter-increment: toc;
+  margin-bottom: 7px;
+  font-size: 14.5px;
+}
+.subpage-toc li::before {
+  content: counter(toc, decimal-leading-zero);
+  color: var(--ink-subtle);
+  margin-right: 12px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.subpage-toc a {
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+.subpage-toc a:hover {
+  color: var(--ink-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── A quiet framed note inside prose (legal callouts) ─────────────────────── */
+.subpage-callout {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 20px 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--ink-muted);
+}
+.subpage-callout strong {
+  color: var(--ink-strong);
+}
+
+/* ── Language toggle (guides EN/ES) — a quiet pill pair ───────────────────── */
+.lang-toggle {
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 24px;
+}
+.lang-toggle a {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  transition: border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+.lang-toggle a:hover {
+  color: var(--ink-strong);
+  border-color: var(--ink-strong);
+}
+.lang-toggle a.is-active {
+  color: var(--action-text);
+  background: var(--action);
+  border-color: var(--action);
+}
+
+/* ── Guide detail toolbar (language switch + PDF), in-content so the shared
+   navbar stays identical everywhere ───────────────────────────────────────── */
+.guide-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: clamp(20px, 3vw, 32px);
+}
+.guide-toolbar .lang-toggle {
+  margin-top: 0;
+}
+.guide-toolbar .pdfbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--ink-muted);
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 14px;
+  background: transparent;
+  transition: border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+.guide-toolbar .pdfbtn:hover {
+  border-color: var(--ink-strong);
+  color: var(--ink-strong);
+}
+.guide-toolbar .pdfbtn svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ── Guide closing CTA card (former in-page foot-card) ────────────────────── */
+.guide-cta {
+  background: var(--ground-deep);
+  color: var(--on-ink);
+  border-radius: var(--panel-radius);
+  padding: clamp(28px, 4vw, 40px);
+  margin: clamp(40px, 6vw, 64px) 0 0;
+}
+.guide-cta h3 {
+  margin: 0 0 8px;
+  font-size: clamp(20px, 2.4vw, 26px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--on-ink);
+}
+.guide-cta p {
+  margin: 0;
+  color: var(--on-ink-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.guide-cta .btn {
+  margin-top: 20px;
+}
+/* On the dark closing card a white pill needs a dark label — landing.css's
+   .btn-white uses the light --ground, which would be white-on-white here. */
+.guide-cta .btn-white {
+  color: var(--ground-deep);
+}
+.guide-cta .btn-white:hover {
+  background: #ececec;
+}
+
+/* ── Closing links row under content (former page footers) ────────────────── */
+.subpage-endlinks {
+  max-width: 760px;
+  margin: clamp(40px, 6vw, 64px) auto 0;
+  padding: 28px var(--gutter) 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  font-size: 13.5px;
+  color: var(--ink-subtle);
+}
+.subpage-endlinks a {
+  color: var(--ink-muted);
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.subpage-endlinks a:hover {
+  color: var(--ink-strong);
+}
