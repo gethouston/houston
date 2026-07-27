@@ -391,77 +391,7 @@ img {
   .lnav-links {
     display: none;
   }
-  .lnav-cta-glyph {
-  width: 15px;
-  height: 15px;
-  display: inline-block;
-  background: currentColor;
-  -webkit-mask: var(--helmet-mask) center / contain no-repeat;
-  mask: var(--helmet-mask) center / contain no-repeat;
-}
-/* Resources dropdown — quiet menu for everything that leaves the page. */
-.lnav-res {
-  position: relative;
-}
-.lnav-res-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: var(--sans);
-  color: var(--ink-muted);
-  font-size: 14.5px;
-  font-weight: 500;
-  transition: color var(--dur-fast) var(--ease-standard);
-}
-.lnav-res-btn:hover,
-.lnav-res.open .lnav-res-btn {
-  color: var(--ink-strong);
-}
-.lnav-res-btn svg {
-  transition: transform var(--dur-fast) var(--ease-standard);
-}
-.lnav-res.open .lnav-res-btn svg {
-  transform: rotate(180deg);
-}
-.lnav-res-menu {
-  position: absolute;
-  top: calc(100% + 12px);
-  left: 50%;
-  transform: translateX(-50%) translateY(-4px);
-  min-width: 168px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 8px;
-  box-shadow: 0 20px 48px -24px rgba(40, 36, 28, 0.25);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-entrance),
-    visibility var(--dur-fast) var(--ease-standard);
-}
-.lnav-res.open .lnav-res-menu {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-}
-.lnav-res-menu a {
-  display: block;
-  padding: 9px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--ink);
-}
-.lnav-res-menu a:hover {
-  background: var(--panel);
-  color: var(--ink-strong);
-}
-
-.lnav-burger {
+  .lnav-burger {
     display: inline-flex;
   }
 }
@@ -542,6 +472,14 @@ img {
   .lfoot-top {
     grid-template-columns: 1fr 1fr;
     gap: 28px;
+  }
+  /* Give the bottom-row legal/credit links a comfortable tap height on phones
+     (they are single-line text links, ~19px tall otherwise). */
+  .lfoot-bottom {
+    row-gap: 6px;
+  }
+  .lfoot-bottom a {
+    padding: 6px 0;
   }
 }
 @media (max-width: 460px) {

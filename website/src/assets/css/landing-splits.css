@@ -35,11 +35,22 @@
     grid-template-columns: 1fr;
     gap: 32px;
   }
-  .split-rev .split-copy {
+  /* Every stacked split leads with its copy: the headline frames the visual
+     that follows. Consistent with #multiplayer and #compound, and stops
+     #parallel (a plain .split, visual-first in the DOM for its desktop left
+     placement) from opening with a context-less board on a phone. */
+  .split-copy {
+    order: -1;
+  }
+  .split-visual {
     order: 0;
   }
-  .split-rev .split-visual {
-    order: 1;
+  /* Let the single-column grid tracks shrink below their content's intrinsic
+     width so no child forces the section past the viewport (body clips
+     overflow-x, so any excess would silently crop copy). */
+  .split-copy,
+  .split-visual {
+    min-width: 0;
   }
 }
 
@@ -80,6 +91,11 @@
 }
 
 /* ── Full-screen section rhythm — each story owns a viewport ─────────────── */
+/* Desktop-only (>=881px) on purpose: on a phone these sections stack to their
+   natural (tall) content height, so one-story-per-viewport and scroll-snap
+   don't apply. Snapping stacked, variable-height mobile sections fights native
+   momentum scrolling and can trap the reader mid-section, so mobile scrolls
+   free — the sections just flow. */
 @media (min-width: 881px) {
   #multiplayer,
   #parallel,
@@ -212,6 +228,16 @@
   padding: 6px 12px;
   font-size: 12.5px;
   white-space: nowrap;
+}
+/* On phones the tabs get the full page width but there are 4–5 of them; let the
+   row wrap (like the multiplayer .chat-tabs) instead of a nowrap row whose last
+   tab ("Support Rep" / "Permissions") clips off-screen. Placed AFTER the base
+   nowrap rule so it wins the cascade at equal specificity. */
+@media (max-width: 880px) {
+  .acol-tabs,
+  .feat-tabs {
+    flex-wrap: wrap;
+  }
 }
 
 /* ── One agent's kanban column (#parallel) — every card is a chat ────────── */
