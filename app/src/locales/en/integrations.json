@@ -27,7 +27,7 @@
   "connectResult": {
     "connected": "{{app}} is connected",
     "timeoutTitle": "Still waiting for {{app}}",
-    "timeout": "We stopped checking for now. When you finish signing in, use Finish connecting on {{app}}.",
+    "timeout": "We stopped checking for now. When you finish signing in, connect {{app}} again.",
     "failedTitle": "{{app}} could not be connected",
     "failed": "Something went wrong while signing in. Please try connecting it again."
   },
@@ -52,7 +52,7 @@
     "cancel": "Cancel",
     "connected": "Connected",
     "failed": "Could not connect",
-    "stopped": "We stopped checking on {{app}}. Use Finish connecting when you are done."
+    "stopped": "We stopped checking on {{app}}. Connect it again when you are done."
   },
   "pendingRecovery": {
     "body": "You started connecting {{app}} but did not finish signing in.",

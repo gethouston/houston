@@ -3,6 +3,7 @@ import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import {
   appDisplay,
+  type BrokenStatus,
   type ConnectFlow,
   categoryLabel,
   connectOriginKey,
@@ -33,12 +34,17 @@ export interface VisibleSection {
  * `owns` decides which single copy shows the inline connect state and `onOpen`
  * carries the pressed row's origin into the info modal — connecting from there
  * lands the state on the row the user actually opened.
+ *
+ * `statusOf` answers with a pending / errored connection's status for the apps
+ * that hold one: those rows wear it instead of their blurb and stay right here,
+ * duplicates included, like any other app in the section.
  */
 export function CatalogCategorySection({
   section,
   surface,
   connectFlow,
   owns,
+  statusOf,
   onOpen,
   onExpand,
 }: {
@@ -48,6 +54,8 @@ export function CatalogCategorySection({
   connectFlow: ConnectFlow;
   /** Does THIS row own its app's inline connect state? */
   owns: (slug: string, origin: string) => boolean;
+  /** This app's broken-connection status, if it has one. */
+  statusOf: (slug: string) => BrokenStatus | undefined;
   onOpen: (toolkit: IntegrationToolkit, origin: string) => void;
   onExpand: (category: string) => void;
 }) {
@@ -78,6 +86,7 @@ export function CatalogCategorySection({
               onConnect={() => void connectFlow.connect(tk.slug, origin)}
               connectFlow={connectFlow}
               owns={owns(tk.slug, origin)}
+              status={statusOf(tk.slug)}
             />
           );
         })}

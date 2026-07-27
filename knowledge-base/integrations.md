@@ -330,7 +330,7 @@ constant, not the runtime handshake. Absent in the legacy Rust engine build.
 **Shared module** — `app/src/components/integrations/` (`index.ts` is the surface;
 pure model in `model.ts`/`app-display.ts`, DOM-free and node-tested). Both surfaces
 consume it verbatim — no forked copies. Notable exports: `AppDetailDialog`,
-`AppRow`, `CatalogLockedSection`, `AgentChips`, `PendingConnectionCallout`,
+`AppRow`, `CatalogLockedSection`, `AgentChips`,
 `IntegrationDisconnectDialog`, the gate/flow hooks below, and pure helpers
 `browseCatalog`/`splitByGrant`/`pollConnectionUntilActive`. `browseCatalog` sorts
 results ALPHABETICALLY by app name (case-insensitive) after filtering.
@@ -338,9 +338,12 @@ results ALPHABETICALLY by app name (case-insensitive) after filtering.
 capability gate the Settings section and the page share.
 
 **Shared connected-apps read-model** — `useConnectedApps`
-(`integrations/use-connected-apps.ts`) yields sorted `ActiveAppRow` /
-`RecoveringAppRow` over the pure, node-tested `partitionConnections`
-(`integrations/connected-apps-model.ts`). It carries NO grant plumbing — the old
+(`integrations/use-connected-apps.ts`) yields the sorted `ActiveAppRow`s (WORKING
+connections only) over the pure, node-tested `partitionConnections`
+(`integrations/connected-apps-model.ts`, which also answers `broken`: toolkit →
+its pending/errored connection, and `catalogHiddenToolkits`, the one rule for
+which apps the browse catalog leaves out — see "A broken connection lives where
+the app lives" below). It carries NO grant plumbing — the old
 `grantMap` / `editableAgentIds` / `agentChips` fields and the `toolkitAgentIds` /
 `agentChipsFor` helpers were removed with the app-side grants layer. The global
 page's detail modal reads it verbatim (info + reconnect + disconnect only). The
@@ -417,8 +420,8 @@ integrations** tab (§2, `teams.md`).
   via the ui/core `CatalogRow` `statusDot` slot — connected state reads on the ROW,
   not just from section placement; same treatment as the connected-providers strip
   and the skills marketplace's installed rows). Catalog rows pass `status="active"`
-  literally: both callers partition pending/errored connections into recovery rows
-  before the strip sees them, so the amber/red branches were unreachable code
+  literally: both callers keep pending/errored connections in the CATALOG (on the
+  app's own row, wearing its status), so the amber/red branches were unreachable code
   (custom-integration rows keep their real status, which does vary), and a quiet trailing `ChevronRight`
   marking each row as an open-affordance (the shared convention with the connected
   providers + installed skills strips). A catalog row opens `AppDetailDialog`; a
@@ -447,7 +450,7 @@ integrations** tab (§2, `teams.md`).
   discovery tabs (`home.tabs.*`, each trigger with a `CatalogCount` badge):
   **Integrations** (the CONTROLLED `catalog-pane.tsx`: it takes `query` + `category`
   props from the page — its own controls row moved UP into `CatalogControls` — and
-  renders `RecoveryRow`s + the grouped `CategoryCatalog`; the tab's own count chip
+  renders the grouped `CategoryCatalog`; the tab's own count chip
   stays the UNFILTERED connectable total) and **Custom integrations**
   (`CustomIntegrationsSection variant="tab"`; count = the custom list, and it KEEPS
   its own internal search). The connect flow is app-wide shared state
@@ -455,7 +458,8 @@ integrations** tab (§2, `teams.md`).
   page never kills an in-flight OAuth poll. When the host doesn't serve
   custom integrations (`useCustomIntegrations` → `null`) the shell has ONE tab and
   drops the tab chrome entirely.
-  `CategoryCatalog` groups the connectable catalog (connected toolkits EXCLUDED) by
+  `CategoryCatalog` groups the connectable catalog (only WORKING connections are
+  excluded — a pending/errored one keeps its rows, wearing its status) by
   primary category into flat two-column `PlaneAppRow`s, sections ordered MAINSTREAM-FIRST
   then by size via the pure `groupCatalogByCategory` (`browse-sections.ts`, split from
   `browse-model.ts` to hold the file-size line — the filter/allowlist half stays in
@@ -507,8 +511,11 @@ integrations** tab (§2, `teams.md`).
   selection + connect flow and hands them in. The presentational pieces
   live in `components/integrations-view/` (`catalog-controls`, `catalog-pane`,
   `installed-strip`, `plane-app-row`, `category-catalog`,
-  `catalog-category-section`, `recovery-row`, `connected-app-dialogs`,
-  `catalog-skeletons`, `use-catalog-surface`); the old per-strip
+  `catalog-category-section`, `app-info-dialog`, `connected-app-dialogs`,
+  `catalog-skeletons`, `use-catalog-surface`, `use-catalog-sections` — the browse
+  plane's derivation: hidden toolkits, capped sections, inline-state owners, the
+  broken-connection map); `recovery-row.tsx` was DELETED with the recovery
+  section; the old per-strip
   `catalog-search-field.tsx` + `use-installed-search.ts` were DELETED when the search
   moved to the ONE top controls row. The old two-column `ConnectedAppsList` card grid was
   DELETED with the Settings fold and the dropdown-filtered `ConnectMoreAppsSection`
@@ -555,16 +562,16 @@ follows the shared filter, and it is OMITTED when the filter leaves nothing
 installed. State lives in the hook, so this tab's `key={agent.id}` remount keeps it
 naturally per-agent. The catalog
 tab is the SHARED CONTROLLED `CatalogPane` (`integrations-view/catalog-pane.tsx`:
-takes `query` + `category` props from the page, recovery rows, the grouped
+takes `query` + `category` props from the page and renders the grouped
 `CategoryCatalog`),
-generalized to plain props (`catalog`/`connections`/`query`/`category`/`recovering`/
-`allowlist`/`readOnly`/`children`) so both surfaces consume it verbatim — the agent tab passes
+generalized to plain props (`catalog`/`connections`/`query`/`category`/`onRemove`/
+`allowlist`/`children`) so both surfaces consume it verbatim — the agent tab passes
 `AgentCatalogSections` as its `children`. The view is a flat
 `{activeRows, disallowedRows}` (`agentIntegrationsView`, no more grants/degraded
 mode split), every connection classified through the ONE `effectiveAccess`
-resolver (§2): **usable = connection ∩ effective allowlist**. Active rows split
-into strip rows vs recovery rows by connection status; connected apps outside the
-allowlist go to `disallowedRows`. The old **"Connected, but off for this agent"**
+resolver (§2): **usable = connection ∩ effective allowlist**. The strip keeps the
+WORKING rows; a pending/errored connection stays in the catalog on the app's own
+row; connected apps outside the allowlist go to `disallowedRows`. The old **"Connected, but off for this agent"**
 grant section (`agent-ungranted-apps-section.tsx`, `useAgentGrantMutation`,
 `integrations:agentTab.offForAgent.*`) and the `availableRows` bucket are GONE —
 connecting an app makes it usable (∩ allowlist), no per-agent toggle. The
@@ -572,8 +579,8 @@ connecting an app makes it usable (∩ allowlist), no per-agent toggle. The
 "Not allowed" + role-aware Permissions CTA). The old **"Runs without asking"**
 review that reviewed/revoked the per-agent action-approval always-list was REMOVED
 with the whole approval system (§2b — confirmation is now a model-driven `ask_user`
-question, no host-side always-list to manage). Recovery
-**Remove** DISCONNECTS the user's connection. Connect forwards the agent slug so the
+question, no host-side always-list to manage). The broken-connection
+**Remove** (in the app's modal) DISCONNECTS the user's connection. Connect forwards the agent slug so the
 gateway enforces the agent's allowlist (`useConnectFlow`, `autoGrant` removed). The tab
 count chip excludes locked apps. All lifted view state (tab/search/category/modals)
 lives in the body, remounted per agent via `key={agent.id}`. The bottom link
@@ -625,7 +632,7 @@ the per-agent tab (`agent-integrations-tab.tsx`) and threaded down through
 The global Integrations page never builds a resolver (it has no ceiling and never locks a
 row). Pure logic is node-tested in `app/tests/blocked-ceiling.test.ts`.
 
-**Connect flow + pending recovery (HOU-847)** — the hand-off is ONE app-wide flow
+**Connect flow (HOU-847)** — the hand-off is ONE app-wide flow
 in three files:
 
 - `stores/connect-flow.ts` — the shared state. A module-level `connectFlowRegistry`
@@ -672,14 +679,14 @@ in three files:
 
 **Parallel by default.** There is no whole-surface lockout. Every row/tile is gated
 on ITS OWN slug (`slug in states`); connecting Slack leaves Notion, the detail
-modal's CTA, the recovery rows, the onboarding tiles, and the email-provider rows
+modal's CTA, the onboarding tiles, and the email-provider rows
 fully enabled at full strength. `busy`/`disabled` cross-row props were removed from
 `PlaneAppRow`, `ConnectStepTile`, and `EmailProviderRow`.
 
 **Feedback lands where the user clicked.** `ConnectFlowInline`
 (`integrations/connect-flow-inline.tsx`, replacing the deleted
 `ConnectWaitingPanel`) renders one app's state INLINE — inside the catalog card the
-pressed row became, under the recovery row, under the intake's connect prompt. It is a
+pressed row became, under the intake's connect prompt. It is a
 `role="status" aria-live="polite"` region announcing starting → waiting → settled:
 `waiting.opening` ("Opening {{app}} in your browser") while the link mints, the
 waiting copy + Reopen / I have finished / Cancel (core `Button`/`AsyncButton`, no
@@ -691,14 +698,12 @@ row that caused it.
 floating under a flat row read as a detached box about nothing in particular, and
 it put TWO spinners on one hand-off (the row's `+` and the panel's). So while a
 row owns a live or just-settled flow, `PlaneAppRow` turns the WHOLE row into one
-container: `rounded-xl border-line bg-input` (the recovery callout's surface
-language) enclosing the app header — logo, name, description, the `+` slot — and,
+container: `rounded-xl border-line bg-input` enclosing the app header — logo, name, description, the `+` slot — and,
 directly below it, the flow copy and its pills. Nothing is nested inside it: the
 block renders `variant="bare"` (no frame of its own, and no spinner — the header's
 `CatalogAddButton busy` is the ONE spinner, sitting where the user just clicked).
-`variant="panel"` is the default and is what the standalone hosts still get
-(`PendingConnectionCallout`, the routine intake), where nothing around the block
-reports the hand-off; their rendering is unchanged. `hasConnectState(flow, slug)`
+`variant="panel"` is the default and is what the standalone host still gets
+(the routine intake), where nothing around the block reports the hand-off. `hasConnectState(flow, slug)`
 is the shared predicate deciding whether there is anything to dress, so the chrome
 and the content appear and leave as one. Body padding continues the row's own
 rhythm (`px-3` gutters, the 10px the row already leaves under itself).
@@ -733,43 +738,71 @@ live OAuth and its Cancel can never vanish from the page. Duplicate rows stay FL
 (never carded) and keep their compact per-slug `+` spinner (`CatalogAddButton
 busy`), gated on `slug in states` and knowing nothing about origins. The settled
 line itself lives in `integrations/connect-notice-line.tsx` (`ConnectNoticeLine`),
-so the recovery callout can render an outcome without pulling in the live-phase
+so a surface can render an outcome without pulling in the live-phase
 block. Ownership is the HOST surface's call, not the block's: `PlaneAppRow` gates
 on `owns && hasConnectState(...)` and simply does not render `ConnectFlowInline`
 on the copies that did not start the flow (the old `owns` prop is gone — only the
-catalog ever repeated a row, and the callout / intake never passed it, so
-cross-surface visibility of a live or recovering connection is untouched: it gates
-on connection status, not origin). `surface` is threaded from
-`IntegrationsReady` (`"integrations"`) and `AgentIntegrationsBody`
-(`` `agent:${id}` ``) through `CatalogPane` into `CategoryCatalog`.
+catalog ever repeats a row, and the intake never passed it). `surface` is threaded
+from `IntegrationsReady` (`"integrations"`) and `AgentIntegrationsBody`
+(`` `agent:${id}` ``) through `CatalogPane` into `CategoryCatalog`, and the
+per-row ownership resolution now lives in `use-catalog-sections.ts`.
 
 **The settled line is SHORT; the toast carries the sentence.** The inline outcome
 reads `waiting.connected` ("Connected") / `waiting.failed` ("Could not connect");
 `waiting.stopped` keeps its full sentence because it is the actionable one (it
-names Finish connecting). The toast stays the full announcement — it is the only
+says the app can be connected again, right where it sits). The toast stays the full announcement — it is the only
 one that still works when the user has navigated away — so a single outcome is no
 longer spelled out three times over.
 
 **Outcomes are announced once, from the flow, for every surface** (`announce` in
 the hook): `active` → success toast `connectResult.connected`; `timeout` → a
-NEUTRAL `info` toast (`connectResult.timeoutTitle` + body pointing at the pending
-row's Finish action) because walking away from an OAuth is normal behavior, NOT a
+NEUTRAL `info` toast (`connectResult.timeoutTitle` + body saying to connect the
+app again) because walking away from an OAuth is normal behavior, NOT a
 crash — it no longer routes through `showErrorToast` (red branded toast + Sentry
 report + green "report sent" follow-up); `error` → an `error`-variant `addToast`,
 again no auto bug report; `cancelled` → silent. The in-chat card's duplicate
 success toast (`chat:composio.verifiedToast`) was deleted with the key.
 
-A connection left pending/errored across sessions still surfaces a
-`PendingConnectionCallout` (pending → Finish connecting; error → Reconnect; both a
-fresh link) + Remove on the global page and the agent tab's own rows; while that
-toolkit's flow is LIVE (`slug in states`, NOT `notices`) the callout renders
-`ConnectFlowInline` instead. A just-settled outcome renders as a
-`ConnectNoticeLine` ABOVE those buttons, never in place of them: gating the swap on
-the notice too meant a failed attempt hid the Reconnect button its own copy tells
-the user to press, for the six seconds the notice lives. An orphaned
-pending connection is recovered from the global page (the agent tab links there via
-"Manage all integrations"). In agent context the connect forwards the agent slug so
-the gateway checks its allowlist on OAuth.
+**A broken connection lives where the app lives (the recovery model).** A connect
+that never landed used to REMOVE its app from the catalog and re-materialize it as
+a `RecoveryRow` + `PendingConnectionCallout` pinned above the category sections:
+the user pressed Slack in Team chat, the OAuth failed, and Slack teleported to an
+unrelated spot at the top of the pane. Both files are DELETED, on both surfaces.
+The rules now:
+
+- **One home per app.** `partitionConnections` sends only `active` connections to
+  the Installed strip; everything else stays connectable. `catalogHiddenToolkits`
+  is the ONE rule for what the browse catalog omits — a WORKING connection (it is
+  an Installed row) and, on a Teams host, a connection outside the agent's ceiling
+  (it is a "Not allowed" row). A pending/errored connection inside the ceiling is
+  omitted from neither: it keeps its normal category rows, spotlight duplicates
+  included, and counts as available. A toolkit holding an active connection AND a
+  leftover broken one is installed only.
+- **At rest the row says it.** `PlaneAppRow` takes `status?: BrokenStatus` and
+  swaps its blurb for the shared `ConnectionStatusBadge` (dot + label,
+  `status.pending` "Finishing up" in warning, `status.error` "Needs reconnecting"
+  in danger) on the ONE secondary line — which is why `CatalogRow.description`
+  takes a node now (inventory v35). No expanded panel, no extra chrome.
+- **The `+` IS the retry.** It starts the normal connect from THAT row (origin =
+  the clicked row), so the hand-off gets the exact one-card treatment every live
+  flow gets. A live flow OUTRANKS the at-rest status everywhere
+  (`hasConnectState`, states OR notices): while a flow or its settled notice is on
+  screen the row reports that, never both at once, and the status line returns
+  when the notice expires.
+- **Remove lives in the dialog.** The row body opens the SAME `AppInfoDialog` a
+  connectable app opens (one dialog per app, never a third surface); for a broken
+  app it wears the status chip, leads with `pendingRecovery.body` /
+  `errorRecovery.body`, and its footer is Finish connecting / Reconnect (the same
+  hand-off, on the opening row's origin) beside Remove, which disconnects the
+  half-made connection with no confirm (there is nothing working to lose — the
+  same wiring the callout's Remove had). `AppDetailDialog` stays the CONNECTED
+  app's modal, opened from the Installed strip.
+
+Covered end to end by `packages/web/e2e/integrations-recovery.spec.ts` (status on
+the row on both surfaces, no recovery pile above the catalog, the `+` reconnect as
+one card, the dialog's Reconnect + Remove), seeded via the fake host's
+`/__test__/integrations-connection` `{toolkit, status}` hook. In agent context the
+connect forwards the agent slug so the gateway checks its allowlist on OAuth.
 
 **Loading language** — three inconsistent treatments collapsed to two.
 `integrations-view/catalog-skeletons.tsx` owns them all: `InstalledSkeleton`,

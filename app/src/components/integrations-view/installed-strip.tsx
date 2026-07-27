@@ -77,10 +77,10 @@ export function InstalledStrip({
       icon: <AppLogo display={row.app} size="lg" className="rounded-lg" />,
       title: row.app.name,
       description: row.app.description,
-      // Every catalog row here IS active — both callers partition pending and
-      // errored connections into recovery rows before this strip sees them, so
-      // the dot is green by construction rather than by a status lookup that
-      // could never resolve to anything else.
+      // Every catalog row here IS active — both callers keep pending and
+      // errored connections in the catalog (on the app's own row, wearing its
+      // status), so the dot is green by construction rather than by a status
+      // lookup that could never resolve to anything else.
       statusDot: <StatusDot status="active" srLabel={t("status.active")} />,
       onClick: () => onOpen(row.connection),
     })),

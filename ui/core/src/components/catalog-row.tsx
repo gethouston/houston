@@ -19,8 +19,10 @@ export interface CatalogRowProps
   /** Leading art (~40px): a brand logo, letter avatar, or glyph tile. */
   icon: ReactNode;
   title: string;
-  /** One muted line, truncated. */
-  description?: string;
+  /** The one secondary line under the title, truncated: plain muted text, or a
+   *  node when the row's situation replaces its blurb (a status line on a
+   *  connection that needs finishing). */
+  description?: ReactNode;
   /** A tiny, always-visible status dot (e.g. {@link StatusDot}) rendered
    *  immediately LEFT of the title — presence-style, "● Asana" — so
    *  connected/installed state reads without hovering. */

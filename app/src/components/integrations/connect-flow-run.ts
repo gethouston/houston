@@ -24,7 +24,7 @@ export type ConnectStep = "starting" | "waiting";
  *    the app into Installed);
  *  - `failed`    — the provider rejected or revoked the OAuth;
  *  - `stopped`   — the poll budget ran out because the user walked away; the
- *    pending row's "Finish connecting" picks it back up.
+ *    app's own catalog row, now marked "Finishing up", picks it back up.
  * A cancel leaves nothing: the user already knows.
  */
 export type ConnectNotice = "connected" | "failed" | "stopped";

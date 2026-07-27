@@ -11,7 +11,7 @@ import {
  * The generic integrations list row shared by both surfaces: logo + name (+ a
  * live status dot + label, right of the name) + description, a trailing
  * action slot, and an optional `children` block that renders under the main
- * line (used for the pending / error recovery callouts). Renders as a button
+ * line. Renders as a button
  * when `onClick` is given, otherwise a plain row. Actions live in `trailing`,
  * never hover-gated. The card itself stays the plain neutral surface — status
  * reads from the dot + label, not a tinted background (that read as loud/

@@ -2,44 +2,43 @@ import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  browseCatalogView,
   CatalogLockedSection,
-  type CatalogSection,
   type ConnectFlow,
-  groupCatalogByCategory,
-  inlineOwners,
   type PermissionsFix,
-  SECTION_PREVIEW_CAP,
 } from "../integrations";
 import { AppInfoDialog } from "./app-info-dialog";
-import {
-  CatalogCategorySection,
-  type VisibleSection,
-} from "./catalog-category-section";
+import { CatalogCategorySection } from "./catalog-category-section";
+import { useCatalogSections } from "./use-catalog-sections";
 
 /**
  * The browse plane: the full connectable catalog grouped into flat category
  * sections (the reference's "Featured / Productivity / Creativity" stacks),
  * replacing the old dropdown-filtered load-more grid. Grouping IS the
  * navigation, so there is no pagination and no category picker — every
- * connectable app is present, sorted into its section. Each section shows at
- * most {@link SECTION_PREVIEW_CAP} rows until the user expands it, so the first
- * paint stays bounded even over the ~1000-app catalog; every section expands
- * independently. A row BODY click opens the app's "more info" modal
- * ({@link AppInfoDialog}); only the row's `+` (or the modal's CTA) connects.
+ * connectable app is present, sorted into its section. Each section shows a
+ * capped preview until the user expands it, so the first paint stays bounded
+ * even over the ~1000-app catalog; every section expands independently. A row
+ * BODY click opens the app's "more info" modal ({@link AppInfoDialog}); only
+ * the row's `+` (or the modal's CTA) connects.
  *
- * An in-flight OAuth belongs to its OWN row ({@link PlaneAppRow} expands with
- * the live phase): there is no page-level waiting panel, so feedback never
- * appears 90px above whatever the user is reading, and no row is ever disabled
- * because a different app is connecting. Flows are per toolkit and concurrent;
- * the shared flow state (`connectFlow`) outlives this surface, so switching
- * tabs or leaving the page never kills a poll. The spotlight REPEATS rows that
- * also sit in a category section, so each row carries a
- * {@link connectOriginKey} and {@link inlineOwners} hands the expansion to the
- * single copy the user pressed — the duplicate keeps only its `+` spinner. On a
+ * An app whose connection is pending or errored is NOT pulled out of here:
+ * only a WORKING connection leaves the catalog (for the Installed strip), so a
+ * failed connect leaves the app exactly where the user pressed it, wearing its
+ * status and retrying from its own `+`. Its modal is the one place the
+ * connection can be removed.
+ *
+ * An in-flight OAuth belongs to its OWN row (the row expands with the live
+ * phase): there is no page-level waiting panel, so feedback never appears 90px
+ * above whatever the user is reading, and no row is ever disabled because a
+ * different app is connecting. Flows are per toolkit and concurrent; the shared
+ * flow state (`connectFlow`) outlives this surface, so switching tabs or leaving
+ * the page never kills a poll. The spotlight REPEATS rows that also sit in a
+ * category section, so each row carries an origin key and `useCatalogSections`
+ * hands the expansion to the single copy the user pressed — the duplicate keeps
+ * only its `+` spinner. On a
  * Teams host with an `allowlist` ceiling, apps outside it drop from the sections
  * and surface as read-only LOCKED rows below (same query + category filter, so
  * searching a blocked app finds its locked row, never a false empty state).
@@ -51,6 +50,7 @@ export function CategoryCatalog({
   surface,
   query,
   category,
+  onRemove,
   allowlist = null,
   lockedFix,
 }: {
@@ -63,6 +63,8 @@ export function CategoryCatalog({
   query: string;
   /** The filter dropdown's pick: a primary-category slug or "all". */
   category: string;
+  /** Disconnect a broken connection (the modal's Remove). */
+  onRemove: (toolkit: string) => void;
   /** The Teams effective allowlist (`null` = unrestricted, no locks ever). */
   allowlist?: string[] | null;
   /** Role-aware "Enable it in Permissions" resolver for locked rows; absent =
@@ -70,27 +72,15 @@ export function CategoryCatalog({
   lockedFix?: PermissionsFix;
 }) {
   const { t } = useTranslation("integrations");
-
-  const connected = useMemo(
-    () => new Set(connections.map((c) => c.toolkit)),
-    [connections],
-  );
-  // The ceiling splits the browse set BEFORE grouping: sections hold only the
-  // connectable apps; the blocked remainder renders as the locked strip below.
-  const { connectable, locked } = useMemo(
-    () => browseCatalogView({ catalog, query, category, connected, allowlist }),
-    [catalog, query, category, connected, allowlist],
-  );
-  const sections: CatalogSection[] = useMemo(
-    () =>
-      groupCatalogByCategory({
-        catalog: connectable,
-        query,
-        connected,
-        category,
-      }),
-    [connectable, query, connected, category],
-  );
+  const { visible, locked, owners, broken, expand } = useCatalogSections({
+    catalog,
+    connections,
+    query,
+    category,
+    allowlist,
+    surface,
+    origins: connectFlow.origins,
+  });
 
   // The "more info" modal's subject — a row-body click sets it; `+` never does.
   // It carries the row's origin so connecting from the modal lands its state on
@@ -99,52 +89,10 @@ export function CategoryCatalog({
     toolkit: IntegrationToolkit;
     origin: string;
   } | null>(null);
-  // A fresh query OR category resets every section back to its capped preview
-  // (changing category re-groups the sections, so a stale expansion no longer
-  // maps). Adjusting state during render (React's documented pattern, mirroring
-  // AppCatalogGrid's `shownFor`) keeps the reset in sync without a wasted paint.
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
-  const resetKey = JSON.stringify([query, category]);
-  const [expandedForKey, setExpandedForKey] = useState(resetKey);
-  if (expandedForKey !== resetKey) {
-    setExpandedForKey(resetKey);
-    setExpanded(new Set());
-  }
-
-  // The rows each section actually renders (capped until expanded), resolved
-  // BEFORE the tree so the inline-state owner can be decided across sections.
-  const visible: VisibleSection[] = useMemo(
-    () =>
-      sections.map((section) => {
-        const isExpanded = expanded.has(section.category);
-        return {
-          category: section.category,
-          total: section.connectable.length,
-          rows: isExpanded
-            ? section.connectable
-            : section.connectable.slice(0, SECTION_PREVIEW_CAP),
-          hasMore:
-            !isExpanded && section.connectable.length > SECTION_PREVIEW_CAP,
-        };
-      }),
-    [sections, expanded],
-  );
-  const owners = useMemo(
-    () =>
-      inlineOwners(
-        visible.map((s) => ({
-          section: s.category,
-          slugs: s.rows.map((tk) => tk.slug),
-        })),
-        surface,
-        connectFlow.origins,
-      ),
-    [visible, surface, connectFlow.origins],
-  );
 
   return (
     <div>
-      {sections.length === 0 && locked.length === 0 ? (
+      {visible.length === 0 && locked.length === 0 ? (
         <p className="py-8 text-center text-sm text-ink-muted">
           {t("picker.noResults")}
         </p>
@@ -159,10 +107,9 @@ export function CategoryCatalog({
               // The spotlight repeats category rows: only the copy that owns
               // this app expands, so the panel appears exactly once.
               owns={(slug, origin) => owners.get(slug) === origin}
+              statusOf={(slug) => broken.get(slug)?.status}
               onOpen={(toolkit, origin) => setInfo({ toolkit, origin })}
-              onExpand={(category) =>
-                setExpanded((prev) => new Set(prev).add(category))
-              }
+              onExpand={expand}
             />
           ))}
         </div>
@@ -174,11 +121,16 @@ export function CategoryCatalog({
 
       <AppInfoDialog
         toolkit={info?.toolkit ?? null}
+        broken={info ? broken.get(info.toolkit.slug) : undefined}
         onClose={() => setInfo(null)}
         onConnect={(toolkit) => {
           const origin = info?.origin;
           setInfo(null);
           if (origin) void connectFlow.connect(toolkit, origin);
+        }}
+        onRemove={(toolkit) => {
+          setInfo(null);
+          onRemove(toolkit);
         }}
         // Gated on THIS app's own flow only: the modal's CTA must not go dead
         // because some other row is mid-OAuth. Live whenever the user opens the

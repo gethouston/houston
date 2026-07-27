@@ -27,7 +27,7 @@
   "connectResult": {
     "connected": "O {{app}} está conectado",
     "timeoutTitle": "Ainda esperando o {{app}}",
-    "timeout": "Paramos de verificar por enquanto. Quando terminar de entrar, use Terminar de conectar no {{app}}.",
+    "timeout": "Paramos de verificar por enquanto. Quando terminar de entrar, conecte o {{app}} de novo.",
     "failedTitle": "Não foi possível conectar o {{app}}",
     "failed": "Algo deu errado ao entrar. Tente conectar novamente."
   },
@@ -52,7 +52,7 @@
     "cancel": "Cancelar",
     "connected": "Conectado",
     "failed": "Não foi possível conectar",
-    "stopped": "Paramos de verificar o {{app}}. Use Terminar de conectar quando você acabar."
+    "stopped": "Paramos de verificar o {{app}}. Conecte de novo quando você acabar."
   },
   "pendingRecovery": {
     "body": "Você começou a conectar o {{app}} mas não terminou de entrar.",

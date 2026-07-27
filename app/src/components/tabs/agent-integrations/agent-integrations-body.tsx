@@ -54,8 +54,9 @@ interface AgentIntegrationsBodyProps {
  * Integrations / Custom integrations tabs via the shared {@link CatalogShell}.
  * ONE search + category controls row ({@link CatalogControls}) above both
  * sections filters the Installed strip and the catalog tab together. The catalog
- * tab is the shared {@link CatalogPane} (recovery rows, the grouped category
- * catalog with Teams locked rows), carrying the agent-only disallowed-apps
+ * tab is the shared {@link CatalogPane} (the grouped category catalog with Teams
+ * locked rows, and the rows of any app whose connection needs finishing),
+ * carrying the agent-only disallowed-apps
  * section as its `children`; a strip row opens the shared detail modal (view +
  * reconnect + disconnect, a pure connect surface, never a permission editor).
  * Connecting an app makes it usable for this agent (connection ∩ allowlist) via
@@ -80,13 +81,10 @@ export function AgentIntegrationsBody({
   const custom = useCustomIntegrations();
   const customItems = custom.data ?? [];
 
-  // Active rows fill the strip; pending/errored ones become catalog recovery rows.
+  // Only WORKING connections fill the strip; an app whose connection is pending
+  // or errored stays in the catalog below, in its own category rows.
   const active = useMemo(
     () => view.activeRows.filter((r) => r.connection.status === "active"),
-    [view.activeRows],
-  );
-  const recovering = useMemo(
-    () => view.activeRows.filter((r) => r.connection.status !== "active"),
     [view.activeRows],
   );
   // The ONE controls row's shared state (per-agent via remount): query +
@@ -122,10 +120,9 @@ export function AgentIntegrationsBody({
           surface={surface}
           query={query}
           category={category}
-          recovering={recovering}
           isLoading={catalogLoading}
           connectFlow={connectFlow}
-          onRemoveRecovering={onDisconnect}
+          onRemove={onDisconnect}
           allowlist={allowlist}
           lockedFix={permissionsFix}
         >

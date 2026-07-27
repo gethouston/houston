@@ -203,6 +203,18 @@ export async function handle(req: Request): Promise<Response> {
     });
     return json({ teams: state.setTeamWorkspaces(rows) });
   }
+  // Seed a connection at a status the UI can't be clicked into: `pending` (an
+  // abandoned sign-in) or `error` (the provider refused). `{toolkit, status}`.
+  if (path === "/__test__/integrations-connection" && method === "POST") {
+    const body = await parseBody(req);
+    const status = body?.status;
+    return json({
+      connection: state.seedConnection(
+        String(body?.toolkit ?? ""),
+        status === "active" || status === "error" ? status : "pending",
+      ),
+    });
+  }
   // Flip a pending connection to active (models the OAuth completing).
   if (path === "/__test__/integrations-activate" && method === "POST") {
     const body = await parseBody(req);

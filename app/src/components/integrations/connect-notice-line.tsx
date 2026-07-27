@@ -11,13 +11,11 @@ import type { ConnectNotice } from "./connect-flow-run";
  * to be, it is the only one that still reaches a user who navigated away — so
  * repeating the same sentence on the row said one thing three times over. What
  * belongs here is the state: "Connected", "Could not connect". The abandoned
- * case keeps its sentence because it is the actionable one: it names the Finish
- * connecting affordance the user has to come back to.
+ * case keeps its sentence because it is the actionable one: it says the app can
+ * be connected again, right where it sits.
  *
- * Lives apart from {@link ConnectFlowInline} so the pending-recovery callout can
- * show the outcome ABOVE its Finish connecting / Reconnect / Remove actions
- * without pulling in the whole live-phase block — the copy that names a button
- * must never be what hides it.
+ * Lives apart from {@link ConnectFlowInline} so a surface can show the outcome
+ * without pulling in the whole live-phase block.
  */
 export function ConnectNoticeLine({
   appName,
