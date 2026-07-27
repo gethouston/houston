@@ -72,7 +72,10 @@
     "removeAria": "Quitar aprendizaje",
     "confirmRemoveTitle": "¿Quitar este aprendizaje?",
     "confirmRemoveDescription": "El agente perderá esta nota. Puedes añadirla de nuevo más tarde.",
-    "confirmRemoveLabel": "Quitar"
+    "confirmRemoveLabel": "Quitar",
+    "provenanceFromMission": "De {{name}} · {{mission}}",
+    "provenanceFrom": "De {{name}}",
+    "provenanceMission": "De {{mission}}"
   },
   "subTabs": {
     "instructions": "Instrucciones",

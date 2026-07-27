@@ -53,7 +53,9 @@ If app-specific → `.houston/`.
     config/
       config.json + .schema.json
     learnings/
-      learnings.json + .schema.json   ({id, text, created_at})
+      learnings.json + .schema.json   ({id, text, created_at}
+                                       + optional provenance: taught_by
+                                       {user_id,name?}, mission_id, mission_title)
       # Legacy `.houston/memory/learnings.md` auto-migrated on startup
       # (bullet list → JSON). See `houston_agent_files::migrate_agent_data`.
     prompts/
@@ -134,6 +136,30 @@ vanish on the next read).
 
 ## Schemas
 Authoritative. Live in `ui/agent-schemas/src/*.schema.json`. `packages/domain` seeds them into each agent's `.houston/<type>/<type>.schema.json` on create. Prompts instruct the model to read the schema before writing a data file.
+
+Schemas are seeded on agent creation AND re-seeded on every host boot
+(`packages/host/src/migrate/agent-schemas.ts`, content-compared so a
+steady-state boot writes nothing) — an agent created before a schema gained a
+field would otherwise keep a stale `additionalProperties: false` copy and strip
+what the host stamps.
+
+## Learnings provenance (HOU-946) — on-disk shape
+
+A learning record in `.houston/learnings/learnings.json` may carry three
+optional, additive provenance keys (no migration; older entries read unchanged):
+
+```json
+{
+  "id": "…", "text": "…", "created_at": "…",
+  "taught_by": { "user_id": "…", "name": "Felipe" },
+  "mission_id": "act-1",
+  "mission_title": "Q3 pipeline"
+}
+```
+
+All three are **server-stamped, never agent-written**. The mechanism (write
+route, stamping rules, portability, UI) is documented once in
+`knowledge-base/architecture.md` → "Learnings (memory) + their provenance".
 
 ## Learnings prompt injection
 `engine/houston-engine-core/src/agents/prompt.rs::build_agent_context`

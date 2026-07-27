@@ -71,4 +71,23 @@ export interface Learning {
   id: string;
   text: string;
   created_at: string;
+  /**
+   * WHO taught this learning (provenance). Stamped by the host from the
+   * gateway-injected acting-as identity when a turn saved it, or by the app
+   * from the signed-in session when a person added it in Memory. Absent on
+   * desktop / single-player, so those files stay free of identity keys.
+   */
+  taught_by?: ActivityContributor;
+  /**
+   * The mission (activity) whose conversation taught this learning, matched by
+   * the turn's conversation id. Absent when nothing matched (settings-added
+   * learnings, a routine run with no mission, a legacy entry).
+   */
+  mission_id?: string;
+  /**
+   * The mission's title AT SAVE TIME — a denormalized fallback so a renamed or
+   * deleted mission still reads. Renderers prefer the live title looked up by
+   * `mission_id` and fall back to this.
+   */
+  mission_title?: string;
 }

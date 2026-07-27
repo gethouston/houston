@@ -3,7 +3,7 @@ import configSchema from "@houston-ai/agent-schemas/config.schema.json";
 import learningsSchema from "@houston-ai/agent-schemas/learnings.schema.json";
 import routineRunsSchema from "@houston-ai/agent-schemas/routine_runs.schema.json";
 import routinesSchema from "@houston-ai/agent-schemas/routines.schema.json";
-import { saveJson, type TextStore } from "./store";
+import { jsonDoc, type TextStore } from "./store";
 
 /**
  * The `.houston/` layout inside an agent's workspace — ONE convention for
@@ -56,15 +56,25 @@ const SCHEMAS: Record<HoustonFamily, unknown> = {
 };
 
 /**
+ * The EXACT document `seedSchemas` writes for a family. Exported so a re-seed
+ * (the host's boot migration for agents created before a schema changed) can
+ * compare byte-for-byte and skip the write when the file is already current.
+ */
+export function schemaDoc(family: HoustonFamily): string {
+  return jsonDoc(SCHEMAS[family]);
+}
+
+/**
  * Seed every family's `.schema.json` (idempotent overwrite — the schema ships
  * with the app and is not user data). Run on agent creation so agents and
- * external tools can validate what they write.
+ * external tools can validate what they write. Existing agents are brought
+ * forward on boot by the host's schema re-seed migration.
  */
 export async function seedSchemas(
   store: TextStore,
   root: string,
 ): Promise<void> {
   for (const family of FAMILIES) {
-    await saveJson(store, schemaKey(root, family), SCHEMAS[family]);
+    await store.writeText(schemaKey(root, family), schemaDoc(family));
   }
 }

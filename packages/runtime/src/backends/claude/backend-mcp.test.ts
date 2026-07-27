@@ -120,7 +120,8 @@ test("plan mode builds the MCP server WITHOUT integrations — ask_user + plan_r
 
 test("auto mode builds the MCP with integrations ON and ask_user OFF", async () => {
   // Autopilot is the inverse of plan: it KEEPS the acting integration tools
-  // (and the non-blocking suggest_reusable and save_routine, and the
+  // (and the non-blocking suggest_reusable, save_routine and save_learning,
+  // and the
   // request_connection / request_credential hand-offs autonomy cannot avoid —
   // HOU-853) but drops ask_user so the agent never waits on the user's
   // judgment.
@@ -134,6 +135,7 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
     new Set([
       "suggest_reusable",
       "save_routine",
+      "save_learning",
       "integration_search",
       "integration_execute",
       "request_connection",
@@ -147,6 +149,7 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
     new Set([
       "mcp__houston__suggest_reusable",
       "mcp__houston__save_routine",
+      "mcp__houston__save_learning",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
       "mcp__houston__request_connection",

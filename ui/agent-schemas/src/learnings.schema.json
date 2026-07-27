@@ -9,7 +9,25 @@
     "properties": {
       "id": { "type": "string" },
       "text": { "type": "string" },
-      "created_at": { "type": "string", "format": "date-time" }
+      "created_at": { "type": "string", "format": "date-time" },
+      "taught_by": {
+        "description": "The human this learning came from. Server-stamped from the gateway-injected acting-as identity (hosted Teams) or the app's own signed-in session; absent on desktop/single-player.",
+        "type": "object",
+        "required": ["user_id"],
+        "properties": {
+          "user_id": { "type": "string" },
+          "name": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "mission_id": {
+        "description": "The id of the mission (activity) whose conversation taught this learning. Absent when the learning came from settings or no mission matched.",
+        "type": "string"
+      },
+      "mission_title": {
+        "description": "The mission's title at save time, denormalized so a renamed or deleted mission still reads. The live title (looked up by mission_id) wins when it resolves.",
+        "type": "string"
+      }
     },
     "additionalProperties": false
   }

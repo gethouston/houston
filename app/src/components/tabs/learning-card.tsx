@@ -3,10 +3,12 @@ import { Check, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { learningNeedsExpansion } from "../../lib/learning-preview";
+import type { LearningProvenanceView } from "../../lib/learning-provenance";
 import { LearningPreview } from "./learning-card-preview";
 
 export function LearningCard({
   initialText,
+  provenance,
   onSave,
   onDelete,
   onCancel,
@@ -14,6 +16,12 @@ export function LearningCard({
   readOnly = false,
 }: {
   initialText: string;
+  /**
+   * Where this memory came from. Shown under the text in the preview state and
+   * hidden while editing (the editor is about the text, and the provenance is
+   * not the editor's to change).
+   */
+  provenance?: LearningProvenanceView | null;
   onSave: (text: string) => Promise<unknown> | unknown;
   onDelete?: () => void;
   onCancel?: () => void;
@@ -82,6 +90,7 @@ export function LearningCard({
           text={initialText}
           expanded={expanded}
           canExpand={canExpand}
+          provenance={provenance}
           onToggle={() => setExpanded((next) => !next)}
           onEdit={readOnly ? undefined : startEditing}
           onDelete={readOnly ? undefined : onDelete}

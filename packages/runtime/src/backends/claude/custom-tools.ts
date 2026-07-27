@@ -18,6 +18,7 @@ import {
   makeIntegrationTools,
 } from "../../session/tools/integrations";
 import { makePlanReadyTool } from "../../session/tools/plan-ready";
+import { makeSaveLearningTool } from "../../session/tools/save-learning";
 import { makeSaveRoutineTool } from "../../session/tools/save-routine";
 import { makeSuggestReusableTool } from "../../session/tools/suggest-reusable";
 
@@ -143,6 +144,9 @@ export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
     // tools use (present ⟺ host reachable). It reaches execute/auto but never
     // plan — the same reach as suggest_reusable, applied by `toolNamesForMode`.
     ...(input.integrations ? [makeSaveRoutineTool(input.integrations)] : []),
+    // save_learning reaches the host with the SAME sandbox token, and has the
+    // same reach as save_routine: execute/auto, never plan.
+    ...(input.integrations ? [makeSaveLearningTool(input.integrations)] : []),
     ...(input.integrations ? makeIntegrationTools(input.integrations) : []),
     ...(input.integrations
       ? makeCustomIntegrationTools(input.integrations)

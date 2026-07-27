@@ -174,6 +174,62 @@ test("malformed routine/learning entries are dropped on unpack", () => {
   expect(pkg.learnings as Learning[]).toEqual([]);
 });
 
+test("a shared learning carries its text, never its provenance", () => {
+  const c = content();
+  const shared: PortableContent = {
+    ...c,
+    learnings: [
+      {
+        id: "l1",
+        text: "Exclude churned accounts from pipeline math.",
+        created_at: NOW,
+        taught_by: { user_id: "u-felipe", name: "Felipe" },
+        mission_id: "act-1",
+        mission_title: "Q3 pipeline",
+      },
+    ],
+  };
+  const pkg = unpackAgent(packAgent(shared, meta, NOW));
+  // The learning itself travels; the exporter's person + mission do not.
+  expect(pkg.learnings).toEqual([
+    {
+      id: "l1",
+      text: "Exclude churned accounts from pipeline math.",
+      created_at: NOW,
+    },
+  ]);
+});
+
+test("a pack that DOES carry provenance still imports, stripped", () => {
+  const { zipSync, strToU8 } = require("fflate");
+  const bytes = zipSync({
+    "manifest.json": strToU8(
+      JSON.stringify({
+        agentName: "X",
+        houstonVersion: "1",
+        createdAt: NOW,
+        formatVersion: 1,
+      }),
+    ),
+    "learnings.json": strToU8(
+      JSON.stringify([
+        {
+          id: "l1",
+          text: "keep me",
+          created_at: NOW,
+          taught_by: { user_id: "u-stranger", name: "Stranger" },
+          mission_id: "act-9",
+          mission_title: "Someone else's mission",
+        },
+      ]),
+    ),
+  });
+  const pkg = unpackAgent(bytes);
+  expect(pkg.learnings as Learning[]).toEqual([
+    { id: "l1", text: "keep me", created_at: NOW },
+  ]);
+});
+
 test("filterPackage keeps only the selected parts", () => {
   const pkg = unpackAgent(
     packAgent(content(), { agentName: "Sales", houstonVersion: "0.5.0" }, NOW),

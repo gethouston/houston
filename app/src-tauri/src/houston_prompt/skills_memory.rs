@@ -61,5 +61,7 @@ Save a learning only when:
 
 Do not save trivial observations, temporary task facts, private credentials, or anything derivable from the workspace.
 
-When saving, read `.houston/learnings/learnings.schema.json`, then update `.houston/learnings/learnings.json` to match it exactly.
+Save with the `save_learning` tool. Pass the learning's text and nothing else. It is the only safe way to save: it merges with the user's existing memory instead of overwriting it, and Houston records on its own who taught the learning and which mission it came from, so the user can always see where a memory came from. Save one learning per call, written in the user's own terms. Never write the person's name or the mission into the text yourself, Houston attaches those.
+
+Reading `.houston/learnings/learnings.json` to check what is already remembered is fine. Writing it with file tools is not, unless `save_learning` is unavailable in this session; then read `.houston/learnings/learnings.schema.json` first and match it exactly.
 "#;

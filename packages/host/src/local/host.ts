@@ -26,6 +26,7 @@ import { RemoteIntegrationProvider } from "../integrations/remote";
 import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
 import { RuntimeProcessSpawner } from "../launcher/runtime-spawner";
 import { migrateAgentLayouts } from "../migrate/agent-layout";
+import { reseedAgentSchemas } from "../migrate/agent-schemas";
 import { migrateChatHistory } from "../migrate/chat-history";
 import { LocalPaths } from "../paths";
 import type { ChannelCtx } from "../ports";
@@ -575,6 +576,22 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         // loudly so the failure shows in the app logs / bug report tail.
         console.error(
           "[local-host] agent-layout migration failed (continuing):",
+          err,
+        );
+      }
+      // Bring every EXISTING agent's seeded `.houston/**.schema.json` up to the
+      // schemas this build ships (they are seeded once, at agent creation, and
+      // are app data — a stale `additionalProperties: false` copy actively tells
+      // the model to strip fields the host stamps). Content-compared, so a
+      // steady-state boot writes nothing; runs BEFORE the watcher like the
+      // migrations above.
+      try {
+        reseedAgentSchemas({ workspacesRoot: opts.workspacesRoot });
+      } catch (err) {
+        // No UI thread to toast on at boot; the supervisor must stay up. Log
+        // loudly so the failure shows in the app logs / bug report tail.
+        console.error(
+          "[local-host] agent schema re-seed failed (continuing):",
           err,
         );
       }

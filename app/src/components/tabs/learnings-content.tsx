@@ -8,12 +8,19 @@ import {
 import { Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { LearningProvenanceView } from "../../lib/learning-provenance";
 import { LearningCard } from "./learning-card";
 
 export interface LearningEntry {
   index: number;
   text: string;
   id: string;
+  /**
+   * Resolved provenance line, joined on by the screen (raw `taught_by` /
+   * mission fields stay in `LearningSourceRow` — this view never reads them).
+   * Absent or null = no line.
+   */
+  provenance?: LearningProvenanceView | null;
 }
 
 export function LearningsContent({
@@ -114,6 +121,7 @@ export function LearningsContent({
           <LearningCard
             key={entry.id}
             initialText={entry.text}
+            provenance={entry.provenance}
             readOnly={readOnly}
             onSave={(text) => onUpdate(entry.id, text)}
             onDelete={() => setPendingRemove(entry)}

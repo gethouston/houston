@@ -4,6 +4,7 @@ import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
 import { CUSTOM_INTEGRATION_TOOL_NAMES } from "./tools/custom-integrations";
 import { INTEGRATION_TOOL_NAMES } from "./tools/integrations";
 import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
+import { SAVE_LEARNING_TOOL_NAME } from "./tools/save-learning";
 import { SAVE_ROUTINE_TOOL_NAME } from "./tools/save-routine";
 import { SUGGEST_REUSABLE_TOOL_NAME } from "./tools/suggest-reusable";
 
@@ -21,6 +22,14 @@ export interface ToolSelectionInput {
    * it must never write routines.json wholesale), on where the host is reachable.
    */
   saveRoutine?: boolean;
+  /**
+   * Whether this runtime can reach its host with a sandbox token — the SAME
+   * reachability `saveRoutine` needs. Adds `save_learning`, the merge-safe way
+   * to persist a learning (and the only path that records its provenance:
+   * who taught it, which mission it came from). Absent/false leaves the tool
+   * off and the agent falls back to the raw file, which records neither.
+   */
+  saveLearning?: boolean;
 }
 
 export interface ToolSelection {
@@ -144,6 +153,11 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
       // filters it out, and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto
       // keeps it — the same reach as suggest_reusable.
       ...(input.saveRoutine ? [SAVE_ROUTINE_TOOL_NAME] : []),
+      // save_learning has the SAME reach as save_routine — execute and auto,
+      // never plan (plan is read-only and saving a learning is a real write).
+      // PLAN_MODE_TOOL_NAMES omits it so planToolNames filters it out, and it
+      // isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps it.
+      ...(input.saveLearning ? [SAVE_LEARNING_TOOL_NAME] : []),
       ...executable,
       ...(input.integrations
         ? [...INTEGRATION_TOOL_NAMES, ...CUSTOM_INTEGRATION_TOOL_NAMES]

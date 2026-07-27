@@ -50,6 +50,7 @@ import {
   type IntegrationDeps,
 } from "./routes/integrations";
 import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
+import { handleSandboxLearnings } from "./routes/learnings-sandbox";
 import { handleMigrationSource } from "./routes/migration-source";
 import { handlePortableAccount } from "./routes/portable";
 import { handlePortableFromStore } from "./routes/portable-from-store";
@@ -276,6 +277,10 @@ async function handle(
   // Runtime-facing scheduled-task save (merge-safe; HMAC sandbox token). The
   // agent's save_routine tool calls this instead of writing routines.json.
   if (await handleSandboxRoutines(deps, method, path, url, req, res)) return;
+  // Runtime-facing memory save (merge-safe + provenance-stamping; HMAC sandbox
+  // token). The agent's save_learning tool calls this instead of editing
+  // learnings.json — it is the only path that records who taught a learning.
+  if (await handleSandboxLearnings(deps, method, path, url, req, res)) return;
 
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);

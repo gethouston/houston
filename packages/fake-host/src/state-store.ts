@@ -12,7 +12,12 @@
  * typecheck here instead of silently drifting the mock.
  */
 
-import type { Activity, Capabilities, SidebarLayout } from "@houston/protocol";
+import type {
+  Activity,
+  Capabilities,
+  Learning,
+  SidebarLayout,
+} from "@houston/protocol";
 import type {
   ChatMessage,
   IntegrationConnection,
@@ -197,6 +202,7 @@ export interface CpAgent {
 
 export const ACTIVITY_PATH = ".houston/activity/activity.json";
 export const ROUTINES_PATH = ".houston/routines/routines.json";
+export const LEARNINGS_PATH = ".houston/learnings/learnings.json";
 export const SEED_USAGE: TokenUsage = {
   context_tokens: 1200,
   output_tokens: 80,
@@ -253,6 +259,32 @@ const SEED_ACTIVITIES: Activity[] = [
     updated_at: ISO,
     created_by: "u-self",
     contributors: SEED_LAUNCH_CONTRIBUTORS,
+  },
+];
+
+/**
+ * Seeded memory for the Memory (learnings) tab. Two shapes on purpose:
+ *  - one WITH provenance (HOU-946) — the person who taught it plus the mission
+ *    it came from (`act-1`, so the live title lookup has something to resolve),
+ *  - one with none, proving the provenance line is omitted rather than faked.
+ *
+ * The person's name rides ON the learning, exactly as the host stamps it, so it
+ * reads without a `/v1/org/profiles` round trip — identity is off in the default
+ * e2e project, and desktop / single-player has no roster either.
+ */
+const SEED_LEARNINGS: Learning[] = [
+  {
+    id: "learn-1",
+    text: "Exclude churned accounts from pipeline math.",
+    created_at: ISO,
+    taught_by: { user_id: "u-self", name: "Ada Lovelace" },
+    mission_id: "act-1",
+    mission_title: "Plan a trip to Tokyo",
+  },
+  {
+    id: "learn-2",
+    text: "Prefers metric units in every report.",
+    created_at: ISO,
   },
 ];
 
@@ -339,6 +371,10 @@ function freshState(): HostState {
   files.set(
     fileKey(SEED_AGENT_ID, ACTIVITY_PATH),
     JSON.stringify(SEED_ACTIVITIES),
+  );
+  files.set(
+    fileKey(SEED_AGENT_ID, LEARNINGS_PATH),
+    JSON.stringify(SEED_LEARNINGS),
   );
   // Two seeded workspace files so the Files tab has rows on first paint.
   const workspace = new Map<

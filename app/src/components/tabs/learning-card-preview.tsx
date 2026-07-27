@@ -2,11 +2,14 @@ import { cn } from "@houston-ai/core";
 import { ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { learningPreviewText } from "../../lib/learning-preview";
+import type { LearningProvenanceView } from "../../lib/learning-provenance";
+import { LearningProvenanceLine } from "./learning-provenance";
 
 export function LearningPreview({
   text,
   expanded,
   canExpand,
+  provenance,
   onToggle,
   onEdit,
   onDelete,
@@ -14,6 +17,8 @@ export function LearningPreview({
   text: string;
   expanded: boolean;
   canExpand: boolean;
+  /** Where this memory came from (person and/or mission). Absent = no line. */
+  provenance?: LearningProvenanceView | null;
   onToggle: () => void;
   /** Omitted in read-only mode: no edit affordance is rendered. */
   onEdit?: () => void;
@@ -48,16 +53,19 @@ export function LearningPreview({
       ) : (
         <div className="size-7 shrink-0" />
       )}
-      <p
-        className={cn(
-          "min-w-0 flex-1 text-sm leading-relaxed text-ink break-words",
-          expanded
-            ? "whitespace-pre-wrap"
-            : "overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]",
-        )}
-      >
-        {expanded || !canExpand ? text : learningPreviewText(text)}
-      </p>
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            "text-sm leading-relaxed text-ink break-words",
+            expanded
+              ? "whitespace-pre-wrap"
+              : "overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]",
+          )}
+        >
+          {expanded || !canExpand ? text : learningPreviewText(text)}
+        </p>
+        {provenance && <LearningProvenanceLine provenance={provenance} />}
+      </div>
       {(onEdit || onDelete) && (
         <div className="flex shrink-0 items-center gap-1">
           {onEdit && (
