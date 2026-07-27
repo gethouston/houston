@@ -810,6 +810,27 @@ test("config: object round-trip; junk reported as empty + diagnostic", async () 
   expect(bad.diagnostics).toHaveLength(1);
 });
 
+test("a UTF-8 BOM is decoded away, not read as corruption", async () => {
+  // Files-first docs are written by agents, users and editors, and plenty emit
+  // a BOM. `JSON.parse` rejects one, so the read used to throw and declare the
+  // user's intact data unreadable — which stopped every routine on a pod for
+  // six days (HOU-953). Every TextStore impl must tolerate it, not just the
+  // host's Vfs.
+  const store = memStore();
+  const routines = [
+    createRoutine({ name: "R", prompt: "p", schedule: "0 9 * * *" }, "r1", NOW),
+  ];
+  await store.writeText(
+    docKey(ROOT, "routines"),
+    `﻿${JSON.stringify(routines)}`,
+  );
+
+  const loaded = await loadRoutines(store, ROOT);
+  expect(loaded.items).toHaveLength(1);
+  expect(loaded.items[0]?.id).toBe("r1");
+  expect(loaded.diagnostics).toEqual([]);
+});
+
 test("missing files load as empty, never throw", async () => {
   const store = memStore();
   expect((await loadActivities(store, ROOT)).items).toEqual([]);

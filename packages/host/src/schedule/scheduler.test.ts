@@ -206,3 +206,82 @@ test("the workspace timezone preference re-times routines (account-wide zone)", 
   expect(firer.jobs).toHaveLength(1);
   expect(firer.jobs[0]?.routine.schedule).toBe("0 9 * * *");
 });
+
+/**
+ * Fail-isolation (HOU-953). A files-first agent writes its own `.houston` docs,
+ * so any of them can be unreadable at any moment. `tick` advances `lastTick`
+ * before it scans, so a throw that escapes the sweep doesn't just skip a
+ * workspace — it drops that window's instants for every agent behind it,
+ * permanently and silently. The sweep must survive one bad document.
+ */
+
+/** Silence the sanctioned scan-failure logs while asserting the sweep goes on. */
+function muteConsole() {
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  return { error, restore: () => error.mockRestore() };
+}
+
+test("a BOM'd routines.json still fires — the byte is decoded, not fatal", async () => {
+  const env = await setup([routine({ schedule: ENABLED })]);
+  const key = `${workspaceRoot(env.ws, env.agent)}/.houston/routines/routines.json`;
+  const raw = await env.vfs.readText(key);
+  await env.vfs.writeBytes(key, Buffer.from(`﻿${raw}`, "utf8"));
+
+  const firer = new CaptureFirer();
+  const s = makeScheduler(env, firer);
+  s.start();
+  await s.tick(DUE);
+
+  expect(firer.jobs).toHaveLength(1);
+});
+
+test("an unreadable routines.json costs that agent only — every other agent still fires", async () => {
+  const env = await setup([routine({ schedule: ENABLED })]);
+  // A second agent whose routines.json is mangled beyond decoding.
+  const broken = await env.store.createAgent({
+    workspaceId: env.ws.id,
+    name: "Broken",
+  });
+  await env.vfs.writeText(
+    `${workspaceRoot(env.ws, broken)}/.houston/routines/routines.json`,
+    "{not json",
+  );
+
+  const firer = new CaptureFirer();
+  const s = makeScheduler(env, firer);
+  const log = muteConsole();
+  try {
+    s.start();
+    await s.tick(DUE);
+    // Named, never swallowed: the broken agent surfaces in the logs...
+    expect(log.error).toHaveBeenCalled();
+  } finally {
+    log.restore();
+  }
+  // ...and the healthy agent's routine still fired.
+  expect(firer.jobs).toHaveLength(1);
+  expect(firer.jobs[0]?.agent.id).toBe(env.agent.id);
+});
+
+test("an unreadable routines.json still lets that agent's runs settle", async () => {
+  // Runs live in their own document; a broken routines.json must not strand
+  // in-flight runs as permanently "running".
+  const env = await setup([routine({ schedule: ENABLED })]);
+  const firer = new CaptureFirer();
+  const s = makeScheduler(env, firer);
+  s.start();
+  await s.tick(DUE); // records a running run
+
+  const root = workspaceRoot(env.ws, env.agent);
+  await env.vfs.writeText(`${root}/.houston/routines/routines.json`, "{ bad");
+  const log = muteConsole();
+  try {
+    // The reconcile half runs even though the routine half threw.
+    await expect(
+      s.tick(new Date(DUE.getTime() + 60_000)),
+    ).resolves.toBeUndefined();
+    expect(log.error).toHaveBeenCalled();
+  } finally {
+    log.restore();
+  }
+});

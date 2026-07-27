@@ -1,37 +1,12 @@
-import { dueAt, getPreference, loadRoutines } from "@houston/domain";
-import type { Routine } from "@houston/protocol";
-import { TurnFireError } from "../channel/fire-error";
-import type { Agent, Workspace } from "../domain/types";
+import { getPreference } from "@houston/domain";
+import type { Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
-import { reconcileAgentRuns } from "./reconcile";
-import { fireRoutineRun, RoutineBusyError } from "./run";
+import { type FireLock, type RoutineFirer, scanAgent } from "./agent-scan";
 
-/** A due routine to run, with its resolved conversation + run id. */
-export interface FiringJob {
-  workspace: Workspace;
-  agent: Agent;
-  routine: Routine;
-  conversationId: string;
-  runId: string;
-}
-
-/**
- * Runs a due routine's prompt as a turn. Deployment-specific (the firing path
- * differs cloud vs local), injected into the driver. `fire` resolves once the
- * turn is ACCEPTED, not when it completes — the run's running→surfaced/silent
- * transition is driven by turn completion (wired with the firer in 3.4b).
- */
-export interface RoutineFirer {
-  fire(job: FiringJob): Promise<void>;
-}
-
-/** The dedup primitive the scheduler needs from the bus (atomic set-if-absent). */
-export interface FireLock {
-  setNx(key: string, value: string, ttlSec: number): Promise<boolean>;
-}
+export type { FireLock, FiringJob, RoutineFirer } from "./agent-scan";
 
 export interface SchedulerDeps {
   store: WorkspaceStore;
@@ -59,6 +34,11 @@ export interface SchedulerDeps {
  * Deployment-agnostic: cloud and local inject their own RoutineFirer + lock
  * (Redis vs in-process). lastTick resets to `now` on start, so a freshly
  * started replica never replays history.
+ *
+ * The sweep is fail-isolated at every level (HOU-953): a workspace or agent
+ * that throws is logged and skipped, never allowed to abort the tick. `lastTick`
+ * has already advanced by then, so an escaping throw would drop that window's
+ * instants for every agent behind it — permanently, and silently.
  */
 export class Scheduler {
   private timer: ReturnType<typeof setInterval> | undefined;
@@ -103,87 +83,54 @@ export class Scheduler {
     const since = this.lastTick;
     this.lastTick = now;
 
-    for (const ws of await this.deps.store.listWorkspaces()) {
-      // One account-wide zone governs every routine in the workspace (HOU-470:
-      // no per-routine override). Re-read it each tick, so when the preference
-      // changes the next scan re-times every routine — the cloud analog of the
-      // Rust scheduler's respawn-on-tz-change.
-      const timezone = await getPreference(this.deps.vfs, ws.id, "timezone");
-      for (const agent of await this.deps.store.listAgents(ws.id)) {
-        const root = this.deps.paths.agentRoot(ws, agent);
-        const { items: routines } = await loadRoutines(this.deps.vfs, root);
-        for (const routine of routines) {
-          const at = dueAt(routine, since, now, timezone);
-          if (!at) continue;
-          // The instant is replica-independent → all replicas race for one key.
-          const won = await this.deps.lock.setNx(
-            `routine:fired:${routine.id}:${at.toISOString()}`,
-            "1",
-            this.dedupTtlSec,
-          );
-          if (won) await this.fireRoutine(ws, agent, routine);
-        }
-        // Complete runs whose turn has finished (silent/surfaced/timeout).
-        await reconcileAgentRuns(
-          {
-            vfs: this.deps.vfs,
-            paths: this.deps.paths,
-            lock: this.deps.lock,
-            events: this.deps.events,
-            now: this.now,
-            newId: this.newId,
-          },
-          ws,
-          agent,
-        );
-      }
+    let workspaces: Workspace[];
+    try {
+      workspaces = await this.deps.store.listWorkspaces();
+    } catch (err) {
+      console.error("[scheduler] workspace listing failed:", reason(err));
+      return;
+    }
+    for (const ws of workspaces) {
+      await this.scanWorkspace(ws, since, now);
     }
   }
 
   /**
-   * Record + fire one due routine. Shares `fireRoutineRun` with the on-demand
-   * "run now" route, so a scheduled run and a hand-pressed one are identical
-   * (same record, same firer, same errored-on-fail bookkeeping). The helper
-   * rethrows a fire failure; here — the background scan, with no UI thread to
-   * toast on — we log it (the one sanctioned `console.error` boundary).
+   * One workspace's scan. Its timezone read and agent listing are shared by
+   * every agent below it, so a failure here skips this workspace only — the
+   * others still fire.
    */
-  private async fireRoutine(
+  private async scanWorkspace(
     ws: Workspace,
-    agent: Agent,
-    routine: Routine,
+    since: Date,
+    now: Date,
   ): Promise<void> {
     try {
-      await fireRoutineRun(
-        {
-          vfs: this.deps.vfs,
-          paths: this.deps.paths,
-          firer: this.deps.firer,
-          events: this.deps.events,
-          now: this.now,
-          newId: this.newId,
-        },
-        ws,
-        agent,
-        routine,
-      );
-    } catch (err) {
-      // Expected when the previous run is still in flight — the instant is
-      // skipped (its dedup lock is already burned), not an error.
-      if (err instanceof RoutineBusyError) return;
-      // A routine firing while the workspace has no provider connected is an
-      // expected user state, not an engine fault (HOUSTON-APP-4XM): the run is
-      // already recorded errored with the real reason (user-visible in the
-      // routine's history), so a warning breadcrumb suffices here.
-      if (err instanceof TurnFireError && err.code === "no_provider") {
-        console.warn(
-          `[scheduler] routine ${routine.id} skipped: ${err.message}`,
+      // One account-wide zone governs every routine in the workspace (HOU-470:
+      // no per-routine override). Re-read it each tick, so when the preference
+      // changes the next scan re-times every routine.
+      const timezone = await getPreference(this.deps.vfs, ws.id, "timezone");
+      const agents = await this.deps.store.listAgents(ws.id);
+      for (const agent of agents) {
+        await scanAgent(
+          {
+            ...this.deps,
+            now: this.now,
+            newId: this.newId,
+            dedupTtlSec: this.dedupTtlSec,
+          },
+          ws,
+          agent,
+          timezone,
+          since,
+          now,
         );
-        return;
       }
-      console.error(
-        `[scheduler] routine ${routine.id} fire failed:`,
-        err instanceof Error ? err.message : err,
-      );
+    } catch (err) {
+      console.error(`[scheduler] workspace ${ws.id} scan failed:`, reason(err));
     }
   }
 }
+
+const reason = (err: unknown) =>
+  err instanceof Error ? err.message : String(err);

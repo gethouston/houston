@@ -30,6 +30,26 @@ export function runVfsContract(name: string, make: () => Vfs): void {
       expect(await vfs.readBytes(`${P}/nope.bin`)).toBeNull();
     });
 
+    test("readText drops a leading BOM; readBytes keeps the file verbatim", async () => {
+      // A files-first doc can be written by any editor or agent, and plenty
+      // emit a UTF-8 BOM. `JSON.parse` rejects one outright, so a BOM'd
+      // routines.json bricked every routine on a pod (HOU-953). Text reads
+      // decode it away; byte reads stay lossless (downloads, binary seeds).
+      const vfs = make();
+      const bommed = `﻿[{"id":"a"}]`;
+      await vfs.writeBytes(
+        `${P}/data/routines.json`,
+        Buffer.from(bommed, "utf8"),
+      );
+
+      const text = await vfs.readText(`${P}/data/routines.json`);
+      expect(text).toBe(`[{"id":"a"}]`);
+      expect(JSON.parse(text as string)).toEqual([{ id: "a" }]);
+      expect((await vfs.readBytes(`${P}/data/routines.json`))?.length).toBe(
+        Buffer.byteLength(bommed, "utf8"),
+      );
+    });
+
     test("list/listDetailed are prefix-scoped and sorted; no cross-prefix leak", async () => {
       const vfs = make();
       await vfs.writeText(`${P}/workspace/b.txt`, "b");
