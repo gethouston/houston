@@ -46,8 +46,11 @@ describe("houston skill library", () => {
       "Everything on a company before the call",
     );
     strictEqual(research.image, "handshake");
+    strictEqual(research.category, "Sales");
     deepStrictEqual(research.integrations, ["hubspot"]);
     strictEqual(research.content, SKILL);
+    // The preview body is the markdown with the frontmatter stripped.
+    strictEqual(research.body, "# Research an account\nSteps.");
     strictEqual(skills[1]?.title, "Write a proposal");
   });
 

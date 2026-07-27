@@ -152,7 +152,8 @@
   },
   "library": {
     "heading": "From Houston's agents",
-    "installLabel": "Install {{name}}",
+    "previewLabel": "Preview {{name}}",
+    "fromAgent": "From the {{agent}} agent",
     "installedLabel": "Installed",
     "loading": "Loading skills...",
     "loadFailed": "Couldn't load the skill library.",

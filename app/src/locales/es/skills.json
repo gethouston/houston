@@ -152,7 +152,8 @@
   },
   "library": {
     "heading": "De los agentes de Houston",
-    "installLabel": "Instalar {{name}}",
+    "previewLabel": "Ver {{name}}",
+    "fromAgent": "Del agente {{agent}}",
     "installedLabel": "Instalada",
     "loading": "Cargando habilidades...",
     "loadFailed": "No se pudo cargar la biblioteca de habilidades.",

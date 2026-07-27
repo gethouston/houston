@@ -24,12 +24,22 @@ export interface HoustonLibrarySkill {
   title: string | null;
   description: string;
   image: string | null;
+  category: string | null;
   integrations: string[];
   /** The full SKILL.md text, installed verbatim (minus the featured upgrade). */
   content: string;
+  /** The markdown body with the frontmatter stripped — what the preview
+   *  modal shows as the step-by-step instructions. */
+  body: string;
 }
 
 const SKILL_SEED = /^\.agents\/skills\/([^/]+)\/SKILL\.md$/;
+const FM_BLOCK = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+
+/** The SKILL.md markdown body with the frontmatter block stripped. */
+export function skillBodyOf(content: string): string {
+  return content.replace(FM_BLOCK, "").trim();
+}
 
 /**
  * The library entries inside one store template's seed map, sorted by slug.
@@ -51,8 +61,10 @@ export function extractTemplateSkills(
       title: fm.title,
       description: fm.description,
       image: fm.image,
+      category: fm.category,
       integrations: fm.integrations,
       content,
+      body: skillBodyOf(content),
     });
   }
   return out.sort((a, b) => a.slug.localeCompare(b.slug));

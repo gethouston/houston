@@ -13,6 +13,10 @@ import { useTranslation } from "react-i18next";
 import type { HoustonLibrarySkill } from "../../lib/houston-skill-library";
 import { skillDisplayTitle } from "../../lib/humanize-skill-name";
 import { SkillIcon } from "../skill-icon";
+import {
+  HoustonSkillPreview,
+  type HoustonSkillPreviewTarget,
+} from "./houston-skill-preview";
 import type { HoustonLibraryGroup } from "./use-houston-skill-library";
 
 /** Rows shown per agent shelf at rest; "Show all" reveals the rest. */
@@ -32,9 +36,11 @@ interface Props {
 
 /**
  * The Houston skill library shelves (Custom tab): one shelf per pre-set
- * agent, each a capped grid of installable skill rows in the shared catalog
- * grammar — the skill's own icon, title, one-line description, and the round
- * add button that becomes a quiet check once the skill is in "Your skills".
+ * agent, each a capped grid of skill rows in the shared catalog grammar —
+ * the skill's own icon, title, one-line description, and the round add
+ * button that becomes a quiet check once the skill is in "Your skills".
+ * A row (and its +) opens the PREVIEW modal, never installs directly —
+ * installing is the modal's one commit point ({@link HoustonSkillPreview}).
  */
 export function HoustonSkillShelves({
   groups,
@@ -47,6 +53,9 @@ export function HoustonSkillShelves({
 }: Props) {
   const { t } = useTranslation("skills");
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const [preview, setPreview] = useState<HoustonSkillPreviewTarget | null>(
+    null,
+  );
 
   if (loading) {
     return (
@@ -91,16 +100,14 @@ export function HoustonSkillShelves({
                   title: skill.title,
                 });
                 const installed = installedSkillNames?.has(skill.slug);
+                const openPreview = () =>
+                  setPreview({ skill, agentName: group.agentName });
                 return (
                   <CatalogRow
                     key={skill.slug}
-                    // The row body is the same install target as the + —
-                    // one row, one action; an installed row is inert.
-                    onClick={
-                      installed || installing !== null
-                        ? undefined
-                        : () => install(skill)
-                    }
+                    // Row AND + both open the preview — nothing installs on
+                    // a bare click; the modal's Install button commits.
+                    onClick={openPreview}
                     icon={
                       <SkillIcon
                         image={skill.image}
@@ -121,10 +128,9 @@ export function HoustonSkillShelves({
                         </span>
                       ) : (
                         <CatalogAddButton
-                          label={t("library.installLabel", { name })}
+                          label={t("library.previewLabel", { name })}
                           busy={installing === skill.slug}
-                          disabled={installing !== null}
-                          onClick={() => install(skill)}
+                          onClick={openPreview}
                         />
                       )
                     }
@@ -144,6 +150,13 @@ export function HoustonSkillShelves({
           </section>
         );
       })}
+      <HoustonSkillPreview
+        target={preview}
+        onClose={() => setPreview(null)}
+        install={install}
+        installing={installing}
+        installedSkillNames={installedSkillNames}
+      />
     </div>
   );
 }
