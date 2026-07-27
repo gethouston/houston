@@ -1,14 +1,14 @@
 /*
  * Houston marketing site — the ONE token layer for the landing page.
  * =====================================================================
- * PROTOTYPE SKIN — "Mercury light" on Houston's identity (partnership review
+ * PROTOTYPE SKIN — "editorial reference light" on Houston's identity (partnership review
  * build, NOT deployed). A warm IVORY ground (bone, faintly yellow), quiet
  * tinted panels that frame product shots (sage / mist / sand washes), a warm
  * near-black ink ladder, warm hairlines, and a single INK pill CTA. The
- * temperature is Mercury's; the identity is ours — the pill stays ink, not
+ * temperature is editorial reference's; the identity is ours — the pill stays ink, not
  * blue, so the page reads as a NEW product, never a clone.
  *
- * Ground values are sampled from Mercury's light pages (#efeee9 / #edede7 /
+ * Ground values are sampled from editorial reference's light pages (#efeee9 / #edede7 /
  * #eae7e1 / #e7e7de) and built into a bone ladder; the tinted washes are
  * derived quiet, low-chroma versions for framing floating product imagery.
  *
@@ -38,7 +38,7 @@
 }
 
 :root {
-  /* ── Warm ivory ground + bone panels (sampled from Mercury light) ────────
+  /* ── Warm ivory ground + bone panels (sampled from editorial reference light) ────────
      A bone ladder: the page is the lightest warm ivory, cards float a half-
      step lighter, and the panel band + nested recess step warmer/deeper. */
   --ground: #efeee9;                 /* the page — warm ivory (bone) */
@@ -114,7 +114,7 @@
     "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", "SFMono-Regular", "Menlo", monospace;
 
-  /* ── Rhythm (Mercury air, tuned so each headline shares its frame with a
+  /* ── Rhythm (editorial reference air, tuned so each headline shares its frame with a
      visual — generous between sections, never cavernous within one) ─────── */
   --section-pad: clamp(64px, 8vw, 104px);
   --gutter: clamp(20px, 5vw, 52px);
