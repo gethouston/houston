@@ -139,11 +139,11 @@ export function toCanonicalProviderId(id: string): string {
  *   `openai-codex → openai` rename (Houston surfaces the OAuth Codex provider
  *   under `openai`, not the raw API-key one).
  * - Retired cards (2026-07 provider QA): Ant Ling, the Kimi For Coding
- *   subscription (Kimi models surface under Moonshot AI instead — see the
- *   moonshot-k3 catalog patch), Moonshot AI's China deployment, and the three
- *   regional Xiaomi Token Plans. Dropping is presentation-only: the ids stay
- *   runnable on the wire, so an existing conversation pinned to one keeps
- *   working; they just can't be connected or picked anymore.
+ *   subscription (Kimi models surface under Moonshot AI instead), Moonshot AI's
+ *   China deployment, and the three regional Xiaomi Token Plans. Dropping is
+ *   presentation-only: the ids stay runnable on the wire, so an existing
+ *   conversation pinned to one keeps working; they just can't be connected or
+ *   picked anymore.
  * - Structurally unconnectable (2026-07 provider QA): both Cloudflare providers
  *   need the user's ACCOUNT ID (AI Gateway also a gateway id) baked into the
  *   request URL, so the single-pasted-key connect dialog can never verify or
@@ -188,17 +188,13 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   anthropic: new Set([
     "claude-sonnet-5",
     "claude-fable-5",
-    // Backported into pi's catalog by the opus-5 catalog patch
-    // (packages/host/src/providers/opus-5-catalog-patch.ts).
     "claude-opus-5",
     "claude-opus-4-8",
     "claude-opus-4-7",
     "claude-sonnet-4-6",
   ]),
   // NOTE: pi-ai ships no plain `gemini-3.1-flash` (only the Lite tier), so the
-  // 3.1 line is represented by Flash Lite here. `gemini-3.6-flash` and
-  // `gemini-3.5-flash-lite` are backported into pi's catalog by the
-  // gemini-flash catalog patch (packages/host/src/providers/).
+  // 3.1 line is represented by Flash Lite here.
   google: new Set([
     "gemini-3.6-flash",
     "gemini-3.5-flash",
