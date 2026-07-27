@@ -738,10 +738,20 @@ unit-tested: creator first, deduped; label falls back **profile name > stored
 `name` > 8-char id slice**; avatar is the profile image when known).
 
 **Board surface (`@houston-ai/board`).** Generic `KanbanPerson`
-(`{id, label, imageUrl?}`) + a `KanbanPeople` overlapping face stack (max 3 faces
-+ a "+N" chip, initials fallback when no/broken image) render on cards
-(`kanban-card.tsx`) and the detail panel (`kanban-detail-panel.tsx`). Props-only,
-i18n-agnostic (label passed in). Alongside the agent filter, the app adds
+(`{id, label, imageUrl?}`) + a `KanbanPeople` overlapping face stack render on
+cards (`kanban-card.tsx`, up to `CARD_PEOPLE_MAX = 5` faces at `sm`) and the
+detail panel (`kanban-detail-panel.tsx`, 3 at `md`). Anatomy: circles overlapped
+`6px`, each carrying a `2px` ring painted in the SURFACE colour it sits on
+(`input` on cards, `background` on the panel) so an overlap reads as a cutout,
+not a halo; the initials fallback is OPAQUE, a desaturated tone hashed from the
+person's stable id (`personToneClass` — the same teammate wears the same colour
+everywhere, see `DESIGN.md` person palette); the "+N" chip is a solid
+`bg-person-overflow` fill and, when `expandable`, a button whose popover lists
+EVERY contributor. The card body reserves a right gutter sized to the painted
+stack and rounded up to the sanctioned spacing scale (`peopleGutterClass`) so
+the description never runs under the faces — `""` for an unattributed card, which
+keeps a single-player board byte-identical. Props-only, i18n-agnostic (labels
+passed in). Alongside the agent filter, the app adds
 `mission-person-filter.tsx` — a dropdown of **Everyone / My missions / each person
 on the board** (roster from `distinctBoardPeople`), itself gated on
 `isMultiplayer` and a signed-in user.

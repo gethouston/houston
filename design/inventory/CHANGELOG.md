@@ -3,6 +3,28 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v36 - 2026-07-27
+
+Refine `mission-card` (no new component, no `since` change): its anatomy gains
+`people-face-stack` + `people-overflow-chip` and an `attributed` state -- the
+multi-contributor signal on the shared board (HOU-947). Every human on a mission
+renders as an overlapping ringed avatar over the card body's bottom-right
+corner: a photo when the profile has one, otherwise initials on an OPAQUE
+desaturated person tone (`person.*` design tokens: slate / sage / mauve / taupe
+/ indigo, plus an initials colour and a solid overflow-chip fill/text pair, both
+themes) chosen deterministically from the person's stable id, so one person
+keeps one tone on every card and in the expansion popover. Past five faces the
+rest collapse into a solid, high-contrast "+N" chip that opens the full roster,
+and the card body reserves a right gutter sized to the stack so no text runs
+underneath it. Three rendering defects went with it: the initials fill was
+`chip-subtle` (~96% transparent, so overlapped faces and card text showed
+through the letters), the "+N" chip wore the same translucent fill (it read as a
+hole in the stack), and `TooltipTrigger asChild` was overwriting the avatar's
+`data-slot`, which silently disabled `AvatarGroup`'s 2px ring contract so the
+faces collided edge to edge with no cutout. The stack also takes the surface it
+sits on, so the mission detail panel rings its faces in the panel colour instead
+of the card colour.
+
 ## v35 - 2026-07-26
 
 Refine the shared `CatalogRow` (no new component, no `since` change): its

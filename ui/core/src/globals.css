@@ -93,6 +93,20 @@
   --color-warning-text: var(--ht-warning-text);
   --color-highlight: var(--ht-highlight);
   --color-highlight-text: var(--ht-highlight-text);
+  /* Human (not agent) avatar palette: five deliberately DESATURATED tones so a
+     teammate's face never competes with the vivid agent helmets, plus the
+     initials colour they carry and the solid fill/text pair the "+N" overflow
+     chip wears. Bridged as utilities (unlike --ht-agent-*, which is resolved to
+     an inline var() by resolveAgentColor) because the face stack picks a tone
+     by className, deterministically from the person's id. */
+  --color-person-slate: var(--ht-person-slate);
+  --color-person-sage: var(--ht-person-sage);
+  --color-person-mauve: var(--ht-person-mauve);
+  --color-person-taupe: var(--ht-person-taupe);
+  --color-person-indigo: var(--ht-person-indigo);
+  --color-person-initials: var(--ht-person-initials);
+  --color-person-overflow: var(--ht-person-overflow);
+  --color-person-overflow-text: var(--ht-person-overflow-text);
   --animate-caret-blink: caret-blink 1.2s ease-out infinite;
 }
 

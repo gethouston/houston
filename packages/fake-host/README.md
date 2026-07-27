@@ -42,6 +42,15 @@ pnpm --filter @houston/fake-host start   # tsx src/main.ts, listens on :4399
 
 Set `FAKE_HOST_LOG=1` to log every request it serves.
 
+Both seeded missions carry Teams attribution (`created_by` + `contributors`,
+`state-store.ts`): "Plan a trip to Tokyo" has 2 people, "Draft the launch email"
+has 7 — enough to overflow the mission card's five-face cap and render its "+N"
+chip. The app only paints face stacks in multiplayer, so a default single-player
+run (and every visual baseline) is unaffected; arm
+`/__test__/capabilities` `{ multiplayer: true }` to make them appear, and read
+them on Mission Control (the per-agent board's default `me` person scope hides
+missions the signed-in user is not on, and identity is off in the e2e project).
+
 ## `POST /__test__/*` control endpoints
 
 Server-to-server test controls (no CORS gate; the harness calls them directly).

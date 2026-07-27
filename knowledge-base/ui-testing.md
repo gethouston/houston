@@ -68,7 +68,12 @@ cache was warm).
 - **Board = files-first.** Reads/writes `.houston/activity/activity.json` via
   `/agents/:id/agentfile/*` (NOT just `/activities`). Fake host backs it with a
   real store, unified with `/activities` (same data, as in the real host),
-  so a turn's status flip shows on the board.
+  so a turn's status flip shows on the board. Both seeded missions also carry
+  Teams attribution (`created_by` + `contributors`; 2 people and 7 people), so
+  the card face stacks + "+N" chip are testable — but only in multiplayer, on
+  **Mission Control**: the per-agent board opens on the `me` person scope and
+  identity is off in this project, so an attributed mission is filtered out
+  there. Single-player runs (and every visual baseline) see the board unchanged.
 - **Teams mode is armable.** Single-player alone can't reach the Teams-shaped
   state (multiplayer + an integration allowlist ceiling) that the agent
   Integrations tab's locked browse rows need. Two fake-host controls arm it:

@@ -4,6 +4,8 @@ import {
   CARD_PEOPLE_MAX,
   initialsFor,
   overflowCount,
+  peopleGutterClass,
+  stackSlots,
   visiblePeople,
 } from "../src/kanban-people-logic.ts";
 import type { KanbanPerson } from "../src/types.ts";
@@ -35,6 +37,21 @@ describe("initialsFor", () => {
   it("falls back to '?' for empty/whitespace input", () => {
     assert.equal(initialsFor(""), "?");
     assert.equal(initialsFor("   "), "?");
+  });
+
+  // The helper slices by code point, not by UTF-16 code unit: a label starting
+  // with an astral character (emoji, rare CJK) would otherwise be cut
+  // mid-surrogate-pair and render as "�".
+  it("never splits an astral character", () => {
+    // Single word: the first TWO code points, both intact.
+    assert.equal(initialsFor("🚀🛰️mission"), "🚀🛰");
+    // Multi-word: first code point of the first and last word.
+    assert.equal(initialsFor("🚀 Lovelace"), "🚀L");
+    assert.equal(initialsFor("Ada 🛰️"), "A🛰");
+    assert.equal(initialsFor("𝒜lan 𝒯uring"), "𝒜𝒯");
+    for (const label of ["🚀🛰️mission", "🚀 Lovelace", "Ada 🛰️"]) {
+      assert.ok(!initialsFor(label).includes("�"), label);
+    }
   });
 });
 
@@ -105,6 +122,73 @@ describe("card people overlay partition (CARD_PEOPLE_MAX)", () => {
         visiblePeople(list, CARD_PEOPLE_MAX).length +
           overflowCount(list, CARD_PEOPLE_MAX),
         n,
+      );
+    }
+  });
+});
+
+// The stack floats over the card body's bottom-right corner, so the body has to
+// reserve room for it or the description's last line runs under the faces.
+describe("stackSlots", () => {
+  it("counts the visible faces when nothing overflows", () => {
+    assert.equal(stackSlots(people(0), CARD_PEOPLE_MAX), 0);
+    assert.equal(stackSlots(people(1), CARD_PEOPLE_MAX), 1);
+    assert.equal(stackSlots(people(5), CARD_PEOPLE_MAX), 5);
+  });
+
+  it("counts the '+N' chip as one more circle", () => {
+    assert.equal(stackSlots(people(6), CARD_PEOPLE_MAX), CARD_PEOPLE_MAX + 1);
+    assert.equal(stackSlots(people(40), CARD_PEOPLE_MAX), CARD_PEOPLE_MAX + 1);
+  });
+});
+
+describe("peopleGutterClass", () => {
+  it("reserves nothing for an unattributed card", () => {
+    assert.equal(peopleGutterClass(0), "");
+    assert.equal(peopleGutterClass(-1), "");
+  });
+
+  it("grows one spacing-scale step per circle", () => {
+    assert.equal(peopleGutterClass(1), "pr-6");
+    assert.equal(peopleGutterClass(2), "pr-10");
+    assert.equal(peopleGutterClass(3), "pr-12");
+    assert.equal(peopleGutterClass(4), "pr-16");
+    assert.equal(peopleGutterClass(5), "pr-20");
+    assert.equal(peopleGutterClass(6), "pr-24");
+  });
+
+  // DESIGN.md §4 sanctions one spacing scale; a gutter is spacing like any
+  // other, so the ladder may only step through it (rounding up, never down —
+  // extra clearance is free, a short gutter puts text under a face).
+  it("only uses steps on the sanctioned spacing scale", () => {
+    const SPACING_SCALE = [2, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64];
+    for (let n = 1; n <= CARD_PEOPLE_MAX + 1; n++) {
+      const step = Number(peopleGutterClass(n).slice("pr-".length));
+      assert.ok(SPACING_SCALE.includes(step), `pr-${step} is off the scale`);
+    }
+  });
+
+  it("saturates past the widest stack the card can paint", () => {
+    // CARD_PEOPLE_MAX faces + the "+N" chip is the most circles that exist.
+    assert.equal(peopleGutterClass(CARD_PEOPLE_MAX + 1), peopleGutterClass(99));
+  });
+
+  it("only ever emits padding utilities, never a raw length", () => {
+    for (let n = 0; n <= 8; n++) {
+      const cls = peopleGutterClass(n);
+      if (cls === "") continue;
+      assert.match(cls, /^pr-\d+$/);
+    }
+  });
+
+  it("clears the stack it is sized against (18px circle, -6px overlap, 2px ring)", () => {
+    // Painted width of N ringed, overlapping circles.
+    const painted = (slots: number) => slots * 12 + 10;
+    const px = (cls: string) => Number(cls.slice("pr-".length)) * 4;
+    for (let slots = 1; slots <= CARD_PEOPLE_MAX + 1; slots++) {
+      assert.ok(
+        px(peopleGutterClass(slots)) >= painted(slots),
+        `gutter for ${slots} circles is narrower than the stack`,
       );
     }
   });

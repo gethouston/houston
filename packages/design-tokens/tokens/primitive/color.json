@@ -167,6 +167,48 @@
       "golden-bright": {
         "$value": "#fbbf24"
       }
+    },
+    "person": {
+      "$type": "color",
+      "slate": {
+        "$value": "#5b6b7a"
+      },
+      "slate-bright": {
+        "$value": "#647585"
+      },
+      "sage": {
+        "$value": "#5e7266"
+      },
+      "sage-bright": {
+        "$value": "#647a6d"
+      },
+      "mauve": {
+        "$value": "#84616b"
+      },
+      "mauve-bright": {
+        "$value": "#8e6b76"
+      },
+      "taupe": {
+        "$value": "#736550"
+      },
+      "taupe-bright": {
+        "$value": "#7d6f59"
+      },
+      "indigo": {
+        "$value": "#5b6488"
+      },
+      "indigo-bright": {
+        "$value": "#656e93"
+      },
+      "overflow": {
+        "$value": "#e6e8ec"
+      },
+      "overflow-dark": {
+        "$value": "#4c4c52"
+      },
+      "overflow-text": {
+        "$value": "#555b66"
+      }
     }
   }
 }
