@@ -7,6 +7,7 @@ import type { ChatAuthorLabels } from "./author-label";
 import { authorLabelFor, senderNameFor } from "./author-label";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import { ChatMessageBody } from "./chat-message-body";
+import type { ChatMessagesProps } from "./chat-messages-types";
 import type { ChatProcessLabels } from "./chat-process-block";
 import type { ChatDisplayItem } from "./chat-process-groups";
 import { ChatProcessMessage } from "./chat-process-message";
@@ -50,6 +51,8 @@ interface ChatMessageItemProps {
   renderLink?: (props: RenderLinkProps) => ReactNode;
   currentUserId?: string;
   authorLabels?: ChatAuthorLabels;
+  /** Roster an assistant reply's "@Name" runs are chipped against (HOU-944). */
+  mentionPeople?: ChatMessagesProps["mentionPeople"];
 }
 
 export function ChatMessageItem({
@@ -77,6 +80,7 @@ export function ChatMessageItem({
   renderLink,
   currentUserId,
   authorLabels,
+  mentionPeople,
 }: ChatMessageItemProps) {
   if (item.kind === "process") {
     return (
@@ -157,6 +161,8 @@ export function ChatMessageItem({
           />
         ) : null}
         <ChatMessageBody
+          currentUserId={currentUserId}
+          mentionPeople={mentionPeople}
           message={message}
           onOpenLink={onOpenLink}
           renderLink={renderLink}

@@ -1,4 +1,5 @@
 import type { ServerResponse } from "node:http";
+import type { ChatMessage } from "@houston/protocol";
 import { readEventStream } from "@houston/runtime-client";
 import { isExpiring } from "../credentials/refresh";
 import type { Agent, Workspace } from "../domain/types";
@@ -59,6 +60,7 @@ export async function dispatchTurn(
   nonce: string | undefined,
   pin?: TurnPin,
   displayText?: string,
+  mentions?: ChatMessage["mentions"],
 ): Promise<TurnStart> {
   const prefix = prefixFor(ws, agent);
   // Resolve the provider (+ effort) for this turn BEFORE claiming the quota/relay
@@ -106,6 +108,9 @@ export async function dispatchTurn(
               // Presentation-only bubble text — the runtime persists it beside
               // the user message; the model still runs on `text`.
               ...(displayText ? { displayText } : {}),
+              // The @mention sidecar — omitted when the message named nobody,
+              // so a single-player turn's body is byte-identical to today.
+              ...(mentions?.length ? { mentions } : {}),
               gcsPrefix: prefix,
               credential: cred
                 ? {
@@ -159,6 +164,7 @@ export async function startTurn(
   nonce: string | undefined,
   res: ServerResponse,
   displayText?: string,
+  mentions?: ChatMessage["mentions"],
 ): Promise<void> {
   const outcome = await dispatchTurn(
     deps,
@@ -169,6 +175,7 @@ export async function startTurn(
     nonce,
     undefined,
     displayText,
+    mentions,
   );
   if (outcome.status === "quota")
     return json(res, 429, { error: outcome.message });

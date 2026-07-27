@@ -33,6 +33,10 @@ components:
     status: not-started
   composer:
     status: not-started
+  mention-autocomplete:
+    status: not-started
+  mention-chip:
+    status: not-started
   turn-status:
     status: not-started
   progress-panel:
@@ -44,6 +48,8 @@ components:
   mission-card:
     status: not-started
   mission-board:
+    status: not-started
+  mentions-inbox:
     status: not-started
   mission-status-chip:
     status: not-started

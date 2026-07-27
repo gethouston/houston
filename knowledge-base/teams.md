@@ -826,18 +826,311 @@ authors, own rows via `useMyProfile`, `PersonFace` initials fallback).
 
 ---
 
+## Chat @mentions (HOU-944)
+
+Tag a teammate in a shared chat. Typing `@` in the composer raises a picker over
+the space's co-members; accepting inserts the PLAIN TEXT `@Name ` (the composer
+stays a plain textarea, no contenteditable) and remembers `{userId, name}` on the
+side. On send, the pending mentions whose `@Name` still appears in the message
+ship as a structured `mentions[]` sidecar next to the prompt: **the model reads
+prose, the wire carries identities.** Agents mention humans back in plain text
+(the product prompt tells them to address a person as `@Name` when a reply needs
+that person's confirmation), so ASSISTANT mentions are never structured.
+
+**The roster.** `GET /v1/org/people` → `{people:[{userId, displayName?,
+photoUrl?}]}` — the sanitized co-member directory of the ACTIVE space, served to
+EVERY member (a personal space resolves only the caller), named-first, no emails
+and no roles. Unlike `GET /v1/org` it is NOT owner/admin-only: every teammate
+must be able to mention their co-members. `getOrgPeople` 404-degrades to `[]`
+(an older gateway simply has no autocomplete), and the app hook
+`use-org-people.ts` is multiplayer-gated exactly like `useUserProfiles`
+(`staleTime` 5 min, no toast, no Sentry). It returns TWO lists: `people` (named
+co-members, viewer INCLUDED — the render roster, so an agent writing your name
+chips it) and `mentionable` (`people` minus the caller — the composer list). A
+co-member with no display name is never offered: `@a1b2c3d4` means nothing to a
+non-technical reader.
+
+**The wire.** `mentions?: {userId, name?}[]` rides beside `author` the whole way:
+protocol `ChatMessage.mentions` + the `user` frame's `data.mentions`, runtime
+`UserMessageMeta` (persisted) and the send-route body, `SessionStartRequest`
+/ `ChatHistoryEntry`, and the SDK's `TurnSendInput` / `StreamTurnOptions` /
+`FeedFrame` / `FeedItemVM` (so a live send, a reload and the offline cache all
+chip identically). Every untrusted reader runs the ONE shared guard
+`parseMentions` (`packages/protocol/src/conversation.ts`, hand-rolled, no zod).
+It caps the result at `MENTIONS_MAX` 32, clips `userId`/`name` to
+`MENTION_USER_ID_MAX` 128 / `MENTION_NAME_MAX` 256, keeps the FIRST entry per
+userId (a repeat can't spend the budget), stops scanning after
+`MENTIONS_SCAN_MAX` 1000 raw entries (a junk array is never walked in full),
+drops junk entries and omits the field when nothing survives. This is the
+persistence a notification/inbox feature consumes: scan a conversation for
+`mentions[].userId === me`.
+
+**Rendering (`@houston-ai/chat`).** `MentionChip` + the pure span finder
+(`mention-spans.ts`) + a hand-rolled rehype pass (`mention-rehype.ts`) appended
+AFTER Streamdown's own `raw → sanitize → harden` chain (Streamdown REPLACES its
+plugin list when you pass `rehypePlugins`, so the defaults are spread back in;
+the plugin is passed in tuple form because Streamdown caches processors by plugin
+name + `JSON.stringify(options)`). A user bubble chips off the message's own
+`mentions[]`; assistant prose is matched against the `mentionPeople` prop. A
+mention of the viewer wears the highlight wash.
+
+Matching rules that are easy to get wrong, all in `mention-text.ts`: BOTH the
+roster names and the message text are normalized to **NFC** before anything is
+compared, because the span finder slices the text by the name's UTF-16 length
+and "é" has two spellings — so the two must agree or a chip truncates
+mid-grapheme. Span matching is therefore case-folding ONLY; the accent-folding
+key (`mentionKey`) is used exclusively by the autocomplete FILTER, where a
+length change is harmless. Two co-members with the same display name collapse
+to ONE render target ("@Ana" cannot say which Ana), carrying the OR of their
+`isSelf` flags so the viewer's emphasis is never lost to sort order; which
+userId each occurrence ATTRIBUTES to is decided at send time instead, by handing
+occurrences to the pending picks in order (`mention-send.ts`).
+
+The composer half is `use-mention-autocomplete.ts` (+ `use-mention-combobox.ts`
+for the ids, `chat-input-mentions.tsx` for the surface), intercepting
+Enter/Tab/arrows/Escape through `PromptInputTextarea`'s external-handler-first
+`defaultPrevented` seam. Four rules live there: the list takes NO key while an
+IME composition is in flight (`mention-keys.ts` — Arrow/Escape/Enter/Tab all
+belong to the candidate window); a dismissal sticks for the LIFETIME of its
+token (same `@` index) and lifts only when the token stops existing, and a
+pointer-down on the anchor textarea is not a dismissal at all; the textarea
+itself carries the combobox ARIA (`role`, `aria-expanded`, `aria-controls`,
+`aria-activedescendant`) since focus never leaves it — which is why the list is
+plain markup, not cmdk, whose own element ids overwrite the caller's; and
+pending picks are parked per `draftKey` (the ChatPanel's `sessionKey`) in a
+bounded map, so switching conversations neither loses them nor cross-attaches
+them, with the send snapshotting rather than consuming them (a rejected send
+keeps its text, so it keeps its mentions).
+
+At SEND time the text is run through `mention-mask.ts` first — fenced code,
+inline code spans and inline links are blanked one character for one — because
+the renderer never chips inside `code`/`pre`/`a` and a mention recorded there
+would notify someone about a message that addresses them nowhere. It is a
+lexical pass, not a parser; the residual gaps (indented code blocks, reference
+links, autolinks, raw HTML) are listed in that module's header.
+
+**App wiring.** `use-chat-mentions.tsx` resolves the four props
+(`mentionPeople`, `messageMentionPeople`, `renderMentionAvatar` = `PersonFace`,
+`mentionLabels`); `use-agent-chat-panel` returns them as `mentionProps` and
+every AIBoard mount spreads them. Display names are normalized to NFC at that
+boundary (`org-people-map.ts`). The mentions themselves travel as an argument, not state:
+`ChatInput.onSend(text, files, mentions)` → `AIBoard.handleSend` →
+`onSendMessage`/`onCreateConversation`/`onComposerSubmit` → the board sources'
+`SendOverrides` bag → `tauriChat.send({mentions})`, including the warming-send
+queue (a parked message keeps its chips across a relaunch). E2E:
+`packages/web/e2e/chat-mentions.spec.ts`.
+
+---
+
+## Relevance-scoped notifications (HOU-945)
+
+With many agents running in parallel, a user must only be signalled when it
+matters to THEM. There is **no settings toggle** (features-default-ON): relevance
+IS the behaviour, and the existing global notifications on/off switch is
+untouched.
+
+**The relevance rule is not re-derived.** It is `missionMatchesScope(people,
+{kind:"me"}, selfId)` from `app/src/lib/agent-person-scope.ts`, reached through
+`app/src/lib/mission-relevance.ts`: a mission is mine if my face is on it
+(`created_by`/`contributors`) OR it carries no attribution at all. That second
+clause is load-bearing and keeps desktop/single-player byte-identical. A mission
+that @mentions me is relevant too, whether or not I ever touched it.
+
+### The mention aggregate lives on the ACTIVITY, not on `ConversationSummary`
+
+The client's mission list is derived from activities
+(`engine-adapter/client/activities-mixin.ts` → `activityToConversation`), NOT
+from the runtime's `ConversationSummary`. So the per-mission aggregate rides the
+activity record, which the board already fetches:
+
+```ts
+// packages/protocol/src/domain/activity.ts
+interface ActivityMention { user_id: string; at: string; by?: string }
+const ACTIVITY_MENTIONS_MAX = 32;
+interface Activity { …; mentioned?: ActivityMention[] }
+```
+
+Latest-per-person (an array of "who has been pinged here, and when", not a log),
+capped by dropping the oldest `at`. Declared in `ui/agent-schemas/src/activity.schema.json`
+(the doc is `additionalProperties: false`) and sanitized on read by
+`sanitizeMentions` inside `normalizeActivities`.
+
+**Server-stamped, one write.** `stampTurnAttribution`
+(`packages/host/src/routes/activity-attribution.ts`, formerly
+`stampTurnContributor`) now upserts the contributor AND the mentions in a single
+load→save→emit pass. It runs only when a gateway vouched for the actor
+(`actingAuthor` non-null), so off the gateway nothing runs, not even the body
+read, and `activity.json` stays byte-identical.
+
+Getting the mentions there needed one structural change: the turn body is
+normally first read inside the channel, so `ChannelCtx` gained an optional
+`body?: Buffer`. `routes/agents.ts` drains the turn POST once, derives the ids
+with the shared `parseMentions` guard, stamps, and hands the buffer down; both
+`ProxyChannel` and `TurnChannel`/`dispatchCloudrun` prefer it over the
+(now-exhausted) stream. Threaded on to `ConversationEntry` → `RawConversation`.
+
+A malformed turn body is not that seam's business — it stamps no mentions and
+passes the body on. `dispatchCloudrun` now GUARDS its parse and answers
+`400 {"error":"invalid JSON body"}` (re-throwing `BodyTooLargeError` so an
+over-cap body still maps to a clean 413). The proxy path is unchanged and still
+relays the pi runtime's `500 {"error":"internal error"}`, because
+`runtime/src/transport/http-helpers.ts` `readJson` is unguarded — a live
+follow-up, not something the host can fix from its side.
+
+`sanitizeMentions` keeps the NEWEST `ACTIVITY_MENTIONS_MAX` entries by `at`
+(returned in file order, ties stable), matching `upsertMentions`'s
+evict-the-oldest rule. It used to truncate to the first 32 in file order, so a
+read could drop exactly the mentions a write had just decided to keep.
+
+### Read cursors are per-device localStorage, on purpose
+
+Five modules, one concern each:
+
+| Module | Owns |
+| --- | --- |
+| `app/src/lib/read-cursors.ts` | the pure cursor ALGEBRA (keys, floors, watermarks, the 500-entry cap) |
+| `app/src/lib/read-cursors-merge.ts` | how two views of one user's store combine (the cross-tab rule) |
+| `app/src/lib/read-cursors-parse.ts` | decoding an untrusted stored blob; the `version` stamp |
+| `app/src/lib/read-cursors-storage.ts` | the `localStorage` seam: key, merge-on-write, foreign-account eviction |
+| `app/src/lib/read-cursor-live-store.ts` | the singleton instance + subscribers (React-free, so a notification callback reads it) |
+
+`app/src/hooks/use-read-cursors.ts` is now only the React bindings
+(`useReadCursorStore` = `useSyncExternalStore` over the live store,
+`useReadCursorTracker` = the "viewed" observer).
+
+Key `houston.read-cursors.<uid>`, per-uid so two accounts on one machine never
+read each other's state. Each entry holds `readAt` and the mention `notifiedAt`
+watermark; the store's `since` is the floor for anything with no cursor of its
+own, so a fresh device does not open on a backlog. The persisted envelope also
+carries `version: 1` and a `lastTouched` stamp.
+
+The tradeoff, taken deliberately: an unread badge is local reading state and the
+user experiences clearing it as instant. Host preferences would put a request on
+every mission open, and in hosted mode that request can be the thing that WAKES a
+sleeping pod. Cost: a second device starts from its own `since`.
+
+**A second TAB is not a tradeoff, it is the normal case.** One whole-blob value
+per user means a plain `setItem` is last-writer-wins: the tab that saves second
+erases every mission the other one cleared. So every save is a read-modify-write
+(`saveReadCursors` merges against disk and RETURNS what it wrote — callers must
+adopt that, not the value they passed), a `window` `storage` listener folds the
+other tabs' writes in live, and the merge rule is per conversation: the LATER of
+each watermark, the EARLIER `since`. Watermarks only move forward, so the two
+tabs are never in conflict — they each know part of the truth.
+
+**Foreign accounts are evicted** (`pruneForeignCursorStores`, on every uid
+change): the 4 most recently `lastTouched` blobs of OTHER uids survive, the rest
+are removed. Nothing used to clean them up, so a shared machine accreted one
+uncapped blob per person who ever signed in, against a ~5MB origin quota shared
+with the query persister.
+
+**Two clocks in `isUnreadForMe`.** An outstanding @mention is measured against my
+cursor for that conversation ALONE (`mentionReadFloorFor`, no `since` fallback):
+someone typed my name, so it stays unread however old it is, and it survives the
+mission moving on without me. Ambient movement uses `updated_at` vs the normal
+floor. Without the split, signing in on a second device silently marked every
+pre-install mention as read, which is exactly the miss this feature exists to
+prevent.
+
+**`notifiedFloorFor` folds `readAt` in.** `markRead` deliberately never touches
+`notifiedAt` (the two watermarks answer different questions, and collapsing them
+at write time would clear the badge a ping had just announced), so the OS-ping
+floor is `max(notifiedAt ?? since, readAt)` instead. Without it, a mention landing
+in a conversation ON SCREEN — or one predating the mission you just reopened
+after a reload — still fired a desktop notification.
+
+**Self-authored mentions never count.** `missionMentionsMe` / `latestMentionFor`
+(`lib/mission-relevance.ts`) require `by !== selfId`, so typing your own name
+cannot earn a permanent inbox row plus a mention-unread badge nothing can clear
+(the mention clause has no `since` floor). An entry with NO `by` still counts —
+the gateway only began stamping authors with this feature, and reading "no
+author" as "me" would swallow a whole generation of real mentions.
+
+The "viewed" seam is the `["chat-history", agentPath, sessionKey]` query, observed
+raw (`getObserversCount() > 0`) so no surface has to remember to report anything;
+session keys are resolved to conversation ids by
+`app/src/lib/chat-conversation-id.ts`, cache reads only. It answers **null** when
+no cached list can name the mission (a cold `routine-<id>`), and the tracker then
+writes NOTHING: the old fallback to the raw session key produced a cursor under a
+key no unread surface ever looks up, and the same cache events re-fire once the
+lists land.
+
+**Only `observerAdded` + `updated` count as "viewed"** (`VIEWED_EVENTS`), and the
+exclusion is load-bearing, not tidiness: React Query emits
+`observerOptionsUpdated` on EVERY RENDER of a component holding the query, and
+each mark stamps a fresh `Date.now()`, so marking on those turned the tracker
+into a render-driven write. Harmless while only the sidebar subscribed to the
+cursor store (it observes no chat history, so the cascade died), it became an
+infinite update loop the moment a second surface subscribed — store change →
+board re-render → options updated → new cursor → store change. Any new
+subscriber to `useReadCursorStore` depends on this filter.
+
+### Surfaces
+
+- **Completion notifications** — `app/src/hooks/completion-notification.ts` gates
+  the send on `shouldNotifyCompletion`. Fails OPEN (unknown mission, unattributed
+  mission, signed-out user all notify) and reads `selfId` at FIRE time, since a
+  latch can outlive a sign-in by its grace window.
+- **@mention pings** — `app/src/hooks/use-mention-notifications.ts`, once per
+  aggregate entry via the `notifiedAt` watermark.
+- **Sidebar** — `AgentActivitySummary.unreadCount` beside `needsYouCount`,
+  rendered as a quiet `UnreadDot` (a filled `bg-action` dot), deliberately a
+  different shape and weight from `NeedsYouChip`: "something new here" vs "act
+  now". Zero when signed out or single-player: `use-agent-activity-summaries.ts`
+  omits the `unread` option entirely unless `isMultiplayer(capabilities)`, and
+  `buildAgentActivitySummaries` leaves every count at 0 without it — the same
+  capability gate `use-board-unread.ts` applies to the cards.
+- **Mentions inbox** — Mission Control's third mode
+  (`app/src/components/board/mentions-inbox.tsx`), hidden entirely when
+  `!isMultiplayer(capabilities)`. `MissionControlToolbar` split into
+  `mission-toolbar-actions.tsx` + `mission-agent-filter.tsx`; the mode controls
+  are presence-gated (`onToggleMentions` absent = no chrome).
+
+  **The pill counts a narrower thing than the rows show.** A row's dot is
+  `isUnreadForMe` (mention OR ambient movement); the pill's number is
+  `mentionOutstanding` (a mention strictly newer than my cursor for that
+  conversation) — because the control says "N unread mentions", and a mission
+  that merely moved is not somebody typing your name. `MentionInboxRow` carries
+  both booleans so neither surface has to re-derive the other's rule.
+
+- **Mission cards** — the same quiet dot, per MISSION, trailing the card's agent
+  name in the header's identity cluster (never among the approve/rename/delete
+  icons, never near the bottom-right face stack). `KanbanItem.unread?: boolean`
+  is additive and props-only; the gate + tokens are the pure
+  `ui/board/src/kanban-card-unread.ts` (`showsUnreadDot`), which also hides the
+  mark on the card currently OPEN in the panel — the reader is looking at it, and
+  it swallows the flicker between the click and the cursor moving. Absent =
+  nothing rendered and no reserved rail, so single player is byte-identical.
+  Inventory `mission-card` v39 (`unread-dot` + `unread` state).
+
+  App fill: `unreadMissionIds` + `attachMissionUnread` (`lib/unread-model.ts`,
+  the SAME `isUnreadForMe` the sidebar counts) behind
+  `components/board/use-board-unread.ts`. Mission Control joins it onto the
+  cards as a last pass (a cursor move must not rebuild the card list and its
+  path/session maps); the per-agent board joins it in `use-agent-board-scope`
+  after the person filter, since its activity rows carry no attribution and no
+  mention aggregate — the conversations query answers both, deduped with the
+  face-stack read.
+
+E2E: `packages/web/e2e/mentions-inbox.spec.ts` (inbox + the card dot clearing on
+open).
+
+---
+
 ## engine-client types + methods
 
 Wire types in `ui/engine-client/src/types.ts`: `OrgRole`, `OrgMember`
 (+ optional `displayName`/`photoUrl`), `UserProfile`/`UserProfilesResult` (the
-`GET /v1/org/profiles` shape), `OrgInfo`, `OrgInvite`, `AddOrgMemberResult`,
+`GET /v1/org/profiles` shape), `OrgPerson` (the `GET /v1/org/people` directory
+row) + `MessageMention` (HOU-944), `OrgInfo`, `OrgInvite`, `AddOrgMemberResult`,
 `AgentAccess`, `AgentAssignment`,
 `AgentSettings` (`allowedToolkits` + `allowedModels` — the agent's whole ceilings;
 policy is per agent only, there is no `OrgSettings` type), `AuditEntry`, `UsageRow`,
 `AgentModelChoice` / `AgentModelChoiceInfo`. `Agent` gains multiplayer-only
 `assigned` / `assignedUserIds` / `access` / `assignments`. All hand-maintained
 against the gateway (the server is source of truth). Methods in `client.ts`:
-`getOrg`, `getOrgProfiles` (404-degrades to `{}`), `addOrgMember`, `deleteOrgInvite`,
+`getOrg`, `getOrgProfiles` (404-degrades to `{}`), `getOrgPeople` (the mention
+directory; 404-degrades to `[]`), `addOrgMember`, `deleteOrgInvite`,
 `removeOrgMember`, `setOrgMemberRole`,
 `setAgentAssignments` (v2 `{assignments}` or legacy `{userIds}`), `getAgentSettings`
 / `setAgentSettings`, `getAgentModelChoice` /

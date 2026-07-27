@@ -8,7 +8,7 @@ import type { RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "../ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
-import { stampTurnContributor } from "./activity-attribution";
+import { stampTurnAttribution } from "./activity-attribution";
 import { workspaceRoot } from "./agent-data";
 
 /**
@@ -50,6 +50,11 @@ const CAPS: Capabilities = {
 // A turn POST (…/conversations/:cid/messages) reaches the channel; answer 202
 // so the client's fetch resolves — the route already stamped attribution before
 // dispatch, which is what these tests assert.
+/** The body the channel actually received — the stream-exhaustion guard: the
+ *  route drains the turn body to read its mentions, so it MUST hand the buffer
+ *  down or the runtime would receive an empty message. */
+let forwardedBody: string | undefined;
+
 const deps = (): ControlPlaneDeps => ({
   verifier,
   store,
@@ -60,6 +65,7 @@ const deps = (): ControlPlaneDeps => ({
       launcher,
       proxy: {
         async forward(_e, _r, res: ServerResponse) {
+          forwardedBody = _r.body?.toString("utf8");
           res.writeHead(202, { "content-type": "application/json" });
           res.end(JSON.stringify({ ok: true }));
         },
@@ -206,6 +212,179 @@ test("a user turn falls back to the activity-<id> key when there is no session_k
   expect(m2?.contributors).toEqual([{ user_id: "supa-4" }]);
 });
 
+/**
+ * The per-mission @mention aggregate (HOU-945): the mentions ride the turn
+ * body, so the route drains it once, stamps, and hands the buffer to the
+ * channel. Latest-per-person — a second mention overwrites the first entry
+ * rather than appending a log line.
+ */
+test("a turn whose body carries mentions stamps `mentioned` on the mission", async () => {
+  await vfs.writeText(
+    docKey(root, "activity"),
+    JSON.stringify([
+      {
+        id: "m4",
+        title: "Mentions",
+        description: "",
+        status: "running",
+        session_key: "conv-mentions",
+      },
+    ]),
+  );
+  const turn = await fetch(
+    `${frontedBase}/agents/${agentId}/conversations/conv-mentions/messages`,
+    {
+      method: "POST",
+      headers: {
+        ...auth("alice"),
+        "x-houston-acting-as": actingToken("supa-6", "Ada"),
+      },
+      body: JSON.stringify({
+        text: "hey @Grace @Alan",
+        mentions: [{ userId: "supa-grace" }, { userId: "supa-alan" }],
+      }),
+    },
+  );
+  expect(turn.status).toBe(202);
+  const m4 = (await rows()).find((a) => a.id === "m4");
+  expect(m4?.mentioned?.map((m) => m.user_id)).toEqual([
+    "supa-grace",
+    "supa-alan",
+  ]);
+  // Every entry carries the instant and the acting author who wrote it.
+  for (const m of m4?.mentioned ?? []) {
+    expect(m.by).toBe("supa-6");
+    expect(Number.isNaN(Date.parse(m.at))).toBe(false);
+  }
+  // The contributor stamp rides the SAME single pass.
+  expect(m4?.contributors).toEqual([{ user_id: "supa-6", name: "Ada" }]);
+  // …and the drained body still reached the channel intact.
+  expect(forwardedBody && JSON.parse(forwardedBody)).toMatchObject({
+    text: "hey @Grace @Alan",
+    mentions: [{ userId: "supa-grace" }, { userId: "supa-alan" }],
+  });
+});
+
+test("mentioning the same person again overwrites the entry (latest wins)", async () => {
+  const before = (await rows()).find((a) => a.id === "m4");
+  const first = before?.mentioned?.find((m) => m.user_id === "supa-grace");
+  expect(first).toBeDefined();
+  const turn = await fetch(
+    `${frontedBase}/agents/${agentId}/conversations/conv-mentions/messages`,
+    {
+      method: "POST",
+      headers: {
+        ...auth("alice"),
+        "x-houston-acting-as": actingToken("supa-7", "Alan"),
+      },
+      body: JSON.stringify({
+        text: "@Grace again",
+        mentions: [{ userId: "supa-grace" }],
+      }),
+    },
+  );
+  expect(turn.status).toBe(202);
+  const m4 = (await rows()).find((a) => a.id === "m4");
+  // Still ONE entry for Grace, now attributed to the second author.
+  expect(m4?.mentioned).toHaveLength(2);
+  const grace = m4?.mentioned?.find((m) => m.user_id === "supa-grace");
+  expect(grace?.by).toBe("supa-7");
+  expect(Date.parse(grace?.at ?? "")).toBeGreaterThanOrEqual(
+    Date.parse(first?.at ?? ""),
+  );
+});
+
+test("a turn body with no mentions leaves the `mentioned` key absent", async () => {
+  await vfs.writeText(
+    docKey(root, "activity"),
+    JSON.stringify([
+      {
+        id: "m5",
+        title: "No mentions",
+        description: "",
+        status: "running",
+        session_key: "conv-plain",
+      },
+    ]),
+  );
+  const turn = await fetch(
+    `${frontedBase}/agents/${agentId}/conversations/conv-plain/messages`,
+    {
+      method: "POST",
+      headers: {
+        ...auth("alice"),
+        "x-houston-acting-as": actingToken("supa-8", "Ada"),
+      },
+      body: JSON.stringify({ text: "no one named here" }),
+    },
+  );
+  expect(turn.status).toBe(202);
+  const m5 = (await rows()).find((a) => a.id === "m5");
+  expect(m5?.contributors).toEqual([{ user_id: "supa-8", name: "Ada" }]);
+  expect("mentioned" in (m5 ?? {})).toBe(false);
+});
+
+test("a garbage `mentions` value stamps nothing and never errors the turn", async () => {
+  await vfs.writeText(
+    docKey(root, "activity"),
+    JSON.stringify([
+      {
+        id: "m6",
+        title: "Garbage mentions",
+        description: "",
+        status: "running",
+        session_key: "conv-garbage",
+      },
+    ]),
+  );
+  const turn = await fetch(
+    `${frontedBase}/agents/${agentId}/conversations/conv-garbage/messages`,
+    {
+      method: "POST",
+      headers: {
+        ...auth("alice"),
+        "x-houston-acting-as": actingToken("supa-9"),
+      },
+      body: JSON.stringify({ text: "hi", mentions: "@everyone" }),
+    },
+  );
+  expect(turn.status).toBe(202);
+  const m6 = (await rows()).find((a) => a.id === "m6");
+  expect("mentioned" in (m6 ?? {})).toBe(false);
+  expect(m6?.contributors).toEqual([{ user_id: "supa-9" }]);
+});
+
+test("an unparseable turn body never breaks the turn and stamps no mentions", async () => {
+  await vfs.writeText(
+    docKey(root, "activity"),
+    JSON.stringify([
+      {
+        id: "m7",
+        title: "Broken body",
+        description: "",
+        status: "running",
+        session_key: "conv-broken",
+      },
+    ]),
+  );
+  const turn = await fetch(
+    `${frontedBase}/agents/${agentId}/conversations/conv-broken/messages`,
+    {
+      method: "POST",
+      headers: {
+        ...auth("alice"),
+        "x-houston-acting-as": actingToken("supa-10"),
+      },
+      body: "{not json",
+    },
+  );
+  // The channel still gets the body and owns the client-facing outcome; the
+  // attribution seam just records no mentions.
+  expect(turn.status).toBe(202);
+  const m7 = (await rows()).find((a) => a.id === "m7");
+  expect("mentioned" in (m7 ?? {})).toBe(false);
+});
+
 test("a malformed acting header stamps nothing and never errors the turn", async () => {
   await vfs.writeText(
     docKey(root, "activity"),
@@ -256,7 +435,7 @@ test("off the gateway, an inbound acting header stamps NOTHING (byte-identical)"
   }
 });
 
-test("stampTurnContributor swallows a store failure — the turn is never broken", async () => {
+test("stampTurnAttribution swallows a store failure — the turn is never broken", async () => {
   const spy = vi.spyOn(console, "error").mockImplementation(() => {});
   const throwing = {
     async readText(): Promise<string | null> {
@@ -265,9 +444,14 @@ test("stampTurnContributor swallows a store failure — the turn is never broken
     async writeText(): Promise<void> {},
   };
   await expect(
-    stampTurnContributor(throwing, "root", "agent-x", "cid", {
-      user_id: "supa-5",
-    }),
+    stampTurnAttribution(
+      throwing,
+      "root",
+      "agent-x",
+      "cid",
+      { user_id: "supa-5" },
+      ["supa-9"],
+    ),
   ).resolves.toBeUndefined();
   expect(spy).toHaveBeenCalledOnce();
   spy.mockRestore();

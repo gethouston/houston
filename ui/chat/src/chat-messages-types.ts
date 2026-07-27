@@ -8,6 +8,7 @@ import type { ConversationMapLabels } from "./conversation-map";
 import type { ConversationMoment } from "./conversation-map-model";
 import type { ChatMessage } from "./feed-to-messages";
 import type { TurnEndSummary } from "./turn-tools";
+import type { MentionPerson } from "./types";
 
 export interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -79,6 +80,13 @@ export interface ChatMessagesProps {
    *  sender line. Return `undefined` to render the name alone. Distinct from
    *  `renderMessageAvatar`, which badges the bubble itself (channel logos). */
   renderSenderAvatar?: (msg: ChatMessage) => ReactNode | undefined;
+  /**
+   * Multiplayer only (HOU-944): the space roster an ASSISTANT reply's "@Name"
+   * runs are chipped against. A user message chips off its OWN recorded
+   * mentions, so it needs no roster. Include the viewer, so "@Julian" in an
+   * agent reply still chips for Julian. Empty/absent renders no chips.
+   */
+  mentionPeople?: readonly MentionPerson[];
   /** Props-only configuration for the optional Conversation Map. */
   conversationMap?: {
     labels?: ConversationMapLabels;

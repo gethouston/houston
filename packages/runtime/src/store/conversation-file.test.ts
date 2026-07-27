@@ -225,6 +225,38 @@ test("a user message with no displayText stays displayText-free in the JSON (unc
   expect(raw).not.toContain("displayText");
 });
 
+test("a user message persists the @mentions sidecar beside content (HOU-944)", () => {
+  const dir = freshDir();
+  // The model already saw the names as plain text inside `content`; the sidecar
+  // is what lets a reader map "@Ada" back to a person.
+  appendUserMessageAt(dir, "c1", "@Ada can you confirm? @Grace fyi", {
+    mentions: [
+      { userId: "user_a", name: "Ada" },
+      { userId: "user_g", name: "Grace" },
+    ],
+  });
+
+  const msg = getHistoryAt(dir, "c1")?.messages.find((m) => m.role === "user");
+  expect(msg?.content).toBe("@Ada can you confirm? @Grace fyi");
+  expect(msg?.mentions).toEqual([
+    { userId: "user_a", name: "Ada" },
+    { userId: "user_g", name: "Grace" },
+  ]);
+});
+
+test("a user message with no mentions stays mentions-free in the JSON (unchanged records)", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "just a normal message");
+  // An empty list is treated exactly like an absent one — never `[]` on disk.
+  appendUserMessageAt(dir, "c1", "another normal message", { mentions: [] });
+
+  const msgs = getHistoryAt(dir, "c1")?.messages ?? [];
+  expect(msgs.every((m) => m.mentions === undefined)).toBe(true);
+  // Absent, not present-and-undefined — a single-player record is byte-identical.
+  const raw = readFileSync(join(dir, "c1.json"), "utf8");
+  expect(raw).not.toContain("mentions");
+});
+
 test("a user message with no acting-as token stays author-free (byte-identical to today)", () => {
   const dir = freshDir();
   // No token → decode yields undefined → no author stamped.

@@ -189,6 +189,7 @@ export function RoutineSetupChatBoard({
         showSenders={panel.showSenders}
         agentLabel={panel.agentLabel}
         renderSenderAvatar={panel.renderSenderAvatar}
+        {...panel.mentionProps}
         renderSystemMessage={panel.renderSystemMessage}
         conversationMap={panel.conversationMap}
         mapFeedItems={panel.mapFeedItems}

@@ -80,8 +80,12 @@ export class ProxyChannel implements RuntimeChannel {
     // only bodies that reach a standing pod are control-plane JSON (messages,
     // settings, provider login) — a few MB is generous, and the cap stops an
     // oversized body from OOM-ing the (memory-capped) engine pod.
-    let body: Buffer | undefined;
-    if (method !== "GET" && method !== "HEAD") {
+    //
+    // A route that already drained the body hands it over on the ctx (the turn
+    // path peeks it to stamp mission attribution) — the stream is exhausted by
+    // then, so re-reading it here would forward an EMPTY body.
+    let body = ctx.body;
+    if (!body && method !== "GET" && method !== "HEAD") {
       body = await readBody(req, MAX_JSON_BYTES);
     }
     const params = new URLSearchParams(url.search);

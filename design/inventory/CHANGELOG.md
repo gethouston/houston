@@ -3,6 +3,83 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v39 - 2026-07-27
+
+HOU-945, relevance-scoped notifications: a shared workspace only works if you can
+tell, at a glance, which of it moved while you were away. Four surfaces land
+together — a mark on the mission, a mark on the agent, an inbox of the missions
+where somebody typed your name, and the pill that opens it. All four are
+multiplayer-only: read state is per person and per device (local, never a write
+to the server on every mission open), so without a signed-in identity there is no
+"you" for anything to be unread FOR. Single player and the desktop app gain no
+new chrome at all, and reserve no space for any of it.
+
+`mission-card` gains an `unread-dot` (and the matching `unread` state) — the
+per-mission half. A mission card now carries a quiet mark when that mission has
+moved, or somebody typed your name in it, since you last opened it. The mark is
+a small filled dot in the semantic action tone, trailing the card's agent name:
+"there is something new here for you", never "act now" (which stays the needs-you
+status and its count chip). It is a mark, never a number, and it disappears the
+moment you open the mission.
+
+It sits in the card's identity line rather than among the approve / rename /
+delete icons (where a filled dot would read as a fourth button) and well clear of
+the contributors' faces in the body's bottom-right corner. A card with nothing
+new renders no dot AND reserves no space for one, so single player, a
+signed-out surface, and every legacy mission look exactly as they did.
+
+`agent-list-item` gains the matching `unread` state — the same dot, rolled up to
+the agent. A sidebar row now marks the agent when ANY of its missions has moved,
+or named you, since you last looked. It appears next to the needs-you chip, dot
+first, never in place of it: an agent can perfectly well have something urgent
+AND something new, and hiding one behind the other would make the rail lie about
+what is waiting. The dot never shows a number, but its label does ("3 unread
+updates"), so a screen reader and a hover both get the count without turning the
+rail into a wall of digits.
+
+Add `mentions-inbox`: a new Mission Control mode holding every mission where a
+teammate typed your name, newest first. Deliberately not a board — there is no
+column to move a mention between and no status to read off one, only who pinged
+you, where, and how long ago. So each row is a flat line: their face, "Ana
+mentioned you in Finance", the mission title, and how long ago, and clicking it
+lands you in that mission's chat exactly the way a completion notification does.
+A row that still has something new keeps the same quiet dot, on a rail that is
+always reserved so read and unread rows stay optically aligned. A mention we
+cannot attribute drops the face for an at-sign and says only that you were
+mentioned. Nobody has mentioned you yet: "No mentions yet".
+
+The way in is a Mentions pill in the Mission Control toolbar, beside Archived
+(`mission-board` gains it as an anatomy part). It highlights while the inbox is
+showing, collapses to its at-sign when a chat panel squeezes the board, and
+carries the number of mentions still outstanding — a mention of you newer than
+where you last read, NOT ambient mission movement, because a number the size of
+your whole workspace's activity is a number nobody clicks. Past ninety-nine it
+reads "99+"; the exact figure past that changes nothing you would do. The count
+is in the control's accessible name too, not just next to the glyph.
+
+## v38 - 2026-07-27
+
+Add `mention-autocomplete` + `mention-chip` (HOU-944): in a shared chat you can
+now tag a teammate. Typing "@" in the composer raises a picker over the space's
+co-members, filtered as you type (accent- and case-insensitive, yourself
+excluded); Arrow keys move, Enter or Tab accepts, Escape closes. Accepting types
+the plain text "@Name" into the message and remembers who that is, so the model
+reads ordinary prose while the message carries the identities alongside it. With
+no roster (single player, a personal space, or a host that predates the
+directory) the picker never opens and "@" is just a character.
+
+Both sides of the conversation render those names as chips: a human message
+chips the mentions stored on the message itself, and the agent's prose is matched
+against the known people of the space, since an agent writes a name as plain text
+when it needs someone specific to confirm something. A mention of the reader is
+emphasized, so an ask aimed at you stands out in a busy thread.
+
+Behind it the conversation view-model carries `mentions` end to end beside
+`author` (protocol `ChatMessage.mentions` + the `user` wire frame, runtime
+persistence, `packages/sdk`: `TurnSendInput` / `StreamTurnOptions` /
+`FeedFrame` / `FeedItemVM`), which is what a notification and inbox layer will
+read to tell someone they were tagged.
+
 ## v37 - 2026-07-27
 
 Refine `user-message` + `assistant-message` (no new component, no `since`

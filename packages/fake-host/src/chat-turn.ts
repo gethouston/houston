@@ -15,7 +15,7 @@
  * mid-turn. Test controls that drive these primitives live in chat-controls.ts.
  */
 
-import type { PendingInteraction } from "@houston/protocol";
+import type { ChatMessage, PendingInteraction } from "@houston/protocol";
 import { type ChatChannel, channel, chatKey, publish } from "./chat-channel";
 import * as state from "./state";
 
@@ -69,6 +69,7 @@ async function streamReply(
   userText: string,
   nonce: string | undefined,
   displayText: string | undefined,
+  mentions: ChatMessage["mentions"],
 ): Promise<void> {
   const ch = channel(chatKey(agentId, cid));
   const epoch = ch.epoch;
@@ -76,10 +77,24 @@ async function streamReply(
   const reply = cannedReply(userText);
   ch.pending = { turnId, remaining: replyDeltas(reply) };
   // The user message persists at turn START (the dead-turn history shape).
-  state.appendUserMessage(agentId, cid, userText, turnId, displayText);
+  state.appendUserMessage(
+    agentId,
+    cid,
+    userText,
+    turnId,
+    displayText,
+    mentions,
+  );
+  // The send's @mentions ride the live frame the way `author` does, so a client
+  // watching the turn chips them without waiting for a history refetch.
   publish(ch, {
     type: "user",
-    data: { content: userText, ts: Date.now(), nonce },
+    data: {
+      content: userText,
+      ts: Date.now(),
+      nonce,
+      ...(mentions ? { mentions } : {}),
+    },
     turnId,
   });
   for (;;) {
@@ -127,13 +142,16 @@ export function streamReplySafe(
   text: string,
   nonce: string | undefined,
   displayText?: string,
+  mentions?: ChatMessage["mentions"],
 ): void {
-  streamReply(agentId, cid, text, nonce, displayText).catch((err: unknown) => {
-    console.error("[fake-host] streamReply failed:", err);
-    queueMicrotask(() => {
-      throw err;
-    });
-  });
+  streamReply(agentId, cid, text, nonce, displayText, mentions).catch(
+    (err: unknown) => {
+      console.error("[fake-host] streamReply failed:", err);
+      queueMicrotask(() => {
+        throw err;
+      });
+    },
+  );
 }
 
 /** Terminate a channel's running turn with a terminal `error` frame. */

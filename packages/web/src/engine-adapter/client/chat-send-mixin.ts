@@ -93,6 +93,7 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
         wireTurnPin(req),
         req.displayText,
         req.author,
+        req.mentions,
       ).finally(() => {
         // The turn settled (or failed): release anything queued behind it.
         if (req.autoResume) noteAutoResumeEnded(path, req.sessionKey);

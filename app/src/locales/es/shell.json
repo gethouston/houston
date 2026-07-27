@@ -25,6 +25,8 @@
     "needsYouCount_other": "{{count}} asuntos necesitan tu atención",
     "runningCount_one": "{{count}} asunto en curso",
     "runningCount_other": "{{count}} asuntos en curso",
+    "unreadCount_one": "{{count}} novedad sin leer",
+    "unreadCount_other": "{{count}} novedades sin leer",
     "collapse": "Contraer barra lateral",
     "expand": "Expandir barra lateral",
     "createWorkspace": "Crear espacio de trabajo",

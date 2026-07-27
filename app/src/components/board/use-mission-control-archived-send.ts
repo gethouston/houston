@@ -1,4 +1,5 @@
 import type { KanbanItem } from "@houston-ai/board";
+import type { MessageMention } from "@houston-ai/chat";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
@@ -38,7 +39,12 @@ export function useMissionControlArchivedSend({
   const setActivityPanelId = useUIStore((s) => s.setActivityPanelId);
 
   return useCallback(
-    async (sessionKey: string, text: string, files: File[]) => {
+    async (
+      sessionKey: string,
+      text: string,
+      files: File[],
+      mentions?: MessageMention[],
+    ) => {
       if (!activeAgent || !selectedItem) return;
       const agentPath = activeAgent.folderPath;
       const missionId = selectedItem.id;
@@ -58,6 +64,7 @@ export function useMissionControlArchivedSend({
           providerOverride,
           modelOverride,
           modeOverride: await readAgentTurnMode(agentPath, tauriConfig.read),
+          mentions,
         });
         analytics.track("chat_message_sent", {
           provider: providerOverride,

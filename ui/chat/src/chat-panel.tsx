@@ -13,6 +13,7 @@ import { ChatMessages } from "./chat-messages";
 import type { ChatPanelProps } from "./chat-panel-types";
 import { deriveStatus } from "./chat-status";
 import { ChatThinkingIndicator } from "./chat-thinking-indicator";
+import type { MessageMention } from "./types";
 import {
   DEFAULT_TOO_MANY_FILES_NOTICE,
   useAttachmentIntake,
@@ -75,6 +76,10 @@ export function ChatPanel({
   showSenders,
   agentLabel,
   renderSenderAvatar,
+  mentionPeople,
+  messageMentionPeople,
+  renderMentionAvatar,
+  mentionLabels,
   conversationMap,
 }: ChatPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -131,8 +136,8 @@ export function ChatPanel({
   // Wrap onSend so we clear internally-managed attachments after a send;
   // in controlled mode the parent is responsible for clearing.
   const handleSend = useCallback(
-    async (text: string, sent: File[]) => {
-      await onSend(text, sent);
+    async (text: string, sent: File[], mentions: MessageMention[]) => {
+      await onSend(text, sent, mentions);
       if (!isFilesControlled) setFiles([]);
     },
     [onSend, isFilesControlled, setFiles],
@@ -198,6 +203,7 @@ export function ChatPanel({
           showSenders={showSenders}
           agentLabel={agentLabel}
           renderSenderAvatar={renderSenderAvatar}
+          mentionPeople={messageMentionPeople ?? mentionPeople}
           conversationMap={conversationMap}
         />
       ) : (
@@ -242,6 +248,14 @@ export function ChatPanel({
           disabled={composerDisabled}
           labels={composerLabels}
           dictation={dictation}
+          mentionPeople={mentionPeople}
+          renderMentionAvatar={renderMentionAvatar}
+          mentionLabels={mentionLabels}
+          // The conversation on screen IS the draft: its @mention picks are
+          // parked under this key, exactly like its text is in the app's
+          // draft store, so a switch never crosses one chat's picks with
+          // another's words.
+          draftKey={sessionKey}
         />
       )}
     </div>

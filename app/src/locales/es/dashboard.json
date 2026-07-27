@@ -5,6 +5,21 @@
     "button": "Archivadas",
     "title": "Archivadas"
   },
+  "mentions": {
+    "button": "Menciones",
+    "title": "Menciones",
+    "ariaCount_one": "{{count}} mención sin leer",
+    "ariaCount_other": "{{count}} menciones sin leer",
+    "row": {
+      "by": "{{name}} te mencionó",
+      "byUnknown": "Te mencionaron",
+      "agent": "en {{agent}}"
+    },
+    "empty": {
+      "title": "Aún no hay menciones",
+      "description": "Cuando alguien de tu equipo te nombre en una misión, aparece aquí."
+    }
+  },
   "filter": {
     "allAgents": "Todos los agentes"
   },

@@ -1,7 +1,5 @@
-import type { KanbanItem } from "@houston-ai/board";
-import { AIBoard } from "@houston-ai/board";
-import type { FeedItem } from "@houston-ai/chat";
-import { messagePreviewText } from "@houston-ai/chat";
+import { AIBoard, type KanbanItem } from "@houston-ai/board";
+import { type FeedItem, messagePreviewText } from "@houston-ai/chat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity, useDeleteActivity } from "../../hooks/queries";
@@ -182,6 +180,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           showSenders={panel.showSenders}
           agentLabel={panel.agentLabel}
           renderSenderAvatar={panel.renderSenderAvatar}
+          {...panel.mentionProps}
           renderSystemMessage={panel.renderSystemMessage}
           conversationMap={panel.conversationMap}
           mapFeedItems={panel.mapFeedItems}

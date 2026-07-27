@@ -49,6 +49,11 @@
       "connect": "Your agent needs you to connect an app.",
       "credential": "Your agent needs an API key to finish."
     },
+    "mentioned": {
+      "title": "{{name}} mentioned you",
+      "titleUnknown": "You were mentioned",
+      "body": "In {{mission}}"
+    },
     "preprompt": {
       "title": "Want a ping when your agent finishes?",
       "body": "Turn on notifications and Houston will let you know the moment a mission finishes or needs you.",

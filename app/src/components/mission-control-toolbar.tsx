@@ -1,71 +1,44 @@
-import type { KanbanItem } from "@houston-ai/board";
 import {
   Button,
-  cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { Archive, ArrowLeft, ChevronDown, ListFilter } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { shortcutLabel } from "../lib/shortcuts";
-import type { Agent } from "../lib/types";
-import { MissionPersonFilter } from "./mission-person-filter";
 import { MissionSearchInput } from "./mission-search-input";
-import { AgentCardAvatar } from "./shell/agent-card-avatar";
-import { HoustonLogo } from "./shell/experience-card";
+import {
+  MissionToolbarActions,
+  type MissionToolbarActionsProps,
+} from "./mission-toolbar-actions";
 
-interface MissionControlToolbarProps {
-  agents: Agent[];
-  /** Visible board items (post agent-filter) — feeds the person-filter roster.
-   *  Omitted by the Archived toolbar, which has no attribution filter. */
-  items?: KanbanItem[];
-  filterPath: string;
-  /** Selected person for the attribution filter, or `null` for Everyone. */
-  filterUserId?: string | null;
-  search: string;
-  isSearchingText: boolean;
-  onFilterPathChange: (path: string) => void;
-  /** When set, renders the filter-by-person control (active board only). */
-  onFilterUserIdChange?: (userId: string | null) => void;
-  onSearchChange: (value: string) => void;
-  /** Whether the Archived view is currently showing (highlights the toggle). */
-  archivedActive: boolean;
-  /** Toggle between the active board and the cross-agent Archived view. */
-  onToggleArchived: () => void;
-  /** "New mission" trigger. Present in both the active and archived toolbars. */
-  onNewMission?: () => void;
-  /** When set, renders a back button on the left (used by the Archived view to
-   *  return to the active board). */
+/**
+ * The Mission Control bar: an optional back arrow, the mode's title, an
+ * optional search field, and the {@link MissionToolbarActions} cluster. Every
+ * Mission Control mode (active board, Archived, Mentions) renders this same
+ * bar and simply omits the callbacks it has nothing to do with.
+ */
+interface MissionControlToolbarProps extends MissionToolbarActionsProps {
+  search?: string;
+  isSearchingText?: boolean;
+  /** When set, renders the text-search field. Omitted by the Mentions inbox,
+   *  which is a short chronological list with nothing to search. */
+  onSearchChange?: (value: string) => void;
+  /** When set, renders a back button on the left (used by the Archived and
+   *  Mentions views to return to the active board). */
   onBack?: () => void;
-  /** Compact layout: a chat panel is open, so the board is narrow. Shrinks the
-   *  search placeholder and collapses the buttons to icons so the title stays
-   *  on one line. The search itself flexes to fill whatever space is left. */
-  collapsed: boolean;
 }
 
-export function MissionControlToolbar({
-  agents,
-  items,
-  filterPath,
-  filterUserId,
-  search,
-  isSearchingText,
-  onFilterPathChange,
-  onFilterUserIdChange,
-  onSearchChange,
-  archivedActive,
-  onToggleArchived,
-  onNewMission,
-  onBack,
-  collapsed,
-}: MissionControlToolbarProps) {
+export function MissionControlToolbar(props: MissionControlToolbarProps) {
   const { t } = useTranslation("dashboard");
-  const selectedAgent = agents.find((agent) => agent.folderPath === filterPath);
+  const {
+    search = "",
+    isSearchingText = false,
+    onSearchChange,
+    onBack,
+    archivedActive = false,
+    mentionsActive = false,
+  } = props;
 
   return (
     <div className="shrink-0 px-5 pt-4">
@@ -87,108 +60,28 @@ export function MissionControlToolbar({
           </Tooltip>
         )}
         <h1 className="shrink-0 text-xl font-semibold text-ink">
-          {archivedActive ? t("archived.title") : t("title")}
+          {mentionsActive
+            ? t("mentions.title")
+            : archivedActive
+              ? t("archived.title")
+              : t("title")}
         </h1>
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-          <MissionSearchInput
-            value={search}
-            isSearchingText={isSearchingText}
-            labels={{
-              placeholder: t("search.placeholder"),
-              placeholderShort: t("search.placeholderShort"),
-              clear: t("search.clear"),
-              searchingText: t("search.searchingText"),
-            }}
-            className="relative min-w-0 flex-1 max-w-[320px]"
-            onChange={onSearchChange}
-          />
-          <div className="flex shrink-0 items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                {collapsed ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full"
-                    aria-label={selectedAgent?.name ?? t("filter.allAgents")}
-                  >
-                    {selectedAgent ? (
-                      <AgentCardAvatar color={selectedAgent.color} />
-                    ) : (
-                      <ListFilter className="size-4" />
-                    )}
-                  </Button>
-                ) : (
-                  <Button variant="ghost" className="rounded-full gap-1.5">
-                    {selectedAgent?.name ?? t("filter.allAgents")}
-                    <ChevronDown className="size-3.5 text-ink-muted" />
-                  </Button>
-                )}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onFilterPathChange("")}>
-                  {t("filter.allAgents")}
-                </DropdownMenuItem>
-                {agents.map((agent) => (
-                  <DropdownMenuItem
-                    key={agent.id}
-                    onClick={() => onFilterPathChange(agent.folderPath)}
-                    className="gap-2"
-                  >
-                    <AgentCardAvatar color={agent.color} />
-                    {agent.name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {onFilterUserIdChange && (
-              <MissionPersonFilter
-                items={items ?? []}
-                filterUserId={filterUserId ?? null}
-                onFilterUserIdChange={onFilterUserIdChange}
-                collapsed={collapsed}
-              />
-            )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={archivedActive ? "secondary" : "ghost"}
-                  size={collapsed ? "icon" : "default"}
-                  className={cn("rounded-full", !collapsed && "gap-1.5")}
-                  onClick={onToggleArchived}
-                  aria-label={t("archived.button")}
-                >
-                  <Archive className="size-4" />
-                  {!collapsed && t("archived.button")}
-                </Button>
-              </TooltipTrigger>
-              {collapsed && (
-                <TooltipContent side="bottom">
-                  {t("archived.button")}
-                </TooltipContent>
-              )}
-            </Tooltip>
-            {onNewMission && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size={collapsed ? "icon" : "default"}
-                    className={cn(collapsed && "rounded-full")}
-                    onClick={onNewMission}
-                    aria-label={t("empty.newMission")}
-                  >
-                    <HoustonLogo size={16} />
-                    {!collapsed && t("empty.newMission")}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {collapsed
-                    ? t("empty.newMission")
-                    : shortcutLabel("newMission")}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
+          {onSearchChange && (
+            <MissionSearchInput
+              value={search}
+              isSearchingText={isSearchingText}
+              labels={{
+                placeholder: t("search.placeholder"),
+                placeholderShort: t("search.placeholderShort"),
+                clear: t("search.clear"),
+                searchingText: t("search.searchingText"),
+              }}
+              className="relative min-w-0 flex-1 max-w-[320px]"
+              onChange={onSearchChange}
+            />
+          )}
+          <MissionToolbarActions {...props} />
         </div>
       </div>
     </div>

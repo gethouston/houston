@@ -296,6 +296,16 @@ export interface ChatMessage {
    * in single-player mode and on assistant turns.
    */
   author?: { userId: string; name?: string };
+  /**
+   * The teammates this message @mentions (HOU-944). Set on `role: "user"` turns
+   * whose text names people from the space roster: the model only ever sees the
+   * plain "@Name" text, and this structured sidecar is what lets a reader match
+   * a mention to a person — it is the scan key a notifications/inbox feature
+   * reads (`mentions[].userId === me`). Purely additive: absent on every message
+   * that mentions nobody, on single-player turns, and on assistant turns, whose
+   * "@Name" is plain text with no structure behind it.
+   */
+  mentions?: { userId: string; name?: string }[];
   tools?: ToolCallRecord[];
   /**
    * The turn's full reasoning text (the model's thinking blocks, concatenated
@@ -361,6 +371,65 @@ export interface ChatMessage {
    * a false `done`. Absent on turns that ran to completion.
    */
   stopped?: true;
+}
+
+/** The most @mentions one message may carry; the rest are dropped. */
+export const MENTIONS_MAX = 32;
+
+/** Longest `userId` a mention may carry. Comfortably past every id we mint
+ *  (a Firebase uid is 28 characters), short of letting one entry carry a
+ *  payload. Longer ones are truncated, not dropped: the id still has to match
+ *  a real member downstream to mean anything. */
+export const MENTION_USER_ID_MAX = 128;
+
+/** Longest display `name` a mention may carry — a generous full name, not a
+ *  document. Truncated rather than dropped, because the userId is the
+ *  load-bearing half and a garbled name must never cost the user the mention. */
+export const MENTION_NAME_MAX = 256;
+
+/** How many raw entries are inspected before the scan gives up. A junk array
+ *  is not worth walking in full: {@link MENTIONS_MAX} valid mentions can never
+ *  be more than this many entries in, and anything longer is not a send this
+ *  system produced. */
+export const MENTIONS_SCAN_MAX = 1000;
+
+/**
+ * Normalize an untrusted wire value into {@link ChatMessage.mentions}. Sibling
+ * of {@link normalizeTurnMode}: the single place every reader of a send body
+ * trusts the wire, so the send route, the cloud turn parser and the host's
+ * forwarding hop all agree on what a mention is.
+ *
+ * Anything but an array is nothing. An entry survives only as a plain object
+ * with a non-empty string `userId`; `name` rides along only when it is a
+ * string. Both are clipped to their length caps. The FIRST entry for a userId
+ * wins, so a repeated id cannot spend the budget. Invalid entries are dropped
+ * rather than failing the turn — a bad sidecar must never cost the user their
+ * message — the result is capped at {@link MENTIONS_MAX}, the scan itself
+ * stops after {@link MENTIONS_SCAN_MAX} entries, and an empty result is
+ * `undefined`, never `[]`.
+ */
+export function parseMentions(value: unknown): ChatMessage["mentions"] {
+  if (!Array.isArray(value)) return undefined;
+  const out: NonNullable<ChatMessage["mentions"]> = [];
+  const seen = new Set<string>();
+  const scanned = Math.min(value.length, MENTIONS_SCAN_MAX);
+  for (let i = 0; i < scanned; i += 1) {
+    if (out.length >= MENTIONS_MAX) break;
+    const entry = value[i];
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry))
+      continue;
+    const { userId, name } = entry as { userId?: unknown; name?: unknown };
+    if (typeof userId !== "string" || !userId) continue;
+    const id = userId.slice(0, MENTION_USER_ID_MAX);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(
+      typeof name === "string"
+        ? { userId: id, name: name.slice(0, MENTION_NAME_MAX) }
+        : { userId: id },
+    );
+  }
+  return out.length ? out : undefined;
 }
 
 export interface ConversationSummary {

@@ -4,7 +4,8 @@
  * a bad shape (CommandRegistry.dispatch turns the throw into `ok: false`).
  */
 
-import type { FeedAuthor } from "./vm-output";
+import { parseMentions } from "@houston/protocol";
+import type { FeedAuthor, FeedMention } from "./vm-output";
 
 /** Arguments for starting a turn — the `turns/send` command payload. */
 export interface TurnSendInput {
@@ -37,6 +38,13 @@ export interface TurnSendInput {
    * `StreamTurnOptions.author`). Omitted single-player / signed out.
    */
   author?: FeedAuthor;
+  /**
+   * The teammates this message @mentions, in a multiplayer deployment: chips
+   * the optimistic bubble so a shared conversation names them immediately (see
+   * `StreamTurnOptions.mentions`). The model only ever sees the plain `@Name`
+   * text inside `text`. Omitted when the message mentions nobody.
+   */
+  mentions?: FeedMention[];
 }
 
 /** The `turns/cancel` command payload. */
@@ -84,6 +92,14 @@ const author = (v: unknown): FeedAuthor | undefined => {
   };
 };
 
+/** Untrusted-envelope guard for the @mention sidecar. The protocol owns the ONE
+ *  definition of what a mention is (`parseMentions`: array only, entries need a
+ *  non-empty string `userId`, `name` kept only when a string, junk entries
+ *  dropped rather than failing the send, capped, empty -> undefined) — the send
+ *  route and the runtime read the wire through the same function, so a mention
+ *  that survives here survives there. */
+const mentions = (v: unknown): FeedMention[] | undefined => parseMentions(v);
+
 export function asSendInput(payload: unknown): TurnSendInput {
   const p = (payload ?? {}) as Record<string, unknown>;
   if (typeof p.conversationId !== "string" || typeof p.text !== "string")
@@ -97,6 +113,7 @@ export function asSendInput(payload: unknown): TurnSendInput {
     effort: str(p.effort),
     mode: mode(p.mode),
     author: author(p.author),
+    mentions: mentions(p.mentions),
   };
 }
 

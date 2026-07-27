@@ -21,6 +21,7 @@ import { useCanCreateAgents } from "./hooks/use-can-create-agents";
 import { useHoustonInit } from "./hooks/use-houston-init";
 import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync";
 import { useLocalBridgeAutoReconnect } from "./hooks/use-local-bridge-autoreconnect";
+import { useMentionNotifications } from "./hooks/use-mention-notifications";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
 import { useMoveResume } from "./hooks/use-move-resume";
 import { useNotificationNudges } from "./hooks/use-notification-nudges";
@@ -28,6 +29,7 @@ import { useOnboardingCompleted } from "./hooks/use-onboarding-completed";
 import { useOnboardingPending } from "./hooks/use-onboarding-pending";
 import { useOnboardingSegment } from "./hooks/use-onboarding-segment";
 import { useProviderCatalog } from "./hooks/use-provider-catalog";
+import { useReadCursorTracker } from "./hooks/use-read-cursors";
 import { SessionUnavailableError, useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
 import { analytics } from "./lib/analytics";
@@ -59,6 +61,11 @@ export default function App() {
   const authConfigured = isIdentityConfigured();
   useHoustonInit();
   useSessionEvents();
+  // HOU-945: ping on @mentions, and remember which missions have been read so
+  // the sidebar can show what is new for THIS person. Both ride the query cache
+  // passively (no observers, no fetches) — see their module docs.
+  useMentionNotifications();
+  useReadCursorTracker();
   useNotificationNudges();
   useAgentInvalidation();
   useAnalyticsSubscriber();

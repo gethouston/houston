@@ -9,6 +9,7 @@ import type {
   QueuedChatMessage,
   QueuedMessageLabels,
 } from "./queued-message-list";
+import type { MentionPerson, MessageMention } from "./types";
 
 export type InputStatus = "ready" | "streaming" | "submitted";
 
@@ -21,8 +22,14 @@ export interface ChatInputProps {
   attachments?: File[];
   /** Required if `attachments` is provided. */
   onAttachmentsChange?: (files: File[]) => void;
-  /** Called on submit. The current text + files are always passed for convenience. */
-  onSend: (text: string, files: File[]) => void | Promise<void>;
+  /** Called on submit. The current text + files are always passed for
+   *  convenience; `mentions` (HOU-944) are the pending @mentions whose "@Name"
+   *  text survived into the sent message, `[]` when there are none. */
+  onSend: (
+    text: string,
+    files: File[],
+    mentions: MessageMention[],
+  ) => void | Promise<void>;
   onStop?: () => void;
   status?: InputStatus;
   placeholder?: string;
@@ -59,4 +66,21 @@ export interface ChatInputProps {
   labels?: ChatComposerLabels;
   /** Prop-driven dictation affordance. Omit to hide the mic (web build). */
   dictation?: DictationControl;
+  /** Teammates the user can @mention (HOU-944), in the order they should be
+   *  offered. Empty or absent means the popover NEVER opens and "@" types
+   *  plainly, which is what single-player, a personal space, and a gateway
+   *  too old to serve the roster all look like. */
+  mentionPeople?: readonly MentionPerson[];
+  /** Avatar for a row in the mention list, so a teammate keeps their own
+   *  face/tone. Omit to show the name alone. */
+  renderMentionAvatar?: (person: MentionPerson) => ReactNode;
+  /** Localized labels for the mention list. English defaults live here; the
+   *  app passes `t()` results in (the library stays i18n-agnostic). */
+  mentionLabels?: { listAriaLabel?: string };
+  /** Opaque identity of the draft this composer is writing — the consumer's
+   *  session/conversation key. Composer TEXT is already parked per draft by
+   *  the app; the @mention picks recorded beside it are parked under the same
+   *  key, so switching conversations never sends one chat's picks with
+   *  another's words. Omit on a composer that never switches. */
+  draftKey?: string;
 }

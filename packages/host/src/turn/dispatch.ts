@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { parseMentions } from "@houston/protocol";
 import type { ConversationSummary } from "@houston/runtime-client";
 import type { Agent, Workspace } from "../domain/types";
+import { BodyTooLargeError } from "../routes/read-body";
 import {
   conversationKey,
   json,
@@ -28,6 +30,12 @@ export async function dispatchCloudrun(
   url: URL,
   req: IncomingMessage,
   res: ServerResponse,
+  /**
+   * The request body when the route already drained it (the turn path peeks it
+   * to stamp mission attribution). The stream is exhausted by then, so this is
+   * parsed in place of re-reading the request.
+   */
+  preReadBody?: Buffer,
 ): Promise<void> {
   const prefix = prefixFor(ws, agent);
 
@@ -101,7 +109,26 @@ export async function dispatchCloudrun(
     }
 
     if (method === "POST" && action === "messages") {
-      const body = await readJson(req);
+      // A body that isn't JSON is a malformed REQUEST, so it gets the same 400
+      // shape as the missing-`text` check below. Unguarded, the parse threw all
+      // the way out to the server's top-level catch, which turned a client
+      // mistake into a 500 "Houston broke" — the exact silent-mislabel the beta
+      // policy forbids. An over-cap body is a different failure: readJson's
+      // BodyTooLargeError already carries the 413 that handler maps (and closes
+      // the socket for), so it must keep propagating, not be dressed as a 400.
+      // Same distinction the /feedback route draws (server.ts).
+      let body: Record<string, unknown>;
+      try {
+        body = preReadBody
+          ? (JSON.parse(preReadBody.toString("utf8") || "{}") as Record<
+              string,
+              unknown
+            >)
+          : await readJson(req);
+      } catch (err) {
+        if (err instanceof BodyTooLargeError) throw err;
+        return json(res, 400, { error: "invalid JSON body" });
+      }
       if (!body.text || typeof body.text !== "string") {
         return json(res, 400, { error: "missing 'text'" });
       }
@@ -116,6 +143,10 @@ export async function dispatchCloudrun(
         // Presentation-only bubble text; forwarded to the runtime, which
         // persists it beside the user message. The model still runs on `text`.
         typeof body.displayText === "string" ? body.displayText : undefined,
+        // The @mention sidecar (HOU-944): structure only, the names are already
+        // plain text in `text`. Sanitized here with the same shared guard the
+        // runtime re-applies on receipt.
+        parseMentions(body.mentions),
       );
     }
   }

@@ -38,6 +38,18 @@ export interface FeedAuthor {
 }
 
 /**
+ * One @mention of a human inside a chat message: the protocol's
+ * `ChatMessage.mentions[]` entry. The model only ever saw the plain `@Name`
+ * text the user typed — this is the structure the composer resolved alongside
+ * it, so a surface can chip the name and a later notifications feature can scan
+ * a transcript for its own user id. User turns only.
+ */
+export interface FeedMention {
+  userId: string;
+  name?: string;
+}
+
+/**
  * What the seed/prepend folds consume: one folded history frame. Structurally
  * the `FeedFrame` `historyToFeed` produces — declared here (rather than
  * imported) so the fold and its consumer stay import-acyclic.
@@ -47,6 +59,7 @@ interface HistoryFrame {
   data: unknown;
   ts?: number;
   author?: FeedAuthor;
+  mentions?: FeedMention[];
 }
 
 /** A single reactive feed entry: a stable id plus the machinery's push payload. */
@@ -63,6 +76,15 @@ export interface FeedItemVM {
    * surface that does not render it simply ignores it.
    */
   author?: FeedAuthor;
+  /**
+   * The teammates this `user_message` @mentions (HOU-944). Carried verbatim
+   * from the history fold (`FeedFrame.mentions`) when a transcript is
+   * seeded/prepended, and from `StreamTurnOptions.mentions` on the optimistic
+   * send — so a shared conversation chips the same names live and on reload.
+   * Optional/additive: absent when the message mentioned nobody and on every
+   * non-user entry; a surface that does not render it simply ignores it.
+   */
+  mentions?: FeedMention[];
   /**
    * Epoch-ms timestamp of this entry. A seeded history frame carries its source
    * `ChatMessage.ts`; a LIVE push that lacks one is stamped `Date.now()` at push
@@ -270,15 +292,17 @@ export class ConversationVmOutput implements FeedOutput {
   ): void {
     const s = this.state(agentPath, sessionKey);
     // History frames carry their source `ChatMessage.ts` (absent for a pre-`ts`
-    // transcript) and, in multiplayer, its `author`; pass both through verbatim
-    // — a seeded frame is historical, so it is never stamped with the wall clock
-    // the way a live push is, and its author is the persisted one.
+    // transcript) and, in multiplayer, its `author` + `mentions`; pass all three
+    // through verbatim — a seeded frame is historical, so it is never stamped
+    // with the wall clock the way a live push is, and its author and mentions
+    // are the persisted ones.
     s.feed = frames.map((f) => ({
       id: `f${s.seq++}`,
       feed_type: f.feed_type,
       data: f.data,
       ...(f.ts !== undefined ? { ts: f.ts } : {}),
       ...(f.author !== undefined ? { author: f.author } : {}),
+      ...(f.mentions !== undefined ? { mentions: f.mentions } : {}),
     }));
     s.streaming.clear();
     // A windowed server read stamps its window; a cache paint / full-history
@@ -309,6 +333,7 @@ export class ConversationVmOutput implements FeedOutput {
         data: f.data,
         ...(f.ts !== undefined ? { ts: f.ts } : {}),
         ...(f.author !== undefined ? { author: f.author } : {}),
+        ...(f.mentions !== undefined ? { mentions: f.mentions } : {}),
       })),
       ...s.feed,
     ];
@@ -318,14 +343,16 @@ export class ConversationVmOutput implements FeedOutput {
 
   pushFeedItem(agentPath: string, sessionKey: string, item: unknown): void {
     const s = this.state(agentPath, sessionKey);
-    const { feed_type, data, ts, pending, fails_pending, author } = item as {
-      feed_type: string;
-      data: unknown;
-      ts?: number;
-      pending?: boolean;
-      fails_pending?: boolean;
-      author?: FeedAuthor;
-    };
+    const { feed_type, data, ts, pending, fails_pending, author, mentions } =
+      item as {
+        feed_type: string;
+        data: unknown;
+        ts?: number;
+        pending?: boolean;
+        fails_pending?: boolean;
+        author?: FeedAuthor;
+        mentions?: FeedMention[];
+      };
     // An optimistic (pending) push is NOT server evidence, so it never confirms a
     // sibling optimistic bubble — two queued prompts both keep their clock. ANY
     // other push resolves EVERY currently pending entry at once: a
@@ -351,8 +378,9 @@ export class ConversationVmOutput implements FeedOutput {
     } else {
       // A fresh entry: carry a supplied `ts`, else stamp the wall clock now; an
       // optimistic push carries `pending: true` until server evidence clears it,
-      // and (multiplayer) the sender's `author` so the bubble is attributed from
-      // the instant it appears — exactly as the reseeded history frame will be.
+      // and (multiplayer) the sender's `author` plus the teammates the message
+      // `mentions`, so the bubble is attributed and chipped from the instant it
+      // appears — exactly as the reseeded history frame will be.
       s.feed.push({
         id: `f${s.seq++}`,
         feed_type,
@@ -360,6 +388,7 @@ export class ConversationVmOutput implements FeedOutput {
         ts: ts ?? Date.now(),
         ...(pending === true ? { pending: true } : {}),
         ...(author !== undefined ? { author } : {}),
+        ...(mentions !== undefined ? { mentions } : {}),
       });
     }
     this.publish(agentPath, sessionKey, s);

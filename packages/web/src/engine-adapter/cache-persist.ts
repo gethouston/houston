@@ -32,8 +32,10 @@ export function cachePersistOutput(): FeedOutput {
           feed_type: f.feed_type,
           data: f.data,
           ...(f.ts !== undefined ? { ts: f.ts } : {}),
-          // Multiplayer attribution survives a cold reopen (HOU-943).
+          // Multiplayer attribution survives a cold reopen (HOU-943), and so do
+          // the message's @mention chips (HOU-944).
           ...(f.author !== undefined ? { author: f.author } : {}),
+          ...(f.mentions !== undefined ? { mentions: f.mentions } : {}),
         })),
       );
     },

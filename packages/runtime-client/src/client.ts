@@ -71,6 +71,15 @@ export interface SendOptions {
    * the model always received `text`. Omitted when the bubble and prompt match.
    */
   displayText?: string;
+  /**
+   * The teammates this message @mentions (HOU-944): structure only — the model
+   * runs on the plain "@Name" text inside `text` either way. Persisted on the
+   * user message and echoed on the `user` frame, so a reloaded transcript chips
+   * the same names the sent bubble did. Omitted when the message mentions
+   * nobody; never an empty list. (Kept inline — this package stays zero-dep,
+   * like `mode` and `effort`.)
+   */
+  mentions?: { userId: string; name?: string }[];
   signal?: AbortSignal;
 }
 
@@ -368,6 +377,7 @@ export class HoustonEngineClient {
         effort: opts.effort,
         mode: opts.mode,
         displayText: opts.displayText,
+        mentions: opts.mentions,
       }),
       signal: opts.signal,
     });

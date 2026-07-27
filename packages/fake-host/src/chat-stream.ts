@@ -10,6 +10,7 @@
  *   just like the real runtime; the nonce is echoed on the `user` frame.
  */
 
+import type { ChatMessage } from "@houston/protocol";
 import {
   parseResumeCursor,
   type ResumableStreamSource,
@@ -58,7 +59,8 @@ export function openChatStream(
 /**
  * `POST /agents/:id/conversations/:cid/messages` — fire the turn (202). The
  * turn produces into the replay log whether or not a stream is attached, just
- * like the real runtime. The nonce is echoed on the `user` frame.
+ * like the real runtime. The nonce is echoed on the `user` frame, and so are
+ * the send's `mentions` (already guarded by the route).
  */
 export function sendMessage(
   agentId: string,
@@ -66,7 +68,8 @@ export function sendMessage(
   text: string,
   nonce: string | undefined,
   displayText?: string,
+  mentions?: ChatMessage["mentions"],
 ): Response {
-  streamReplySafe(agentId, cid, text, nonce, displayText);
+  streamReplySafe(agentId, cid, text, nonce, displayText, mentions);
   return noContent(202);
 }

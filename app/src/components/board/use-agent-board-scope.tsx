@@ -3,11 +3,14 @@ import { useMemo } from "react";
 import { useSession } from "../../hooks/use-session";
 import { missionMatchesScope } from "../../lib/agent-person-scope";
 import { attachBoardPeople } from "../../lib/mission-people";
+import { attachMissionUnread } from "../../lib/unread-model";
 import { useAgentPersonScope } from "../agent-person-scope-context";
 import { useAgentBoardPeople } from "./use-agent-board-people";
+import { useAgentBoardUnread } from "./use-board-unread";
 
 /**
- * Narrow a single agent's board to the active PERSON SCOPE, split out of
+ * Join the per-mission truth the activity list does not carry onto a single
+ * agent's cards, then narrow them to the active PERSON SCOPE. Split out of
  * {@link useAgentBoardSource} so the source stays a thin composition. The scope
  * itself is chosen in the agent header ({@link AgentPersonScopeMenu}) and shared
  * via {@link useAgentPersonScope}; this only applies it to the cards:
@@ -18,7 +21,9 @@ import { useAgentBoardPeople } from "./use-agent-board-people";
  *   is an identity pass-through off multiplayer);
  * - filters BEFORE text search, exactly as the cross-agent board;
  * - defaults to "me", which keeps unattributed / legacy missions visible (see
- *   {@link missionMatchesScope}).
+ *   {@link missionMatchesScope});
+ * - joins the unread mark (HOU-945) on AFTER the filter, so a cursor moving
+ *   re-maps only the cards that survived it, and never the whole activity list.
  */
 export function useAgentBoardScope({
   path,
@@ -41,9 +46,15 @@ export function useAgentBoardScope({
     () => attachBoardPeople(items, peopleById),
     [items, peopleById],
   );
-  return useMemo(
+  const scopedItems = useMemo(
     () =>
       peopledItems.filter((i) => missionMatchesScope(i.people, scope, selfId)),
     [peopledItems, scope, selfId],
+  );
+
+  const unreadIds = useAgentBoardUnread(path);
+  return useMemo(
+    () => attachMissionUnread(scopedItems, unreadIds),
+    [scopedItems, unreadIds],
   );
 }

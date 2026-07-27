@@ -4,6 +4,7 @@
  * and the mobile sync responder so the flow stays identical.
  */
 
+import type { MessageMention } from "@houston-ai/engine-client";
 import { isAgentProvisioning } from "../stores/agent-provisioning";
 import { analytics } from "./analytics";
 import { createMissionWhileWarming } from "./create-mission-warming";
@@ -73,6 +74,9 @@ export interface CreateMissionOptions {
   effortOverride?: string;
   /** Per-turn mode pin (composer "Mode" selector) forwarded to tauriChat.send. */
   modeOverride?: "execute" | "plan" | "auto";
+  /** Teammates the first message @mentions (HOU-944), forwarded to
+   *  tauriChat.send as a sidecar beside the prompt. */
+  mentions?: MessageMention[];
   /**
    * Explicit activity title. Overrides the default `autoTitleFromText(text)`.
    * Used by action invocations where `text` is a structured marker that
@@ -134,6 +138,7 @@ export async function createMission(
       modelOverride: opts.modelOverride,
       effortOverride: opts.effortOverride,
       modeOverride: opts.modeOverride,
+      mentions: opts.mentions,
       // `buildPrompt` swaps in a prompt the user should not see (a hidden setup
       // directive, or attachment paths appended to their words) — so the bubble
       // renders the clean `text` instead, live and on every history reload.

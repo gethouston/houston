@@ -25,6 +25,7 @@ export function useBoardLabels(): {
       selectTooltip: t("board:cardActions.select"),
       people: t("board:people.label"),
       peopleExpand: t("board:people.expand"),
+      unread: t("board:unread.label"),
     },
     composerLabels: {
       fileAlreadyInChat: t("chat:composer.fileAlreadyInChat"),

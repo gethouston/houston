@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 37
+version: 39
 
 components:
   - id: agent-avatar
@@ -56,12 +56,25 @@ components:
     title: Agent list item
     purpose: A single agent row/card in the agent list or sidebar.
     anatomy: [avatar, name, status-chip, unread-or-count-slot, trailing-actions]
-    states: [idle, running, needs-you, selected, focused]
+    states: [idle, running, needs-you, unread, selected, focused]
     variants: [sidebar-rail-collapsed, list-row, grid-card]
     behavior: >-
       Selection and run status come from the view-model; the row reflects the
-      agent's aggregate mission state, not a single conversation.
-    a11y: button/listitem role, name as accessible label, aria-current when selected.
+      agent's aggregate mission state, not a single conversation. The unread
+      state fills the unread-or-count-slot with a small filled action-token dot
+      whenever any of that agent's missions has moved, or somebody typed the
+      reader's name in one, since the reader last opened it. It renders
+      ALONGSIDE the needs-you chip and before it, never instead of it: "there is
+      something new here" and "act now" are different claims and must not
+      collapse into one mark. It is a dot, never a number -- the count lives in
+      the label. Read state is per person and per device, and the signal is
+      multiplayer-only, so single player, the desktop app and any signed-out
+      surface never paint it and reserve no space for it.
+    a11y: >-
+      button/listitem role, name as accessible label, aria-current when
+      selected; the unread dot is an image-role element carrying a text label
+      that states the count ("3 unread updates"), so the signal is never
+      colour/shape alone.
     since: 1
 
   - id: conversation-feed
@@ -205,6 +218,38 @@ components:
       card is the only intended action, e.g. onboarding's one-button offer.
     a11y: labeled textarea; send/stop button state-labeled; drop zone announced.
     since: 1
+
+  - id: mention-autocomplete
+    title: Mention autocomplete
+    purpose: The teammate picker the composer raises when the writer types "@" in a shared chat.
+    anatomy: [popover-surface, person-row, person-face, person-name]
+    states: [closed, open-filtering, open-empty-closes, keyboard-highlighted]
+    variants: [pointer-select, keyboard-select]
+    behavior: >-
+      Opens on an "@" that starts a word and filters the space's co-member
+      directory as the writer types (case- and accent-insensitive, self
+      excluded). Accepting inserts the plain text "@Name" and records the
+      person on the send's structured mention list, so the model reads prose
+      while the wire carries identities. Arrow keys move the highlight, Enter
+      or Tab accepts, Escape closes. With no roster (single player, personal
+      space, or a host without the directory) it never opens and "@" is just
+      a character.
+    a11y: listbox/option roles; the highlighted option is announced; the textarea keeps focus throughout.
+    since: 38
+
+  - id: mention-chip
+    title: Mention chip
+    purpose: An "@Name" inside a message, rendered as a person pill instead of raw text.
+    anatomy: [pill, at-sign, person-name]
+    states: [default, self-mention]
+    variants: [in-user-bubble, in-agent-prose]
+    behavior: >-
+      A human message chips the mentions stored on the message itself; agent
+      prose is matched against the known people of the space, since an agent
+      writes names as plain text. A mention of the reader is emphasized so
+      being asked for something stands out. Chips never render inside code.
+    a11y: Decorative styling only -- the chip keeps the literal "@Name" text in the reading order.
+    since: 38
 
   - id: turn-status
     title: Turn status line
@@ -469,6 +514,7 @@ components:
         select-checkbox,
         people-face-stack,
         people-overflow-chip,
+        unread-dot,
       ]
     states:
       [
@@ -480,6 +526,7 @@ components:
         focused,
         dragging,
         attributed,
+        unread,
       ]
     variants: [board-card, archived-list-row]
     behavior: >-
@@ -493,24 +540,92 @@ components:
       expands to the full roster, and the card body reserves a right gutter sized
       to the stack so no text ever runs underneath it. Server-stamped attribution
       only (multiplayer); an unattributed card renders exactly as before.
+      The unread dot is the per-mission half of the shell's unread signal: a
+      small filled action-token circle trailing the card's agent name, shown only
+      when this mission has moved (or someone typed the reader's name) since the
+      reader last opened it, and never on the card currently open in the detail
+      panel. It is a mark, never a count, so it can never be confused with the
+      needs-you status. Read state is per person, so single player and any
+      signed-out surface never paint it and reserve no space for it.
     a11y: >-
       article/button role; title as label; checkbox labeled; status not
       color-only; the face stack is a labeled group, each face names its person
       (tooltip + title) and the "+N" chip is a labeled control, so no contributor
-      is reachable by hover alone.
+      is reachable by hover alone; the unread dot is an image-role element with a
+      text label (tooltip + title), so the signal is never colour/shape alone.
     since: 1
 
   - id: mission-board
     title: Mission board
     purpose: The columned board that groups mission cards by status.
-    anatomy: [column, column-header, card-list, empty-column-state, bulk-action-bar]
+    anatomy:
+      [
+        column,
+        column-header,
+        card-list,
+        empty-column-state,
+        bulk-action-bar,
+        mentions-pill,
+      ]
     states: [populated, empty, loading, dragging]
     variants: [multi-column-board, single-column-list]
     behavior: >-
       Columns map to mission statuses; cards move between columns on approve/drag.
       Bulk-action bar appears when cards are multi-selected.
-    a11y: list/grid semantics per column; column headers labeled; DnD has non-pointer fallback.
+      The mentions pill is the toolbar control that swaps the board for the
+      mentions-inbox mode: an at-sign pill sitting beside the archived pill,
+      highlighted while that mode is showing, collapsing to its icon alone when
+      a chat panel narrows the board, and carrying the number of outstanding
+      mentions -- a mention of the reader newer than their read cursor, not
+      ambient mission movement -- clamped to "99+". Multiplayer only: single
+      player gets no mentions chrome at all.
+    a11y: >-
+      list/grid semantics per column; column headers labeled; DnD has
+      non-pointer fallback; the mentions pill names its mode and repeats its
+      outstanding count in its accessible name, so the number is never
+      visual-only.
     since: 1
+
+  - id: mentions-inbox
+    title: Mentions inbox
+    purpose: >-
+      Mission Control's multiplayer-only mode listing every mission where a
+      teammate typed the reader's name.
+    anatomy:
+      [
+        row-list,
+        mention-row,
+        unread-dot,
+        mentioner-face,
+        mission-title,
+        mentioner-line,
+        relative-time,
+        empty-state,
+      ]
+    states: [loading, populated, empty, unread-row]
+    variants: [with-mentioner-face, unattributed-mention]
+    behavior: >-
+      A plain scrollable list, deliberately NOT a board: there are no columns to
+      move a mention between and no status to read off one, only who pinged the
+      reader, where, and how long ago. One row per mission that mentions the
+      reader, newest mention first, with a deterministic tiebreak so the list
+      never reshuffles under a click. A row carries the mentioner's face, the
+      line "<Name> mentioned you in <Agent>", the mission title and the age of
+      the mention; opening it navigates to that mission's chat exactly as a
+      completion notification does. A mention whose author is unknown drops the
+      face for an at-sign glyph and says only that the reader was mentioned. A
+      row with something new since the reader last opened that mission carries
+      the same quiet action-token dot the sidebar and the mission card use, on a
+      rail that is always reserved so read and unread rows stay aligned. With
+      nobody mentioning the reader the list shows its empty state; with nobody
+      signed in there is no "me" to mention, and the mode is never routed to.
+    a11y: >-
+      list/listitem semantics; each row is a button whose accessible name is its
+      visible text (mission title, the "mentioned you in" line, the relative
+      time); the mentioner's name is that text, never the face alone, which is
+      decorative; the unread dot is presentational, since a row's presence in
+      the inbox is already the claim on attention.
+    since: 39
 
   - id: mission-status-chip
     title: Mission status chip

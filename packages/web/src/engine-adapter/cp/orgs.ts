@@ -3,6 +3,7 @@ import type {
   AuditEntry,
   ComputeUsage,
   OrgInfo,
+  OrgPerson,
   OrgRole,
   UsageRow,
   UserProfilesResult,
@@ -36,6 +37,27 @@ export async function getOrgProfiles(
     if (err instanceof HoustonEngineError && err.status === 404) {
       return { profiles: {} };
     }
+    throw err;
+  }
+}
+
+/**
+ * The sanitized co-member directory of the active space (the personal space
+ * resolves only the caller), named-first: no emails, no roles. It backs the
+ * composer's @mention autocomplete and the renderer's chips. Degrades to an
+ * empty list on a gateway that predates the route (404) — `@` then just types
+ * plainly and no popover ever opens — so a pre-feature host stays
+ * byte-identical. Mirrors `getOrgProfiles`'s 404 swallow; every other error
+ * throws.
+ */
+export async function getOrgPeople(
+  cfg: ControlPlaneConfig,
+): Promise<OrgPerson[]> {
+  try {
+    const res = await cpFetch(cfg, "/v1/org/people");
+    return ((await res.json()) as { people?: OrgPerson[] }).people ?? [];
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404) return [];
     throw err;
   }
 }

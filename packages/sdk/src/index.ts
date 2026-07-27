@@ -154,6 +154,7 @@ export {
   type FeedAuthor,
   type FeedFrame,
   type FeedItemVM,
+  type FeedMention,
   type FeedOutput,
   type HistoryWindowVM,
   historyToFeed,

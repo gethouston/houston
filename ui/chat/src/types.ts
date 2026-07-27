@@ -13,6 +13,33 @@ export interface MessageAuthor {
 }
 
 /**
+ * One @mention of a human inside a chat message (HOU-944). Mirrors the
+ * protocol `ChatMessage.mentions[]` entry. Recorded on USER turns only — an
+ * agent addresses someone in plain prose, never as structured data. `name` is
+ * the display name as it appeared after the "@" when the message was sent, so
+ * the renderer can still find the run after the person was renamed.
+ */
+export interface MessageMention {
+  userId: string;
+  name?: string;
+}
+
+/**
+ * A person the composer can @mention and the renderer can chip. Supplied by
+ * the consumer (the app resolves the space roster); `ui/` never fetches.
+ */
+export interface MentionPerson {
+  userId: string;
+  /**
+   * Display name, as it appears after the "@". Required: a person with no
+   * known name is never offered, because an "@a1b2c3d4" chip is nonsense to a
+   * non-technical reader.
+   */
+  name: string;
+  imageUrl?: string;
+}
+
+/**
  * Optional stable identity for a feed item, carried from the conversation
  * view-model's feed entries. When present it keys the rendered message, so
  * PREPENDING older items (scroll-up lazy-load, HOU-819) never re-keys the
@@ -39,6 +66,11 @@ type FeedItemVariant =
        * single-player mode — the bubble renders exactly as before.
        */
       author?: MessageAuthor;
+      /**
+       * The teammates this message @mentioned (HOU-944). Drives the chips in
+       * the sent bubble; absent when the message mentioned nobody.
+       */
+      mentions?: MessageMention[];
     }
   | { feed_type: "tool_runtime_error"; data: ToolRuntimeErrorEntry }
   | { feed_type: "provider_error"; data: ProviderError }

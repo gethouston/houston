@@ -4,6 +4,7 @@ export * from "./anonymize-ai";
 export * from "./config";
 export * from "./contributors";
 export * from "./layout";
+export * from "./mentions";
 export * from "./portable";
 export * from "./portable-edit";
 export * from "./preferences";

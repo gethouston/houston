@@ -25,6 +25,8 @@
     "needsYouCount_other": "{{count}} issues need you",
     "runningCount_one": "{{count}} issue running",
     "runningCount_other": "{{count}} issues running",
+    "unreadCount_one": "{{count}} unread update",
+    "unreadCount_other": "{{count}} unread updates",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
     "createWorkspace": "Create workspace",

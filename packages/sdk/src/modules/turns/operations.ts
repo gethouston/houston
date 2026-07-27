@@ -93,6 +93,8 @@ export function createTurnOperations(
         pin,
         // Multiplayer: the caller's identity stamps the optimistic bubble.
         author: input.author,
+        // Multiplayer: the teammates the message @mentions chip that bubble.
+        mentions: input.mentions,
       },
     );
   };

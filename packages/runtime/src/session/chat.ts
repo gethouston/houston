@@ -1,6 +1,7 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 import type { TurnMode } from "@houston/protocol";
+import type { ChatMessage } from "@houston/runtime-client";
 import { activeProvider, resolveModel } from "../ai/providers";
 import { syncServedCredentialSafe } from "../auth/serve";
 import { cleanupClaudeConversation } from "../backends/claude/cleanup";
@@ -76,6 +77,7 @@ export async function runTurn(
   acting?: ActingContext,
   context?: ProvidedContext,
   displayText?: string,
+  mentions?: ChatMessage["mentions"],
 ): Promise<void> {
   // Mint the turn's wire identity up front so even a turn that fails before
   // executing (the guards below) terminates under one id.
@@ -105,7 +107,7 @@ export async function runTurn(
     // an empty assistant message carrying the typed reason), so an unattended
     // reader (a routine's reconcile) errors its run with the real message
     // instead of finding no reply and timing out vague.
-    appendUserMessage(id, text, { turnId, displayText });
+    appendUserMessage(id, text, { turnId, displayText, mentions });
     // Publish the nonce-stamped `user` echo BEFORE the error, exactly like a
     // normal turn (recordUserTurn): the client sink adopts its turnId from
     // this echo, and a stamped `error` frame arriving with no adopted id
@@ -113,7 +115,7 @@ export async function runTurn(
     // no error and no reconnect card (the disconnected-local-model repro).
     publish(id, {
       type: "user",
-      data: { content: text, ts: Date.now(), nonce },
+      data: { content: text, ts: Date.now(), nonce, mentions },
       turnId,
     });
     // A NOT-CONNECTED failure is typed `unauthenticated`, not `unknown`: the
@@ -173,6 +175,7 @@ export async function runTurn(
       nonce,
       acting,
       displayText,
+      mentions,
     );
     return withWorkdirLock(config.workspaceDir, () =>
       execTurn(conv, id, turnId, text, recorded, pin, acting),

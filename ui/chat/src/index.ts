@@ -306,6 +306,17 @@ export {
   type InteractionModalProps,
   InteractionModalTitle,
 } from "./interaction-modal";
+// === @mentions (HOU-944) ===
+// A teammate named in a chat message. The composer offers `mentionPeople` and
+// ships the structured `mentions[]` sidecar; the renderer turns each surviving
+// "@Name" run into a chip. All props-only and i18n-agnostic.
+//
+// The only surface a consumer needs is the two data shapes, `MentionPerson`
+// and `MessageMention` (exported with the rest of the types below) plus the
+// `ChatPanel` props that take them. The matcher, the composer state, the mask
+// and the chip are INTERNAL: they are one feature's moving parts, and the
+// tests reach them by module path rather than through the package door.
+//
 // Clean, human-readable preview of a persisted user-message body: decodes the
 // Skill / attachment markers so cards and lists never show the raw marker.
 export { messagePreviewText } from "./message-preview";
@@ -328,7 +339,9 @@ export type { TurnEndSummary } from "./turn-tools";
 export type {
   AuthFailureCause,
   FeedItem,
+  MentionPerson,
   MessageAuthor,
+  MessageMention,
   ModelUnavailableReason,
   ProviderError,
   QuotaScope,

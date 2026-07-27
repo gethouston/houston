@@ -9,6 +9,7 @@
 import type {
   FeedItem,
   MessageAuthor,
+  MessageMention,
   ProviderError,
   ToolRuntimeErrorEntry,
 } from "./types";
@@ -63,6 +64,12 @@ export interface ChatMessage {
    * authors — see `distinctAuthorCount`.
    */
   author?: MessageAuthor;
+  /**
+   * Multiplayer only (HOU-944): the teammates this USER message @mentioned.
+   * The renderer chips each "@Name" run it still finds in `content`; absent
+   * when the message mentioned nobody.
+   */
+  mentions?: MessageMention[];
   /**
    * Set on `from: "system"` messages that mark a context-compaction boundary.
    * The renderer shows a subtle divider instead of plain system text.
@@ -157,6 +164,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
           fileChanges: [],
           source,
           author: item.author,
+          mentions: item.mentions,
         });
         break;
       }

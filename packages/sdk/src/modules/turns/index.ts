@@ -192,6 +192,7 @@ export {
   DEFAULT_CONVERSATION_CACHE_MAX,
   type FeedAuthor,
   type FeedItemVM,
+  type FeedMention,
   type HistoryWindowVM,
   type QueuedMessageVM,
 } from "./vm-output";

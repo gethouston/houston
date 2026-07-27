@@ -93,6 +93,7 @@ export function recordUserTurn(
   nonce?: string,
   acting?: ActingContext,
   displayText?: string,
+  mentions?: ChatMessage["mentions"],
 ): RecordedUserTurn {
   // Stamp the executing turn's id up front so a cancel/stop settles this turn.
   conv.turnId = turnId;
@@ -113,10 +114,13 @@ export function recordUserTurn(
 
   // `text` is what the model receives; `displayText` (when given) is only what
   // the bubble renders on a history reload — the two are stored side by side.
-  appendUserMessage(id, text, { author, turnId, displayText });
+  // `mentions` is the @mention sidecar (HOU-944): the model already sees the
+  // names as plain text inside `text`, so this only travels so a reader can map
+  // "@Name" back to a person. Persisted AND published, exactly like `author`.
+  appendUserMessage(id, text, { author, turnId, displayText, mentions });
   publish(id, {
     type: "user",
-    data: { content: text, ts: Date.now(), nonce, author },
+    data: { content: text, ts: Date.now(), nonce, author, mentions },
     turnId,
   });
   return { author, priorAuthors };

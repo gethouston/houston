@@ -19,6 +19,14 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (!this.ctx.cp) return { profiles: {} };
       return controlPlane.getOrgProfiles(this.ctx.cp, ids);
     }
+    // The active space's co-member directory, backing the composer's @mention
+    // autocomplete (HOU-944). Off-cloud (`this.cp === null`) there is nobody to
+    // mention, so this degrades to an empty list — `@` types plainly and no
+    // popover ever opens — rather than throwing, exactly like `getOrgProfiles`.
+    async getOrgPeople(): Promise<controlPlane.OrgPerson[]> {
+      if (!this.ctx.cp) return [];
+      return controlPlane.getOrgPeople(this.ctx.cp);
+    }
     async addOrgMember(
       email: string,
       role: controlPlane.OrgRole,

@@ -4,6 +4,7 @@ import {
   type CustomEndpoint,
   type HoustonEvent,
   parseClaudeOAuthEnvelope,
+  parseMentions,
 } from "@houston/protocol";
 import {
   ACTING_AS_HEADER,
@@ -21,7 +22,7 @@ import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
 import type { Vfs } from "../vfs";
-import { stampTurnContributor } from "./activity-attribution";
+import { stampTurnAttribution } from "./activity-attribution";
 import {
   type AgentRouteDeps,
   authorizeAgent,
@@ -40,6 +41,7 @@ import { handlePortableExport } from "./portable";
 import { handlePortableAnonymize } from "./portable-anonymize";
 import { handlePortablePreview } from "./portable-preview";
 import { handlePortableStore } from "./portable-store";
+import { MAX_JSON_BYTES, readBody } from "./read-body";
 import { handleRoutineRuns } from "./routine-runs";
 import { handleSkills } from "./skills";
 import { handleSkillsRemote } from "./skills-remote";
@@ -915,26 +917,63 @@ export async function handleAgents(
       return true;
     }
     // Teams attribution: a user turn (POST …/conversations/:cid/messages) marks
-    // the acting human as a contributor on the mission it drives. Best-effort
-    // metadata that never blocks the turn (see activity-attribution.ts); runs
-    // only when a gateway vouched for the actor (actingAuthor non-null).
+    // the acting human as a contributor on the mission it drives, and records
+    // the teammates that message @mentioned (HOU-945). Best-effort metadata
+    // that never blocks the turn (see activity-attribution.ts); runs only when
+    // a gateway vouched for the actor (actingAuthor non-null) — off the gateway
+    // nothing here runs, not even the body read, so desktop/self-host behavior
+    // and activity.json are byte-identical.
+    let turnBody: Buffer | undefined;
     if (actingAuthor && deps.vfs) {
       const turnMatch =
         method === "POST"
           ? rest.match(/^conversations\/([^/]+)\/messages$/)
           : null;
       if (turnMatch?.[1]) {
-        await stampTurnContributor(
+        // The mentions ride the turn body, which the channel reads next — drain
+        // it ONCE here and hand the buffer down on the ctx (the stream is
+        // exhausted afterwards, so the channel must not re-read it).
+        turnBody = await readBody(req, MAX_JSON_BYTES);
+        let mentionedIds: string[] = [];
+        try {
+          const parsed = JSON.parse(turnBody.toString("utf8") || "{}") as {
+            mentions?: unknown;
+          };
+          // The same shared guard the runtime and the cloud turn parser apply.
+          mentionedIds = (parseMentions(parsed.mentions) ?? []).map(
+            (m) => m.userId,
+          );
+        } catch {
+          // An unparseable body carries no mentions to stamp, and deciding what
+          // to tell the client is not this seam's business — the channel this
+          // request is headed for answers it, and the two channels answer
+          // differently: TurnChannel (cloudrun) parses the buffer below and
+          // returns a clean 400 {error:"invalid JSON body"} (turn/dispatch.ts),
+          // while ProxyChannel forwards the raw bytes to the agent's pi
+          // runtime, whose own body parse is unguarded — that path answers the
+          // runtime's 500 {error:"internal error"}, relayed verbatim. Swallow
+          // here only because the request keeps travelling; it never ends on a
+          // silent success.
+        }
+        await stampTurnAttribution(
           deps.vfs,
           paths.agentRoot(ctx.workspace, ctx.agent),
           ctx.agent.id,
           decodeURIComponent(turnMatch[1]),
           actingAuthor,
+          mentionedIds,
           emit,
         );
       }
     }
-    await channel.dispatch(ctx, method, rest, url, req, res);
+    await channel.dispatch(
+      turnBody ? { ...ctx, body: turnBody } : ctx,
+      method,
+      rest,
+      url,
+      req,
+      res,
+    );
     return true;
   }
 

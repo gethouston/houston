@@ -1,4 +1,9 @@
-import { normalizeTurnMode, type TurnMode } from "@houston/protocol";
+import {
+  type ChatMessage,
+  normalizeTurnMode,
+  parseMentions,
+  type TurnMode,
+} from "@houston/protocol";
 import type { ServedCredential } from "../auth/auth-file";
 
 /**
@@ -34,6 +39,13 @@ export interface TurnRequest {
    * history reload renders `displayText ?? content`. Absent when they match.
    */
   displayText?: string;
+  /**
+   * The teammates the message @mentions (HOU-944). Structure only: the model
+   * runs on `text`, where the names already appear as plain "@Name". Persisted
+   * beside the user message and echoed on the `user` frame. Absent when the
+   * message mentions nobody.
+   */
+  mentions?: ChatMessage["mentions"];
 }
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -91,5 +103,8 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     // anything else normalizes to "execute".
     mode: normalizeTurnMode(b.mode),
     displayText: typeof b.displayText === "string" ? b.displayText : undefined,
+    // Same "never trust the wire" posture: junk entries are dropped and an
+    // empty list becomes nothing, so a bad sidecar never costs the user a turn.
+    mentions: parseMentions(b.mentions),
   };
 }

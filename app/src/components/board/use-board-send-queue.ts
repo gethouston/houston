@@ -1,4 +1,5 @@
 import type { AIBoardProps } from "@houston-ai/board";
+import type { MessageMention } from "@houston-ai/chat";
 import { useCallback, useMemo } from "react";
 import { useSessionMessageQueue } from "../../hooks/use-session-message-queue";
 import type { SendOverrides } from "./board-source";
@@ -45,9 +46,18 @@ export function useBoardSendQueue({
     sendNow: sendSelectedNow,
   });
 
+  // The composer's per-send @mentions (HOU-944) merge into the same overrides
+  // bag as the provider/model pick, so every `sendMessageNow` gets them from
+  // one argument. `undefined` (the message named nobody) is dropped rather than
+  // sent as an empty list.
   const handleSendMessage = useCallback(
-    async (sessionKey: string, text: string, files: File[]) => {
-      await sendMessageNow(sessionKey, text, files, overrides);
+    async (
+      sessionKey: string,
+      text: string,
+      files: File[],
+      mentions?: MessageMention[],
+    ) => {
+      await sendMessageNow(sessionKey, text, files, { ...overrides, mentions });
     },
     [sendMessageNow, overrides],
   );

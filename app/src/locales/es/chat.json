@@ -30,6 +30,9 @@
       "noMic": "No se encontró ningún micrófono."
     }
   },
+  "mentions": {
+    "listAriaLabel": "Mencionar a un compañero"
+  },
   "attribution": {
     "you": "Tú"
   },

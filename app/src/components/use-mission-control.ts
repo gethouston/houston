@@ -1,5 +1,5 @@
 import type { KanbanItem } from "@houston-ai/board";
-import type { FeedItem } from "@houston-ai/chat";
+import type { FeedItem, MessageMention } from "@houston-ai/chat";
 import { messagePreviewText } from "@houston-ai/chat";
 import { useQueryClient } from "@tanstack/react-query";
 import { createElement, useCallback, useMemo, useRef, useState } from "react";
@@ -31,8 +31,10 @@ import {
 } from "../lib/tauri";
 import { readAgentTurnMode } from "../lib/turn-mode";
 import type { Agent } from "../lib/types";
+import { attachMissionUnread } from "../lib/unread-model";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useUIStore } from "../stores/ui";
+import { useBoardUnread } from "./board/use-board-unread";
 import { resolveActivityOverride } from "./mission-control-send";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
 
@@ -82,7 +84,7 @@ export function useMissionControl(agents: Agent[]) {
     return m;
   }, [agents]);
 
-  const items: KanbanItem[] = useMemo(() => {
+  const builtItems: KanbanItem[] = useMemo(() => {
     if (!convos) return [];
     const map: Record<string, string> = {};
     const sessionMap: Record<
@@ -142,6 +144,17 @@ export function useMissionControl(agents: Agent[]) {
     sessionMapRef.current = sessionMap;
     return result;
   }, [convos, agentColorMap, agentMap, getAgentDef, multiplayer, profiles, t]);
+
+  // Per-mission unread marks (HOU-945), joined on as a LAST pass rather than
+  // computed inside the card build: a read cursor moves on every mission open,
+  // and folding it into the build above would rebuild every card (and the
+  // path/session maps) each time. Identity pass-through when nothing is unread,
+  // so single player keeps the exact same array reference.
+  const unreadIds = useBoardUnread(convos);
+  const items = useMemo(
+    () => attachMissionUnread(builtItems, unreadIds),
+    [builtItems, unreadIds],
+  );
 
   // The open conversation's reactive feed, straight from the SDK conversation
   // VM. AIBoard only ever reads `feedItems[activeSessionKey]`, so a
@@ -211,7 +224,12 @@ export function useMissionControl(agents: Agent[]) {
   );
 
   const handleSendMessage = useCallback(
-    async (sessionKey: string, text: string, files: File[]) => {
+    async (
+      sessionKey: string,
+      text: string,
+      files: File[],
+      mentions?: MessageMention[],
+    ) => {
       const entry = sessionMapRef.current[sessionKey];
       if (!entry) return;
       const { agentPath, activityId } = entry;
@@ -243,6 +261,7 @@ export function useMissionControl(agents: Agent[]) {
         // user's words, not the built prompt.
         await tauriChat.send(agentPath, prompt, sessionKey, {
           ...overrides,
+          mentions,
           queuedPreview: {
             text,
             attachmentNames: files.map((f) => f.name),
@@ -281,6 +300,8 @@ export function useMissionControl(agents: Agent[]) {
         promptFile?: string;
         providerOverride?: string;
         modelOverride?: string;
+        /** Teammates the first message @mentions (HOU-944). */
+        mentions?: MessageMention[];
       },
     ): Promise<string> => {
       const agentPath = agent.folderPath;
@@ -302,6 +323,7 @@ export function useMissionControl(agents: Agent[]) {
             promptFile: opts?.promptFile,
             providerOverride: opts?.providerOverride,
             modelOverride: opts?.modelOverride,
+            mentions: opts?.mentions,
             // Per-agent composer memory; Mission Control has no pill state.
             modeOverride: await readAgentTurnMode(agentPath, tauriConfig.read),
             titleText: visible,

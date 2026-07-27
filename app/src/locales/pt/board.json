@@ -17,6 +17,9 @@
     "label": "Pessoas nesta missão",
     "expand": "Todas as pessoas"
   },
+  "unread": {
+    "label": "Novidades não lidas"
+  },
   "empty": {
     "title": "Ainda sem conversas",
     "description": "Comece uma conversa nova para delegar trabalho a um agente.",

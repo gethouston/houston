@@ -39,6 +39,7 @@ export type {
   OrgInvite,
   OrgInviteSummary,
   OrgMember,
+  OrgPerson,
   OrgRole,
   OrgSummary,
   OrgsList,

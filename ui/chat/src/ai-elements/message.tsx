@@ -37,9 +37,14 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Streamdown } from "streamdown";
+import { defaultRehypePlugins, Streamdown } from "streamdown";
 import { MarkdownCodeBlock } from "../markdown-code-block";
 import { classifyMarkdownLink } from "../markdown-link";
+import { MentionMarkdownSpan } from "../mention-chip.tsx";
+import type { MentionRehypeOptions } from "../mention-rehype.ts";
+import { mentionRehypePlugin } from "../mention-rehype.ts";
+import type { MentionTarget } from "../mention-spans.ts";
+import { sameMentionTargets } from "../mention-spans.ts";
 
 const MessageAvatarContext = createContext<React.ReactNode | undefined>(
   undefined,
@@ -385,15 +390,42 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
    * special URL patterns.
    */
   renderLink?: RenderLinkFn;
+  /**
+   * People whose "@Name" occurrences in this message should render as chips
+   * (HOU-944). Empty/absent leaves the markdown pipeline exactly as it was.
+   */
+  mentions?: readonly MentionTarget[];
 };
 
 const streamdownPlugins = { cjk, code, math, mermaid };
 
 export const MessageResponse = memo(
-  ({ className, onOpenLink, renderLink, ...props }: MessageResponseProps) => {
+  ({
+    className,
+    onOpenLink,
+    renderLink,
+    mentions,
+    ...props
+  }: MessageResponseProps) => {
+    // Streamdown REPLACES its own plugin chain when `rehypePlugins` is set, so
+    // the mention pass is appended to the defaults — `raw` → `sanitize` →
+    // `harden` still run, and our spans are minted after them (nothing strips
+    // them). Tuple form: Streamdown keys its compiled-processor cache on the
+    // plugin name plus JSON-stringified options, so the targets must ride in
+    // the options or two messages would share one processor.
+    const rehypePlugins = useMemo(() => {
+      if (!mentions || mentions.length === 0) return undefined;
+      const mentionPass: [typeof mentionRehypePlugin, MentionRehypeOptions] = [
+        mentionRehypePlugin,
+        { targets: mentions },
+      ];
+      return [...Object.values(defaultRehypePlugins), mentionPass];
+    }, [mentions]);
+
     const components = useMemo(() => {
       const sharedComponents = {
         code: MarkdownCodeBlock,
+        span: MentionMarkdownSpan,
       };
       if (!onOpenLink && !renderLink) return sharedComponents;
       const fn = onOpenLink;
@@ -478,6 +510,7 @@ export const MessageResponse = memo(
           )}
           plugins={streamdownPlugins}
           components={components}
+          rehypePlugins={rehypePlugins}
           {...props}
         />
       </ErrorBoundary>
@@ -487,7 +520,11 @@ export const MessageResponse = memo(
     prevProps.children === nextProps.children &&
     nextProps.isAnimating === prevProps.isAnimating &&
     prevProps.onOpenLink === nextProps.onOpenLink &&
-    prevProps.renderLink === nextProps.renderLink,
+    prevProps.renderLink === nextProps.renderLink &&
+    // By VALUE: the row above rebuilds the target list every render, and
+    // comparing by identity here would re-parse every message on every
+    // keystroke.
+    sameMentionTargets(prevProps.mentions, nextProps.mentions),
 );
 
 MessageResponse.displayName = "MessageResponse";

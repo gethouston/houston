@@ -27,6 +27,13 @@ export interface CachedFrame {
    * records written before this field existed.
    */
   author?: { userId: string; name?: string };
+  /**
+   * The teammates this `user_message` @mentions (HOU-944), carried so a
+   * cache-painted transcript chips the same names immediately instead of
+   * rendering plain text until the server read lands. Absent when the message
+   * mentioned nobody and on records written before this field existed.
+   */
+  mentions?: { userId: string; name?: string }[];
 }
 
 /** A stored transcript: its frames plus a write stamp (prune order). */

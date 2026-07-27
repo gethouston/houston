@@ -26,6 +26,11 @@ export interface KanbanItem {
   metadata?: Record<string, unknown>;
   /** Human contributors shown as an avatar face stack on the card. */
   people?: KanbanPerson[];
+  /** Something on this item has moved since the reader last looked at it, so
+   *  the card paints a quiet unread mark. Optional and additive: a consumer
+   *  with no per-person read state (single player) simply never sets it and the
+   *  card renders exactly as before. */
+  unread?: boolean;
 }
 
 /** A matched body fragment shown below a board item during search. `text` is

@@ -1,3 +1,4 @@
+import type { MessageMention } from "@houston-ai/chat";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -35,7 +36,12 @@ export function useArchivedSendMessage({
   const setActivityPanelId = useUIStore((s) => s.setActivityPanelId);
 
   return useCallback(
-    async (sessionKey: string, text: string, files: File[]) => {
+    async (
+      sessionKey: string,
+      text: string,
+      files: File[],
+      mentions?: MessageMention[],
+    ) => {
       const missionId = selectedId ?? sessionKey.replace(/^activity-/, "");
       const activity = archived.find((a) => a.id === missionId);
       const mode = agentDef.config.agents?.find(
@@ -55,6 +61,7 @@ export function useArchivedSendMessage({
           providerOverride: effectiveProvider,
           modelOverride: effectiveModel,
           modeOverride: await readAgentTurnMode(agentPath, tauriConfig.read),
+          mentions,
         });
         analytics.track("chat_message_sent", {
           provider: effectiveProvider,

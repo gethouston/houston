@@ -75,6 +75,14 @@ components:
     status: implemented
     ref: "@houston-ai/chat ChatInput / ai-elements/prompt-input"
 
+  mention-autocomplete:
+    status: implemented
+    ref: "@houston-ai/chat ChatInputMentions / useMentionAutocomplete (mention-query)"
+
+  mention-chip:
+    status: implemented
+    ref: "@houston-ai/chat MentionChip + mention-spans (rendered through MessageResponse)"
+
   turn-status:
     status: implemented
     ref: "@houston-ai/chat ChatStatusLine + chat-status"
@@ -126,6 +134,15 @@ components:
   mission-board:
     status: implemented
     ref: "@houston-ai/board KanbanBoard / AIBoard / KanbanColumn"
+
+  mentions-inbox:
+    status: partial
+    ref: "app/src/components/board/mentions-inbox.tsx (+ mentions-inbox-row.tsx, mentions-inbox-model.ts)"
+    notes: >-
+      Ships and works, but app/-locked: the row and the list live in app/src
+      rather than a shared @houston-ai/ package, so a native surface cannot yet
+      reuse their structure. The ordering + naming rules ARE already extracted
+      into DOM-free models (mentions-inbox-model / mentions-inbox-view-model).
 
   mission-status-chip:
     status: partial

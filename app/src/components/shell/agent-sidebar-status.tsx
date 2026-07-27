@@ -49,3 +49,21 @@ export function NeedsYouChip({ count, label }: NeedsYouChipProps) {
     </Badge>
   );
 }
+
+/** The quiet unread signal: a small filled dot, deliberately NOT a count chip.
+ *  `NeedsYouChip` means "act now"; this only means "there is something new here
+ *  for you". Different weight, different shape, so the two never read alike.
+ *  The count lives in the accessible label, where a screen reader and a hover
+ *  can reach it without the rail turning into a wall of numbers. */
+export function UnreadDot({ label }: { label: string }) {
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className="flex size-3 shrink-0 items-center justify-center"
+    >
+      <span className="size-1.5 rounded-full bg-action" />
+    </span>
+  );
+}

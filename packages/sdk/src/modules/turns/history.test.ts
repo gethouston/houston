@@ -133,6 +133,33 @@ describe("historyToFeed", () => {
     });
   });
 
+  it("folds a user message's @mentions onto its user_message frame", () => {
+    const feed = historyToFeed([
+      {
+        role: "user",
+        content: "@Ada Lovelace please confirm the renewals",
+        ts: 1,
+        author: { userId: "u1", name: "Bo" },
+        mentions: [{ userId: "u2", name: "Ada Lovelace" }],
+      },
+      { role: "assistant", content: "on it", ts: 2 },
+    ]);
+    expect(feed[0]).toEqual({
+      feed_type: "user_message",
+      data: "@Ada Lovelace please confirm the renewals",
+      author: { userId: "u1", name: "Bo" },
+      mentions: [{ userId: "u2", name: "Ada Lovelace" }],
+      ts: 1,
+    });
+    // Assistant prose is never structured: its @Names stay plain text.
+    expect(feed[1]).not.toHaveProperty("mentions");
+  });
+
+  it("leaves a user message that mentions nobody without mentions", () => {
+    const [frame] = historyToFeed([{ role: "user", content: "hi", ts: 1 }]);
+    expect(frame?.mentions).toBeUndefined();
+  });
+
   it("replays persisted reasoning before the tool calls, with their inputs (HOU-717)", () => {
     const feed = historyToFeed([
       { role: "user", content: "run it", ts: 1 },
