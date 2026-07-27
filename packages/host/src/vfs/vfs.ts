@@ -38,6 +38,22 @@ export interface Vfs {
   deletePrefix(prefix: string): Promise<void>;
 }
 
+/**
+ * Decode UTF-8 file bytes, dropping a leading byte-order mark.
+ *
+ * A BOM is an encoding artifact, not content — but Node's decoder keeps it and
+ * `JSON.parse` rejects it, so one invisible byte permanently bricks a document.
+ * Houston is files-first: agents and users write `.houston` docs directly, and
+ * plenty of editors and tools emit a BOM (the Windows default). A BOM-prefixed
+ * routines.json stopped every routine on a pod for six days (HOU-953). Stripping
+ * it at the single decode door fixes every reader at once — JSON docs, CLAUDE.md,
+ * skills — and the next save rewrites the file clean, so it self-heals.
+ */
+export function decodeText(bytes: Buffer): string {
+  const text = bytes.toString("utf8");
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
 /** Reject traversal/absolute keys before any impl maps them anywhere. */
 export function assertSafeKey(key: string): void {
   if (

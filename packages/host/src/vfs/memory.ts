@@ -1,4 +1,4 @@
-import { assertSafeKey, type ObjectStat, type Vfs } from "./vfs";
+import { assertSafeKey, decodeText, type ObjectStat, type Vfs } from "./vfs";
 
 /** In-memory Vfs for tests and CP_DEV=1. */
 export class MemoryVfs implements Vfs {
@@ -27,7 +27,8 @@ export class MemoryVfs implements Vfs {
   }
 
   async readText(key: string): Promise<string | null> {
-    return this.files.get(key)?.content.toString("utf8") ?? null;
+    const buf = this.files.get(key)?.content;
+    return buf ? decodeText(buf) : null;
   }
 
   async readBytes(key: string): Promise<Buffer | null> {

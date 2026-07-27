@@ -9,7 +9,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, sep } from "node:path";
-import { assertSafeKey, type ObjectStat, type Vfs } from "./vfs";
+import { assertSafeKey, decodeText, type ObjectStat, type Vfs } from "./vfs";
 
 /**
  * Real-filesystem Vfs — the local profile's adapter. Keys map 1:1 to paths
@@ -83,7 +83,7 @@ export class FsVfs implements Vfs {
 
   async readText(key: string): Promise<string | null> {
     const buf = await this.readBytes(key);
-    return buf ? buf.toString("utf8") : null;
+    return buf ? decodeText(buf) : null;
   }
 
   async readBytes(key: string): Promise<Buffer | null> {

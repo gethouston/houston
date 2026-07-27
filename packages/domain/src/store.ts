@@ -35,8 +35,14 @@ export async function loadJson<T>(
 ): Promise<T> {
   const raw = await store.readText(key);
   if (raw === null) return fallback;
+  // A leading byte-order mark is an encoding artifact, not content: files-first
+  // docs get hand-written by agents, users and editors, and `JSON.parse` rejects
+  // a BOM outright (HOU-953). The host's Vfs already drops it on decode; strip
+  // here too so EVERY TextStore impl reads a BOM'd doc rather than declaring the
+  // user's data corrupt over one invisible byte.
+  const text = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
   try {
-    return JSON.parse(raw) as T;
+    return JSON.parse(text) as T;
   } catch (err) {
     throw new Error(
       `${key} is not valid JSON (${err instanceof Error ? err.message : String(err)})`,
