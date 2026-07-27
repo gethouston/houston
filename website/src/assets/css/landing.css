@@ -1,6 +1,6 @@
 /*
  * Landing page — base, chrome (nav + footer), buttons, section primitives.
- * Mercury-light editorial: warm ivory ground, warm ink type, one ink pill CTA.
+ * Warm editorial: warm ivory ground, warm ink type, one ink pill CTA.
  * Palette + type come from site-tokens.css. Hero / app-window / body-sections
  * / motion live in their own files.
  */
@@ -154,7 +154,7 @@ img {
   margin-bottom: 22px;
 }
 /* The big statement — one enormous, light-weight display line per section.
-   Impact comes from scale + air + brevity, not weight (Mercury voice). */
+   Impact comes from scale + air + brevity, not weight (editorial voice). */
 .sec-title {
   font-weight: 340;                  /* light, refined display */
   font-size: clamp(32px, 5vw, 56px);

@@ -1,5 +1,5 @@
 /*
- * Landing hero (Mercury-elegant, product-as-hero): a calm headline above-left,
+ * Landing hero (calm and elegant, product-as-hero): a calm headline above-left,
  * then the REAL app window filling the lower fold, staged for multiplayer, its
  * soft wash dissolving into the ivory page at the fold's lower edge. Palette/
  * type from site-tokens.css. The app-window mock lives in its own file; the
@@ -41,7 +41,7 @@
   padding: clamp(92px, 12vh, 124px) var(--gutter) 0;
   overflow: hidden;
 }
-/* The Mercury dissolve: a soft ivory gradient over the lower fold melts the
+/* The soft dissolve: a soft ivory gradient over the lower fold melts the
    window (and the wash behind it) into the page — no hard bottom border, and it
    reaches solid ivory before the fold's clip so nothing cuts off abruptly. */
 .hero-fold::after {
@@ -94,12 +94,6 @@
   align-items: center;
   gap: 12px;
   margin-top: clamp(24px, 3vw, 34px);
-}
-.hero-proof {
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-subtle);
-  max-width: 40ch;
 }
 
 /* ── The product moment — the real app window fills the lower fold ────────── */
