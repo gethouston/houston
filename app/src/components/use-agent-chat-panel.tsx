@@ -173,6 +173,7 @@ import {
 } from "./tabs/provider-auth-feed";
 import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
+import { useChatSenderAvatars } from "./use-chat-sender-avatars";
 import { useToolkitBrandResolver } from "./use-toolkit-brand-resolver";
 import { UserSkillMessage } from "./user-skill-message";
 
@@ -249,6 +250,14 @@ interface AgentChatPanelProps {
   currentUserId: ChatPanelProps["currentUserId"];
   /** Localized author-attribution labels forwarded to ChatPanel. */
   authorLabels: ChatPanelProps["authorLabels"];
+  /** Attribute EVERY turn (HOU-943): true whenever the deployment is
+   *  multiplayer, so a shared chat always says who sent each message.
+   *  Single-player stays false and the transcript is unchanged. */
+  showSenders: ChatPanelProps["showSenders"];
+  /** The agent's display name, shown on its own rows when senders show. */
+  agentLabel: ChatPanelProps["agentLabel"];
+  /** Face for a message's sender: teammate photo/initials, or the agent mark. */
+  renderSenderAvatar: ChatPanelProps["renderSenderAvatar"];
   /** Prop-driven dictation control for the composer mic. Undefined on web
    *  (no native mic capture) — ChatPanel hides the mic entirely. */
   dictation: ChatPanelProps["dictation"];
@@ -272,7 +281,7 @@ export function useAgentChatPanel({
   // the viewer's own bubbles from teammates'. Undefined signed out / local.
   const { data: session } = useSession();
   const currentUserId = session?.uid;
-  const authorLabels = undefined;
+  const authorLabels = useMemo(() => ({ you: t("chat:attribution.you") }), [t]);
 
   const conversationMap = useMemo<
     NonNullable<AIBoardProps["conversationMap"]>
@@ -504,6 +513,14 @@ export function useAgentChatPanel({
     selectedSessionKey ?? undefined,
   );
   const sessionFeedItems = useConversationFeed(path, selectedSessionKey);
+
+  // Sender identity (HOU-943): in a shared (multiplayer) deployment every turn
+  // shows who sent it — the teammate's face + name, the agent's mark + name.
+  // Resolved from the feed's authors, so it repaints as teammates' turns land.
+  const { showSenders, agentLabel, renderSenderAvatar } = useChatSenderAvatars(
+    agent,
+    sessionFeedItems,
+  );
 
   // The live turn state for this conversation, for the pending-interaction
   // override: `running` gates the card (a running turn shows the composer, not
@@ -2090,6 +2107,9 @@ export function useAgentChatPanel({
     turnMode,
     currentUserId,
     authorLabels,
+    showSenders,
+    agentLabel,
+    renderSenderAvatar,
     dictation,
   };
 }

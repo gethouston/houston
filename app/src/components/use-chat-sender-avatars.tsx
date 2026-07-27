@@ -1,0 +1,107 @@
+/**
+ * Sender identity for the chat panel (HOU-943): in a SHARED (multiplayer)
+ * deployment every turn says who sent it — a teammate's face + name on human
+ * messages, the agent's mark + name on its own. Single-player is untouched: the
+ * transcript renders exactly as before.
+ *
+ * The faces resolve through the same batched `GET /v1/org/profiles` lookup the
+ * mission face stacks use (one cache entry per contributor set), with the
+ * caller's own resolved profile layered on for their rows. A profile that never
+ * landed (or a host with no roster) falls back to the author's stored name, then
+ * to initials — a row is never faceless.
+ */
+
+import type { ChatMessage, FeedItem } from "@houston-ai/chat";
+import { HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import { type ReactNode, useCallback, useMemo } from "react";
+import { useUserProfiles } from "../hooks/queries/use-user-profiles";
+import { useCapabilities } from "../hooks/use-capabilities";
+import { useMyProfile } from "../hooks/use-my-profile";
+import { shortUserLabel } from "../lib/mission-people";
+import { isMultiplayer } from "../lib/org-roles";
+import type { Agent } from "../lib/types";
+import { PersonFace } from "./mission-person-face";
+
+/** The agent mark's diameter, matched to `PersonFace`'s 20px teammate face so
+ *  human and agent rows sit on the same optical line. */
+const AGENT_MARK_PX = 20;
+
+/** Every distinct author id in a conversation's feed (stable, sorted). */
+function authorIdsIn(feedItems: FeedItem[]): string[] {
+  const ids = new Set<string>();
+  for (const item of feedItems) {
+    if (item.feed_type === "user_message" && item.author)
+      ids.add(item.author.userId);
+  }
+  return Array.from(ids).sort();
+}
+
+export interface ChatSenderIdentity {
+  /**
+   * `true` = attribute EVERY turn (the deployment is multiplayer, so sender
+   * identity is a property of the deployment). NEVER `false`: `undefined` hands
+   * the decision to `ui/chat`'s ≥2-distinct-authors heuristic, which is the
+   * right answer everywhere else — including the capabilities-loading window
+   * (a shared transcript must not paint unattributed and then pop names in) and
+   * any host that serves an authored transcript without advertising
+   * multiplayer, where a hard `false` would actively SUPPRESS attribution.
+   */
+  showSenders: true | undefined;
+  /** The agent's display name, shown on its rows. */
+  agentLabel: string | undefined;
+  /** The face for a message's sender: teammate photo/initials, or agent mark. */
+  renderSenderAvatar: (msg: ChatMessage) => ReactNode | undefined;
+}
+
+export function useChatSenderAvatars(
+  agent: Agent | null,
+  feedItems: FeedItem[],
+): ChatSenderIdentity {
+  const { capabilities } = useCapabilities();
+  const showSenders = isMultiplayer(capabilities) || undefined;
+  const myProfile = useMyProfile();
+
+  // Every authored id in the transcript — empty in single-player, where no
+  // message carries an author, and the batched profiles query is multiplayer
+  // gated on top of that (see `profilesQueryEnabled`).
+  const authorIds = useMemo(() => authorIdsIn(feedItems), [feedItems]);
+  const { profiles } = useUserProfiles(authorIds);
+
+  const agentColor = agent?.color;
+  const renderSenderAvatar = useCallback(
+    (msg: ChatMessage): ReactNode | undefined => {
+      if (msg.from === "assistant")
+        return (
+          <HoustonAvatar
+            color={resolveAgentColor(agentColor)}
+            diameter={AGENT_MARK_PX}
+          />
+        );
+      const author = msg.author;
+      if (!author) return undefined;
+      const isSelf = myProfile?.userId === author.userId;
+      const profile = profiles.get(author.userId);
+      const name =
+        (isSelf ? myProfile?.name : null) ??
+        profile?.name ??
+        author.name ??
+        shortUserLabel(author.userId);
+      const imageUrl =
+        (isSelf ? myProfile?.avatarUrl : null) ?? profile?.avatarUrl ?? null;
+      // The `id` is what gives the initials fallback this person's opaque
+      // `person.*` tone — one person, one tone, on the board and here alike.
+      return (
+        <PersonFace
+          person={{
+            id: author.userId,
+            label: name,
+            imageUrl: imageUrl ?? undefined,
+          }}
+        />
+      );
+    },
+    [agentColor, profiles, myProfile],
+  );
+
+  return { showSenders, agentLabel: agent?.name, renderSenderAvatar };
+}

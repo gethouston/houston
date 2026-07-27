@@ -15,6 +15,7 @@
 
 import { pushPendingUserMessage } from "@houston-ai/engine-client";
 import { getConversationFeed } from "../hooks/use-conversation-vm";
+import { actingUser } from "./acting-user";
 import type {
   PendingWarmingSend,
   ProvisioningEntry,
@@ -66,7 +67,15 @@ export function buildWarmingSend(
 ): PendingWarmingSend {
   // A row-only entry carries no user message — nothing to render.
   if (!args.rowOnly) {
-    pushPendingUserMessage(args.agentPath, args.sessionKey, args.text);
+    // Stamp the sender (HOU-943): the real send at flush suppresses its own
+    // bubble, so this push is the row's ONLY chance to be attributed — without
+    // it a warmed-up agent's first message stays nameless in a shared thread.
+    pushPendingUserMessage(
+      args.agentPath,
+      args.sessionKey,
+      args.text,
+      actingUser(),
+    );
   }
   const send: PendingWarmingSend = {
     id: crypto.randomUUID(),
@@ -89,13 +98,21 @@ export function buildWarmingSend(
 /**
  * After a relaunch mid-warm-up: the VM is empty, so re-render the queued
  * bubbles. Only when the conversation truly has nothing — a live VM already
- * shows them.
+ * shows them. Re-stamped with the acting user for the same reason as the
+ * original push: the queue is this account's own, and the flush's send will
+ * suppress the bubble that would otherwise carry the name.
  */
 export function restoreWarmingBubbles(entry: ProvisioningEntry): void {
+  const author = actingUser();
   for (const send of entry.pendingSends ?? []) {
     if (send.rowOnly) continue;
     if (getConversationFeed(entry.agentPath, send.sessionKey).length === 0) {
-      pushPendingUserMessage(entry.agentPath, send.sessionKey, send.text);
+      pushPendingUserMessage(
+        entry.agentPath,
+        send.sessionKey,
+        send.text,
+        author,
+      );
     }
   }
 }

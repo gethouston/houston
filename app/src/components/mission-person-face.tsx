@@ -1,12 +1,29 @@
-import { initialsFor, type KanbanPerson } from "@houston-ai/board";
-import { Avatar, AvatarFallback, AvatarImage, Button } from "@houston-ai/core";
+import {
+  initialsFor,
+  type KanbanPerson,
+  personToneClass,
+} from "@houston-ai/board";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Button,
+  cn,
+} from "@houston-ai/core";
 import { ChevronDown, Users } from "lucide-react";
 import type * as React from "react";
 
 /** The minimal face shape both the trigger and the menu rows render. */
-export type FilterFace = Pick<KanbanPerson, "label" | "imageUrl">;
+export type FilterFace = Pick<KanbanPerson, "label" | "imageUrl"> &
+  Partial<Pick<KanbanPerson, "id">>;
 
-/** A compact avatar face used in the person-filter trigger and menu rows. */
+/**
+ * A compact avatar face for a human, used by the person filter, the chat
+ * sender line, and the learnings provenance line. When the person's stable
+ * `id` is known the initials fallback wears their opaque `person.*` tone
+ * (one person = one tone everywhere, same rule as the board face stacks);
+ * without an id it stays on the neutral fallback fill.
+ */
 export function PersonFace({ person }: { person: FilterFace }) {
   return (
     <Avatar className="size-5">
@@ -17,7 +34,12 @@ export function PersonFace({ person }: { person: FilterFace }) {
           referrerPolicy="no-referrer"
         />
       )}
-      <AvatarFallback className="text-[9px] font-medium">
+      <AvatarFallback
+        className={cn(
+          "text-[9px] font-medium",
+          person.id && cn(personToneClass(person.id), "text-person-initials"),
+        )}
+      >
         {initialsFor(person.label)}
       </AvatarFallback>
     </Avatar>

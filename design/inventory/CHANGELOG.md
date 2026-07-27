@@ -3,6 +3,27 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v37 - 2026-07-27
+
+Refine `user-message` + `assistant-message` (no new component, no `since`
+change): in a SHARED conversation every turn now carries a **sender line** --
+the writer's face + name above a human bubble, the agent's mark + name above its
+prose (HOU-943). Attribution follows the DEPLOYMENT: a multiplayer client
+attributes every turn from the first message (the old "label only once two
+people have written" heuristic left a shared chat looking single-player until a
+second person spoke, and never named the agent; it still governs outside
+multiplayer, so legacy attributed transcripts keep their labels). Single-player
+is untouched -- no line, no faces, byte-identical transcript.
+
+Behind it, the conversation view-model now carries a message's `author` end to
+end (`packages/sdk`: `FeedItemVM.author`, folded by `seedHistory` /
+`prependHistory` and stamped on the optimistic send via
+`StreamTurnOptions.author`), which is what makes a teammate's bubble keep its
+identity across reload, scroll-up paging, and the live send. Web ships it in
+`ui/chat` (`ChatSenderHeader`, threaded through `ChatPanel`/`ChatMessages` as
+`showSenders` + `agentLabel` + `renderSenderAvatar`); the app resolves faces
+through the batched org-profiles lookup the mission face stacks already use.
+
 ## v36 - 2026-07-27
 
 Refine `mission-card` (no new component, no `since` change): its anatomy gains

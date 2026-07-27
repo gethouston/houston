@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useMyProfile } from "../hooks/use-my-profile";
 import { buildScopeOptions } from "../lib/agent-person-scope";
-import { distinctBoardPeople } from "../lib/mission-people";
+import { distinctBoardPeople, shortUserLabel } from "../lib/mission-people";
 import { isTeamWorkspace } from "../lib/space-id";
 import type { Agent } from "../lib/types";
 import { useWorkspaceStore } from "../stores/workspaces";
@@ -59,9 +59,12 @@ export function AgentPersonScopeMenu({
 
   if (mode === "hidden" || !user) return null;
 
-  const selfName = myProfile?.name ?? user.email ?? user.id.slice(0, 8);
+  const selfName = myProfile?.name ?? user.email ?? shortUserLabel(user.id);
   const selfShort = selfName.split(/\s+/)[0] || selfName;
+  // Carrying the `id` is what earns the initials fallback this person's opaque
+  // `person.*` tone — the same one their face wears on every board card.
   const selfFace: FilterFace = {
+    id: user.id,
     label: selfName,
     imageUrl: myProfile?.avatarUrl ?? undefined,
   };
@@ -79,7 +82,7 @@ export function AgentPersonScopeMenu({
   } else if (scope.kind === "person") {
     const person = roster.find((p) => p.id === scope.userId);
     activeFace = person ?? null;
-    activeText = person?.label ?? scope.userId.slice(0, 8);
+    activeText = person?.label ?? shortUserLabel(scope.userId);
   }
 
   const inPersonalSpace = !isTeamWorkspace(current?.id ?? "");

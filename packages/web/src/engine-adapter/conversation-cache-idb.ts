@@ -12,7 +12,7 @@
 import type {
   CacheRecord,
   ConversationCacheBackend,
-} from "./conversation-cache";
+} from "./conversation-cache-types";
 
 const DB_NAME = "houston-conversation-cache";
 const DB_VERSION = 1;

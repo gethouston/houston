@@ -8,7 +8,7 @@
  */
 
 import { buildProviderCatalog } from "@houston/host/src/providers/pi-catalog";
-import type { PendingInteraction } from "@houston/protocol";
+import type { ChatMessage, PendingInteraction } from "@houston/protocol";
 import { setNextInteraction, setReplyDelay } from "./chat";
 import {
   clearChatStreams,
@@ -16,6 +16,7 @@ import {
   killRunningTurns,
   turnBoundary,
 } from "./chat-controls";
+import { SEED_AGENT_ID } from "./config";
 import { CORS, json } from "./http";
 import { handleAgents } from "./routes";
 import { handleUserRoutes } from "./routes-integrations";
@@ -92,6 +93,23 @@ export async function handle(req: Request): Promise<Response> {
       (body?.interaction as PendingInteraction | null) ?? null,
     );
     return json({ ok: true });
+  }
+  // Seed a conversation's transcript verbatim: `{ conversationId, messages }`
+  // (optionally `agentId`, default the seeded agent). The only way to reach a
+  // SHARED conversation locally — user messages carrying the `author` the
+  // gateway stamps in multiplayer — for the sender-attribution spec.
+  if (path === "/__test__/chat-history" && method === "POST") {
+    const body = await parseBody(req);
+    const messages = Array.isArray(body?.messages)
+      ? (body.messages as ChatMessage[])
+      : [];
+    return json({
+      messages: state.seedHistory(
+        typeof body?.agentId === "string" ? body.agentId : SEED_AGENT_ID,
+        String(body?.conversationId ?? ""),
+        messages,
+      ),
+    });
   }
   // Synthesize the dead-pump reaper's terminal error on every running turn.
   if (path === "/__test__/kill-turn" && method === "POST") {

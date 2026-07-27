@@ -125,6 +125,13 @@ export interface ChatPanelProps {
   currentUserId?: ChatMessagesProps["currentUserId"];
   /** Localized author-attribution labels. See `ChatAuthorLabels`. */
   authorLabels?: ChatMessagesProps["authorLabels"];
+  /** Force sender identity onto every turn (shared conversations). See
+   *  `ChatMessagesProps.showSenders`. */
+  showSenders?: ChatMessagesProps["showSenders"];
+  /** The agent's display name for assistant sender lines. */
+  agentLabel?: ChatMessagesProps["agentLabel"];
+  /** Sender avatar (teammate face / agent mark) for the sender line. */
+  renderSenderAvatar?: ChatMessagesProps["renderSenderAvatar"];
   /** Props-only configuration for the optional Conversation Map. */
   conversationMap?: ChatMessagesProps["conversationMap"];
 }

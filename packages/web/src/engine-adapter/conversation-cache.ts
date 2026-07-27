@@ -17,48 +17,30 @@
  * Entries are keyed per gateway + user (the Supabase JWT `sub`), so cached
  * transcripts never leak across accounts on a shared machine; sign-out clears
  * the whole store. Local/desktop engines never cache (reads are local disk).
+ *
+ * This module is the cache's OPERATIONS and its policy (scoping, validation,
+ * disk cap). The record shapes and the storage port live in
+ * `conversation-cache-types.ts`, the IndexedDB implementation of that port in
+ * `conversation-cache-idb.ts`, and the scope derivation in
+ * `conversation-cache-identity.ts` — all re-exported here as the front door.
  */
 
 import { createIdbBackend } from "./conversation-cache-idb";
+import type {
+  CachedFrame,
+  ConversationCacheBackend,
+} from "./conversation-cache-types";
 import { trimForCache } from "./history-window";
 
 export {
   conversationCacheScope,
   jwtSub,
 } from "./conversation-cache-identity";
-
-/** One cached feed frame — the folded `{feed_type, data}` the VM seeds from. */
-export interface CachedFrame {
-  feed_type: string;
-  data: unknown;
-  /**
-   * The frame's timestamp, when the source fold carried one — preserved so a
-   * cache-painted bubble keeps its real time instead of losing it (HOU-819).
-   * Display metadata only: seed/replace decisions never compare timestamps
-   * (live pushes and history folds are stamped by different clocks). Absent
-   * on records written before this field existed.
-   */
-  ts?: number;
-}
-
-/** A stored transcript: its frames plus a write stamp (prune order). */
-export interface CacheRecord {
-  frames: CachedFrame[];
-  updatedAt: number;
-}
-
-/** The storage the cache runs on — IndexedDB in the app, in-memory in tests. */
-export interface ConversationCacheBackend {
-  get(key: string): Promise<CacheRecord | null>;
-  set(key: string, record: CacheRecord): Promise<void>;
-  delete(key: string): Promise<void>;
-  /**
-   * Every stored key, oldest write first — the prune sweep's input. Keys
-   * ONLY: the sweep runs on every write, so it must never load transcripts.
-   */
-  keysOldestFirst(): Promise<string[]>;
-  clear(): Promise<void>;
-}
+export type {
+  CachedFrame,
+  CacheRecord,
+  ConversationCacheBackend,
+} from "./conversation-cache-types";
 
 /** Disk cap: keep the most recently written transcripts, evict the oldest. */
 export const MAX_CACHED_CONVERSATIONS = 256;
@@ -153,6 +135,7 @@ export async function writeCachedConversation(
         feed_type: f.feed_type,
         data: f.data,
         ...(f.ts !== undefined ? { ts: f.ts } : {}),
+        ...(f.author !== undefined ? { author: f.author } : {}),
       })),
       updatedAt: Date.now(),
     });

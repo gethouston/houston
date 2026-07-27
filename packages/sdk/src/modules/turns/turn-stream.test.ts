@@ -86,6 +86,7 @@ type Item = {
   data?: unknown;
   pending?: boolean;
   fails_pending?: boolean;
+  author?: { userId: string; name?: string };
 };
 
 /** A recording FeedOutput: the sink's FeedItems, session statuses, board persists. */
@@ -437,6 +438,52 @@ test("suppressUserBubble pushes no optimistic bubble at all (a resend, no clock)
   );
 
   expect(items.some((i) => i.feed_type === "user_message")).toBe(false);
+});
+
+test("the optimistic bubble carries the sender's author (multiplayer attribution)", async () => {
+  const { engine } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(false, "", 0));
+      o.onEvent({ type: "done", data: null, seq: 1 });
+    },
+  ]);
+  const { items, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-shared",
+    "hi team",
+    output,
+    registry,
+    { tuning: fast, author: { userId: "user_a", name: "Ada" } },
+  );
+
+  const bubble = items.find((i) => i.feed_type === "user_message");
+  expect(bubble?.author).toEqual({ userId: "user_a", name: "Ada" });
+});
+
+test("the optimistic bubble stays authorless when no sender is supplied (single-player)", async () => {
+  const { engine } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(false, "", 0));
+      o.onEvent({ type: "done", data: null, seq: 1 });
+    },
+  ]);
+  const { items, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-solo",
+    "hi",
+    output,
+    registry,
+    { tuning: fast },
+  );
+
+  const bubble = items.find((i) => i.feed_type === "user_message");
+  expect(bubble?.author).toBeUndefined();
 });
 
 test("displayText renders as the bubble while the engine still receives the real prompt", async () => {

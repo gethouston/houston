@@ -787,6 +787,45 @@ non-user-initiated read: `tauriOrg.profiles` runs with `{toast:false,capture:fal
 rare hard failure stays silent and consumers fall back via React Query's `isError`. i18n:
 `dashboard:peopleFilter.*`, `board:people.label` (en/es/pt).
 
+## Chat sender attribution (HOU-943)
+
+In a shared chat EVERY turn says who sent it: the writer's face + name above a
+human bubble, the agent's mark + name above its prose. The trigger is the
+DEPLOYMENT, not the thread — `isMultiplayer(capabilities)` — so a shared chat
+attributes its first message, not only once a second person writes. Single-player
+renders no sender line at all (byte-identical transcript).
+
+**The identity travels on the view-model.** A message's author is already stored
+and on the wire (`ChatMessage.author`, stamped by the runtime from
+`x-houston-acting-as`, gateway-fronted only). `@houston/sdk` now carries it end to
+end: `FeedItemVM.author` (additive), folded by `seedHistory` / `prependHistory`
+from `historyToFeed`'s `FeedFrame.author`, and stamped on the OPTIMISTIC send via
+`StreamTurnOptions.author` — so a teammate's bubble keeps its identity across
+reload, scroll-up paging, and the live send alike. The optimistic identity is
+supplied by the surface (the SDK has none): `SessionStartRequest.author` →
+adapter `streamTurn` → SDK, filled once in `tauriChat.send` from
+`app/src/lib/acting-user.ts` (a read of the shared `["session"]` cache; signed
+out ⇒ absent ⇒ authorless, exactly as today).
+
+**Rendering (`@houston-ai/chat`).** `ChatPanel`/`ChatMessages` take
+`showSenders` (force attribution on every turn; omitted = the legacy
+"≥2 distinct authors" heuristic, user rows only), `agentLabel`, and
+`renderSenderAvatar`. `ChatSenderHeader` draws the line (avatar + name, mirrored
+on the right-aligned user bubble); the pure name rule is `senderNameFor`
+(`author-label.ts`) — the viewer gets `labels.you`, never nothing. Props-only and
+i18n-agnostic, as ever.
+
+**App wiring.** `use-chat-sender-avatars.tsx` resolves it: `showSenders` from
+capabilities, `agentLabel` from the agent, and faces from the SAME batched
+`useUserProfiles` lookup the board face stacks use (ids collected from the feed's
+authors, own rows via `useMyProfile`, `PersonFace` initials fallback).
+`use-agent-chat-panel` returns the three props, `authorLabels.you` =
+`chat:attribution.you`, and every AIBoard mount forwards them. E2E:
+`packages/web/e2e/chat-senders.spec.ts` against the fake host's
+`/__test__/chat-history` control.
+
+---
+
 ## engine-client types + methods
 
 Wire types in `ui/engine-client/src/types.ts`: `OrgRole`, `OrgMember`

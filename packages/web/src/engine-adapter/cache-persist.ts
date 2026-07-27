@@ -1,5 +1,8 @@
 import { conversationScope, type FeedOutput } from "@houston/sdk";
-import { writeCachedConversation } from "./conversation-cache";
+import {
+  type CachedFrame,
+  writeCachedConversation,
+} from "./conversation-cache";
 import { conversationStore } from "./vm";
 
 /**
@@ -19,9 +22,7 @@ export function cachePersistOutput(): FeedOutput {
       if (status === "running") return;
       const snapshot = conversationStore.getSnapshot(
         conversationScope(agentPath, sessionKey),
-      ) as
-        | { feed?: { feed_type: string; data: unknown; ts?: number }[] }
-        | undefined;
+      ) as { feed?: CachedFrame[] } | undefined;
       const frames = snapshot?.feed;
       if (!frames || frames.length === 0) return;
       void writeCachedConversation(
@@ -31,6 +32,8 @@ export function cachePersistOutput(): FeedOutput {
           feed_type: f.feed_type,
           data: f.data,
           ...(f.ts !== undefined ? { ts: f.ts } : {}),
+          // Multiplayer attribution survives a cold reopen (HOU-943).
+          ...(f.author !== undefined ? { author: f.author } : {}),
         })),
       );
     },

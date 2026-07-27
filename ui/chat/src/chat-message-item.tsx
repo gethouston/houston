@@ -1,18 +1,16 @@
 import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
 import type { RenderLinkProps } from "./ai-elements/message";
-import {
-  Message,
-  MessageContent,
-  MessageResponse,
-} from "./ai-elements/message";
+import { Message } from "./ai-elements/message";
 import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
 import type { ChatAuthorLabels } from "./author-label";
-import { authorLabelFor } from "./author-label";
+import { authorLabelFor, senderNameFor } from "./author-label";
 import type { ToolsAndCardsProps } from "./chat-helpers";
+import { ChatMessageBody } from "./chat-message-body";
 import type { ChatProcessLabels } from "./chat-process-block";
 import type { ChatDisplayItem } from "./chat-process-groups";
 import { ChatProcessMessage } from "./chat-process-message";
+import { ChatSenderHeader } from "./chat-sender-header";
 import { ChatSystemMessage } from "./chat-system-message";
 import type { ChatMessage } from "./feed-to-messages";
 import { OFFSCREEN_RENDER_SKIP } from "./offscreen-render";
@@ -24,7 +22,16 @@ interface ChatMessageItemProps {
   turnEndSummaries: Map<number, TurnEndSummary>;
   highlightedMessageKey: string | null;
   selectedLabel?: string;
+  /** User rows carry a sender line (forced by `showSenders`, else the ≥2-author
+   *  heuristic). */
   showAuthorLabels: boolean;
+  /** Attribution is FORCED on (a shared conversation): agent rows carry the
+   *  agent's sender line, and a user row never leaves the viewer anonymous.
+   *  False = the legacy ≥2-author heuristic, which labels user rows only. */
+  forcedSenders: boolean;
+  /** The agent's display name for its sender line. */
+  agentLabel?: string;
+  renderSenderAvatar?: (msg: ChatMessage) => ReactNode | undefined;
   transformContent?: (content: string) => {
     content: string;
     extra?: ReactNode;
@@ -52,6 +59,9 @@ export function ChatMessageItem({
   highlightedMessageKey,
   selectedLabel,
   showAuthorLabels,
+  forcedSenders,
+  agentLabel,
+  renderSenderAvatar,
   transformContent,
   toolLabels,
   isSpecialTool,
@@ -111,10 +121,22 @@ export function ChatMessageItem({
     );
   }
 
-  const authorLabel =
-    message.from === "user" && showAuthorLabels
-      ? authorLabelFor(message.author, currentUserId, authorLabels)
-      : null;
+  // Who said this turn. A user row names its author (forced attribution never
+  // leaves the viewer anonymous — `senderNameFor`; the legacy heuristic keeps
+  // `authorLabelFor`'s "own bubbles stay bare"); an agent row names the agent,
+  // and only when attribution is forced on.
+  const isUser = message.from === "user";
+  const attributed = isUser ? showAuthorLabels : forcedSenders;
+  const senderName = !attributed
+    ? null
+    : !isUser
+      ? (agentLabel ?? null)
+      : forcedSenders
+        ? senderNameFor(message.author, currentUserId, authorLabels)
+        : authorLabelFor(message.author, currentUserId, authorLabels);
+  const senderAvatar = attributed ? renderSenderAvatar?.(message) : undefined;
+  const showSenderLine =
+    attributed && (senderName !== null || senderAvatar !== undefined);
   const streaming = message.isStreaming && sourceIndex === messageCount - 1;
   const summary = renderTurnSummary
     ? turnEndSummaries.get(sourceIndex)
@@ -127,10 +149,12 @@ export function ChatMessageItem({
       from={message.from}
     >
       <div>
-        {authorLabel ? (
-          <div className="mb-1 px-1 text-xs text-ink-muted group-[.is-user]:text-right">
-            {authorLabel}
-          </div>
+        {showSenderLine ? (
+          <ChatSenderHeader
+            avatar={senderAvatar}
+            isUser={isUser}
+            name={senderName ?? undefined}
+          />
         ) : null}
         <ChatMessageBody
           message={message}
@@ -143,46 +167,5 @@ export function ChatMessageItem({
         {summary ? renderTurnSummary?.(summary) : null}
       </div>
     </Message>
-  );
-}
-
-interface ChatMessageBodyProps {
-  message: ChatMessage;
-  streaming: boolean;
-  transformContent?: ChatMessageItemProps["transformContent"];
-  renderUserMessage?: ChatMessageItemProps["renderUserMessage"];
-  onOpenLink?: (url: string) => void;
-  renderLink?: (props: RenderLinkProps) => ReactNode;
-}
-
-function ChatMessageBody({
-  message,
-  streaming,
-  transformContent,
-  renderUserMessage,
-  onOpenLink,
-  renderLink,
-}: ChatMessageBodyProps) {
-  if (!message.content) return null;
-  if (message.from === "user" && renderUserMessage) {
-    const custom = renderUserMessage(message);
-    if (custom !== undefined) return custom;
-  }
-  const transformed =
-    message.from === "assistant" && transformContent
-      ? transformContent(message.content)
-      : null;
-
-  return (
-    <MessageContent>
-      <MessageResponse
-        isAnimating={streaming}
-        onOpenLink={onOpenLink}
-        renderLink={renderLink}
-      >
-        {transformed?.content ?? message.content}
-      </MessageResponse>
-      {transformed?.extra}
-    </MessageContent>
   );
 }

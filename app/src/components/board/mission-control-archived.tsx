@@ -167,6 +167,9 @@ export function MissionControlArchived({
           renderLink={panel.renderLink}
           currentUserId={panel.currentUserId}
           authorLabels={panel.authorLabels}
+          showSenders={panel.showSenders}
+          agentLabel={panel.agentLabel}
+          renderSenderAvatar={panel.renderSenderAvatar}
           renderSystemMessage={panel.renderSystemMessage}
           conversationMap={panel.conversationMap}
           mapFeedItems={panel.mapFeedItems}

@@ -190,6 +190,7 @@ export {
   ConversationVmOutput,
   conversationScope,
   DEFAULT_CONVERSATION_CACHE_MAX,
+  type FeedAuthor,
   type FeedItemVM,
   type HistoryWindowVM,
   type QueuedMessageVM,

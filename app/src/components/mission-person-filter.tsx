@@ -7,7 +7,7 @@ import {
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { useMyProfile } from "../hooks/use-my-profile";
-import { distinctBoardPeople } from "../lib/mission-people";
+import { distinctBoardPeople, shortUserLabel } from "../lib/mission-people";
 import {
   type FilterFace,
   FilterTrigger,
@@ -48,8 +48,11 @@ export function MissionPersonFilter({
   const myProfile = useMyProfile();
   if (mode === "hidden" || !user) return null;
 
-  const selfName = myProfile?.name ?? user.email ?? user.id.slice(0, 8);
+  const selfName = myProfile?.name ?? user.email ?? shortUserLabel(user.id);
+  // Carrying the `id` is what earns the initials fallback this person's opaque
+  // `person.*` tone — the same one their face wears on every board card.
   const selfFace: FilterFace = {
+    id: user.id,
     label: selfName,
     imageUrl: myProfile?.avatarUrl ?? undefined,
   };
@@ -73,7 +76,7 @@ export function MissionPersonFilter({
   } else if (filterUserId) {
     const person = roster.find((p) => p.id === filterUserId);
     activeFace = person ?? null;
-    activeText = person?.label ?? filterUserId.slice(0, 8);
+    activeText = person?.label ?? shortUserLabel(filterUserId);
   }
 
   return (

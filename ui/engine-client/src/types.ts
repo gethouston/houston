@@ -1337,6 +1337,15 @@ export interface SessionStartRequest {
    * itself a resume.
    */
   autoResume?: boolean;
+  /**
+   * Who is sending, in a MULTIPLAYER deployment: stamps the optimistic user
+   * bubble so a shared conversation attributes the message from the instant it
+   * appears — matching the `author` the gateway persists and history replays
+   * (HOU-943). Presentation-only, like `displayText`: the wire send is
+   * unchanged, and the gateway remains the authority on who acted. Omitted
+   * single-player / signed out, leaving the bubble authorless.
+   */
+  author?: { userId: string; name?: string };
 }
 
 export interface SessionStartResponse {

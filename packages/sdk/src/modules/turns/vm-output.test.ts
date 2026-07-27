@@ -501,3 +501,77 @@ test("stampHistoryWindow with an unchanged window does not republish", () => {
 
   expect(listener).not.toHaveBeenCalled();
 });
+
+test("seedHistory carries each frame's multiplayer author onto its feed entry", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [
+    {
+      feed_type: "user_message",
+      data: "rebuild the report",
+      ts: 10,
+      author: { userId: "user_a", name: "Ada" },
+    },
+    { feed_type: "assistant_text", data: "on it", ts: 20 },
+    {
+      feed_type: "user_message",
+      data: "add the renewals",
+      ts: 30,
+      author: { userId: "user_b", name: "Bo" },
+    },
+  ]);
+
+  expect(snap().feed.map((f) => f.author)).toEqual([
+    { userId: "user_a", name: "Ada" },
+    undefined,
+    { userId: "user_b", name: "Bo" },
+  ]);
+});
+
+test("prependHistory carries authors onto the older page too", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory(
+    "a",
+    "c1",
+    [
+      {
+        feed_type: "user_message",
+        data: "newer",
+        ts: 100,
+        author: { userId: "user_a" },
+      },
+    ],
+    { earliestLoaded: 5, total: 6 },
+  );
+  vm.prependHistory(
+    "a",
+    "c1",
+    [
+      {
+        feed_type: "user_message",
+        data: "older",
+        ts: 10,
+        author: { userId: "user_b", name: "Bo" },
+      },
+    ],
+    { earliestLoaded: 0, total: 6 },
+  );
+
+  expect(snap().feed.map((f) => f.author)).toEqual([
+    { userId: "user_b", name: "Bo" },
+    { userId: "user_a" },
+  ]);
+});
+
+test("a pushed item carries its author; an authorless push stays authorless", () => {
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "user_message",
+    data: "hi team",
+    pending: true,
+    author: { userId: "user_a", name: "Ada" },
+  });
+  vm.pushFeedItem("a", "c1", { feed_type: "assistant_text", data: "hello" });
+
+  expect(snap().feed[0]?.author).toEqual({ userId: "user_a", name: "Ada" });
+  expect(snap().feed[1]).not.toHaveProperty("author");
+});

@@ -23,6 +23,7 @@ import type {
   ProviderUsage,
 } from "@houston-ai/engine-client";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
+import { actingUser } from "./acting-user";
 import {
   blockWriteWhileWarming,
   blockWriteWhileWarmingById,
@@ -411,6 +412,9 @@ export const tauriChat = {
         queuedPreview: opts?.queuedPreview,
         displayText: opts?.displayText,
         autoResume: opts?.autoResume,
+        // Who is sending: stamps the optimistic bubble so a shared conversation
+        // attributes it immediately (HOU-943). Undefined signed out / local.
+        author: actingUser(),
       });
       return res.sessionKey;
     }),

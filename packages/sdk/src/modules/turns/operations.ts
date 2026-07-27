@@ -87,7 +87,13 @@ export function createTurnOperations(
       input.text,
       output,
       registry,
-      { nonce: input.nonce, provider: pin?.provider, pin },
+      {
+        nonce: input.nonce,
+        provider: pin?.provider,
+        pin,
+        // Multiplayer: the caller's identity stamps the optimistic bubble.
+        author: input.author,
+      },
     );
   };
 
