@@ -3,10 +3,20 @@
  *
  * On a CO-LOCATED engine the credential `claude auth login` just cached IS the
  * dir the local runtime reads, so nothing is pushed. On a REMOTE/HOSTED engine
- * the pod can't read this machine's Keychain, so after a successful browser
- * login the desktop EXTRACTS the cached credential (`read_claude_credential`)
- * and PUSHES it to the pod over the control plane, then polls until the pod's
- * runtime reads anthropic as connected.
+ * the pod can't read this machine's Keychain, so the login mints into a
+ * throwaway HANDOFF dir; after `Login successful` the desktop EXTRACTS that
+ * credential (`read_claude_credential`), PUSHES it to the pod over the control
+ * plane, DESTROYS the local copy, then polls until the pod's runtime reads
+ * anthropic as connected.
+ *
+ * OWNERSHIP: Anthropic refresh tokens rotate — one family tolerates exactly
+ * one rotator, and a second one trips reuse-detection and revokes the family
+ * everywhere (HOU-950). So the freshly minted family is handed off
+ * EXCLUSIVELY: once pushed, the gateway is its only holder, which is why the
+ * handoff-dir copy is discarded the moment the push settles (success or
+ * terminal failure). There is deliberately no path that re-pushes a cached
+ * snapshot later — a failed handoff means the user reconnects from the card,
+ * minting a new family.
  *
  * With NO agent selected (first-run onboarding, the cloud-migration wizard)
  * the push goes to the gateway's agentless SETUP runtime instead — same
@@ -17,9 +27,7 @@
  *
  * The push RETRIES transient failures (engine 5xx, network) with backoff
  * before ever degrading — a waking pod or a momentary gateway blip must not
- * cost the user a manual token paste. And because the minted credential stays
- * cached on this machine, {@link pushCachedClaudeCredential} lets a later
- * session finish a failed handoff silently (see claude-login.ts's reconcile).
+ * cost the user a manual token paste.
  *
  * SAFETY: this ships unsupervised, so EVERY user-initiated failure here
  * (extraction not-found, malformed cred, push non-200 after retries, network)
@@ -36,7 +44,10 @@ import {
 import { getEngine } from "./engine";
 import i18n from "./i18n";
 import { logger } from "./logger";
-import { osReadClaudeCredential } from "./os-bridge";
+import {
+  osDiscardClaudeHandoffCredential,
+  osReadClaudeCredential,
+} from "./os-bridge";
 import { providerLoginFailureText } from "./provider-login-error";
 
 /** Announce the outcome on the client bus (same shape as claude-login's own). */
@@ -58,7 +69,6 @@ type ClaudeCredentialPusher = {
   pushClaudeOAuthCredential?: (
     agentId: string | null,
     credentialJson: string,
-    opts?: { ifAbsent?: boolean },
   ) => Promise<void>;
 };
 
@@ -69,26 +79,21 @@ export type ClaudeHandoffResult =
   | { ok: false; reason: "no-credential" | "push-failed"; error: unknown };
 
 /**
- * Read this machine's cached Claude credential and push it to the cloud —
- * the selected agent's pod, else the first loaded agent's (credentials are
- * workspace-central, any real pod stores and serves them), else the agentless
- * setup runtime (true first-run). Retries transient failures with backoff.
- * Never throws; the caller decides how loud the outcome is.
+ * Read the handoff dir's freshly minted Claude credential and push it to the
+ * cloud — the selected agent's pod, else the first loaded agent's (credentials
+ * are workspace-central, any real pod stores and serves them), else the
+ * agentless setup runtime (true first-run). Retries transient failures with
+ * backoff. Never throws; the caller decides how loud the outcome is.
  *
- * `ifAbsent` (the background RECONCILE): the cached credential may be an OLD
- * snapshot whose refresh token the gateway has since rotated — overwriting the
- * live central credential with it makes the gateway's next refresh trip
- * Anthropic's refresh-token-reuse detection and revoke the whole token family
- * (HOU-855). Fill-only: the push is a no-op when a central credential already
- * exists. The fresh-login path omits it (a just-minted credential SHOULD
- * replace whatever is stored).
+ * A fresh mint always REPLACES whatever the central store holds — the user
+ * just authorized this space, and the old row's family (if any) simply stops
+ * being rotated once overwritten, which Anthropic treats as abandonment, not
+ * reuse.
  */
-export async function pushCachedClaudeCredential(opts?: {
-  ifAbsent?: boolean;
-}): Promise<ClaudeHandoffResult> {
+async function pushMintedClaudeCredential(): Promise<ClaudeHandoffResult> {
   let credentialJson: string;
   try {
-    credentialJson = await osReadClaudeCredential();
+    credentialJson = await osReadClaudeCredential(true);
   } catch (err) {
     return { ok: false, reason: "no-credential", error: err };
   }
@@ -103,7 +108,7 @@ export async function pushCachedClaudeCredential(opts?: {
     }
     for (let attempt = 0; ; attempt++) {
       try {
-        await engine.pushClaudeOAuthCredential(agentId, credentialJson, opts);
+        await engine.pushClaudeOAuthCredential(agentId, credentialJson);
         return { ok: true };
       } catch (err) {
         const delay = PUSH_RETRY_DELAYS_MS[attempt];
@@ -120,16 +125,35 @@ export async function pushCachedClaudeCredential(opts?: {
 }
 
 /**
- * Extract this machine's freshly-cached Anthropic credential and push it to
- * the cloud, then confirm the connection. Any failure falls back to the paste
- * flow. Never rejects.
+ * Destroy the handoff dir's local copy once the push has settled. On success
+ * the gateway is the family's sole rotator and the copy is a revocation
+ * hazard; on failure the mint is abandoned (never re-pushed), so the copy is
+ * dead weight either way. A deletion failure is only logged: the leftover is
+ * inert (nothing reads or rotates the handoff dir outside a login) and the
+ * next login overwrites it — not worth interrupting a flow that succeeded.
+ */
+async function discardHandoffCopy(): Promise<void> {
+  try {
+    await osDiscardClaudeHandoffCredential();
+  } catch (err) {
+    logger.warn(
+      `[claude-login] could not discard the handed-off credential copy: ${String(err)}`,
+    );
+  }
+}
+
+/**
+ * Extract the freshly minted Anthropic credential from the handoff dir, push
+ * it to the cloud, and destroy the local copy, then confirm the connection.
+ * Any failure falls back to the paste flow. Never rejects.
  */
 export async function finishRemoteClaudeLogin(
   frontendProviderId: string,
   confirmConnected: Confirm,
   announce: Announce,
 ): Promise<void> {
-  const result = await pushCachedClaudeCredential();
+  const result = await pushMintedClaudeCredential();
+  await discardHandoffCopy();
   if (!result.ok) {
     fallbackToPaste(frontendProviderId, result.error, announce);
     return;

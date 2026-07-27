@@ -493,6 +493,9 @@ pub fn run() {
             // Extract the cached credential to push to a REMOTE engine pod
             // (a hosted pod can't read this machine's Keychain).
             claude_login::credential::read_claude_credential,
+            // Destroy the handoff-dir copy after the push: the gateway is the
+            // family's only rotator from then on (HOU-950).
+            claude_login::discard::discard_claude_handoff_credential,
             // Pull the app to the foreground when a flow finishes in the
             // browser (e.g. a Composio integration connection landing).
             window_focus::focus_main_window,

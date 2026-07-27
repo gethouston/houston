@@ -42,6 +42,7 @@
 // a re-export of just the fn would not carry them.
 pub(crate) mod code_input;
 pub(crate) mod credential;
+pub(crate) mod discard;
 mod resolve;
 mod runner;
 
@@ -62,12 +63,34 @@ const EVENT_URL: &str = "claude-login://url";
 /// Payload: `{ success: bool, error: string | null }`.
 const EVENT_DONE: &str = "claude-login://done";
 
-/// Houston's shared Claude login dir, used as `CLAUDE_CONFIG_DIR` for both this
-/// login AND the engine so the cached credential is visible to the engine. The
-/// `credential` submodule reads back from the same dir to push the cred to a
-/// remote pod.
+/// Houston's shared Claude login dir, used as `CLAUDE_CONFIG_DIR` for both a
+/// CO-LOCATED login AND the engine so the cached credential is visible to the
+/// engine. The engine reads ONLY this dir — never the handoff dir below.
 pub(super) fn claude_login_config_dir() -> PathBuf {
     crate::houston_dir().join("claude-login")
+}
+
+/// Config dir for a REMOTE-engine login (`handoff: true`): the minted
+/// credential's refresh-token family will be owned and rotated by the gateway
+/// alone, so it must never land in the engine-shared dir — a co-located engine
+/// reading it later would put a second rotator on the family, and Anthropic's
+/// refresh-token-reuse detection then revokes the whole family (HOU-950). The
+/// credential lives here only between `Login successful` and the push; the
+/// frontend destroys it afterwards (`discard`). Fixed (not per-login random)
+/// so the macOS Keychain item it maps to is stable: each login overwrites it,
+/// and a failed discard leaves at most one inert, never-rotated credential
+/// behind for the next login to overwrite.
+pub(super) fn claude_handoff_config_dir() -> PathBuf {
+    crate::houston_dir().join("claude-login-handoff")
+}
+
+/// The login's `CLAUDE_CONFIG_DIR` for the given topology.
+pub(super) fn config_dir_for(handoff: bool) -> PathBuf {
+    if handoff {
+        claude_handoff_config_dir()
+    } else {
+        claude_login_config_dir()
+    }
 }
 
 /// Managed state so `cancel_claude_login` can tear down an in-flight login.
@@ -87,7 +110,9 @@ pub struct ClaudeLoginHandle {
     stdin: code_input::StdinSlot,
 }
 
-/// Start the native Claude sign-in. Returns `Err` (→ frontend toast) only for
+/// Start the native Claude sign-in. `handoff: true` (remote engine) mints into
+/// the throwaway handoff dir instead of the engine-shared one — see
+/// [`claude_handoff_config_dir`]. Returns `Err` (→ frontend toast) only for
 /// the up-front, user-visible failures: the config dir can't be created, or the
 /// helper can't be spawned. Once the child is up, the flow reports its result
 /// through the `claude-login://done` event instead.
@@ -95,8 +120,9 @@ pub struct ClaudeLoginHandle {
 pub async fn start_claude_login(
     app: AppHandle,
     state: State<'_, ClaudeLoginState>,
+    handoff: bool,
 ) -> Result<(), String> {
-    let config_dir = claude_login_config_dir();
+    let config_dir = config_dir_for(handoff);
     // The CLI writes the cached credential here; it must exist first.
     std::fs::create_dir_all(&config_dir).map_err(|e| {
         format!(
@@ -184,5 +210,15 @@ mod tests {
     fn config_dir_lives_under_houston_home() {
         // The shared login dir hangs off the Houston data root.
         assert!(claude_login_config_dir().ends_with("claude-login"));
+    }
+
+    #[test]
+    fn handoff_dir_is_distinct_from_the_engine_shared_dir() {
+        // The whole point: a remote-engine mint must never be visible to a
+        // co-located engine, or two rotators share one refresh-token family.
+        assert!(claude_handoff_config_dir().ends_with("claude-login-handoff"));
+        assert_ne!(claude_handoff_config_dir(), claude_login_config_dir());
+        assert_eq!(config_dir_for(true), claude_handoff_config_dir());
+        assert_eq!(config_dir_for(false), claude_login_config_dir());
     }
 }

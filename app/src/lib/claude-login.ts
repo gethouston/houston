@@ -16,23 +16,30 @@
  *
  * TOPOLOGY: the SAME browser login runs on this machine for both a co-located
  * and a remote engine (`shouldUseClaudeDesktopLogin` is now any Tauri desktop).
- * What differs is what happens AFTER `claude-login://done` with success:
- *   * CO-LOCATED — the credential the desktop just cached is the very dir the
- *     local runtime reads, so we only poll until the runtime reads it connected.
- *   * REMOTE (hosted pod) — the pod can't read this machine's Keychain, so we
- *     EXTRACT the cached credential and PUSH it to the pod (see
- *     `claude-login-remote.ts`), then poll. Any failure there degrades to the
- *     setup-token paste flow, never a dead spinner.
+ * What differs is WHERE the credential is minted and what happens AFTER
+ * `claude-login://done` with success:
+ *   * CO-LOCATED — the login caches into the shared dir the local runtime
+ *     reads, so we only poll until the runtime reads it connected. That
+ *     credential's refresh-token family stays local: the CLI is its only
+ *     rotator, and it is NEVER pushed anywhere.
+ *   * REMOTE (hosted pod) — the pod can't read this machine's Keychain, so the
+ *     login mints into a throwaway HANDOFF dir, we EXTRACT the credential and
+ *     PUSH it to the pod (see `claude-login-remote.ts`), destroy the local
+ *     copy, then poll. From the push on, the gateway is that family's ONLY
+ *     rotator (HOU-950 — a second rotator trips Anthropic's refresh-token-reuse
+ *     detection and revokes the family, signing the user out everywhere). Any
+ *     failure degrades to the setup-token paste flow, never a dead spinner.
+ *
+ * Each space the user connects therefore gets its OWN freshly minted token
+ * family. There is deliberately NO path that seeds a space from a cached
+ * credential snapshot: the old background reconcile did exactly that and was
+ * how one family ended up behind several rotating stores (HOU-950 root cause).
  */
 
-import {
-  finishRemoteClaudeLogin,
-  pushCachedClaudeCredential,
-} from "./claude-login-remote";
+import { finishRemoteClaudeLogin } from "./claude-login-remote";
 import { isRemoteEngine } from "./engine";
 import { publishLocalHoustonEvent } from "./events";
 import i18n from "./i18n";
-import { logger } from "./logger";
 import {
   legacyListen,
   osCancelClaudeLogin,
@@ -108,54 +115,6 @@ async function confirmConnected(provider: string): Promise<boolean> {
   return false;
 }
 
-// One reconcile attempt per app session — it runs on the login surface's
-// mount, and a failed background push must not turn into a retry loop.
-let reconcileRan = false;
-
-/**
- * Silently finish an EARLIER browser login whose cloud handoff failed. The
- * `claude` CLI cached the minted credential on this machine, so when the
- * hosted engine still reads anthropic as disconnected (the push failed — e.g.
- * the gateway was unavailable at the time), the user's intent can be
- * completed WITHOUT re-running the browser flow or asking for a token paste:
- * re-push the cached credential and, on success, announce the normal
- * completion so the provider card flips.
- *
- * Background reconciliation, not a user action: failures are logged, never
- * toasted (the user retries from the connect card whenever they choose).
- * One-shot per session; no-op off-desktop-hosted or when nothing is cached.
- */
-export async function reconcileClaudeCredentialHandoff(): Promise<void> {
-  if (reconcileRan || !isRemoteEngine()) return;
-  reconcileRan = true;
-  try {
-    const status = await tauriProvider.checkStatus("anthropic");
-    if (status.authenticated) return; // nothing to finish
-  } catch {
-    return; // engine unreachable — nothing to reconcile against
-  }
-  // Fill-only: this cached snapshot may predate gateway refresh-token
-  // rotations, and clobbering the live central credential with it would
-  // revoke the whole token family (HOU-855). When a central credential
-  // already exists the push no-ops and the confirm below decides the outcome.
-  const result = await pushCachedClaudeCredential({ ifAbsent: true });
-  if (!result.ok) {
-    if (result.reason === "push-failed") {
-      logger.warn(
-        `[claude-login] background credential reconcile failed: ${String(result.error)}`,
-      );
-    }
-    return;
-  }
-  const ok = await confirmConnected("anthropic");
-  if (ok) {
-    logger.info(
-      "[claude-login] finished an earlier Claude sign-in from the cached credential",
-    );
-    announce("anthropic", true, null);
-  }
-}
-
 /**
  * Drive the desktop Claude browser sign-in end to end. Resolves once the flow
  * has STARTED (the native helper spawned); the outcome arrives asynchronously as
@@ -167,6 +126,10 @@ export async function reconcileClaudeCredentialHandoff(): Promise<void> {
 export async function beginClaudeBrowserLogin(
   frontendProviderId: string,
 ): Promise<void> {
+  // Pinned for the whole attempt: it decides the mint dir (handoff vs the
+  // engine-shared one) AND the completion branch, and those must agree even if
+  // the engine target were to change mid-login.
+  const handoff = isRemoteEngine();
   let unlisten: (() => void) | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let settled = false;
@@ -210,9 +173,10 @@ export async function beginClaudeBrowserLogin(
           announce(frontendProviderId, false, error);
           return;
         }
-        if (isRemoteEngine()) {
-          // Remote pod: extract this machine's cred + push it, then confirm.
-          // Guarantees fallback-to-paste on any failure inside.
+        if (handoff) {
+          // Remote pod: extract the handoff-dir cred + push it (the local copy
+          // is destroyed after the push settles), then confirm. Guarantees
+          // fallback-to-paste on any failure inside.
           void finishRemoteClaudeLogin(
             frontendProviderId,
             confirmConnected,
@@ -251,7 +215,7 @@ export async function beginClaudeBrowserLogin(
   }, LOGIN_TIMEOUT_MS);
 
   try {
-    await osStartClaudeLogin();
+    await osStartClaudeLogin(handoff);
   } catch (err) {
     if (settled) return;
     cleanup();

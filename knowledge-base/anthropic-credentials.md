@@ -35,14 +35,23 @@ the traps at the bottom — read them before touching any of this.
   link back to the app — the app watches the CLI's stdout/exit. The `visit:`
   URL line is OSC-8 hyperlink-wrapped by current CLIs; `resolve.rs` strips that
   before parsing.
-- **Remote/cloud handoff** (`app/src/lib/claude-login-remote.ts`): after the
-  local login, `read_claude_credential` (Rust) extracts the cached credential —
-  file first, then the Keychain item `Claude Code-credentials-<sha256(dir)[:8]>`
-  (the CLI scopes the service name by config dir; account = username) — and
-  pushes it: host route `POST /agents/:id/credential/claude-oauth` → central
-  store put (access + refresh) + materialize on the pod. Any failure degrades
-  to the setup-token paste dialog (deliberate last resort; also the only path
-  for a pure-web client, which has no local CLI).
+- **Remote/cloud handoff** (`app/src/lib/claude-login-remote.ts`): a
+  remote-engine login mints into a THROWAWAY handoff dir
+  (`<HOUSTON_HOME>/claude-login-handoff`, `start_claude_login` with
+  `handoff: true`) — never the engine-shared dir. `read_claude_credential`
+  (Rust) extracts it — file first, then the Keychain item
+  `Claude Code-credentials-<sha256(dir)[:8]>` (the CLI scopes the service name
+  by config dir; account = username) — and pushes it: host route
+  `POST /agents/:id/credential/claude-oauth` → central store put (access +
+  refresh) + materialize on the pod. Once the push settles the local copy is
+  DESTROYED (`discard_claude_handoff_credential`): the gateway is that
+  family's only rotator from then on. Every space the user connects mints its
+  own family this way; there is deliberately NO path that seeds a space from a
+  cached snapshot (the old `?if_absent=1` background reconcile did exactly
+  that and was the HOU-950 root cause — the host still honors the flag for
+  older clients, but nothing current sends it). Any failure degrades to the
+  setup-token paste dialog (deliberate last resort; also the only path for a
+  pure-web client, which has no local CLI).
 - **Per-turn serve (managed cloud)**: the pod's serve sync
   (`packages/runtime/src/auth/serve.ts`) probes anthropic like every provider;
   the pod host serves a gateway-refreshed ACCESS-ONLY token
@@ -68,11 +77,17 @@ the traps at the bottom — read them before touching any of this.
    `packages/host/src/routes/credential.ts`) — a desktop host serving its
    stale durability-marker entry would shadow the working Keychain login.
 4. **One refresh-token family = one rotator.** Anthropic rotates the refresh
-   token on every use and invalidates the old one. The gateway is the single
-   rotator for pods; the desktop CLI is the single rotator locally; the
+   token on every use and invalidates the old one; REUSING a stale one revokes
+   the whole family, signing the user out everywhere. The gateway is the
+   single rotator for pods; the desktop CLI is the single rotator locally; the
    central-store copy on a desktop host is an inert marker (never served,
    never refreshed — TS `credentials/refresh.ts` deliberately has no anthropic
-   entry).
+   entry). HOU-950 corollary: a family must never be COPIED between rotating
+   stores — a remote login mints in the handoff dir and the local copy dies
+   after the push (exclusive handoff), and cached snapshots are never pushed.
+   No locking or freshness check makes a shared family safe; the invalidation
+   happens at Anthropic. Separate spaces get separate families (Anthropic
+   allows many concurrent families per account).
 5. **Windows: the CLI needs a shell BEFORE it does anything — even
    `auth login`.** At startup on Windows the CLI exits 1 unless it finds Git
    Bash or PowerShell (`pwsh` on PATH → three pwsh install dirs → plain
