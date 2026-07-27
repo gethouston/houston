@@ -176,3 +176,43 @@
     transition: none;
   }
 }
+
+/* ── FAQ group accordions — each section collapses, badge shows its size ── */
+details.faq-group > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--line-strong);
+}
+details.faq-group > summary::-webkit-details-marker {
+  display: none;
+}
+details.faq-group > summary .faq-chevron {
+  margin-left: auto;
+  width: 18px;
+  height: 18px;
+  color: var(--ink-subtle);
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+details.faq-group[open] > summary .faq-chevron {
+  transform: rotate(180deg);
+}
+.faq-count {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--panel-raised);
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+details.faq-group > .faq-list {
+  padding: 6px 0 18px;
+}

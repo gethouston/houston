@@ -191,11 +191,32 @@ img {
     background-color var(--dur-elegant) var(--ease-standard);
   border-bottom: 1px solid transparent;
 }
-/* Solid ivory + hairline once scrolled. No backdrop blur (PERFORMANCE.md:
-   blur over a moving backdrop re-rasterizes every frame). */
+/* Frosted glow behind the transparent nav (same treatment as the hero
+   headline): a blurred ivory gradient rasterized once — NOT backdrop-filter
+   (PERFORMANCE.md: blur over a moving backdrop re-rasterizes every frame). */
+.lnav::before {
+  content: "";
+  position: absolute;
+  inset: -28px 0 -44px;
+  z-index: -1;
+  background: linear-gradient(
+    to bottom,
+    rgba(239, 238, 233, 0.92) 0%,
+    rgba(239, 238, 233, 0.55) 58%,
+    transparent 100%
+  );
+  filter: blur(14px);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity var(--dur-elegant) var(--ease-standard);
+}
+/* Solid ivory + hairline once scrolled; the glow hands off to the solid fill. */
 .lnav.scrolled {
   background: var(--ground);
   border-bottom-color: var(--line);
+}
+.lnav.scrolled::before {
+  opacity: 0;
 }
 .lnav-brand {
   display: inline-flex;

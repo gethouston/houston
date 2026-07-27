@@ -187,23 +187,43 @@
 .swap-panel.active {
   display: block;
 }
-.acol-demo .chat-tabs,
+.acol-tabs,
 .feat-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  justify-content: center;
   gap: 7px;
   margin-bottom: 18px;
+}
+.acol-tabs .chat-tab,
+.feat-tabs .chat-tab {
+  padding: 6px 12px;
+  font-size: 12.5px;
+  white-space: nowrap;
 }
 
 /* ── One agent's kanban column (#parallel) — every card is a chat ────────── */
 .acol-demo {
-  max-width: 420px;
+  max-width: none;
 }
+/* The column wears the app's own recessed tone (the gutter) with the real
+   white cards on top, exactly like Mission Control. */
 .acol {
-  background: var(--wash-mist);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 16px;
+  background: var(--app-gutter);
+  border: 1px solid var(--app-line);
+  border-radius: 16px;
+  padding: 14px;
+  max-width: 430px;
+  margin: 0 auto;
+}
+.acol .tcard {
+  margin-bottom: 8px;
+}
+.acol-more {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-subtle);
+  padding-top: 6px;
 }
 .acol-h {
   display: flex;
@@ -223,22 +243,6 @@
   font-size: 12px;
   font-weight: 400;
   color: var(--ink-subtle);
-}
-.acard {
-  display: flex;
-  gap: 11px;
-  align-items: flex-start;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 13px 14px;
-  margin-bottom: 10px;
-}
-.acard:last-child {
-  margin-bottom: 0;
-}
-.acard .tc-title {
-  margin-bottom: 2px;
 }
 .ast {
   width: 8px;
@@ -262,15 +266,15 @@
 
 /* ── Feature views of one agent (#compound) ──────────────────────────────── */
 .feat-demo {
-  max-width: 420px;
-  margin: 0 auto;
+  max-width: none;
 }
 .feat-card {
-  max-width: none;
+  max-width: 430px;
+  margin: 0 auto;
 }
 .feat-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   padding: 13px 0;
   border-bottom: 1px solid var(--line);
@@ -291,6 +295,22 @@
   color: var(--ink-subtle);
   white-space: nowrap;
 }
+.feat-face {
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  box-shadow: none;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.feat-logo {
+  display: flex;
+  flex-shrink: 0;
+}
+.feat-logo svg {
+  width: 16px;
+  height: 16px;
+}
 .feat-chip {
   margin-left: auto;
   font-size: 11.5px;
@@ -299,4 +319,10 @@
   background: rgba(0, 162, 64, 0.1);
   border-radius: 999px;
   padding: 3px 9px;
+}
+
+.tc-head .ast {
+  margin-top: 0;
+  margin-left: 6px;
+  align-self: center;
 }
