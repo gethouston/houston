@@ -29,6 +29,35 @@ describe("historyToFeed", () => {
     ]);
   });
 
+  it("projects the source ChatMessage.turnId onto every folded frame of the turn", () => {
+    const messages: ChatMessage[] = [
+      { role: "user", content: "hi", ts: 1, turnId: "turn-abc" },
+      {
+        role: "assistant",
+        content: "hello",
+        ts: 2,
+        turnId: "turn-abc",
+        thinking: "hmm",
+        usage: { context_tokens: 10, output_tokens: 2, cached_tokens: 0 },
+      },
+    ];
+    const feed = historyToFeed(messages);
+    // The user bubble and every assistant frame (thinking, assistant_text,
+    // final_result) fold under the SAME turn_id — the alignment key a resyncing
+    // client uses to match backfilled entries to the live turn.
+    expect(feed.map((f) => f.turn_id)).toEqual([
+      "turn-abc",
+      "turn-abc",
+      "turn-abc",
+      "turn-abc",
+    ]);
+  });
+
+  it("folds turn_id as undefined for a pre-turn-id transcript (additive back-compat)", () => {
+    const feed = historyToFeed([{ role: "user", content: "hi", ts: 1 }]);
+    expect(feed[0].turn_id).toBeUndefined();
+  });
+
   it("renders displayText as the user bubble when the stored prompt carried hidden text", () => {
     const feed = historyToFeed([
       {
