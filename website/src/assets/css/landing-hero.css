@@ -36,6 +36,7 @@
   min-height: 100svh;
   display: flex;
   flex-direction: column;
+  align-items: center;
   padding: clamp(92px, 12vh, 124px) var(--gutter) 0;
   overflow: hidden;
 }
@@ -54,11 +55,14 @@
   z-index: 3;
 }
 
-/* ── Headline block — calm, above-left, NOT a centered stacked wall ──────── */
+/* ── Headline block — calm, above-left, NOT a centered stacked wall.
+   Sits on the SAME centered content grid (var(--measure)) as the window below
+   and every section further down, so all left edges align down the page. */
 .hero-intro {
   position: relative;
   z-index: 2;
-  max-width: 46rem;
+  width: 100%;
+  max-width: var(--measure);
   margin-bottom: clamp(22px, 3.4vh, 40px);
 }
 .hero-h1 {
@@ -98,6 +102,7 @@
   position: relative;
   z-index: 1;
   flex: 1;
+  width: 100%;
   min-height: 0;
   display: flex;
   justify-content: center;
