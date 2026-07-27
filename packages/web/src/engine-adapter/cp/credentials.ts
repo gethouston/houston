@@ -25,36 +25,28 @@ export async function captureCredential(
 }
 
 /**
- * Push a desktop-extracted Anthropic OAuth credential to the agent's pod. The
- * body is the `claude` CLI's `.credentials.json` shape (`{claudeAiOauth:{...}}`),
- * already a JSON string; the host stores it centrally and materializes it on the
- * pod PVC. Used ONLY for a REMOTE engine — a hosted pod can't read this machine's
- * Keychain, so the co-located desktop (which shares the credential dir with its
- * local runtime) never calls this. Resolves on 200; throws the host's reason
- * otherwise so the caller can degrade to the paste flow.
+ * Push the desktop's freshly minted Anthropic OAuth credential to the agent's
+ * pod. The body is the `claude` CLI's `.credentials.json` shape
+ * (`{claudeAiOauth:{...}}`), already a JSON string; the host stores it
+ * centrally and materializes it on the pod PVC. Used ONLY for a REMOTE engine
+ * — a hosted pod can't read this machine's Keychain, so the co-located desktop
+ * (which shares the credential dir with its local runtime) never calls this.
+ * Always a fresh mint whose family the gateway will own exclusively — the old
+ * `?if_absent=1` fill-only push of a CACHED snapshot is gone with the
+ * background reconcile (HOU-950; the host still honors the flag for older
+ * clients). Resolves on 200; throws the host's reason otherwise so the caller
+ * can degrade to the paste flow.
  */
 export async function pushClaudeOAuthCredential(
   cfg: ControlPlaneConfig,
   agentId: string,
   credentialJson: string,
-  opts?: { ifAbsent?: boolean },
 ): Promise<void> {
   await cpFetch(
     cfg,
-    `/agents/${encodeURIComponent(agentId)}/credential/claude-oauth${ifAbsentQuery(opts)}`,
+    `/agents/${encodeURIComponent(agentId)}/credential/claude-oauth`,
     { method: "POST", body: credentialJson },
   );
-}
-
-/**
- * `?if_absent=1` marks a fill-only push of a CACHED credential snapshot (the
- * reconcile): the host must never overwrite a live central credential whose
- * refresh token the gateway may have rotated since the snapshot was cached
- * (HOU-855). A fresh browser login omits it and overwrites. Rides the query
- * string so the CLI's credential JSON is forwarded byte-verbatim as the body.
- */
-function ifAbsentQuery(opts?: { ifAbsent?: boolean }): string {
-  return opts?.ifAbsent ? "?if_absent=1" : "";
 }
 
 /**
@@ -145,16 +137,11 @@ export async function getTunnelCredentials(
 export async function pushSetupClaudeOAuthCredential(
   cfg: ControlPlaneConfig,
   credentialJson: string,
-  opts?: { ifAbsent?: boolean },
 ): Promise<void> {
-  await cpFetch(
-    cfg,
-    `/setup-runtime/credential/claude-oauth${ifAbsentQuery(opts)}`,
-    {
-      method: "POST",
-      body: credentialJson,
-    },
-  );
+  await cpFetch(cfg, `/setup-runtime/credential/claude-oauth`, {
+    method: "POST",
+    body: credentialJson,
+  });
 }
 
 /** Connect-once capture on the setup runtime — `captureCredential`, agentless. */

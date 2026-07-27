@@ -31,7 +31,7 @@ use std::process::Command;
 
 use sha2::{Digest, Sha256};
 
-use super::claude_login_config_dir;
+use super::config_dir_for;
 
 /// Base Keychain service name the `claude` CLI stores credentials under
 /// (macOS). The default `~/.claude` install uses it bare; any other
@@ -44,7 +44,7 @@ const KEYCHAIN_SERVICE_BASE: &str = "Claude Code-credentials";
 /// Houston's login dir. The hash input is the path string EXACTLY as the CLI
 /// received it in `CLAUDE_CONFIG_DIR` (no normalization), which is the same
 /// `claude_login_config_dir()` string the login spawn passed.
-fn keychain_service_for(config_dir: &Path) -> String {
+pub(super) fn keychain_service_for(config_dir: &Path) -> String {
     let digest = Sha256::digest(config_dir.to_string_lossy().as_bytes());
     let prefix: String = digest
         .iter()
@@ -54,13 +54,16 @@ fn keychain_service_for(config_dir: &Path) -> String {
     format!("{KEYCHAIN_SERVICE_BASE}-{prefix}")
 }
 
-/// Read the cached Anthropic credential JSON for Houston's shared login dir and
-/// return it verbatim (the CLI's `.credentials.json` shape). `Err` on
-/// not-found, an unreadable file/Keychain, or malformed JSON — the caller
-/// degrades to the paste flow instead of leaving a dead spinner.
-#[tauri::command]
-pub async fn read_claude_credential() -> Result<String, String> {
-    let dir = claude_login_config_dir();
+/// Read the cached Anthropic credential JSON the login wrote and return it
+/// verbatim (the CLI's `.credentials.json` shape). `handoff` selects the same
+/// dir the matching `start_claude_login` minted into — for a remote engine
+/// that is the throwaway handoff dir, whose contents are destroyed after the
+/// push (`discard`). `Err` on not-found, an unreadable file/Keychain, or
+/// malformed JSON — the caller degrades to the paste flow instead of leaving a
+/// dead spinner.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn read_claude_credential(handoff: bool) -> Result<String, String> {
+    let dir = config_dir_for(handoff);
     read_credential(&dir, |service| keychain_credential(service))
 }
 

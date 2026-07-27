@@ -235,6 +235,7 @@ export async function invoke<T = unknown>(
     case "submit_claude_login_code": // relays a pasted code to the desktop `claude` child's stdin
     case "complete_claude_login_from_clipboard": // desktop clipboard probe for the sign-in auto-finish
     case "read_claude_credential": // reads this machine's Keychain/cred file; web has neither
+    case "discard_claude_handoff_credential": // destroys the desktop's handed-off credential copy; web never minted one
 
     case "get_engine_handshake": // web injects window.__HOUSTON_ENGINE__ directly
     // The guided "connect a local model" bridge scans localhost and runs an

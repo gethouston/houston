@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
-import {
-  cancelClaudeBrowserLogin,
-  reconcileClaudeCredentialHandoff,
-} from "../../lib/claude-login";
+import { cancelClaudeBrowserLogin } from "../../lib/claude-login";
 import { listenOsEvent } from "../../lib/events";
 import {
   osCompleteClaudeLoginFromClipboard,
-  osIsTauri,
   osSubmitClaudeLoginCode,
 } from "../../lib/os-bridge";
 import { PROVIDERS } from "../../lib/providers";
@@ -45,13 +41,11 @@ export function ClaudeBrowserLogin() {
     };
   }, []);
 
-  // Finish any EARLIER browser login whose cloud handoff failed: the minted
-  // credential is still cached on this machine, so the connect completes
-  // silently, with no browser round-trip and no token paste (one-shot per
-  // session; a quiet no-op when there's nothing to finish).
-  useEffect(() => {
-    if (osIsTauri()) void reconcileClaudeCredentialHandoff();
-  }, []);
+  // There is deliberately NO background reconcile of an earlier login's cached
+  // credential here: pushing a cached snapshot is how one refresh-token family
+  // ended up behind several independent rotators, tripping Anthropic's
+  // reuse-detection and revoking the family (HOU-950). A failed handoff is
+  // finished by the user reconnecting from the card — a fresh mint.
 
   if (!url || !ANTHROPIC) return null;
   return (

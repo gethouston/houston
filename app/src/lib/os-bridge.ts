@@ -133,24 +133,38 @@ export function osStartCodexOauthLoopback(): Promise<void> {
 
 /** Run `claude auth login --claudeai` FOR the user on the desktop (zero
  * terminal): the native side spawns the bundled `claude`, which opens the
- * browser and catches its own callback, caching the credential in Houston's
- * shared login dir (the same `CLAUDE_CONFIG_DIR` the engine reads). Emits
- * `claude-login://url` (the authorize URL, as a fallback for the "didn't open"
- * link) and `claude-login://done` (`{ success, error }`). Rejects only on an
- * up-front spawn failure. Desktop + co-located engine only. */
-export function osStartClaudeLogin(): Promise<void> {
-  return invoke<void>("start_claude_login");
+ * browser and catches its own callback. `handoff: false` (co-located engine)
+ * caches into Houston's shared login dir — the same `CLAUDE_CONFIG_DIR` the
+ * engine reads. `handoff: true` (remote engine) mints into a separate
+ * throwaway handoff dir instead: the credential's refresh-token family will be
+ * owned by the gateway alone, so it must never be visible to a co-located
+ * engine (HOU-950). Emits `claude-login://url` (the authorize URL, as a
+ * fallback for the "didn't open" link) and `claude-login://done`
+ * (`{ success, error }`). Rejects only on an up-front spawn failure. */
+export function osStartClaudeLogin(handoff: boolean): Promise<void> {
+  return invoke<void>("start_claude_login", { handoff });
 }
 
-/** Extract the Anthropic OAuth credential the `claude` CLI just cached for
- * Houston's shared login dir, as the CLI's `.credentials.json` JSON string
- * (`{claudeAiOauth:{...}}`). Used ONLY for a REMOTE engine: the desktop pushes
- * the extracted cred to the pod (which can't read this machine's Keychain). The
- * native side reads `<claudeLoginConfigDir>/.credentials.json` or, on macOS, the
- * `"Claude Code-credentials"` Keychain item; rejects (never a silent empty) on
- * not-found / parse failure so the caller can fall back to the paste flow. */
-export function osReadClaudeCredential(): Promise<string> {
-  return invoke<string>("read_claude_credential");
+/** Extract the Anthropic OAuth credential the `claude` CLI just cached, as the
+ * CLI's `.credentials.json` JSON string (`{claudeAiOauth:{...}}`). Used ONLY
+ * for a REMOTE engine (`handoff: true`, the same dir the matching login minted
+ * into): the desktop pushes the extracted cred to the pod (which can't read
+ * this machine's Keychain). The native side reads the dir's
+ * `.credentials.json` or, on macOS, its dir-scoped Keychain item; rejects
+ * (never a silent empty) on not-found / parse failure so the caller can fall
+ * back to the paste flow. */
+export function osReadClaudeCredential(handoff: boolean): Promise<string> {
+  return invoke<string>("read_claude_credential", { handoff });
+}
+
+/** Destroy the handoff dir's cached Claude credential (file + Keychain item)
+ * once the push to the gateway has settled: from then on the gateway is the
+ * refresh-token family's ONLY rotator, and any surviving local copy is a
+ * revocation hazard (HOU-950). Idempotent; rejects with the real reason on a
+ * genuine deletion failure (the leftover is inert — nothing reads the handoff
+ * dir outside the login flow — so callers log rather than toast). */
+export function osDiscardClaudeHandoffCredential(): Promise<void> {
+  return invoke<void>("discard_claude_handoff_credential");
 }
 
 /** Relay a pasted authorization code to the in-flight desktop Claude sign-in.
