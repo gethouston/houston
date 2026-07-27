@@ -163,6 +163,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           showSenders={panel.showSenders}
           agentLabel={panel.agentLabel}
           renderSenderAvatar={panel.renderSenderAvatar}
+          senderNameClass={panel.senderNameClass}
           {...panel.mentionProps}
           dictation={panel.dictation}
           prepareAttachments={attachmentValidation.prepareAttachments}

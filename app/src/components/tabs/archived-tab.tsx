@@ -180,6 +180,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           showSenders={panel.showSenders}
           agentLabel={panel.agentLabel}
           renderSenderAvatar={panel.renderSenderAvatar}
+          senderNameClass={panel.senderNameClass}
           {...panel.mentionProps}
           renderSystemMessage={panel.renderSystemMessage}
           conversationMap={panel.conversationMap}

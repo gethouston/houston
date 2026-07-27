@@ -54,12 +54,30 @@ export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
   /** Optional badge avatar shown on the message bubble (e.g., channel logo). */
   avatar?: React.ReactNode;
+  /**
+   * A user turn written by SOMEONE ELSE (HOU-960). Alignment stops following
+   * the role and follows the WRITER: the viewer's own turns keep the
+   * right-aligned near-ink bubble (`is-user`), a teammate's mirrors to the left
+   * as a recessed, hairlined bubble (`is-peer`) with room for their face.
+   */
+  peer?: boolean;
 };
+
+/** Role/authorship marker classes the bubble styling below scopes itself to. */
+function messageVariantClass(
+  from: UIMessage["role"],
+  peer: boolean | undefined,
+): string {
+  if (from !== "user") return "is-assistant";
+  if (peer) return "is-peer mr-auto max-w-[70%]";
+  return "is-user ml-auto max-w-[70%] justify-end";
+}
 
 export const Message = ({
   className,
   from,
   avatar,
+  peer,
   children,
   ...props
 }: MessageProps) => (
@@ -67,9 +85,7 @@ export const Message = ({
     <div
       className={cn(
         "group flex w-full flex-col gap-2",
-        from === "user"
-          ? "is-user ml-auto max-w-[70%] justify-end"
-          : "is-assistant",
+        messageVariantClass(from, peer),
         className,
       )}
       {...props}
@@ -88,11 +104,22 @@ export const MessageContent = ({
 }: MessageContentProps) => {
   const avatar = useContext(MessageAvatarContext);
   return (
-    <div className={cn("relative", avatar && "group-[.is-user]:mr-4")}>
+    <div
+      className={cn(
+        "relative",
+        avatar && "group-[.is-user]:mr-4 group-[.is-peer]:ml-4",
+      )}
+    >
       <div
         className={cn(
           "flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-base leading-6",
           "group-[.is-user]:ml-auto group-[.is-user]:rounded-[22px] group-[.is-user]:bg-ink group-[.is-user]:px-4 group-[.is-user]:py-2.5 group-[.is-user]:text-input dark:group-[.is-user]:bg-chip-subtle dark:group-[.is-user]:text-ink",
+          // A teammate's incoming bubble. Same shape and padding as the
+          // viewer's own, but the recessed chip fill instead of near-ink, plus
+          // a hairline: over the near-white canvas (light) and the glass
+          // canvas (dark) the fill alone is only a few levels of separation, so
+          // the line is what makes it read as an object rather than a smudge.
+          "group-[.is-peer]:mr-auto group-[.is-peer]:rounded-[22px] group-[.is-peer]:border group-[.is-peer]:border-line group-[.is-peer]:bg-chip group-[.is-peer]:px-4 group-[.is-peer]:py-2.5 group-[.is-peer]:text-ink",
           "group-[.is-assistant]:text-ink",
           className,
         )}
@@ -101,7 +128,7 @@ export const MessageContent = ({
         {children}
       </div>
       {avatar && (
-        <div className="absolute -bottom-1 -right-3.5 group-[.is-assistant]:-left-3.5 group-[.is-assistant]:right-auto">
+        <div className="absolute -bottom-1 -right-3.5 group-[.is-assistant]:-left-3.5 group-[.is-assistant]:right-auto group-[.is-peer]:-left-3.5 group-[.is-peer]:right-auto">
           {avatar}
         </div>
       )}
@@ -457,6 +484,12 @@ export const MessageResponse = memo(
           // opens in the system browser (issue #358), not dead text. Only
           // render it interactive when there's an open handler; otherwise it
           // would look clickable but do nothing.
+          //
+          // Both BUBBLE variants underline the link permanently, never on
+          // hover: inside a filled bubble `text-action` sits within ~1.05:1 of
+          // the body ink (identical in dark), so colour carries no signal and
+          // the underline is the whole affordance. Only the assistant's prose,
+          // on the plain canvas, may keep it hover-enhanced.
           if (kind === "autolink") {
             if (!fn) return <span>{children}</span>;
             return (
@@ -467,7 +500,7 @@ export const MessageResponse = memo(
                   e.preventDefault();
                   onOpen();
                 }}
-                className="text-action underline-offset-4 hover:underline [overflow-wrap:anywhere] group-[.is-user]:text-input group-[.is-user]:underline dark:group-[.is-user]:text-ink"
+                className="text-action underline-offset-4 hover:underline [overflow-wrap:anywhere] group-[.is-peer]:underline group-[.is-user]:text-input group-[.is-user]:underline dark:group-[.is-user]:text-ink"
               >
                 {children}
               </a>

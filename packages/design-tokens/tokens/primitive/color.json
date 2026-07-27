@@ -176,11 +176,23 @@
       "slate-bright": {
         "$value": "#647585"
       },
+      "slate-name": {
+        "$value": "#4e5e6c"
+      },
+      "slate-name-bright": {
+        "$value": "#8b9dab"
+      },
       "sage": {
         "$value": "#5e7266"
       },
       "sage-bright": {
         "$value": "#647a6d"
+      },
+      "sage-name": {
+        "$value": "#506357"
+      },
+      "sage-name-bright": {
+        "$value": "#8ca596"
       },
       "mauve": {
         "$value": "#84616b"
@@ -188,17 +200,35 @@
       "mauve-bright": {
         "$value": "#8e6b76"
       },
+      "mauve-name": {
+        "$value": "#74535d"
+      },
+      "mauve-name-bright": {
+        "$value": "#b08e98"
+      },
       "taupe": {
         "$value": "#736550"
       },
       "taupe-bright": {
         "$value": "#7d6f59"
       },
+      "taupe-name": {
+        "$value": "#645845"
+      },
+      "taupe-name-bright": {
+        "$value": "#a4957b"
+      },
       "indigo": {
         "$value": "#5b6488"
       },
       "indigo-bright": {
         "$value": "#656e93"
+      },
+      "indigo-name": {
+        "$value": "#4f5878"
+      },
+      "indigo-name-bright": {
+        "$value": "#8e97bb"
       },
       "overflow": {
         "$value": "#e6e8ec"

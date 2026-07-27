@@ -745,7 +745,9 @@ detail panel (`kanban-detail-panel.tsx`, 3 at `md`). Anatomy: circles overlapped
 (`input` on cards, `background` on the panel) so an overlap reads as a cutout,
 not a halo; the initials fallback is OPAQUE, a desaturated tone hashed from the
 person's stable id (`personToneClass` — the same teammate wears the same colour
-everywhere, see `DESIGN.md` person palette); the "+N" chip is a solid
+everywhere, and the same hash picks the `text-person-name-*` tone their name
+wears in chat via `personNameToneClass`; see `DESIGN.md` person palette); the
+"+N" chip is a solid
 `bg-person-overflow` fill and, when `expandable`, a button whose popover lists
 EVERY contributor. The card body reserves a right gutter sized to the painted
 stack and rounded up to the sanctioned spacing scale (`peopleGutterClass`) so
@@ -787,13 +789,16 @@ non-user-initiated read: `tauriOrg.profiles` runs with `{toast:false,capture:fal
 rare hard failure stays silent and consumers fall back via React Query's `isError`. i18n:
 `dashboard:peopleFilter.*`, `board:people.label` (en/es/pt).
 
-## Chat sender attribution (HOU-943)
+## Chat sender attribution (HOU-943, HOU-960)
 
-In a shared chat EVERY turn says who sent it: the writer's face + name above a
-human bubble, the agent's mark + name above its prose. The trigger is the
-DEPLOYMENT, not the thread — `isMultiplayer(capabilities)` — so a shared chat
-attributes its first message, not only once a second person writes. Single-player
-renders no sender line at all (byte-identical transcript).
+In a shared chat every turn says who sent it, on WhatsApp-group semantics: a
+group chat labels the people you talk TO and never you, and a name is an answer
+to "who is talking now", so it prints once per change of speaker rather than
+once per message. The trigger is the DEPLOYMENT, not the thread —
+`isMultiplayer(capabilities)` — so a shared chat attributes its first message,
+not only once a second person writes. Single-player renders no sender
+presentation at all: no name, no face, no reserved column (byte-identical
+transcript).
 
 **The identity travels on the view-model.** A message's author is already stored
 and on the wire (`ChatMessage.author`, stamped by the runtime from
@@ -807,22 +812,82 @@ adapter `streamTurn` → SDK, filled once in `tauriChat.send` from
 `app/src/lib/acting-user.ts` (a read of the shared `["session"]` cache; signed
 out ⇒ absent ⇒ authorless, exactly as today).
 
+**Three row anatomies** (HOU-960). A TEAMMATE's user turn mirrors to the LEFT:
+their face in a fixed 20px column beside the bubble (`ChatPeerRow`), their name
+as the bubble's FIRST LINE (`text-xs font-semibold`, that person's tone), and
+the bubble itself the recessed `bg-chip` fill with a `border-line` hairline
+(`is-peer` in `ai-elements/message.tsx`) instead of the viewer's near-ink fill —
+a left-hand bubble in the reader's own colour reads as something the reader
+said. The VIEWER'S OWN turn is untouched: the right-aligned near-ink bubble
+(`is-user`), with NO face and NO name. The "You" line is gone from the screen;
+`authorLabels.you` is now announced in an `sr-only` span instead, because
+alignment is a visual-only cue a screen reader cannot see. The AGENT keeps the
+left prose layout with its mark + name above the prose (`ChatSenderHeader` — it
+has no bubble to put a name inside), the name painted in the agent's own avatar
+colour.
+
+**Run grouping** (`ui/chat/src/chat-sender-runs.ts` — pure, JSX-free, unit-tested
+in `ui/chat/tests/attribution.test.ts`). Name and face print on the message that
+OPENS a run from one sender; the rest of the run renders bare with the avatar
+column still reserved, so consecutive bubbles line up under the face instead of
+stepping left. `senderRunKey` keys a user message on its author id (`user:` + id;
+an authorless message keys on the empty id, which is right on both paths that
+produce one), a system message on its own message key (so a divider can never
+join a run and always breaks the one it interrupts), and every assistant turn on
+the constant `AGENT_RUN_KEY`. `senderRunStarts` walks the DISPLAY items and SKIPS
+`kind: "process"` blocks, so an agent's tool/reasoning work is transparent: it
+neither starts nor breaks a run. `ChatMessages` computes the start set once per
+render and hands each row its `isRunStart`.
+
 **Rendering (`@houston-ai/chat`).** `ChatPanel`/`ChatMessages` take
 `showSenders` (force attribution on every turn; omitted = the legacy
-"≥2 distinct authors" heuristic, user rows only), `agentLabel`, and
-`renderSenderAvatar`. `ChatSenderHeader` draws the line (avatar + name, mirrored
-on the right-aligned user bubble); the pure name rule is `senderNameFor`
-(`author-label.ts`) — the viewer gets `labels.you`, never nothing. Props-only and
-i18n-agnostic, as ever.
+"≥2 distinct authors" heuristic, user rows only), `agentLabel`,
+`renderSenderAvatar` and — new in HOU-960 — `senderNameClass`, the Tailwind
+text-colour utility a row's sender NAME is painted in. That is the seam: the APP
+supplies sender presentation as DATA (the face, the name's colour) because it is
+the only side that knows the palette, the profile and the agent; `ui/chat` owns
+layout, alignment and grouping and stays palette-free and i18n-agnostic.
+`chat-sender-parts.tsx` holds the three pieces (`ChatSenderName`,
+`ChatSenderHeader`, `ChatPeerRow`; the old `chat-sender-header.tsx` is gone),
+`chat-message-item.tsx` composes the row against `chat-message-item-types.ts`,
+and `chat-message-body.tsx` takes the name as a `nameSlot` so it renders INSIDE
+the bubble (or directly above a custom `renderUserMessage` node, which brings its
+own container). The pure rules stay in `author-label.ts`: `isOwnMessage`
+(absent author OR unresolved viewer ⇒ "own", so a legacy transcript and the
+signed-in-but-not-yet-resolved window both render today's layout) and
+`senderNameFor` (own or authorless ⇒ `null`; `authorLabelFor` is gone, since a
+viewer's own row is no longer labelled on screen).
 
 **App wiring.** `use-chat-sender-avatars.tsx` resolves it: `showSenders` from
-capabilities, `agentLabel` from the agent, and faces from the SAME batched
+capabilities, `agentLabel` from the agent, faces from the SAME batched
 `useUserProfiles` lookup the board face stacks use (ids collected from the feed's
-authors, own rows via `useMyProfile`, `PersonFace` initials fallback).
-`use-agent-chat-panel` returns the three props, `authorLabels.you` =
-`chat:attribution.you`, and every AIBoard mount forwards them. E2E:
-`packages/web/e2e/chat-senders.spec.ts` against the fake host's
-`/__test__/chat-history` control.
+authors, own rows via `useMyProfile`, `PersonFace` initials fallback), and
+`senderNameClass` = `personNameToneClass(author.userId)` for a human,
+`agentNameToneClass(agent.color)` for the agent. `use-agent-chat-panel` returns
+the four props, `authorLabels.you` = `chat:attribution.you`, and every AIBoard
+mount forwards them. E2E: `packages/web/e2e/chat-senders.spec.ts` against the
+fake host's `/__test__/chat-history` control.
+
+**Name tones are their own tokens, measured not assumed** (HOU-960). A person's
+colour is a property of the PERSON: `personNameToneClass` and `personToneClass`
+(`ui/board/src/kanban-people-tone.ts`) share ONE `personToneIndex(id)`, so a
+teammate's name and their avatar are the same hue on the board and in chat alike.
+The hue is the same, the VALUE is not: the `person.*` fills were tuned to carry
+white initials and measure 2.90–3.14 as name text on the dark bubble, so five new
+tokens `--ht-person-name-{slate,sage,mauve,taupe,indigo}` (light + dark) retune
+the same families for text, bridged as `text-person-name-*` in
+`ui/core/src/globals.css`. The seven agent colours are now bridged as
+`text-agent-*` too (avatars still resolve to an inline `var(--ht-agent-*)`, since
+a fill is picked at runtime from data, not from a class the markup can spell).
+`agentNameToneClass` (`ui/core/src/agent-name-tone.ts`) MEASURES each agent
+colour against the theme's real chat surface at module load (dark composited
+through the glass) and emits a complete literal class per outcome, dropping to
+`text-ink` in whichever theme cannot carry 4.5:1; all seven pass both themes
+today (worst: golden 4.80 light, crimson 6.02 dark). Guards:
+`packages/design-tokens/test/contrast.test.ts` re-measures every person-name and
+agent token against the composited surfaces read out of the generated
+`dist/css/tokens.css`, and `ui/core/tests/agent-name-tone.test.ts` pins the
+branch table.
 
 ---
 

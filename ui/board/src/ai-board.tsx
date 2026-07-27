@@ -242,6 +242,9 @@ export interface AIBoardProps {
   /** Sender avatar (teammate face / agent mark) for the sender line. Forwarded
    *  to ChatPanel. */
   renderSenderAvatar?: ChatPanelProps["renderSenderAvatar"];
+  /** Text-colour utility for a row's sender name (teammate tone / agent
+   *  colour). Forwarded to ChatPanel. */
+  senderNameClass?: ChatPanelProps["senderNameClass"];
   /** Teammates the composer can @mention (HOU-944, the viewer excluded).
    *  Forwarded to ChatPanel; empty/absent means "@" just types plainly. */
   mentionPeople?: ChatPanelProps["mentionPeople"];
@@ -380,6 +383,7 @@ export function AIBoard({
   showSenders,
   agentLabel,
   renderSenderAvatar,
+  senderNameClass,
   dictation,
   layout = "board",
   listAlign,
@@ -764,6 +768,7 @@ export function AIBoard({
           showSenders={showSenders}
           agentLabel={agentLabel}
           renderSenderAvatar={renderSenderAvatar}
+          senderNameClass={senderNameClass}
           mentionPeople={mentionPeople}
           messageMentionPeople={messageMentionPeople}
           renderMentionAvatar={renderMentionAvatar}

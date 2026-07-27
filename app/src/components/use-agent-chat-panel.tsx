@@ -259,6 +259,9 @@ interface AgentChatPanelProps {
   agentLabel: ChatPanelProps["agentLabel"];
   /** Face for a message's sender: teammate photo/initials, or the agent mark. */
   renderSenderAvatar: ChatPanelProps["renderSenderAvatar"];
+  /** Text colour for a sender's NAME: their person tone, or the agent's own
+   *  avatar colour (HOU-960). */
+  senderNameClass: ChatPanelProps["senderNameClass"];
   /** The @mention props (HOU-944), spread as ONE group at every AIBoard mount:
    *  the composer's roster, the render roster, the row face and the labels.
    *  Every list is empty off multiplayer, so "@" just types plainly. */
@@ -522,10 +525,8 @@ export function useAgentChatPanel({
   // Sender identity (HOU-943): in a shared (multiplayer) deployment every turn
   // shows who sent it — the teammate's face + name, the agent's mark + name.
   // Resolved from the feed's authors, so it repaints as teammates' turns land.
-  const { showSenders, agentLabel, renderSenderAvatar } = useChatSenderAvatars(
-    agent,
-    sessionFeedItems,
-  );
+  const { showSenders, agentLabel, renderSenderAvatar, senderNameClass } =
+    useChatSenderAvatars(agent, sessionFeedItems);
 
   // @mentions of teammates (HOU-944): the space roster the composer offers and
   // the renderer chips against. Empty off multiplayer — "@" then types plainly.
@@ -2123,6 +2124,7 @@ export function useAgentChatPanel({
     showSenders,
     agentLabel,
     renderSenderAvatar,
+    senderNameClass,
     mentionProps,
     dictation,
   };

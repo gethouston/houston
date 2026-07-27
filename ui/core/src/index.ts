@@ -1,4 +1,6 @@
 export * from "./agent-colors";
+export * from "./agent-name-tone";
+export * from "./color-contrast";
 export * from "./components/accordion";
 export * from "./components/agent-avatar";
 export * from "./components/alert";

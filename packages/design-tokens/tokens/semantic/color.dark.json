@@ -65,6 +65,11 @@
       "mauve": { "$value": "{color.person.mauve-bright}" },
       "taupe": { "$value": "{color.person.taupe-bright}" },
       "indigo": { "$value": "{color.person.indigo-bright}" },
+      "name-slate": { "$value": "{color.person.slate-name-bright}" },
+      "name-sage": { "$value": "{color.person.sage-name-bright}" },
+      "name-mauve": { "$value": "{color.person.mauve-name-bright}" },
+      "name-taupe": { "$value": "{color.person.taupe-name-bright}" },
+      "name-indigo": { "$value": "{color.person.indigo-name-bright}" },
       "initials": { "$value": "{color.base.white}" },
       "overflow": { "$value": "{color.person.overflow-dark}" },
       "overflow-text": { "$value": "{color.neutral.250}" }

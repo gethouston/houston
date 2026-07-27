@@ -3,6 +3,65 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v40 - 2026-07-27
+
+HOU-960, chat sender presentation rebuilt on the semantics of a group chat. A
+group chat labels the people you are talking TO and never you: your own messages
+are identified by the side they sit on, everyone else's by a face and a name.
+And a name is an answer to "who is talking now", a question that only needs
+answering when the answer changes, so it prints once per speaker rather than
+once per message. v37 gave every turn in a shared conversation its own sender
+line above the bubble, which answered "who wrote this" for each message in
+isolation: a fast exchange became a column of repeated names, with the reader's
+own name printed back at them. This is the same information, arranged the way
+readers already know how to read it.
+
+There are three row anatomies now. A `user-message` written by a TEAMMATE
+mirrors to the left: their face sits in a fixed 20px column beside the bubble,
+their name is the bubble's first line, small and semibold in that person's own
+tone, and the bubble is the recessed chip fill with a hairline rather than the
+viewer's near-ink one, because a left-hand bubble in the reader's own colour
+reads as something the reader said. The VIEWER'S OWN message keeps today's
+right-aligned near-ink bubble exactly, now with no face and no name at all. The
+"You" line is gone from the screen; the consumer's "you" string is announced to
+screen readers instead, because alignment is a cue only a sighted reader gets.
+`assistant-message` keeps its prose layout with the mark and name above the
+text, and the name is now painted in the agent's own avatar colour.
+
+Run grouping ties the three together. A name and a face print on the first
+message of a run from one sender and nowhere else in it, while the avatar column
+stays reserved on the rest so consecutive bubbles line up under the face instead
+of stepping sideways. A run breaks when the speaker changes, and a system
+divider (a context compaction, say) always breaks one, because after a divider
+the reader has lost the thread and the next speaker has to reintroduce
+themselves. An agent's tool and reasoning blocks are transparent to the rule:
+they neither start nor break a run, so "you asked, the agent worked, the agent
+answered" still introduces the agent on its answer, while "answer, work, answer"
+correctly stays one run.
+
+The colours needed new tokens. A person's tone is a property of the person,
+hashed from their stable id, so their name and their avatar are the same hue on
+the board and in chat alike. But the five `person.*` fills were tuned as avatar
+backgrounds carrying white initials, and as name text on the bubble they measure
+2.90 to 3.14 in dark mode, well under the 4.5:1 floor for body text. So
+`--ht-person-name-{slate,sage,mauve,taupe,indigo}` joins them in both themes:
+the same five hue families retuned for text, a darker light-mode tone paired
+with a lighter dark-mode one, so the identity reads the same while the text
+stays legible. On the composited bubble surface (light rgb(244,244,244), dark
+rgb(41,41,43)) they measure, light over dark, slate 6.06 / 5.18, sage 5.83 /
+5.48, mauve 6.07 / 4.95, taupe 6.29 / 4.94 and indigo 6.34 / 5.03, and a token
+test re-measures them against the real surfaces on every build rather than
+trusting a pinned number. The agent palette needed no retuning but is checked
+the same way: every agent colour is measured against its theme's chat surface,
+and one that cannot carry 4.5:1 as text falls back to plain ink in that theme.
+All seven pass in both themes today, the tightest being golden at 4.80 in light
+and crimson at 6.02 in dark.
+
+Single player is untouched to the pixel. Attribution still appears only where
+the deployment is multiplayer, or where the old heuristic finds two distinct
+authors in one thread; a solo transcript renders no name, no face, and reserves
+no column for either, exactly as before.
+
 ## v39 - 2026-07-27
 
 HOU-945, relevance-scoped notifications: a shared workspace only works if you can

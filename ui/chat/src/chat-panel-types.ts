@@ -138,6 +138,9 @@ export interface ChatPanelProps {
   agentLabel?: ChatMessagesProps["agentLabel"];
   /** Sender avatar (teammate face / agent mark) for the sender line. */
   renderSenderAvatar?: ChatMessagesProps["renderSenderAvatar"];
+  /** Text-colour utility for a row's sender name. See
+   *  `ChatMessagesProps.senderNameClass`. */
+  senderNameClass?: ChatMessagesProps["senderNameClass"];
   /** Teammates the COMPOSER can @mention (the viewer excluded — you do not
    *  @mention yourself). Empty/absent (single-player, a personal space, an
    *  older gateway) means "@" just types plainly and no popover ever opens. */
