@@ -91,105 +91,6 @@
   }
 }
 
-/* ── Parallel lanes (#parallel) ───────────────────────────────────────────── */
-.lanes {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 26px;
-  border-radius: 20px;
-  background: var(--wash-mist);
-  border: 1px solid var(--line);
-}
-.lane {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 14px 16px;
-}
-.lane-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.lane-head .av {
-  width: 22px;
-  height: 22px;
-}
-.lane-name {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--ink-strong);
-}
-.lane-count {
-  margin-left: auto;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--action);
-  color: var(--action-text);
-  font-size: 11px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.lane-live {
-  margin-left: auto;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #00a240;
-}
-/* Two real status messages alternate per lane, staggered across lanes so the
-   three chats visibly move at the same time but never in lockstep. */
-.lane-feed {
-  position: relative;
-  margin-top: 12px;
-  min-height: 2.9em;
-}
-.lane-msg {
-  position: absolute;
-  inset: 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--ink-muted);
-  opacity: 0;
-}
-.lane-msg:first-child {
-  opacity: 1;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .lane-live {
-    animation: lane-blink 2.4s infinite var(--ease-standard);
-  }
-  .lane-msg:first-child {
-    animation: lane-a 9s infinite var(--ease-standard);
-  }
-  .lane-msg:last-child {
-    animation: lane-b 9s infinite var(--ease-standard);
-  }
-  .lane-d1 .lane-msg,
-  .lane-d1 .lane-live { animation-delay: 3s; }
-  .lane-d2 .lane-msg,
-  .lane-d2 .lane-live { animation-delay: 6s; }
-}
-@keyframes lane-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
-@keyframes lane-a {
-  0%, 42% { opacity: 1; }
-  50%, 92% { opacity: 0; }
-  100% { opacity: 1; }
-}
-@keyframes lane-b {
-  0%, 42% { opacity: 0; }
-  50%, 92% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
 /* ── Share dialog mock (#compound) ────────────────────────────────────────── */
 .share-mock {
   background: var(--card);
@@ -262,50 +163,7 @@
   color: var(--ink-subtle);
   font-weight: 400;
 }
-/* Maya joins on a slow loop: invite pulses, then her row grows in with the
-   "Can use" role. Reduced-motion (or no animation support) shows her settled. */
-.shm-new .face {
-  width: 30px;
-  height: 30px;
-  font-size: 12px;
-  margin-left: 0;
-  box-shadow: none;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .shm-new {
-    overflow: hidden;
-    animation: shm-join 11s infinite var(--ease-standard);
-  }
-  .shm-invite .shm-plus {
-    animation: shm-pulse 11s infinite var(--ease-standard);
-  }
-}
-@keyframes shm-join {
-  0%, 32% {
-    opacity: 0;
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    border-bottom-width: 0;
-  }
-  42%, 90% {
-    opacity: 1;
-    max-height: 60px;
-    padding-top: 12px;
-    padding-bottom: 12px;
-  }
-  100% {
-    opacity: 0;
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    border-bottom-width: 0;
-  }
-}
-@keyframes shm-pulse {
-  0%, 22%, 40%, 100% { transform: scale(1); color: var(--ink-subtle); }
-  30% { transform: scale(1.14); color: var(--ink-strong); }
-}
+
 .shm-plus {
   width: 30px;
   height: 30px;
@@ -319,4 +177,126 @@
 .shm-plus svg {
   width: 14px;
   height: 14px;
+}
+
+
+/* ── Swap groups (shared by #parallel and #compound) ─────────────────────── */
+.swap-panel {
+  display: none;
+}
+.swap-panel.active {
+  display: block;
+}
+.acol-demo .chat-tabs,
+.feat-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+/* ── One agent's kanban column (#parallel) — every card is a chat ────────── */
+.acol-demo {
+  max-width: 420px;
+}
+.acol {
+  background: var(--wash-mist);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+}
+.acol-h {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  padding: 2px 4px 12px;
+}
+.acol-h .av {
+  width: 22px;
+  height: 22px;
+}
+.acol-n {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-subtle);
+}
+.acard {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 13px 14px;
+  margin-bottom: 10px;
+}
+.acard:last-child {
+  margin-bottom: 0;
+}
+.acard .tc-title {
+  margin-bottom: 2px;
+}
+.ast {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.ast-run { background: var(--app-warning); }
+.ast-need { background: var(--app-danger); }
+.ast-done { background: var(--app-success); }
+@media (prefers-reduced-motion: no-preference) {
+  .ast-run {
+    animation: lane-blink 2.2s infinite var(--ease-standard);
+  }
+}
+@keyframes lane-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ── Feature views of one agent (#compound) ──────────────────────────────── */
+.feat-demo {
+  max-width: 420px;
+  margin: 0 auto;
+}
+.feat-card {
+  max-width: none;
+}
+.feat-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+}
+.feat-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.feat-note {
+  font-size: 13.5px;
+  color: var(--ink);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.feat-meta {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ink-subtle);
+  white-space: nowrap;
+}
+.feat-chip {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #1b6b3a; /* forest, AA on the tint below */
+  background: rgba(0, 162, 64, 0.1);
+  border-radius: 999px;
+  padding: 3px 9px;
 }

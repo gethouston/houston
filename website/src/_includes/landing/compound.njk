@@ -1,41 +1,56 @@
 <section id="compound" class="section">
-  {# Split, reversed: statement left, the Share dialog artifact right. The
-     share card mirrors the real app's Share dialog anatomy (agent, members
-     with Manager / Can use roles) with the real teammate photos. Static on
-     purpose: it is the proof object for permissions + compounding knowledge. #}
+  {# Split, reversed: statement left, one agent's "everything it carries"
+     right. Pills swap five static views of the SAME agent: learnings, skills,
+     context, integrations, permissions. Same data-swap mechanic as #parallel;
+     JS-off shows Learnings settled. #}
   <div class="split split-rev reveal">
     <div class="split-copy">
       <div class="eyebrow-mono">Compounding</div>
       <h2 class="sec-title">What your agents learn, stays.</h2>
-      <p class="split-line">Every correction teaches the agent for the whole team. New people start with everything it knows, and none of it walks out the door.</p>
+      <p class="split-line">Everything the Sales Rep carries lives with it, shared by the whole team. New people start with all of it, and none of it walks out the door.</p>
     </div>
 
     <div class="split-visual">
-      <div class="share-mock" role="img" aria-label="Sharing the Sales Rep agent: Julian manages it, Felipe can use it, and a teammate can be invited">
-        <div class="shm-head">
-          <span class="av av-c" aria-hidden="true"></span>
-          <span class="shm-title">Sales Rep<span class="shm-sub">Shared agent · Acme Studio</span></span>
+      <div class="feat-demo" data-swap-group="feat">
+        <div class="chat-tabs feat-tabs" role="tablist" aria-label="What the agent carries">
+          <button class="chat-tab active" data-swap="0" role="tab" aria-selected="true">Learnings</button>
+          <button class="chat-tab" data-swap="1" role="tab" aria-selected="false">Skills</button>
+          <button class="chat-tab" data-swap="2" role="tab" aria-selected="false">Context</button>
+          <button class="chat-tab" data-swap="3" role="tab" aria-selected="false">Integrations</button>
+          <button class="chat-tab" data-swap="4" role="tab" aria-selected="false">Permissions</button>
         </div>
-        <div class="shm-row">
-          <span class="face face-img" aria-hidden="true"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span>
-          <span class="shm-name">Julian</span>
-          <span class="shm-role">Manager</span>
-        </div>
-        <div class="shm-row">
-          <span class="face face-img" aria-hidden="true"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span>
-          <span class="shm-name">Felipe</span>
-          <span class="shm-role shm-role-use">Can use</span>
-        </div>
-        {# Maya joins on a slow loop (CSS keyframes): the invite row pulses,
-           then she appears with her role. Reduced-motion shows her settled. #}
-        <div class="shm-row shm-new">
-          <span class="face hp-3" aria-hidden="true">M</span>
-          <span class="shm-name">Maya</span>
-          <span class="shm-role shm-role-use">Can use</span>
-        </div>
-        <div class="shm-row shm-invite">
-          <span class="shm-plus" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
-          <span class="shm-name">Invite a teammate</span>
+
+        <div class="share-mock feat-card">
+          <div class="shm-head">
+            <span class="av av-c" aria-hidden="true"></span>
+            <span class="shm-title">Sales Rep<span class="shm-sub">Shared agent · Acme Studio</span></span>
+          </div>
+
+          <div class="swap-panel active" role="img" aria-label="The Sales Rep's learnings: exclude churned accounts, copy the deal owner before sending, count renewals from the contract date">
+            <div class="feat-row"><span class="feat-note">Exclude churned accounts from pipeline math</span><span class="feat-meta">from Felipe</span></div>
+            <div class="feat-row"><span class="feat-note">CC the deal owner before anything sends</span><span class="feat-meta">from Julian</span></div>
+            <div class="feat-row"><span class="feat-note">Count renewals from the contract date</span><span class="feat-meta">this week</span></div>
+          </div>
+          <div class="swap-panel" role="img" aria-label="The Sales Rep's skills: pipeline report, follow-up sequence, proposal draft">
+            <div class="feat-row"><span class="feat-note">Pipeline report</span><span class="feat-meta">skill</span></div>
+            <div class="feat-row"><span class="feat-note">Follow-up sequence</span><span class="feat-meta">skill</span></div>
+            <div class="feat-row"><span class="feat-note">Proposal draft</span><span class="feat-meta">skill</span></div>
+          </div>
+          <div class="swap-panel" role="img" aria-label="The Sales Rep's context: the pricing sheet, ICP notes, and Q3 targets">
+            <div class="feat-row"><span class="feat-note">Pricing sheet.pdf</span><span class="feat-meta">file</span></div>
+            <div class="feat-row"><span class="feat-note">ICP notes</span><span class="feat-meta">doc</span></div>
+            <div class="feat-row"><span class="feat-note">Q3 targets</span><span class="feat-meta">sheet</span></div>
+          </div>
+          <div class="swap-panel" role="img" aria-label="The Sales Rep's integrations: HubSpot, Gmail, and Notion connected">
+            <div class="feat-row"><span class="feat-note">HubSpot</span><span class="feat-chip">Connected</span></div>
+            <div class="feat-row"><span class="feat-note">Gmail</span><span class="feat-chip">Connected</span></div>
+            <div class="feat-row"><span class="feat-note">Notion</span><span class="feat-chip">Connected</span></div>
+          </div>
+          <div class="swap-panel" role="img" aria-label="The Sales Rep's permissions: Julian manages it, Felipe and Maya can use it">
+            <div class="shm-row"><span class="face face-img" aria-hidden="true"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span><span class="shm-name">Julian</span><span class="shm-role">Manager</span></div>
+            <div class="shm-row"><span class="face face-img" aria-hidden="true"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span><span class="shm-name">Felipe</span><span class="shm-role shm-role-use">Can use</span></div>
+            <div class="shm-row"><span class="face hp-3" aria-hidden="true">M</span><span class="shm-name">Maya</span><span class="shm-role shm-role-use">Can use</span></div>
+          </div>
         </div>
       </div>
     </div>

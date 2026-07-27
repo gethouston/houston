@@ -2,40 +2,50 @@
   {# Hidden alias: cross-site links to #agents land on the multi-agent story. #}
   <span id="agents" class="anchor-alias" aria-hidden="true"></span>
 
-  {# Split: three agent chats working in parallel (real microcopy cycling per
-     lane, CSS-only) left; the why right. Reduced-motion shows the first
-     message of each lane, settled. #}
+  {# Split: one agent's kanban column left (each card is a chat; pills swap the
+     agent), the why right. Pre-rendered columns toggled by the shared
+     data-swap pills in scripts.njk, so JS-off shows the first agent settled. #}
   <div class="split reveal">
     <div class="split-visual">
-      <div class="lanes" role="img" aria-label="Three agent chats running at the same time: the Sales Rep following up leads, the Bookkeeper reconciling the books, and the HR Manager screening applicants">
-        <div class="lane">
-          <div class="lane-head"><span class="av av-c" aria-hidden="true"></span><span class="lane-name">Sales Rep</span><span class="lane-live" aria-hidden="true"></span></div>
-          <div class="lane-feed" aria-hidden="true">
-            <span class="lane-msg">Following up with 12 stale leads in HubSpot.</span>
-            <span class="lane-msg">3 replies drafted. 2 deals need your call.</span>
-          </div>
+      <div class="acol-demo" data-swap-group="acol">
+        <div class="chat-tabs" role="tablist" aria-label="Agents">
+          <button class="chat-tab active" data-swap="0" role="tab" aria-selected="true">Sales Rep</button>
+          <button class="chat-tab" data-swap="1" role="tab" aria-selected="false">Bookkeeper</button>
+          <button class="chat-tab" data-swap="2" role="tab" aria-selected="false">HR Manager</button>
+          <button class="chat-tab" data-swap="3" role="tab" aria-selected="false">Support Rep</button>
         </div>
-        <div class="lane lane-d1">
-          <div class="lane-head"><span class="av av-o" aria-hidden="true"></span><span class="lane-name">Bookkeeper</span><span class="lane-live" aria-hidden="true"></span></div>
-          <div class="lane-feed" aria-hidden="true">
-            <span class="lane-msg">Reconciling March in QuickBooks.</span>
-            <span class="lane-msg">Done. 2 receipts missing, flagged for Felipe.</span>
-          </div>
+
+        <div class="acol swap-panel active" role="img" aria-label="The Sales Rep's missions, each one its own chat: rebuilding the pipeline report, following up stale leads, and preparing a renewal">
+          <div class="acol-h"><span class="av av-c" aria-hidden="true"></span>Sales Rep<span class="acol-n">3 missions</span></div>
+          <div class="acard"><span class="ast ast-run" aria-hidden="true"></span><div><div class="tc-title">Rebuild the Q3 pipeline report</div><div class="tc-desc">Cross-checking 63 deals against Gmail</div></div></div>
+          <div class="acard"><span class="ast ast-need" aria-hidden="true"></span><div><div class="tc-title">Prep the Acme renewal</div><div class="tc-desc">Pricing needs your approval</div></div></div>
+          <div class="acard"><span class="ast ast-done" aria-hidden="true"></span><div><div class="tc-title">Follow up with 12 stale leads</div><div class="tc-desc">3 replies drafted, 2 deals moving</div></div></div>
         </div>
-        <div class="lane lane-d2">
-          <div class="lane-head"><span class="av av-b" aria-hidden="true"></span><span class="lane-name">HR Manager</span><span class="lane-live" aria-hidden="true"></span></div>
-          <div class="lane-feed" aria-hidden="true">
-            <span class="lane-msg">Screening 34 applicants for the designer role.</span>
-            <span class="lane-msg">Shortlist of 5 ready for the team to review.</span>
-          </div>
+        <div class="acol swap-panel" role="img" aria-label="The Bookkeeper's missions: reconciling March, chasing overdue invoices, and filing the expense report">
+          <div class="acol-h"><span class="av av-o" aria-hidden="true"></span>Bookkeeper<span class="acol-n">3 missions</span></div>
+          <div class="acard"><span class="ast ast-run" aria-hidden="true"></span><div><div class="tc-title">Reconcile March</div><div class="tc-desc">Matching QuickBooks against the bank feed</div></div></div>
+          <div class="acard"><span class="ast ast-need" aria-hidden="true"></span><div><div class="tc-title">File the Q1 expense report</div><div class="tc-desc">2 receipts missing, flagged for you</div></div></div>
+          <div class="acard"><span class="ast ast-done" aria-hidden="true"></span><div><div class="tc-title">Chase 4 overdue invoices</div><div class="tc-desc">2 paid, 2 promised this week</div></div></div>
+        </div>
+        <div class="acol swap-panel" role="img" aria-label="The HR Manager's missions: screening applicants, onboarding Maya, and drafting the referral policy">
+          <div class="acol-h"><span class="av av-b" aria-hidden="true"></span>HR Manager<span class="acol-n">3 missions</span></div>
+          <div class="acard"><span class="ast ast-run" aria-hidden="true"></span><div><div class="tc-title">Screen the designer applicants</div><div class="tc-desc">34 profiles against the role brief</div></div></div>
+          <div class="acard"><span class="ast ast-need" aria-hidden="true"></span><div><div class="tc-title">Draft the referral policy</div><div class="tc-desc">First draft ready for your review</div></div></div>
+          <div class="acard"><span class="ast ast-done" aria-hidden="true"></span><div><div class="tc-title">Onboard Maya</div><div class="tc-desc">Accounts created, intro doc sent</div></div></div>
+        </div>
+        <div class="acol swap-panel" role="img" aria-label="The Support Rep's missions: clearing the weekend queue, escalating a billing bug, and sending the weekly digest">
+          <div class="acol-h"><span class="av av-p" aria-hidden="true"></span>Support Rep<span class="acol-n">3 missions</span></div>
+          <div class="acard"><span class="ast ast-run" aria-hidden="true"></span><div><div class="tc-title">Clear the weekend queue</div><div class="tc-desc">41 tickets, drafting replies</div></div></div>
+          <div class="acard"><span class="ast ast-need" aria-hidden="true"></span><div><div class="tc-title">Escalate the billing bug</div><div class="tc-desc">3 reports match, needs an engineer</div></div></div>
+          <div class="acard"><span class="ast ast-done" aria-hidden="true"></span><div><div class="tc-title">Send the weekly digest</div><div class="tc-desc">Top issues summarized for the team</div></div></div>
         </div>
       </div>
     </div>
 
     <div class="split-copy">
       <div class="eyebrow-mono">Multi-agent</div>
-      <h2 class="sec-title">Many agents. All moving at once.</h2>
-      <p class="split-line">Each agent runs its own chats and missions in parallel. Nobody waits in a queue, and anyone on the team can jump into any of them and steer.</p>
+      <h2 class="sec-title">Every card is a chat.</h2>
+      <p class="split-line">Open as many missions as the project needs and they run in parallel. Anyone on the team can open any card and steer the work.</p>
     </div>
   </div>
 </section>

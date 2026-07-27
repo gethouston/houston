@@ -11,6 +11,28 @@
     check();
   })();
 
+  // Swap groups (#parallel agents, #compound feature views): pills toggle
+  // pre-rendered .swap-panel siblings, so JS-off shows the first panel.
+  (function () {
+    document.querySelectorAll("[data-swap-group]").forEach(function (group) {
+      var tabs = group.querySelectorAll("[data-swap]");
+      var panels = group.querySelectorAll(".swap-panel");
+      tabs.forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          var i = Number(tab.getAttribute("data-swap"));
+          tabs.forEach(function (t) {
+            var on = t === tab;
+            t.classList.toggle("active", on);
+            t.setAttribute("aria-selected", on ? "true" : "false");
+          });
+          panels.forEach(function (p, j) {
+            p.classList.toggle("active", i === j);
+          });
+        });
+      });
+    });
+  })();
+
   // Mobile menu toggle.
   (function () {
     var burger = document.getElementById("lnav-burger");
