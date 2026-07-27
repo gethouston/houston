@@ -178,15 +178,15 @@ img {
   align-items: center;
   justify-content: space-between;
   padding: 15px var(--gutter);
-  background: rgba(22, 22, 31, 0.72);
+  background: rgba(255, 255, 255, 0.72);
   transition: box-shadow var(--dur-elegant) var(--ease-standard),
     background-color var(--dur-elegant) var(--ease-standard);
   border-bottom: 1px solid transparent;
 }
-/* Solid deep-navy + hairline once scrolled. No backdrop blur (PERFORMANCE.md:
+/* Solid white + hairline once scrolled. No backdrop blur (PERFORMANCE.md:
    blur over a moving backdrop re-rasterizes every frame). */
 .lnav.scrolled {
-  background: var(--ground-deep);
+  background: var(--ground);
   border-bottom-color: var(--line);
 }
 .lnav-brand {
@@ -203,9 +203,9 @@ img {
   height: 22px;
   flex-shrink: 0;
   display: block;
-  /* The mark ships as a single near-black fill; on the dark nav render it as a
-     clean white glyph (no white asset needed, art preserved). */
-  filter: brightness(0) invert(1);
+  /* The mark ships as a single near-black fill — on the white nav it renders as
+     the clean ink glyph, no filter needed (art preserved). */
+  filter: none;
 }
 .lnav-links {
   display: flex;
@@ -275,11 +275,11 @@ img {
   left: var(--gutter);
   right: var(--gutter);
   z-index: 59;
-  background: var(--ground-deep);
+  background: var(--card);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 8px;
-  box-shadow: 0 20px 48px -24px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 48px -24px rgba(13, 13, 13, 0.16);
   flex-direction: column;
   gap: 2px;
   display: none;

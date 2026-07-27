@@ -34,10 +34,10 @@
   border: 1px solid var(--line);
   background: var(--card);
 }
-/* Houston side: emphasised in the lavender accent (Mercury highlights featured). */
+/* Houston side: emphasised with the ink pill accent (the featured surface). */
 .usb-card.is-houston {
   border-color: var(--action);
-  box-shadow: 0 20px 52px -28px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 52px -28px rgba(13, 13, 13, 0.16);
 }
 .usb-badge {
   position: absolute;
@@ -139,10 +139,10 @@
   border-radius: 20px;
   padding: 30px 28px;
 }
-/* Featured plan: emphasised in the lavender accent. */
+/* Featured plan: emphasised with the ink pill accent. */
 .price-col.featured {
   border-color: var(--action);
-  box-shadow: 0 20px 52px -28px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 52px -28px rgba(13, 13, 13, 0.16);
 }
 .price-name {
   font-size: 15px;

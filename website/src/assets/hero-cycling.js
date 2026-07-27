@@ -1,22 +1,20 @@
 /*
  * Hero headline cycling word — blur-letter-stagger (Aceternity FlipWords
- * technique). The h1 reads "AI agents that do <cycling phrase>": the phrase
- * swaps every few seconds, each letter blurring in and out on a stagger, with
- * a smooth width transition so the line reflows cleanly.
+ * technique). The h1 reads "The AI team your whole company <cycling verb>": the
+ * verb swaps every few seconds, each letter blurring in and out on a stagger,
+ * with a smooth width transition so the line reflows cleanly.
  *
  * Progressive: prefers-reduced-motion shows the first phrase statically and
  * never starts the loop. Loaded `defer`; reads #hero-cycling.
  */
 (() => {
   var words = [
-    "the work for you",
-    "sales reports in Google Sheets",
-    "candidate outreach on LinkedIn",
-    "expense reports in QuickBooks",
-    "order management in Shopify",
-    "email campaigns in Gmail",
-    "payment follow-ups in Stripe",
-    "lead tracking in HubSpot",
+    "shares",
+    "runs together",
+    "steers together",
+    "can drop into",
+    "builds on",
+    "trusts",
   ];
   var container = document.getElementById("hero-cycling");
   if (!container) return;

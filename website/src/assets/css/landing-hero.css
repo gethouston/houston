@@ -41,6 +41,16 @@
   align-items: center;
   flex-wrap: wrap;
 }
+/* Quiet value line under the CTA — restores the free + bring-your-own-plan
+   proof without competing with the multiplayer headline. */
+.hero-proof {
+  margin: 16px auto 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-subtle);
+  max-width: 46ch;
+  text-wrap: balance;
+}
 
 /* ── Cycling headline word (blur-letter-stagger) ─────────────────────────── */
 .hero-cycling-word {
@@ -106,12 +116,12 @@
   max-width: 1080px;
   margin: 0 auto;
 }
-/* One believable layered shadow that lifts the light window off the dark panel
-   — deepened for the dark ground so the product shot reads raised, Mercury-style. */
+/* One believable layered shadow that lifts the light window off the gray panel
+   — tuned soft for the white ground so the product shot reads raised, not heavy. */
 .hero-stage .win {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2),
-    0 28px 56px -20px rgba(0, 0, 0, 0.55),
-    0 56px 112px -40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 4px rgba(13, 13, 13, 0.05),
+    0 24px 48px -20px rgba(13, 13, 13, 0.13),
+    0 48px 96px -48px rgba(13, 13, 13, 0.16);
 }
 
 /* ── Download gate modal (invite-code closed beta — light, behaviour kept) ── */
@@ -141,7 +151,7 @@
   border-radius: 20px;
   padding: 30px;
   color: var(--ink);
-  box-shadow: 0 32px 80px -32px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 32px 80px -32px rgba(13, 13, 13, 0.22);
   transform: translateY(8px) scale(0.98);
   transition: transform var(--dur-elegant) var(--ease-entrance);
 }
@@ -184,7 +194,7 @@
 }
 .dl-input.valid {
   border-color: var(--action);
-  box-shadow: 0 0 0 3px rgba(82, 102, 235, 0.3);
+  box-shadow: 0 0 0 3px rgba(13, 13, 13, 0.14);
 }
 .dl-actions {
   display: flex;
