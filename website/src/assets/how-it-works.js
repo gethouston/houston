@@ -179,13 +179,10 @@
   ];
 
   var tabs = document.querySelectorAll(".hiw-tab");
-  var askEl = document.getElementById("hiw-ask");
-  var workEl = document.getElementById("hiw-work");
-  var resultEl = document.getElementById("hiw-result");
   var chatEl = document.getElementById("hiw-chat");
   var nameEl = document.getElementById("hiw-agent-name");
   var missionEl = document.getElementById("hiw-agent-mission");
-  if (!tabs.length || !askEl) return;
+  if (!tabs.length || !chatEl) return;
 
   function esc(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -193,9 +190,6 @@
 
   function setAgent(idx) {
     var a = agents[idx];
-    askEl.textContent = a.ask;
-    workEl.textContent = a.work;
-    resultEl.textContent = a.result;
     nameEl.textContent = a.name;
     missionEl.textContent = a.mission;
     var html = "";

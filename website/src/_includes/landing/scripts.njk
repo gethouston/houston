@@ -52,7 +52,9 @@
           }
         });
       },
-      { threshold: 0.12, rootMargin: "0px 0px -60px 0px" }
+      // Reveal a touch BEFORE an element enters, so a mid-scroll pause never
+      // catches an in-frame block still invisible (reads as an empty section).
+      { threshold: 0.01, rootMargin: "0px 0px 22% 0px" }
     );
     els.forEach(function (el) {
       obs.observe(el);
@@ -152,6 +154,5 @@
 <script defer src="/assets/hero-demo-clock.js"></script>
 <script defer src="/assets/hero-demo-stage.js"></script>
 <script defer src="/assets/hero-demo.js"></script>
-<script defer src="/assets/hero-cycling.js"></script>
 <script defer src="/assets/how-it-works.js"></script>
 {% include "landing/scripts-download.njk" %}

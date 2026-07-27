@@ -4,110 +4,89 @@
  * site-tokens.css. The app-window mock lives in its own file.
  */
 
-/* ── Hero ────────────────────────────────────────────────────────────────── */
+/* ── Hero — the giant soft wordmark IS the hero visual (buzz-scale graphic).
+   Minimal words sit AROUND it: a mono tagline above, a value prop + CTA in a
+   baseline row below. The real app window follows immediately as proof. ───── */
 .hero {
   position: relative;
-  padding: clamp(120px, 15vw, 168px) var(--gutter) 0;
-  text-align: center;
   background: var(--ground);
 }
-.hero-inner {
-  max-width: 880px;
-  margin: 0 auto;
-  position: relative;
-}
-.hero h1 {
-  font-weight: 300;                  /* Mercury: light, airy, low-contrast display */
-  font-size: clamp(22px, 4.6vw, 54px);
-  line-height: 1.08;
-  letter-spacing: -0.012em;          /* relaxed from the old tight ink tracking */
-  color: var(--ink-strong);
-  margin: 0 auto 22px;
-  max-width: 22ch;
-}
-.hero-sub {
-  font-size: clamp(16.5px, 1.7vw, 20px);
-  line-height: 1.5;
-  color: var(--ink-muted);
-  max-width: 52ch;
-  margin: 0 auto 30px;
-  font-weight: 400;
-  text-wrap: balance;
-}
-.hero-actions {
+.hero-fold {
+  min-height: 100svh;
   display: flex;
-  gap: 12px;
+  flex-direction: column;
   justify-content: center;
-  align-items: center;
+  padding: clamp(96px, 12vh, 140px) var(--gutter) clamp(40px, 6vh, 64px);
+}
+/* The giant wordmark: a graphic object, not a heading. Light weight, negative
+   tracking, a whisper of blur, plus a softer blurred echo behind for depth. */
+.hero-word {
+  position: relative;
+  font-weight: 300;
+  font-size: clamp(96px, 25vw, 460px);
+  line-height: 0.82;
+  letter-spacing: -0.05em;
+  color: var(--ink-strong);
+  filter: blur(1.5px);
+  user-select: none;
+}
+.hero-word::after {
+  content: "Houston";
+  position: absolute;
+  inset: 0;
+  filter: blur(16px);
+  opacity: 0.32;
+  z-index: -1;
+}
+.hero-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: clamp(24px, 5vw, 64px);
+  margin-top: clamp(28px, 4vw, 48px);
   flex-wrap: wrap;
 }
-/* Quiet value line under the CTA — restores the free + bring-your-own-plan
-   proof without competing with the multiplayer headline. */
-.hero-proof {
-  margin: 16px auto 0;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--ink-subtle);
-  max-width: 46ch;
+.hero-copy .eyebrow-mono {
+  margin-bottom: 12px;
+}
+.hero-vp {
+  font-weight: 300;
+  font-size: clamp(22px, 2.6vw, 32px);
+  line-height: 1.16;
+  letter-spacing: -0.02em;
+  color: var(--ink-strong);
+  max-width: 22ch;
   text-wrap: balance;
 }
-
-/* ── Cycling headline word (blur-letter-stagger) ─────────────────────────── */
-.hero-cycling-word {
-  display: inline;
-  position: relative;
-  vertical-align: bottom;
+.hero-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
 }
-.hero-cycling-word .cycling-word {
-  display: inline-block;
-  position: relative;
-  white-space: nowrap;
+.hero-proof {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-subtle);
+  max-width: 34ch;
 }
-.hero-cycling-word .cycling-word.is-exiting {
-  position: absolute;
-  left: 0;
-  top: 0;
-  pointer-events: none;
-  white-space: nowrap;
-}
-.hero-cycling-word .cycling-letter {
-  display: inline-block;
-  opacity: 0;
-  filter: blur(12px);
-  transform: translateY(6px);
-  transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    filter 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  will-change: opacity, filter, transform;
-}
-.hero-cycling-word .cycling-letter.is-visible {
-  opacity: 1;
-  filter: blur(0px);
-  transform: translateY(0);
-}
-.hero-cycling-word .cycling-letter.is-exiting {
-  opacity: 0;
-  filter: blur(12px);
-  transform: translateY(-16px) scale(1.08);
-  transition: opacity 0.22s cubic-bezier(0.55, 0.085, 0.68, 0.53),
-    filter 0.28s cubic-bezier(0.55, 0.085, 0.68, 0.53),
-    transform 0.28s cubic-bezier(0.55, 0.085, 0.68, 0.53);
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero-cycling-word .cycling-letter {
-    transition: none;
-    filter: none;
-    transform: none;
+@media (max-width: 720px) {
+  .hero-foot {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
   }
 }
 
 /* ── App window on its soft-rounded panel with one layered shadow ────────── */
+/* The real app window floats in a softly tinted sage panel — the biggest proof
+   moment on the page. One believable soft shadow lifts it off the wash. */
 .hero-frame {
   position: relative;
   max-width: calc(var(--measure) + 2 * var(--gutter));
-  margin: clamp(44px, 6vw, 72px) auto 0;
-  padding: clamp(18px, 3vw, 40px) clamp(18px, 3vw, 40px) 0;
-  background: var(--panel);
+  margin: 0 auto;
+  padding: clamp(24px, 3.4vw, 48px) clamp(24px, 3.4vw, 48px) 0;
+  background: var(--wash-sage);
   border-top-left-radius: var(--panel-radius);
   border-top-right-radius: var(--panel-radius);
 }
@@ -116,12 +95,10 @@
   max-width: 1080px;
   margin: 0 auto;
 }
-/* One believable layered shadow that lifts the light window off the gray panel
-   — tuned soft for the white ground so the product shot reads raised, not heavy. */
 .hero-stage .win {
-  box-shadow: 0 2px 4px rgba(13, 13, 13, 0.05),
-    0 24px 48px -20px rgba(13, 13, 13, 0.13),
-    0 48px 96px -48px rgba(13, 13, 13, 0.16);
+  box-shadow: 0 2px 4px rgba(40, 36, 28, 0.05),
+    0 28px 56px -22px rgba(40, 36, 28, 0.16),
+    0 56px 110px -52px rgba(40, 36, 28, 0.2);
 }
 
 /* ── Download gate modal (invite-code closed beta — light, behaviour kept) ── */
@@ -151,7 +128,7 @@
   border-radius: 20px;
   padding: 30px;
   color: var(--ink);
-  box-shadow: 0 32px 80px -32px rgba(13, 13, 13, 0.22);
+  box-shadow: 0 32px 80px -32px rgba(40, 36, 28, 0.22);
   transform: translateY(8px) scale(0.98);
   transition: transform var(--dur-elegant) var(--ease-entrance);
 }
@@ -194,7 +171,7 @@
 }
 .dl-input.valid {
   border-color: var(--action);
-  box-shadow: 0 0 0 3px rgba(13, 13, 13, 0.14);
+  box-shadow: 0 0 0 3px rgba(40, 36, 28, 0.14);
 }
 .dl-actions {
   display: flex;

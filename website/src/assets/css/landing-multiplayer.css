@@ -25,100 +25,78 @@
   max-width: 62ch;
 }
 
-/* ── Contrast split: old-way / Houston-way copy + a side visual ───────────── */
+/* ── Two big statements + a side product shot ─────────────────────────────── */
 .mp-split {
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: clamp(24px, 4vw, 48px);
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: clamp(32px, 5vw, 64px);
   align-items: center;
-  margin-top: clamp(36px, 5vw, 56px);
+  margin-top: clamp(28px, 3.4vw, 44px);
 }
-.mp-contrast {
+.mp-statements {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: clamp(20px, 2.6vw, 32px);
 }
-.mp-block {
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--card);
-  padding: 22px 24px;
+.mp-statement {
+  font-weight: 300;
+  font-size: clamp(24px, 3vw, 36px);
+  line-height: 1.14;
+  letter-spacing: -0.02em;
+  color: var(--ink-strong);
+  text-wrap: balance;
+  max-width: 18ch;
 }
-.mp-block-ink {
-  border-color: var(--action);
-  box-shadow: 0 20px 52px -30px rgba(13, 13, 13, 0.16);
-}
-.mp-tag {
-  display: inline-flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: var(--panel-raised);
-  color: var(--ink-muted);
-  margin-bottom: 12px;
-}
-.mp-tag-ink {
-  background: var(--action);
-  color: var(--action-text);
-}
-.mp-block p {
-  font-size: 14.5px;
-  line-height: 1.6;
-  color: var(--ink-muted);
-}
-.mp-block-ink p {
-  color: var(--ink);
+.mp-statement-muted {
+  color: var(--ink-subtle);
 }
 
-/* ── Feature grid — every claim maps to a real Teams capability ───────────── */
+/* ── Wide product shot — the shared board, the big proof ──────────────────── */
+.mp-wide {
+  margin-top: clamp(28px, 3.4vw, 44px);
+}
+
+/* ── Feature trio — three short cards, all remaining depth lives in Q&A ─────── */
 .mp-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  margin-top: clamp(28px, 4vw, 44px);
+  gap: clamp(20px, 3vw, 32px);
+  margin-top: clamp(40px, 5vw, 60px);
 }
 .mp-card {
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--card);
-  padding: 22px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 .mp-ic {
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--panel);
-  border: 1px solid var(--line);
+  flex-shrink: 0;
+  background: var(--wash-sand);
   color: var(--ink-strong);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .mp-ic svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 .mp-card h3 {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: clamp(18px, 1.8vw, 22px);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
   color: var(--ink-strong);
+  text-wrap: balance;
 }
 .mp-card p {
-  font-size: 13.5px;
-  line-height: 1.55;
+  font-size: 14.5px;
+  line-height: 1.5;
   color: var(--ink-muted);
-}
-
-/* ── Wide closing visual ──────────────────────────────────────────────────── */
-.mp-wide {
-  margin-top: clamp(24px, 3vw, 36px);
+  max-width: 26ch;
 }
 
 /* ── Media slot — swap-ready placeholder for AI-generated imagery ──────────────
@@ -128,10 +106,9 @@
    layout reads correctly with the placeholder in place. */
 .media-slot {
   position: relative;
-  border-radius: 20px;
+  border-radius: 24px;
   overflow: hidden;
-  background: var(--panel);
-  border: 1px dashed var(--line-strong);
+  background: var(--wash-sage);
   display: grid;
   place-items: center;
   aspect-ratio: 16 / 10;
@@ -152,6 +129,11 @@
 .media-slot-wide {
   aspect-ratio: 21 / 9;
 }
+/* Soft tinted gradient washes — quiet product frames in the ivory family that
+   already read as art direction before the AI photography lands. */
+.media-slot-sage { background: linear-gradient(150deg, #eaefe5 0%, #e0e7db 100%); }
+.media-slot-mist { background: linear-gradient(150deg, #e8edee 0%, #dee6e8 100%); }
+.media-slot-sand { background: linear-gradient(150deg, #f2ecdf 0%, #e9e0d0 100%); }
 .media-slot-inner {
   position: relative;
   z-index: 1;
@@ -166,13 +148,13 @@
   width: 30px;
   height: 30px;
   color: var(--ink-subtle);
+  opacity: 0.7;
 }
 .media-slot-cap {
   font-family: var(--mono);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--ink-muted);
-  max-width: 36ch;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: var(--ink-subtle);
 }
 .media-slot-tag {
   position: absolute;

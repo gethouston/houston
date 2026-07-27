@@ -35,21 +35,18 @@
   }
 }
 
-/* A gentle stagger for the hero load — headline first, window last. */
-.hero h1.hero-load {
+/* A gentle stagger for the hero load — wordmark first, copy + CTA, window last. */
+.hero-word.hero-load {
   --load-delay: 40ms;
 }
-.hero-sub.hero-load {
-  --load-delay: 120ms;
+.hero-copy.hero-load {
+  --load-delay: 160ms;
 }
-.hero-actions.hero-load {
-  --load-delay: 200ms;
-}
-.hero-proof.hero-load {
-  --load-delay: 280ms;
+.hero-cta.hero-load {
+  --load-delay: 240ms;
 }
 .hero-frame.hero-load {
-  --load-delay: 360ms;
+  --load-delay: 340ms;
 }
 
 /* Reveal delay steps for grouped children (both naming schemes). */
