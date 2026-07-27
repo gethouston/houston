@@ -6,6 +6,7 @@ import {
 } from "../../ai/provider-error";
 import { logProviderError } from "../../ai/provider-error-log";
 import { noteAuthFailure } from "../../auth/credential-health";
+import { reportRevokedServedToken } from "../../auth/report-revoked";
 
 /** The pi provider id this backend runs as — every error is attributed to it. */
 const PROVIDER = "anthropic";
@@ -51,7 +52,11 @@ export function mapSdkError(
     // Feed the failure into the status surface: the credential the turn just
     // ran on cannot authenticate, so "Connected" would be a lie until it
     // changes (auth/credential-health.ts).
-    if (mapped.kind === "unauthenticated") noteAuthFailure(mapped.provider);
+    if (mapped.kind === "unauthenticated") {
+      noteAuthFailure(mapped.provider);
+      // A REVOKED served token is invisible to the control plane (HOU-952).
+      reportRevokedServedToken(mapped);
+    }
   }
   return mapped ?? classifyText(message, model, status);
 }

@@ -100,6 +100,46 @@ export class RemoteCredentialStore implements CredentialStore {
     this.cache.delete(provider);
   }
 
+  /**
+   * Report a token the PROVIDER revoked: the gateway drops its row only while
+   * that token is still the stored one (HOU-952). Rides the same DELETE with
+   * `x-houston-if-access-sha256`, so the comparison happens under the gateway's
+   * per-(org, provider) row lock rather than as a read-then-delete here — a
+   * reconnect racing the report waits behind it instead of being deleted by it.
+   *
+   * Returns whether the gateway actually removed anything. A `removed:false`
+   * is the ordinary superseded case (the org reconnected, or a sibling pod
+   * reported the same dead token first), not a failure.
+   */
+  async removeIfAccess(
+    workspaceId: WorkspaceId,
+    provider: string,
+    accessSha256: string,
+  ): Promise<boolean> {
+    const res = await this.fetchImpl(this.url(provider), {
+      method: "DELETE",
+      headers: {
+        ...this.authHeaders(),
+        "x-houston-if-access-sha256": accessSha256,
+      },
+    });
+    // Idempotent like remove(): an already-gone row is the outcome we wanted.
+    if (res.status !== 200 && !(await isNotConnected404(res)))
+      throw await this.errorFromResponse(res, "DELETE", provider);
+    const removed =
+      res.status === 200 &&
+      ((await res.json().catch(() => null)) as { removed?: boolean } | null)
+        ?.removed === true;
+    // Only a real removal invalidates local state. Leaving the cache and the
+    // legacy fallback entry alone on a superseded report is deliberate: they
+    // may describe the credential that SUPERSEDED the revoked one.
+    if (removed) {
+      this.cache.delete(provider);
+      await this.fallback?.remove(workspaceId, provider);
+    }
+    return removed;
+  }
+
   private async adoptFallback(
     workspaceId: WorkspaceId,
     provider: string,

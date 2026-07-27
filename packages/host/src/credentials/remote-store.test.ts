@@ -110,6 +110,7 @@ test("404 adopts a legacy fallback credential with insert-only PUT, then re-gets
     get: async () => legacy,
     put: async () => {},
     remove: async () => {},
+    removeIfAccess: async () => false,
   };
   const { calls, fetchImpl } = fakeFetch((call, index) => {
     if (index === 0) return json({ error: "org not connected" }, 404);
@@ -266,6 +267,7 @@ test("remove treats the gateway's not-connected 404 as already signed out and cl
     remove: async () => {
       fallbackCred = null;
     },
+    removeIfAccess: async () => false,
   };
   const { calls, fetchImpl } = fakeFetch(() =>
     json({ error: "org not connected" }, 404),
@@ -295,6 +297,7 @@ test("logout cannot resurrect through the legacy fallback after remove", async (
     remove: async () => {
       fallbackCred = null;
     },
+    removeIfAccess: async () => false,
   };
   const { calls, fetchImpl } = fakeFetch((call) => {
     if (call.init?.method === "DELETE") return json({ ok: true });

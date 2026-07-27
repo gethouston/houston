@@ -256,6 +256,7 @@ test("ProxyChannel.quiesce sleeps the agent's runtime without destroying it", as
       put: async () => {},
       get: async () => null,
       remove: async () => {},
+      removeIfAccess: async () => false,
     },
     forwardActingHeader: false,
   });

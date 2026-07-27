@@ -1,3 +1,4 @@
+import { accessDigestMatches } from "@houston/protocol/access-digest";
 import type { WorkspaceId } from "../domain/types";
 import type { CredentialStore, WorkspaceCredential } from "../ports";
 
@@ -34,5 +35,19 @@ export class MemoryCredentialStore implements CredentialStore {
   }
   async remove(workspaceId: WorkspaceId, provider: string): Promise<void> {
     this.creds.delete(this.key(workspaceId, provider));
+  }
+  /** Compare-and-delete: only the reported token goes, never whatever
+   *  replaced it (HOU-952). */
+  async removeIfAccess(
+    workspaceId: WorkspaceId,
+    provider: string,
+    accessSha256: string,
+  ): Promise<boolean> {
+    const key = this.key(workspaceId, provider);
+    const current = this.creds.get(key);
+    if (!current || !accessDigestMatches(current.accessToken, accessSha256))
+      return false;
+    this.creds.delete(key);
+    return true;
   }
 }

@@ -52,6 +52,9 @@ const deps: ControlPlaneDeps = {
     },
     async put() {},
     async remove() {},
+    async removeIfAccess() {
+      return false;
+    },
   },
   vault: { sandboxToken: () => "x", validateSandboxToken: () => null },
   channels: {},
