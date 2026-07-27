@@ -360,6 +360,22 @@ export interface CredentialStore {
    */
   put(cred: WorkspaceCredential, opts?: { ifAbsent?: boolean }): Promise<void>;
   remove(workspaceId: WorkspaceId, provider: string): Promise<void>;
+  /**
+   * Compare-and-delete: drop the credential only while its access token still
+   * hashes to `accessSha256`. Resolves to whether anything was removed.
+   *
+   * This is the ONLY safe way to act on a runtime's report that a provider
+   * REVOKED a served token (HOU-952). A revoked token is not an expired one —
+   * no refresh ever fails, so the store would keep serving it — but the report
+   * arrives from a turn that may have started before the user reconnected, and
+   * an unconditional remove would then delete the credential they just
+   * created. A digest mismatch means the report is stale: no-op, not an error.
+   */
+  removeIfAccess(
+    workspaceId: WorkspaceId,
+    provider: string,
+    accessSha256: string,
+  ): Promise<boolean>;
 }
 
 /** Mints/validates the non-secret per-sandbox identity tokens (HMAC). */

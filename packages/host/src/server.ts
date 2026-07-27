@@ -38,6 +38,7 @@ import {
 import { handleAgents, podActivityStatus } from "./routes/agents";
 import { handleCatalog } from "./routes/catalog";
 import { handleSandboxCredential } from "./routes/credential";
+import { handleSandboxCredentialRevoked } from "./routes/credential-revoked";
 import {
   type CustomIntegrationDeps,
   handleSandboxCustomIntegrations,
@@ -264,6 +265,11 @@ async function handle(
 
   // Sandbox-facing credential serve (HMAC sandbox token, not a user JWT).
   if (await handleSandboxCredential(deps, method, path, url, req, res)) return;
+  // Sandbox-facing revoked-token report (HOU-952): the runtime's turn is the
+  // only witness to a provider revoking a served token, since a revoked token
+  // is not an expired one and the serve path cannot tell them apart.
+  if (await handleSandboxCredentialRevoked(deps, method, path, url, req, res))
+    return;
   // Sandbox-facing central usage probe (Copilot quota needs the host-held token).
   if (await handleSandboxProviderUsage(deps, method, path, url, req, res))
     return;

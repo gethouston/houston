@@ -13,6 +13,7 @@ import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { registerCustomProviderIfConfigured } from "../ai/openai-compatible";
 import { classifyProviderError } from "../ai/provider-error";
 import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
+import { reportRevokedServedToken } from "../auth/report-revoked";
 import { createPiBackend } from "../backends/pi/backend";
 import { config } from "../config";
 import {
@@ -323,7 +324,11 @@ export async function runPiTurn(
       // A thrown auth failure never crossed the backends' streamed-error
       // seams — feed it into the status surface (auth/credential-health.ts;
       // mirrors exec-turn).
-      if (thrown.kind === "unauthenticated") noteAuthFailure(thrown.provider);
+      if (thrown.kind === "unauthenticated") {
+        noteAuthFailure(thrown.provider);
+        // A REVOKED served token is invisible to the control plane (HOU-952).
+        reportRevokedServedToken(thrown);
+      }
       if (thrown.kind !== "unknown") {
         appendAssistantMessageAt(
           conversationsDir,

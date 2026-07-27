@@ -16,6 +16,7 @@ import { classifyProviderError } from "../ai/provider-error";
 import { activeEffort, resolveModel } from "../ai/providers";
 import { recordTokenSpend } from "../ai/usage/ledger";
 import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
+import { reportRevokedServedToken } from "../auth/report-revoked";
 import { config } from "../config";
 import {
   appendAssistantMessage,
@@ -531,8 +532,11 @@ export async function execTurn(
     // so feed it into the status surface here — e.g. a refresh-bearing entry
     // whose refresh token was rejected raises at prompt time, before any
     // stream exists (auth/credential-health.ts).
-    if (thrown.kind === "unauthenticated" && !providerError)
+    if (thrown.kind === "unauthenticated" && !providerError) {
       noteAuthFailure(thrown.provider);
+      // A REVOKED served token is invisible to the control plane (HOU-952).
+      reportRevokedServedToken(thrown);
+    }
     const typed = thrown.kind !== "unknown" ? thrown : undefined;
     appendAssistantMessage(id, assistantText, {
       tools,

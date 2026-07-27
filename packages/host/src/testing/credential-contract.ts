@@ -1,3 +1,4 @@
+import { accessDigest } from "@houston/protocol/access-digest";
 import { describe, expect, test } from "vitest";
 import {
   type CredentialStore,
@@ -135,6 +136,52 @@ export function runCredentialStoreContract(
       await s.remove("ws_a", "openai-codex");
       expect(await s.get("ws_a", "openai-codex")).toBeNull();
       expect((await s.get("ws_b", "openai-codex"))?.accessToken).toBe("bb");
+    });
+
+    // HOU-952: a runtime reporting a provider-REVOKED token. Every adapter has
+    // to compare before deleting, or the report becomes a new way to sign a
+    // workspace out.
+    test("removeIfAccess drops the reported token", async () => {
+      const s = make();
+      await s.put(cred({ accessToken: "revoked-tok" }));
+      expect(
+        await s.removeIfAccess(
+          "ws_1",
+          "openai-codex",
+          accessDigest("revoked-tok"),
+        ),
+      ).toBe(true);
+      expect(await s.get("ws_1", "openai-codex")).toBeNull();
+    });
+
+    test("removeIfAccess spares a credential that moved on", async () => {
+      // The reporting turn began BEFORE the user reconnected. Deleting here
+      // would destroy the credential they just created.
+      const s = make();
+      await s.put(cred({ accessToken: "freshly-reconnected" }));
+      expect(
+        await s.removeIfAccess("ws_1", "openai-codex", accessDigest("old-tok")),
+      ).toBe(false);
+      expect((await s.get("ws_1", "openai-codex"))?.accessToken).toBe(
+        "freshly-reconnected",
+      );
+    });
+
+    test("removeIfAccess on an absent credential is false, not an error", async () => {
+      const s = make();
+      expect(
+        await s.removeIfAccess("ws_1", "openai-codex", accessDigest("any")),
+      ).toBe(false);
+    });
+
+    test("removeIfAccess is scoped to one (workspace, provider)", async () => {
+      const s = make();
+      await s.put(cred({ workspaceId: "ws_a", accessToken: "same" }));
+      await s.put(cred({ workspaceId: "ws_b", accessToken: "same" }));
+      await s.removeIfAccess("ws_a", "openai-codex", accessDigest("same"));
+      expect(await s.get("ws_a", "openai-codex")).toBeNull();
+      // An identical token in ANOTHER workspace is a different credential.
+      expect((await s.get("ws_b", "openai-codex"))?.accessToken).toBe("same");
     });
   });
 }

@@ -8,6 +8,7 @@ import {
 import { classifyProviderError } from "../../ai/provider-error";
 import { logProviderError } from "../../ai/provider-error-log";
 import { noteAuthFailure } from "../../auth/credential-health";
+import { reportRevokedServedToken } from "../../auth/report-revoked";
 
 /**
  * Normalize pi's per-message `Usage` into our provider-agnostic `TokenUsage`.
@@ -186,8 +187,11 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
         // Feed an auth failure into the status surface: the credential the
         // turn just ran on cannot authenticate, so "Connected" would be a lie
         // until it changes (auth/credential-health.ts).
-        if (classified.kind === "unauthenticated")
+        if (classified.kind === "unauthenticated") {
           noteAuthFailure(classified.provider);
+          // A REVOKED served token is invisible to the control plane (HOU-952).
+          reportRevokedServedToken(classified);
+        }
         return { type: "provider_error", data: classified };
       }
       // Otherwise its usage carries the latest request's context size = the

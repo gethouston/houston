@@ -7,6 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
+import { accessDigestMatches } from "@houston/protocol/access-digest";
 import type { WorkspaceId } from "../domain/types";
 import type { CredentialStore, WorkspaceCredential } from "../ports";
 
@@ -70,5 +71,21 @@ export class FileCredentialStore implements CredentialStore {
   async remove(workspaceId: WorkspaceId, provider: string): Promise<void> {
     this.creds.delete(this.key(workspaceId, provider));
     this.flush();
+  }
+
+  /** Compare-and-delete under this process's single-threaded map access — the
+   *  local equivalent of the gateway's row lock (HOU-952). */
+  async removeIfAccess(
+    workspaceId: WorkspaceId,
+    provider: string,
+    accessSha256: string,
+  ): Promise<boolean> {
+    const key = this.key(workspaceId, provider);
+    const current = this.creds.get(key);
+    if (!current || !accessDigestMatches(current.accessToken, accessSha256))
+      return false;
+    this.creds.delete(key);
+    this.flush();
+    return true;
   }
 }
