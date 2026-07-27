@@ -20,7 +20,7 @@
  */
 window.HERO_DEMO = {
   agents: {
-    houston: { name: "Houston", av: "av-p" },
+    houston: { name: "Personal Assistant", av: "av-p" },
     "sales-rep": { name: "Sales Rep", av: "av-c" },
     bookkeeper: { name: "Bookkeeper", av: "av-o" },
     "chief-of-staff": { name: "Chief of Staff", av: "av-b" },

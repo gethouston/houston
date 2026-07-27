@@ -89,6 +89,18 @@
     flex-direction: column;
     justify-content: center;
   }
+  /* Proximity scroll-snap: settling NEAR a screen boundary lands exactly on
+     it, but scrolling stays free (mandatory snap would trap variable-height
+     sections like pricing/FAQ, which deliberately do not snap). */
+  html {
+    scroll-snap-type: y proximity;
+  }
+  .hero,
+  #multiplayer,
+  #parallel,
+  #compound {
+    scroll-snap-align: start;
+  }
 }
 
 /* ── Share dialog mock (#compound) ────────────────────────────────────────── */
@@ -99,7 +111,7 @@
   padding: 22px;
   max-width: 400px;
   margin: 0 auto;
-  box-shadow: 0 24px 60px -36px rgba(17, 20, 26, 0.28);
+  box-shadow: 0 24px 60px -36px rgba(26, 24, 21, 0.28);
 }
 .shm-head {
   display: flex;
@@ -294,6 +306,16 @@
   font-size: 12px;
   color: var(--ink-subtle);
   white-space: nowrap;
+}
+.feat-faces {
+  margin-left: auto;
+  display: inline-flex;
+}
+.feat-faces .feat-face {
+  margin-left: -6px;
+}
+.feat-faces .feat-face:first-child {
+  margin-left: 0;
 }
 .feat-face {
   width: 22px;

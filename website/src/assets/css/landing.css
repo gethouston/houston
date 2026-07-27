@@ -201,8 +201,8 @@ img {
   z-index: -1;
   background: linear-gradient(
     to bottom,
-    rgba(242, 246, 250, 0.92) 0%,
-    rgba(242, 246, 250, 0.55) 58%,
+    rgba(239, 238, 233, 0.92) 0%,
+    rgba(239, 238, 233, 0.55) 58%,
     transparent 100%
   );
   filter: blur(14px);
@@ -213,7 +213,6 @@ img {
 /* Solid ivory + hairline once scrolled; the glow hands off to the solid fill. */
 .lnav.scrolled {
   background: var(--ground);
-  border-bottom-color: var(--line);
 }
 .lnav.scrolled::before {
   opacity: 0;
@@ -226,15 +225,6 @@ img {
   font-weight: 600;
   font-size: 19px;
   letter-spacing: -0.02em;
-}
-.lnav-mark {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  display: block;
-  /* The mark ships as a single near-black fill — on the white nav it renders as
-     the clean ink glyph, no filter needed (art preserved). */
-  filter: none;
 }
 .lnav-links {
   display: flex;
@@ -282,6 +272,76 @@ img {
 .lnav-cta:hover {
   background: var(--action-hover);
 }
+.lnav-cta-glyph {
+  width: 15px;
+  height: 15px;
+  display: inline-block;
+  background: currentColor;
+  -webkit-mask: var(--helmet-mask) center / contain no-repeat;
+  mask: var(--helmet-mask) center / contain no-repeat;
+}
+/* Resources dropdown — quiet menu for everything that leaves the page. */
+.lnav-res {
+  position: relative;
+}
+.lnav-res-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--sans);
+  color: var(--ink-muted);
+  font-size: 14.5px;
+  font-weight: 500;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.lnav-res-btn:hover,
+.lnav-res.open .lnav-res-btn {
+  color: var(--ink-strong);
+}
+.lnav-res-btn svg {
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+.lnav-res.open .lnav-res-btn svg {
+  transform: rotate(180deg);
+}
+.lnav-res-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  min-width: 168px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 8px;
+  box-shadow: 0 20px 48px -24px rgba(40, 36, 28, 0.25);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-entrance),
+    visibility var(--dur-fast) var(--ease-standard);
+}
+.lnav-res.open .lnav-res-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+.lnav-res-menu a {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.lnav-res-menu a:hover {
+  background: var(--panel);
+  color: var(--ink-strong);
+}
+
 .lnav-burger {
   display: none;
   width: 38px;
@@ -331,7 +391,77 @@ img {
   .lnav-links {
     display: none;
   }
-  .lnav-burger {
+  .lnav-cta-glyph {
+  width: 15px;
+  height: 15px;
+  display: inline-block;
+  background: currentColor;
+  -webkit-mask: var(--helmet-mask) center / contain no-repeat;
+  mask: var(--helmet-mask) center / contain no-repeat;
+}
+/* Resources dropdown — quiet menu for everything that leaves the page. */
+.lnav-res {
+  position: relative;
+}
+.lnav-res-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--sans);
+  color: var(--ink-muted);
+  font-size: 14.5px;
+  font-weight: 500;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.lnav-res-btn:hover,
+.lnav-res.open .lnav-res-btn {
+  color: var(--ink-strong);
+}
+.lnav-res-btn svg {
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+.lnav-res.open .lnav-res-btn svg {
+  transform: rotate(180deg);
+}
+.lnav-res-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  min-width: 168px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 8px;
+  box-shadow: 0 20px 48px -24px rgba(40, 36, 28, 0.25);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-entrance),
+    visibility var(--dur-fast) var(--ease-standard);
+}
+.lnav-res.open .lnav-res-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+.lnav-res-menu a {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.lnav-res-menu a:hover {
+  background: var(--panel);
+  color: var(--ink-strong);
+}
+
+.lnav-burger {
     display: inline-flex;
   }
 }

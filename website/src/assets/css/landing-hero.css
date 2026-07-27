@@ -31,26 +31,6 @@
   pointer-events: none;
   overflow: hidden;
 }
-.hero-sky {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 30%;
-}
-/* Whisper of a veil — just enough for the nav row; the sky stays rich. */
-.hero-photo::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(242, 246, 250, 0.22) 0%,
-    rgba(242, 246, 250, 0.06) 26%,
-    transparent 48%
-  );
-}
 .hero-fold {
   position: relative;
   z-index: 1;
@@ -90,28 +70,11 @@
   flex-direction: column;
   align-items: center;
 }
-/* Soft frosted glow behind the headline block so the type reads calmly over
-   the sky. A blurred ivory radial (filter on a static layer rasterizes once);
-   NOT backdrop-filter, which PERFORMANCE.md bans on this page. */
-.hero-intro::before {
-  content: "";
-  position: absolute;
-  inset: -12% -18%;
-  z-index: -1;
-  background: radial-gradient(
-    ellipse 52% 46% at 50% 42%,
-    rgba(242, 246, 250, 0.62) 0%,
-    rgba(242, 246, 250, 0.3) 46%,
-    transparent 70%
-  );
-  filter: blur(26px);
-  pointer-events: none;
-}
 .hero-h1 {
-  font-weight: 300;
+  font-weight: 480;
   font-size: clamp(33px, 4.3vw, 55px);
   line-height: 1.05;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.028em;
   color: var(--ink-strong);
   text-wrap: balance;
   max-width: 19ch;
@@ -293,4 +256,15 @@
   color: var(--link);
   font-weight: 600;
   text-decoration: underline;
+}
+
+/* The hero photograph: warm cloud-sea, pale upper half — ink type needs no
+   veil or glow on it. Cover-fit, anchored to the pale sky zone. */
+.hero-sky {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
 }

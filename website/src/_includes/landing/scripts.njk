@@ -11,6 +11,27 @@
     check();
   })();
 
+  // Resources dropdown: click toggles, Escape / outside click closes.
+  (function () {
+    var res = document.getElementById("lnav-res");
+    var btn = document.getElementById("lnav-res-btn");
+    if (!res || !btn) return;
+    function setOpen(open) {
+      res.classList.toggle("open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      setOpen(!res.classList.contains("open"));
+    });
+    document.addEventListener("click", function (e) {
+      if (!res.contains(e.target)) setOpen(false);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") setOpen(false);
+    });
+  })();
+
   // Swap groups (#parallel agents, #compound feature views): pills toggle
   // pre-rendered .swap-panel siblings, so JS-off shows the first panel.
   (function () {

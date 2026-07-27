@@ -41,37 +41,37 @@
   /* ── Warm ivory ground + bone panels (sampled from Mercury light) ────────
      A bone ladder: the page is the lightest warm ivory, cards float a half-
      step lighter, and the panel band + nested recess step warmer/deeper. */
-  --ground: #f2f6fa;                 /* the page — pale sky blue, tuned to the hero image */
-  --card: #fafcfe;                   /* cards float a half-step LIGHTER than the page */
-  --panel: #e7edf4;                  /* THE cool section-panel band */
-  --panel-raised: #dde5ee;           /* a half-step deeper for nested recess */
-  --ground-deep: #14171d;            /* cool near-black footer band + closing surface */
+  --ground: #efeee9;                 /* the page — warm ivory (bone) */
+  --card: #faf9f5;                   /* cards float a half-step LIGHTER than the page */
+  --panel: #e9e6df;                  /* THE warm sand section-panel band */
+  --panel-raised: #e2ded5;           /* a half-step deeper for nested recess */
+  --ground-deep: #1a1815;            /* warm near-black footer band + closing surface */
 
   /* ── Tinted washes — quiet, low-chroma frames for floating product shots ──
      Pale sage / mist / sand, each within a hair of the bone lightness so a
      screenshot reads as the hero and the tint only whispers underneath it. */
-  --wash-sage: #e4edf0;              /* pale cool teal — the app window / board frame */
-  --wash-mist: #e1e9f2;             /* pale mist blue — product frames */
-  --wash-sand: #e6e7f3;             /* pale lavender — soft product frames */
+  --wash-sage: #e6ebe2;              /* pale sage — the app window / board frame */
+  --wash-mist: #e3e8ea;             /* pale mist — cool product frames */
+  --wash-sand: #efe8da;             /* pale sand — warm product frames */
 
   /* ── Ink ladder (warm near-black family) ─────────────────────────────────
      Recomputed on the warm grounds: strong 15:1 / body 12.5:1 / muted 5.6–6.5:1
      / subtle ≥4.5:1 on ivory (used on ground/card, not the deepest recess). */
-  --ink-strong: #11141a;             /* headlines, the CTA fill — cool brand ink */
-  --ink: #1d222b;                    /* primary body text */
-  --ink-muted: #525a68;              /* secondary text — 6.4:1 ground, 5.5:1 panel-raised */
-  --ink-subtle: #576272;             /* quiet captions/eyebrows — 5.7:1 ground, 4.9:1 panel-raised */
+  --ink-strong: #1a1a17;             /* headlines, the CTA fill — warm brand ink */
+  --ink: #2a2924;                    /* primary body text */
+  --ink-muted: #57544b;              /* secondary text — 6.5:1 ivory, 5.6:1 panel-raised */
+  --ink-subtle: #6a6558;             /* quiet captions/eyebrows — 5.0:1 ivory, 4.66:1 panel */
 
   /* ── Hairlines (warm-tinted) ─────────────────────────────────────────── */
   --line: rgba(40, 36, 28, 0.10);    /* default hairline on ivory */
   --line-strong: rgba(40, 36, 28, 0.17);
 
   /* ── Ink pill CTA + links + focus (INK, never blue — our identity) ────── */
-  --action: #11141a;
-  --action-hover: #2a323e;
-  --action-text: #fafcfe;            /* cool white label on the ink pill */
+  --action: #1a1a17;
+  --action-hover: #34322c;
+  --action-text: #faf9f5;            /* warm white label on the ink pill */
   --link: #1a1a17;                   /* ink text link (underlined at each use) */
-  --focus: #11141a;
+  --focus: #1a1a17;
 
   /* ── On-ink text (warm near-black footer band, ground #1a1815) ───────── */
   --on-ink: #faf9f5;
