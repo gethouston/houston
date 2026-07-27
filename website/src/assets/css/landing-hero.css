@@ -39,17 +39,16 @@
   object-fit: cover;
   object-position: center 30%;
 }
-/* Soft ivory veil so ink type stays calm and AA over the sky's busier edges. */
+/* Whisper of a veil — just enough for the nav row; the sky stays rich. */
 .hero-photo::after {
   content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(242, 246, 250, 0.42) 0%,
-    rgba(242, 246, 250, 0.18) 38%,
-    rgba(242, 246, 250, 0.05) 60%,
-    transparent 100%
+    rgba(242, 246, 250, 0.22) 0%,
+    rgba(242, 246, 250, 0.06) 26%,
+    transparent 48%
   );
 }
 .hero-fold {
@@ -100,10 +99,10 @@
   inset: -12% -18%;
   z-index: -1;
   background: radial-gradient(
-    ellipse 60% 55% at 50% 42%,
-    rgba(242, 246, 250, 0.85) 0%,
-    rgba(242, 246, 250, 0.55) 45%,
-    transparent 72%
+    ellipse 52% 46% at 50% 42%,
+    rgba(242, 246, 250, 0.62) 0%,
+    rgba(242, 246, 250, 0.3) 46%,
+    transparent 70%
   );
   filter: blur(26px);
   pointer-events: none;
