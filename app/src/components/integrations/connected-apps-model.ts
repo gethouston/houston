@@ -1,9 +1,9 @@
 import type { IntegrationConnection } from "@houston-ai/engine-client";
 
 /**
- * Pure, DOM-free derivations for the global Integrations page's connected-apps
- * read-model. Kept separate so the connection arithmetic is unit-tested in
- * isolation.
+ * Pure, DOM-free derivations for the connected-apps read-model both catalog
+ * surfaces share (the global Integrations page and the per-agent tab). Kept
+ * separate so the connection arithmetic is unit-tested in isolation.
  */
 
 /**
@@ -16,26 +16,84 @@ export function connKey(c: { connectionId: string; toolkit: string }): string {
   return c.connectionId || c.toolkit;
 }
 
-/**
- * Split connections into the two rows the page renders differently:
- *  - `active`     — usable apps, opened into the detail sheet for reconnect /
- *                   disconnect.
- *  - `recovering` — pending or errored connections, shown with the recovery
- *                   callout (finish / reconnect / remove) instead.
- * Input order is preserved within each bucket.
- */
-interface ConnectionBuckets {
-  active: IntegrationConnection[];
-  recovering: IntegrationConnection[];
+/** A connection that never reached `active` — the app is not usable yet. */
+export type BrokenStatus = Exclude<IntegrationConnection["status"], "active">;
+
+/** One app's broken connection: the status its catalog row wears, and the
+ *  connection its dialog's Remove disconnects. */
+export interface BrokenConnection {
+  connection: IntegrationConnection;
+  status: BrokenStatus;
 }
 
+/**
+ * The two homes a connection can have on a catalog surface:
+ *  - `installed` — WORKING connections, the Installed strip's rows (and the
+ *    only apps the browse catalog leaves out);
+ *  - `broken`    — apps whose connection is pending or errored, by toolkit.
+ *    They stay in the catalog, in their own category rows, wearing their
+ *    status: a broken connection lives where the app lives, never in a
+ *    separate recovery pile at the top of the pane.
+ */
+export interface ConnectionBuckets {
+  installed: IntegrationConnection[];
+  broken: ReadonlyMap<string, BrokenConnection>;
+}
+
+/**
+ * Split connections into those two buckets, preserving input order. A toolkit
+ * that holds BOTH an active connection and a leftover broken one counts as
+ * installed only — one home per app, so the working login wins and the leftover
+ * never re-materializes as a second Slack in the catalog. Of several broken
+ * connections to one toolkit the first wins (they say the same thing, and the
+ * row shows one status).
+ */
 export function partitionConnections(
   connections: IntegrationConnection[],
 ): ConnectionBuckets {
-  const active: IntegrationConnection[] = [];
-  const recovering: IntegrationConnection[] = [];
+  const installed: IntegrationConnection[] = [];
+  const working = new Set<string>();
   for (const connection of connections) {
-    (connection.status === "active" ? active : recovering).push(connection);
+    if (connection.status === "active") {
+      installed.push(connection);
+      working.add(connection.toolkit);
+    }
   }
-  return { active, recovering };
+  const broken = new Map<string, BrokenConnection>();
+  for (const connection of connections) {
+    if (connection.status === "active") continue;
+    if (working.has(connection.toolkit) || broken.has(connection.toolkit)) {
+      continue;
+    }
+    broken.set(connection.toolkit, { connection, status: connection.status });
+  }
+  return { installed, broken };
+}
+
+/**
+ * The toolkits the browse catalog must NOT offer, because they already have a
+ * home elsewhere on the surface: a WORKING connection is an Installed strip
+ * row, and a connection the agent's Teams ceiling forbids is a "Not allowed"
+ * row. A pending or errored connection inside the ceiling is deliberately
+ * absent from this set — it stays in the catalog, in its own category section,
+ * where its `+` retries the connect.
+ *
+ * `allowlist === null` (single player, or Teams with no ceiling) blocks
+ * nothing, so the set is the working connections alone.
+ */
+export function catalogHiddenToolkits(
+  connections: IntegrationConnection[],
+  allowlist: string[] | null = null,
+): Set<string> {
+  const allowed = allowlist === null ? null : new Set(allowlist);
+  const hidden = new Set<string>();
+  for (const c of connections) {
+    if (
+      c.status === "active" ||
+      (allowed !== null && !allowed.has(c.toolkit))
+    ) {
+      hidden.add(c.toolkit);
+    }
+  }
+  return hidden;
 }

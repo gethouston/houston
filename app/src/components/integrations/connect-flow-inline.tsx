@@ -6,8 +6,8 @@ import { ConnectNoticeLine, NoticeLine } from "./connect-notice-line";
 /**
  * How the block dresses itself.
  *  - `"panel"` — its own bordered `input`-surface box with a leading spinner.
- *    For the surfaces that host the block ALONE (the recovery callout, the
- *    routine intake), where nothing around it reports the hand-off.
+ *    For the surfaces that host the block ALONE (the routine intake), where
+ *    nothing around it reports the hand-off.
  *  - `"bare"` — no box and no spinner of its own. For the catalog row, whose
  *    WHOLE row becomes the card and whose `+` slot carries the one spinner: a
  *    second frame inside that card, and a second spinner under the first, are
@@ -30,8 +30,8 @@ export function hasConnectState(
 
 /**
  * ONE app's connect state, rendered INLINE where the user started it — inside
- * the catalog card the pressed row became, under the recovery row's identity
- * line, under the intake's connect prompt. It is the only "we are connecting"
+ * the catalog card the pressed row became, under the intake's connect prompt.
+ * It is the only "we are connecting"
  * surface: there is no page-level banner, so nothing the user is reading ever
  * jumps to make room for feedback about a row far above it.
  *
@@ -108,11 +108,9 @@ export function ConnectFlowInline({
 
 /**
  * The waiting step's compact expansion: the browser hand-off explained, plus
- * the three recovery actions. As a `panel` it wears the same quiet
- * input-surface box as the pending-connection recovery callout, so an
- * interrupted OAuth reads the same whether the user is still in the flow or
- * comes back to it later; as `bare` it is already inside the catalog row's own
- * card and brings no frame and no spinner of its own.
+ * the three recovery actions. As a `panel` it wears a quiet input-surface box
+ * for the surfaces that host it alone; as `bare` it is already inside the
+ * catalog row's own card and brings no frame and no spinner of its own.
  */
 function WaitingBlock({
   appName,

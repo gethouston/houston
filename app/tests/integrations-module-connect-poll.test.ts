@@ -259,14 +259,27 @@ describe("connect surfaces", () => {
     );
   });
 
-  it("recovery actions are per toolkit, on core buttons", () => {
-    const callout = read(
-      "../src/components/integrations/pending-connection-callout.tsx",
-    );
-    ok(callout.includes("AsyncButton"), "the primary holds the whole hand-off");
+  it("a broken connection lives on the app's own row, never in a recovery pile", () => {
+    const pane = read("../src/components/integrations-view/catalog-pane.tsx");
     ok(
-      !callout.includes("Object.keys(connectFlow.states).length"),
-      "a recovery row never freezes because another app is connecting",
+      !pane.includes("RecoveryRow"),
+      "no recovery section at the top of the pane",
+    );
+    const row = read("../src/components/integrations-view/plane-app-row.tsx");
+    ok(
+      row.includes("ConnectionStatusBadge"),
+      "the row itself reports the connection that needs finishing",
+    );
+    ok(
+      row.includes("status && !live"),
+      "a live flow outranks the at-rest status line",
+    );
+    const dialog = read(
+      "../src/components/integrations-view/app-info-dialog.tsx",
+    );
+    ok(
+      dialog.includes("onRemove(toolkit.slug)"),
+      "Remove lives in the app's own dialog",
     );
   });
 });

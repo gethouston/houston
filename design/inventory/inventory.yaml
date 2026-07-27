@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 34
+version: 35
 
 components:
   - id: agent-avatar
@@ -661,7 +661,8 @@ components:
     purpose: >-
       A colored connection/live-status indicator -- a presence-style dot left of
       an item name ("dot Asana", catalog rows' statusDot slot) or a dot with a
-      visible label (integration and AI-provider detail surfaces) -- so
+      visible label (integration and AI-provider detail surfaces, and a catalog
+      row's secondary line when its item needs attention) -- so
       connected/pending/error reads without relying on which section the item
       sits in.
     anatomy: [status-dot, status-label]

@@ -3,6 +3,19 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v35 - 2026-07-26
+
+Refine the shared `CatalogRow` (no new component, no `since` change): its
+`description` slot takes a node, not just a string, so a row can put its
+SITUATION on that one secondary line instead of its blurb. Integrations uses it
+for the in-place recovery model -- an app whose connection is pending or errored
+is no longer lifted out of the catalog into a separate recovery section at the
+top of the pane; it keeps its own category rows and wears a `status-badge`
+(dot + label, warning/danger) where its description would be, its `+` retries
+the connect from that row, and its detail modal carries Reconnect + Remove. A
+live connect outranks the at-rest status line, so a row never reports the same
+connection twice.
+
 ## v34 - 2026-07-23
 
 Refine `conversation-feed` (no new component, no `since` change): the transcript

@@ -17,18 +17,11 @@ export interface ActiveAppRow {
   app: AppDisplay;
 }
 
-/** A pending / errored connection with its display, shown for recovery. */
-export interface RecoveringAppRow {
-  connection: IntegrationConnection;
-  app: AppDisplay;
-}
-
 export interface ConnectedApps {
   connData: IntegrationConnection[];
   catalogData: IntegrationToolkit[];
   bySlug: ReadonlyMap<string, IntegrationToolkit>;
   activeRows: ActiveAppRow[];
-  recoveringRows: RecoveringAppRow[];
   /** The catalog query alone is still fetching (the picker shows a loader). */
   catalogLoading: boolean;
   isLoading: boolean;
@@ -36,10 +29,12 @@ export interface ConnectedApps {
 
 /**
  * All the derived read-model for the global Integrations page in one place: the
- * connection + catalog queries and the sorted active / recovering rows. The
- * page is a personal-connections surface only (permissions live in the
- * Permissions view), so there is no per-agent grant plumbing here. Kept out of
- * the view so the JSX stays a thin render of these values.
+ * connection + catalog queries and the sorted Installed rows. Only WORKING
+ * connections become rows here — a pending or errored one is not an installed
+ * app, it is a catalog row wearing its status, derived where the catalog is
+ * rendered. The page is a personal-connections surface only (permissions live
+ * in the Permissions view), so there is no per-agent grant plumbing here. Kept
+ * out of the view so the JSX stays a thin render of these values.
  */
 export function useConnectedApps(): ConnectedApps {
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, true);
@@ -52,34 +47,22 @@ export function useConnectedApps(): ConnectedApps {
     [catalogData],
   );
 
-  const { activeRows, recoveringRows } = useMemo(() => {
-    const { active, recovering } = partitionConnections(connData);
-    const byName = (
-      a: { app: { name: string } },
-      b: { app: { name: string } },
-    ) => a.app.name.localeCompare(b.app.name);
-    return {
-      activeRows: active
-        .map((c) => ({
+  const activeRows = useMemo(
+    () =>
+      partitionConnections(connData)
+        .installed.map((c) => ({
           connection: c,
           app: appDisplay(c.toolkit, bySlug.get(c.toolkit)),
         }))
-        .sort(byName),
-      recoveringRows: recovering
-        .map((c) => ({
-          connection: c,
-          app: appDisplay(c.toolkit, bySlug.get(c.toolkit)),
-        }))
-        .sort(byName),
-    };
-  }, [connData, bySlug]);
+        .sort((a, b) => a.app.name.localeCompare(b.app.name)),
+    [connData, bySlug],
+  );
 
   return {
     connData,
     catalogData,
     bySlug,
     activeRows,
-    recoveringRows,
     catalogLoading: catalog.isLoading,
     isLoading: connections.isLoading || catalog.isLoading,
   };

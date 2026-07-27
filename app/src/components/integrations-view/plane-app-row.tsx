@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import {
   type AppDisplay,
   AppLogo,
+  type BrokenStatus,
   type ConnectFlow,
   ConnectFlowInline,
+  ConnectionStatusBadge,
   hasConnectState,
 } from "../integrations";
 
@@ -33,6 +35,13 @@ import {
  * their own layer behind the row, transparent until the flow starts, so the
  * catalog keeps its flat transparent-row language and the treatment can
  * cross-fade on opacity alone.
+ *
+ * An app whose connection never landed keeps this exact row, in this exact
+ * section — a broken connection lives where the app lives. It swaps its blurb
+ * for a `status` line ("Finishing up" / "Needs reconnecting", the shared
+ * dot-and-label treatment) and its `+` retries the connect from HERE. A live
+ * flow outranks that line everywhere: while one is running the row is reporting
+ * it, so repeating the at-rest status beside it would be the same news twice.
  */
 export function PlaneAppRow({
   display,
@@ -40,6 +49,7 @@ export function PlaneAppRow({
   onConnect,
   connectFlow,
   owns,
+  status,
 }: {
   display: AppDisplay;
   onOpen: () => void;
@@ -47,10 +57,14 @@ export function PlaneAppRow({
   connectFlow: ConnectFlow;
   /** This row is the one copy of the app that shows the inline connect state. */
   owns: boolean;
+  /** This app holds a pending / errored connection: the row wears its status
+   *  instead of its description. Absent = a plain connectable app. */
+  status?: BrokenStatus;
 }) {
   const { t } = useTranslation("integrations");
   const connecting = display.toolkit in connectFlow.states;
-  const carded = owns && hasConnectState(connectFlow, display.toolkit);
+  const live = hasConnectState(connectFlow, display.toolkit);
+  const carded = owns && live;
   return (
     <div className="relative">
       <span
@@ -66,7 +80,13 @@ export function PlaneAppRow({
           className={carded ? "rounded-b-none" : undefined}
           icon={<AppLogo display={display} size="lg" className="rounded-lg" />}
           title={display.name}
-          description={display.description}
+          description={
+            status && !live ? (
+              <ConnectionStatusBadge status={status} />
+            ) : (
+              display.description
+            )
+          }
           onClick={onOpen}
           action={
             <CatalogAddButton

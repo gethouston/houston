@@ -7,6 +7,7 @@ import {
 } from "../../hooks/queries";
 import {
   CustomIntegrationsSection,
+  catalogHiddenToolkits,
   INTEGRATION_PROVIDER,
   ReconnectBanner,
   useConnectedApps,
@@ -35,7 +36,8 @@ interface IntegrationsReadyProps {
  *     so it sits OUTSIDE the tabs and never changes when the user switches),
  *     then
  *  2. two discovery tabs under an **Available** header: **Integrations** (the
- *     app catalog: {@link CatalogPane} with recovery rows) and **Custom
+ *     app catalog: {@link CatalogPane}, where an app whose connection never
+ *     landed keeps its normal row, wearing its status) and **Custom
  *     integrations** (the API / MCP surface with its own internal search + Add
  *     controls row). When the host doesn't serve custom integrations the shell
  *     renders the catalog alone, no tab chrome.
@@ -49,7 +51,7 @@ interface IntegrationsReadyProps {
  * — never a slideover): view + reconnect + disconnect for that personal
  * connection. Which agents may use an app is managed in one place (the
  * Permissions view), never here. The connect flow is bound here (connect-only)
- * and handed to the catalog, the recovery rows, and the detail modal; its state
+ * and handed to the catalog and the detail modal; its state
  * is app-wide and shared, so closing any of them, switching tabs, or leaving
  * the page entirely never kills an in-flight OAuth poll, and a connect started
  * from chat shows up on these rows.
@@ -93,10 +95,12 @@ export function IntegrationsReady({
   } = surface;
 
   // The catalog tab's count chip stays the UNFILTERED connectable total (what
-  // the tab browses); the Available header's count follows the shared filter.
+  // the tab browses): every app minus the ones that left for the Installed
+  // strip. An app whose connection never landed is still browsable here, so it
+  // counts.
   const connectableCount = useMemo(() => {
-    const connected = new Set(apps.connData.map((c) => c.toolkit));
-    return apps.catalogData.filter((tk) => !connected.has(tk.slug)).length;
+    const hidden = catalogHiddenToolkits(apps.connData);
+    return apps.catalogData.filter((tk) => !hidden.has(tk.slug)).length;
   }, [apps.catalogData, apps.connData]);
   const tabs: CatalogShellTab[] = [
     {
@@ -110,10 +114,9 @@ export function IntegrationsReady({
           surface="integrations"
           query={query}
           category={category}
-          recovering={apps.recoveringRows}
           isLoading={apps.isLoading}
           connectFlow={connectFlow}
-          onRemoveRecovering={(toolkit) => disconnect.mutate(toolkit)}
+          onRemove={(toolkit) => disconnect.mutate(toolkit)}
         />
       ),
     },

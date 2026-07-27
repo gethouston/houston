@@ -9,7 +9,7 @@ import {
   filterInstalledBy,
   type InstalledRow,
 } from "../../lib/installed-preview";
-import { browseCatalogView } from "../integrations";
+import { browseCatalogView, catalogHiddenToolkits } from "../integrations";
 
 /** The consolidated catalog surface's shared view state, ready for
  *  {@link CatalogShell}. */
@@ -59,7 +59,7 @@ export function useCatalogSurface(opts: {
     [active, custom, catalog, query, category],
   );
   const availableCount = useMemo(() => {
-    const connected = new Set(connections.map((c) => c.toolkit));
+    const connected = catalogHiddenToolkits(connections, allowlist);
     return browseCatalogView({ catalog, query, category, connected, allowlist })
       .connectable.length;
   }, [catalog, connections, query, category, allowlist]);

@@ -243,6 +243,30 @@ export function connect(toolkit: string): {
   return { redirectUrl: `https://connect.test/${toolkit}`, connectionId };
 }
 
+/**
+ * Seed one connection at a given status outright — the at-rest states a real
+ * OAuth leaves behind and a spec cannot reach by clicking: `pending` (the user
+ * walked away mid sign-in) and `error` (the provider refused). Re-statuses the
+ * toolkit's existing connection when it has one, so a spec can also BREAK the
+ * seeded active connection. Returns the connection.
+ */
+export function seedConnection(
+  toolkit: string,
+  status: IntegrationConnection["status"],
+): IntegrationConnection {
+  const existing = [...state.connections.values()].find(
+    (c) => c.toolkit === toolkit,
+  );
+  const connection: IntegrationConnection = {
+    toolkit,
+    connectionId:
+      existing?.connectionId ?? `conn-${toolkit}-${state.connSeq++}`,
+    status,
+  };
+  state.connections.set(connection.connectionId, connection);
+  return connection;
+}
+
 /** Flip a pending connection to active (models the OAuth completing). */
 export function activateConnection(id: string): boolean {
   const conn = state.connections.get(id);

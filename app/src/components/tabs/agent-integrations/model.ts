@@ -6,6 +6,7 @@ import {
   type AppDisplay,
   connectionRows,
 } from "../../integrations/app-display.ts";
+import { catalogHiddenToolkits } from "../../integrations/connected-apps-model.ts";
 import { effectiveAccess } from "../../integrations/effective-access.ts";
 
 /** One connected app resolved for display in this agent's list. */
@@ -20,8 +21,9 @@ export interface AgentAppRow {
  * (permissions live in one place, the Permissions view):
  *
  *  - `activeRows`     — apps this agent can use (connected AND inside the Teams
- *                       allowlist). The active / recovering split (strip tiles vs
- *                       recovery rows) is done downstream by connection status.
+ *                       allowlist). The strip keeps the WORKING ones; a pending
+ *                       or errored connection is filtered out downstream and
+ *                       stays in the catalog, on the app's own row.
  *  - `disallowedRows` — connected apps the agent's Teams allowlist ceiling
  *                       forbids (visible, non-connectable, for transparency),
  *                       empty unless a Teams host serves a restrictive allowlist.
@@ -71,18 +73,19 @@ export function agentIntegrationsView(opts: {
   };
 }
 
-/** How many apps the catalog tab can still offer: not connected and, on a
- *  Teams host, inside the effective allowlist (locked rows don't count) — the
- *  tab trigger's count chip. Pure + node-tested. */
+/** How many apps the catalog tab can still offer: not already working (an
+ *  active connection lives in the Installed strip) and, on a Teams host, inside
+ *  the effective allowlist (locked rows don't count) — the tab trigger's count
+ *  chip. An app whose connection is pending or errored is still browsable here,
+ *  so it counts. Pure + node-tested. */
 export function connectableCount(opts: {
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
   allowlist: string[] | null;
 }): number {
-  const connected = new Set(opts.connections.map((c) => c.toolkit));
+  const hidden = catalogHiddenToolkits(opts.connections, opts.allowlist);
   const allowed = opts.allowlist === null ? null : new Set(opts.allowlist);
   return opts.catalog.filter(
-    (tk) =>
-      !connected.has(tk.slug) && (allowed === null || allowed.has(tk.slug)),
+    (tk) => !hidden.has(tk.slug) && (allowed === null || allowed.has(tk.slug)),
   ).length;
 }

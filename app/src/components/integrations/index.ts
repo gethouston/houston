@@ -42,6 +42,13 @@ export {
   type RenderedSection,
 } from "./connect-origin";
 export {
+  type BrokenConnection,
+  type BrokenStatus,
+  catalogHiddenToolkits,
+  connKey,
+  partitionConnections,
+} from "./connected-apps-model";
+export {
   type ConnectionStatus,
   ConnectionStatusBadge,
 } from "./connection-status-badge";
@@ -58,7 +65,6 @@ export {
   pollConnectionUntilActive,
   splitByGrant,
 } from "./model";
-export { PendingConnectionCallout } from "./pending-connection-callout";
 export { SectionHeader } from "./section-header";
 export {
   LoadingState,
@@ -75,7 +81,6 @@ export {
 export {
   type ActiveAppRow,
   type ConnectedApps,
-  type RecoveringAppRow,
   useConnectedApps,
 } from "./use-connected-apps";
 export { useConnectionSelection } from "./use-connection-selection";
