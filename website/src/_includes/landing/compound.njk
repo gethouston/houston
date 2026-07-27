@@ -1,0 +1,69 @@
+<section id="compound" class="section">
+  {# Split, reversed: statement left, one agent's "everything it carries"
+     right. Pills swap five static views of the SAME agent: learnings, skills,
+     context, integrations, permissions. Same data-swap mechanic as #parallel;
+     JS-off shows Learnings settled. Team-taught learnings carry the teammate's
+     avatar; integrations carry the real tool marks. #}
+  <div class="split split-rev reveal">
+    <div class="split-copy">
+      <div class="eyebrow-mono">Compounding</div>
+      <h2 class="sec-title">What your agents learn, stays.</h2>
+      <p class="split-line">Everything any of your agents carries lives with it, shared by the whole team. New people start with all of it, and none of it walks out the door.</p>
+    </div>
+
+    <div class="split-visual">
+      <div class="feat-demo" data-swap-group="feat">
+        <div class="chat-tabs feat-tabs" role="tablist" aria-label="What the agent carries">
+          <button class="chat-tab active" data-swap="0" role="tab" aria-selected="true">Learnings</button>
+          <button class="chat-tab" data-swap="1" role="tab" aria-selected="false">Skills</button>
+          <button class="chat-tab" data-swap="2" role="tab" aria-selected="false">Context</button>
+          <button class="chat-tab" data-swap="3" role="tab" aria-selected="false">Integrations</button>
+          <button class="chat-tab" data-swap="4" role="tab" aria-selected="false">Permissions</button>
+        </div>
+
+        <div class="share-mock feat-card">
+          <div class="shm-head">
+            <span class="av av-c" aria-hidden="true"></span>
+            <span class="shm-title">Sales Rep<span class="shm-sub">Shared agent · Acme Studio</span></span>
+          </div>
+
+          <div class="swap-panel active" role="img" aria-label="The agent's learnings, taught by the team: churned accounts excluded, deal owners copied, renewals from contract date, discount sign-offs, calls logged in HubSpot">
+            <div class="feat-row"><span class="feat-note">Exclude churned accounts from pipeline math</span><span class="face face-img feat-face" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt="Felipe"></span></div>
+            <div class="feat-row"><span class="feat-note">CC the deal owner before anything sends</span><span class="face face-img feat-face" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt="Julian"></span></div>
+            <div class="feat-row"><span class="feat-note">Count renewals from the contract date</span><span class="feat-faces"><span class="face face-img feat-face" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt="Julian"></span><span class="face face-img feat-face" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt="Felipe"></span></span></div>
+            <div class="feat-row"><span class="feat-note">Discounts above 15% need a sign-off</span><span class="face face-img feat-face" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt="Julian"></span></div>
+            <div class="feat-row"><span class="feat-note">Log every call in HubSpot, same day</span><span class="face hp-3 feat-face" title="Maya">M</span></div>
+          </div>
+          <div class="swap-panel" role="img" aria-label="The agent's skills: pipeline report, follow-up sequence, proposal draft, meeting brief, win-loss recap">
+            <div class="feat-row"><span class="feat-note">Pipeline report</span><span class="feat-meta">skill</span></div>
+            <div class="feat-row"><span class="feat-note">Follow-up sequence</span><span class="feat-meta">skill</span></div>
+            <div class="feat-row"><span class="feat-note">Proposal draft</span><span class="feat-meta">skill</span></div>
+            <div class="feat-row"><span class="feat-note">Meeting brief</span><span class="feat-meta">skill</span></div>
+            <div class="feat-row"><span class="feat-note">Win-loss recap</span><span class="feat-meta">skill</span></div>
+          </div>
+          <div class="swap-panel" role="img" aria-label="The agent's context: pricing sheet, ICP notes, Q3 targets, case studies, objection playbook">
+            <div class="feat-row"><span class="feat-note">Pricing sheet.pdf</span><span class="feat-meta">file</span></div>
+            <div class="feat-row"><span class="feat-note">ICP notes</span><span class="feat-meta">doc</span></div>
+            <div class="feat-row"><span class="feat-note">Q3 targets</span><span class="feat-meta">sheet</span></div>
+            <div class="feat-row"><span class="feat-note">Case studies</span><span class="feat-meta">folder</span></div>
+            <div class="feat-row"><span class="feat-note">Objection playbook</span><span class="feat-meta">doc</span></div>
+          </div>
+          <div class="swap-panel" role="img" aria-label="The agent's integrations, all connected: HubSpot, Gmail, Notion, Slack, QuickBooks">
+            <div class="feat-row"><span class="feat-logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="#FF7A59" width="14" height="14"><path d="M18.164 7.93V5.084a2.198 2.198 0 001.267-1.978v-.067A2.2 2.2 0 0017.238.845h-.067a2.2 2.2 0 00-2.193 2.193v.067a2.196 2.196 0 001.252 1.973l.013.006v2.852a6.22 6.22 0 00-2.969 1.31l.012-.01-7.828-6.095A2.497 2.497 0 104.3 4.656l-.012.006 7.697 5.991a6.176 6.176 0 00-1.038 3.446c0 1.343.425 2.588 1.147 3.607l-.013-.02-2.342 2.343a1.968 1.968 0 00-.58-.095h-.002a2.033 2.033 0 102.033 2.033 1.978 1.978 0 00-.1-.595l.005.014 2.317-2.317a6.247 6.247 0 104.782-11.134l-.036-.005zm-.964 9.378a3.206 3.206 0 113.215-3.207v.002a3.206 3.206 0 01-3.207 3.207z"/></svg></span><span class="feat-note">HubSpot</span><span class="feat-chip">Connected</span></div>
+            <div class="feat-row"><span class="feat-logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="#EA4335" width="14" height="14"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg></span><span class="feat-note">Gmail</span><span class="feat-chip">Connected</span></div>
+            <div class="feat-row"><span class="feat-logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="#000000" width="14" height="14"><path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.98-.7-2.055-.607L3.014 2.354c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L14.9 19.65s0 .84-1.168.84l-3.222.186c-.093-.187 0-.653.327-.746l.84-.233V9.854L7.822 9.761c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.216-1.632z"/></svg></span><span class="feat-note">Notion</span><span class="feat-chip">Connected</span></div>
+            <div class="feat-row"><span class="feat-logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="#4A154B" width="14" height="14"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.122 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.122a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg></span><span class="feat-note">Slack</span><span class="feat-chip">Connected</span></div>
+            <div class="feat-row"><span class="feat-logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="#2CA01C" width="14" height="14"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm.642 4.1335c.9554 0 1.7296.776 1.7296 1.7332v9.0667h1.6c1.614 0 2.9275-1.3156 2.9275-2.933 0-1.6173-1.3136-2.9333-2.9276-2.9333h-.6654V7.3334h.6654c2.5722 0 4.6577 2.0897 4.6577 4.667 0 2.5774-2.0855 4.6666-4.6577 4.6666H12.642zM7.9837 7.333h3.3291v12.533c-.9555 0-1.73-.7759-1.73-1.7332V9.0662H7.9837c-1.6146 0-2.9277 1.316-2.9277 2.9334 0 1.6175 1.3131 2.9333 2.9277 2.9333h.6654v1.7332h-.6654c-2.5725 0-4.6577-2.0892-4.6577-4.6665 0-2.5771 2.0852-4.6666 4.6577-4.6666Z"/></svg></span><span class="feat-note">QuickBooks</span><span class="feat-chip">Connected</span></div>
+          </div>
+          <div class="swap-panel" role="img" aria-label="The agent's permissions: Julian manages it, Felipe, Maya, and Ana can use it">
+            <div class="shm-row"><span class="face face-img" aria-hidden="true"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span><span class="shm-name">Julian</span><span class="shm-role">Manager</span></div>
+            <div class="shm-row"><span class="face face-img" aria-hidden="true"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span><span class="shm-name">Felipe</span><span class="shm-role shm-role-use">Can use</span></div>
+            <div class="shm-row"><span class="face hp-3" aria-hidden="true">M</span><span class="shm-name">Maya</span><span class="shm-role shm-role-use">Can use</span></div>
+            <div class="shm-row"><span class="face hp-1" aria-hidden="true">A</span><span class="shm-name">Ana</span><span class="shm-role shm-role-use">Can use</span></div>
+            <div class="shm-row shm-invite"><span class="shm-plus" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span class="shm-name">Invite a teammate</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

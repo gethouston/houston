@@ -5,6 +5,14 @@
  * four missions the loop cycles through, one per agent, so the whole team is
  * visibly working on the true-to-app board.
  *
+ * `people` on each mission are the HUMAN teammates collaborating on it, rendered
+ * as an overlapping face stack on the card (the multiplayer signal, per
+ * @houston-ai/board KanbanPeople). Each is EITHER a real teammate photo
+ * (`{ img, label }`) or an initials avatar in a quiet tone (`{ initials, tone }`,
+ * hp-1..hp-5 in landing-app-window.css) — always distinct from the vivid agent
+ * helmet. Different missions carry different people, so the shared board visibly
+ * belongs to a team.
+ *
  * Loaded before hero-demo.js (both `defer`, in order), which reads
  * `window.HERO_DEMO`.
  *
@@ -12,7 +20,7 @@
  */
 window.HERO_DEMO = {
   agents: {
-    houston: { name: "Houston", av: "av-p" },
+    houston: { name: "Personal Assistant", av: "av-p" },
     "sales-rep": { name: "Sales Rep", av: "av-c" },
     bookkeeper: { name: "Bookkeeper", av: "av-o" },
     "chief-of-staff": { name: "Chief of Staff", av: "av-b" },
@@ -25,49 +33,77 @@ window.HERO_DEMO = {
         title: "Follow up on urgent email",
         running: "Reading 23 unread, drafting replies",
         done: "4 replies ready, 17 archived",
+        people: [
+          { img: "/assets/img/julian-96.webp", label: "Julian" },
+          { img: "/assets/img/felipe-96.webp", label: "Felipe" },
+        ],
       },
       needsYou: {
-        title: "Plan a trip to Tokyo",
-        desc: "Research flights and hotels for the spring",
+        title: "Approve the vendor renewal",
+        desc: "Terms compared, waiting on your sign-off",
+        people: [{ img: "/assets/img/julian-96.webp", label: "Julian" }],
       },
     },
     {
       agent: "sales-rep",
-      mission: "Follow up with leads",
+      mission: "Rebuild the Q3 pipeline",
       card: {
-        title: "Send 12 follow-ups",
-        running: "Personalizing from HubSpot + LinkedIn",
-        done: "12 emails sent from Gmail",
+        title: "Rebuild the Q3 pipeline report",
+        running: "Matching HubSpot deals to Gmail threads",
+        done: "Report ready, 6 deals flagged at risk",
+        people: [
+          { img: "/assets/img/felipe-96.webp", label: "Felipe" },
+          { initials: "RL", tone: "hp-3" },
+          { initials: "TP", tone: "hp-4" },
+        ],
       },
       needsYou: {
-        title: "Approve the Acme proposal",
+        title: "Approve the Acme renewal",
         desc: "Draft ready, waiting on your sign-off",
+        people: [
+          { initials: "RL", tone: "hp-3" },
+          { img: "/assets/img/felipe-96.webp", label: "Felipe" },
+        ],
       },
     },
     {
       agent: "bookkeeper",
-      mission: "File March expenses",
+      mission: "Reconcile last month",
       card: {
-        title: "Categorize 47 transactions",
-        running: "Matching your past patterns",
-        done: "44 filed, 3 flagged for review",
+        title: "Reconcile 842 transactions",
+        running: "Matching Stripe to the bank feed",
+        done: "838 matched, 4 flagged for review",
+        people: [{ initials: "TP", tone: "hp-4" }],
       },
       needsYou: {
-        title: "Review 3 flagged expenses",
-        desc: "Unusual amounts, needs your call",
+        title: "Review 4 flagged charges",
+        desc: "No invoice on file, needs your call",
+        people: [
+          { initials: "TP", tone: "hp-4" },
+          { img: "/assets/img/julian-96.webp", label: "Julian" },
+        ],
       },
     },
     {
       agent: "chief-of-staff",
-      mission: "Prep the Monday briefing",
+      mission: "Prep the board update",
       card: {
-        title: "Prepare Monday briefing",
-        running: "Pulling calendar, KPIs, open threads",
+        title: "Prepare the board update",
+        running: "Pulling KPIs and open threads",
         done: "One-pager waiting in your inbox",
+        people: [
+          { initials: "SB", tone: "hp-5" },
+          { img: "/assets/img/julian-96.webp", label: "Julian" },
+        ],
       },
       needsYou: {
-        title: "Pick a date for the offsite",
-        desc: "Three options held on your calendar",
+        title: "Approve the launch plan",
+        desc: "Timeline staged, waiting on your OK",
+        people: [
+          { initials: "SB", tone: "hp-5" },
+          { img: "/assets/img/felipe-96.webp", label: "Felipe" },
+          { initials: "RL", tone: "hp-3" },
+        ],
       },
     },
   ],

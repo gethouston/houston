@@ -1,0 +1,350 @@
+/*
+ * Landing split sections: the multiplayer phrase/chat split (#multiplayer),
+ * the parallel-lanes split (#parallel), and the compounding/share split
+ * (#compound). Palette and type come from site-tokens.css. All motion is
+ * gated behind prefers-reduced-motion: no-preference; the settled states
+ * carry the full information.
+ */
+
+/* ── Generic two-column split ─────────────────────────────────────────────── */
+.split {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: clamp(36px, 6vw, 84px);
+  align-items: center;
+}
+.split-copy .sec-title {
+  max-width: none;
+  margin: 0;
+  text-align: left;
+}
+.split-copy .eyebrow-mono {
+  justify-content: flex-start;
+  margin-bottom: 14px;
+}
+.split-line {
+  margin-top: 16px;
+  font-size: 16.5px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  max-width: 42ch;
+}
+@media (max-width: 880px) {
+  .split,
+  .split.split-rev {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .split-rev .split-copy {
+    order: 0;
+  }
+  .split-rev .split-visual {
+    order: 1;
+  }
+}
+
+/* ── Multiplayer: two big phrases + the chat ─────────────────────────────── */
+.mp-split {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: clamp(36px, 5vw, 72px);
+  align-items: center;
+  margin-top: 40px;
+}
+.mp-phrases {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.mp-phrase {
+  font-size: clamp(24px, 2.4vw, 34px);
+  line-height: 1.22;
+  font-weight: 300;
+  letter-spacing: -0.015em;
+  color: var(--ink-subtle);
+  max-width: 16ch;
+  text-wrap: balance;
+}
+.mp-phrase.is-strong {
+  color: var(--ink-strong);
+  font-weight: 440;
+}
+@media (max-width: 880px) {
+  .mp-split {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .mp-phrase {
+    max-width: none;
+  }
+}
+
+/* ── Full-screen section rhythm — each story owns a viewport ─────────────── */
+@media (min-width: 881px) {
+  #multiplayer,
+  #parallel,
+  #compound {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  /* Proximity scroll-snap: settling NEAR a screen boundary lands exactly on
+     it, but scrolling stays free (mandatory snap would trap variable-height
+     sections like pricing/FAQ, which deliberately do not snap). */
+  html {
+    scroll-snap-type: y proximity;
+  }
+  .hero,
+  #multiplayer,
+  #parallel,
+  #compound {
+    scroll-snap-align: start;
+  }
+}
+
+/* ── Share dialog mock (#compound) ────────────────────────────────────────── */
+.share-mock {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px;
+  max-width: 400px;
+  margin: 0 auto;
+  box-shadow: 0 24px 60px -36px rgba(26, 24, 21, 0.28);
+}
+.shm-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.shm-head .av {
+  width: 34px;
+  height: 34px;
+}
+.shm-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.shm-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-subtle);
+}
+.shm-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.shm-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.shm-row .face {
+  width: 30px;
+  height: 30px;
+}
+.shm-name {
+  font-size: 13.5px;
+  color: var(--ink);
+  font-weight: 500;
+}
+.shm-role {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--action-text);
+  background: var(--action);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+.shm-role-use {
+  color: var(--ink-muted);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+}
+.shm-invite .shm-name {
+  color: var(--ink-subtle);
+  font-weight: 400;
+}
+
+.shm-plus {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px dashed var(--line-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-subtle);
+}
+.shm-plus svg {
+  width: 14px;
+  height: 14px;
+}
+
+
+/* ── Swap groups (shared by #parallel and #compound) ─────────────────────── */
+.swap-panel {
+  display: none;
+}
+.swap-panel.active {
+  display: block;
+}
+.acol-tabs,
+.feat-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+.acol-tabs .chat-tab,
+.feat-tabs .chat-tab {
+  padding: 6px 12px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+/* ── One agent's kanban column (#parallel) — every card is a chat ────────── */
+.acol-demo {
+  max-width: none;
+}
+/* The column wears the app's own recessed tone (the gutter) with the real
+   white cards on top, exactly like Mission Control. */
+.acol {
+  background: var(--app-gutter);
+  border: 1px solid var(--app-line);
+  border-radius: 16px;
+  padding: 14px;
+  max-width: 430px;
+  margin: 0 auto;
+}
+.acol .tcard {
+  margin-bottom: 8px;
+}
+.acol-more {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-subtle);
+  padding-top: 6px;
+}
+.acol-h {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  padding: 2px 4px 12px;
+}
+.acol-h .av {
+  width: 22px;
+  height: 22px;
+}
+.acol-n {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-subtle);
+}
+.ast {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.ast-run { background: var(--app-warning); }
+.ast-need { background: var(--app-danger); }
+.ast-done { background: var(--app-success); }
+@media (prefers-reduced-motion: no-preference) {
+  .ast-run {
+    animation: lane-blink 2.2s infinite var(--ease-standard);
+  }
+}
+@keyframes lane-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ── Feature views of one agent (#compound) ──────────────────────────────── */
+.feat-demo {
+  max-width: none;
+}
+.feat-card {
+  max-width: 430px;
+  margin: 0 auto;
+}
+.feat-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+}
+.feat-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.feat-note {
+  font-size: 13.5px;
+  color: var(--ink);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.feat-meta {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ink-subtle);
+  white-space: nowrap;
+}
+.feat-faces {
+  margin-left: auto;
+  display: inline-flex;
+}
+.feat-faces .feat-face {
+  margin-left: -6px;
+}
+.feat-faces .feat-face:first-child {
+  margin-left: 0;
+}
+.feat-face {
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  box-shadow: none;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.feat-logo {
+  display: flex;
+  flex-shrink: 0;
+}
+.feat-logo svg {
+  width: 16px;
+  height: 16px;
+}
+.feat-chip {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #1b6b3a; /* forest, AA on the tint below */
+  background: rgba(0, 162, 64, 0.1);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+
+.tc-head .ast {
+  margin-top: 0;
+  margin-left: 6px;
+  align-self: center;
+}

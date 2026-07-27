@@ -1,116 +1,129 @@
 /*
- * Landing hero (clean, white, editorial), the ink closing band + per-OS
- * download tiles, and the invite-code download modals. Palette/type from
- * site-tokens.css. The app-window mock lives in its own file.
+ * Landing hero (Mercury-elegant, product-as-hero): a calm headline above-left,
+ * then the REAL app window filling the lower fold, staged for multiplayer, its
+ * soft wash dissolving into the ivory page at the fold's lower edge. Palette/
+ * type from site-tokens.css. The app-window mock lives in its own file; the
+ * invite-code download modals sit at the foot of this file.
  */
 
-/* ── Hero ────────────────────────────────────────────────────────────────── */
+/* ── Hero shell + the single swappable backdrop layer ──────────────────────
+   `--hero-backdrop` is the ONE swap point for the future AI-generated hero
+   photograph: today it's a quiet sage wash that fades in below the headline to
+   frame the window; to land the photo, set a background-image on `.hero-photo`
+   (see hero.njk). The bottom dissolve to ivory is handled by `.hero-fold::after`
+   so any backdrop (wash or photo) melts into the page with no hard edge. */
 .hero {
   position: relative;
-  padding: clamp(120px, 15vw, 168px) var(--gutter) 0;
-  text-align: center;
   background: var(--ground);
+  --hero-backdrop: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 18%,
+    var(--wash-sage) 40%,
+    var(--wash-sage) 100%
+  );
 }
-.hero-inner {
-  max-width: 880px;
-  margin: 0 auto;
+.hero-photo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--hero-backdrop);
+  pointer-events: none;
+  overflow: hidden;
+}
+.hero-fold {
   position: relative;
-}
-.hero h1 {
-  font-weight: 600;
-  font-size: clamp(22px, 4.6vw, 54px);
-  line-height: 1.08;
-  letter-spacing: -0.035em;
-  color: var(--ink-strong);
-  margin: 0 auto 22px;
-  max-width: 22ch;
-}
-.hero-sub {
-  font-size: clamp(16.5px, 1.7vw, 20px);
-  line-height: 1.5;
-  color: var(--ink-muted);
-  max-width: 52ch;
-  margin: 0 auto 30px;
-  font-weight: 400;
-  text-wrap: balance;
-}
-.hero-actions {
+  z-index: 1;
+  min-height: 100svh;
   display: flex;
-  gap: 12px;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  flex-wrap: wrap;
+  padding: clamp(92px, 12vh, 124px) var(--gutter) 0;
+  overflow: hidden;
 }
-
-/* ── Cycling headline word (blur-letter-stagger) ─────────────────────────── */
-.hero-cycling-word {
-  display: inline;
-  position: relative;
-  vertical-align: bottom;
-}
-.hero-cycling-word .cycling-word {
-  display: inline-block;
-  position: relative;
-  white-space: nowrap;
-}
-.hero-cycling-word .cycling-word.is-exiting {
+/* The Mercury dissolve: a soft ivory gradient over the lower fold melts the
+   window (and the wash behind it) into the page — no hard bottom border, and it
+   reaches solid ivory before the fold's clip so nothing cuts off abruptly. */
+.hero-fold::after {
+  content: "";
   position: absolute;
   left: 0;
-  top: 0;
+  right: 0;
+  bottom: 0;
+  height: 34%;
+  background: linear-gradient(to bottom, transparent 0%, var(--ground) 86%);
   pointer-events: none;
-  white-space: nowrap;
-}
-.hero-cycling-word .cycling-letter {
-  display: inline-block;
-  opacity: 0;
-  filter: blur(12px);
-  transform: translateY(6px);
-  transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    filter 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  will-change: opacity, filter, transform;
-}
-.hero-cycling-word .cycling-letter.is-visible {
-  opacity: 1;
-  filter: blur(0px);
-  transform: translateY(0);
-}
-.hero-cycling-word .cycling-letter.is-exiting {
-  opacity: 0;
-  filter: blur(12px);
-  transform: translateY(-16px) scale(1.08);
-  transition: opacity 0.22s cubic-bezier(0.55, 0.085, 0.68, 0.53),
-    filter 0.28s cubic-bezier(0.55, 0.085, 0.68, 0.53),
-    transform 0.28s cubic-bezier(0.55, 0.085, 0.68, 0.53);
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero-cycling-word .cycling-letter {
-    transition: none;
-    filter: none;
-    transform: none;
-  }
+  z-index: 3;
 }
 
-/* ── App window on its soft-rounded panel with one layered shadow ────────── */
-.hero-frame {
+/* ── Headline block — calm, above-left, NOT a centered stacked wall.
+   Sits on the SAME centered content grid (var(--measure)) as the window below
+   and every section further down, so all left edges align down the page. */
+.hero-intro {
   position: relative;
-  max-width: calc(var(--measure) + 2 * var(--gutter));
-  margin: clamp(44px, 6vw, 72px) auto 0;
-  padding: clamp(18px, 3vw, 40px) clamp(18px, 3vw, 40px) 0;
-  background: var(--panel);
-  border-top-left-radius: var(--panel-radius);
-  border-top-right-radius: var(--panel-radius);
+  z-index: 2;
+  width: 100%;
+  max-width: var(--measure);
+  margin-bottom: clamp(22px, 3.4vh, 40px);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.hero-h1 {
+  font-weight: 480;
+  font-size: clamp(33px, 4.3vw, 55px);
+  line-height: 1.05;
+  letter-spacing: -0.028em;
+  color: var(--ink-strong);
+  text-wrap: balance;
+  max-width: 19ch;
+}
+.hero-sub {
+  margin-top: clamp(16px, 1.8vw, 22px);
+  font-weight: 400;
+  font-size: clamp(16.5px, 1.55vw, 20px);
+  line-height: 1.45;
+  color: var(--ink-muted);
+  max-width: 52ch;
+  text-wrap: balance;
+}
+.hero-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: clamp(24px, 3vw, 34px);
+}
+.hero-proof {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-subtle);
+  max-width: 40ch;
+}
+
+/* ── The product moment — the real app window fills the lower fold ────────── */
+.hero-visual {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 .hero-stage {
   position: relative;
-  max-width: 1080px;
+  width: 100%;
+  max-width: 1120px;
   margin: 0 auto;
 }
-/* One believable layered shadow that lifts the window off the panel. */
+/* One believable layered shadow lifts the window off the sage wash. */
 .hero-stage .win {
-  box-shadow: 0 2px 4px rgba(13, 13, 13, 0.04),
-    0 24px 48px -20px rgba(13, 13, 13, 0.22),
-    0 48px 96px -40px rgba(13, 13, 13, 0.24);
+  box-shadow: 0 2px 4px rgba(40, 36, 28, 0.05),
+    0 28px 56px -22px rgba(40, 36, 28, 0.16),
+    0 56px 110px -52px rgba(40, 36, 28, 0.2);
 }
 
 /* ── Download gate modal (invite-code closed beta — light, behaviour kept) ── */
@@ -122,7 +135,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(13, 13, 13, 0.42);
+  background: rgba(0, 0, 0, 0.62);
   opacity: 0;
   visibility: hidden;
   transition: opacity var(--dur-fast) var(--ease-standard),
@@ -135,12 +148,12 @@
 .dl-card {
   width: 100%;
   max-width: 420px;
-  background: #fff;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 30px;
   color: var(--ink);
-  box-shadow: 0 32px 80px -32px rgba(13, 13, 13, 0.4);
+  box-shadow: 0 32px 80px -32px rgba(40, 36, 28, 0.22);
   transform: translateY(8px) scale(0.98);
   transition: transform var(--dur-elegant) var(--ease-entrance);
 }
@@ -179,11 +192,11 @@
 }
 .dl-input:focus {
   outline: none;
-  border-color: var(--ink-strong);
+  border-color: var(--action);
 }
 .dl-input.valid {
-  border-color: var(--ink-strong);
-  box-shadow: 0 0 0 3px rgba(13, 13, 13, 0.12);
+  border-color: var(--action);
+  box-shadow: 0 0 0 3px rgba(40, 36, 28, 0.14);
 }
 .dl-actions {
   display: flex;
@@ -211,7 +224,7 @@
   text-align: center;
 }
 .dl-fineprint a {
-  color: var(--ink-muted);
+  color: var(--link);
   text-decoration: underline;
 }
 .dl-skip {
@@ -240,7 +253,18 @@
 }
 .dl-skip-body a {
   font-size: 13px;
-  color: var(--ink-strong);
+  color: var(--link);
   font-weight: 600;
   text-decoration: underline;
+}
+
+/* The hero photograph: warm cloud-sea, pale upper half — ink type needs no
+   veil or glow on it. Cover-fit, anchored to the pale sky zone. */
+.hero-sky {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
 }

@@ -1,117 +1,14 @@
 /*
- * Editorial body — part 2: the USB-cable differentiator, pricing, FAQ.
- * Monochrome: white cards, hairlines, ink type, no tinted surfaces.
- * Palette/type from site-tokens.css.
+ * Editorial body — part 2: pricing + the grouped Q&A.
+ * Mercury-light: warm cards, hairlines, warm ink type. Palette/type from
+ * site-tokens.css.
  */
-
-/* ── USB cable differentiator ─────────────────────────────────────────────── */
-.usb-head {
-  text-align: center;
-  max-width: 760px;
-  margin: 0 auto;
-}
-.usb-head .eyebrow-mono {
-  margin-bottom: 14px;
-}
-.usb-head .sec-title {
-  max-width: none;
-  margin: 0 auto;
-}
-.usb-head .sec-lead {
-  margin: 16px auto 0;
-}
-.usb-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  max-width: 900px;
-  margin: 48px auto 0;
-}
-.usb-card {
-  position: relative;
-  border-radius: 20px;
-  padding: 32px 30px;
-  border: 1px solid var(--line);
-  background: var(--card);
-}
-/* Houston side: emphasised in ink, not colour. */
-.usb-card.is-houston {
-  border-color: var(--ink-strong);
-  box-shadow: 0 20px 52px -30px rgba(13, 13, 13, 0.3);
-}
-.usb-badge {
-  position: absolute;
-  top: -12px;
-  left: 24px;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 14px;
-  border-radius: 999px;
-  background: var(--ink-subtle);
-  color: #fff;
-}
-.usb-card.is-houston .usb-badge {
-  background: var(--ink-strong);
-}
-.usb-card h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink-strong);
-  margin: 8px 0 20px;
-}
-.usb-steps {
-  display: flex;
-  flex-direction: column;
-}
-.usb-step {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 9px 0;
-}
-.usb-step .n {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--panel-raised);
-  color: var(--ink-muted);
-}
-.usb-card.is-houston .usb-step .n {
-  background: var(--ink-strong);
-  color: #fff;
-}
-.usb-step p {
-  font-size: 13.5px;
-  color: var(--ink-muted);
-  line-height: 1.5;
-}
-.usb-card.is-houston .usb-step p {
-  color: var(--ink);
-}
-.usb-connector {
-  width: 1px;
-  height: 8px;
-  margin-left: 12px;
-  background: var(--line-strong);
-}
-@media (max-width: 720px) {
-  .usb-grid {
-    grid-template-columns: 1fr;
-    gap: 28px;
-  }
-}
 
 /* ── Pricing ─────────────────────────────────────────────────────────────── */
 .pricing-head {
   text-align: center;
   max-width: 640px;
-  margin: 0 auto 48px;
+  margin: 0 auto clamp(28px, 3.4vw, 44px);
 }
 .pricing-head .eyebrow-mono {
   margin-bottom: 14px;
@@ -138,10 +35,10 @@
   border-radius: 20px;
   padding: 30px 28px;
 }
-/* Featured plan: emphasised in ink. */
+/* Featured plan: emphasised with the ink pill accent. */
 .price-col.featured {
-  border-color: var(--ink-strong);
-  box-shadow: 0 20px 52px -30px rgba(13, 13, 13, 0.28);
+  border-color: var(--action);
+  box-shadow: 0 20px 52px -28px rgba(40, 36, 28, 0.16);
 }
 .price-name {
   font-size: 15px;
@@ -173,47 +70,20 @@
   min-height: 18px;
 }
 .price-desc {
-  font-size: 14px;
+  font-size: 14.5px;
   color: var(--ink-muted);
   line-height: 1.5;
-  margin: 14px 0 20px;
-  min-height: 42px;
+  margin: 14px 0 24px;
+  min-height: 44px;
+}
+.price-cta {
+  margin-top: auto;
 }
 .price-cta .btn {
   width: 100%;
 }
-.price-list-intro {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ink-muted);
-  margin: 22px 0 12px;
-}
-.price-feats {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-}
-.price-feats li {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  font-size: 14px;
-  color: var(--ink);
-  line-height: 1.45;
-}
-.price-feats svg {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-  margin-top: 3px;
-  color: var(--ink-strong);
-  stroke-width: 2.4;
-}
-.price-feat-note {
-  font-size: 12.5px;
-  color: var(--ink-subtle);
-  margin-top: 2px;
+.price-col .dl-os-links {
+  text-align: center;
 }
 @media (max-width: 880px) {
   .pricing-grid {
@@ -225,10 +95,10 @@
   }
 }
 
-/* ── FAQ ─────────────────────────────────────────────────────────────────── */
+/* ── Q&A — grouped accordion, all the page's depth lives here ──────────────── */
 .faq-head {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: clamp(28px, 3.4vw, 44px);
 }
 .faq-head .eyebrow-mono {
   margin-bottom: 14px;
@@ -236,12 +106,30 @@
 .faq-head .sec-title {
   margin: 0 auto;
 }
-.faq-list {
-  max-width: 720px;
+.faq-groups {
+  max-width: 760px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  gap: clamp(36px, 4vw, 52px);
+}
+.faq-group-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-subtle);
+  letter-spacing: 0.01em;
+  margin-bottom: 14px;
+  padding-left: 4px;
+}
+.faq-list {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+}
+.faq-answer a {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .faq-item {
   background: var(--card);
@@ -287,4 +175,44 @@
   .faq-chevron {
     transition: none;
   }
+}
+
+/* ── FAQ group accordions — each section collapses, badge shows its size ── */
+details.faq-group > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--line-strong);
+}
+details.faq-group > summary::-webkit-details-marker {
+  display: none;
+}
+details.faq-group > summary .faq-chevron {
+  margin-left: auto;
+  width: 18px;
+  height: 18px;
+  color: var(--ink-subtle);
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+details.faq-group[open] > summary .faq-chevron {
+  transform: rotate(180deg);
+}
+.faq-count {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--panel-raised);
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+details.faq-group > .faq-list {
+  padding: 6px 0 18px;
 }

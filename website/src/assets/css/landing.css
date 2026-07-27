@@ -1,6 +1,6 @@
 /*
  * Landing page — base, chrome (nav + footer), buttons, section primitives.
- * Monochrome editorial: white ground, ink type, one black pill CTA.
+ * Mercury-light editorial: warm ivory ground, warm ink type, one ink pill CTA.
  * Palette + type come from site-tokens.css. Hero / app-window / body-sections
  * / motion live in their own files.
  */
@@ -47,8 +47,8 @@ img {
   left: 12px;
   top: -60px;
   z-index: 200;
-  background: var(--ink-strong);
-  color: #fff;
+  background: var(--action);
+  color: var(--action-text);
   padding: 10px 16px;
   border-radius: 8px;
   font-weight: 600;
@@ -108,15 +108,15 @@ img {
 .btn-outline:hover {
   border-color: var(--ink);
 }
-/* White pill — the primary on the ink closing band */
+/* White pill — a light primary that reads on the dark ground (dark label) */
 .btn-white {
   background: #fff;
-  color: var(--ink-strong);
+  color: var(--ground);
 }
 .btn-white:hover {
   background: #ececec;
 }
-/* Ghost on ink — the quiet secondary on the closing band */
+/* Ghost on dark — the quiet secondary on the dark ground */
 .btn-ghost {
   background: transparent;
   color: #fff;
@@ -142,29 +142,35 @@ img {
   margin-block: clamp(10px, 2vw, 24px);
 }
 .eyebrow-mono {
-  font-size: 13.5px;
-  font-weight: 600;
-  letter-spacing: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--ink-subtle);
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 22px;
 }
+/* The big statement — one enormous, light-weight display line per section.
+   Impact comes from scale + air + brevity, not weight (Mercury voice). */
 .sec-title {
-  font-weight: 600;
-  font-size: clamp(28px, 3.8vw, 44px);
-  line-height: 1.08;
-  letter-spacing: -0.03em;
+  font-weight: 340;                  /* light, refined display */
+  font-size: clamp(32px, 5vw, 56px);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
   color: var(--ink-strong);
   text-wrap: balance;
-  max-width: 20ch;
+  max-width: 18ch;
 }
 .sec-lead {
-  font-size: clamp(16px, 1.6vw, 18px);
-  line-height: 1.56;
+  font-size: clamp(16px, 1.55vw, 19px);
+  line-height: 1.5;
   color: var(--ink-muted);
-  max-width: 54ch;
-  margin-top: 16px;
+  max-width: 48ch;
+  margin-top: 20px;
+  text-wrap: balance;
 }
 
 /* ── Nav (white, ink logo, black pill Download) ──────────────────────────── */
@@ -178,16 +184,38 @@ img {
   align-items: center;
   justify-content: space-between;
   padding: 15px var(--gutter);
-  background: rgba(255, 255, 255, 0.85);
+  /* Fully transparent over the hero sky; gains the solid ivory + hairline
+     only once scrolled (below). */
+  background: transparent;
   transition: box-shadow var(--dur-elegant) var(--ease-standard),
     background-color var(--dur-elegant) var(--ease-standard);
   border-bottom: 1px solid transparent;
 }
-/* Solid white + hairline once scrolled. No backdrop blur (PERFORMANCE.md:
-   blur over a moving backdrop re-rasterizes every frame). */
+/* Frosted glow behind the transparent nav (same treatment as the hero
+   headline): a blurred ivory gradient rasterized once — NOT backdrop-filter
+   (PERFORMANCE.md: blur over a moving backdrop re-rasterizes every frame). */
+.lnav::before {
+  content: "";
+  position: absolute;
+  inset: -28px 0 -44px;
+  z-index: -1;
+  background: linear-gradient(
+    to bottom,
+    rgba(239, 238, 233, 0.92) 0%,
+    rgba(239, 238, 233, 0.55) 58%,
+    transparent 100%
+  );
+  filter: blur(14px);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity var(--dur-elegant) var(--ease-standard);
+}
+/* Solid ivory + hairline once scrolled; the glow hands off to the solid fill. */
 .lnav.scrolled {
-  background: #fff;
-  border-bottom-color: var(--line);
+  background: var(--ground);
+}
+.lnav.scrolled::before {
+  opacity: 0;
 }
 .lnav-brand {
   display: inline-flex;
@@ -197,12 +225,6 @@ img {
   font-weight: 600;
   font-size: 19px;
   letter-spacing: -0.02em;
-}
-.lnav-mark {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  display: block;
 }
 .lnav-links {
   display: flex;
@@ -250,6 +272,76 @@ img {
 .lnav-cta:hover {
   background: var(--action-hover);
 }
+.lnav-cta-glyph {
+  width: 15px;
+  height: 15px;
+  display: inline-block;
+  background: currentColor;
+  -webkit-mask: var(--helmet-mask) center / contain no-repeat;
+  mask: var(--helmet-mask) center / contain no-repeat;
+}
+/* Resources dropdown — quiet menu for everything that leaves the page. */
+.lnav-res {
+  position: relative;
+}
+.lnav-res-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--sans);
+  color: var(--ink-muted);
+  font-size: 14.5px;
+  font-weight: 500;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.lnav-res-btn:hover,
+.lnav-res.open .lnav-res-btn {
+  color: var(--ink-strong);
+}
+.lnav-res-btn svg {
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+.lnav-res.open .lnav-res-btn svg {
+  transform: rotate(180deg);
+}
+.lnav-res-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  min-width: 168px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 8px;
+  box-shadow: 0 20px 48px -24px rgba(40, 36, 28, 0.25);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-entrance),
+    visibility var(--dur-fast) var(--ease-standard);
+}
+.lnav-res.open .lnav-res-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+.lnav-res-menu a {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.lnav-res-menu a:hover {
+  background: var(--panel);
+  color: var(--ink-strong);
+}
+
 .lnav-burger {
   display: none;
   width: 38px;
@@ -272,11 +364,11 @@ img {
   left: var(--gutter);
   right: var(--gutter);
   z-index: 59;
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 8px;
-  box-shadow: 0 20px 48px -24px rgba(13, 13, 13, 0.28);
+  box-shadow: 0 20px 48px -24px rgba(40, 36, 28, 0.18);
   flex-direction: column;
   gap: 2px;
   display: none;
@@ -299,14 +391,84 @@ img {
   .lnav-links {
     display: none;
   }
-  .lnav-burger {
+  .lnav-cta-glyph {
+  width: 15px;
+  height: 15px;
+  display: inline-block;
+  background: currentColor;
+  -webkit-mask: var(--helmet-mask) center / contain no-repeat;
+  mask: var(--helmet-mask) center / contain no-repeat;
+}
+/* Resources dropdown — quiet menu for everything that leaves the page. */
+.lnav-res {
+  position: relative;
+}
+.lnav-res-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--sans);
+  color: var(--ink-muted);
+  font-size: 14.5px;
+  font-weight: 500;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.lnav-res-btn:hover,
+.lnav-res.open .lnav-res-btn {
+  color: var(--ink-strong);
+}
+.lnav-res-btn svg {
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+.lnav-res.open .lnav-res-btn svg {
+  transform: rotate(180deg);
+}
+.lnav-res-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  min-width: 168px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 8px;
+  box-shadow: 0 20px 48px -24px rgba(40, 36, 28, 0.25);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-entrance),
+    visibility var(--dur-fast) var(--ease-standard);
+}
+.lnav-res.open .lnav-res-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+.lnav-res-menu a {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.lnav-res-menu a:hover {
+  background: var(--panel);
+  color: var(--ink-strong);
+}
+
+.lnav-burger {
     display: inline-flex;
   }
 }
 
-/* ── Footer (ink, continuous with the closing band) ──────────────────────── */
+/* ── Footer (the deepest ground, a step below the page) ──────────────────── */
 .lfoot {
-  background: var(--ink-strong);
+  background: var(--ground-deep);
   color: var(--on-ink-faint);
   padding: 56px var(--gutter) 40px;
 }
@@ -336,7 +498,7 @@ img {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--on-ink-faint);
   margin-bottom: 14px;
 }
 .lfoot-col a {

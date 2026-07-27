@@ -11,6 +11,49 @@
     check();
   })();
 
+  // Resources dropdown: click toggles, Escape / outside click closes.
+  (function () {
+    var res = document.getElementById("lnav-res");
+    var btn = document.getElementById("lnav-res-btn");
+    if (!res || !btn) return;
+    function setOpen(open) {
+      res.classList.toggle("open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      setOpen(!res.classList.contains("open"));
+    });
+    document.addEventListener("click", function (e) {
+      if (!res.contains(e.target)) setOpen(false);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") setOpen(false);
+    });
+  })();
+
+  // Swap groups (#parallel agents, #compound feature views): pills toggle
+  // pre-rendered .swap-panel siblings, so JS-off shows the first panel.
+  (function () {
+    document.querySelectorAll("[data-swap-group]").forEach(function (group) {
+      var tabs = group.querySelectorAll("[data-swap]");
+      var panels = group.querySelectorAll(".swap-panel");
+      tabs.forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          var i = Number(tab.getAttribute("data-swap"));
+          tabs.forEach(function (t) {
+            var on = t === tab;
+            t.classList.toggle("active", on);
+            t.setAttribute("aria-selected", on ? "true" : "false");
+          });
+          panels.forEach(function (p, j) {
+            p.classList.toggle("active", i === j);
+          });
+        });
+      });
+    });
+  })();
+
   // Mobile menu toggle.
   (function () {
     var burger = document.getElementById("lnav-burger");
@@ -52,7 +95,9 @@
           }
         });
       },
-      { threshold: 0.12, rootMargin: "0px 0px -60px 0px" }
+      // Reveal a touch BEFORE an element enters, so a mid-scroll pause never
+      // catches an in-frame block still invisible (reads as an empty section).
+      { threshold: 0.01, rootMargin: "0px 0px 22% 0px" }
     );
     els.forEach(function (el) {
       obs.observe(el);
@@ -146,12 +191,11 @@
 </script>
 
 <!-- Landing behaviours as standalone deferred assets. Order matters for the
-     hero demo: data + clock + stage define the globals hero-demo.js reads.
+     board demo: data + clock + stage define the globals hero-demo.js reads.
      Each guards prefers-reduced-motion itself and no-ops without its markup. -->
 <script defer src="/assets/hero-demo-data.js"></script>
 <script defer src="/assets/hero-demo-clock.js"></script>
 <script defer src="/assets/hero-demo-stage.js"></script>
 <script defer src="/assets/hero-demo.js"></script>
-<script defer src="/assets/hero-cycling.js"></script>
-<script defer src="/assets/how-it-works.js"></script>
+<script defer src="/assets/chat.js"></script>
 {% include "landing/scripts-download.njk" %}
