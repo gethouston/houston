@@ -82,6 +82,20 @@ jobs:
       - name: Typecheck (pnpm workspace)
         run: pnpm -r typecheck
 
+      # The engine pods run the BUNDLED host/runtime, and bundling can fail in
+      # ways nothing above can see: an import that pulls a module into esbuild's
+      # async-init subgraph makes it emit `await init_x()` inside a non-async
+      # wrapper, and the bundle dies at startup with `SyntaxError: Unexpected
+      # reserved word`. That shipped once (HOU-952) — typecheck and 1,984 tests
+      # were green, and the only build that would have caught it runs AFTER
+      # merge. Bundling takes ~50ms; parse the output here instead.
+      - name: Engine bundle parses (host + runtime)
+        run: |
+          set -euo pipefail
+          node selfhost/bundle.mjs
+          node --check dist/runtime/main.mjs
+          node --check dist/host/main.mjs
+
       - name: Unit + contract tests (Vitest)
         run: |
           set -euo pipefail

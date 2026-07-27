@@ -3,7 +3,6 @@ import type { ProviderError } from "@houston/protocol";
 import { accessDigest } from "@houston/protocol/access-digest";
 import { config } from "../config";
 import { readAuthFile, readServedProvidersAt } from "./auth-file";
-import { serveModeOn } from "./serve";
 
 /**
  * Tell the control plane when a provider REVOKES a token it served us.
@@ -43,7 +42,14 @@ export function reportRevokedServedToken(err: ProviderError): void {
 
 async function reportRevoked(err: ProviderError): Promise<void> {
   if (err.kind !== "unauthenticated" || err.cause !== "token_revoked") return;
-  if (!serveModeOn()) return;
+  // Serve mode, read straight off config rather than through serve.ts's
+  // serveModeOn(). That import is what broke the engine bundle: serve.ts sits
+  // in an async-initialized cycle (storage -> providers -> serve), so pulling
+  // it in here made THIS module async too, and esbuild then emitted
+  // `await init_report_revoked()` inside backends/claude/errors.ts's
+  // non-async init wrapper -> `SyntaxError: Unexpected reserved word` at
+  // runtime start. Same two reads, no cycle.
+  if (!config.controlPlaneUrl || !config.sandboxToken) return;
 
   const provider = err.provider;
   const served = readServedProvidersAt(
