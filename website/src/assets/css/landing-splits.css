@@ -79,6 +79,18 @@
   }
 }
 
+/* ── Full-screen section rhythm — each story owns a viewport ─────────────── */
+@media (min-width: 881px) {
+  #multiplayer,
+  #parallel,
+  #compound {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
 /* ── Parallel lanes (#parallel) ───────────────────────────────────────────── */
 .lanes {
   display: flex;
@@ -123,55 +135,59 @@
   align-items: center;
   justify-content: center;
 }
-.lane-msgs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-}
-.lm {
+.lane-live {
+  margin-left: auto;
+  width: 8px;
   height: 8px;
-  border-radius: 999px;
-  background: var(--panel-raised);
-}
-.lm-1 { width: 34%; }
-.lm-2 { width: 22%; }
-.lm-3 { width: 28%; }
-.lm-typing {
-  display: inline-flex;
-  gap: 3px;
-  align-items: center;
-  padding: 0 2px;
-}
-.lm-typing i {
-  width: 5px;
-  height: 5px;
   border-radius: 50%;
-  background: var(--ink-subtle);
-  opacity: 0.4;
+  background: #00a240;
+}
+/* Two real status messages alternate per lane, staggered across lanes so the
+   three chats visibly move at the same time but never in lockstep. */
+.lane-feed {
+  position: relative;
+  margin-top: 12px;
+  min-height: 2.9em;
+}
+.lane-msg {
+  position: absolute;
+  inset: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+  opacity: 0;
+}
+.lane-msg:first-child {
+  opacity: 1;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .lm-typing i {
-    animation: lane-dot 1.2s infinite var(--ease-standard);
+  .lane-live {
+    animation: lane-blink 2.4s infinite var(--ease-standard);
   }
-  .lm-typing i:nth-child(2) { animation-delay: 0.15s; }
-  .lm-typing i:nth-child(3) { animation-delay: 0.3s; }
-  .lane .lm,
-  .lane .lm-typing {
-    animation: lane-pulse 4.8s infinite var(--ease-standard);
+  .lane-msg:first-child {
+    animation: lane-a 9s infinite var(--ease-standard);
   }
-  .lane-d1 .lm,
-  .lane-d1 .lm-typing { animation-delay: 1.6s; }
-  .lane-d2 .lm,
-  .lane-d2 .lm-typing { animation-delay: 3.2s; }
+  .lane-msg:last-child {
+    animation: lane-b 9s infinite var(--ease-standard);
+  }
+  .lane-d1 .lane-msg,
+  .lane-d1 .lane-live { animation-delay: 3s; }
+  .lane-d2 .lane-msg,
+  .lane-d2 .lane-live { animation-delay: 6s; }
 }
-@keyframes lane-dot {
-  0%, 60%, 100% { opacity: 0.4; transform: translateY(0); }
-  30% { opacity: 1; transform: translateY(-2px); }
+@keyframes lane-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
-@keyframes lane-pulse {
-  0%, 100% { opacity: 0.75; }
-  12% { opacity: 1; }
+@keyframes lane-a {
+  0%, 42% { opacity: 1; }
+  50%, 92% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes lane-b {
+  0%, 42% { opacity: 0; }
+  50%, 92% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 /* ── Share dialog mock (#compound) ────────────────────────────────────────── */
@@ -245,6 +261,50 @@
 .shm-invite .shm-name {
   color: var(--ink-subtle);
   font-weight: 400;
+}
+/* Maya joins on a slow loop: invite pulses, then her row grows in with the
+   "Can use" role. Reduced-motion (or no animation support) shows her settled. */
+.shm-new .face {
+  width: 30px;
+  height: 30px;
+  font-size: 12px;
+  margin-left: 0;
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .shm-new {
+    overflow: hidden;
+    animation: shm-join 11s infinite var(--ease-standard);
+  }
+  .shm-invite .shm-plus {
+    animation: shm-pulse 11s infinite var(--ease-standard);
+  }
+}
+@keyframes shm-join {
+  0%, 32% {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-width: 0;
+  }
+  42%, 90% {
+    opacity: 1;
+    max-height: 60px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  100% {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-width: 0;
+  }
+}
+@keyframes shm-pulse {
+  0%, 22%, 40%, 100% { transform: scale(1); color: var(--ink-subtle); }
+  30% { transform: scale(1.14); color: var(--ink-strong); }
 }
 .shm-plus {
   width: 30px;

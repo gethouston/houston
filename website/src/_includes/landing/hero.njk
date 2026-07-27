@@ -1,7 +1,14 @@
 <header class="hero">
-  {# The hero backdrop is ONE swappable element: a quiet sage wash today; a
-     future hero image lands as a background on THIS element only. #}
-  <div class="hero-photo" aria-hidden="true"></div>
+  {# The hero backdrop is ONE swappable element: Julian's AI-sky image (LCP),
+     dissolving into the ivory page before the fold ends. #}
+  <div class="hero-photo" aria-hidden="true">
+    <img class="hero-sky"
+      src="/assets/img/ai-sky.webp"
+      srcset="/assets/img/ai-sky-mobile.webp 900w, /assets/img/ai-sky.webp 1672w"
+      sizes="100vw"
+      width="1672" height="941"
+      fetchpriority="high" decoding="async" alt="">
+  </div>
 
   <div class="hero-fold">
     <div class="hero-intro hero-load">

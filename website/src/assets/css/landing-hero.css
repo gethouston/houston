@@ -29,6 +29,28 @@
   z-index: 0;
   background: var(--hero-backdrop);
   pointer-events: none;
+  overflow: hidden;
+}
+.hero-sky {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+/* Soft ivory veil so ink type stays calm and AA over the sky's busier edges. */
+.hero-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(239, 238, 233, 0.42) 0%,
+    rgba(239, 238, 233, 0.18) 38%,
+    rgba(239, 238, 233, 0.05) 60%,
+    transparent 100%
+  );
 }
 .hero-fold {
   position: relative;
@@ -64,6 +86,10 @@
   width: 100%;
   max-width: var(--measure);
   margin-bottom: clamp(22px, 3.4vh, 40px);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .hero-h1 {
   font-weight: 300;
@@ -86,7 +112,7 @@
 .hero-cta {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   margin-top: clamp(24px, 3vw, 34px);
 }

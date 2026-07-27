@@ -2,35 +2,31 @@
   {# Hidden alias: cross-site links to #agents land on the multi-agent story. #}
   <span id="agents" class="anchor-alias" aria-hidden="true"></span>
 
-  {# Split: animated parallel agent lanes left, a short statement right.
-     The lanes are CSS-only (staggered keyframes, infinite); reduced-motion
-     shows the settled state. Anatomy mirrors the app sidebar rows: helmet
-     avatar in the agent color, name, live status line, unread count. #}
+  {# Split: three agent chats working in parallel (real microcopy cycling per
+     lane, CSS-only) left; the why right. Reduced-motion shows the first
+     message of each lane, settled. #}
   <div class="split reveal">
     <div class="split-visual">
-      <div class="lanes" role="img" aria-label="Three agents working their own chats at the same time: Sales Rep, Bookkeeper, and HR Manager, each with live activity">
+      <div class="lanes" role="img" aria-label="Three agent chats running at the same time: the Sales Rep following up leads, the Bookkeeper reconciling the books, and the HR Manager screening applicants">
         <div class="lane">
-          <div class="lane-head"><span class="av av-c" aria-hidden="true"></span><span class="lane-name">Sales Rep</span><span class="lane-count">3</span></div>
-          <div class="lane-msgs" aria-hidden="true">
-            <span class="lm lm-1"></span>
-            <span class="lm lm-2"></span>
-            <span class="lm-typing"><i></i><i></i><i></i></span>
+          <div class="lane-head"><span class="av av-c" aria-hidden="true"></span><span class="lane-name">Sales Rep</span><span class="lane-live" aria-hidden="true"></span></div>
+          <div class="lane-feed" aria-hidden="true">
+            <span class="lane-msg">Following up with 12 stale leads in HubSpot.</span>
+            <span class="lane-msg">3 replies drafted. 2 deals need your call.</span>
           </div>
         </div>
         <div class="lane lane-d1">
-          <div class="lane-head"><span class="av av-o" aria-hidden="true"></span><span class="lane-name">Bookkeeper</span><span class="lane-count">1</span></div>
-          <div class="lane-msgs" aria-hidden="true">
-            <span class="lm lm-1"></span>
-            <span class="lm-typing"><i></i><i></i><i></i></span>
-            <span class="lm lm-3"></span>
+          <div class="lane-head"><span class="av av-o" aria-hidden="true"></span><span class="lane-name">Bookkeeper</span><span class="lane-live" aria-hidden="true"></span></div>
+          <div class="lane-feed" aria-hidden="true">
+            <span class="lane-msg">Reconciling March in QuickBooks.</span>
+            <span class="lane-msg">Done. 2 receipts missing, flagged for Felipe.</span>
           </div>
         </div>
         <div class="lane lane-d2">
-          <div class="lane-head"><span class="av av-b" aria-hidden="true"></span><span class="lane-name">HR Manager</span><span class="lane-count">2</span></div>
-          <div class="lane-msgs" aria-hidden="true">
-            <span class="lm-typing"><i></i><i></i><i></i></span>
-            <span class="lm lm-2"></span>
-            <span class="lm lm-1"></span>
+          <div class="lane-head"><span class="av av-b" aria-hidden="true"></span><span class="lane-name">HR Manager</span><span class="lane-live" aria-hidden="true"></span></div>
+          <div class="lane-feed" aria-hidden="true">
+            <span class="lane-msg">Screening 34 applicants for the designer role.</span>
+            <span class="lane-msg">Shortlist of 5 ready for the team to review.</span>
           </div>
         </div>
       </div>
@@ -38,8 +34,8 @@
 
     <div class="split-copy">
       <div class="eyebrow-mono">Multi-agent</div>
-      <h2 class="sec-title">Many agents. Parallel chats.</h2>
-      <p class="split-line">Each agent runs its own missions at the same time. Anyone on the team can open a chat, jump in, and steer.</p>
+      <h2 class="sec-title">Many agents. All moving at once.</h2>
+      <p class="split-line">Each agent runs its own chats and missions in parallel. Nobody waits in a queue, and anyone on the team can jump into any of them and steer.</p>
     </div>
   </div>
 </section>

@@ -258,6 +258,7 @@
     // Reduced motion / no animation: render the whole settled thread, no loop.
     if (reduceMq?.matches) {
       thread.innerHTML = s.thread.map((m) => msgHtml(s, m)).join("");
+      thread.scrollTop = thread.scrollHeight;
       return;
     }
 
@@ -267,12 +268,14 @@
         const m = s.thread[i];
         if (m.who === "agent") {
           thread.insertAdjacentHTML("beforeend", typingHtml(s));
+          thread.scrollTop = thread.scrollHeight;
           await wait(1000);
           if (mine !== token) return;
           const dots = thread.querySelector(".cmsg-typing");
           if (dots) dots.remove();
         }
         thread.insertAdjacentHTML("beforeend", msgHtml(s, m, true));
+        thread.scrollTop = thread.scrollHeight;
         await wait(m.who === "agent" ? 1500 : 1000);
         if (mine !== token) return;
       }

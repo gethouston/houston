@@ -102,9 +102,12 @@
   flex-direction: column;
   gap: 16px;
   padding: 20px;
-  /* Hold presence at the first turn so the replay grows into a stable window
-     instead of popping open from nothing. */
-  min-height: clamp(240px, 40vh, 380px);
+  /* Fixed window: the replay scrolls inside like a real chat instead of
+     growing the section (chat.js pins the scroll to the newest message). */
+  height: clamp(320px, 46vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 .cmsg {
   display: flex;
