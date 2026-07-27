@@ -8,18 +8,18 @@ permalink: /index.html
    General Sans, so drop base.njk's render-blocking Fontshare stylesheet. #}
 {% block fonts %}{% endblock %}
 {% block meta %}
-<meta name="description" content="AI agents that do the work for you. One free desktop app that runs on the ChatGPT or Claude plan you already pay for. 1,000+ integrations.">
+<meta name="description" content="Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to try.">
 <!-- Open Graph / Facebook / Slack / LinkedIn -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://gethouston.ai/">
 <meta property="og:title" content="Houston — AI agents that actually do the work">
-<meta property="og:description" content="AI agents that do the work for you. One free desktop app that runs on the ChatGPT or Claude plan you already pay for. 1,000+ integrations.">
+<meta property="og:description" content="Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to try.">
 <meta property="og:site_name" content="Houston">
 <!-- Twitter / X -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:url" content="https://gethouston.ai/">
 <meta name="twitter:title" content="Houston — AI agents that actually do the work">
-<meta name="twitter:description" content="AI agents that do the work for you. One free desktop app that runs on the ChatGPT or Claude plan you already pay for. 1,000+ integrations.">
+<meta name="twitter:description" content="Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to try.">
 <meta name="twitter:creator" content="@ja818_">
 
 <script type="application/ld+json">
@@ -35,9 +35,10 @@ permalink: /index.html
 <link rel="stylesheet" href="/assets/css/landing.css">
 <link rel="stylesheet" href="/assets/css/landing-hero.css">
 <link rel="stylesheet" href="/assets/css/landing-app-window.css">
-<link rel="stylesheet" href="/assets/css/landing-body.css">
+<link rel="stylesheet" href="/assets/css/landing-chat.css">
 <link rel="stylesheet" href="/assets/css/landing-marketing.css">
 <link rel="stylesheet" href="/assets/css/landing-multiplayer.css">
+<link rel="stylesheet" href="/assets/css/landing-splits.css">
 <link rel="stylesheet" href="/assets/css/landing-motion.css">
 {% endblock %}
 {% block body %}
@@ -45,8 +46,8 @@ permalink: /index.html
 <main id="main">
 {% include "landing/hero.njk" %}
 {% include "landing/multiplayer.njk" %}
-{% include "landing/agents.njk" %}
-{% include "landing/how.njk" %}
+{% include "landing/parallel.njk" %}
+{% include "landing/compound.njk" %}
 {% include "landing/pricing.njk" %}
 {% include "landing/faq.njk" %}
 </main>

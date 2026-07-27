@@ -10,17 +10,22 @@
  */
 
 // Build the overlapping human face stack for a mission (the multiplayer signal,
-// mirroring @houston-ai/board KanbanPeople): up to 3 initial avatars in quiet
-// per-person tones, then a "+N" overflow chip. Shared by the static "Needs you"
-// card (below) and the JS-created Running card (hero-demo.js). Returns HTML; the
-// caller owns the .faces container. `people` is `{ initials, tone }[]`.
+// mirroring @houston-ai/board KanbanPeople): up to 3 avatars, then a "+N" chip.
+// A person is EITHER a real teammate photo (`{ img, label }`) or an initials
+// avatar in a quiet tone (`{ initials, tone }`). Shared by the static "Needs
+// you" card and the JS-created Running card (hero-demo.js). Returns HTML; the
+// caller owns the .faces container.
 window.heroFacesHtml = (people, max) => {
   if (!people?.length) return "";
   var cap = max || 3;
   var faces = people.slice(0, cap);
   var extra = people.length - faces.length;
   var html = faces
-    .map((p) => '<span class="face ' + p.tone + '">' + p.initials + "</span>")
+    .map((p) =>
+      p.img
+        ? `<span class="face face-img" title="${p.label || ""}"><img src="${p.img}" alt=""></span>`
+        : `<span class="face ${p.tone}">${p.initials}</span>`,
+    )
     .join("");
   if (extra > 0) html += `<span class="face face-more">+${extra}</span>`;
   return html;

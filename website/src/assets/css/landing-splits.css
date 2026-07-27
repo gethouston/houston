@@ -1,0 +1,262 @@
+/*
+ * Landing split sections: the multiplayer phrase/chat split (#multiplayer),
+ * the parallel-lanes split (#parallel), and the compounding/share split
+ * (#compound). Palette and type come from site-tokens.css. All motion is
+ * gated behind prefers-reduced-motion: no-preference; the settled states
+ * carry the full information.
+ */
+
+/* ── Generic two-column split ─────────────────────────────────────────────── */
+.split {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: clamp(36px, 6vw, 84px);
+  align-items: center;
+}
+.split-copy .sec-title {
+  max-width: none;
+  margin: 0;
+  text-align: left;
+}
+.split-copy .eyebrow-mono {
+  justify-content: flex-start;
+  margin-bottom: 14px;
+}
+.split-line {
+  margin-top: 16px;
+  font-size: 16.5px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  max-width: 42ch;
+}
+@media (max-width: 880px) {
+  .split,
+  .split.split-rev {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .split-rev .split-copy {
+    order: 0;
+  }
+  .split-rev .split-visual {
+    order: 1;
+  }
+}
+
+/* ── Multiplayer: two big phrases + the chat ─────────────────────────────── */
+.mp-split {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: clamp(36px, 5vw, 72px);
+  align-items: center;
+  margin-top: 40px;
+}
+.mp-phrases {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.mp-phrase {
+  font-size: clamp(24px, 2.4vw, 34px);
+  line-height: 1.22;
+  font-weight: 300;
+  letter-spacing: -0.015em;
+  color: var(--ink-subtle);
+  max-width: 16ch;
+  text-wrap: balance;
+}
+.mp-phrase.is-strong {
+  color: var(--ink-strong);
+  font-weight: 440;
+}
+@media (max-width: 880px) {
+  .mp-split {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .mp-phrase {
+    max-width: none;
+  }
+}
+
+/* ── Parallel lanes (#parallel) ───────────────────────────────────────────── */
+.lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 26px;
+  border-radius: 20px;
+  background: var(--wash-mist);
+  border: 1px solid var(--line);
+}
+.lane {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.lane-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lane-head .av {
+  width: 22px;
+  height: 22px;
+}
+.lane-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.lane-count {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--action);
+  color: var(--action-text);
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lane-msgs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.lm {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--panel-raised);
+}
+.lm-1 { width: 34%; }
+.lm-2 { width: 22%; }
+.lm-3 { width: 28%; }
+.lm-typing {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  padding: 0 2px;
+}
+.lm-typing i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink-subtle);
+  opacity: 0.4;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lm-typing i {
+    animation: lane-dot 1.2s infinite var(--ease-standard);
+  }
+  .lm-typing i:nth-child(2) { animation-delay: 0.15s; }
+  .lm-typing i:nth-child(3) { animation-delay: 0.3s; }
+  .lane .lm,
+  .lane .lm-typing {
+    animation: lane-pulse 4.8s infinite var(--ease-standard);
+  }
+  .lane-d1 .lm,
+  .lane-d1 .lm-typing { animation-delay: 1.6s; }
+  .lane-d2 .lm,
+  .lane-d2 .lm-typing { animation-delay: 3.2s; }
+}
+@keyframes lane-dot {
+  0%, 60%, 100% { opacity: 0.4; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-2px); }
+}
+@keyframes lane-pulse {
+  0%, 100% { opacity: 0.75; }
+  12% { opacity: 1; }
+}
+
+/* ── Share dialog mock (#compound) ────────────────────────────────────────── */
+.share-mock {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px;
+  max-width: 400px;
+  margin: 0 auto;
+  box-shadow: 0 24px 60px -36px rgba(26, 24, 21, 0.28);
+}
+.shm-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.shm-head .av {
+  width: 34px;
+  height: 34px;
+}
+.shm-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.shm-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-subtle);
+}
+.shm-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.shm-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.shm-row .face {
+  width: 30px;
+  height: 30px;
+}
+.shm-name {
+  font-size: 13.5px;
+  color: var(--ink);
+  font-weight: 500;
+}
+.shm-role {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--action-text);
+  background: var(--action);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+.shm-role-use {
+  color: var(--ink-muted);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+}
+.shm-invite .shm-name {
+  color: var(--ink-subtle);
+  font-weight: 400;
+}
+.shm-plus {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px dashed var(--line-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-subtle);
+}
+.shm-plus svg {
+  width: 14px;
+  height: 14px;
+}

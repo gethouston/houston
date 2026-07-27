@@ -35,13 +35,9 @@
   }
 }
 
-/* A gentle stagger for the hero load — the headline block first, the product
-   window a beat later. */
+/* A gentle stagger for the hero load — the headline block rises in first. */
 .hero-intro.hero-load {
   --load-delay: 120ms;
-}
-.hero-visual.hero-load {
-  --load-delay: 260ms;
 }
 
 /* Reveal delay steps for grouped children (both naming schemes). */
@@ -91,7 +87,7 @@
   50% { opacity: 0.3; }
 }
 
-/* Typing dots (how-it-works phone thread). */
+/* Typing dots — reused by the multiplayer chat replay's typing indicator. */
 @keyframes typing-bounce {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
   30% { transform: translateY(-4px); opacity: 1; }

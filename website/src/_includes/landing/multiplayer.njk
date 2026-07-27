@@ -1,56 +1,77 @@
 <section id="multiplayer" class="section">
+  {# Hidden alias so cross-site links to #features still resolve. #}
+  <span id="features" class="anchor-alias" aria-hidden="true"></span>
   <div class="mp-head reveal">
     <div class="eyebrow-mono">Multiplayer</div>
     <h2 class="sec-title">AI stopped being single-player.</h2>
   </div>
 
+  {# Two big phrases left, the live multiplayer chat right. The phrases ARE the
+     copy for this section; everything deeper lives in the Q&A. #}
   <div class="mp-split reveal reveal-d1">
-    <div class="mp-statements">
-      <p class="mp-statement mp-statement-muted">Everyone's AI sits locked in a private chat.</p>
-      <p class="mp-statement">Houston puts the work where the whole team can see it.</p>
+    <div class="mp-phrases">
+      <p class="mp-phrase">Everyone else's AI is locked in private chats.</p>
+      <p class="mp-phrase is-strong">Houston puts your agents in front of the whole team.</p>
     </div>
-    <div class="mp-visual">
-      {# Swap-ready placeholder for AI photography. Art direction lives in this
-         comment so it never renders as page copy: the share sheet on one agent,
-         adding a teammate as a manager or as someone who can use it. #}
-      <div class="media-slot media-slot-portrait media-slot-mist">
-        <span class="media-slot-tag">AI image</span>
-        <div class="media-slot-inner">
-          <svg class="media-slot-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-          <span class="media-slot-cap">Share sheet</span>
+
+    <div class="mp-chat-col">
+<div class="chat-demo reveal reveal-d1" data-chat-demo>
+    <div class="chat-tabs" role="tablist" aria-label="Use cases">
+      <button class="chat-tab active" data-uc="0" role="tab" aria-selected="true">Sales</button>
+      <button class="chat-tab" data-uc="1" role="tab" aria-selected="false">Bookkeeping</button>
+      <button class="chat-tab" data-uc="2" role="tab" aria-selected="false">Hiring</button>
+      <button class="chat-tab" data-uc="3" role="tab" aria-selected="false">Support</button>
+    </div>
+
+    <div class="chat-win win">
+      <div class="chat-head">
+        <span class="chat-agent">
+          <span class="av av-c" id="cd-agent-av" aria-hidden="true"></span>
+          <span class="chat-agent-meta">
+            <span class="chat-agent-name" id="cd-agent-name">Sales Rep</span>
+            <span class="chat-mission" id="cd-mission">Rebuild the Q3 pipeline report</span>
+          </span>
+        </span>
+        <span class="chat-people" id="cd-people" role="group" aria-label="People in this chat">
+          <span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span>
+          <span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span>
+        </span>
+      </div>
+
+      <div class="chat-thread" id="cd-thread">
+        <div class="cmsg cmsg-human">
+          <span class="cmsg-av face-img"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span>
+          <div class="cmsg-main"><span class="cmsg-name">Julian</span><div class="cmsg-text">Rebuild the Q3 pipeline report. Pull every open deal from HubSpot, match it against the email threads in Gmail, and tell me what will really close.</div></div>
+        </div>
+        <div class="cmsg cmsg-agent">
+          <span class="cmsg-av av av-c"></span>
+          <div class="cmsg-main"><span class="cmsg-name">Sales Rep</span><div class="cmsg-text">Working through it. 63 open deals in HubSpot, cross-checked against Gmail. 12 have gone quiet for 3+ weeks, and 5 are stuck waiting on a contract from us.</div></div>
+        </div>
+        <div class="cmsg cmsg-human">
+          <span class="cmsg-av face-img"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span>
+          <div class="cmsg-main"><span class="cmsg-name">Felipe</span><div class="cmsg-text">Exclude the churned accounts, and add the renewals coming up this quarter.</div></div>
+        </div>
+        <div class="cmsg cmsg-agent">
+          <span class="cmsg-av av av-c"></span>
+          <div class="cmsg-main"><span class="cmsg-name">Sales Rep</span><div class="cmsg-text">Updated. Dropped 4 churned accounts, added 9 renewals. Weighted pipeline is $1.4M, with $380K at real risk from the stalled threads.</div></div>
+        </div>
+        <div class="cmsg cmsg-human">
+          <span class="cmsg-av face-img"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span>
+          <div class="cmsg-main"><span class="cmsg-name">Julian</span><div class="cmsg-text">Perfect. Put it where the whole team can see it.</div></div>
+        </div>
+        <div class="cmsg cmsg-agent">
+          <span class="cmsg-av av av-c"></span>
+          <div class="cmsg-main"><span class="cmsg-name">Sales Rep</span><div class="cmsg-text">Done. The Q3 pipeline report is on the shared board, at-risk deals flagged, with a follow-up drafted for each.</div></div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <div class="mp-wide reveal reveal-d1">
-    {# Swap-ready placeholder for AI photography. Art direction lives in this
-       comment so it never renders as page copy: a team's shared mission board,
-       teammate avatars on missions moving across running, needs you, and done. #}
-    <div class="media-slot media-slot-wide media-slot-sage">
-      <span class="media-slot-tag">AI image</span>
-      <div class="media-slot-inner">
-        <svg class="media-slot-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-        <span class="media-slot-cap">Shared team board</span>
+      <div class="chat-composer">
+        <span class="cc-avatar face-img"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span>
+        <span class="cc-placeholder">Message your team and the agent...</span>
+        <span class="cc-send" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></span>
       </div>
     </div>
   </div>
-
-  <div class="mp-grid reveal reveal-d1">
-    <div class="mp-card">
-      <span class="mp-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg></span>
-      <h3>Share any agent</h3>
-      <p>Add a teammate as a user or a manager.</p>
-    </div>
-    <div class="mp-card">
-      <span class="mp-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg></span>
-      <h3>One shared board</h3>
-      <p>Everyone sees the same missions and picks up where you left off.</p>
-    </div>
-    <div class="mp-card">
-      <span class="mp-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span>
-      <h3>Safe by role</h3>
-      <p>Roles and per-agent guardrails decide who can do what.</p>
     </div>
   </div>
 </section>

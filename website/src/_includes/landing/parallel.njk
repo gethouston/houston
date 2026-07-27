@@ -1,0 +1,45 @@
+<section id="parallel" class="section is-panel">
+  {# Hidden alias: cross-site links to #agents land on the multi-agent story. #}
+  <span id="agents" class="anchor-alias" aria-hidden="true"></span>
+
+  {# Split: animated parallel agent lanes left, a short statement right.
+     The lanes are CSS-only (staggered keyframes, infinite); reduced-motion
+     shows the settled state. Anatomy mirrors the app sidebar rows: helmet
+     avatar in the agent color, name, live status line, unread count. #}
+  <div class="split reveal">
+    <div class="split-visual">
+      <div class="lanes" role="img" aria-label="Three agents working their own chats at the same time: Sales Rep, Bookkeeper, and HR Manager, each with live activity">
+        <div class="lane">
+          <div class="lane-head"><span class="av av-c" aria-hidden="true"></span><span class="lane-name">Sales Rep</span><span class="lane-count">3</span></div>
+          <div class="lane-msgs" aria-hidden="true">
+            <span class="lm lm-1"></span>
+            <span class="lm lm-2"></span>
+            <span class="lm-typing"><i></i><i></i><i></i></span>
+          </div>
+        </div>
+        <div class="lane lane-d1">
+          <div class="lane-head"><span class="av av-o" aria-hidden="true"></span><span class="lane-name">Bookkeeper</span><span class="lane-count">1</span></div>
+          <div class="lane-msgs" aria-hidden="true">
+            <span class="lm lm-1"></span>
+            <span class="lm-typing"><i></i><i></i><i></i></span>
+            <span class="lm lm-3"></span>
+          </div>
+        </div>
+        <div class="lane lane-d2">
+          <div class="lane-head"><span class="av av-b" aria-hidden="true"></span><span class="lane-name">HR Manager</span><span class="lane-count">2</span></div>
+          <div class="lane-msgs" aria-hidden="true">
+            <span class="lm-typing"><i></i><i></i><i></i></span>
+            <span class="lm lm-2"></span>
+            <span class="lm lm-1"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="split-copy">
+      <div class="eyebrow-mono">Multi-agent</div>
+      <h2 class="sec-title">Many agents. Parallel chats.</h2>
+      <p class="split-line">Each agent runs its own missions at the same time. Anyone on the team can open a chat, jump in, and steer.</p>
+    </div>
+  </div>
+</section>

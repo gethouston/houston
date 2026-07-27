@@ -1,0 +1,229 @@
+/*
+ * Multiplayer chat preview (#multiplayer). A real Houston shared chat in the
+ * app's light theme: an agent header, a thread where MULTIPLE people (photo
+ * avatars) and the agent (a tinted Houston helmet) talk, and a composer. Tabs
+ * above switch the use case (assets/chat.js). App palette from site-tokens.css
+ * (--app-* / --agent-*); the shared .win / .av / .face rules live in
+ * landing-app-window.css.
+ */
+
+.chat-demo {
+  max-width: 780px;
+  margin: clamp(28px, 3.4vw, 44px) auto 0;
+}
+
+/* ── Use-case tabs ────────────────────────────────────────────────────────── */
+.chat-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: clamp(20px, 2.6vw, 30px);
+}
+.chat-tab {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard);
+}
+.chat-tab:hover {
+  border-color: var(--ink);
+  color: var(--ink-strong);
+}
+.chat-tab.active {
+  background: var(--action);
+  border-color: var(--action);
+  color: var(--action-text);
+}
+
+/* ── The chat window (reuses .win chrome: border, radius, system font) ─────── */
+.chat-win {
+  background: var(--app-screen);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 4px rgba(40, 36, 28, 0.05),
+    0 28px 56px -22px rgba(40, 36, 28, 0.16),
+    0 56px 110px -52px rgba(40, 36, 28, 0.2);
+}
+
+.chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--app-line);
+}
+.chat-agent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.chat-agent .av {
+  width: 34px;
+  height: 34px;
+}
+.chat-agent-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.chat-agent-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-ink);
+  letter-spacing: -0.01em;
+}
+.chat-mission {
+  font-size: 12px;
+  color: var(--app-ink-muted);
+}
+.chat-people {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.chat-people .face {
+  width: 26px;
+  height: 26px;
+}
+
+/* ── Thread ───────────────────────────────────────────────────────────────── */
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  /* Hold presence at the first turn so the replay grows into a stable window
+     instead of popping open from nothing. */
+  min-height: clamp(240px, 40vh, 380px);
+}
+.cmsg {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.cmsg-av {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cmsg-main {
+  min-width: 0;
+  flex: 1;
+}
+.cmsg-name {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--app-ink);
+  margin-bottom: 3px;
+  letter-spacing: -0.01em;
+}
+.cmsg-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--app-ink);
+}
+/* The agent's turn reads as AI output: a subtle tinted card with a squared
+   top-left corner pointing back at the helmet. Human turns stay plain thread. */
+.cmsg-agent .cmsg-text {
+  display: inline-block;
+  background: var(--app-chip);
+  padding: 9px 12px;
+  border-radius: 12px;
+  border-top-left-radius: 3px;
+}
+
+/* Typing indicator — three bouncing dots in the agent's tinted bubble, shown by
+   assets/chat.js just before each agent turn lands. */
+.cmsg-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 11px 12px;
+}
+.cmsg-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--app-ink-muted);
+  opacity: 0.4;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cmsg-dots span {
+    animation: typing-bounce 1.2s ease-in-out infinite;
+  }
+  .cmsg-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .cmsg-dots span:nth-child(3) { animation-delay: 0.3s; }
+  /* Each replayed turn rises in (gated: the settled thread never animates). */
+  .cmsg-in {
+    animation: cmsg-in var(--dur-elegant) var(--ease-entrance);
+  }
+}
+@keyframes cmsg-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Invisible in-page anchor alias (e.g. #features) — a zero-height scroll target
+   that keeps cross-site links resolving, clearing the sticky nav. */
+.anchor-alias {
+  display: block;
+  height: 0;
+  scroll-margin-top: 84px;
+}
+
+/* ── Composer (mock) ──────────────────────────────────────────────────────── */
+.chat-composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--app-line);
+}
+.cc-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cc-placeholder {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  color: var(--app-ink-muted);
+}
+.cc-send {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--app-action);
+  color: var(--app-action-text);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.cc-send svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 560px) {
+  .chat-head {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .chat-thread {
+    padding: 16px;
+  }
+}

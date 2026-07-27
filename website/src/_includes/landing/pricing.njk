@@ -1,14 +1,17 @@
 <section id="pricing" class="section is-panel">
+  {# Hidden alias so cross-site links to #download land on the pricing + download
+     CTAs rather than 404ing. #}
+  <span id="download" class="anchor-alias" aria-hidden="true"></span>
   <div class="pricing-head reveal">
     <h2 class="sec-title pricing-title">Ready to stop doing the work yourself?</h2>
-    <p class="sec-lead">The app is free. Add your team anytime.</p>
+    <p class="sec-lead">Free to try. Add your team when you're ready.</p>
   </div>
 
   <div class="pricing-grid reveal reveal-d1">
     <div class="price-col">
       <div class="price-name">Personal</div>
-      <div class="price-amt"><span class="amount">Free</span></div>
-      <p class="price-desc">Runs on your computer, on your own plan.</p>
+      <div class="price-amt"><span class="amount">Free to try</span></div>
+      <p class="price-desc">Test Houston in the cloud, solo. Upgrade when your team joins.</p>
       <div class="price-cta"><button class="btn btn-outline" data-dl-trigger data-dl-source="pricing">Download the app</button></div>
       <p class="dl-os-links">Available for
         <button class="dl-os-link" data-dl-trigger data-dl-source="pricing-os" data-dl-os="mac">macOS</button> and
