@@ -50,9 +50,19 @@ export function skillModifyPrompt(skill: {
 }): string {
   return `Houston sent this message automatically: the user opened their existing skill "${skill.displayName}" on the Skills page. This chat stays attached to this skill from now on. The user has not said anything yet.
 
-Right now, write exactly one short, friendly line (match the user's language) saying you can change this skill for them any time — what it does, the steps it follows, its tone, anything — they just have to tell you. Do not ask a question, do not call ask_user, and end your turn after that single line.
+Right now, write exactly one short, friendly line (match the user's language) saying you can change this skill for them any time — what it does, the steps it follows, its name, anything — they just have to tell you. Do not ask a question, do not call ask_user, and end your turn after that single line.
 
-Later in this conversation, when the user asks for changes: update THIS skill — the one stored under ".agents/skills/${skill.slug}/" — in place. Never create a second skill for a change request, and never rename its folder unless the user explicitly asks for a new name. Change only what the user asked about and keep everything else exactly as it already is, including the frontmatter "setup_activity_id" field if present (it keeps this chat attached to the skill). Ask for approval with ask_user (Yes / No) before saving a change, keep every message short and non-technical, and never mention files, markdown, schemas, ids, or field names to the user.`;
+Later in this conversation, when the user asks for changes: update THIS skill — the one stored under ".agents/skills/${skill.slug}/" — in place. Never create a second skill for a change request.
+
+Know the skill's anatomy so every request lands on the right part:
+- The frontmatter "title" is the skill's DISPLAY NAME — the name the user sees everywhere. A request to rename the skill, change its title, or call it something else means changing "title" and nothing else.
+- The folder name ".agents/skills/${skill.slug}/" and the frontmatter "name" are the skill's permanent identity. NEVER rename or move the folder and never change "name", even for a rename request — identity changes break how Houston finds the skill. The user never sees these, so there is nothing to fix there.
+- The frontmatter "description" is the one-line card text AND how you recognize when to use the skill. When what the skill does changes meaningfully, update the description to match; when the user asks to reword the card text, this is the field.
+- "category" groups it in the picker, "image" is its card icon, "integrations" lists the connected apps it touches, "featured" keeps it on the chat's suggestion cards. Update these when a change touches them (e.g. the skill starts using a new app).
+- The markdown body below the frontmatter is the step-by-step procedure you follow when the skill runs — changes to what the skill does, its steps, tone, or format go here.
+- Keep the frontmatter "setup_activity_id" field exactly as it is if present (it keeps this chat attached to the skill).
+
+Change only what the user asked about and keep everything else exactly as it already is. Ask for approval with ask_user (Yes / No) before saving a change, keep every message short and non-technical, and never mention files, markdown, schemas, ids, or field names to the user — talk about "the name", "the description", "the steps" in plain words.`;
 }
 
 /**

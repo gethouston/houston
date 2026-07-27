@@ -178,6 +178,39 @@ export function findSkillChatHeal(
   return null;
 }
 
+export type SkillChatTitleHeal = { activityId: string; title: string };
+
+/**
+ * The next chat-title repair, or null when titles are consistent: a skill's
+ * chat keeps the skill's display title (the pane header is live, but the
+ * PERSISTED activity title also surfaces — notifications, deep links — and
+ * would otherwise read the old name forever after a rename; a claimed create
+ * draft would stay "New skill"). One fix at a time, and a chat that two
+ * skills resolve to is left alone — never flip-flop between two titles.
+ */
+export function findSkillChatTitleHeal(
+  activities: SkillSetupActivityLike[] | undefined,
+  skills: SkillLinkLike[] | undefined,
+  displayTitle: (skill: SkillLinkLike) => string,
+): SkillChatTitleHeal | null {
+  const acts = activities ?? [];
+  const owners = new Map<string, SkillLinkLike[]>();
+  for (const s of skills ?? []) {
+    const chat = findSkillChatActivity(acts, s);
+    if (chat) owners.set(chat.id, [...(owners.get(chat.id) ?? []), s]);
+  }
+  for (const [chatId, list] of owners) {
+    const skill = list.length === 1 ? list[0] : undefined;
+    if (!skill) continue;
+    const chat = acts.find((a) => a.id === chatId);
+    const want = displayTitle(skill);
+    if (chat && want && chat.title !== want) {
+      return { activityId: chatId, title: want };
+    }
+  }
+  return null;
+}
+
 /**
  * The create-flow claim FALLBACK: the kickoff tells the agent to write the
  * chat's id into the new skill's frontmatter, but an agent that forgets it

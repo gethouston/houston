@@ -20,6 +20,7 @@ import {
   findDraftSkillChatActivities,
   findSkillChatActivity,
   findSkillChatHeal,
+  findSkillChatTitleHeal,
   isSkillSetupMode,
   SKILL_SETUP_AGENT_MODE,
 } from "../src/lib/skill-chat-setup.ts";
@@ -136,8 +137,15 @@ describe("skill chat setup message", () => {
       "end your turn after that single line",
       '".agents/skills/weekly-update/"',
       "Never create a second skill",
-      "never rename its folder",
-      '"setup_activity_id" field if present',
+      // Structure awareness: a rename means the display title, never the
+      // folder/name identity (renaming those breaks how Houston finds it).
+      "DISPLAY NAME",
+      'means changing "title"',
+      "NEVER rename or move the folder",
+      'never change "name"',
+      '"description" is the one-line card text',
+      "step-by-step procedure",
+      '"setup_activity_id" field exactly as it is',
       "approval",
     ]) {
       ok(prompt.includes(needle), `prompt must mention: ${needle}`);
@@ -387,6 +395,56 @@ describe("skill chat setup message", () => {
     // Nothing new → nothing claimed.
     deepStrictEqual(
       claimNewlyCreatedSkill(new Set(["existing"]), [{ name: "existing" }], []),
+      null,
+    );
+  });
+
+  it("title heal keeps a skill's chat named after the skill", () => {
+    // The reported gap: renaming the skill in its chat left the persisted
+    // conversation title on the old name (and a claimed create draft stayed
+    // "New skill") — the chat follows the skill's display title.
+    const chat = {
+      id: "a1",
+      agent: SKILL_SETUP_AGENT_MODE,
+      skill_slug: "meeting-prep",
+      title: "Meeting prep",
+    };
+    deepStrictEqual(
+      findSkillChatTitleHeal(
+        [chat],
+        [{ name: "meeting-prep", title: "meeting skill" }],
+        skillDisplayTitle,
+      ),
+      { activityId: "a1", title: "meeting skill" },
+    );
+    // Already consistent → nothing to do (the effect loop terminates).
+    deepStrictEqual(
+      findSkillChatTitleHeal(
+        [{ ...chat, title: "meeting skill" }],
+        [{ name: "meeting-prep", title: "meeting skill" }],
+        skillDisplayTitle,
+      ),
+      null,
+    );
+    // No frontmatter title → the humanized slug is the display title.
+    deepStrictEqual(
+      findSkillChatTitleHeal(
+        [{ ...chat, title: "New skill" }],
+        [{ name: "meeting-prep" }],
+        skillDisplayTitle,
+      ),
+      { activityId: "a1", title: "Meeting prep" },
+    );
+    // A chat two skills resolve to is never retitled (no flip-flopping).
+    deepStrictEqual(
+      findSkillChatTitleHeal(
+        [{ id: "a2", agent: SKILL_SETUP_AGENT_MODE, title: "X" }],
+        [
+          { name: "s1", setup_activity_id: "a2" },
+          { name: "s2", setup_activity_id: "a2" },
+        ],
+        skillDisplayTitle,
+      ),
       null,
     );
   });

@@ -15,6 +15,7 @@ import {
   findDraftSkillChatActivities,
   findSkillChatActivity,
   findSkillChatHeal,
+  findSkillChatTitleHeal,
   isSkillSetupMode,
   SKILL_SETUP_AGENT_MODE,
 } from "../../lib/skill-chat-setup";
@@ -64,25 +65,35 @@ export function useSkillChatSetup(
     [rawItems],
   );
 
-  // Background link reconciliation: an agent-created skill carries the
-  // forward `setup_activity_id` but its chat has no durable `skill_slug`
-  // stamp until the client writes one; a title-matched orphan chat (a stamp
-  // write that failed mid-flight) is adopted back too. One repair per pass;
-  // the invalidation refetch re-runs the effect until consistent. Failures
-  // only log: there is no user action to toast on, and the next refetch
-  // retries anyway.
+  // Background reconciliation, one repair per pass (the invalidation refetch
+  // re-runs the effect until consistent). Links first: an agent-created
+  // skill carries the forward `setup_activity_id` but its chat has no
+  // durable `skill_slug` stamp until the client writes one, and a
+  // title-matched orphan chat (a stamp write that failed mid-flight) is
+  // adopted back. Then titles: a skill's chat keeps the skill's display
+  // title, so a rename in the conversation renames the conversation too.
+  // Failures only log: there is no user action to toast on, and the next
+  // refetch retries anyway.
   const healingRef = useRef(false);
   useEffect(() => {
     if (healingRef.current) return;
     const heal = findSkillChatHeal(rawItems, skills, skillDisplayTitle);
-    if (!heal) return;
+    const titleHeal = heal
+      ? null
+      : findSkillChatTitleHeal(rawItems, skills, skillDisplayTitle);
+    const patch = heal
+      ? { id: heal.activityId, update: { skill_slug: heal.slug } }
+      : titleHeal
+        ? { id: titleHeal.activityId, update: { title: titleHeal.title } }
+        : null;
+    if (!patch) return;
     healingRef.current = true;
     tauriActivity
-      .update(path, heal.activityId, { skill_slug: heal.slug })
+      .update(path, patch.id, patch.update)
       .then(() =>
         queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) }),
       )
-      .catch((err) => logger.error(`[skill-chat] link heal failed: ${err}`))
+      .catch((err) => logger.error(`[skill-chat] heal failed: ${err}`))
       .finally(() => {
         healingRef.current = false;
       });
