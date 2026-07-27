@@ -201,8 +201,8 @@ img {
   z-index: -1;
   background: linear-gradient(
     to bottom,
-    rgba(239, 238, 233, 0.92) 0%,
-    rgba(239, 238, 233, 0.55) 58%,
+    rgba(242, 246, 250, 0.92) 0%,
+    rgba(242, 246, 250, 0.55) 58%,
     transparent 100%
   );
   filter: blur(14px);
