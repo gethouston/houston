@@ -68,7 +68,11 @@ function messageVariantClass(
   from: UIMessage["role"],
   peer: boolean | undefined,
 ): string {
-  if (from !== "user") return "is-assistant";
+  if (from !== "user")
+    // A bubbled agent turn in a GROUP chat (HOU-960): the agent is one more
+    // member, so it wears the same incoming `is-peer` bubble a teammate does,
+    // just wider — its prose (lists, code) needs more line than small talk.
+    return peer ? "is-peer is-agent mr-auto max-w-[85%]" : "is-assistant";
   if (peer) return "is-peer mr-auto max-w-[70%]";
   return "is-user ml-auto max-w-[70%] justify-end";
 }
@@ -114,12 +118,15 @@ export const MessageContent = ({
         className={cn(
           "flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-base leading-6",
           "group-[.is-user]:ml-auto group-[.is-user]:rounded-[22px] group-[.is-user]:bg-ink group-[.is-user]:px-4 group-[.is-user]:py-2.5 group-[.is-user]:text-input dark:group-[.is-user]:bg-chip-subtle dark:group-[.is-user]:text-ink",
-          // A teammate's incoming bubble. Same shape and padding as the
-          // viewer's own, but the recessed chip fill instead of near-ink, plus
-          // a hairline: over the near-white canvas (light) and the glass
-          // canvas (dark) the fill alone is only a few levels of separation, so
-          // the line is what makes it read as an object rather than a smudge.
-          "group-[.is-peer]:mr-auto group-[.is-peer]:rounded-[22px] group-[.is-peer]:border group-[.is-peer]:border-line group-[.is-peer]:bg-chip group-[.is-peer]:px-4 group-[.is-peer]:py-2.5 group-[.is-peer]:text-ink",
+          // An incoming bubble (teammate or bubbled agent turn): the recessed
+          // chip fill instead of near-ink, plus a hairline — over the
+          // near-white canvas (light) and the glass canvas (dark) the fill
+          // alone is only a few levels of separation, so the line is what makes
+          // it read as an object rather than a smudge. Geometry is the
+          // group-chat grammar (HOU-960): 12px corners with the top-left
+          // squared toward the sender's face (the landing's own bubble tail),
+          // compact 12/8 padding.
+          "group-[.is-peer]:mr-auto group-[.is-peer]:rounded-xl group-[.is-peer]:rounded-tl-sm group-[.is-peer]:border group-[.is-peer]:border-line group-[.is-peer]:bg-chip group-[.is-peer]:px-3 group-[.is-peer]:py-2 group-[.is-peer]:text-ink",
           "group-[.is-assistant]:text-ink",
           className,
         )}

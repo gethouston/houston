@@ -22,11 +22,22 @@ export type FilterFace = Pick<KanbanPerson, "label" | "imageUrl"> &
  * sender line, and the learnings provenance line. When the person's stable
  * `id` is known the initials fallback wears their opaque `person.*` tone
  * (one person = one tone everywhere, same rule as the board face stacks);
- * without an id it stays on the neutral fallback fill.
+ * without an id it stays on the neutral fallback fill. Defaults to the 20px
+ * filter-row size; a consumer needing another (the chat sender column's 32px)
+ * overrides `className` + `initialsClassName` together so the type scales
+ * with the disc.
  */
-export function PersonFace({ person }: { person: FilterFace }) {
+export function PersonFace({
+  person,
+  className,
+  initialsClassName,
+}: {
+  person: FilterFace;
+  className?: string;
+  initialsClassName?: string;
+}) {
   return (
-    <Avatar className="size-5">
+    <Avatar className={cn("size-5", className)}>
       {person.imageUrl && (
         <AvatarImage
           src={person.imageUrl}
@@ -38,6 +49,7 @@ export function PersonFace({ person }: { person: FilterFace }) {
         className={cn(
           "text-[9px] font-medium",
           person.id && cn(personToneClass(person.id), "text-person-initials"),
+          initialsClassName,
         )}
       >
         {initialsFor(person.label)}

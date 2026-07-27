@@ -28,13 +28,16 @@ interface ChatMessageBodyProps {
   currentUserId?: string;
   /**
    * The sender's name line (HOU-960), rendered as the bubble's FIRST LINE for a
-   * teammate's message. Inside rather than above because a name floating over a
-   * left-aligned bubble reads as a heading for the whole thread; inside, it
-   * reads as part of what that person said. `null` on the viewer's own rows,
-   * on agent rows (whose name goes above the prose, there being no bubble), and
-   * on every message of a run after the first.
+   * teammate's — or, in a group chat, the agent's — message. Inside rather than
+   * above because a name floating over a left-aligned bubble reads as a heading
+   * for the whole thread; inside, it reads as part of what that person said.
+   * `null` on the viewer's own rows and on every message of a run after the
+   * first.
    */
   nameSlot?: ReactNode;
+  /** Extra classes for the bubble container (e.g. the group-chat geometry the
+   *  viewer's own bubble adopts only when the thread is attributed). */
+  bubbleClassName?: string;
 }
 
 /**
@@ -79,6 +82,7 @@ export function ChatMessageBody({
   mentionPeople,
   currentUserId,
   nameSlot,
+  bubbleClassName,
 }: ChatMessageBodyProps) {
   // Nothing to say AND nobody to name → render nothing, as before. But an
   // empty message from a TEAMMATE still has to print who it came from: the
@@ -86,7 +90,9 @@ export function ChatMessageBody({
   // not) would leave an anonymous bubble in a group chat.
   if (!message.content) {
     if (!nameSlot) return null;
-    return <MessageContent>{nameSlot}</MessageContent>;
+    return (
+      <MessageContent className={bubbleClassName}>{nameSlot}</MessageContent>
+    );
   }
   if (message.from === "user" && renderUserMessage) {
     const custom = renderUserMessage(message);
@@ -109,7 +115,7 @@ export function ChatMessageBody({
       : null;
 
   return (
-    <MessageContent>
+    <MessageContent className={bubbleClassName}>
       {/* The bubble stacks its children on `gap-2` (8px), which is a paragraph
           break, not a name-to-first-line break. Pull the name back to 4px so it
           reads as the speaker's byline rather than a separate line of talk. */}

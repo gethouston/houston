@@ -16,17 +16,21 @@ isolation: a fast exchange became a column of repeated names, with the reader's
 own name printed back at them. This is the same information, arranged the way
 readers already know how to read it.
 
-There are three row anatomies now. A `user-message` written by a TEAMMATE
-mirrors to the left: their face sits in a fixed 20px column beside the bubble,
-their name is the bubble's first line, small and semibold in that person's own
-tone, and the bubble is the recessed chip fill with a hairline rather than the
-viewer's near-ink one, because a left-hand bubble in the reader's own colour
-reads as something the reader said. The VIEWER'S OWN message keeps today's
-right-aligned near-ink bubble exactly, now with no face and no name at all. The
-"You" line is gone from the screen; the consumer's "you" string is announced to
-screen readers instead, because alignment is a cue only a sighted reader gets.
-`assistant-message` keeps its prose layout with the mark and name above the
-text, and the name is now painted in the agent's own avatar colour.
+There are three row anatomies now, all on the incoming-bubble geometry of a
+group chat (12px corners, the corner nearest the sender's face squared, compact
+12/8 padding). A `user-message` written by a TEAMMATE mirrors to the left: their
+32px face top-aligned in a fixed column beside the bubble, their name the
+bubble's first line, small and semibold in that person's own tone, the bubble
+the recessed chip fill with a hairline rather than the viewer's near-ink one,
+because a left-hand bubble in the reader's own colour reads as something the
+reader said. An `assistant-message` in a shared conversation is one more group
+member: the same incoming bubble (wider, for prose), the agent's 32px mark in
+the face column, its name the bubble's first line in the agent's own avatar
+colour; solo it stays bare left-aligned prose. The VIEWER'S OWN message keeps
+the right-aligned near-ink bubble with no face and no name at all, adopting the
+compact mirrored geometry only in an attributed thread. The "You" line is gone
+from the screen; the consumer's "you" string is announced to screen readers
+instead, because alignment is a cue only a sighted reader gets.
 
 Run grouping ties the three together. A name and a face print on the first
 message of a run from one sender and nowhere else in it, while the avatar column

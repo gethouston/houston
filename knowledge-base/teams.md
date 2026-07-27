@@ -812,19 +812,23 @@ adapter `streamTurn` → SDK, filled once in `tauriChat.send` from
 `app/src/lib/acting-user.ts` (a read of the shared `["session"]` cache; signed
 out ⇒ absent ⇒ authorless, exactly as today).
 
-**Three row anatomies** (HOU-960). A TEAMMATE's user turn mirrors to the LEFT:
-their face in a fixed 20px column beside the bubble (`ChatPeerRow`), their name
-as the bubble's FIRST LINE (`text-xs font-semibold`, that person's tone), and
-the bubble itself the recessed `bg-chip` fill with a `border-line` hairline
-(`is-peer` in `ai-elements/message.tsx`) instead of the viewer's near-ink fill —
-a left-hand bubble in the reader's own colour reads as something the reader
-said. The VIEWER'S OWN turn is untouched: the right-aligned near-ink bubble
-(`is-user`), with NO face and NO name. The "You" line is gone from the screen;
-`authorLabels.you` is now announced in an `sr-only` span instead, because
-alignment is a visual-only cue a screen reader cannot see. The AGENT keeps the
-left prose layout with its mark + name above the prose (`ChatSenderHeader` — it
-has no bubble to put a name inside), the name painted in the agent's own avatar
-colour.
+**Three row anatomies** (HOU-960, group-chat grammar). A TEAMMATE's user turn
+mirrors to the LEFT: their 32px face top-aligned in a fixed column beside the
+bubble (`ChatPeerRow`), their name as the bubble's FIRST LINE (`text-xs
+font-semibold`, that person's tone), and the bubble itself the recessed
+`bg-chip` fill with a `border-line` hairline and the incoming geometry — 12px
+corners, top-left squared toward the face, `px-3 py-2` (`is-peer` in
+`ai-elements/message.tsx`) — instead of the viewer's near-ink fill: a left-hand
+bubble in the reader's own colour reads as something the reader said. The
+AGENT's turn in a shared chat is one more group member: the SAME incoming
+bubble (`is-peer is-agent`, wider at `max-w-[85%]` for prose), its 32px mark in
+the face column, its name as the bubble's first line painted in the agent's own
+avatar colour; in single player it stays bare left-aligned prose, exactly as
+always. The VIEWER'S OWN turn keeps the right-aligned near-ink bubble
+(`is-user`) with NO face and NO name, adopting the compact mirrored geometry
+(12px, top-right squared) only when the thread is attributed. The "You" line is
+gone from the screen; `authorLabels.you` is announced in an `sr-only` span
+instead, because alignment is a visual-only cue a screen reader cannot see.
 
 **Run grouping** (`ui/chat/src/chat-sender-runs.ts` — pure, JSX-free, unit-tested
 in `ui/chat/tests/attribution.test.ts`). Name and face print on the message that

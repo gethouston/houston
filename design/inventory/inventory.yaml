@@ -96,25 +96,30 @@ components:
 
   - id: assistant-message
     title: Assistant message
-    purpose: A model turn's prose -- markdown, no bubble, left aligned.
-    anatomy: [sender-line, markdown-body, code-block, inline-links, copy-action]
+    purpose: >-
+      A model turn's prose -- bare markdown in single player, an incoming
+      group-chat bubble in a shared conversation.
+    anatomy: [sender-face-column, bubble, sender-name-line, markdown-body, code-block, inline-links, copy-action]
     states: [streaming, complete]
     variants: [with-code, plain-prose, single-player, multiplayer-attributed, run-continuation]
     behavior: >-
       assistant_text vs assistant_text_streaming decide whether the body grows
       token-by-token; copy acts on the resolved markdown source. In a SHARED
-      conversation (v37) the turn carries a sender line above the prose -- the
-      agent's mark + its name -- so every turn in a multiplayer thread says who
-      spoke; single-player renders no sender line at all. (v40) The name is
-      painted in the AGENT'S OWN avatar colour, chosen per theme by MEASURING
-      that colour against the theme's real chat surface (derived from the design
-      tokens, dark composited through the glass): a palette entry that cannot
-      carry 4.5:1 as text in a theme drops to primary ink in that theme, so a
-      later palette edit can never quietly ship an unreadable name. All seven
-      agent colours pass in both themes today. Mark and name print on the turn
-      that OPENS a run of the agent's turns; a tool/process block between two turns
-      is transparent to that rule (it neither starts nor breaks a run), while a
-      system divider always breaks one.
+      conversation (v37) every turn says who spoke; single-player renders no
+      sender at all -- bare left-aligned prose, exactly as before. (v40) In the
+      shared shape the agent is one more member of the group: its turn sits in
+      the same incoming bubble a teammate's does (recessed fill, hairline, 12px
+      corners with the top-left squared toward the sender, compact padding),
+      its 32px mark top-aligned in the face column, its NAME as the bubble's
+      first line, painted in the AGENT'S OWN avatar colour -- chosen per theme
+      by MEASURING that colour against the theme's real chat surface (derived
+      from the design tokens, dark composited through the glass): a palette
+      entry that cannot carry 4.5:1 as text in a theme drops to primary ink in
+      that theme, so a later palette edit can never quietly ship an unreadable
+      name. All seven agent colours pass in both themes today. Mark and name
+      print on the turn that OPENS a run of the agent's turns; a tool/process
+      block between two turns is transparent to that rule (it neither starts
+      nor breaks a run), while a system divider always breaks one.
     a11y: article/group role; code blocks keyboard-selectable; copy button labeled.
     since: 1
 
@@ -133,10 +138,13 @@ components:
       chat's: the viewer's OWN message keeps the right-aligned near-ink bubble
       with NO face and NO name, because a group chat labels the people you talk
       to and identifies you by the side you are on; a TEAMMATE's message
-      mirrors to the LEFT as a recessed, hairlined bubble with their face in a
-      fixed avatar column beside it and their name as the bubble's FIRST LINE,
-      small and semibold in that person's stable tone (hashed from their user
-      id, the same tone their avatar wears everywhere else). Face and name print
+      mirrors to the LEFT as a recessed, hairlined bubble (12px corners, the
+      top-left squared toward the sender's face, compact padding; the own
+      bubble mirrors that geometry when the thread is attributed) with their
+      32px face top-aligned in a fixed avatar column beside it and their name
+      as the bubble's FIRST LINE, small and semibold in that person's stable
+      tone (hashed from their user id, the same tone their avatar wears
+      everywhere else). Face and name print
       only on the message that OPENS a run from that sender; the rest of the run
       renders bare with the avatar column still reserved, so consecutive bubbles
       stay lined up under the face. A change of sender starts a run and a system

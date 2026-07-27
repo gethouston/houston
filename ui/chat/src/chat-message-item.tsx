@@ -8,11 +8,7 @@ import {
 import { ChatMessageBody } from "./chat-message-body";
 import type { ChatMessageItemProps } from "./chat-message-item-types";
 import { ChatProcessMessage } from "./chat-process-message";
-import {
-  ChatPeerRow,
-  ChatSenderHeader,
-  ChatSenderName,
-} from "./chat-sender-parts";
+import { ChatPeerRow, ChatSenderName } from "./chat-sender-parts";
 import { ChatSystemMessage } from "./chat-system-message";
 import { OFFSCREEN_RENDER_SKIP } from "./offscreen-render";
 
@@ -106,22 +102,32 @@ export function ChatMessageItem({
     ? turnEndSummaries.get(sourceIndex)
     : undefined;
 
-  // A teammate's name is the bubble's FIRST LINE; the agent's sits above its
-  // prose (it has no bubble). Either way, only on the row that opens the run.
-  const teammateName =
-    peer && attributed && isRunStart
+  // In a group chat the sender's name is the bubble's FIRST LINE — for a
+  // teammate AND for the agent, which is just one more member of the group
+  // (HOU-960). Either way, only on the row that opens the run.
+  const agentBubbled = !isUser && attributed === true;
+  const senderName = peer
+    ? attributed && isRunStart
       ? senderNameFor(message.author, currentUserId)
+      : null
+    : agentBubbled && isRunStart
+      ? (agentLabel ?? null)
       : null;
-  const agentName =
-    !isUser && attributed && isRunStart ? (agentLabel ?? null) : null;
+  // The viewer's own bubble adopts the compact group geometry only when the
+  // thread is attributed, so a single-player transcript keeps its exact shape.
+  const ownBubbleClass =
+    isUser && !peer && attributed
+      ? "group-[.is-user]:rounded-xl group-[.is-user]:rounded-tr-sm group-[.is-user]:px-3 group-[.is-user]:py-2"
+      : undefined;
   const body = (
     <ChatMessageBody
+      bubbleClassName={ownBubbleClass}
       currentUserId={currentUserId}
       mentionPeople={mentionPeople}
       message={message}
       nameSlot={
-        teammateName ? (
-          <ChatSenderName name={teammateName} toneClass={toneClass} />
+        senderName ? (
+          <ChatSenderName name={senderName} toneClass={toneClass} />
         ) : null
       }
       onOpenLink={onOpenLink}
@@ -133,12 +139,12 @@ export function ChatMessageItem({
   );
   const trailer = summary ? renderTurnSummary?.(summary) : null;
 
-  if (peer) {
+  if (peer || agentBubbled) {
     return (
       <Message
         {...sharedProps}
         avatar={renderMessageAvatar?.(message)}
-        from="user"
+        from={message.from}
         peer
       >
         <ChatPeerRow face={face}>
@@ -168,13 +174,6 @@ export function ChatMessageItem({
       from={message.from}
     >
       <div>
-        {!isUser && (agentName || face) ? (
-          <ChatSenderHeader
-            avatar={face}
-            name={agentName ?? undefined}
-            toneClass={toneClass}
-          />
-        ) : null}
         {ownAnnouncement ? (
           <span className="sr-only">{ownAnnouncement}</span>
         ) : null}

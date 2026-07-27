@@ -27,9 +27,12 @@ import { isMultiplayer } from "../lib/org-roles";
 import type { Agent } from "../lib/types";
 import { PersonFace } from "./mission-person-face";
 
-/** The agent mark's diameter, matched to `PersonFace`'s 20px teammate face so
- *  human and agent rows sit on the same optical line. */
-const AGENT_MARK_PX = 20;
+/** The chat sender face diameter (HOU-960): the group-chat 32px, sized so the
+ *  face reads as a person beside the bubble, top-aligned with its first line.
+ *  The agent mark matches it so human and agent rows share one optical line. */
+const AGENT_MARK_PX = 32;
+const SENDER_FACE_CLASS = "size-8";
+const SENDER_INITIALS_CLASS = "text-xs";
 
 /** Every distinct author id in a conversation's feed (stable, sorted). */
 function authorIdsIn(feedItems: FeedItem[]): string[] {
@@ -104,6 +107,8 @@ export function useChatSenderAvatars(
       // `person.*` tone — one person, one tone, on the board and here alike.
       return (
         <PersonFace
+          className={SENDER_FACE_CLASS}
+          initialsClassName={SENDER_INITIALS_CLASS}
           person={{
             id: author.userId,
             label: name,
