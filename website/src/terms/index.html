@@ -1,162 +1,39 @@
 ---
 rootPath: "../"
-learnPath: "../learn/index.html"
-visionPath: "../vision/index.html"
 ---
-{% extends "base.njk" %}
+{% extends "subpage.njk" %}
 {% block title %}Terms of Service - Houston{% endblock %}
 {% block meta %}
 <meta name="description" content="The terms that govern your use of Houston, the Houston desktop app, and Houston Cloud.">
 {% endblock %}
-{% block stylesheets %}
-<link rel="stylesheet" href="../learn/style.css?v=3">
-{% endblock %}
-{% block inlineStyles %}
+{% block subpageStyles %}
 <style>
-  .legal {
-    width: min(784px, calc(100% - 32px));
-    margin: 28px auto 72px;
-    padding: 64px 48px 88px;
-    background: rgba(8, 10, 18, 0.66);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-  }
-  @media (max-width: 700px) {
-    .legal { width: calc(100% - 24px); margin-top: 12px; padding: 44px 24px 64px; }
-  }
-  .legal .eyebrow {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--gray-500);
-    margin-bottom: 12px;
-  }
-  .legal h1 {
-    font-size: clamp(34px, 4.5vw, 44px);
-    font-weight: 400;
-    letter-spacing: -0.03em;
-    line-height: 1.15;
-    color: var(--gray-950);
-    margin-bottom: 12px;
-  }
+  /* Legal doc — bone reading column. Prose + TOC come from subpage.css; this
+     adds the effective-date meta row, the larger lead, the uppercase
+     disclaimer text, and the closing link. */
+  .legal { width: min(784px, 100%); margin: 0 auto; padding: 0 var(--gutter); }
   .legal .meta-row {
-    font-size: 13px;
-    color: var(--gray-500);
-    margin-bottom: 40px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border-light);
+    font-size: 13px; color: var(--ink-subtle);
+    margin-bottom: 36px; padding-bottom: 24px;
+    border-bottom: 1px solid var(--line);
   }
-  .legal .lead {
-    font-size: 17px;
-    line-height: 1.65;
-    color: var(--gray-700);
-    margin-bottom: 16px;
-  }
-  .legal h2 {
-    font-size: 22px;
-    font-weight: 600;
-    letter-spacing: -0.015em;
-    line-height: 1.25;
-    color: var(--gray-950);
-    margin-top: 48px;
-    margin-bottom: 14px;
-    scroll-margin-top: 32px;
-  }
-  .legal h3 {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--gray-950);
-    margin-top: 24px;
-    margin-bottom: 8px;
-  }
-  .legal p {
-    font-size: 15px;
-    line-height: 1.7;
-    color: var(--gray-700);
-    margin-bottom: 14px;
-  }
-  .legal p strong { color: var(--gray-950); font-weight: 600; }
-  .legal ul, .legal ol {
-    margin-bottom: 16px;
-    padding-left: 22px;
-    color: var(--gray-700);
-    font-size: 15px;
-  }
-  .legal li { margin-bottom: 8px; line-height: 1.6; }
-  .legal li::marker { color: var(--gray-400); }
-  .legal a {
-    color: var(--gray-950);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    text-decoration-color: var(--gray-300);
-  }
-  .legal a:hover { text-decoration-color: var(--gray-950); }
-  .legal .toc {
-    background: var(--gray-50);
-    border: 1px solid var(--border-light);
-    border-radius: 12px;
-    padding: 20px 24px;
-    margin: 24px 0 40px;
-  }
-  .legal .toc-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--gray-500);
-    margin-bottom: 10px;
-  }
-  .legal .toc ol {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    counter-reset: toc;
-    font-size: 14px;
-  }
-  .legal .toc li {
-    counter-increment: toc;
-    margin-bottom: 4px;
-    padding-left: 0;
-  }
-  .legal .toc li::marker { content: none; }
-  .legal .toc li::before {
-    content: counter(toc, decimal-leading-zero);
-    color: var(--gray-400);
-    margin-right: 10px;
-    font-variant-numeric: tabular-nums;
-  }
-  .legal .toc a { text-decoration: none; color: var(--gray-700); }
-  .legal .toc a:hover { color: var(--gray-950); text-decoration: underline; }
-  .legal .callout {
-    background: var(--gray-50);
-    border: 1px solid var(--border-light);
-    border-radius: 10px;
-    padding: 14px 18px;
-    margin: 18px 0;
-    font-size: 14px;
-    color: var(--gray-700);
-    line-height: 1.6;
-  }
-  .legal .callout strong { color: var(--gray-950); }
+  .legal .lead { font-size: 17px; line-height: 1.65; }
   .legal .all-caps {
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-    font-size: 13px;
-    font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.02em;
+    font-size: 13px; font-weight: 500; color: var(--ink-muted);
   }
   .legal-footer-link {
-    margin-top: 48px;
-    padding-top: 24px;
-    border-top: 1px solid var(--border-light);
-    font-size: 13px;
-    color: var(--gray-500);
+    margin-top: 44px; padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 13.5px; color: var(--ink-subtle);
   }
-  .legal-footer-link a { color: var(--gray-700); }
+  .legal-footer-link a { color: var(--ink-muted); text-decoration: underline; text-underline-offset: 3px; }
+  .legal-footer-link a:hover { color: var(--ink-strong); }
 </style>
 {% endblock %}
-{% block body %}
-{% include "space-bg.njk" %}
-    {% include "nav-docs.njk" %}
-
-<main class="legal">
-  <div class="eyebrow">Legal</div>
+{% block subpageContent %}
+<article class="legal prose">
+  <div class="subpage-eyebrow">Legal</div>
   <h1>Terms of Service</h1>
   <div class="meta-row">
     Effective April 25, 2026 · Last updated April 25, 2026
@@ -170,8 +47,8 @@ visionPath: "../vision/index.html"
     Please read these Terms carefully. <strong>By downloading, installing, or using the Services you agree to be bound by these Terms and by our <a href="/privacy/">Privacy Policy</a>.</strong> If you do not agree, do not use the Services.
   </p>
 
-  <div class="toc">
-    <div class="toc-label">In these terms</div>
+  <div class="subpage-toc">
+    <div class="subpage-toc-label">In these terms</div>
     <ol>
       <li><a href="#acceptance">Acceptance and changes</a></li>
       <li><a href="#eligibility">Eligibility and accounts</a></li>
@@ -340,7 +217,5 @@ visionPath: "../vision/index.html"
   <div class="legal-footer-link">
     See also our <a href="/privacy/">Privacy Policy</a>.
   </div>
-</main>
-
-{% include "footer-landing.njk" %}
+</article>
 {% endblock %}

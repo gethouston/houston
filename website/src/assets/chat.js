@@ -52,7 +52,7 @@
         },
         {
           who: "felipe",
-          text: "Exclude the churned accounts, and add the renewals coming up this quarter.",
+          text: "Exclude the churned accounts, and add the renewals coming up this quarter. @Julian the stalled ones are your call.",
         },
         {
           who: "agent",
@@ -60,11 +60,11 @@
         },
         {
           who: "julian",
-          text: "Perfect. Put it where the whole team can see it.",
+          text: "Chase the stalled ones. Put it where the whole team can see it.",
         },
         {
           who: "agent",
-          text: "Done. The Q3 pipeline report is on the shared board, at-risk deals flagged, with a follow-up drafted for each.",
+          text: "Done. The report is on the shared board, at-risk deals flagged, a follow-up drafted for each. @Julian please confirm and I'll send all 12.",
         },
       ],
     },
@@ -81,11 +81,11 @@
         },
         {
           who: "agent",
-          text: "On it. 842 transactions across Stripe and the bank feed. 838 matched cleanly. 3 bank charges have no invoice, and 1 refund is logged twice.",
+          text: "On it. 842 transactions across Stripe and the bank feed. 838 matched cleanly. 3 bank charges have no invoice, and 1 refund is logged twice. @Julian that refund looks like yours, can you confirm?",
         },
         {
           who: "julian",
-          text: "The double refund is ours, we issued it by mistake. Categorize the 3 charges as software.",
+          text: "Confirmed, we issued it by mistake. Categorize the 3 charges as software.",
         },
         {
           who: "agent",
@@ -94,7 +94,7 @@
         { who: "felipe", text: "Great. Send it to the accountant." },
         {
           who: "agent",
-          text: "Sent. The reconciled month and a one-page summary are on their way, copied to the shared folder.",
+          text: "Sent. The reconciled month is with the accountant. @Felipe the one-page summary is in the shared folder for your sign-off.",
         },
       ],
     },
@@ -115,7 +115,7 @@
         },
         {
           who: "felipe",
-          text: "Push anyone with fintech experience to the top.",
+          text: "Push anyone with fintech experience to the top. @Julian you'll want to see the first two.",
         },
         {
           who: "agent",
@@ -124,7 +124,7 @@
         { who: "julian", text: "Set up calls with the top 3." },
         {
           who: "agent",
-          text: "Booked. Three 30-minute intro calls are on your calendar this week, invites sent.",
+          text: "Booked. Three intro calls on your calendar this week. @Felipe should I add you to the panel invites?",
         },
       ],
     },
@@ -154,7 +154,7 @@
         { who: "felipe", text: "Who are the 7 for?" },
         {
           who: "agent",
-          text: "Two refunds over our limit for you to approve, and five feature questions I have drafted replies for. Approve and they go out.",
+          text: "Five feature questions with replies drafted, and two refunds over our limit. @Felipe please approve those and everything goes out today.",
         },
       ],
     },
@@ -169,6 +169,13 @@
   if (!tabs.length || !thread) return;
 
   var reduceMq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+
+  function mentionize(t) {
+    return t.replace(
+      /@(Julian|Felipe|Maya)\b/g,
+      '<span class="mention">@$1</span>',
+    );
+  }
 
   function esc(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -200,7 +207,7 @@
         '<div class="cmsg-main"><span class="cmsg-name">' +
         esc(s.agent) +
         '</span><div class="cmsg-text">' +
-        esc(m.text) +
+        mentionize(esc(m.text)) +
         "</div></div></div>"
       );
     }
@@ -213,7 +220,7 @@
       '<div class="cmsg-main"><span class="cmsg-name">' +
       esc(p.name) +
       '</span><div class="cmsg-text">' +
-      esc(m.text) +
+      mentionize(esc(m.text)) +
       "</div></div></div>"
     );
   }
@@ -280,11 +287,28 @@
         if (mine !== token) return;
       }
       await wait(2800);
+      // Auto-advance to the next use case after a full pass, unless the user
+      // has taken over the pills or is reading (hovering the window).
+      if (mine === token && !userTookOver && !hovered) {
+        play((idx + 1) % SCENARIOS.length);
+        return;
+      }
     }
   }
 
+  // User intent wins: a manual pill click ends auto-rotation for good.
+  var userTookOver = false;
+  var hovered = false;
+  root.addEventListener("mouseenter", () => {
+    hovered = true;
+  });
+  root.addEventListener("mouseleave", () => {
+    hovered = false;
+  });
+
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
+      userTookOver = true;
       play(parseInt(tab.getAttribute("data-uc"), 10));
     });
   });

@@ -1,656 +1,437 @@
 ---
-navActive: vision
 rootPath: "../"
-learnPath: "../learn/index.html"
-visionPath: "index.html"
 ---
-{% extends "base.njk" %}
+{% extends "subpage.njk" %}
 {% block title %}Ship the Impossible - Houston{% endblock %}
 {% block meta %}
 <meta name="description" content="Ship one product. Each customer's AI adapts it. One product, infinite versions.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://gethouston.ai/vision/">
+<meta property="og:title" content="Ship the Impossible - Houston">
+<meta property="og:description" content="Ship one product. Each customer's AI adapts it. One product, infinite versions.">
+<meta property="og:site_name" content="Houston">
+<meta name="twitter:card" content="summary_large_image">
 {% endblock %}
-{% block stylesheets %}
-<link rel="stylesheet" href="../learn/style.css?v=3">
-{% endblock %}
-{% block inlineStyles %}
+{% block subpageStyles %}
 <style>
-      /* Vision-specific overrides: essay layout, single column */
-      .essay {
-        width: min(744px, calc(100% - 32px));
-        margin: 28px auto 72px;
-        padding: 64px 48px 88px;
-        background: rgba(8, 10, 18, 0.66);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-      }
-
-      @media (max-width: 700px) {
-        .essay {
-          width: calc(100% - 24px);
-          margin-top: 12px;
-          padding: 44px 24px 64px;
-        }
-      }
-
-      .essay .eyebrow {
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--gray-500);
-        margin-bottom: 18px;
-      }
-
-      .essay h1 {
-        font-size: clamp(36px, 5vw, 48px);
-        font-weight: 400;
-        letter-spacing: -0.03em;
-        line-height: 1.15;
-        color: var(--gray-950);
-        margin-bottom: 24px;
-      }
-
-      @media (max-width: 700px) {
-        .essay h1 {
-          font-size: 36px;
-        }
-      }
-
-      .byline {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-size: 14px;
-        color: var(--muted-foreground);
-        margin-bottom: 56px;
-        padding-bottom: 32px;
-        border-bottom: 1px solid var(--border-light);
-      }
-
-      .byline-name {
-        color: var(--gray-950);
-        font-weight: 500;
-      }
-
-      .byline-sep {
-        color: var(--gray-300);
-      }
-
-      /* X / Twitter pill button */
-      .x-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 14px;
-        border-radius: 9999px;
-        background: var(--gray-950);
-        color: #0d0d0d;
-        font-size: 13px;
-        font-weight: 500;
-        text-decoration: none;
-        border: 1px solid var(--gray-950);
-        transition: all 0.2s;
-        line-height: 1;
-        white-space: nowrap;
-      }
-
-      .x-btn:hover {
-        background: rgba(255, 255, 255, 0.85);
-        border-color: rgba(255, 255, 255, 0.85);
-        transform: translateY(-1px);
-      }
-
-      .x-btn svg {
-        width: 12px;
-        height: 12px;
-        flex-shrink: 0;
-      }
-
-      .x-btn-lg {
-        padding: 9px 18px;
-        font-size: 14px;
-      }
-
-      .x-btn-lg svg {
-        width: 14px;
-        height: 14px;
-      }
-
-      .signoff .x-btn {
-        margin-top: 12px;
-      }
-
-      .essay .lead-paragraphs p {
-        font-size: 19px;
-        line-height: 1.55;
-        color: var(--gray-700);
-        margin-bottom: 20px;
-      }
-
-      .essay .lead-paragraphs p strong {
-        color: var(--gray-950);
-      }
-
-      .essay h2 {
-        font-size: 26px;
-        font-weight: 600;
-        letter-spacing: -0.015em;
-        line-height: 1.25;
-        color: var(--gray-950);
-        margin-top: 64px;
-        margin-bottom: 18px;
-        scroll-margin-top: 32px;
-      }
-
-      .essay p {
-        font-size: 17px;
-        line-height: 1.7;
-        color: var(--gray-700);
-        margin-bottom: 18px;
-      }
-
-      .essay p strong {
-        color: var(--gray-950);
-        font-weight: 600;
-      }
-
-      .essay ul,
-      .essay ol {
-        margin-bottom: 20px;
-        padding-left: 22px;
-        color: var(--gray-700);
-        font-size: 17px;
-      }
-
-      .essay li {
-        margin-bottom: 10px;
-        line-height: 1.65;
-      }
-
-      .essay li::marker {
-        color: var(--gray-400);
-      }
-
-      .essay .map {
-        background: var(--gray-50);
-        border: 1px solid var(--border-light);
-        border-radius: 12px;
-        padding: 22px 26px;
-        margin: 40px 0 56px;
-      }
-
-      .essay .map-label {
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--gray-500);
-        margin-bottom: 12px;
-      }
-
-      .essay .map ol {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        counter-reset: map;
-      }
-
-      .essay .map li {
-        counter-increment: map;
-        margin-bottom: 6px;
-        padding-left: 0;
-        font-size: 15px;
-      }
-
-      .essay .map li::marker {
-        content: none;
-      }
-
-      .essay .map li::before {
-        content: counter(map, decimal-leading-zero);
-        color: var(--gray-400);
-        margin-right: 12px;
-        font-variant-numeric: tabular-nums;
-      }
-
-      .essay .map a {
-        color: var(--gray-700);
-      }
-
-      .essay .map a:hover {
-        color: var(--gray-950);
-        text-decoration: underline;
-        text-underline-offset: 3px;
-      }
-
-      .essay .signoff {
-        margin-top: 72px;
-        padding-top: 32px;
-        border-top: 1px solid var(--border-light);
-        font-size: 15px;
-        color: var(--muted-foreground);
-      }
-
-      .essay .signoff strong {
-        color: var(--gray-950);
-        font-weight: 500;
-      }
-
-      .essay .cta {
-        margin-top: 40px;
-        padding: 28px 32px;
-        background: var(--gray-50);
-        border: 1px solid var(--border-light);
-        border-radius: 14px;
-      }
-
-      .essay .cta h3 {
-        font-size: 17px;
-        font-weight: 600;
-        color: var(--gray-950);
-        margin-bottom: 6px;
-      }
-
-      .essay .cta p {
-        font-size: 15px;
-        margin-bottom: 16px;
-        color: var(--muted-foreground);
-      }
-
-      .essay .cta-split {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        padding: 32px;
-        gap: 0;
-      }
-
-      .essay .cta-split > div {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .essay .cta-split > div:first-child {
-        padding-right: 32px;
-      }
-
-      .essay .cta-split > div + div {
-        border-left: 1px solid var(--border-light);
-        padding-left: 32px;
-      }
-
-      .essay .cta-split h3 {
-        margin-bottom: 6px;
-      }
-
-      .essay .cta-split p {
-        flex: 1;
-      }
-
-      .essay .cta-split .btn {
-        align-self: flex-start;
-      }
-
-      @media (max-width: 640px) {
-        .essay .cta-split {
-          grid-template-columns: 1fr;
-        }
-
-        .essay .cta-split > div:first-child {
-          padding-right: 0;
-          padding-bottom: 28px;
-        }
-
-        .essay .cta-split > div + div {
-          border-left: none;
-          border-top: 1px solid var(--border-light);
-          padding-left: 0;
-          padding-top: 28px;
-        }
-      }
-    </style>
+  /* Vision essay — editorial single column on bone. Prose + palette come from
+     subpage.css; this adds the byline, the arc map, larger lead paragraphs,
+     the X pill, and the closing CTA split. */
+  .essay { width: min(744px, 100%); margin: 0 auto; padding: 0 var(--gutter); }
+  .essay .byline {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    font-size: 14px; color: var(--ink-muted);
+    margin: 24px 0 48px; padding-bottom: 28px;
+    border-bottom: 1px solid var(--line);
+  }
+  .byline-name { color: var(--ink-strong); font-weight: 600; }
+  .byline-sep { color: var(--ink-subtle); }
+  .x-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 14px; border-radius: 999px;
+    background: var(--action); color: var(--action-text);
+    font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap;
+    border: 1px solid var(--action);
+    transition: background-color var(--dur-fast) var(--ease-standard),
+      transform var(--dur-fast) var(--ease-entrance);
+  }
+  .x-btn:hover { background: var(--action-hover); transform: translateY(-1px); }
+  .x-btn svg { width: 12px; height: 12px; flex-shrink: 0; }
+  .x-btn-lg { padding: 10px 18px; font-size: 14px; }
+  .x-btn-lg svg { width: 14px; height: 14px; }
+  .essay .lead-paragraphs p {
+    font-size: clamp(18px, 1.9vw, 20px); line-height: 1.55;
+    color: var(--ink); margin-bottom: 20px;
+  }
+  .essay .lead-paragraphs p strong { color: var(--ink-strong); }
+  .essay .map .map-label {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink-subtle); margin-bottom: 14px;
+  }
+  .essay .map { background: var(--panel); border: 1px solid var(--line);
+    border-radius: 16px; padding: 22px 26px; margin: 36px 0 52px; }
+  .essay .map ol { list-style: none; counter-reset: map; margin: 0; padding: 0; }
+  .essay .map li {
+    counter-increment: map; margin-bottom: 7px; font-size: 14.5px;
+  }
+  .essay .map li::before {
+    content: counter(map, decimal-leading-zero);
+    color: var(--ink-subtle); margin-right: 12px;
+    font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 12px;
+  }
+  .essay .map a { color: var(--ink-muted); text-decoration: none; }
+  .essay .map a:hover { color: var(--ink-strong); text-decoration: underline; text-underline-offset: 3px; }
+  .essay .signoff {
+    margin-top: 64px; padding-top: 32px; border-top: 1px solid var(--line);
+    font-size: 15px; color: var(--ink-muted);
+  }
+  .essay .signoff strong { color: var(--ink-strong); font-weight: 600; }
+  .essay .signoff .x-btn { margin-top: 14px; }
+  .essay .cta-split {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    margin-top: 44px; padding: 32px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
+  }
+  .essay .cta-split > div { display: flex; flex-direction: column; }
+  .essay .cta-split > div:first-child { padding-right: 32px; }
+  .essay .cta-split > div + div { border-left: 1px solid var(--line); padding-left: 32px; }
+  .essay .cta-split h3 { font-size: 17px; font-weight: 600; color: var(--ink-strong); margin-bottom: 6px; }
+  .essay .cta-split p { font-size: 15px; color: var(--ink-muted); margin-bottom: 16px; flex: 1; }
+  .essay .cta-split .btn { align-self: flex-start; }
+  @media (max-width: 640px) {
+    .essay .cta-split { grid-template-columns: 1fr; }
+    .essay .cta-split > div:first-child { padding-right: 0; padding-bottom: 28px; }
+    .essay .cta-split > div + div {
+      border-left: none; border-top: 1px solid var(--line);
+      padding-left: 0; padding-top: 28px;
+    }
+  }
+</style>
 {% endblock %}
-{% block body %}
-    {% include "space-bg.njk" %}
-    {% include "nav-docs.njk" %}
+{% block subpageContent %}
+<article class="essay prose">
+  <div class="subpage-eyebrow">An essay</div>
+  <h1>Ship the impossible</h1>
 
-    <main class="essay">
-      <div class="eyebrow">An essay</div>
-      <h1>Ship the impossible</h1>
+  <div class="byline">
+    <span class="byline-name">Julian Arango</span>
+    <span class="byline-sep">·</span>
+    <span>Founder, Houston</span>
+    <span class="byline-sep">·</span>
+    <span>March 15, 2026</span>
+    <a href="https://x.com/ja818_" target="_blank" rel="noopener noreferrer" class="x-btn" style="margin-left: 12px;">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      @ja818_
+    </a>
+  </div>
 
-      <div class="byline">
-        <span class="byline-name">Julian Arango</span>
-        <span class="byline-sep">·</span>
-        <span>Founder, Houston</span>
-        <span class="byline-sep">·</span>
-        <span>March 15, 2026</span>
-        <a href="https://x.com/ja818_" target="_blank" rel="noopener noreferrer" class="x-btn" style="margin-left: 12px;">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-          @ja818_
-        </a>
-      </div>
+  <div class="lead-paragraphs">
+    <p>
+      Every piece of software you use is a workspace. A workspace is a
+      place where data gets created, read, updated, and deleted. That's
+      CRUD. Spreadsheets, CRMs, accounting tools, project managers. The
+      chrome is different. The four operations are the same.
+    </p>
+    <p>
+      <strong>An AI-native workspace is a workspace where the AI can
+      create, read, update, and delete the same data the human
+      can.</strong> Not as a feature the app reaches for. As a
+      co-operator. The human works through the UI. The AI works through
+      its own tools. Both are full participants. Neither is a guest.
+    </p>
+    <p>
+      That single change reshapes everything above it. What follows is
+      how we got here, what it means, and why I'm building Houston.
+    </p>
+  </div>
 
-      <div class="lead-paragraphs">
-        <p>
-          Every piece of software you use is a workspace. A workspace is a
-          place where data gets created, read, updated, and deleted. That's
-          CRUD. Spreadsheets, CRMs, accounting tools, project managers. The
-          chrome is different. The four operations are the same.
-        </p>
-        <p>
-          <strong>An AI-native workspace is a workspace where the AI can
-          create, read, update, and delete the same data the human
-          can.</strong> Not as a feature the app reaches for. As a
-          co-operator. The human works through the UI. The AI works through
-          its own tools. Both are full participants. Neither is a guest.
-        </p>
-        <p>
-          That single change reshapes everything above it. What follows is
-          how we got here, what it means, and why I'm building Houston.
-        </p>
-      </div>
+  <div class="map">
+    <div class="map-label">The arc</div>
+    <ol>
+      <li><a href="#crud">Every app is CRUD</a></li>
+      <li><a href="#automation">Automation hit a ceiling</a></li>
+      <li><a href="#chatgpt">ChatGPT arrived, and couldn't touch the workspace</a></li>
+      <li><a href="#feature">AI as a feature doesn't scale</a></li>
+      <li><a href="#cursor">Cursor changed the shape</a></li>
+      <li><a href="#definition">AI-Native Workspaces</a></li>
+      <li><a href="#beyond-code">Why this matters beyond code</a></li>
+      <li><a href="#houston">What Houston is for users</a></li>
+      <li><a href="#b2b">What Houston is for founders</a></li>
+    </ol>
+  </div>
 
-      <div class="map">
-        <div class="map-label">The arc</div>
-        <ol>
-          <li><a href="#crud">Every app is CRUD</a></li>
-          <li><a href="#automation">Automation hit a ceiling</a></li>
-          <li><a href="#chatgpt">ChatGPT arrived, and couldn't touch the workspace</a></li>
-          <li><a href="#feature">AI as a feature doesn't scale</a></li>
-          <li><a href="#cursor">Cursor changed the shape</a></li>
-          <li><a href="#definition">AI-Native Workspaces</a></li>
-          <li><a href="#beyond-code">Why this matters beyond code</a></li>
-          <li><a href="#houston">What Houston is for users</a></li>
-          <li><a href="#b2b">What Houston is for founders</a></li>
-        </ol>
-      </div>
+  <h2 id="crud">Every app is CRUD</h2>
+  <p>
+    Strip the branding off any SaaS product and you find the same four
+    operations. Create a record. Read a record. Update a record. Delete
+    a record. Spreadsheets do it. Salesforce does it. QuickBooks, Notion,
+    Linear, Figma, all of them.
+  </p>
+  <p>
+    Workflows get layered on top. Approvals, pipelines, notifications.
+    But underneath the workflows, the primitive is still CRUD. That's
+    the shape of software.
+  </p>
+  <p>
+    Call this a workspace. When I say "workspace" in this essay, I mean
+    any piece of software that does CRUD on data a human cares about.
+  </p>
 
-      <h2 id="crud">Every app is CRUD</h2>
-      <p>
-        Strip the branding off any SaaS product and you find the same four
-        operations. Create a record. Read a record. Update a record. Delete
-        a record. Spreadsheets do it. Salesforce does it. QuickBooks, Notion,
-        Linear, Figma, all of them.
-      </p>
-      <p>
-        Workflows get layered on top. Approvals, pipelines, notifications.
-        But underneath the workflows, the primitive is still CRUD. That's
-        the shape of software.
-      </p>
-      <p>
-        Call this a workspace. When I say "workspace" in this essay, I mean
-        any piece of software that does CRUD on data a human cares about.
-      </p>
+  <h2 id="automation">Automation hit a ceiling</h2>
+  <p>
+    Since the first workspace, engineers have tried to automate parts
+    of it. Automation is a script. A script runs the same steps every
+    time.
+  </p>
+  <p>
+    This works beautifully until something unpredictable happens. A new
+    type of file. A weird customer. A rule nobody wrote down. The
+    script breaks, and a human has to step in.
+  </p>
+  <p>
+    Pre-GPT chatbots hit the same wall. Real conversation is
+    unpredictable. Scripted responses can't keep up. Chatbots got a bad
+    reputation, and earned it.
+  </p>
+  <p>
+    The lesson from both: if your problem has edge cases, a script is
+    the wrong tool.
+  </p>
 
-      <h2 id="automation">Automation hit a ceiling</h2>
-      <p>
-        Since the first workspace, engineers have tried to automate parts
-        of it. Automation is a script. A script runs the same steps every
-        time.
-      </p>
-      <p>
-        This works beautifully until something unpredictable happens. A new
-        type of file. A weird customer. A rule nobody wrote down. The
-        script breaks, and a human has to step in.
-      </p>
-      <p>
-        Pre-GPT chatbots hit the same wall. Real conversation is
-        unpredictable. Scripted responses can't keep up. Chatbots got a bad
-        reputation, and earned it.
-      </p>
-      <p>
-        The lesson from both: if your problem has edge cases, a script is
-        the wrong tool.
-      </p>
+  <h2 id="chatgpt">ChatGPT arrived, and couldn't touch the workspace</h2>
+  <p>
+    Then ChatGPT showed up, and suddenly unpredictability wasn't a
+    problem. You could talk to it about anything. It would figure out
+    what you meant.
+  </p>
+  <p>
+    There was one catch. ChatGPT couldn't touch the workspace.
+  </p>
+  <p>
+    The AI reads text and writes text. The workspace lives in databases
+    and files, behind buttons and forms. The two systems couldn't see
+    each other.
+  </p>
+  <p>
+    So users improvised. They copied context out of the workspace. They
+    pasted it into ChatGPT. They read the response. They typed it back
+    into the workspace by hand.
+  </p>
+  <p>
+    The human became a USB cable between two systems that couldn't talk
+    to each other.
+  </p>
+  <p>
+    It worked, because the alternative was nothing. But it was the
+    worst possible integration pattern. Most of the user's time went to
+    plumbing data between tools, not doing the actual work.
+  </p>
 
-      <h2 id="chatgpt">ChatGPT arrived, and couldn't touch the workspace</h2>
-      <p>
-        Then ChatGPT showed up, and suddenly unpredictability wasn't a
-        problem. You could talk to it about anything. It would figure out
-        what you meant.
-      </p>
-      <p>
-        There was one catch. ChatGPT couldn't touch the workspace.
-      </p>
-      <p>
-        The AI reads text and writes text. The workspace lives in databases
-        and files, behind buttons and forms. The two systems couldn't see
-        each other.
-      </p>
-      <p>
-        So users improvised. They copied context out of the workspace. They
-        pasted it into ChatGPT. They read the response. They typed it back
-        into the workspace by hand.
-      </p>
-      <p>
-        The human became a USB cable between two systems that couldn't talk
-        to each other.
-      </p>
-      <p>
-        It worked, because the alternative was nothing. But it was the
-        worst possible integration pattern. Most of the user's time went to
-        plumbing data between tools, not doing the actual work.
-      </p>
+  <h2 id="feature">AI as a feature doesn't scale</h2>
+  <p>
+    The next move was obvious. Engineers built AI into their workspaces
+    directly. A "summarize with AI" button. A chat box in the corner.
+    A "generate" option in a menu.
+  </p>
+  <p>
+    This is the pattern nearly every SaaS product uses today, including
+    some of the most polished software being shipped. It's not a story
+    about bad products. It's a story about an architecture that has a
+    ceiling, no matter how well it's executed.
+  </p>
+  <p>
+    Here's a concrete example. Imagine an accounting app where the AI
+    could help classify documents. Useful feature. Someone adds a
+    "classify with AI" button. Great.
+  </p>
+  <p>
+    A week later, a user wants the AI to also suggest which clients
+    are at risk of churning. There's no button for that. The AI never
+    sees the request. Someone files a feature ticket. Six months later,
+    if the feature is popular enough, a new button appears.
+  </p>
+  <p>
+    But the user wanted ten things, not one. For every action the user
+    might want the AI to help with, the engineers have to ship a
+    button. Every button needs a design, a backend, a review cycle.
+    This can't scale.
+  </p>
+  <p>
+    The root cause is simple. The AI only has access to the
+    capabilities the engineer pre-decided to expose. Everything outside
+    that small surface is invisible. Even if the AI is smart enough to
+    solve the problem, it's caged.
+  </p>
 
-      <h2 id="feature">AI as a feature doesn't scale</h2>
-      <p>
-        The next move was obvious. Engineers built AI into their workspaces
-        directly. A "summarize with AI" button. A chat box in the corner.
-        A "generate" option in a menu.
-      </p>
-      <p>
-        This is the pattern nearly every SaaS product uses today, including
-        some of the most polished software being shipped. It's not a story
-        about bad products. It's a story about an architecture that has a
-        ceiling, no matter how well it's executed.
-      </p>
-      <p>
-        Here's a concrete example. Imagine an accounting app where the AI
-        could help classify documents. Useful feature. Someone adds a
-        "classify with AI" button. Great.
-      </p>
-      <p>
-        A week later, a user wants the AI to also suggest which clients
-        are at risk of churning. There's no button for that. The AI never
-        sees the request. Someone files a feature ticket. Six months later,
-        if the feature is popular enough, a new button appears.
-      </p>
-      <p>
-        But the user wanted ten things, not one. For every action the user
-        might want the AI to help with, the engineers have to ship a
-        button. Every button needs a design, a backend, a review cycle.
-        This can't scale.
-      </p>
-      <p>
-        The root cause is simple. The AI only has access to the
-        capabilities the engineer pre-decided to expose. Everything outside
-        that small surface is invisible. Even if the AI is smart enough to
-        solve the problem, it's caged.
-      </p>
+  <h2 id="cursor">Cursor changed the shape</h2>
+  <p>
+    Programmers lived through every stage of this mess. They invented
+    solutions as the pain got worse.
+  </p>
+  <p>
+    <strong>Stage one.</strong> Copy code into ChatGPT. Get a suggestion
+    back. Paste it into the right place in your editor. Hate your life.
+  </p>
+  <p>
+    <strong>Stage two.</strong> Cursor put the chat inside the editor.
+    Less tab-switching. Still the USB-cable pattern underneath.
+  </p>
+  <p>
+    <strong>Stage three.</strong> Cursor let you reference files from
+    the chat. The AI could pull context itself. Faster. Still "advising"
+    the programmer.
+  </p>
+  <p>
+    <strong>Stage four.</strong> Cursor started suggesting where to
+    insert code changes directly in the file. The AI was pointing at the
+    right place, but the programmer still had to click accept.
+  </p>
+  <p>
+    <strong>Stage five.</strong> Cursor gave the AI tools to create,
+    read, update, and delete files directly. No more suggesting. The AI
+    was editing the codebase.
+  </p>
+  <p>
+    Stage five is where the world changed, and most people missed it.
+  </p>
+  <p>
+    The AI wasn't advising a programmer anymore. The AI <em>was</em>
+    programming. Same codebase, same operations, same files. The human
+    edited through the UI. The AI edited through its own tools. Both
+    were operators. Full CRUD parity.
+  </p>
+  <p>
+    For the first time, the AI was inside the workspace. Not glued to
+    the edge of it.
+  </p>
 
-      <h2 id="cursor">Cursor changed the shape</h2>
-      <p>
-        Programmers lived through every stage of this mess. They invented
-        solutions as the pain got worse.
-      </p>
-      <p>
-        <strong>Stage one.</strong> Copy code into ChatGPT. Get a suggestion
-        back. Paste it into the right place in your editor. Hate your life.
-      </p>
-      <p>
-        <strong>Stage two.</strong> Cursor put the chat inside the editor.
-        Less tab-switching. Still the USB-cable pattern underneath.
-      </p>
-      <p>
-        <strong>Stage three.</strong> Cursor let you reference files from
-        the chat. The AI could pull context itself. Faster. Still "advising"
-        the programmer.
-      </p>
-      <p>
-        <strong>Stage four.</strong> Cursor started suggesting where to
-        insert code changes directly in the file. The AI was pointing at the
-        right place, but the programmer still had to click accept.
-      </p>
-      <p>
-        <strong>Stage five.</strong> Cursor gave the AI tools to create,
-        read, update, and delete files directly. No more suggesting. The AI
-        was editing the codebase.
-      </p>
-      <p>
-        Stage five is where the world changed, and most people missed it.
-      </p>
-      <p>
-        The AI wasn't advising a programmer anymore. The AI <em>was</em>
-        programming. Same codebase, same operations, same files. The human
-        edited through the UI. The AI edited through its own tools. Both
-        were operators. Full CRUD parity.
-      </p>
-      <p>
-        For the first time, the AI was inside the workspace. Not glued to
-        the edge of it.
-      </p>
+  <h2 id="definition">AI-Native Workspaces</h2>
+  <p>
+    Nobody has named this pattern yet. People describe it by pointing
+    at examples. "We're building the Cursor for accountants." "We're
+    Claude Code but for lawyers." Clear enough to sell a product, not
+    clear enough to teach.
+  </p>
+  <p>Here's the definition, in one sentence.</p>
+  <p>
+    <strong>An AI-native workspace is a digital environment where the
+    AI and the human share all CRUD operations on the same data.</strong>
+  </p>
+  <p>That's the whole concept. Everything else follows from it.</p>
+  <p>A short test. A workspace is AI-native if all four of these are true:</p>
+  <ol>
+    <li>
+      The AI can create data in the workspace without waiting for a
+      human to click a button.
+    </li>
+    <li>The AI can update and delete that data through the same path.</li>
+    <li>
+      The human sees what the AI did in real time, through the normal
+      UI, without refreshing or reopening anything.
+    </li>
+    <li>
+      There is a chat where the human can ask the AI to do anything the
+      human could do by hand.
+    </li>
+  </ol>
+  <p>Four yes answers: AI-native. Anything less: not yet.</p>
 
-      <h2 id="definition">AI-Native Workspaces</h2>
-      <p>
-        Nobody has named this pattern yet. People describe it by pointing
-        at examples. "We're building the Cursor for accountants." "We're
-        Claude Code but for lawyers." Clear enough to sell a product, not
-        clear enough to teach.
-      </p>
-      <p>Here's the definition, in one sentence.</p>
-      <p>
-        <strong>An AI-native workspace is a digital environment where the
-        AI and the human share all CRUD operations on the same data.</strong>
-      </p>
-      <p>That's the whole concept. Everything else follows from it.</p>
-      <p>A short test. A workspace is AI-native if all four of these are true:</p>
-      <ol>
-        <li>
-          The AI can create data in the workspace without waiting for a
-          human to click a button.
-        </li>
-        <li>The AI can update and delete that data through the same path.</li>
-        <li>
-          The human sees what the AI did in real time, through the normal
-          UI, without refreshing or reopening anything.
-        </li>
-        <li>
-          There is a chat where the human can ask the AI to do anything the
-          human could do by hand.
-        </li>
-      </ol>
-      <p>Four yes answers: AI-native. Anything less: not yet.</p>
+  <h2 id="beyond-code">Why this matters beyond code</h2>
+  <p>
+    Coding was first because programmers build their own tools. Every
+    other role has been waiting.
+  </p>
+  <p>
+    But CRUD is universal. The shape Cursor and Claude Code found
+    works everywhere. Bookkeeping is CRUD. Compliance is CRUD. Sales
+    pipelines are CRUD. Legal review is CRUD.
+  </p>
+  <p>
+    As soon as any of those jobs gets a proper AI-native workspace,
+    it will get the same 10x to 50x jump that coding got.
+  </p>
+  <p>
+    Every SaaS today is trying to glue AI in after the fact. Most
+    will ship a chat sidebar and call it innovation. Every one of
+    those jobs is still waiting for its Cursor moment.
+  </p>
+  <p>That's why I decided to build Houston.</p>
 
-      <h2 id="beyond-code">Why this matters beyond code</h2>
-      <p>
-        Coding was first because programmers build their own tools. Every
-        other role has been waiting.
-      </p>
-      <p>
-        But CRUD is universal. The shape Cursor and Claude Code found
-        works everywhere. Bookkeeping is CRUD. Compliance is CRUD. Sales
-        pipelines are CRUD. Legal review is CRUD.
-      </p>
-      <p>
-        As soon as any of those jobs gets a proper AI-native workspace,
-        it will get the same 10x to 50x jump that coding got.
-      </p>
-      <p>
-        Every SaaS today is trying to glue AI in after the fact. Most
-        will ship a chat sidebar and call it innovation. Every one of
-        those jobs is still waiting for its Cursor moment.
-      </p>
-      <p>That's why I decided to build Houston.</p>
+  <h2 id="houston">What Houston is for users</h2>
+  <p>
+    Houston is a desktop app you download for free. You pick an
+    agent and start working with it the way you'd work with a
+    colleague. Chat with it. Check the board. It handles the rest.
+    If your workflow is a bit different, you just tell it. It
+    adapts. Like a senior team member who already knows your
+    best practices.
+  </p>
+  <p>
+    Agents aren't chatbots. They use real tools, the same way a
+    human teammate would. Read files, send messages, hit APIs,
+    edit documents. When they're done, the result shows up on
+    your board. When they need a decision, they ask.
+  </p>
+  <p>
+    Builders create new agents and share them online. You
+    install one in a click. The store grows because anyone can contribute to it.
+  </p>
 
-      <h2 id="houston">What Houston is for users</h2>
-      <p>
-        Houston is a desktop app you download for free. You pick an
-        agent and start working with it the way you'd work with a
-        colleague. Chat with it. Check the board. It handles the rest.
-        If your workflow is a bit different, you just tell it. It
-        adapts. Like a senior team member who already knows your
-        best practices.
-      </p>
-      <p>
-        Agents aren't chatbots. They use real tools, the same way a
-        human teammate would. Read files, send messages, hit APIs,
-        edit documents. When they're done, the result shows up on
-        your board. When they need a decision, they ask.
-      </p>
-      <p>
-        Builders create new agents and share them online. You
-        install one in a click. The store grows because anyone can contribute to it.
-      </p>
+  <h2 id="b2b">What Houston is for founders</h2>
+  <p>
+    Houston is the platform where you build AI-native products
+    for your customers. You define your vertical. Houston
+    handles everything else.
+  </p>
+  <p>
+    The workspace, the AI runtime, the chat, the board, the
+    integrations. All of it is already built. You bring the
+    domain expertise: the prompts, the workflows, the industry
+    knowledge that makes your product worth paying for.
+  </p>
+  <p>
+    We know this works because we did it ourselves. We had a tax
+    product. Six months of traditional development. Hundreds of
+    AI workflows and edge cases hardcoded into code.
+  </p>
+  <p>
+    One evening of rebuilding on Houston and we had what six
+    months couldn't produce. Not because
+    we wrote more code. Because the AI handled every edge case
+    without anyone shipping a new button.
+  </p>
+  <p>
+    You ship one product. Each customer's AI adapts it to fit
+    them. No forks per client. No feature flags. No professional
+    services team maintaining custom branches.
+  </p>
+  <p>
+    When you're ready to deploy, Houston Cloud runs it for your
+    customers. Your brand, your domain. Our infrastructure.
+  </p>
+  <p>
+    The whole platform is open source. You can inspect every
+    line. You can fork it and run it yourself. Most won't. The
+    point of a platform is that you shouldn't have to.
+  </p>
+  <p>
+    One product. Infinite versions. Ship the impossible.
+  </p>
 
-      <h2 id="b2b">What Houston is for founders</h2>
-      <p>
-        Houston is the platform where you build AI-native products
-        for your customers. You define your vertical. Houston
-        handles everything else.
-      </p>
-      <p>
-        The workspace, the AI runtime, the chat, the board, the
-        integrations. All of it is already built. You bring the
-        domain expertise: the prompts, the workflows, the industry
-        knowledge that makes your product worth paying for.
-      </p>
-      <p>
-        We know this works because we did it ourselves. We had a tax
-        product. Six months of traditional development. Hundreds of
-        AI workflows and edge cases hardcoded into code.
-      </p>
-      <p>
-        One evening of rebuilding on Houston and we had what six
-        months couldn't produce. Not because
-        we wrote more code. Because the AI handled every edge case
-        without anyone shipping a new button.
-      </p>
-      <p>
-        You ship one product. Each customer's AI adapts it to fit
-        them. No forks per client. No feature flags. No professional
-        services team maintaining custom branches.
-      </p>
-      <p>
-        When you're ready to deploy, Houston Cloud runs it for your
-        customers. Your brand, your domain. Our infrastructure.
-      </p>
-      <p>
-        The whole platform is open source. You can inspect every
-        line. You can fork it and run it yourself. Most won't. The
-        point of a platform is that you shouldn't have to.
-      </p>
-      <p>
-        One product. Infinite versions. Ship the impossible.
-      </p>
+  <div class="signoff">
+    <p>
+      <strong>Julian Arango</strong>
+      <br />
+      Founder, Houston
+    </p>
+    <a href="https://x.com/ja818_" target="_blank" rel="noopener noreferrer" class="x-btn x-btn-lg">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      Follow @ja818_ on X
+    </a>
+  </div>
 
-      <div class="signoff">
-        <p>
-          <strong>Julian Arango</strong>
-          <br />
-          Founder, Houston
-        </p>
-        <a href="https://x.com/ja818_" target="_blank" rel="noopener noreferrer" class="x-btn x-btn-lg">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-          Follow @ja818_ on X
-        </a>
-      </div>
-
-      <div class="cta cta-split">
-        <div>
-          <h3>Houston Cloud</h3>
-          <p>
-            Deploy your AI-native product to your customers. Your
-            brand, your domain, our infrastructure. Join the waitlist.
-          </p>
-          <a class="btn btn-primary" href="/waitlist/" target="_blank" rel="noopener noreferrer">
-            Join the waitlist
-          </a>
-        </div>
-        <div>
-          <h3>Try Houston free</h3>
-          <p>
-            Download the desktop app and start working with AI agents
-            today. Open source, no account needed.
-          </p>
-          <a class="btn btn-secondary" href="/#download">
-            Get Houston
-          </a>
-        </div>
-      </div>
-    </main>
-  {% endblock %}
+  <div class="cta-split">
+    <div>
+      <h3>Houston Cloud</h3>
+      <p>
+        Deploy your AI-native product to your customers. Your
+        brand, your domain, our infrastructure. Join the waitlist.
+      </p>
+      <a class="btn btn-ink" href="/waitlist/" target="_blank" rel="noopener noreferrer">
+        Join the waitlist
+      </a>
+    </div>
+    <div>
+      <h3>Try Houston free</h3>
+      <p>
+        Download the desktop app and start working with AI agents
+        today. Open source, no account needed.
+      </p>
+      <a class="btn btn-outline" href="/#download">
+        Get Houston
+      </a>
+    </div>
+  </div>
+</article>
+{% endblock %}

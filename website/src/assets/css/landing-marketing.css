@@ -216,3 +216,42 @@ details.faq-group[open] > summary .faq-chevron {
 details.faq-group > .faq-list {
   padding: 6px 0 18px;
 }
+
+/* ── Stat band — four quiet tiles answering "works with my stack?" ────────── */
+.stats-band {
+  margin-top: clamp(52px, 7vw, 96px);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(20px, 3vw, 44px);
+}
+.stat {
+  border-left: 1px solid var(--line-strong);
+  padding-left: clamp(14px, 1.6vw, 22px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stat-n {
+  font-weight: 340;
+  font-size: clamp(26px, 2.6vw, 38px);
+  letter-spacing: -0.02em;
+  color: var(--ink-strong);
+  line-height: 1.05;
+}
+.stat-l {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+  max-width: 20ch;
+}
+@media (max-width: 880px) {
+  .stats-band {
+    grid-template-columns: repeat(2, 1fr);
+    row-gap: 28px;
+  }
+}
+/* The integrations view's closing count row. */
+.feat-more .feat-note {
+  color: var(--ink-subtle);
+  font-weight: 500;
+}

@@ -1,0 +1,40 @@
+{# ── Shared subpage shell (v4 landing design system) ─────────────────────────
+   The ONE layout for every Resources + legal page (guides, vision, changelog,
+   privacy, terms). Wraps page content in the v4 chrome: the shared landing
+   navbar (nav.njk) + footer (footer.njk), the invite-code download gate, and
+   the bone token layer (site-tokens + landing + subpage css).
+
+   In-page nav/footer anchors (#multiplayer, #pricing, …) point at landing
+   sections, so `root` prefixes them to "/#…"; on the landing itself `root` is
+   unset (empty) and the anchors stay bare. `subpage` flags nav.njk to render
+   its solid (non-hero) variant.
+
+   Pages extend this and fill:
+     block subpageStyles   — page-specific CSS (essay/legal/timeline layout)
+     block subpageContent  — the <main> content #}
+{% extends "base.njk" %}
+{% set root = "/" %}
+{% set subpage = true %}
+{# Self-hosted Hanken Grotesk (via site-tokens) is the whole type system here,
+   exactly like the landing — drop base.njk's render-blocking Fontshare request. #}
+{% block fonts %}{% endblock %}
+{% block headScripts %}
+<script>document.documentElement.className += " js";</script>
+{% endblock %}
+{% block stylesheets %}
+<link rel="preload" href="/assets/fonts/hanken-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/css/site-tokens.css">
+<link rel="stylesheet" href="/assets/css/landing.css">
+<link rel="stylesheet" href="/assets/css/subpage.css">
+<link rel="stylesheet" href="/assets/css/download-gate.css">
+{% block subpageStyles %}{% endblock %}
+{% endblock %}
+{% block body %}
+{% include "landing/nav.njk" %}
+<main id="main" class="subpage">
+{% block subpageContent %}{% endblock %}
+</main>
+{% include "landing/footer.njk" %}
+{% include "landing/download-modals.njk" %}
+{% include "landing/subpage-scripts.njk" %}
+{% endblock %}

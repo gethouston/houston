@@ -1,7 +1,7 @@
 ---
 lang: en
 ---
-{% extends "base.njk" %}
+{% extends "subpage.njk" %}
 {% block title %}Guides — Houston{% endblock %}
 {% block meta %}
 <meta name="description" content="Official Houston guides. Build real AI agents by following what we do in our live workshops, then connect them to your own tools with the developer guides.">
@@ -15,16 +15,11 @@ lang: en
 <link rel="alternate" hreflang="es" href="https://gethouston.ai/guides/es/">
 <link rel="alternate" hreflang="x-default" href="https://gethouston.ai/guides/">
 {% endblock %}
-{% block stylesheets %}
+{% block subpageStyles %}
 <link rel="stylesheet" href="/guides/style.css">
 {% endblock %}
-{% block body %}
-{% include "space-bg.njk" %}
-{% set navActive = "guides" %}
-{% set navDropdownExtra %}<a href="/guides/es/">Español</a>{% endset %}
-{% include "nav-docs.njk" %}
-
-<main class="layout">
+{% block subpageContent %}
+<div class="layout">
   <div class="content-label">Official Houston guides</div>
   <h1>Learn by building.</h1>
   <p class="lead">
@@ -32,6 +27,10 @@ lang: en
     your own pace and leave with a working agent, not just notes. Then connect
     what you built to the rest of your stack with the developer guides.
   </p>
+  <div class="lang-toggle">
+    <a class="is-active" href="/guides/" aria-current="page">English</a>
+    <a href="/guides/es/">Español</a>
+  </div>
 
   <h2 id="create">Create your agent</h2>
   <p class="section-lede">
@@ -187,21 +186,7 @@ lang: en
       <div class="skl"><span>Media list building</span><span>Pitch drafting</span><span>Mention tracking</span></div>
     </div>
   </div>
-</main>
-
-<footer class="footer">
-  <div>
-    Every live workshop we run becomes a guide here.
-  </div>
-  <div style="margin-top: 12px; display: flex; gap: 16px; font-size: 12px; color: var(--gray-500); flex-wrap: wrap; justify-content: center;">
-    <a href="/guides/es/" style="color: var(--gray-500);">Español</a>
-    <a href="/learn/" style="color: var(--gray-500);">Learn</a>
-    <a href="/developers/" style="color: var(--gray-500);">Developers</a>
-    <a href="/changelog/" style="color: var(--gray-500);">Changelog</a>
-    <a href="/privacy/" style="color: var(--gray-500);">Privacy Policy</a>
-    <a href="/terms/" style="color: var(--gray-500);">Terms of Service</a>
-  </div>
-</footer>
+</div>
 
 <script>
   // Mirrors the homepage track() helper: PostHog + GA4, both optional.

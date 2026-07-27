@@ -1,16 +1,10 @@
+{# Behaviours for the subpage shell: the shared navbar (Resources dropdown +
+   mobile menu) and the invite-code download gate. A lean subset of the
+   landing's scripts.njk — no hero/board/chat/reveal assets, since subpages
+   carry none of that markup. The nav is solid from the start (.lnav-solid),
+   so no scroll-state handler is needed. #}
 {% include "installer-urls.njk" %}
 <script>
-  // Nav scroll state — transparent over the hero, frosted once scrolled.
-  (function () {
-    var nav = document.getElementById("lnav");
-    if (!nav) return;
-    function check() {
-      nav.classList.toggle("scrolled", window.scrollY > 10);
-    }
-    window.addEventListener("scroll", check, { passive: true });
-    check();
-  })();
-
   // Resources dropdown: click toggles, Escape / outside click closes.
   (function () {
     var res = document.getElementById("lnav-res");
@@ -29,62 +23,6 @@
     });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") setOpen(false);
-    });
-  })();
-
-  // Swap groups (#parallel agents, #compound feature views): pills toggle
-  // pre-rendered .swap-panel siblings, so JS-off shows the first panel. They
-  // auto-rotate while on screen; a manual click hands control to the user for
-  // good, hovering pauses, reduced-motion never rotates.
-  (function () {
-    var reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    document.querySelectorAll("[data-swap-group]").forEach(function (group) {
-      var tabs = group.querySelectorAll("[data-swap]");
-      var panels = group.querySelectorAll(".swap-panel");
-      var current = 0;
-      var userTookOver = false;
-      var hovered = false;
-      var visible = false;
-
-      function show(i) {
-        current = i;
-        tabs.forEach(function (t, j) {
-          t.classList.toggle("active", i === j);
-          t.setAttribute("aria-selected", i === j ? "true" : "false");
-        });
-        panels.forEach(function (p, j) {
-          p.classList.toggle("active", i === j);
-        });
-      }
-
-      tabs.forEach(function (tab) {
-        tab.addEventListener("click", function () {
-          userTookOver = true;
-          show(Number(tab.getAttribute("data-swap")));
-        });
-      });
-
-      group.addEventListener("mouseenter", function () {
-        hovered = true;
-      });
-      group.addEventListener("mouseleave", function () {
-        hovered = false;
-      });
-
-      if (reduce && reduce.matches) return;
-      if ("IntersectionObserver" in window) {
-        new IntersectionObserver(function (entries) {
-          entries.forEach(function (e) {
-            visible = e.isIntersecting;
-          });
-        }, { threshold: 0.35 }).observe(group);
-      } else {
-        visible = true;
-      }
-      setInterval(function () {
-        if (userTookOver || hovered || !visible) return;
-        show((current + 1) % tabs.length);
-      }, 5000);
     });
   })();
 
@@ -109,47 +47,6 @@
       });
     });
   })();
-
-  // Scroll reveal (opacity/transform only; CSS gates it behind html.js +
-  // prefers-reduced-motion, so this is a no-op visual when motion is reduced).
-  (function () {
-    var els = document.querySelectorAll(".reveal");
-    if (!("IntersectionObserver" in window) || !els.length) {
-      els.forEach(function (el) {
-        el.classList.add("visible");
-      });
-      return;
-    }
-    var obs = new IntersectionObserver(
-      function (entries) {
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("visible");
-            obs.unobserve(entry.target);
-          }
-        });
-      },
-      // Reveal a touch BEFORE an element enters, so a mid-scroll pause never
-      // catches an in-frame block still invisible (reads as an empty section).
-      { threshold: 0.01, rootMargin: "0px 0px 22% 0px" }
-    );
-    els.forEach(function (el) {
-      obs.observe(el);
-    });
-  })();
-
-  // Smooth scroll for in-page anchors.
-  document.querySelectorAll('a[href^="#"]').forEach(function (link) {
-    link.addEventListener("click", function (e) {
-      var id = link.getAttribute("href");
-      if (id.length < 2) return;
-      var target = document.querySelector(id);
-      if (target) {
-        e.preventDefault();
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    });
-  });
 
   // Analytics — forwards each conversion event to PostHog and GA4 (globals used
   // by the download gate below). Each sink is independent; pageviews come from
@@ -223,12 +120,4 @@
     }
   })();
 </script>
-
-<!-- Landing behaviours as standalone deferred assets. Order matters for the
-     board demo: data + stage define the globals hero-demo.js reads.
-     Each guards prefers-reduced-motion itself and no-ops without its markup. -->
-<script defer src="/assets/hero-demo-data.js"></script>
-<script defer src="/assets/hero-demo-stage.js"></script>
-<script defer src="/assets/hero-demo.js"></script>
-<script defer src="/assets/chat.js"></script>
 {% include "landing/scripts-download.njk" %}

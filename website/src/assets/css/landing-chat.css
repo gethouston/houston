@@ -230,3 +230,12 @@
     padding: 16px;
   }
 }
+
+/* @mentions — humans calling humans, and the agent calling a human in. */
+.mention {
+  font-weight: 600;
+  color: var(--ink-strong);
+  background: rgba(13, 13, 13, 0.07);
+  border-radius: 6px;
+  padding: 1px 5px;
+}
