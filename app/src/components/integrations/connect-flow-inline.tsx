@@ -4,8 +4,33 @@ import type { ConnectFlow } from "./connect-flow-registry";
 import { ConnectNoticeLine, NoticeLine } from "./connect-notice-line";
 
 /**
- * ONE app's connect state, rendered INLINE where the user started it — under
- * the catalog row whose `+` they pressed, under the recovery row's identity
+ * How the block dresses itself.
+ *  - `"panel"` — its own bordered `input`-surface box with a leading spinner.
+ *    For the surfaces that host the block ALONE (the recovery callout, the
+ *    routine intake), where nothing around it reports the hand-off.
+ *  - `"bare"` — no box and no spinner of its own. For the catalog row, whose
+ *    WHOLE row becomes the card and whose `+` slot carries the one spinner: a
+ *    second frame inside that card, and a second spinner under the first, are
+ *    the same news told twice.
+ */
+export type ConnectFlowVariant = "panel" | "bare";
+
+/**
+ * Does this toolkit have anything for {@link ConnectFlowInline} to show — a
+ * live phase, or an outcome still inside its expiry window? A surface that
+ * DRESSES the block (the catalog row becomes a card around it) asks first, so
+ * the chrome and the content appear and leave as one.
+ */
+export function hasConnectState(
+  connectFlow: ConnectFlow,
+  toolkit: string,
+): boolean {
+  return toolkit in connectFlow.states || toolkit in connectFlow.notices;
+}
+
+/**
+ * ONE app's connect state, rendered INLINE where the user started it — inside
+ * the catalog card the pressed row became, under the recovery row's identity
  * line, under the intake's connect prompt. It is the only "we are connecting"
  * surface: there is no page-level banner, so nothing the user is reading ever
  * jumps to make room for feedback about a row far above it.
@@ -25,13 +50,17 @@ import { ConnectNoticeLine, NoticeLine } from "./connect-notice-line";
  * The whole block is a polite live region, so the starting -> waiting ->
  * settled progression is announced without stealing focus. Renders nothing
  * when this toolkit has no live flow and no fresh outcome.
+ *
+ * WHICH copy of a repeated app shows it is the host surface's call, not this
+ * component's: the catalog decides by origin key and simply does not render the
+ * block on the copies that did not start the flow.
  */
 export function ConnectFlowInline({
   toolkit,
   appName,
   connectFlow,
   className,
-  owns = true,
+  variant = "panel",
 }: {
   /** The toolkit this block reports on; its actions address that flow only. */
   toolkit: string;
@@ -39,20 +68,13 @@ export function ConnectFlowInline({
   appName: string;
   connectFlow: ConnectFlow;
   className?: string;
-  /**
-   * Whether THIS row is the one that shows the state. A surface that renders
-   * the same app more than once (the catalog's "Most used" spotlight repeats
-   * category rows) passes `false` on every copy that did not start the flow, so
-   * the panel — and its live region — exists exactly once. Surfaces with a
-   * single row per app leave it at the default.
-   */
-  owns?: boolean;
+  variant?: ConnectFlowVariant;
 }) {
   const { t } = useTranslation("integrations");
   const step = connectFlow.states[toolkit];
   const notice = connectFlow.notices[toolkit];
 
-  if (!owns || (!step && !notice)) return null;
+  if (!step && !notice) return null;
 
   return (
     <div
@@ -61,13 +83,20 @@ export function ConnectFlowInline({
       className={cn("text-[13px]", className)}
     >
       {step === "waiting" ? (
-        <WaitingPanel
+        <WaitingBlock
           appName={appName}
           toolkit={toolkit}
           connectFlow={connectFlow}
+          variant={variant}
         />
       ) : step === "starting" ? (
-        <NoticeLine icon={<Spinner className="size-3.5" />} tone="muted">
+        <NoticeLine
+          // `bare` sits in a card whose `+` slot is already spinning.
+          icon={
+            variant === "panel" ? <Spinner className="size-3.5" /> : undefined
+          }
+          tone="muted"
+        >
           {t("waiting.opening", { app: appName })}
         </NoticeLine>
       ) : notice ? (
@@ -79,35 +108,52 @@ export function ConnectFlowInline({
 
 /**
  * The waiting step's compact expansion: the browser hand-off explained, plus
- * the three recovery actions. Same quiet input-surface panel language as the
- * pending-connection recovery callout, so an interrupted OAuth reads the same
- * whether the user is still in the flow or comes back to it later.
+ * the three recovery actions. As a `panel` it wears the same quiet
+ * input-surface box as the pending-connection recovery callout, so an
+ * interrupted OAuth reads the same whether the user is still in the flow or
+ * comes back to it later; as `bare` it is already inside the catalog row's own
+ * card and brings no frame and no spinner of its own.
  */
-function WaitingPanel({
+function WaitingBlock({
   appName,
   toolkit,
   connectFlow,
+  variant,
 }: {
   appName: string;
   toolkit: string;
   connectFlow: ConnectFlow;
+  variant: ConnectFlowVariant;
 }) {
   const { t } = useTranslation("integrations");
+  const copy = (
+    <>
+      <p className="font-medium text-ink">
+        {t("waiting.title", { app: appName })}
+      </p>
+      {/* The body names the app too: it was shipping the raw "{{app}}"
+          placeholder, because the old panel never passed the value in. */}
+      <p className="mt-0.5 text-ink-muted text-xs">
+        {t("waiting.body", { app: appName })}
+      </p>
+    </>
+  );
   return (
-    <div className="rounded-xl border border-line bg-input p-3">
-      <div className="flex items-start gap-2.5">
-        <Spinner className="mt-0.5 size-4 text-ink-muted" />
-        <div className="min-w-0 flex-1">
-          <p className="font-medium text-ink">
-            {t("waiting.title", { app: appName })}
-          </p>
-          {/* The body names the app too: it was shipping the raw "{{app}}"
-              placeholder, because the old panel never passed the value in. */}
-          <p className="mt-0.5 text-ink-muted text-xs">
-            {t("waiting.body", { app: appName })}
-          </p>
+    <div
+      className={
+        variant === "panel"
+          ? "rounded-xl border border-line bg-input p-3"
+          : undefined
+      }
+    >
+      {variant === "panel" ? (
+        <div className="flex items-start gap-2.5">
+          <Spinner className="mt-0.5 size-4 text-ink-muted" />
+          <div className="min-w-0 flex-1">{copy}</div>
         </div>
-      </div>
+      ) : (
+        copy
+      )}
       <div className="mt-3 flex flex-wrap gap-2">
         {/* Waking the poll is synchronous — nothing to await, so nothing for an
             AsyncButton's in-flight guard to hold. */}

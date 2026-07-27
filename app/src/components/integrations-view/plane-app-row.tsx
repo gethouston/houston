@@ -5,6 +5,7 @@ import {
   AppLogo,
   type ConnectFlow,
   ConnectFlowInline,
+  hasConnectState,
 } from "../integrations";
 
 /**
@@ -14,16 +15,24 @@ import {
  * The row BODY opens the app's "more info" modal (`onOpen`); only the `+`
  * connects.
  *
- * The row OWNS its connect state. While THIS app connects the `+` spins and the
- * row expands underneath with the live phase ({@link ConnectFlowInline}: opening
- * the browser, then the waiting copy and its recovery actions, then the
- * outcome), so the feedback sits exactly where the user clicked. Every OTHER row
- * stays fully enabled at full strength: connects are per toolkit and concurrent,
- * so handing off Slack must never lock the user out of Notion.
+ * The row OWNS its connect state, and while it does it stops being a flat row:
+ * the header and the live flow ({@link ConnectFlowInline}) are enclosed by ONE
+ * card, so the hand-off reads as this app's own surface rather than a panel
+ * floating loose underneath it. The card carries exactly one spinner — the `+`
+ * slot's, where the user just clicked — so the flow copy below adds words, not
+ * a second thing turning. Every OTHER row stays fully enabled at full strength:
+ * connects are per toolkit and concurrent, so handing off Slack must never lock
+ * the user out of Notion.
  *
  * The catalog renders some apps twice (the "Most used" spotlight repeats
- * category rows), so only the copy that `owns` the flow expands; the duplicate
- * keeps the spinning `+` — one app, one panel, on the row that was pressed.
+ * category rows), so only the copy that `owns` the flow becomes a card; the
+ * duplicate stays a flat row with its compact spinning `+` — one app, one card,
+ * on the row that was pressed.
+ *
+ * At rest nothing about the row changes: the card's border and fill live on
+ * their own layer behind the row, transparent until the flow starts, so the
+ * catalog keeps its flat transparent-row language and the treatment can
+ * cross-fade on opacity alone.
  */
 export function PlaneAppRow({
   display,
@@ -41,29 +50,48 @@ export function PlaneAppRow({
 }) {
   const { t } = useTranslation("integrations");
   const connecting = display.toolkit in connectFlow.states;
+  const carded = owns && hasConnectState(connectFlow, display.toolkit);
   return (
-    <div>
-      <CatalogRow
-        icon={<AppLogo display={display} size="lg" className="rounded-lg" />}
-        title={display.name}
-        description={display.description}
-        onClick={onOpen}
-        action={
-          <CatalogAddButton
-            label={t("home.connectApp", { name: display.name })}
-            busy={connecting}
-            onClick={onConnect}
+    <div className="relative">
+      <span
+        aria-hidden
+        data-live={carded}
+        className="connect-card-frame pointer-events-none absolute inset-0 rounded-xl border border-line bg-input"
+      />
+      <div className="relative">
+        <CatalogRow
+          // Square bottom while carded: the hover fill then stops on a straight
+          // line that reads as the card's header divider, never as a stray
+          // rounded box floating mid-card.
+          className={carded ? "rounded-b-none" : undefined}
+          icon={<AppLogo display={display} size="lg" className="rounded-lg" />}
+          title={display.name}
+          description={display.description}
+          onClick={onOpen}
+          action={
+            <CatalogAddButton
+              // The button's default hover fill IS the card's own surface, so
+              // inside the card it would hover into nothing.
+              className={carded ? "hover:bg-chip focus-visible:bg-chip" : ""}
+              label={t("home.connectApp", { name: display.name })}
+              busy={connecting}
+              onClick={onConnect}
+            />
+          }
+        />
+        {carded && (
+          <ConnectFlowInline
+            appName={display.name}
+            // The row's own rhythm continued: 12px side gutters (its `px-3`)
+            // and the 10px it already leaves under itself, so the card's
+            // padding is even top to bottom.
+            className="connect-card-body px-3 pt-0.5 pb-2.5"
+            connectFlow={connectFlow}
+            toolkit={display.toolkit}
+            variant="bare"
           />
-        }
-      />
-      {/* Indented to the row's text column so the state reads as this row's. */}
-      <ConnectFlowInline
-        appName={display.name}
-        className="mt-1 mb-2 ml-16 mr-3"
-        connectFlow={connectFlow}
-        toolkit={display.toolkit}
-        owns={owns}
-      />
+        )}
+      </div>
     </div>
   );
 }

@@ -169,3 +169,42 @@ body {
     animation: none;
   }
 }
+
+/* A catalog row that OWNS a live connect hand-off becomes ONE card. The card's
+   border + fill live on their own layer BEHIND the row (always mounted,
+   transparent at rest), so the treatment cross-fades on opacity alone — the
+   flat transparent catalog row is untouched until the flow starts, and nothing
+   animates a colour or a shadow per frame. The exit is the faster one. */
+.connect-card-frame {
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+
+.connect-card-frame[data-live="true"] {
+  opacity: 1;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* The flow content rises out of the row it belongs to. The card growing taller
+   is the accepted expansion (only what sits BELOW it moves); the content itself
+   animates on opacity + transform. */
+@keyframes connect-card-body-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.connect-card-body {
+  animation: connect-card-body-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connect-card-body {
+    animation: none;
+  }
+}

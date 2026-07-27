@@ -352,7 +352,8 @@ dialog: a brand-new user with zero connections immediately sees the full
 ~1000-app catalog (`AppCatalogPicker` was deleted long ago). BOTH the global page
 and the agent tab now render it through the shared `CatalogPane` +
 `CategoryCatalog` (see Personal mode below); an in-progress OAuth renders on ITS
-OWN row via `ConnectFlowInline` (never a page-level banner). The old `ConnectMoreAppsSection` / `CatalogBrowser`
+OWN row via `ConnectFlowInline` (never a page-level banner), which cards that row
+around it. The old `ConnectMoreAppsSection` / `CatalogBrowser`
 pair was DELETED with the agent-tab convergence — `AppCatalogGrid` (search +
 category + load-more grid) survives solely inside the allowlist editor.
 
@@ -492,8 +493,9 @@ integrations** tab (§2, `teams.md`).
   transparent at rest, hover fills the circle with the elevated `input` surface —
   white in light mode — against the row's `hover` wash; spins while THIS app
   connects and NEVER disables because another app is connecting) is
-  the ONLY row-level connect; the row expands beneath it with that app's live
-  connect state (`ConnectFlowInline`). Copy: `home.connect` /
+  the ONLY row-level connect; while the row owns that app's live connect state the
+  whole row becomes ONE card around it (`ConnectFlowInline variant="bare"` — see
+  "The owning catalog row IS the card" below). Copy: `home.connect` /
   `home.connectApp`. Disconnect is scope `everywhere` (a user-level connection
   disappears for ALL agents); the confirm names no agents (chip plumbing removed).
   This page is a PERSONAL-CONNECTIONS surface only: a connected app's
@@ -676,14 +678,46 @@ fully enabled at full strength. `busy`/`disabled` cross-row props were removed f
 
 **Feedback lands where the user clicked.** `ConnectFlowInline`
 (`integrations/connect-flow-inline.tsx`, replacing the deleted
-`ConnectWaitingPanel`) renders one app's state INLINE — under the catalog row whose
-`+` was pressed, under the recovery row, under the intake's connect prompt. It is a
+`ConnectWaitingPanel`) renders one app's state INLINE — inside the catalog card the
+pressed row became, under the recovery row, under the intake's connect prompt. It is a
 `role="status" aria-live="polite"` region announcing starting → waiting → settled:
 `waiting.opening` ("Opening {{app}} in your browser") while the link mints, the
 waiting copy + Reopen / I have finished / Cancel (core `Button`/`AsyncButton`, no
 hand-rolled utility buttons) once the browser is open, then the outcome line. The
 old top-of-catalog banner is gone: it shoved the sections ~90px down, far from the
 row that caused it.
+
+**The owning catalog row IS the card — one box, one spinner.** A bordered panel
+floating under a flat row read as a detached box about nothing in particular, and
+it put TWO spinners on one hand-off (the row's `+` and the panel's). So while a
+row owns a live or just-settled flow, `PlaneAppRow` turns the WHOLE row into one
+container: `rounded-xl border-line bg-input` (the recovery callout's surface
+language) enclosing the app header — logo, name, description, the `+` slot — and,
+directly below it, the flow copy and its pills. Nothing is nested inside it: the
+block renders `variant="bare"` (no frame of its own, and no spinner — the header's
+`CatalogAddButton busy` is the ONE spinner, sitting where the user just clicked).
+`variant="panel"` is the default and is what the standalone hosts still get
+(`PendingConnectionCallout`, the routine intake), where nothing around the block
+reports the hand-off; their rendering is unchanged. `hasConnectState(flow, slug)`
+is the shared predicate deciding whether there is anything to dress, so the chrome
+and the content appear and leave as one. Body padding continues the row's own
+rhythm (`px-3` gutters, the 10px the row already leaves under itself).
+
+**Rows at rest are untouched, and the treatment animates on opacity alone.** The
+card's border + fill live on their own always-mounted layer behind the row
+(`span.connect-card-frame[data-live]`, `absolute inset-0`), transparent at rest —
+so the catalog keeps its flat transparent-row language, and carding cross-fades
+without animating a colour or a shadow per frame (`app/src/styles/globals.css`:
+200ms `entrance` in, 150ms out, per DESIGN.md's motion budget). The flow content
+rises in with `connect-card-body` (opacity + `translateY`, 200ms, `animation:
+none` under `prefers-reduced-motion`); the card growing taller is the accepted
+expansion — only what sits BELOW moves, never the row beside it in the 2-col grid.
+While carded the header's hover fill squares its bottom (`rounded-b-none`) so it
+reads as the card's divider, and the `+` swaps to `hover:bg-chip` because its
+default hover fill IS the card's own surface. Covered by
+`integrations-browse.spec.ts` → "the owning row becomes ONE card carrying ONE
+spinner" (one container, one `role="status"` spinner in the `+` slot, zero
+bordered non-button elements inside the live region).
 
 **One panel per hand-off — the ORIGIN KEY** (`integrations/connect-origin.ts`,
 node-tested in `app/tests/connect-origin.test.ts`). The browse catalog renders some
@@ -695,15 +729,17 @@ Cancel buttons. Now every catalog row carries
 the store, and `inlineOwners()` hands the expansion to ONE row: the row the flow
 was started from, or — when that row is no longer rendered (the user searched
 mid-hand-off and the at-rest spotlight dropped out) — the first rendered copy, so a
-live OAuth and its Cancel can never vanish from the page. Duplicate rows keep their
-compact per-slug `+` spinner (`CatalogAddButton busy`), gated on `slug in states`
-and knowing nothing about origins. The settled line itself lives in
-`integrations/connect-notice-line.tsx` (`ConnectNoticeLine`), so the recovery
-callout can render an outcome without pulling in the live-phase block.
-`ConnectFlowInline` takes `owns` (default
-`true`): surfaces with a single row per app — the recovery callout, the intake —
-never pass it, so cross-surface visibility of a live or recovering connection is
-untouched (it gates on connection status, not origin). `surface` is threaded from
+live OAuth and its Cancel can never vanish from the page. Duplicate rows stay FLAT
+(never carded) and keep their compact per-slug `+` spinner (`CatalogAddButton
+busy`), gated on `slug in states` and knowing nothing about origins. The settled
+line itself lives in `integrations/connect-notice-line.tsx` (`ConnectNoticeLine`),
+so the recovery callout can render an outcome without pulling in the live-phase
+block. Ownership is the HOST surface's call, not the block's: `PlaneAppRow` gates
+on `owns && hasConnectState(...)` and simply does not render `ConnectFlowInline`
+on the copies that did not start the flow (the old `owns` prop is gone — only the
+catalog ever repeated a row, and the callout / intake never passed it, so
+cross-surface visibility of a live or recovering connection is untouched: it gates
+on connection status, not origin). `surface` is threaded from
 `IntegrationsReady` (`"integrations"`) and `AgentIntegrationsBody`
 (`` `agent:${id}` ``) through `CatalogPane` into `CategoryCatalog`.
 
