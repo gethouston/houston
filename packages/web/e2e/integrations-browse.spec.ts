@@ -157,6 +157,59 @@ test("a row's + connects INLINE, exactly once, leaving every other row usable", 
   await expect(page.getByText("Finish connecting GitHub")).toHaveCount(1);
 });
 
+test("the owning row becomes ONE card carrying ONE spinner", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["composio"] });
+  await openIntegrationsPage(page);
+
+  await page.getByRole("button", { name: "Connect Slack" }).first().click();
+  await expect(page.getByText("Finish connecting Slack")).toBeVisible();
+
+  // The card is ONE container: the app header (logo + name + description) and
+  // the flow copy share a single bordered box, so the state can never read as a
+  // detached panel floating under an unrelated row. `data-live` is the card
+  // treatment's own layer — present only while this row owns a flow.
+  const card = page
+    .locator('div:has(> span[data-live="true"])')
+    .filter({ hasText: "Finish connecting Slack" });
+  await expect(card).toHaveCount(1);
+  await expect(card.getByText("Slack", { exact: true })).toBeVisible();
+  await expect(card.getByText("Team messaging")).toBeVisible();
+
+  // ONE spinner in it, in the header's `+` slot where the user clicked. The
+  // flow copy below adds words, never a second thing turning.
+  await expect(card.getByRole("status", { name: "Loading" })).toHaveCount(1);
+  await expect(
+    card
+      .getByRole("button", { name: "Connect Slack" })
+      .getByRole("status", { name: "Loading" }),
+  ).toHaveCount(1);
+
+  // And NO box inside the box: nothing in the live region draws a border of its
+  // own (the outlined Reopen pill is a control, not a container).
+  const nested = await card
+    .getByRole("status")
+    .filter({ hasText: "Finish connecting Slack" })
+    .evaluate(
+      (el) =>
+        [el, ...el.querySelectorAll("*")].filter(
+          (n) =>
+            n.tagName !== "BUTTON" &&
+            getComputedStyle(n).borderTopWidth !== "0px",
+        ).length,
+    );
+  expect(nested).toBe(0);
+
+  // The duplicate copy of Slack is NOT carded — it stays a flat catalog row
+  // with the compact busy `+`, so one hand-off is one card.
+  await expect(page.locator('span[data-live="true"]')).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: "Connect Slack" }).last(),
+  ).toBeDisabled();
+});
+
 test("the row the user pressed owns the panel, not the first copy of the app", async ({
   page,
   request,

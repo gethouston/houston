@@ -34,7 +34,7 @@ export {
 } from "./browse-sections";
 export { CatalogLockedSection } from "./catalog-locked-section";
 export { CATEGORY_PRIORITY } from "./category-priority";
-export { ConnectFlowInline } from "./connect-flow-inline";
+export { ConnectFlowInline, hasConnectState } from "./connect-flow-inline";
 export { ConnectNoticeLine } from "./connect-notice-line";
 export {
   connectOriginKey,
