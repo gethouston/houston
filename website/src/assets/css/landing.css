@@ -184,7 +184,9 @@ img {
   align-items: center;
   justify-content: space-between;
   padding: 15px var(--gutter);
-  background: rgba(239, 238, 233, 0.72);
+  /* Fully transparent over the hero sky; gains the solid ivory + hairline
+     only once scrolled (below). */
+  background: transparent;
   transition: box-shadow var(--dur-elegant) var(--ease-standard),
     background-color var(--dur-elegant) var(--ease-standard);
   border-bottom: 1px solid transparent;
