@@ -1,61 +1,82 @@
 /*
- * Landing hero (clean, white, editorial), the ink closing band + per-OS
- * download tiles, and the invite-code download modals. Palette/type from
- * site-tokens.css. The app-window mock lives in its own file.
+ * Landing hero (Mercury-elegant, product-as-hero): a calm headline above-left,
+ * then the REAL app window filling the lower fold, staged for multiplayer, its
+ * soft wash dissolving into the ivory page at the fold's lower edge. Palette/
+ * type from site-tokens.css. The app-window mock lives in its own file; the
+ * invite-code download modals sit at the foot of this file.
  */
 
-/* ── Hero — the giant soft wordmark IS the hero visual (buzz-scale graphic).
-   Minimal words sit AROUND it: a mono tagline above, a value prop + CTA in a
-   baseline row below. The real app window follows immediately as proof. ───── */
+/* ── Hero shell + the single swappable backdrop layer ──────────────────────
+   `--hero-backdrop` is the ONE swap point for the future AI-generated hero
+   photograph: today it's a quiet sage wash that fades in below the headline to
+   frame the window; to land the photo, set a background-image on `.hero-photo`
+   (see hero.njk). The bottom dissolve to ivory is handled by `.hero-fold::after`
+   so any backdrop (wash or photo) melts into the page with no hard edge. */
 .hero {
   position: relative;
   background: var(--ground);
+  --hero-backdrop: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 18%,
+    var(--wash-sage) 40%,
+    var(--wash-sage) 100%
+  );
+}
+.hero-photo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--hero-backdrop);
+  pointer-events: none;
 }
 .hero-fold {
+  position: relative;
+  z-index: 1;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: clamp(96px, 12vh, 140px) var(--gutter) clamp(40px, 6vh, 64px);
+  padding: clamp(92px, 12vh, 124px) var(--gutter) 0;
+  overflow: hidden;
 }
-/* The giant wordmark: a graphic object, not a heading. Light weight, negative
-   tracking, a whisper of blur, plus a softer blurred echo behind for depth. */
-.hero-word {
-  position: relative;
-  font-weight: 300;
-  font-size: clamp(96px, 25vw, 460px);
-  line-height: 0.82;
-  letter-spacing: -0.05em;
-  color: var(--ink-strong);
-  filter: blur(1.5px);
-  user-select: none;
-}
-.hero-word::after {
-  content: "Houston";
+/* The Mercury dissolve: a soft ivory gradient over the lower fold melts the
+   window (and the wash behind it) into the page — no hard bottom border, and it
+   reaches solid ivory before the fold's clip so nothing cuts off abruptly. */
+.hero-fold::after {
+  content: "";
   position: absolute;
-  inset: 0;
-  filter: blur(16px);
-  opacity: 0.32;
-  z-index: -1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 34%;
+  background: linear-gradient(to bottom, transparent 0%, var(--ground) 86%);
+  pointer-events: none;
+  z-index: 3;
 }
-.hero-foot {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: clamp(24px, 5vw, 64px);
-  margin-top: clamp(28px, 4vw, 48px);
-  flex-wrap: wrap;
+
+/* ── Headline block — calm, above-left, NOT a centered stacked wall ──────── */
+.hero-intro {
+  position: relative;
+  z-index: 2;
+  max-width: 46rem;
+  margin-bottom: clamp(22px, 3.4vh, 40px);
 }
-.hero-copy .eyebrow-mono {
-  margin-bottom: 12px;
-}
-.hero-vp {
+.hero-h1 {
   font-weight: 300;
-  font-size: clamp(22px, 2.6vw, 32px);
-  line-height: 1.16;
-  letter-spacing: -0.02em;
+  font-size: clamp(33px, 4.3vw, 55px);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
   color: var(--ink-strong);
-  max-width: 22ch;
+  text-wrap: balance;
+  max-width: 19ch;
+}
+.hero-sub {
+  margin-top: clamp(16px, 1.8vw, 22px);
+  font-weight: 400;
+  font-size: clamp(16.5px, 1.55vw, 20px);
+  line-height: 1.45;
+  color: var(--ink-muted);
+  max-width: 52ch;
   text-wrap: balance;
 }
 .hero-cta {
@@ -63,38 +84,32 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
+  margin-top: clamp(24px, 3vw, 34px);
 }
 .hero-proof {
   font-size: 13px;
   line-height: 1.5;
   color: var(--ink-subtle);
-  max-width: 34ch;
-}
-@media (max-width: 720px) {
-  .hero-foot {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 24px;
-  }
+  max-width: 40ch;
 }
 
-/* ── App window on its soft-rounded panel with one layered shadow ────────── */
-/* The real app window floats in a softly tinted sage panel — the biggest proof
-   moment on the page. One believable soft shadow lifts it off the wash. */
-.hero-frame {
+/* ── The product moment — the real app window fills the lower fold ────────── */
+.hero-visual {
   position: relative;
-  max-width: calc(var(--measure) + 2 * var(--gutter));
-  margin: 0 auto;
-  padding: clamp(24px, 3.4vw, 48px) clamp(24px, 3.4vw, 48px) 0;
-  background: var(--wash-sage);
-  border-top-left-radius: var(--panel-radius);
-  border-top-right-radius: var(--panel-radius);
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 .hero-stage {
   position: relative;
-  max-width: 1080px;
+  width: 100%;
+  max-width: 1120px;
   margin: 0 auto;
 }
+/* One believable layered shadow lifts the window off the sage wash. */
 .hero-stage .win {
   box-shadow: 0 2px 4px rgba(40, 36, 28, 0.05),
     0 28px 56px -22px rgba(40, 36, 28, 0.16),

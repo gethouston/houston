@@ -50,6 +50,13 @@
   function makeCard(agent, script) {
     var c = document.createElement("div");
     c.className = "tcard running hd-enter";
+    // The human face stack (script.card.people) rides along with the card, so
+    // it FLIPs across to Done with everything else — the mission keeps its
+    // teammates through the move (see completeCard). Faces are aria-hidden here;
+    // the whole board carries one descriptive aria-label on [data-hero-demo].
+    var faces = window.heroFacesHtml
+      ? window.heroFacesHtml(script.card.people)
+      : "";
     c.innerHTML =
       '<div class="tc-head">' +
       '<span class="av ' +
@@ -57,7 +64,8 @@
       '"></span>' +
       '<span class="tc-agent"></span></div>' +
       '<div class="tc-title"></div>' +
-      '<div class="tc-desc"></div>';
+      '<div class="tc-desc"></div>' +
+      (faces ? `<div class="faces" aria-hidden="true">${faces}</div>` : "");
     c.querySelector(".tc-agent").textContent = agent.name;
     c.querySelector(".tc-title").textContent = script.card.title;
     c.querySelector(".tc-desc").textContent = script.card.running;

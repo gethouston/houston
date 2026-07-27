@@ -379,6 +379,7 @@
 
 /* Task card */
 .tcard {
+  position: relative;
   background: var(--app-input);
   border: 1px solid var(--app-line);
   border-radius: 12px;
@@ -425,6 +426,50 @@
   font-size: 12px;
   color: var(--app-ink-muted);
   line-height: 1.4;
+  /* Leave room so the bottom-right face stack never overlaps the last line. */
+  padding-right: 44px;
+}
+
+/* ── Human contributor face stack — the multiplayer signal ─────────────────
+   Mirrors @houston-ai/board KanbanPeople: overlapping HUMAN initial avatars
+   (never the agent helmet) at the card's bottom-right, a 2px ring in the card
+   fill between faces, quiet per-person tones, and a "+N" overflow chip. The
+   card's agent helmet (top-left) is WHO runs the mission; these faces are the
+   teammates ON it, so a shared agent + a team read at a glance. */
+.faces {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  flex-direction: row;
+}
+.face {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #fff;
+  margin-left: -6px;
+  box-shadow: 0 0 0 2px var(--app-input);
+}
+.face:first-child {
+  margin-left: 0;
+}
+/* Quiet, desaturated human tones — deliberately distinct from the vivid agent
+   helmet palette; white initials clear WCAG AA on each (>= 5:1). */
+.hp-1 { background: #5b6b7a; }  /* slate */
+.hp-2 { background: #5e7266; }  /* sage */
+.hp-3 { background: #84616b; }  /* mauve */
+.hp-4 { background: #736550; }  /* taupe */
+.hp-5 { background: #5b6488; }  /* indigo */
+.face-more {
+  background: #e6e8ec;
+  color: #555b66;
+  font-weight: 600;
 }
 
 /* ── Graceful collapse (mirrors the app's narrow board) ──────────────────── */
