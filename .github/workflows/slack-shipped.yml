@@ -1,0 +1,39 @@
+name: Ship announcement
+
+# Posts every merged PR to Slack #get-shit-done so the team sees what ships.
+# Requires the SLACK_SHIPPED_WEBHOOK_URL repo secret (a Slack incoming webhook
+# pointed at #get-shit-done). Skips silently until the secret is configured.
+on:
+  pull_request:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  announce:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to get-shit-done
+        env:
+          WEBHOOK: ${{ secrets.SLACK_SHIPPED_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_ADDITIONS: ${{ github.event.pull_request.additions }}
+          PR_DELETIONS: ${{ github.event.pull_request.deletions }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "SLACK_SHIPPED_WEBHOOK_URL not set; skipping announcement."
+            exit 0
+          fi
+          payload=$(jq -n \
+            --arg title "$PR_TITLE" \
+            --arg url "$PR_URL" \
+            --arg num "$PR_NUMBER" \
+            --arg author "$PR_AUTHOR" \
+            --arg adds "$PR_ADDITIONS" \
+            --arg dels "$PR_DELETIONS" \
+            '{text: (":ship: <" + $url + "|#" + $num + " " + $title + "> shipped by " + $author + "  (+" + $adds + " / -" + $dels + ")")}')
+          curl -sf -X POST -H 'Content-Type: application/json' -d "$payload" "$WEBHOOK"
