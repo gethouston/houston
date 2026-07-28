@@ -399,7 +399,11 @@ test("a 409 (approval_required) is no longer special: it surfaces as a generic e
   const failure = runWithInteractionCapture(holder, () =>
     run(execute, { action: "GMAIL_SEND_EMAIL", params: { to: "a@b.com" } }),
   );
-  await expect(failure).rejects.toThrow(/integrations execute failed \(409\)/);
+  await expect(failure).rejects.toThrow(
+    /integrations execute failed \(409, code approval_required\)/,
+  );
+  // Unrecognized 4xx → the body (toolkit, action, params hash) is redacted.
+  await expect(failure).rejects.not.toThrow(/paramsHash|h7f3a1/);
   expect(holder.pending).toBeUndefined();
 });
 
@@ -435,6 +439,81 @@ test("a 403 (toolkit_not_allowed) returns Permissions-tab guidance, not a raw er
   });
   // No interaction card is queued — the fix lives in the Permissions tab.
   expect(holder.pending).toBeUndefined();
+});
+
+test("a 403 (not_assigned) returns access guidance on BOTH search and execute, never the gateway's words", async () => {
+  // HOU-967: the gateway refuses when the acting user isn't one of the people
+  // with access to this agent. Its body ("this agent isn't assigned to you")
+  // is internal jargon the model used to paraphrase at a non-technical user —
+  // so both tools classify the stable code and RETURN the human remedy.
+  const notAssigned = () => ({
+    status: 403,
+    body: { error: "this agent isn't assigned to you", code: "not_assigned" },
+  });
+  const holder = newInteractionHolder();
+
+  mockFetch(notAssigned);
+  const found = await runWithInteractionCapture(holder, () =>
+    run(search, { query: "send an email" }),
+  );
+  mockFetch(notAssigned);
+  const ran = await runWithInteractionCapture(holder, () =>
+    run(execute, { action: "GMAIL_SEND_EMAIL", params: { to: "a@b.com" } }),
+  );
+
+  for (const out of [found, ran]) {
+    const text = (out.content[0] as { text: string }).text;
+    expect(text).toContain("does not have access to this agent");
+    // The remedy names the exact place a manager fixes it.
+    expect(text).toContain("Permissions");
+    expect(text).toContain("People");
+    expect(text).toContain("Do not retry");
+    // Never the raw body, the gateway's jargon, or a connect offer.
+    expect(text).not.toContain("not_assigned");
+    expect(text).not.toContain("assigned");
+    expect(text).not.toContain("{");
+    expect(text).not.toContain("403");
+  }
+  expect(found.details).toEqual({
+    matches: 0,
+    actions: [],
+    noAgentAccess: true,
+  });
+  expect(ran.details).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    noAgentAccess: true,
+  });
+  // A permission state, not an interaction: nothing is queued for the user.
+  expect(holder.pending).toBeUndefined();
+});
+
+test("an unrecognized 4xx redacts the response body, keeping only status + code", async () => {
+  // The model reads whatever we throw, so an unclassified refusal must not hand
+  // it gateway JSON to paraphrase — status + code survive for the logs.
+  mockFetch(() => ({
+    status: 422,
+    body: {
+      error: "tenant xyz-9 exceeded seat_policy for org 41f",
+      code: "seat_policy_violation",
+    },
+  }));
+  const failure = run(execute, { action: "GMAIL_SEND_EMAIL" });
+  await expect(failure).rejects.toThrow(
+    /integrations execute failed \(422, code seat_policy_violation\)/,
+  );
+  await expect(failure).rejects.toThrow(/never quote this message/);
+  // No trace of the body: no JSON, no upstream prose.
+  await expect(failure).rejects.not.toThrow(/tenant xyz-9/);
+  await expect(failure).rejects.not.toThrow(/seat_policy for org/);
+  await expect(failure).rejects.not.toThrow(/[{}]/);
+
+  // Search redacts identically.
+  mockFetch(() => ({ status: 400, body: { error: "bad query for org 41f" } }));
+  const searchFailure = run(search, { query: "x" });
+  await expect(searchFailure).rejects.toThrow(
+    /integrations search failed \(400\)\./,
+  );
+  await expect(searchFailure).rejects.not.toThrow(/bad query/);
 });
 
 test("a RELAYED upstream 403 (no code) stays a generic error, not the turned-off guidance", async () => {
