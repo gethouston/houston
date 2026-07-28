@@ -207,6 +207,12 @@ function stripComments(src) {
   let i = 0;
   const n = src.length;
   let quote = null;
+  let quoteStart = -1;
+  /** [start, end) spans of string-literal CONTENTS in `out` (quotes excluded),
+   *  so the matcher can reject a keyword that sits INSIDE a string — e.g. a
+   *  test title ending in the word `from",` reads as `from "<code...>"` to a
+   *  span-blind regex and false-FAILs the gate. */
+  const stringSpans = [];
   while (i < n) {
     const c = src[i];
     const d = src[i + 1];
@@ -217,13 +223,17 @@ function stripComments(src) {
         i += 2;
         continue;
       }
-      if (c === quote) quote = null;
+      if (c === quote) {
+        stringSpans.push([quoteStart, out.length - 1]);
+        quote = null;
+      }
       i++;
       continue;
     }
     if (c === '"' || c === "'" || c === "`") {
       quote = c;
       out += c;
+      quoteStart = out.length;
       i++;
       continue;
     }
@@ -240,7 +250,8 @@ function stripComments(src) {
     out += c;
     i++;
   }
-  return out;
+  if (quote) stringSpans.push([quoteStart, out.length]);
+  return { out, stringSpans };
 }
 
 /**
@@ -252,8 +263,16 @@ const SPEC_RE =
   /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*)["']([^"']+)["']/g;
 
 function importsOf(src) {
+  const { out, stringSpans } = stripComments(src);
+  const insideString = (idx) =>
+    stringSpans.some(([start, end]) => idx >= start && idx < end);
   const specs = [];
-  for (const m of stripComments(src).matchAll(SPEC_RE)) specs.push(m[1]);
+  for (const m of out.matchAll(SPEC_RE)) {
+    // A keyword inside a string literal is prose, not an import — the string
+    // AFTER a real keyword is the specifier and is rightly its own span.
+    if (insideString(m.index)) continue;
+    specs.push(m[1]);
+  }
   return specs;
 }
 

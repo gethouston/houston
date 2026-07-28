@@ -167,6 +167,20 @@ export const v = x;
 EOF
 assert_pass "commented-out cloud import does not false-fail"
 
+# String contents — a string ENDING in the word `from` reads as `from "<code>"`
+# to a span-blind regex (e.g. a test title: `test("who it came from", async`),
+# and prose after it became the phantom specifier. Neither may false-fail; a
+# REAL import in the same file must still be seen.
+reset_fixture
+cat > "$TMP/packages/host/src/string-froms.ts" <<'EOF'
+import { x } from "@houston/domain";
+export const title = "who it came from";
+export const also = `derived from`;
+export const union = title ? "own" : "peer";
+export const v = x;
+EOF
+assert_pass "a string ending in the word from does not false-fail"
+
 # ---------------------------------------------------------------------------
 echo
 printf 'PASS %d  FAIL %d\n' "$pass" "$fail"
