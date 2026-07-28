@@ -101,3 +101,21 @@
     animation: none;
   }
 }
+
+/* ── GSAP-driven hero (professional stack: GSAP + ScrollTrigger + Lenis) ──────
+   When motion is allowed, a synchronous head flag adds `gsap-hero` to <html>
+   before first paint; hero-motion.js (deferred) then owns the hero's load +
+   scroll choreography. These rules pre-hide exactly the pieces it animates so
+   nothing flashes before the deferred libraries run, and supersede the CSS
+   load-fade above. If the libraries fail to init, hero-motion.js removes the
+   flag and the CSS fade takes over. Reduced motion never sets the flag — the
+   static hero (identical to the no-JS page) stands. */
+@media (prefers-reduced-motion: no-preference) {
+    /* Perspective for the load tilt (window) and the scroll tilt (stage). */
+  html.gsap-hero .hero-visual {
+    perspective: 1800px;
+  }
+  html.gsap-hero .hero-stage {
+    perspective: 1600px;
+  }
+}

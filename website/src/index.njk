@@ -4,9 +4,6 @@ permalink: /index.html
 {% extends "base.njk" %}
 {% block title %}Houston — AI agents that actually do the work{% endblock %}
 {% block favicon %}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{% endblock %}
-{# The landing self-hosts a single family (Hanken Grotesk) and uses zero
-   General Sans, so drop base.njk's render-blocking Fontshare stylesheet. #}
-{% block fonts %}{% endblock %}
 {% block meta %}
 <meta name="description" content="Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free for up to three people.">
 <!-- Open Graph / Facebook / Slack / LinkedIn -->
@@ -27,10 +24,21 @@ permalink: /index.html
 </script>
 {% endblock %}
 {% block headScripts %}
-<script>document.documentElement.className += " js";</script>
+<script>
+  document.documentElement.className += " js";
+  // Synchronous flag (before paint) so the hero's GSAP load choreography can
+  // pre-hide its pieces with no flash. Only when motion is allowed; hero-motion.js
+  // clears it if the vendored libraries fail to load. Landing-only.
+  try {
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: no-preference)").matches) {
+      document.documentElement.className += " gsap-hero";
+    }
+  } catch (e) {}
+</script>
 {% endblock %}
 {% block stylesheets %}
-<link rel="preload" href="/assets/fonts/hanken-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+{# The landing types in the system stack (+ General Sans for the wordmark via
+   base.njk's Fontshare block) — no self-hosted font to preload. #}
 <link rel="stylesheet" href="/assets/css/site-tokens.css">
 <link rel="stylesheet" href="/assets/css/landing.css">
 <link rel="stylesheet" href="/assets/css/landing-hero.css">
@@ -48,6 +56,7 @@ permalink: /index.html
 {% include "landing/multiplayer.njk" %}
 {% include "landing/parallel.njk" %}
 {% include "landing/compound.njk" %}
+{% include "landing/stack.njk" %}
 {% include "landing/pricing.njk" %}
 {% include "landing/faq.njk" %}
 </main>

@@ -108,10 +108,10 @@ img {
 .btn-outline:hover {
   border-color: var(--ink);
 }
-/* White pill — a light primary that reads on the dark ground (dark label) */
+/* White pill — a light primary that reads on the dark ground (dark ink label) */
 .btn-white {
   background: #fff;
-  color: var(--ground);
+  color: var(--ink-strong);
 }
 .btn-white:hover {
   background: #ececec;
@@ -140,6 +140,54 @@ img {
   background: var(--panel);
   border-radius: var(--panel-radius);
   margin-block: clamp(10px, 2vw, 24px);
+}
+/* The dark band — the page's mid-scroll black beat, echoing the hero. Full
+   bleed edge to edge; the content inside keeps the shared section measure so
+   everything stays aligned with the bands above and below. Type flips white,
+   the segmented pill and preview get their dark-ground treatments. */
+.section.is-dark {
+  max-width: none;
+  background: var(--band-black);
+}
+.section.is-dark > * {
+  max-width: calc(var(--measure) - 2 * var(--gutter));
+  margin-inline: auto;
+}
+.section.is-dark .sec-title {
+  color: #fff;
+}
+.section.is-dark .split-line {
+  color: rgba(255, 255, 255, 0.65);
+}
+.section.is-dark .chat-tabs {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+}
+.section.is-dark .chat-tab {
+  color: rgba(255, 255, 255, 0.65);
+}
+.section.is-dark .chat-tab:hover {
+  color: #fff;
+}
+.section.is-dark .chat-tab.active {
+  background: #fff;
+  color: var(--ink-strong);
+}
+.section.is-dark .acol,
+.section.is-dark .share-mock {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 28px 56px -22px rgba(0, 0, 0, 0.5),
+    0 56px 110px -52px rgba(0, 0, 0, 0.6);
+}
+.section.is-dark .stat {
+  border-left-color: rgba(255, 255, 255, 0.2);
+}
+.section.is-dark .stat-n {
+  color: #fff;
+}
+.section.is-dark .stat-l {
+  color: rgba(255, 255, 255, 0.6);
 }
 .eyebrow-mono {
   font-family: var(--mono);
@@ -173,104 +221,160 @@ img {
   text-wrap: balance;
 }
 
-/* ── Nav (white, ink logo, black pill Download) ──────────────────────────── */
+/* ── Nav — the startups-page component, verbatim values, all pages ────────
+   Fixed, transparent over the dark hero; dark glass once scrolled (and from
+   the start on light subpages via .lnav-solid). General Sans wordmark 22/500.
+   NOTE: backdrop-filter here matches the shipped startups nav exactly. */
 .lnav {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 60;
+  z-index: 100;
+  padding: 16px 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 15px var(--gutter);
-  /* Fully transparent over the hero sky; gains the solid ivory + hairline
-     only once scrolled (below). */
   background: transparent;
-  transition: box-shadow var(--dur-elegant) var(--ease-standard),
-    background-color var(--dur-elegant) var(--ease-standard);
-  border-bottom: 1px solid transparent;
+  transition: background 0.3s ease, backdrop-filter 0.3s ease;
 }
-/* Frosted glow behind the transparent nav (same treatment as the hero
-   headline): a blurred ivory gradient rasterized once — NOT backdrop-filter
-   (PERFORMANCE.md: blur over a moving backdrop re-rasterizes every frame). */
-.lnav::before {
-  content: "";
-  position: absolute;
-  inset: -28px 0 -44px;
-  z-index: -1;
-  background: linear-gradient(
-    to bottom,
-    rgba(239, 238, 233, 0.92) 0%,
-    rgba(239, 238, 233, 0.55) 58%,
-    transparent 100%
-  );
-  filter: blur(14px);
-  pointer-events: none;
-  opacity: 1;
-  transition: opacity var(--dur-elegant) var(--ease-standard);
-}
-/* Solid ivory + hairline once scrolled; the glow hands off to the solid fill. */
+/* Scrolled: the frosted BLACK bar (the startups recipe) — the base
+   white-on-dark chrome colors below apply unchanged. */
 .lnav.scrolled {
-  background: var(--ground);
+  background: rgba(13, 13, 13, 0.92);
+  backdrop-filter: blur(20px);
 }
-.lnav.scrolled::before {
-  opacity: 0;
+/* The LIGHT bar: over the landing's light sections (scripts.njk sets
+   .on-light) and on every subpage (.lnav-solid — resources et al. live on
+   white pages). White glass, ink chrome, light dropdowns. */
+.lnav.scrolled.on-light,
+.lnav.lnav-solid {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+}
+.lnav.scrolled.on-light .lnav-brand,
+.lnav.lnav-solid .lnav-brand {
+  color: var(--ink-strong);
+}
+.lnav.scrolled.on-light .lnav-links a,
+.lnav.scrolled.on-light .lnav-icon,
+.lnav.scrolled.on-light .lnav-res-btn,
+.lnav.scrolled.on-light .lnav-burger,
+.lnav.lnav-solid .lnav-links a,
+.lnav.lnav-solid .lnav-icon,
+.lnav.lnav-solid .lnav-res-btn,
+.lnav.lnav-solid .lnav-burger {
+  color: var(--ink-muted);
+}
+.lnav.scrolled.on-light .lnav-links a:hover,
+.lnav.scrolled.on-light .lnav-icon:hover,
+.lnav.scrolled.on-light .lnav-res-btn:hover,
+.lnav.scrolled.on-light .lnav-res.open .lnav-res-btn,
+.lnav.lnav-solid .lnav-links a:hover,
+.lnav.lnav-solid .lnav-icon:hover,
+.lnav.lnav-solid .lnav-res-btn:hover,
+.lnav.lnav-solid .lnav-res.open .lnav-res-btn {
+  color: var(--ink-strong);
+}
+.lnav.scrolled.on-light .lnav-cta,
+.lnav.lnav-solid .lnav-cta {
+  background: var(--action);
+  color: var(--action-text);
+}
+.lnav.scrolled.on-light .lnav-cta:hover,
+.lnav.lnav-solid .lnav-cta:hover {
+  background: var(--action-hover);
+}
+/* The resources menu follows the bar: white panel, ink links. */
+.lnav.scrolled.on-light .lnav-res-menu,
+.lnav.lnav-solid .lnav-res-menu {
+  background: rgba(255, 255, 255, 0.97);
+  border-color: var(--line);
+  box-shadow: 0 16px 48px -20px rgba(0, 0, 0, 0.25);
+}
+.lnav.scrolled.on-light .lnav-res-menu a,
+.lnav.lnav-solid .lnav-res-menu a {
+  color: var(--ink);
+}
+.lnav.scrolled.on-light .lnav-res-menu a:hover,
+.lnav.lnav-solid .lnav-res-menu a:hover {
+  background: rgba(13, 13, 13, 0.06);
+  color: var(--ink-strong);
+}
+/* The mobile dropdown sheet follows the white bar too — no bottom hairline,
+   same as the bar itself. */
+.lnav.scrolled.on-light + .lnav-drop,
+.lnav.lnav-solid + .lnav-drop {
+  background: rgba(255, 255, 255, 0.97);
+  border-bottom: none;
+}
+.lnav.scrolled.on-light + .lnav-drop a,
+.lnav.lnav-solid + .lnav-drop a {
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+.lnav.scrolled.on-light + .lnav-drop a:last-child,
+.lnav.lnav-solid + .lnav-drop a:last-child {
+  border-bottom: none;
 }
 .lnav-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--ink-strong);
-  font-weight: 600;
+  font-family: "General Sans", sans-serif;
   font-size: 22px;
+  font-weight: 500;
   letter-spacing: -0.02em;
+  color: white;
+  text-decoration: none;
 }
 .lnav-links {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
+  gap: 32px;
   align-items: center;
-  gap: 28px;
 }
 .lnav-links a {
-  color: var(--ink-muted);
-  font-size: 14.5px;
-  font-weight: 500;
-  transition: color var(--dur-fast) var(--ease-standard);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+  transition: color 0.2s;
 }
 .lnav-links a:hover {
-  color: var(--ink-strong);
+  color: white;
 }
 .lnav-right {
   display: flex;
-  align-items: center;
   gap: 16px;
+  align-items: center;
 }
 .lnav-icon {
+  color: rgba(255, 255, 255, 0.6);
   display: inline-flex;
   align-items: center;
-  color: var(--ink-muted);
-  transition: color var(--dur-fast) var(--ease-standard);
+  transition: color 0.2s;
 }
 .lnav-icon:hover {
-  color: var(--ink-strong);
+  color: white;
 }
 .lnav-cta {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 38px;
-  padding: 0 18px;
-  border-radius: 999px;
-  background: var(--action);
-  border: 1px solid var(--action);
-  color: var(--action-text);
-  font-weight: 600;
+  justify-content: center;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 9999px;
   font-size: 14px;
+  font-weight: 500;
+  gap: 8px;
+  border: none;
   cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease-standard);
+  transition: all 0.2s;
+  background: white;
+  color: #0d0d0d;
+  font-family: var(--sans);
 }
 .lnav-cta:hover {
-  background: var(--action-hover);
+  background: #ececec;
 }
 .lnav-cta-glyph {
   width: 15px;
@@ -280,7 +384,7 @@ img {
   -webkit-mask: var(--helmet-mask) center / contain no-repeat;
   mask: var(--helmet-mask) center / contain no-repeat;
 }
-/* Resources dropdown — quiet menu for everything that leaves the page. */
+/* Resources: same voice as the links. */
 .lnav-res {
   position: relative;
 }
@@ -292,37 +396,34 @@ img {
   border: none;
   cursor: pointer;
   font-family: var(--sans);
-  color: var(--ink-muted);
-  font-size: 14.5px;
-  font-weight: 500;
-  transition: color var(--dur-fast) var(--ease-standard);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  transition: color 0.2s;
 }
 .lnav-res-btn:hover,
 .lnav-res.open .lnav-res-btn {
-  color: var(--ink-strong);
+  color: white;
 }
 .lnav-res-btn svg {
-  transition: transform var(--dur-fast) var(--ease-standard);
+  transition: transform 0.2s;
 }
 .lnav-res.open .lnav-res-btn svg {
   transform: rotate(180deg);
 }
 .lnav-res-menu {
   position: absolute;
-  top: calc(100% + 12px);
+  top: calc(100% + 14px);
   left: 50%;
   transform: translateX(-50%) translateY(-4px);
   min-width: 168px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  background: rgba(13, 13, 13, 0.97);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
   padding: 8px;
-  box-shadow: 0 20px 48px -24px rgba(40, 36, 28, 0.25);
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-entrance),
-    visibility var(--dur-fast) var(--ease-standard);
+  transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
 }
 .lnav-res.open .lnav-res-menu {
   opacity: 1;
@@ -334,66 +435,57 @@ img {
   padding: 9px 12px;
   border-radius: 8px;
   font-size: 14px;
-  font-weight: 500;
-  color: var(--ink);
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
 }
 .lnav-res-menu a:hover {
-  background: var(--panel);
-  color: var(--ink-strong);
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
 }
-
 .lnav-burger {
   display: none;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  background: transparent;
-  border: 1px solid var(--line-strong);
-  color: var(--ink);
-  cursor: pointer;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+.lnav-burger:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 .lnav-burger svg {
   width: 20px;
   height: 20px;
 }
 .lnav-drop {
-  position: fixed;
-  top: 64px;
-  left: var(--gutter);
-  right: var(--gutter);
-  z-index: 59;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 8px;
-  box-shadow: 0 20px 48px -24px rgba(40, 36, 28, 0.18);
-  flex-direction: column;
-  gap: 2px;
   display: none;
+  position: fixed;
+  top: 52px;
+  left: 0;
+  right: 0;
+  z-index: 99;
+  background: rgba(13, 13, 13, 0.97);
+  backdrop-filter: blur(20px);
+  padding: 8px 20px 16px;
+  flex-direction: column;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .lnav-drop.open {
   display: flex;
 }
 .lnav-drop a {
-  color: var(--ink);
+  padding: 12px 4px;
   font-size: 15px;
-  font-weight: 500;
-  padding: 12px 14px;
-  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.75);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
-.lnav-drop a:hover {
-  background: var(--panel);
-  color: var(--ink-strong);
-}
-@media (max-width: 860px) {
-  .lnav-links {
-    display: none;
-  }
-  .lnav-burger {
-    display: inline-flex;
-  }
+.lnav-drop a:last-child {
+  border-bottom: none;
 }
 
 /* ── Footer (the deepest ground, a step below the page) ──────────────────── */

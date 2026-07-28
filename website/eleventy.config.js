@@ -23,6 +23,9 @@ export default function (eleventyConfig) {
   // fonts (assets/css, assets/fonts), the ESO Milky Way space background used by
   // the landing hero and the shared space-bg partial, and its scroll parallax.
   eleventyConfig.addPassthroughCopy("src/assets");
+  // Vendored docs (e.g. assets/vendor/README.md licence note) ship verbatim via
+  // the passthrough above; don't also let Eleventy render them as site pages.
+  eleventyConfig.ignores.add("src/assets/**/*.md");
   eleventyConfig.addPassthroughCopy("src/learn/style.css");
   eleventyConfig.addPassthroughCopy("src/developers/style.css");
   eleventyConfig.addPassthroughCopy("src/guides/style.css");

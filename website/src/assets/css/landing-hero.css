@@ -1,111 +1,104 @@
 /*
- * Landing hero (calm and elegant, product-as-hero): a calm headline above-left,
- * then the REAL app window filling the lower fold, staged for multiplayer, its
- * soft wash dissolving into the ivory page at the fold's lower edge. Palette/
- * type from site-tokens.css. The app-window mock lives in its own file; the
- * invite-code download modals sit at the foot of this file.
+ * Landing hero — Houston's own black and white, Apple-clean.
+ *
+ * A flat near-black ground with one neutral white glow for depth (zero color:
+ * the palette is the app's — ink and white). Centered statement, pill CTAs,
+ * then the REAL app window inside the same dark field, its bottom dissolving
+ * into the ground where the white page picks up. Palette/type from
+ * site-tokens.css; the app-window mock lives in its own file; the invite-code
+ * download modals sit at the foot of this file.
  */
 
-/* ── Hero shell + the single swappable backdrop layer ──────────────────────
-   `--hero-backdrop` is the ONE swap point for the future AI-generated hero
-   photograph: today it's a quiet sage wash that fades in below the headline to
-   frame the window; to land the photo, set a background-image on `.hero-photo`
-   (see hero.njk). The bottom dissolve to ivory is handled by `.hero-fold::after`
-   so any backdrop (wash or photo) melts into the page with no hard edge. */
+/* ── Hero shell — flat near-black, one neutral glow ───────────────────────── */
 .hero {
   position: relative;
-  background: var(--ground);
-  --hero-backdrop: linear-gradient(
-    to bottom,
-    transparent 0%,
-    transparent 18%,
-    var(--wash-sage) 40%,
-    var(--wash-sage) 100%
-  );
+  background: #0d0d0d;
 }
 .hero-photo {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background: var(--hero-backdrop);
   pointer-events: none;
-  overflow: hidden;
+}
+/* Monochrome light: a single soft white bloom bleeding from the top. */
+.hero-glowfield {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 72% 54% at 50% 0%,
+    rgba(255, 255, 255, 0.07),
+    transparent
+  );
+  pointer-events: none;
 }
 .hero-fold {
   position: relative;
   z-index: 1;
-  min-height: 100svh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: clamp(92px, 12vh, 124px) var(--gutter) 0;
+  padding: 110px 40px 0;
   overflow: hidden;
 }
-/* The soft dissolve: a soft ivory gradient over the lower fold melts the
-   window (and the wash behind it) into the page — no hard bottom border, and it
-   reaches solid ivory before the fold's clip so nothing cuts off abruptly. */
-.hero-fold::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 34%;
-  background: linear-gradient(to bottom, transparent 0%, var(--ground) 86%);
-  pointer-events: none;
-  z-index: 3;
-}
 
-/* ── Headline block — calm, above-left, NOT a centered stacked wall.
-   Sits on the SAME centered content grid (var(--measure)) as the window below
-   and every section further down, so all left edges align down the page. */
+/* ── The statement — centered, white on black, system-crisp ──────────────── */
 .hero-intro {
   position: relative;
   z-index: 2;
   width: 100%;
   max-width: var(--measure);
-  margin-bottom: clamp(22px, 3.4vh, 40px);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 .hero-h1 {
-  font-weight: 480;
-  font-size: clamp(33px, 4.3vw, 55px);
-  line-height: 1.05;
-  letter-spacing: -0.028em;
-  color: var(--ink-strong);
+  font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,
+    Arial, sans-serif;
+  font-weight: 600;
+  font-size: clamp(38px, 5.5vw, 76px);
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  color: #fff;
   text-wrap: balance;
-  max-width: 19ch;
+  max-width: 14ch;
 }
 .hero-sub {
+  font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,
+    Arial, sans-serif;
   margin-top: clamp(16px, 1.8vw, 22px);
   font-weight: 400;
   font-size: clamp(16.5px, 1.55vw, 20px);
-  line-height: 1.45;
-  color: var(--ink-muted);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
   max-width: 52ch;
   text-wrap: balance;
 }
 .hero-cta {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 12px;
-  margin-top: clamp(24px, 3vw, 34px);
+  gap: 14px;
+  margin-top: clamp(24px, 3vw, 36px);
+}
+@media (max-width: 640px) {
+  .hero-cta {
+    flex-direction: column;
+  }
 }
 
-/* ── The product moment — the real app window fills the lower fold ────────── */
+/* ── The product moment — the real app window inside the dark field ────────
+   Tight under the CTAs so the fold reads as one composition: statement,
+   buttons, product. A faint white ring defines the window edge on the dark
+   ground; deep black shadows give it lift. The ground ends flush with the
+   window's bottom edge, dissolved by the blur band below. */
 .hero-visual {
   position: relative;
   z-index: 1;
-  flex: 1;
   width: 100%;
-  min-height: 0;
+  margin-top: clamp(40px, 6vh, 64px);
   display: flex;
   justify-content: center;
-  align-items: flex-start;
 }
 .hero-stage {
   position: relative;
@@ -113,11 +106,65 @@
   max-width: 1120px;
   margin: 0 auto;
 }
-/* One believable layered shadow lifts the window off the sage wash. */
 .hero-stage .win {
-  box-shadow: 0 2px 4px rgba(40, 36, 28, 0.05),
-    0 28px 56px -22px rgba(40, 36, 28, 0.16),
-    0 56px 110px -52px rgba(40, 36, 28, 0.2);
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 28px 56px -22px rgba(0, 0, 0, 0.5),
+    0 56px 110px -52px rgba(0, 0, 0, 0.6);
+}
+/* Progressive dissolve across the fold's lower edge: a masked backdrop-filter
+   blurs the window's bottom while a gradient in the hero's own ground color
+   rises over it, so everything fades into the dark before the white page. */
+.hero-bottom-blur {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 160px;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(13, 13, 13, 0), #0d0d0d);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 75%);
+  mask-image: linear-gradient(to bottom, transparent, #000 75%);
+}
+
+/* ── Nav over the dark hero — light treatment until scrolled ────────────────
+   The nav is transparent chrome over the hero; on the dark ground its brand,
+   links, icon and burger go white and the Download pill inverts to white with
+   an ink label. The SCROLLED state (solid bar) is intentionally left
+   untouched — this only restyles the nav while it sits over the hero. */
+.lnav:not(.scrolled)::before {
+  opacity: 0;
+}
+.lnav:not(.scrolled) .lnav-brand {
+  color: #fff;
+}
+.lnav:not(.scrolled) .lnav-links a,
+.lnav:not(.scrolled) .lnav-res-btn,
+.lnav:not(.scrolled) .lnav-icon {
+  color: rgba(255, 255, 255, 0.85);
+}
+.lnav:not(.scrolled) .lnav-links a:hover,
+.lnav:not(.scrolled) .lnav-res-btn:hover,
+.lnav:not(.scrolled) .lnav-res.open .lnav-res-btn,
+.lnav:not(.scrolled) .lnav-icon:hover {
+  color: #fff;
+}
+.lnav:not(.scrolled) .lnav-cta {
+  background: #fff;
+  border-color: #fff;
+  color: var(--ink-strong);
+}
+.lnav:not(.scrolled) .lnav-cta:hover {
+  background: #ececec;
+  border-color: #ececec;
+}
+.lnav:not(.scrolled) .lnav-burger {
+  color: #fff;
 }
 
 /* ── Download gate modal (invite-code closed beta — light, behaviour kept) ── */
@@ -250,15 +297,4 @@
   color: var(--link);
   font-weight: 600;
   text-decoration: underline;
-}
-
-/* The hero photograph: warm cloud-sea, pale upper half — ink type needs no
-   veil or glow on it. Cover-fit, anchored to the pale sky zone. */
-.hero-sky {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 20%;
 }

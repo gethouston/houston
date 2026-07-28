@@ -1,29 +1,25 @@
 <header class="hero">
-  {# The hero backdrop is ONE swappable element: Julian's AI-sky image (LCP),
-     dissolving into the ivory page before the fold ends. #}
+  {# Houston's own black and white: flat near-black ground, one neutral white
+     bloom, centered statement, then the REAL app window inside the same dark
+     field — its bottom dissolving into the ground before the white page. #}
   <div class="hero-photo" aria-hidden="true">
-    <img class="hero-sky"
-      src="/assets/img/ai-sky.webp"
-      srcset="/assets/img/ai-sky-mobile.webp 900w, /assets/img/ai-sky.webp 1680w"
-      sizes="100vw"
-      width="1680" height="945"
-      fetchpriority="high" decoding="async" alt="">
+    <div class="hero-glowfield"></div>
   </div>
 
   <div class="hero-fold">
     <div class="hero-intro hero-load">
-      <h1 class="hero-h1">The workspace where people and AI&nbsp;agents work together</h1>
-      <p class="hero-sub">The sales team shares the sales agents. The AI bookkeeper learns from the whole finance team. New people inherit everything the agents already know.</p>
+      <h1 class="hero-h1">Where people and agents work&nbsp;together</h1>
+      <p class="hero-sub">Shared agents that learn from your whole team. What one person teaches, everyone keeps.</p>
       <div class="hero-cta">
-        <button class="btn btn-ink" data-dl-trigger data-dl-source="hero">Download the app</button>
+        <button class="btn btn-white" data-dl-trigger data-dl-source="hero">Download the app</button>
+        <a class="btn btn-ghost" href="#multiplayer">See how it works</a>
       </div>
     </div>
 
-    {# The real app window fills the lower fold, staged for multiplayer: a team
-       space, shared agents, complex missions, and teammate photo face stacks.
-       The scripted demo (assets/hero-demo*.js) animates Running to Done across
-       the team; JS-off / reduced-motion leaves this finished state standing.
-       The visual dissolves into the ivory page at the fold's lower edge. #}
+    {# The app window, staged for multiplayer — a team space, shared agents,
+       complex missions, teammate photo face stacks. The scripted demo
+       (assets/hero-demo*.js) animates Running to Done across the team;
+       JS-off / reduced-motion leaves this finished state standing. #}
     <div class="hero-visual hero-load">
       <div class="hero-stage">
 <div class="win" data-hero-demo role="img" aria-label="Houston, the desktop app: a team's shared mission board where agents move tasks across Running, Needs you, and Done, with the teammates on each mission shown as face stacks">
@@ -97,4 +93,7 @@
       </div>
     </div>
   </div>
+  {# Progressive dissolve: the window's bottom fades into the hero's own
+     ground color before the white page picks up. #}
+  <div class="hero-bottom-blur" aria-hidden="true"></div>
 </header>

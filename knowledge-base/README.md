@@ -10,6 +10,7 @@ Load on demand.
 | [dev-loop.md](dev-loop.md) | `pnpm dev` — THE dev entry point: doctor, six panes, two-file env model, engines-as-processes (full multiplayer locally, no Kubernetes) |
 | [design-system.md](design-system.md) | Current futuristic theme — tokens, typography, components, animation (deep narrative; `/DESIGN.md` is the compact spec) |
 | [design-system-history.md](design-system-history.md) | _HISTORICAL_ — superseded pre-futuristic monochrome ("ChatGPT-like") doctrine, kept for archaeology |
+| [website-landing.md](website-landing.md) | The landing's black-and-white system — section rhythm, section-aware nav, component language, motion stack |
 | [client-architecture.md](client-architecture.md) | Three-surface client contract — SDK / tokens / inventory / parity, change-flow procedures |
 | [files-first.md](files-first.md) | `.houston/` layout, atomic writes, schemas, AI-native reactivity |
 | [skills.md](skills.md) | Skills on disk + UI — frontmatter schema, picker rendering, invocation marker |
