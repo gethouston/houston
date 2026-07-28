@@ -25,6 +25,12 @@ test("is named plan_ready", () => {
   expect(PLAN_READY_TOOL_NAME).toBe("plan_ready");
 });
 
+test("describes the card summary as a lede, not the full plan", () => {
+  expect(planReady.parameters.properties.summary.description).toMatch(
+    /full plan must already be in your assistant message/i,
+  );
+});
+
 test("records the plan-ready step with a p1 id and ends the turn", async () => {
   const holder = newInteractionHolder();
   const out = await runWithInteractionCapture(holder, () =>

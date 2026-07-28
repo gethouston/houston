@@ -1166,6 +1166,8 @@ export function useAgentChatPanel({
       back: t("chat:questionCard.back"),
       forward: t("chat:questionCard.forward"),
       dismiss: t("chat:questionCard.dismiss"),
+      collapse: t("chat:interaction.collapse"),
+      expand: t("chat:interaction.expand"),
       recommended: t("chat:interaction.recommended"),
       progress: (current: number, total: number) =>
         t("chat:questionCard.progress", { current, total }),
@@ -1297,6 +1299,8 @@ export function useAgentChatPanel({
   const planReadyLabels = useMemo<ChatPlanReadyLabels>(
     () => ({
       title: t("chat:planReady.title"),
+      collapse: t("chat:planReady.collapse"),
+      expand: t("chat:planReady.expand"),
       askFirstTitle: t("chat:planReady.askFirstTitle"),
       askFirstDescription: t("chat:planReady.askFirstDescription"),
       autopilotTitle: t("chat:planReady.autopilotTitle"),
@@ -1600,7 +1604,11 @@ export function useAgentChatPanel({
               pager={api.pager}
               onDismiss={api.onDismiss}
               dismissLabel={api.dismissLabel}
+              collapseLabel={api.collapseLabel}
+              expandLabel={api.expandLabel}
               disabled={api.disabled}
+              open={api.open}
+              onOpenChange={api.onOpenChange}
               reason={step.reason}
               revisited={api.revisited}
               onSignedIn={() => {
@@ -1627,7 +1635,11 @@ export function useAgentChatPanel({
               pager={api.pager}
               onDismiss={api.onDismiss}
               dismissLabel={api.dismissLabel}
+              collapseLabel={api.collapseLabel}
+              expandLabel={api.expandLabel}
               disabled={api.disabled}
+              open={api.open}
+              onOpenChange={api.onOpenChange}
               agentId={agent.id}
               reason={step.reason}
               revisited={api.revisited}
@@ -1665,7 +1677,11 @@ export function useAgentChatPanel({
               pager={api.pager}
               onDismiss={api.onDismiss}
               dismissLabel={api.dismissLabel}
+              collapseLabel={api.collapseLabel}
+              expandLabel={api.expandLabel}
               disabled={api.disabled}
+              open={api.open}
+              onOpenChange={api.onOpenChange}
               toolkit={step.toolkit}
               reason={step.reason}
               revisited={api.revisited}

@@ -85,7 +85,11 @@ export function ChatCredentialInteractionCard({
   pager,
   onDismiss,
   dismissLabel,
+  collapseLabel,
+  expandLabel,
   disabled,
+  open,
+  onOpenChange,
 }: ChatCredentialInteractionCardProps) {
   const { t } = useTranslation("chat");
   const addToast = useUIStore((s) => s.addToast);
@@ -132,16 +136,21 @@ export function ChatCredentialInteractionCard({
   // untouched and pre-empts the global Escape-closes-the-panel shortcut. Inert
   // while a save is in flight and on the calm saved state.
   useInteractionStepKeys({
-    enabled: !submit.isPending && !isSaved,
+    enabled: open && !submit.isPending && !isSaved,
     onEscape: () => onSkip(name),
   });
 
   return (
     <InteractionModal
       contentKey={stepId}
+      collapseLabel={collapseLabel}
+      collapsedHint={reasonLine}
       disabled={disabled}
       dismissLabel={dismissLabel}
+      expandLabel={expandLabel}
       onDismiss={onDismiss}
+      onOpenChange={onOpenChange}
+      open={open}
       pager={pager}
       title={
         <InteractionModalTitle

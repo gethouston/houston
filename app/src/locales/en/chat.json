@@ -77,10 +77,14 @@
     "recommended": "Recommended",
     "skip": "Skip",
     "notNow": "Not now",
+    "collapse": "Collapse interaction",
+    "expand": "Expand interaction",
     "esc": "Esc"
   },
   "planReady": {
     "title": "Plan ready",
+    "collapse": "Collapse plan approval",
+    "expand": "Expand plan approval",
     "askFirstTitle": "Continue in Ask first mode",
     "askFirstDescription": "Gets things done, asks before sensitive actions.",
     "autopilotTitle": "Continue in Autopilot mode",

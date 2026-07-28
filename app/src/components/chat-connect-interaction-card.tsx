@@ -75,7 +75,11 @@ export function ChatConnectInteractionCard({
   pager,
   onDismiss,
   dismissLabel,
+  collapseLabel,
+  expandLabel,
   disabled,
+  open,
+  onOpenChange,
 }: ChatConnectInteractionCardProps) {
   const { t } = useTranslation("chat");
   // Auto-continue only on the LIVE frontier: a revisited completed step mounts a
@@ -105,7 +109,7 @@ export function ChatConnectInteractionCard({
   // flight; the shared hook owns the editable-target guard + capture-phase
   // pre-emption of the global Escape-closes-the-panel shortcut.
   useInteractionStepKeys({
-    enabled: !connecting,
+    enabled: open && !connecting,
     onEnter: showConnect ? () => void startConnect() : undefined,
     onEscape: showNotNow ? () => onSkip(toolkit, app.name) : undefined,
   });
@@ -135,9 +139,14 @@ export function ChatConnectInteractionCard({
   return (
     <InteractionModal
       contentKey={stepId}
+      collapseLabel={collapseLabel}
+      collapsedHint={reasonLine}
       disabled={disabled}
       dismissLabel={dismissLabel}
+      expandLabel={expandLabel}
       onDismiss={onDismiss}
+      onOpenChange={onOpenChange}
+      open={open}
       pager={pager}
       // Title: the app icon beside the required connect action.
       title={

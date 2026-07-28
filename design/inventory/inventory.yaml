@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 43
+version: 44
 
 components:
   - id: agent-avatar
@@ -321,8 +321,8 @@ components:
   - id: interaction-card
     title: Interaction card
     purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections, then action approvals), replacing the composer while pending.
-    anatomy: [modal-shell, modal-header, step-title, step-title-icon, pager, dismiss-action, option-row, number-badge, recommended-chip, selected-arrow, free-text-escape-field, pencil-adornment, footer-row, unified-decline, decline-esc-hint, step-cta, return-key-glyph, trailing-free-text-row, app-logo, integration-name, reason-line, explainer-line, connected-check, waiting-note]
-    states: [single-step, multi-step, with-options, single-option, recommended-option, free-text-only, signin-step, connect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled]
+    anatomy: [modal-shell, modal-header, step-title, step-title-icon, pager, collapse-chevron, dismiss-action, bounded-scroll-body, option-row, number-badge, recommended-chip, selected-arrow, free-text-escape-field, pencil-adornment, footer-row, unified-decline, decline-esc-hint, step-cta, return-key-glyph, trailing-free-text-row, app-logo, integration-name, reason-line, explainer-line, connected-check, waiting-note]
+    states: [single-step, multi-step, collapsed, with-options, single-option, recommended-option, free-text-only, signin-step, connect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled]
     variants: [choice, open-ended, signin, connect, mixed-sequence]
     behavior: >-
       Rendered from the turn's pending interaction (steps[]: 1-3 question steps,
@@ -335,7 +335,11 @@ components:
       card with a hairline border and roomy padding (the reference "Coworker card"
       look; a card-surface same colour as the page, set apart by border + soft
       shadow, theme-aware tokens keep dark mode sane), a HEADER row, a body that
-      fades on step swap, and a right-aligned FOOTER row — so the question
+      fades on step swap, and a right-aligned FOOTER row. Only its body is bounded
+      to 40vh and scrolls; the footer and trailing free-text row stay fixed. A
+      visible-at-rest header chevron collapses it to the title, pager, muted
+      one-line step hint, and expand control without muting the blocked state;
+      the chevron remains usable while the rest of the card is disabled, so the question
       stepper, the sign-in step, and the connect step are structurally identical
       and differ only in the title / body / footer nodes they hand in. Shows ONE
       step at a time. Weight is restrained across the whole family: color tone
@@ -411,7 +415,7 @@ components:
       from each step's FINAL outcome — a step skipped then reconsidered reports
       "Connected {app}." (never a stale "Skipped connecting {app}."), and no step
       is named twice. Disabled while another turn is active.
-    a11y: one step announced at a time, its question read as the modal title; option rows are role=radio in a radiogroup, keyboard-selectable by the left number badge's position digit and visible at rest (no hover gate), showing label + optional Recommended chip only (no description); the free-text escape field (a bordered text input with a leading pencil adornment, no embedded control) is always present on question steps and follows the footer on signin/connect/credential steps; the pager's Back/Forward chevrons and the dismiss X are labeled icon buttons; the footer's unified decline is a labeled button with an Esc keycap hint on every kind, and signin/connect add a labeled filled CTA (Enter fires it, Esc declines); the "N of M" pager copy is visible text.
+    a11y: one step announced at a time, its question read as the modal title; option rows are role=radio in a radiogroup, keyboard-selectable by the left number badge's position digit and visible at rest (no hover gate), showing label + optional Recommended chip only (no description); the free-text escape field (a bordered text input with a leading pencil adornment, no embedded control) is always present on question steps and follows the fixed footer on signin/connect/credential steps; the pager's Back/Forward chevrons, collapse chevron, and dismiss X are labeled icon buttons; collapsed cards retain one muted, truncated context line; the footer's unified decline is a labeled button with an Esc keycap hint on every kind, and signin/connect add a labeled filled CTA (Enter fires it, Esc declines). While collapsed, step shortcuts are inert; while a turn runs, every action except the collapse chevron is disabled. The "N of M" pager copy is visible text.
     since: 4
 
   - id: interaction-approval-card
@@ -457,14 +461,15 @@ components:
 
   - id: plan-ready-card
     title: Plan-ready card
-    purpose: In-chat surface shown when the agent finishes planning (plan mode) and calls plan_ready; presents the drafted plan and three ways forward as composer mode-menu rows, floating above the always-mounted composer (typing there instead abandons it).
-    anatomy: [title, plan-summary, coworker-row, autopilot-row, keep-planning-row]
-    states: [default]
+    purpose: In-chat surface shown when the agent finishes planning (plan mode) and calls plan_ready; presents a compact approval lede and three ways forward, while the complete plan remains in the transcript.
+    anatomy: [title, collapse-chevron, clamped-plan-lede, coworker-row, autopilot-row, keep-planning-row]
+    states: [default, collapsed, disabled]
     variants: [default]
     behavior: >-
       Rendered from a pending interaction carrying a single plan_ready step
-      (summary), exactly like ask_user reaches the frontend. Shows the plan
-      summary above three always-visible option rows built in the composer mode
+      (summary), exactly like ask_user reaches the frontend. The complete plan
+      is the assistant's preceding transcript message; this card clamps its
+      summary to two lines as a lede above three always-visible option rows built in the composer mode
       menu's idiom: each a full-width row with its icon inline with the title
       (Handshake / Rocket / ListTodo, matching the mode selector) and a
       one-line description below, rounded-xl hover background, nothing
@@ -474,8 +479,12 @@ components:
       user message. "Keep planning" dismisses the card LOCALLY (the composer
       returns, mode stays plan) without sending; a later, different plan
       re-shows the card. Primary emphasis comes from row order + title weight,
-      not a filled button. Disabled gates all three rows.
-    a11y: title then plan summary read in order; three labeled row buttons visible at rest (no hover gate), keyboard-reachable, each with a foreground-color icon inline with its title; disabled state marks the surface aria-disabled and gates every row.
+      not a filled button. The shared InteractionModal shell bounds the expanded
+      body to 40vh with scrolling and has a visible-at-rest chevron that collapses
+      the card to its title, muted summary hint, and expand control. It floats
+      above the always-mounted composer. Disabled gates all three rows while the
+      chevron remains available for reading the transcript.
+    a11y: title then clamped plan lede read in order; the labeled collapse and expand control is visible at rest; three labeled row buttons are keyboard-reachable, each with a foreground-color icon inline with its title; disabled state marks the surface aria-disabled and gates every row.
     since: 9
 
   - id: suggest-reusable-card

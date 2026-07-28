@@ -77,10 +77,14 @@
     "recommended": "Recomendado",
     "skip": "Pular",
     "notNow": "Agora não",
+    "collapse": "Recolher interação",
+    "expand": "Expandir interação",
     "esc": "Esc"
   },
   "planReady": {
     "title": "Plano pronto",
+    "collapse": "Recolher aprovação do plano",
+    "expand": "Expandir aprovação do plano",
     "askFirstTitle": "Continuar no modo Perguntar antes",
     "askFirstDescription": "Faz as coisas e pergunta antes de ações sensíveis.",
     "autopilotTitle": "Continuar no modo Piloto automático",

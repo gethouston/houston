@@ -22,7 +22,11 @@ import {
   skipStep,
   type Transition,
 } from "./interaction-card-logic";
-import { BrandLogo, QuestionStepBody } from "./interaction-card-parts";
+import {
+  BrandLogo,
+  QuestionAnswerRow,
+  QuestionStepBody,
+} from "./interaction-card-parts";
 import {
   InteractionModal,
   type InteractionModalPager,
@@ -50,7 +54,11 @@ export interface StepChrome {
   pager: InteractionModalPager | null;
   onDismiss?: () => void;
   dismissLabel: string;
+  collapseLabel: string;
+  expandLabel: string;
   disabled: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export interface ChatInteractionCardProps {
@@ -119,6 +127,8 @@ export interface ChatInteractionCardProps {
     /** aria-label of the pager's forward chevron. */
     forward?: string;
     dismiss?: string;
+    collapse?: string;
+    expand?: string;
     /** The soft "Recommended" chip beside a marked option's label. */
     recommended?: string;
     /** Pager progress copy, e.g. "1 of 3" (shown for a multi-step sequence). */
@@ -199,6 +209,8 @@ export function ChatInteractionCard({
   const sendLabel = labels?.send ?? "Send";
   const escLabel = labels?.esc ?? "Esc";
   const dismissLabel = labels?.dismiss ?? "Dismiss";
+  const collapseLabel = labels?.collapse ?? "Collapse interaction";
+  const expandLabel = labels?.expand ?? "Expand interaction";
   const recommendedLabel = labels?.recommended ?? "Recommended";
   const progress = labels?.progress ?? defaultProgress;
 
@@ -211,6 +223,10 @@ export function ChatInteractionCard({
   );
 
   const stepId = step?.id ?? "";
+  const [open, setOpen] = useState(true);
+  useEffect(() => {
+    if (stepId) setOpen(true);
+  }, [stepId]);
   const draft = draftFor(state, stepId);
   const selectedId =
     step?.kind === "question" ? selectedOptionId(state, stepId) : null;
@@ -242,7 +258,7 @@ export function ChatInteractionCard({
   // phase and stops the event dead so it decides "not now" here instead of
   // falling through to the global Escape-closes-the-panel shortcut.
   useEffect(() => {
-    if (disabled || !isQuestion) return;
+    if (disabled || !open || !isQuestion) return;
     const options = (step?.kind === "question" && step.options) || [];
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -264,7 +280,7 @@ export function ChatInteractionCard({
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [disabled, isQuestion, step, onOption, onSkip]);
+  }, [disabled, open, isQuestion, step, onOption, onSkip]);
 
   const onConnected = useCallback(() => {
     apply(advanceConnect(state, steps));
@@ -305,7 +321,16 @@ export function ChatInteractionCard({
         }
       : null;
 
-  const chrome: StepChrome = { pager, onDismiss, dismissLabel, disabled };
+  const chrome: StepChrome = {
+    pager,
+    onDismiss,
+    dismissLabel,
+    collapseLabel,
+    expandLabel,
+    disabled,
+    open,
+    onOpenChange: setOpen,
+  };
   const footerApi: StepFooterApi = { revisited: canGoForward(state), onSkip };
 
   if (step.kind === "signin") {
@@ -329,21 +354,27 @@ export function ChatInteractionCard({
   const optionsPresent = hasSelectableOptions(step.options);
   // A branded question wears the app's identity in the title (logo + name, like
   // the connect card) and moves the question text into the body; a plain one
-  // keeps the question in the title with no body lead. Either way the options
-  // come FIRST and the free-text row sits below (QuestionStepBody's order).
+  // keeps the question in the title with no body lead. The options are the
+  // scrollable body; the answer row (free-text escape + skip) stays FIXED in
+  // the modal's trailing slot so a long option list never scrolls it away.
   const brand = step.brand;
   const questionBody = (
     <QuestionStepBody
       disabled={disabled}
+      onOption={onOption}
+      options={step.options}
+      recommendedLabel={recommendedLabel}
+      selectedId={selectedId}
+    />
+  );
+  const questionAnswerRow = (
+    <QuestionAnswerRow
+      disabled={disabled}
       draft={draft}
       hideFreeText={optionsPresent && step.hideFreeText === true}
       onDraftChange={(value) => setState((s) => setDraft(s, stepId, value))}
-      onOption={onOption}
       onSubmit={onSend}
-      options={step.options}
       placeholder={optionsPresent ? escapePlaceholder : neutralPlaceholder}
-      recommendedLabel={recommendedLabel}
-      selectedId={selectedId}
       sendLabel={sendLabel}
       skip={{ label: skipLabel, escLabel, onSkip, disabled }}
     />
@@ -352,10 +383,17 @@ export function ChatInteractionCard({
   return (
     <InteractionModal
       contentKey={step.id}
+      collapseLabel={collapseLabel}
       disabled={disabled}
       dismissLabel={dismissLabel}
+      expandLabel={expandLabel}
       onDismiss={onDismiss}
+      onOpenChange={setOpen}
+      open={open}
       pager={pager}
+      // A plain question's title IS the question, so only a branded question
+      // (app name in the title, question in the body) needs the collapsed hint.
+      collapsedHint={brand ? step.question : undefined}
       title={
         brand ? (
           <InteractionModalTitle
@@ -386,6 +424,7 @@ export function ChatInteractionCard({
           questionBody
         )
       }
+      trailing={questionAnswerRow}
     />
   );
 }

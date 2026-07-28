@@ -190,8 +190,12 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   reload.
 - **Settle → composer card → answer-as-new-turn.** A pending interaction REPLACES
   the composer with `ChatInteractionCard` (`@houston-ai/chat`, inventory v19):
-  a one-step-at-a-time stepper composed in the shared `InteractionModal` shell,
-  reference "Coworker card" look — a white card, REGULAR-weight left title,
+  a one-step-at-a-time stepper composed in the shared `InteractionModal` shell.
+  Only its body is bounded to 40vh with scrolling; the footer and free-text row
+  remain fixed. A visible header chevron can collapse the card without hiding
+  the blocked state, keeping the transcript readable even for long interactions.
+  The shell follows the reference "Coworker card" look — a white card,
+  REGULAR-weight left title,
   top-right "N of M" pager whose chevrons are Back/Forward (hidden for a lone
   step) + dismiss X. Question steps show option rows with a LEFT number badge
   (the digit is the keyboard shortcut) and an optional "Recommended" chip (the
@@ -236,6 +240,12 @@ agree (fixing the old divergence where a reloaded stopped turn re-derived as
 null-clears the interaction at the next turn's start — unchanged. `suggest_reusable`
 "Not now" also clears the persisted interaction (no stop marker); `plan_ready`
 "Keep planning" stays local-only.
+
+**Plan approval.** Plan mode writes the complete plan as the normal assistant
+message, then calls `plan_ready` with a one- or two-sentence lede. The compact
+plan-ready card shares the bounded, collapsible interaction shell and offers
+Ask first, Autopilot, or Keep planning. The card never owns the complete plan,
+so long plans remain readable in the transcript.
 
 **Reflection step (suggest_reusable).** The prompt names the agent's
 end-of-mission evaluation the REFLECTION STEP: every time the agent finishes a

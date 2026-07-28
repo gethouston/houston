@@ -95,9 +95,13 @@ export function IntakeTriggerCard({
   return (
     <InteractionModal
       contentKey={step.phase}
+      collapseLabel={chrome.collapseLabel}
       disabled={chrome.disabled}
       dismissLabel={chrome.dismissLabel}
+      expandLabel={chrome.expandLabel}
       onDismiss={chrome.onDismiss}
+      onOpenChange={chrome.onOpenChange}
+      open={chrome.open}
       pager={chrome.pager}
       title={
         <InteractionModalTitle

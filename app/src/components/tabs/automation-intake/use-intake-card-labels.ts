@@ -12,6 +12,8 @@ export interface IntakeCardLabels {
   back: string;
   forward: string;
   dismiss: string;
+  collapse: string;
+  expand: string;
   recommended: string;
   progress: (current: number, total: number) => string;
 }
@@ -34,6 +36,8 @@ export function useIntakeCardLabels(): IntakeCardLabels {
       back: t("questionCard.back"),
       forward: t("questionCard.forward"),
       dismiss: t("questionCard.dismiss"),
+      collapse: t("interaction.collapse"),
+      expand: t("interaction.expand"),
       recommended: t("interaction.recommended"),
       progress: (current: number, total: number) =>
         t("questionCard.progress", { current, total }),
