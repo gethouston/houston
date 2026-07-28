@@ -97,18 +97,10 @@ test("never shows the previous agent's missions while the next board read is in 
   });
 });
 
-/**
- * Renaming via the (hover-gated) agent kebab → Rename. The menu items are
- * Rename / Change color / Export a copy / Delete; Rename focuses an inline
- * field, which we replace and submit.
- */
+/** Renaming via the visible agent kebab → Rename focuses an inline field. */
 test("renames an agent", async ({ page }) => {
   await page.goto("/");
 
-  const agent = page
-    .getByRole("button", { name: "Houston", exact: true })
-    .last();
-  await agent.hover();
   await page.getByRole("button", { name: "Agent menu" }).click();
   await page.getByRole("menuitem", { name: "Rename" }).click();
 

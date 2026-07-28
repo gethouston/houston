@@ -26,6 +26,7 @@ import type {
 } from "@houston-ai/engine-client";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
+import { isAgentNameConflictError } from "./agent-name-conflict";
 import {
   blockWriteWhileWarming,
   blockWriteWhileWarmingById,
@@ -266,8 +267,12 @@ export const tauriAgents = {
   rename: (workspaceId: string, id: string, newName: string) => {
     // A rename dispatches into the agent's engine — held while it warms up.
     blockWriteWhileWarmingById(id);
-    return call<Agent>("rename_agent", async () =>
-      toAgent(await getEngine().renameAgent(workspaceId, id, newName)),
+    return call<Agent>(
+      "rename_agent",
+      async () =>
+        toAgent(await getEngine().renameAgent(workspaceId, id, newName)),
+      undefined,
+      { silence: isAgentNameConflictError },
     );
   },
   updateColor: (workspaceId: string, id: string, color: string) =>

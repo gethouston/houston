@@ -1,5 +1,13 @@
 import type { SidebarGroup, SidebarLayout } from "@houston-ai/engine-client";
 
+export {
+  createGroupOp,
+  deleteGroupOp,
+  renameGroupOp,
+  setGroupContextOp,
+  toggleGroupCollapsedOp,
+} from "./sidebar-layout-group-ops.ts";
+
 /** The layout an unset/corrupt `sidebar_layout` preference reads as. */
 export const DEFAULT_SIDEBAR_LAYOUT: SidebarLayout = {
   groups: [],
@@ -72,71 +80,36 @@ function insertBefore(
   return [...list.slice(0, idx), id, ...list.slice(idx)];
 }
 
-/** Append a new, empty, expanded group with a caller-minted id. */
-export function createGroupOp(
+/** Replace an agent id in-place after a folder-backed rename. Existing copies
+ * of the new id are removed so the layout remains duplicate-free. */
+export function remapAgentIdOp(
   layout: SidebarLayout,
-  id: string,
-  name: string,
+  oldId: string,
+  newId: string,
 ): SidebarLayout {
+  if (oldId === newId) return layout;
+  const hasOldId =
+    layout.groups.some((group) => group.agentIds.includes(oldId)) ||
+    layout.ungroupedOrder.includes(oldId);
+  if (!hasOldId) return layout;
+  const lists = [
+    ...layout.groups.map((group) => group.agentIds),
+    layout.ungroupedOrder,
+  ];
+  const winnerListIndex = lists.findIndex((ids) => ids.includes(oldId));
+  const remap = (ids: string[], listIndex: number) =>
+    ids.flatMap((id) => {
+      if (id === newId) return [];
+      if (id === oldId) return listIndex === winnerListIndex ? [newId] : [];
+      return [id];
+    });
   return {
     ...layout,
-    groups: [...layout.groups, { id, name, collapsed: false, agentIds: [] }],
-  };
-}
-
-/** Rename a group (no-op if the id is unknown). */
-export function renameGroupOp(
-  layout: SidebarLayout,
-  id: string,
-  name: string,
-): SidebarLayout {
-  return {
-    ...layout,
-    groups: layout.groups.map((g) => (g.id === id ? { ...g, name } : g)),
-  };
-}
-
-/** Set a group's shared context, injected into every member agent's system
- *  prompt as `GROUP.md` (no-op if the id is unknown). */
-export function setGroupContextOp(
-  layout: SidebarLayout,
-  id: string,
-  context: string,
-): SidebarLayout {
-  return {
-    ...layout,
-    groups: layout.groups.map((g) => (g.id === id ? { ...g, context } : g)),
-  };
-}
-
-/** Delete a group; its members fall back to the default section (appended to
- *  `ungroupedOrder` so manual order is preserved). */
-export function deleteGroupOp(
-  layout: SidebarLayout,
-  id: string,
-): SidebarLayout {
-  const target = layout.groups.find((g) => g.id === id);
-  if (!target) return layout;
-  const freed = target.agentIds.filter(
-    (a) => !layout.ungroupedOrder.includes(a),
-  );
-  return {
-    ...layout,
-    groups: layout.groups.filter((g) => g.id !== id),
-    ungroupedOrder: [...layout.ungroupedOrder, ...freed],
-  };
-}
-
-/** Toggle a group's collapsed flag (no-op if the id is unknown). */
-export function toggleGroupCollapsedOp(
-  layout: SidebarLayout,
-  id: string,
-): SidebarLayout {
-  return {
-    ...layout,
-    groups: layout.groups.map((g) =>
-      g.id === id ? { ...g, collapsed: !g.collapsed } : g,
-    ),
+    groups: layout.groups.map((group, index) => ({
+      ...group,
+      agentIds: remap(group.agentIds, index),
+    })),
+    ungroupedOrder: remap(layout.ungroupedOrder, layout.groups.length),
   };
 }
 

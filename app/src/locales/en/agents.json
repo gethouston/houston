@@ -43,6 +43,8 @@
   },
   "toasts": {
     "renamed": "Workspace renamed",
+    "nameConflict": "An agent named {{name}} already exists",
+    "nameConflictDescription": "Choose a different name and try again.",
     "deleted": "Workspace deleted",
     "switchedModel": "Switched to {{provider}} ({{model}})",
     "timezoneSet": "Timezone set to {{zone}}"

@@ -110,13 +110,7 @@ export function SidebarItemRow({
       {!isEditing && (item.trailing || hasMenu) && (
         <div className={sidebarItemRowClasses.actions}>
           {item.trailing && (
-            <span
-              className={cn(
-                sidebarItemRowClasses.trailing,
-                hasMenu && sidebarItemRowClasses.trailingWithMenu,
-                menuOpen && sidebarItemRowClasses.trailingMenuOpen,
-              )}
-            >
+            <span className={sidebarItemRowClasses.trailing}>
               {item.trailing}
             </span>
           )}

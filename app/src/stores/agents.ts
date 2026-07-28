@@ -73,7 +73,7 @@ interface AgentState {
     existingPath?: string,
   ) => Promise<CreatedAgent>;
   delete: (workspaceId: string, id: string) => Promise<void>;
-  rename: (workspaceId: string, id: string, newName: string) => Promise<void>;
+  rename: (workspaceId: string, id: string, newName: string) => Promise<Agent>;
   updateColor: (
     workspaceId: string,
     id: string,
@@ -203,6 +203,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     if (get().current?.id === id) {
       get().setCurrent(updated);
     }
+    return updated;
   },
 
   updateColor: async (workspaceId, id, color) => {
