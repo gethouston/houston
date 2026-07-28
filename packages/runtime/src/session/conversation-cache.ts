@@ -22,6 +22,7 @@ import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
 import { makePlanReadyTool } from "./tools/plan-ready";
 import { makeRunCodeTool } from "./tools/run-code";
+import { makeSaveLearningTool } from "./tools/save-learning";
 import { makeSaveRoutineTool } from "./tools/save-routine";
 import { makeSuggestReusableTool } from "./tools/suggest-reusable";
 import type { TurnModeRef } from "./turn-mode-context";
@@ -97,10 +98,22 @@ const saveRoutineTool = hostReachable
     })
   : null;
 
+// The merge-safe memory write tool: proxies to /sandbox/learnings/save so the
+// agent never rewrites learnings.json wholesale AND the host can stamp the
+// learning's provenance (who taught it, which mission it came from) from the
+// turn's acting identity + conversation id. Same reachability gate as above.
+const saveLearningTool = hostReachable
+  ? makeSaveLearningTool({
+      baseUrl: config.controlPlaneUrl,
+      sandboxToken: config.sandboxToken,
+    })
+  : null;
+
 const toolSelection = buildToolSelection({
   codeExecution: config.codeExecution,
   integrations: integrationTools.length > 0,
   saveRoutine: hostReachable,
+  saveLearning: hostReachable,
 });
 const runCodeTool = toolSelection.includeRunCode
   ? makeRunCodeTool({
@@ -132,6 +145,7 @@ const piBackend = createPiBackend({
     suggestReusableTool,
     ...(runCodeTool ? [runCodeTool] : []),
     ...(saveRoutineTool ? [saveRoutineTool] : []),
+    ...(saveLearningTool ? [saveLearningTool] : []),
     ...integrationTools,
     ...customIntegrationTools,
   ],

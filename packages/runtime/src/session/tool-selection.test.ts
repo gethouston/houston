@@ -115,6 +115,42 @@ describe("buildToolSelection", () => {
       "save_routine",
     );
   });
+
+  test("save_learning is added when the host is reachable, off by default", () => {
+    const off = buildToolSelection({
+      codeExecution: "disabled",
+      integrations: false,
+    });
+    expect(off.toolNames).not.toContain("save_learning");
+
+    const on = buildToolSelection({
+      codeExecution: "disabled",
+      integrations: false,
+      saveLearning: true,
+    });
+    // Same reachability gate as save_routine, independent of Composio.
+    expect(on.toolNames).toEqual([
+      ...CLAMPED_FILE_TOOL_NAMES,
+      "ask_user",
+      "suggest_reusable",
+      "save_learning",
+    ]);
+  });
+
+  test("save_learning reaches execute and auto but never plan", () => {
+    const on = buildToolSelection({
+      codeExecution: "disabled",
+      integrations: false,
+      saveLearning: true,
+    });
+    expect(toolNamesForMode("execute", on.toolNames)).toContain(
+      "save_learning",
+    );
+    expect(toolNamesForMode("auto", on.toolNames)).toContain("save_learning");
+    expect(toolNamesForMode("plan", on.toolNames)).not.toContain(
+      "save_learning",
+    );
+  });
 });
 
 describe("planToolNames", () => {

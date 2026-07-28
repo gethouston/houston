@@ -89,6 +89,7 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
       "ask_user",
       "suggest_reusable",
       "save_routine",
+      "save_learning",
       "integration_search",
       "integration_execute",
       "request_connection",
@@ -102,6 +103,7 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
       "mcp__houston__ask_user",
       "mcp__houston__suggest_reusable",
       "mcp__houston__save_routine",
+      "mcp__houston__save_learning",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
       "mcp__houston__request_connection",
@@ -180,6 +182,27 @@ test("save_routine is bridged for execute/auto but stripped from plan", () => {
   );
 });
 
+test("save_learning is bridged for execute/auto but stripped from plan", () => {
+  // Same gate and same reach as save_routine: it proxies to the host under the
+  // sandbox token, so it exists only when the host is reachable, and saving a
+  // learning is a write — never in read-only plan mode.
+  expect(build(INTEGRATIONS).tools.map((t) => t.name)).toContain(
+    "save_learning",
+  );
+  expect(build(INTEGRATIONS, "execute").tools.map((t) => t.name)).toContain(
+    "save_learning",
+  );
+  expect(build(INTEGRATIONS, "auto").tools.map((t) => t.name)).toContain(
+    "save_learning",
+  );
+  expect(build(INTEGRATIONS, "plan").tools.map((t) => t.name)).not.toContain(
+    "save_learning",
+  );
+  expect(build(undefined).tools.map((t) => t.name)).not.toContain(
+    "save_learning",
+  );
+});
+
 test("auto mode keeps the integration + suggest_reusable tools but drops ask_user", () => {
   const { tools, mcp } = build(INTEGRATIONS, "auto");
   // Autopilot never waits on the user's judgment: ask_user is gone (and
@@ -192,6 +215,7 @@ test("auto mode keeps the integration + suggest_reusable tools but drops ask_use
     new Set([
       "suggest_reusable",
       "save_routine",
+      "save_learning",
       "integration_search",
       "integration_execute",
       "request_connection",
@@ -204,6 +228,7 @@ test("auto mode keeps the integration + suggest_reusable tools but drops ask_use
     new Set([
       "mcp__houston__suggest_reusable",
       "mcp__houston__save_routine",
+      "mcp__houston__save_learning",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
       "mcp__houston__request_connection",

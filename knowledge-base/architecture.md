@@ -358,6 +358,62 @@ the interview needs blocking `ask_user` cards. A routine's FIRED run pins
 **Autopilot** (`auto`) so scheduled/triggered work never waits on the user — see
 "Turn modes" above (unchanged).
 
+## Learnings (memory) + their provenance
+
+A **Learning** is a stable fact the agent carries across sessions, stored one
+JSON array per agent at `.houston/learnings/learnings.json` (schema:
+`ui/agent-schemas/src/learnings.schema.json`; wire type: `Learning` in
+`packages/protocol/src/domain/activity.ts`).
+
+**`save_learning` is the agent's write path** (HOU-946), built on exactly the
+`save_routine` pattern above and for the same two reasons — merge safety and a
+fact the model must not author. The runtime tool
+(`packages/runtime/src/session/tools/save-learning.ts`,
+`SAVE_LEARNING_TOOL_NAME`) takes ONLY `text` and POSTs
+`/sandbox/learnings/save` under the per-sandbox HMAC token
+(`packages/host/src/routes/learnings-sandbox.ts`), which read-modify-writes
+(`loadLearnings → append → saveLearnings`) under the per-doc lock
+(`withDocLock(\`${root}#learnings\`)`, routes/doc-lock.ts — the SAME key the
+Memory tab's whole-file PUT in `agent-data.ts` takes, so concurrent saves and UI
+edits serialize instead of dropping each other) and stamps the learning's
+**provenance**:
+
+- `taught_by` (`{user_id, name?}`) — decoded from the gateway-minted
+  `x-houston-acting-as` header, and ONLY when `deps.gatewayFronted`; with no
+  acting-as token there (a FIRED ROUTINE has no driving human) the routine
+  creator's sub from `x-houston-acting-user` is the author, the same two-rung
+  ladder `routes/integrations-sandbox.ts` walks. NOT the workspace owner: on a
+  managed pod that is the placeholder `local-owner`. Off the gateway the headers
+  are untrusted client input and there is one human anyway, so NO identity key
+  is written and a desktop `learnings.json` keeps the shape it has always had.
+- `mission_id` + `mission_title` — resolved from the turn's conversation id,
+  forwarded by the tool on `x-houston-conversation-id` from a per-turn
+  `AsyncLocalStorage` (`packages/runtime/src/session/conversation-context.ts`,
+  established beside the acting context in `exec-turn.ts`). The match uses the
+  SAME convention as per-mission attribution — `session_key === cid`, with
+  `activity-<id>` as the fallback. Stamped on EVERY deployment: a mission is not
+  an identity, and "from the Q3 pipeline mission" is the useful half of
+  provenance for a solo user. `mission_title` is denormalized so a renamed or
+  deleted mission still reads; renderers prefer the live title by `mission_id`.
+
+Everything is best-effort metadata: a failed mission lookup logs and saves the
+learning without it. The app's own Memory-tab add path stamps `taught_by` from
+the signed-in session, multiplayer only (`use-learnings.ts`). Provenance is
+ORG-LOCAL and never travels: `packages/domain/src/portable.ts` strips it on both
+pack and unpack (one `stripLearningProvenance` helper, both legs), like a
+routine's `created_by`.
+
+The provenance keys only reach disk if the agent's **seeded schema knows them** —
+the prompt tells the model to match the schema, and every family schema is
+`additionalProperties: false`. Agents created before HOU-946 are brought forward
+by the boot re-seed (`packages/host/src/migrate/agent-schemas.ts`, wired in
+`local/host.ts` `start()` beside the other migrations; content-compared, so a
+steady-state boot writes nothing). The Memory row renders the pair as a muted
+"From {name} · {mission}" line with the shared `PersonFace`
+(`app/src/components/tabs/learning-provenance.tsx`; fallback ladders in
+`app/src/lib/learning-provenance.ts`), and nothing at all when a learning has no
+provenance.
+
 ## Current gap to vision
 
 | Goal | Status |

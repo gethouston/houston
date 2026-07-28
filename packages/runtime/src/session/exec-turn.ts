@@ -36,6 +36,7 @@ import {
   switchBackendIfNeeded,
   switchModeIfNeeded,
 } from "./conversation-cache";
+import { runWithConversationId } from "./conversation-context";
 import {
   diffSnapshots,
   type FileSnapshot,
@@ -371,9 +372,11 @@ export async function execTurn(
     watchdog.arm();
     try {
       await runWithActingContext(acting, () =>
-        runWithTurnMode(liveMode, () =>
-          runWithInteractionCapture(interaction, () =>
-            conv.session.prompt(promptText),
+        runWithConversationId(id, () =>
+          runWithTurnMode(liveMode, () =>
+            runWithInteractionCapture(interaction, () =>
+              conv.session.prompt(promptText),
+            ),
           ),
         ),
       );

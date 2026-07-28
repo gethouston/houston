@@ -39,6 +39,22 @@ const ROUTINES = "routines.json";
 const LEARNINGS = "learnings.json";
 const skillPath = (slug: string) => `skills/${slug}/SKILL.md`;
 
+/**
+ * A learning without its provenance. Provenance is ORG-LOCAL: `taught_by` names
+ * a person in the exporter's workspace and the mission it came from is a
+ * conversation the importer never had — neither means anything, nor is ours to
+ * publish, on the other side. Same rule routines follow for `created_by` /
+ * `setup_activity_id`; the learning itself travels. Applied on BOTH legs, so a
+ * pack hand-built or produced by another build can never install a person from
+ * the exporter's org or a mission id that resolves to something unrelated here.
+ */
+const stripLearningProvenance = ({
+  taught_by: _person,
+  mission_id: _mission,
+  mission_title: _missionTitle,
+  ...learning
+}: Learning): Learning => learning;
+
 /** Build the `.houstonagent` bytes. Caller supplies content already filtered by selection. */
 export function packAgent(
   content: PortableContent,
@@ -76,8 +92,10 @@ export function packAgent(
     );
     files[ROUTINES] = strToU8(JSON.stringify(shareable, null, 2));
   }
-  if (content.learnings.length)
-    files[LEARNINGS] = strToU8(JSON.stringify(content.learnings, null, 2));
+  if (content.learnings.length) {
+    const shareable = content.learnings.map(stripLearningProvenance);
+    files[LEARNINGS] = strToU8(JSON.stringify(shareable, null, 2));
+  }
   return zipSync(files);
 }
 
@@ -135,9 +153,9 @@ export function unpackAgent(bytes: Uint8Array): PortablePackage {
       parseArray<Routine>(routinesRaw),
       ROUTINES,
     ).items.map(({ setup_activity_id: _local, created_by: _owner, ...r }) => r),
-    learnings: parseArray<Learning>(learningsRaw).filter(
-      (l) => isRecord(l) && typeof l.id === "string",
-    ),
+    learnings: parseArray<Learning>(learningsRaw)
+      .filter((l) => isRecord(l) && typeof l.id === "string")
+      .map(stripLearningProvenance),
   };
 }
 

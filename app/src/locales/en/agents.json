@@ -72,7 +72,10 @@
     "removeAria": "Remove learning",
     "confirmRemoveTitle": "Remove this learning?",
     "confirmRemoveDescription": "The agent will lose this note. You can add it back later.",
-    "confirmRemoveLabel": "Remove"
+    "confirmRemoveLabel": "Remove",
+    "provenanceFromMission": "From {{name}} · {{mission}}",
+    "provenanceFrom": "From {{name}}",
+    "provenanceMission": "From {{mission}}"
   },
   "subTabs": {
     "instructions": "Instructions",

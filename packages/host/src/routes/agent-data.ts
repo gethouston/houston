@@ -12,6 +12,7 @@ import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
 import { handleActivitiesData } from "./agent-data-activities";
 import { handleRoutinesData } from "./agent-data-routines";
+import { withDocLock } from "./doc-lock";
 import { json, readJson } from "./http";
 
 // The cloud-layout root, kept as a convenience for cloud tests + callers that
@@ -144,11 +145,18 @@ export async function handleAgentData(
     }
     if (method === "PUT") {
       const body = await readJson(req);
-      if (!Array.isArray(body.items)) {
+      const items = body.items;
+      if (!Array.isArray(items)) {
         json(res, 400, { error: "missing 'items' array" });
         return true;
       }
-      await saveLearnings(vfs, root, body.items);
+      // Whole-file replace, under the SAME per-doc lock the runtime's
+      // `save_learning` route takes (routes/learnings-sandbox.ts) — otherwise
+      // this write can land in the middle of that route's load→append→save and
+      // silently drop the learning the agent just recorded.
+      await withDocLock(`${root}#learnings`, () =>
+        saveLearnings(vfs, root, items),
+      );
       fireChange();
       json(res, 200, { ok: true });
       return true;

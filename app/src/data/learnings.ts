@@ -3,10 +3,27 @@
 import schema from "@houston-ai/agent-schemas/learnings.schema.json";
 import { newId, now, readAgentJson, writeAgentJson } from "./agent-file";
 
+/** WHO taught a learning. Mirrors the protocol's `ActivityContributor`. */
+export interface LearningAuthor {
+  user_id: string;
+  name?: string;
+}
+
 export interface Learning {
   id: string;
   text: string;
   created_at: string;
+  /**
+   * Provenance: the person this learning came from. Stamped by the host from
+   * the gateway's acting-as identity when an agent turn saved it, or here from
+   * the signed-in session when a person added it in Memory. Absent on
+   * desktop / single-player, which keeps those files identity-key free.
+   */
+  taught_by?: LearningAuthor;
+  /** Provenance: the mission whose conversation taught this learning. */
+  mission_id?: string;
+  /** The mission's title at save time, the fallback when the live one is gone. */
+  mission_title?: string;
 }
 
 const NAME = "learnings";
@@ -16,9 +33,27 @@ export async function list(agentPath: string): Promise<Learning[]> {
   return readAgentJson<Learning[]>(agentPath, NAME, s, []);
 }
 
-export async function add(agentPath: string, text: string): Promise<Learning> {
+/**
+ * Add a learning the USER typed in the Memory tab.
+ *
+ * `taughtBy` is provenance, passed in by the caller (see `useAddLearning`) and
+ * stamped ONLY in multiplayer — a single-player file has one author by
+ * definition, so it stays free of identity keys and byte-identical in shape to
+ * what earlier versions wrote. No mission is stamped here: a learning typed in
+ * settings did not come from one.
+ */
+export async function add(
+  agentPath: string,
+  text: string,
+  taughtBy?: LearningAuthor,
+): Promise<Learning> {
   const items = await list(agentPath);
-  const learning: Learning = { id: newId(), text, created_at: now() };
+  const learning: Learning = {
+    id: newId(),
+    text,
+    created_at: now(),
+    ...(taughtBy ? { taught_by: taughtBy } : {}),
+  };
   await writeAgentJson(agentPath, NAME, s, [...items, learning]);
   return learning;
 }
