@@ -851,14 +851,16 @@ connect step is `ChatConnectInteractionCard`. Every step (question, sign-in,
 connect, credential) composes ONE shared modal shell — `InteractionModal` + `InteractionModalTitle`
 in `ui/chat` (reference "Coworker card" look, inventory v19) — that owns the
 surface, the HEADER row (title left; `‹ N of M ›` pager + dismiss X top-right),
-the body, and a right-aligned FOOTER row. Every step kind also carries an
-always-visible free-text row (`InlineTextRow`, ui/chat): submitted text records
-a decline-with-instruction the agent hears in the composed reply. The connect step's `(icon) NAME`
-identity lockup (AppLogo `sm` beside the integration NAME at REGULAR weight — the
-sign-in step seats the Houston helmet + "Houston" in the same slot) is the modal
-TITLE, IN the header beside the pager/X; the body is a two-field block (the
-agent's reason in foreground tone over a muted app-description / sign-in-explainer
-line; the connected state swaps it for a calm check + "Connected"). The signin/
+the body, a right-aligned FOOTER row, and an optional trailing region. Connect,
+sign-in, and credential steps carry a free-text row (`InlineTextRow`, ui/chat)
+in that trailing region, below their action buttons: submitted text records a
+decline-with-instruction the agent hears in the composed reply. (Question steps
+have their own in-body escape field, `FreeTextRow`, which the stepper can
+suppress via `hideFreeText`.) The connect step's `(icon) ACTION`
+title (AppLogo `sm` beside "Connect {app}" at REGULAR weight — the sign-in step
+seats the Houston helmet + "Houston" in the same slot) is in the header beside
+the pager/X; its body is the agent's reason in foreground tone (the connected
+state swaps it for a calm check + "Connected"). The signin/
 connect body renders its OWN `InteractionModal`, wired with the `StepChrome`
 (`{ pager, onDismiss, dismissLabel, disabled }`) the stepper hands it, so ui/chat
 stays auth/Composio-unaware while the whole family shares one shell (there is no

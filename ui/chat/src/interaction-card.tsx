@@ -44,7 +44,8 @@ type CustomStep = Extract<ChatInteractionStep, { kind: "custom" }>;
 /** The chrome the shared {@link InteractionModal} needs, handed to a
  *  signin/connect body so it renders the SAME modal shell as a question step:
  *  the header pager (Back/Forward + progress) and the dismiss X. The body owns
- *  its own title (its `(icon) name` lockup), reason, and footer CTA. */
+ *  its own title (its `(icon) action` lockup), reason, footer CTA, and the
+ *  trailing free-text escape row below the footer. */
 export interface StepChrome {
   pager: InteractionModalPager | null;
   onDismiss?: () => void;
@@ -60,8 +61,8 @@ export interface ChatInteractionCardProps {
   /** Receives every question answer, in step order, once the last step is done. */
   onComplete: (answers: ChatInteractionAnswer[]) => void;
   /** Renders a connect step as its OWN {@link InteractionModal} — the `(icon)
-   *  name` header title, the reason + muted app description body, and the
-   *  footer's unified decline + Connect CTA — wiring the supplied {@link
+   *  Connect <App>` header title, the reason body, the footer's unified
+   *  decline + Connect CTA, and the trailing free-text row — wiring the supplied {@link
    *  StepChrome} (pager + dismiss) into the shell so it matches every other
    *  step. Call `api.onConnected` once the connection lands. ui/chat stays
    *  Composio-unaware, so the app supplies the reactive content and identity. */
@@ -78,8 +79,8 @@ export interface ChatInteractionCardProps {
   ) => ReactNode;
   /** Renders a credential step as its OWN {@link InteractionModal} (see
    *  {@link renderConnect}): the integration's `(icon) name` header, the reason
-   *  line + a secure key field body, and the footer's unified decline + Save
-   *  CTA. Call `api.onSaved` once the secret is stored to advance; `api.onSkip`
+   *  line + a secure key field body, the footer's unified decline + Save
+   *  CTA, and the trailing free-text row. Call `api.onSaved` once the secret is stored to advance; `api.onSkip`
    *  declines the key like any sibling. ui/chat stays integration-unaware, so
    *  the app supplies the reactive, secure key-entry card. */
   renderCredential: (
@@ -166,7 +167,8 @@ export interface StepFooterApi {
  * render their OWN {@link InteractionModal} wired with the {@link StepChrome}
  * this stepper hands them, so the card stays Composio/auth-unaware while every
  * step shares one shell. Every non-question step also carries an always-visible
- * free-text row (the app supplies it): typing an instruction there and sending
+ * free-text row (the app supplies it, trailing below the footer actions):
+ * typing an instruction there and sending
  * declines the step WITH that message, which the caller relays to the agent.
  * The caller seats this card in the composer's slot (replacing it), so its
  * per-step free-text row is the one text input on screen; the card's dismiss X

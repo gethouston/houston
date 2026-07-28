@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 40
+version: 41
 
 components:
   - id: agent-avatar
@@ -320,8 +320,8 @@ components:
 
   - id: interaction-card
     title: Interaction card
-    purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections, then action approvals), floating ABOVE the always-mounted composer.
-    anatomy: [modal-shell, modal-header, step-title, step-title-icon, pager, dismiss-action, option-row, number-badge, recommended-chip, selected-arrow, free-text-escape-field, pencil-adornment, footer-row, unified-decline, decline-esc-hint, step-cta, return-key-glyph, app-logo, integration-name, reason-line, app-description, connected-check, waiting-note]
+    purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections, then action approvals), replacing the composer while pending.
+    anatomy: [modal-shell, modal-header, step-title, step-title-icon, pager, dismiss-action, option-row, number-badge, recommended-chip, selected-arrow, free-text-escape-field, pencil-adornment, footer-row, unified-decline, decline-esc-hint, step-cta, return-key-glyph, trailing-free-text-row, app-logo, integration-name, reason-line, explainer-line, connected-check, waiting-note]
     states: [single-step, multi-step, with-options, single-option, recommended-option, free-text-only, signin-step, connect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled]
     variants: [choice, open-ended, signin, connect, mixed-sequence]
     behavior: >-
@@ -343,16 +343,16 @@ components:
       / identity labels are REGULAR weight, never bold; the only font-medium left
       is the Recommended chip, the number badge digit, and the filled CTA label.
       Header: the step TITLE left (a question's text, or a signin/connect step's
-      '(icon) NAME' identity lockup — the real brand logo beside the integration
-      NAME, "Google Sheets" / "Houston") with, top-RIGHT on the same row, a
+      '(icon) ACTION' identity lockup — the real brand logo beside the explicit
+      connect action, "Connect Google Sheets" (or the integration NAME,
+      "Houston", for sign-in) with, top-RIGHT on the same row, a
       compact "N of M" pager whose chevrons ARE the Back/Forward navigation
       (hidden for a single-step sequence) plus a dismiss X that abandons the WHOLE
-      sequence. This '(icon) NAME' header title is the family convention for ANY
+      sequence. This '(icon) ACTION/NAME' header title is the family convention for ANY
       card carrying an app/brand icon (the action-approval card adopts it too;
       suggest-reusable and plan-ready have no app icon and keep their own
-      headers). The card never replaces the composer: the real composer stays
-      mounted below it, and sending a fresh message there abandons the sequence
-      exactly like the X. Dismissing (the X, or typing a fresh message) is a user
+      headers). The card replaces the composer while the sequence is pending;
+      dismissing restores it. Dismissing (the X) is a user
       INTERRUPTION, not an answer: it persists a durable `stopped` marker on the
       turn AND clears the pending interaction, so the sequence retires and the
       MODEL LEARNS NOTHING from the abandonment (a reload renders the standard
@@ -376,7 +376,9 @@ components:
       keycap hint in the footer: a question's footer is that decline ALONE (no
       primary CTA — clicking an option is the advance), while a signin/connect
       footer places it beside the single filled CTA pill ("Connect" / "Sign in",
-      with a return-key glyph). Skip/decline advances past ANY step kind without
+      with a return-key glyph). The connect, sign-in, and credential free-text
+      alternate-instruction row follows that footer, keeping the required action
+      above the redirect path. Skip/decline advances past ANY step kind without
       completing it — a skipped question is omitted from the composed reply, while
       a skipped signin/connect is a recorded fact the reply states ("Skipped
       connecting {app}." / "Skipped signing in.") so the agent hears the decline
@@ -390,7 +392,7 @@ components:
       reactive signin/connect body + CTA, rendering its own InteractionModal wired
       with that chrome. While an OAuth hand-off is in flight the CTA shows a
       connecting spinner and a quiet muted line reminds the user their browser is
-      waiting; an already-connected app swaps its two-field body for a calm check
+      waiting; an already-connected app swaps its reason body for a calm check
       + "Connected" and self-reports to advance (live frontier only). "Not now"
       travels WITH the CTA: the decline affordance is present wherever the CTA is
       (frontier AND a reconsidered skip), so no step is ever a dead end with only
@@ -409,7 +411,7 @@ components:
       from each step's FINAL outcome — a step skipped then reconsidered reports
       "Connected {app}." (never a stale "Skipped connecting {app}."), and no step
       is named twice. Disabled while another turn is active.
-    a11y: one step announced at a time, its question read as the modal title; option rows are role=radio in a radiogroup, keyboard-selectable by the left number badge's position digit and visible at rest (no hover gate), showing label + optional Recommended chip only (no description); the free-text escape field (a bordered text input with a leading pencil adornment, no embedded control) is always present on question steps; the pager's Back/Forward chevrons and the dismiss X are labeled icon buttons; the footer's unified decline is a labeled button with an Esc keycap hint on every kind, and signin/connect add a labeled filled CTA (Enter fires it, Esc declines); the "N of M" pager copy is visible text.
+    a11y: one step announced at a time, its question read as the modal title; option rows are role=radio in a radiogroup, keyboard-selectable by the left number badge's position digit and visible at rest (no hover gate), showing label + optional Recommended chip only (no description); the free-text escape field (a bordered text input with a leading pencil adornment, no embedded control) is always present on question steps and follows the footer on signin/connect/credential steps; the pager's Back/Forward chevrons and the dismiss X are labeled icon buttons; the footer's unified decline is a labeled button with an Esc keycap hint on every kind, and signin/connect add a labeled filled CTA (Enter fires it, Esc declines); the "N of M" pager copy is visible text.
     since: 4
 
   - id: interaction-approval-card

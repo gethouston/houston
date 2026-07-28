@@ -35,6 +35,10 @@ export interface InteractionModalProps {
   /** The right-aligned footer actions row (the unified decline, plus a CTA for
    *  signin/connect). Omitted renders no footer. */
   footer?: ReactNode;
+  /** Optional content rendered after the footer, such as a free-text escape
+   *  row. Keeps secondary input below the card-wide actions. The node owns
+   *  its own top spacing (no wrapper margin is added). */
+  trailing?: ReactNode;
   /** Fades the body region on change so a step swap reads as "content changed,
    *  chrome stayed" (gated by the motion-safe media query). */
   contentKey?: string;
@@ -112,7 +116,7 @@ export function InteractionModalTitle({
  * owns the chrome — surface, padding, header/footer row layout, and the quiet
  * body fade on a step swap — so every consumer (the question stepper, the
  * sign-in step, the connect step) is structurally identical: they differ ONLY in
- * the title, body, and footer nodes they hand in.
+ * the title, body, footer, and optional trailing nodes they hand in.
  *
  * How it composes with the composer is the caller's call (see ChatPanel's
  * `composerOverrideMode`): a full interaction stepper replaces the composer's
@@ -127,6 +131,7 @@ export function InteractionModal({
   dismissLabel = "Dismiss",
   body,
   footer,
+  trailing,
   contentKey,
   disabled = false,
 }: InteractionModalProps) {
@@ -187,6 +192,8 @@ export function InteractionModal({
           {footer}
         </div>
       )}
+
+      {trailing}
     </div>
   );
 }
