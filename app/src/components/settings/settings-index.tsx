@@ -4,7 +4,6 @@ import {
   CloudUpload,
   FileText,
   Keyboard,
-  KeyRound,
   User,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -23,7 +22,6 @@ import { SettingsCard, SettingsRow } from "./settings-row";
 
 interface SettingsIndexProps {
   accountAvailable: boolean;
-  apiKeysAvailable: boolean;
   migrationAvailable: boolean;
   profileAvailable: boolean;
   onSelect: (id: SettingsSectionId) => void;
@@ -37,7 +35,6 @@ interface SettingsIndexProps {
  */
 export function SettingsIndex({
   accountAvailable,
-  apiKeysAvailable,
   migrationAvailable,
   profileAvailable,
   onSelect,
@@ -87,14 +84,10 @@ export function SettingsIndex({
           <LanguageSection />
           <NotificationsSection />
           {accountAvailable && <AccountSection />}
-          {apiKeysAvailable && (
-            <SettingsRow
-              icon={KeyRound}
-              title={t("settings:nav.apiKeys")}
-              description={t("settings:index.rows.apiKeys")}
-              onClick={() => onSelect("apiKeys")}
-            />
-          )}
+          {/* The API-keys row is HIDDEN for now (HOU-806): the Agents API
+              surface lives in the Routines tab. The section, its strings, and
+              all plumbing remain — restore by re-adding this row (and the
+              apiKeysAvailable gate from apiKeysSupported) when it returns. */}
         </SettingsCard>
 
         <SettingsCard title={t("settings:index.groups.context")}>

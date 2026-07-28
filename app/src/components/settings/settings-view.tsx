@@ -9,8 +9,6 @@ import {
 import { ChevronLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useCapabilities } from "../../hooks/use-capabilities";
-import { apiKeysSupported } from "../../lib/api-keys-model";
 import {
   parseSettingsSection,
   type SettingsSectionId,
@@ -39,8 +37,6 @@ export function SettingsView() {
   const accountAvailable = useAccountAvailable();
   const profileAvailable = useProfileAvailable();
   const migrationAvailable = useMigrationAvailable();
-  const { capabilities } = useCapabilities();
-  const apiKeysAvailable = apiKeysSupported(capabilities);
   const setSettingsSection = useUIStore((s) => s.setSettingsSection);
   // Consume the one-shot deep-link the moment this view mounts: another surface
   // may have pinned a section (e.g. "apiKeys") right before switching to
@@ -109,7 +105,6 @@ export function SettingsView() {
       <div className="flex-1 overflow-y-auto">
         <SettingsIndex
           accountAvailable={accountAvailable}
-          apiKeysAvailable={apiKeysAvailable}
           migrationAvailable={migrationAvailable}
           profileAvailable={profileAvailable}
           onSelect={setActive}
@@ -138,6 +133,10 @@ export function SettingsView() {
         ) : (
           <div className="mx-auto max-w-xl px-8 pb-10">
             {active === "profile" && <ProfileSection />}
+            {/* The API-keys screen is HIDDEN from the index for now (HOU-806:
+                the Agents API surface lives in the Routines tab) — its nav row
+                is gone, so only a programmatic deep-link pin reaches it. The
+                section and its plumbing stay intact for when it returns. */}
             {active === "apiKeys" && <ApiKeysSection />}
             {active === "shortcuts" && <ShortcutsSection />}
             {active === "reportBug" && <ReportBugSection />}
