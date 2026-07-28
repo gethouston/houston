@@ -3,35 +3,28 @@
  * Click navigates into the folder; kebab/right-click offers rename,
  * download-as-zip and delete; it is also a drop target for moves and
  * uploads. NewFolderCard is the inline-create variant.
+ *
+ * The kebab lives in the shell's actions slot, OUTSIDE the role="button"
+ * surface: a button's children are presentational, so a nested kebab would be
+ * invisible to assistive tech.
  */
-import { cn } from "@houston-ai/core";
-import { Folder } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
+  CardActions,
   CardMeta,
+  CardShell,
   cardClass,
+  cardHeaderClass,
   cardPreviewClass,
   KebabButton,
 } from "./card-chrome";
 import { INTERNAL_DRAG_TYPE, useFolderDropTarget } from "./drop-zone";
 import { FileMenu, type FileMenuLabels } from "./file-menu";
+import { FolderGlyph } from "./file-type-icons";
 import { RenameInput, useInlineRename } from "./inline-rename";
 import type { FolderNode } from "./tree";
 import type { FileEntry } from "./types";
 import { formatFileManagerDate } from "./utils";
-
-export function FolderGlyph({ small }: { small?: boolean }) {
-  return (
-    <Folder
-      aria-hidden
-      strokeWidth={small ? 2 : 1}
-      className={cn(
-        "fill-chip text-ink-muted",
-        small ? "size-4 shrink-0" : "size-12",
-      )}
-    />
-  );
-}
 
 export function FolderCard({
   node,
@@ -81,8 +74,8 @@ export function FolderCard({
   const hasMenu = onDownloadFolder || onDelete || onRename;
 
   return (
-    <>
-      {/* biome-ignore lint/a11y/useSemanticElements: a native <button> cannot wrap the nested kebab button or the rename input; role=button + tabIndex keeps the card keyboard-reachable */}
+    <CardShell>
+      {/* biome-ignore lint/a11y/useSemanticElements: a native <button> cannot wrap the rename input; role=button + tabIndex keeps the card keyboard-reachable */}
       <div
         role="button"
         tabIndex={0}
@@ -109,23 +102,17 @@ export function FolderCard({
         className={cardClass({ dragging, dropTarget: isOver })}
         {...folderHandlers}
       >
-        <div className="flex h-10 shrink-0 items-center gap-2 pr-1.5 pl-3">
+        <div className={cardHeaderClass(!!hasMenu)}>
           <FolderGlyph small />
           {rename.renaming ? (
             <RenameInput rename={rename} />
           ) : (
-            <span
-              className="min-w-0 flex-1 truncate text-[13px]"
-              title={node.name}
-            >
+            <span className="min-w-0 flex-1 truncate text-sm" title={node.name}>
               {node.name}
             </span>
           )}
-          {hasMenu && <KebabButton label={menuButtonLabel} onOpen={setMenu} />}
         </div>
-        <div
-          className={cn(cardPreviewClass, "flex items-center justify-center")}
-        >
+        <div className={`${cardPreviewClass} flex items-center justify-center`}>
           <FolderGlyph />
         </div>
         <CardMeta
@@ -133,6 +120,11 @@ export function FolderCard({
           right={itemsLabel}
         />
       </div>
+      {hasMenu && (
+        <CardActions>
+          <KebabButton label={menuButtonLabel} onOpen={setMenu} />
+        </CardActions>
+      )}
       {menu && (
         <FileMenu
           file={folderEntry}
@@ -144,6 +136,6 @@ export function FolderCard({
           labels={menuLabels}
         />
       )}
-    </>
+    </CardShell>
   );
 }

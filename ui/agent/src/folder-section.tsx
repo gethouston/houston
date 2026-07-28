@@ -1,14 +1,26 @@
 /**
  * Finder-style expandable folder row (list view): click to expand/collapse,
- * right-click for rename / download-as-zip / delete, drop target for moves,
- * inline rename like file rows.
+ * kebab or right-click for rename / download-as-zip / delete, drop target for
+ * moves, inline rename like file rows. Same affordances as the grid's
+ * FolderCard. The row carries role="row" (like the file rows) rather than
+ * role="button": a button prunes its children, which would hide the row's own
+ * kebab from assistive tech.
  */
 import { cn } from "@houston-ai/core";
 import { useEffect, useState } from "react";
+import { KebabButton } from "./card-chrome";
 import { INTERNAL_DRAG_TYPE, useFolderDropTarget } from "./drop-zone";
-import { DisclosureChevron, FolderIcon } from "./file-manager-icons";
-import { FileMenu, type FileMenuLabels } from "./file-menu";
-import { BASE_INDENT, COL_GRID, DEPTH_INDENT, FileRow } from "./file-row";
+import { FileMenu } from "./file-menu";
+import { FileRow, ROW_CLASS } from "./file-row";
+import { FolderGlyph } from "./file-type-icons";
+import {
+  BASE_INDENT,
+  COL_GRID,
+  DEPTH_INDENT,
+  DisclosureChevron,
+  type ListRowCallbacks,
+  META_CELL,
+} from "./files-list-chrome";
 import { RenameInput, useInlineRename } from "./inline-rename";
 import type { FolderNode } from "./tree";
 import type { FileEntry } from "./types";
@@ -17,39 +29,13 @@ import { formatFileManagerDate } from "./utils";
 export function FolderSection({
   node,
   depth,
-  selectedPath,
-  onSelect,
-  onOpen,
-  onReveal,
-  onDownload,
-  onDownloadFolder,
-  onDelete,
-  onRename,
-  onFilesDropped,
-  onDragActive,
-  onMove,
-  menuLabels,
-}: {
-  node: FolderNode;
-  depth: number;
-  selectedPath?: string | null;
-  onSelect?: (file: FileEntry) => void;
-  onOpen?: (file: FileEntry) => void;
-  onReveal?: (file: FileEntry) => void;
-  onDownload?: (file: FileEntry) => void;
-  /** Download the folder's subtree (as a zip). */
-  onDownloadFolder?: (folder: FileEntry) => void;
-  onDelete?: (file: FileEntry) => void;
-  onRename?: (file: FileEntry, newName: string) => void;
-  onFilesDropped?: (files: File[], targetFolder?: string) => void;
-  onDragActive?: (folder: string | null) => void;
-  onMove?: (sourcePath: string, targetFolder: string | null) => void;
-  menuLabels?: FileMenuLabels;
-}) {
+  ...rows
+}: ListRowCallbacks & { node: FolderNode; depth: number }) {
   const [open, setOpen] = useState(true);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const { isOver, folderHandlers } = useFolderDropTarget();
+  const { onDragActive, onDelete, onDownloadFolder, onMove, onRename } = rows;
 
   useEffect(() => {
     onDragActive?.(isOver ? node.path : null);
@@ -73,9 +59,10 @@ export function FolderSection({
 
   return (
     <>
-      {/* biome-ignore lint/a11y/useSemanticElements: CSS grid row hosting an inline rename input — a native <button> cannot contain it; role + tabIndex keep it keyboard-operable */}
+      {/* biome-ignore lint/a11y/useSemanticElements: CSS grid layout — <tr> would break column sizing; role="row" is correct ARIA but the element must stay a div */}
       <div
-        role="button"
+        role="row"
+        aria-expanded={open}
         tabIndex={0}
         draggable={!!onMove && !rename.renaming}
         onDragStart={(e) => {
@@ -95,33 +82,40 @@ export function FolderSection({
           setMenu({ x: e.clientX, y: e.clientY });
         }}
         className={cn(
-          "h-8 w-full cursor-default select-none items-center rounded-lg text-left outline-none transition-colors hover:bg-hover",
-          isOver && "!bg-focus/15",
+          ROW_CLASS,
+          "w-full text-left",
+          isOver && "!bg-focus/15 ring-2 ring-focus",
           dragging && "opacity-40",
         )}
         style={{ display: "grid", gridTemplateColumns: COL_GRID }}
         {...folderHandlers}
       >
         <div
-          className="flex min-w-0 items-center gap-1.5"
+          className="flex min-w-0 items-center gap-1.5 pr-1.5"
           style={{ paddingLeft: padLeft }}
         >
           <DisclosureChevron open={open} />
-          <FolderIcon />
+          <FolderGlyph small />
           {rename.renaming ? (
             <RenameInput rename={rename} className="-ml-1" />
           ) : (
-            <span className="truncate text-[13px]">{node.name}</span>
+            <span className="min-w-0 flex-1 truncate text-sm">{node.name}</span>
           )}
         </div>
-        <span className="truncate px-2 text-[11px] text-ink-muted">
+        <span className={META_CELL}>
           {formatFileManagerDate(node.entry?.dateModified)}
         </span>
-        <span className="truncate px-2 text-[11px] text-ink-muted">
+        <span className={META_CELL}>
           {formatFileManagerDate(node.entry?.dateCreated)}
         </span>
-        <span className="px-2 text-right text-[11px] text-ink-muted">--</span>
-        <span className="truncate px-2 text-[11px] text-ink-muted">Folder</span>
+        {/* A folder has no size of its own: a blank cell, never invented data. */}
+        <span className={cn(META_CELL, "text-right")} />
+        <span className={META_CELL}>{rows.kindFolderLabel}</span>
+        <span className="flex items-center justify-center">
+          {hasMenu && (
+            <KebabButton label={rows.menuButtonLabel} onOpen={setMenu} />
+          )}
+        </span>
       </div>
       {menu && (
         <FileMenu
@@ -131,46 +125,31 @@ export function FolderSection({
           onRename={onRename ? rename.start : undefined}
           onDownload={onDownloadFolder}
           onDelete={onDelete}
-          labels={menuLabels}
+          labels={rows.menuLabels}
         />
       )}
-      {open &&
-        node.children.map((child) =>
-          child.kind === "folder" ? (
-            <FolderSection
-              key={child.path}
-              node={child}
-              depth={depth + 1}
-              selectedPath={selectedPath}
-              onSelect={onSelect}
-              onOpen={onOpen}
-              onReveal={onReveal}
-              onDownload={onDownload}
-              onDownloadFolder={onDownloadFolder}
-              onDelete={onDelete}
-              onRename={onRename}
-              onFilesDropped={onFilesDropped}
-              onDragActive={onDragActive}
-              onMove={onMove}
-              menuLabels={menuLabels}
-            />
-          ) : (
-            <FileRow
-              key={child.entry.path}
-              file={child.entry}
-              depth={depth + 1}
-              selected={selectedPath === child.entry.path}
-              onSelect={onSelect}
-              onOpen={onOpen}
-              onReveal={onReveal}
-              onDownload={onDownload}
-              onDelete={onDelete}
-              onRename={onRename}
-              onMove={onMove}
-              menuLabels={menuLabels}
-            />
-          ),
-        )}
+      {open && <ListRows nodes={node.children} depth={depth + 1} {...rows} />}
     </>
+  );
+}
+
+/** One level of the list tree: folder sections and file rows, in order. */
+export function ListRows({
+  nodes,
+  depth,
+  ...rows
+}: ListRowCallbacks & { nodes: FolderNode["children"]; depth: number }) {
+  return nodes.map((child) =>
+    child.kind === "folder" ? (
+      <FolderSection key={child.path} {...rows} node={child} depth={depth} />
+    ) : (
+      <FileRow
+        key={child.entry.path}
+        {...rows}
+        file={child.entry}
+        depth={depth}
+        selected={rows.selectedPath === child.entry.path}
+      />
+    ),
   );
 }

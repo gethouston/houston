@@ -1,9 +1,11 @@
 /**
- * State/behavior hook backing FilesBrowser: view mode, selection, sort,
- * per-folder navigation and drag-and-drop targeting shared by both views.
+ * State/behavior hook backing FilesBrowser: view mode, selection, sort, the
+ * name search, per-folder navigation and drag-and-drop targeting shared by
+ * both views.
  */
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useDropZone } from "./drop-zone";
+import { filterFolder } from "./filter";
 import { folderAtPath, resolveExistingPath } from "./grid-utils";
 import { buildTree } from "./tree";
 import type { FileEntry, FilesViewMode } from "./types";
@@ -21,6 +23,10 @@ export function useFilesBrowser(opts: {
   /** Surfaces dropped-folder expansion failures (see DropZoneOptions). */
   onDropError?: (error: unknown) => void;
   onMove?: (sourcePath: string, targetFolder: string | null) => void;
+  /** Open a file picker for the given folder (undefined = workspace root). */
+  onUpload?: (targetFolder?: string) => void;
+  /** Same, for a whole-folder pick. */
+  onUploadFolder?: (targetFolder?: string) => void;
 }) {
   const [internalView, setInternalView] = useState<FilesViewMode>("grid");
   const view = opts.controlledView ?? internalView;
@@ -31,6 +37,8 @@ export function useFilesBrowser(opts: {
     onFilesDropped,
     onDropError,
     onMove,
+    onUpload,
+    onUploadFolder,
   } = opts;
   const changeView = useCallback(
     (v: FilesViewMode) => {
@@ -58,6 +66,7 @@ export function useFilesBrowser(opts: {
   const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDirection>("asc");
+  const [query, setQuery] = useState("");
 
   const isEmpty = !opts.loading && opts.files.length === 0;
   const tree = useMemo(() => {
@@ -68,6 +77,16 @@ export function useFilesBrowser(opts: {
   const resolvedPath = tree ? resolveExistingPath(tree, currentPath) : "";
   const currentFolder = tree ? folderAtPath(tree, resolvedPath) : null;
 
+  // What the two views actually render: the open folder (grid) and its whole
+  // subtree (list), both pruned by the search query.
+  const visibleFolder = useMemo(
+    () => (currentFolder ? filterFolder(currentFolder, query) : null),
+    [currentFolder, query],
+  );
+
+  // The query SURVIVES navigation: a folder kept by a descendant match is only
+  // worth opening if the search follows you in, and the field keeps its text
+  // so the way back to everything is still one click away.
   const navigate = useCallback((path: string) => {
     setCurrentPath(path);
     setInternalSelected(null);
@@ -75,7 +94,8 @@ export function useFilesBrowser(opts: {
   }, []);
 
   // Drop targeting: hovered folder ("" = breadcrumb root, null = none).
-  // With nothing hovered, grid drops land in the open folder, list drops at root.
+  // With nothing hovered, drops land in the open folder — both views are
+  // scoped to it.
   const folderTargetRef = useRef<string | null>(null);
   const [, setFolderDropTarget] = useState<string | null>(null);
   const onDragActive = useCallback((f: string | null) => {
@@ -86,8 +106,8 @@ export function useFilesBrowser(opts: {
     const hovered = folderTargetRef.current;
     if (hovered === "") return null;
     if (hovered != null) return hovered;
-    return view === "grid" && resolvedPath ? resolvedPath : null;
-  }, [view, resolvedPath]);
+    return resolvedPath || null;
+  }, [resolvedPath]);
   const handleMove = useCallback(
     (src: string) => onMove?.(src, resolveDropTarget()),
     [onMove, resolveDropTarget],
@@ -119,14 +139,33 @@ export function useFilesBrowser(opts: {
     [onCreateFolder],
   );
 
+  // Every entry point into create-folder mode goes through here: it drops the
+  // search first, so the new card/row is never hidden behind a filter that
+  // cannot match a folder which does not exist yet.
+  const startCreatingFolder = useCallback(() => {
+    setQuery("");
+    setCreatingFolder(true);
+  }, []);
+
   const createFolderAt = useCallback(
     (name: string) => {
-      onCreateFolder?.(
-        view === "grid" && resolvedPath ? `${resolvedPath}/${name}` : name,
-      );
+      onCreateFolder?.(resolvedPath ? `${resolvedPath}/${name}` : name);
       setCreatingFolder(false);
     },
-    [onCreateFolder, view, resolvedPath],
+    [onCreateFolder, resolvedPath],
+  );
+
+  // Button-initiated uploads land where the user is looking, like drops do.
+  // Both take no argument on purpose: they are wired straight to click and
+  // menu-select handlers, whose event must never reach the folder argument.
+  const folderArg = resolvedPath || undefined;
+  const uploadHere = useCallback(
+    () => onUpload?.(folderArg),
+    [onUpload, folderArg],
+  );
+  const uploadFolderHere = useCallback(
+    () => onUploadFolder?.(folderArg),
+    [onUploadFolder, folderArg],
   );
 
   return {
@@ -136,20 +175,26 @@ export function useFilesBrowser(opts: {
     handleSelect,
     creatingFolder,
     setCreatingFolder,
+    startCreatingFolder,
     bgMenu,
     setBgMenu,
     sortKey,
     sortDir,
     handleSort,
+    query,
+    setQuery,
     isEmpty,
-    tree,
+    /** The open folder, search-filtered — what both views render. */
+    visibleFolder,
     resolvedPath,
-    currentFolder,
     navigate,
     onDragActive,
     dragHandlers,
     isBgDropTarget,
     handleBackgroundInteraction,
     createFolderAt,
+    /** Undefined when the consumer passed no upload handler. */
+    uploadHere: onUpload ? uploadHere : undefined,
+    uploadFolderHere: onUploadFolder ? uploadFolderHere : undefined,
   };
 }

@@ -5,8 +5,9 @@
  * brand marks: there is no semantic `--ht-*` role for "spreadsheet green", so
  * they cannot be tokenized. Centralized here (rather than scattered as inline
  * `bg-[#...]` in JSX) following the `provider-brand-colors.ts` precedent, so the
- * "no raw hex in components" rule holds everywhere else. Values match the
- * Finder-style file glyphs in `@houston-ai/agent`'s `file-manager-icons`.
+ * "no raw hex in components" rule holds everywhere else. They are local to the
+ * chat attachment chip: the Files browser (`@houston-ai/agent`) draws its own
+ * glyphs monochrome, so there is nothing to keep in sync here.
  */
 export const FILE_TYPE_ACCENT = {
   pdf: "#E5252A",

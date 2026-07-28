@@ -1,8 +1,10 @@
 /**
- * FilesBody — the current view (grid or list) for the resolved folder, or the
- * loading notice. Chrome (header, scroll container, drop tinting, background
- * menu) stays in FilesBrowser; this owns only which view renders and forwards
- * the shared callbacks to it.
+ * FilesBody — the current view (grid or list) for the open folder, plus the
+ * three states that replace it: the loading skeleton, the empty search result
+ * and the empty folder. All three are hoisted ABOVE the view switch, so the
+ * list view gets them too instead of showing bare column headers. Chrome
+ * (header, scroll container, drop tinting, background menu) stays in
+ * FilesBrowser; this owns only what renders inside the content column.
  */
 import type { FilesBrowserProps } from "./files-browser";
 import {
@@ -10,8 +12,11 @@ import {
   toColumnLabels,
   toGridLabels,
 } from "./files-browser-labels";
+import { FilesEmptyFolder } from "./files-empty-folder";
 import { FilesGrid } from "./files-grid";
 import { FilesListView } from "./files-list-view";
+import { FilesSearchEmpty } from "./files-search-empty";
+import { FilesGridSkeleton, FilesListSkeleton } from "./files-skeleton";
 import type { useFilesBrowser } from "./use-files-browser";
 
 export function FilesBody({
@@ -23,20 +28,47 @@ export function FilesBody({
   props: FilesBrowserProps;
   l: Required<FilesBrowserLabels>;
 }) {
-  if (props.loading || !b.tree || !b.currentFolder) {
+  if (props.loading || !b.visibleFolder) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <p className="text-sm text-ink-muted/50">{l.loading}</p>
+      <div role="status" aria-label={l.loading}>
+        {b.view === "grid" ? <FilesGridSkeleton /> : <FilesListSkeleton />}
       </div>
     );
   }
 
   const onCreateFolder = props.onCreateFolder ? b.createFolderAt : undefined;
   const onCancelCreateFolder = () => b.setCreatingFolder(false);
+  const onNewFolder = onCreateFolder ? b.startCreatingFolder : undefined;
+  // Create-folder mode always wins: the new card/row has to be able to render,
+  // or the affordances that start it are dead clicks.
+  const isBlank = b.visibleFolder.children.length === 0 && !b.creatingFolder;
+
+  if (isBlank && b.query) {
+    return (
+      <FilesSearchEmpty
+        message={l.searchNoResults}
+        query={b.query}
+        clearLabel={l.searchClear}
+        onClear={() => b.setQuery("")}
+      />
+    );
+  }
+
+  if (isBlank) {
+    return (
+      <FilesEmptyFolder
+        message={l.emptyFolder}
+        onUpload={b.uploadHere}
+        uploadLabel={l.emptyFolderUploadCta}
+        onNewFolder={onNewFolder}
+        newFolderLabel={l.emptyFolderNewFolderCta}
+      />
+    );
+  }
 
   return b.view === "grid" ? (
     <FilesGrid
-      folder={b.currentFolder}
+      folder={b.visibleFolder}
       selectedPath={b.selectedPath}
       loadPreview={props.loadPreview}
       onNavigate={b.navigate}
@@ -57,7 +89,7 @@ export function FilesBody({
     />
   ) : (
     <FilesListView
-      tree={b.tree}
+      tree={b.visibleFolder}
       sortKey={b.sortKey}
       sortDir={b.sortDir}
       onSort={b.handleSort}
@@ -78,6 +110,7 @@ export function FilesBody({
       newFolderPlaceholder={l.newFolderPlaceholder}
       columnLabels={toColumnLabels(l)}
       menuLabels={props.menuLabels}
+      menuButtonLabel={l.menuButton}
     />
   );
 }

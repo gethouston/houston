@@ -12,6 +12,12 @@ export interface FolderNode {
   children: TreeNode[];
   /** The folder's own listing entry (dates), when the backend reported one. */
   entry?: FileEntry;
+  /**
+   * Child count BEFORE a search pruned this folder. Set only by `filterFolder`;
+   * read it through `folderChildCount` so a card never states a pruned count as
+   * if it were the folder's real size.
+   */
+  unfilteredChildCount?: number;
 }
 
 export interface FileNode {

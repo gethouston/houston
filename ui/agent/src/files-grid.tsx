@@ -1,17 +1,18 @@
 /**
  * Drive-style card grid for one folder level. Folders first, then files
- * (both pre-sorted by the caller). Renders the inline new-folder card and
- * the empty-folder notice.
+ * (both pre-sorted by the caller). Renders the inline new-folder card. The
+ * empty-folder and empty-search states belong to FilesBody, which hoists them
+ * above the view switch so the list view gets them too.
  */
 import { FileCard } from "./file-card";
 import type { FileMenuLabels } from "./file-menu";
+import { folderChildCount } from "./filter";
 import { FolderCard } from "./folder-card";
 import { NewFolderCard } from "./new-folder-card";
 import type { FolderNode } from "./tree";
 import type { FileEntry, LoadFilePreview } from "./types";
 
 export interface FilesGridLabels {
-  emptyFolder: string;
   newFolderPlaceholder: string;
   itemSingular: string;
   itemPlural: string;
@@ -57,16 +58,6 @@ export function FilesGrid({
   menuLabels?: FileMenuLabels;
   labels: FilesGridLabels;
 }) {
-  const isEmpty = folder.children.length === 0 && !creatingFolder;
-
-  if (isEmpty) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-8">
-        <p className="text-sm text-ink-muted">{labels.emptyFolder}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="grid shrink-0 grid-cols-[repeat(auto-fill,minmax(180px,1fr))] content-start gap-3 pt-1">
       {creatingFolder && onCreateFolder && (
@@ -113,7 +104,8 @@ export function FilesGrid({
   );
 }
 
+/** A folder's TRUE size: a search prunes children, it never shrinks a folder. */
 function itemsLabel(node: FolderNode, labels: FilesGridLabels): string {
-  const count = node.children.length;
+  const count = folderChildCount(node);
   return `${count} ${count === 1 ? labels.itemSingular : labels.itemPlural}`;
 }

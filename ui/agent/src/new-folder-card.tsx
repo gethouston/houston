@@ -4,8 +4,13 @@
  */
 import { cn } from "@houston-ai/core";
 import { useEffect, useRef, useState } from "react";
-import { CardMeta, cardClass, cardPreviewClass } from "./card-chrome";
-import { FolderGlyph } from "./folder-card";
+import {
+  CardMeta,
+  cardClass,
+  cardHeaderClass,
+  cardPreviewClass,
+} from "./card-chrome";
+import { FolderGlyph } from "./file-type-icons";
 
 export function NewFolderCard({
   onConfirm,
@@ -37,7 +42,7 @@ export function NewFolderCard({
 
   return (
     <div className={cardClass({ selected: true })}>
-      <div className="flex h-10 shrink-0 items-center gap-2 pr-1.5 pl-3">
+      <div className={cardHeaderClass()}>
         <FolderGlyph small />
         <input
           ref={inputRef}
@@ -49,7 +54,7 @@ export function NewFolderCard({
           }}
           onBlur={commit}
           placeholder={placeholder}
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-muted/60"
+          className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted/60"
         />
       </div>
       <div
