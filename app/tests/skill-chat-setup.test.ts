@@ -101,7 +101,11 @@ describe("skill chat setup message", () => {
       },
       { agent_path: "/w/a", type: "activity", status: "needs_you" },
     ]);
-    deepStrictEqual(summaries.a, { needsYouCount: 1, runningCount: 0 });
+    deepStrictEqual(summaries.a, {
+      needsYouCount: 1,
+      runningCount: 0,
+      unreadCount: 0,
+    });
   });
 
   it("create kickoff covers the guided interview HOU-791 asks for", () => {
