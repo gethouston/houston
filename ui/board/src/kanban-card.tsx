@@ -168,7 +168,14 @@ export function KanbanCard({
           onSelect();
         }}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+          // Only the card itself opens on Enter/Space; key events from a focused
+          // inner control (the rename input, the multi-select checkbox) bubble
+          // here but carry a different target — swallowing their Space would
+          // eat the typed character and open the mission instead.
+          if (
+            e.target === e.currentTarget &&
+            (e.key === "Enter" || e.key === " ")
+          ) {
             e.preventDefault();
             onSelect();
           }
