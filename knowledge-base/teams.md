@@ -868,13 +868,16 @@ rare hard failure stays silent and consumers fall back via React Query's `isErro
 
 ## Chat sender attribution (HOU-943, HOU-960)
 
-In a shared chat every turn says who sent it, on WhatsApp-group semantics: a
-group chat labels the people you talk TO and never you, and a name is an answer
-to "who is talking now", so it prints once per change of speaker rather than
-once per message. The trigger is the DEPLOYMENT, not the thread —
-`isMultiplayer(capabilities)` — so a shared chat attributes its first message,
-not only once a second person writes. Single-player renders no sender
-presentation at all: no name, no face, no reserved column (byte-identical
+In a multiplayer chat, group presentation starts only when the transcript proves
+someone besides the viewer participated: a user-message author differs from the
+resolved viewer id, or the transcript has at least two distinct author ids while
+that profile is still resolving. It follows WhatsApp-group semantics: a group
+chat labels the people you talk TO and never you, and a name is an answer to
+"who is talking now", so it prints once per change of speaker rather than once
+per message. A viewer-and-agent transcript keeps the classic single-player
+layout. The app passes `true` for the proven group case and otherwise omits the
+prop, preserving `ui/chat`'s distinct-authors fallback. Single-player renders
+no sender presentation at all: no name, no face, no reserved column (byte-identical
 transcript).
 
 **The identity travels on the view-model.** A message's author is already stored
@@ -940,7 +943,8 @@ signed-in-but-not-yet-resolved window both render today's layout) and
 viewer's own row is no longer labelled on screen).
 
 **App wiring.** `use-chat-sender-avatars.tsx` resolves it: `showSenders` from
-capabilities, `agentLabel` from the agent, faces from the SAME batched
+the multiplayer transcript and resolved viewer profile, `agentLabel` from the
+agent, faces from the SAME batched
 `useUserProfiles` lookup the board face stacks use (ids collected from the feed's
 authors, own rows via `useMyProfile`, `PersonFace` initials fallback), and
 `senderNameClass` = `personNameToneClass(author.userId)` for a human,
