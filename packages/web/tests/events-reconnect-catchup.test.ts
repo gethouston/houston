@@ -24,17 +24,27 @@ vi.mock("../src/engine-adapter/session-refresh", () => ({
 
 import { subscribeEvents } from "../src/engine-adapter/cp/events";
 
-const CFG = { baseUrl: "https://gateway.example", token: "t" };
+/**
+ * "Has this feed ever streamed?" is remembered per GATEWAY for the page's
+ * lifetime, so every test that wants to act like a fresh boot must name its own
+ * gateway. Two subscriptions to the SAME gateway are what a token refresh or a
+ * `setEndpoint` does, and that is the case the second half of this file pins.
+ */
+let gateways = 0;
+function freshGateway() {
+  gateways += 1;
+  return { baseUrl: `https://gateway-${gateways}.example`, token: "t" };
+}
 
 /** Subscribe and hand back the loop options the adapter passed in. */
-function subscribe() {
+function subscribe(cfg: { baseUrl: string; token: string } = freshGateway()) {
   const events: unknown[] = [];
   streamGlobalEvents.mockClear();
-  const stop = subscribeEvents(CFG, (e) => events.push(e));
+  const stop = subscribeEvents(cfg, (e) => events.push(e));
   const opts = streamGlobalEvents.mock.calls[0][0] as {
     onConnect?: () => void;
   };
-  return { events, opts, stop };
+  return { cfg, events, opts, stop };
 }
 
 test("the first connect publishes nothing — the initial read is already running", () => {
@@ -58,6 +68,41 @@ test("every RE-connect publishes the catch-up event", () => {
     { type: "EventStreamReconnected" },
   ]);
   stop();
+});
+
+/**
+ * The laptop-asleep case, and the one that loses the MOST events.
+ *
+ * A 401 on the stream refreshes the session, and `setHostedEngineSessionToken`
+ * tears the whole client down and rebuilds it (`_ws.disconnect()` then
+ * `_ws.connect()`) — a brand-new `subscribeEvents` call. When the "have we
+ * connected before" flag lived in that call's closure it restarted at zero, so
+ * the reconnect that follows the longest gap was the one reconnect that stayed
+ * silent and nothing re-read the board.
+ */
+test("a RE-subscription to the same gateway publishes the catch-up event", () => {
+  const first = subscribe();
+  first.opts.onConnect?.();
+  first.stop();
+
+  // Same gateway, new subscription: the token was refreshed under us.
+  const second = subscribe(first.cfg);
+  second.opts.onConnect?.();
+
+  expect(second.events).toEqual([{ type: "EventStreamReconnected" }]);
+  second.stop();
+});
+
+test("a different gateway starts silent — a real fresh boot is not a reconnect", () => {
+  const first = subscribe();
+  first.opts.onConnect?.();
+  first.stop();
+
+  const other = subscribe();
+  other.opts.onConnect?.();
+
+  expect(other.events).toEqual([]);
+  other.stop();
 });
 
 test("the catch-up seam is wired at all — the regression that started this", () => {

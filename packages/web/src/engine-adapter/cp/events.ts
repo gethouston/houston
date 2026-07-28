@@ -27,12 +27,32 @@ import { type ControlPlaneConfig, liveToken } from "./fetch";
  * re-read of `liveToken` carries a valid bearer — without it, an expired token
  * would 401-loop forever because nothing else re-mints while the app idles.
  */
+/**
+ * Gateways whose event feed has already streamed at least once in this page's
+ * lifetime — the "is this a reconnect?" memory behind the catch-up seam below.
+ *
+ * Module-scoped, NOT per-subscription, because the reconnect that matters most
+ * replaces the subscription itself: a `401` refreshes the session, and
+ * `setHostedEngineSessionToken` rebuilds the whole client (`_ws.disconnect()`
+ * then `_ws.connect()`), so the stream that comes back after the longest gap —
+ * the laptop that slept until its token expired — arrives on a BRAND-NEW
+ * `subscribeEvents` call. A per-call counter restarted at zero there and the
+ * one reconnect that had lost the most events was the one that stayed silent.
+ *
+ * Keyed by gateway, not by token or space: the token is exactly what changes
+ * across a refresh, and the active space is mutated in place on the SAME
+ * subscription (`cfg.activeOrgSlug`, read live per connect). Page lifetime is
+ * the right scope on both ends — a real fresh boot starts with an empty set and
+ * stays silent (its initial reads are already in flight), and nothing here
+ * outlives the reload that would make the memory wrong.
+ */
+const streamedGateways = new Set<string>();
+
 export function subscribeEvents(
   cfg: ControlPlaneConfig,
   onEvent: (event: unknown) => void,
 ): () => void {
   const ac = new AbortController();
-  let connects = 0;
   void streamGlobalEvents({
     url: () => {
       const org = cfg.activeOrgSlug;
@@ -58,11 +78,16 @@ export function subscribeEvents(
     // the board silently stopped tracking reality until the next remount. On a
     // RE-connect we publish a transport event and let the app's invalidation
     // plan decide what to re-read (app/src/lib/agent-invalidation-plan.ts);
-    // the adapter stays out of the cache-policy business. The FIRST connect is
-    // skipped — that read is already in flight.
+    // the adapter stays out of the cache-policy business. The first connect to
+    // a gateway this page has never streamed is skipped — that read is already
+    // in flight. See `streamedGateways` for why the memory outlives the
+    // subscription.
     onConnect: () => {
-      connects += 1;
-      if (connects > 1) onEvent({ type: "EventStreamReconnected" });
+      if (streamedGateways.has(cfg.baseUrl)) {
+        onEvent({ type: "EventStreamReconnected" });
+        return;
+      }
+      streamedGateways.add(cfg.baseUrl);
     },
     // Log-only (no toast): a background stream that auto-reconnects — but it
     // must never fail silently again.
