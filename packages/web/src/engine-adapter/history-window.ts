@@ -17,6 +17,19 @@ export const CHAT_OPEN_WINDOW = 120;
 /** Messages fetched per scroll-up load-older page. */
 export const CHAT_OLDER_PAGE = 80;
 
+/**
+ * Messages read per mission by a BULK scan — the board's mission search
+ * (HOU-941). Search reads the transcript of every mission the query doesn't
+ * already match by title or description, and reading each one in FULL made a
+ * search on a busy board sit on a spinner for 10-15 seconds.
+ *
+ * The tradeoff, deliberately taken: a match older than a conversation's last
+ * {@link SEARCH_SCAN_WINDOW} messages is not found. The window is much wider
+ * than {@link CHAT_OPEN_WINDOW} because a scan only greps text — it renders
+ * nothing — so it can afford to look far further back than a chat open.
+ */
+export const SEARCH_SCAN_WINDOW = 400;
+
 /** The minimal frame shape the seed decision reads. */
 export interface SeedFrame {
   feed_type: string;
