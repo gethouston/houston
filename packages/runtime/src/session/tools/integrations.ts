@@ -186,6 +186,23 @@ function renderMatch(m: ToolMatch, status: AppStatus): string {
  */
 const REQUEST_CONNECTION_GUIDANCE =
   "To let the user connect an app, call the request_connection tool with that app's toolkit (the slug shown in the results). Houston shows the user a one-click connect card in place of the chat input, then automatically sends you a message once the connection is live so you can continue - do not ask the user to confirm.";
+
+/**
+ * Ceiling for one integration tool result, aligned with the code sandbox's
+ * output limit (code-sandbox DEFAULT_LIMITS.maxOutputBytes). App APIs return
+ * unbounded documents — a single GMAIL_FETCH_EMAILS with include_payload can
+ * exceed 1 MB of JSON, which alone overflows a model's context window and
+ * terminally errors the turn (every event-trigger run on a newsletter inbox
+ * died this way, HOU-893). Truncate with an instructive marker instead: the
+ * model re-runs the action with tighter parameters rather than the turn dying.
+ */
+const MAX_RESULT_CHARS = 256 * 1024;
+
+/** Bound a tool-result text; the marker tells the model how to recover. */
+function boundResultText(text: string, guidance: string): string {
+  if (text.length <= MAX_RESULT_CHARS) return text;
+  return `${text.slice(0, MAX_RESULT_CHARS)}\n[result truncated: it exceeded the ${Math.floor(MAX_RESULT_CHARS / 1024)} KB tool-result limit and is cut off mid-document. ${guidance}]`;
+}
 interface ActionResult {
   successful: boolean;
   data?: unknown;
@@ -356,7 +373,15 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         );
       }
       return {
-        content: [{ type: "text" as const, text: parts.join("\n\n") }],
+        content: [
+          {
+            type: "text" as const,
+            text: boundResultText(
+              parts.join("\n\n"),
+              "Search again with a more specific query to see the actions that were cut off.",
+            ),
+          },
+        ],
         details: {
           matches: items.length,
           actions: items.filter((m) => m.action).map((m) => m.action),
@@ -433,7 +458,10 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           : "";
         throw new Error(`"${params.action}" did not succeed: ${reason}${hint}`);
       }
-      const text = result.data ? JSON.stringify(result.data, null, 2) : "Done.";
+      const text = boundResultText(
+        result.data ? JSON.stringify(result.data, null, 2) : "Done.",
+        "Do not rely on the cut-off tail. Re-run the action with tighter parameters — fewer results, specific ids or fields, and without full payloads/bodies — to get what you need within the limit.",
+      );
       return {
         content: [{ type: "text" as const, text }],
         details: { action: params.action },

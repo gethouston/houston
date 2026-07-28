@@ -209,6 +209,31 @@ test("execute runs an action and returns its data; a failed action surfaces", as
   ).rejects.toThrow(/did not succeed: missing recipient/);
 });
 
+test("a giant execute result is truncated with recovery guidance, never fed whole", async () => {
+  // A single Gmail fetch with full payloads exceeds 1 MB of JSON — enough to
+  // overflow a model context window on its own (HOU-893: every event-trigger
+  // run on a newsletter inbox died with a terminal context-window error).
+  mockFetch(() => ({
+    body: { successful: true, data: { html: "x".repeat(1_200_000) } },
+  }));
+  const out = await run(execute, {
+    action: "GMAIL_FETCH_EMAILS",
+    params: { include_payload: true },
+  });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text.length).toBeLessThan(300 * 1024);
+  expect(text).toContain("[result truncated");
+  expect(text).toContain("Re-run the action with tighter parameters");
+});
+
+test("a small execute result passes through untouched", async () => {
+  mockFetch(() => ({ body: { successful: true, data: { ok: 1 } } }));
+  const out = await run(execute, { action: "X", params: {} });
+  expect((out.content[0] as { text: string }).text).not.toContain(
+    "[result truncated",
+  );
+});
+
 test("a no-connected-account failure hands off to request_connection", async () => {
   mockFetch(() => ({
     body: { successful: false, error: "no connected account found for user" },
