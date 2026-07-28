@@ -94,7 +94,7 @@ export function SkillSetupChat({
   // with the way back reachable the whole time.
   if (!activity) {
     return (
-      <div className="flex h-[36rem] min-h-0 flex-col overflow-hidden rounded-2xl border border-line">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line">
         <div className="border-line border-b px-4 py-3">{backButton}</div>
         <div className="flex min-h-0 flex-1 items-center justify-center gap-2 text-ink-muted">
           <Loader2 className="size-4 animate-spin" />
@@ -116,7 +116,9 @@ export function SkillSetupChat({
     ) : undefined;
 
   return (
-    <div className="flex h-[36rem] min-h-0 flex-col overflow-hidden rounded-2xl border border-line">
+    // Fills the section's whole height (the Automations chat look) — the
+    // pane is flex-1 against the settings column, never a fixed box.
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line">
       <div ref={setContainer} className="min-h-0 flex-1" />
       <div className="hidden">
         <RoutineSetupChatBoard
