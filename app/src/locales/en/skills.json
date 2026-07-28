@@ -149,7 +149,8 @@
     "back": "Back to skills",
     "editManually": "Edit manually",
     "draftInProgress": "Skill in progress. Pick up where you left off.",
-    "discardDraft": "Discard draft"
+    "discardDraft": "Discard draft",
+    "close": "Close"
   },
   "library": {
     "heading": "From Houston's agents",
@@ -196,6 +197,15 @@
       "deleteConfirmTitle": "Delete \"{{name}}\"?",
       "deleteConfirmDescription_one": "This removes the skill from {{count}} agent ({{names}}). This cannot be undone.",
       "deleteConfirmDescription_other": "This removes the skill from {{count}} agents ({{names}}). This cannot be undone."
+    },
+    "chatPick": {
+      "title": "Who should build it with you?",
+      "description": "The chat runs with this agent, and the skill is created there first. You can share it with other agents afterwards."
     }
+  },
+  "fromYourAgents": {
+    "heading": "From your other agents",
+    "installAria": "Add {{name}} to this agent",
+    "installedAria": "{{name}} is already on this agent"
   }
 }

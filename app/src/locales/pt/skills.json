@@ -149,7 +149,8 @@
     "back": "Voltar para habilidades",
     "editManually": "Editar manualmente",
     "draftInProgress": "Habilidade em construção. Continue de onde parou.",
-    "discardDraft": "Descartar rascunho"
+    "discardDraft": "Descartar rascunho",
+    "close": "Fechar"
   },
   "library": {
     "heading": "Dos agentes da Houston",
@@ -196,6 +197,15 @@
       "deleteConfirmTitle": "Excluir \"{{name}}\"?",
       "deleteConfirmDescription_one": "Isso remove a skill de {{count}} agente ({{names}}). Não pode ser desfeito.",
       "deleteConfirmDescription_other": "Isso remove a skill de {{count}} agentes ({{names}}). Não pode ser desfeito."
+    },
+    "chatPick": {
+      "title": "Quem vai construir com você?",
+      "description": "O chat abre com esse agente e a skill é criada nele primeiro. Depois você pode compartilhar com outros agentes."
     }
+  },
+  "fromYourAgents": {
+    "heading": "Dos seus outros agentes",
+    "installAria": "Adicionar {{name}} a este agente",
+    "installedAria": "{{name}} já está neste agente"
   }
 }

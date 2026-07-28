@@ -21,17 +21,15 @@ export interface HoustonLibraryGroup {
 }
 
 /**
- * The Custom tab's Houston skill library: every skill the release-bundled
- * pre-set agents ship (translated variant when the app runs es/pt), plus the
- * one-click install that writes the SKILL.md into THIS agent. The bundle is
- * static per release, so the parse runs once per locale and never refetches.
+ * The library CONTENT alone — the bundled store templates parsed into shelf
+ * groups, agent-agnostic and static per release/locale. Split from
+ * {@link useHoustonSkillLibrary} so the global Skills page can render the
+ * same shelves with its own pick-agents install flow (HOU-792).
  */
-export function useHoustonSkillLibrary(agentPath: string) {
+export function useHoustonSkillLibraryData() {
   const { i18n } = useTranslation();
   const locale = i18n.language;
-  const queryClient = useQueryClient();
-
-  const query = useQuery({
+  return useQuery({
     queryKey: ["houston-skill-library", locale.toLowerCase().split("-")[0]],
     staleTime: Number.POSITIVE_INFINITY,
     queryFn: async (): Promise<HoustonLibraryGroup[]> => {
@@ -48,6 +46,17 @@ export function useHoustonSkillLibrary(agentPath: string) {
       return groups.filter((g) => g.skills.length > 0);
     },
   });
+}
+
+/**
+ * The Custom tab's Houston skill library: every skill the release-bundled
+ * pre-set agents ship (translated variant when the app runs es/pt), plus the
+ * one-click install that writes the SKILL.md into THIS agent. The bundle is
+ * static per release, so the parse runs once per locale and never refetches.
+ */
+export function useHoustonSkillLibrary(agentPath: string) {
+  const queryClient = useQueryClient();
+  const query = useHoustonSkillLibraryData();
 
   // One install at a time; the slug in flight drives that row's spinner.
   const [installing, setInstalling] = useState<string | null>(null);

@@ -149,7 +149,8 @@
     "back": "Volver a habilidades",
     "editManually": "Editar manualmente",
     "draftInProgress": "Habilidad en construcción. Retoma donde quedaste.",
-    "discardDraft": "Descartar borrador"
+    "discardDraft": "Descartar borrador",
+    "close": "Cerrar"
   },
   "library": {
     "heading": "De los agentes de Houston",
@@ -196,6 +197,15 @@
       "deleteConfirmTitle": "¿Eliminar \"{{name}}\"?",
       "deleteConfirmDescription_one": "Esto quita la skill de {{count}} agente ({{names}}). No se puede deshacer.",
       "deleteConfirmDescription_other": "Esto quita la skill de {{count}} agentes ({{names}}). No se puede deshacer."
+    },
+    "chatPick": {
+      "title": "¿Quién la construye contigo?",
+      "description": "El chat se abre con este agente y la skill se crea ahí primero. Después puedes compartirla con otros agentes."
     }
+  },
+  "fromYourAgents": {
+    "heading": "De tus otros agentes",
+    "installAria": "Añadir {{name}} a este agente",
+    "installedAria": "{{name}} ya está en este agente"
   }
 }

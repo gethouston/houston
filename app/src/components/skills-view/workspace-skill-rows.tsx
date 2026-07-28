@@ -22,8 +22,9 @@ import { SkillIcon } from "../skill-icon";
 /** Avatars a row shows before collapsing the rest into "+N". */
 const ROW_AVATAR_CAP = 3;
 
-/** The overlapping holder stack: who has this skill, at a glance. */
-function AgentStack({ agents }: { agents: WorkspaceSkillAgent[] }) {
+/** The overlapping holder stack: who has this skill, at a glance. Shared
+ *  with the per-agent Custom tab's "From your other agents" rows. */
+export function AgentStack({ agents }: { agents: WorkspaceSkillAgent[] }) {
   const shown = agents.slice(0, ROW_AVATAR_CAP);
   const extra = agents.length - shown.length;
   return (

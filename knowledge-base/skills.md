@@ -189,12 +189,35 @@ the caller owns (`canUseAgent` is workspace ownership), so no backend changed:
   first agent (read-only marketplace proxies), install opens the
   pick-agents dialog (`install-skill-dialog.tsx`; agents already holding the
   slug lock out) and fans out `installCommunity` per picked agent.
-- **New skill** — header CTA (`new-skill-dialog.tsx`): the scratch fields +
-  agent multi-select; creates via the per-agent POST on each picked agent.
+- **Custom skills tab** (`global-custom-tab.tsx`) — Create skill (the guided
+  chat), Add skill (the multi-agent from-scratch dialog,
+  `new-skill-dialog.tsx`), and the Houston library shelves
+  (`useHoustonSkillLibraryData`, the agent-agnostic half of the library hook);
+  library installs route through the same pick-agents flow
+  (`use-global-install-flow.tsx` unifies marketplace + library pending
+  installs behind one dialog).
+- **New skill / Create skill** — the guided create chat (HOU-791) in the
+  SHELL'S right-hand panel: `use-global-chat-flow.tsx` picks the hosting
+  agent (`choose-chat-agent-dialog.tsx`; skipped with one agent) and mounts
+  `global-skill-chat.tsx`, which drives the per-agent setup-chat machinery
+  and starts a fresh draft. The skill is created on that agent first, then
+  assignable from the manage dialog.
 
-The per-agent Skills tab is unchanged and stays the place for the guided
-create chat (HOU-791). The sidebar nav item made the bare "Skills" text
-ambiguous in e2e — scope selectors (see `skills-add-dialog.spec.ts`).
+**Setup chats are side-by-side everywhere (the Routines split).**
+`skill-setup-chat.tsx` portals into the shell detail panel
+(`useShellDetailPanel`) and owns the panel-open flag on mount/unmount, so on
+BOTH the per-agent Skills tab and the global page the catalog stays visible
+on the left while the conversation runs on the right (Escape closes, same as
+routines). The old swap-the-catalog-for-the-chat behavior is gone.
+
+**Per-agent Custom tab also shows "From your other agents"**
+(`other-agent-skills.tsx`): the user's own skills living on OTHER agents,
+one-click copyable onto this agent (load the holder's SKILL.md verbatim →
+`writeFile` here — the Houston-library copy primitive). Mounted only inside
+the tab content so the cross-agent fan-out runs only when the tab opens.
+
+The sidebar nav item made the bare "Skills" text ambiguous in e2e — scope
+selectors (see `skills-add-dialog.spec.ts`).
 
 ## Add Skills UI — the catalog-grammar Skills surface
 

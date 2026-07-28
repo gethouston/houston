@@ -85,7 +85,7 @@ export function SkillsContent({
       : null;
   const tabs = useSkillDiscoveryTabs({
     showCustom: addDialogProps !== null,
-    agentPath: agent.folderPath,
+    agent,
     onAddClick: () => setDialogOpen(true),
     onCreateWithAi: chat.startCreate,
     drafts: chat.drafts,
@@ -124,43 +124,39 @@ export function SkillsContent({
 
   return (
     <>
-      {/* An open setup chat owns the section (HOU-791): the catalog steps
-          aside so the conversation gets the room, and closing the chat
-          returns it. The dialogs below stay mounted — the chat header's
-          Edit-manually opens the modal over the chat. */}
+      {/* An open setup chat renders in the SHELL'S right-hand panel (the
+          Routines split, HOU-792): the catalog below stays visible on the
+          left while the conversation runs beside it. The chat node itself is
+          a portal (plus a hidden board mount), so both render together. The
+          dialogs stay mounted — the chat header's Edit-manually opens the
+          modal over the chat. */}
       {chat.chatNode}
-      {!chat.chatNode && (
-        <>
-          <CatalogShell
-            controls={
-              (tabs.length > 0 || sorted.length > 0) && (
-                <CatalogSearchField
-                  value={query}
-                  onChange={setQuery}
-                  label={t("grid.searchSkills")}
-                  clearLabel={t("grid.clearSearch")}
-                />
-              )
-            }
-            installedTitle={t("grid.yourSkillsHeading")}
-            installedCount={installedCount}
-            installed={installed}
-            availableTitle={t("grid.availableHeading")}
-            // The store-size label belongs to the Store tab only; on Custom
-            // the chip would contradict the visible content.
-            availableCount={
-              tab === "store" ? SKILL_STORE_SIZE_LABEL : undefined
-            }
-            tabs={tabs}
-            value={tab}
-            onValueChange={setTab}
-          />
-          {noInstalledMatches && (
-            <p className="text-[13px] text-ink-muted">
-              {t("grid.noMatchingSkills")}
-            </p>
-          )}
-        </>
+      <CatalogShell
+        controls={
+          (tabs.length > 0 || sorted.length > 0) && (
+            <CatalogSearchField
+              value={query}
+              onChange={setQuery}
+              label={t("grid.searchSkills")}
+              clearLabel={t("grid.clearSearch")}
+            />
+          )
+        }
+        installedTitle={t("grid.yourSkillsHeading")}
+        installedCount={installedCount}
+        installed={installed}
+        availableTitle={t("grid.availableHeading")}
+        // The store-size label belongs to the Store tab only; on Custom
+        // the chip would contradict the visible content.
+        availableCount={tab === "store" ? SKILL_STORE_SIZE_LABEL : undefined}
+        tabs={tabs}
+        value={tab}
+        onValueChange={setTab}
+      />
+      {noInstalledMatches && (
+        <p className="text-[13px] text-ink-muted">
+          {t("grid.noMatchingSkills")}
+        </p>
       )}
       {addDialogProps && (
         <AddSkillDialog
