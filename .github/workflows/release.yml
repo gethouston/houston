@@ -211,7 +211,17 @@ jobs:
           else
             echo "No $AUTHORED — falling back to auto-generated changelog"
 
-            PREV_TAG=$(git tag --sort=-v:refname --list 'v*' | grep -v "^${GITHUB_REF_NAME}$" | head -1)
+            # Diff against the previous tag on the SAME channel. A cloud-v*
+            # pre-release diffs against the previous cloud-v* cut; a local v*
+            # release against the previous v*. The glob 'v*' never matches
+            # cloud-v* tags, so a single shared glob made every cloud draft
+            # diff against the last LOCAL release — weeks of commits in the
+            # notes instead of one day's train (HOU-972).
+            case "$GITHUB_REF_NAME" in
+              cloud-*) TAG_GLOB='cloud-v*' ;;
+              *)       TAG_GLOB='v*' ;;
+            esac
+            PREV_TAG=$(git tag --sort=-v:refname --list "$TAG_GLOB" | grep -v "^${GITHUB_REF_NAME}$" | head -1)
             if [ -z "$PREV_TAG" ]; then
               echo "No previous tag; diffing against HEAD~50"
               RANGE="HEAD~50..HEAD"
@@ -2174,7 +2184,15 @@ jobs:
           fi
 
           VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${GITHUB_REF_NAME}"
+          # The release is still a DRAFT here, and a draft is NOT served at
+          # releases/tag/<tag> — that page shows the bare tag (source-only
+          # assets, no notes, no DMGs) and 404s outright once the daily cut's
+          # cleanup deletes a superseded draft's tag. Link the draft's real
+          # html_url (releases/tag/untagged-…), which collaborators can open
+          # and which shows the notes + installer assets (HOU-972). Fall back
+          # to the tag URL only if the lookup fails.
+          RELEASE_URL=$(gh release view "$GITHUB_REF_NAME" --json url --jq .url 2>/dev/null) \
+            || RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${GITHUB_REF_NAME}"
 
           # First ~700 chars of the release-notes body, skipping the leading "## Houston X.Y.Z" header line.
           NOTES_PREVIEW=$(tail -n +2 release-notes.md | head -c 700)
