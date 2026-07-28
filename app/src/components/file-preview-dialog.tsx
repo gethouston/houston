@@ -7,19 +7,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSaveDownload } from "../hooks/use-save-download";
 import { genericErrorDescription } from "../lib/error-report";
-import { tauriFiles } from "../lib/tauri";
+import { fetchFileBytes } from "../lib/file-bytes-cache";
 
 /**
  * In-app preview for a workspace file (web build, cloud pods, remote hosts).
  * Images, PDFs and text-ish files render inline; everything else (pptx,
  * xlsx, …) gets a "download to open" fallback. Bytes come over the
- * authenticated download route, so nothing here assumes a local filesystem.
- * Opened from the Files tab and from chat file surfaces (file cards, turn
- * summaries, prose file pills) via `useOpenAgentFile`.
+ * authenticated download route, so nothing here assumes a local filesystem,
+ * and a file the Files grid already thumbnailed is served from the shared byte
+ * cache (`lib/file-bytes-cache.ts`) instead of downloaded twice. Opened from
+ * the Files tab and from chat file surfaces (file cards, turn summaries, prose
+ * file pills) via `useOpenAgentFile`.
  */
 
 const TEXT_PREVIEW_LIMIT = 256 * 1024;
@@ -36,6 +39,11 @@ interface Props {
   /** Workspace-relative path of the file to preview, or null when closed. */
   filePath: string | null;
   fileName: string;
+  /** Key into the shared byte cache, from `sharedBytesKey(file)` when the
+   *  opener holds the entry (the Files tab does). Omitted for anything the
+   *  grid could not have thumbnailed, which downloads directly rather than
+   *  parking an unbounded blob in memory. */
+  bytesCacheKey?: number;
   onClose: () => void;
 }
 
@@ -43,10 +51,12 @@ export function FilePreviewDialog({
   agentPath,
   filePath,
   fileName,
+  bytesCacheKey,
   onClose,
 }: Props) {
   const { t } = useTranslation("agents");
   const save = useSaveDownload();
+  const queryClient = useQueryClient();
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
 
   useEffect(() => {
@@ -54,8 +64,8 @@ export function FilePreviewDialog({
     let cancelled = false;
     let objectUrl: string | null = null;
     setLoaded({ state: "loading" });
-    tauriFiles
-      .download(agentPath, filePath, { toast: false }) // failure renders inline below
+    // Failure renders inline below (the fetch is toast-free by design).
+    fetchFileBytes(queryClient, agentPath, filePath, bytesCacheKey)
       .then(async ({ blob, contentType }) => {
         if (cancelled) return;
         if (contentType.startsWith("image/")) {
@@ -86,7 +96,7 @@ export function FilePreviewDialog({
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [agentPath, filePath]);
+  }, [agentPath, filePath, bytesCacheKey, queryClient]);
 
   const blob = "blob" in loaded ? loaded.blob : null;
 

@@ -1,8 +1,21 @@
 /**
- * Zero-files state for the Files tab: headline, hint, optional Browse CTA,
- * optional whole-folder upload CTA beside it (HOU-889).
+ * Zero-files state for the Files tab: headline, hint, and a dashed drop panel
+ * holding the filled Browse CTA, the quiet whole-folder upload beside it
+ * (HOU-889) and the drag-and-drop hint. The panel is only the affordance —
+ * the drop itself is handled by the container in FilesBrowser, which wraps
+ * this state too, so an empty workspace accepts a drop like any other.
  */
-import { Button } from "@houston-ai/core";
+import {
+  Button,
+  cn,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  Spinner,
+} from "@houston-ai/core";
 import { FolderUp, Upload } from "lucide-react";
 
 export function FilesEmptyState({
@@ -12,6 +25,10 @@ export function FilesEmptyState({
   onBrowse,
   folderLabel,
   onBrowseFolder,
+  dropHint,
+  dragActive,
+  uploading,
+  uploadingLabel,
 }: {
   title: string;
   description: string;
@@ -19,27 +36,68 @@ export function FilesEmptyState({
   onBrowse?: () => void;
   folderLabel?: string;
   onBrowseFolder?: () => void;
+  /** "or drag and drop files here" — the visible drop affordance. */
+  dropHint: string;
+  /** A drag is hovering the browser: tint the panel like a drop target. */
+  dragActive?: boolean;
+  /** An upload is in flight: the CTAs go busy, browsing stays free. */
+  uploading?: boolean;
+  uploadingLabel: string;
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center gap-4 px-8 pt-[20vh]">
-      <div className="max-w-md space-y-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="text-sm text-ink-muted">{description}</p>
-      </div>
-      {(onBrowse || onBrowseFolder) && (
-        <div className="flex items-center gap-2">
-          {onBrowse && (
-            <Button variant="default" size="sm" onClick={onBrowse}>
-              <Upload className="mr-1.5 size-4" /> {browseLabel}
-            </Button>
+    <Empty>
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Upload aria-hidden />
+        </EmptyMedia>
+        <EmptyTitle className="text-lg font-medium tracking-normal">
+          {title}
+        </EmptyTitle>
+        <EmptyDescription>{description}</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent className="max-w-md">
+        <div
+          className={cn(
+            "flex w-full flex-col items-center gap-3 rounded-xl border border-line border-dashed px-6 py-8 transition-colors",
+            dragActive && "border-focus bg-focus/10",
           )}
-          {onBrowseFolder && (
-            <Button variant="outline" size="sm" onClick={onBrowseFolder}>
-              <FolderUp className="mr-1.5 size-4" /> {folderLabel}
-            </Button>
+        >
+          {(onBrowse || onBrowseFolder) && (
+            <div className="flex items-center gap-2">
+              {onBrowse && (
+                <Button
+                  size="sm"
+                  onClick={onBrowse}
+                  disabled={uploading}
+                  aria-busy={uploading}
+                >
+                  {uploading ? (
+                    <Spinner aria-hidden className="mr-1.5 size-4" />
+                  ) : (
+                    <Upload aria-hidden className="mr-1.5 size-4" />
+                  )}
+                  {uploading ? uploadingLabel : browseLabel}
+                </Button>
+              )}
+              {onBrowseFolder && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onBrowseFolder}
+                  disabled={uploading}
+                >
+                  <FolderUp aria-hidden className="mr-1.5 size-4" />{" "}
+                  {folderLabel}
+                </Button>
+              )}
+            </div>
           )}
+          <p className="text-xs text-ink-muted">{dropHint}</p>
         </div>
-      )}
-    </div>
+      </EmptyContent>
+      {/* The busy state has to reach someone: one polite live region, outside
+          the aria-busy button, is the whole mechanism. */}
+      <output className="sr-only">{uploading ? uploadingLabel : ""}</output>
+    </Empty>
   );
 }

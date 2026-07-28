@@ -13,6 +13,7 @@ Load on demand.
 | [website-landing.md](website-landing.md) | The landing's black-and-white system — section rhythm, section-aware nav, component language, motion stack |
 | [client-architecture.md](client-architecture.md) | Three-surface client contract — SDK / tokens / inventory / parity, change-flow procedures |
 | [files-first.md](files-first.md) | `.houston/` layout, atomic writes, schemas, AI-native reactivity |
+| [files-ui.md](files-ui.md) | Files tab — FilesBrowser component map, query/host data flow, upload caps + batching, shared byte cache, view scoping |
 | [skills.md](skills.md) | Skills on disk + UI — frontmatter schema, picker rendering, invocation marker |
 | [agent-manifest.md](agent-manifest.md) | Three tiers, manifest shape, workspace templates, sidebar |
 | [teams.md](teams.md) | Multiplayer orgs (client surface) — roles/access, role matrix v2, org dashboard, share dialog, templates, allowlists; gateway is sole enforcer |

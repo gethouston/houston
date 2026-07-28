@@ -12,6 +12,7 @@ export function buildBrowserLabels(t: TFunction<"agents">): FilesBrowserLabels {
     columnDateCreated: t("files.columns.dateCreated"),
     columnSize: t("files.columns.size"),
     columnKind: t("files.columns.kind"),
+    kindFolder: t("files.columns.kindFolder"),
     loading: t("files.loading"),
     browseFiles: t("files.browseFiles"),
     viewGrid: t("files.viewGrid"),
@@ -29,6 +30,15 @@ export function buildBrowserLabels(t: TFunction<"agents">): FilesBrowserLabels {
     uploadFolder: t("files.uploadFolder"),
     openInFileManager: t("files.openInFileManager"),
     downloadAll: t("files.downloadAll"),
+    dropHint: t("files.dropHint"),
+    uploadingBusy: t("files.uploadingBusy"),
+    // The empty-folder CTAs say exactly what the header actions say; one
+    // string per phrase keeps them from drifting apart in translation.
+    emptyFolderUploadCta: t("files.uploadFiles"),
+    emptyFolderNewFolderCta: t("files.newFolder"),
+    searchPlaceholder: t("files.searchPlaceholder"),
+    searchClear: t("files.searchClear"),
+    searchNoResults: t("files.searchNoResults"),
   };
 }
 

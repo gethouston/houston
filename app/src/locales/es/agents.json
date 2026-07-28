@@ -163,12 +163,33 @@
     "uploadFolder": "Subir carpeta",
     "folderDropFailed": "No pudimos leer esa carpeta. Intenta con el botón Subir.",
     "downloadAll": "Descargar todo",
+    "dropHint": "o arrastra y suelta archivos aquí",
+    "uploadingBusy": "Subiendo…",
+    "searchPlaceholder": "Buscar archivos",
+    "searchClear": "Borrar búsqueda",
+    "searchNoResults": "Ningún archivo coincide con tu búsqueda",
+    "uploadTooLarge": {
+      "title_one": "Archivo demasiado grande",
+      "title_other": "Archivos demasiado grandes",
+      "description_one": "El límite es de {{maxSize}} por archivo, así que {{names}} no se subió.",
+      "description_other": "El límite es de {{maxSize}} por archivo, así que estos no se subieron: {{names}}",
+      "batchTitle": "Subida demasiado grande",
+      "batchDescription": "Esta subida supera el límite de {{maxSize}}. Intenta con archivos más pequeños."
+    },
+    "delete": {
+      "title": "¿Mover “{{name}}” a la Papelera?",
+      "fileDescription": "Este archivo se quitará del espacio de trabajo de tu asistente.",
+      "folderDescription": "Esta carpeta y todo su contenido se quitarán del espacio de trabajo de tu asistente.",
+      "confirm": "Mover a la Papelera",
+      "cancel": "Cancelar"
+    },
     "columns": {
       "name": "Nombre",
       "dateModified": "Fecha de modificación",
       "dateCreated": "Fecha de creación",
       "size": "Tamaño",
-      "kind": "Tipo"
+      "kind": "Tipo",
+      "kindFolder": "Carpeta"
     },
     "menu": {
       "open": "Abrir",

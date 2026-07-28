@@ -1,12 +1,16 @@
 /**
  * Drive-style file card: type icon + name header, lazy thumbnail body,
  * date meta row. Click selects, double-click opens, kebab or right-click
- * opens the context menu, drag to move.
+ * opens the context menu, drag to move. The kebab sits in the shell's actions
+ * slot, outside the role="button" surface (whose children are presentational).
  */
 import { useState } from "react";
 import {
+  CardActions,
   CardMeta,
+  CardShell,
   cardClass,
+  cardHeaderClass,
   cardPreviewClass,
   KebabButton,
 } from "./card-chrome";
@@ -54,8 +58,8 @@ export function FileCard({
   const hasMenu = onOpen || onReveal || onDownload || onDelete || onRename;
 
   return (
-    <>
-      {/* biome-ignore lint/a11y/useSemanticElements: a native <button> cannot wrap the kebab button or the rename input; role=button + tabIndex keeps the card keyboard-reachable */}
+    <CardShell>
+      {/* biome-ignore lint/a11y/useSemanticElements: a native <button> cannot wrap the rename input; role=button + tabIndex keeps the card keyboard-reachable */}
       <div
         role="button"
         tabIndex={0}
@@ -84,26 +88,14 @@ export function FileCard({
         data-selected={selected || undefined}
         className={cardClass({ selected, dragging })}
       >
-        <div className="flex h-10 shrink-0 items-center gap-2 pr-1.5 pl-3">
+        <div className={cardHeaderClass(!!hasMenu)}>
           <FileTypeIcon extension={file.extension} />
           {rename.renaming ? (
             <RenameInput rename={rename} />
           ) : (
-            <span
-              className="min-w-0 flex-1 truncate text-[13px]"
-              title={file.name}
-            >
+            <span className="min-w-0 flex-1 truncate text-sm" title={file.name}>
               {file.name}
             </span>
-          )}
-          {hasMenu && (
-            <KebabButton
-              label={menuButtonLabel}
-              onOpen={(position) => {
-                onSelect?.(file);
-                setMenu(position);
-              }}
-            />
           )}
         </div>
         <div className={cardPreviewClass}>
@@ -111,6 +103,17 @@ export function FileCard({
         </div>
         <CardMeta left={formatFileManagerDate(file.dateModified)} />
       </div>
+      {hasMenu && (
+        <CardActions>
+          <KebabButton
+            label={menuButtonLabel}
+            onOpen={(position) => {
+              onSelect?.(file);
+              setMenu(position);
+            }}
+          />
+        </CardActions>
+      )}
       {menu && (
         <FileMenu
           file={file}
@@ -124,6 +127,6 @@ export function FileCard({
           labels={menuLabels}
         />
       )}
-    </>
+    </CardShell>
   );
 }

@@ -1,7 +1,6 @@
 import { type FileEntry, FilesBrowser } from "@houston-ai/agent";
 import { isTauri } from "@tauri-apps/api/core";
-import type { InputHTMLAttributes } from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useCreateFolder,
@@ -15,20 +14,16 @@ import { useFilePreviewLoader } from "../../hooks/use-file-preview-loader";
 import { useMoveWithConflict } from "../../hooks/use-move-with-conflict";
 import { useSaveDownload } from "../../hooks/use-save-download";
 import { isCoLocatedEngine, newEngineActive } from "../../lib/engine";
+import { sharedBytesKey } from "../../lib/file-bytes-cache";
 import { tauriFiles } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { FilePreviewDialog } from "../file-preview-dialog";
 import { MoveConflictDialog } from "../move-conflict-dialog";
+import { useFilesDeleteConfirm } from "./files-delete-confirm";
 import { buildBrowserLabels, buildMenuLabels } from "./files-tab-labels";
 import { buildUploadIntake } from "./files-upload-intake";
-
-// Non-standard attribute (WebKit lineage, supported by every engine we ship
-// on): turns the picker into a directory picker. Unknown to React's typings,
-// hence the cast; engines without it fall back to a plain file picker.
-const FOLDER_INPUT_PROPS = {
-  webkitdirectory: "",
-} as InputHTMLAttributes<HTMLInputElement>;
+import { useFilesUploadPickers } from "./files-upload-pickers";
 
 export default function FilesTab({ agent }: TabProps) {
   const { t } = useTranslation("agents");
@@ -49,8 +44,6 @@ export default function FilesTab({ agent }: TabProps) {
     (capabilities?.revealInOs ?? true) &&
     osDir !== undefined;
   const [preview, setPreview] = useState<FileEntry | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
-  const folderInput = useRef<HTMLInputElement>(null);
   const browserLabels = buildBrowserLabels(t);
   const menuLabels = buildMenuLabels(t, canUseLocalFiles);
   const path = agent.folderPath;
@@ -63,6 +56,9 @@ export default function FilesTab({ agent }: TabProps) {
   const createFolder = useCreateFolder(path);
   const uploadFiles = useUploadFiles(path);
   const move = useMoveWithConflict(path, files);
+  const deleteConfirm = useFilesDeleteConfirm((file) =>
+    deleteFile.mutate(file.path),
+  );
 
   // save() surfaces its own success/failure toasts and never rejects; the
   // empty catch below only silences the fetch failure call() already toasted.
@@ -85,38 +81,18 @@ export default function FilesTab({ agent }: TabProps) {
       .then(({ blob }) => save(`${agent.name} files.zip`, blob))
       .catch(() => {});
   };
-  const pickFiles = () => fileInput.current?.click();
-  const pickFolder = () => folderInput.current?.click();
   const { ingest, onDropError } = buildUploadIntake(t, (picked, targetDir) =>
     uploadFiles.mutate({ files: picked, targetDir }),
   );
+  const { pickFiles, pickFolder, inputs } = useFilesUploadPickers(ingest);
 
   return (
     <div className="flex h-full flex-col">
-      <input
-        ref={fileInput}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={(e) => {
-          ingest(Array.from(e.currentTarget.files ?? []));
-          e.currentTarget.value = ""; // allow re-picking the same file
-        }}
-      />
-      <input
-        ref={folderInput}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={(e) => {
-          ingest(Array.from(e.currentTarget.files ?? []));
-          e.currentTarget.value = ""; // allow re-picking the same folder
-        }}
-        {...FOLDER_INPUT_PROPS}
-      />
+      {inputs}
       <FilesBrowser
         files={files ?? []}
         loading={loading}
+        uploading={uploadFiles.isPending}
         view={filesViewMode}
         onViewChange={setFilesViewMode}
         rootLabel={agent.name}
@@ -133,7 +109,7 @@ export default function FilesTab({ agent }: TabProps) {
         }
         onDownload={canUseLocalFiles ? undefined : downloadFile}
         onDownloadFolder={canUseLocalFiles ? undefined : downloadFolder}
-        onDelete={(file) => deleteFile.mutate(file.path)}
+        onDelete={deleteConfirm.requestDelete}
         onRename={(file, newName) =>
           renameFile.mutate({ relativePath: file.path, newName })
         }
@@ -146,7 +122,8 @@ export default function FilesTab({ agent }: TabProps) {
           // Drag-move needs the TS host's move route; the legacy engine has none.
           newEngineActive() ? move.requestMove : undefined
         }
-        onBrowse={pickFiles}
+        // An empty workspace has no open folder to land in: always the root.
+        onBrowse={() => pickFiles()}
         emptyTitle={t("files.emptyTitle")}
         emptyDescription={t("files.emptyDescription")}
         labels={browserLabels}
@@ -168,6 +145,11 @@ export default function FilesTab({ agent }: TabProps) {
         agentPath={path}
         filePath={preview?.path ?? null}
         fileName={preview?.name ?? ""}
+        // Same cache key the grid thumbnail used, so a previewed file opens
+        // from memory instead of downloading its bytes twice. Undefined for
+        // anything the grid never thumbnails, which then streams straight
+        // through instead of being held in the cache.
+        bytesCacheKey={preview ? sharedBytesKey(preview) : undefined}
         onClose={() => setPreview(null)}
       />
       <MoveConflictDialog
@@ -176,6 +158,7 @@ export default function FilesTab({ agent }: TabProps) {
         onKeepBoth={() => void move.keepBoth()}
         onCancel={move.cancel}
       />
+      {deleteConfirm.dialog}
     </div>
   );
 }

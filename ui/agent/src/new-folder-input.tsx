@@ -1,18 +1,28 @@
 /**
  * Inline new-folder input, styled as a selected folder row.
  */
+import { cn } from "@houston-ai/core";
 import { useEffect, useRef, useState } from "react";
-import { DisclosureChevron, FolderIcon } from "./file-manager-icons";
-import { COL_GRID } from "./file-row";
+import { ROW_SELECTED_CLASS } from "./file-row";
+import { FolderGlyph } from "./file-type-icons";
+import {
+  BASE_INDENT,
+  COL_GRID,
+  DisclosureChevron,
+  META_CELL,
+} from "./files-list-chrome";
 
 export function NewFolderInput({
   onConfirm,
   onCancel,
   placeholder = "untitled folder",
+  kindFolderLabel,
 }: {
   onConfirm: (name: string) => void;
   onCancel: () => void;
   placeholder?: string;
+  /** The Kind column's word for a folder. */
+  kindFolderLabel: string;
 }) {
   const [value, setValue] = useState("");
   const committed = useRef(false);
@@ -35,12 +45,15 @@ export function NewFolderInput({
 
   return (
     <div
-      className="h-[24px] items-center rounded-lg bg-action"
+      className={cn("h-8 items-center rounded-lg", ROW_SELECTED_CLASS)}
       style={{ display: "grid", gridTemplateColumns: COL_GRID }}
     >
-      <div className="flex items-center gap-1.5 min-w-0 pl-3">
+      <div
+        className="flex min-w-0 items-center gap-1.5 pr-1.5"
+        style={{ paddingLeft: BASE_INDENT }}
+      >
         <DisclosureChevron open={false} className="invisible" />
-        <FolderIcon />
+        <FolderGlyph small />
         <input
           ref={inputRef}
           value={value}
@@ -51,12 +64,14 @@ export function NewFolderInput({
           }}
           onBlur={commit}
           placeholder={placeholder}
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-action-text outline-none placeholder:text-action-text/50"
+          className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted/60"
         />
       </div>
       <span />
       <span />
-      <span className="px-2 text-[11px] text-action-text/70">Folder</span>
+      <span />
+      <span className={META_CELL}>{kindFolderLabel}</span>
+      <span />
     </div>
   );
 }

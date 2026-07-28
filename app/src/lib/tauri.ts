@@ -45,6 +45,7 @@ import {
   isLoopbackHostUrl,
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
+import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
@@ -867,11 +868,19 @@ export const tauriFiles = {
     });
   },
   /** Upload browser Files into the workspace (drag-drop / Browse), optionally
-   * into a subfolder. */
+   * into a subfolder.
+   *
+   * The host's 413 (request over `MAX_UPLOAD_BYTES`) is silenced here because
+   * it is an EXPECTED, explainable state, not a Houston bug: `useUploadFiles`
+   * surfaces it as calm, translated copy about the size limit. Every other
+   * failure keeps the standard red toast + Sentry report. */
   upload: (agentPath: string, files: File[], targetDir?: string | null) => {
     blockWriteWhileWarming(agentPath);
-    return call<void>("upload_project_files", () =>
-      getEngine().uploadProjectFiles(agentPath, files, targetDir),
+    return call<void>(
+      "upload_project_files",
+      () => getEngine().uploadProjectFiles(agentPath, files, targetDir),
+      { agentPath, targetDir, fileCount: files.length },
+      { silence: isUploadTooLargeError },
     );
   },
   /** Move a file/folder into another folder (null = workspace root). */
