@@ -28,6 +28,11 @@ export interface ComposerAttachmentRejection<T extends ComposerAttachmentFile> {
   reason: ComposerAttachmentRejectReason;
 }
 
+// Only archives and executables are blocked: the agent can't act on them and
+// expanding them can flood the workspace. Every other binary — video and audio
+// included — is a legitimate workspace file the agent processes with its shell
+// and code tools (and the Files tab accepts them already), so the composer
+// must too. Size is bounded separately by MAX_COMPOSER_ATTACHMENT_BYTES.
 const BLOCKED_EXTENSIONS = new Set([
   "7z",
   "apk",
@@ -95,11 +100,7 @@ export function validateComposerAttachment(
     return { kind: "blockedType", extension };
   }
   const mime = (file.type ?? "").toLowerCase();
-  if (
-    BLOCKED_MIME_TYPES.has(mime) ||
-    mime.startsWith("audio/") ||
-    mime.startsWith("video/")
-  ) {
+  if (BLOCKED_MIME_TYPES.has(mime)) {
     return { kind: "blockedType", extension };
   }
   if (policy?.modelAcceptsImages === false && isImageAttachment(file)) {
