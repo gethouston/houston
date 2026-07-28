@@ -5,6 +5,21 @@
     "button": "Arquivadas",
     "title": "Arquivadas"
   },
+  "mentions": {
+    "button": "Menções",
+    "title": "Menções",
+    "ariaCount_one": "{{count}} menção não lida",
+    "ariaCount_other": "{{count}} menções não lidas",
+    "row": {
+      "by": "{{name}} mencionou você",
+      "byUnknown": "Você foi mencionado",
+      "agent": "em {{agent}}"
+    },
+    "empty": {
+      "title": "Ainda não há menções",
+      "description": "Quando alguém do time citar você em uma missão, aparece aqui."
+    }
+  },
   "filter": {
     "allAgents": "Todos os agentes"
   },

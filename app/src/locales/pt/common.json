@@ -49,6 +49,11 @@
       "connect": "Seu agente precisa que você conecte um aplicativo.",
       "credential": "Seu agente precisa de uma chave de API para terminar."
     },
+    "mentioned": {
+      "title": "{{name}} mencionou você",
+      "titleUnknown": "Você foi mencionado",
+      "body": "Em {{mission}}"
+    },
     "preprompt": {
       "title": "Quer um aviso quando seu agente terminar?",
       "body": "Ative as notificações e o Houston avisa você assim que uma missão terminar ou precisar de você.",

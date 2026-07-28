@@ -4,6 +4,7 @@ import {
   conversationScope,
   type FeedAuthor,
   type FeedFrame,
+  type FeedMention,
   type HistoryWindowVM,
   MultiplexFeedOutput,
   type PendingInteraction,
@@ -115,17 +116,22 @@ export function seedConversationVm(
  * (HOU-943): because the real send SUPPRESSES its own bubble, this push is the
  * only chance this row ever gets to name its sender — without it a warmed-up
  * agent's first message would sit permanently unattributed in a shared thread.
+ * `mentions` rides along for the same reason (HOU-944): this is the only push
+ * that can chip the teammates the message named.
  */
 export function pushPendingUserMessage(
   agentPath: string,
   sessionKey: string,
   text: string,
   author?: FeedAuthor,
+  mentions?: FeedMention[],
 ): void {
   conversationVm.pushFeedItem(agentPath, sessionKey, {
     feed_type: "user_message",
     data: text,
     author,
+    // An empty list means what absence means: nobody was mentioned.
+    mentions: mentions?.length ? mentions : undefined,
   });
 }
 
@@ -142,7 +148,9 @@ export function pushPendingUserMessage(
  * instead of the agent-wide settings (HOU-695) — see `wireTurnPin`. `author` is
  * the acting user in a multiplayer deployment: it stamps the optimistic bubble
  * so a shared conversation names its sender before any server frame lands
- * (HOU-943), and is absent single-player.
+ * (HOU-943), and is absent single-player. `mentions` is that message's @mention
+ * sidecar (HOU-944), which chips the same bubble; the engine still receives
+ * only the plain `@Name` text inside `prompt`.
  */
 export function streamTurn(
   engine: HoustonEngineClient,
@@ -159,6 +167,7 @@ export function streamTurn(
   pin?: TurnWirePin,
   displayText?: string,
   author?: FeedAuthor,
+  mentions?: FeedMention[],
 ): Promise<void> {
   return sdkStreamTurn(
     engine,
@@ -174,6 +183,7 @@ export function streamTurn(
       pin,
       displayText,
       author,
+      mentions,
     },
   );
 }

@@ -191,6 +191,52 @@ describe("flushQueuedSends", () => {
   });
 });
 
+describe("merged @mentions (HOU-944)", () => {
+  it("unions every merged entry's mentions, deduped by userId", () => {
+    // The combined prompt contains BOTH lines, so it must carry both lines'
+    // mentions: taking only the last entry's (the rule for picker overrides)
+    // would silently drop the teammate named in the first one.
+    setRunning(true);
+    maybeQueueSend(
+      AGENT,
+      req(key, "@Ada can you confirm?", {
+        mentions: [{ userId: "u_ada", name: "Ada" }],
+      }),
+      dispatch,
+    );
+    maybeQueueSend(
+      AGENT,
+      req(key, "@Bo too, and @Ada again", {
+        mentions: [
+          { userId: "u_bo", name: "Bo" },
+          { userId: "u_ada", name: "Ada" },
+        ],
+      }),
+      dispatch,
+    );
+    setRunning(false);
+
+    expect(dispatched).toHaveLength(1);
+    expect(dispatched[0]?.prompt).toBe(
+      "@Ada can you confirm?\n\n@Bo too, and @Ada again",
+    );
+    expect(dispatched[0]?.mentions).toEqual([
+      { userId: "u_ada", name: "Ada" },
+      { userId: "u_bo", name: "Bo" },
+    ]);
+  });
+
+  it("leaves a merge of unmentioning sends without mentions", () => {
+    setRunning(true);
+    maybeQueueSend(AGENT, req(key, "Wait"), dispatch);
+    maybeQueueSend(AGENT, req(key, "about cars"), dispatch);
+    setRunning(false);
+
+    // Never `[]`: an unmentioning send stays byte-identical to today's.
+    expect(dispatched[0]?.mentions).toBeUndefined();
+  });
+});
+
 describe("removeQueuedSend", () => {
   it("drops one held send by id and updates the VM", () => {
     setRunning(true);

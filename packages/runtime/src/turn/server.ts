@@ -98,7 +98,12 @@ async function executeTurn(
     if (!turn.credential) {
       emit({
         type: "user",
-        data: { content: turn.text, ts: Date.now(), nonce: turn.nonce },
+        data: {
+          content: turn.text,
+          ts: Date.now(),
+          nonce: turn.nonce,
+          mentions: turn.mentions,
+        },
         turnId,
       });
       outcome = {
@@ -117,6 +122,7 @@ async function executeTurn(
         mode: turn.mode,
         turnId,
         displayText: turn.displayText,
+        mentions: turn.mentions,
       });
     }
 

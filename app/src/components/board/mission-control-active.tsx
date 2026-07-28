@@ -1,4 +1,5 @@
 import type { Agent } from "../../lib/types";
+import type { MissionsToolbarMentions } from "../mission-toolbar-actions";
 import { MissionBoard } from "./mission-board";
 import { useMissionControlSource } from "./use-mission-control-source";
 
@@ -11,10 +12,14 @@ import { useMissionControlSource } from "./use-mission-control-source";
 export function MissionControlActive({
   agents,
   onShowArchived,
+  mentions,
 }: {
   agents: Agent[];
   onShowArchived: () => void;
+  /** Mentions-inbox entry point for the toolbar. Multiplayer only: undefined
+   *  on single player, where no Mentions control renders at all. */
+  mentions?: MissionsToolbarMentions;
 }) {
-  const source = useMissionControlSource(agents, onShowArchived);
+  const source = useMissionControlSource(agents, onShowArchived, mentions);
   return <MissionBoard source={source} />;
 }

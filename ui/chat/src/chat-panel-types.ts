@@ -7,7 +7,7 @@ import type {
   QueuedChatMessage,
   QueuedMessageLabels,
 } from "./queued-message-list";
-import type { FeedItem } from "./types";
+import type { FeedItem, MentionPerson, MessageMention } from "./types";
 
 export type ChatStatus = "ready" | "streaming" | "submitted";
 
@@ -46,7 +46,13 @@ export interface ChatComposerLabels {
 export interface ChatPanelProps {
   sessionKey: string;
   feedItems: FeedItem[];
-  onSend: (text: string, files: File[]) => void | Promise<void>;
+  /** Submit. `mentions` (HOU-944) are the composer's pending @mentions whose
+   *  "@Name" text survived into the sent message; `[]` when there are none. */
+  onSend: (
+    text: string,
+    files: File[],
+    mentions: MessageMention[],
+  ) => void | Promise<void>;
   onStop?: () => void;
   onBack?: () => void;
   isLoading: boolean;
@@ -132,6 +138,18 @@ export interface ChatPanelProps {
   agentLabel?: ChatMessagesProps["agentLabel"];
   /** Sender avatar (teammate face / agent mark) for the sender line. */
   renderSenderAvatar?: ChatMessagesProps["renderSenderAvatar"];
+  /** Teammates the COMPOSER can @mention (the viewer excluded — you do not
+   *  @mention yourself). Empty/absent (single-player, a personal space, an
+   *  older gateway) means "@" just types plainly and no popover ever opens. */
+  mentionPeople?: readonly MentionPerson[];
+  /** Roster an ASSISTANT reply's "@Name" runs are chipped against — the same
+   *  people INCLUDING the viewer, so "@Julian" in an agent reply chips for
+   *  Julian. Defaults to `mentionPeople` when omitted. */
+  messageMentionPeople?: ChatMessagesProps["mentionPeople"];
+  /** Avatar for a row in the @mention popover. See `ChatInputProps`. */
+  renderMentionAvatar?: (person: MentionPerson) => ReactNode;
+  /** Localized labels for the @mention popover. English defaults. */
+  mentionLabels?: { listAriaLabel?: string };
   /** Props-only configuration for the optional Conversation Map. */
   conversationMap?: ChatMessagesProps["conversationMap"];
 }

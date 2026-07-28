@@ -71,6 +71,7 @@ They drive the failure/reactivity scenarios the specs assert against:
 | `/__test__/integrations-connection` | `{ toolkit, status }` | Seed a connection at rest in a status clicking can't reach: `pending` (abandoned sign-in) or `error` (the provider refused); re-statuses the toolkit's existing connection when it has one. Those apps stay in the browse catalog wearing that status. Returns `{ connection }`. |
 | `/__test__/capabilities` | `Partial<Capabilities>` | Merge a partial into the advertised `/v1/capabilities`. Arm the Teams-shaped state single-player can't reach — e.g. `{ integrations:["composio"], multiplayer:true, teams:true, role:"owner" }` to light up the agent Integrations tab's locked browse rows, or just `{ integrations:["composio"] }` for a single-player-with-apps run. Returns the merged capabilities. |
 | `/__test__/agent-settings` | `{ allowedToolkits?, orgAllowedToolkits?, allowedModels?, access? }` | Set the Teams v2 ceilings served at `/v1/agents/:slug/settings` + `/v1/org/settings` (`allowedToolkits`/`orgAllowedToolkits`: `null` = unrestricted, `[]` = none). The `effectiveAllowlist` = agent ∩ org drives the tab's connectable-vs-locked partition. Returns the merged settings. |
+| `/__test__/org` | `{ members?: [{ userId, email?, role, displayName?, photoUrl? }], agents?: [...] }` | Arm the org roster `GET /v1/org` serves (owner/admin only) and the co-member directory `GET /v1/org/people` serves to EVERY member. `displayName`/`photoUrl` are the stored GCIP profile: a member without a `displayName` is still served, and the client decides who is @mentionable. Pair with `/__test__/capabilities` `{ multiplayer:true, teams:true, role:"owner" }`. Returns `{ members, agents }`. |
 | `/__test__/workspaces` | `{ teams: [{ slug, name }] }` | Arm the team-space rows the C8 Spaces workspaces bridge serves at `GET /v1/workspaces` (alongside the always-present personal seed row). Each `slug` (exactly `[a-f0-9]{16}`) becomes an `{ id:"org:<slug>", kind:"org" }` switcher row. Pair with `/__test__/capabilities` `{ spaces:true }`. `{ teams: [] }` (and reset) restores personal-only. Returns the armed `{ teams }`. |
 
 ## Modeled surface
@@ -86,6 +87,10 @@ They drive the failure/reactivity scenarios the specs assert against:
   Teams-shaped set), `/v1/workspaces` (the personal seed row plus any team-space
   rows armed by `/__test__/workspaces` — the C8 Spaces bridge), `/v1/integrations`,
   `/v1/preferences`, `/v1/events` (reactivity feed).
+- `/v1/org/people` — the sanitized co-member directory of the active space
+  (`{people:[{userId,displayName?,photoUrl?}]}`, named first, no emails or
+  roles) that the @mention autocomplete reads. Served to every member, unlike
+  `GET /v1/org`'s roster; empty until a spec arms `/__test__/org`.
 - `/v1/org` (Teams v2 identity + roster + pending `invites`) and
   `POST /v1/org/members` (invite path: an unknown email mints a pending invite,
   `202 { invited:true }`, then surfaced in `/v1/org`'s `invites`;
@@ -97,7 +102,10 @@ They drive the failure/reactivity scenarios the specs assert against:
   activities (backed by the SAME `.houston/activity/activity.json` the board
   reads via `/agents/:id/agentfile/*`), routines/skills (empty), providers/auth/
   settings/title, and the conversation stream
-  (`/agents/:id/conversations/:cid/{events,messages,cancel}`).
+  (`/agents/:id/conversations/:cid/{events,messages,cancel}`). The message POST
+  carries the same sidecars the real send route takes: `displayText`, and the
+  `mentions` @mention list (guarded by the protocol's own `parseMentions`),
+  which persists on the stored user message and rides the live `user` frame.
 
 Need more host behavior for a spec? Extend `src/state.ts` + `src/routes.ts`.
 

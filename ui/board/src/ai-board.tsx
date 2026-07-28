@@ -1,6 +1,7 @@
 import type {
   ChatPanelProps,
   FeedItem,
+  MessageMention,
   ToolsAndCardsProps,
 } from "@houston-ai/chat";
 import { ChatPanel } from "@houston-ai/chat";
@@ -34,13 +35,21 @@ export interface AIBoardProps {
   onSelect?: (id: string | null) => void;
   onDelete?: (item: KanbanItem) => void;
   onApprove?: (item: KanbanItem) => void;
-  /** Called when user sends the first message in a new conversation. Should return the created activity ID. */
-  onCreateConversation?: (text: string, files: File[]) => Promise<string>;
-  /** Called when user sends a follow-up message in an existing conversation. */
+  /** Called when user sends the first message in a new conversation. Should
+   *  return the created activity ID. `mentions` (HOU-944) are the teammates the
+   *  composer named and whose "@Name" text survived into the sent message. */
+  onCreateConversation?: (
+    text: string,
+    files: File[],
+    mentions?: MessageMention[],
+  ) => Promise<string>;
+  /** Called when user sends a follow-up message in an existing conversation.
+   *  `mentions` as on {@link onCreateConversation}. */
   onSendMessage?: (
     sessionKey: string,
     text: string,
     files: File[],
+    mentions?: MessageMention[],
   ) => Promise<void>;
   /** Feed items keyed by session key (e.g. "activity-{id}"). */
   feedItems?: Record<string, FeedItem[]>;
@@ -167,6 +176,9 @@ export interface AIBoardProps {
     text: string;
     files: File[];
     hasMessages: boolean;
+    /** Teammates the composer named (HOU-944); `[]` when there are none. An
+     *  interceptor that builds its own send must carry these through. */
+    mentions: MessageMention[];
   }) => boolean | Promise<boolean>;
   /** Called when the user renames a card. */
   onRename?: (item: KanbanItem, newTitle: string) => void;
@@ -230,6 +242,16 @@ export interface AIBoardProps {
   /** Sender avatar (teammate face / agent mark) for the sender line. Forwarded
    *  to ChatPanel. */
   renderSenderAvatar?: ChatPanelProps["renderSenderAvatar"];
+  /** Teammates the composer can @mention (HOU-944, the viewer excluded).
+   *  Forwarded to ChatPanel; empty/absent means "@" just types plainly. */
+  mentionPeople?: ChatPanelProps["mentionPeople"];
+  /** The roster an agent reply's "@Name" runs are chipped against (the same
+   *  people INCLUDING the viewer). Forwarded to ChatPanel. */
+  messageMentionPeople?: ChatPanelProps["messageMentionPeople"];
+  /** Avatar for a row in the @mention list. Forwarded to ChatPanel. */
+  renderMentionAvatar?: ChatPanelProps["renderMentionAvatar"];
+  /** Localized labels for the @mention list. Forwarded to ChatPanel. */
+  mentionLabels?: ChatPanelProps["mentionLabels"];
   /** Prop-driven dictation control for the composer mic. Forwarded to
    *  ChatPanel; omit (or ChatPanel's own default) hides the mic entirely. */
   dictation?: ChatPanelProps["dictation"];
@@ -350,6 +372,10 @@ export function AIBoard({
   composerOverrideMode,
   composerLabels,
   currentUserId,
+  mentionPeople,
+  messageMentionPeople,
+  renderMentionAvatar,
+  mentionLabels,
   authorLabels,
   showSenders,
   agentLabel,
@@ -510,7 +536,7 @@ export function AIBoard({
   // Unified send handler: creates conversation on first message, sends follow-ups after
   const sendInFlightRef = useRef(false);
   const handleSend = useCallback(
-    async (text: string, files: File[]) => {
+    async (text: string, files: File[], mentions: MessageMention[]) => {
       // A repeated submit (Enter auto-repeat, double click) that lands while
       // the first send is still creating its conversation has no session key
       // to route to — letting it through would mint a duplicate mission and
@@ -530,6 +556,7 @@ export function AIBoard({
           text,
           files,
           hasMessages: activeFeed.length > 0,
+          mentions,
         });
         if (handled) {
           onDraftChange?.(activeDraftKey, "");
@@ -540,10 +567,10 @@ export function AIBoard({
           // `selectedItem`: a send fired while the created activity is
           // still absent from `items` must go to the existing session,
           // never fall through and create a duplicate conversation.
-          await onSendMessage(activeSessionKey, text, files);
+          await onSendMessage(activeSessionKey, text, files, mentions);
           onDraftChange?.(activeDraftKey, "");
         } else if (newPanelOpen && onCreateConversation) {
-          const activityId = await onCreateConversation(text, files);
+          const activityId = await onCreateConversation(text, files, mentions);
           onDraftChange?.(activeDraftKey, "");
           // Select the new activity so the feed renders. The freshly-created
           // activity may take a while to appear in `items` (the parent
@@ -737,6 +764,10 @@ export function AIBoard({
           showSenders={showSenders}
           agentLabel={agentLabel}
           renderSenderAvatar={renderSenderAvatar}
+          mentionPeople={mentionPeople}
+          messageMentionPeople={messageMentionPeople}
+          renderMentionAvatar={renderMentionAvatar}
+          mentionLabels={mentionLabels}
           conversationMap={conversationMap}
           dictation={dictation}
           afterMessages={renderedAfterMessages}

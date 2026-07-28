@@ -1,4 +1,4 @@
-import { normalizeTurnMode } from "@houston/protocol";
+import { normalizeTurnMode, parseMentions } from "@houston/protocol";
 import type { ActingContext } from "../session/acting-context";
 import { evict, isTurnRunning } from "../session/bus";
 import {
@@ -168,6 +168,7 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     workspaceContext,
     userContext,
     displayText,
+    mentions,
   } = await readJson(ctx.req);
   if (!text || typeof text !== "string") {
     json(ctx.res, 400, { error: "missing 'text'" });
@@ -223,6 +224,9 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     // Presentation-only bubble text (never trusted into the model input): the
     // model runs on `text`; this only changes what a history reload renders.
     typeof displayText === "string" ? displayText : undefined,
+    // The @mention sidecar (HOU-944), sanitized before it is persisted or
+    // published: junk entries are dropped and an empty list becomes nothing.
+    parseMentions(mentions),
   );
   json(ctx.res, 202, { ok: true, id });
 }

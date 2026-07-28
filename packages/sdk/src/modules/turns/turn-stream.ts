@@ -20,7 +20,7 @@ import {
   turnErrorMessage,
 } from "./turn-errors";
 import { TurnSink } from "./turn-sink";
-import type { FeedAuthor } from "./vm-output";
+import type { FeedAuthor, FeedMention } from "./vm-output";
 
 export { observeConversation } from "./observe-stream";
 export type { StreamRegistry, StreamTuning } from "./stream-registry";
@@ -80,6 +80,16 @@ export interface StreamTurnOptions {
    * bubble stays authorless, exactly as single-player renders today.
    */
   author?: FeedAuthor;
+  /**
+   * The teammates this turn @mentions (HOU-944): the structured sidecar the
+   * composer resolved for the `@Name` text inside `prompt`, stamped onto the
+   * optimistic bubble so a shared conversation chips those names from the
+   * instant it appears — matching the `mentions` the runtime persists and
+   * history replays. The model only ever sees the plain text. The SDK never
+   * infers it; omitted (or empty) leaves the bubble unchipped, exactly as
+   * single-player renders today.
+   */
+  mentions?: FeedMention[];
 }
 
 /**
@@ -131,6 +141,10 @@ export async function streamTurn(
   // Status BEFORE the bubble: `running: false` must mean settled-or-idle, so a
   // watcher can't mistake the optimistic-push snapshot for a settled turn.
   output.sessionStatus(agentPath, sessionKey, "running");
+  // An EMPTY @mention list means exactly what absence means (nobody was
+  // mentioned), so it is normalized away ONCE, here: neither the optimistic
+  // bubble nor the wire body ever carries `mentions: []`.
+  const mentions = opts.mentions?.length ? opts.mentions : undefined;
   // The optimistic user bubble: the surface never renders it itself, and the
   // sink never renders the server's echo of it (nonce-matched) — this push is
   // the ONE place a sent prompt enters the feed. Marker-tagged prompts
@@ -149,6 +163,9 @@ export async function streamTurn(
       pending: true,
       // Multiplayer: who is sending. Absent single-player (no identity).
       author: opts.author,
+      // Multiplayer: the teammates this message @mentions, chipping the bubble
+      // from the instant it appears — the same list the send carries below.
+      mentions,
     });
   }
   // Flip the card to "running" for this turn (re-running a needs_you/done
@@ -194,6 +211,7 @@ export async function streamTurn(
         nonce,
         ...opts.pin,
         displayText: opts.displayText,
+        mentions,
       });
     } catch (e) {
       registry.endSend(key);
@@ -269,6 +287,7 @@ export async function streamTurn(
           nonce,
           ...opts.pin,
           displayText: opts.displayText,
+          mentions,
         });
         sink.sendAccepted();
       } catch (e) {

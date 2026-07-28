@@ -65,6 +65,12 @@ function save(dir: string, conv: StoredConversation) {
 /** Optional fields of a persisted user message. */
 export interface UserMessageMeta {
   author?: ChatMessage["author"];
+  /**
+   * The teammates the message @mentions (HOU-944). Structure only: the model
+   * ran on the plain "@Name" text either way. Omitted when the message mentions
+   * nobody, so a single-player record stays byte-identical to today.
+   */
+  mentions?: ChatMessage["mentions"];
   /** The turn's wire id (`WireFrame.turnId`) — same on the assistant reply. */
   turnId?: string;
   /**
@@ -129,6 +135,9 @@ export function appendUserMessageAt(
     turnId: meta.turnId,
     // Presentation-only: kept out of `content` so the model input is unchanged.
     displayText: meta.displayText,
+    // Same posture as `author`: an empty list is omitted entirely (never `[]`),
+    // so a message that mentions nobody keeps the record byte-identical.
+    mentions: meta.mentions?.length ? meta.mentions : undefined,
   });
   conv.updatedAt = now;
   save(dir, conv);

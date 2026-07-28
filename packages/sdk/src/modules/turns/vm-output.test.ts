@@ -575,3 +575,56 @@ test("a pushed item carries its author; an authorless push stays authorless", ()
   expect(snap().feed[0]?.author).toEqual({ userId: "user_a", name: "Ada" });
   expect(snap().feed[1]).not.toHaveProperty("author");
 });
+
+test("seedHistory and prependHistory carry a frame's @mentions onto its entry", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory(
+    "a",
+    "c1",
+    [
+      {
+        feed_type: "user_message",
+        data: "@Ada can you confirm?",
+        ts: 100,
+        mentions: [{ userId: "user_a", name: "Ada" }],
+      },
+      { feed_type: "assistant_text", data: "asking @Ada now", ts: 110 },
+    ],
+    { earliestLoaded: 5, total: 6 },
+  );
+  vm.prependHistory(
+    "a",
+    "c1",
+    [
+      {
+        feed_type: "user_message",
+        data: "@Bo and @Ada, standup?",
+        ts: 10,
+        mentions: [{ userId: "user_b", name: "Bo" }, { userId: "user_a" }],
+      },
+    ],
+    { earliestLoaded: 0, total: 6 },
+  );
+
+  expect(snap().feed.map((f) => f.mentions)).toEqual([
+    [{ userId: "user_b", name: "Bo" }, { userId: "user_a" }],
+    [{ userId: "user_a", name: "Ada" }],
+    undefined,
+  ]);
+  // Assistant prose is unstructured: no key at all, not an empty list.
+  expect(snap().feed[2]).not.toHaveProperty("mentions");
+});
+
+test("a pushed item carries its mentions; an unmentioning push carries no key", () => {
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "user_message",
+    data: "@Ada please review",
+    pending: true,
+    mentions: [{ userId: "user_a", name: "Ada" }],
+  });
+  vm.pushFeedItem("a", "c1", { feed_type: "user_message", data: "thanks" });
+
+  expect(snap().feed[0]?.mentions).toEqual([{ userId: "user_a", name: "Ada" }]);
+  expect(snap().feed[1]).not.toHaveProperty("mentions");
+});

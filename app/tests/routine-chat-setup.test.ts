@@ -95,14 +95,24 @@ describe("automation chat setup message", () => {
     const agents = [{ id: "a", folderPath: "/w/a" }];
     const summaries = buildAgentActivitySummaries(agents, [
       {
+        id: "setup",
         agent_path: "/w/a",
         type: "activity",
         status: "needs_you",
         agent: ROUTINE_SETUP_AGENT_MODE,
       },
-      { agent_path: "/w/a", type: "activity", status: "needs_you" },
+      {
+        id: "real",
+        agent_path: "/w/a",
+        type: "activity",
+        status: "needs_you",
+      },
     ]);
-    deepStrictEqual(summaries.a, { needsYouCount: 1, runningCount: 0 });
+    deepStrictEqual(summaries.a, {
+      needsYouCount: 1,
+      runningCount: 0,
+      unreadCount: 0,
+    });
   });
 
   it("kickoff prompt covers the guided interview the issue asks for", () => {

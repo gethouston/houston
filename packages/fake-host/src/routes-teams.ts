@@ -12,7 +12,7 @@
 
 import { json } from "./http";
 import * as state from "./state";
-import type { FakeAssignment } from "./state-store";
+import type { FakeAssignment, FakeMember } from "./state-store";
 
 /** Read a `string[] | null` field from a JSON body, preserving an explicit null. */
 function toolkitList(value: unknown): string[] | null {
@@ -115,6 +115,44 @@ export function handleTeamsRoutes(
       };
     }
     return json({ profiles });
+  }
+
+  // GET /v1/org/people — the sanitized co-member directory of the ACTIVE space
+  // (HOU-944 @mentions): `{people:[{userId,displayName?,photoUrl?}]}`, ordered
+  // exactly as the gateway orders it (named first, then case-folded
+  // alphabetical, `userId` breaking a tie), no emails and no roles. The client
+  // preserves that order, so the popover here lists people in the same order
+  // it does in production. Unlike `GET /v1/org` — whose roster the
+  // gateway hides from a plain `user` — this is served to EVERY member: the
+  // whole point is that any teammate can @mention their co-members. A member
+  // with no `displayName` is still served; the CLIENT decides who is
+  // mentionable (an "@a1b2c3d4" chip is nonsense to a non-technical reader).
+  if (
+    segs[0] === "v1" &&
+    segs[1] === "org" &&
+    segs[2] === "people" &&
+    segs.length === 3
+  ) {
+    if (method !== "GET") return json({ error: "not found" }, 404);
+    const members = state.getOrgMembers() ?? [];
+    const byName = (a: FakeMember, b: FakeMember) =>
+      (a.displayName ?? "")
+        .toLowerCase()
+        .localeCompare((b.displayName ?? "").toLowerCase()) ||
+      a.userId.localeCompare(b.userId);
+    const named = members
+      .filter((m) => m.displayName !== undefined)
+      .sort(byName);
+    const unnamed = members
+      .filter((m) => m.displayName === undefined)
+      .sort((a, b) => a.userId.localeCompare(b.userId));
+    return json({
+      people: [...named, ...unnamed].map((m) => ({
+        userId: m.userId,
+        ...(m.displayName !== undefined ? { displayName: m.displayName } : {}),
+        ...(m.photoUrl !== undefined ? { photoUrl: m.photoUrl } : {}),
+      })),
+    });
   }
 
   // POST /v1/org/members — add a member by email (Teams v2). The fake host

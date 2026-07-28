@@ -11,6 +11,7 @@ import {
   upsertContributor,
 } from "./contributors";
 import { docKey } from "./layout";
+import { sanitizeMentions } from "./mentions";
 import {
   type DocDiagnostic,
   loadJson,
@@ -72,6 +73,11 @@ export function normalizeActivities(
         } else {
           delete activity.contributors;
         }
+      }
+      if (entry.mentioned !== undefined) {
+        const mentioned = sanitizeMentions(entry.mentioned);
+        if (mentioned) activity.mentioned = mentioned;
+        else delete activity.mentioned;
       }
       if (
         entry.pending_interaction !== undefined &&

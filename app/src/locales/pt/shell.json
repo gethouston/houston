@@ -44,6 +44,8 @@
     "needsYouCount_other": "{{count}} assuntos precisam de você",
     "runningCount_one": "{{count}} assunto em execução",
     "runningCount_other": "{{count}} assuntos em execução",
+    "unreadCount_one": "{{count}} novidade não lida",
+    "unreadCount_other": "{{count}} novidades não lidas",
     "integrations": "Integrações",
     "agentStore": "Loja de agentes",
     "permissions": "Permissões"

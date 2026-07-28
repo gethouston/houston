@@ -10,8 +10,11 @@
  * shape; the Zustand store (`stores/agent-provisioning.ts`) wires it to the
  * real engine client, toast, and localStorage.
  *
- * Kept dependency-free so `node --test` can exercise it directly.
+ * Kept dependency-free so `node --test` can exercise it directly (the one
+ * import below is a type, erased at runtime).
  */
+
+import type { MessageMention } from "@houston-ai/engine-client";
 
 /**
  * Small, always-present, side-effect-free per-agent read. This is the typed
@@ -115,6 +118,9 @@ export interface PendingWarmingSend {
   effort?: string;
   /** Per-turn mode pin (composer "Mode" selector), forwarded at flush time. */
   mode?: "execute" | "plan" | "auto";
+  /** Teammates this message @mentions (HOU-944). Plain JSON, so it survives
+   *  the localStorage mirror and a relaunch mid-warm-up alongside the text. */
+  mentions?: MessageMention[];
   /** Epoch ms the message was queued — orders the optimistic board rows. */
   queuedAt?: number;
   /**

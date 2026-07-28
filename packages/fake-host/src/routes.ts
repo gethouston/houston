@@ -14,6 +14,7 @@
  * → `done`) when the message lands. See translate.ts `streamTurn`.
  */
 
+import { parseMentions } from "@houston/protocol";
 import type { ProviderId } from "@houston/runtime-client";
 import { cancelChat, openChatStream, sendMessage } from "./chat";
 import { json, noContent } from "./http";
@@ -223,6 +224,9 @@ export function handleAgents(
             typeof body?.displayText === "string"
               ? body.displayText
               : undefined,
+            // The @mention sidecar, through the SAME wire guard the real send
+            // routes use — the mock can't drift on what a mention is.
+            parseMentions(body?.mentions),
           );
       }
       if (action === "cancel") {

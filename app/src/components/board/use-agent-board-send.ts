@@ -86,6 +86,7 @@ export function useAgentBoardSend({
       providerOverride,
       modelOverride,
       modeOverride,
+      mentions,
     }: { text: string; files: File[] } & SendOverrides) => {
       const agentMode = pendingAgentMode ?? agentModes?.[0]?.id;
       const mode = agentModes?.find((m) => m.id === agentMode);
@@ -106,6 +107,7 @@ export function useAgentBoardSend({
           providerOverride,
           modelOverride,
           modeOverride,
+          mentions,
           titleText: visible,
           buildPrompt: async (activityId) => {
             const saved = await tauriAttachments.save(
@@ -189,6 +191,7 @@ export function useAgentBoardSend({
           provider: overrides.providerOverride,
           model: overrides.modelOverride,
           mode: overrides.modeOverride,
+          mentions: overrides.mentions,
         });
       if (queuedWarm) {
         // The parked message narrates itself: the trailing user bubble keeps
@@ -218,6 +221,7 @@ export function useAgentBoardSend({
           providerOverride: overrides.providerOverride,
           modelOverride: overrides.modelOverride,
           modeOverride: overrides.modeOverride,
+          mentions: overrides.mentions,
           // If the conversation is mid-turn the adapter holds this send; the
           // queued bubble shows the user's words, not the built prompt.
           queuedPreview: {

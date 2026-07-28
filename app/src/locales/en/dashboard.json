@@ -5,6 +5,21 @@
     "button": "Archived",
     "title": "Archived"
   },
+  "mentions": {
+    "button": "Mentions",
+    "title": "Mentions",
+    "ariaCount_one": "{{count}} unread mention",
+    "ariaCount_other": "{{count}} unread mentions",
+    "row": {
+      "by": "{{name}} mentioned you",
+      "byUnknown": "You were mentioned",
+      "agent": "in {{agent}}"
+    },
+    "empty": {
+      "title": "No mentions yet",
+      "description": "When a teammate names you in a mission, it shows up here."
+    }
+  },
   "filter": {
     "allAgents": "All agents"
   },

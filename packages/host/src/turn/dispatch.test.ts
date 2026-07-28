@@ -1,11 +1,12 @@
 import type { Server } from "node:http";
-import { createServer } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { WireFrame } from "@houston/runtime-client";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspaceCredential } from "../ports";
+import { BodyTooLargeError, MAX_JSON_BYTES } from "../routes/read-body";
 import { MemoryVfs } from "../vfs";
 import { ConnectManager } from "./connect";
 import type { TurnDeps } from "./deps";
@@ -92,8 +93,15 @@ function makeDeps(): {
   return { deps, objects, credentials };
 }
 
-/** Drive dispatchCloudrun through a real HTTP server (it needs req/res). */
-function serve(deps: TurnDeps): Promise<{ base: string; close: () => void }> {
+/**
+ * Drive dispatchCloudrun through a real HTTP server (it needs req/res).
+ * `preReadBody` stands in for the route that already drained the body to stamp
+ * @mention attribution (routes/agents.ts) and hands the buffer down.
+ */
+function serve(
+  deps: TurnDeps,
+  preReadBody?: Buffer,
+): Promise<{ base: string; close: () => void }> {
   const s = createServer((req, res) => {
     const url = new URL(req.url || "/", "http://x");
     const rest = url.pathname.replace(/^\//, "");
@@ -106,8 +114,13 @@ function serve(deps: TurnDeps): Promise<{ base: string; close: () => void }> {
       url,
       req,
       res,
+      preReadBody,
     ).catch((err) => {
-      res.writeHead(500);
+      // Mirrors the real host's top-level mapping (server.ts): an over-cap body
+      // is a 413, everything else a 500. Without it a BodyTooLargeError that
+      // correctly escaped the route would be indistinguishable here from the
+      // 500 this change exists to stop returning.
+      res.writeHead(err instanceof BodyTooLargeError ? 413 : 500);
       res.end(String(err));
     });
   });
@@ -194,6 +207,77 @@ test("a pinned routine turn sends autopilot mode to the runtime", async () => {
   await done;
 
   expect(turnBodies[0]?.mode).toBe("auto");
+});
+
+test("a malformed turn body answers a clean 400 — both the streamed and the pre-read parse", async () => {
+  const { deps } = makeDeps();
+  const bad = "{not json";
+
+  // The plain path: the dispatch reads and parses the request stream itself.
+  const streamed = await serve(deps);
+  try {
+    const res = await fetch(`${streamed.base}/conversations/c-bad/messages`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: bad,
+    });
+    // Not a 500: the client sent junk, and it must be told so — an unguarded
+    // parse used to escape into the host's top-level catch as an opaque 500.
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "invalid JSON body" });
+  } finally {
+    streamed.close();
+  }
+
+  // The attribution path: the route already drained the body, so the buffer is
+  // parsed in place of the (now exhausted) stream — same guard required.
+  const preread = await serve(deps, Buffer.from(bad));
+  try {
+    const res = await fetch(`${preread.base}/conversations/c-bad/messages`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: bad,
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "invalid JSON body" });
+  } finally {
+    preread.close();
+  }
+});
+
+test("an over-cap turn body still propagates as a 413, not mislabelled a 400", async () => {
+  const { deps } = makeDeps();
+  const { base, close } = await serve(deps);
+  try {
+    // node:http rather than fetch: the host answers before the oversized body
+    // finishes uploading, so the write side may error after the response has
+    // already arrived — that is the intended behavior, not a test failure.
+    const { port } = new URL(base);
+    const status = await new Promise<number>((resolve, reject) => {
+      let responded = false;
+      const req = httpRequest(
+        {
+          host: "127.0.0.1",
+          port,
+          method: "POST",
+          path: "/conversations/c-huge/messages",
+          headers: { "content-type": "application/json" },
+        },
+        (res) => {
+          responded = true;
+          res.resume();
+          resolve(res.statusCode ?? 0);
+        },
+      );
+      req.on("error", (err) => {
+        if (!responded) reject(err);
+      });
+      req.end(Buffer.alloc(MAX_JSON_BYTES + 1, "a"));
+    });
+    expect(status).toBe(413);
+  } finally {
+    close();
+  }
 });
 
 test("conversation list + history read straight from object storage", async () => {

@@ -45,6 +45,7 @@ export function useMcActions({
       files,
       providerOverride,
       modelOverride,
+      mentions,
     }: { text: string; files: File[] } & SendOverrides) => {
       const plan = planNewMission({
         activeAgent,
@@ -64,20 +65,23 @@ export function useMcActions({
         promptFile: plan.promptFile,
         providerOverride: plan.providerOverride,
         modelOverride: plan.modelOverride,
+        mentions,
       });
     },
     [activeAgent, activeAgentDef, mc.handleCreateConversation, addToast, t],
   );
 
-  // Cross-agent: ignore composer overrides, re-resolve from the activity (see
-  // useMissionControl). 4th param keeps the BoardSource signature aligned.
+  // Cross-agent: ignore the composer's provider/model overrides, re-resolve
+  // them from the activity (see useMissionControl). `mentions` are NOT an
+  // override in that sense — they are what this very message said — so they
+  // ride through.
   const sendMessageNow = useCallback(
     (
       sessionKey: string,
       text: string,
       files: File[],
-      _overrides: SendOverrides,
-    ) => mc.handleSendMessage(sessionKey, text, files),
+      overrides: SendOverrides,
+    ) => mc.handleSendMessage(sessionKey, text, files, overrides.mentions),
     [mc.handleSendMessage],
   );
 

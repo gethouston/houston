@@ -1,5 +1,5 @@
 import type { KanbanItem, NewPanelOpener } from "@houston-ai/board";
-import type { FeedItem } from "@houston-ai/chat";
+import type { FeedItem, MessageMention } from "@houston-ai/chat";
 import type { ReactNode } from "react";
 import type { HistoryLoadOptions } from "../../lib/tauri";
 import type { TurnMode } from "../../lib/turn-mode";
@@ -22,14 +22,19 @@ import type { Agent, AgentDefinition } from "../../lib/types";
  * one presentational/wiring component, two injected data backends.
  */
 
-/** Provider/model override pair, forwarded to a send/create so the wire
- *  mirrors the model the composer dropdown is showing (never silently
- *  re-resolved by the engine). */
+/** Everything a user-typed send carries beside its text and files: the
+ *  provider/model pair (so the wire mirrors the model the composer dropdown is
+ *  showing, never silently re-resolved by the engine), the turn-mode pin, and
+ *  the teammates the message named. */
 export interface SendOverrides {
   providerOverride: string;
   modelOverride: string;
   /** Turn mode pin for user-typed sends; absent = execute. */
   modeOverride?: TurnMode;
+  /** Teammates this message @mentions (HOU-944). Per-send, not a composer
+   *  setting: it comes from the submit, not the toolbar. Absent on an
+   *  agent-initiated send (retry, auto-resume, routine). */
+  mentions?: MessageMention[];
 }
 
 /**

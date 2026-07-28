@@ -41,6 +41,7 @@ export function appendUserMessage(
   userText: string,
   turnId: string,
   displayText?: string,
+  mentions?: ChatMessage["mentions"],
 ): void {
   const key = `${agentId}:${conversationId}`;
   const list = state.histories.get(key) ?? [];
@@ -49,12 +50,15 @@ export function appendUserMessage(
   // a history reload renders `displayText ?? content`. Dropping it here made
   // the served fold DIFFER from the live bubble — a windowed reseed
   // (HOU-819) then replaced the pretty bubble with the raw directive.
+  // `mentions` persists beside it the way the real runtime persists `author`:
+  // a reloaded transcript must chip the same teammates the live bubble did.
   list.push({
     role: "user",
     content: userText,
     ts: EPOCH,
     turnId,
     ...(displayText !== undefined ? { displayText } : {}),
+    ...(mentions ? { mentions } : {}),
   });
   state.histories.set(key, list);
   emitDomain("ConversationsChanged", agentId);

@@ -54,10 +54,12 @@ vi.mock("../store/conversations", () => ({
   getHistory: vi.fn(() => ({ messages: [] })),
 }));
 
-const { execTurn } = await import("./exec-turn");
+const { execTurn, recordUserTurn } = await import("./exec-turn");
 const { subscribe } = await import("./bus");
 const { recordQuestions, recordConnection } = await import("./interaction");
-const { appendAssistantMessage } = await import("../store/conversations");
+const { appendAssistantMessage, appendUserMessage } = await import(
+  "../store/conversations"
+);
 const { switchModeIfNeeded } = await import("./conversation-cache");
 
 afterAll(() => vi.restoreAllMocks());
@@ -395,4 +397,52 @@ test("a thrown turn emits an error frame and no done", async () => {
   expect(err?.data.message).toContain("kaboom");
   // A thrown turn settles via the catch path, which never carries the interaction.
   expect(persistedInteraction(id)).toBeUndefined();
+});
+
+/** The meta persisted on `id`'s USER message, or undefined. */
+function persistedUserMeta(id: string) {
+  const call = vi.mocked(appendUserMessage).mock.calls.find((c) => c[0] === id);
+  return call?.[2] as { mentions?: unknown } | undefined;
+}
+
+test("recordUserTurn persists the @mentions sidecar AND publishes it on the user frame (HOU-944)", () => {
+  const id = "record-mentions";
+  const { events, unsub } = collect(id);
+  const mentions = [{ userId: "user_a", name: "Ada" }, { userId: "user_g" }];
+
+  recordUserTurn(
+    {} as Conv,
+    id,
+    "turn-1",
+    "@Ada can you confirm?",
+    "nonce-1",
+    undefined,
+    undefined,
+    mentions,
+  );
+  unsub();
+
+  // Durable: a reader that refetches history maps "@Ada" back to a person.
+  expect(persistedUserMeta(id)?.mentions).toEqual(mentions);
+  // Live: a client watching the stream chips them without refetching.
+  const frame = events.find(
+    (e): e is Extract<WireEvent, { type: "user" }> => e.type === "user",
+  );
+  expect(frame?.data.mentions).toEqual(mentions);
+  // The model input is untouched — the names were always plain text.
+  expect(frame?.data.content).toBe("@Ada can you confirm?");
+});
+
+test("recordUserTurn leaves mentions absent on a turn that named nobody", () => {
+  const id = "record-no-mentions";
+  const { events, unsub } = collect(id);
+
+  recordUserTurn({} as Conv, id, "turn-1", "ship the report");
+  unsub();
+
+  expect(persistedUserMeta(id)?.mentions).toBeUndefined();
+  const frame = events.find(
+    (e): e is Extract<WireEvent, { type: "user" }> => e.type === "user",
+  );
+  expect(frame?.data.mentions).toBeUndefined();
 });

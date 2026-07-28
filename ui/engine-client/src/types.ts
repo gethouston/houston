@@ -183,6 +183,26 @@ export interface UserProfilesResult {
 }
 
 /**
+ * One co-member of the active space, from `GET /v1/org/people` (Teams). The
+ * sanitized directory: no email, no role. `displayName`/`photoUrl` come from
+ * the gateway's stored GCIP profile and are both optional.
+ */
+export interface OrgPerson {
+  userId: string;
+  displayName?: string;
+  photoUrl?: string;
+}
+
+/**
+ * One @mention of a human in a chat message. Mirrors the protocol
+ * `ChatMessage.mentions[]` entry.
+ */
+export interface MessageMention {
+  userId: string;
+  name?: string;
+}
+
+/**
  * A per-agent access level (Teams v2). `manager` may reconfigure the agent
  * (instructions, skills, model, allowed toolkits, assignments); `user` may only
  * use it. Kept in sync (by hand) with the gateway — the server is the source of
@@ -690,6 +710,9 @@ export interface Activity {
   /** Humans who started or collaborated on this mission (Teams attribution).
    *  Server-stamped in multiplayer only; absent on desktop/single-player. */
   contributors?: { user_id: string; name?: string }[];
+  /** Teammates @mentioned in this mission's chat, latest per person.
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  mentioned?: { user_id: string; at: string; by?: string }[];
 }
 
 export interface ActivityUpdate {
@@ -939,6 +962,9 @@ export interface ConversationEntry {
   /** Humans who started or collaborated on this mission (Teams attribution).
    *  Server-stamped in multiplayer only; absent on desktop/single-player. */
   contributors?: { user_id: string; name?: string }[];
+  /** Teammates @mentioned in this mission's chat, latest per person.
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  mentioned?: { user_id: string; at: string; by?: string }[];
 }
 
 // ---------- Skills ----------
@@ -1346,6 +1372,15 @@ export interface SessionStartRequest {
    * single-player / signed out, leaving the bubble authorless.
    */
   author?: { userId: string; name?: string };
+  /**
+   * The teammates this message @mentions, as a structured sidecar ALONGSIDE the
+   * prompt (HOU-944). The model only ever sees the plain `@Name` text the user
+   * typed; this list carries the identities the composer resolved, so the sent
+   * bubble can chip them and a later notifications feature can scan a
+   * conversation for `mentions[].userId === me`. Omitted when the message
+   * mentions nobody, and in single-player deployments (no roster to mention).
+   */
+  mentions?: MessageMention[];
 }
 
 export interface SessionStartResponse {
@@ -1365,6 +1400,13 @@ export interface ChatHistoryEntry {
    * Absent on every other feed type and in single-player mode.
    */
   author?: { userId: string; name?: string };
+  /**
+   * The teammates a `user_message` entry @mentions (HOU-944), carried through
+   * to the ui/chat feed so a reloaded transcript chips the same names the sent
+   * bubble did. Absent on every other feed type and whenever the message
+   * mentioned nobody.
+   */
+  mentions?: MessageMention[];
 }
 
 export interface SummarizeResult {

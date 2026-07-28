@@ -13,7 +13,10 @@
  * a relaunch the flush falls back to the message text alone.
  */
 
-import { pushPendingUserMessage } from "@houston-ai/engine-client";
+import {
+  type MessageMention,
+  pushPendingUserMessage,
+} from "@houston-ai/engine-client";
 import { getConversationFeed } from "../hooks/use-conversation-vm";
 import { actingUser } from "./acting-user";
 import type {
@@ -51,6 +54,9 @@ export interface QueueWarmingSendArgs {
   model?: string;
   effort?: string;
   mode?: "execute" | "plan" | "auto";
+  /** Teammates this message @mentions (HOU-944) — chipped on the local bubble
+   *  now, shipped with the deferred send at flush. */
+  mentions?: MessageMention[];
   /** Set = run the async AI title pass on this text once the flush lands. */
   titleText?: string;
   /** Row-only entry: no bubble now, no wire send at flush (HOU-713). */
@@ -70,11 +76,14 @@ export function buildWarmingSend(
     // Stamp the sender (HOU-943): the real send at flush suppresses its own
     // bubble, so this push is the row's ONLY chance to be attributed — without
     // it a warmed-up agent's first message stays nameless in a shared thread.
+    // `mentions` rides for the same reason (HOU-944): this push is the only
+    // chance the bubble ever gets to chip the teammates it named.
     pushPendingUserMessage(
       args.agentPath,
       args.sessionKey,
       args.text,
       actingUser(),
+      args.mentions,
     );
   }
   const send: PendingWarmingSend = {
@@ -87,6 +96,7 @@ export function buildWarmingSend(
     model: args.model,
     effort: args.effort,
     mode: args.mode,
+    mentions: args.mentions,
     queuedAt: Date.now(),
     titleText: args.titleText,
     rowOnly: args.rowOnly,
@@ -112,6 +122,7 @@ export function restoreWarmingBubbles(entry: ProvisioningEntry): void {
         send.sessionKey,
         send.text,
         author,
+        send.mentions,
       );
     }
   }
@@ -199,6 +210,7 @@ export async function flushWarmingSends(
         modelOverride: send.model,
         effortOverride: send.effort,
         modeOverride: send.mode,
+        mentions: send.mentions,
         suppressUserBubble: suppress,
         // A prompt builder rewrote the wire prompt (a hidden setup directive /
         // attachment paths) — persist the clean `send.text` as the bubble so a

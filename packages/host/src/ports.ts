@@ -145,6 +145,13 @@ export interface RuntimeLauncher {
 export interface ChannelCtx {
   workspace: Workspace;
   agent: Agent;
+  /**
+   * The request body, already drained by the route. The turn path reads it
+   * before dispatch to stamp mission attribution (activity-attribution.ts);
+   * a channel MUST prefer this over reading the (now-exhausted) stream.
+   * Absent on every request the route did not peek.
+   */
+  body?: Buffer;
 }
 
 /**

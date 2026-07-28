@@ -137,6 +137,10 @@ components:
       On send, staged files upload via turns/attachments/save then their saved
       paths are woven into the message by AttachmentMessage.encode (has-attachments
       state; AttachmentSend.swift). Drag-over is desktop-only.
+  mention-autocomplete:
+    status: not-started
+  mention-chip:
+    status: not-started
   turn-status:
     status: implemented
     ref: mobile/ios/Houston/Features/Chat/ChatTitleView.swift
@@ -178,11 +182,22 @@ components:
       separators, line 1 = title + relative time, line 2 = accent "Working…" /
       destructive snag / muted description, collapsing away when empty. That row
       is native-only styling of the same MissionCardData, not a separate inventory
-      component (the archived list reuses it).
+      component (the archived list reuses it). The v39 unread-dot is NOT rendered
+      yet: read cursors are per-device local state that iOS does not keep, so no
+      mission can be unread there.
   mission-board:
     status: implemented
     ref: mobile/ios/Houston/Features/MissionControl/MissionControlPager.swift
-    notes: Three-column pager (Running / Needs you / Done) with headers, card lists, empty-column states; no bulk-action bar on mobile.
+    notes: >-
+      Three-column pager (Running / Needs you / Done) with headers, card lists,
+      empty-column states; no bulk-action bar on mobile. The v39 mentions pill
+      is NOT there: it is the entry point of a mode iOS does not have yet, and
+      its count is read off per-device read cursors iOS does not keep.
+  mentions-inbox:
+    status: not-started
+    notes: >-
+      Blocked on the same per-device read cursors the v39 unread dot needs; iOS
+      keeps none, so no mention can be outstanding there.
   mission-status-chip:
     status: implemented
     ref: mobile/ios/Houston/DesignSystem/StatusChip.swift

@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import type { TurnMode } from "@houston/protocol";
 import type {
+  ChatMessage,
   PendingInteraction,
   ProviderError,
   TokenUsage,
@@ -93,6 +94,12 @@ export interface PiTurnRequest {
    * history reload renders `displayText ?? content`. Absent when they match.
    */
   displayText?: string;
+  /**
+   * The teammates the message @mentions (HOU-944). Structure only — the names
+   * are already plain text inside `text`. Persisted beside the user message and
+   * echoed on the `user` frame. Absent when the message mentions nobody.
+   */
+  mentions?: ChatMessage["mentions"];
 }
 
 export async function runPiTurn(
@@ -109,6 +116,7 @@ export async function runPiTurn(
     mode,
     turnId,
     displayText,
+    mentions,
   } = turn;
   const emit = (e: WireFrame) => turn.emit({ ...e, turnId });
   const workspaceDir = join(root, "workspace");
@@ -118,8 +126,12 @@ export async function runPiTurn(
   appendUserMessageAt(conversationsDir, conversationId, text, {
     turnId,
     displayText,
+    mentions,
   });
-  emit({ type: "user", data: { content: text, ts: Date.now(), nonce } });
+  emit({
+    type: "user",
+    data: { content: text, ts: Date.now(), nonce, mentions },
+  });
 
   let assistantText = "";
   let usage: TokenUsage | null = null;

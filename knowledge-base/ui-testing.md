@@ -68,7 +68,10 @@ cache was warm).
   `POST /__test__/chat-history` (`{ conversationId, messages, agentId? }`;
   replace a transcript verbatim — the only way to reach a SHARED conversation
   whose user messages carry the `author` the gateway stamps, for the sender
-  attribution spec `chat-senders.spec.ts`).
+  attribution spec `chat-senders.spec.ts`; the same control seeds a message's
+  `mentions[]` and an agent reply naming a person for the @mention spec
+  `chat-mentions.spec.ts`, whose roster comes from `POST /__test__/org`
+  → `GET /v1/org/people`).
 - **Board = files-first.** Reads/writes `.houston/activity/activity.json` via
   `/agents/:id/agentfile/*` (NOT just `/activities`). Fake host backs it with a
   real store, unified with `/activities` (same data, as in the real host),

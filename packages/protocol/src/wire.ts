@@ -84,6 +84,20 @@ export type WireEvent =
          * `ChatMessage.author`. Absent in single-player mode.
          */
         author?: { userId: string; name?: string };
+        /**
+         * The teammates this message @mentions (HOU-944), matching the
+         * persisted `ChatMessage.mentions`.
+         *
+         * NOTHING READS THIS FIELD TODAY. The turn sink drops it, and a live
+         * client learns about a teammate's message from the history re-seed
+         * that follows, chipping it from the persisted `ChatMessage.mentions`
+         * instead. It rides the frame so the wire stays a faithful mirror of
+         * what was stored — an observer that wanted to chip without a refetch
+         * would have everything it needs — not because such an observer
+         * exists. Absent when the message mentions nobody; an assistant's
+         * "@Name" is plain text and never carries it.
+         */
+        mentions?: { userId: string; name?: string }[];
       };
     }
   | { type: "text"; data: string }

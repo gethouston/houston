@@ -11,6 +11,24 @@ export interface ActivityContributor {
   name?: string;
 }
 
+/**
+ * One @mention recorded on a mission (HOU-945): the LATEST time this teammate
+ * was named in the mission's chat. One entry per person — a later mention
+ * overwrites the earlier one's timestamp, so the array is a compact
+ * "who has been pinged here, and when", not a log.
+ */
+export interface ActivityMention {
+  /** The mentioned teammate's user id. */
+  user_id: string;
+  /** ISO 8601 instant of that most recent mention. */
+  at: string;
+  /** Who wrote the message (server-stamped acting identity), when known. */
+  by?: string;
+}
+
+/** The most people one mission's aggregate tracks; older entries drop first. */
+export const ACTIVITY_MENTIONS_MAX = 32;
+
 export interface Activity {
   id: string;
   title: string;
@@ -33,6 +51,13 @@ export interface Activity {
   /** Humans who started or collaborated on this mission (Teams attribution).
    *  Server-stamped from acting-as identity; absent on desktop/single-player. */
   contributors?: ActivityContributor[];
+  /**
+   * Teammates @mentioned in this mission's chat, latest-per-person (HOU-945).
+   * Server-stamped from the turn body under a gateway-verified acting identity;
+   * absent on desktop/single-player, so those activity.json files stay
+   * byte-identical.
+   */
+  mentioned?: ActivityMention[];
 }
 
 export interface ActivityUpdate {

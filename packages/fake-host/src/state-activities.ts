@@ -32,6 +32,15 @@ export function createActivity(
     status: input.status ?? "running",
     session_key: input.session_key,
     updated_at: ISO,
+    // Teams attribution (created_by / contributors) and the @mention aggregate
+    // are server-stamped in the real host; accept them off the POST body so an
+    // e2e spec can seed an attributed or mentioned mission. Explicit keys only
+    // — an unknown field is still dropped.
+    ...(input.created_by !== undefined && { created_by: input.created_by }),
+    ...(input.contributors !== undefined && {
+      contributors: input.contributors,
+    }),
+    ...(input.mentioned !== undefined && { mentioned: input.mentioned }),
   };
   setActivities(agentId, [...listActivities(agentId), activity]);
   return activity;

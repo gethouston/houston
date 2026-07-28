@@ -50,6 +50,7 @@ export function ChatMessages({
   showSenders,
   agentLabel,
   renderSenderAvatar,
+  mentionPeople,
   conversationMap,
 }: ChatMessagesProps) {
   const [highlightedMessageKey, setHighlightedMessageKey] = useState<
@@ -117,6 +118,7 @@ export function ChatMessages({
             isSpecialTool={isSpecialTool}
             item={item}
             key={item.kind === "process" ? item.key : item.message.key}
+            mentionPeople={mentionPeople}
             messageCount={messages.length}
             onOpenLink={onOpenLink}
             processLabels={processLabels}

@@ -136,6 +136,7 @@ export async function writeCachedConversation(
         data: f.data,
         ...(f.ts !== undefined ? { ts: f.ts } : {}),
         ...(f.author !== undefined ? { author: f.author } : {}),
+        ...(f.mentions !== undefined ? { mentions: f.mentions } : {}),
       })),
       updatedAt: Date.now(),
     });

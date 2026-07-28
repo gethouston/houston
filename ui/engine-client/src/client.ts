@@ -71,6 +71,7 @@ import type {
   NewActivity,
   NewRoutine,
   OrgInfo,
+  OrgPerson,
   OrgRole,
   OrgSummary,
   OrgsList,
@@ -1399,6 +1400,26 @@ export class HoustonClient {
       if (isHoustonEngineError(err) && err.status === 404) {
         return { profiles: {} };
       }
+      throw err;
+    }
+  }
+  /**
+   * The sanitized co-member directory of the active space: every member the
+   * caller shares the space with (the personal space resolves only the caller),
+   * named-first. No emails, no roles — it exists so the composer can offer
+   * @mentions and the renderer can chip them. Degrades to an empty list on a
+   * host without the route (404), mirroring `getOrgProfiles`'s swallow, so a
+   * pre-feature gateway simply offers no autocomplete; every other error throws.
+   */
+  async getOrgPeople(): Promise<OrgPerson[]> {
+    try {
+      const body = await this.request<{ people?: OrgPerson[] }>(
+        "GET",
+        "/org/people",
+      );
+      return body.people ?? [];
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return [];
       throw err;
     }
   }

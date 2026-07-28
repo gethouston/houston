@@ -7,6 +7,7 @@ import type {
 } from "@houston/runtime-client";
 import { EngineError } from "@houston/runtime-client";
 import { afterEach, expect, test } from "vitest";
+import { ScopeStore } from "../../store";
 import type { FeedOutput } from "./feed-output";
 import { TURN_DIED_MESSAGE } from "./settle-from-history";
 import {
@@ -21,6 +22,11 @@ import {
   type StreamTuning,
   streamTurn,
 } from "./turn-stream";
+import {
+  type ConversationVM,
+  ConversationVmOutput,
+  conversationScope,
+} from "./vm-output";
 
 /**
  * The resumable turn/observer runners against a scripted fake engine: one
@@ -87,6 +93,7 @@ type Item = {
   pending?: boolean;
   fails_pending?: boolean;
   author?: { userId: string; name?: string };
+  mentions?: { userId: string; name?: string }[];
 };
 
 /** A recording FeedOutput: the sink's FeedItems, session statuses, board persists. */
@@ -484,6 +491,92 @@ test("the optimistic bubble stays authorless when no sender is supplied (single-
 
   const bubble = items.find((i) => i.feed_type === "user_message");
   expect(bubble?.author).toBeUndefined();
+});
+
+/**
+ * The @mention sidecar (HOU-944) rides the optimistic bubble the same way
+ * `author` does: the model receives only the plain `@Name` text in the prompt,
+ * while the VM entry carries the structure a surface chips from — and it must
+ * land on the real `FeedItemVM`, not just the raw push, or the sent bubble
+ * renders unchipped until history reloads.
+ */
+
+test("StreamTurnOptions.mentions reaches the optimistic FeedItemVM.mentions", async () => {
+  const { engine } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(false, "", 0));
+      o.onEvent({ type: "done", data: null, seq: 1 });
+    },
+  ]);
+  const store = new ScopeStore();
+  const vm = new ConversationVmOutput(store);
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-mentions",
+    "@Ada please confirm and I'll send it",
+    vm,
+    registry,
+    { tuning: fast, mentions: [{ userId: "user_a", name: "Ada" }] },
+  );
+
+  const snap = store.getSnapshot(
+    conversationScope("Houston/Bo", "activity-mentions"),
+  ) as ConversationVM;
+  const bubble = snap.feed.find((f) => f.feed_type === "user_message");
+  expect(bubble?.data).toBe("@Ada please confirm and I'll send it");
+  expect(bubble?.mentions).toEqual([{ userId: "user_a", name: "Ada" }]);
+});
+
+test("mentions ride the send body so the runtime can persist them", async () => {
+  const { engine, sendOpts, texts } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(false, "", 0));
+      o.onEvent({ type: "done", data: null, seq: 1 });
+    },
+  ]);
+  const { output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-wire",
+    "@Ada please confirm",
+    output,
+    registry,
+    { tuning: fast, mentions: [{ userId: "user_a", name: "Ada" }] },
+  );
+
+  // The model still receives the plain text and nothing but it.
+  expect(texts[0]).toBe("@Ada please confirm");
+  expect(sendOpts[0]?.mentions).toEqual([{ userId: "user_a", name: "Ada" }]);
+});
+
+test("a send that mentions nobody carries NO mentions key, on the bubble or the wire", async () => {
+  const { engine, sendOpts } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(false, "", 0));
+      o.onEvent({ type: "done", data: null, seq: 1 });
+    },
+  ]);
+  const { items, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-unmentioned",
+    "hi",
+    output,
+    registry,
+    // An EMPTY list means what absence means, and must normalize the same way:
+    // neither the bubble nor the wire ever carries `mentions: []`.
+    { tuning: fast, mentions: [] },
+  );
+
+  const bubble = items.find((i) => i.feed_type === "user_message");
+  expect(bubble?.mentions).toBeUndefined();
+  expect(sendOpts[0]?.mentions).toBeUndefined();
 });
 
 test("displayText renders as the bubble while the engine still receives the real prompt", async () => {

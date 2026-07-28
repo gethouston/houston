@@ -72,6 +72,7 @@ export function createMissionWhileWarming(
       model: opts.modelOverride,
       effort: opts.effortOverride,
       mode: opts.modeOverride,
+      mentions: opts.mentions,
       titleText: opts.title ? undefined : titleText,
     });
   if (!queued) {
@@ -111,6 +112,7 @@ export function createMissionWhileWarming(
         modelOverride: opts.modelOverride,
         effortOverride: opts.effortOverride,
         modeOverride: opts.modeOverride,
+        mentions: opts.mentions,
       });
       // The engine answers now, so the AI title pass runs like the normal
       // path's (createMission fires it right after the first send).

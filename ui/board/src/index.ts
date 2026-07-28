@@ -1,3 +1,8 @@
+// `MessageMention` rides along because AIBoard's own send/create signatures
+// take it: a consumer typing `onCreateConversation` has to name the type, and
+// reaching past the board into `@houston-ai/chat` for it would be the board
+// leaking its dependency.
+export type { MessageMention } from "@houston-ai/chat";
 export type { AIBoardProps, NewPanelOpener, NewPanelOptions } from "./ai-board";
 export { AIBoard } from "./ai-board";
 export type {

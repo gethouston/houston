@@ -62,6 +62,7 @@ export function activityToConversation(
     // conditionally so single-player entries don't carry undefined keys.
     ...(a.created_by !== undefined && { created_by: a.created_by }),
     ...(a.contributors !== undefined && { contributors: a.contributors }),
+    ...(a.mentioned !== undefined && { mentioned: a.mentioned }),
   };
 }
 

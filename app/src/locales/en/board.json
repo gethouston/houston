@@ -17,6 +17,9 @@
     "label": "People on this mission",
     "expand": "All people"
   },
+  "unread": {
+    "label": "Unread updates"
+  },
   "empty": {
     "title": "No conversations yet",
     "description": "Start a new conversation to delegate work to an agent.",

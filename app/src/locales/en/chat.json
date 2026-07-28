@@ -30,6 +30,9 @@
       "noMic": "No microphone was found."
     }
   },
+  "mentions": {
+    "listAriaLabel": "Mention a teammate"
+  },
   "attribution": {
     "you": "You"
   },

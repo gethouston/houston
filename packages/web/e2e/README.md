@@ -44,6 +44,7 @@ e2e/
   support/
     seed.ts         # localStorage + window.__HOUSTON_CP__ primed before any app script
     fixtures.ts     # the `test`/`expect` used by specs (resets the host per test)
+    identity.ts     # sign the harness in as a known user (see Signed-in specs below)
     global-setup.ts # warms the vite dev server once before the suite (see CI below)
   *.spec.ts         # the tests
 ```
@@ -86,6 +87,21 @@ assistant reply at turn END (both turn-stamped) — the identity contract
   nobody watches and start the next one, so the reconnect resyncs onto a
   DIFFERENT turnId and the client must settle its turn from history by turnId
   (the turn-boundary spec).
+
+**Signed-in specs.** The default server bakes no Firebase key, so
+`isIdentityConfigured()` is false and the session is always `null`. That is fine
+for almost everything, but a surface gated on a signed-in identity is then
+UNREACHABLE — `useOrgPeople` / `useUserProfiles` never even fetch — and anything
+that must know WHO is looking (`currentUserId`, e.g. the @mention self-chip) has
+no answer. `support/identity.ts` closes that gap: pair `test.use({ baseURL:
+AUTH_WEB_URL })` with `signInAsViewer(page)` and the spec runs on the identity-ON
+server (`:1435`, the one the sign-in spec uses), signed in as `E2E_VIEWER`
+(`uid: "u-self"`) through the app's REAL passwordless email screen. Only the
+NETWORK is mocked — the gateway's OTP contract plus GCIP's public REST wire
+(`identitytoolkit` / `securetoken`) — so nothing reaches into firebase-js-sdk's
+storage internals and an unmocked identity call fails loudly instead of escaping
+to Google. Arm the fake host's org roster with the same `u-self` id and "me" is
+assertable (`chat-mentions.spec.ts`).
 
 **Teams / integrations arming.** Single-player alone can't reach the Teams-shaped
 state the locked browse rows (and, later, the admin policy pages) need. Two

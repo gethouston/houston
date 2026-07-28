@@ -1,4 +1,4 @@
-import { AIBoard } from "@houston-ai/board";
+import { AIBoard, type MessageMention } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
@@ -105,8 +105,8 @@ export function MissionBoard({ source }: { source: BoardSource }) {
   });
 
   const handleCreateConversation = useCallback(
-    (text: string, files: File[]) =>
-      source.createConversation({ text, files, ...overrides }),
+    (text: string, files: File[], mentions?: MessageMention[]) =>
+      source.createConversation({ text, files, ...overrides, mentions }),
     [source.createConversation, overrides],
   );
   const handleNotice = useCallback(
@@ -163,6 +163,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           showSenders={panel.showSenders}
           agentLabel={panel.agentLabel}
           renderSenderAvatar={panel.renderSenderAvatar}
+          {...panel.mentionProps}
           dictation={panel.dictation}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}

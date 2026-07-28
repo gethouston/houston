@@ -51,6 +51,10 @@ export class TurnChannel implements RuntimeChannel {
       url,
       req,
       res,
+      // The route may have already drained the body (the turn path peeks it to
+      // stamp mission attribution); the stream is exhausted by then, so the
+      // dispatch parses this buffer instead of re-reading nothing.
+      ctx.body,
     );
   }
 

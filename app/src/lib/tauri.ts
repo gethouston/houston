@@ -19,6 +19,7 @@ import type {
   ComposioStatus as EngineComposioStatus,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
+  MessageMention,
   ProviderAuthState,
   ProviderUsage,
 } from "@houston-ai/engine-client";
@@ -392,6 +393,13 @@ export const tauriChat = {
        * (see SessionStartRequest).
        */
       displayText?: string;
+      /**
+       * Teammates this message @mentions (HOU-944), a structured sidecar
+       * ALONGSIDE the prompt — the model only ever sees the plain "@Name" text.
+       * User-typed sends only; an agent/system-initiated send (retry prompt,
+       * auto-resume, routine) carries none (see SessionStartRequest).
+       */
+      mentions?: MessageMention[];
     },
   ) =>
     call<string>("send_message", async () => {
@@ -415,6 +423,9 @@ export const tauriChat = {
         // Who is sending: stamps the optimistic bubble so a shared conversation
         // attributes it immediately (HOU-943). Undefined signed out / local.
         author: actingUser(),
+        // Who this message names (HOU-944). An empty list means what absence
+        // means, so never put `[]` on the wire.
+        mentions: opts?.mentions?.length ? opts.mentions : undefined,
       });
       return res.sessionKey;
     }),
@@ -900,6 +911,9 @@ interface RawConversation {
   /** Humans who started or collaborated on this mission (Teams attribution).
    *  Server-stamped in multiplayer only; absent on desktop/single-player. */
   contributors?: { user_id: string; name?: string }[];
+  /** Teammates @mentioned in this mission's chat, latest per person.
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  mentioned?: { user_id: string; at: string; by?: string }[];
 }
 
 export const tauriConversations = {
@@ -945,6 +959,7 @@ function conversationToRaw(
     routine_id: c.routine_id,
     created_by: c.created_by,
     contributors: c.contributors,
+    mentioned: c.mentioned,
   };
 }
 
@@ -1651,6 +1666,16 @@ export const tauriOrg = {
    *  Sentry) and consumers fall back to initials via React Query's `isError`. */
   profiles: (ids: string[]) =>
     call("get_org_profiles", () => getEngine().getOrgProfiles(ids), undefined, {
+      toast: false,
+      capture: false,
+    }),
+  /** The active space's sanitized co-member directory (HOU-944), the roster
+   *  the chat composer's @mention autocomplete offers. Same cosmetic,
+   *  non-user-initiated posture as `profiles`: it degrades to an empty list
+   *  off-gateway / on a gateway predating the route, so a rare hard failure
+   *  stays silent (no toast, no Sentry) and `@` simply types plainly. */
+  people: () =>
+    call("get_org_people", () => getEngine().getOrgPeople(), undefined, {
       toast: false,
       capture: false,
     }),

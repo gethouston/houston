@@ -8,6 +8,8 @@ import type { ReactNode } from "react";
 import type { RenderLinkProps } from "./ai-elements/message";
 import { MessageContent, MessageResponse } from "./ai-elements/message";
 import type { ChatMessage } from "./feed-to-messages";
+import type { MentionTarget } from "./mention-spans.ts";
+import type { MentionPerson } from "./types";
 
 interface ChatMessageBodyProps {
   message: ChatMessage;
@@ -19,6 +21,43 @@ interface ChatMessageBodyProps {
   renderUserMessage?: (msg: ChatMessage) => ReactNode | undefined;
   onOpenLink?: (url: string) => void;
   renderLink?: (props: RenderLinkProps) => ReactNode;
+  /** The space roster an ASSISTANT message's "@Name" runs are matched against
+   *  (HOU-944). A user message uses its own recorded mentions instead. */
+  mentionPeople?: readonly MentionPerson[];
+  /** The signed-in viewer, so a mention of them renders emphasized. */
+  currentUserId?: string;
+}
+
+/**
+ * Who this message may chip. A USER turn carries its own structured mentions
+ * (recorded at send time, so a later rename still chips the original text); an
+ * ASSISTANT turn mentions people in plain prose, so it matches against the
+ * roster the consumer supplied.
+ */
+function mentionTargets({
+  message,
+  mentionPeople,
+  currentUserId,
+}: Pick<ChatMessageBodyProps, "message" | "mentionPeople" | "currentUserId">):
+  | MentionTarget[]
+  | undefined {
+  if (message.from === "user") {
+    const named = (message.mentions ?? []).filter(
+      (mention) => typeof mention.name === "string" && mention.name.length > 0,
+    );
+    if (named.length === 0) return undefined;
+    return named.map((mention) => ({
+      name: mention.name as string,
+      userId: mention.userId,
+      isSelf: mention.userId === currentUserId,
+    }));
+  }
+  if (message.from !== "assistant" || !mentionPeople?.length) return undefined;
+  return mentionPeople.map((person) => ({
+    name: person.name,
+    userId: person.userId,
+    isSelf: person.userId === currentUserId,
+  }));
 }
 
 export function ChatMessageBody({
@@ -28,6 +67,8 @@ export function ChatMessageBody({
   renderUserMessage,
   onOpenLink,
   renderLink,
+  mentionPeople,
+  currentUserId,
 }: ChatMessageBodyProps) {
   if (!message.content) return null;
   if (message.from === "user" && renderUserMessage) {
@@ -43,6 +84,7 @@ export function ChatMessageBody({
     <MessageContent>
       <MessageResponse
         isAnimating={streaming}
+        mentions={mentionTargets({ message, mentionPeople, currentUserId })}
         onOpenLink={onOpenLink}
         renderLink={renderLink}
       >

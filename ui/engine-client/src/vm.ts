@@ -11,6 +11,9 @@
  * Shape-compatible with `@houston/sdk`'s `SnapshotSource` — kept dependency-free
  * on purpose (this package has no deps).
  */
+
+import type { MessageMention } from "./types";
+
 export interface ConversationSnapshotSource {
   subscribe(scope: string, cb: (snapshot: unknown) => void): () => void;
   getSnapshot(scope: string): unknown | undefined;
@@ -31,6 +34,7 @@ export function pushPendingUserMessage(
   _sessionKey: string,
   _text: string,
   _author?: { userId: string; name?: string },
+  _mentions?: MessageMention[],
 ): void {}
 
 /**

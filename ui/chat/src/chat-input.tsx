@@ -1,23 +1,16 @@
 import { cn } from "@houston-ai/core";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import type { PromptInputMessage } from "./ai-elements/prompt-input";
-import {
-  PromptInput,
-  PromptInputBody,
-  PromptInputHeader,
-  PromptInputTextarea,
-} from "./ai-elements/prompt-input";
-import { ComposerTrailing } from "./attachment-chip";
-import {
-  ChatInputAttachButton,
-  ChatInputAttachments,
-} from "./chat-input-attachments";
+import { ChatInputAttachments } from "./chat-input-attachments";
+import { ChatInputForm } from "./chat-input-form.tsx";
+import { ChatInputMentions } from "./chat-input-mentions.tsx";
 import type { ChatInputProps } from "./chat-input-types";
 import { isDictationActive, isDictationCapturing } from "./dictation-types";
-import { DictationWaveform } from "./dictation-waveform";
 import { QueuedMessageList } from "./queued-message-list";
 import { useComposerAttachments } from "./use-composer-attachments";
+import { useDictationHotkeys } from "./use-dictation-hotkeys.ts";
 import { useControllable } from "./use-file-drop-zone";
+import { useMentionCombobox } from "./use-mention-combobox.ts";
 
 export type { ChatInputProps } from "./chat-input-types";
 export type { ChatComposerLabels } from "./chat-panel-types";
@@ -44,6 +37,10 @@ export function ChatInput({
   disabled = false,
   labels,
   dictation,
+  mentionPeople,
+  renderMentionAvatar,
+  mentionLabels,
+  draftKey,
 }: ChatInputProps) {
   const [text, setText] = useControllable(value, onValueChange, "");
   const isTextControlled = value !== undefined;
@@ -66,14 +63,34 @@ export function ChatInput({
     onNotice,
     labels,
   });
+  const mentions = useMentionCombobox({
+    people: mentionPeople,
+    enabled: !disabled && !isDictationCapturing(dictation),
+    draftKey,
+    onTextChange: setText,
+  });
 
   const handleTextChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value),
-    [setText],
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setText(e.target.value);
+      mentions.refresh(e.target);
+    },
+    [setText, mentions.refresh],
+  );
+
+  const handleCaretMove = useCallback(
+    (e: React.SyntheticEvent<HTMLTextAreaElement>) =>
+      mentions.refresh(e.currentTarget),
+    [mentions.refresh],
   );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // The mention list gets first say: every key it consumes is
+      // `preventDefault()`ed, which is what makes PromptInputTextarea bail
+      // before its own Enter handling and keeps Escape off the stop handler.
+      mentions.onKeyDown(e);
+      if (e.defaultPrevented) return;
       // Escape discards an in-flight capture first, before any streaming stop.
       if (e.key === "Escape" && isDictationCapturing(dictation)) {
         e.preventDefault();
@@ -85,7 +102,7 @@ export function ChatInput({
         onStop();
       }
     },
-    [status, onStop, dictation],
+    [status, onStop, dictation, mentions.onKeyDown],
   );
 
   const handleSubmit = useCallback(
@@ -93,7 +110,12 @@ export function ChatInput({
       if (disabled) return;
       const trimmed = message.text?.trim();
       if (!trimmed && files.length === 0 && !canSendEmpty) return;
-      await onSend(trimmed ?? "", files);
+      const sent = trimmed ?? "";
+      // Snapshot, never consume: a rejected `onSend` keeps the text in the
+      // composer, so it has to keep the mentions that text refers to. Text and
+      // mentions clear together, once the send actually landed.
+      await onSend(sent, files, mentions.mentionsFor(sent));
+      mentions.commitSent();
       // In uncontrolled mode, clear our own state. In controlled mode the
       // parent is responsible for clearing.
       if (!isTextControlled) setText("");
@@ -108,34 +130,14 @@ export function ChatInput({
       isFilesControlled,
       setText,
       setFiles,
+      mentions.mentionsFor,
+      mentions.commitSent,
     ],
   );
 
   const hasContent = canSendEmpty || text.trim().length > 0 || files.length > 0;
   const dictating = isDictationActive(dictation);
-
-  // While capturing, the textarea (which owns the keydown handler) is replaced
-  // by the waveform, so Escape/Enter have no focus target. Listen globally for
-  // the duration of the capture instead: Escape discards, Enter (no shift)
-  // accepts — the same as clicking ✓ (stop + transcribe). During transcribing
-  // this effect is inactive (not a capturing state), so Enter does nothing.
-  const capturing = isDictationCapturing(dictation);
-  useEffect(() => {
-    if (!capturing) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        dictation?.onCancel();
-        return;
-      }
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        dictation?.onStop();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [capturing, dictation]);
+  useDictationHotkeys(dictation);
 
   return (
     <div className="shrink-0 px-4 pb-6 pt-2">
@@ -161,41 +163,32 @@ export function ChatInput({
           labels={queuedLabels}
         />
 
-        <PromptInput onSubmit={handleSubmit}>
-          {header && (
-            <PromptInputHeader className="pb-1">{header}</PromptInputHeader>
-          )}
-
-          <ChatInputAttachButton
-            onOpenFilePicker={openFilePicker}
-            onOpenFolderPicker={openFolderPicker}
+        <ChatInputMentions
+          {...mentions.list}
+          listAriaLabel={mentionLabels?.listAriaLabel}
+          renderAvatar={renderMentionAvatar}
+        >
+          <ChatInputForm
             attachMenu={attachMenu}
-            disabled={disabled}
-          />
-
-          <PromptInputBody>
-            {dictating && dictation ? (
-              <DictationWaveform control={dictation} />
-            ) : (
-              <PromptInputTextarea
-                onChange={handleTextChange}
-                onKeyDown={handleKeyDown}
-                onPaste={handlePaste}
-                value={text}
-                placeholder={placeholder}
-                disabled={disabled}
-              />
-            )}
-          </PromptInputBody>
-
-          <ComposerTrailing
-            status={status}
-            hasContent={hasContent}
-            onStop={onStop}
+            dictating={dictating}
             dictation={dictation}
             disabled={disabled}
+            hasContent={hasContent}
+            header={header}
+            mentionCombobox={mentions.combobox}
+            onKeyDown={handleKeyDown}
+            onOpenFilePicker={openFilePicker}
+            onOpenFolderPicker={openFolderPicker}
+            onPaste={handlePaste}
+            onSelect={handleCaretMove}
+            onStop={onStop}
+            onSubmit={handleSubmit}
+            onTextChange={handleTextChange}
+            placeholder={placeholder}
+            status={status}
+            text={text}
           />
-        </PromptInput>
+        </ChatInputMentions>
 
         {footer && (
           <div className="flex items-center px-2.5 pt-1">{footer}</div>

@@ -2,6 +2,52 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SEED_AGENT_ID, SEED_WORKSPACE_ID } from "./config";
 import { type FakeHost, startFakeHost } from "./server";
 
+const JSON_HEADERS = { "content-type": "application/json" };
+
+/** One `user` wire frame's payload, as the conversation stream serves it. */
+interface UserFrameData {
+  content: string;
+  ts: number;
+  nonce?: string;
+  mentions?: Array<{ userId: string; name?: string }>;
+}
+
+/**
+ * The payload of the first `user` frame on a conversation stream. Reads the SSE
+ * body the way the real client does — split on `\n\n`, keep `data:` lines — and
+ * aborts the connection once the frame is in hand.
+ */
+async function readUserFrame(eventsUrl: string): Promise<UserFrameData> {
+  const abort = new AbortController();
+  try {
+    const res = await fetch(eventsUrl, { signal: abort.signal });
+    const reader = (res.body as ReadableStream<Uint8Array>).getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) throw new Error("stream ended before a user frame arrived");
+      buffer += decoder.decode(value, { stream: true });
+      let split = buffer.indexOf("\n\n");
+      while (split >= 0) {
+        const chunk = buffer.slice(0, split);
+        buffer = buffer.slice(split + 2);
+        const data = chunk.split("\n").find((l) => l.startsWith("data: "));
+        if (data) {
+          const frame = JSON.parse(data.slice(6)) as {
+            type: string;
+            data: unknown;
+          };
+          if (frame.type === "user") return frame.data as UserFrameData;
+        }
+        split = buffer.indexOf("\n\n");
+      }
+    }
+  } finally {
+    abort.abort();
+  }
+}
+
 /**
  * Covers the package's new lifecycle surface — `startFakeHost` / `FakeHost.stop`
  * — and a few representative routes, so the exported API is exercised outside
@@ -187,7 +233,6 @@ describe("startFakeHost", () => {
   it("dismiss-interaction stops the transcript and clears the activity", async () => {
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     const agentBase = `${host.url}/agents/${SEED_AGENT_ID}`;
-    const jsonHeaders = { "content-type": "application/json" };
     const interaction = {
       steps: [
         {
@@ -207,7 +252,7 @@ describe("startFakeHost", () => {
     // interaction VERBATIM (covers the kind-agnostic PATCH set path).
     const patched = await fetch(`${agentBase}/activities/act-1`, {
       method: "PATCH",
-      headers: jsonHeaders,
+      headers: JSON_HEADERS,
       body: JSON.stringify({
         session_key: "conv-1",
         pending_interaction: interaction,
@@ -247,24 +292,198 @@ describe("startFakeHost", () => {
   it("deletes pending_interaction when an activity PATCH sends null", async () => {
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     const url = `${host.url}/agents/${SEED_AGENT_ID}/activities/act-1`;
-    const jsonHeaders = { "content-type": "application/json" };
     const interaction = {
       steps: [{ kind: "question", id: "q1", question: "X?", toolkit: "gmail" }],
     };
 
     await fetch(url, {
       method: "PATCH",
-      headers: jsonHeaders,
+      headers: JSON_HEADERS,
       body: JSON.stringify({ pending_interaction: interaction }),
     });
     // Explicit null clears it — the key is DELETED, not stored as null.
     const cleared = await fetch(url, {
       method: "PATCH",
-      headers: jsonHeaders,
+      headers: JSON_HEADERS,
       body: JSON.stringify({ pending_interaction: null }),
     });
     const activity = (await cleared.json()) as Record<string, unknown>;
     expect("pending_interaction" in activity).toBe(false);
+  });
+
+  it("serves the space directory at /v1/org/people in the gateway's order", async () => {
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+
+    // No armed roster (personal space / single-player): an empty directory —
+    // the route EXISTS, so the client gets no autocomplete without taking the
+    // 404 degrade path.
+    const empty = await fetch(`${host.url}/v1/org/people`);
+    expect(empty.status).toBe(200);
+    expect(await empty.json()).toEqual({ people: [] });
+
+    await fetch(`${host.url}/__test__/org`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        // Deliberately shuffled, and none of it in the answer's order: the
+        // route must sort, not echo. A member the gateway has no GCIP profile
+        // for still appears, but AFTER everyone who has a name.
+        members: [
+          { userId: "u-ghost", email: "ghost@acme.test", role: "user" },
+          {
+            userId: "u-bob",
+            email: "bob@acme.test",
+            role: "user",
+            displayName: "Bob Stone",
+          },
+          {
+            userId: "u-self",
+            email: "you@acme.test",
+            role: "owner",
+            displayName: "Ada Lovelace",
+            photoUrl: "https://img.test/ada.png",
+          },
+          // Lower-cased on purpose: the sort folds case, so she lands between
+          // the two Adas and Bob, not ahead of every capital letter.
+          {
+            userId: "u-carol",
+            email: "carol@acme.test",
+            role: "user",
+            displayName: "ada mendez",
+          },
+          // Same display name as u-self: the userId breaks the tie.
+          {
+            userId: "u-aaa",
+            email: "other.ada@acme.test",
+            role: "user",
+            displayName: "Ada Lovelace",
+          },
+          { userId: "u-anon", email: "anon@acme.test", role: "user" },
+        ],
+      }),
+    });
+
+    const res = await fetch(`${host.url}/v1/org/people`);
+    expect(res.status).toBe(200);
+    // Exactly the gateway's order: named first, case-folded alphabetical,
+    // userId breaking a tie; then the unnamed, by userId. Sanitized too — the
+    // directory carries no email and no role.
+    expect(await res.json()).toEqual({
+      people: [
+        { userId: "u-aaa", displayName: "Ada Lovelace" },
+        {
+          userId: "u-self",
+          displayName: "Ada Lovelace",
+          photoUrl: "https://img.test/ada.png",
+        },
+        { userId: "u-carol", displayName: "ada mendez" },
+        { userId: "u-bob", displayName: "Bob Stone" },
+        { userId: "u-anon" },
+        { userId: "u-ghost" },
+      ],
+    });
+
+    // A plain member sees the whole directory — unlike `GET /v1/org`, whose
+    // roster the gateway hides from a `user`. Every teammate must be able to
+    // @mention their co-members.
+    await fetch(`${host.url}/__test__/capabilities`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ multiplayer: true, teams: true, role: "user" }),
+    });
+    const asMember = (await (
+      await fetch(`${host.url}/v1/org/people`)
+    ).json()) as { people: unknown[] };
+    expect(asMember.people).toHaveLength(6);
+    const orgAsMember = (await (await fetch(`${host.url}/v1/org`)).json()) as {
+      members?: unknown[];
+    };
+    expect(orgAsMember.members).toBeUndefined();
+
+    // Non-GET 404s, exactly like its neighbours.
+    const post = await fetch(`${host.url}/v1/org/people`, { method: "POST" });
+    expect(post.status).toBe(404);
+  });
+
+  it("a send's mentions persist on history and ride the live user frame", async () => {
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+    const convo = `${host.url}/agents/${SEED_AGENT_ID}/conversations/conv-mentions`;
+    // Slow the canned reply so the turn is still in flight — its replay buffer
+    // intact — when the stream attaches with `?after=0` below.
+    await fetch(`${host.url}/__test__/chat-config`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ replyDelayMs: 500 }),
+    });
+
+    const mentions = [
+      { userId: "u-bob", name: "Bob Stone" },
+      { userId: "u-x" },
+    ];
+    const sent = await fetch(`${convo}/messages`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        text: "@Bob Stone please confirm",
+        mentions,
+      }),
+    });
+    expect(sent.status).toBe(202);
+
+    // Persisted on the stored user message (a reloaded transcript chips the
+    // same teammates the live bubble did).
+    const history = (await (await fetch(`${convo}/messages`)).json()) as {
+      messages: Array<{ role: string; mentions?: unknown }>;
+    };
+    const userMessage = history.messages.find((m) => m.role === "user");
+    expect(userMessage?.mentions).toEqual(mentions);
+
+    // …and published on the live `user` frame, replayed from seq 0.
+    const frame = await readUserFrame(`${convo}/events?after=0`);
+    expect(frame.content).toBe("@Bob Stone please confirm");
+    expect(frame.mentions).toEqual(mentions);
+  });
+
+  it("drops junk mentions and omits the field when a send carries none", async () => {
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+    const convo = `${host.url}/agents/${SEED_AGENT_ID}/conversations/conv-junk`;
+
+    await fetch(`${convo}/messages`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        text: "hello",
+        mentions: [
+          { name: "No id at all" },
+          { userId: "" },
+          { userId: 7 },
+          "u-string",
+          null,
+          { userId: "u-ok", name: 42 },
+        ],
+      }),
+    });
+    await fetch(`${convo}/messages`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ text: "plain", mentions: "not an array" }),
+    });
+    await fetch(`${convo}/messages`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ text: "no sidecar" }),
+    });
+
+    const history = (await (await fetch(`${convo}/messages`)).json()) as {
+      messages: Array<Record<string, unknown>>;
+    };
+    const users = history.messages.filter((m) => m.role === "user");
+    // Only the one well-formed entry survives, and a non-string `name` is dropped.
+    expect(users[0]?.mentions).toEqual([{ userId: "u-ok" }]);
+    // A send with junk or no mentions stores the pre-feature message verbatim:
+    // the key is absent, never an empty array.
+    expect("mentions" in (users[1] ?? {})).toBe(false);
+    expect("mentions" in (users[2] ?? {})).toBe(false);
   });
 
   it("stops cleanly so the port stops accepting connections", async () => {

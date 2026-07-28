@@ -6,6 +6,7 @@ import {
 } from "@houston/sdk";
 import type { SessionStartRequest } from "../../../../ui/engine-client/src/types";
 import { armQueueWatchdog, disarmQueueWatchdog } from "./queue-watchdog";
+import { mergeSendFields } from "./send-queue-merge";
 import { armSettleWatcher, disarmSettleWatcher } from "./settle-watcher";
 import { conversationStore, conversationVm } from "./vm";
 
@@ -171,7 +172,8 @@ export function removeQueuedSend(
  * watcher; a no-op when nothing is queued or another turn already took the
  * conversation over. Prompts are trimmed and joined blank-line-separated (the
  * shape the old app-side queue produced); the LAST entry's overrides win (the
- * most recent picker state).
+ * most recent picker state), except the fields `mergeSendFields` derives from
+ * the whole queue — see send-queue-merge.ts.
  *
  * A held `autoResume` entry is dropped (not sent) when user-typed entries are
  * queued alongside it: their message resumes the conversation by itself, and
@@ -193,19 +195,9 @@ export function flushQueuedSends(
   disarmQueueWatchdog(k);
   publishQueued(agentPath, sessionKey);
   const last = entries[entries.length - 1];
-  const prompt = entries
-    .map((e) => e.req.prompt.trim())
-    .filter(Boolean)
-    .join("\n\n");
-  // Reconstruct the combined BUBBLE the same way as the combined prompt so the
-  // history reload matches: each entry contributes what its own bubble showed
-  // (`displayText ?? prompt`). Only carried when at least one entry hid its
-  // prompt behind a displayText; otherwise the bubble equals the prompt.
-  const displayText = entries.some((e) => e.req.displayText !== undefined)
-    ? entries
-        .map((e) => (e.req.displayText ?? e.req.prompt).trim())
-        .filter(Boolean)
-        .join("\n\n")
-    : undefined;
-  dispatch({ ...last.req, prompt, displayText, queuedPreview: undefined });
+  dispatch({
+    ...last.req,
+    ...mergeSendFields(entries.map((e) => e.req)),
+    queuedPreview: undefined,
+  });
 }

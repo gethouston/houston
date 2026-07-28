@@ -173,6 +173,7 @@ import {
 } from "./tabs/provider-auth-feed";
 import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
+import { type ChatMentionProps, useChatMentions } from "./use-chat-mentions";
 import { useChatSenderAvatars } from "./use-chat-sender-avatars";
 import { useToolkitBrandResolver } from "./use-toolkit-brand-resolver";
 import { UserSkillMessage } from "./user-skill-message";
@@ -258,6 +259,10 @@ interface AgentChatPanelProps {
   agentLabel: ChatPanelProps["agentLabel"];
   /** Face for a message's sender: teammate photo/initials, or the agent mark. */
   renderSenderAvatar: ChatPanelProps["renderSenderAvatar"];
+  /** The @mention props (HOU-944), spread as ONE group at every AIBoard mount:
+   *  the composer's roster, the render roster, the row face and the labels.
+   *  Every list is empty off multiplayer, so "@" just types plainly. */
+  mentionProps: ChatMentionProps;
   /** Prop-driven dictation control for the composer mic. Undefined on web
    *  (no native mic capture) — ChatPanel hides the mic entirely. */
   dictation: ChatPanelProps["dictation"];
@@ -521,6 +526,10 @@ export function useAgentChatPanel({
     agent,
     sessionFeedItems,
   );
+
+  // @mentions of teammates (HOU-944): the space roster the composer offers and
+  // the renderer chips against. Empty off multiplayer — "@" then types plainly.
+  const mentionProps = useChatMentions();
 
   // The live turn state for this conversation, for the pending-interaction
   // override: `running` gates the card (a running turn shows the composer, not
@@ -905,7 +914,7 @@ export function useAgentChatPanel({
   const handleSkillComposerSubmit = useCallback<
     NonNullable<AIBoardProps["onComposerSubmit"]>
   >(
-    async ({ sessionKey, text, files }) => {
+    async ({ sessionKey, text, files, mentions }) => {
       const skill = activeSkill;
       if (!skill || !agent || !path) return false;
 
@@ -940,6 +949,9 @@ export function useAgentChatPanel({
           modelOverride: effectiveModel,
           effortOverride: effectiveEffort,
           modeOverride: turnMode,
+          // A Skill send still carries whatever the user typed alongside it, so
+          // the teammates they named there must ride too (HOU-944).
+          mentions,
         });
       } else {
         // New conversation: createMission with `title` override so the
@@ -963,6 +975,7 @@ export function useAgentChatPanel({
             modelOverride: effectiveModel,
             effortOverride: effectiveEffort,
             modeOverride: turnMode,
+            mentions,
             buildPrompt: async (activityId) => {
               const paths = await tauriAttachments.save(
                 `activity-${activityId}`,
@@ -2110,6 +2123,7 @@ export function useAgentChatPanel({
     showSenders,
     agentLabel,
     renderSenderAvatar,
+    mentionProps,
     dictation,
   };
 }

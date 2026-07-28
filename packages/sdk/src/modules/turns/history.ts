@@ -14,7 +14,7 @@
 
 import type { ChatMessage } from "@houston/runtime-client";
 import { STOPPED_BY_USER } from "./turn-errors";
-import type { FeedAuthor } from "./vm-output";
+import type { FeedAuthor, FeedMention } from "./vm-output";
 
 /**
  * One replayed feed frame: the SAME `{ feed_type, data }` push the turn
@@ -29,6 +29,11 @@ export interface FeedFrame {
    *  seed/prepend folds carry it onto the feed entry (`FeedItemVM.author`), so
    *  a reloaded shared conversation attributes every teammate's bubble. */
   author?: FeedAuthor;
+  /** The teammates a `user_message` @mentions (HOU-944). The seed/prepend folds
+   *  carry it onto the feed entry (`FeedItemVM.mentions`), so a reloaded shared
+   *  conversation chips the same names the sent bubble did. Absent when the
+   *  message mentioned nobody. */
+  mentions?: FeedMention[];
   /**
    * Epoch-ms timestamp of the source `ChatMessage` this frame was folded from
    * (`ChatMessage.ts`). Carried on every frame attributable to a message so a
@@ -66,6 +71,7 @@ export function historyToFeed(
         // ran on `content`, but the bubble shows what the user actually meant.
         data: m.displayText ?? m.content,
         author: m.author,
+        mentions: m.mentions,
         ts,
       });
       continue;

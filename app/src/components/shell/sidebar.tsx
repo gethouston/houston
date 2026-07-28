@@ -100,6 +100,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
     summaries: activitySummaries,
     runningLabel: (count) => t("shell:sidebar.runningCount", { count }),
     needsYouLabel: (count) => t("shell:sidebar.needsYouCount", { count }),
+    unreadLabel: (count) => t("shell:sidebar.unreadCount", { count }),
     onChangeColor: (agentId, color) => void handleChangeColor(agentId, color),
     onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
     shareLabel: t("portable:exportMenu"),

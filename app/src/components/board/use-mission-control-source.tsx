@@ -6,6 +6,7 @@ import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useUIStore } from "../../stores/ui";
 import { MissionBoardEmptyState } from "../mission-board-empty-state";
 import { MissionControlToolbar } from "../mission-control-toolbar";
+import type { MissionsToolbarMentions } from "../mission-toolbar-actions";
 import { useMissionControl } from "../use-mission-control";
 import { useMissionSearch } from "../use-mission-search";
 import type { BoardSource } from "./board-source";
@@ -23,6 +24,7 @@ import { useMcNewMission } from "./use-mc-new-mission";
 export function useMissionControlSource(
   agents: Agent[],
   onShowArchived: () => void,
+  mentions?: MissionsToolbarMentions,
 ): BoardSource {
   const { t } = useTranslation(["dashboard", "board"]);
   const getAgentDef = useAgentCatalogStore((s) => s.getById);
@@ -153,6 +155,8 @@ export function useMissionControlSource(
       onSearchChange={setMissionSearchQuery}
       archivedActive={false}
       onToggleArchived={onShowArchived}
+      onToggleMentions={mentions?.onShow}
+      mentionCount={mentions?.count}
       onNewMission={newMission.openNewMission}
       collapsed={missionPanelOpen}
     />

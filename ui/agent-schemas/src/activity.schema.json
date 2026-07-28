@@ -40,6 +40,20 @@
           }
         }
       },
+      "mentioned": {
+        "type": "array",
+        "description": "Teammates @mentioned in this mission's chat, latest per person. Set by Houston, not by the agent.",
+        "items": {
+          "type": "object",
+          "required": ["user_id", "at"],
+          "additionalProperties": false,
+          "properties": {
+            "user_id": { "type": "string" },
+            "at": { "type": "string" },
+            "by": { "type": "string" }
+          }
+        }
+      },
       "pending_interaction": {
         "type": "object",
         "description": "The ordered steps this mission is waiting on the user for, walked one at a time: question steps first (at most 3), then at most one signin step, then connect steps, then approval steps (last, since approving happens after connecting).",

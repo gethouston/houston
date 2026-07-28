@@ -81,3 +81,48 @@ test("every other agent-configs failure still propagates — never swallowed", a
     "library exploded (engine error 500)",
   );
 });
+
+/**
+ * HOU-944: the @mention roster read has the same degrade posture as
+ * `getOrgProfiles` — a gateway that predates `/v1/org/people` (and a
+ * single-player deployment, which has no control plane at all) simply has
+ * nobody to mention, so `@` types plainly and no popover ever opens. A real
+ * failure still propagates; the roster is not important enough to lie about.
+ */
+
+test("getOrgPeople reads the space roster from /v1/org/people", async () => {
+  const calls = stubFetch(
+    json(200, {
+      people: [
+        { userId: "u1", displayName: "Ada Lovelace", photoUrl: "https://p/1" },
+        { userId: "u2" },
+      ],
+    }),
+  );
+  const client = new HoustonClient({ ...CFG, controlPlane: true });
+
+  await expect(client.getOrgPeople()).resolves.toEqual([
+    { userId: "u1", displayName: "Ada Lovelace", photoUrl: "https://p/1" },
+    { userId: "u2" },
+  ]);
+  expect(calls).toEqual(["https://gateway.example/v1/org/people"]);
+});
+
+test("a 404 on /v1/org/people reads as an empty roster — no toast", async () => {
+  stubFetch(json(404, { error: "not found" }));
+  const client = new HoustonClient({ ...CFG, controlPlane: true });
+
+  await expect(client.getOrgPeople()).resolves.toEqual([]);
+});
+
+test("getOrgPeople is empty off-cloud, and propagates every other failure", async () => {
+  // No control plane: single-player, nobody to mention.
+  const solo = new HoustonClient({ ...CFG });
+  await expect(solo.getOrgPeople()).resolves.toEqual([]);
+
+  stubFetch(json(500, { error: "roster exploded" }));
+  const client = new HoustonClient({ ...CFG, controlPlane: true });
+  await expect(client.getOrgPeople()).rejects.toThrow(
+    "roster exploded (engine error 500)",
+  );
+});
