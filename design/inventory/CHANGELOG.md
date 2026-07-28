@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v42 - 2026-07-28
+
+HOU-762 through HOU-764 unify the chat skill picker with the Skills catalog's
+installed row. The picker now searches, sorts by displayed title, and selects
+from the same row anatomy rather than presenting a separate card and category
+tab treatment.
+
 ## v41 - 2026-07-28
 
 HOU-831 clarifies the required action in in-chat integration steps. A connect
