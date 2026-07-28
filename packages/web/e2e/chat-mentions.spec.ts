@@ -195,6 +195,10 @@ test("a reloaded transcript chips mentions in a user turn and in assistant prose
   // the space roster by the rehype pass, and the viewer's own is emphasized.
   const REPLIED =
     "On it. @Ada Lovelace signed off and @Bob Stone has the file.";
+  // A TEAMMATE's turn, which HOU-960 renders as a left-aligned `is-peer`
+  // bubble with their name inside it. Chips have to survive that move too, and
+  // a mention of the viewer has to stay emphasized on the new fill.
+  const FROM_BOB = "Sending it to @Ada Lovelace now";
   await request.post(`${FAKE_HOST_URL}/__test__/chat-history`, {
     data: {
       conversationId: CONVERSATION_ID,
@@ -206,6 +210,13 @@ test("a reloaded transcript chips mentions in a user turn and in assistant prose
           mentions: [{ userId: BOB.userId, name: BOB.displayName }],
         },
         { role: "assistant", content: REPLIED, ts: 2 },
+        {
+          role: "user",
+          content: FROM_BOB,
+          ts: 3,
+          author: { userId: BOB.userId, name: BOB.displayName },
+          mentions: [{ userId: SELF.userId, name: SELF.displayName }],
+        },
       ],
     },
   });
@@ -226,6 +237,20 @@ test("a reloaded transcript chips mentions in a user turn and in assistant prose
   await expect(chips.first()).toHaveAttribute("data-mention-self", "");
   await expect(chips.last()).not.toHaveAttribute("data-mention-self", "");
   await expect(replied.locator("[data-mention-self]")).toHaveCount(1);
+
+  // The same chips inside a TEAMMATE's left-aligned bubble (HOU-960), which
+  // carries their name as its first line and a different fill from the
+  // viewer's own bubble.
+  const fromBob = page
+    .locator("[data-conversation-message-key].is-peer")
+    .filter({ hasText: "Sending it to" });
+  await expect(fromBob).toBeVisible();
+  await expect(fromBob.locator("[data-chat-sender-name]")).toHaveText(
+    BOB.displayName,
+  );
+  const peerChip = fromBob.locator("[data-mention-chip]");
+  await expect(peerChip).toHaveText(["@Ada Lovelace"]);
+  await expect(peerChip).toHaveAttribute("data-mention-self", "");
 });
 
 test("single player never offers a mention list — @ is just a character", async ({

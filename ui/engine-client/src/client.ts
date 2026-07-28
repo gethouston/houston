@@ -53,6 +53,8 @@ import type {
   CreatorProfilePatch,
   CustomEndpoint,
   CustomIntegrationView,
+  EditableProfile,
+  EditableProfileUpdate,
   ErrorBody,
   GenerateInstructionsResult,
   HandleAvailability,
@@ -1422,6 +1424,33 @@ export class HoustonClient {
       if (isHoustonEngineError(err) && err.status === 404) return [];
       throw err;
     }
+  }
+  /**
+   * The caller's OWN editable display profile (name + photo), effective values
+   * plus which of them the user has overridden. Degrades to `null` on a host
+   * without the route (404), mirroring `getOrgPeople`'s swallow, so on a
+   * pre-feature gateway the Settings profile section simply never renders;
+   * every other error throws.
+   */
+  async getMyProfile(): Promise<EditableProfile | null> {
+    try {
+      return await this.request<EditableProfile>("GET", "/me/profile");
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
+  }
+  /**
+   * Update the caller's own display profile. Per key: a string sets, `null`
+   * clears back to the identity provider's value, an omitted key is untouched.
+   * Answers the full effective profile, so the caller repaints from the host's
+   * truth rather than its own optimistic guess. Deliberately does NOT swallow
+   * 404 the way {@link getMyProfile} does — a write that silently reported
+   * success on a host that never stored it is the exact silent failure this
+   * codebase forbids; the 400 from a rejected name/photo throws too.
+   */
+  setMyProfile(update: EditableProfileUpdate): Promise<EditableProfile> {
+    return this.request("PUT", "/me/profile", update);
   }
   /**
    * Add a member by email at a role (owner only; enforced by the host). A known

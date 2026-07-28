@@ -3,7 +3,10 @@ import {
   HoustonClient,
   HoustonEngineError,
 } from "../src/engine-adapter/client";
-import { listInstalledConfigs } from "../src/engine-adapter/control-plane";
+import {
+  getMyProfile,
+  listInstalledConfigs,
+} from "../src/engine-adapter/control-plane";
 
 /**
  * HOU-688: two desktop calls 404'd against the hosted gateway and red-toasted
@@ -17,6 +20,10 @@ import { listInstalledConfigs } from "../src/engine-adapter/control-plane";
  *   account-level config library), so the create-agent picker's library read
  *   404'd and toasted. Nothing installed is the honest answer there, exactly
  *   like standalone web.
+ *
+ * Later reads joined the same posture: `/v1/org/people` (the @mention roster)
+ * and `/v1/me/profile` (the caller's own editable name + photo) both degrade
+ * on a gateway that predates them rather than toast.
  */
 
 const originalFetch = globalThis.fetch;
@@ -124,5 +131,29 @@ test("getOrgPeople is empty off-cloud, and propagates every other failure", asyn
   const client = new HoustonClient({ ...CFG, controlPlane: true });
   await expect(client.getOrgPeople()).rejects.toThrow(
     "roster exploded (engine error 500)",
+  );
+});
+
+/**
+ * The editable-profile read has the same degrade posture: a gateway predating
+ * `/v1/me/profile` simply has no profile to edit, so the Settings profile
+ * section hides instead of red-toasting. A real failure still propagates — the
+ * section is not important enough to lie about.
+ */
+
+test("a 404 on /v1/me/profile hides the profile section — no toast", async () => {
+  const calls = stubFetch(json(404, { error: "not found" }));
+
+  await expect(getMyProfile(CFG)).resolves.toBeNull();
+  expect(calls).toEqual(["https://gateway.example/v1/me/profile"]);
+});
+
+test("every other /v1/me/profile failure still propagates — never swallowed", async () => {
+  stubFetch(json(500, { error: "profile exploded" }));
+
+  await expect(getMyProfile(CFG)).rejects.toThrow(HoustonEngineError);
+  stubFetch(json(500, { error: "profile exploded" }));
+  await expect(getMyProfile(CFG)).rejects.toThrow(
+    "profile exploded (engine error 500)",
   );
 });

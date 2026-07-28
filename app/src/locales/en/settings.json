@@ -1,6 +1,7 @@
 {
   "title": "Settings",
   "nav": {
+    "profile": "Profile",
     "apiKeys": "API keys",
     "workspaceContext": "Workspace context",
     "userContext": "Your context",
@@ -18,19 +19,36 @@
   },
   "account": {
     "title": "Account",
-    "signOut": "Sign out",
-    "avatar": {
-      "changeButton": "Change picture",
-      "changing": "Uploading…",
-      "toasts": {
-        "successTitle": "Profile picture updated",
-        "errorTitle": "Couldn't update your picture"
-      },
-      "errors": {
-        "notImage": "Pick an image file (JPG, PNG, or WebP).",
-        "tooLarge": "That image is over 5 MB. Pick a smaller one.",
-        "uploadFailed": "Couldn't save your picture. {{reason}}"
-      }
+    "signOut": "Sign out"
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "How teammates see you across Houston.",
+    "photo": {
+      "label": "Picture",
+      "hint": "Square images look best. Houston shrinks it for you.",
+      "change": "Change picture",
+      "changing": "Working on it…",
+      "remove": "Remove picture"
+    },
+    "name": {
+      "label": "Display name",
+      "placeholder": "Your name",
+      "hint": "Shown on your messages, your mentions and your team roster."
+    },
+    "save": "Save",
+    "saving": "Saving…",
+    "errors": {
+      "nameEmpty": "Enter a name.",
+      "nameTooLong": "Use 60 characters or fewer.",
+      "notImage": "Pick an image file, such as JPG, PNG, or WebP.",
+      "unreadable": "We couldn't read that image. Try another one.",
+      "tooLarge": "That picture is too heavy to save. Try a smaller one."
+    },
+    "toasts": {
+      "saved": "Profile updated",
+      "photoRemoved": "Picture removed",
+      "photoFailed": "Couldn't use that picture"
     }
   },
   "workspace": {
@@ -141,6 +159,7 @@
       "support": "Support"
     },
     "rows": {
+      "profile": "Your name and picture",
       "apiKeys": "Let other apps and AI assistants start missions with your agents",
       "workspaceContext": "What every agent knows about this workspace",
       "userContext": "What every agent knows about you",

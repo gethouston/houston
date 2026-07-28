@@ -41,8 +41,11 @@ export {
   overflowCount,
   visiblePeople,
 } from "./kanban-people";
-export type { PersonToneClass } from "./kanban-people-tone";
-export { personToneClass } from "./kanban-people-tone";
+export type {
+  PersonNameToneClass,
+  PersonToneClass,
+} from "./kanban-people-tone";
+export { personNameToneClass, personToneClass } from "./kanban-people-tone";
 export type {
   BoardSearchSnippet,
   ConversationEntry,

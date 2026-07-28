@@ -93,17 +93,39 @@
   --color-warning-text: var(--ht-warning-text);
   --color-highlight: var(--ht-highlight);
   --color-highlight-text: var(--ht-highlight-text);
+  /* Agent palette, bridged for TEXT only: an agent's NAME line in chat is painted
+     with a `text-agent-*` utility, which needs a real Tailwind colour. Agent
+     AVATARS still bypass these — `resolveAgentColor` maps a stored id to an
+     inline var(--ht-agent-*), because a fill is chosen at runtime from data, not
+     from a class the markup can spell. Same token either way, two delivery paths. */
+  --color-agent-charcoal: var(--ht-agent-charcoal);
+  --color-agent-forest: var(--ht-agent-forest);
+  --color-agent-navy: var(--ht-agent-navy);
+  --color-agent-purple: var(--ht-agent-purple);
+  --color-agent-crimson: var(--ht-agent-crimson);
+  --color-agent-orange: var(--ht-agent-orange);
+  --color-agent-golden: var(--ht-agent-golden);
   /* Human (not agent) avatar palette: five deliberately DESATURATED tones so a
      teammate's face never competes with the vivid agent helmets, plus the
      initials colour they carry and the solid fill/text pair the "+N" overflow
-     chip wears. Bridged as utilities (unlike --ht-agent-*, which is resolved to
-     an inline var() by resolveAgentColor) because the face stack picks a tone
-     by className, deterministically from the person's id. */
+     chip wears. Bridged as utilities because the face stack picks a tone by
+     className, deterministically from the person's id. */
   --color-person-slate: var(--ht-person-slate);
   --color-person-sage: var(--ht-person-sage);
   --color-person-mauve: var(--ht-person-mauve);
   --color-person-taupe: var(--ht-person-taupe);
   --color-person-indigo: var(--ht-person-indigo);
+  /* The SAME five tones retuned for the teammate's NAME inside a chat bubble.
+     The fills above were tuned to carry white initials, so as text they land at
+     2.9-3.1:1 on the dark bubble — below the 4.5:1 body-text floor. These pair a
+     darker light-mode tone with a lighter dark-mode one, keeping each person's
+     hue identity while clearing 4.5:1 on the composited bubble surface.
+     Guarded by packages/design-tokens/test/contrast.test.ts. */
+  --color-person-name-slate: var(--ht-person-name-slate);
+  --color-person-name-sage: var(--ht-person-name-sage);
+  --color-person-name-mauve: var(--ht-person-name-mauve);
+  --color-person-name-taupe: var(--ht-person-name-taupe);
+  --color-person-name-indigo: var(--ht-person-name-indigo);
   --color-person-initials: var(--ht-person-initials);
   --color-person-overflow: var(--ht-person-overflow);
   --color-person-overflow-text: var(--ht-person-overflow-text);

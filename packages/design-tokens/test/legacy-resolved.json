@@ -61,6 +61,11 @@
     "ht-person-mauve": "#84616b",
     "ht-person-taupe": "#736550",
     "ht-person-indigo": "#5b6488",
+    "ht-person-name-slate": "#4e5e6c",
+    "ht-person-name-sage": "#506357",
+    "ht-person-name-mauve": "#74535d",
+    "ht-person-name-taupe": "#645845",
+    "ht-person-name-indigo": "#4f5878",
     "ht-person-initials": "#ffffff",
     "ht-person-overflow": "#e6e8ec",
     "ht-person-overflow-text": "#555b66"
@@ -127,6 +132,11 @@
     "ht-person-mauve": "#8e6b76",
     "ht-person-taupe": "#7d6f59",
     "ht-person-indigo": "#656e93",
+    "ht-person-name-slate": "#8b9dab",
+    "ht-person-name-sage": "#8ca596",
+    "ht-person-name-mauve": "#b08e98",
+    "ht-person-name-taupe": "#a4957b",
+    "ht-person-name-indigo": "#8e97bb",
     "ht-person-initials": "#ffffff",
     "ht-person-overflow": "#4c4c52",
     "ht-person-overflow-text": "#d4d4d4"

@@ -35,7 +35,7 @@ import {
 } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { FolderUp, Paperclip, Play, Users } from "lucide-react";
+import { FolderUp, Paperclip, Play } from "lucide-react";
 import {
   type ReactNode,
   useCallback,
@@ -91,7 +91,6 @@ import {
   modelSelectorDecision,
   resolvePersonalModelPin,
 } from "../lib/model-selector-lock";
-import { isMultiplayer } from "../lib/org-roles";
 import { osIsTauri } from "../lib/os-bridge";
 import { resolvePlanReadyOverride } from "../lib/plan-ready";
 import {
@@ -165,7 +164,6 @@ import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
 import { SkillCard } from "./skill-card";
 import { skillIntegrationChips } from "./skill-integration-chips";
-import { isSharedWithOthers } from "./tabs/agent-access-model";
 import {
   filterProviderAuthFeedItems,
   isProviderAuthMessage,
@@ -259,6 +257,9 @@ interface AgentChatPanelProps {
   agentLabel: ChatPanelProps["agentLabel"];
   /** Face for a message's sender: teammate photo/initials, or the agent mark. */
   renderSenderAvatar: ChatPanelProps["renderSenderAvatar"];
+  /** Text colour for a sender's NAME: their person tone, or the agent's own
+   *  avatar colour (HOU-960). */
+  senderNameClass: ChatPanelProps["senderNameClass"];
   /** The @mention props (HOU-944), spread as ONE group at every AIBoard mount:
    *  the composer's roster, the render roster, the row face and the labels.
    *  Every list is empty off multiplayer, so "@" just types plainly. */
@@ -522,10 +523,8 @@ export function useAgentChatPanel({
   // Sender identity (HOU-943): in a shared (multiplayer) deployment every turn
   // shows who sent it — the teammate's face + name, the agent's mark + name.
   // Resolved from the feed's authors, so it repaints as teammates' turns land.
-  const { showSenders, agentLabel, renderSenderAvatar } = useChatSenderAvatars(
-    agent,
-    sessionFeedItems,
-  );
+  const { showSenders, agentLabel, renderSenderAvatar, senderNameClass } =
+    useChatSenderAvatars(agent, sessionFeedItems);
 
   // @mentions of teammates (HOU-944): the space roster the composer offers and
   // the renderer chips against. Empty off multiplayer — "@" then types plainly.
@@ -1906,29 +1905,18 @@ export function useAgentChatPanel({
   // subtle note above the composer so a teammate isn't surprised their reply is
   // visible to others. Multiplayer-only; the assignee count is only populated
   // for callers who receive it (owner / agent-managers).
-  const showSharedNote =
-    !!agent && isMultiplayer(capabilities) && isSharedWithOthers(agent);
-
   const composerHeader = useMemo<AIBoardProps["composerHeader"]>(() => {
     if (!agent) return undefined;
-    if (!activeSkill && !showSharedNote) return undefined;
+    if (!activeSkill) return undefined;
     return (
       <div className="flex flex-col gap-1.5">
-        {showSharedNote && (
-          <div className="flex items-center gap-1.5 text-xs text-ink-muted">
-            <Users className="size-3.5 shrink-0" />
-            <span>{t("teams:share.chatNote")}</span>
-          </div>
-        )}
-        {activeSkill && (
-          <SelectedSkillChip
-            skill={activeSkill}
-            onCancel={() => setActiveSkill(null)}
-          />
-        )}
+        <SelectedSkillChip
+          skill={activeSkill}
+          onCancel={() => setActiveSkill(null)}
+        />
       </div>
     );
-  }, [agent, activeSkill, showSharedNote, t]);
+  }, [agent, activeSkill]);
 
   const chatEmptyState = useMemo<AIBoardProps["chatEmptyState"]>(() => {
     if (!agent) return undefined;
@@ -2123,6 +2111,7 @@ export function useAgentChatPanel({
     showSenders,
     agentLabel,
     renderSenderAvatar,
+    senderNameClass,
     mentionProps,
     dictation,
   };

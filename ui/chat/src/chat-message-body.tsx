@@ -26,6 +26,18 @@ interface ChatMessageBodyProps {
   mentionPeople?: readonly MentionPerson[];
   /** The signed-in viewer, so a mention of them renders emphasized. */
   currentUserId?: string;
+  /**
+   * The sender's name line (HOU-960), rendered as the bubble's FIRST LINE for a
+   * teammate's — or, in a group chat, the agent's — message. Inside rather than
+   * above because a name floating over a left-aligned bubble reads as a heading
+   * for the whole thread; inside, it reads as part of what that person said.
+   * `null` on the viewer's own rows and on every message of a run after the
+   * first.
+   */
+  nameSlot?: ReactNode;
+  /** Extra classes for the bubble container (e.g. the group-chat geometry the
+   *  viewer's own bubble adopts only when the thread is attributed). */
+  bubbleClassName?: string;
 }
 
 /**
@@ -69,11 +81,33 @@ export function ChatMessageBody({
   renderLink,
   mentionPeople,
   currentUserId,
+  nameSlot,
+  bubbleClassName,
 }: ChatMessageBodyProps) {
-  if (!message.content) return null;
+  // Nothing to say AND nobody to name → render nothing, as before. But an
+  // empty message from a TEAMMATE still has to print who it came from: the
+  // name line is that person's byline, and dropping it (the old header did
+  // not) would leave an anonymous bubble in a group chat.
+  if (!message.content) {
+    if (!nameSlot) return null;
+    return (
+      <MessageContent className={bubbleClassName}>{nameSlot}</MessageContent>
+    );
+  }
   if (message.from === "user" && renderUserMessage) {
     const custom = renderUserMessage(message);
-    if (custom !== undefined) return custom;
+    // A custom renderer (skill card, attachment card) brings its own container,
+    // so the name cannot go inside it; it sits directly above instead, still
+    // within the row's bubble column.
+    if (custom !== undefined)
+      return nameSlot ? (
+        <div className="flex min-w-0 flex-col gap-1">
+          {nameSlot}
+          {custom}
+        </div>
+      ) : (
+        custom
+      );
   }
   const transformed =
     message.from === "assistant" && transformContent
@@ -81,7 +115,11 @@ export function ChatMessageBody({
       : null;
 
   return (
-    <MessageContent>
+    <MessageContent className={bubbleClassName}>
+      {/* The bubble stacks its children on `gap-2` (8px), which is a paragraph
+          break, not a name-to-first-line break. Pull the name back to 4px so it
+          reads as the speaker's byline rather than a separate line of talk. */}
+      {nameSlot ? <div className="-mb-1">{nameSlot}</div> : null}
       <MessageResponse
         isAnimating={streaming}
         mentions={mentionTargets({ message, mentionPeople, currentUserId })}

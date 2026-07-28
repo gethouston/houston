@@ -405,6 +405,75 @@ describe("startFakeHost", () => {
     expect(post.status).toBe(404);
   });
 
+  it("serves + edits the caller's own profile at /v1/me/profile", async () => {
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+    const profileUrl = `${host.url}/v1/me/profile`;
+    const putProfile = (patch: unknown) =>
+      fetch(profileUrl, {
+        method: "PUT",
+        headers: JSON_HEADERS,
+        body: JSON.stringify(patch),
+      });
+    const peopleName = async () => {
+      const { people } = (await (
+        await fetch(`${host.url}/v1/org/people`)
+      ).json()) as { people: Array<{ userId: string; displayName?: string }> };
+      return people.find((p) => p.userId === "u-self")?.displayName;
+    };
+
+    // Arming the roster seeds the identity-provider profile: the caller's name
+    // is the one Google handed over, NOT one they chose (`custom` false).
+    await fetch(`${host.url}/__test__/org`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        members: [
+          {
+            userId: "u-self",
+            email: "you@acme.test",
+            role: "owner",
+            displayName: "Ada Lovelace",
+          },
+        ],
+      }),
+    });
+    const initial = await fetch(profileUrl);
+    expect(initial.status).toBe(200);
+    expect(await initial.json()).toEqual({
+      displayName: "Ada Lovelace",
+      custom: { displayName: false, photoUrl: false },
+    });
+
+    // A save overrides it — and REPAINTS the directory the mission faces and
+    // the @mention popover read, on their very next request.
+    const saved = await putProfile({ displayName: "New Name" });
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toEqual({
+      displayName: "New Name",
+      custom: { displayName: true, photoUrl: false },
+    });
+    expect(await peopleName()).toBe("New Name");
+
+    // An explicit null clears the override back to the provider's value —
+    // "use my Google name again" — and the roster follows it back.
+    const cleared = await putProfile({ displayName: null });
+    expect(await cleared.json()).toEqual({
+      displayName: "Ada Lovelace",
+      custom: { displayName: false, photoUrl: false },
+    });
+    expect(await peopleName()).toBe("Ada Lovelace");
+
+    // Junk is refused with a reason, never coerced: a blank name, and a photo
+    // that is neither https nor an inline image data URL.
+    const blank = await putProfile({ displayName: "   " });
+    expect(blank.status).toBe(400);
+    expect((await blank.json()) as { error: string }).toHaveProperty("error");
+    const insecure = await putProfile({ photoUrl: "http://x" });
+    expect(insecure.status).toBe(400);
+    // …and the refusals changed nothing.
+    expect(await peopleName()).toBe("Ada Lovelace");
+  });
+
   it("a send's mentions persist on history and ride the live user frame", async () => {
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     const convo = `${host.url}/agents/${SEED_AGENT_ID}/conversations/conv-mentions`;

@@ -55,31 +55,46 @@ export interface ChatMessagesProps {
   /** Custom renderer for markdown links. See `RenderLinkProps`. */
   renderLink?: (props: RenderLinkProps) => ReactNode;
   /**
-   * Multiplayer only (C5): the signed-in viewer's user id. Used to decide
-   * whether a user bubble is the viewer's own — its author label is hidden
-   * (or shows `authorLabels.you` when provided). Absent in single-player mode.
+   * Multiplayer only (C5): the signed-in viewer's user id. Decides whether a
+   * user bubble is the viewer's OWN — own bubbles stay right-aligned with no
+   * face and no name, a teammate's mirrors to the left. Absent (single-player,
+   * or the identity has not resolved yet) treats every row as the viewer's,
+   * which is exactly the single-player layout.
    */
   currentUserId?: string;
   /** Localized labels for author attribution. See `ChatAuthorLabels`. */
   authorLabels?: ChatAuthorLabels;
   /**
-   * Force sender identity onto EVERY turn: each user row shows its author's
-   * face + name, each assistant row the agent's mark + name. Set it when the
+   * Force sender identity onto EVERY turn: a teammate's row mirrors to the left
+   * with their face beside it and their name as the bubble's first line, and
+   * each assistant row carries the agent's mark + name. Set it when the
    * conversation is shared (a multiplayer deployment) — attribution is a
    * property of the deployment, not of how many people have written yet.
    *
-   * Omitted (the default) keeps the historical heuristic: user rows carry a
-   * plain author label only once the thread holds ≥2 distinct authors, and
-   * assistant rows carry none.
+   * Omitted (the default) keeps the historical heuristic: user rows are
+   * attributed only once the thread holds ≥2 distinct authors, and assistant
+   * rows never are.
+   *
+   * Either way the VIEWER's own rows show no face and no name: a group chat
+   * identifies you by which side your bubble is on.
    */
   showSenders?: boolean;
   /** The agent's display name, shown on assistant rows when `showSenders`.
    *  Without it an assistant row shows its mark only. */
   agentLabel?: string;
-  /** The sender avatar for a row (teammate face / agent mark), shown in the
-   *  sender line. Return `undefined` to render the name alone. Distinct from
-   *  `renderMessageAvatar`, which badges the bubble itself (channel logos). */
+  /** The sender avatar for a row (teammate face / agent mark). Rendered only on
+   *  the FIRST row of a run from that sender; the column stays reserved on the
+   *  rest so the bubbles line up. Distinct from `renderMessageAvatar`, which
+   *  badges the bubble itself (channel logos). */
   renderSenderAvatar?: (msg: ChatMessage) => ReactNode | undefined;
+  /**
+   * The Tailwind text-colour utility a row's sender NAME is painted in — a
+   * teammate's stable person tone, the agent's own avatar colour. Same seam as
+   * `renderSenderAvatar`: sender presentation comes from the consumer, which is
+   * the only side that knows the palette, the profile, and the agent. Absent
+   * (or `undefined` for a row) paints the name in plain ink.
+   */
+  senderNameClass?: (msg: ChatMessage) => string | undefined;
   /**
    * Multiplayer only (HOU-944): the space roster an ASSISTANT reply's "@Name"
    * runs are chipped against. A user message chips off its OWN recorded

@@ -20,6 +20,7 @@ import { SEED_AGENT_ID } from "./config";
 import { CORS, json } from "./http";
 import { handleAgents } from "./routes";
 import { handleUserRoutes } from "./routes-integrations";
+import { handleMeRoutes } from "./routes-me";
 import { handleSetupRuntime } from "./routes-setup-runtime";
 import { handleTeamsRoutes } from "./routes-teams";
 import { sseResponse } from "./sse";
@@ -281,6 +282,10 @@ export async function handle(req: Request): Promise<Response> {
   // --- Teams v2 gateway routes (agent + org settings / allowlist ceilings) ---
   const teamsRoute = handleTeamsRoutes(method, segs, body, url);
   if (teamsRoute) return teamsRoute;
+
+  // --- the caller's own editable display profile (name + photo) ---
+  const meRoute = handleMeRoutes(method, segs, body);
+  if (meRoute) return meRoute;
 
   // --- everything under /agents/* ---
   if (segs[0] === "agents") {

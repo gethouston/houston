@@ -1,6 +1,7 @@
 {
   "title": "Configuración",
   "nav": {
+    "profile": "Perfil",
     "apiKeys": "Claves de API",
     "workspaceContext": "Contexto del espacio",
     "userContext": "Tu contexto",
@@ -18,19 +19,36 @@
   },
   "account": {
     "title": "Cuenta",
-    "signOut": "Cerrar sesión",
-    "avatar": {
-      "changeButton": "Cambiar foto",
-      "changing": "Subiendo…",
-      "toasts": {
-        "successTitle": "Foto de perfil actualizada",
-        "errorTitle": "No se pudo actualizar tu foto"
-      },
-      "errors": {
-        "notImage": "Elige un archivo de imagen (JPG, PNG o WebP).",
-        "tooLarge": "Esa imagen supera los 5 MB. Elige una más pequeña.",
-        "uploadFailed": "No se pudo guardar tu foto. {{reason}}"
-      }
+    "signOut": "Cerrar sesión"
+  },
+  "profile": {
+    "title": "Perfil",
+    "subtitle": "Así te ven tus compañeros en Houston.",
+    "photo": {
+      "label": "Foto",
+      "hint": "Las imágenes cuadradas se ven mejor. Houston la achica por ti.",
+      "change": "Cambiar foto",
+      "changing": "Trabajando en eso…",
+      "remove": "Quitar foto"
+    },
+    "name": {
+      "label": "Nombre visible",
+      "placeholder": "Tu nombre",
+      "hint": "Aparece en tus mensajes, tus menciones y la lista de tu equipo."
+    },
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "errors": {
+      "nameEmpty": "Escribe un nombre.",
+      "nameTooLong": "Usa 60 caracteres o menos.",
+      "notImage": "Elige un archivo de imagen, como JPG, PNG o WebP.",
+      "unreadable": "No pudimos leer esa imagen. Prueba con otra.",
+      "tooLarge": "Esa foto es demasiado pesada para guardarla. Prueba con una más pequeña."
+    },
+    "toasts": {
+      "saved": "Perfil actualizado",
+      "photoRemoved": "Foto eliminada",
+      "photoFailed": "No pudimos usar esa foto"
     }
   },
   "workspace": {
@@ -141,6 +159,7 @@
       "support": "Soporte"
     },
     "rows": {
+      "profile": "Tu nombre y tu foto",
       "apiKeys": "Permite que otras apps y asistentes de IA inicien misiones con tus agentes",
       "workspaceContext": "Lo que cada agente sabe sobre este espacio",
       "userContext": "Lo que cada agente sabe sobre ti",

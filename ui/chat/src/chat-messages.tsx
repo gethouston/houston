@@ -16,13 +16,14 @@ import {
   getChatDisplayItems,
   shouldShowThinkingIndicator,
 } from "./chat-process-groups";
+import { senderRunStarts } from "./chat-sender-runs";
 import { ConversationMap } from "./conversation-map";
 import { deriveConversationMoments } from "./conversation-map-model";
 import { distinctAuthorCount } from "./feed-to-messages";
 import { computeTurnEndSummary } from "./turn-tools";
 
 export type { ChatAuthorLabels } from "./author-label";
-export { authorLabelFor, senderNameFor } from "./author-label";
+export { isOwnMessage, senderNameFor } from "./author-label";
 export type { ChatMessagesProps } from "./chat-messages-types";
 
 export function ChatMessages({
@@ -50,6 +51,7 @@ export function ChatMessages({
   showSenders,
   agentLabel,
   renderSenderAvatar,
+  senderNameClass,
   mentionPeople,
   conversationMap,
 }: ChatMessagesProps) {
@@ -76,6 +78,13 @@ export function ChatMessages({
   const moments = useMemo(
     () => deriveConversationMoments(messages),
     [messages],
+  );
+  // Name + face print once per change of speaker, not once per message
+  // (HOU-960). Computed over the DISPLAY items so a process block between two
+  // agent turns cannot fake a change of speaker.
+  const runStarts = useMemo(
+    () => senderRunStarts(displayItems),
+    [displayItems],
   );
 
   useEffect(() => {
@@ -115,6 +124,9 @@ export function ChatMessages({
             forcedSenders={showSenders === true}
             getThinkingMessage={getThinkingMessage}
             highlightedMessageKey={highlightedMessageKey}
+            isRunStart={
+              item.kind !== "process" && runStarts.has(item.message.key)
+            }
             isSpecialTool={isSpecialTool}
             item={item}
             key={item.kind === "process" ? item.key : item.message.key}
@@ -130,6 +142,7 @@ export function ChatMessages({
             renderTurnSummary={renderTurnSummary}
             renderUserMessage={renderUserMessage}
             selectedLabel={conversationMap?.labels?.selected}
+            senderNameClass={senderNameClass}
             showAuthorLabels={showAuthorLabels}
             toolLabels={toolLabels}
             transformContent={transformContent}

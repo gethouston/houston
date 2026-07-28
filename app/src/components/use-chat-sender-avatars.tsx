@@ -11,8 +11,13 @@
  * to initials — a row is never faceless.
  */
 
+import { personNameToneClass } from "@houston-ai/board";
 import type { ChatMessage, FeedItem } from "@houston-ai/chat";
-import { HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import {
+  agentNameToneClass,
+  HoustonAvatar,
+  resolveAgentColor,
+} from "@houston-ai/core";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { useUserProfiles } from "../hooks/queries/use-user-profiles";
 import { useCapabilities } from "../hooks/use-capabilities";
@@ -22,9 +27,12 @@ import { isMultiplayer } from "../lib/org-roles";
 import type { Agent } from "../lib/types";
 import { PersonFace } from "./mission-person-face";
 
-/** The agent mark's diameter, matched to `PersonFace`'s 20px teammate face so
- *  human and agent rows sit on the same optical line. */
-const AGENT_MARK_PX = 20;
+/** The chat sender face diameter (HOU-960): the group-chat 32px, sized so the
+ *  face reads as a person beside the bubble, top-aligned with its first line.
+ *  The agent mark matches it so human and agent rows share one optical line. */
+const AGENT_MARK_PX = 32;
+const SENDER_FACE_CLASS = "size-8";
+const SENDER_INITIALS_CLASS = "text-xs";
 
 /** Every distinct author id in a conversation's feed (stable, sorted). */
 function authorIdsIn(feedItems: FeedItem[]): string[] {
@@ -51,6 +59,13 @@ export interface ChatSenderIdentity {
   agentLabel: string | undefined;
   /** The face for a message's sender: teammate photo/initials, or agent mark. */
   renderSenderAvatar: (msg: ChatMessage) => ReactNode | undefined;
+  /**
+   * The text-colour utility a row's sender NAME wears (HOU-960): a teammate's
+   * stable person tone, or the agent's own avatar colour. `ui/chat` owns the
+   * layout, the app owns the palette — the same seam `renderSenderAvatar`
+   * already draws.
+   */
+  senderNameClass: (msg: ChatMessage) => string | undefined;
 }
 
 export function useChatSenderAvatars(
@@ -92,6 +107,8 @@ export function useChatSenderAvatars(
       // `person.*` tone — one person, one tone, on the board and here alike.
       return (
         <PersonFace
+          className={SENDER_FACE_CLASS}
+          initialsClassName={SENDER_INITIALS_CLASS}
           person={{
             id: author.userId,
             label: name,
@@ -103,5 +120,24 @@ export function useChatSenderAvatars(
     [agentColor, profiles, myProfile],
   );
 
-  return { showSenders, agentLabel: agent?.name, renderSenderAvatar };
+  // A person's colour is a property of the PERSON, so the name tone hashes the
+  // same stable user id their avatar fill does (`personNameToneClass` and
+  // `personToneClass` share one index) — one teammate, one colour, on the
+  // board, on their face, and on their name. The agent wears its own avatar
+  // colour, dropped to plain ink in whichever theme that colour cannot carry
+  // 4.5:1 as text.
+  const senderNameClass = useCallback(
+    (msg: ChatMessage): string | undefined => {
+      if (msg.from === "assistant") return agentNameToneClass(agentColor);
+      return msg.author ? personNameToneClass(msg.author.userId) : undefined;
+    },
+    [agentColor],
+  );
+
+  return {
+    showSenders,
+    agentLabel: agent?.name,
+    renderSenderAvatar,
+    senderNameClass,
+  };
 }

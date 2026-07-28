@@ -1,5 +1,6 @@
 import {
   Bug,
+  CircleUserRound,
   CloudUpload,
   FileText,
   Keyboard,
@@ -24,6 +25,7 @@ interface SettingsIndexProps {
   accountAvailable: boolean;
   apiKeysAvailable: boolean;
   migrationAvailable: boolean;
+  profileAvailable: boolean;
   onSelect: (id: SettingsSectionId) => void;
 }
 
@@ -37,6 +39,7 @@ export function SettingsIndex({
   accountAvailable,
   apiKeysAvailable,
   migrationAvailable,
+  profileAvailable,
   onSelect,
 }: SettingsIndexProps) {
   const { t } = useTranslation("settings");
@@ -72,6 +75,14 @@ export function SettingsIndex({
         <SettingsCard>
           {/* WorkspaceSection (rename) is deliberately not rendered: the
               workspace name is fixed for now (HOU-704). */}
+          {profileAvailable && (
+            <SettingsRow
+              icon={CircleUserRound}
+              title={t("settings:nav.profile")}
+              description={t("settings:index.rows.profile")}
+              onClick={() => onSelect("profile")}
+            />
+          )}
           <AppearanceSection />
           <LanguageSection />
           <NotificationsSection />

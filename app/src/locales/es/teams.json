@@ -144,7 +144,6 @@
       "body": "Agrega a un compañero para que pueda chatear con este agente."
     },
     "conversationNote": "Todos los que tienen acceso comparten la conversación de este agente.",
-    "chatNote": "Agente compartido. Todos los que tienen acceso ven esta conversación.",
     "you": "Tú",
     "ownerAccess": "Propietario, siempre tiene acceso",
     "remove": "Quitar",

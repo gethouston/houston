@@ -110,6 +110,26 @@ export type AgentAccess = "manager" | "user";
 /** An org role (Teams v2). Mirrors the engine-client `OrgRole` wire enum. */
 export type OrgRole = "owner" | "admin" | "user";
 
+/**
+ * The signed-in caller's user id. The gateway derives it from the session; here
+ * it is a fixture constant — the same id the seeded mission attribution, the
+ * synthesized single-self roster, and the invites' `invitedBy` all speak of, and
+ * the row `/v1/me/profile` reads and writes.
+ */
+export const SELF_USER_ID = "u-self";
+
+/**
+ * The caller's own display profile as `GET`/`PUT /v1/me/profile` serve it. The
+ * two fields are the EFFECTIVE values (the user's override when set, otherwise
+ * the identity provider's), and `custom` says which of the two the user set
+ * themselves — the split that lets the UI offer "reset to my Google photo".
+ */
+export interface FakeMeProfile {
+  displayName?: string;
+  photoUrl?: string;
+  custom: { displayName: boolean; photoUrl: boolean };
+}
+
 /** One agent assignee with a per-person access level (the `AgentAssignment` wire shape). */
 export interface FakeAssignment {
   userId: string;
@@ -227,12 +247,12 @@ export const ISO = new Date(EPOCH).toISOString();
  * the default e2e project).
  */
 const SEED_TRIP_CONTRIBUTORS = [
-  { user_id: "u-self", name: "Ada Lovelace" },
+  { user_id: SELF_USER_ID, name: "Ada Lovelace" },
   { user_id: "u-bob", name: "Bob Stone" },
 ];
 
 const SEED_LAUNCH_CONTRIBUTORS = [
-  { user_id: "u-self", name: "Ada Lovelace" },
+  { user_id: SELF_USER_ID, name: "Ada Lovelace" },
   { user_id: "u-bob", name: "Bob Stone" },
   { user_id: "u-cleo", name: "Cleo Nakamura" },
   { user_id: "u-dmitri", name: "Dmitri Volkov" },
@@ -248,7 +268,7 @@ const SEED_ACTIVITIES: Activity[] = [
     description: "Research flights and hotels for the spring",
     status: "needs_you",
     updated_at: ISO,
-    created_by: "u-self",
+    created_by: SELF_USER_ID,
     contributors: SEED_TRIP_CONTRIBUTORS,
   },
   {
@@ -257,7 +277,7 @@ const SEED_ACTIVITIES: Activity[] = [
     description: "Write the beta announcement to the waitlist",
     status: "done",
     updated_at: ISO,
-    created_by: "u-self",
+    created_by: SELF_USER_ID,
     contributors: SEED_LAUNCH_CONTRIBUTORS,
   },
 ];
@@ -277,7 +297,7 @@ const SEED_LEARNINGS: Learning[] = [
     id: "learn-1",
     text: "Exclude churned accounts from pipeline math.",
     created_at: ISO,
-    taught_by: { user_id: "u-self", name: "Ada Lovelace" },
+    taught_by: { user_id: SELF_USER_ID, name: "Ada Lovelace" },
     mission_id: "act-1",
     mission_title: "Plan a trip to Tokyo",
   },
@@ -335,6 +355,20 @@ export interface HostState {
    * role, preserving the pre-feature behavior; a present array is served verbatim.
    */
   orgMembers: FakeMember[] | null;
+  /**
+   * The identity-provider (Google/GCIP) display profile the gateway has stored
+   * for the caller — what an effective field falls back to once its custom
+   * override is CLEARED. Captured from the `SELF_USER_ID` row whenever a roster
+   * is armed via `/__test__/org` (that row IS the stored provider profile), so
+   * the fallback is never invented; `{}` (the default) = the provider gave none.
+   */
+  meProfileBase: { displayName?: string; photoUrl?: string };
+  /**
+   * The caller's OWN overrides, written by `PUT /v1/me/profile`. `null` (the
+   * default for both) = never customized, so the effective value comes from
+   * `meProfileBase`; a string wins over it and flips the served `custom` flag.
+   */
+  meProfileCustom: { displayName: string | null; photoUrl: string | null };
   /**
    * The pending org invites `GET /v1/org` surfaces (Teams v2), appended by
    * `POST /v1/org/members` when an unknown email is added. Empty (the default)
@@ -420,6 +454,8 @@ function freshState(): HostState {
     agentReadHoldMs: 0,
     customIntegrations: null,
     orgMembers: null,
+    meProfileBase: {},
+    meProfileCustom: { displayName: null, photoUrl: null },
     orgInvites: [],
     inviteSeq: 0,
     teamWorkspaces: [],

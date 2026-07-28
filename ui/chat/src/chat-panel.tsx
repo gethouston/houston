@@ -76,6 +76,7 @@ export function ChatPanel({
   showSenders,
   agentLabel,
   renderSenderAvatar,
+  senderNameClass,
   mentionPeople,
   messageMentionPeople,
   renderMentionAvatar,
@@ -203,6 +204,7 @@ export function ChatPanel({
           showSenders={showSenders}
           agentLabel={agentLabel}
           renderSenderAvatar={renderSenderAvatar}
+          senderNameClass={senderNameClass}
           mentionPeople={messageMentionPeople ?? mentionPeople}
           conversationMap={conversationMap}
         />

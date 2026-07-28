@@ -183,6 +183,48 @@ export interface UserProfilesResult {
 }
 
 /**
+ * Which fields of {@link EditableProfile} the user has overridden by hand. The
+ * gateway resolves each field independently: `true` means the value below is
+ * the user's own, `false` means it fell through to the identity provider's
+ * (Google's) value. This is what drives the "Remove picture" / "Reset name"
+ * affordances — there is nothing to remove when the value is Google's to begin
+ * with.
+ */
+export interface EditableProfileCustom {
+  displayName: boolean;
+  photoUrl: boolean;
+}
+
+/**
+ * The caller's own display profile, from `GET /v1/me/profile`. Both fields are
+ * the EFFECTIVE values the rest of the product renders: the user's override
+ * when {@link EditableProfileCustom} says so, otherwise the identity provider's
+ * value. Either can be absent — a user with no Google picture and no upload
+ * resolves to a bare `{ custom: … }`, so a consumer falls back to initials
+ * rather than render an empty face. Degrades to `null` on a gateway that
+ * predates the route (404), which hides the Settings profile section entirely.
+ */
+export interface EditableProfile {
+  displayName?: string;
+  photoUrl?: string;
+  custom: EditableProfileCustom;
+}
+
+/**
+ * Body of `PUT /v1/me/profile`. The three states of each key are distinct and
+ * load-bearing: a string SETS the override, `null` CLEARS it back to the
+ * identity provider's (Google's) value, and an OMITTED key leaves that field
+ * untouched. So a form that only edits the name must send only `displayName` —
+ * sending `photoUrl: null` alongside it would silently wipe the picture. The
+ * host validates (name 1..60 chars after trimming; photo an `https://` URL or a
+ * small `data:image/*;base64,` URI) and answers 400 on a violation.
+ */
+export interface EditableProfileUpdate {
+  displayName?: string | null;
+  photoUrl?: string | null;
+}
+
+/**
  * One co-member of the active space, from `GET /v1/org/people` (Teams). The
  * sanitized directory: no email, no role. `displayName`/`photoUrl` come from
  * the gateway's stored GCIP profile and are both optional.
