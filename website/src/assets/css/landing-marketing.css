@@ -5,13 +5,13 @@
  */
 
 /* ── Pricing ─────────────────────────────────────────────────────────────── */
+#pricing {
+  padding-top: clamp(96px, 12vw, 160px);
+}
 .pricing-head {
   text-align: center;
   max-width: 640px;
   margin: 0 auto clamp(28px, 3.4vw, 44px);
-}
-.pricing-head .eyebrow-mono {
-  margin-bottom: 14px;
 }
 .pricing-head .sec-title {
   max-width: none;
@@ -28,6 +28,7 @@
   margin: 0 auto;
 }
 .price-col {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--card);
@@ -35,10 +36,68 @@
   border-radius: 20px;
   padding: 30px 28px;
 }
-/* Featured plan: emphasised with the ink pill accent. */
+/* Featured plan: the ONE loud object — a full ink card on the light band,
+   white chrome inside, the same inversion the dark sections use. */
 .price-col.featured {
-  border-color: var(--action);
-  box-shadow: 0 20px 52px -28px rgba(40, 36, 28, 0.16);
+  background: var(--band-black);
+  border-color: var(--band-black);
+  box-shadow: 0 32px 64px -24px rgba(0, 0, 0, 0.35);
+}
+.price-col.featured .price-name,
+.price-col.featured .price-amt .amount {
+  color: #fff;
+}
+.price-col.featured .price-amt .per {
+  color: rgba(255, 255, 255, 0.6);
+}
+.price-col.featured .price-note {
+  color: rgba(255, 255, 255, 0.55);
+}
+.price-col.featured .price-list li {
+  color: rgba(255, 255, 255, 0.75);
+}
+.price-col.featured .price-list li::before {
+  background: #fff;
+}
+.price-chip {
+  position: absolute;
+  top: 26px;
+  right: 24px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+/* The checklist — one thin check per claim. */
+.price-list {
+  list-style: none;
+  margin: 20px 0 26px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.price-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+.price-list li::before {
+  content: "";
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  background: var(--ink);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .price-name {
   font-size: 15px;
@@ -69,13 +128,6 @@
   color: var(--ink-subtle);
   min-height: 18px;
 }
-.price-desc {
-  font-size: 14.5px;
-  color: var(--ink-muted);
-  line-height: 1.5;
-  margin: 14px 0 24px;
-  min-height: 44px;
-}
 .price-cta {
   margin-top: auto;
 }
@@ -96,12 +148,12 @@
 }
 
 /* ── Q&A — grouped accordion, all the page's depth lives here ──────────────── */
+#faq {
+  padding-top: clamp(72px, 9vw, 120px);
+}
 .faq-head {
   text-align: center;
   margin-bottom: clamp(28px, 3.4vw, 44px);
-}
-.faq-head .eyebrow-mono {
-  margin-bottom: 14px;
 }
 .faq-head .sec-title {
   margin: 0 auto;
@@ -217,37 +269,69 @@ details.faq-group > .faq-list {
   padding: 6px 0 18px;
 }
 
-/* ── Stat band — four quiet tiles answering "works with my stack?" ────────── */
-.stats-band {
-  margin-top: clamp(52px, 7vw, 96px);
+/* ── Stack grid (#stack) — four dark tiles with real logo walls ──────────── */
+.stack-grid {
+  margin-top: clamp(36px, 4.5vw, 56px);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: clamp(20px, 3vw, 44px);
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
 }
-.stat {
-  border-left: 1px solid var(--line-strong);
-  padding-left: clamp(14px, 1.6vw, 22px);
+.stack-tile {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  padding: clamp(24px, 2.8vw, 34px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
 }
-.stat-n {
+.st-n {
   font-weight: 340;
-  font-size: clamp(26px, 2.6vw, 38px);
+  font-size: clamp(28px, 2.8vw, 40px);
   letter-spacing: -0.02em;
-  color: var(--ink-strong);
+  color: #fff;
   line-height: 1.05;
 }
-.stat-l {
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: var(--ink-muted);
-  max-width: 20ch;
+.st-l {
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 40ch;
+}
+/* Monochrome white marks — the one consistent way every brand sits on black. */
+.st-logos {
+  margin-top: auto;
+  padding-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+.st-mark {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  fill: rgba(255, 255, 255, 0.85);
+}
+.st-more {
+  /* Its own quiet line under the wall — never inside the icon row, so all
+     four tiles keep an identical mark rhythm. */
+  display: block;
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.5);
+}
+/* A brand with no vector mark ships as a wordmark chip in the same tone. */
+.st-word {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1;
 }
 @media (max-width: 880px) {
-  .stats-band {
-    grid-template-columns: repeat(2, 1fr);
-    row-gap: 28px;
+  .stack-grid {
+    grid-template-columns: 1fr;
   }
 }
 /* The integrations view's closing count row. */

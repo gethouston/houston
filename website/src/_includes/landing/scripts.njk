@@ -1,13 +1,25 @@
 {% include "installer-urls.njk" %}
 <script>
-  // Nav scroll state — transparent over the hero, frosted once scrolled.
+  // Nav scroll state — transparent over the hero, frosted once scrolled, and
+  // section-aware: the frost is black over dark grounds (hero, dark bands,
+  // footer) and white over the light sections in between.
   (function () {
     var nav = document.getElementById("lnav");
     if (!nav) return;
+    var darks = Array.prototype.slice.call(
+      document.querySelectorAll(".hero, .section.is-dark, .lfoot")
+    );
     function check() {
+      var y = 34; // the bar's vertical middle
+      var overDark = darks.some(function (el) {
+        var r = el.getBoundingClientRect();
+        return r.top <= y && r.bottom >= y;
+      });
       nav.classList.toggle("scrolled", window.scrollY > 10);
+      nav.classList.toggle("on-light", !overDark);
     }
     window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
     check();
   })();
 
@@ -86,6 +98,53 @@
         show((current + 1) % tabs.length);
       }, 5000);
     });
+  })();
+
+  // Compounding, made visible (#compound): while the Learnings panel is on
+  // screen, a new team-taught learning slides in at the top every few seconds
+  // and the header count ticks up. Reduced motion keeps the static list.
+  (function () {
+    var panel = document.querySelector("[data-compound-live]");
+    var countEl = document.querySelector("[data-cl-count]");
+    if (!panel || !countEl) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+
+    function face(img, initial, name) {
+      if (!img) {
+        return '<span class="face hp-3 feat-face" title="' + name + '">' + initial + "</span>";
+      }
+      return (
+        '<span class="face face-img feat-face" title="' + name + '">' +
+        '<img src="/assets/img/' + img + '-48.webp" srcset="/assets/img/' + img + '-96.webp 2x" width="48" height="48" alt="' + name + '"></span>'
+      );
+    }
+    var pool = [
+      { t: "Quote annual pricing in the customer's currency", f: face("felipe", "", "Felipe") },
+      { t: "Loop in support when a deal mentions bugs", f: face("julian", "", "Julian") },
+      { t: "Never promise a date without checking the roadmap", f: face(null, "M", "Maya") },
+      { t: "Summarize every demo call in the deal notes", f: face("julian", "", "Julian") },
+      { t: "Flag competitors named in any thread", f: face("felipe", "", "Felipe") },
+      { t: "Send recap emails before noon, customer's timezone", f: face(null, "A", "Ana") }
+    ];
+    var i = 0;
+    var visible = false;
+    new IntersectionObserver(function (entries) {
+      visible = entries[0].isIntersecting;
+    }, { threshold: 0.4 }).observe(panel);
+
+    setInterval(function () {
+      if (!visible || !panel.classList.contains("active")) return;
+      var item = pool[i % pool.length];
+      i++;
+      var row = document.createElement("div");
+      row.className = "feat-row cl-enter";
+      row.innerHTML = '<span class="feat-note"></span><span class="feat-when">just now</span>' + item.f;
+      row.querySelector(".feat-note").textContent = item.t;
+      panel.insertBefore(row, panel.firstChild);
+      var rows = panel.querySelectorAll(".feat-row");
+      if (rows.length > 5) panel.removeChild(rows[rows.length - 1]);
+      countEl.textContent = String(Number(countEl.textContent) + 1);
+    }, 3800);
   })();
 
   // Mobile menu toggle.
@@ -225,10 +284,20 @@
 </script>
 
 <!-- Landing behaviours as standalone deferred assets. Order matters for the
-     board demo: data + stage define the globals hero-demo.js reads.
+     board demo: data + clock + stage define the globals hero-demo.js reads.
      Each guards prefers-reduced-motion itself and no-ops without its markup. -->
 <script defer src="/assets/hero-demo-data.js"></script>
+<script defer src="/assets/hero-demo-clock.js"></script>
 <script defer src="/assets/hero-demo-stage.js"></script>
 <script defer src="/assets/hero-demo.js"></script>
 <script defer src="/assets/chat.js"></script>
+
+<!-- Hero motion rig (HOU-948): self-hosted GSAP + ScrollTrigger + Lenis drive
+     the hero's load timeline, star parallax and CTA micro-spring. Deferred (so
+     order is preserved: libraries before the rig) and gated on
+     prefers-reduced-motion inside hero-motion.js. Landing-only. -->
+<script defer src="/assets/vendor/gsap.min.js"></script>
+<script defer src="/assets/vendor/ScrollTrigger.min.js"></script>
+<script defer src="/assets/vendor/lenis.min.js"></script>
+<script defer src="/assets/hero-motion.js"></script>
 {% include "landing/scripts-download.njk" %}

@@ -12,35 +12,38 @@
   margin: clamp(28px, 3.4vw, 44px) auto 0;
 }
 
-/* ── Use-case tabs ────────────────────────────────────────────────────────── */
+/* ── Use-case tabs — ONE segmented pill (instrument-panel clean) ─────────── */
 .chat-tabs {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: clamp(20px, 2.6vw, 30px);
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 auto clamp(20px, 2.6vw, 30px);
+  padding: 4px;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
 }
 .chat-tab {
-  padding: 8px 16px;
+  padding: 7px 16px;
   border-radius: 999px;
-  border: 1px solid var(--line-strong);
+  border: none;
   background: transparent;
   color: var(--ink-muted);
   font-family: var(--sans);
   font-size: 14px;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   transition: color var(--dur-fast) var(--ease-standard),
-    border-color var(--dur-fast) var(--ease-standard),
     background-color var(--dur-fast) var(--ease-standard);
 }
 .chat-tab:hover {
-  border-color: var(--ink);
   color: var(--ink-strong);
 }
 .chat-tab.active {
   background: var(--action);
-  border-color: var(--action);
   color: var(--action-text);
 }
 
@@ -49,9 +52,9 @@
   background: var(--app-screen);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 2px 4px rgba(40, 36, 28, 0.05),
-    0 28px 56px -22px rgba(40, 36, 28, 0.16),
-    0 56px 110px -52px rgba(40, 36, 28, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05),
+    0 32px 64px -22px rgba(0, 0, 0, 0.18),
+    0 64px 120px -48px rgba(0, 0, 0, 0.22);
 }
 
 .chat-head {
@@ -231,11 +234,12 @@
   }
 }
 
-/* @mentions — humans calling humans, and the agent calling a human in. */
+/* @mentions — humans calling humans, and the agent calling a human in.
+   Mention blue, the one functional color in the thread. */
 .mention {
   font-weight: 600;
-  color: var(--ink-strong);
-  background: rgba(13, 13, 13, 0.07);
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.1);
   border-radius: 6px;
   padding: 1px 5px;
 }

@@ -29,6 +29,19 @@
   color: var(--ink-muted);
   max-width: 42ch;
 }
+/* The small CTA closing the copy column. */
+.split-cta {
+  margin-top: 22px;
+}
+/* #stack — the connected-tools card standing alone under its head. */
+.stack-card {
+  margin-top: clamp(28px, 3.4vw, 44px);
+}
+.btn-sm {
+  height: 34px;
+  padding: 0 15px;
+  font-size: 13.5px;
+}
 @media (max-width: 880px) {
   .split,
   .split.split-rev {
@@ -92,30 +105,17 @@
 
 /* ── Full-screen section rhythm — each story owns a viewport ─────────────── */
 /* Desktop-only (>=881px) on purpose: on a phone these sections stack to their
-   natural (tall) content height, so one-story-per-viewport and scroll-snap
-   don't apply. Snapping stacked, variable-height mobile sections fights native
-   momentum scrolling and can trap the reader mid-section, so mobile scrolls
-   free — the sections just flow. */
+   natural (tall) content height. Scrolling is fully free — no scroll-snap:
+   snapping fights momentum and reads as the page "locking" mid-scroll. */
 @media (min-width: 881px) {
   #multiplayer,
   #parallel,
-  #compound {
+  #compound,
+  #stack {
     min-height: 100svh;
     display: flex;
     flex-direction: column;
     justify-content: center;
-  }
-  /* Proximity scroll-snap: settling NEAR a screen boundary lands exactly on
-     it, but scrolling stays free (mandatory snap would trap variable-height
-     sections like pricing/FAQ, which deliberately do not snap). */
-  html {
-    scroll-snap-type: y proximity;
-  }
-  .hero,
-  #multiplayer,
-  #parallel,
-  #compound {
-    scroll-snap-align: start;
   }
 }
 
@@ -135,6 +135,32 @@
   gap: 12px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--line);
+}
+/* The live learnings counter riding the card head (scripts.njk ticks it). */
+.shm-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ink-subtle);
+  white-space: nowrap;
+}
+.shm-count b {
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+/* A fresh learning sliding in at the top of the list. */
+.feat-row.cl-enter {
+  animation: cl-in 0.5s var(--ease-entrance, ease);
+}
+@keyframes cl-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 .shm-head .av {
   width: 34px;
@@ -220,13 +246,17 @@
   display: flex;
   flex-wrap: nowrap;
   justify-content: center;
-  gap: 7px;
+  gap: 2px;
   margin-bottom: 18px;
 }
-.acol-tabs .chat-tab,
-.feat-tabs .chat-tab {
+.acol-tabs .chat-tab {
   padding: 6px 12px;
   font-size: 12.5px;
+  white-space: nowrap;
+}
+.feat-tabs .chat-tab {
+  padding: 7px 16px;
+  font-size: 13.5px;
   white-space: nowrap;
 }
 /* On phones the tabs get the full page width but there are 4–5 of them; let the
@@ -253,6 +283,9 @@
   padding: 14px;
   max-width: 430px;
   margin: 0 auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05),
+    0 32px 64px -22px rgba(0, 0, 0, 0.18),
+    0 64px 120px -48px rgba(0, 0, 0, 0.22);
 }
 .acol .tcard {
   margin-bottom: 8px;
@@ -307,8 +340,182 @@
   max-width: none;
 }
 .feat-card {
-  max-width: 430px;
+  max-width: 640px;
   margin: 0 auto;
+  padding: 30px 32px;
+  border-radius: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05),
+    0 32px 64px -22px rgba(0, 0, 0, 0.16),
+    0 64px 120px -48px rgba(0, 0, 0, 0.2);
+}
+/* Scaled-up interior: the card is the section's hero, everything reads from
+   two meters away. */
+.feat-card .shm-head {
+  gap: 14px;
+  padding-bottom: 18px;
+}
+.feat-card .shm-head .av {
+  width: 42px;
+  height: 42px;
+}
+.feat-card .shm-count {
+  font-size: 12.5px;
+}
+/* Rows as cards: each learning/skill is its own bordered card, matching the
+   file-gallery language. The panel stacks them with gaps instead of rules. */
+.feat-card .swap-panel.active {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+}
+.feat-card .feat-row {
+  padding: 14px 16px;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.feat-card .feat-row,
+.feat-card .feat-row:last-child {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
+.feat-card .feat-note {
+  font-size: 15px;
+}
+.feat-card .face {
+  width: 26px;
+  height: 26px;
+}
+.feat-card .feat-when {
+  font-size: 12px;
+}
+.feat-card .skill-logos svg {
+  width: 18px;
+  height: 18px;
+}
+/* When a learning was taught — quiet date before the teacher's face. */
+.feat-when {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--ink-subtle);
+  white-space: nowrap;
+}
+.feat-when ~ .face,
+.feat-when ~ .feat-faces {
+  margin-left: 0;
+}
+/* The tools a skill drives — real marks, right-aligned. */
+.skill-logos {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.skill-logos svg {
+  width: 15px;
+  height: 15px;
+}
+/* The context gallery — team files as tiles, not a list. */
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.file-tile {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 7px 7px 11px;
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+}
+/* Preview thumbnail: a quiet gray stage with a miniature of the file itself
+   (page with text lines / mini spreadsheet / folder) and a type badge. */
+.file-prev {
+  position: relative;
+  height: 76px;
+  border-radius: 9px;
+  background: var(--panel);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.fp-page {
+  width: 42px;
+  height: 54px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+.fp-page i {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: #dcdcdc;
+}
+.fp-page i:last-child {
+  width: 60%;
+}
+.fp-sheet {
+  padding: 0;
+  background: linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 100% 11px,
+    linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 14px 100%,
+    #fff;
+}
+.fp-folder {
+  position: relative;
+  width: 48px;
+  height: 34px;
+  background: var(--panel-raised);
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.fp-folder::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 0;
+  width: 22px;
+  height: 8px;
+  background: inherit;
+  border-radius: 4px 4px 0 0;
+}
+.fp-badge {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: var(--ink-strong);
+  color: #fff;
+  border-radius: 5px;
+  padding: 2.5px 6px;
+}
+.file-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.3;
+  padding: 10px 6px 0;
+}
+.file-meta {
+  font-size: 11px;
+  color: var(--ink-subtle);
+  padding: 2px 6px 0;
+}
+@media (max-width: 520px) {
+  .file-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 .feat-row {
   display: flex;
