@@ -1,4 +1,5 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
+import { activatePendingConnection } from "./support/activate-pending-connection";
 import { expect, test } from "./support/fixtures";
 
 /**
@@ -797,27 +798,7 @@ test("reconsiders a skipped connect step: Back offers Connect again and reports 
   // Connect it. The fake host mints a PENDING connection on connect; flip it
   // active (models the OAuth completing) so the card self-reports and advances.
   await connect.click();
-  await expect
-    .poll(
-      async () => {
-        const res = await request.get(
-          `${FAKE_HOST_URL}/v1/integrations/composio/connections`,
-        );
-        const { items } = (await res.json()) as {
-          items: { toolkit: string; connectionId: string; status: string }[];
-        };
-        const pending = items.find(
-          (c) => c.toolkit === "slack" && c.status === "pending",
-        );
-        if (!pending) return false;
-        await request.post(`${FAKE_HOST_URL}/__test__/integrations-activate`, {
-          data: { connectionId: pending.connectionId },
-        });
-        return true;
-      },
-      { timeout: 10_000 },
-    )
-    .toBe(true);
+  await activatePendingConnection(request, "slack");
 
   // The connection lands -> Slack advances to the GitHub step (2 of 2). Decline
   // GitHub genuinely ("Skip") to finish the sequence.
@@ -1377,27 +1358,7 @@ test("pressing Enter connects a lone connect step", async ({
 
   // Enter fired startConnect: the fake host mints a PENDING slack connection.
   // Flip it active (models the OAuth completing) so the card self-reports.
-  await expect
-    .poll(
-      async () => {
-        const res = await request.get(
-          `${FAKE_HOST_URL}/v1/integrations/composio/connections`,
-        );
-        const { items } = (await res.json()) as {
-          items: { toolkit: string; connectionId: string; status: string }[];
-        };
-        const pending = items.find(
-          (c) => c.toolkit === "slack" && c.status === "pending",
-        );
-        if (!pending) return false;
-        await request.post(`${FAKE_HOST_URL}/__test__/integrations-activate`, {
-          data: { connectionId: pending.connectionId },
-        });
-        return true;
-      },
-      { timeout: 10_000 },
-    )
-    .toBe(true);
+  await activatePendingConnection(request, "slack");
 
   // The connection lands -> the card self-reports and resumes the agent (the
   // composed "Connected Slack." resume plus its echo can appear more than once).

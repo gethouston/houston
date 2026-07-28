@@ -1,5 +1,5 @@
-import { Input } from "@houston-ai/core";
-import { Loader2, Search, X } from "lucide-react";
+import { Input, SearchClearButton } from "@houston-ai/core";
+import { Loader2, Search } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 
 interface MissionSearchInputLabels {
@@ -37,6 +37,7 @@ export function MissionSearchInput({
   onChange,
 }: MissionSearchInputProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   // Visible placeholder: the full text, or the short one when it wouldn't fit.
   const [placeholder, setPlaceholder] = useState(labels.placeholder);
   const { placeholder: full, placeholderShort } = labels;
@@ -73,6 +74,7 @@ export function MissionSearchInput({
     <div ref={wrapperRef} className={className ?? "relative"}>
       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
       <Input
+        ref={inputRef}
         type="text"
         role="searchbox"
         value={value}
@@ -89,14 +91,13 @@ export function MissionSearchInput({
         />
       )}
       {value && (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-hover hover:text-ink"
-          aria-label={labels.clear}
-        >
-          <X className="size-3.5" />
-        </button>
+        <SearchClearButton
+          label={labels.clear}
+          onClear={() => {
+            onChange("");
+            inputRef.current?.focus();
+          }}
+        />
       )}
     </div>
   );

@@ -87,6 +87,7 @@
       "custom": "Custom integrations"
     },
     "searchPlaceholder": "Search integrations",
+    "clearSearch": "Clear search",
     "allCategories": "All categories",
     "categoryFilter": "Filter by category",
     "connect": "Connect",
@@ -109,6 +110,7 @@
     "description": "Connect an API or MCP server that isn't in the app catalog.",
     "addButton": "Add custom integration",
     "searchPlaceholder": "Search custom integrations...",
+    "clearSearch": "Clear search",
     "empty": "No custom integrations yet. Add one to connect a tool that isn't in the catalog.",
     "emptyTitle": "No custom integrations yet",
     "noResults": "No custom integrations match your search.",

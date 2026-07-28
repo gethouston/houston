@@ -33,6 +33,7 @@ export function CatalogPane({
   category,
   isLoading,
   connectFlow,
+  onConnected,
   onRemove,
   allowlist = null,
   lockedFix,
@@ -50,6 +51,7 @@ export function CatalogPane({
   category: string;
   isLoading: boolean;
   connectFlow: ConnectFlow;
+  onConnected?: (toolkit: string) => void;
   /** Disconnect an app's half-made connection (the app modal's Remove). */
   onRemove: (toolkit: string) => void;
   /** The Teams effective allowlist (`null` = unrestricted, no locks ever). */
@@ -71,6 +73,7 @@ export function CatalogPane({
           catalog={catalog}
           connections={connections}
           connectFlow={connectFlow}
+          onConnected={onConnected}
           surface={surface}
           query={query}
           category={category}

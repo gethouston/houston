@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
+import { activatePendingConnection } from "./support/activate-pending-connection";
 import { expect, test } from "./support/fixtures";
 
 /**
@@ -102,6 +103,45 @@ test("searching filters the category sections live", async ({
   await expect(
     page.getByRole("heading", { name: "Productivity" }),
   ).toBeVisible();
+});
+
+test("catalog search clears manually and after its matching app connects", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["composio"] });
+  await openIntegrationsPage(page);
+
+  const search = page.getByRole("textbox", { name: "Search integrations" });
+  const clear = page.getByRole("button", { name: "Clear search" });
+  await expect(clear).toHaveCount(0);
+
+  await search.fill("Slack");
+  await expect(clear).toBeVisible();
+  await clear.click();
+  await expect(search).toHaveValue("");
+
+  await search.fill("Slack");
+  await page.getByRole("button", { name: "Connect Slack" }).first().click();
+  await activatePendingConnection(request, "slack");
+
+  await expect(search).toHaveValue("", { timeout: 15_000 });
+});
+
+test("a delayed connection preserves a newer non-matching search", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["composio"] });
+  await openIntegrationsPage(page);
+
+  const search = page.getByRole("textbox", { name: "Search integrations" });
+  await search.fill("Slack");
+  await page.getByRole("button", { name: "Connect Slack" }).first().click();
+  await search.fill("Notion");
+  await activatePendingConnection(request, "slack");
+
+  await expect(search).toHaveValue("Notion", { timeout: 15_000 });
 });
 
 test("a row's + connects INLINE, exactly once, leaving every other row usable", async ({

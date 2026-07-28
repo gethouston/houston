@@ -16,6 +16,7 @@
   },
   "search": {
     "placeholder": "Busca modelos y proveedores de IA",
+    "clear": "Borrar búsqueda",
     "showAll": "Ver los {{count}} proveedores"
   },
   "card": {

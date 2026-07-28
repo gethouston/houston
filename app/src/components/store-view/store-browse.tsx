@@ -130,7 +130,10 @@ export function StoreBrowse() {
   );
 
   const handleInstall = async (slug: string) => {
-    if (await install(slug)) setDetailAgent(null);
+    if (await install(slug)) {
+      setSearch("");
+      setDetailAgent(null);
+    }
   };
 
   return (
@@ -140,6 +143,7 @@ export function StoreBrowse() {
           value={search}
           onChange={setSearch}
           label={t("searchPlaceholder")}
+          clearLabel={t("clearSearch")}
           className="flex-1"
         />
         {integrations.length > 0 && (

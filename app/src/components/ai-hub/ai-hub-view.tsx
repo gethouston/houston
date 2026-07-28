@@ -164,6 +164,7 @@ export function AiHubView() {
                   value={query}
                   onChange={setQuery}
                   label={t("search.placeholder")}
+                  clearLabel={t("search.clear")}
                 />
               }
               installedTitle={t("sections.connected")}
