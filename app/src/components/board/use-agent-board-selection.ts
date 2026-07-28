@@ -10,16 +10,13 @@ import { useSelectionSet } from "./use-selection-set";
 /**
  * Per-agent multi-select + bulk actions for the board tab. The selection
  * set + UI live in {@link useSelectionSet}; this layer wires the agent-scoped
- * bulk mutations. The selection resets whenever `resetKey` changes (the tab
- * is reused across agents, so a selection must not bleed between them). Bulk
- * actions clear the selection on success; failures propagate so the caller
- * surfaces a toast (no silent swallow).
+ * bulk mutations. Bulk actions clear the selection on success; failures
+ * propagate so the caller surfaces a toast (no silent swallow).
  */
 export function useAgentBoardSelection(
   agentPath: string | undefined,
-  resetKey: string,
 ): BoardSelectionModel {
-  const { selectedIds, toggle, selectAll, clear } = useSelectionSet(resetKey);
+  const { selectedIds, toggle, selectAll, clear } = useSelectionSet();
   const bulkUpdate = useBulkUpdateActivity(agentPath);
   const bulkDelete = useBulkDeleteActivity(agentPath);
 

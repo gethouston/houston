@@ -2,7 +2,6 @@ import type { Routine } from "@houston-ai/engine-client";
 import { useCallback, useEffect, useState } from "react";
 import { analytics } from "../../lib/analytics";
 import { encodeRoutineIntakeHandoffMessage } from "../../lib/routine-chat-handoff";
-import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import type { IntakeResult } from "./automation-intake";
 import {
@@ -24,20 +23,10 @@ import type { useRoutineChatSetup } from "./use-routine-chat-setup";
  * state, effects, and the selection handlers.
  */
 export function useRoutinesTabView(
-  agent: Agent,
   routines: Routine[] | undefined,
   chatSetup: ReturnType<typeof useRoutineChatSetup>,
 ) {
   const [selected, setSelected] = useState<Selection | null>(null);
-
-  // The tab is reused across agents (keyed by tab); clear the selection on
-  // agent switch so nothing — not even a half-finished intake — ever bleeds
-  // between agents' Automations tabs.
-  const [trackedAgentId, setTrackedAgentId] = useState(agent.id);
-  if (trackedAgentId !== agent.id) {
-    setTrackedAgentId(agent.id);
-    setSelected(null);
-  }
 
   // A session-finished notification (#401) lands as a one-shot activity id;
   // resolvePendingActivity selects its routine/draft chat, or clears a

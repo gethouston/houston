@@ -255,7 +255,10 @@ export function WorkspaceShell({
                   ) : viewMode === ORGANIZATION_VIEW_ID && showOrganization ? (
                     <OrganizationView />
                   ) : currentAgent && agentDef && isAgentView ? (
-                    <AgentPersonScopeProvider path={currentAgent.folderPath}>
+                    <AgentPersonScopeProvider
+                      key={currentAgent.id}
+                      path={currentAgent.folderPath}
+                    >
                       <div data-tour-target="tabs">
                         <TabBar
                           title={currentAgent.name}

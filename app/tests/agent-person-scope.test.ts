@@ -6,12 +6,11 @@ import {
   DEFAULT_SCOPE,
   missionMatchesScope,
   type PersonScope,
-  reconcileAgentScope,
 } from "../src/lib/agent-person-scope.ts";
 
 // The per-agent header person scope: pure model. Covers the default ("me"), the
 // matching semantics (incl. unattributed missions staying visible), the menu
-// ordering, and the reset-to-default-on-agent-switch rule.
+// and ordering.
 
 const me: PersonScope = { kind: "me" };
 const everyone: PersonScope = { kind: "everyone" };
@@ -20,51 +19,6 @@ const person = (userId: string): PersonScope => ({ kind: "person", userId });
 describe("DEFAULT_SCOPE", () => {
   it("is 'me' — the board opens on the signed-in user", () => {
     deepStrictEqual(DEFAULT_SCOPE, { kind: "me" });
-  });
-});
-
-describe("reconcileAgentScope — reset to default (me) on agent switch", () => {
-  it("keeps the chosen scope while the agent (path) is unchanged", () => {
-    // Plain re-renders and data refreshes re-run this each frame; none may drop
-    // the user's choice.
-    deepStrictEqual(
-      reconcileAgentScope({
-        trackedPath: "/ws/AgentA",
-        path: "/ws/AgentA",
-        scope: person("mate"),
-      }),
-      person("mate"),
-    );
-    deepStrictEqual(
-      reconcileAgentScope({
-        trackedPath: "/ws/AgentA",
-        path: "/ws/AgentA",
-        scope: everyone,
-      }),
-      everyone,
-    );
-  });
-
-  it("snaps back to 'me' when the agent changes, dropping the stale person", () => {
-    // The leak: scoping agent A to teammate X then switching to agent B must NOT
-    // carry X over (B may not have X on any mission — the board would render
-    // empty under a stranger's face). Reconcile resets to the default.
-    deepStrictEqual(
-      reconcileAgentScope({
-        trackedPath: "/ws/AgentA",
-        path: "/ws/AgentB",
-        scope: person("mate"),
-      }),
-      DEFAULT_SCOPE,
-    );
-    deepStrictEqual(
-      reconcileAgentScope({
-        trackedPath: "/ws/AgentA",
-        path: "/ws/AgentB",
-        scope: everyone,
-      }),
-      DEFAULT_SCOPE,
-    );
   });
 });
 

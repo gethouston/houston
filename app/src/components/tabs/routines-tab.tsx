@@ -1,7 +1,7 @@
 import { Badge, Button, cn } from "@houston-ai/core";
 import { RoutinesGrid, TimezonePicker } from "@houston-ai/routines";
 import { Plus } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoutineRuns, useRoutines } from "../../hooks/queries";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
@@ -9,7 +9,10 @@ import { analytics } from "../../lib/analytics";
 import type { TabProps } from "../../lib/types";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { useRoutineLeadingIcon } from "./routine-leading-icon";
-import { latestRunByRoutine } from "./routines-tab-model";
+import {
+  latestRunByRoutine,
+  shouldSyncRoutinesPanel,
+} from "./routines-tab-model";
 import { RoutinesTabPane } from "./routines-tab-pane";
 import { useRoutineChatSetup } from "./use-routine-chat-setup";
 import { useRoutineTabHandlers } from "./use-routine-tab-handlers";
@@ -29,7 +32,11 @@ import { useRoutinesTabView } from "./use-routines-tab-view";
  * only open their chat, toggle, run, or delete — no manual editor. Mutations
  * live in `useRoutineTabHandlers`; selection lives in `useRoutinesTabView`.
  */
-export default function RoutinesTab({ agent, agentDef }: TabProps) {
+export default function RoutinesTab({
+  agent,
+  agentDef,
+  isActive = false,
+}: TabProps) {
   const { t } = useTranslation("routines");
   const labels = useRoutineLabels();
   const path = agent.folderPath;
@@ -39,22 +46,30 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
   const lastRuns = latestRunByRoutine(allRuns);
 
   const chatSetup = useRoutineChatSetup(agent, routines);
-  const nav = useRoutinesTabView(agent, routines, chatSetup);
+  const nav = useRoutinesTabView(routines, chatSetup);
   const triggers = useRoutineTriggers(agent, routines);
   const h = useRoutineTabHandlers(agent);
 
   // The chat opens in the SAME shell-level panel the Activity board uses (a
   // sibling of the main card, not a pane nested in this tab). A selection owns
-  // that panel; the tab owns the open flag for the whole selection lifecycle —
-  // the pre-model intake/draft surfaces have no board to drive it themselves.
+  // that panel while Automations is visible; the pre-model intake/draft
+  // surfaces have no board to drive it themselves.
   const { selected } = nav;
   const { panelContainer, setPanelOpen } = useShellDetailPanel();
   useEffect(() => {
+    if (!shouldSyncRoutinesPanel(isActive)) return;
     setPanelOpen(!!selected);
-  }, [selected, setPanelOpen]);
-  // Close the panel when the tab unmounts (tab or agent switch) so no stale,
-  // empty shell panel is ever left behind next to the next surface.
-  useEffect(() => () => setPanelOpen(false), [setPanelOpen]);
+  }, [isActive, selected, setPanelOpen]);
+  // All agent tabs stay mounted. Only the active Routines tab may close its
+  // shell panel, otherwise an inactive tab can clobber a mission navigation.
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
+  useEffect(
+    () => () => {
+      if (isActiveRef.current) setPanelOpen(false);
+    },
+    [setPanelOpen],
+  );
   // Per-row identity glyph — the triggering app's logo (or a webhook mark) for
   // event routines, the grid's default clock for schedule ones.
   const leadingIcon = useRoutineLeadingIcon(triggers.triggersEnabled);

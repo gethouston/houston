@@ -19,17 +19,15 @@ import { useSelectionSet } from "./use-selection-set";
  * Failures propagate so the caller surfaces a toast (no silent swallow).
  */
 export function useCrossAgentSelection({
-  resetKey,
   paths,
   agentPathForId,
 }: {
-  resetKey: string;
   /** Every agent path on the Mission Control view (for query invalidation). */
   paths: string[];
   /** Resolve a mission id to its owning agent path. */
   agentPathForId: (id: string) => string | undefined;
 }): BoardSelectionModel {
-  const { selectedIds, toggle, selectAll, clear } = useSelectionSet(resetKey);
+  const { selectedIds, toggle, selectAll, clear } = useSelectionSet();
   const qc = useQueryClient();
 
   const invalidate = useCallback(

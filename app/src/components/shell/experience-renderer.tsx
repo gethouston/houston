@@ -36,7 +36,11 @@ export function AgentRenderer({
                 </div>
               }
             >
-              <TabComponent agent={agent} agentDef={agentDef} />
+              <TabComponent
+                agent={agent}
+                agentDef={agentDef}
+                isActive={isActive}
+              />
             </Suspense>
           </div>
         );

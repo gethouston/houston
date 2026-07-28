@@ -5,7 +5,7 @@ import { missionMatchesPerson } from "./mission-people.ts";
  * Pure, DOM-free model for the per-agent header PERSON SCOPE (the compact
  * dropdown beside the Share button that narrows an agent's board to one
  * person). No React, no store, no Supabase — so the default, the matching
- * semantics, the menu ordering, and the reset-on-agent-switch rule are all
+ * semantics and the menu ordering are all
  * unit-testable in isolation and shared verbatim by the header trigger
  * ({@link AgentPersonScopeMenu}) and the board filter ({@link useAgentBoardScope}).
  *
@@ -26,37 +26,6 @@ export type PersonScope =
  * instead of a neutral "Everyone" that hides the control's meaning.
  */
 export const DEFAULT_SCOPE: PersonScope = { kind: "me" };
-
-/**
- * Reconcile a reused agent view's scope across agent switches.
- *
- * The scope provider wraps the agent view, but the view (and its provider
- * instance) is REUSED when the user switches agents. A person or "everyone"
- * chosen for the PREVIOUS agent is meaningless on the next one — a teammate may
- * not be on any of its missions, so the board would render empty under a
- * trigger showing a stranger. So on a path (agent) change the scope snaps back
- * to {@link DEFAULT_SCOPE} (me); with no switch it survives, since plain
- * re-renders and data refreshes must not silently drop the user's choice.
- *
- * The caller feeds the returned value both to state AND to the frame it renders,
- * so the reset lands before the filtered board commits (no one-frame flash of
- * the previous agent's scope). Mirrors the sibling render-phase reset in
- * {@link resolvePendingActivitySelection}.
- */
-export function reconcileAgentScope({
-  trackedPath,
-  path,
-  scope,
-}: {
-  /** Agent path this provider instance last reconciled to. */
-  trackedPath: string;
-  /** Agent path being rendered now. */
-  path: string;
-  /** The currently selected scope. */
-  scope: PersonScope;
-}): PersonScope {
-  return trackedPath === path ? scope : DEFAULT_SCOPE;
-}
 
 /**
  * Does this mission belong under `scope` for the signed-in `selfId`?

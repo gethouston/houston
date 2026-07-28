@@ -56,7 +56,7 @@ describe("planInvalidation — unrelated cases keep their exact effects", () => 
     deepStrictEqual(plan.patchAllConversations, [PATH]);
   });
 
-  it("SessionStatus (completed) invalidates the broad activity prefix", () => {
+  it("SessionStatus (completed) invalidates only that agent's activity", () => {
     const plan = planInvalidation(
       {
         type: "SessionStatus",
@@ -69,7 +69,8 @@ describe("planInvalidation — unrelated cases keep their exact effects", () => 
       },
       {},
     );
-    ok(invalidates(plan, ["activity"]));
+    ok(invalidates(plan, queryKeys.activity(PATH)));
+    strictEqual(invalidates(plan, ["activity"]), false);
     deepStrictEqual(plan.patchAllConversations, [PATH]);
   });
 
