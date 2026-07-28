@@ -358,9 +358,11 @@ export const tauriAgentModelChoice = {
 
 /**
  * How a chat history load behaves. `observe: false` marks a BULK read
- * (mission search, board scans over N conversations): the new-engine adapter
- * then skips attaching its passive in-flight-turn observer stream, which only
- * a real conversation open (the default) should do.
+ * (mission search, board scans over N conversations). The new-engine adapter
+ * then (a) skips attaching its passive in-flight-turn observer stream, which
+ * only a real conversation open should do, (b) reads the wider but still
+ * BOUNDED scan window instead of a full transcript, and (c) leaves the local
+ * conversation cache alone. See `engine-adapter/history-window.ts`.
  */
 export interface HistoryLoadOptions {
   observe?: boolean;

@@ -1,32 +1,29 @@
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { analytics } from "../lib/analytics";
+import type { HistoryLoadOptions } from "../lib/tauri";
 import { matchesPhrase } from "./mission-highlight";
-import {
-  buildMissionHistorySearchText,
-  normalizeMissionSearchQuery,
-  searchMissions,
-} from "./mission-search";
+import { normalizeMissionSearchQuery, searchMissions } from "./mission-search";
+import { useMissionHistoryScan } from "./use-mission-history-scan";
+
+/**
+ * How long typing must pause before the transcript scan fires. Matching what is
+ * already loaded stays on the RAW query (it is a regex over pre-folded text, so
+ * the board narrows on every keystroke); only the network wave waits (HOU-941).
+ */
+const SCAN_DEBOUNCE_MS = 250;
 
 interface UseMissionSearchOptions {
   items: KanbanItem[];
   query: string;
-  /**
-   * Must forward the options to the history loader: search loads N missions'
-   * histories at a time and passes `observe: false` so the new-engine adapter
-   * doesn't spawn N observer streams (that's for real conversation opens).
-   */
+  /** Forwarded to {@link useMissionHistoryScan} — see its `loadHistory`. */
   loadHistory: (
     sessionKey: string,
-    opts?: { observe?: boolean },
+    opts?: HistoryLoadOptions,
   ) => Promise<FeedItem[]>;
   onHistoryLoadError?: () => void;
-}
-
-function sessionKeyFor(item: KanbanItem): string {
-  const key = item.metadata?.sessionKey;
-  return typeof key === "string" ? key : `activity-${item.id}`;
 }
 
 export function useMissionSearch({
@@ -35,24 +32,22 @@ export function useMissionSearch({
   loadHistory,
   onHistoryLoadError,
 }: UseMissionSearchOptions) {
-  const [historyTextById, setHistoryTextById] = useState<
-    Record<string, string>
-  >({});
-  const [pendingCount, setPendingCount] = useState(0);
-  const loadingIdsRef = useRef<Set<string>>(new Set());
-  const mountedRef = useRef(true);
   const phrase = normalizeMissionSearchQuery(query);
+  const debouncedPhrase = useDebouncedValue(phrase, SCAN_DEBOUNCE_MS);
+  // Clearing the box stops the scan at once — there is nothing to wait for.
+  const scanPhrase = phrase ? debouncedPhrase : "";
+
+  const { historyById, isScanning } = useMissionHistoryScan({
+    items,
+    phrase: scanPhrase,
+    loadHistory,
+    onHistoryLoadError,
+  });
 
   const result = useMemo(
-    () => searchMissions(items, query, historyTextById),
-    [items, query, historyTextById],
+    () => searchMissions(items, query, historyById),
+    [items, query, historyById],
   );
-
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
 
   // One event per search session (empty → non-empty), never per keystroke.
   const searchingRef = useRef(false);
@@ -65,63 +60,24 @@ export function useMissionSearch({
     }
   }, [phrase]);
 
-  useEffect(() => {
-    if (!phrase) return;
-    // Load chat history only for missions that don't already match by title or
-    // description, so matches deeper in the conversation (including the user's
-    // own messages) still surface — even when other missions match by title.
-    const missing = items.filter(
+  // Between the last keystroke and the scan wave, the spinner has to stand for
+  // the missions nobody has looked inside yet — but only for those: with every
+  // transcript already scanned the results are final and the box must be calm.
+  const scanPending =
+    phrase !== scanPhrase &&
+    items.some(
       (item) =>
+        historyById[item.id] === undefined &&
         !matchesPhrase(item.title, phrase) &&
-        !matchesPhrase(item.description, phrase) &&
-        historyTextById[item.id] === undefined &&
-        !loadingIdsRef.current.has(item.id),
+        !matchesPhrase(item.description, phrase),
     );
-    if (missing.length === 0) return;
-
-    for (const item of missing) loadingIdsRef.current.add(item.id);
-    setPendingCount((count) => count + missing.length);
-
-    Promise.allSettled(
-      missing.map(async (item) => {
-        const history = await loadHistory(sessionKeyFor(item), {
-          observe: false,
-        });
-        return [item.id, buildMissionHistorySearchText(history)] as const;
-      }),
-    )
-      .then((settled) => {
-        const next: Record<string, string> = {};
-        let failed = false;
-
-        settled.forEach((entry, index) => {
-          const item = missing[index];
-          if (entry.status === "fulfilled") {
-            const [id, text] = entry.value;
-            next[id] = text;
-            return;
-          }
-          console.error("[mission-search] history load failed", entry.reason);
-          next[item.id] = "";
-          failed = true;
-        });
-
-        if (!mountedRef.current) return;
-        setHistoryTextById((prev) => ({ ...prev, ...next }));
-        if (failed) onHistoryLoadError?.();
-      })
-      .finally(() => {
-        for (const item of missing) loadingIdsRef.current.delete(item.id);
-        if (mountedRef.current) {
-          setPendingCount((count) => Math.max(0, count - missing.length));
-        }
-      });
-  }, [historyTextById, items, loadHistory, phrase, onHistoryLoadError]);
 
   return {
     items: result.items,
     hasQuery: result.hasQuery,
     snippets: result.snippets,
-    isSearchingText: pendingCount > 0,
+    // An emptied box is never "still searching", even while the loads the last
+    // phrase started drain.
+    isSearchingText: phrase !== "" && (isScanning || scanPending),
   };
 }

@@ -2,6 +2,7 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   extractSnippet,
+  findFoldedMatch,
   findHighlightRanges,
   foldForSearch,
   matchesPhrase,
@@ -15,9 +16,64 @@ function highlighted(
   return ranges.map((r) => text.slice(r.start, r.end));
 }
 
+const COMBINING_MARKS = /[̀-ͯ]/g;
+
+/** The per-CHARACTER fold `foldForSearch` used to be (HOU-941 replaced it with
+ *  a single whole-string pass). Kept here as the reference implementation the
+ *  fast fold must agree with. */
+function foldPerChar(text: string): string {
+  let folded = "";
+  for (let i = 0; i < text.length; i++) {
+    folded += text[i]
+      .normalize("NFKD")
+      .replace(COMBINING_MARKS, "")
+      .toLowerCase();
+  }
+  return folded;
+}
+
 describe("foldForSearch", () => {
   it("lowercases and strips accents", () => {
     strictEqual(foldForSearch("São PAULO"), "sao paulo");
+  });
+
+  it("keeps the semantics of the per-character fold it replaced", () => {
+    const corpus = [
+      "São PAULO", // precomposed accents
+      "noël", // decomposed accent (base + combining mark)
+      "ÉLAN vital",
+      "Straße", // no case folding of ß, by design
+      "ﬁle ﬂow", // NFKD-expanded ligatures
+      "½ cup", // NFKD-expanded fraction
+      "ｈｅｌｌｏ", // NFKD-expanded fullwidth
+      "İstanbul", // uppercase dotted I: NFKD + lowercase
+      "Ǆungla", // a single char folding to more than one
+      "🙂 emoji", // surrogate pairs survive intact
+      "",
+    ];
+    for (const value of corpus) {
+      strictEqual(foldForSearch(value), foldPerChar(value), value);
+    }
+  });
+});
+
+describe("findFoldedMatch", () => {
+  it("locates the phrase in ALREADY-folded text", () => {
+    const folded = foldForSearch("Refresh São Paulo budget");
+    deepStrictEqual(findFoldedMatch(folded, "sao paulo"), {
+      start: 8,
+      end: 17,
+    });
+  });
+
+  it("spans flexible whitespace and reports null when absent", () => {
+    const folded = foldForSearch("do this\nmonth now");
+    const match = findFoldedMatch(folded, "this month");
+    strictEqual(match !== null, true);
+    strictEqual(folded.slice(match?.start, match?.end), "this\nmonth");
+    strictEqual(findFoldedMatch(folded, "next month"), null);
+    strictEqual(findFoldedMatch("", "budget"), null);
+    strictEqual(findFoldedMatch("text", ""), null);
   });
 });
 

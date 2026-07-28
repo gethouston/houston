@@ -15,9 +15,21 @@ function foldChar(char: string): string {
   return char.normalize("NFKD").replace(COMBINING_MARKS, "").toLowerCase();
 }
 
-/** Fold `text` for matching while recording, for each folded char, the index of
- *  the original char it came from. `map[folded.length] === text.length`, so an
- *  exclusive end position always resolves. */
+/**
+ * Fold `text` for matching while recording, for each folded char, the index of
+ * the original char it came from. `map[folded.length] === text.length`, so an
+ * exclusive end position always resolves.
+ *
+ * This walks the string CHARACTER BY CHARACTER, so it is ~100x slower than
+ * {@link foldForSearch} \u2014 it exists only because highlighting needs the
+ * folded->original index map. Give it SHORT text (a title, one chat message,
+ * a snippet); never a whole transcript (HOU-941).
+ *
+ * Per-character folding agrees with the whole-string fold everywhere except
+ * one Unicode corner: a word-final Greek sigma only lowercases to `\u03c2` when the
+ * engine can see the whole word. A phrase landing on that corner still matches
+ * (both sides of a match are whole-string folded) but gets no highlight.
+ */
 function foldWithMap(text: string): { folded: string; map: number[] } {
   let folded = "";
   const map: number[] = [];
@@ -32,10 +44,16 @@ function foldWithMap(text: string): { folded: string; map: number[] } {
   return { folded, map };
 }
 
-/** Fold a whole string for matching (case-folded, accents stripped). Shared by
- *  the search filter so matching and highlighting always agree. */
+/**
+ * Fold a whole string for matching (case-folded, accents stripped). Shared by
+ * the search filter so matching and highlighting always agree.
+ *
+ * ONE pass through the engine's native `normalize`/`replace`/`toLowerCase`.
+ * This used to delegate to {@link foldWithMap}'s per-character walk, which made
+ * folding a mission's transcript the dominant cost of a board search (HOU-941).
+ */
 export function foldForSearch(value: string): string {
-  return foldWithMap(value).folded;
+  return value.normalize("NFKD").replace(COMBINING_MARKS, "").toLowerCase();
 }
 
 const REGEXP_SPECIALS = /[.*+?^${}()|[\]\\]/g;
@@ -54,22 +72,45 @@ function phrasePattern(phrase: string): string {
 }
 
 /**
+ * Where `phrase` first occurs in ALREADY-FOLDED text, as `[start, end)` folded
+ * indices — or null. The hot path for scanned transcripts: they are folded once
+ * when they load, so a keystroke only re-runs this regex over them (HOU-941).
+ * `phrase` must already be folded.
+ */
+export function findFoldedMatch(
+  folded: string,
+  phrase: string,
+): { start: number; end: number } | null {
+  const pattern = phrasePattern(phrase);
+  if (!folded || !pattern) return null;
+  const match = new RegExp(pattern).exec(folded);
+  if (!match || match[0].length === 0) return null;
+  return { start: match.index, end: match.index + match[0].length };
+}
+
+/**
  * Whether `text` contains `phrase` (case- and accent-insensitive, whitespace
- * between words flexible). `phrase` must already be folded.
+ * between words flexible). `phrase` must already be folded. Folds `text` on
+ * every call — for SHORT text (a title, a description). Text that is matched
+ * repeatedly (a transcript) should be pre-folded and matched with
+ * {@link findFoldedMatch} instead.
  */
 export function matchesPhrase(
   text: string | undefined,
   phrase: string,
 ): boolean {
-  const pattern = phrasePattern(phrase);
-  if (!text || !pattern) return false;
-  return new RegExp(pattern).test(foldForSearch(text));
+  if (!text) return false;
+  return findFoldedMatch(foldForSearch(text), phrase) !== null;
 }
 
 /**
  * Ranges (into the ORIGINAL `text`) of every occurrence of `phrase`. `phrase`
  * must already be folded; a multi-word phrase matches contiguously (flexible
  * whitespace), never as scattered words. Sorted, with overlaps merged.
+ *
+ * Uses {@link foldWithMap}, so `text` must be SHORT — a title, one chat
+ * message, an already-cut snippet. Callers that hold a whole transcript locate
+ * the matching message first (see `mission-search-text.ts`).
  */
 export function findHighlightRanges(
   text: string,

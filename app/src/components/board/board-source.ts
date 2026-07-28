@@ -118,7 +118,8 @@ export interface BoardSource {
   /**
    * Persisted chat history for one conversation. Callers forward `opts`:
    * mission search bulk-loads with `observe: false` (no per-conversation
-   * observer streams); the board's open-a-chat hydration omits it (observes).
+   * observer streams, bounded scan window); the board's open-a-chat hydration
+   * omits it (observes, tail window).
    */
   loadHistory: (
     sessionKey: string,
