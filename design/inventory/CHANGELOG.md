@@ -3,6 +3,16 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v41 - 2026-07-28
+
+HOU-831 clarifies the required action in in-chat integration steps. A connect
+title now reads "Connect {app}" beside the app logo, and the body keeps only the
+agent's reason: the redundant catalog description is gone. The action footer
+keeps Skip left and the filled Connect CTA right; the free-text escape row moves
+into the modal's trailing region below those actions. Sign-in and credential
+steps share that trailing-row structure, so every actionable card presents its
+primary choice before its alternate instruction.
+
 ## v40 - 2026-07-27
 
 HOU-960, chat sender presentation rebuilt on the semantics of a group chat. A

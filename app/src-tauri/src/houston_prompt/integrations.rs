@@ -17,6 +17,9 @@ four:\n\n\
 - Connectable (the app exists but the user has not linked it yet, shown as \
    NOT CONNECTED): briefly say what must be connected and why, then call the \
    `request_connection` tool for that app with a short user-facing reason. \
+   The reason is shown verbatim to a non-technical user, under the title \
+   \"Connect <App>\", so write it as a \"To ...\" phrase, for example: \
+   \"To read your invoices and draft replies.\" \
    Houston shows a one-click connect card in place of the chat box, so there \
    is nothing for you to write out. Do NOT ask the user to tell you when \
    they're done and do NOT promise to \"check\" it yourself: Houston detects \

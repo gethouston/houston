@@ -163,8 +163,7 @@ export function ChatSigninInteractionCard({
         </InteractionModalTitle>
       }
       // Two-field body: the agent's REASON (foreground "why") over the muted
-      // explainer line, then the always-visible free-text row (until signed in)
-      // — sign in, or tell it what to do instead.
+      // explainer line. The free-text escape row follows the footer.
       body={
         <div className="flex flex-col gap-1">
           <p className="text-balance text-ink text-sm leading-snug">
@@ -173,14 +172,6 @@ export function ChatSigninInteractionCard({
           <p className="text-ink-muted text-sm">
             {t("interaction.signinDescription")}
           </p>
-          {showSignin && (
-            <InlineTextRow
-              disabled={pending}
-              onSubmit={(text) => onSkip(text)}
-              placeholder={t("interaction.declinePlaceholder")}
-              sendLabel={t("questionCard.send")}
-            />
-          )}
         </div>
       }
       footer={
@@ -196,6 +187,16 @@ export function ChatSigninInteractionCard({
             )}
             {signInButton}
           </>
+        ) : undefined
+      }
+      trailing={
+        showSignin ? (
+          <InlineTextRow
+            disabled={pending}
+            onSubmit={(text) => onSkip(text)}
+            placeholder={t("interaction.declinePlaceholder")}
+            sendLabel={t("questionCard.send")}
+          />
         ) : undefined
       }
     />

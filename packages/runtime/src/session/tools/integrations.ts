@@ -46,7 +46,7 @@ const ConnectParams = Type.Object({
   reason: Type.Optional(
     Type.String({
       description:
-        "A short, plain-language reason to show the user for why this app is needed.",
+        "A short user-facing reason shown verbatim to a non-technical user under the title 'Connect <App>'. Write it as a 'To ...' phrase, for example: 'To read your invoices and draft replies.'",
     }),
   ),
 });

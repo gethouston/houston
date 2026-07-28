@@ -176,13 +176,6 @@ export function ChatCredentialInteractionCard({
                 onReadyChange={setReady}
               />
             </div>
-            {/* Save the key, or tell it what to do instead. */}
-            <InlineTextRow
-              disabled={submit.isPending}
-              onSubmit={(text) => onSkip(name, text)}
-              placeholder={t("interaction.declinePlaceholder")}
-              sendLabel={t("questionCard.send")}
-            />
           </div>
         )
       }
@@ -215,6 +208,16 @@ export function ChatCredentialInteractionCard({
               )}
             </Button>
           </>
+        )
+      }
+      trailing={
+        isSaved ? undefined : (
+          <InlineTextRow
+            disabled={submit.isPending}
+            onSubmit={(text) => onSkip(name, text)}
+            placeholder={t("interaction.declinePlaceholder")}
+            sendLabel={t("questionCard.send")}
+          />
         )
       }
     />

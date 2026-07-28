@@ -372,7 +372,9 @@ test("advances from a question to a connect step in one sequence", async ({
   const connectCard = page.locator("div.overflow-clip").filter({
     hasText: "I need access to your Gmail to send the trip itinerary.",
   });
-  await expect(connectCard.getByText("Gmail", { exact: true })).toBeVisible();
+  await expect(
+    connectCard.getByText("Connect Gmail", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
   await expect(
     page.getByText("Who should I send the itinerary to?"),
@@ -570,9 +572,9 @@ test("renders the app's real logo on the connect step once the catalog resolves"
   const card = page
     .locator("div.overflow-clip")
     .filter({ hasText: "I need Slack access to post the trip summary." });
-  // The catalog identity joins the row: real name, one-line description, and
-  // the brand image itself (the seeded data URI), never the letter fallback.
-  await expect(card.getByText("Team messaging")).toBeVisible();
+  // The explicit connect title and brand image identify the required action;
+  // the catalog description stays out of the in-chat card.
+  await expect(card.getByText("Connect Slack", { exact: true })).toBeVisible();
   const logo = card.getByRole("img", { name: "Slack" });
   await expect(logo).toBeVisible();
   expect(await logo.getAttribute("src")).toMatch(/^data:image\/png/);
