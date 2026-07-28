@@ -75,10 +75,14 @@ test("exposes ask_user + suggest_reusable when integrations are absent", () => {
   const { mcp, tools, serverName } = build(undefined);
   expect(serverName).toBe(HOUSTON_MCP_SERVER_NAME);
   expect(new Set(tools.map((t) => t.name))).toEqual(
-    new Set(["ask_user", "suggest_reusable"]),
+    new Set(["ask_user", "suggest_reusable", "suggest_actions"]),
   );
   expect(new Set(mcp.allowedTools)).toEqual(
-    new Set(["mcp__houston__ask_user", "mcp__houston__suggest_reusable"]),
+    new Set([
+      "mcp__houston__ask_user",
+      "mcp__houston__suggest_reusable",
+      "mcp__houston__suggest_actions",
+    ]),
   );
 });
 
@@ -88,6 +92,7 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
     new Set([
       "ask_user",
       "suggest_reusable",
+      "suggest_actions",
       "save_routine",
       "save_learning",
       "integration_search",
@@ -102,6 +107,7 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
     new Set([
       "mcp__houston__ask_user",
       "mcp__houston__suggest_reusable",
+      "mcp__houston__suggest_actions",
       "mcp__houston__save_routine",
       "mcp__houston__save_learning",
       "mcp__houston__integration_search",
@@ -214,6 +220,7 @@ test("auto mode keeps the integration + suggest_reusable tools but drops ask_use
   expect(new Set(tools.map((t) => t.name))).toEqual(
     new Set([
       "suggest_reusable",
+      "suggest_actions",
       "save_routine",
       "save_learning",
       "integration_search",
@@ -227,6 +234,7 @@ test("auto mode keeps the integration + suggest_reusable tools but drops ask_use
   expect(new Set(mcp.allowedTools)).toEqual(
     new Set([
       "mcp__houston__suggest_reusable",
+      "mcp__houston__suggest_actions",
       "mcp__houston__save_routine",
       "mcp__houston__save_learning",
       "mcp__houston__integration_search",
@@ -244,8 +252,14 @@ test("auto mode with no integrations gate exposes only suggest_reusable", () => 
   // (plan-only), and suggest_reusable (auto keeps it) — so with the integration
   // gate closed the server exposes exactly suggest_reusable.
   const { tools, mcp } = build(undefined, "auto");
-  expect(tools.map((t) => t.name)).toEqual(["suggest_reusable"]);
-  expect(mcp.allowedTools).toEqual(["mcp__houston__suggest_reusable"]);
+  expect(tools.map((t) => t.name)).toEqual([
+    "suggest_reusable",
+    "suggest_actions",
+  ]);
+  expect(mcp.allowedTools).toEqual([
+    "mcp__houston__suggest_reusable",
+    "mcp__houston__suggest_actions",
+  ]);
 });
 
 test("the allowlist always matches the exposed tool set", () => {

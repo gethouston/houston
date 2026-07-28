@@ -99,6 +99,10 @@
     "saveRoutineMessage": "Configura esto como una rutina recurrente llamada \"{{title}}\".",
     "saveLearningMessage": "Recuerda \"{{title}}\" como un aprendizaje para la próxima vez."
   },
+  "suggestActions": {
+    "heading": "Continuar con",
+    "dismiss": "Descartar acciones sugeridas"
+  },
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",
     "stopSession": "No se pudo detener la misión: {{error}}",

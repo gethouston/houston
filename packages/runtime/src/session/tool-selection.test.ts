@@ -9,6 +9,7 @@ import {
 } from "./tool-selection";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
 import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
+import { SUGGEST_ACTIONS_TOOL_NAME } from "./tools/suggest-actions";
 import { SUGGEST_REUSABLE_TOOL_NAME } from "./tools/suggest-reusable";
 
 describe("buildToolSelection", () => {
@@ -21,6 +22,7 @@ describe("buildToolSelection", () => {
       ...CLAMPED_FILE_TOOL_NAMES,
       "ask_user",
       "suggest_reusable",
+      SUGGEST_ACTIONS_TOOL_NAME,
       "bash",
     ]);
     expect(selection.includeRunCode).toBe(false);
@@ -35,6 +37,7 @@ describe("buildToolSelection", () => {
       ...CLAMPED_FILE_TOOL_NAMES,
       "ask_user",
       "suggest_reusable",
+      SUGGEST_ACTIONS_TOOL_NAME,
       "run_code",
     ]);
     expect(selection.includeRunCode).toBe(true);
@@ -49,6 +52,7 @@ describe("buildToolSelection", () => {
       ...CLAMPED_FILE_TOOL_NAMES,
       "ask_user",
       "suggest_reusable",
+      SUGGEST_ACTIONS_TOOL_NAME,
     ]);
     expect(selection.toolNames).not.toContain("bash");
     expect(selection.toolNames).not.toContain("run_code");
@@ -73,6 +77,7 @@ describe("buildToolSelection", () => {
       ...CLAMPED_FILE_TOOL_NAMES,
       "ask_user",
       "suggest_reusable",
+      SUGGEST_ACTIONS_TOOL_NAME,
       "integration_search",
       "integration_execute",
       "request_connection",
@@ -99,6 +104,7 @@ describe("buildToolSelection", () => {
       ...CLAMPED_FILE_TOOL_NAMES,
       "ask_user",
       "suggest_reusable",
+      SUGGEST_ACTIONS_TOOL_NAME,
       "save_routine",
     ]);
   });
@@ -133,6 +139,7 @@ describe("buildToolSelection", () => {
       ...CLAMPED_FILE_TOOL_NAMES,
       "ask_user",
       "suggest_reusable",
+      SUGGEST_ACTIONS_TOOL_NAME,
       "save_learning",
     ]);
   });
@@ -212,6 +219,7 @@ describe("autoToolNames", () => {
     expect(autoToolNames(local.toolNames)).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
       "suggest_reusable",
+      SUGGEST_ACTIONS_TOOL_NAME,
       "bash",
       "integration_search",
       "integration_execute",
@@ -246,6 +254,7 @@ describe("autoToolNames", () => {
     expect(autoToolNames(disabled.toolNames)).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
       "suggest_reusable",
+      SUGGEST_ACTIONS_TOOL_NAME,
     ]);
   });
 

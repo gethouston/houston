@@ -718,6 +718,13 @@ export type InteractionStep =
       reusableKind: "skill" | "routine" | "learning";
       title: string;
       rationale: string;
+    }
+  /** Optional, concrete follow-up actions after a clean finish. A lone actions
+   * offer, or one alongside suggest_reusable, does not flip the board to needs_you. */
+  | {
+      kind: "suggest_actions";
+      id: string;
+      actions: { id: string; label: string; message: string }[];
     };
 
 /**

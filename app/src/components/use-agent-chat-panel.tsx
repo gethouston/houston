@@ -25,6 +25,8 @@ import {
   type ChatInteractionStep,
   ChatPlanReadyCard,
   type ChatPlanReadyLabels,
+  ChatSuggestActions,
+  type ChatSuggestActionsLabels,
   ChatSuggestReusableCard,
   type ChatSuggestReusableLabels,
   decodeAttachmentMessage,
@@ -118,6 +120,7 @@ import {
   decodeSkillMessage,
   encodeSkillMessage,
 } from "../lib/skill-message";
+import { resolveSuggestActionsOverride } from "../lib/suggest-actions";
 import {
   resolveSuggestReusableOverride,
   type SuggestReusableStep,
@@ -208,12 +211,12 @@ interface AgentChatPanelProps {
   composerHeader: AIBoardProps["composerHeader"];
   /** The pending-interaction card shown when the mission is waiting on the user
    *  (ask_user / request_connection / credential), or a lighter
-   *  plan_ready / suggest_reusable offer. Undefined when nothing is pending or a
+   *  plan_ready / suggest_reusable / suggest_actions offer. Undefined when nothing is pending or a
    *  turn is running. Pair it with {@link composerOverrideMode}. */
   composerOverride: AIBoardProps["composerOverride"];
   /** How the override composes with the input: the interaction STEPPER passes
    *  `"replace"` (it owns the one text input on screen — the composer is not
-   *  rendered under it), while plan_ready / suggest_reusable pass `"above"` (they
+   *  rendered under it), while plan_ready / suggest_reusable / suggest_actions pass `"above"` (they
    *  carry no input, so the composer stays mounted below them). */
   composerOverrideMode: AIBoardProps["composerOverrideMode"];
   /** Submit can run the selected Skill without extra text. */
@@ -1186,6 +1189,9 @@ export function useAgentChatPanel({
   const [dismissedSuggestReusable, setDismissedSuggestReusable] = useState<
     string | null
   >(null);
+  const [dismissedSuggestActions, setDismissedSuggestActions] = useState<
+    string | null
+  >(null);
   // The user can abandon ANY pending interaction (question stepper, plan_ready,
   // suggest_reusable) either by the card's dismiss X or by typing a fresh message
   // in the composer while it shows. Remembering the abandoned interaction's key
@@ -1197,6 +1203,7 @@ export function useAgentChatPanel({
   useEffect(() => {
     setDismissedPlanReady(null);
     setDismissedSuggestReusable(null);
+    setDismissedSuggestActions(null);
     setAbandonedInteractionKey(null);
   }, [selectedSessionKey]);
 
@@ -1321,6 +1328,14 @@ export function useAgentChatPanel({
     [t],
   );
 
+  const suggestActionsLabels = useMemo<ChatSuggestActionsLabels>(
+    () => ({
+      heading: t("chat:suggestActions.heading"),
+      dismiss: t("chat:suggestActions.dismiss"),
+    }),
+    [t],
+  );
+
   const saveReusable = useCallback(
     (step: SuggestReusableStep) => {
       if (!path || !selectedSessionKey) return;
@@ -1383,7 +1398,7 @@ export function useAgentChatPanel({
   // The pending-interaction override plus how it composes with the input: the
   // stepper (question / signin / connect / credential) REPLACES the
   // composer (its own free-text row is the one input on screen — no competing
-  // "Send a follow-up..." below it), while the lighter plan_ready / suggest_reusable
+  // "Send a follow-up..." below it), while the lighter plan_ready / suggest_reusable / suggest_actions
   // offers stay ABOVE the always-mounted composer (they carry no text input, so
   // the composer below them is the single input). `node: undefined` means no
   // override (the composer stands alone).
@@ -1397,40 +1412,55 @@ export function useAgentChatPanel({
     // suppress the card uniformly, whatever kind it is (suggest_reusable /
     // plan_ready / stepper), and let the always-mounted composer stand alone.
     if (interactionKey === abandonedInteractionKey) return none;
-    // A lone suggest_reusable step is the optional save offer. Resolve it FIRST
-    // and short-circuit: it is not a plan_ready step, so resolvePlanReadyOverride
-    // would wrongly route it into the interaction stepper. It never coexists with
-    // other step kinds by construction (runtime side), so a lone suggest_reusable
-    // step is fully handled here (card when live, composer when dismissed).
-    if (
-      activeInteraction.steps.length === 1 &&
-      activeInteraction.steps[0].kind === "suggest_reusable"
-    ) {
+    // Optional clean-finish offers can coexist. They are handled before the
+    // blocking stepper so action bubbles and the reusable card remain above the
+    // live composer, while any blocking step still wins on the runtime side.
+    const hasOnlySuggestions = activeInteraction.steps.every(
+      (step) =>
+        step.kind === "suggest_actions" || step.kind === "suggest_reusable",
+    );
+    if (hasOnlySuggestions) {
+      const actions = resolveSuggestActionsOverride(
+        activeInteraction.steps,
+        dismissedSuggestActions,
+      );
       const reusable = resolveSuggestReusableOverride(
         activeInteraction.steps,
         dismissedSuggestReusable,
       );
-      if (reusable.kind === "none") return none;
-      const step = reusable.step;
+      if (actions.kind === "none" && reusable.kind === "none") return none;
       return {
         mode: "above",
         node: (
-          <ChatSuggestReusableCard
-            reusableKind={step.reusableKind}
-            title={step.title}
-            rationale={step.rationale}
-            labels={suggestReusableLabels}
-            onSave={() => saveReusable(step)}
-            onDismiss={() => {
-              // "Not now" on the save offer: dismiss locally AND clear the
-              // persisted interaction so it doesn't reappear on reload. NO stop
-              // marker — the mission genuinely finished, so "interrupted" would be
-              // false (unlike the stepper's X). plan_ready's "Keep planning" stays
-              // local-only: it's an explicit choice to continue, not an abandon.
-              setDismissedSuggestReusable(step.id);
-              void clearPersistedInteraction();
-            }}
-          />
+          <div className="flex flex-col gap-3">
+            {actions.kind === "bubbles" ? (
+              <ChatSuggestActions
+                actions={actions.step.actions}
+                labels={suggestActionsLabels}
+                onDismiss={() => {
+                  setDismissedSuggestActions(actions.step.id);
+                  void clearPersistedInteraction();
+                }}
+                onSelect={(action) => {
+                  setDismissedSuggestActions(actions.step.id);
+                  sendInteractionMessage(action.message);
+                }}
+              />
+            ) : null}
+            {reusable.kind === "card" ? (
+              <ChatSuggestReusableCard
+                labels={suggestReusableLabels}
+                onDismiss={() => {
+                  setDismissedSuggestReusable(reusable.step.id);
+                  void clearPersistedInteraction();
+                }}
+                onSave={() => saveReusable(reusable.step)}
+                rationale={reusable.step.rationale}
+                reusableKind={reusable.step.reusableKind}
+                title={reusable.step.title}
+              />
+            ) : null}
+          </div>
         ),
       };
     }
@@ -1670,8 +1700,10 @@ export function useAgentChatPanel({
     abandonedInteractionKey,
     dismissedPlanReady,
     dismissedSuggestReusable,
+    dismissedSuggestActions,
     planReadyLabels,
     suggestReusableLabels,
+    suggestActionsLabels,
     startPlan,
     saveReusable,
     interactionLabels,

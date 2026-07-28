@@ -99,6 +99,10 @@
     "saveRoutineMessage": "Set this up as a recurring routine called \"{{title}}\".",
     "saveLearningMessage": "Remember \"{{title}}\" as a learning for next time."
   },
+  "suggestActions": {
+    "heading": "Continue with",
+    "dismiss": "Dismiss suggested actions"
+  },
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",
     "stopSession": "Couldn't stop the mission: {{error}}",

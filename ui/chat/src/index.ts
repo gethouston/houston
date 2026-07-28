@@ -211,6 +211,14 @@ export type { ChatSidebarProps } from "./chat-sidebar";
 export { ChatSidebar } from "./chat-sidebar";
 export type { ChatStatusLineProps } from "./chat-status-line";
 export { ChatStatusLine } from "./chat-status-line";
+export type {
+  ChatSuggestActionsLabels,
+  ChatSuggestActionsProps,
+} from "./chat-suggest-actions";
+export {
+  ChatSuggestActions,
+  DEFAULT_SUGGEST_ACTIONS_LABELS,
+} from "./chat-suggest-actions";
 // === Suggest-reusable card ===
 // The composer-replacing surface shown when the agent finishes cleanly and calls
 // `suggest_reusable`: an optional, dismissible offer to save the just-completed

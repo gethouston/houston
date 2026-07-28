@@ -6,6 +6,7 @@ import { INTEGRATION_TOOL_NAMES } from "./tools/integrations";
 import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
 import { SAVE_LEARNING_TOOL_NAME } from "./tools/save-learning";
 import { SAVE_ROUTINE_TOOL_NAME } from "./tools/save-routine";
+import { SUGGEST_ACTIONS_TOOL_NAME } from "./tools/suggest-actions";
 import { SUGGEST_REUSABLE_TOOL_NAME } from "./tools/suggest-reusable";
 
 export type CodeExecutionMode = "local" | "remote" | "disabled";
@@ -148,6 +149,7 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
       // (the plan allowlist) doesn't list it, so `planToolNames` filters it out;
       // and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES, so auto keeps it.
       SUGGEST_REUSABLE_TOOL_NAME,
+      SUGGEST_ACTIONS_TOOL_NAME,
       // save_routine reaches execute AND auto (it never blocks the turn) but not
       // plan (plan is read-only): PLAN_MODE_TOOL_NAMES omits it so planToolNames
       // filters it out, and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto
