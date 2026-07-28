@@ -6,10 +6,10 @@
  * public surface (`HoustonEngineError`, `isHoustonEngineError`) is unchanged.
  */
 export class HoustonEngineError extends Error {
-  constructor(
-    public status: number,
-    public body: unknown,
-  ) {
+  public status: number;
+  public body: unknown;
+
+  constructor(status: number, body: unknown) {
     // Carry the host's own explanation into the message: the v3 host answers
     // errors as `{error: "reason"}` (some routes as `{error: {message}}`).
     // Dropping it here would reduce every failure to "engine error <status>"
@@ -25,6 +25,8 @@ export class HoustonEngineError extends Error {
       reason ? `${reason} (engine error ${status})` : `engine error ${status}`,
     );
     this.name = "HoustonEngineError";
+    this.status = status;
+    this.body = body;
   }
   get code(): string | undefined {
     return (this.body as { error?: { code?: string } })?.error?.code;

@@ -12,7 +12,10 @@ import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
+import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
+import { showExpectedStateToast } from "../../lib/error-toast";
 import { canSeeAiModelsPage } from "../../lib/org-roles";
+import { renameAgentWithFollowUp } from "../../lib/rename-agent-follow-up";
 import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
 import { isTeamWorkspace } from "../../lib/space-id";
 import { isTopLevelView } from "../../lib/top-level-views";
@@ -124,7 +127,24 @@ export function Sidebar({ children }: { children: ReactNode }) {
 
   const handleRename = async (agentId: string, newName: string) => {
     if (!currentWorkspace) return;
-    await renameAgent(currentWorkspace.id, agentId, newName);
+    try {
+      await renameAgentWithFollowUp({
+        workspaceId: currentWorkspace.id,
+        agentId,
+        name: newName,
+        renameAgent,
+        remapAgentId: sidebar.remapAgentId,
+      });
+    } catch (err) {
+      if (isAgentNameConflictError(err)) {
+        showExpectedStateToast(
+          t("agents:toasts.nameConflict", { name: newName }),
+          t("agents:toasts.nameConflictDescription"),
+        );
+        return;
+      }
+      throw err;
+    }
   };
 
   async function handleChangeColor(agentId: string, color: string) {

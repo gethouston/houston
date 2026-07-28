@@ -43,6 +43,8 @@
   },
   "toasts": {
     "renamed": "Espaço de trabalho renomeado",
+    "nameConflict": "Já existe um agente chamado {{name}}",
+    "nameConflictDescription": "Escolha um nome diferente e tente novamente.",
     "deleted": "Espaço de trabalho excluído",
     "switchedModel": "Mudou para {{provider}} ({{model}})",
     "timezoneSet": "Fuso horário definido como {{zone}}"

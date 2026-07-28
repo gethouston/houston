@@ -31,7 +31,7 @@ export interface SidebarGroupHeaderProps {
 
 /**
  * Collapsible group header (Mercury-clean: a quiet uppercase label, a hairline
- * chevron, a muted count, and a hover-only "..." menu). The chevron + label are
+ * chevron, a muted count, and a quiet always-visible "..." menu). The chevron + label are
  * the drag handle; clicking the label toggles collapse. The label swaps to an
  * inline rename input — focused ONCE on entry (a ref-callback that re-focuses
  * every render would re-`select()` and eat all but the first keystroke).

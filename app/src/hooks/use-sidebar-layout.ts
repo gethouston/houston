@@ -10,6 +10,7 @@ import {
   moveGroupOp,
   moveItemOp,
   normalizeSidebarLayout,
+  remapAgentIdOp,
   renameGroupOp,
   setGroupContextOp,
   toggleGroupCollapsedOp,
@@ -35,6 +36,7 @@ export interface UseSidebarLayout {
   /** Create a group and return its new id (so the caller can focus its name). */
   createGroup: (name: string) => string | null;
   renameGroup: (id: string, name: string) => void;
+  remapAgentId: (oldId: string, newId: string) => void;
   setGroupContext: (id: string, context: string) => void;
   deleteGroup: (id: string) => void;
   toggleGroupCollapsed: (id: string) => void;
@@ -102,6 +104,8 @@ export function useSidebarLayout(
       return id;
     },
     renameGroup: (id, name) => apply((c) => renameGroupOp(c, id, name)),
+    remapAgentId: (oldId, newId) =>
+      apply((c) => remapAgentIdOp(c, oldId, newId)),
     setGroupContext: (id, context) =>
       apply((c) => setGroupContextOp(c, id, context)),
     deleteGroup: (id) => apply((c) => deleteGroupOp(c, id)),
