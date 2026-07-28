@@ -114,11 +114,11 @@
       },
       "tabArchived": {
         "title": "Archivadas",
-        "body": "Misiones que este agente ya terminó. Envía un mensaje para reabrir una y vuelve directo al tablero activo."
+        "body": "Usa este botón para revisar las misiones que este agente ya terminó. Envía un mensaje para reabrir una y vuelve directo al tablero activo."
       },
       "tabJobDescription": {
-        "title": "Configuración del agente",
-        "body": "Define cómo trabaja tu asistente: sus instrucciones, skills y configuración. Actualízalo cuando quieras."
+        "title": "Configuración",
+        "body": "Define cómo trabaja tu asistente: sus instrucciones, skills y accesos. Actualízalo cuando quieras."
       },
       "missionControl": {
         "title": "Centro de Misión",

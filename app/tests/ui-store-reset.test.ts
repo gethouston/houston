@@ -37,4 +37,24 @@ describe("useUIStore.reset", () => {
     strictEqual(next.sidebarCollapsed, true);
     strictEqual(next.filesViewMode, "list");
   });
+
+  it("resets archived mode when navigation leaves Activity", () => {
+    const s = useUIStore.getState();
+    s.setAgentBoardMode("archived");
+    s.setViewMode("files");
+
+    strictEqual(useUIStore.getState().agentBoardMode, "active");
+  });
+
+  it("resets archived mode for an agent switch and reset", () => {
+    const s = useUIStore.getState();
+    s.setAgentBoardMode("archived");
+    // WorkspaceShell performs this on a current-agent change.
+    s.setAgentBoardMode("active");
+    strictEqual(useUIStore.getState().agentBoardMode, "active");
+
+    s.setAgentBoardMode("archived");
+    s.reset();
+    strictEqual(useUIStore.getState().agentBoardMode, "active");
+  });
 });

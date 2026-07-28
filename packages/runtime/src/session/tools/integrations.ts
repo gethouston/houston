@@ -85,7 +85,7 @@ function signalCode(detail: string): string | undefined {
 /**
  * Thrown by `post()` when the gateway REFUSED an integration `execute` because
  * the action's app is outside this agent's allowlist (403 "toolkit_not_allowed"
- * — the app is turned OFF in the agent's Permissions tab). Module-private: the
+ * — the app is turned OFF in this agent's Settings, under Apps). Module-private: the
  * `execute` tool catches it and RETURNS a normal (non-error) instruction, since
  * being walled off is an expected policy state the user can fix, not a tool
  * failure. Classified on the stable `code`, never the bare 403 (a relayed
@@ -121,7 +121,7 @@ class NoAgentAccessError extends Error {
  * the exact place someone who manages the agent fixes it.
  */
 const NO_AGENT_ACCESS_GUIDANCE =
-  "The user does not have access to this agent, so its connected apps cannot be used for them. Tell the user plainly that someone who manages this agent needs to give them access to it, in Permissions: open this agent and add them under People. Do not retry until they confirm they have access, do not call request_connection, and never imply Houston lacks the app or that something is broken.";
+  "The user does not have access to this agent, so its connected apps cannot be used for them. Tell the user plainly that someone who manages this agent needs to give them access to it in this agent's Settings, under People. Do not retry until they confirm they have access, do not call request_connection, and never imply Houston lacks the app or that something is broken.";
 
 export interface IntegrationToolOptions {
   /** The host control-plane base URL (HOUSTON_CONTROL_PLANE_URL). */
@@ -247,7 +247,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       const code = signalCode(detail);
       // toolkit_not_allowed (403): the gateway walled this action off because
       // its app is outside this agent's allowlist (turned off in the agent's
-      // Permissions tab). A normal, user-fixable policy state — throw the typed
+      // Settings, under Apps). A normal, user-fixable policy state — throw the typed
       // error the execute tool turns into guidance, never a raw failure.
       if (code === "toolkit_not_allowed") {
         throw new ToolkitNotAllowedError();
@@ -369,7 +369,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       const blocked = slugsWith("blocked");
       if (blocked.length > 0) {
         parts.push(
-          `These apps are turned off for this agent (${blocked.join(", ")}). Tell the user they can be switched on in this agent's Permissions tab (someone who manages the agent can do it; otherwise they should ask whoever does). Do NOT call request_connection for these, and never imply Houston lacks them.`,
+          `These apps are turned off for this agent (${blocked.join(", ")}). Tell the user they can be switched on in this agent's Settings, under Apps (someone who manages the agent can do it; otherwise they should ask whoever does). Do NOT call request_connection for these, and never imply Houston lacks them.`,
         );
       }
       return {
@@ -421,7 +421,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         );
       } catch (err) {
         // The gateway walled this action off: its app is outside this agent's
-        // allowlist (turned off in the agent's Permissions tab). NOT a tool
+        // allowlist (turned off in this agent's Settings, under Apps). NOT a tool
         // failure — return guidance the model relays to the user, and do not
         // retry until the user confirms the app is switched on.
         if (err instanceof ToolkitNotAllowedError) {
@@ -430,7 +430,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
             content: [
               {
                 type: "text" as const,
-                text: `This action's app is turned off for this agent, so it can't run. Tell the user it can be switched on in this agent's Permissions tab (someone who manages the agent can do it; otherwise they should ask whoever does). Do not retry this action until the user confirms it's enabled, and never imply Houston lacks the app.`,
+                text: `This action's app is turned off for this agent, so it can't run. Tell the user it can be switched on in this agent's Settings, under Apps (someone who manages the agent can do it; otherwise they should ask whoever does). Do not retry this action until the user confirms it's enabled, and never imply Houston lacks the app.`,
               },
             ],
             details: { action, appTurnedOff: true },

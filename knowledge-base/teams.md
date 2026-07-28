@@ -233,25 +233,19 @@ Integration allowlist ceiling section, Part B).
 **Agent detail — three tabs** (`agent-detail.tsx`, takes `{ agent, members, initialTab? }`):
 a `PageHeader` (agent avatar + name + "Open agent") over the shared
 **`AgentPermissionsPanel`** (`permissions/agent-permissions-panel.tsx`, `{ agent, members,
-initialTab?, readOnly }`): `@houston-ai/core` `Tabs variant="line"` with
+initialTab? }`): `@houston-ai/core` `Tabs variant="line"` with
 **People | Integrations | AI Models** (labels `permissions.agentTabs.{people,integrations,models}`;
 `defaultValue = initialTab`, default `"people"`). In the top-level drill-in the whole detail is
 gated on `isAgentManager(caps, agent)` — a visible-but-not-manager admin gets
-`org.agentDetail.managerOnly` instead of the panel, and the panel renders `readOnly={false}`.
+`org.agentDetail.managerOnly` instead of the panel.
 
-**Two fronts, one target — the agent's OWN Permissions tab.** The SAME `AgentPermissionsPanel`
-also mounts as a per-agent workspace tab (`components/tabs/agent-permissions-tab.tsx`, built-in
-`agent-permissions`), so it is visible to **everyone who can open the agent** — read-only when the
-viewer can't manage it — and a user always sees why their agent can or can't use something. It is
-registered in `standard-tabs.ts` (`PERMISSIONS_TAB_ID = "agent-permissions"`) and **`teams`-gated**
-in `visibleAgentTabs` (`caps?.teams === true`), so it never appears on single-player/self-host
-(no ceilings, no roster). The tab id is deliberately NOT `"permissions"`: agent tab ids share the
-`viewMode` string space with top-level view ids, and `PERMISSIONS_VIEW_ID = "permissions"` already
-owns that name (the top-level drill-in), so reusing it would shadow the view in `workspace-shell`.
-(This inverts the `integrations` precedent, where the TAB owns the short name and the VIEW is
-`integrations-home`; here the VIEW owns it, so the tab is prefixed — the least-churn choice, since
-the view id is referenced across many files while the tab is new and unreleased.) The tab fetches
-the roster via `useOrg` and renders `readOnly = !isAgentManager(caps, agent)`; managers get the
+**Two fronts, one target — the agent's Settings access rows.** The same People,
+Integrations, and AI Models sections mount in the per-agent Settings rail. Settings
+is visible to everyone on a Teams host; non-managers see those access rows read-only,
+while manager-only configuration rows remain hidden. It never exposes access rows on
+single-player/self-host, where there are no ceilings or roster.
+`agent-admin-screen.tsx` fetches the roster via `useOrg` and renders
+`readOnly = !isAgentManager(caps, agent)`; managers get the
 fully editable panel right on the agent.
 
 **Read-only rule.** `readOnly` threads through the panel to every section: People rows drop to
@@ -292,7 +286,7 @@ no wrapper — the old `permissions-agents-tab.tsx` wrapper was deleted); helper
 stay in `organization/` (cross-dir import). NO "Defaults for every agent" card — policy is
 per agent only. Tested: e2e `packages/web/e2e/permissions.spec.ts` (agent list → three-tab
 drill-in; People Can use→No access round-trip; Integrations ceiling round-trip; AI Models
-present; PLUS the agent's OWN `agent-permissions` tab: a manager's editable round-trip and a
+present; PLUS the agent's Settings access rows: a manager's editable round-trip and a
 role-`user` member's read-only view + viewer-line degradation) via fake host `/__test__/org`
 (multi-member roster + fleet with per-agent `assignments`/`access`; `/v1/org` omits the roster
 for role `user`, mirroring the gateway) + `PUT /v1/agents/:slug/assignments`/`settings`.
@@ -1329,8 +1323,8 @@ The **`permissions.*`** block backs the Permissions view: `title`, `subtitle`,
 `agentPeople.{none,noneHint,changeAccess,readOnlyHint,viewerOnly,empty.{title,body}}` (the
 per-agent People tab; `readOnlyHint` + `viewerOnly` back the agent-tab read-only view). The
 read-only editors also add `integrations.allowlist.readOnlyNote` + `agentAdmin.models.readOnlyNote`.
-The agent workspace **Permissions tab label** lives in the `agents` namespace like every other tab:
-`agents:tabLabels.agent-permissions` (en "Permissions" / es "Permisos" / pt "Permissões").
+The agent workspace **Settings tab label** lives in the `agents` namespace like every other tab:
+`agents:tabLabels.job-description` (en "Settings" / es "Configuración" / pt "Configurações").
 (`permissions.tabs.*`, `permissions.people.*`, `permissions.defaults.*`, and
 `permissions.agents.listTitle` were deleted — with the top-level People/Agents split and
 the "Defaults for every agent" card.) The agent detail REUSES `share.*` copy (levels,

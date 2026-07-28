@@ -74,7 +74,7 @@ the agent which of four speech acts to perform:
 - `connectable` — a real toolkit, not connected yet: OFFER to connect
   (`request_connection`).
 - `blocked` — a real toolkit outside this agent's allowlist (turned OFF in the
-  agent's Permissions tab): tell the user it can be switched on there — whoever
+  agent's Settings, under Apps): tell the user it can be switched on there — whoever
   manages the agent can do it, otherwise they ask whoever does — never imply
   Houston lacks it, never `request_connection`. Rendered `, TURNED OFF` in the tool
   list. **`blocked` is produced solely by the closed cloud gateway** (Teams v2,
@@ -117,7 +117,7 @@ or unrecognized `status` (today's gateway) derives from the `connected` boolean
 **Runtime tool text** (`packages/runtime/src/session/tools/integrations.ts`) is
 status-aware: connected actions as before; `connectable` entries name the exact
 slug and teach `request_connection`; `blocked` (rendered `, TURNED OFF`) tells the
-user to switch the app on in the agent's Permissions tab and forbids
+user to switch the app on in the agent's Settings, under Apps, and forbids
 `request_connection`; a genuinely EMPTY result says no such app/action exists (a
 real not-found, NOT a policy block).
 
@@ -128,7 +128,7 @@ sandbox proxy relays that body verbatim (`integrationUpstreamErrorFromResponse` 
 `code`), so `integration_execute` classifies it by its stable `code`, never the
 bare 403, and RETURNS
 guidance (the app is turned off for this agent; tell the user to enable it in the
-Permissions tab; do not retry until they confirm), never a thrown/raw error.
+Settings, under Apps; do not retry until they confirm), never a thrown/raw error.
 Marked `details.appTurnedOff`.
 
 **No access to the agent (HOU-967).** The gateway 403s with `{code:"not_assigned"}`
@@ -148,7 +148,7 @@ INTEGRATIONS section and its verbatim Rust mirror
 `app/src-tauri/src/houston_prompt/integrations.rs` (`PI_INTEGRATIONS_GUIDANCE`,
 kept in sync) instruct: connected → use it; connectable → briefly offer +
 `request_connection`; blocked → tell the user it can be switched on in this
-agent's Permissions tab, someone who manages the agent can do it (never imply
+agent's Settings, under Apps, someone who manages the agent can do it (never imply
 Houston lacks it, never `request_connection`); unknown/empty → say plainly no such
 app is available. An empty result never means an app is unsupported — trust the
 reported status.
