@@ -31,6 +31,44 @@ describe("composer attachment validation", () => {
     strictEqual(result.rejected.length, 1);
   });
 
+  it("accepts video and audio files like any other workspace file", () => {
+    strictEqual(
+      validateComposerAttachment({
+        name: "demo.mp4",
+        size: 50 * 1024 * 1024,
+        type: "video/mp4",
+      }),
+      null,
+    );
+    strictEqual(
+      validateComposerAttachment({
+        name: "meeting.m4a",
+        size: 12 * 1024 * 1024,
+        type: "audio/mp4",
+      }),
+      null,
+    );
+    strictEqual(
+      validateComposerAttachment({
+        name: "clip.mov",
+        size: 1024,
+        type: "",
+      }),
+      null,
+    );
+  });
+
+  it("still applies the size cap to media files", () => {
+    deepStrictEqual(
+      validateComposerAttachment({
+        name: "feature-film.mp4",
+        size: MAX_COMPOSER_ATTACHMENT_BYTES + 1,
+        type: "video/mp4",
+      }),
+      { kind: "tooLarge", maxBytes: MAX_COMPOSER_ATTACHMENT_BYTES },
+    );
+  });
+
   it("rejects files above the engine per-file limit", () => {
     const reason = validateComposerAttachment({
       name: "huge.pdf",
