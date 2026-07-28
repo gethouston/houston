@@ -39,6 +39,60 @@ test("a non-workspace cwd gets only the base prompt (no context section)", () =>
   expect(prompt).toBe("You are Houston.");
 });
 
+function writeSkill(dir: string, slug: string, frontmatter: string): void {
+  const skillDir = join(dir, ".agents", "skills", slug);
+  mkdirSync(skillDir, { recursive: true });
+  writeFileSync(
+    join(skillDir, "SKILL.md"),
+    `---\n${frontmatter}\n---\n\n## Procedure\nDo the thing.\n`,
+  );
+}
+
+test("workspace skills are indexed with their SKILL.md locations (HOU-894)", () => {
+  const dir = freshWorkspace();
+  writeSkill(
+    dir,
+    "marketing-report",
+    "name: marketing-report\ndescription: Weekly marketing report with brand guidelines",
+  );
+
+  const prompt = buildSystemPrompt(dir, "You are Houston.");
+  expect(prompt).toContain("<available_skills>");
+  expect(prompt).toContain("<name>marketing-report</name>");
+  expect(prompt).toContain("Weekly marketing report with brand guidelines");
+  // The location is the absolute path the Read tool loads the procedure from.
+  expect(prompt).toContain(
+    join(dir, ".agents", "skills", "marketing-report", "SKILL.md"),
+  );
+});
+
+test("no skills directory means no skills section", () => {
+  const dir = freshWorkspace();
+  const prompt = buildSystemPrompt(dir, "You are Houston.");
+  expect(prompt).not.toContain("<available_skills>");
+});
+
+test("a skill without a description is dropped (pi loader parity)", () => {
+  const dir = freshWorkspace();
+  writeSkill(dir, "bare-skill", "name: bare-skill");
+  writeSkill(dir, "good-skill", "name: good-skill\ndescription: A real one");
+
+  const prompt = buildSystemPrompt(dir, "You are Houston.");
+  expect(prompt).toContain("<name>good-skill</name>");
+  expect(prompt).not.toContain("bare-skill");
+});
+
+test("the skills index lands before the mode overlay", () => {
+  const dir = freshWorkspace();
+  writeSkill(dir, "plan-me", "name: plan-me\ndescription: Plan something");
+
+  const prompt = buildSystemPrompt(dir, "You are Houston.", "plan");
+  const skillsAt = prompt.indexOf("<available_skills>");
+  const overlayAt = prompt.indexOf("You are in Plan mode.");
+  expect(skillsAt).toBeGreaterThan(-1);
+  expect(overlayAt).toBeGreaterThan(skillsAt);
+});
+
 test("group context is appended after the workspace/user section", () => {
   const dir = freshWorkspace();
   writeFileSync(join(dir, "WORKSPACE.md"), "Acme Corp.");
