@@ -36,7 +36,7 @@ export interface ProviderBrowserData {
  * hub catalog and model picker use.
  */
 export function useProviderBrowserData(): ProviderBrowserData {
-  const connections = useProviderConnections();
+  const connections = useProviderConnections({ alwaysActive: true });
   const { catalog } = useHubCatalog();
   const { capabilities } = useCapabilities();
   const { updatedAt } = useProviderCatalog();

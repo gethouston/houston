@@ -11,6 +11,7 @@ export function useRoutines(agentPath: string | undefined) {
       return tauriRoutines.list(agentPath);
     },
     enabled: !!agentPath,
+    staleTime: 30_000,
   });
 }
 
@@ -25,6 +26,7 @@ export function useRoutineRuns(
       return tauriRoutines.listRuns(agentPath, routineId);
     },
     enabled: !!agentPath,
+    staleTime: 30_000,
   });
 }
 

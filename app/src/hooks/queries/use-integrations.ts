@@ -45,6 +45,7 @@ export function useIntegrationConnections(provider: string, enabled: boolean) {
     queryKey: queryKeys.integrationConnections(provider),
     queryFn: () => tauriIntegrations.connections(provider),
     enabled: enabled && registered,
+    staleTime: 30_000,
   });
 }
 
@@ -110,6 +111,7 @@ export function useCustomIntegrations() {
     queryKey: queryKeys.customIntegrations(),
     queryFn: () => tauriIntegrations.customList(),
     enabled: integrationsSupported(capabilities),
+    staleTime: 30_000,
   });
 }
 

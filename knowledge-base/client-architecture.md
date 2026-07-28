@@ -276,6 +276,25 @@ A component added, removed, or restructured is a structural change. (Full detail
 | **`app/` (= `packages/web`)** | *App-specific* composition: wiring `ui/` to SDK view-models, `t()` injection, routing, desktop chrome. Unsure if generic? Start in `app/`, extract later. |
 | **`packages/web/src/engine-adapter`** | Only web↔SDK glue and the not-yet-delegated surface (providers, `updateActivity`). **Prefer the SDK** — the adapter is shrinking, not growing. |
 
+### g. Top-level screen lifecycle and cache policy
+
+The desktop/web shell keeps visited top-level screens mounted in a workspace-keyed
+visited set. An inactive screen is `display: none`, not destroyed: local view
+state survives navigation, while view-owned polling and event ownership MUST gate
+on its active top-level view id. Switching workspace resets the keep-alive layer.
+The layer closes an open Radix dialog before hiding its source screen because
+dialogs portal outside that hidden subtree.
+
+TanStack Query defaults are 30 seconds stale time and 30 minutes garbage
+collection. SSE invalidation, not short staleness, is the correctness path.
+Boot prefetch warms defining reads for reachable top-level screens; it must only
+request advertised capabilities (for example, Composio only when advertised).
+
+**Ownership invariant:** a query hook gated on the active view belongs exclusively
+to that screen. Shared hooks, including Teams roster data used by sharing/admin
+surfaces, must use their callers' precise `enabled` flags and must never be
+view-gated.
+
 ---
 
 ## Verification matrix

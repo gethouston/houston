@@ -30,6 +30,7 @@ import { useOnboardingPending } from "./hooks/use-onboarding-pending";
 import { useOnboardingSegment } from "./hooks/use-onboarding-segment";
 import { useProviderCatalog } from "./hooks/use-provider-catalog";
 import { useReadCursorTracker } from "./hooks/use-read-cursors";
+import { useScreenPrefetch } from "./hooks/use-screen-prefetch";
 import { SessionUnavailableError, useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
 import { analytics } from "./lib/analytics";
@@ -76,6 +77,7 @@ export default function App() {
   // Fetch the host's pi-ai catalog once and hydrate the PROVIDERS cache app-wide,
   // so every provider/model surface renders the real runnable set from load.
   useProviderCatalog();
+  useScreenPrefetch();
   // Turn an `houston://store/install` deep link (desktop) or `?install=<slug>`
   // web param into a seeded import wizard once the shell is live.
   useStoreInstallDeepLink();

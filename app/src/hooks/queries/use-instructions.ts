@@ -10,6 +10,7 @@ export function useInstructions(agentPath: string | undefined) {
       return tauriAgent.readFile(agentPath, "CLAUDE.md").catch(() => "");
     },
     enabled: !!agentPath,
+    staleTime: 30_000,
   });
 }
 

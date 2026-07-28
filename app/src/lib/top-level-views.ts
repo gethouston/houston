@@ -12,10 +12,32 @@ import { PERMISSIONS_VIEW_ID } from "../components/permissions/id.ts";
 import { STORE_VIEW_ID } from "../components/store-view/id.ts";
 import { USAGE_VIEW_ID } from "../components/usage-view/id.ts";
 
-export const TOP_LEVEL_VIEWS = new Set<string>([
-  "dashboard",
-  "settings",
-  "ai-hub",
+export {
+  INTEGRATIONS_VIEW_ID,
+  ORGANIZATION_VIEW_ID,
+  PERMISSIONS_VIEW_ID,
+  STORE_VIEW_ID,
+  USAGE_VIEW_ID,
+};
+
+export const DASHBOARD_VIEW_ID = "dashboard";
+export const SETTINGS_VIEW_ID = "settings";
+export const AI_HUB_VIEW_ID = "ai-hub";
+
+export type TopLevelViewId =
+  | typeof DASHBOARD_VIEW_ID
+  | typeof SETTINGS_VIEW_ID
+  | typeof AI_HUB_VIEW_ID
+  | typeof USAGE_VIEW_ID
+  | typeof INTEGRATIONS_VIEW_ID
+  | typeof ORGANIZATION_VIEW_ID
+  | typeof PERMISSIONS_VIEW_ID
+  | typeof STORE_VIEW_ID;
+
+export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
+  DASHBOARD_VIEW_ID,
+  SETTINGS_VIEW_ID,
+  AI_HUB_VIEW_ID,
   USAGE_VIEW_ID,
   INTEGRATIONS_VIEW_ID,
   ORGANIZATION_VIEW_ID,
@@ -25,7 +47,15 @@ export const TOP_LEVEL_VIEWS = new Set<string>([
 
 /** Whether a `viewMode` is a top-level (non-agent) view. */
 export function isTopLevelView(viewMode: string): boolean {
-  return TOP_LEVEL_VIEWS.has(viewMode);
+  return TOP_LEVEL_VIEWS.has(viewMode as TopLevelViewId);
+}
+
+/** Whether a kept-alive top-level surface is the one currently on screen. */
+export function isActiveTopLevelView(
+  activeViewMode: string,
+  viewId: TopLevelViewId,
+): boolean {
+  return activeViewMode === viewId;
 }
 
 /**
@@ -47,7 +77,7 @@ export function blockedTopLevelView(
   if (viewMode === ORGANIZATION_VIEW_ID) return !gates.showOrganization;
   // Permissions shares the Organization gate exactly (multiplayer owner/admin).
   if (viewMode === PERMISSIONS_VIEW_ID) return !gates.showOrganization;
-  if (viewMode === "ai-hub") return !gates.showAiModels;
+  if (viewMode === AI_HUB_VIEW_ID) return !gates.showAiModels;
   // The Usage page reads the same workspace-central provider accounts the AI
   // Models hub manages, so it shares the hub's Teams gate exactly.
   if (viewMode === USAGE_VIEW_ID) return !gates.showAiModels;

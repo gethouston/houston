@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
+import { isActiveTopLevelView } from "../../lib/top-level-views";
+import { useUIStore } from "../../stores/ui";
 
 /**
  * One fetch covers every client-side range (7d / 30d / 13w); the gateway
@@ -24,10 +26,13 @@ export const COMPUTE_USAGE_DAYS = 90;
  * Failures surface via `tauriOrg.computeUsage` → `call()` (toast + Report bug).
  */
 export function useComputeUsage(enabled: boolean) {
+  const active = useUIStore((s) => isActiveTopLevelView(s.viewMode, "usage"));
   return useQuery({
     queryKey: queryKeys.computeUsage(COMPUTE_USAGE_DAYS),
     queryFn: () => tauriOrg.computeUsage(COMPUTE_USAGE_DAYS),
-    enabled,
+    // The Usage surface stays mounted while hidden. Disable its observer off
+    // screen so neither its interval nor focus refetch wakes a pod-held read.
+    enabled: enabled && active,
     staleTime: 20_000,
     // The pod flushes its report on every turn start/end (edge-triggered), so
     // a 30s poll while an agent is up keeps fresh numbers visible within

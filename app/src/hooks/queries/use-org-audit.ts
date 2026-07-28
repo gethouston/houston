@@ -5,6 +5,8 @@ import {
 } from "../../components/organization/org-view-model";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
+import { isActiveTopLevelView } from "../../lib/top-level-views";
+import { useUIStore } from "../../stores/ui";
 
 /**
  * The org audit feed (Teams v2), newest first, paged by a before-cursor.
@@ -21,13 +23,18 @@ import { tauriOrg } from "../../lib/tauri";
  * `tauriOrg.audit` → `call()` path (toast + Report bug), no `onError` needed.
  */
 export function useOrgAudit(enabled: boolean) {
+  const active = useUIStore((s) =>
+    isActiveTopLevelView(s.viewMode, "organization"),
+  );
   return useInfiniteQuery({
     queryKey: queryKeys.orgAudit(),
     queryFn: ({ pageParam }: { pageParam: number | undefined }) =>
       tauriOrg.audit({ before: pageParam, limit: AUDIT_PAGE_SIZE }),
     initialPageParam: undefined as number | undefined,
     getNextPageParam: nextAuditCursor,
-    enabled,
+    // The Organization screen is kept alive. Its focus refresh is valuable
+    // only while the audit feed is actually visible.
+    enabled: enabled && active,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
   });

@@ -1,3 +1,4 @@
+import { resetIntegrationGateForIdentityChange } from "../components/integrations/integrations-gate-state";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { useAgentStore } from "../stores/agents";
 import { useDraftStore } from "../stores/drafts";
@@ -29,6 +30,7 @@ import { queryClient } from "./query-client";
  */
 export function resetForIdentityChange(): void {
   queryClient.clear();
+  resetIntegrationGateForIdentityChange();
   useAgentStore.getState().reset();
   useWorkspaceStore.getState().reset();
   useUIStore.getState().reset();

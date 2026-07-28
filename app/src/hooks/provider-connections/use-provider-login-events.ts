@@ -17,6 +17,7 @@ import type {
 } from "./types";
 
 interface Args {
+  active: boolean;
   visibleProviders: readonly ProviderInfo[];
   addToast: AddToast;
   t: ProvidersT;
@@ -35,6 +36,7 @@ interface Args {
  * reads when several providers fire events concurrently.
  */
 export function useProviderLoginEvents({
+  active,
   visibleProviders,
   addToast,
   t,
@@ -44,6 +46,7 @@ export function useProviderLoginEvents({
   setPending,
 }: Args): void {
   useEffect(() => {
+    if (!active) return;
     // This surface owns `ProviderLoginUrl` while mounted — the shell's global
     // fallback stands down so the URL is never opened twice.
     const release = claimProviderLoginSurface();
@@ -149,6 +152,7 @@ export function useProviderLoginEvents({
       release();
     };
   }, [
+    active,
     visibleProviders,
     addToast,
     t,

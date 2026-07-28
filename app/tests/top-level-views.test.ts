@@ -4,7 +4,10 @@ import { INTEGRATIONS_VIEW_ID } from "../src/components/integrations-view/id.ts"
 import { ORGANIZATION_VIEW_ID } from "../src/components/organization/id.ts";
 import { USAGE_VIEW_ID } from "../src/components/usage-view/id.ts";
 import {
+  AI_HUB_VIEW_ID,
   blockedTopLevelView,
+  DASHBOARD_VIEW_ID,
+  isActiveTopLevelView,
   isTopLevelView,
 } from "../src/lib/top-level-views.ts";
 
@@ -25,6 +28,14 @@ describe("isTopLevelView", () => {
   it("treats everything else as an agent tab", () => {
     strictEqual(isTopLevelView("chat"), false);
     strictEqual(isTopLevelView("integrations"), false);
+  });
+});
+
+describe("isActiveTopLevelView", () => {
+  it("only enables work for the visible top-level screen", () => {
+    // A shared hook must use an explicit top-level id, not an arbitrary tab.
+    strictEqual(isActiveTopLevelView(USAGE_VIEW_ID, USAGE_VIEW_ID), true);
+    strictEqual(isActiveTopLevelView(DASHBOARD_VIEW_ID, USAGE_VIEW_ID), false);
   });
 });
 
@@ -50,11 +61,11 @@ describe("blockedTopLevelView", () => {
     // Same strand for the hub: a Teams member (role flipped) with a stale
     // `ai-hub` viewMode must be reported blocked and reset to the dashboard.
     strictEqual(
-      blockedTopLevelView("ai-hub", gates({ showAiModels: false })),
+      blockedTopLevelView(AI_HUB_VIEW_ID, gates({ showAiModels: false })),
       true,
     );
     strictEqual(
-      blockedTopLevelView("ai-hub", gates({ showAiModels: true })),
+      blockedTopLevelView(AI_HUB_VIEW_ID, gates({ showAiModels: true })),
       false,
     );
   });

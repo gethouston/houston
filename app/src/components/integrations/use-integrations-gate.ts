@@ -9,6 +9,11 @@ import { showErrorToast } from "../../lib/error-toast";
 import { isIdentityConfigured } from "../../lib/identity";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations } from "../../lib/tauri";
+import {
+  readyTokens,
+  resyncedTokens,
+  resyncingTokens,
+} from "./integrations-gate-state";
 import { INTEGRATION_PROVIDER } from "./model";
 
 /**
@@ -33,6 +38,9 @@ export type IntegrationsGate =
       dismissReconnect: () => Promise<void>;
     };
 
+// Both Integrations surfaces use this hook. A session push belongs to the
+// session, not to either component mount, so revisiting either surface cannot
+// manufacture a loading gate.
 /**
  * The status / session-resync / sign-in / reconnect-notice boot logic, extracted
  * from the legacy tab with identical behavior:
@@ -60,21 +68,47 @@ export function useIntegrationsGate(): IntegrationsGate {
 
   const [signingIn, setSigningIn] = useState(false);
   const token = session?.idToken ?? null;
-  const [resynced, setResynced] = useState(false);
+  const [, setResyncVersion] = useState(0);
+  // A provider that was ready then falls back to `signin` needs a fresh push,
+  // even before the bookkeeping effect removes its old success latch.
+  const resynced =
+    !!token && resyncedTokens.has(token) && !readyTokens.has(token);
 
   useEffect(() => {
-    if (!token || ready || resynced || status.isLoading || !composio) return;
+    for (const tokens of [resyncedTokens, readyTokens, resyncingTokens]) {
+      for (const value of tokens) if (value !== token) tokens.delete(value);
+    }
+    if (!token) return;
+    if (ready) readyTokens.add(token);
+    if (!ready && readyTokens.delete(token)) resyncedTokens.delete(token);
+  }, [token, ready]);
+
+  useEffect(() => {
+    if (
+      !token ||
+      ready ||
+      resynced ||
+      status.isLoading ||
+      !composio ||
+      resyncingTokens.has(token)
+    )
+      return;
     let stale = false;
+    resyncingTokens.add(token);
     tauriIntegrations
       .setSession(token)
       .then(() =>
         qc.invalidateQueries({ queryKey: queryKeys.integrationStatus() }),
       )
+      .then(() => {
+        resyncedTokens.add(token);
+      })
       .catch(() => {
         // Surfaced by call(); the sign-in card below stays actionable.
       })
       .finally(() => {
-        if (!stale) setResynced(true);
+        resyncingTokens.delete(token);
+        if (!stale) setResyncVersion((version) => version + 1);
       });
     return () => {
       stale = true;

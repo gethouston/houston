@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriProvider } from "../../lib/tauri";
+import { isActiveTopLevelView } from "../../lib/top-level-views";
+import { useUIStore } from "../../stores/ui";
 
 /**
  * Live per-account provider usage for the AI Hub's Usage tab: each connected
@@ -15,10 +17,13 @@ import { tauriProvider } from "../../lib/tauri";
  * through `tauriProvider.usage` → `call()` (toast + Report bug).
  */
 export function useProviderUsage(enabled: boolean) {
+  const active = useUIStore((s) => isActiveTopLevelView(s.viewMode, "usage"));
   return useQuery({
     queryKey: queryKeys.providerUsage(),
     queryFn: () => tauriProvider.usage(),
-    enabled,
+    // Keep-alive preserves the last result, but hidden provider usage must not
+    // poll or refetch when the window regains focus.
+    enabled: enabled && active,
     staleTime: 30_000,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,

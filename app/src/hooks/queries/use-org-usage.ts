@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
+import { isActiveTopLevelView } from "../../lib/top-level-views";
+import { useUIStore } from "../../stores/ui";
 
 /** Default usage window (contract §5: host clamps `days` to ≤ 90). */
 export const USAGE_DEFAULT_DAYS = 30;
@@ -20,10 +22,15 @@ export function useOrgUsage(
   enabled: boolean,
   days: number = USAGE_DEFAULT_DAYS,
 ) {
+  const active = useUIStore((s) =>
+    isActiveTopLevelView(s.viewMode, "organization"),
+  );
   return useQuery({
     queryKey: queryKeys.orgUsage(days),
     queryFn: () => tauriOrg.usage(days),
-    enabled,
+    // Organization remains mounted while hidden; avoid an unnecessary usage
+    // read when the app window regains focus off this screen.
+    enabled: enabled && active,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: true,
   });

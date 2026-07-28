@@ -11,6 +11,7 @@ export function useSkills(agentPath: string | undefined) {
       return tauriSkills.list(agentPath);
     },
     enabled: !!agentPath,
+    staleTime: 30_000,
   });
 }
 
@@ -26,6 +27,7 @@ export function useSkillDetail(
       return tauriSkills.load(agentPath, name);
     },
     enabled: !!agentPath && !!name,
+    staleTime: 30_000,
   });
 }
 

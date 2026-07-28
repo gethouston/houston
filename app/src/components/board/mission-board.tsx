@@ -1,5 +1,5 @@
 import { AIBoard, type MessageMention } from "@houston-ai/board";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { modelAcceptsImages } from "../../lib/providers";
@@ -7,6 +7,7 @@ import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { buildMissionBoardColumns } from "../mission-board-columns";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
+import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useQueuedMessageLabels } from "../use-queued-message-labels";
@@ -27,6 +28,7 @@ import { useBoardSendQueue } from "./use-board-send-queue";
 export function MissionBoard({ source }: { source: BoardSource }) {
   const { t } = useTranslation(["dashboard", "board"]);
   const { panelContainer, setPanelOpen } = useShellDetailPanel();
+  const isActive = useIsActiveView();
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const addToast = useUIStore((s) => s.addToast);
   const queuedLabels = useQueuedMessageLabels();
@@ -53,6 +55,12 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     () => source.setSelectedId(null),
     [source.setSelectedId],
   );
+  useEffect(() => {
+    if (!isActive) {
+      source.setSelectedId(null);
+      setPanelOpen(false);
+    }
+  }, [isActive, source.setSelectedId, setPanelOpen]);
   const { columns, selectionProps } = useBoardSelectionUI({
     baseColumns,
     allItems: source.allItems,
