@@ -30,6 +30,7 @@ export function pushPendingUserMessage(
   _agentPath: string,
   _sessionKey: string,
   _text: string,
+  _author?: { userId: string; name?: string },
 ): void {}
 
 /**

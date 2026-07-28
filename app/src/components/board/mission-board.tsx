@@ -160,6 +160,9 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           composerLabels={composerLabels}
           currentUserId={panel.currentUserId}
           authorLabels={panel.authorLabels}
+          showSenders={panel.showSenders}
+          agentLabel={panel.agentLabel}
+          renderSenderAvatar={panel.renderSenderAvatar}
           dictation={panel.dictation}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}

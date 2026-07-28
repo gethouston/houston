@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 36
+version: 37
 
 components:
   - id: agent-avatar
@@ -84,24 +84,31 @@ components:
   - id: assistant-message
     title: Assistant message
     purpose: A model turn's prose -- markdown, no bubble, left aligned.
-    anatomy: [markdown-body, code-block, inline-links, copy-action]
+    anatomy: [sender-line, markdown-body, code-block, inline-links, copy-action]
     states: [streaming, complete]
-    variants: [with-code, plain-prose]
+    variants: [with-code, plain-prose, single-player, multiplayer-attributed]
     behavior: >-
       assistant_text vs assistant_text_streaming decide whether the body grows
-      token-by-token; copy acts on the resolved markdown source.
+      token-by-token; copy acts on the resolved markdown source. In a SHARED
+      conversation (v37) the turn carries a sender line above the prose -- the
+      agent's mark + its name -- so every turn in a multiplayer thread says who
+      spoke; single-player renders no sender line at all.
     a11y: article/group role; code blocks keyboard-selectable; copy button labeled.
     since: 1
 
   - id: user-message
     title: User message
     purpose: A message the user (or a teammate) sent, right-aligned bubble.
-    anatomy: [bubble, author-label, attachment-chips]
+    anatomy: [sender-line, sender-avatar, bubble, attachment-chips]
     states: [default, with-attachments]
     variants: [single-player, multiplayer-authored]
     behavior: >-
-      In multiplayer the author field labels a teammate's bubble; single-player
-      omits it. Attachment/skill markers are decoded to a clean preview.
+      The message's stored author drives attribution. In a SHARED conversation
+      (v37) EVERY turn carries a sender line -- the writer's face + name,
+      whoever they are and however many people have written -- so attribution
+      follows the deployment, not the thread's cast; the viewer's own rows use
+      the consumer's "you" label. Single-player omits the line entirely.
+      Attachment/skill markers are decoded to a clean preview.
     a11y: group role; author announced in multiplayer; attachments labeled.
     since: 1
 

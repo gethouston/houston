@@ -182,7 +182,7 @@ export type { ChatComposerLabels, ChatInputProps } from "./chat-input";
 export { ChatInput } from "./chat-input";
 export type { AttachMenuItem } from "./chat-input-parts";
 export type { ChatAuthorLabels } from "./chat-messages";
-export { authorLabelFor } from "./chat-messages";
+export { authorLabelFor, senderNameFor } from "./chat-messages";
 // === Chat Components ===
 export { ChatPanel } from "./chat-panel";
 export type {

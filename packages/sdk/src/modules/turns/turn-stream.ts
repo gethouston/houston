@@ -20,6 +20,7 @@ import {
   turnErrorMessage,
 } from "./turn-errors";
 import { TurnSink } from "./turn-sink";
+import type { FeedAuthor } from "./vm-output";
 
 export { observeConversation } from "./observe-stream";
 export type { StreamRegistry, StreamTuning } from "./stream-registry";
@@ -70,6 +71,15 @@ export interface StreamTurnOptions {
    * paths. Omitted when the bubble and the prompt are the same string.
    */
   displayText?: string;
+  /**
+   * Who is sending this turn, in a MULTIPLAYER deployment: the acting user's
+   * identity, stamped onto the optimistic bubble so a shared conversation
+   * attributes it from the instant it appears — matching the `author` the
+   * gateway persists and history replays. The SDK never infers it (it has no
+   * identity of its own); a caller with no signed-in user omits it and the
+   * bubble stays authorless, exactly as single-player renders today.
+   */
+  author?: FeedAuthor;
 }
 
 /**
@@ -137,6 +147,8 @@ export async function streamTurn(
       // the engine still receives `prompt` below.
       data: opts.displayText ?? prompt,
       pending: true,
+      // Multiplayer: who is sending. Absent single-player (no identity).
+      author: opts.author,
     });
   }
   // Flip the card to "running" for this turn (re-running a needs_you/done

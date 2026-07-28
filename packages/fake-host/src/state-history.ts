@@ -14,6 +14,23 @@ export function getHistory(
   return state.histories.get(`${agentId}:${conversationId}`) ?? [];
 }
 /**
+ * Replace a conversation's transcript wholesale — the `/__test__/chat-history`
+ * arming control. Specs use it to reach a shape no scripted turn can produce
+ * locally: a SHARED conversation whose user messages carry the `author` the
+ * gateway stamps in multiplayer (the sender-attribution spec). The messages are
+ * stored verbatim, so the history route serves exactly the wire shape given.
+ */
+export function seedHistory(
+  agentId: string,
+  conversationId: string,
+  messages: ChatMessage[],
+): ChatMessage[] {
+  state.histories.set(`${agentId}:${conversationId}`, [...messages]);
+  emitDomain("ConversationsChanged", agentId);
+  return messages;
+}
+
+/**
  * Persist the turn's user message at turn START, stamped with the turn's id —
  * matching the real runtime, so a turn that dies before replying leaves
  * exactly the user message behind (the dead-turn history shape).

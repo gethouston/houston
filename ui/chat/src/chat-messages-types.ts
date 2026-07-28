@@ -61,6 +61,24 @@ export interface ChatMessagesProps {
   currentUserId?: string;
   /** Localized labels for author attribution. See `ChatAuthorLabels`. */
   authorLabels?: ChatAuthorLabels;
+  /**
+   * Force sender identity onto EVERY turn: each user row shows its author's
+   * face + name, each assistant row the agent's mark + name. Set it when the
+   * conversation is shared (a multiplayer deployment) — attribution is a
+   * property of the deployment, not of how many people have written yet.
+   *
+   * Omitted (the default) keeps the historical heuristic: user rows carry a
+   * plain author label only once the thread holds ≥2 distinct authors, and
+   * assistant rows carry none.
+   */
+  showSenders?: boolean;
+  /** The agent's display name, shown on assistant rows when `showSenders`.
+   *  Without it an assistant row shows its mark only. */
+  agentLabel?: string;
+  /** The sender avatar for a row (teammate face / agent mark), shown in the
+   *  sender line. Return `undefined` to render the name alone. Distinct from
+   *  `renderMessageAvatar`, which badges the bubble itself (channel logos). */
+  renderSenderAvatar?: (msg: ChatMessage) => ReactNode | undefined;
   /** Props-only configuration for the optional Conversation Map. */
   conversationMap?: {
     labels?: ConversationMapLabels;

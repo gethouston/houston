@@ -22,7 +22,7 @@ import { distinctAuthorCount } from "./feed-to-messages";
 import { computeTurnEndSummary } from "./turn-tools";
 
 export type { ChatAuthorLabels } from "./author-label";
-export { authorLabelFor } from "./author-label";
+export { authorLabelFor, senderNameFor } from "./author-label";
 export type { ChatMessagesProps } from "./chat-messages-types";
 
 export function ChatMessages({
@@ -47,16 +47,22 @@ export function ChatMessages({
   renderLink,
   currentUserId,
   authorLabels,
+  showSenders,
+  agentLabel,
+  renderSenderAvatar,
   conversationMap,
 }: ChatMessagesProps) {
   const [highlightedMessageKey, setHighlightedMessageKey] = useState<
     string | null
   >(null);
-  // Show author labels only when the thread has ≥2 distinct authors (C5); a
-  // single-author (or single-player) conversation stays label-free.
+  // A shared conversation attributes EVERY turn (`showSenders`) — sender
+  // identity is a property of the deployment, not of how many people have
+  // written. Without that signal, fall back to the historical heuristic: label
+  // user bubbles only once the thread holds ≥2 distinct authors (C5), and never
+  // label the agent.
   const showAuthorLabels = useMemo(
-    () => distinctAuthorCount(messages) >= 2,
-    [messages],
+    () => showSenders ?? distinctAuthorCount(messages) >= 2,
+    [showSenders, messages],
   );
   const turnEndSummaries = useMemo(
     () => computeTurnEndSummary(messages, status),
@@ -101,9 +107,11 @@ export function ChatMessages({
         ) : null}
         {displayItems.map((item) => (
           <ChatMessageItem
+            agentLabel={agentLabel}
             authorLabels={authorLabels}
             contextCompactedLabel={contextCompactedLabel}
             currentUserId={currentUserId}
+            forcedSenders={showSenders === true}
             getThinkingMessage={getThinkingMessage}
             highlightedMessageKey={highlightedMessageKey}
             isSpecialTool={isSpecialTool}
@@ -114,6 +122,7 @@ export function ChatMessages({
             processLabels={processLabels}
             renderLink={renderLink}
             renderMessageAvatar={renderMessageAvatar}
+            renderSenderAvatar={renderSenderAvatar}
             renderSystemMessage={renderSystemMessage}
             renderToolResult={renderToolResult}
             renderTurnSummary={renderTurnSummary}

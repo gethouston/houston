@@ -72,6 +72,9 @@ export function ChatPanel({
   dictation,
   currentUserId,
   authorLabels,
+  showSenders,
+  agentLabel,
+  renderSenderAvatar,
   conversationMap,
 }: ChatPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -192,6 +195,9 @@ export function ChatPanel({
           renderLink={renderLink}
           currentUserId={currentUserId}
           authorLabels={authorLabels}
+          showSenders={showSenders}
+          agentLabel={agentLabel}
+          renderSenderAvatar={renderSenderAvatar}
           conversationMap={conversationMap}
         />
       ) : (

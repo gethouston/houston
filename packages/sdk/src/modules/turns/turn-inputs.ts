@@ -4,6 +4,8 @@
  * a bad shape (CommandRegistry.dispatch turns the throw into `ok: false`).
  */
 
+import type { FeedAuthor } from "./vm-output";
+
 /** Arguments for starting a turn — the `turns/send` command payload. */
 export interface TurnSendInput {
   /** The agent whose sandbox runs the turn (informational for the single client). */
@@ -29,6 +31,12 @@ export interface TurnSendInput {
    * the turn as "execute".
    */
   mode?: "execute" | "plan" | "auto";
+  /**
+   * Who is sending, in a multiplayer deployment: stamps the optimistic bubble
+   * so a shared conversation attributes it immediately (see
+   * `StreamTurnOptions.author`). Omitted single-player / signed out.
+   */
+  author?: FeedAuthor;
 }
 
 /** The `turns/cancel` command payload. */
@@ -64,6 +72,18 @@ const str = (v: unknown): string | undefined =>
 const mode = (v: unknown): "execute" | "plan" | "auto" | undefined =>
   v === "execute" || v === "plan" || v === "auto" ? v : undefined;
 
+/** Untrusted-envelope guard for the sender identity: only an object carrying a
+ *  non-empty string `userId` passes (with an optional string `name`); anything
+ *  else drops to undefined and the bubble stays authorless. */
+const author = (v: unknown): FeedAuthor | undefined => {
+  const a = v as { userId?: unknown; name?: unknown } | null | undefined;
+  if (!a || typeof a.userId !== "string" || a.userId === "") return undefined;
+  return {
+    userId: a.userId,
+    ...(typeof a.name === "string" ? { name: a.name } : {}),
+  };
+};
+
 export function asSendInput(payload: unknown): TurnSendInput {
   const p = (payload ?? {}) as Record<string, unknown>;
   if (typeof p.conversationId !== "string" || typeof p.text !== "string")
@@ -76,6 +96,7 @@ export function asSendInput(payload: unknown): TurnSendInput {
     model: str(p.model),
     effort: str(p.effort),
     mode: mode(p.mode),
+    author: author(p.author),
   };
 }
 

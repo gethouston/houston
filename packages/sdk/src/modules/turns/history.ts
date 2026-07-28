@@ -14,6 +14,7 @@
 
 import type { ChatMessage } from "@houston/runtime-client";
 import { STOPPED_BY_USER } from "./turn-errors";
+import type { FeedAuthor } from "./vm-output";
 
 /**
  * One replayed feed frame: the SAME `{ feed_type, data }` push the turn
@@ -24,8 +25,10 @@ import { STOPPED_BY_USER } from "./turn-errors";
 export interface FeedFrame {
   feed_type: string;
   data: unknown;
-  /** Multiplayer only: who wrote a `user_message`. Absent single-player. */
-  author?: { userId: string; name?: string };
+  /** Multiplayer only: who wrote a `user_message`. Absent single-player. The
+   *  seed/prepend folds carry it onto the feed entry (`FeedItemVM.author`), so
+   *  a reloaded shared conversation attributes every teammate's bubble. */
+  author?: FeedAuthor;
   /**
    * Epoch-ms timestamp of the source `ChatMessage` this frame was folded from
    * (`ChatMessage.ts`). Carried on every frame attributable to a message so a

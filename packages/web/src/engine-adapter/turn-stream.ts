@@ -2,6 +2,7 @@ import type { HoustonEngineClient } from "@houston/runtime-client";
 import {
   type BoardStatus,
   conversationScope,
+  type FeedAuthor,
   type FeedFrame,
   type HistoryWindowVM,
   MultiplexFeedOutput,
@@ -109,15 +110,22 @@ export function seedConversationVm(
  * the just-created agent's engine answers, but the user must see it as sent
  * immediately. The eventual real send goes out with `suppressUserBubble` so
  * the bubble is never doubled.
+ *
+ * `author` is the acting user, same shape and purpose as {@link streamTurn}'s
+ * (HOU-943): because the real send SUPPRESSES its own bubble, this push is the
+ * only chance this row ever gets to name its sender — without it a warmed-up
+ * agent's first message would sit permanently unattributed in a shared thread.
  */
 export function pushPendingUserMessage(
   agentPath: string,
   sessionKey: string,
   text: string,
+  author?: FeedAuthor,
 ): void {
   conversationVm.pushFeedItem(agentPath, sessionKey, {
     feed_type: "user_message",
     data: text,
+    author,
   });
 }
 
@@ -131,7 +139,10 @@ export function pushPendingUserMessage(
  * pick (frontend id) — it labels the typed reconnect card when the runtime
  * refuses the send as not-connected. `pin` is the same pick in ENGINE ids,
  * sent on the wire so the turn runs on the conversation's own provider/model
- * instead of the agent-wide settings (HOU-695) — see `wireTurnPin`.
+ * instead of the agent-wide settings (HOU-695) — see `wireTurnPin`. `author` is
+ * the acting user in a multiplayer deployment: it stamps the optimistic bubble
+ * so a shared conversation names its sender before any server frame lands
+ * (HOU-943), and is absent single-player.
  */
 export function streamTurn(
   engine: HoustonEngineClient,
@@ -147,6 +158,7 @@ export function streamTurn(
   suppressUserBubble?: boolean,
   pin?: TurnWirePin,
   displayText?: string,
+  author?: FeedAuthor,
 ): Promise<void> {
   return sdkStreamTurn(
     engine,
@@ -161,6 +173,7 @@ export function streamTurn(
       suppressUserBubble,
       pin,
       displayText,
+      author,
     },
   );
 }

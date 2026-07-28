@@ -222,6 +222,14 @@ export interface AIBoardProps {
   currentUserId?: ChatPanelProps["currentUserId"];
   /** Localized author-attribution labels. Forwarded to ChatPanel. */
   authorLabels?: ChatPanelProps["authorLabels"];
+  /** Force sender identity onto every turn (a shared conversation). Forwarded
+   *  to ChatPanel — see `ChatMessagesProps.showSenders`. */
+  showSenders?: ChatPanelProps["showSenders"];
+  /** The agent's display name for its sender line. Forwarded to ChatPanel. */
+  agentLabel?: ChatPanelProps["agentLabel"];
+  /** Sender avatar (teammate face / agent mark) for the sender line. Forwarded
+   *  to ChatPanel. */
+  renderSenderAvatar?: ChatPanelProps["renderSenderAvatar"];
   /** Prop-driven dictation control for the composer mic. Forwarded to
    *  ChatPanel; omit (or ChatPanel's own default) hides the mic entirely. */
   dictation?: ChatPanelProps["dictation"];
@@ -343,6 +351,9 @@ export function AIBoard({
   composerLabels,
   currentUserId,
   authorLabels,
+  showSenders,
+  agentLabel,
+  renderSenderAvatar,
   dictation,
   layout = "board",
   listAlign,
@@ -723,6 +734,9 @@ export function AIBoard({
           renderUserMessage={renderUserMessage}
           currentUserId={currentUserId}
           authorLabels={authorLabels}
+          showSenders={showSenders}
+          agentLabel={agentLabel}
+          renderSenderAvatar={renderSenderAvatar}
           conversationMap={conversationMap}
           dictation={dictation}
           afterMessages={renderedAfterMessages}

@@ -64,7 +64,11 @@ cache was warm).
   (`{ nextText }`; end the running turn unseen + start the next one — the
   settle-from-history-by-turnId spec), and `POST /__test__/chat-interaction`
   (`{ interaction }`; end the next turn's `done` frame on that
-  `pendingInteraction` — the composer question/connect card spec).
+  `pendingInteraction` — the composer question/connect card spec), plus
+  `POST /__test__/chat-history` (`{ conversationId, messages, agentId? }`;
+  replace a transcript verbatim — the only way to reach a SHARED conversation
+  whose user messages carry the `author` the gateway stamps, for the sender
+  attribution spec `chat-senders.spec.ts`).
 - **Board = files-first.** Reads/writes `.houston/activity/activity.json` via
   `/agents/:id/agentfile/*` (NOT just `/activities`). Fake host backs it with a
   real store, unified with `/activities` (same data, as in the real host),

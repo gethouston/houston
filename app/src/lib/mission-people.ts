@@ -17,6 +17,17 @@ export interface MissionAttribution {
 }
 
 /**
+ * The last-resort display label for a person we know only by id: a short slice,
+ * never the raw id. Houston's user ids are opaque UUIDs and our users are
+ * non-technical — a 36-character id in a face stack or a chat sender line reads
+ * as a bug, and its "initials" would be two random hex characters. Mirrored in
+ * `ui/chat`'s `author-label.ts` (the library boundary forbids importing this).
+ */
+export function shortUserLabel(userId: string): string {
+  return userId.slice(0, 8);
+}
+
+/**
  * Build the ordered face stack for one mission: the creator first (deduped
  * against the contributor list), then the remaining contributors in stored
  * order. Label falls back profile name > stored contributor name > a short id
@@ -44,7 +55,8 @@ export function buildMissionPeople(
 
   return orderedIds.map((id) => {
     const profile = profiles.get(id);
-    const label = profile?.name ?? contributorName.get(id) ?? id.slice(0, 8);
+    const label =
+      profile?.name ?? contributorName.get(id) ?? shortUserLabel(id);
     const imageUrl = profile?.avatarUrl ?? undefined;
     return imageUrl ? { id, label, imageUrl } : { id, label };
   });
