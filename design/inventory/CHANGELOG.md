@@ -3,6 +3,16 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v44 - 2026-07-28
+
+HOU-974 and HOU-766 make blocked interaction cards collapsible without hiding
+their state. Only the body scrolls under the 40vh cap; footer actions and the
+trailing free-text row remain reachable. The chevron stays usable while a turn
+is running, and collapsed cards retain a muted one-line context hint. The
+complete plan now stays in the transcript; the floating plan approval card above
+the always-mounted composer carries only a two-line lede and three next-step
+choices.
+
 ## v43 - 2026-07-28
 
 HOU-773 adds `suggest-actions`, optional follow-up bubbles above the completed

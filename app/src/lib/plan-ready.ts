@@ -1,6 +1,6 @@
 import type { InteractionStep } from "@houston/protocol";
 
-/** A plan_ready step: the model called `plan_ready` with the drafted plan. It
+/** A plan_ready step: the model called `plan_ready` with a compact plan lede. It
  *  reaches the frontend as a lone step in a `PendingInteraction`, exactly like
  *  ask_user. Extracted from the protocol union so the app narrows to it. */
 export type PlanReadyStep = Extract<InteractionStep, { kind: "plan_ready" }>;

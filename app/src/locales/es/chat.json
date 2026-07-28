@@ -77,10 +77,14 @@
     "recommended": "Recomendado",
     "skip": "Omitir",
     "notNow": "Ahora no",
+    "collapse": "Contraer interacción",
+    "expand": "Expandir interacción",
     "esc": "Esc"
   },
   "planReady": {
     "title": "Plan listo",
+    "collapse": "Contraer aprobación del plan",
+    "expand": "Expandir aprobación del plan",
     "askFirstTitle": "Continuar en modo Preguntar antes",
     "askFirstDescription": "Hace las cosas y te pregunta antes de acciones delicadas.",
     "autopilotTitle": "Continuar en modo Piloto automático",

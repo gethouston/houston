@@ -10,6 +10,8 @@
  *  one-line description on its own line, matching the composer mode menu. */
 export interface ChatPlanReadyLabels {
   title: string;
+  collapse: string;
+  expand: string;
   askFirstTitle: string;
   askFirstDescription: string;
   autopilotTitle: string;
@@ -22,6 +24,8 @@ export interface ChatPlanReadyLabels {
  *  No em dashes. */
 export const DEFAULT_PLAN_READY_LABELS: ChatPlanReadyLabels = {
   title: "Plan ready",
+  collapse: "Collapse plan approval",
+  expand: "Expand plan approval",
   askFirstTitle: "Continue in Ask first mode",
   askFirstDescription: "Gets things done, asks before sensitive actions.",
   autopilotTitle: "Continue in Autopilot mode",
@@ -29,6 +33,9 @@ export const DEFAULT_PLAN_READY_LABELS: ChatPlanReadyLabels = {
   keepPlanningTitle: "Keep planning",
   keepPlanningDescription: "Stay here and adjust the plan.",
 };
+
+/** Shared by the card and its DOM-free tests: summaries stay a compact lede. */
+export const PLAN_READY_LEDE_CLASS_NAME = "line-clamp-2";
 
 /** Stable key for each action, so the .tsx wires the right callback + icon. */
 export type PlanReadyActionKey =

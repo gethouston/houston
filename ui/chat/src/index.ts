@@ -193,8 +193,9 @@ export type {
 } from "./chat-panel-types";
 // === Plan-ready card ===
 // The composer-replacing surface shown when the agent finishes planning
-// (plan_ready): the drafted plan + Start working / Run on Autopilot / Keep
-// planning. Props-only; the app supplies localized labels and wires the sends.
+// (plan_ready): a compact plan lede + Start working / Run on Autopilot / Keep
+// planning. The full plan remains in the assistant message. Props-only; the app
+// supplies localized labels and wires the sends.
 export type { ChatPlanReadyCardProps } from "./chat-plan-ready-card";
 export { ChatPlanReadyCard } from "./chat-plan-ready-card";
 export type {

@@ -71,7 +71,11 @@ export function ChatSigninInteractionCard({
   pager,
   onDismiss,
   dismissLabel,
+  collapseLabel,
+  expandLabel,
   disabled,
+  open,
+  onOpenChange,
 }: ChatSigninInteractionCardProps) {
   const { t } = useTranslation("chat");
   const gate = useIntegrationsGate();
@@ -123,7 +127,7 @@ export function ChatSigninInteractionCard({
   // hook owns the editable-target guard + capture-phase pre-emption of the
   // global Escape-closes-the-panel shortcut.
   useInteractionStepKeys({
-    enabled: !pending,
+    enabled: open && !pending,
     onEnter: showSignin && gate.kind === "signin" ? doSignIn : undefined,
     onEscape: showNotNow ? onSkip : undefined,
   });
@@ -145,9 +149,14 @@ export function ChatSigninInteractionCard({
   return (
     <InteractionModal
       contentKey={stepId}
+      collapseLabel={collapseLabel}
+      collapsedHint={reasonLine}
       disabled={disabled}
       dismissLabel={dismissLabel}
+      expandLabel={expandLabel}
       onDismiss={onDismiss}
+      onOpenChange={onOpenChange}
+      open={open}
       pager={pager}
       // Title: the Houston helmet beside the "Houston" name (regular weight).
       title={

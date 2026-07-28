@@ -4,8 +4,8 @@ import { recordPlanReady } from "../interaction";
 
 /**
  * The plan-presentation tool — Plan mode ONLY. When the model has finished
- * planning it calls `plan_ready` INSTEAD OF writing the plan out and asking the
- * user in plain text to approve or switch modes. Executing it records the single
+ * planning it writes the full plan in its assistant message, then calls
+ * `plan_ready` to ask what should happen next. Executing it records the single
  * plan-ready step of this turn's interaction sequence (carried on the terminal
  * `done` frame + the persisted assistant message), and Houston shows the user a
  * card with three choices — start working, hand it to Autopilot, or keep
@@ -20,7 +20,7 @@ import { recordPlanReady } from "../interaction";
 const PlanReadyParams = Type.Object({
   summary: Type.String({
     description:
-      "A short, plain-language summary of the plan you are presenting for approval, in the user's language. A few sentences at most, the user already saw your full plan.",
+      "One or two plain-language sentences in the user's language. The full plan must already be in your assistant message, where the user reads it. This is only the approval card's lede.",
   }),
 });
 type PlanReadyParams = Static<typeof PlanReadyParams>;
@@ -35,8 +35,9 @@ export function makePlanReadyTool() {
     name: "plan_ready",
     label: "Present the plan",
     description:
-      "Present your finished plan for the user to approve. Call this when you are done planning INSTEAD OF writing the plan out and asking in plain text. Pass a short summary; Houston shows the user a card with three choices (start working, run on Autopilot, or keep planning) in place of the chat input. End your turn right after calling this.",
-    promptSnippet: "Present your finished plan for the user to approve",
+      "After writing your full plan in the assistant message, present the next-step choice to the user. Pass a one- or two-sentence lede; Houston shows the user a card with three choices (start working, run on Autopilot, or keep planning). End your turn right after calling this.",
+    promptSnippet:
+      "Put the plan in your message, then present a one- or two-sentence summary",
     parameters: PlanReadyParams,
     executionMode: "sequential",
     async execute(_id: string, params: PlanReadyParams) {

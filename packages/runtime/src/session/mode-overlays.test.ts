@@ -45,10 +45,10 @@ test("the plan overlay establishes the read-only, plan-then-approve contract", (
   const lower = PLAN_MODE_OVERLAY.toLowerCase();
   expect(lower).toContain("plan mode");
   expect(lower).toContain("must not change anything");
-  // The finished plan is presented for the user's approval via the plan_ready
-  // tool (replacing the older "review it" plain-text phrasing).
+  // The full plan stays in the assistant message and plan_ready asks what is next.
   expect(lower).toContain("approval");
   expect(lower).toContain("plan_ready");
+  expect(lower).toContain("full plan as your normal assistant message");
 });
 
 test("the auto overlay establishes the never-wait, act-and-report contract", () => {
