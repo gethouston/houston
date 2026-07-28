@@ -79,6 +79,8 @@ components:
     status: not-started
   suggest-reusable-card:
     status: not-started
+  suggest-actions:
+    status: not-started
   interaction-answers-message:
     status: not-started
   verified-badge:

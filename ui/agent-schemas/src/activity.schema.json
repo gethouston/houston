@@ -76,8 +76,10 @@
                     "question",
                     "signin",
                     "connect",
+                    "credential",
                     "plan_ready",
                     "suggest_reusable",
+                    "suggest_actions",
                     "approval"
                   ]
                 },
@@ -101,10 +103,24 @@
                 "summary": { "type": "string" },
                 "reusableKind": {
                   "type": "string",
-                  "enum": ["skill", "routine"]
+                  "enum": ["skill", "routine", "learning"]
                 },
                 "title": { "type": "string" },
                 "rationale": { "type": "string" },
+                "actions": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 4,
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "label", "message"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "label": { "type": "string" },
+                      "message": { "type": "string" }
+                    }
+                  }
+                },
                 "action": { "type": "string" },
                 "params": {
                   "type": "object",
@@ -126,12 +142,20 @@
                   "required": ["toolkit"]
                 },
                 {
+                  "properties": { "kind": { "const": "credential" } },
+                  "required": ["toolkit"]
+                },
+                {
                   "properties": { "kind": { "const": "plan_ready" } },
                   "required": ["summary"]
                 },
                 {
                   "properties": { "kind": { "const": "suggest_reusable" } },
                   "required": ["reusableKind", "title", "rationale"]
+                },
+                {
+                  "properties": { "kind": { "const": "suggest_actions" } },
+                  "required": ["actions"]
                 },
                 {
                   "properties": { "kind": { "const": "approval" } },

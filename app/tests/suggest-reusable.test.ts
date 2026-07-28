@@ -64,6 +64,21 @@ describe("resolveSuggestReusableOverride", () => {
     });
   });
 
+  it("coexists with optional suggested actions", () => {
+    const actions: InteractionStep = {
+      kind: "suggest_actions",
+      id: "a1",
+      actions: [
+        { id: "draft", label: "Draft", message: "Draft it." },
+        { id: "share", label: "Share", message: "Share it." },
+      ],
+    };
+    deepStrictEqual(resolveSuggestReusableOverride([actions, suggest], null), {
+      kind: "card",
+      step: suggest,
+    });
+  });
+
   it("returns none for a multi-step sequence (never coexists by construction)", () => {
     deepStrictEqual(resolveSuggestReusableOverride([question, suggest], null), {
       kind: "none",

@@ -118,6 +118,10 @@ components:
     status: implemented
     ref: "@houston-ai/chat ChatSuggestReusableCard (chat-suggest-reusable-card + chat-suggest-reusable-card-model)"
 
+  suggest-actions:
+    status: implemented
+    ref: "@houston-ai/chat ChatSuggestActions (ai-elements/suggestion)"
+
   interaction-answers-message:
     status: partial
     ref: "@houston-ai/chat interaction-answers-message (decode) + UserInteractionAnswersMessage; encode in app/"

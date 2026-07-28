@@ -27,9 +27,9 @@ import type {
  * Precedence across the step kinds (see {@link InteractionHolder.pending}): a
  * `plan_ready` step OWNS the interaction exclusively; otherwise the sequence is
  * the questions, then the signin step, then the connects; and a
- * `suggest_reusable` step is FALLBACK-ONLY — it surfaces solely when there are
- * no other steps at all this turn, because it means the mission genuinely IS
- * done (any question/signin/connect/plan_ready means it is not).
+ * `suggest_reusable` and `suggest_actions` are optional clean-finish offers.
+ * They may ride the same done frame in the order actions then reusable, but
+ * any question/signin/connect/credential/plan_ready blocks and wins instead.
  *
  * Turn-scoping mechanism (mirrors acting-context.ts): an `AsyncLocalStorage`
  * whose store — a fresh mutable holder — is established for the DURATION of
@@ -50,6 +50,7 @@ type SuggestReusableStep = Extract<
   InteractionStep,
   { kind: "suggest_reusable" }
 >;
+type SuggestActionsStep = Extract<InteractionStep, { kind: "suggest_actions" }>;
 
 export interface InteractionHolder {
   /** Question steps from the last `ask_user` call this turn (replace semantics). */
@@ -64,14 +65,12 @@ export interface InteractionHolder {
   /** The single plan-ready step, once the model called `plan_ready` (plan mode
    *  only). When set it OWNS the interaction exclusively — see {@link pending}. */
   readonly planReady: PlanReadyStep | undefined;
-  /** The single suggest-reusable step (id `r1`), once the model called
-   *  `suggest_reusable` on a clean finish to offer saving the work as a Skill,
-   *  Routine, or Learning. CRITICALLY DIFFERENT FROM {@link planReady}: it does NOT own the
-   *  interaction exclusively. It is a FALLBACK ONLY — used solely when there are
-   *  no other steps at all this turn. Questions/signin/connects/planReady all
-   *  take priority, because any of those means the mission genuinely is not done
-   *  yet, whereas a suggestion means it IS done. See {@link pending}. */
+  /** The single optional save offer (id `r1`) for a cleanly completed mission.
+   *  It can coexist with {@link suggestActions}; blocking steps take priority.
+   *  See {@link pending}. */
   readonly suggestReusable: SuggestReusableStep | undefined;
+  /** Optional concrete next-step bubbles for a cleanly completed mission. */
+  readonly suggestActions: SuggestActionsStep | undefined;
   /** The recorded sequence — question steps, then the signin step, then connect
    *  steps — or undefined when the model asked for nothing this turn. Derived:
    *  read after prompt(). */
@@ -85,6 +84,7 @@ class Holder implements InteractionHolder {
   readonly credentials: CredentialStep[] = [];
   planReady: PlanReadyStep | undefined;
   suggestReusable: SuggestReusableStep | undefined;
+  suggestActions: SuggestActionsStep | undefined;
 
   get pending(): PendingInteraction | undefined {
     // A plan-ready step is exclusive: the plan-mode overlay tells the model to
@@ -100,11 +100,13 @@ class Holder implements InteractionHolder {
       ...this.credentials,
     ];
     if (steps.length > 0) return { steps };
-    // suggest_reusable is FALLBACK-ONLY: it surfaces solely when nothing else
-    // was queued this turn. Any question/signin/connect above means the mission
-    // is not done, so it wins and the suggestion is dropped entirely — a
-    // suggestion must NEVER flip the board to `needs_you`.
-    if (this.suggestReusable) return { steps: [this.suggestReusable] };
+    // Optional offers may compose on the clean frame. Actions render first,
+    // then the reusable reflection card, so both stay visible without blocking.
+    const suggestions = [
+      ...(this.suggestActions ? [this.suggestActions] : []),
+      ...(this.suggestReusable ? [this.suggestReusable] : []),
+    ];
+    if (suggestions.length) return { steps: suggestions };
     return undefined;
   }
 }
@@ -238,5 +240,22 @@ export function recordSuggestReusable(input: {
     reusableKind: input.reusableKind,
     title: input.title.trim(),
     rationale: input.rationale.trim(),
+  };
+}
+
+/** Record concrete follow-up bubbles for a completed mission. */
+export function recordSuggestActions(input: {
+  actions: { id: string; label: string; message: string }[];
+}): void {
+  const holder = store.getStore();
+  if (!holder) return;
+  (holder as Holder).suggestActions = {
+    kind: "suggest_actions",
+    id: "a1",
+    actions: input.actions.map((action) => ({
+      id: action.id.trim(),
+      label: action.label.trim(),
+      message: action.message.trim(),
+    })),
   };
 }

@@ -275,6 +275,9 @@ components:
   suggest-reusable-card:
     status: not-started
     notes: Save-as-Skill/Routine offer on a clean mission finish (suggest_reusable); not in mobile v1.
+  suggest-actions:
+    status: not-started
+    notes: Optional follow-up bubbles after a clean mission finish; not in mobile v1.
   interaction-answers-message:
     status: not-started
     notes: Structured question/answer user bubble from a completed interaction sequence; not in mobile v1.

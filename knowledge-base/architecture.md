@@ -173,12 +173,15 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   `{ steps: InteractionStep[] }`, each step
   `{kind:"question", id, question, options?}` | `{kind:"connect", id, toolkit,
   reason?}` | `{kind:"approval", id, toolkit, action, params?, paramsHash}` (+
-  `signin` / `plan_ready` / `suggest_reusable`), `packages/protocol`, wire v3).
+  `signin` / `plan_ready` / `suggest_reusable` / `suggest_actions`),
+  `packages/protocol`, wire v3).
   Only the clean path carries it; an error frame never does.
 - **Done frame → settle split.** The SDK folds the frame
   (`packages/sdk/src/modules/turns/turn-settle.ts`): a clean turn WITH an
   interaction settles `boardStatus: needs_you` and carries the interaction; a
-  clean turn WITHOUT one settles the NEW terminal `boardStatus: done`. A user Stop
+  clean turn WITHOUT one settles the NEW terminal `boardStatus: done`. A frame
+  containing only optional `suggest_reusable` and/or `suggest_actions` steps
+  also settles `done`; any blocking step still settles `needs_you`. A user Stop
   / logged-out provider is a handled `needs_you` (never carrying an interaction);
   a real failure is `error`. `persistBoardStatus` writes `{ status,
   pending_interaction }` (the web adapter PATCHes it); Activity persists
@@ -250,6 +253,12 @@ card — the old mid-task `ask_user` "Want me to remember that?" flow is gone;
 a direct user "remember this" still saves immediately. Concept name lives in
 prompts/docs only; the wire kind stays `suggest_reusable` (persisted in user
 data). Inventory: `suggest-reusable-card` v22.
+
+**Follow-up step (suggest_actions).** Once a mission is complete, the agent may
+call `suggest_actions` with 2 to 4 concrete follow-ups. Each action has a short
+pill label and the visible user message sent when it is selected. This optional
+offer can compose with `suggest_reusable` (actions first), persists through
+reload, and never turns the board to `needs_you`. Dismissing clears it.
 
 The old `#houston_toolkit=` markdown-link connect hack is GONE from the prompt and
 tool guidance; the app's legacy link-card renderer survives only to render old

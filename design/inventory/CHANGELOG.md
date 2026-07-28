@@ -3,6 +3,12 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v43 - 2026-07-28
+
+HOU-773 adds `suggest-actions`, optional follow-up bubbles above the completed
+mission composer. A selected pill sends its concrete message as a visible user
+follow-up; dismissal is available without hover.
+
 ## v42 - 2026-07-28
 
 HOU-762 through HOU-764 unify the chat skill picker with the Skills catalog's

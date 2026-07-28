@@ -102,12 +102,9 @@ const invisibleFinal = (s: TurnState) =>
  * `s.pendingInteraction` before calling here): the turn ended asking the user
  * for something → `needs_you`; it ended with nothing outstanding → `done`.
  *
- * The ONE exception is a LONE `suggest_reusable` step: the mission genuinely IS
- * done, and the card is just an optional offer to save the work as a Skill or
- * Routine, not something blocking completion — so it settles `done`, not
- * `needs_you`. Any other step kind is BLOCKING and means `needs_you`: an
- * `approval` step (a permission the turn is waiting on), a `question`, a
- * `request_connection`, and `suggest_reusable` co-occurring with any of them.
+ * The exception is any mix of the optional `suggest_reusable` and
+ * `suggest_actions` offers: the mission genuinely IS done, so it settles
+ * `done`, not `needs_you`. Any blocking step means `needs_you`.
  */
 export function finishOk(s: TurnState): void {
   if (s.settled) return;
@@ -120,8 +117,10 @@ export function finishOk(s: TurnState): void {
   });
   s.output.sessionStatus(s.agentPath, s.sessionKey, "completed");
   const onlySuggestion =
-    s.pendingInteraction?.steps.length === 1 &&
-    s.pendingInteraction.steps[0].kind === "suggest_reusable";
+    s.pendingInteraction?.steps.every(
+      (step) =>
+        step.kind === "suggest_reusable" || step.kind === "suggest_actions",
+    ) ?? false;
   s.terminal = s.pendingInteraction && !onlySuggestion ? "needs_you" : "done";
 }
 

@@ -86,6 +86,55 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
     }),
   ).toBe(false);
 
+  expect(
+    isPendingInteraction({
+      steps: [
+        {
+          kind: "suggest_actions",
+          id: "a1",
+          actions: [
+            { id: "one", label: "Draft it", message: "Draft the email." },
+            { id: "two", label: "Share it", message: "Share the update." },
+          ],
+        },
+      ],
+    }),
+  ).toBe(true);
+  expect(
+    isPendingInteraction({
+      steps: [{ kind: "suggest_actions", id: "a1", actions: [] }],
+    }),
+  ).toBe(false);
+  expect(
+    isPendingInteraction({
+      steps: [
+        {
+          kind: "suggest_actions",
+          id: "a1",
+          actions: Array.from({ length: 5 }, (_, index) => ({
+            id: `action-${index}`,
+            label: "Next step",
+            message: "Continue.",
+          })),
+        },
+      ],
+    }),
+  ).toBe(false);
+  expect(
+    isPendingInteraction({
+      steps: [
+        {
+          kind: "suggest_actions",
+          id: "a1",
+          actions: [
+            { id: "one", label: 1, message: "Continue." },
+            { id: "two", label: "Two", message: "Continue." },
+          ],
+        },
+      ],
+    }),
+  ).toBe(false);
+
   // A signin step with a non-string reason is invalid.
   expect(
     isPendingInteraction({ steps: [{ kind: "signin", id: "s1", reason: 7 }] }),
