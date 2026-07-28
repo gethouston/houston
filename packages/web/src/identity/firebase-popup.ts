@@ -30,6 +30,7 @@ import {
   signOut,
   type User,
   type UserCredential,
+  updateProfile,
 } from "firebase/auth";
 import { isBenignPopupCancel, mapFirebaseError } from "./firebase-errors.ts";
 
@@ -82,12 +83,40 @@ async function toOutcome(cred: UserCredential): Promise<SignInOutcome> {
   };
 }
 
+/**
+ * Backfill the ACCOUNT RECORD's photo/name from the provider identity when the
+ * record lacks them. GCIP only mints the `picture`/`name` ID-token claims from
+ * the account record — NOT from the federated identity — so without this a
+ * Google account whose record was created photo-less signs in with a token
+ * that carries no `picture`, and the gateway (which trusts the token) serves
+ * initials to every teammate forever. Best-effort: a failure leaves the
+ * session exactly as it was, and the token is force-refreshed after a write so
+ * the very first gateway request carries the claim.
+ */
+async function backfillAccountProfile(user: User): Promise<void> {
+  const provider = user.providerData[0];
+  if (!provider) return;
+  const patch: { photoURL?: string; displayName?: string } = {};
+  if (!user.photoURL && provider.photoURL) patch.photoURL = provider.photoURL;
+  if (!user.displayName && provider.displayName)
+    patch.displayName = provider.displayName;
+  if (!patch.photoURL && !patch.displayName) return;
+  try {
+    await updateProfile(user, patch);
+    await user.getIdToken(true);
+  } catch (e) {
+    // Cosmetic identity only — the sign-in itself succeeded. Log for /debug.
+    console.error("account profile backfill failed", e);
+  }
+}
+
 async function popupSignIn(
   provider: GoogleAuthProvider | OAuthProvider,
 ): Promise<SignInOutcome | null> {
   const auth = await ready();
   try {
     const cred = await signInWithPopup(auth, provider);
+    await backfillAccountProfile(cred.user);
     return await toOutcome(cred);
   } catch (e) {
     if (isBenignPopupCancel(e)) return null; // benign cancel: no toast, no-op
@@ -164,7 +193,12 @@ export async function webRefreshIdToken(): Promise<string | null> {
  */
 export async function webCurrentSession(): Promise<Session | null> {
   const user = requireAuth().currentUser;
-  return user ? await toSession(user) : null;
+  if (!user) return null;
+  // Returning users never re-run the popup, so the record backfill (see
+  // `backfillAccountProfile`) also runs here — idempotent, writes only when
+  // the account record is missing what the provider identity carries.
+  await backfillAccountProfile(user);
+  return await toSession(user);
 }
 
 function toAuthProvider(providerId: string | undefined): AuthProvider {

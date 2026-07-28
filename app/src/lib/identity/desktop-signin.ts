@@ -9,15 +9,47 @@ import { identityConfig } from "./config.ts";
 import type { LoopbackAuthorizeOptions } from "./desktop-oauth.ts";
 import { IdentityError } from "./errors.ts";
 import {
+  type IdpSignInResult,
   signInWithCustomToken,
   signInWithIdp,
   signInWithIdpSession,
+  updateAccountProfile,
 } from "./firebase-rest.ts";
 import { authorizeGoogleDesktop } from "./google-authorize.ts";
 import { decodeIdTokenClaims } from "./id-token.ts";
 import { authorizeMicrosoftDesktop } from "./microsoft-authorize.ts";
 import type { SignInOutcome } from "./session.ts";
 import { sessionFromCustomToken, sessionFromIdp } from "./session-from-idp.ts";
+
+/**
+ * Backfill the GCIP account record from the provider identity when the record
+ * lacks a photo or name (the token claims are minted from the RECORD, so
+ * without this the gateway never learns the photo and teammates see initials
+ * forever). Best-effort: on failure the original result stands. On success the
+ * refreshed tokens (which already carry the new claims) replace the originals,
+ * so the first gateway request after sign-in serves the photo.
+ */
+async function withProfileBackfill(
+  result: IdpSignInResult,
+): Promise<IdpSignInResult> {
+  const claims = decodeIdTokenClaims(result.idToken);
+  const wantsPhoto = !claims?.picture && !!result.photoUrl;
+  const wantsName = !claims?.name && !!result.displayName;
+  if (!wantsPhoto && !wantsName) return result;
+  try {
+    const refreshed = await updateAccountProfile({
+      apiKey: identityConfig.apiKey,
+      idToken: result.idToken,
+      ...(wantsPhoto ? { photoUrl: result.photoUrl ?? undefined } : {}),
+      ...(wantsName ? { displayName: result.displayName ?? undefined } : {}),
+    });
+    return { ...result, ...refreshed };
+  } catch (e) {
+    // Cosmetic identity only — the sign-in itself succeeded. Log for /debug.
+    console.error("account profile backfill failed", e);
+    return result;
+  }
+}
 
 /**
  * Google: loopback id_token → `signInWithIdp` → SignInOutcome (provider
@@ -35,7 +67,7 @@ export async function googleDesktopSession(
     idToken,
   });
   return {
-    session: sessionFromIdp(result, "google.com"),
+    session: sessionFromIdp(await withProfileBackfill(result), "google.com"),
     isNewUser: result.isNewUser,
   };
 }
@@ -58,7 +90,7 @@ export async function microsoftDesktopSession(
     accessToken,
   });
   return {
-    session: sessionFromIdp(result, "microsoft.com"),
+    session: sessionFromIdp(await withProfileBackfill(result), "microsoft.com"),
     isNewUser: result.isNewUser,
   };
 }
@@ -79,7 +111,7 @@ export async function appleDesktopSession(
     sessionId: authorized.sessionId,
   });
   return {
-    session: sessionFromIdp(result, "apple.com"),
+    session: sessionFromIdp(await withProfileBackfill(result), "apple.com"),
     isNewUser: result.isNewUser,
   };
 }

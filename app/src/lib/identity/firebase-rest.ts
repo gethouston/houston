@@ -236,3 +236,34 @@ export async function refreshIdToken(params: {
     expiresAt: expiresAtFrom(body, "expires_in"),
   };
 }
+
+/**
+ * Set the ACCOUNT RECORD's display profile (GCIP `accounts:update`). GCIP mints
+ * the `name`/`picture` ID-token claims from the account record, not from the
+ * federated identity, so a record created photo-less signs in with tokens that
+ * carry no `picture` — and the gateway, which trusts the token, serves initials
+ * to every teammate. Called by the sign-in completions to backfill the record
+ * from the provider identity; `returnSecureToken` hands back fresh tokens that
+ * already carry the new claims.
+ */
+export async function updateAccountProfile(params: {
+  apiKey: string;
+  idToken: string;
+  displayName?: string;
+  photoUrl?: string;
+}): Promise<TokenSignInResult> {
+  const body = await postGcipJson(
+    `${IDENTITY_TOOLKIT_BASE}/accounts:update?key=${params.apiKey}`,
+    {
+      idToken: params.idToken,
+      ...(params.displayName ? { displayName: params.displayName } : {}),
+      ...(params.photoUrl ? { photoUrl: params.photoUrl } : {}),
+      returnSecureToken: true,
+    },
+  );
+  return {
+    idToken: reqString(body, "idToken"),
+    refreshToken: reqString(body, "refreshToken"),
+    expiresAt: expiresAtFrom(body, "expiresIn"),
+  };
+}
