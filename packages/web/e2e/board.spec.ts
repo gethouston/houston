@@ -273,6 +273,36 @@ test("moves a mission to the Done column", async ({ page }) => {
   ).toBeVisible();
 });
 
+/**
+ * HOU-932: the card wrapper's Enter/Space handler had no target guard, so a
+ * Space bubbling out of the inline rename input was preventDefault-ed and
+ * opened the mission — the editor unmounted mid-word and the space never
+ * landed. Renaming to a MULTI-WORD title is the whole regression.
+ */
+test("renames a mission to a multi-word title without the space closing the editor", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const card = page.locator('[data-kanban-card="act-1"]');
+  await card.hover();
+  await card.getByRole("button", { name: "Change title" }).click();
+
+  // Type char-by-char (a `fill` would set the value in one shot and never
+  // deliver the Space keydown this guards).
+  const input = card.getByRole("textbox");
+  await expect(input).toHaveValue("Plan a trip to Tokyo");
+  await input.fill("");
+  await input.pressSequentially("Two words");
+
+  // The editor survived the space with the whole string intact, and the
+  // mission's chat never opened behind it.
+  await expect(input).toHaveValue("Two words");
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+
+  await input.press("Enter");
+  await expect(card.getByText("Two words")).toBeVisible();
+});
+
 test("deletes a mission from the board", async ({ page }) => {
   await page.goto("/");
   const card = page.locator('[data-kanban-card="act-2"]'); // "Draft the launch email"
