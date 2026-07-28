@@ -69,13 +69,12 @@ async function openFinance(page: Page): Promise<void> {
 }
 
 /**
- * Open the agent workspace's OWN Permissions tab (the same three-tab surface,
- * mounted on the agent). Keyed by the tab's stable tour anchor, since a top-level
- * "Permissions" sidebar nav shares the label for owner/admin.
+ * Open the agent workspace Settings tab, where access controls now live in the
+ * same rail as agent configuration.
  */
-async function openAgentPermissionsTab(page: Page): Promise<void> {
+async function openAgentSettings(page: Page): Promise<void> {
   await page.goto("/");
-  await page.locator('[data-tour-target="tab-agent-permissions"]').click();
+  await page.locator('[data-tour-target="tab-job-description"]').click();
 }
 
 test("the agent list is the top level, and opening an agent shows the three tabs", async ({
@@ -174,24 +173,20 @@ test("AI Models tab: the model ceiling editor is present", async ({
 });
 
 /**
- * The SAME three-tab surface also mounts ON the agent as its own Permissions tab,
- * Teams-gated and visible to EVERYONE who can open the agent — editable for a
- * manager, read-only for a member — so a user always sees why their agent can or
- * can't use something (two fronts, one target).
+ * The same access sections also mount in agent Settings, Teams-gated and visible
+ * to everyone who can open the agent, editable for a manager and read-only for a
+ * member, so a user always sees why their agent can or can't use something.
  */
 
-test("agent Permissions tab: a manager gets the editable panel, and a People change round-trips", async ({
+test("agent Settings: a manager gets editable access controls, and a People change round-trips", async ({
   page,
   request,
 }) => {
   await armCapabilities(request, OWNER_CAPS);
   await armOrg(request);
-  await openAgentPermissionsTab(page);
+  await openAgentSettings(page);
 
-  // The same three sub-tabs the top-level drill-in shows.
-  await expect(page.getByRole("tab", { name: "People" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Integrations" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "AI Models" })).toBeVisible();
+  await page.getByRole("button", { name: "People" }).click();
 
   // People is default; the manager edits Bob's access right on the agent.
   const bob = page.getByRole("button", {
@@ -203,13 +198,14 @@ test("agent Permissions tab: a manager gets the editable panel, and a People cha
   await expect(bob).toContainText("No access");
 
   // GET round-trip: a full reload re-reads /agents; the write reached the gateway.
-  await openAgentPermissionsTab(page);
+  await openAgentSettings(page);
+  await page.getByRole("button", { name: "People" }).click();
   await expect(
     page.getByRole("button", { name: "Change access for bob@acme.test" }),
   ).toContainText("No access");
 });
 
-test("agent Permissions tab: a plain member sees it read-only (states visible, no controls)", async ({
+test("agent Settings: a plain member sees access read-only (states visible, no controls)", async ({
   page,
   request,
 }) => {
@@ -228,10 +224,9 @@ test("agent Permissions tab: a plain member sees it read-only (states visible, n
       ],
     },
   });
-  await openAgentPermissionsTab(page);
+  await openAgentSettings(page);
 
-  // The tab is present (Teams-gated, everyone) with the three sub-tabs.
-  await expect(page.getByRole("tab", { name: "People" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "People" })).toBeVisible();
 
   // People degrades to the honest viewer line — no roster, and NO access control.
   await expect(
@@ -244,7 +239,7 @@ test("agent Permissions tab: a plain member sees it read-only (states visible, n
   );
 
   // Integrations is read-only too: the ceiling shows, but its choice is disabled.
-  await page.getByRole("tab", { name: "Integrations" }).click();
+  await page.getByRole("button", { name: "Apps" }).click();
   await expect(
     page.getByRole("heading", { name: "Which apps can this agent use?" }),
   ).toBeVisible();

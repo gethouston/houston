@@ -156,7 +156,7 @@ test("a connectable toolkit-level entry names the slug and teaches request_conne
   expect(text).toContain("request_connection tool");
 });
 
-test("a blocked app points the user at the agent's Permissions tab and never offers request_connection", async () => {
+test("a blocked app points the user at the agent's Settings Apps section and never offers request_connection", async () => {
   mockFetch(() => ({
     body: {
       items: [
@@ -174,8 +174,8 @@ test("a blocked app points the user at the agent's Permissions tab and never off
   const text = (out.content[0] as { text: string }).text;
   expect(text).toContain("- salesforce (app, TURNED OFF): Salesforce");
   expect(text).toContain("turned off for this agent");
-  // The new, Permissions-tab-aware copy — never the old "ask your admin".
-  expect(text).toContain("this agent's Permissions tab");
+  // The new Settings-aware copy, never the old "ask your admin".
+  expect(text).toContain("this agent's Settings, under Apps");
   expect(text).not.toContain("admin");
   // The guidance explicitly forbids the connect card for a blocked app.
   expect(text).toContain("Do NOT call request_connection");
@@ -407,9 +407,9 @@ test("a 409 (approval_required) is no longer special: it surfaces as a generic e
   expect(holder.pending).toBeUndefined();
 });
 
-test("a 403 (toolkit_not_allowed) returns Permissions-tab guidance, not a raw error", async () => {
+test("a 403 (toolkit_not_allowed) returns Settings Apps guidance, not a raw error", async () => {
   // The gateway walls off an execute whose app is outside this agent's
-  // allowlist (turned off in the Permissions tab). The sandbox proxy relays the
+  // allowlist (turned off in this agent's Settings, under Apps). The sandbox proxy relays the
   // 403 body verbatim, so the runtime classifies it by its stable code and
   // RETURNS guidance — being walled off is a user-fixable state, not a failure.
   mockFetch(() => ({
@@ -428,7 +428,7 @@ test("a 403 (toolkit_not_allowed) returns Permissions-tab guidance, not a raw er
   );
   const text = (out.content[0] as { text: string }).text;
   expect(text).toContain("turned off for this agent");
-  expect(text).toContain("this agent's Permissions tab");
+  expect(text).toContain("this agent's Settings, under Apps");
   // It tells the model NOT to retry, and never to imply Houston lacks the app.
   expect(text).toContain("Do not retry");
   expect(text).toContain("never imply Houston lacks the app");
@@ -437,7 +437,7 @@ test("a 403 (toolkit_not_allowed) returns Permissions-tab guidance, not a raw er
     action: "SALESFORCE_CREATE_LEAD",
     appTurnedOff: true,
   });
-  // No interaction card is queued — the fix lives in the Permissions tab.
+  // No interaction card is queued — the fix lives in this agent's Settings.
   expect(holder.pending).toBeUndefined();
 });
 
@@ -465,7 +465,7 @@ test("a 403 (not_assigned) returns access guidance on BOTH search and execute, n
     const text = (out.content[0] as { text: string }).text;
     expect(text).toContain("does not have access to this agent");
     // The remedy names the exact place a manager fixes it.
-    expect(text).toContain("Permissions");
+    expect(text).toContain("Settings");
     expect(text).toContain("People");
     expect(text).toContain("Do not retry");
     // Never the raw body, the gateway's jargon, or a connect offer.

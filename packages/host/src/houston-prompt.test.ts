@@ -82,7 +82,7 @@ test("the new blocked speech act lands in BOTH the TS prompt and the Rust mirror
   // Guards the sync contract for the CHANGED copy (byte-for-byte parity of the
   // whole file trips on a pre-existing em-dash/hyphen divergence, so pin the
   // load-bearing blocked-act strings instead): the app must be described as
-  // turned off for THIS agent, fixable in the agent's Permissions tab, and the
+  // turned off for THIS agent, fixable in the agent's Settings under Apps, and the
   // request_connection ban preserved — in both the host prompt and the Rust
   // `PI_INTEGRATIONS_GUIDANCE` the desktop ships.
   const rust = readFileSync(
@@ -98,7 +98,7 @@ test("the new blocked speech act lands in BOTH the TS prompt and the Rust mirror
   const rs = norm(rust);
   for (const phrase of [
     "turned off for this agent",
-    "switched on in this agent's Permissions tab",
+    "switched on in this agent's Settings, under Apps",
     "NEVER call `request_connection` for a blocked app",
   ]) {
     const needle = norm(phrase);

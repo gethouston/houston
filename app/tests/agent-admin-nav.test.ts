@@ -54,12 +54,38 @@ describe("agentAdminCards — card + row visibility", () => {
     }
   });
 
-  it("multiplayer: adds the Access card (people only — ceilings moved to Permissions)", () => {
+  it("Teams: adds the Access card with people, apps, and models", () => {
     for (const role of ["owner", "admin", "user"] as const) {
-      const cards = agentAdminCards(multiplayer(role));
+      const cards = agentAdminCards(
+        caps({ multiplayer: true, teams: true, role }),
+      );
       deepStrictEqual(cardIds(cards), ["configuration", "access"]);
-      deepStrictEqual(rowsOf(cards, "access"), ["people"]);
+      deepStrictEqual(rowsOf(cards, "access"), [
+        "people",
+        "integrations",
+        "model",
+      ]);
     }
+  });
+
+  it("legacy multiplayer without Teams keeps the People row", () => {
+    const cards = agentAdminCards(caps({ multiplayer: true, teams: false }));
+    deepStrictEqual(cardIds(cards), ["configuration", "access"]);
+    deepStrictEqual(rowsOf(cards, "access"), ["people"]);
+  });
+
+  it("read-only Settings keeps only access rows", () => {
+    deepStrictEqual(
+      cardIds(agentAdminCards(caps({ multiplayer: true, teams: true }), true)),
+      ["access"],
+    );
+    deepStrictEqual(
+      rowsOf(
+        agentAdminCards(caps({ multiplayer: true, teams: true }), true),
+        "access",
+      ),
+      ["people", "integrations", "model"],
+    );
   });
 
   it("no Connect card anywhere — even on an apiKeys gateway (HOU-806)", () => {
@@ -67,7 +93,7 @@ describe("agentAdminCards — card + row visibility", () => {
       "configuration",
     ]);
     const hosted = agentAdminCards(
-      caps({ multiplayer: true, role: "owner", apiKeys: true }),
+      caps({ multiplayer: true, teams: true, role: "owner", apiKeys: true }),
     );
     deepStrictEqual(cardIds(hosted), ["configuration", "access"]);
     for (const c of [caps(), caps({ apiKeys: false }), null]) {

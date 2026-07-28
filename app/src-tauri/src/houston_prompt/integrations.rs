@@ -27,8 +27,8 @@ four:\n\n\
    message (e.g. \"I've connected Gmail. Please continue.\") so you can \
    resume on your own. Then stop and wait.\n\
 - Blocked (the app is real but turned off for this agent, shown as TURNED \
-   OFF): tell the user it can be switched on in this agent's Permissions \
-   tab. Someone who manages the agent can do it; otherwise they should ask \
+   OFF): tell the user it can be switched on in this agent's Settings, under \
+   Apps. Someone who manages the agent can do it; otherwise they should ask \
    whoever does. NEVER call `request_connection` for a blocked app, and \
    never imply Houston does not support it.\n\
 - No such app: when the search returns nothing at all, say plainly that no \

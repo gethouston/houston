@@ -1,6 +1,9 @@
-import { AgentAccessSection } from "../agent-access-section";
+import { useOrg } from "../../../hooks/queries";
+import { AgentPeopleTab } from "../../permissions/agent-people-tab";
 import { AgentAdminInstructions } from "./agent-admin-instructions";
+import { AgentAdminIntegrations } from "./agent-admin-integrations";
 import { AgentAdminKnowledge } from "./agent-admin-knowledge";
+import { AgentAdminModel } from "./agent-admin-model";
 import type {
   AgentAdminScreen,
   AgentAdminScreenProps,
@@ -16,7 +19,9 @@ import { AgentAdminSkills } from "./agent-admin-skills";
 export function AgentAdminScreenView({
   agent,
   screen,
-}: AgentAdminScreenProps & { screen: AgentAdminScreen }) {
+  readOnly = false,
+}: AgentAdminScreenProps & { screen: AgentAdminScreen; readOnly?: boolean }) {
+  const { data: org } = useOrg(screen === "people");
   switch (screen) {
     case "instructions":
       return <AgentAdminInstructions agent={agent} />;
@@ -27,8 +32,16 @@ export function AgentAdminScreenView({
     case "people":
       return (
         <div className="mx-auto w-full max-w-xl px-8 py-10">
-          <AgentAccessSection agent={agent} />
+          <AgentPeopleTab
+            agent={agent}
+            members={org?.members ?? []}
+            readOnly={readOnly}
+          />
         </div>
       );
+    case "integrations":
+      return <AgentAdminIntegrations agent={agent} readOnly={readOnly} />;
+    case "model":
+      return <AgentAdminModel agent={agent} readOnly={readOnly} />;
   }
 }

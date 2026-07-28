@@ -21,8 +21,8 @@ import type { PermissionsAgentTab } from "./permissions-nav-store";
  * owner/admin-only, and a visible-but-not-manager admin gets a manager-only note
  * instead of the editable panel. {@link isAgentManager}: owner → any org agent;
  * admin → only agents where their effective `access === "manager"`. (The agent's
- * OWN Permissions tab reuses the same {@link AgentPermissionsPanel} but shows it
- * read-only to non-managers rather than hiding it — see `agent-permissions-tab`.)
+ * Settings access rows reuse the same section components and show read-only to
+ * non-managers rather than hiding policy state.)
  *
  * The `agent` is resolved live from the store by the shell (by id, not a
  * snapshot), so a share mutation that reloads the store shows fresh data here.
@@ -74,7 +74,6 @@ export function AgentDetail({
           agent={agent}
           members={members}
           initialTab={initialTab}
-          readOnly={false}
         />
       ) : (
         <p className="text-sm text-ink-muted">

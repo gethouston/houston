@@ -20,7 +20,7 @@ import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
  * connections. Feature-detected on the `teams` capability; a host without it
  * shows a graceful note.
  *
- * `readOnly` (a non-manager viewing the agent's Permissions tab) disables every
+ * `readOnly` (a non-manager viewing the agent's Settings access row) disables every
  * control and hides the "Add apps" catalog via the shared editor's own mode, so
  * a member sees the app ceiling without a dead affordance.
  */

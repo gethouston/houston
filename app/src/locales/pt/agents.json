@@ -86,11 +86,9 @@
   },
   "tabLabels": {
     "activity": "Atividade",
-    "archived": "Arquivadas",
     "routines": "Rotinas",
     "files": "Arquivos",
-    "job-description": "Configurações do agente",
-    "agent-permissions": "Permissões",
+    "job-description": "Configurações",
     "integrations": "Integrações",
     "chat": "Chat",
     "board": "Quadro",
