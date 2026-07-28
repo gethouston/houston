@@ -21,7 +21,7 @@ describe("SETTINGS_SECTION_IDS", () => {
         "reportBug",
         "migration",
         // HOU-788: the three surfaces that used to be sidebar entries.
-        "usage",
+        "timeWorked",
         "permissions",
         "organization",
       ],
@@ -39,7 +39,7 @@ describe("parseSettingsSection", () => {
   it("passes the moved surfaces through (HOU-788 deep links)", () => {
     // The blocked-app CTA, the team-status banner and the create-team toast all
     // pin one of these before switching to Settings.
-    strictEqual(parseSettingsSection("usage"), "usage");
+    strictEqual(parseSettingsSection("timeWorked"), "timeWorked");
     strictEqual(parseSettingsSection("permissions"), "permissions");
     strictEqual(parseSettingsSection("organization"), "organization");
   });
@@ -65,10 +65,10 @@ describe("parseSettingsSection", () => {
 describe("blockedSettingsSection", () => {
   const gates = (over: {
     showOrganization?: boolean;
-    showAiModels?: boolean;
+    showTimeWorked?: boolean;
   }) => ({
     showOrganization: over.showOrganization ?? true,
-    showAiModels: over.showAiModels ?? true,
+    showTimeWorked: over.showTimeWorked ?? true,
   });
 
   it("blocks Admin and Permissions when the org gate is off", () => {
@@ -86,15 +86,15 @@ describe("blockedSettingsSection", () => {
     }
   });
 
-  it("blocks Usage when the AI Models gate is off", () => {
-    // Usage reads the same workspace-central provider accounts the AI Models
-    // hub manages, so it shares the hub's gate exactly.
+  it("blocks Time worked where the deployment does not meter it", () => {
+    // The screen holds nothing but the compute analytics, so a gateway that
+    // does not advertise `computeUsage` has no screen to show at all.
     strictEqual(
-      blockedSettingsSection("usage", gates({ showAiModels: false })),
+      blockedSettingsSection("timeWorked", gates({ showTimeWorked: false })),
       true,
     );
     strictEqual(
-      blockedSettingsSection("usage", gates({ showAiModels: true })),
+      blockedSettingsSection("timeWorked", gates({ showTimeWorked: true })),
       false,
     );
   });
@@ -112,7 +112,7 @@ describe("blockedSettingsSection", () => {
       strictEqual(
         blockedSettingsSection(
           id,
-          gates({ showOrganization: false, showAiModels: false }),
+          gates({ showOrganization: false, showTimeWorked: false }),
         ),
         false,
         id,
@@ -132,25 +132,25 @@ describe("settingsSectionGate", () => {
     section: Parameters<typeof settingsSectionGate>[0],
     over: {
       showOrganization?: boolean;
-      showAiModels?: boolean;
+      showTimeWorked?: boolean;
       ready?: boolean;
     } = {},
   ) =>
     settingsSectionGate(section, {
       showOrganization: over.showOrganization ?? true,
-      showAiModels: over.showAiModels ?? true,
+      showTimeWorked: over.showTimeWorked ?? true,
       ready: over.ready ?? true,
     });
 
   it("RETAINS a gated section while the gates are still loading", () => {
-    for (const id of ["organization", "permissions", "usage"] as const) {
+    for (const id of ["organization", "permissions", "timeWorked"] as const) {
       // Even with every gate reading false (the null-capabilities shape), an
       // unresolved gate must not decide.
       strictEqual(
         gate(id, {
           ready: false,
           showOrganization: false,
-          showAiModels: false,
+          showTimeWorked: false,
         }),
         "loading",
         id,
@@ -161,13 +161,13 @@ describe("settingsSectionGate", () => {
   it("DROPS a gated section once the gates resolve against it", () => {
     strictEqual(gate("organization", { showOrganization: false }), "blocked");
     strictEqual(gate("permissions", { showOrganization: false }), "blocked");
-    strictEqual(gate("usage", { showAiModels: false }), "blocked");
+    strictEqual(gate("timeWorked", { showTimeWorked: false }), "blocked");
   });
 
   it("RENDERS a gated section once the gates resolve for it", () => {
     strictEqual(gate("organization"), "visible");
     strictEqual(gate("permissions"), "visible");
-    strictEqual(gate("usage"), "visible");
+    strictEqual(gate("timeWorked"), "visible");
   });
 
   it("never makes an ungated section wait, even before the gates resolve", () => {
@@ -184,7 +184,7 @@ describe("settingsSectionGate", () => {
         gate(id, {
           ready: false,
           showOrganization: false,
-          showAiModels: false,
+          showTimeWorked: false,
         }),
         "visible",
         id,
@@ -195,10 +195,10 @@ describe("settingsSectionGate", () => {
 
 describe("settingsSectionNeedsWorkspace", () => {
   it("exempts the three moved surfaces (HOU-788)", () => {
-    // They read org/billing/usage, never GET /v1/workspaces, and as top-level
-    // views they rendered with no workspace gate. Moving them into Settings
-    // must not hand them a precondition they never had.
-    for (const id of ["usage", "permissions", "organization"] as const) {
+    // They read org/billing/compute usage, never GET /v1/workspaces, and as
+    // top-level views they rendered with no workspace gate. Moving them into
+    // Settings must not hand them a precondition they never had.
+    for (const id of ["timeWorked", "permissions", "organization"] as const) {
       strictEqual(settingsSectionNeedsWorkspace(id), false, id);
     }
   });

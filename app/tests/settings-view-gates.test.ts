@@ -41,7 +41,7 @@ describe("clearSettingsSectionPin", () => {
     usePermissionsNav.getState().requestAgentDetail("agent-1");
     useOrgNav.getState().requestTab("billing");
 
-    clearSettingsSectionPin("usage");
+    clearSettingsSectionPin("timeWorked");
     clearSettingsSectionPin("profile");
 
     strictEqual(usePermissionsNav.getState().requestedAgentId, "agent-1");

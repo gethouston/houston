@@ -180,16 +180,17 @@ components:
     ref: "app/src/components/ai-hub/providers-pane.tsx + provider-browser/provider-row.tsx"
     notes: >-
       The hub row rides the shared ui/ catalog family (CatalogRow /
-      CatalogAddButton / CatalogShell); the provider-specific composition and
-      the connect-flow card are still app/-locked. Extract before mobile.
+      CatalogAddButton / CatalogShell), the Connected strip on its
+      `surface="card"` variant; the provider-specific composition and the
+      connect-flow card are still app/-locked. Extract before mobile.
 
-  provider-usage-card:
+  connected-provider-usage:
     status: partial
-    ref: "app/src/components/usage-view/usage-provider-card.tsx (+ usage-pane.tsx, usage-model.ts)"
+    ref: "app/src/components/ai-hub/connected-provider-row.tsx (+ provider-usage-meters.tsx, provider-usage-model.ts)"
     notes: >-
-      Ships on the hub's Usage tab but is app/-locked (the pure pairing/format
-      model and the card composition live in app/, not a shared ui/ package).
-      Extract before mobile.
+      Ships on the hub's Connected rows but is app/-locked (the pure
+      pairing/format model and the meter composition live in app/, not a shared
+      ui/ package). Extract before mobile.
 
   ai-model-row:
     status: partial

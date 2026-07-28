@@ -16,7 +16,7 @@ interface ComputeAgentRowProps {
 }
 
 /**
- * One agent's time worked in the Compute section: avatar + name + duration
+ * One agent's time worked on the Time worked screen: avatar + name + duration
  * and message count + a tokened track bar scaled to the busiest agent (the same
  * shape as the org Usage tab's rows, minus the expandable breakdown — time
  * worked is per-agent, not per-person). Deliberately no liveness badge: the

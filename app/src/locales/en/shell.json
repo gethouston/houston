@@ -133,7 +133,7 @@
       "settings": {
         "title": "Settings",
         "body": "Your account, your workspace, and your app preferences all live here.",
-        "bodyTeam": "Your account, your workspace, your app preferences, and your team's admin, permissions and usage all live here."
+        "bodyTeam": "Your account, your workspace, your app preferences, and your team's admin, permissions and time worked all live here."
       },
       "appTour": {
         "title": "Replay the tour",

@@ -1,4 +1,5 @@
 import { canSeeOrganization } from "../components/organization/org-view-model.ts";
+import { showComputeSection } from "../components/time-worked/compute-usage-model.ts";
 import { canSeeAiModelsPage } from "../lib/org-roles.ts";
 import { isTeamWorkspace } from "../lib/space-id.ts";
 import { useWorkspaceStore } from "../stores/workspaces.ts";
@@ -13,16 +14,23 @@ export interface SurfaceGates {
    */
   showOrganization: boolean;
   /**
-   * The AI Models hub and Usage. In a Teams workspace both are owner/admin
-   * territory (provider credentials are org-level), so plain members lose them;
-   * everyone else keeps them. Usage reads the same workspace-central accounts
-   * the hub manages, so the two share this gate exactly.
+   * The AI Models hub, which is also where each connected account's usage lives
+   * (HOU-789). In a Teams workspace it is owner/admin territory (provider
+   * credentials are org-level), so plain members lose it; everyone else keeps
+   * it.
    */
   showAiModels: boolean;
   /**
-   * False while the capabilities the gates read are still loading. Both flags
-   * above are computed from `capabilities`, which is `null` until the fetch
-   * resolves, so an unresolved gate is indistinguishable from a denied one.
+   * Settings > Time worked. Only a deployment that meters how long agents run
+   * (`capabilities.computeUsage`, hosted cloud only) has anything to show, and
+   * the screen holds nothing else, so everywhere else must not offer it.
+   */
+  showTimeWorked: boolean;
+  /**
+   * False while the capabilities the gates read are still loading. All three
+   * flags above are computed from `capabilities`, which is `null` until the
+   * fetch resolves, so an unresolved gate is indistinguishable from a denied
+   * one.
    * Anything that DROPS a surface on a false gate (rather than merely hiding an
    * affordance it can re-show) must wait for this. Hiding a nav row early is
    * harmless; dumping an owner out of an open screen is not.
@@ -49,6 +57,7 @@ export function useSurfaceGates(): SurfaceGates {
   return {
     showOrganization: canSeeOrganization(capabilities, isTeam),
     showAiModels: canSeeAiModelsPage(capabilities),
+    showTimeWorked: showComputeSection(capabilities),
     ready: !isLoading,
   };
 }

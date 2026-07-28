@@ -134,13 +134,8 @@
       "description": "Run models on your own computer with Ollama, LM Studio, and friends."
     }
   },
-  "usage": {
-    "pageTitle": "Usage",
-    "pageSubtitle": "How much of each connected AI account you've used, and when its limits reset.",
-    "panes": {
-      "compute": "Compute usage",
-      "models": "Model usage"
-    },
+  "toast": {},
+  "providerUsage": {
     "window": {
       "session": "Session limit",
       "week": "Weekly limit",
@@ -159,45 +154,31 @@
     "noData": "This account reports no limits right now.",
     "notMeteredYet": "No usage yet. Houston will start measuring with your next message.",
     "reconnect": "Sign in again to see this account's usage.",
-    "error": "Couldn't load usage right now. Try again in a moment.",
-    "empty": {
-      "title": "No accounts connected",
-      "body": "Connect an AI provider to see how much of its limits you've used.",
-      "connect": "Connect a provider"
-    },
-    "sections": {
-      "subscriptions": {
-        "title": "AI subscriptions"
-      },
-      "perToken": {
-        "title": "AI per token"
-      }
-    },
-    "compute": {
-      "title": "Time worked",
-      "subtitle": "How much time your agents spent working and how many messages they answered.",
-      "range": {
-        "week": "7 days",
-        "month": "30 days",
-        "quarter": "3 months"
-      },
-      "summary": "Your agents worked {{duration}}",
-      "byAgent": "By agent",
-      "duration": {
-        "hm": "{{hours}}h {{minutes}}m",
-        "m": "{{minutes}}m",
-        "underMinute": "<1m",
-        "zero": "0m"
-      },
-      "barLabel": "{{date}}: worked {{duration}}, {{messages}}",
-      "empty": {
-        "title": "No time worked yet",
-        "body": "When your agents work, their time will show here."
-      },
-      "error": "Couldn't load your agents' time right now. Try again in a moment.",
-      "messages_one": "{{count}} message",
-      "messages_other": "{{count}} messages"
-    }
+    "error": "Couldn't load usage right now. Try again in a moment."
   },
-  "toast": {}
+  "timeWorked": {
+    "title": "Time worked",
+    "subtitle": "How much time your agents spent working and how many messages they answered.",
+    "range": {
+      "week": "7 days",
+      "month": "30 days",
+      "quarter": "3 months"
+    },
+    "summary": "Your agents worked {{duration}}",
+    "byAgent": "By agent",
+    "duration": {
+      "hm": "{{hours}}h {{minutes}}m",
+      "m": "{{minutes}}m",
+      "underMinute": "<1m",
+      "zero": "0m"
+    },
+    "barLabel": "{{date}}: worked {{duration}}, {{messages}}",
+    "empty": {
+      "title": "No time worked yet",
+      "body": "When your agents work, their time will show here."
+    },
+    "error": "Couldn't load your agents' time right now. Try again in a moment.",
+    "messages_one": "{{count}} message",
+    "messages_other": "{{count}} messages"
+  }
 }

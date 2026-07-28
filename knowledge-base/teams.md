@@ -101,9 +101,9 @@ that also take `Pick<Agent, "access" | "assigned">` live in `agent-access.ts`
   for EVERY member in every mode, and org-blocked apps still render as locked rows.
   The old `canSeeIntegrationsPage` gate was removed with the Teams policy mode.)
 - `canSeeAiModelsPage(caps)` — the gate for the global **AI Models hub** (sidebar
-  nav, render branch, tour step) and for the **Usage** settings section, which
-  reads the same org-level provider accounts: a Teams **plain member** → false, else
-  true. Unlike Composio, AI provider connections are **org-level** (one credential
+  nav, render branch, tour step), which is also where each connected account's
+  usage renders (HOU-789): a Teams **plain member** → false, else true. Unlike
+  Composio, AI provider connections are **org-level** (one credential
   per org — whoever connects, every member's agents work; `cloud/docs/contracts/C6`),
   so a member has no per-provider account to house anywhere — they pick their model
   per agent in the composer. The hub is therefore owner/admin-only in Teams; a member
@@ -111,6 +111,14 @@ that also take `Pick<Agent, "access" | "assigned">` live in `agent-access.ts`
   provider-connect POST already 403s at the gateway. (There is no org-wide model
   ceiling; model policy is per agent, in the **Permissions** view's per-agent
   detail (its AI Models tab), below.)
+- **Settings > Time worked is NOT behind that gate** (HOU-790). The old Usage
+  screen inherited `canSeeAiModelsPage` because it carried the org-level provider
+  accounts; what is left is only the per-agent running-time analytics, so it
+  rides `capabilities.computeUsage` (`showTimeWorked`). A plain member of a
+  hosted-cloud team therefore NEWLY sees that section. Deliberate and safe: the
+  gateway scopes `GET /v1/org/compute-usage` to the agents the caller can already
+  reach, so a member sees their own agents' time and nothing else. If that server
+  scoping ever narrows or widens, revisit this gate with it.
 - `GRANTABLE_ROLES = ["admin", "user"]` — owner is never handed out from the UI
   (ownership transfer is out of scope for v1).
 
@@ -481,8 +489,8 @@ per team, each `{ id: "org:" + slug, kind: "org" }` where `slug` is `[a-f0-9]{16
   **The connections layer exposes ONE reader, `connectionState`** — no boolean
   sibling, because every surface that reached for one collapsed the third state.
   `groupProviders` returns three buckets (`connected` / `checking` /
-  `available`): only `connected` may claim Connected (the hub's strip dot, the
-  Usage page's account rows), only `available` gets a Connect CTA, and
+  `available`): only `connected` may claim Connected (the hub's strip dot and
+  the usage meters on its rows), only `available` gets a Connect CTA, and
   `providerOwnedSide()` is the render order the browse surfaces use.
 - **A team space with no credential explains itself.** When statuses settle with
   nothing connected, the picker's level 1 shows an honest empty state instead of

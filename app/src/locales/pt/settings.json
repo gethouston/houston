@@ -9,7 +9,7 @@
     "shortcuts": "Atalhos de teclado",
     "reportBug": "Reportar bug",
     "danger": "Excluir espaço",
-    "usage": "Uso",
+    "timeWorked": "Tempo trabalhado",
     "permissions": "Permissões",
     "organization": "Administração"
   },
@@ -171,7 +171,7 @@
       "shortcuts": "Use o Houston sem o mouse",
       "reportBug": "Algo quebrou? Conte para nós",
       "migration": "Retome sua mudança para a nuvem",
-      "usage": "Quanto você já usou de cada conta de IA conectada",
+      "timeWorked": "Quanto tempo seus agentes estão trabalhando",
       "permissions": "Quem pode usar cada agente e o que cada agente pode usar",
       "organization": "Sua equipe, a atividade dela, uso e cobrança"
     },

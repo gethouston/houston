@@ -6,9 +6,12 @@ import {
   formatMeteredSince,
   formatResetWhen,
   formatTokensAmount,
+  hasConfirmedAccount,
   matchUsageToProviders,
-  splitAccountsByBilling,
-} from "../src/components/usage-view/usage-model.ts";
+  type UsageFetchState,
+  usageSlot,
+} from "../src/components/ai-hub/provider-usage-model.ts";
+import type { ProviderConnectionState } from "../src/lib/provider-connection.ts";
 import type { ProviderInfo } from "../src/lib/providers.ts";
 
 function card(id: string, gatewayIds?: readonly string[]): ProviderInfo {
@@ -30,6 +33,117 @@ function row(
 ): ProviderUsage {
   return { provider, status, windows: [] };
 }
+
+const ALL_FETCH_STATES: UsageFetchState[] = ["loading", "error", "ready"];
+
+describe("hasConfirmedAccount", () => {
+  const state =
+    (map: Record<string, ProviderConnectionState>) => (p: ProviderInfo) =>
+      map[p.id] ?? "disconnected";
+
+  it("is false when every account on the strip is still unconfirmed", () => {
+    // The state a waking pod / unreachable engine produces: every probe comes
+    // back `unknown`, so the strip is full and there is nothing to read. The
+    // engine call THROWS in exactly this state, so asking would be a failure
+    // on a loop.
+    strictEqual(
+      hasConfirmedAccount(
+        [card("anthropic"), card("openai")],
+        state({ anthropic: "checking", openai: "checking" }),
+      ),
+      false,
+    );
+  });
+
+  it("is true as soon as ONE account is confirmed", () => {
+    strictEqual(
+      hasConfirmedAccount(
+        [card("anthropic"), card("openai")],
+        state({ anthropic: "checking", openai: "connected" }),
+      ),
+      true,
+    );
+  });
+
+  it("is false for an empty strip", () => {
+    strictEqual(
+      hasConfirmedAccount([], () => "connected"),
+      false,
+    );
+  });
+});
+
+describe("usageSlot", () => {
+  it("makes NO metering claim about an account it could not confirm", () => {
+    // The bug this guards: a `checking` row falling through to "No usage yet.
+    // Houston will start measuring with your next message." — a promise about
+    // an account Houston cannot even read. Nothing renders instead, in every
+    // fetch state, whatever the engine happened to report.
+    for (const fetchState of ALL_FETCH_STATES) {
+      deepStrictEqual(usageSlot("checking", fetchState, null), {
+        kind: "hidden",
+      });
+      deepStrictEqual(usageSlot("checking", fetchState, row("anthropic")), {
+        kind: "hidden",
+      });
+      deepStrictEqual(usageSlot("disconnected", fetchState, null), {
+        kind: "hidden",
+      });
+    }
+  });
+
+  it("holds the loading frame while the strip's one fetch is in flight", () => {
+    deepStrictEqual(usageSlot("connected", "loading", null), {
+      kind: "loading",
+    });
+  });
+
+  it("says the fetch failed rather than calling the account unmetered", () => {
+    deepStrictEqual(usageSlot("connected", "error", null), {
+      kind: "note",
+      note: "error",
+    });
+  });
+
+  it("maps each non-ok row (and a missing row) to its honest note", () => {
+    deepStrictEqual(usageSlot("connected", "ready", null), {
+      kind: "note",
+      note: "notMeteredYet",
+    });
+    deepStrictEqual(
+      usageSlot("connected", "ready", row("anthropic", "unsupported")),
+      { kind: "note", note: "notMeteredYet" },
+    );
+    deepStrictEqual(
+      usageSlot("connected", "ready", row("anthropic", "unauthenticated")),
+      { kind: "note", note: "reconnect" },
+    );
+    deepStrictEqual(
+      usageSlot("connected", "ready", row("anthropic", "error")),
+      {
+        kind: "note",
+        note: "error",
+      },
+    );
+    // `ok` with nothing in it is its own honest note, not an empty meter.
+    deepStrictEqual(usageSlot("connected", "ready", row("anthropic")), {
+      kind: "note",
+      note: "noData",
+    });
+  });
+
+  it("renders meters once there is anything to show", () => {
+    const withWindow: ProviderUsage = {
+      provider: "anthropic",
+      status: "ok",
+      windows: [{ id: "session", usedPercent: 42, resetsAt: null }],
+    };
+    deepStrictEqual(usageSlot("connected", "ready", withWindow), {
+      kind: "meters",
+      row: withWindow,
+    });
+  });
+});
 
 describe("matchUsageToProviders", () => {
   it("pairs display cards with engine rows across the id rename", () => {
@@ -54,37 +168,6 @@ describe("matchUsageToProviders", () => {
   it("keeps a connected card with no engine row (row: null), never drops it", () => {
     const accounts = matchUsageToProviders([card("google")], []);
     deepStrictEqual(accounts, [{ provider: card("google"), row: null }]);
-  });
-});
-
-describe("splitAccountsByBilling", () => {
-  const account = (id: string, auth?: ProviderInfo["auth"]) => ({
-    provider: { ...card(id), ...(auth ? { auth } : {}) },
-    row: null,
-  });
-
-  it("routes OAuth (and auth-less) accounts to subscriptions, key/compatible to per-token", () => {
-    const { subscriptions, perToken } = splitAccountsByBilling([
-      account("anthropic", "oauth"),
-      account("openrouter", "apiKey"),
-      account("openai"),
-      account("ollama", "openaiCompatible"),
-    ]);
-    deepStrictEqual(
-      subscriptions.map((a) => a.provider.id),
-      ["anthropic", "openai"],
-    );
-    deepStrictEqual(
-      perToken.map((a) => a.provider.id),
-      ["openrouter", "ollama"],
-    );
-  });
-
-  it("answers both sections empty for no accounts", () => {
-    deepStrictEqual(splitAccountsByBilling([]), {
-      subscriptions: [],
-      perToken: [],
-    });
   });
 });
 

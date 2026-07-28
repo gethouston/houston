@@ -4,9 +4,9 @@ import {
   CircleUserRound,
   CloudUpload,
   FileText,
-  Gauge,
   Keyboard,
   ShieldCheck,
+  Timer,
   User,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -27,8 +27,8 @@ interface SettingsIndexProps {
   accountAvailable: boolean;
   migrationAvailable: boolean;
   profileAvailable: boolean;
-  /** Teams gate for the Usage row (shares the AI Models hub gate). */
-  showAiModels: boolean;
+  /** Deployment gate for the Time worked row (`capabilities.computeUsage`). */
+  showTimeWorked: boolean;
   /** Teams gate for the Admin + Permissions rows. */
   showOrganization: boolean;
   onSelect: (id: SettingsSectionId) => void;
@@ -37,7 +37,7 @@ interface SettingsIndexProps {
 /**
  * The settings landing page. Simple settings (appearance, language, account,
  * delete) are resolved inline as control rows; the heavier
- * ones (context editors, shortcuts, bug report, and since HOU-788 Usage,
+ * ones (context editors, shortcuts, bug report, and since HOU-788 Time worked,
  * Permissions and Admin) are navigable rows that drill into their own screen.
  * Account appears only when applicable; the Workspace and Team groups only when
  * their Teams gate passes.
@@ -46,7 +46,7 @@ export function SettingsIndex({
   accountAvailable,
   migrationAvailable,
   profileAvailable,
-  showAiModels,
+  showTimeWorked,
   showOrganization,
   onSelect,
 }: SettingsIndexProps) {
@@ -101,14 +101,14 @@ export function SettingsIndex({
               apiKeysAvailable gate from apiKeysSupported) when it returns. */}
         </SettingsCard>
 
-        {showAiModels && (
+        {showTimeWorked && (
           <SettingsCard title={t("settings:index.groups.workspace")}>
             <SettingsRow
-              icon={Gauge}
-              title={t("settings:nav.usage")}
-              description={t("settings:index.rows.usage")}
-              testId="settings-row-usage"
-              onClick={() => onSelect("usage")}
+              icon={Timer}
+              title={t("settings:nav.timeWorked")}
+              description={t("settings:index.rows.timeWorked")}
+              testId="settings-row-time-worked"
+              onClick={() => onSelect("timeWorked")}
             />
           </SettingsCard>
         )}

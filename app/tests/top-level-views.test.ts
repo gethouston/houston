@@ -2,6 +2,7 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { INTEGRATIONS_VIEW_ID } from "../src/components/integrations-view/id.ts";
 import { STORE_VIEW_ID } from "../src/components/store-view/id.ts";
+import { SETTINGS_SECTION_IDS } from "../src/lib/settings-sections.ts";
 import {
   AI_HUB_VIEW_ID,
   blockedTopLevelView,
@@ -25,13 +26,19 @@ describe("isTopLevelView", () => {
     }
   });
 
-  it("is exactly those five (Usage, Permissions and Admin moved into Settings)", () => {
-    // HOU-788 folded the three into Settings sections; their `viewMode` values
-    // no longer exist, so a stale persisted one must fall through to the agent
-    // tab branch (and get reset there) rather than resolve as a top-level view.
+  it("is exactly those five, and no settings section doubles as one", () => {
+    // HOU-788 folded Time worked / Permissions / Admin into Settings sections;
+    // a settings section is reached THROUGH `settings`, so none of their ids may
+    // also resolve as a top-level view. Checking the live section list (rather
+    // than the three retired string literals) keeps this failing if a future
+    // section is wired up as a top-level view by mistake, and still covers the
+    // stale-persisted-`viewMode` case that motivated it.
     strictEqual(TOP_LEVEL_VIEWS.size, 5);
+    for (const section of SETTINGS_SECTION_IDS) {
+      strictEqual(isTopLevelView(section), false, section);
+    }
+    // The retired `viewMode` values a pre-HOU-788 install may still have pinned.
     strictEqual(isTopLevelView("usage"), false);
-    strictEqual(isTopLevelView("permissions"), false);
     strictEqual(isTopLevelView("organization"), false);
   });
 

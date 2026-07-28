@@ -133,7 +133,7 @@
       "settings": {
         "title": "Configuración",
         "body": "Tu cuenta, tu espacio de trabajo y tus preferencias de la app viven aquí.",
-        "bodyTeam": "Tu cuenta, tu espacio de trabajo, tus preferencias de la app y la administración, los permisos y el uso de tu equipo viven aquí."
+        "bodyTeam": "Tu cuenta, tu espacio de trabajo, tus preferencias de la app y la administración, los permisos y el tiempo trabajado de tu equipo viven aquí."
       },
       "appTour": {
         "title": "Repite el tour",

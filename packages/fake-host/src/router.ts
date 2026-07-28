@@ -9,6 +9,7 @@
 
 import { buildProviderCatalog } from "@houston/host/src/providers/pi-catalog";
 import type { ChatMessage, PendingInteraction } from "@houston/protocol";
+import type { ProviderUsage } from "@houston/runtime-client";
 import { setNextInteraction, setReplyDelay } from "./chat";
 import {
   clearChatStreams,
@@ -184,6 +185,17 @@ export async function handle(req: Request): Promise<Response> {
     return json({
       seed: state.setComputeUsage(
         (body?.seed ?? null) as state.ComputeUsageSeed | null,
+      ),
+    });
+  }
+  // Arm the rows `GET /providers/usage` serves — the live per-account usage the
+  // AI Models hub's Connected rows render (windows, credits, non-ok states).
+  // `{rows:null}` restores the default seed (the Claude subscription).
+  if (path === "/__test__/provider-usage" && method === "POST") {
+    const body = await parseBody(req);
+    return json({
+      rows: state.setProviderUsage(
+        (body?.rows ?? null) as ProviderUsage[] | null,
       ),
     });
   }

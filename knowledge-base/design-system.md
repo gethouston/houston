@@ -518,7 +518,7 @@ when adjusting, scope changes to light (`:root`) and pin dark
 sidebar destinations (Mission Control, Integrations, AI Models, Agent Store,
 Settings) share two app-local primitives so their width and header spacing are
 identical. Since HOU-788 the same primitives also carry the Settings SECTIONS
-(Usage, Permissions, Admin moved in from the sidebar).
+(Time worked, Permissions, Admin moved in from the sidebar).
 `PageContainer` is the canonical horizontal column (`mx-auto w-full max-w-5xl
 px-8`, the single source of the shared page width; callers add vertical rhythm
 and it spreads div props so it can also be a tab's `role="tabpanel"`). Two

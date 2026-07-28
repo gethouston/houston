@@ -63,7 +63,7 @@ components:
     status: not-started
   ai-provider-card:
     status: not-started
-  provider-usage-card:
+  connected-provider-usage:
     status: not-started
   ai-model-row:
     status: not-started

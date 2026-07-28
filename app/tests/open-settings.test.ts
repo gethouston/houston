@@ -23,7 +23,7 @@ describe("useUIStore.openSettings", () => {
 
   it("deep-links a section, replacing whatever section was open", () => {
     const s = useUIStore.getState();
-    s.setSettingsSection("usage");
+    s.setSettingsSection("timeWorked");
 
     useUIStore.getState().openSettings("organization");
 

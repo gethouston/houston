@@ -48,7 +48,7 @@ export function SettingsView() {
   const accountAvailable = useAccountAvailable();
   const profileAvailable = useProfileAvailable();
   const migrationAvailable = useMigrationAvailable();
-  const { showOrganization, showAiModels, ready } = useSurfaceGates();
+  const { showOrganization, showTimeWorked, ready } = useSurfaceGates();
   // The open section lives in the UI store, not in local state: every surface
   // that navigates here goes through `openSettings`, so a deep link lands even
   // when Settings is ALREADY open (a toast action fired from inside Settings
@@ -66,7 +66,11 @@ export function SettingsView() {
   const sectionGate =
     active === null
       ? null
-      : settingsSectionGate(active, { showOrganization, showAiModels, ready });
+      : settingsSectionGate(active, {
+          showOrganization,
+          showTimeWorked,
+          ready,
+        });
   const visible = sectionGate === "visible" ? active : null;
   useEffect(() => {
     if (active === null || sectionGate !== "blocked") return;
@@ -93,7 +97,7 @@ export function SettingsView() {
   });
 
   // One `tab_opened` per Settings surface actually reached, keyed like every
-  // other view switch (`settings` for the index, `settings:usage` for a
+  // other view switch (`settings` for the index, `settings:timeWorked` for a
   // section) so a single tab_name breakdown keeps covering the surfaces that
   // used to be top-level views. Settings owns this event outright — the shell's
   // generic viewMode effect skips `settings`, so a deep link can no longer
@@ -165,7 +169,7 @@ export function SettingsView() {
           accountAvailable={accountAvailable}
           migrationAvailable={migrationAvailable}
           profileAvailable={profileAvailable}
-          showAiModels={showAiModels}
+          showTimeWorked={showTimeWorked}
           showOrganization={showOrganization}
           onSelect={setActive}
         />

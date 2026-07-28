@@ -9,7 +9,7 @@
     "shortcuts": "Keyboard shortcuts",
     "reportBug": "Report bug",
     "danger": "Delete workspace",
-    "usage": "Usage",
+    "timeWorked": "Time worked",
     "permissions": "Permissions",
     "organization": "Admin"
   },
@@ -171,7 +171,7 @@
       "shortcuts": "Run Houston without the mouse",
       "reportBug": "Something broke? Tell us",
       "migration": "Pick up your move to the cloud",
-      "usage": "How much of each connected AI account you've used",
+      "timeWorked": "How long your agents have been working",
       "permissions": "Who can use each agent, and what each agent can use",
       "organization": "Your team, its activity, usage, and billing"
     },

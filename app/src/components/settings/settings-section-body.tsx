@@ -2,7 +2,7 @@ import type { SettingsSectionId } from "../../lib/settings-sections";
 import { OrganizationView } from "../organization";
 import { PermissionsView } from "../permissions";
 import { BackBarScreen } from "../shell/back-bar-screen";
-import { UsageView } from "../usage-view";
+import { TimeWorkedView } from "../time-worked";
 import { ApiKeysSection } from "./sections/api-keys";
 import { MigrationSection } from "./sections/migration";
 import { ProfileSection } from "./sections/profile";
@@ -23,8 +23,8 @@ interface SettingsSectionBodyProps {
 /**
  * One settings section, mounted on its own screen. Three layouts:
  *
- * - SELF-FRAMED (Usage, Permissions, Admin — HOU-788): whole surfaces that own
- *   their internal drill-ins, so they render their OWN back bar and get
+ * - SELF-FRAMED (Time worked, Permissions, Admin — HOU-788): whole surfaces that
+ *   own their internal drill-ins, so they render their OWN back bar and get
  *   `backLabel`/`onBack` handed in. Wrapping them here would stack two bars.
  * - FULL WIDTH (the context editors): the editor fills the scroll region.
  * - READING COLUMN (everything else): capped at `max-w-xl`.
@@ -34,8 +34,8 @@ export function SettingsSectionBody({
   backLabel,
   onBack,
 }: SettingsSectionBodyProps) {
-  if (active === "usage")
-    return <UsageView backLabel={backLabel} onBack={onBack} />;
+  if (active === "timeWorked")
+    return <TimeWorkedView backLabel={backLabel} onBack={onBack} />;
   if (active === "permissions")
     return <PermissionsView backLabel={backLabel} onBack={onBack} />;
   if (active === "organization")

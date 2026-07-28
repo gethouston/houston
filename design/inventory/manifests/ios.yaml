@@ -218,14 +218,13 @@ components:
   ai-provider-card:
     status: implemented
     ref: mobile/ios/Houston/Features/AIModels/ProviderCardView.swift
-  provider-usage-card:
+  connected-provider-usage:
     status: not-started
     notes: >-
-      Per-agent provider grid tile (logo via ProviderGlyph, name, description,
-      model-count) with available/connected/connecting/coming-soon states and a
-      footer action; opens the connect flow (ProviderConnectSheet) or the
-      connected detail (ProviderDetailSheet). Connection state is read from the
-      per-agent providers/<agentId> scope, never hardcoded.
+      The live limits of a connected account, rendered on that account's own
+      row (plan chip, rate-limit meters, prepaid balance or metered tokens)
+      rather than on a usage screen of its own. Usage rows come from
+      GET /providers/usage; non-ok statuses must render their honest note.
   ai-model-row:
     status: partial
     ref: mobile/ios/Houston/Features/AIModels/ModelPickerView.swift

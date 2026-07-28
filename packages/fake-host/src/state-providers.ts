@@ -26,6 +26,7 @@ import type {
   ProviderAuth,
   ProviderId,
   ProviderInfo,
+  ProviderUsage,
   Settings,
 } from "@houston/runtime-client";
 import { CATALOG, SPEC } from "./provider-catalog";
@@ -56,6 +57,36 @@ function seedSlot(connected: boolean): Slot {
 
 let slots = new Map<string, Slot>();
 
+/**
+ * The armed `GET /providers/usage` answer, or `null` for the default seed
+ * below. Armed via `/__test__/provider-usage` when a spec needs a specific
+ * shape (a credit balance, an unauthenticated account, an error row).
+ */
+let providerUsageSeed: ProviderUsage[] | null = null;
+
+/**
+ * The default per-account usage: the seeded Claude subscription reporting a
+ * plan and both of its rolling windows. Reset instants are computed per read so
+ * they are always in the future (a past instant renders no reset note, which
+ * would silently drop the assertion it backs).
+ */
+function seedProviderUsage(): ProviderUsage[] {
+  const inHours = (h: number) =>
+    new Date(Date.now() + h * 3_600_000).toISOString();
+  return [
+    {
+      provider: "anthropic",
+      status: "ok",
+      plan: "max",
+      windows: [
+        { id: "session", usedPercent: 42, resetsAt: inHours(3) },
+        { id: "week", usedPercent: 12, resetsAt: inHours(96) },
+      ],
+      fetchedAt: new Date().toISOString(),
+    },
+  ];
+}
+
 function slot(agentId: string): Slot {
   let s = slots.get(agentId);
   if (!s) {
@@ -68,6 +99,22 @@ function slot(agentId: string): Slot {
 /** Restore the seed. Wired into the store's `reset()`. */
 export function resetProviders(): void {
   slots = new Map();
+  providerUsageSeed = null;
+}
+
+/** `GET /providers/usage` (or `/agents/:id/providers/usage`) → live per-account
+ *  usage: the armed rows, else the default Claude-subscription seed. */
+export function providerUsageList(): ProviderUsage[] {
+  return providerUsageSeed ?? seedProviderUsage();
+}
+
+/** Arm the rows `GET /providers/usage` serves (`/__test__/provider-usage`);
+ *  `null` restores the default seed. */
+export function setProviderUsage(
+  rows: ProviderUsage[] | null,
+): ProviderUsage[] {
+  providerUsageSeed = rows;
+  return providerUsageList();
 }
 
 /** `GET /providers` (or `/agents/:id/providers`) → the rich `ProviderInfo[]`. */

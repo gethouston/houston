@@ -15,7 +15,7 @@ export const SETTINGS_SECTION_IDS = [
   "migration",
   // The three surfaces that used to be their own sidebar entries (HOU-788).
   // They keep their whole behaviour; only where they mount changed.
-  "usage",
+  "timeWorked",
   "permissions",
   "organization",
 ] as const;
@@ -39,8 +39,9 @@ export function parseSettingsSection(
 export interface SettingsGates {
   /** Admin + Permissions: multiplayer owner/admin, team space on Spaces. */
   showOrganization: boolean;
-  /** Usage: shares the AI Models hub gate (same org-level provider accounts). */
-  showAiModels: boolean;
+  /** Time worked: only deployments that meter it (`capabilities.computeUsage`)
+   *  have anything to show, so nowhere else offers the screen. */
+  showTimeWorked: boolean;
 }
 
 /**
@@ -50,18 +51,18 @@ export interface SettingsGates {
  * `settingsSectionGate` can never disagree about who is gated.
  */
 const SECTION_GATE: Partial<Record<SettingsSectionId, keyof SettingsGates>> = {
-  usage: "showAiModels",
+  timeWorked: "showTimeWorked",
   permissions: "showOrganization",
   organization: "showOrganization",
 };
 
 /**
  * The sections that moved in from the sidebar (HOU-788). They read the org /
- * billing / usage endpoints, never the workspace list, so they must not inherit
- * the Settings workspace gate — see `settingsSectionNeedsWorkspace`.
+ * billing / compute-usage endpoints, never the workspace list, so they must not
+ * inherit the Settings workspace gate — see `settingsSectionNeedsWorkspace`.
  */
 const MOVED_SECTION_IDS: readonly SettingsSectionId[] = [
-  "usage",
+  "timeWorked",
   "permissions",
   "organization",
 ];
@@ -118,11 +119,11 @@ export function settingsSectionGate(
  * Whether a settings section needs a loaded workspace to render. The Settings
  * index and every ORIGINAL section read the current workspace, so they sit
  * behind the workspace gate. The three moved surfaces (HOU-788) do not: they
- * read org / billing / usage, never `GET /v1/workspaces`, and as top-level views
- * they rendered with no workspace gate at all. Moving them into Settings must
- * not silently hand them a precondition they never had — least of all on the
- * billing recovery path, where a deep link into Admin exists precisely because
- * something is already failing.
+ * read org / billing / agent running time, never `GET /v1/workspaces`, and as
+ * top-level views they rendered with no workspace gate at all. Moving them into
+ * Settings must not silently hand them a precondition they never had — least of
+ * all on the billing recovery path, where a deep link into Admin exists
+ * precisely because something is already failing.
  */
 export function settingsSectionNeedsWorkspace(
   section: SettingsSectionId,

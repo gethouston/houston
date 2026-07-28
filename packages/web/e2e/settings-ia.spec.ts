@@ -8,9 +8,10 @@ import {
 } from "./support/settings-nav";
 
 /**
- * The Settings information architecture (HOU-788). Usage, Permissions and Admin
- * used to be their own sidebar entries; they are Settings sections now. Three
- * things must hold, and each of them broke a real user path when it didn't:
+ * The Settings information architecture (HOU-788). Usage (now Time worked),
+ * Permissions and Admin used to be their own sidebar entries; they are Settings
+ * sections now. Three things must hold, and each of them broke a real user path
+ * when it didn't:
  *
  * 1. the sidebar carries exactly the five top-level entries and none of the
  *    three moved ones;
@@ -21,12 +22,24 @@ import {
  *    `settings`.
  */
 
-/** Teams owner: multiplayer + Teams, top role (so Admin + Permissions exist). */
-const OWNER_CAPS = { multiplayer: true, teams: true, role: "owner" };
+/** Teams owner on a gateway that meters running time, so all three moved
+ *  sections exist: Admin + Permissions ride the role, Time worked rides
+ *  `computeUsage`. */
+const OWNER_CAPS = {
+  multiplayer: true,
+  teams: true,
+  role: "owner",
+  computeUsage: true,
+};
 
 async function armOwner(request: APIRequestContext): Promise<void> {
   await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
     data: OWNER_CAPS,
+  });
+  // An armed (if empty) dataset: the screen renders its roster at zero rather
+  // than the honest error a 404 route would produce.
+  await request.post(`${FAKE_HOST_URL}/__test__/compute-usage`, {
+    data: { seed: { rows: [], awakeNow: [] } },
   });
 }
 
@@ -59,7 +72,7 @@ test("each moved surface opens from the Settings index with a single back bar", 
   await page.goto("/");
 
   const cases = [
-    { row: "usage", heading: "Usage" },
+    { row: "time-worked", heading: "Time worked" },
     { row: "permissions", heading: "Permissions" },
     { row: "organization", heading: "Admin" },
   ] as const;

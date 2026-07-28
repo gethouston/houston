@@ -162,6 +162,9 @@ export function handleAgents(
       return noContent(); // capture / forget
 
     case "providers":
+      // `/providers/usage` is the live per-account usage the AI Models hub's
+      // Connected rows meter with; anything else under the segment is the list.
+      if (rest[2] === "usage") return json(state.providerUsageList());
       return json(state.providerList(id));
 
     case "settings":

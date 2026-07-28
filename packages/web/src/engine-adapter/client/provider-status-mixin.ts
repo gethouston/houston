@@ -80,8 +80,10 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
      * Rides the SAME per-agent runtime routing as provider status: any real
      * agent's runtime serves the workspace-central credentials, so the
      * selection only picks a pod. Unlike the status probe this THROWS when the
-     * engine is unreachable — the Usage page must show the real failure, never
-     * a fabricated "no usage" (beta no-silent-failure policy).
+     * engine is unreachable — the hub's Connected rows must show the real
+     * failure, never a fabricated "no usage" (beta no-silent-failure policy).
+     * The caller therefore only asks once at least one connection is CONFIRMED
+     * (`hasConfirmedAccount`), so an unreachable engine is not polled blind.
      */
     async providerUsage(): Promise<ProviderUsage[]> {
       return this.ctx.providerEngine().listProviderUsage();

@@ -3,13 +3,13 @@ import { expect, type Locator, type Page } from "@playwright/test";
 /**
  * Navigating to the settings sections that used to be sidebar entries (HOU-788).
  *
- * Usage, Permissions and Admin live inside Settings now, so every spec that used
- * to click `nav-usage` / `nav-permissions` / `nav-organization` walks the real
- * two-step path instead: the Settings nav item, then the section's row on the
- * Settings index. The rows carry stable `data-testid`s so the assertions never
- * depend on the row copy.
+ * Time worked (the old Usage screen), Permissions and Admin live inside Settings
+ * now, so every spec that used to click `nav-usage` / `nav-permissions` /
+ * `nav-organization` walks the real two-step path instead: the Settings nav
+ * item, then the section's row on the Settings index. The rows carry stable
+ * `data-testid`s so the assertions never depend on the row copy.
  */
-export type SettingsSectionRow = "usage" | "permissions" | "organization";
+export type SettingsSectionRow = "time-worked" | "permissions" | "organization";
 
 /** The Settings index row for a section (absent when its Teams gate is off). */
 export function settingsRow(page: Page, section: SettingsSectionRow): Locator {
