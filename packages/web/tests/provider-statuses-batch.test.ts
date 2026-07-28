@@ -9,7 +9,10 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
  * card's status from it. These tests pin that single-round-trip contract.
  */
 
-const listProviders = vi.fn();
+const { listProviders, cpListAgents } = vi.hoisted(() => ({
+  listProviders: vi.fn(),
+  cpListAgents: vi.fn(),
+}));
 
 vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
@@ -18,6 +21,7 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
     >();
   return {
     ...actual,
+    listAgents: cpListAgents,
     // Every provider/auth call resolves to the same fake runtime client, so we
     // can count how many times the adapter reaches for the provider list.
     runtimeClientFor: vi.fn(() => ({ listProviders })),
@@ -36,16 +40,29 @@ beforeEach(() => {
     removeItem: () => {},
   };
   listProviders.mockReset();
+  cpListAgents.mockReset();
+  cpListAgents.mockResolvedValue([{ id: "agent-1" }]);
 });
 
 afterEach(() => vi.clearAllMocks());
 
-function client() {
-  return new HoustonClient({
+/**
+ * A client whose ACTIVE SPACE has already listed its agents.
+ *
+ * Every probe test settles the list first because the probe routes per-agent:
+ * until a `listAgents` has resolved for this space, the only candidate id is
+ * the persisted pref, which after a space switch still names the PREVIOUS
+ * space's agent — so the adapter deliberately reports "unknown" instead of
+ * asking a foreign agent's route (HOU-979; the last test pins that).
+ */
+async function settledClient() {
+  const c = new HoustonClient({
     baseUrl: "http://host",
     token: "t",
     controlPlane: true,
   });
+  await c.listAgents("ws");
+  return c;
 }
 
 test("providerStatuses fetches the provider list ONCE for many cards", async () => {
@@ -63,7 +80,7 @@ test("providerStatuses fetches the provider list ONCE for many cards", async () 
     "openrouter", // absent from the list
     "not-a-provider", // unmapped id
   ];
-  const statuses = await client().providerStatuses(names);
+  const statuses = await (await settledClient()).providerStatuses(names);
 
   // The whole point: N cards, ONE round-trip.
   expect(listProviders).toHaveBeenCalledTimes(1);
@@ -84,7 +101,7 @@ test("providerStatuses fetches the provider list ONCE for many cards", async () 
 test("providerStatus delegates to the batch (one fetch, correct entry)", async () => {
   listProviders.mockResolvedValue([{ id: "anthropic", configured: true }]);
 
-  const status = await client().providerStatus("anthropic");
+  const status = await (await settledClient()).providerStatus("anthropic");
 
   expect(listProviders).toHaveBeenCalledTimes(1);
   expect(status.authState).toBe("authenticated");
@@ -98,7 +115,10 @@ test("an unreachable runtime reports every card UNKNOWN without throwing", async
   // signed-out state).
   listProviders.mockRejectedValue(new Error("sandbox unreachable"));
 
-  const statuses = await client().providerStatuses(["anthropic", "opencode"]);
+  const statuses = await (await settledClient()).providerStatuses([
+    "anthropic",
+    "opencode",
+  ]);
 
   expect(statuses.map((s) => s.authState)).toEqual(["unknown", "unknown"]);
 });
@@ -106,7 +126,10 @@ test("an unreachable runtime reports every card UNKNOWN without throwing", async
 test("a reachable runtime still gives a confirmed unauthenticated for absent providers", async () => {
   listProviders.mockResolvedValue([{ id: "anthropic", configured: true }]);
 
-  const statuses = await client().providerStatuses(["anthropic", "opencode"]);
+  const statuses = await (await settledClient()).providerStatuses([
+    "anthropic",
+    "opencode",
+  ]);
 
   expect(statuses.map((s) => s.authState)).toEqual([
     "authenticated",

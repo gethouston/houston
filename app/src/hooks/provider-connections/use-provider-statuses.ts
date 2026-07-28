@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { providerAppearsConnected } from "../../components/shell/provider-reconnect-state";
 import { analytics } from "../../lib/analytics";
+import { providerIsConnected } from "../../lib/provider-connection";
 import {
+  activeProviderStatusScope,
   loadCachedProviderStatuses,
+  providerProbeScopeChanged,
   saveCachedProviderStatuses,
 } from "../../lib/provider-status-cache";
 import { type ProviderInfo, providerGatewayIds } from "../../lib/providers";
@@ -87,7 +89,17 @@ export function useProviderStatuses(
     const gatewayIds = [
       ...new Set(visibleProviders.flatMap((p) => providerGatewayIds(p))),
     ];
+    // Pin the space this probe belongs to BEFORE the round-trip. A probe fired
+    // in the personal space that resolves after a switch describes a world the
+    // user has left, so it is DROPPED WHOLE (HOU-979): painting it would stamp
+    // personal statuses onto the team's cards, and everything below — the
+    // transition analytics and the persist — would then be about the wrong
+    // space. The switch re-seeds and re-probes for the new space itself, so
+    // nothing is lost. Past this guard the captured scope IS the active one,
+    // which is why the persist below needs no scope argument.
+    const scope = activeProviderStatusScope();
     const byId = await tauriProvider.checkAllStatuses(gatewayIds);
+    if (providerProbeScopeChanged(scope)) return;
     if (scanIsUnreachable(gatewayIds, byId)) {
       // The engine was unreachable — the scan carries no information. Keep
       // painting the last-known snapshot (never overwrite it, or the persisted
@@ -107,8 +119,8 @@ export function useProviderStatuses(
       for (const prov of visibleProviders) {
         const prev = prevStatuses.current[prov.id];
         const cur = next[prov.id];
-        const wasConnected = prev ? providerAppearsConnected(prev) : false;
-        const isConnected = cur ? providerAppearsConnected(cur) : false;
+        const wasConnected = providerIsConnected(prev);
+        const isConnected = providerIsConnected(cur);
         if (!wasConnected && isConnected) {
           analytics.track("provider_configured", { provider: prov.id });
         }
@@ -118,7 +130,9 @@ export function useProviderStatuses(
     hasBaseline.current = true;
     setLoading(false);
     setProbed(true);
-    // Persist the confirmed scan so the NEXT visit paints instantly.
+    // Persist the confirmed scan under the space it was probed IN so the NEXT
+    // visit to that space paints instantly. The guard above already proved that
+    // space is still the active one, so the ambient default is that scope.
     saveCachedProviderStatuses(next);
   }, [visibleProviders]);
 
@@ -140,11 +154,11 @@ export function useProviderStatuses(
   }, [currentWorkspaceId]);
 
   // Re-probe LIVE after a switch, but ONLY once the new space's agents have
-  // loaded. The probe routes per-agent (last_agent_id + knownAgentIds in the
-  // engine adapter), so firing it before `loadAgents` settles would hit the OLD
-  // space's agent under the new org header — the sidebar switch handler awaits
-  // loadAgents, which repopulates knownAgentIds for the new org. Gating on the
-  // agent store's settled state closes that window.
+  // loaded. The probe routes per-agent (the engine adapter's `agentList`, which
+  // `setActiveOrg` clears on a switch), so firing it before `loadAgents` settles
+  // would hit the OLD space's agent under the new org header — the sidebar
+  // switch handler awaits loadAgents, which repopulates the list for the new
+  // org. Gating on the agent store's settled state closes that window.
   useEffect(() => {
     if (probedWorkspaceIdRef.current === currentWorkspaceId) return;
     if (!agentsLoaded || agentsLoading) return;

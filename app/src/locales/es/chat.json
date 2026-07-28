@@ -179,7 +179,21 @@
       "modelsLabel": "Modelos",
       "loading": "Cargando proveedores…",
       "empty": "No se encontraron modelos.",
-      "noProviders": "Aún no hay proveedores conectados.",
+      "noProviders": {
+        "action": "Conectar un modelo de IA",
+        "personal": {
+          "title": "Aún no hay proveedores conectados.",
+          "hint": "Conecta un modelo de IA para empezar a chatear."
+        },
+        "teamCanConnect": {
+          "title": "Este espacio de equipo aún no tiene una conexión de IA.",
+          "hint": "Conecta un modelo de IA para este equipo y todos aquí podrán usarlo."
+        },
+        "teamAskAdmin": {
+          "title": "Este espacio de equipo aún no tiene una conexión de IA.",
+          "hint": "Pídele a un propietario o administrador del equipo que conecte un modelo de IA para este espacio."
+        }
+      },
       "hiddenByWorkspace_one": "{{count}} modelo más está desactivado en tu espacio de trabajo",
       "hiddenByWorkspace_other": "{{count}} modelos más están desactivados en tu espacio de trabajo"
     },

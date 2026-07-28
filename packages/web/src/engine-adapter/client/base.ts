@@ -45,6 +45,20 @@ export class HoustonClientBase {
   }
 
   /**
+   * Tell the client the active space's agent list is NOT coming — boot resolved
+   * no workspace to list agents for (the workspace load failed, or the account
+   * has none), so `listAgents` is never called.
+   *
+   * Without it, provider routing waits on a list that can never arrive: every
+   * connect throws "still loading" and the probe skips itself, so the picker and
+   * the AI hub spin forever. This settles them onto the pref-based path
+   * (HOU-979). A later successful `listAgents` supersedes it.
+   */
+  noteAgentsUnavailable(): void {
+    this.ctx.noteAgentsUnavailable();
+  }
+
+  /**
    * Point this client at a new engine endpoint in place. The desktop shell
    * calls this whenever a config lands on an already-built client: the
    * sidecar restarting on a fresh random port (HOU-432), and every hosted

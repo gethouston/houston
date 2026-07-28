@@ -51,9 +51,12 @@ export function UsageView() {
       }),
     [newEngine, providerCapabilities],
   );
+  // CONFIRMED connections only: a provider whose probe could not be confirmed
+  // has no usage to show, and listing it here would render an account row with
+  // nothing behind it (HOU-979).
   const { connected } = useMemo(
-    () => groupProviders(connectProviders, connections.isConnected),
-    [connectProviders, connections.isConnected],
+    () => groupProviders(connectProviders, connections.connectionState),
+    [connectProviders, connections.connectionState],
   );
   // Hosted cloud meters how long each agent's engine runs; only gateways that
   // serve the data advertise it. Mount-gating here also gates the query, so

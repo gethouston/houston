@@ -13,6 +13,7 @@ import type {
   CatalogOffer,
   HubCatalog,
 } from "../../lib/ai-hub/catalog-types.ts";
+import type { ProviderConnectionState } from "../../lib/provider-connection.ts";
 import { PROVIDER_OVERRIDES } from "../../lib/provider-overrides.ts";
 import {
   getConnectProviders,
@@ -20,25 +21,56 @@ import {
   providerGatewayIds,
 } from "../../lib/providers.ts";
 
-/** Connected providers first, otherwise catalog order is preserved. */
+/**
+ * Active providers split by connection state, catalog order preserved within
+ * each bucket. One bucket per state of the ONE derivation (HOU-979) — no
+ * surface has to collapse the tri-state on its own and get it wrong.
+ */
 export interface ProviderGroups {
+  /** CONFIRMED connected. The only bucket that may claim "Connected". */
   connected: ProviderInfo[];
+  /**
+   * Not confirmable right now (unreachable engine, waking pod, a space whose
+   * agent list is still settling). Renders on the CONNECTED side of every
+   * browse surface — never under a heading that says it is available to
+   * connect, and never with a Connect CTA: offering one for an account that
+   * may well be signed in is the guess the tri-state exists to prevent.
+   */
+  checking: ProviderInfo[];
+  /** CONFIRMED not connected. The only bucket that gets a Connect CTA. */
   available: ProviderInfo[];
 }
 
 /**
- * Split active providers into Connected / Available, preserving the incoming
- * (catalog) order within each group. Connected cards render first.
+ * Split active providers by connection state, preserving the incoming (catalog)
+ * order within each group.
  */
 export function groupProviders(
   providers: readonly ProviderInfo[],
-  isConnected: (p: ProviderInfo) => boolean,
+  connectionState: (p: ProviderInfo) => ProviderConnectionState,
 ): ProviderGroups {
-  const connected: ProviderInfo[] = [];
-  const available: ProviderInfo[] = [];
-  for (const provider of providers)
-    (isConnected(provider) ? connected : available).push(provider);
-  return { connected, available };
+  const groups: ProviderGroups = {
+    connected: [],
+    checking: [],
+    available: [],
+  };
+  for (const provider of providers) {
+    const state = connectionState(provider);
+    if (state === "connected") groups.connected.push(provider);
+    else if (state === "checking") groups.checking.push(provider);
+    else groups.available.push(provider);
+  }
+  return groups;
+}
+
+/**
+ * The providers a browse surface shows on the "yours" side: confirmed connected
+ * first, then the ones still resolving. Both are rendered by row components that
+ * read the state themselves, so a `checking` row shows its own treatment rather
+ * than borrowing the connected one.
+ */
+export function providerOwnedSide(groups: ProviderGroups): ProviderInfo[] {
+  return [...groups.connected, ...groups.checking];
 }
 
 /** The `card.*` i18n key describing how a provider connects. */

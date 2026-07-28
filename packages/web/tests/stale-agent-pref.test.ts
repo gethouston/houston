@@ -200,20 +200,21 @@ test("provider login falls back to a live agent when the selected pref is stale 
   expect(setupRuntimeClientFor).not.toHaveBeenCalled();
 });
 
-test("before any agent list resolves, the selected pref is trusted as-is", async () => {
+test("before any agent list resolves, a connect REFUSES instead of trusting the pref", async () => {
+  // Reversed by HOU-979. The pref used to be trusted as-is here, on the theory
+  // that boot prunes a stale one the moment the list lands. That holds for a
+  // DELETED agent but not for a SPACE SWITCH: the pref is not space-aware, so
+  // between the switch and the new `listAgents` it names an agent that belongs
+  // to the space the user just left. Starting a login there would run the OAuth
+  // flow in another space's pod under this space's `x-houston-org` header.
+  // Refusing for the moment the list takes to resolve is the honest trade.
   store.set(PREF, "ws/Selected");
-  const startLogin = vi.fn().mockResolvedValue({
-    kind: "device_code",
-    verificationUri: "https://auth.example/device",
-    userCode: "ABCD-1234",
-  });
+  const startLogin = vi.fn();
   runtimeClientFor.mockReturnValue({ startLogin });
 
   const c = client();
-  await c.providerLogin("openai"); // no listAgents ran yet
+  await expect(c.providerLogin("openai")).rejects.toThrow(/still loading/i);
 
-  expect(runtimeClientFor).toHaveBeenCalledWith(
-    expect.anything(),
-    "ws/Selected",
-  );
+  expect(startLogin).not.toHaveBeenCalled();
+  expect(runtimeClientFor).not.toHaveBeenCalled();
 });

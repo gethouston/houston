@@ -5,6 +5,11 @@ import * as controlPlane from "../control-plane";
 import { credentialSiblings, toNewProvider } from "../synthetic";
 import { isHoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
+import { pushClaudeCredential } from "./provider-claude-push";
+import {
+  requireProviderAgentId,
+  requireProviderRouting,
+} from "./provider-routing";
 
 export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProviderCredentials extends Base {
@@ -22,7 +27,10 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
         // before every turn — so the next message re-hydrated the agent and the
         // provider showed connected again. Forget the central credential FIRST so
         // no in-flight turn can re-serve it, then clear the runtime's local copy.
-        const agentId = this.ctx.requireAgentId();
+        // SPACE-VALIDATED id (HOU-979): the raw pref can still name the
+        // previous space's agent, and forgetting a credential through a foreign
+        // agent's route is a cross-space write.
+        const agentId = requireProviderAgentId(this.ctx);
         for (const target of targets) {
           await controlPlane.forgetCredential(this.ctx.cp, agentId, target);
           await controlPlane
@@ -37,35 +45,12 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
     }
 
     /**
-     * Push a desktop-extracted Anthropic OAuth credential (the `claude` CLI's
-     * `.credentials.json` JSON) to the given agent's pod, which stores + materializes
-     * it on the PVC. With NO agent selected yet (first-run onboarding, the
-     * cloud-migration wizard) it goes to the hidden SETUP runtime instead —
-     * same central store, so the agents created or migrated after are already
-     * connected. The desktop calls this for a REMOTE engine after a successful
-     * browser login — the pod can't read this machine's Keychain. Cloud-only:
-     * a co-located engine shares the credential dir with its local runtime, so it
-     * never reaches here (a call without a control plane is a programming error).
+     * Push a desktop-extracted Anthropic OAuth credential to this space's pod
+     * (or, with no settled agent, its setup runtime). See `provider-claude-push`
+     * for the target-resolution rule.
      */
-    async pushClaudeOAuthCredential(
-      agentId: string | null,
-      credentialJson: string,
-    ): Promise<void> {
-      if (!this.ctx.cp) {
-        throw new Error("Pushing a Claude credential needs a cloud engine.");
-      }
-      if (agentId) {
-        await controlPlane.pushClaudeOAuthCredential(
-          this.ctx.cp,
-          agentId,
-          credentialJson,
-        );
-        return;
-      }
-      await controlPlane.pushSetupClaudeOAuthCredential(
-        this.ctx.cp,
-        credentialJson,
-      );
+    async pushClaudeOAuthCredential(credentialJson: string): Promise<void> {
+      await pushClaudeCredential(this.ctx, credentialJson);
     }
 
     /**
@@ -85,9 +70,12 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
       // that becomes active; the order of the writes doesn't affect that.
       const targets = credentialSiblings(pid);
       if (this.ctx.cp) {
+        // Refuse rather than guess: an unsettled list leaves only the raw pref,
+        // which after a switch names the PREVIOUS space's agent (HOU-979).
+        requireProviderRouting(this.ctx);
         // First-run pre-agent: store through the setup runtime instead — the key
-        // lands on the personal workspace and the agent created next reads it.
-        // No per-agent settings exist yet to flip.
+        // lands on this space's central store and the agent created next reads
+        // it. No per-agent settings exist yet to flip.
         const agentId = this.ctx.providerAgentId();
         if (!agentId) {
           for (const target of targets) {
@@ -140,7 +128,8 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
      */
     async setProviderCustomEndpoint(endpoint: CustomEndpoint): Promise<void> {
       if (this.ctx.cp) {
-        const agentId = this.ctx.requireAgentId();
+        // Space-validated, like every other provider write (HOU-979).
+        const agentId = requireProviderAgentId(this.ctx);
         await controlPlane.setCustomEndpoint(this.ctx.cp, agentId, endpoint);
         await controlPlane
           .runtimeClientFor(this.ctx.cp, agentId)

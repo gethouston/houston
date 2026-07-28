@@ -49,6 +49,20 @@ export function providerListLoading(
 }
 
 /**
+ * Whether level 1 has SETTLED on "nothing is connected here" — the state that
+ * earns the explained empty state (title, hint, primary action) instead of a
+ * bare list. Strictly the complement of {@link providerListLoading} over an
+ * empty connected set, so the two can never both be true.
+ */
+export function providerListEmpty(
+  providers: readonly ModelPickerProvider[],
+  catalogState: ModelPickerCatalogState,
+): boolean {
+  if (providerListLoading(providers, catalogState)) return false;
+  return connectedProviders(providers).length === 0;
+}
+
+/**
  * The models to show at level 2 for a provider: that provider's rows in input
  * order, but only when the provider is actually connected (a stale/disconnected
  * id yields nothing).

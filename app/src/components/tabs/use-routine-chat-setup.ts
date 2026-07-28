@@ -7,6 +7,10 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
 import { analytics } from "../../lib/analytics";
 import { createMission } from "../../lib/create-mission";
+import {
+  providerConnectionState,
+  providerIsConnected,
+} from "../../lib/provider-connection";
 import { providerName } from "../../lib/providers";
 import { queryKeys } from "../../lib/query-keys";
 import {
@@ -52,14 +56,22 @@ export function useRoutineChatSetup(
   // The kickoffs name the user's connected providers so the agent never pins
   // a routine to one that isn't (e.g. "use deepseek" with no DeepSeek login).
   // While statuses are still loading, `null` keeps the prompt generic instead
-  // of wrongly claiming nothing is connected.
+  // of wrongly claiming nothing is connected — and so does an UNCONFIRMABLE
+  // probe (HOU-979): "we could not check" is not "nothing is connected", so it
+  // defers to the generic prompt rather than naming a partial list as if it
+  // were the whole truth. Membership itself is the ONE shared derivation.
   const providerStatuses = useProviderStatuses();
+  const statusValues = Object.values(providerStatuses.statuses);
+  const statusesUnconfirmable = statusValues.some(
+    (s) => providerConnectionState(s, false) === "checking",
+  );
   const connectedProvidersRef = useRef<ConnectedProviderRef[] | null>(null);
-  connectedProvidersRef.current = providerStatuses.isLoading
-    ? null
-    : Object.values(providerStatuses.statuses)
-        .filter((s) => s.authenticated)
-        .map((s) => ({ id: s.provider, name: providerName(s.provider) }));
+  connectedProvidersRef.current =
+    providerStatuses.isLoading || statusesUnconfirmable
+      ? null
+      : statusValues
+          .filter((s) => providerIsConnected(s))
+          .map((s) => ({ id: s.provider, name: providerName(s.provider) }));
 
   // Every unlinked, live create-chat for this agent — a person can be building
   // several at once (legacy reaction drafts included).

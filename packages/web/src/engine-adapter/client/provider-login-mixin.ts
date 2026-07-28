@@ -11,6 +11,7 @@ import {
   stopLoginWatch,
   watchLoginCompletion,
 } from "./provider-login-poll";
+import { requireProviderRouting } from "./provider-routing";
 
 /**
  * Surface a login-launch failure the runtime tagged with a stable `kind` (today:
@@ -117,6 +118,10 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
       // `user_code`, which opens the code panel); a co-located desktop client gets
       // a loopback `url` (user_code null) that the handler opens straight in the
       // browser. `provider` MUST be the old/frontend id (the dialog's contract).
+      // Refuse before the space's agent list has settled (HOU-979): the only
+      // other candidate is the raw pref, which after a switch names the PREVIOUS
+      // space's agent — the login would run in that space's pod.
+      requireProviderRouting(this.ctx);
       const agentId = this.ctx.providerAgentId();
       const old = toOldProvider(pid);
       const engine = agentId

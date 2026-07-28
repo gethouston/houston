@@ -160,3 +160,38 @@ describe("resolveEffectiveProvider — frozen once a conversation has messages",
     );
   });
 });
+
+describe("resolveEffectiveProvider — an UNCONFIRMABLE probe defers (HOU-979)", () => {
+  it("does NOT auth-switch away from a preferred provider we could not confirm", () => {
+    // `unknown` is not "signed out". Switching a fresh composer off Anthropic
+    // because its probe came back unconfirmable would answer (and bill) under a
+    // provider the user never chose, on evidence we do not have.
+    strictEqual(
+      resolveEffectiveProvider(null, "anthropic", null, ["openrouter"], false, [
+        "anthropic",
+      ]),
+      "anthropic",
+    );
+  });
+
+  it("still auth-switches off a CONFIRMED logged-out preference", () => {
+    // The unconfirmable list names a DIFFERENT provider, so the preferred one
+    // is genuinely confirmed signed out and #483's switch still applies.
+    strictEqual(
+      resolveEffectiveProvider(null, "openai", null, ["openrouter"], false, [
+        "deepseek",
+      ]),
+      "openrouter",
+    );
+  });
+
+  it("never picks an unconfirmable provider as the FALLBACK", () => {
+    // Deferring is not the same as trusting: with the preference confirmed
+    // signed out and nothing confirmed connected, we stay on `preferred` (which
+    // surfaces the reconnect card) rather than guessing onto an unknown.
+    strictEqual(
+      resolveEffectiveProvider(null, "openai", null, [], false, ["openrouter"]),
+      "openai",
+    );
+  });
+});

@@ -23,6 +23,7 @@
     "connectName": "Conectar {{name}}",
     "connecting": "Conectando",
     "connected": "Conectado",
+    "checking": "Verificando",
     "signOut": "Cerrar sesión",
     "cancel": "Cancelar",
     "models_one": "{{count}} modelo",

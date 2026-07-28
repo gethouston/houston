@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { ProviderConnectionState } from "../../lib/provider-connection";
 import type { ProviderInfo } from "../../lib/providers";
 import type { ProviderStatus } from "../../lib/tauri";
 import type { ToastItem } from "../../stores/ui";
@@ -77,8 +78,15 @@ export interface ProviderConnections {
   probed: boolean;
   /** Re-probe every visible provider. */
   refresh(): Promise<void>;
-  /** Whether a provider reads as connected (`providerAppearsConnected` over its status). */
-  isConnected(p: ProviderInfo): boolean;
+  /**
+   * The ONE per-provider reader (HOU-979). Every badge, CTA and grouping reads
+   * the full tri-state: `unknown` shows a neutral, visible "checking" instead
+   * of claiming Connected (the old behavior, which left a team space's hub
+   * reporting connections it could not see) or offering Connect for an account
+   * that is in fact connected. There is deliberately no boolean sibling — one
+   * existed, and every surface that reached for it collapsed the third state.
+   */
+  connectionState(p: ProviderInfo): ProviderConnectionState;
   /** Start a connect. Branches on `p.auth` / `copilotConnect` (may open a dialog). */
   connect(p: ProviderInfo): void;
   /** Abort an in-flight sign-in so the engine slot frees up for a retry. */

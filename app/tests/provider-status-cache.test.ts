@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  activeProviderStatusScope,
   loadCachedProviderStatuses,
+  providerProbeScopeChanged,
   purgeLegacyProviderStatusCache,
   saveCachedProviderStatuses,
 } from "../src/lib/provider-status-cache.ts";
@@ -25,6 +27,8 @@ function memoryStorage(initial: Record<string, string> = {}) {
 // so the DEFAULT scope resolves to "personal".
 const key = (scope: string) => `houston.providerStatusCache.v2.${scope}`;
 const LEGACY_KEY = "houston.providerStatusCache.v1";
+/** A team space's org slug, in the gateway's `[a-f0-9]{16}` shape. */
+const TEAM_ORG = "00000000000000ab";
 
 const CONNECTED: ProviderStatus = {
   provider: "anthropic",
@@ -124,5 +128,61 @@ test("the scoped default resolves to the personal scope without a window", () =>
   // The default-scope write lands under the personal key.
   assert.deepEqual(JSON.parse(storage.getItem(key("personal")) ?? "null"), {
     anthropic: CONNECTED,
+  });
+});
+
+// HOU-979: a probe describes exactly one space. `providerProbeScopeChanged` is
+// the rule the hub's probe applies when it resolves — the whole result is
+// dropped when the user switched mid-flight, so no cross-space status is ever
+// painted or persisted. Exercised here directly (the decision is pure; the hook
+// only calls it).
+
+/** Run `fn` with the active space pinned to `org` (null ⇒ personal). */
+function inSpace<T>(org: string | null, fn: () => T): T {
+  const previous = (globalThis as { window?: unknown }).window;
+  (
+    globalThis as { window?: { __HOUSTON_ACTIVE_ORG__?: string | null } }
+  ).window = { __HOUSTON_ACTIVE_ORG__: org };
+  try {
+    return fn();
+  } finally {
+    (globalThis as { window?: unknown }).window = previous;
+  }
+}
+
+test("a probe that resolves in the space it started in is kept", () => {
+  inSpace(TEAM_ORG, () => {
+    const startedIn = activeProviderStatusScope();
+    assert.equal(startedIn, TEAM_ORG);
+    // Nothing switched while it was in flight.
+    assert.equal(providerProbeScopeChanged(startedIn), false);
+  });
+});
+
+test("a probe overtaken by a space switch is dropped, both ways", () => {
+  // Started personal, resolved inside a team…
+  const startedPersonal = inSpace(null, activeProviderStatusScope);
+  assert.equal(startedPersonal, "personal");
+  inSpace(TEAM_ORG, () => {
+    assert.equal(providerProbeScopeChanged(startedPersonal), true);
+  });
+
+  // …and the reverse: started in the team, resolved back in personal.
+  const startedInTeam = inSpace(TEAM_ORG, activeProviderStatusScope);
+  inSpace(null, () => {
+    assert.equal(providerProbeScopeChanged(startedInTeam), true);
+  });
+});
+
+test("a dropped probe writes nothing under the space it resolved in", () => {
+  const storage = memoryStorage();
+  // The hub's probe returns EARLY on a changed scope, so the persist below never
+  // runs — the team's key stays empty rather than holding personal statuses.
+  const startedIn = inSpace(null, activeProviderStatusScope);
+  inSpace(TEAM_ORG, () => {
+    if (!providerProbeScopeChanged(startedIn))
+      saveCachedProviderStatuses({ anthropic: CONNECTED }, storage);
+    assert.deepEqual(loadCachedProviderStatuses(storage, TEAM_ORG), {});
+    assert.deepEqual(loadCachedProviderStatuses(storage, "personal"), {});
   });
 });

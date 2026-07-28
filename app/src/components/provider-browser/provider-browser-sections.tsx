@@ -42,7 +42,7 @@ export function makeProviderRow({
       description={
         providerCostLine(provider.id) ?? providerDescription(provider.id)
       }
-      connected={connections.isConnected(provider)}
+      connection={connections.connectionState(provider)}
       connecting={connections.busy[provider.id] === "connecting"}
       signingOut={connections.busy[provider.id] === "signingOut"}
       onConnect={connections.connect}

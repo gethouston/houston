@@ -8,6 +8,7 @@ import { Command, CommandEmpty, CommandInput, CommandList } from "../command";
 import {
   connectedProviderIds,
   modelsForProvider,
+  providerListEmpty,
   providerListLoading,
   connectedProviders as selectConnectedProviders,
 } from "./catalog";
@@ -27,8 +28,9 @@ const SEARCH_THRESHOLD = 8;
  * providers; clicking one drills into its models (level 2), reached back via the
  * always-visible back header. On level 2 an in-dropdown search appears once the
  * provider's list runs long (> 8 rows) and filters it via cmdk's built-in
- * scorer; short lists omit it. Disconnected providers never appear — the only
- * path to them is the "Connect more providers…" footer.
+ * scorer; short lists omit it. Disconnected providers never appear — the paths
+ * to them are the "Connect more providers…" footer and, when NOTHING is
+ * connected, level 1's explained empty state (which carries the same action).
  *
  * cmdk provides the accessible input, list semantics, and ↑↓/Enter roving; this
  * component owns which rows show. All data comes in as props and all actions go
@@ -65,6 +67,9 @@ export function ModelPicker({
   );
 
   const view = nav.view;
+  // The empty state carries its own action, so the footer is suppressed there.
+  const showEmptyState =
+    view.level === "providers" && providerListEmpty(providers, catalogState);
   const providerModels = useMemo(
     () =>
       view.level === "models"
@@ -173,6 +178,7 @@ export function ModelPicker({
             labels={labels}
             renderProviderIcon={renderProviderIcon}
             onEnter={enterProvider}
+            onConnect={onConnectMore}
           />
         ) : (
           <ModelRows
@@ -182,7 +188,7 @@ export function ModelPicker({
           />
         )}
 
-        {onConnectMore && (
+        {onConnectMore && !showEmptyState && (
           <ConnectMore label={labels.connectMore} onSelect={onConnectMore} />
         )}
 

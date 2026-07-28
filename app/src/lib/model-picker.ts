@@ -1,61 +1,15 @@
 /**
- * Pure decision helpers for the chat model picker (ChatModelSelector).
+ * Pure model-row helpers for the chat model picker (ChatModelSelector).
  *
- * Split out from the component so the visibility / connection logic is
- * unit-testable without a React renderer (the app has no component test
- * runner — see the sibling *.test.mjs files for the node:test pattern) and so
- * the container stays under the file-size budget.
+ * Split out from the component so the row-building logic is unit-testable
+ * without a React renderer (the app has no component test runner — see
+ * `app/tests/*.test.ts` for the node:test pattern) and so the container stays
+ * under the file-size budget.
  *
- * Background (issue #342): provider connection status is fetched
- * asynchronously. Before it resolves, the picker must NOT collapse to a single
- * "Not connected" provider — it shows every provider in a neutral "checking"
- * state until the real status arrives. These helpers encode exactly that.
+ * The provider CONNECTION derivation used to live here too, in a copy that
+ * disagreed with the AI hub's. It now has exactly one home for every surface:
+ * `provider-connection.ts` (HOU-979).
  */
-
-/** Minimal shape of a provider status these helpers need. */
-export interface ProviderConnection {
-  cli_installed: boolean;
-  authenticated: boolean;
-  /** Tri-state probe result. "unknown" = the engine was unreachable (a cold
-   *  pod still waking): not confirmable either way. Optional so legacy
-   *  callers that only carry the boolean keep working. */
-  auth_state?: "authenticated" | "unauthenticated" | "unknown";
-}
-
-/**
- * Per-provider state the picker renders:
- * - `connected`    — CLI installed AND authenticated; models selectable.
- * - `disconnected` — status known but not usable; hidden unless it's the
- *                    active provider, where it shows a "Not connected" hint.
- * - `checking`     — status not yet known and a fetch is in flight; shown with
- *                    a neutral "Checking..." hint, models disabled. This is the
- *                    state that prevents the #342 flicker.
- */
-export type ProviderPickerState = "connected" | "disconnected" | "checking";
-
-/**
- * Resolve a provider's picker state from its (possibly missing) status and
- * whether the status query is still loading. An absent status while loading is
- * `checking`; an absent status when NOT loading (e.g. the fetch failed) is
- * treated as `disconnected` so the picker degrades to the same safe view it had
- * before — never stuck spinning.
- */
-export function providerPickerState(
-  status: ProviderConnection | undefined,
-  isLoading: boolean,
-): ProviderPickerState {
-  if (status) {
-    // An "unknown" probe (engine unreachable, cold pod waking) is not a
-    // confirmed disconnect: keep the neutral "checking" state instead of
-    // collapsing every provider to "Not connected" (the #342 flicker, now
-    // reachable in cloud builds whenever the pod is waking).
-    if (status.auth_state === "unknown") return "checking";
-    return status.cli_installed && status.authenticated
-      ? "connected"
-      : "disconnected";
-  }
-  return isLoading ? "checking" : "disconnected";
-}
 
 /** A model row rendered under a provider in the chat picker. */
 export interface PickerModelRow {
