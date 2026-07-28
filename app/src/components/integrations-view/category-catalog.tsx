@@ -47,6 +47,7 @@ export function CategoryCatalog({
   catalog,
   connections,
   connectFlow,
+  onConnected,
   surface,
   query,
   category,
@@ -57,6 +58,7 @@ export function CategoryCatalog({
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
   connectFlow: ConnectFlow;
+  onConnected?: (toolkit: string) => void;
   /** This catalog's half of every row's origin key — which surface the row
    *  belongs to (the global page vs. one agent's tab). */
   surface: string;
@@ -104,6 +106,7 @@ export function CategoryCatalog({
               section={section}
               surface={surface}
               connectFlow={connectFlow}
+              onConnected={onConnected}
               // The spotlight repeats category rows: only the copy that owns
               // this app expands, so the panel appears exactly once.
               owns={(slug, origin) => owners.get(slug) === origin}
@@ -126,7 +129,11 @@ export function CategoryCatalog({
         onConnect={(toolkit) => {
           const origin = info?.origin;
           setInfo(null);
-          if (origin) void connectFlow.connect(toolkit, origin);
+          if (origin) {
+            void connectFlow.connect(toolkit, origin).then((attempt) => {
+              if (attempt.outcome === "active") onConnected?.(toolkit);
+            });
+          }
         }}
         onRemove={(toolkit) => {
           setInfo(null);

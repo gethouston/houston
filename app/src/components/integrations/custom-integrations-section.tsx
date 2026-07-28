@@ -106,6 +106,7 @@ export function CustomIntegrationsSection({
                 value={query}
                 onChange={setQuery}
                 label={t("custom.searchPlaceholder")}
+                clearLabel={t("custom.clearSearch")}
                 className="flex-1"
               />
               {addButton}

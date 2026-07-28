@@ -415,8 +415,11 @@ integrations** tab (§2, `teams.md`).
   catalog size via `home.descriptionCount`), then the shell:
   (0) the ONE **controls** row (`catalog-controls.tsx` → `CatalogControls`): a
   `CatalogSearchField` (`home.searchPlaceholder`) + the searchable A-Z category
-  `FilterCombobox`. It sits ABOVE both sections and its query + category narrow the
-  Installed strip AND the Integrations tab together. The surface owns that state in
+  `FilterCombobox`. The search field has an always-available clear X whenever it
+  contains text. A successful connect clears the query only when the landed app
+  still matches it, so a later OAuth completion cannot erase a newer search. It
+  sits ABOVE both sections and its query + category narrow the Installed strip AND
+  the Integrations tab together. The surface owns that state in
   the shared `use-catalog-surface.ts` hook (`useCatalogSurface` → `tab`, `query`,
   `category`, `filtering`, `shown`, `installedCount`, `availableCount`), used verbatim
   by the global page and the per-agent tab so the two-section wiring lives in ONE

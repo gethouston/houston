@@ -138,7 +138,9 @@ The agent's Skills section (`app/src/components/tabs/skills-content.tsx`) is
 the shared **catalog layout** (the ui/core `CatalogShell`, same two-section grammar
 as the Integrations surfaces and the AI hub, no page header — the nav label carries
 it): ONE top `CatalogSearchField` (`grid.searchSkills`) — the page's single query,
-owned by `skills-content.tsx` — over the consolidated **Your skills** section
+owned by `skills-content.tsx` — with an always-available clear X when text is
+present, and a successful install clearing the query — over the consolidated
+**Your skills** section
 (`grid.yourSkillsHeading`, an `lg` `CatalogSectionHeader` + count chip; installed-skill
 ROWS, not tiles) and the **Available** section (`grid.availableHeading`) holding two
 discovery tabs — **Store** (`skills:tabs.store`, the skills.sh marketplace) and

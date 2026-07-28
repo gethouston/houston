@@ -11,6 +11,7 @@ import {
   CustomIntegrationsSection,
   type PermissionsFix,
 } from "../../integrations";
+import { matchesQuery } from "../../integrations/browse-model";
 import { CatalogControls } from "../../integrations-view/catalog-controls";
 import { CatalogPane } from "../../integrations-view/catalog-pane";
 import { InstalledStrip } from "../../integrations-view/installed-strip";
@@ -122,6 +123,15 @@ export function AgentIntegrationsBody({
           category={category}
           isLoading={catalogLoading}
           connectFlow={connectFlow}
+          onConnected={(toolkit) =>
+            setQuery((currentQuery) => {
+              if (!currentQuery.trim()) return currentQuery;
+              const app = catalog.find((item) => item.slug === toolkit);
+              return app && matchesQuery(app, currentQuery.trim().toLowerCase())
+                ? ""
+                : currentQuery;
+            })
+          }
           onRemove={onDisconnect}
           allowlist={allowlist}
           lockedFix={permissionsFix}

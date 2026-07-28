@@ -106,7 +106,9 @@ no client writes them.
 The store is browsable INSIDE the app (`app/src/components/store-view/`,
 view id `agent-store` in `TOP_LEVEL_VIEWS`): a sidebar + command-palette
 destination rendering the public catalog in the shared catalog family
-(`CatalogRow`/`CatalogGrid`/`CatalogDetailDialog`/`CatalogSearchField`).
+(`CatalogRow`/`CatalogGrid`/`CatalogDetailDialog`/`CatalogSearchField`): search
+has an always-available clear X when text is present, and a successful install
+clears the catalog search.
 Reads go straight to the gateway's anonymous CORS-open endpoints via
 `ui/engine-client/src/store-catalog.ts` — no account, no engine round-trip;
 base resolution mirrors the publish adapter (`__HOUSTON_STORE__` →

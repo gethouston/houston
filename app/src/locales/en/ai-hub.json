@@ -16,6 +16,7 @@
   },
   "search": {
     "placeholder": "Search AI models and providers",
+    "clear": "Clear search",
     "showAll": "Show all {{count}} providers"
   },
   "card": {

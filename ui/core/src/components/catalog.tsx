@@ -2,7 +2,9 @@
 
 import { Search } from "lucide-react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { useRef } from "react";
 import { cn } from "../utils";
+import { SearchClearButton } from "./search-clear-button";
 
 /**
  * The flat "catalog plane" family — the browse-page grammar shared by every
@@ -119,24 +121,38 @@ export function CatalogSearchField({
   value,
   onChange,
   label,
+  clearLabel = "Clear search",
   className,
 }: {
   value: string;
   onChange: (value: string) => void;
   label: string;
+  clearLabel?: string;
   className?: string;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className={cn("relative", className)}>
-      <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-ink-muted" />
+      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
       <input
+        ref={inputRef}
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={label}
         aria-label={label}
-        className="h-9 w-full rounded-full border border-line-input bg-input pr-4 pl-10 text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
+        className="h-9 w-full rounded-full border border-line-input bg-input pr-9 pl-10 text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
       />
+      {value && (
+        <SearchClearButton
+          label={clearLabel}
+          onClear={() => {
+            onChange("");
+            inputRef.current?.focus();
+          }}
+        />
+      )}
     </div>
   );
 }
