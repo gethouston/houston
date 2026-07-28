@@ -32,6 +32,9 @@ export type {
   ComputeUsage,
   ComputeUsageRow,
   CustomIntegrationView,
+  EditableProfile,
+  EditableProfileCustom,
+  EditableProfileUpdate,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
@@ -62,6 +65,7 @@ export * from "./cp/fetch";
 export * from "./cp/files-context";
 export * from "./cp/integrations";
 export * from "./cp/marketplace";
+export * from "./cp/me-profile";
 export * from "./cp/orgs";
 export * from "./cp/runtime-clients";
 export * from "./cp/skills";

@@ -4,6 +4,7 @@ import { parseSettingsSection } from "../src/lib/settings-sections.ts";
 
 describe("parseSettingsSection", () => {
   it("passes a valid section id through", () => {
+    strictEqual(parseSettingsSection("profile"), "profile");
     strictEqual(parseSettingsSection("apiKeys"), "apiKeys");
     strictEqual(parseSettingsSection("reportBug"), "reportBug");
   });

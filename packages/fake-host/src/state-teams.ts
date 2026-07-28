@@ -20,7 +20,7 @@ import type {
   OrgRole,
   TeamsSettings,
 } from "./state-store";
-import { state } from "./state-store";
+import { SELF_USER_ID, state } from "./state-store";
 
 /** The capabilities served at `GET /v1/capabilities`. */
 export function getCapabilities(): FakeCapabilities {
@@ -63,11 +63,29 @@ export function getOrgMembers(): FakeMember[] | null {
   return state.orgMembers;
 }
 
-/** Replace (or disarm with `null`) the org roster `GET /v1/org` serves. */
+/**
+ * Replace (or disarm with `null`) the org roster `GET /v1/org` serves, and
+ * re-capture the identity-provider profile behind `/v1/me/profile` from its
+ * `SELF_USER_ID` row.
+ *
+ * The armed row IS the gateway's stored Google/GCIP profile for the caller, so
+ * capturing it here is what gives a CLEARED custom name/photo something honest
+ * to fall back to — otherwise "reset to my Google photo" would resolve to
+ * nothing. A disarm (`null`), or a roster carrying no self row, leaves no
+ * fallback at all (`{}`), which is exactly what the gateway serves for a user
+ * whose provider handed it neither field.
+ */
 export function setOrgMembers(
   members: FakeMember[] | null,
 ): FakeMember[] | null {
   state.orgMembers = members;
+  const self = members?.find((m) => m.userId === SELF_USER_ID);
+  state.meProfileBase = {
+    ...(self?.displayName !== undefined
+      ? { displayName: self.displayName }
+      : {}),
+    ...(self?.photoUrl !== undefined ? { photoUrl: self.photoUrl } : {}),
+  };
   return state.orgMembers;
 }
 
@@ -92,7 +110,7 @@ export function addOrgInvite(email: string, role: OrgRole): FakeInvite {
     id: `invite-${++state.inviteSeq}`,
     email,
     role,
-    invitedBy: "u-self",
+    invitedBy: SELF_USER_ID,
     createdAt: Date.now(),
   };
   state.orgInvites = [...state.orgInvites, invite];

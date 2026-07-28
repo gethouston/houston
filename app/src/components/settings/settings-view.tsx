@@ -21,6 +21,7 @@ import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAccountAvailable } from "./sections/account";
 import { ApiKeysSection } from "./sections/api-keys";
 import { MigrationSection, useMigrationAvailable } from "./sections/migration";
+import { ProfileSection, useProfileAvailable } from "./sections/profile";
 import { ReportBugSection } from "./sections/report-bug";
 import { ShortcutsSection } from "./sections/shortcuts";
 import {
@@ -36,6 +37,7 @@ export function SettingsView() {
   const workspaceLoadError = useWorkspaceStore((s) => s.loadError);
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
   const accountAvailable = useAccountAvailable();
+  const profileAvailable = useProfileAvailable();
   const migrationAvailable = useMigrationAvailable();
   const { capabilities } = useCapabilities();
   const apiKeysAvailable = apiKeysSupported(capabilities);
@@ -109,6 +111,7 @@ export function SettingsView() {
           accountAvailable={accountAvailable}
           apiKeysAvailable={apiKeysAvailable}
           migrationAvailable={migrationAvailable}
+          profileAvailable={profileAvailable}
           onSelect={setActive}
         />
       </div>
@@ -134,6 +137,7 @@ export function SettingsView() {
           <UserContextSection />
         ) : (
           <div className="mx-auto max-w-xl px-8 pb-10">
+            {active === "profile" && <ProfileSection />}
             {active === "apiKeys" && <ApiKeysSection />}
             {active === "shortcuts" && <ShortcutsSection />}
             {active === "reportBug" && <ReportBugSection />}

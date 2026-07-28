@@ -993,6 +993,20 @@ queue (a parked message keeps its chips across a relaunch). E2E:
 
 ## Relevance-scoped notifications (HOU-945)
 
+**User-set display identity (Settings > Profile).** Every member can set their
+own display name and picture: `settings:profile.*`, section `profile` first in
+`SETTINGS_SECTION_IDS`, hidden entirely when `GET /v1/me/profile` 404s (old
+gateway) or off-identity. The photo is cover-cropped browser-side to 256px
+(`app/src/lib/avatar-image.ts`, reusing `image-crop.ts`) and PUT as a data URI;
+the gateway stores overrides that survive token refreshes (cloud C7,
+`/v1/me/profile`). A save seeds the profile query and invalidates
+`USER_PROFILES_KEY`, `ORG_PEOPLE_KEY`, and the org roster, so every face stack,
+sender avatar, and @mention row repaints live. Related: both sign-in
+completions now backfill the GCIP account RECORD's photo/name from the provider
+identity when the record lacks them (web `firebase-popup.ts`, desktop
+`accounts:update`) — the token claims are minted from the record, so without
+the backfill the gateway never learned a Google photo at all.
+
 **The header bell (HOU-963).** The per-agent header's old Share button is now a
 notifications bell: badge = the outstanding-mention count, the menu = the same
 rows/model/nav as the Mission Control inbox (`shell/notifications-bell.tsx`

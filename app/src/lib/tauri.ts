@@ -15,6 +15,7 @@ import type {
   AgentAssignment,
   CommunitySkillPreview,
   CustomEndpoint,
+  EditableProfileUpdate,
   ComposioAppEntry as EngineComposioAppEntry,
   ComposioStatus as EngineComposioStatus,
   ProviderStatus as EngineProviderStatus,
@@ -1757,6 +1758,28 @@ export const tauriOrg = {
     call("create_checkout", () => getEngine().createCheckout(interval)),
   /** C8 billing: open the Stripe customer portal (owner only); returns `{url}`. */
   createPortal: () => call("create_portal", () => getEngine().createPortal()),
+};
+
+/**
+ * The signed-in user's OWN display profile (name + photo). Hosted-gateway only,
+ * but unlike `tauriOrg` this is NOT multiplayer-gated: every signed-in user may
+ * name themselves and pick a picture, alone or in a team.
+ */
+export const tauriProfile = {
+  /** Background read: it degrades to null off-gateway and on a gateway that
+   *  predates the route, which HIDES the Settings profile section entirely. A
+   *  failure there is indistinguishable from "the host has no such feature",
+   *  so it must neither red-toast nor page Sentry. */
+  get: () =>
+    call("get_my_profile", () => getEngine().getMyProfile(), undefined, {
+      toast: false,
+      capture: false,
+    }),
+  /** User-initiated write: keeps `call()`'s default red toast + Sentry report,
+   *  the no-silent-failures path. The host's 400 for a name over 60 chars or an
+   *  oversized/malformed picture reaches the user through that same surface. */
+  set: (update: EditableProfileUpdate) =>
+    call("set_my_profile", () => getEngine().setMyProfile(update)),
 };
 
 /**

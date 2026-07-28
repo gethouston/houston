@@ -6,6 +6,7 @@
  * component module.
  */
 export const SETTINGS_SECTION_IDS = [
+  "profile",
   "apiKeys",
   "workspaceContext",
   "userContext",

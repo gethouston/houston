@@ -48,6 +48,11 @@ export {
   useUpdateLearning,
 } from "./use-learnings";
 export {
+  MY_EDITABLE_PROFILE_KEY,
+  useMyEditableProfile,
+  useSetMyProfile,
+} from "./use-my-editable-profile";
+export {
   useAddMember,
   useDeleteInvite,
   useOrg,

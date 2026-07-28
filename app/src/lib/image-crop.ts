@@ -6,6 +6,12 @@
  * the stored avatar is always a clean centered square regardless of the source
  * aspect ratio.
  *
+ * This module owns the two primitives every avatar path in the app shares:
+ * {@link centerSquareCrop} (the geometry) and {@link decodeImage} (the
+ * `createImageBitmap`-then-`<img>` decode ladder). `lib/avatar-image.ts` reuses
+ * both for the Settings > Profile picture, which needs a size-capped data URI
+ * instead of a blob — one crop, one decoder, two encoders.
+ *
  * No new npm dependency: the crop runs on a plain `<canvas>`. The geometry is
  * split into pure functions ({@link centerSquareCrop}, {@link outputEdge}) so
  * the cropping math is unit-tested under `node --test` without a DOM.
@@ -52,7 +58,7 @@ export function outputEdge(
 }
 
 /** A decoded image plus the natural dimensions and a cleanup callback. */
-interface DecodedImage {
+export interface DecodedImage {
   image: CanvasImageSource;
   width: number;
   height: number;
@@ -63,9 +69,10 @@ interface DecodedImage {
  * Decode a blob into something `drawImage` accepts. Prefers `createImageBitmap`
  * (off-main-thread decode, releasable), falling back to an `<img>` + object URL
  * on engines without it. Rejects on an undecodable file so the caller surfaces
- * a real error rather than uploading garbage.
+ * a real error rather than uploading garbage. Shared with `lib/avatar-image.ts`,
+ * which re-throws the rejection as its own typed failure.
  */
-async function decodeImage(source: Blob): Promise<DecodedImage> {
+export async function decodeImage(source: Blob): Promise<DecodedImage> {
   if (typeof createImageBitmap === "function") {
     const bitmap = await createImageBitmap(source);
     return {

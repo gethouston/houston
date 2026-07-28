@@ -13,6 +13,7 @@
 import { json } from "./http";
 import * as state from "./state";
 import type { FakeAssignment, FakeMember } from "./state-store";
+import { SELF_USER_ID } from "./state-store";
 
 /** Read a `string[] | null` field from a JSON body, preserving an explicit null. */
 function toolkitList(value: unknown): string[] | null {
@@ -75,7 +76,7 @@ export function handleTeamsRoutes(
     // An armed roster (the per-member access lens) is served verbatim; unarmed
     // it stays the single-self roster synthesized from the advertised role.
     const members = state.getOrgMembers() ?? [
-      { userId: "u-self", email: "you@acme.test", role },
+      { userId: SELF_USER_ID, email: "you@acme.test", role },
     ];
     return json({
       id: "org-e2e",
