@@ -77,7 +77,8 @@ Status (each has a `-text`): `danger` `#e02e2a`→`#ef4444` · `success` `#00a24
 Reserved families — do not reach for outside their home:
 - `sidebar*` (`-text`/`-line`/`-hover`/`-active`): sidebar is transparent; `sidebar-active` is the selected-row fill, a clear step above hover.
 - `space-*`: theme-invariant **dark**, ONLY for the workspace-loading splash / `OrbitLoader` / storage-unavailable gate (`app/src/components/space/`). Any themed control placed on it must pin `data-theme="dark"`.
-- `agent.{charcoal,forest,navy,purple,crimson,orange,golden}`: avatar palette — resolve stored ids via `resolveAgentColor` from `@houston-ai/core`, never app-local helpers. Use `HoustonAvatar`.
+- `agent.{charcoal,forest,navy,purple,crimson,orange,golden}`: AGENT avatar palette — resolve stored ids via `resolveAgentColor` from `@houston-ai/core`, never app-local helpers. Use `HoustonAvatar`.
+- `person-{slate,sage,mauve,taupe,indigo}` + `person-initials` + `person-overflow`/`person-overflow-text`: HUMAN avatar palette (mission face stacks). Deliberately desaturated so teammates never compete with agent helmets. Pick a tone with `personToneClass(id)` from `@houston-ai/board` — never by list index, or a person's colour changes when the roster does.
 
 ## 5. Motion rules
 Merge the tokenized scale (§4) with these craft rules:

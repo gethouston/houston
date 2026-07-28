@@ -55,7 +55,15 @@
     "ht-agent-purple": "#5b21b6",
     "ht-agent-crimson": "#a3261a",
     "ht-agent-orange": "#b45309",
-    "ht-agent-golden": "#a16207"
+    "ht-agent-golden": "#a16207",
+    "ht-person-slate": "#5b6b7a",
+    "ht-person-sage": "#5e7266",
+    "ht-person-mauve": "#84616b",
+    "ht-person-taupe": "#736550",
+    "ht-person-indigo": "#5b6488",
+    "ht-person-initials": "#ffffff",
+    "ht-person-overflow": "#e6e8ec",
+    "ht-person-overflow-text": "#555b66"
   },
   "dark": {
     "ht-hover": "rgba(255, 255, 255, 0.08)",
@@ -113,6 +121,14 @@
     "ht-agent-purple": "#a78bfa",
     "ht-agent-crimson": "#f87171",
     "ht-agent-orange": "#fb923c",
-    "ht-agent-golden": "#fbbf24"
+    "ht-agent-golden": "#fbbf24",
+    "ht-person-slate": "#647585",
+    "ht-person-sage": "#647a6d",
+    "ht-person-mauve": "#8e6b76",
+    "ht-person-taupe": "#7d6f59",
+    "ht-person-indigo": "#656e93",
+    "ht-person-initials": "#ffffff",
+    "ht-person-overflow": "#4c4c52",
+    "ht-person-overflow-text": "#d4d4d4"
   }
 }

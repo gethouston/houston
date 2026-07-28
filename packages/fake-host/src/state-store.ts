@@ -205,6 +205,36 @@ export const SEED_USAGE: TokenUsage = {
 export const EPOCH = Date.UTC(2024, 0, 1);
 export const ISO = new Date(EPOCH).toISOString();
 
+/**
+ * Teams attribution on the seeded missions — the humans on each one, exactly as
+ * the gateway stamps them (`created_by` + `contributors`). Two shapes on
+ * purpose: a SMALL stack (creator + one collaborator, both photo-less so the
+ * initials faces render) and a stack that OVERFLOWS the card's five-face cap,
+ * so the "+N" chip has coverage.
+ *
+ * Seeding it on the existing missions (rather than adding cards) is deliberate:
+ * face stacks are multiplayer-gated in the app, so a default single-player run —
+ * including the visual-regression baselines — sees exactly the board it saw
+ * before. A spec arms `/__test__/capabilities` `{ multiplayer: true }` to make
+ * them appear. Names ride on the contributor entries, so a stack renders with
+ * readable labels without a `/v1/org/profiles` round trip (identity is off in
+ * the default e2e project).
+ */
+const SEED_TRIP_CONTRIBUTORS = [
+  { user_id: "u-self", name: "Ada Lovelace" },
+  { user_id: "u-bob", name: "Bob Stone" },
+];
+
+const SEED_LAUNCH_CONTRIBUTORS = [
+  { user_id: "u-self", name: "Ada Lovelace" },
+  { user_id: "u-bob", name: "Bob Stone" },
+  { user_id: "u-cleo", name: "Cleo Nakamura" },
+  { user_id: "u-dmitri", name: "Dmitri Volkov" },
+  { user_id: "u-elena", name: "Elena Ruiz" },
+  { user_id: "u-farid", name: "Farid Haddad" },
+  { user_id: "u-gita", name: "Gita Raman" },
+];
+
 const SEED_ACTIVITIES: Activity[] = [
   {
     id: "act-1",
@@ -212,6 +242,8 @@ const SEED_ACTIVITIES: Activity[] = [
     description: "Research flights and hotels for the spring",
     status: "needs_you",
     updated_at: ISO,
+    created_by: "u-self",
+    contributors: SEED_TRIP_CONTRIBUTORS,
   },
   {
     id: "act-2",
@@ -219,6 +251,8 @@ const SEED_ACTIVITIES: Activity[] = [
     description: "Write the beta announcement to the waitlist",
     status: "done",
     updated_at: ISO,
+    created_by: "u-self",
+    contributors: SEED_LAUNCH_CONTRIBUTORS,
   },
 ];
 

@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 35
+version: 36
 
 components:
   - id: agent-avatar
@@ -452,13 +452,45 @@ components:
   - id: mission-card
     title: Mission card
     purpose: A board card representing one mission/conversation.
-    anatomy: [avatar, title, status-chip, actions, drag-handle, select-checkbox]
-    states: [resting, running, needs-you, error, selected, focused, dragging]
+    anatomy:
+      [
+        avatar,
+        title,
+        status-chip,
+        actions,
+        drag-handle,
+        select-checkbox,
+        people-face-stack,
+        people-overflow-chip,
+      ]
+    states:
+      [
+        resting,
+        running,
+        needs-you,
+        error,
+        selected,
+        focused,
+        dragging,
+        attributed,
+      ]
     variants: [board-card, archived-list-row]
     behavior: >-
       Running state shows the comet glow; approve moves to done. Drag/multi-select
-      are surface-capability gated (pointer drag on desktop).
-    a11y: article/button role; title as label; checkbox labeled; status not color-only.
+      are surface-capability gated (pointer drag on desktop). The people face stack
+      is the multi-contributor signal: every human on the mission, creator first,
+      as overlapping ringed avatars over the card body's bottom-right corner
+      (photo when known, otherwise initials on an opaque desaturated person tone
+      picked deterministically from the person's id, so one person keeps one tone
+      everywhere). Past five faces the rest collapse into a solid "+N" chip that
+      expands to the full roster, and the card body reserves a right gutter sized
+      to the stack so no text ever runs underneath it. Server-stamped attribution
+      only (multiplayer); an unattributed card renders exactly as before.
+    a11y: >-
+      article/button role; title as label; checkbox labeled; status not
+      color-only; the face stack is a labeled group, each face names its person
+      (tooltip + title) and the "+N" chip is a labeled control, so no contributor
+      is reachable by hover alone.
     since: 1
 
   - id: mission-board

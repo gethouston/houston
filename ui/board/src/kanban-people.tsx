@@ -1,17 +1,20 @@
 import {
-  Avatar,
-  AvatarFallback,
   AvatarGroup,
   AvatarGroupCount,
-  AvatarImage,
   cn,
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
 } from "@houston-ai/core";
+import {
+  FACE_SIZE,
+  Face,
+  type FaceSize,
+  type KanbanPeopleSurface,
+  RING_CHIP,
+  RING_GROUP,
+  TEXT_SIZE,
+} from "./kanban-people-face";
 import {
   CARD_PEOPLE_MAX,
   initialsFor,
@@ -20,6 +23,7 @@ import {
 } from "./kanban-people-logic";
 import type { KanbanPerson } from "./types";
 
+export type { KanbanPeopleSurface };
 // Re-export the pure, JSX-free helpers so consumers can import them from the
 // component module too; they live in `kanban-people-logic.ts` so tests can run
 // them under `node --experimental-strip-types` (which can't transform JSX).
@@ -30,7 +34,9 @@ export interface KanbanPeopleProps {
   /** Max faces before collapsing into a "+N" chip. */
   max?: number;
   /** `sm` (~18px) matches dense card rows; `md` (~24px) suits the detail panel. */
-  size?: "sm" | "md";
+  size?: FaceSize;
+  /** Surface the stack is drawn on — decides the ring colour. Default `input`. */
+  surface?: KanbanPeopleSurface;
   /** Accessible group label (English default "People"). */
   label?: string;
   /** When set, the "+N" overflow chip becomes a button that opens a popover
@@ -43,56 +49,6 @@ export interface KanbanPeopleProps {
   className?: string;
 }
 
-const FACE_SIZE: Record<NonNullable<KanbanPeopleProps["size"]>, string> = {
-  sm: "size-[18px]",
-  md: "size-6",
-};
-
-const TEXT_SIZE: Record<NonNullable<KanbanPeopleProps["size"]>, string> = {
-  sm: "text-[9px]",
-  md: "text-[10px]",
-};
-
-/** A single avatar face: image when known, initials fallback otherwise. Shared
- *  by the overlapping stack and the expansion popover so both read identically.
- *  With `tooltip`, hovering the face shows the person's display name via the
- *  app's Tooltip primitive (the stack has no visible label of its own); the
- *  popover passes it off since it already lists the name in text beside each
- *  face. Off `tooltip`, the native `title` still carries the name. */
-function Face({
-  person,
-  faceSize,
-  textSize,
-  tooltip = false,
-}: {
-  person: KanbanPerson;
-  faceSize: string;
-  textSize: string;
-  tooltip?: boolean;
-}) {
-  const avatar = (
-    <Avatar title={tooltip ? undefined : person.label} className={faceSize}>
-      {person.imageUrl && (
-        <AvatarImage
-          src={person.imageUrl}
-          alt={person.label}
-          referrerPolicy="no-referrer"
-        />
-      )}
-      <AvatarFallback className={cn(textSize, "font-medium")}>
-        {initialsFor(person.label)}
-      </AvatarFallback>
-    </Avatar>
-  );
-  if (!tooltip) return avatar;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{avatar}</TooltipTrigger>
-      <TooltipContent side="top">{person.label}</TooltipContent>
-    </Tooltip>
-  );
-}
-
 /** An overlapping face stack: up to `max` avatars + a "+N" overflow chip.
  *  Props-only, i18n-agnostic (labels passed in). Renders nothing when empty.
  *  With `expandable`, the "+N" chip opens a popover of every person. */
@@ -100,6 +56,7 @@ export function KanbanPeople({
   people,
   max = 3,
   size = "sm",
+  surface = "input",
   label = "People",
   expandable = false,
   expandLabel,
@@ -111,13 +68,21 @@ export function KanbanPeople({
   const extra = overflowCount(people, max);
   const faceSize = FACE_SIZE[size];
   const textSize = TEXT_SIZE[size];
-  const chipClass = cn(faceSize, textSize, "font-medium");
+  // The overflow chip is a SOLID fill with high-contrast text (semibold), not
+  // the translucent `bg-chip-subtle` it used to wear — that read as an empty
+  // hole in the stack over a busy card.
+  const chipClass = cn(
+    faceSize,
+    textSize,
+    "font-semibold bg-person-overflow text-person-overflow-text",
+    RING_CHIP[surface],
+  );
 
   return (
     <AvatarGroup
       role="group"
       aria-label={label}
-      className={cn("-space-x-1.5", className)}
+      className={cn("-space-x-1.5", RING_GROUP[surface], className)}
     >
       {faces.map((person) => (
         <Face
@@ -141,7 +106,10 @@ export function KanbanPeople({
                 title={`+${extra}`}
                 className={cn(
                   chipClass,
-                  "relative flex shrink-0 items-center justify-center rounded-full bg-chip-subtle text-ink-muted ring-2 ring-input transition-colors hover:bg-ink-muted/20 cursor-pointer",
+                  // Hover dims rather than re-tinting: the fill is a solid
+                  // token whose "one step darker" differs per theme, and
+                  // opacity reads identically in both.
+                  "relative flex shrink-0 items-center justify-center rounded-full ring-2 transition-opacity hover:opacity-80 cursor-pointer",
                 )}
               >
                 +{extra}
@@ -160,8 +128,8 @@ export function KanbanPeople({
                   >
                     <Face
                       person={person}
-                      faceSize="size-6"
-                      textSize="text-[10px]"
+                      faceSize={FACE_SIZE.md}
+                      textSize={TEXT_SIZE.md}
                     />
                     <span className="min-w-0 flex-1 truncate text-sm text-ink">
                       {person.label}

@@ -8,7 +8,11 @@ import {
 import { Check, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { KanbanPeople } from "./kanban-people";
-import { CARD_PEOPLE_MAX } from "./kanban-people-logic";
+import {
+  CARD_PEOPLE_MAX,
+  peopleGutterClass,
+  stackSlots,
+} from "./kanban-people-logic";
 import type { KanbanItem } from "./types";
 
 export interface KanbanCardLabels {
@@ -106,6 +110,13 @@ export function KanbanCard({
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.title);
   const inputRef = useRef<HTMLInputElement>(null);
+  // The face stack floats over the body's bottom-right corner, so the body has
+  // to give it a gutter or the last line of text runs underneath the faces
+  // (the artifact the landing mock avoids with `.tc-desc { padding-right }`).
+  // Empty for an unattributed card, so a single-player board is byte-identical.
+  const peopleGutter = peopleGutterClass(
+    stackSlots(item.people ?? [], CARD_PEOPLE_MAX),
+  );
   // Don't let a drag start while renaming (the title input owns the gesture)
   // or while a multi-select is active (the bulk action bar owns moves then).
   const canDrag = enableDrag && !editing && !anySelected;
@@ -348,14 +359,26 @@ export function KanbanCard({
               className="text-[13px] font-medium text-ink bg-transparent border-b border-ink/20 outline-none w-full"
             />
           ) : (
-            <p className="text-[13px] font-medium text-ink line-clamp-2 cursor-pointer">
+            <p
+              className={cn(
+                "text-[13px] font-medium text-ink line-clamp-2 cursor-pointer",
+                // The stack sits at the BOTTOM of the body, so it only needs to
+                // clear the title when there is no description under it.
+                !item.description && peopleGutter,
+              )}
+            >
               {item.title}
             </p>
           )}
 
           {/* Description */}
           {item.description && (
-            <p className="text-xs text-ink-muted line-clamp-2 mt-1">
+            <p
+              className={cn(
+                "text-xs text-ink-muted line-clamp-2 mt-1",
+                peopleGutter,
+              )}
+            >
               {item.description}
             </p>
           )}
@@ -368,7 +391,14 @@ export function KanbanCard({
              only separation from the text underneath — no border/divider. The
              expandable "+N" popover is portalled, so nothing clips it. Renders
              nothing when the mission has no people, leaving the card
-             untouched. */}
+             untouched.
+
+             `right-0 bottom-0` is NOT flush with the card: this wrapper lives
+             inside the card's own `p-3`, so the stack rests 12px from the card
+             edge and its 2px ring bleeds 2px into that padding — the landing
+             mock's `.faces { right: 10px; bottom: 10px }` optical inset. The
+             text it floats over gets its clearance from `peopleGutter` above,
+             mirroring the mock's `.tc-desc { padding-right }`. */}
           <KanbanPeople
             people={item.people}
             max={CARD_PEOPLE_MAX}

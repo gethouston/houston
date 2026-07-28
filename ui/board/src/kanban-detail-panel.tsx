@@ -108,9 +108,13 @@ export const KanbanDetailPanel = forwardRef<
             <Loader2 className="size-4 animate-spin text-blue-500 shrink-0" />
           )}
           {people && people.length > 0 && (
+            /* `surface="background"` because this header wears `bg-background`,
+               not the card tier: the default `ring-input` ring would paint a
+               white halo band around each face instead of a cutout. */
             <KanbanPeople
               people={people}
               size="md"
+              surface="background"
               label={peopleLabel}
               expandable
               expandLabel={peopleExpandLabel}

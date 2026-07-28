@@ -58,6 +58,16 @@
       "crimson": { "$value": "{color.agent.crimson-bright}" },
       "orange": { "$value": "{color.agent.orange-bright}" },
       "golden": { "$value": "{color.agent.golden-bright}" }
+    },
+    "person": {
+      "slate": { "$value": "{color.person.slate-bright}" },
+      "sage": { "$value": "{color.person.sage-bright}" },
+      "mauve": { "$value": "{color.person.mauve-bright}" },
+      "taupe": { "$value": "{color.person.taupe-bright}" },
+      "indigo": { "$value": "{color.person.indigo-bright}" },
+      "initials": { "$value": "{color.base.white}" },
+      "overflow": { "$value": "{color.person.overflow-dark}" },
+      "overflow-text": { "$value": "{color.neutral.250}" }
     }
   }
 }

@@ -93,7 +93,15 @@ The owner vocabulary (say these words to direct changes):
 - **Lines & focus**: `line` (hairlines), `line-input` (field borders), `focus`.
 - **Status**: `danger`, `success`, `warning`, `highlight` (each with `-text`).
 - Untouched families: `space-*` (the workspace-loading splash + OrbitLoader),
-  `agent.*` (avatar palette),
+  `agent.*` (agent avatar palette),
+  `person-*` (HUMAN avatar palette — `slate` / `sage` / `mauve` / `taupe` /
+  `indigo` fills, `person-initials`, and the `person-overflow` /
+  `person-overflow-text` pair for the "+N" chip. Deliberately DESATURATED so a
+  teammate's face never competes with a vivid agent helmet; unlike `agent.*`
+  these ARE bridged to Tailwind utilities (`bg-person-slate`,
+  `text-person-initials`, …) because the mission face stack picks a tone by
+  className, hashed from the person's stable id — see
+  `ui/board/src/kanban-people-tone.ts`),
   `sidebar*` (with `-text`/`-hover`/`-line`/`-active` suffixes; `sidebar-active`
   is the selected-row fill, a clear step above hover in both themes).
 
