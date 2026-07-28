@@ -30,9 +30,15 @@ interface UIState {
   viewMode: string;
   /** Ephemeral Activity sub-mode. It resets on navigation and agent changes. */
   agentBoardMode: AgentBoardMode;
-  /** A one-shot deep-link consumed by SettingsView on mount: other surfaces set
-   * it right before `setViewMode("settings")` to open a specific section, and
-   * SettingsView clears it once read so a later plain Settings open lands home. */
+  /**
+   * Which Settings section is open (`null` = the Settings index). The single
+   * source of truth, not a one-shot pin: `SettingsView` renders from it and
+   * writes it on drill-in/back, and every surface that navigates INTO Settings
+   * goes through {@link UIState.openSettings}, which sets the section and the
+   * view together. That is what makes "open Settings" deterministic — clicking
+   * Settings in the sidebar while a section is open lands on the index instead
+   * of doing nothing.
+   */
   settingsSection: SettingsSectionId | null;
   assistantPanelOpen: boolean;
   activityPanelId: string | null;
@@ -138,6 +144,13 @@ interface UIState {
   setViewMode: (mode: string) => void;
   setAgentBoardMode: (mode: AgentBoardMode) => void;
   setSettingsSection: (section: SettingsSectionId | null) => void;
+  /**
+   * Navigate to Settings, on `section` (or its index when `null`). ONE call so a
+   * caller can never set the view and forget the section: a plain "open
+   * Settings" always lands on the index, and a deep link always lands on its
+   * section, whether or not Settings was already open.
+   */
+  openSettings: (section: SettingsSectionId | null) => void;
   setAssistantPanelOpen: (open: boolean) => void;
   setActivityPanelId: (
     id: string | null,
@@ -243,18 +256,30 @@ let toastCounter = 0;
 // toast's countdown (see addToast) and a manual dismiss cancels it.
 const toastTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+/**
+ * The state a view change implies. `agentBoardMode` is an ephemeral Activity
+ * sub-mode, so ANY navigation off Activity drops it back to the active board.
+ * Every navigation setter goes through this, so the rule cannot be honored by
+ * `setViewMode` and forgotten by `openSettings`.
+ */
+function viewChange(
+  viewMode: string,
+): Pick<UIState, "viewMode"> | Pick<UIState, "viewMode" | "agentBoardMode"> {
+  return viewMode === "activity"
+    ? { viewMode }
+    : { viewMode, agentBoardMode: "active" };
+}
+
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       ...initialUIState,
 
-      setViewMode: (viewMode) =>
-        set({
-          viewMode,
-          ...(viewMode === "activity" ? {} : { agentBoardMode: "active" }),
-        }),
+      setViewMode: (viewMode) => set(viewChange(viewMode)),
       setAgentBoardMode: (agentBoardMode) => set({ agentBoardMode }),
       setSettingsSection: (settingsSection) => set({ settingsSection }),
+      openSettings: (settingsSection) =>
+        set({ ...viewChange("settings"), settingsSection }),
       setAssistantPanelOpen: (assistantPanelOpen) =>
         set({ assistantPanelOpen }),
       setActivityPanelId: (activityPanelId, options) =>

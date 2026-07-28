@@ -2,8 +2,8 @@ import { cn } from "@houston-ai/core";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 /**
- * App-local layout primitives shared by the four top-level surfaces (AI hub,
- * Integrations, Organization, Settings) so their width and header spacing stay
+ * App-local layout primitives shared by every full-window surface (AI hub,
+ * Integrations, Settings and its sections) so their width and header spacing stay
  * identical. Deliberately NOT in `ui/` — these encode Houston page chrome, not a
  * reusable widget, so they carry no inventory/parity churn. Props-only, no store
  * imports. The canon is the AI hub's structure: a centered `max-w-4xl px-8`

@@ -9,11 +9,7 @@ import {
   getConnectProviders,
   type ProviderInfo,
 } from "../lib/providers";
-import {
-  AI_HUB_VIEW_ID,
-  isActiveTopLevelView,
-  USAGE_VIEW_ID,
-} from "../lib/top-level-views";
+import { AI_HUB_VIEW_ID, isActiveTopLevelView } from "../lib/top-level-views";
 import { useUIStore } from "../stores/ui";
 import type {
   ProviderConnections,
@@ -53,9 +49,7 @@ export function useProviderConnections(options?: {
   const addToast = useUIStore((s) => s.addToast);
   const providerSurfaceActive = useUIStore(
     (s) =>
-      options?.alwaysActive ||
-      isActiveTopLevelView(s.viewMode, AI_HUB_VIEW_ID) ||
-      isActiveTopLevelView(s.viewMode, USAGE_VIEW_ID),
+      options?.alwaysActive || isActiveTopLevelView(s.viewMode, AI_HUB_VIEW_ID),
   );
   const { capabilities } = useCapabilities();
   const newEngine = newEngineActive();
@@ -96,8 +90,9 @@ export function useProviderConnections(options?: {
 
   // While a connect is pending on its visible owner, poll so the card flips to
   // connected once the credential lands (ProviderLoginComplete is primary).
-  // AI Hub and Usage stay mounted while hidden, so their local backstop must
-  // not keep issuing reads after the user leaves those provider surfaces.
+  // The AI Models hub (the one top-level provider surface since HOU-789) stays
+  // mounted while hidden, so its local backstop must not keep issuing reads
+  // after the user leaves it.
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (pending && providerSurfaceActive) {

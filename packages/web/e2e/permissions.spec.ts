@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openSettingsSection } from "./support/settings-nav";
 
 /**
  * Permissions is FULLY AGENT-CENTRIC: the top level is the agent list, and
@@ -56,10 +57,10 @@ async function armOrg(request: APIRequestContext): Promise<void> {
   });
 }
 
-/** Open the Permissions view (the agent list is the top level). */
+/** Open Settings > Permissions (the agent list is the top level). */
 async function openPermissions(page: Page): Promise<void> {
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-permissions"]').click();
+  await openSettingsSection(page, "permissions");
 }
 
 /** Open Permissions and drill into Finance Bot. */
@@ -268,7 +269,7 @@ test("Admin People roster shows a member's gateway display name, email as a seco
   });
 
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-organization"]').click();
+  await openSettingsSection(page, "organization");
   await page.getByRole("button", { name: /People/ }).click();
 
   // Bob's display name is the primary label; his email drops to a muted

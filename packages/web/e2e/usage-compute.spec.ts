@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openSettingsSection } from "./support/settings-nav";
 
 /**
  * The Usage page's "Time worked" (compute) section — hosted-cloud analytics of
@@ -53,7 +54,7 @@ test("without the computeUsage capability the Usage page shows only the account 
   page,
 }) => {
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-usage"]').click();
+  await openSettingsSection(page, "usage");
 
   await expect(page.getByRole("heading", { name: "Usage" })).toBeVisible();
   // The compute section is absent; the account sections (the seeded Anthropic
@@ -98,7 +99,7 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
     awakeNow: ["houston-assistant"],
   });
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-usage"]').click();
+  await openSettingsSection(page, "usage");
 
   await expect(
     page.getByRole("heading", { name: "Time worked" }),
@@ -164,7 +165,7 @@ test("switching the range changes the bar count without a new fetch", async ({
     awakeNow: [],
   });
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-usage"]').click();
+  await openSettingsSection(page, "usage");
 
   const bars = page.getByRole("img", { name: /: worked / });
   await expect(bars).toHaveCount(7);
@@ -185,7 +186,7 @@ test("an agent with no usage rows appears immediately at zero", async ({
   // pod to report anything.
   await armComputeUsage(request, { rows: [], awakeNow: [] });
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-usage"]').click();
+  await openSettingsSection(page, "usage");
 
   await expect(
     page.getByRole("heading", { name: "Time worked" }),

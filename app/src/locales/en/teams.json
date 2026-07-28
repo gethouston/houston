@@ -73,7 +73,6 @@
   "org": {
     "title": "Admin",
     "subtitle": "Manage your team, activity, usage, and billing in one place.",
-    "nav": "Admin",
     "tabs": {
       "people": "People",
       "activity": "Activity",

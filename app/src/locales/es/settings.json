@@ -8,7 +8,10 @@
     "language": "Idioma",
     "shortcuts": "Atajos de teclado",
     "reportBug": "Reportar bug",
-    "danger": "Eliminar espacio"
+    "danger": "Eliminar espacio",
+    "usage": "Uso",
+    "permissions": "Permisos",
+    "organization": "Administración"
   },
   "workspaceGate": {
     "failedTitle": "No pudimos cargar tu configuración",
@@ -156,7 +159,9 @@
     "subtitle": "Administra tu espacio de trabajo y tu cuenta.",
     "groups": {
       "context": "Contexto",
-      "support": "Soporte"
+      "support": "Soporte",
+      "workspace": "Espacio de trabajo",
+      "team": "Equipo"
     },
     "rows": {
       "profile": "Tu nombre y tu foto",
@@ -165,7 +170,10 @@
       "userContext": "Lo que cada agente sabe sobre ti",
       "shortcuts": "Usa Houston sin el mouse",
       "reportBug": "¿Algo falló? Cuéntanos",
-      "migration": "Retoma tu mudanza a la nube"
+      "migration": "Retoma tu mudanza a la nube",
+      "usage": "Cuánto has usado de cada cuenta de IA conectada",
+      "permissions": "Quién puede usar cada agente y qué puede usar cada agente",
+      "organization": "Tu equipo, su actividad, uso y facturación"
     },
     "values": {
       "set": "Definido"

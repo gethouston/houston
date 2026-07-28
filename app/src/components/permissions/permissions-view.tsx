@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { analytics } from "../../lib/analytics";
 import { useAgentStore } from "../../stores/agents";
-import { AdminDetailScreen } from "../organization/admin-detail-screen";
+import { BackBarScreen } from "../shell/back-bar-screen";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import { AgentDetail } from "./agent-detail";
 import { AgentsList } from "./agents-list";
@@ -13,20 +13,32 @@ import {
 } from "./permissions-nav-store";
 
 /**
- * The top-level Permissions view (owner/admin only): the ONE place that manages
- * who can do what, and it is FULLY AGENT-CENTRIC. It shows the agent list; open
- * an agent to manage, across three tabs, WHO can use it (People), its app ceiling
- * (Integrations), and its model ceiling (AI Models). There is no per-person lens.
+ * The Permissions screen (Settings > Permissions, owner/admin only): the ONE
+ * place that manages who can do what, and it is FULLY AGENT-CENTRIC. It shows
+ * the agent list; open an agent to manage, across three tabs, WHO can use it
+ * (People), its app ceiling (Integrations), and its model ceiling (AI Models).
+ * There is no per-person lens.
  *
  * A shell only: it loads the org once (roster), owns the drill-in state, and
  * consumes a one-shot deep link from {@link usePermissionsNav} (the blocked-app
  * CTA in the agent workspace routes straight into that agent's detail). Rendered
  * ONLY when `canSeeOrganization` (multiplayer owner/admin, and on a Spaces host
- * a TEAM active space, never the personal one) — the sidebar hides the entry and
- * `workspace-shell` guards the render for everyone else, so it never mounts in
- * single-player, for a plain member, or in a personal space.
+ * a TEAM active space, never the personal one) — the Settings index hides the
+ * row and `SettingsView` falls a stale section back to the index for everyone
+ * else, so it never mounts in single-player, for a plain member, or in a
+ * personal space.
+ *
+ * A settings section since HOU-788 (it had its own sidebar entry before), so the
+ * caller owns the way back out: `onBack`/`backLabel` name the level above, and
+ * the agent drill-in reuses the same bar one level down.
  */
-export function PermissionsView() {
+export function PermissionsView({
+  backLabel,
+  onBack,
+}: {
+  backLabel: string;
+  onBack: () => void;
+}) {
   const { t } = useTranslation("teams");
   const { data: org } = useOrg(true);
   const agents = useAgentStore((s) => s.agents);
@@ -74,7 +86,7 @@ export function PermissionsView() {
   // to the agent list.
   if (detail && detailAgent) {
     return (
-      <AdminDetailScreen
+      <BackBarScreen
         backLabel={t("permissions.title")}
         onBack={() => setDetail(null)}
       >
@@ -83,13 +95,13 @@ export function PermissionsView() {
           members={members}
           initialTab={detail.tab}
         />
-      </AdminDetailScreen>
+      </BackBarScreen>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-      <PageContainer className="py-10">
+    <BackBarScreen backLabel={backLabel} onBack={onBack}>
+      <PageContainer className="pb-10">
         <PageHeader
           title={t("permissions.title")}
           subtitle={t("permissions.subtitle")}
@@ -100,6 +112,6 @@ export function PermissionsView() {
           onOpenAgent={(a) => setDetail({ agentId: a.id, tab: "people" })}
         />
       </PageContainer>
-    </div>
+    </BackBarScreen>
   );
 }

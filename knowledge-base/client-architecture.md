@@ -281,9 +281,13 @@ A component added, removed, or restructured is a structural change. (Full detail
 The desktop/web shell keeps visited top-level screens mounted in a workspace-keyed
 visited set. An inactive screen is `display: none`, not destroyed: local view
 state survives navigation, while view-owned polling and event ownership MUST gate
-on its active top-level view id. Switching workspace resets the keep-alive layer.
-The layer closes an open Radix dialog before hiding its source screen because
-dialogs portal outside that hidden subtree.
+on its active top-level view id. There are five: `dashboard`, `ai-hub`,
+`settings`, `integrations-home` and `agent-store`. A drill-in Settings section
+(Time worked, Permissions, Admin) is not one of them, so a read it owns gates on
+`settings` and relies on its own `enabled` for the section being open. Switching
+workspace resets the keep-alive layer. The layer closes an open Radix dialog
+before hiding its source screen because dialogs portal outside that hidden
+subtree.
 
 TanStack Query defaults are 30 seconds stale time and 30 minutes garbage
 collection. SSE invalidation, not short staleness, is the correctness path.

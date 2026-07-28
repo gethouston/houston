@@ -50,7 +50,7 @@ export function AgentDetail({
   };
 
   return (
-    <PageContainer className="pt-2 pb-10">
+    <PageContainer className="pb-10">
       <div className="mb-8 flex items-start gap-3">
         <HoustonAvatar color={resolveAgentColor(agent.color)} diameter={40} />
         <PageHeader

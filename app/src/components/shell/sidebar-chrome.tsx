@@ -1,37 +1,31 @@
 import type { SidebarLabels, SidebarNavItemEntry } from "@houston-ai/layout";
 import { WorkspaceSwitcher } from "@houston-ai/layout";
 import type { TFunction } from "i18next";
-import {
-  Blocks,
-  Boxes,
-  Building2,
-  Gauge,
-  LayoutDashboard,
-  Settings,
-  ShieldCheck,
-  Store,
-} from "lucide-react";
+import { Blocks, Boxes, LayoutDashboard, Settings, Store } from "lucide-react";
 import { useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { hasSpaces } from "../../lib/org-roles";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
-import { ORGANIZATION_VIEW_ID } from "../organization";
-import { PERMISSIONS_VIEW_ID } from "../permissions";
 import { STORE_VIEW_ID } from "../store-view";
-import { USAGE_VIEW_ID } from "../usage-view";
 import { CreateTeamDialog } from "./create-team-dialog";
 
 type ShellT = TFunction<["shell", "common", "portable", "teams"]>;
 
-/** The top-level navigation entries (Mission Control, Integrations, AI Models,
- *  optional Organization, Settings). */
+/**
+ * The top-level navigation entries: Mission Control, Integrations, AI Models
+ * (Teams-gated), Agent Store, Settings. Usage, Permissions and Admin are NOT
+ * here since HOU-788 — they are sections inside Settings.
+ */
 export function buildSidebarNavItems(args: {
   t: ShellT;
   showAiModels: boolean;
-  showOrganization: boolean;
   setViewMode: (view: string) => void;
+  /** Opens Settings on its INDEX — see `UIState.openSettings`. Never plain
+   *  `setViewMode("settings")`: that would be a dead click while a section is
+   *  open, leaving the user staring at the section they wanted to leave. */
+  openSettingsIndex: () => void;
 }): SidebarNavItemEntry[] {
-  const { t, showAiModels, showOrganization, setViewMode } = args;
+  const { t, showAiModels, setViewMode, openSettingsIndex } = args;
   return [
     {
       id: "dashboard",
@@ -56,15 +50,6 @@ export function buildSidebarNavItems(args: {
             onClick: () => setViewMode("ai-hub"),
             dataAttrs: { "data-tour-target": "nav-ai-hub" },
           },
-          // Usage reads the same workspace-central provider accounts the hub
-          // manages, so it rides the same Teams gate.
-          {
-            id: USAGE_VIEW_ID,
-            label: t("shell:sidebar.usage"),
-            icon: <Gauge className="h-4 w-4" />,
-            onClick: () => setViewMode(USAGE_VIEW_ID),
-            dataAttrs: { "data-tour-target": "nav-usage" },
-          },
         ]
       : []),
     {
@@ -74,29 +59,11 @@ export function buildSidebarNavItems(args: {
       onClick: () => setViewMode(STORE_VIEW_ID),
       dataAttrs: { "data-tour-target": "nav-agent-store" },
     },
-    ...(showOrganization
-      ? [
-          {
-            id: PERMISSIONS_VIEW_ID,
-            label: t("shell:sidebar.permissions"),
-            icon: <ShieldCheck className="h-4 w-4" />,
-            onClick: () => setViewMode(PERMISSIONS_VIEW_ID),
-            dataAttrs: { "data-tour-target": "nav-permissions" },
-          },
-          {
-            id: ORGANIZATION_VIEW_ID,
-            label: t("teams:org.nav"),
-            icon: <Building2 className="h-4 w-4" />,
-            onClick: () => setViewMode(ORGANIZATION_VIEW_ID),
-            dataAttrs: { "data-tour-target": "nav-organization" },
-          },
-        ]
-      : []),
     {
       id: "settings",
       label: t("shell:sidebar.settings"),
       icon: <Settings className="h-4 w-4" />,
-      onClick: () => setViewMode("settings"),
+      onClick: openSettingsIndex,
       dataAttrs: { "data-tour-target": "nav-settings" },
     },
   ];

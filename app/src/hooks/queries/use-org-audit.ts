@@ -5,7 +5,10 @@ import {
 } from "../../components/organization/org-view-model";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
-import { isActiveTopLevelView } from "../../lib/top-level-views";
+import {
+  isActiveTopLevelView,
+  SETTINGS_VIEW_ID,
+} from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 
 /**
@@ -24,7 +27,7 @@ import { useUIStore } from "../../stores/ui";
  */
 export function useOrgAudit(enabled: boolean) {
   const active = useUIStore((s) =>
-    isActiveTopLevelView(s.viewMode, "organization"),
+    isActiveTopLevelView(s.viewMode, SETTINGS_VIEW_ID),
   );
   return useInfiniteQuery({
     queryKey: queryKeys.orgAudit(),
@@ -32,8 +35,8 @@ export function useOrgAudit(enabled: boolean) {
       tauriOrg.audit({ before: pageParam, limit: AUDIT_PAGE_SIZE }),
     initialPageParam: undefined as number | undefined,
     getNextPageParam: nextAuditCursor,
-    // The Organization screen is kept alive. Its focus refresh is valuable
-    // only while the audit feed is actually visible.
+    // Admin rides the kept-alive Settings screen. Its focus refresh is
+    // valuable only while the audit feed is actually visible.
     enabled: enabled && active,
     staleTime: 30_000,
     refetchOnWindowFocus: true,

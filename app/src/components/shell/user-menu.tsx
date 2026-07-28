@@ -23,7 +23,7 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
   const profile = useMyProfile();
   const [open, setOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const setViewMode = useUIStore((s) => s.setViewMode);
+  const openSettings = useUIStore((s) => s.openSettings);
   const creatorEditorOpen = useUIStore((s) => s.creatorEditorOpen);
   const setCreatorEditorOpen = useUIStore((s) => s.setCreatorEditorOpen);
 
@@ -94,7 +94,7 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
                 type="button"
                 onClick={() => {
                   setOpen(false);
-                  setViewMode("settings");
+                  openSettings(null);
                 }}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-hover transition-colors flex items-center gap-2"
               >

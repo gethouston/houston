@@ -73,6 +73,8 @@ interface SettingsRowProps {
   /** Right-aligned current value, e.g. "2 members". */
   value?: string;
   destructive?: boolean;
+  /** Stable `data-testid` for rows the UI tests navigate by (label-independent). */
+  testId?: string;
   onClick: () => void;
 }
 
@@ -83,12 +85,14 @@ export function SettingsRow({
   description,
   value,
   destructive,
+  testId,
   onClick,
 }: SettingsRowProps) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-testid={testId}
       className="group flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-chip/60"
     >
       <Leading icon={icon} destructive={destructive} />

@@ -158,9 +158,27 @@ describe("E7 integrations tab source", () => {
     );
   });
 
-  it("deep-links the blocked-app CTA into the Permissions view", () => {
-    ok(src.includes("PERMISSIONS_VIEW_ID"), "targets the Permissions view");
+  it("deep-links the blocked-app CTA into Settings > Permissions", () => {
+    // HOU-788: Permissions is a Settings section, so the CTA goes through the
+    // store's one-call `openSettings(section)` instead of a top-level view id.
+    ok(
+      src.includes('openSettings("permissions")'),
+      "opens Settings on the Permissions section",
+    );
     ok(src.includes("usePermissionsNav"), "uses the Permissions nav store");
+  });
+
+  it("guards the CTA with the DESTINATION's gate, not a looser one", () => {
+    // The row it links to is gated by `showOrganization` (owner/admin AND, on a
+    // Spaces host, a team active space). Guarding on `canSeeMembers` alone let
+    // an admin in a PERSONAL space follow the link and bounce off the Settings
+    // index.
+    ok(src.includes("useSurfaceGates"), "reads the one surface-gates hook");
+    ok(
+      src.includes("isAgentManager(capabilities, agent) && showOrganization"),
+      "agent authority AND the destination gate",
+    );
+    ok(!src.includes("canSeeMembers"), "no looser stand-in gate left behind");
   });
 
   it("hands the effective allowlist down so blocked apps render as locked rows", () => {

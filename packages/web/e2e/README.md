@@ -45,6 +45,7 @@ e2e/
     seed.ts         # localStorage + window.__HOUSTON_CP__ primed before any app script
     fixtures.ts     # the `test`/`expect` used by specs (resets the host per test)
     identity.ts     # sign the harness in as a known user (see Signed-in specs below)
+    settings-nav.ts # open Settings + its Usage / Permissions / Admin sections
     global-setup.ts # warms the vite dev server once before the suite (see CI below)
   *.spec.ts         # the tests
 ```

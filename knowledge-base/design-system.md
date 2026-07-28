@@ -514,14 +514,20 @@ blur, `--ht-card-solid`, the canvas tokens). Dark mode is the loved baseline —
 when adjusting, scope changes to light (`:root`) and pin dark
 (`[data-theme="dark"]`) so it stays put.
 
-**Top-level surface shell (`app/src/components/shell/page-shell.tsx`)** — the four
-sidebar destinations (AI hub, Integrations, Organization, Settings) share two
-app-local primitives so their width and header spacing are identical.
+**Top-level surface shell (`app/src/components/shell/page-shell.tsx`)** — the five
+sidebar destinations (Mission Control, Integrations, AI Models, Agent Store,
+Settings) share two app-local primitives so their width and header spacing are
+identical. Since HOU-788 the same primitives also carry the Settings SECTIONS
+(Usage, Permissions, Admin moved in from the sidebar).
 `PageContainer` is the canonical horizontal column (`mx-auto w-full max-w-5xl
-px-8`, the single source of the shared page width; callers add vertical rhythm —
-surfaces open at `pt-10`, close at `pb-10` — and it spreads div props so it can
-also be a tab's `role="tabpanel"`). `PageHeader` is the canonical title block: a
-28px normal-weight `h1` + optional muted subtitle + optional trailing slot. These
+px-8`, the single source of the shared page width; callers add vertical rhythm
+and it spreads div props so it can also be a tab's `role="tabpanel"`). Two
+vertical rhythms, by depth: a TOP-LEVEL surface opens and closes itself
+(`py-10`); a screen under a back bar only closes (`pb-10`) because the bar
+above it (`back-bar-screen.tsx`, `pt-8 pb-2`) already sets the top rhythm. All
+five back-bar screens use plain `pb-10` — no per-screen top nudges.
+`PageHeader` is the canonical title block: a 28px normal-weight `h1` + optional
+muted subtitle + optional trailing slot. These
 are deliberately NOT in `ui/` (page chrome, not a reusable widget → no
 inventory/parity churn). The fixed-masthead surfaces (hub, org) split the
 container across a `shrink-0` masthead + a scrolling `PageContainer` below; the

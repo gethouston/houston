@@ -428,10 +428,9 @@ and keyboard focus. It keeps the count chip hidden while open. The first-level
 menu shows Rename, Change color, Delete; Change color opens the color picker
 submenu.
 
-**Multiplayer (Teams v2).** The **Organization** entry
-(`ORGANIZATION_VIEW_ID = "organization"`) renders only when
-`canSeeOrganization(capabilities)` (multiplayer owner/admin); hidden for plain
-members and single-player. **New Agent** is gated on `canCreateAgents`
+**Multiplayer (Teams v2).** The sidebar has NO Admin / Permissions / Usage entries
+since HOU-788 — they are Settings sections (`settings-sections.ts`), gated by
+`useSurfaceGates`. **New Agent** is gated on `canCreateAgents`
 (`useCanCreateAgents`) — a member with no create right gets no add action. Full
 client model: `knowledge-base/teams.md`.
 
@@ -806,12 +805,15 @@ the scroller flips to `overflow-y-hidden` (Radix only locks `<body>`) with
 - **Model detail** (`model-modal.tsx` + `model-offer-row.tsx`): one model's
   per-provider offers ("Get it through" + pricing / subscription).
 
-### Usage page (top-level view)
+### Usage page (Settings > Usage)
 
-**Usage** is its own top-level sidebar view (`viewMode "usage"`,
-`app/src/components/usage-view/` — `USAGE_VIEW_ID` in `id.ts`, page in
-`usage-view.tsx`), sharing the hub's Teams gate (`canSeeAiModelsPage`; also in
-`blockedTopLevelView`). One card per CONNECTED account
+**Usage** is a SETTINGS SECTION since HOU-788 (it was its own sidebar view;
+`USAGE_VIEW_ID` / `usage-view/id.ts` are gone). Section id `"usage"` in
+`app/src/lib/settings-sections.ts`, page in
+`app/src/components/usage-view/usage-view.tsx`, sharing the hub's Teams gate
+(`canSeeAiModelsPage` via `useSurfaceGates`; also in `settingsSectionGate`).
+It renders inside the shared `BackBarScreen` with `backLabel`/`onBack` from
+`SettingsView`. One card per CONNECTED account
 (`usage-provider-card.tsx`) with its live limits; the connected set derives
 exactly like the hub's Connected strip (`getConnectProviders` +
 `useProviderConnections` + `groupProviders`), and the empty state's CTA jumps
@@ -922,9 +924,26 @@ account switch) used to send first-run onboarding logins to
   `settings/sections/provider.tsx`, `shell/provider-account-row.tsx`, and the
   settings-view provider section. All connect UI is the hub.
 - Top-level views share one set: `app/src/lib/top-level-views.ts`
-  (`TOP_LEVEL_VIEWS = {dashboard, settings, ai-hub}`, `isTopLevelView`) — both
-  `sidebar.tsx` and `workspace-shell.tsx` source from it so a new top-level view
-  can't be wired into one and forgotten in the other.
+  (`TOP_LEVEL_VIEWS = {dashboard, settings, ai-hub, integrations-home, store}`,
+  `isTopLevelView`) — both `sidebar.tsx` and `workspace-shell.tsx` source from it
+  so a new top-level view can't be wired into one and forgotten in the other.
+  Usage / Permissions / Admin are NOT in it: they are settings sections
+  (`app/src/lib/settings-sections.ts`, HOU-788).
+- **Navigating INTO Settings goes through `useUIStore.openSettings(section)`**,
+  never a bare `setViewMode("settings")`. Settings is two pieces of state (the
+  view AND `settingsSection`, the open section, `null` = the index) and one call
+  sets both: a plain open always lands on the index (a bare `setViewMode` was a
+  dead click while a section was open, since the view was already `settings`),
+  and a deep link lands on its section even when Settings is already open (the
+  team-status banner's Billing link, the blocked-app "Enable it in Permissions"
+  CTA). `SettingsView` renders from the store and writes it on drill-in/back, and
+  it OWNS the settings analytics: one `tab_opened` per surface actually reached
+  (`settings` for the index, `settings:<id>` for a section), emitted after the
+  gates resolve, with the shell's generic viewMode effect skipping `settings` so
+  a deep link can't double-count. The one-shot deep-link pins
+  (`usePermissionsNav`, `useOrgNav`) are cleared by `settings-nav-pins.ts` when a
+  blocked section falls back to the index, so a pin never outlives its
+  navigation.
 - i18n: namespace `aiHub` (`app/src/locales/{en,es,pt}/ai-hub.json`, registered in
   `app/src/lib/i18n.ts`).
 - `design/inventory` bumped to **v2**: three new cross-surface content components

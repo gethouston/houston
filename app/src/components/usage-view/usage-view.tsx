@@ -12,23 +12,32 @@ import {
 } from "../../lib/providers";
 import { useUIStore } from "../../stores/ui";
 import { groupProviders } from "../provider-browser/provider-grouping";
+import { BackBarScreen } from "../shell/back-bar-screen";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import { ComputeSection } from "./compute-section";
 import { showComputeSection } from "./compute-usage-model";
 import { UsagePane } from "./usage-pane";
 
 /**
- * The top-level Usage page (sidebar "Usage", `viewMode "usage"`): each
- * connected AI account's live limits — rate-limit windows and prepaid
- * balances read from the providers' own usage APIs. The connected-account
- * set is derived exactly like the AI hub derives its Connected strip
- * (getConnectProviders + the shared connections layer), so the two surfaces
- * can never disagree about what "connected" means. The empty state's CTA
- * jumps to the AI Models hub, where connecting lives.
+ * The Usage screen (Settings > Usage): each connected AI account's live limits —
+ * rate-limit windows and prepaid balances read from the providers' own usage
+ * APIs. The connected-account set is derived exactly like the AI hub derives its
+ * Connected strip (getConnectProviders + the shared connections layer), so the
+ * two surfaces can never disagree about what "connected" means. The empty
+ * state's CTA jumps to the AI Models hub, where connecting lives.
+ *
+ * A settings section since HOU-788 (it had its own sidebar entry before), so the
+ * caller owns the way back: `onBack`/`backLabel` name the level above.
  */
 type UsagePaneKey = "compute" | "models";
 
-export function UsageView() {
+export function UsageView({
+  backLabel,
+  onBack,
+}: {
+  backLabel: string;
+  onBack: () => void;
+}) {
   const { t } = useTranslation("aiHub");
   const connections = useProviderConnections();
   const setViewMode = useUIStore((s) => s.setViewMode);
@@ -64,8 +73,8 @@ export function UsageView() {
   const showCompute = showComputeSection(capabilities);
 
   return (
-    <div className="h-full overflow-y-auto [scrollbar-gutter:stable]">
-      <PageContainer className="flex flex-col gap-6 py-10">
+    <BackBarScreen backLabel={backLabel} onBack={onBack}>
+      <PageContainer className="flex flex-col gap-6 pb-10">
         <PageHeader
           title={t("usage.pageTitle")}
           subtitle={t("usage.pageSubtitle")}
@@ -94,6 +103,6 @@ export function UsageView() {
           />
         )}
       </PageContainer>
-    </div>
+    </BackBarScreen>
   );
 }

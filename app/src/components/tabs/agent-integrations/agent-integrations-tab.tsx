@@ -6,8 +6,8 @@ import {
 } from "../../../hooks/queries";
 import { useAgentSettings } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
+import { useSurfaceGates } from "../../../hooks/use-surface-gates";
 import { isAgentManager } from "../../../lib/agent-access";
-import { canSeeMembers } from "../../../lib/org-roles";
 import type { TabProps } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
 import {
@@ -23,7 +23,6 @@ import {
 } from "../../integrations";
 import { CatalogSurfaceSkeleton } from "../../integrations-view/catalog-skeletons";
 import { INTEGRATIONS_VIEW_ID } from "../../integrations-view/id";
-import { PERMISSIONS_VIEW_ID } from "../../permissions/id";
 import { usePermissionsNav } from "../../permissions/permissions-nav-store";
 import { AgentIntegrationsBody } from "./agent-integrations-body";
 import { agentIntegrationsView } from "./model";
@@ -58,26 +57,30 @@ export default function IntegrationsTab({ agent }: TabProps) {
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const connectFlow = useConnectFlow({ agentId: agent.id });
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const openSettings = useUIStore((s) => s.openSettings);
   const onManageAll = () => setViewMode(INTEGRATIONS_VIEW_ID);
 
   // Role-aware blocked-state signposting. A blocked app is always outside this
   // AGENT ceiling (policy is per agent only), so the fix always deep-links to
-  // this agent's per-agent Permissions detail. The CTA needs `canSeeMembers`
-  // too: a non-admin manager can't open the Permissions dashboard, so it would
-  // be a dead link for them.
+  // this agent's per-agent Permissions detail. The CTA needs the DESTINATION's
+  // own gate too (`showOrganization`, from the one surface-gates hook the
+  // Settings row and the section fallback also read): anyone else — a non-admin
+  // manager, or an admin whose active Spaces space is personal — would follow
+  // the link only to be bounced back to the Settings index.
   const requestAgentDetail = usePermissionsNav((s) => s.requestAgentDetail);
+  const { showOrganization } = useSurfaceGates();
   const canManageAgent =
-    isAgentManager(capabilities, agent) && canSeeMembers(capabilities);
+    isAgentManager(capabilities, agent) && showOrganization;
   const permissionsFix = useMemo<PermissionsFix>(
     () =>
       resolvePermissionsFix({
         canManageAgent,
         openAgentDetail: () => {
           requestAgentDetail(agent.id, "integrations");
-          setViewMode(PERMISSIONS_VIEW_ID);
+          openSettings("permissions");
         },
       }),
-    [canManageAgent, requestAgentDetail, setViewMode, agent.id],
+    [canManageAgent, requestAgentDetail, openSettings, agent.id],
   );
 
   const view = useMemo(

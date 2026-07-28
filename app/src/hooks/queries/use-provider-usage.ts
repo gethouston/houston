@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriProvider } from "../../lib/tauri";
-import { isActiveTopLevelView } from "../../lib/top-level-views";
+import {
+  isActiveTopLevelView,
+  SETTINGS_VIEW_ID,
+} from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 
 /**
@@ -17,12 +20,15 @@ import { useUIStore } from "../../stores/ui";
  * through `tauriProvider.usage` → `call()` (toast + Report bug).
  */
 export function useProviderUsage(enabled: boolean) {
-  const active = useUIStore((s) => isActiveTopLevelView(s.viewMode, "usage"));
+  const active = useUIStore((s) =>
+    isActiveTopLevelView(s.viewMode, SETTINGS_VIEW_ID),
+  );
   return useQuery({
     queryKey: queryKeys.providerUsage(),
     queryFn: () => tauriProvider.usage(),
-    // Keep-alive preserves the last result, but hidden provider usage must not
-    // poll or refetch when the window regains focus.
+    // Usage is a Settings section (HOU-788), and the Settings screen is kept
+    // alive: it preserves the last result, but a hidden one must not poll or
+    // refetch when the window regains focus.
     enabled: enabled && active,
     staleTime: 30_000,
     refetchInterval: 60_000,

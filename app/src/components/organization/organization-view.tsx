@@ -7,7 +7,7 @@ import { analytics } from "../../lib/analytics";
 import { canSeeBillingTab } from "../../lib/org-roles";
 import { isTeamWorkspace } from "../../lib/space-id";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { AdminDetailScreen } from "./admin-detail-screen";
+import { BackBarScreen } from "../shell/back-bar-screen";
 import { AdminIndex } from "./admin-index";
 import { AdminSectionDetail } from "./admin-section-detail";
 import { useOrgNav } from "./org-nav-store";
@@ -33,9 +33,9 @@ export interface OrgTabProps {
 }
 
 /**
- * The top-level Admin (Organization) dashboard: membership + insights + billing.
- * A shell only: it loads the org, builds the shared `OrgViewContext`, and
- * switches between two screens in the settings-page grammar —
+ * The Admin (Organization) dashboard (Settings > Admin): membership + insights +
+ * billing. A shell only: it loads the org, builds the shared `OrgViewContext`,
+ * and switches between two screens in the settings-page grammar —
  *
  * - INDEX (`active === null`): a landing of grouped, self-describing rows
  *   ({@link AdminIndex}) — People (membership), Insights (Activity, Usage), and
@@ -43,12 +43,22 @@ export interface OrgTabProps {
  * - DETAIL (`active` set): a back bar + section heading + the section body.
  *
  * Permission surfaces (who can use which agent, per-agent + org-wide ceilings)
- * moved OUT to the top-level Permissions view. Rendered ONLY when
- * `canSeeOrganization` (multiplayer owner/admin, and on a Spaces host a TEAM
- * active space — never the personal one) — the sidebar hides the nav entry and
- * `workspace-shell` guards the render for everyone else.
+ * moved OUT to the Permissions section. Rendered ONLY when `canSeeOrganization`
+ * (multiplayer owner/admin, and on a Spaces host a TEAM active space — never the
+ * personal one) — the Settings index hides the row and `SettingsView` falls a
+ * stale section back to the index for everyone else.
+ *
+ * A settings section since HOU-788 (it had its own sidebar entry before), so the
+ * caller owns the way back out: `onBack`/`backLabel` name the level above, and
+ * each section detail reuses the same bar one level down.
  */
-export function OrganizationView() {
+export function OrganizationView({
+  backLabel,
+  onBack,
+}: {
+  backLabel: string;
+  onBack: () => void;
+}) {
   const { t } = useTranslation("teams");
   const { data: org, isLoading } = useOrg(true);
   const { capabilities } = useCapabilities();
@@ -96,22 +106,19 @@ export function OrganizationView() {
 
   if (active === null) {
     return (
-      <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+      <BackBarScreen backLabel={backLabel} onBack={onBack}>
         <AdminIndex
           visibleIds={visibleIds}
           memberCount={org?.members?.length}
           onSelect={setActive}
         />
-      </div>
+      </BackBarScreen>
     );
   }
 
   return (
-    <AdminDetailScreen
-      backLabel={t("org.title")}
-      onBack={() => setActive(null)}
-    >
+    <BackBarScreen backLabel={t("org.title")} onBack={() => setActive(null)}>
       <AdminSectionDetail active={active} ctx={ctx} isLoading={isLoading} />
-    </AdminDetailScreen>
+    </BackBarScreen>
   );
 }

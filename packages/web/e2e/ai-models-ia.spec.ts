@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openSettingsSection } from "./support/settings-nav";
 
 /**
  * The AI-models permissioning information architecture — the model-side twin of
@@ -35,11 +36,11 @@ async function armCapabilities(
   await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, { data: caps });
 }
 
-/** Open the Permissions view (the agent list is the top level; per-agent
+/** Open Settings > Permissions (the agent list is the top level; per-agent
  *  ceilings live in each agent's drill-in). */
 async function openPermissions(page: Page): Promise<void> {
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-permissions"]').click();
+  await openSettingsSection(page, "permissions");
 }
 
 // ── 1. The AI hub dropped the Workspace policy tab ─────────────────────────

@@ -1,9 +1,12 @@
 import {
   Bug,
+  Building2,
   CircleUserRound,
   CloudUpload,
   FileText,
+  Gauge,
   Keyboard,
+  ShieldCheck,
   User,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -24,19 +27,27 @@ interface SettingsIndexProps {
   accountAvailable: boolean;
   migrationAvailable: boolean;
   profileAvailable: boolean;
+  /** Teams gate for the Usage row (shares the AI Models hub gate). */
+  showAiModels: boolean;
+  /** Teams gate for the Admin + Permissions rows. */
+  showOrganization: boolean;
   onSelect: (id: SettingsSectionId) => void;
 }
 
 /**
  * The settings landing page. Simple settings (appearance, language, account,
  * delete) are resolved inline as control rows; the heavier
- * ones (context editors, shortcuts, bug report) are navigable rows that
- * drill into their own screen. Account appears only when applicable.
+ * ones (context editors, shortcuts, bug report, and since HOU-788 Usage,
+ * Permissions and Admin) are navigable rows that drill into their own screen.
+ * Account appears only when applicable; the Workspace and Team groups only when
+ * their Teams gate passes.
  */
 export function SettingsIndex({
   accountAvailable,
   migrationAvailable,
   profileAvailable,
+  showAiModels,
+  showOrganization,
   onSelect,
 }: SettingsIndexProps) {
   const { t } = useTranslation("settings");
@@ -89,6 +100,37 @@ export function SettingsIndex({
               all plumbing remain — restore by re-adding this row (and the
               apiKeysAvailable gate from apiKeysSupported) when it returns. */}
         </SettingsCard>
+
+        {showAiModels && (
+          <SettingsCard title={t("settings:index.groups.workspace")}>
+            <SettingsRow
+              icon={Gauge}
+              title={t("settings:nav.usage")}
+              description={t("settings:index.rows.usage")}
+              testId="settings-row-usage"
+              onClick={() => onSelect("usage")}
+            />
+          </SettingsCard>
+        )}
+
+        {showOrganization && (
+          <SettingsCard title={t("settings:index.groups.team")}>
+            <SettingsRow
+              icon={Building2}
+              title={t("settings:nav.organization")}
+              description={t("settings:index.rows.organization")}
+              testId="settings-row-organization"
+              onClick={() => onSelect("organization")}
+            />
+            <SettingsRow
+              icon={ShieldCheck}
+              title={t("settings:nav.permissions")}
+              description={t("settings:index.rows.permissions")}
+              testId="settings-row-permissions"
+              onClick={() => onSelect("permissions")}
+            />
+          </SettingsCard>
+        )}
 
         <SettingsCard title={t("settings:index.groups.context")}>
           <SettingsRow

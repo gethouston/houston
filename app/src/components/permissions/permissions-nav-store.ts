@@ -12,9 +12,14 @@ export type PermissionsAgentTab = "people" | "integrations" | "models";
  * app a manager CAN enable) sends the user straight into that agent's detail, on
  * the Integrations tab where the fix lives. Rather than lift that state into the
  * shared UI store, this tiny colocated store carries the intent: the caller sets
- * the request then switches `viewMode` to the Permissions view; `PermissionsView`
- * consumes it (initial mount AND while already open) and clears it so a later
- * plain nav lands back on the agent list.
+ * the request then calls `openSettings("permissions")` (Permissions is a Settings
+ * section since HOU-788, so that ONE store action replaces the old viewMode
+ * switch); `PermissionsView` consumes it (initial mount AND while already open)
+ * and clears it so a later plain nav lands back on the agent list.
+ *
+ * A pin outlives the navigation that set it only if the section never renders,
+ * so `SettingsView` clears it (`settings-nav-pins.ts`) whenever a blocked
+ * section falls back to the index.
  */
 interface PermissionsNavState {
   /** The agent whose detail to open on the next render, or null for none. */

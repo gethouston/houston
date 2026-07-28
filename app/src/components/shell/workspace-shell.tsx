@@ -26,13 +26,13 @@ import { useActivity } from "../../hooks/queries";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
+import { useSurfaceGates } from "../../hooks/use-surface-gates";
 import { analytics } from "../../lib/analytics";
 import { isSetupChatMode } from "../../lib/integration-chat-setup";
-import { canSeeAiModelsPage, hasSpaces } from "../../lib/org-roles";
+import { hasSpaces } from "../../lib/org-roles";
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
 import { shortcutLabel } from "../../lib/shortcuts";
-import { isTeamWorkspace } from "../../lib/space-id";
 import { blockedTopLevelView, isTopLevelView } from "../../lib/top-level-views";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
@@ -43,8 +43,6 @@ import { AgentPersonScopeMenu } from "../agent-person-scope-menu";
 import { CommandPalette } from "../command-palette";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
 import { MissionSearchInput } from "../mission-search-input";
-import { canSeeOrganization, ORGANIZATION_VIEW_ID } from "../organization";
-import { PERMISSIONS_VIEW_ID } from "../permissions";
 import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
@@ -104,18 +102,15 @@ export function WorkspaceShell({
   );
   const { canCreate: canCreateAgents } = useCanCreateAgents();
   const { capabilities } = useCapabilities();
+  // Teams v2: `showAiModels` guards the AI Models hub render so a stale
+  // `viewMode` can never show it to a plain member (the sidebar already hides
+  // the entry) — the hub is owner/admin only in a Teams workspace (org-level
+  // providers + admin model policy). `showOrganization` picks the Settings tour
+  // copy: only a caller who HAS a team sees the Team card inside Settings.
+  const { showAiModels, showOrganization } = useSurfaceGates();
+  // Keying the kept-alive set by workspace drops every cached screen when the
+  // user switches workspace/space: their contents are workspace-scoped.
   const currentWorkspace = useWorkspaceStore((s) => s.current);
-  // Teams v2: guard the Organization + Permissions render so a stale `viewMode`
-  // can never show them to a plain member / single-player (the sidebar already
-  // hides the entry), and on a Spaces host also when the active space is personal
-  // (single-player semantics — Admin + Permissions are team-space surfaces).
-  const isTeam = currentWorkspace
-    ? isTeamWorkspace(currentWorkspace.id)
-    : false;
-  const showOrganization = canSeeOrganization(capabilities, isTeam);
-  // Teams v2: same guard for the AI Models hub — owner/admin only in a Teams
-  // workspace (org-level providers + admin model policy).
-  const showAiModels = canSeeAiModelsPage(capabilities);
   const agentDef = currentAgent ? getById(currentAgent.configId) : undefined;
   const { data: activities } = useActivity(currentAgent?.folderPath);
   const needsYouCount = (activities ?? []).filter(
@@ -137,16 +132,11 @@ export function WorkspaceShell({
 
   useEffect(() => {
     if (!isAgentView) {
-      // A gated top-level view (Organization for a member / single-player, the
-      // AI Models hub for a plain member) with a stale `viewMode` would fall
-      // through every render branch and strand the user on the engine pane with
-      // its nav entry hidden; reset to the dashboard.
-      if (
-        blockedTopLevelView(viewMode, {
-          showAiModels,
-          showOrganization,
-        })
-      ) {
+      // A gated top-level view (the AI Models hub for a plain member) with a
+      // stale `viewMode` would fall through every render branch and strand the
+      // user on the engine pane with its nav entry hidden; reset to the
+      // dashboard.
+      if (blockedTopLevelView(viewMode, { showAiModels })) {
         setViewMode("dashboard");
       }
       return;
@@ -161,7 +151,6 @@ export function WorkspaceShell({
     isAgentView,
     setViewMode,
     showAiModels,
-    showOrganization,
     viewMode,
   ]);
 
@@ -189,8 +178,13 @@ export function WorkspaceShell({
       return;
     }
     if (lastTrackedViewModeRef.current === viewMode) return;
-    analytics.track("tab_opened", { tab_name: viewMode });
     lastTrackedViewModeRef.current = viewMode;
+    // Settings emits its OWN event (`settings` for the index, `settings:<id>`
+    // for a section) once the surface really renders. Emitting here too would
+    // double-count every deep link and would fire while a gate still shows a
+    // spinner, so the one view that owns its event is skipped.
+    if (viewMode === "settings") return;
+    analytics.track("tab_opened", { tab_name: viewMode });
   }, [viewMode]);
 
   useKeyboardShortcuts();
@@ -232,10 +226,7 @@ export function WorkspaceShell({
                   <KeepAliveViews
                     key={currentWorkspace?.id ?? "no-workspace"}
                     activeId={viewMode}
-                    views={topLevelScreenViews({
-                      showAiModels,
-                      showOrganization,
-                    })}
+                    views={topLevelScreenViews({ showAiModels })}
                   />
                   {isAgentView &&
                     (currentAgent && agentDef ? (
@@ -522,23 +513,18 @@ export function WorkspaceShell({
                 targetSelector: "[data-tour-target='nav-ai-hub']",
                 onEnter: () => setViewMode("ai-hub"),
               },
-              {
-                title: t("shell:uiTour.steps.permissions.title"),
-                body: t("shell:uiTour.steps.permissions.body"),
-                targetSelector: "[data-tour-target='nav-permissions']",
-                onEnter: () => setViewMode(PERMISSIONS_VIEW_ID),
-              },
-              {
-                title: t("shell:uiTour.steps.organization.title"),
-                body: t("shell:uiTour.steps.organization.body"),
-                targetSelector: "[data-tour-target='nav-organization']",
-                onEnter: () => setViewMode(ORGANIZATION_VIEW_ID),
-              },
+              // Usage, Permissions and Admin have no sidebar anchor to spotlight
+              // since HOU-788 — they are sections inside Settings, which the
+              // next step covers. It only PROMISES them to a caller whose org
+              // gate is on: single-player and plain members see no Team card,
+              // so their copy stops at the personal settings.
               {
                 title: t("shell:uiTour.steps.settings.title"),
-                body: t("shell:uiTour.steps.settings.body"),
+                body: showOrganization
+                  ? t("shell:uiTour.steps.settings.bodyTeam")
+                  : t("shell:uiTour.steps.settings.body"),
                 targetSelector: "[data-tour-target='nav-settings']",
-                onEnter: () => setViewMode("settings"),
+                onEnter: () => useUIStore.getState().openSettings(null),
               },
               {
                 title: t("shell:uiTour.steps.newAgent.title"),
@@ -598,16 +584,7 @@ export function WorkspaceShell({
             ) {
               return !!currentAgent;
             }
-            // The Organization + Permissions nav items only render for
-            // multiplayer owner/admin — same reasoning, drop the step where the
-            // anchor never exists.
-            if (
-              step.targetSelector === "[data-tour-target='nav-organization']" ||
-              step.targetSelector === "[data-tour-target='nav-permissions']"
-            ) {
-              return showOrganization;
-            }
-            // The AI Models hub is hidden from plain Teams members too — drop its
+            // The AI Models hub is hidden from plain Teams members — drop its
             // tour step where the anchor never renders.
             if (step.targetSelector === "[data-tour-target='nav-ai-hub']") {
               return showAiModels;
