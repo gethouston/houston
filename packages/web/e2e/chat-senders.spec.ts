@@ -59,17 +59,19 @@ const FOLLOWED_UP = "Exclude the churned accounts";
 const MINE = "Also flag the renewals";
 
 /**
- * Arm the transcript. `authored: false` seeds the same words with no author —
- * a single-player conversation.
+ * Arm the transcript. `solo` gives every user turn to the viewer, proving that
+ * multiplayer alone does not make a viewer-and-agent conversation a group chat.
  *
  * Ada writes twice in a row on purpose: her second message is the run
  * continuation that must render bare.
  */
 async function seedTranscript(
   request: APIRequestContext,
-  authored: boolean,
+  presentation: "group" | "solo",
 ): Promise<void> {
-  const author = (who: typeof ADA) => (authored ? { author: who } : {});
+  const author = (who: typeof ADA) => ({
+    author: presentation === "solo" ? SELF : who,
+  });
   await request.post(`${FAKE_HOST_URL}/__test__/chat-history`, {
     data: {
       conversationId: CONVERSATION_ID,
@@ -123,7 +125,7 @@ test("a shared chat gives every speaker a side, a face and a name", async ({
 }) => {
   await armMultiplayer(request);
   await seedMission(request);
-  await seedTranscript(request, true);
+  await seedTranscript(request, "group");
   await signInAsViewer(page);
   await openMission(page);
 
@@ -182,12 +184,13 @@ test("a shared chat gives every speaker a side, a face and a name", async ({
   await expect(mine.locator(".sr-only")).toHaveText("You");
 });
 
-test("a single-player chat shows no sender on any turn", async ({
+test("a solo chat in multiplayer shows no sender on any turn", async ({
   page,
   request,
 }) => {
+  await armMultiplayer(request);
   await seedMission(request);
-  await seedTranscript(request, false);
+  await seedTranscript(request, "solo");
   await signInAsViewer(page);
   await openMission(page);
 
