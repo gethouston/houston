@@ -159,5 +159,43 @@
     "loading": "Cargando habilidades...",
     "loadFailed": "No se pudo cargar la biblioteca de habilidades.",
     "retry": "Reintentar"
+  },
+  "global": {
+    "pageTitle": "Skills",
+    "pageSubtitle": "Enseña skills reutilizables a tus agentes y elige quién sabe qué.",
+    "newSkill": "Nueva skill",
+    "alreadyHasIt": "Ya la tiene",
+    "noAgentsTitle": "Aún no hay agentes",
+    "noAgentsDescription": "Primero crea un agente. Las skills viven con tus agentes, y esta página las administra en todos ellos.",
+    "installedTo_one": "Añadida a {{count}} agente",
+    "installedTo_other": "Añadida a {{count}} agentes",
+    "installFailedFor": "No pudimos añadir la skill para {{names}}",
+    "createdFor_one": "Skill creada para {{count}} agente",
+    "createdFor_other": "Skill creada para {{count}} agentes",
+    "skillUpdated": "Skill actualizada",
+    "skillRemoved": "Skill eliminada",
+    "install": {
+      "title": "Añadir \"{{name}}\" a agentes",
+      "description": "Elige qué agentes reciben esta skill.",
+      "confirm_one": "Añadir a {{count}} agente",
+      "confirm_other": "Añadir a {{count}} agentes"
+    },
+    "create": {
+      "title": "Nueva skill",
+      "description": "Escribe la skill una vez y elige qué agentes la aprenden.",
+      "agentsLabel": "Crear para",
+      "confirm_one": "Crear para {{count}} agente",
+      "confirm_other": "Crear para {{count}} agentes"
+    },
+    "manage": {
+      "agentsLabel": "Agentes con esta skill",
+      "keepOneAgent": "Mantén al menos un agente, o usa Eliminar para quitar la skill de todos.",
+      "removeConfirmTitle_one": "¿Quitar de {{count}} agente?",
+      "removeConfirmTitle_other": "¿Quitar de {{count}} agentes?",
+      "removeConfirmDescription": "Al guardar se quitará esta skill de {{names}}. Esto no se puede deshacer.",
+      "deleteConfirmTitle": "¿Eliminar \"{{name}}\"?",
+      "deleteConfirmDescription_one": "Esto quita la skill de {{count}} agente ({{names}}). No se puede deshacer.",
+      "deleteConfirmDescription_other": "Esto quita la skill de {{count}} agentes ({{names}}). No se puede deshacer."
+    }
   }
 }

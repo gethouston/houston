@@ -7,6 +7,7 @@ import { AiHubView } from "../ai-hub/ai-hub-view";
 import { Dashboard } from "../dashboard";
 import { INTEGRATIONS_VIEW_ID, IntegrationsView } from "../integrations-view";
 import { SettingsView } from "../settings/settings-view";
+import { SKILLS_VIEW_ID, SkillsView } from "../skills-view";
 import { STORE_VIEW_ID, StoreView } from "../store-view";
 import type { KeepAliveView } from "./keep-alive-views";
 
@@ -29,6 +30,7 @@ export function topLevelScreenViews(gates: {
       enabled: true,
       content: <IntegrationsView />,
     },
+    { id: SKILLS_VIEW_ID, enabled: true, content: <SkillsView /> },
     { id: STORE_VIEW_ID, enabled: true, content: <StoreView /> },
   ];
 }

@@ -21,7 +21,12 @@ test("GitHub install button keeps a stable width across label changes", async ({
   // Settings (job-description) → Skills row → the Custom skills tab's
   // empty-state CTA opens the GitHub / From-scratch dialog.
   await page.locator('[data-tour-target="tab-job-description"]').click();
-  await page.getByText("Skills", { exact: true }).click();
+  // Scoped to the Agent Settings rail: the sidebar's global Skills nav item
+  // (HOU-792) also carries the bare "Skills" text.
+  await page
+    .getByLabel("Agent settings")
+    .getByRole("button", { name: "Skills" })
+    .click();
   await page.getByRole("tab", { name: "Custom skills" }).click();
   await page.getByRole("button", { name: "Add skill" }).click();
 

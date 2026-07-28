@@ -6,6 +6,7 @@ export type {
 } from "./add-skill-dialog";
 // Components
 export { AddSkillDialog } from "./add-skill-dialog";
+export { toSlug } from "./add-skill-dialog-scratch-model";
 export type { ScratchViewLabels } from "./add-skill-dialog-scratch-view";
 export type { InstalledSkillEditorState } from "./installed-skill-editor-model";
 export {

@@ -1,6 +1,7 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { INTEGRATIONS_VIEW_ID } from "../src/components/integrations-view/id.ts";
+import { SKILLS_VIEW_ID } from "../src/components/skills-view/id.ts";
 import { STORE_VIEW_ID } from "../src/components/store-view/id.ts";
 import { SETTINGS_SECTION_IDS } from "../src/lib/settings-sections.ts";
 import {
@@ -20,20 +21,21 @@ describe("isTopLevelView", () => {
       SETTINGS_VIEW_ID,
       AI_HUB_VIEW_ID,
       INTEGRATIONS_VIEW_ID,
+      SKILLS_VIEW_ID,
       STORE_VIEW_ID,
     ]) {
       strictEqual(isTopLevelView(id), true, id);
     }
   });
 
-  it("is exactly those five, and no settings section doubles as one", () => {
+  it("is exactly those six, and no settings section doubles as one", () => {
     // HOU-788 folded Time worked / Permissions / Admin into Settings sections;
     // a settings section is reached THROUGH `settings`, so none of their ids may
     // also resolve as a top-level view. Checking the live section list (rather
     // than the three retired string literals) keeps this failing if a future
     // section is wired up as a top-level view by mistake, and still covers the
     // stale-persisted-`viewMode` case that motivated it.
-    strictEqual(TOP_LEVEL_VIEWS.size, 5);
+    strictEqual(TOP_LEVEL_VIEWS.size, 6);
     for (const section of SETTINGS_SECTION_IDS) {
       strictEqual(isTopLevelView(section), false, section);
     }
@@ -45,6 +47,8 @@ describe("isTopLevelView", () => {
   it("treats everything else as an agent tab", () => {
     strictEqual(isTopLevelView("chat"), false);
     strictEqual(isTopLevelView("integrations"), false);
+    // "skills" is the per-agent Agent Settings screen id, not the global page.
+    strictEqual(isTopLevelView("skills"), false);
   });
 });
 
@@ -71,6 +75,15 @@ describe("blockedTopLevelView", () => {
     // personal catalog, so a stale viewMode can never strand there.
     strictEqual(
       blockedTopLevelView(INTEGRATIONS_VIEW_ID, { showAiModels: false }),
+      false,
+    );
+  });
+
+  it("never blocks the global Skills page", () => {
+    // Skills is ungated like Integrations: it operates on the caller's own
+    // agents through per-agent routes, so every role keeps it.
+    strictEqual(
+      blockedTopLevelView(SKILLS_VIEW_ID, { showAiModels: false }),
       false,
     );
   });

@@ -162,6 +162,40 @@ never learns it exists, even though the Skills UI still lists it. Keep
    - `renderUserMessage` — decodes skill + attachment markers into cards
 6. Both **BoardTab** (per-agent kanban) and **Dashboard** (Mission Control / cross-agent kanban) consume this hook so the right panel is identical in both views.
 
+## Global Skills page (sidebar "Skills", HOU-792)
+
+Skills are stored ON each agent (`<agent>/.agents/skills/` — there is no shared
+or org-level store; that was HOU-792's misconception). The top-level **Skills**
+page (`app/src/components/skills-view/`, viewMode `skills-home`, sidebar entry
+between Integrations and AI Models) is a pure client aggregation over the
+existing per-agent routes — the host's skill routes already accept ANY agent
+the caller owns (`canUseAgent` is workspace ownership), so no backend changed:
+
+- **Your skills** — one row per slug across the workspace's agents
+  (`aggregateWorkspaceSkills` in `app/src/lib/workspace-skills.ts`,
+  node:test-covered), each with the holder agents' avatar stack. Fetching uses
+  one query per agent on the SAME `queryKeys.skills(path)` keys the per-agent
+  tab uses (`use-workspace-skills.ts`), so `SkillsChanged` invalidation
+  refreshes the page for free; fetched once per mount, never on focus (hosted:
+  a sweep wakes every pod — the `useAllConversations` discipline).
+- **Row click → manage dialog** (`manage-skill-dialog.tsx`): edit the full
+  SKILL.md (canonical copy = FIRST holder's) + toggle which agents hold it.
+  `planSkillAssignment` diffs the edit into the minimal fan-out: newly
+  assigned agents always get the canonical content (full-file
+  `tauriAgent.writeFile`, the Houston-library copy primitive); existing
+  holders are rewritten only when the content itself was edited; unassignments
+  confirm first (destructive), and Delete removes it from every holder.
+- **Store tab** — the same `SkillMarketplaceSection`; search/preview ride the
+  first agent (read-only marketplace proxies), install opens the
+  pick-agents dialog (`install-skill-dialog.tsx`; agents already holding the
+  slug lock out) and fans out `installCommunity` per picked agent.
+- **New skill** — header CTA (`new-skill-dialog.tsx`): the scratch fields +
+  agent multi-select; creates via the per-agent POST on each picked agent.
+
+The per-agent Skills tab is unchanged and stays the place for the guided
+create chat (HOU-791). The sidebar nav item made the bare "Skills" text
+ambiguous in e2e — scope selectors (see `skills-add-dialog.spec.ts`).
+
 ## Add Skills UI — the catalog-grammar Skills surface
 
 The agent's Skills section (`app/src/components/tabs/skills-content.tsx`) is
