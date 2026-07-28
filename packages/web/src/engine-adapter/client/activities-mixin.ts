@@ -1,6 +1,7 @@
 import type {
   Activity,
   ActivityUpdate,
+  AllConversationsResult,
   ConversationEntry,
   NewActivity,
 } from "../../../../../ui/engine-client/src/types";
@@ -69,13 +70,49 @@ export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
         activities.activityToConversation(a, agentPath, agentName),
       );
     }
+    /**
+     * The cross-agent sweep: one read per agent, in parallel.
+     *
+     * PARTIAL-TOLERANT by contract (HOU-981). `Promise.all` rejected the whole
+     * sweep when a SINGLE agent's read failed — one pod that never woke blanked
+     * Mission Control, the sidebar badges, and the command palette for everyone
+     * else. `allSettled` keeps every agent that answered and REPORTS the ones
+     * that didn't, so the query layer can hold the failed agents' last-known
+     * rows and schedule a re-sweep instead of freezing a hole in cache.
+     *
+     * A sweep where EVERY agent failed is not partial — it is a failure, and it
+     * throws (the first reason) so the caller's error path runs.
+     */
     async listAllConversations(
       agentPaths: string[],
-    ): Promise<ConversationEntry[]> {
-      const all = await Promise.all(
+    ): Promise<AllConversationsResult> {
+      const settled = await Promise.allSettled(
         agentPaths.map((p) => this.listConversations(p)),
       );
-      return all.flat();
+      const conversations: ConversationEntry[] = [];
+      const failedAgentPaths: string[] = [];
+      let firstReason: unknown;
+      settled.forEach((outcome, i) => {
+        if (outcome.status === "fulfilled") {
+          conversations.push(...outcome.value);
+          return;
+        }
+        failedAgentPaths.push(agentPaths[i]);
+        if (firstReason === undefined) firstReason = outcome.reason;
+        // Never a silent drop: the agent is named in the log, and the caller
+        // gets it in `failedAgentPaths` to surface + recover from.
+        console.warn(
+          `[activities] conversations read failed for ${agentPaths[i]}: ${String(
+            outcome.reason,
+          )}`,
+        );
+      });
+      if (
+        agentPaths.length > 0 &&
+        failedAgentPaths.length === agentPaths.length
+      )
+        throw firstReason;
+      return { conversations, failedAgentPaths };
     }
   }
   return Activities;

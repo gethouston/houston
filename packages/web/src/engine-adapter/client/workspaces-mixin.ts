@@ -2,8 +2,12 @@ import type {
   SidebarLayout,
   Workspace,
 } from "../../../../../ui/engine-client/src/types";
-import { listWorkspaces as cpListWorkspaces } from "../control-plane";
+import {
+  listWorkspaces as cpListWorkspaces,
+  retryTransientRead,
+} from "../control-plane";
 import { syntheticWorkspace } from "../synthetic";
+import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 
 const SIDEBAR_LAYOUT_PREF = "houston.sidebar-layout";
@@ -44,15 +48,32 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
       // for prefs, caches, and the desktop boot path); ONLY the `org:*` team
       // rows bridge through, so a local/self-host list (never `org:`-prefixed)
       // stays byte-identical. `prefConfig()` is the shared seam: the gateway
-      // in cloud mode, the local host otherwise. A host without the surface
-      // (404) or a failed read degrades to personal-only — the switcher must
-      // never go empty.
+      // in cloud mode, the local host otherwise.
+      //
+      // A 404 is CAPABILITY negotiation, not a failure: a host that predates
+      // the surface has no teams to bridge, so personal-only is the honest and
+      // complete answer.
+      //
+      // Every other failure THROWS (HOU-981). The old blanket
+      // `catch { return [personal] }` turned one transient gateway blip into a
+      // silent, session-long lie: a Teams user's `org:*` spaces vanished,
+      // `resolveActiveWorkspace` fell back to personal, and every mission they
+      // owned looked gone. A throw lands on the workspace store's `loadError`
+      // — a visible failed state with a retry (plus the `call()` toast) — and
+      // leaves the persisted `last_workspace_id` untouched, so the next
+      // successful load restores the right space.
       try {
-        const rows = await cpListWorkspaces(this.ctx.prefConfig());
+        const rows = await retryTransientRead(() =>
+          cpListWorkspaces(this.ctx.prefConfig()),
+        );
         const teams = rows.filter((w) => w.id.startsWith("org:"));
         return [personal, ...teams];
-      } catch {
-        return [personal];
+      } catch (err) {
+        if (err instanceof HoustonEngineError && err.status === 404) {
+          console.info("[workspaces] host serves no team spaces (404)");
+          return [personal];
+        }
+        throw err;
       }
     }
     async createWorkspace(req: { name?: string }): Promise<Workspace> {

@@ -148,6 +148,17 @@ export function planInvalidation(
       plan.invalidate.push(queryKeys.customIntegrations());
       plan.invalidate.push(["integration-connections"]);
       break;
+    // The global event stream came back after a drop (HOU-981). The feed has no
+    // replay cursor, so every change that happened while it was down — a
+    // routine finishing, a teammate's mission, another device — was never
+    // delivered. The cross-agent aggregate is the one surface that cannot
+    // recover on its own (nothing else re-reads it within its freshness
+    // window), so it is re-swept. Deliberately JUST the aggregate: a re-sweep
+    // already touches every agent's pod, and everything else either rides its
+    // own mount or will be corrected by the next event naming its agent.
+    case "EventStreamReconnected":
+      plan.invalidate.push(queryKeys.allConversations([]));
+      break;
   }
 
   return plan;

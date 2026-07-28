@@ -911,7 +911,7 @@ export const tauriFiles = {
 
 // ─── Conversations ────────────────────────────────────────────────────
 
-interface RawConversation {
+export interface RawConversation {
   id: string;
   title: string;
   description?: string;
@@ -934,6 +934,17 @@ interface RawConversation {
   mentioned?: { user_id: string; at: string; by?: string }[];
 }
 
+/**
+ * One cross-agent conversation sweep: the rows every agent that answered
+ * returned, plus the agents whose read failed. A non-empty `failedAgentPaths`
+ * means the rows are INCOMPLETE and must not be treated as the whole truth
+ * (see lib/all-conversations-recovery.ts).
+ */
+export interface AllConversationsSweep {
+  items: RawConversation[];
+  failedAgentPaths: string[];
+}
+
 export const tauriConversations = {
   list: (agentPath: string) =>
     isAgentPathCreating(agentPath)
@@ -951,12 +962,20 @@ export const tauriConversations = {
     // keeping it holds the sweep until its pod wakes while the cached rows
     // keep painting.
     const reachable = agentPaths.filter((p) => !isAgentPathCreating(p));
-    if (reachable.length === 0) return Promise.resolve<RawConversation[]>([]);
-    return call<RawConversation[]>("list_all_conversations", async () =>
-      (await getEngine().listAllConversations(reachable)).map(
-        conversationToRaw,
-      ),
-    );
+    if (reachable.length === 0)
+      return Promise.resolve<AllConversationsSweep>({
+        items: [],
+        failedAgentPaths: [],
+      });
+    // A sweep where SOME agents failed resolves (partial) rather than throwing,
+    // so `call()` raises no toast for it — the query layer owns that surface
+    // (one toast per incomplete sweep, plus a bounded re-sweep). Only a sweep
+    // where EVERY agent failed rejects, and that keeps the toast + capture.
+    return call<AllConversationsSweep>("list_all_conversations", async () => {
+      const { conversations, failedAgentPaths } =
+        await getEngine().listAllConversations(reachable);
+      return { items: conversations.map(conversationToRaw), failedAgentPaths };
+    });
   },
 };
 

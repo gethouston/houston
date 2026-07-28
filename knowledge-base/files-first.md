@@ -249,6 +249,33 @@ Users + LLMs equal participants. Both read/write all workspace data. All changes
 2. **Event emission on engine writes** — the engine's write helpers emit `HoustonEvent` variants (`SkillsChanged`, `ActivityChanged`, `LearningsChanged`, …) onto its broadcast bus. The desktop WS client (`ui/engine-client`) fans them out; global listeners in `app/src/hooks/use-agent-invalidation.ts` invalidate the matching query key.
 3. **Host file watcher (`packages/host/src/watch/`)** — catches direct runtime and agent writes that bypass host routes. It classifies canonical `.houston/runtime/{conversations,sessions}/**` writes as `ConversationsChanged`, emits onto the host `/v1/events` channel, and debounces bursts. In managed cloud, the gateway's pod-event fan-in republishes that event to every connected client for the user.
 
+### The cross-agent aggregate (`["all-conversations", ...paths]`) — HOU-981
+
+Mission Control, the sidebar badges, the mentions inbox and the command palette
+all read ONE query whose `queryFn` fans out a read per agent. In hosted mode
+every one of those reads can wake a pod, so this query has its own rules
+(`app/src/hooks/queries/use-conversations.ts`):
+
+- **Finite freshness window, never `Infinity`.** The aggregate is persisted to
+  IndexedDB (`query-persist-policy.ts`) and restored carrying its ORIGINAL
+  `dataUpdatedAt`. With `staleTime: Infinity` a restored copy was permanently
+  fresh, so nothing revalidated it for the whole session and every mission
+  created while the app was closed stayed invisible. `ALL_CONVERSATIONS_STALE_MS`
+  (10 min) revalidates the boot while a mid-session navigation reuses the cache.
+  Do NOT "fix" this with `refetchOnMount: "always"` — seven surfaces mount the
+  hook and each mount would re-fan-out to the whole fleet.
+- **Partial-tolerant fan-out.** The adapter uses `Promise.allSettled` and returns
+  `{ conversations, failedAgentPaths }` (`AllConversationsResult`); it throws only
+  when EVERY agent failed. A partial sweep carries the failed agents' last-known
+  rows forward and schedules a bounded re-sweep + one error toast
+  (`lib/all-conversations-recovery.ts`).
+- **Reconnect catch-up.** `/v1/events` has no replay cursor, so the adapter emits
+  `EventStreamReconnected` on every RE-connect (`cp/events.ts` `onConnect`) and
+  `agent-invalidation-plan.ts` turns it into a re-sweep of this key alone.
+- **Errors never render "no missions".** Mission Control gates `isLoaded` on
+  SUCCESS and falls back to the cached snapshot on error, so the empty-board
+  auto-open composer only fires on a genuinely empty successful read.
+
 ### The rule
 Never build feature where agent changes data but UI won't reflect until refresh. If in `.houston/`, must be reactive.
 

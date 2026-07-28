@@ -32,6 +32,7 @@ export function subscribeEvents(
   onEvent: (event: unknown) => void,
 ): () => void {
   const ac = new AbortController();
+  let connects = 0;
   void streamGlobalEvents({
     url: () => {
       const org = cfg.activeOrgSlug;
@@ -50,6 +51,18 @@ export function subscribeEvents(
     signal: ac.signal,
     onUnauthorized: () => {
       void refreshLiveToken();
+    },
+    // The catch-up seam (HOU-981). This feed has NO replay cursor: every event
+    // emitted while the stream was down is lost for good, and the surfaces it
+    // feeds are cached with a long freshness window — so a drop used to mean
+    // the board silently stopped tracking reality until the next remount. On a
+    // RE-connect we publish a transport event and let the app's invalidation
+    // plan decide what to re-read (app/src/lib/agent-invalidation-plan.ts);
+    // the adapter stays out of the cache-policy business. The FIRST connect is
+    // skipped — that read is already in flight.
+    onConnect: () => {
+      connects += 1;
+      if (connects > 1) onEvent({ type: "EventStreamReconnected" });
     },
     // Log-only (no toast): a background stream that auto-reconnects — but it
     // must never fail silently again.

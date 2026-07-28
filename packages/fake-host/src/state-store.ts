@@ -342,6 +342,14 @@ export interface HostState {
    */
   agentReadHoldMs: number;
   /**
+   * Agent ids whose per-agent READS answer `500`, armed by
+   * `/__test__/fail-agent-reads`. Models the half-broken fleet the cross-agent
+   * sweep must survive (HOU-981): one agent's pod is unreachable while every
+   * other agent answers normally. Empty (the default and the reset state) =
+   * every agent is healthy.
+   */
+  failingAgentReads: Set<string>;
+  /**
    * Custom integrations (HOU-550), armed by `/__test__/custom-integrations`.
    * `null` (the default) = the host does not serve the feature at all: no
    * `custom` entry in the readiness list and the definitions routes 404 (the
@@ -452,6 +460,7 @@ function freshState(): HostState {
     computeUsage: null,
     integrationsMode: "ready",
     agentReadHoldMs: 0,
+    failingAgentReads: new Set<string>(),
     customIntegrations: null,
     orgMembers: null,
     meProfileBase: {},
@@ -471,6 +480,11 @@ export let state: HostState = freshState();
 /** Arm (or clear, with 0) the cold-start hold on per-agent reads. */
 export function setAgentReadHoldMs(ms: number): void {
   state.agentReadHoldMs = Math.max(0, ms);
+}
+
+/** Arm (or clear, with `[]`) the agents whose per-agent reads answer 500. */
+export function setFailingAgentReads(agentIds: string[]): void {
+  state.failingAgentReads = new Set(agentIds);
 }
 
 /** Restore the seed. Called by the harness before each test. */
