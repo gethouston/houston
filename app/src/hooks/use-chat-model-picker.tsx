@@ -14,10 +14,16 @@ import {
 } from "@houston-ai/core";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { buildLabels } from "../components/chat-model-selector-labels";
+import {
+  buildLabels,
+  pickerEmptyState,
+} from "../components/chat-model-selector-labels";
 import { BrandMark } from "../components/provider-browser/brand-mark";
 import { decodeModelPickerId } from "../lib/chat-model-picker-ids";
+import { isTeamWorkspace } from "../lib/space-id";
 import { useUIStore } from "../stores/ui";
+import { useWorkspaceStore } from "../stores/workspaces";
+import { useCapabilities } from "./use-capabilities";
 import { usePickerViewModels } from "./use-picker-view-models";
 
 /** Everything `ChatModelSelector`'s JSX needs to render the picker. */
@@ -31,8 +37,13 @@ export interface ChatModelPicker {
   catalogState: ReturnType<typeof usePickerViewModels>["catalogState"];
   labels: Partial<ModelPickerLabels>;
   onSelect: (id: string) => void;
-  /** Opens the AI Hub, the app's provider-connection surface. */
-  onConnectMore: () => void;
+  /**
+   * Opens the AI Hub, the app's provider-connection surface. Undefined for a
+   * viewer who cannot open it (a plain team member: provider connections are
+   * org-level, so the hub is owner/admin-only), which drops both the footer row
+   * and the empty state's button rather than offering a dead end.
+   */
+  onConnectMore?: () => void;
   renderProviderIcon: (providerId: string, className?: string) => ReactNode;
 }
 
@@ -66,6 +77,19 @@ export function useChatModelPicker(opts: {
   const { provider, model, onSelect, open, onOpenChange } = opts;
   const { t } = useTranslation("chat");
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const { capabilities, isLoading: capabilitiesLoading } = useCapabilities();
+  const workspaceId = useWorkspaceStore((s) => s.current?.id ?? null);
+  // Provider connections are ORG-level in a team space, so only the roles that
+  // can open the AI Models hub can act on an empty picker; everyone else is told
+  // who can. The decision (including the capabilities-loaded gate that keeps a
+  // plain member from being shown a Connect action we then withdraw) is pure —
+  // see `pickerEmptyState`.
+  const { variant: emptyState, canConnect: canConnectProviders } =
+    pickerEmptyState({
+      teamSpace: workspaceId ? isTeamWorkspace(workspaceId) : false,
+      capabilities,
+      capabilitiesLoaded: !capabilitiesLoading,
+    });
 
   // Merge controlled + uncontrolled open so selecting a row closes the picker
   // even when no parent owns the state (the old dropdown auto-closed on pick).
@@ -94,12 +118,16 @@ export function useChatModelPicker(opts: {
   // lists every provider and owns the full connect flow (OAuth / api-key /
   // local). The per-provider inline connect cards are gone: disconnected
   // providers never appear in the picker anymore.
-  const onConnectMore = useCallback(() => {
+  const goToAiHub = useCallback(() => {
     setOpen(false);
     setViewMode("ai-hub");
   }, [setOpen, setViewMode]);
+  const onConnectMore = canConnectProviders ? goToAiHub : undefined;
 
-  const labels = useMemo<Partial<ModelPickerLabels>>(() => buildLabels(t), [t]);
+  const labels = useMemo<Partial<ModelPickerLabels>>(
+    () => buildLabels(t, emptyState),
+    [t, emptyState],
+  );
 
   return {
     isOpen,

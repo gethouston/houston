@@ -280,6 +280,15 @@ export class HoustonClient {
   }
 
   /**
+   * Tell the client the active space's agent list is not coming (boot resolved
+   * no workspace to list agents for). Only the v3 host adapter acts on it — it
+   * routes provider calls at a specific agent's runtime and would otherwise wait
+   * on that list forever (HOU-979). This client addresses one runtime directly,
+   * so there is nothing to settle.
+   */
+  noteAgentsUnavailable(): void {}
+
+  /**
    * The active-space header for one request, or `{}` when personal (`null`).
    * Called INSIDE each `build()` closure so it is evaluated per attempt — a
    * `setActiveOrg` mid-flight lands on the next retry, same discipline as the

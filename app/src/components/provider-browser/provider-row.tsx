@@ -17,6 +17,7 @@
 import { AsyncButton, Button } from "@houston-ai/core";
 import { Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { ProviderConnectionState } from "../../lib/provider-connection";
 import type { ProviderInfo } from "../../lib/providers";
 import { LiveStatus } from "../ai-hub/hub-badges";
 import { BrandMark } from "./brand-mark";
@@ -31,7 +32,12 @@ interface ProviderRowProps {
   modelCount: number;
   /** Muted one-line secondary: the friendly cost prose or provider description. */
   description: string;
-  connected: boolean;
+  /**
+   * The card's connection state. `checking` (an unconfirmable probe) renders a
+   * muted, non-actionable "Checking" in place of both the Connected dot and the
+   * Connect / Sign out buttons: claiming either would be a guess (HOU-979).
+   */
+  connection: ProviderConnectionState;
   connecting: boolean;
   signingOut: boolean;
   onConnect: (provider: ProviderInfo) => void;
@@ -43,7 +49,7 @@ export function ProviderRow({
   provider,
   modelCount,
   description,
-  connected,
+  connection,
   connecting,
   signingOut,
   onConnect,
@@ -51,6 +57,7 @@ export function ProviderRow({
   onSignOut,
 }: ProviderRowProps) {
   const { t } = useTranslation("aiHub");
+  const connected = connection === "connected";
 
   return (
     <div className="flex items-center gap-3 rounded-xl bg-chip px-3 py-2.5 text-left">
@@ -74,7 +81,14 @@ export function ProviderRow({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        {connected ? (
+        {connection === "checking" ? (
+          // Not confirmable right now (engine unreachable, pod waking, the
+          // space's agent list still settling). Say exactly that instead of
+          // offering an action whose premise we can't verify.
+          <span className="px-3 text-[13px] text-ink-muted">
+            {t("card.checking")}
+          </span>
+        ) : connected ? (
           <Button
             size="sm"
             variant="ghost"

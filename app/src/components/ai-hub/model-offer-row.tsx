@@ -3,9 +3,11 @@
  * A hub-local row (NOT the shared `RowCard`, which draws its own media box) that
  * pairs the provider's colorful `BrandMark` tile with its name, echoing the
  * models card grid's BrandMark tiles. Shows either a per-1M price line or a
- * subscription label. Not
- * connected -> a Connect pill; connected -> a live status and a row that opens
- * the provider modal.
+ * subscription label. Connected -> a live status and a row that opens the
+ * provider modal; CONFIRMED not connected -> a Connect pill; unconfirmable ->
+ * a muted "Checking" and no action at all, because offering Connect for an
+ * account that may already be signed in is exactly the guess the tri-state
+ * exists to prevent (HOU-979).
  */
 
 import type { ReactNode } from "react";
@@ -58,7 +60,9 @@ export function ModelOfferRow({
     </span>
   );
 
-  if (connections.isConnected(provider)) {
+  const connection = connections.connectionState(provider);
+
+  if (connection === "connected") {
     return (
       <button
         type="button"
@@ -68,6 +72,14 @@ export function ModelOfferRow({
       >
         {row(<LiveStatus label={t("card.connected")} />)}
       </button>
+    );
+  }
+
+  if (connection === "checking") {
+    return row(
+      <span className="px-2 text-[13px] text-ink-muted">
+        {t("card.checking")}
+      </span>,
     );
   }
 

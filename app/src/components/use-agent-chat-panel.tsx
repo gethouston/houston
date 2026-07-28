@@ -94,6 +94,10 @@ import {
 import { osIsTauri } from "../lib/os-bridge";
 import { resolvePlanReadyOverride } from "../lib/plan-ready";
 import {
+  providerConnectionState,
+  providerIsConnected,
+} from "../lib/provider-connection";
+import {
   decideHandoffMode,
   estimateConversationTokens,
   type ProviderHandoffMode,
@@ -496,14 +500,24 @@ export function useAgentChatPanel({
     pinForSelected?.model ?? selectedActivity?.model ?? null,
   );
 
-  // Which providers the user is actually logged into (reactive + cached). The
-  // fallback below picks an authenticated one rather than a stale preference,
-  // so a no-provider agent never lands on a logged-out CLI (#483).
+  // Which providers the user is actually logged into (reactive + cached), read
+  // through the ONE shared derivation (HOU-979) rather than the denormalized
+  // `authenticated` flag. The fallback below picks a CONFIRMED-connected one
+  // rather than a stale preference, so a no-provider agent never lands on a
+  // logged-out account (#483) — and an unconfirmable probe is kept separate, so
+  // it neither becomes a fallback target nor disqualifies the preferred one.
   const { statuses: providerStatuses } = useProviderStatuses();
   const authedProviders = useMemo(
     () =>
       Object.values(providerStatuses)
-        .filter((s) => s.authenticated)
+        .filter((s) => providerIsConnected(s))
+        .map((s) => s.provider),
+    [providerStatuses],
+  );
+  const unconfirmedProviders = useMemo(
+    () =>
+      Object.values(providerStatuses)
+        .filter((s) => providerConnectionState(s, false) === "checking")
         .map((s) => s.provider),
     [providerStatuses],
   );
@@ -551,6 +565,7 @@ export function useAgentChatPanel({
     lastUsedProvider,
     authedProviders,
     hasMessages,
+    unconfirmedProviders,
   );
   const effectiveModel =
     validModelOrNull(effectiveProvider, activityModel) ??

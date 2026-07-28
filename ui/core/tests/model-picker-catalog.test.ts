@@ -4,6 +4,7 @@ import {
   connectedProviderIds,
   connectedProviders,
   modelsForProvider,
+  providerListEmpty,
   providerListLoading,
 } from "../src/components/model-picker/catalog.ts";
 import type {
@@ -94,5 +95,49 @@ describe("providerListLoading (#342 flicker guard)", () => {
       providerListLoading([provider("a", "disconnected")], "ready"),
       false,
     );
+  });
+});
+
+describe("the explained empty state (HOU-979)", () => {
+  it("shows only once level 1 has SETTLED on nothing connected", () => {
+    assert.equal(
+      providerListEmpty([provider("a", "disconnected")], "ready"),
+      true,
+    );
+    assert.equal(providerListEmpty([], "ready"), true);
+  });
+
+  it("never shows while statuses or the catalog are still resolving", () => {
+    // The whole point of the third state: a "checking" provider must read as
+    // loading, not as an honest "this space has no AI connection".
+    assert.equal(
+      providerListEmpty([provider("a", "checking")], "ready"),
+      false,
+    );
+    assert.equal(providerListEmpty([], "loading"), false);
+  });
+
+  it("never shows when something IS connected", () => {
+    assert.equal(
+      providerListEmpty([provider("a", "connected")], "ready"),
+      false,
+    );
+  });
+
+  it("is mutually exclusive with the loading state", () => {
+    const cases: [ModelPickerProvider[], "ready" | "loading"][] = [
+      [[], "ready"],
+      [[], "loading"],
+      [[provider("a", "checking")], "ready"],
+      [[provider("a", "disconnected")], "ready"],
+      [[provider("a", "connected")], "loading"],
+    ];
+    for (const [providers, catalogState] of cases) {
+      assert.equal(
+        providerListEmpty(providers, catalogState) &&
+          providerListLoading(providers, catalogState),
+        false,
+      );
+    }
   });
 });

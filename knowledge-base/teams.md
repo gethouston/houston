@@ -414,6 +414,81 @@ per team, each `{ id: "org:" + slug, kind: "org" }` where `slug` is `[a-f0-9]{16
   re-probes on a workspace-id change, gating the live probe on the new space's
   agents having loaded (the probe routes per-agent, so it must not fire at the old
   agent under the new org header). The old un-scoped `.v1` key is orphaned + purged.
+  A probe now also pins `activeProviderStatusScope()` when it STARTS and discards
+  its result if the space changed mid-flight, so a personal probe that resolves
+  after a switch can neither paint nor persist under the team's key (HOU-979).
+- **Provider ROUTING is space-validated, and refuses rather than guesses**
+  (HOU-979, `packages/web/src/engine-adapter/client/provider-routing.ts`). Every
+  provider connect/probe goes to a specific agent's runtime; the only space-aware
+  source for that id is the adapter's `agentList` (the CURRENT space's last
+  `listAgents`). The persisted `last_agent_id` pref is NOT space-aware, so the
+  three formerly independent sources (`providerAgentId()`, the raw-pref
+  `requireAgentId()`, and the agent STORE read in `claude-login-remote.ts`)
+  collapsed onto one: `requireProviderAgentId(ctx)`. Before the list settles,
+  writes throw "This space is still loading", the status probe returns `unknown`
+  with NO request, and the Claude credential push degrades to the setup runtime
+  (space-correct: same central store, same org header). `requireAgentId()` stays
+  for routes that genuinely mean the agent the user has OPEN (project files,
+  per-agent prefs).
+  **`agentList` is a THREE-state machine (`context.ts`), not a nullable list** —
+  the distinction is what keeps the guard both effective and non-bricking:
+  - `pending` — no list for THIS space yet. Writes refuse, the probe skips.
+    **`setActiveOrg` resets to `pending` on a real slug change**, so the guard is
+    not first-boot-only: a Connect clicked mid-switch used to route at the space
+    just left. Re-pinning the SAME slug (the client rebuild / bearer rotation in
+    `lib/engine.ts`) is a no-op.
+  - `unavailable` — a list was asked for and could not be had: `listAgents`
+    threw (`agents-mixin` notes it, then rethrows so the failure still surfaces),
+    or boot resolved no workspace to list agents for and the app called
+    `client.noteAgentsUnavailable()`. Routing degrades to the pre-HOU-979
+    pref-based path so connect + the picker keep working. Never downgrades a list
+    we already have; a later successful `listAgents` restores strict validation.
+  - `known` — the space's own ids; the pref is validated against them.
+
+  `GET /v1/catalog` deliberately does NOT send `x-houston-org`: the gateway's
+  catalog handler ignores the request entirely (one global snapshot,
+  `cloud/internal/edge/catalog.go`), so the header buys nothing and newly exposes
+  a 403 from `ResolveOrg` on a stale slug — which would pin the picker at
+  "Loading providers…" forever through `useProviderCatalog`'s `isSuccess` gate.
+- **One provider-connection derivation** (`app/src/lib/provider-connection.ts`,
+  HOU-979). `unknown` used to mean opposite things per surface: invisible to the
+  chat picker's catalog, "Connected" to the AI hub's badge, "card never clears"
+  to the in-chat reconnect card. It is now the third state, `checking`,
+  everywhere — never Connected, never silently hidden. `unknown` is tested FIRST,
+  ahead of the missing-CLI check: an unconfirmable probe is ALWAYS `checking`.
+  `providerIsConnected` is the ONLY connected predicate (badges, analytics
+  transitions); `providerNotConfirmedDisconnected` is the permissive read,
+  sanctioned ONLY for the tunnel auto-reconnect and the first-load
+  `claudeAvailable` gate, never for a badge — and it keeps the OLD lenient
+  reading when `auth_state` is absent (`cli_installed`), which the strict
+  derivation deliberately does not. The chat picker's
+  `hooks/use-provider-statuses.ts` carries the same agents-settled gate +
+  a workspace-scoped query key as the hub's sibling hook
+  (`lib/provider-statuses-query.ts` holds the pure rules).
+  **The connections layer exposes ONE reader, `connectionState`** — no boolean
+  sibling, because every surface that reached for one collapsed the third state.
+  `groupProviders` returns three buckets (`connected` / `checking` /
+  `available`): only `connected` may claim Connected (the hub's strip dot, the
+  Usage page's account rows), only `available` gets a Connect CTA, and
+  `providerOwnedSide()` is the render order the browse surfaces use.
+- **A team space with no credential explains itself.** When statuses settle with
+  nothing connected, the picker's level 1 shows an honest empty state instead of
+  a blank panel: `personal` / `teamCanConnect` / `teamAskAdmin`
+  (`app/src/components/chat-model-selector-labels.ts`, copy under
+  `chat:modelSelector.picker.noProviders.*`). A plain member gets no CTA and no
+  "Connect more providers…" footer at all — provider connections are org-level,
+  so `canSeeAiModelsPage` is false for them and the hub would dead-end. The
+  decision is gated on capabilities having LOADED (`canSeeAiModelsPage` answers
+  TRUE for absent capabilities, which flashed a CTA at a member and withdrew it);
+  `use-picker-view-models` folds the same signal into `catalogState`, so the
+  picker holds its neutral loading state through that window.
+- **Boot with NO space settles honestly** (HOU-979). If `loadWorkspaces` fails
+  (or yields no current workspace) `loadAgents` never runs, and every `loaded`
+  gate hung: the boot splash never lifted and the provider probe never fired.
+  `useHoustonInit` now calls the agent store's `settleEmpty()`, which settles the
+  store AND tells the client `noteAgentsUnavailable()`. The failure itself is
+  already surfaced by `lib/tauri.ts`'s `call()` (toast + Sentry) and recorded as
+  the workspace store's `loadError` for the Settings retry.
 - **Restore last space**: `resolveActiveWorkspace` (`app/src/lib/workspace-switch.ts`)
   restores the persisted `last_workspace_id`, else default, else first.
 

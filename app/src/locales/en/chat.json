@@ -179,7 +179,21 @@
       "modelsLabel": "Models",
       "loading": "Loading providers…",
       "empty": "No models found.",
-      "noProviders": "No providers connected yet.",
+      "noProviders": {
+        "action": "Connect an AI model",
+        "personal": {
+          "title": "No providers connected yet.",
+          "hint": "Connect an AI model to start chatting."
+        },
+        "teamCanConnect": {
+          "title": "This team space has no AI connection yet.",
+          "hint": "Connect an AI model for this team and everyone here can use it."
+        },
+        "teamAskAdmin": {
+          "title": "This team space has no AI connection yet.",
+          "hint": "Ask a team owner or admin to connect an AI model for this space."
+        }
+      },
       "hiddenByWorkspace_one": "{{count}} more model is turned off in your workspace",
       "hiddenByWorkspace_other": "{{count}} more models are turned off in your workspace"
     },

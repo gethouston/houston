@@ -33,6 +33,29 @@ export interface HoustonClientOptions {
 export const LAST_AGENT_PREF = "houston.pref.last_agent_id";
 
 /**
+ * What the client knows about the ACTIVE SPACE's agents — the only
+ * space-validated source for routing provider calls (HOU-979).
+ *
+ * Three states, not two, because "we have no list" hides two opposite
+ * situations and collapsing them produced two separate bugs:
+ *
+ *  - `pending` — no list has resolved for THIS space yet (boot, or the window
+ *    right after a space switch). The persisted `last_agent_id` still names the
+ *    space the user just LEFT, so there is nothing safe to route on: provider
+ *    calls refuse and the probe reports "checking".
+ *  - `unavailable` — a list was asked for and could not be had (the request
+ *    failed, or boot resolved no workspace to list agents for). Waiting forever
+ *    on a list that is not coming bricks connect + the picker, so this degrades
+ *    to the pre-HOU-979 behavior: route on the pref, probe for real. A later
+ *    successful list upgrades back to `known` and strict validation returns.
+ *  - `known` — the space's own agent ids. The pref is validated against them.
+ */
+export type AgentListState =
+  | { readonly kind: "pending" }
+  | { readonly kind: "unavailable" }
+  | { readonly kind: "known"; readonly ids: readonly string[] };
+
+/**
  * The single, shared state + routing seam behind `HoustonClient`. Every method
  * cluster (the mixins under `client/`) reads `cp`/`engine`/`sdk` from the ONE
  * `AdapterContext` — no per-cluster copy. `cp` is a getter over a privately-held
@@ -145,9 +168,20 @@ export class AdapterContext {
    * live `ControlPlaneConfig` in place — shared by every per-request fetch and
    * the long-lived per-agent runtime clients (whose auth-fetch re-reads it per
    * attempt) — so a switch takes effect at once. No-op off-cloud (`_cp === null`).
+   *
+   * A REAL space change also invalidates {@link agentList} (HOU-979): the ids it
+   * holds belong to the space being left, and every one of them 404s under the
+   * new `x-houston-org`. Without this the guard was first-boot-only — a Connect
+   * clicked mid-switch still routed at the previous space's agent. Back to
+   * `pending` means provider calls refuse (and the probe reports "checking")
+   * until the new space's `listAgents` lands. Re-pinning the SAME slug (the
+   * client rebuild in `lib/engine.ts`, a same-space reselect) changes nothing.
    */
   setActiveOrg(slug: string | null): void {
-    if (this._cp) this._cp.activeOrgSlug = slug;
+    if (!this._cp) return;
+    if ((this._cp.activeOrgSlug ?? null) === (slug ?? null)) return;
+    this._cp.activeOrgSlug = slug;
+    this._agentList = { kind: "pending" };
   }
 
   /** The CP agent the user has selected (persisted as last_agent_id), or null. */
@@ -160,16 +194,34 @@ export class AdapterContext {
     }
   }
 
-  /**
-   * The control plane's agent ids as of the last `listAgents`, in list order;
-   * `null` until a list has resolved. Ground truth for
-   * {@link providerAgentId}: the pref can go stale, this cannot.
-   */
-  knownAgentIds: string[] | null = null;
+  private _agentList: AgentListState = { kind: "pending" };
 
-  /** Record the live agent-id set (called by every cp `listAgents`). */
+  /**
+   * What we know about the ACTIVE space's agents. Ground truth for
+   * {@link providerAgentId} and for `provider-routing.ts` — the pref can go
+   * stale, a resolved list cannot.
+   */
+  get agentList(): AgentListState {
+    return this._agentList;
+  }
+
+  /** Record the live agent-id set (called by every successful cp `listAgents`). */
   noteAgentList(ids: string[]): void {
-    this.knownAgentIds = ids;
+    this._agentList = { kind: "known", ids };
+  }
+
+  /**
+   * Record that the active space's agent list could NOT be obtained — a failed
+   * `listAgents`, or a boot that resolved no workspace to list agents for.
+   *
+   * Never downgrades a list we already have: a background refresh failing is
+   * not a reason to drop validation we can still do. It only converts the
+   * "nothing yet" state into "nothing is coming", which is what lets provider
+   * calls degrade to the pref instead of refusing forever.
+   */
+  noteAgentsUnavailable(): void {
+    if (this._agentList.kind === "pending")
+      this._agentList = { kind: "unavailable" };
   }
 
   /**
@@ -184,14 +236,18 @@ export class AdapterContext {
    *      provision + a lingering Deployment);
    *   3. else `null` → the hidden setup runtime (true first-run, zero agents).
    *
-   * Before the first list resolves the pref is trusted as-is (boot prunes a
-   * stale pref via `dropLastAgentPref` right when the list lands).
+   * With no `known` list there is nothing to validate against, so this falls
+   * back to the raw pref. That is only safe once the list is known NOT to be
+   * coming (`unavailable`); while it is still `pending`, provider callers must
+   * not route at all — see `provider-routing.ts`, which refuses rather than
+   * trust a pref that may still name the space the user just left.
    */
   providerAgentId(): string | null {
     const id = this.currentAgentId();
-    if (this.knownAgentIds === null) return id;
-    if (id && this.knownAgentIds.includes(id)) return id;
-    return this.knownAgentIds[0] ?? null;
+    const list = this._agentList;
+    if (list.kind !== "known") return id;
+    if (id && list.ids.includes(id)) return id;
+    return list.ids[0] ?? null;
   }
 
   /**
@@ -209,7 +265,11 @@ export class AdapterContext {
     }
   }
 
-  /** The selected agent id, or a user-facing error if none is open. */
+  /**
+   * The SELECTED agent id, or a user-facing error if none is open. For routes
+   * that genuinely mean "the agent the user has open" (project files, per-agent
+   * prefs), where falling back to another agent would touch the wrong data.
+   */
   requireAgentId(): string {
     const id = this.currentAgentId();
     if (!id) throw new Error("Open an agent first, then connect its account.");

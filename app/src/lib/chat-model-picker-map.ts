@@ -26,11 +26,11 @@
 
 import type { ModelPickerModel, ModelPickerProvider } from "@houston-ai/core";
 import { encodeModelPickerId } from "./chat-model-picker-ids.ts";
+import { pickerModelRows } from "./model-picker.ts";
 import {
-  type ProviderConnection,
-  pickerModelRows,
-  providerPickerState,
-} from "./model-picker.ts";
+  type ProviderConnectionStatus,
+  providerConnectionState,
+} from "./provider-connection.ts";
 import { PROVIDER_OVERRIDES } from "./provider-overrides.ts";
 import type { ProviderInfo } from "./providers.ts";
 
@@ -111,13 +111,15 @@ export function buildPickerModels(opts: {
 
 /**
  * Build the picker's provider list: every visible provider that owns ≥1 model
- * (`withModels`), each carrying its connection state. `providerPickerState`
- * already returns the `connected | checking | disconnected` vocabulary the
- * picker expects, including the #342 "checking" state while statuses load.
+ * (`withModels`), each carrying its connection state. The shared
+ * `providerConnectionState` (the ONE derivation, HOU-979) already returns the
+ * `connected | checking | disconnected` vocabulary the picker expects,
+ * including the neutral "checking" state while statuses load or come back
+ * `unknown`.
  */
 export function buildPickerProviders(opts: {
   visibleProviders: readonly ProviderInfo[];
-  statuses: Record<string, ProviderConnection | undefined>;
+  statuses: Record<string, ProviderConnectionStatus | undefined>;
   isLoading: boolean;
   withModels: Set<string>;
 }): ModelPickerProvider[] {
@@ -126,6 +128,6 @@ export function buildPickerProviders(opts: {
     .map((p) => ({
       id: p.id,
       name: p.name,
-      connection: providerPickerState(opts.statuses[p.id], opts.isLoading),
+      connection: providerConnectionState(opts.statuses[p.id], opts.isLoading),
     }));
 }

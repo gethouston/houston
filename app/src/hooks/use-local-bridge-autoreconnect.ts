@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { providerAppearsConnected } from "../components/shell/provider-reconnect-state";
 import {
   isBridgeOpInFlight,
   LOCAL_PROVIDER_ID,
@@ -10,6 +9,7 @@ import {
   osLocalBridgeStatus,
   osSavedBridgeTarget,
 } from "../lib/os-bridge";
+import { providerNotConfirmedDisconnected } from "../lib/provider-connection";
 import { tauriProvider } from "../lib/tauri";
 
 /**
@@ -63,7 +63,7 @@ export function useLocalBridgeAutoReconnect(enabled: boolean): void {
       const provider = await tauriProvider
         .checkStatus(LOCAL_PROVIDER_ID)
         .catch(() => null);
-      if (provider && !providerAppearsConnected(provider)) return;
+      if (provider && !providerNotConfirmedDisconnected(provider)) return;
 
       await reconnectLocalModel().catch(() => {
         // reconnectLocalModel already toasted the real reason (Report-bug).

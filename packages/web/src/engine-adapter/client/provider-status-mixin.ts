@@ -4,6 +4,7 @@ import type {
 } from "../../../../../ui/engine-client/src/types";
 import { toNewProvider } from "../synthetic";
 import type { BaseCtor } from "./mixin";
+import { providerRoutingSettled } from "./provider-routing";
 
 export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
   // Internal label only (the exported factory is the contract). Named to avoid
@@ -38,10 +39,19 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
       // auto-reconnect, for connections that are still registered server-side.
       let reachable = false;
       try {
-        const engine = this.ctx.providerEngine();
-        if (engine) {
-          for (const p of await engine.listProviders()) byId.set(p.id, p);
-          reachable = true;
+        // Do NOT probe before the active space's agent list has settled
+        // (HOU-979). The probe routes per-agent, so the only id available then
+        // is the raw pref — which right after a space switch still names the
+        // PREVIOUS space's agent. Asking `/v1/agents/<other-space-agent>/…`
+        // under the new `x-houston-org` 404s, and the catch below would report
+        // "unknown" anyway; skipping the request reaches the same honest
+        // "checking" answer without a cross-space call.
+        if (providerRoutingSettled(this.ctx)) {
+          const engine = this.ctx.providerEngine();
+          if (engine) {
+            for (const p of await engine.listProviders()) byId.set(p.id, p);
+            reachable = true;
+          }
         }
       } catch {
         /* engine unreachable → every card reports "unknown" below */

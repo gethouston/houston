@@ -35,7 +35,7 @@ import {
   type ProviderQuickFilter,
   searchProviders,
 } from "./provider-filtering";
-import { groupProviders } from "./provider-grouping";
+import { groupProviders, providerOwnedSide } from "./provider-grouping";
 import { useProviderAutoSelect } from "./use-provider-auto-select";
 
 export interface ProviderBrowserProps {
@@ -117,10 +117,13 @@ export function ProviderBrowser({
     expanded,
     searching,
   );
-  const { connected, available } = groupProviders(
-    displayed,
-    connections.isConnected,
-  );
+  // The Connected section is the "yours" side: confirmed connections plus the
+  // ones still resolving (their rows render their own "Checking" and offer no
+  // action). Only CONFIRMED-disconnected providers reach Available, which is the
+  // section whose rows carry a live Connect button (HOU-979).
+  const groups = groupProviders(displayed, connections.connectionState);
+  const owned = providerOwnedSide(groups);
+  const available = groups.available;
   const row = makeProviderRow({ connections, catalog });
 
   return (
@@ -154,8 +157,8 @@ export function ProviderBrowser({
         />
       ) : (
         <div className="flex flex-col gap-8">
-          <Section label={t("sections.connected")} count={connected.length}>
-            {connected.map(row)}
+          <Section label={t("sections.connected")} count={owned.length}>
+            {owned.map(row)}
           </Section>
           <Section label={t("sections.available")} count={available.length}>
             {available.map(row)}

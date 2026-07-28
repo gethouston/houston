@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { reconnectCardShouldClear } from "../../lib/provider-connection";
 import { getProvider } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
@@ -9,7 +10,6 @@ import { LocalModelDialog } from "./local-model-dialog";
 import { ProviderGlyph } from "./provider-logos";
 import { resolveReconnectCardPresentation } from "./provider-reconnect-presentation";
 import {
-  providerIsAuthenticated,
   providerReconnectSignalState,
   reconnectProviderForChat,
 } from "./provider-reconnect-state";
@@ -78,23 +78,28 @@ export function ProviderReconnectCard({
     };
   }, [providerId, shouldCheckSignal, signalKey]);
 
+  // Confirmation poll: the card clears the moment a FRESH probe reports the
+  // provider connected. The clear rule lives in the shared derivation
+  // (`reconnectCardShouldClear`) so this card, the hub badge and the picker all
+  // read one `ProviderStatus` the same way (HOU-979). A probe that fails is not
+  // evidence of anything: it is skipped, never latched, so a reconnect that
+  // succeeded across an errored tick still clears on the next tick.
   useEffect(() => {
     if (!activeProviderId) return;
     let cancelled = false;
     const check = async () => {
-      try {
-        const status = await tauriProvider.checkStatus(activeProviderId);
-        if (cancelled) return;
-        if (providerIsAuthenticated(status)) {
-          // Only clear the global flag if it belongs to the provider we just
-          // confirmed — otherwise an OpenAI chat re-auth would wipe a pending
-          // Claude reconnect (or vice-versa).
-          if (authRequired === activeProviderId) setAuthRequired(null);
-          if (signalKey) setResolvedSignal(signalKey);
-          setLoginLaunched(false);
-        }
-      } catch {
-        // Keep the reconnect card visible; the next poll may succeed.
+      const probe = await tauriProvider
+        .checkStatus(activeProviderId)
+        .then((status) => ({ ok: true, status }) as const)
+        .catch(() => ({ ok: false }) as const);
+      if (cancelled) return;
+      if (reconnectCardShouldClear(probe)) {
+        // Only clear the global flag if it belongs to the provider we just
+        // confirmed — otherwise an OpenAI chat re-auth would wipe a pending
+        // Claude reconnect (or vice-versa).
+        if (authRequired === activeProviderId) setAuthRequired(null);
+        if (signalKey) setResolvedSignal(signalKey);
+        setLoginLaunched(false);
       }
     };
     void check();
