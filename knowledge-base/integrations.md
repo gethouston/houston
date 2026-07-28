@@ -131,6 +131,18 @@ guidance (the app is turned off for this agent; tell the user to enable it in th
 Permissions tab; do not retry until they confirm), never a thrown/raw error.
 Marked `details.appTurnedOff`.
 
+**No access to the agent (HOU-967).** The gateway 403s with `{code:"not_assigned"}`
+when the acting user is not one of the people with access to the agent. BOTH
+`integration_search` and `integration_execute` classify that code and RETURN
+guidance (the user has no access; someone who manages the agent gives it to them in
+Permissions > this agent > People; do not retry, do not `request_connection`),
+marked `details.noAgentAccess`. The gateway's own phrasing ("isn't assigned to you")
+and its JSON body never reach the model — it paraphrases whatever we hand it.
+Same rule for any OTHER unrecognized 4xx: the body is REDACTED from the thrown
+message, leaving `integrations <path> failed (<status>[, code <code>])` plus a plain
+instruction not to quote technical detail. Uncoded 5xx keeps its body (transient,
+diagnostic).
+
 **Prompt contract — the four speech acts.** `packages/host/src/houston-prompt.ts`
 INTEGRATIONS section and its verbatim Rust mirror
 `app/src-tauri/src/houston_prompt/integrations.rs` (`PI_INTEGRATIONS_GUIDANCE`,

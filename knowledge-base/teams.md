@@ -657,9 +657,9 @@ hides the "Add models" list, all copy passed in.
 Members can only connect apps the agent allows. See `integrations.md` §2
 for the full model. In short: `effective = agentCeiling` (`null` = all, `[]` =
 none — the org-wide ceiling was removed 2026-07-16 as overengineering; policy is
-per agent only), grants are pruned when the ceiling shrinks, and a per-agent
-connect carries the agent slug so the gateway checks the allowlist and auto-grants
-on success.
+per agent only), now-disallowed toolkits are pruned from live connections when the
+ceiling shrinks, and a per-agent connect carries the agent slug so the gateway
+checks the toolkit against the allowlist on a successful OAuth.
 
 **The per-agent ceiling has one frontend home** — the shared presentational
 `AllowlistEditor` (`app/src/components/integrations/allowlist-editor.tsx`):
@@ -672,10 +672,12 @@ on success.
   Integrations tab (`permissions/agent-detail.tsx`), same editor, same wire.
 
 The global Integrations page has no ceiling to apply (policy is per agent), so it
-never locks a row — it's the personal catalog for every member. Per-agent GRANT
-toggles are a separate concept and live only on the global Integrations page's app
-detail modal (the ONE by-app grants lens; the Settings row deep-links there), never
-in the ceiling editor.
+never locks a row — it's the personal catalog for every member. Connections are
+per USER and global: one connection serves every agent that person may use.
+**Usable = connected AND the person may use the agent AND the toolkit is inside
+that agent's app ceiling.** There are no grants anywhere — the per-`(user, agent)`
+grants layer was DELETED (client, host and UI; `integrations.md` §2), so no
+surface carries a grant toggle, the app detail modal included.
 
 **Design principle: blocked is visible, never silently hidden.** Applied wherever the
 agent ceiling narrows a member's world: the per-agent Integrations tab ITEMIZES the

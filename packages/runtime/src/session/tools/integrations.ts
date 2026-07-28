@@ -98,6 +98,31 @@ class ToolkitNotAllowedError extends Error {
   }
 }
 
+/**
+ * Thrown by `post()` when the gateway REFUSED because the acting USER may not
+ * use this agent at all (403 "not_assigned" — they are not among the people
+ * with access to it). Module-private and handled by BOTH tools: like the
+ * allowlist refusal, it is an expected, user-fixable permission state, so each
+ * tool RETURNS guidance rather than failing. Classified on the stable `code`,
+ * never the bare 403 (a relayed upstream 403 carries no such code).
+ */
+class NoAgentAccessError extends Error {
+  constructor() {
+    super("no agent access");
+    this.name = "NoAgentAccessError";
+  }
+}
+
+/**
+ * What the model must say when the user may not use this agent. The gateway's
+ * own wording is internal jargon ("this agent isn't assigned to you") and its
+ * body is JSON — both would be paraphrased straight at a non-technical user, so
+ * neither ever reaches the model. This does: the state, the human remedy, and
+ * the exact place someone who manages the agent fixes it.
+ */
+const NO_AGENT_ACCESS_GUIDANCE =
+  "The user does not have access to this agent, so its connected apps cannot be used for them. Tell the user plainly that someone who manages this agent needs to give them access to it, in Permissions: open this agent and add them under People. Do not retry until they confirm they have access, do not call request_connection, and never imply Houston lacks the app or that something is broken.";
+
 export interface IntegrationToolOptions {
   /** The host control-plane base URL (HOUSTON_CONTROL_PLANE_URL). */
   baseUrl: string;
@@ -210,6 +235,13 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       if (code === "toolkit_not_allowed") {
         throw new ToolkitNotAllowedError();
       }
+      // not_assigned (403): the gateway refused because the acting user is not
+      // one of the people with access to this agent — a permission state a
+      // manager fixes in Permissions > this agent > People. Applies to search
+      // and execute alike, so both tools turn the typed error into guidance.
+      if (code === "not_assigned") {
+        throw new NoAgentAccessError();
+      }
       // signin_required (409): integrations can't act for this user yet (on
       // desktop: they're signed out of Houston, so the gateway has no session to
       // forward) — a normal, actionable state. Queue a signin step in THIS
@@ -233,6 +265,16 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           "Connected apps are not set up in this Houston install. Tell the user plainly that connected apps aren't available here (a self-hoster enables them by setting COMPOSIO_API_KEY), and do not offer to connect any apps.",
         );
       }
+      // Anything else. A 4xx is a REFUSAL, and its body is gateway/provider
+      // JSON written for us, not for a person — the model reads whatever we
+      // throw and paraphrases it straight at the user, so the body is REDACTED
+      // and only the status (+ any unrecognized code, for the logs) survives. A
+      // 5xx is a transient upstream failure whose body is genuinely diagnostic.
+      if (res.status >= 400 && res.status < 500) {
+        throw new Error(
+          `integrations ${path} failed (${res.status}${code ? `, code ${code}` : ""}). The request was refused. Tell the user plainly that this could not be done right now, and never quote this message, any code, or any other technical detail to them.`,
+        );
+      }
       throw new Error(
         `integrations ${path} failed (${res.status}): ${detail.slice(0, 300)}`,
       );
@@ -240,7 +282,12 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     return (await res.json()) as T;
   }
 
-  const search = defineTool({
+  const search = defineTool<
+    typeof SearchParams,
+    // Pinned so the result path ({ matches, actions }) and the no-access path
+    // (which adds the flag) share ONE details type.
+    { matches: number; actions: string[]; noAgentAccess?: boolean }
+  >({
     name: "integration_search",
     label: "Find an app action",
     description:
@@ -253,11 +300,27 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       params: SearchParams,
       signal: AbortSignal | undefined,
     ) {
-      const { items } = await post<{ items: ToolMatch[] }>(
-        "search",
-        { query: params.query },
-        signal,
-      );
+      let items: ToolMatch[];
+      try {
+        ({ items } = await post<{ items: ToolMatch[] }>(
+          "search",
+          { query: params.query },
+          signal,
+        ));
+      } catch (err) {
+        // The user may not use this agent at all: not a search failure, a
+        // permission state someone who manages the agent fixes. Return the
+        // guidance so the model relays it in Houston's voice.
+        if (err instanceof NoAgentAccessError) {
+          return {
+            content: [
+              { type: "text" as const, text: NO_AGENT_ACCESS_GUIDANCE },
+            ],
+            details: { matches: 0, actions: [], noAgentAccess: true },
+          };
+        }
+        throw err;
+      }
       if (items.length === 0) {
         // Genuinely empty: not a policy block, not "unavailable" - no such app
         // or action was found. The prompt tells the model to say so plainly.
@@ -304,10 +367,10 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
 
   const execute = defineTool<
     typeof ExecuteParams,
-    // Pinned so the success path ({ action }) and the walled-off path
-    // ({ action, appTurnedOff: true }) share ONE details type — the flag is
+    // Pinned so the success path ({ action }) and the refused paths (walled-off
+    // app, no access to the agent) share ONE details type — each flag is
     // present only in its state.
-    { action: string; appTurnedOff?: boolean }
+    { action: string; appTurnedOff?: boolean; noAgentAccess?: boolean }
   >({
     name: "integration_execute",
     label: "Run an app action",
@@ -346,6 +409,16 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
               },
             ],
             details: { action, appTurnedOff: true },
+          };
+        }
+        // The user may not use this agent at all — same shape: an expected
+        // permission state, returned as guidance rather than a failure.
+        if (err instanceof NoAgentAccessError) {
+          return {
+            content: [
+              { type: "text" as const, text: NO_AGENT_ACCESS_GUIDANCE },
+            ],
+            details: { action: params.action, noAgentAccess: true },
           };
         }
         throw err;
