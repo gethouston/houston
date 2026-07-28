@@ -130,9 +130,13 @@ export async function mintRoutineWebhookKey(
   routineId: string,
 ): Promise<WebhookKeyReveal | null> {
   try {
+    // The mint is a GATEWAY control route (`/v1/agents/…`, like trigger-status)
+    // — NOT an agent-proxy path: `agentPath()` would forward it to the engine
+    // pod, which never serves webhook keys, and its 404 would read as "this
+    // host can't mint" on a gateway that can (HOU-807).
     const res = await cpFetch(
       cfg,
-      `${agentPath(agentId)}/routines/${encodeURIComponent(routineId)}/webhook-key`,
+      `/v1/agents/${encodeURIComponent(agentId)}/routines/${encodeURIComponent(routineId)}/webhook-key`,
       { method: "POST" },
     );
     return (await res.json()) as WebhookKeyReveal;
