@@ -1616,9 +1616,11 @@ export const tauriIntegrations = {
     call("integration_connection", () =>
       getEngine().integrationConnection(provider, connectionId),
     ),
-  disconnect: (provider: string, toolkit: string) =>
+  /** `connectionId` narrows the removal to ONE account of the toolkit (a
+   *  toolkit can hold several — two Gmail logins); omitted removes them all. */
+  disconnect: (provider: string, toolkit: string, connectionId?: string) =>
     call("integration_disconnect", () =>
-      getEngine().disconnectIntegration(provider, toolkit),
+      getEngine().disconnectIntegration(provider, toolkit, connectionId),
     ),
   /** Dismiss the reconnect notice (deletes the legacy credentials server-side). */
   dismissReconnectNotice: () =>

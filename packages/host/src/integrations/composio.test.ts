@@ -834,3 +834,142 @@ test("a non-2xx response surfaces as an error with the status + detail", async (
   }));
   await expect(provider.listToolkits()).rejects.toThrow(/→ 500.*boom/);
 });
+
+// ── Multi-account (HOU-901): labels, targeted execute, per-account disconnect ─
+
+/** A display-only OIDC id_token: header.payload.sig with a real claims payload. */
+function fakeIdToken(claims: Record<string, unknown>): string {
+  const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  return `eyJhbGciOiJSUzI1NiJ9.${payload}.sig`;
+}
+
+test("listConnections derives the account label + createdAt from the auth payload", async () => {
+  const { provider } = harness((url) => {
+    expect(url.pathname).toBe("/api/v3/connected_accounts");
+    return {
+      body: {
+        items: [
+          {
+            id: "ca_google",
+            toolkit: { slug: "gmail" },
+            status: "ACTIVE",
+            user_id: USER,
+            created_at: "2026-07-28T10:00:00.000Z",
+            data: { id_token: fakeIdToken({ email: "dan@gmail.com" }) },
+          },
+          {
+            id: "ca_notion",
+            toolkit: { slug: "notion" },
+            status: "ACTIVE",
+            user_id: USER,
+            data: { workspace_name: "Acme HQ" },
+          },
+          {
+            id: "ca_key",
+            toolkit: { slug: "telegram" },
+            status: "ACTIVE",
+            user_id: USER,
+            // Tokens are NOT identity: no label may be derived from them.
+            data: { generic_api_key: "8777-secret" },
+          },
+        ],
+      },
+    };
+  });
+  const conns = await provider.listConnections(USER);
+  expect(conns).toEqual([
+    {
+      toolkit: "gmail",
+      connectionId: "ca_google",
+      status: "active",
+      accountLabel: "dan@gmail.com",
+      createdAt: "2026-07-28T10:00:00.000Z",
+    },
+    {
+      toolkit: "notion",
+      connectionId: "ca_notion",
+      status: "active",
+      accountLabel: "Acme HQ",
+    },
+    { toolkit: "telegram", connectionId: "ca_key", status: "active" },
+  ]);
+});
+
+test("execute targets one connected account when asked, none when not", async () => {
+  const { provider, calls } = harness(() => ({
+    body: { successful: true, data: {} },
+  }));
+  await provider.execute(USER, "GMAIL_SEND_EMAIL", { to: "x@y.z" });
+  expect(
+    (calls[0]?.body as Record<string, unknown>).connected_account_id,
+  ).toBeUndefined();
+  await provider.execute(
+    USER,
+    "GMAIL_SEND_EMAIL",
+    { to: "x@y.z" },
+    undefined,
+    "ca_2",
+  );
+  expect(calls[1]?.body).toMatchObject({
+    user_id: USER,
+    connected_account_id: "ca_2",
+  });
+});
+
+test("disconnect with a connectionId removes exactly that account, after proving ownership", async () => {
+  const deletes: string[] = [];
+  const { provider } = harness((url, method) => {
+    if (method === "DELETE") {
+      deletes.push(url.pathname);
+      return { body: {} };
+    }
+    // The ownership probe: GET the single account.
+    expect(url.pathname).toBe("/api/v3/connected_accounts/ca_mine");
+    return {
+      body: {
+        id: "ca_mine",
+        toolkit: { slug: "gmail" },
+        status: "ACTIVE",
+        user_id: USER,
+      },
+    };
+  });
+  await provider.disconnect(USER, "gmail", "ca_mine");
+  expect(deletes).toEqual(["/api/v3/connected_accounts/ca_mine"]);
+});
+
+test("disconnect with a foreign or wrong-toolkit connectionId deletes nothing", async () => {
+  const deletes: string[] = [];
+  const { provider } = harness((url, method) => {
+    if (method === "DELETE") {
+      deletes.push(url.pathname);
+      return { body: {} };
+    }
+    return {
+      body: {
+        id: "ca_theirs",
+        toolkit: { slug: "gmail" },
+        status: "ACTIVE",
+        user_id: "someone-else",
+      },
+    };
+  });
+  await provider.disconnect(USER, "gmail", "ca_theirs");
+  // Wrong toolkit for an owned account also deletes nothing.
+  const { provider: p2 } = harness((url, method) => {
+    if (method === "DELETE") {
+      deletes.push(url.pathname);
+      return { body: {} };
+    }
+    return {
+      body: {
+        id: "ca_mine",
+        toolkit: { slug: "slack" },
+        status: "ACTIVE",
+        user_id: USER,
+      },
+    };
+  });
+  await p2.disconnect(USER, "gmail", "ca_mine");
+  expect(deletes).toEqual([]);
+});

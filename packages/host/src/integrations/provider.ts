@@ -59,8 +59,16 @@ export interface IntegrationProvider {
   connect(userId: string, toolkit: string): Promise<ConnectStart>;
   /** One connection by id (poll after connect() until it turns active). */
   connection(userId: string, connectionId: string): Promise<Connection | null>;
-  /** Remove a toolkit connection. */
-  disconnect(userId: string, toolkit: string): Promise<void>;
+  /**
+   * Remove a toolkit connection. With `connectionId`, remove only THAT account
+   * (a toolkit can hold several — two Gmail logins); without it, remove every
+   * account the user has for the toolkit.
+   */
+  disconnect(
+    userId: string,
+    toolkit: string,
+    connectionId?: string,
+  ): Promise<void>;
 
   // ── Execution (what the agent's generic tools call) ───────────────────────
   /**
@@ -76,11 +84,15 @@ export interface IntegrationProvider {
   ): Promise<ToolMatch[]>;
   /**
    * Run one action by slug with its params. `acting` (optional) as in `search`.
+   * `account` (optional) targets ONE of the user's connected accounts for the
+   * action's toolkit (a `Connection.connectionId`) when they have several —
+   * omitted, the provider picks its default for that user + toolkit.
    */
   execute(
     userId: string,
     action: string,
     params: Record<string, unknown>,
     acting?: ActingContext,
+    account?: string,
   ): Promise<ActionResult>;
 }

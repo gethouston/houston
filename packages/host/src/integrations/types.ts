@@ -30,11 +30,35 @@ export interface Toolkit {
   noAuth?: boolean;
 }
 
-/** A user's established connection to one toolkit. */
+/**
+ * A user's established connection to one toolkit. A toolkit can hold SEVERAL
+ * connections at once (two Gmail logins) — each is its own account, keyed by
+ * `connectionId`, and execute() can target one explicitly.
+ */
 export interface Connection {
   toolkit: string;
   connectionId: string;
   status: "active" | "pending" | "error";
+  /**
+   * Human identity of THE ACCOUNT behind this connection ("dan@gmail.com",
+   * "Acme workspace") — what tells two Gmail logins apart in the UI and in the
+   * agent's search results. Derived from the provider's auth payload where it
+   * exposes one (OIDC id_token email, Notion workspace name, Jira subdomain);
+   * absent when the provider gives nothing usable (API-key apps).
+   */
+  accountLabel?: string;
+  /** ISO timestamp the connection was created — the UI's fallback for telling
+   *  unlabeled accounts apart ("added Jul 28"). */
+  createdAt?: string;
+}
+
+/** One connected account of a toolkit, as search() reports it to the agent so
+ *  the model can target a specific account in execute(). */
+export interface ConnectedAccount {
+  /** The connection id execute() takes as `account` (e.g. "ca_…"). */
+  id: string;
+  /** The human identity, when known — see Connection.accountLabel. */
+  label?: string;
 }
 
 /** The OAuth hand-off to authorize a toolkit (returned by connect()). */
@@ -116,6 +140,13 @@ export interface ToolMatch {
    * `connected`.
    */
   status?: IntegrationAppStatus;
+  /**
+   * The acting user's connected accounts for this match's toolkit — attached
+   * ONLY when there is more than one (the common single-account case stays
+   * quiet), so the model learns each account's id + label and can target one
+   * via execute()'s `account`, or ask the user which to use.
+   */
+  accounts?: ConnectedAccount[];
 }
 
 /** The outcome of running an action. */

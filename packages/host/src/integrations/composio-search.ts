@@ -1,4 +1,5 @@
 import type {
+  ConnectedAccount,
   Connection,
   IntegrationAppStatus,
   Toolkit,
@@ -75,6 +76,28 @@ export function activeToolkitSlugs(connections: Connection[]): string[] {
   ];
 }
 
+/**
+ * The accounts to attach per toolkit (lowercased slug): only toolkits holding
+ * MORE than one active account get an entry — a single account needs no
+ * disambiguation, so the common case adds nothing to the result.
+ */
+export function multiAccountsByToolkit(
+  connections: Connection[],
+): ReadonlyMap<string, ConnectedAccount[]> {
+  const byToolkit = new Map<string, ConnectedAccount[]>();
+  for (const c of connections) {
+    if (c.status !== "active" || !c.connectionId) continue;
+    const key = c.toolkit.toLowerCase();
+    const list = byToolkit.get(key) ?? [];
+    list.push({
+      id: c.connectionId,
+      ...(c.accountLabel ? { label: c.accountLabel } : {}),
+    });
+    byToolkit.set(key, list);
+  }
+  return new Map([...byToolkit].filter(([, accounts]) => accounts.length > 1));
+}
+
 const isConnectedIn = (slugs: string[], toolkit: string): boolean =>
   slugs.some((s) => s.toLowerCase() === toolkit.toLowerCase());
 
@@ -87,18 +110,21 @@ function noAuthSlugs(catalog: Toolkit[]): Set<string> {
   );
 }
 
-/** Stamp `connected` + `status` on a raw action match: an active connection or
- *  a no-auth toolkit (nothing to connect) both mean "usable now". */
+/** Stamp `connected` + `status` on a raw action match — an active connection or
+ *  a no-auth toolkit (nothing to connect) both mean "usable now" — plus the
+ *  account list when the toolkit holds several (so the model can target one). */
 function annotate(
   match: ToolMatch,
   connectedSlugs: string[],
   noAuth: ReadonlySet<string>,
+  multiAccounts: ReadonlyMap<string, ConnectedAccount[]>,
 ): ToolMatch {
   const connected =
     isConnectedIn(connectedSlugs, match.toolkit) ||
     noAuth.has(match.toolkit.toLowerCase());
   const status: IntegrationAppStatus = connected ? "connected" : "connectable";
-  return { ...match, connected, status };
+  const accounts = multiAccounts.get(match.toolkit.toLowerCase());
+  return { ...match, connected, status, ...(accounts ? { accounts } : {}) };
 }
 
 export interface SearchDeps {
@@ -119,7 +145,9 @@ export async function searchComposio(
   deps: SearchDeps,
   query: string,
 ): Promise<ToolMatch[]> {
-  const slugs = activeToolkitSlugs(await deps.listConnections());
+  const connections = await deps.listConnections();
+  const slugs = activeToolkitSlugs(connections);
+  const multiAccounts = multiAccountsByToolkit(connections);
   const scopedSlug = slugs.join(",");
 
   const [scoped, global, catalog] = await Promise.all([
@@ -145,7 +173,7 @@ export async function searchComposio(
     const key = m.action.toLowerCase();
     if (seenActions.has(key)) return;
     seenActions.add(key);
-    out.push(annotate(m, slugs, noAuth));
+    out.push(annotate(m, slugs, noAuth, multiAccounts));
   };
   // Scoped (or its listing fallback) first — connected apps, highest precision.
   for (const m of scoped.length > 0 ? scoped : scopedListed) push(m);
@@ -161,12 +189,14 @@ export async function searchComposio(
     represented.add(tk.slug.toLowerCase());
     const connected =
       isConnectedIn(slugs, tk.slug) || noAuth.has(tk.slug.toLowerCase());
+    const accounts = multiAccounts.get(tk.slug.toLowerCase());
     out.push({
       action: "",
       toolkit: tk.slug,
       description: tk.description ? `${tk.name}: ${tk.description}` : tk.name,
       connected,
       status: connected ? "connected" : "connectable",
+      ...(accounts ? { accounts } : {}),
     });
   }
   return out;

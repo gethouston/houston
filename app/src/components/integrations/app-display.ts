@@ -2,6 +2,7 @@ import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
+import { groupAccounts } from "./connected-apps-model.ts";
 
 /**
  * Resolving a toolkit slug to a real display name / logo / description (with
@@ -49,18 +50,40 @@ export function prettifyToolkit(toolkit: string): string {
     .join(" ");
 }
 
-/** Resolve + sort a connection list into display rows by app name. */
+/**
+ * Resolve + sort a connection list into display rows by app name — ONE row per
+ * toolkit for its ACTIVE connections, carrying every active account behind it
+ * (a toolkit can hold several at once, e.g. two Gmail logins). Non-active
+ * connections keep one row each, exactly as before, so a status-filtering
+ * caller never loses a working account behind a pending primary (or vice
+ * versa).
+ */
 export function connectionRows(
   connections: IntegrationConnection[],
   catalog: IntegrationToolkit[],
-): { connection: IntegrationConnection; app: AppDisplay }[] {
+): {
+  connection: IntegrationConnection;
+  accounts: IntegrationConnection[];
+  app: AppDisplay;
+}[] {
   const bySlug = new Map(catalog.map((tk) => [tk.slug, tk]));
-  return connections
-    .map((c) => ({
-      connection: c,
-      app: appDisplay(c.toolkit, bySlug.get(c.toolkit)),
-    }))
-    .sort((a, b) => a.app.name.localeCompare(b.app.name));
+  const rowOf = (
+    connection: IntegrationConnection,
+    accounts: IntegrationConnection[],
+  ) => ({
+    connection,
+    accounts,
+    app: appDisplay(connection.toolkit, bySlug.get(connection.toolkit)),
+  });
+  const grouped = groupAccounts(
+    connections.filter((c) => c.status === "active"),
+  ).map(({ connection, accounts }) => rowOf(connection, accounts));
+  const singles = connections
+    .filter((c) => c.status !== "active")
+    .map((c) => rowOf(c, [c]));
+  return [...grouped, ...singles].sort((a, b) =>
+    a.app.name.localeCompare(b.app.name),
+  );
 }
 
 export function fallbackLogo(toolkit: string): string {

@@ -250,3 +250,62 @@ test("acting mode c: no acting context falls back to the session token (else sig
   ).rejects.toThrow(IntegrationSigninRequiredError);
   expect(noPod.calls).toEqual([]);
 });
+
+// ── Multi-account pass-through (HOU-901) ─────────────────────────────────────
+
+test("disconnect forwards the narrowing connectionId; omits it when absent", async () => {
+  const { provider, calls } = harness(() => ({ body: { ok: true } }), "tok");
+  await provider.disconnect("u", "gmail");
+  expect(calls[0]?.body).toEqual({ toolkit: "gmail" });
+  await provider.disconnect("u", "gmail", "ca_2");
+  expect(calls[1]?.body).toEqual({ toolkit: "gmail", connectionId: "ca_2" });
+});
+
+test("execute forwards the target account; omits it when absent", async () => {
+  const { provider, calls } = harness(
+    () => ({ body: { successful: true } }),
+    "tok",
+  );
+  await provider.execute("u", "GMAIL_SEND_EMAIL", { to: "x" });
+  expect(calls[0]?.body).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    params: { to: "x" },
+  });
+  await provider.execute(
+    "u",
+    "GMAIL_SEND_EMAIL",
+    { to: "x" },
+    undefined,
+    "ca_2",
+  );
+  expect(calls[1]?.body).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    params: { to: "x" },
+    account: "ca_2",
+  });
+});
+
+test("search passes account lists through untouched", async () => {
+  const { provider } = harness(
+    () => ({
+      body: {
+        items: [
+          {
+            action: "GMAIL_SEND_EMAIL",
+            toolkit: "gmail",
+            description: "Send",
+            connected: true,
+            status: "connected",
+            accounts: [{ id: "ca_1", label: "dan@gmail.com" }, { id: "ca_2" }],
+          },
+        ],
+      },
+    }),
+    "tok",
+  );
+  const items = await provider.search("u", "send email");
+  expect(items[0]?.accounts).toEqual([
+    { id: "ca_1", label: "dan@gmail.com" },
+    { id: "ca_2" },
+  ]);
+});

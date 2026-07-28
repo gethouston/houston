@@ -16,9 +16,11 @@ import type { ConnectedApps } from "./use-connected-apps";
  */
 export function useConnectionSelection(apps: ConnectedApps) {
   const [selectedConnId, setSelectedConnId] = useState<string | null>(null);
-  const [disconnectToolkit, setDisconnectToolkit] = useState<string | null>(
-    null,
-  );
+  const [disconnectTarget, setDisconnectTarget] = useState<{
+    toolkit: string;
+    /** Set = remove only THIS account of the toolkit (one of several). */
+    account?: IntegrationConnection;
+  } | null>(null);
 
   const selectedConn = selectedConnId
     ? apps.connData.find((c) => connKey(c) === selectedConnId)
@@ -26,21 +28,35 @@ export function useConnectionSelection(apps: ConnectedApps) {
   const selectedApp = selectedConn
     ? appDisplay(selectedConn.toolkit, apps.bySlug.get(selectedConn.toolkit))
     : null;
-  const disconnectApp = disconnectToolkit
-    ? appDisplay(disconnectToolkit, apps.bySlug.get(disconnectToolkit))
+  // Every ACTIVE account behind the open app — the detail dialog's list.
+  const selectedAccounts = selectedConn
+    ? apps.connData.filter(
+        (c) => c.toolkit === selectedConn.toolkit && c.status === "active",
+      )
+    : [];
+  const disconnectApp = disconnectTarget
+    ? appDisplay(
+        disconnectTarget.toolkit,
+        apps.bySlug.get(disconnectTarget.toolkit),
+      )
     : null;
 
   return {
     selectedConn,
     selectedApp,
+    selectedAccounts,
     disconnectApp,
+    disconnectAccount: disconnectTarget?.account,
     openConn: (connection: IntegrationConnection) =>
       setSelectedConnId(connKey(connection)),
     closeConn: () => setSelectedConnId(null),
-    requestDisconnect: (toolkit: string) => {
-      setDisconnectToolkit(toolkit);
+    /** With `account`, the confirm targets ONE account of the toolkit; without
+     *  it, the whole app (every account). Either way the sheet closes so the
+     *  two dialogs never stack. */
+    requestDisconnect: (toolkit: string, account?: IntegrationConnection) => {
+      setDisconnectTarget({ toolkit, ...(account ? { account } : {}) });
       setSelectedConnId(null);
     },
-    closeDisconnect: () => setDisconnectToolkit(null),
+    closeDisconnect: () => setDisconnectTarget(null),
   };
 }

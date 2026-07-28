@@ -38,7 +38,9 @@ interface AgentIntegrationsBodyProps {
   surface: string;
   /** The catalog is still fetching (browse shows a loader, not "no apps"). */
   catalogLoading: boolean;
-  onDisconnect: (toolkit: string) => void;
+  /** `connectionId` narrows the removal to ONE account of the toolkit (the
+   *  detail dialog's per-account disconnect); omitted removes them all. */
+  onDisconnect: (toolkit: string, connectionId?: string) => void;
   /** Navigate to the global Integrations page ("Manage all integrations"). */
   onManageAll: () => void;
   /** Role-aware "Enable it in Permissions" resolver for policy-blocked apps

@@ -102,10 +102,14 @@ export class IntegrationsClient {
   }
 
   /** Disconnect a toolkit for the user everywhere (removes its connections).
-   *  `opts.provider` is additive; omitted keeps the legacy composio route. */
+   *  `opts.provider` is additive; omitted keeps the legacy composio route.
+   *  `opts.connectionId` narrows the removal to ONE account of the toolkit (a
+   *  toolkit can hold several — two Gmail logins); omitted removes them all. */
   async disconnect(
     toolkit: string,
-    opts?: Pick<IntegrationConnectOptions, "provider">,
+    opts?: Pick<IntegrationConnectOptions, "provider"> & {
+      connectionId?: string;
+    },
   ): Promise<void> {
     const provider = opts?.provider ?? COMPOSIO;
     await this.r.request(
@@ -113,7 +117,10 @@ export class IntegrationsClient {
       {
         method: "POST",
         headers: JSON_HEADERS,
-        body: JSON.stringify({ toolkit }),
+        body: JSON.stringify({
+          toolkit,
+          ...(opts?.connectionId ? { connectionId: opts.connectionId } : {}),
+        }),
       },
     );
   }

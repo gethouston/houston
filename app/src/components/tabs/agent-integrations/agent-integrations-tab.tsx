@@ -130,7 +130,9 @@ export default function IntegrationsTab({ agent }: TabProps) {
               connectFlow={connectFlow}
               surface={`agent:${agent.id}`}
               catalogLoading={catalog.isLoading}
-              onDisconnect={(toolkit) => disconnect.mutate(toolkit)}
+              onDisconnect={(toolkit, connectionId) =>
+                disconnect.mutate({ toolkit, connectionId })
+              }
               onManageAll={onManageAll}
               permissionsFix={permissionsFix}
             />

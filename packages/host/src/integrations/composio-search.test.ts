@@ -56,3 +56,66 @@ test("no match for a query that names no app, and an empty query", () => {
   expect(resolveCatalogToolkits(CATALOG, "")).toEqual([]);
   expect(resolveCatalogToolkits(CATALOG, "   ")).toEqual([]);
 });
+
+// ── Multi-account annotation (HOU-901) ───────────────────────────────────────
+
+import { multiAccountsByToolkit, searchComposio } from "./composio-search";
+import type { Connection, ToolMatch } from "./types";
+
+const CONNS: Connection[] = [
+  {
+    toolkit: "gmail",
+    connectionId: "ca_1",
+    status: "active",
+    accountLabel: "dan@gmail.com",
+  },
+  { toolkit: "gmail", connectionId: "ca_2", status: "active" },
+  { toolkit: "notion", connectionId: "ca_3", status: "active" },
+  { toolkit: "slack", connectionId: "ca_4", status: "pending" },
+  { toolkit: "slack", connectionId: "ca_5", status: "active" },
+];
+
+test("multiAccountsByToolkit lists only toolkits holding 2+ ACTIVE accounts", () => {
+  const map = multiAccountsByToolkit(CONNS);
+  // gmail: two actives → listed, labels carried where known.
+  expect(map.get("gmail")).toEqual([
+    { id: "ca_1", label: "dan@gmail.com" },
+    { id: "ca_2" },
+  ]);
+  // notion: one active → absent (no disambiguation needed).
+  expect(map.has("notion")).toBe(false);
+  // slack: one active + one pending → still just one usable account → absent.
+  expect(map.has("slack")).toBe(false);
+});
+
+test("search attaches the account list to matches of multi-account toolkits only", async () => {
+  const gmailTool: ToolMatch = {
+    action: "GMAIL_SEND_EMAIL",
+    toolkit: "gmail",
+    description: "Send an email",
+  };
+  const notionTool: ToolMatch = {
+    action: "NOTION_CREATE_PAGE",
+    toolkit: "notion",
+    description: "Create a page",
+  };
+  const out = await searchComposio(
+    {
+      listConnections: async () => CONNS,
+      queryTools: async (q) =>
+        q.toolkit_slug ? [gmailTool, notionTool] : [gmailTool, notionTool],
+      catalog: async () => [
+        { slug: "gmail", name: "Gmail" },
+        { slug: "notion", name: "Notion" },
+      ],
+    },
+    "send email",
+  );
+  const gmail = out.find((m) => m.toolkit === "gmail");
+  const notion = out.find((m) => m.toolkit === "notion");
+  expect(gmail?.accounts).toEqual([
+    { id: "ca_1", label: "dan@gmail.com" },
+    { id: "ca_2" },
+  ]);
+  expect(notion?.accounts).toBeUndefined();
+});

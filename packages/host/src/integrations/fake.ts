@@ -29,6 +29,8 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   throwSearchExecute?: Error;
   /** Test helper: the acting context of the most recent search/execute call. */
   lastActing: ActingContext | undefined;
+  /** Test helper: the account targeted by the most recent execute call. */
+  lastAccount: string | undefined;
   private seq = 0;
 
   constructor(
@@ -54,12 +56,19 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     this.notReady = notReady;
   }
 
-  /** Test helper: finish a started connect so the connection turns active. */
-  completeConnection(userId: string, connectionId: string): void {
+  /** Test helper: finish a started connect so the connection turns active,
+   *  optionally stamping the account's human label (as a real OAuth would). */
+  completeConnection(
+    userId: string,
+    connectionId: string,
+    accountLabel?: string,
+  ): void {
     const conn = (this.connections.get(userId) ?? []).find(
       (c) => c.connectionId === connectionId,
     );
-    if (conn) conn.status = "active";
+    if (!conn) return;
+    conn.status = "active";
+    if (accountLabel) conn.accountLabel = accountLabel;
   }
 
   async readiness(): Promise<ProviderReadiness> {
@@ -95,10 +104,16 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     return conn ? { ...conn } : null;
   }
 
-  async disconnect(userId: string, toolkit: string): Promise<void> {
+  async disconnect(
+    userId: string,
+    toolkit: string,
+    connectionId?: string,
+  ): Promise<void> {
     this.connections.set(
       userId,
-      (this.connections.get(userId) ?? []).filter((c) => c.toolkit !== toolkit),
+      (this.connections.get(userId) ?? []).filter((c) =>
+        connectionId ? c.connectionId !== connectionId : c.toolkit !== toolkit,
+      ),
     );
   }
 
@@ -137,8 +152,10 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     action: string,
     params: Record<string, unknown>,
     acting?: ActingContext,
+    account?: string,
   ): Promise<ActionResult> {
     this.lastActing = acting;
+    this.lastAccount = account;
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
     if (this.throwSearchExecute) throw this.throwSearchExecute;
     return { successful: true, data: { action, params } };

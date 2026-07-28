@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import type { IntegrationConnection } from "@houston-ai/engine-client";
 import {
   catalogHiddenToolkits,
+  groupAccounts,
   partitionConnections,
 } from "../src/components/integrations/connected-apps-model.ts";
 
@@ -81,5 +82,38 @@ describe("catalogHiddenToolkits", () => {
   it("hides nothing extra without a ceiling", () => {
     const hidden = catalogHiddenToolkits([conn("slack", "pending")], null);
     strictEqual(hidden.size, 0);
+  });
+});
+
+describe("groupAccounts", () => {
+  it("folds several accounts of one toolkit into one app, primary first", () => {
+    const grouped = groupAccounts([
+      conn("gmail", "active", "ca_1"),
+      conn("slack", "active", "ca_2"),
+      conn("gmail", "active", "ca_3"),
+    ]);
+    deepStrictEqual(
+      grouped.map((g) => ({
+        toolkit: g.connection.toolkit,
+        primary: g.connection.connectionId,
+        accounts: g.accounts.map((a) => a.connectionId),
+      })),
+      [
+        { toolkit: "gmail", primary: "ca_1", accounts: ["ca_1", "ca_3"] },
+        { toolkit: "slack", primary: "ca_2", accounts: ["ca_2"] },
+      ],
+    );
+  });
+
+  it("preserves first-seen order and handles an empty list", () => {
+    deepStrictEqual(groupAccounts([]), []);
+    const grouped = groupAccounts([
+      conn("notion", "active", "ca_9"),
+      conn("gmail", "active", "ca_1"),
+    ]);
+    deepStrictEqual(
+      grouped.map((g) => g.connection.toolkit),
+      ["notion", "gmail"],
+    );
   });
 });

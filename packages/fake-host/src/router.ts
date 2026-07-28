@@ -231,6 +231,14 @@ export async function handle(req: Request): Promise<Response> {
       connection: state.seedConnection(
         String(body?.toolkit ?? ""),
         status === "active" || status === "error" ? status : "pending",
+        {
+          ...(typeof body?.accountLabel === "string" && body.accountLabel
+            ? { accountLabel: body.accountLabel }
+            : {}),
+          // Mint a NEW connection even when the toolkit already has one, so a
+          // spec can stack several accounts on one app (HOU-901).
+          ...(body?.extraAccount === true ? { extraAccount: true } : {}),
+        },
       ),
     });
   }

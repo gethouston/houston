@@ -116,7 +116,7 @@ export function IntegrationsReady({
           category={category}
           isLoading={apps.isLoading}
           connectFlow={connectFlow}
-          onRemove={(toolkit) => disconnect.mutate(toolkit)}
+          onRemove={(toolkit) => disconnect.mutate({ toolkit })}
         />
       ),
     },
@@ -192,7 +192,9 @@ export function IntegrationsReady({
       <ConnectedAppDialogs
         selection={selection}
         connectFlow={connectFlow}
-        onRemove={(toolkit) => disconnect.mutate(toolkit)}
+        onRemove={(toolkit, connectionId) =>
+          disconnect.mutate({ toolkit, connectionId })
+        }
       />
     </>
   );

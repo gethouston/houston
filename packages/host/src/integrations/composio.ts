@@ -190,7 +190,27 @@ export class ComposioProvider implements IntegrationProvider {
     return mapConnection(body);
   }
 
-  async disconnect(userId: string, toolkit: string): Promise<void> {
+  async disconnect(
+    userId: string,
+    toolkit: string,
+    connectionId?: string,
+  ): Promise<void> {
+    // One account named → remove exactly that one, after proving it belongs to
+    // this user AND this toolkit (connection() is the same fail-closed ownership
+    // guard the poll uses; a guessed or cross-user id deletes nothing). Already
+    // gone upstream → the user's intent holds, same as the 404-tolerant bulk
+    // path below.
+    if (connectionId) {
+      const owned = await this.connection(userId, connectionId);
+      if (!owned || owned.toolkit.toLowerCase() !== toolkit.toLowerCase()) {
+        return;
+      }
+      await this.http.call(
+        `/api/v3/connected_accounts/${encodeURIComponent(connectionId)}`,
+        { method: "DELETE", nullStatuses: [404] },
+      );
+      return;
+    }
     // Remove every connected account for the toolkit (a toolkit can have more
     // than one, e.g. two Gmail logins). List, then DELETE all in parallel —
     // the deletes are independent; any failure still rejects (surfaces). A 404
@@ -250,14 +270,24 @@ export class ComposioProvider implements IntegrationProvider {
     action: string,
     params: Record<string, unknown>,
     _acting?: ActingContext,
+    account?: string,
   ): Promise<ActionResult> {
     // Acting context ignored — see search(): identity is the verified userId.
     // `version` pins the connector build that runs — see TOOL_VERSION.
+    // `connected_account_id` targets ONE of the user's accounts when the
+    // toolkit holds several (two Gmail logins); Composio requires user_id
+    // alongside it and rejects an account that is not this user's, so the
+    // verified userId stays the identity either way.
     const body = await this.http.call<RawExecute>(
       `/api/v3/tools/execute/${encodeURIComponent(action)}`,
       {
         method: "POST",
-        body: { user_id: userId, arguments: params, version: TOOL_VERSION },
+        body: {
+          user_id: userId,
+          arguments: params,
+          version: TOOL_VERSION,
+          ...(account ? { connected_account_id: account } : {}),
+        },
       },
     );
     return mapExecute(body);

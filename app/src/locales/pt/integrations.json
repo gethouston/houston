@@ -101,6 +101,18 @@
     "reconnect": "Reconectar",
     "disconnect": "Desconectar"
   },
+  "accounts": {
+    "title": "Contas",
+    "add": "Adicionar outra conta",
+    "count_one": "{{count}} conta",
+    "count_other": "{{count}} contas",
+    "addedOn": "Adicionada em {{date}}",
+    "fallback": "Conta {{number}}",
+    "remove": "Desconectar {{name}}",
+    "disconnectTitle": "Desconectar {{account}}?",
+    "disconnectBody": "Isso remove a conta {{account}} de {{name}} para todos os seus agentes. Suas outras contas de {{name}} continuam conectadas.",
+    "disconnectAction": "Desconectar conta"
+  },
   "agentTab": {
     "manageAll": "Gerenciar todas as integrações"
   },

@@ -64,12 +64,17 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
     async disconnectIntegration(
       provider: string,
       toolkit: string,
+      connectionId?: string,
     ): Promise<void> {
       if (!this.ctx.cp) return;
       // SDK delegates the byte-identical POST
-      // /v1/integrations/:provider/disconnect with the `{ toolkit }` body, no
-      // refetch (web owns its reads).
-      await this.ctx.sdk.integrations.writes.disconnect(toolkit, { provider });
+      // /v1/integrations/:provider/disconnect with the `{ toolkit,
+      // connectionId? }` body, no refetch (web owns its reads). `connectionId`
+      // narrows the removal to ONE account of the toolkit.
+      await this.ctx.sdk.integrations.writes.disconnect(toolkit, {
+        provider,
+        ...(connectionId ? { connectionId } : {}),
+      });
     }
     async dismissIntegrationsReconnectNotice(): Promise<void> {
       // The notice only ever renders from a host-reported `reconnect` flag, so
