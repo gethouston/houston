@@ -18,6 +18,10 @@
     "./handle": {
       "types": "./src/handle.ts",
       "import": "./src/handle.ts"
+    },
+    "./skill-frontmatter": {
+      "types": "./src/skill-frontmatter.ts",
+      "import": "./src/skill-frontmatter.ts"
     }
   },
   "files": [

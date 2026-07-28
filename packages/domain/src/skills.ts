@@ -72,6 +72,9 @@ export function parseSkillMd(
       ? fm.integrations.map(String)
       : [],
     image: str(fm.image),
+    // The setup chat this skill was built in (HOU-791). Forward link only —
+    // the durable reverse link is the activity's `skill_slug`.
+    setupActivityId: str(fm.setup_activity_id),
   };
   return { summary, body: m[2] ?? "" };
 }

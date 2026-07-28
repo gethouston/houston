@@ -50,8 +50,16 @@ export function buildAttachmentPrompt(
   text: string,
   files: readonly File[],
   paths: readonly string[],
+  /**
+   * Model-facing context prepended to the prompt but NEVER shown to the user
+   * (the skill setup chat pins its bound skill this way). The bubble stays
+   * the plain `text`: the attachment marker's `message` carries it here, and
+   * a context-only send (no files) pairs with `displayText` at the call site.
+   */
+  modelContext?: string,
 ): string {
-  const prompt = withAttachmentPaths(text, [...paths]);
+  const base = modelContext ? `${modelContext}\n\n${text}` : text;
+  const prompt = withAttachmentPaths(base, [...paths]);
   const attachments = attachmentReferences(files, paths);
   if (attachments.length === 0) return prompt;
   return encodeAttachmentMessage(text, attachments, prompt);

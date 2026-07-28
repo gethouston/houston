@@ -742,6 +742,9 @@ export interface Activity {
   agent?: string;
   routine_id?: string;
   routine_run_id?: string;
+  /** The installed skill (directory slug) this setup chat belongs to. The
+   *  durable reverse direction of the skill <-> chat link (HOU-791). */
+  skill_slug?: string;
   updated_at?: string;
   provider?: string;
   model?: string;
@@ -766,6 +769,7 @@ export interface ActivityUpdate {
   agent?: string;
   routine_id?: string;
   routine_run_id?: string;
+  skill_slug?: string;
   provider?: string;
   model?: string;
   /** Set to record a new pending interaction; `null` clears it explicitly. */
@@ -1031,6 +1035,10 @@ export interface SkillSummary {
   integrations: string[];
   /** Image URL or Microsoft Fluent Emoji slug (e.g. "rocket"). */
   image: string | null;
+  /** Frontmatter `setup_activity_id:` — the setup chat this skill was built
+   *  in (HOU-791). Forward link; the durable reverse link is the activity's
+   *  `skill_slug`. */
+  setupActivityId?: string | null;
   /** Legacy structured inputs. Parsed for compatibility, ignored by composer UX. */
   inputs: SkillInputDef[];
   /** Legacy prompt template. Parsed for compatibility, ignored by sends. */

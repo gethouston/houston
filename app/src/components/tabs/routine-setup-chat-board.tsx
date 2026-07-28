@@ -48,6 +48,9 @@ interface Props extends TabProps {
   /** Header actions on the panel's right side (the integration setup chat
    *  puts its "Done" button here). Omit for none (routines). */
   panelActions?: ReactNode;
+  /** Model-facing context prepended to every outgoing prompt, hidden from
+   *  the transcript (the skill chat pins its bound skill). Omit for none. */
+  promptContext?: string;
 }
 
 export function RoutineSetupChatBoard({
@@ -60,6 +63,7 @@ export function RoutineSetupChatBoard({
   missionLabel,
   panelActions,
   onPanelClose,
+  promptContext,
 }: Props) {
   const path = agent.folderPath;
   const openHref = useOpenAgentHref(path);
@@ -99,6 +103,7 @@ export function RoutineSetupChatBoard({
     rawItems,
     pendingAgentMode: null,
     setPendingAgentMode: noop,
+    promptContext,
   });
   const sendQueue = useBoardSendQueue({
     selectedSessionKey: sessionKey,
