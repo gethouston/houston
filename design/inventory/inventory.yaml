@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 41
+version: 42
 
 components:
   - id: agent-avatar
@@ -719,10 +719,10 @@ components:
 
   - id: skill-row
     title: Skill row
-    purpose: A skill in the Skills surface -- an installed row or a community catalog row.
+    purpose: A skill in the Skills surface, chat picker, or community catalog.
     anatomy: [icon, name, description, install-or-check]
     states: [available, installed, installing, error, editing]
-    variants: [installed-row, community-catalog-row]
+    variants: [installed-row, picker-select-row, community-catalog-row]
     behavior: >-
       Community rows ride the shared catalog grammar (CatalogRow): the row body
       opens the skill's info modal, a ghost round + installs (spinner while in
@@ -730,7 +730,9 @@ components:
       CatalogRow grammar in the consolidated strip above the Store / Custom
       skills tabs (CatalogShell), capped to a preview behind a "Show all"
       expander at rest; a row opens the edit modal, whose footer carries
-      Save/Cancel and the destructive Delete (confirm-gated). No separate
+      Save/Cancel and the destructive Delete (confirm-gated). The chat picker
+      uses the same installed row renderer with search and title-sorted rows;
+      selecting a row places that skill in the composer. No separate
       skill-detail surface.
     a11y: rows are single labeled buttons beside a labeled install button, never nested; install state conveyed as text.
     since: 1

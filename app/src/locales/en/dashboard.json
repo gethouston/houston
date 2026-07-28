@@ -71,19 +71,8 @@
   },
   "skillPicker": {
     "title": "Pick a skill",
-    "description": "Browse the skills this agent already knows how to do.",
     "descriptionWithAgent": "Browse the skills {{name}} already knows how to do.",
-    "agentLabel": "Agent",
-    "agentPlaceholder": "Select an agent...",
-    "blank": "Blank conversation",
-    "blankDescription": "Open a new chat and type your own prompt.",
-    "featuredTab": "Featured",
-    "otherTab": "Other",
     "empty": "No skills yet.",
-    "pickAgentFirst": "Pick an agent to see its skills.",
-    "skillsLoading": "Loading skills...",
-    "skillsEmpty": "No skills in this category yet.",
-    "scrollTabsLeft": "Scroll skill tabs left",
-    "scrollTabsRight": "Scroll skill tabs right"
+    "skillsLoading": "Loading skills..."
   }
 }

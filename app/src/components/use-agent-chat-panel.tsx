@@ -2073,8 +2073,7 @@ export function useAgentChatPanel({
         open={pickerOpen}
         onOpenChange={setPickerOpen}
         lockedAgent={agent}
-        hideBlank
-        onSkill={(_agentPath, skillName) => {
+        onSkill={(skillName) => {
           const skill = (allSkills ?? []).find((s) => s.name === skillName);
           if (skill) applySkill(skill);
         }}
