@@ -11,6 +11,8 @@ import {
   getConversationStatus,
   useConversationVm,
 } from "../hooks/use-conversation-vm";
+import { latestCachedAllConversations } from "../lib/all-conversations-cache";
+import { sweepIsAuthoritative } from "../lib/all-conversations-recovery";
 import { buildAttachmentPrompt } from "../lib/attachment-message";
 import { createMission } from "../lib/create-mission";
 import { isSetupChatMode } from "../lib/integration-chat-setup";
@@ -24,6 +26,7 @@ import { queryKeys } from "../lib/query-keys";
 import { formatVisibleMessageText } from "../lib/queued-chat";
 import {
   type HistoryLoadOptions,
+  type RawConversation,
   tauriActivity,
   tauriAttachments,
   tauriChat,
@@ -59,7 +62,29 @@ export function useMissionControl(agents: Agent[]) {
 
   const paths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
 
-  const { data: convos, isFetched } = useAllConversations(paths);
+  const {
+    data: sweptConvos,
+    isSuccess,
+    isPlaceholderData,
+    isError,
+  } = useAllConversations(paths);
+  // A FAILED sweep must never read as "you have no missions" (HOU-981). React
+  // Query's `placeholderData` covers the pending state only, so on error the
+  // board used to fall through to zero cards — and, because `isFetched` is true
+  // on error too, it also auto-opened the new-mission composer over an empty
+  // board while a toast said the read failed. Both are fixed here: on error the
+  // last known rows (this key's own, or the newest disk-restored roster
+  // variant) paint instead, and `isLoaded` waits for a genuine, SETTLED success
+  // (`sweepIsAuthoritative` — TanStack calls the placeholder paint a success
+  // too) so "empty" only ever means "successfully empty".
+  const convos = useMemo(
+    () =>
+      sweptConvos ??
+      (isError
+        ? latestCachedAllConversations<RawConversation[]>(queryClient)
+        : undefined),
+    [sweptConvos, isError, queryClient],
+  );
 
   // Per-mission attribution (hosted Teams only): resolve the contributor ids on
   // every visible conversation to display profiles. Single-player never runs
@@ -416,7 +441,7 @@ export function useMissionControl(agents: Agent[]) {
     selectedId,
     setSelectedId,
     loading: effectiveLoading,
-    isLoaded: isFetched,
+    isLoaded: sweepIsAuthoritative({ isSuccess, isPlaceholderData }),
     feedItems,
     loadHistory,
     onLoadOlderMessages,

@@ -121,3 +121,28 @@ describe("planInvalidation — unrelated cases keep their exact effects", () => 
     ok(invalidates(plan, ["integration-connections"]));
   });
 });
+
+/**
+ * HOU-981. The `/v1/events` feed has no replay cursor: a drop loses every event
+ * emitted while it was down. Nothing re-read the cross-agent aggregate after
+ * that, so a mission created during the gap stayed invisible for the rest of
+ * the session. A re-connect is now a transport event the plan turns into a
+ * re-sweep.
+ */
+describe("planInvalidation — EventStreamReconnected catches the aggregate up", () => {
+  it("re-sweeps the cross-agent aggregate", () => {
+    const plan = planInvalidation({ type: "EventStreamReconnected" }, {});
+    ok(
+      invalidates(plan, queryKeys.allConversations([])),
+      "the aggregate prefix must be invalidated so every roster variant refetches",
+    );
+  });
+
+  it("touches nothing else — a re-sweep already wakes every pod", () => {
+    const plan = planInvalidation({ type: "EventStreamReconnected" }, {});
+    strictEqual(plan.invalidate.length, 1);
+    deepStrictEqual(plan.patchAllConversations, []);
+    strictEqual(plan.reloadAgentsWorkspace, undefined);
+    strictEqual(plan.focusWindow, undefined);
+  });
+});

@@ -23,12 +23,14 @@ const {
   reportError,
   listWorkspaces,
   getPreference,
+  setPreference,
   setActiveOrg,
 } = vi.hoisted(() => ({
   logAndReportError: vi.fn(),
   reportError: vi.fn(),
   listWorkspaces: vi.fn(),
   getPreference: vi.fn(),
+  setPreference: vi.fn(),
   setActiveOrg: vi.fn(),
 }));
 
@@ -46,7 +48,7 @@ vi.mock("@houston/app/lib/space-cache", () => ({
 }));
 vi.mock("@houston/app/lib/tauri", () => ({
   tauriWorkspaces: { list: listWorkspaces },
-  tauriPreferences: { get: getPreference, set: vi.fn() },
+  tauriPreferences: { get: getPreference, set: setPreference },
 }));
 
 import { useWorkspaceStore } from "@houston/app/stores/workspaces";
@@ -63,6 +65,7 @@ beforeEach(() => {
   reportError.mockReset();
   listWorkspaces.mockReset();
   getPreference.mockReset().mockResolvedValue(null);
+  setPreference.mockReset();
   setActiveOrg.mockReset();
   useWorkspaceStore.setState({
     workspaces: [],
@@ -95,6 +98,24 @@ test("a failed load adds no telemetry of its own", async () => {
 
   expect(logAndReportError).not.toHaveBeenCalled();
   expect(reportError).not.toHaveBeenCalled();
+});
+
+/**
+ * HOU-981: `listWorkspaces` now THROWS on a persistent failure instead of
+ * silently degrading to personal-only, which makes this guarantee load-bearing.
+ * A failed load must not write `last_workspace_id` — the remembered team space
+ * has to survive the outage so the next successful load restores it, instead of
+ * the user being pinned to personal with all their missions apparently gone.
+ */
+test("a failed load leaves the remembered space preference untouched", async () => {
+  getPreference.mockResolvedValue("org:00112233aabbccdd");
+  listWorkspaces.mockRejectedValue(new Error("gateway unreachable"));
+
+  await useWorkspaceStore.getState().loadWorkspaces();
+
+  expect(setPreference).not.toHaveBeenCalled();
+  expect(setActiveOrg).not.toHaveBeenCalled();
+  expect(useWorkspaceStore.getState().current).toBeNull();
 });
 
 test("a successful load lands the workspace and clears the error", async () => {

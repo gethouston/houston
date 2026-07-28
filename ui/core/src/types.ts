@@ -202,4 +202,10 @@ export type HoustonEvent =
     }
   // HOU-550: a custom (API / MCP) integration was added, credentialed, or
   // removed. Carries no payload — the whole user-level list is refetched.
-  | { type: "CustomIntegrationsChanged" };
+  | { type: "CustomIntegrationsChanged" }
+  // HOU-981: the global reactivity stream RE-connected after a drop. Not a
+  // domain change — a transport fact. Everything that happened while the
+  // stream was down was never delivered (the feed has no replay cursor), so
+  // the consumer catches up by re-reading. Emitted only on a re-connect, never
+  // on the first one: the initial read is already happening.
+  | { type: "EventStreamReconnected" };

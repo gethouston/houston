@@ -132,6 +132,17 @@ export async function handle(req: Request): Promise<Response> {
     state.setAgentReadHoldMs(Number(body?.ms ?? 0));
     return json({ ms: state.state.agentReadHoldMs });
   }
+  // Fail every per-agent read (`GET /agents/:id/*`) for the named agents with a
+  // 500, leaving the rest healthy — the half-broken fleet the cross-agent
+  // sweep must survive (HOU-981). `{ agentIds: [] }` (and the per-test reset)
+  // restores them.
+  if (path === "/__test__/fail-agent-reads" && method === "POST") {
+    const body = await parseBody(req);
+    state.setFailingAgentReads(
+      Array.isArray(body?.agentIds) ? body.agentIds.map(String) : [],
+    );
+    return json({ agentIds: [...state.state.failingAgentReads] });
+  }
   // Toggle Composio readiness: "ready" | "unavailable" (503) | "signin" |
   // "absent" (not registered at all — only the custom provider, when armed).
   if (path === "/__test__/integrations-mode" && method === "POST") {
@@ -303,6 +314,15 @@ export async function handle(req: Request): Promise<Response> {
       segs[2] !== "providers"
     )
       await new Promise((r) => setTimeout(r, state.state.agentReadHoldMs));
+    // Armed per-agent read failure: this agent's pod is unreachable while the
+    // rest of the fleet answers. Same shape the gateway returns for a pod it
+    // cannot reach, so the client's own error path runs unchanged.
+    if (
+      method === "GET" &&
+      segs.length > 1 &&
+      state.state.failingAgentReads.has(decodeURIComponent(segs[1]))
+    )
+      return json({ error: { message: "agent unreachable" } }, 500);
     return handleAgents(
       method,
       segs.slice(1).map(decodeURIComponent),

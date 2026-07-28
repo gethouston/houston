@@ -63,6 +63,7 @@
   },
   "errors": {
     "noAgentForMission": "Pick an agent before starting a mission.",
+    "partialMissionLoad": "Some missions could not load. We are trying again.",
     "stopSession": "Couldn't stop the mission: {{error}}"
   },
   "agentPicker": {

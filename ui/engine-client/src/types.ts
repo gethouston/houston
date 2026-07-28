@@ -1020,6 +1020,26 @@ export interface ConversationEntry {
   mentioned?: { user_id: string; at: string; by?: string }[];
 }
 
+/**
+ * The result of a CROSS-AGENT conversation sweep (`listAllConversations`).
+ *
+ * In hosted mode the sweep is a fan-out — one read per agent — and any single
+ * agent's read can fail on its own (a pod that never woke, a gateway blip)
+ * while every other agent answers. A bare array cannot express that: it either
+ * rejects (blanking the board over one sick agent) or looks like a complete
+ * answer (silently dropping that agent's missions and freezing the gap in
+ * cache). So the sweep reports WHICH agents it could not read, and the caller
+ * decides how to recover (HOU-981).
+ *
+ * `failedAgentPaths` empty = a complete, trustworthy answer.
+ */
+export interface AllConversationsResult {
+  /** Rows from every agent that answered, flattened. */
+  conversations: ConversationEntry[];
+  /** Agent paths whose read failed in THIS sweep. Non-empty = partial. */
+  failedAgentPaths: string[];
+}
+
 // ---------- Skills ----------
 
 export interface SkillSummary {

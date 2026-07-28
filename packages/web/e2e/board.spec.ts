@@ -1,4 +1,4 @@
-import { FAKE_HOST_URL } from "@houston/fake-host";
+import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 
@@ -35,6 +35,79 @@ function persistedMirrorHeads(page: Page): Promise<string[] | null> {
           request.onerror = () => resolve(null);
         };
         open.onerror = () => resolve(null);
+      }),
+  );
+}
+
+/**
+ * Rewrite every persisted query's `dataUpdatedAt` to `agedAt` — the mirror a
+ * user who closed the app yesterday restores from. Returns how many entries
+ * were aged.
+ */
+function ageQueryMirror(page: Page, agedAt: number): Promise<number> {
+  return page.evaluate(
+    (at: number) =>
+      new Promise<number>((resolve, reject) => {
+        const open = indexedDB.open("houston-query-cache", 1);
+        open.onsuccess = () => {
+          const store = open.result
+            .transaction("kv", "readwrite")
+            .objectStore("kv");
+          const get = store.get("houston.list-queries");
+          get.onsuccess = () => {
+            const parsed = JSON.parse(get.result as string) as {
+              clientState: { queries: { state: { dataUpdatedAt: number } }[] };
+            };
+            for (const query of parsed.clientState.queries)
+              query.state.dataUpdatedAt = at;
+            const put = store.put(
+              JSON.stringify(parsed),
+              "houston.list-queries",
+            );
+            put.onsuccess = () => resolve(parsed.clientState.queries.length);
+            put.onerror = () => reject(put.error);
+          };
+          get.onerror = () => reject(get.error);
+        };
+        open.onerror = () => reject(open.error);
+      }),
+    agedAt,
+  );
+}
+
+/** The freshest `dataUpdatedAt` in the persisted mirror, or -1 with no mirror. */
+function newestMirrorUpdatedAt(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        const open = indexedDB.open("houston-query-cache", 1);
+        open.onsuccess = () => {
+          const request = open.result
+            .transaction("kv", "readonly")
+            .objectStore("kv")
+            .get("houston.list-queries");
+          request.onsuccess = () => {
+            try {
+              const parsed = JSON.parse(request.result as string) as {
+                clientState: {
+                  queries: { state: { dataUpdatedAt: number } }[];
+                };
+              };
+              resolve(
+                Math.max(
+                  -1,
+                  ...parsed.clientState.queries.map(
+                    (q) => q.state.dataUpdatedAt,
+                  ),
+                ),
+              );
+            } catch {
+              resolve(-1);
+            }
+          };
+          request.onerror = () => resolve(-1);
+        };
+        open.onerror = () => resolve(-1);
       }),
   );
 }
@@ -316,4 +389,109 @@ test("deletes a mission from the board", async ({ page }) => {
     .click();
 
   await expect(page.getByText("Draft the launch email")).toHaveCount(0);
+});
+
+/** Cross-agent Mission Control (the aggregate's own surface). */
+async function openMissionControl(page: Page): Promise<void> {
+  await page.locator("[data-tour-target='nav-dashboard']").click();
+}
+
+/**
+ * HOU-981, the half-broken fleet. The cross-agent sweep is one read per agent;
+ * it used to run under `Promise.all`, so ONE unreachable pod rejected the whole
+ * aggregate — and since React Query's placeholder covers the pending state
+ * only, Mission Control rendered an EMPTY board (and auto-opened the composer
+ * over it) while every healthy agent's missions sat right there in cache.
+ *
+ * The healthy agents' missions must survive one sick agent, always.
+ */
+test("keeps the healthy agents' missions when one agent's reads fail", async ({
+  page,
+  request,
+}) => {
+  const created = await request.post(`${FAKE_HOST_URL}/agents`, {
+    data: { name: "Kai" },
+  });
+  const broken = (await created.json()) as { id: string };
+  await request.post(`${FAKE_HOST_URL}/agents/${broken.id}/activities`, {
+    data: { title: "Ship the payroll run", status: "needs_you" },
+  });
+  // That agent's pod is unreachable; every other agent answers normally.
+  await request.post(`${FAKE_HOST_URL}/__test__/fail-agent-reads`, {
+    data: { agentIds: [broken.id] },
+  });
+
+  await page.goto("/");
+  await openMissionControl(page);
+
+  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(page.getByText("Draft the launch email")).toBeVisible();
+  // Partial is not silent: the user is told the board is incomplete (beta
+  // no-silent-failures policy), rather than quietly missing an agent.
+  await expect(
+    page.getByText("Some missions could not load. We are trying again."),
+  ).toBeVisible();
+});
+
+/**
+ * HOU-981, the frozen-restore bug itself: "missions are sometimes not there
+ * when I log in".
+ *
+ * The aggregate is restored from IndexedDB carrying its ORIGINAL
+ * `dataUpdatedAt`, and it used to be `staleTime: Infinity` — so a restored copy
+ * was permanently fresh and NOTHING revalidated it for the whole session. Every
+ * mission created while the app was closed (an overnight routine, a teammate,
+ * another device) stayed invisible.
+ *
+ * Model: persist a board, age the mirror to yesterday, create a mission while
+ * the app cannot hear about it, reload. The restored cards must paint AND the
+ * boot sweep must bring the new mission in.
+ *
+ * The reactivity stream is cut for the whole test on purpose. It is what makes
+ * the assertion mean something: with `/v1/events` dead, a push event can never
+ * deliver the new mission, so the ONLY thing that can put it on the board is a
+ * fresh read of the restored aggregate.
+ */
+test("re-reads the restored board on boot so missions created offline appear", async ({
+  page,
+  request,
+}) => {
+  await seedUserScopedToken(page);
+  await page.route("**/v1/events*", (route) => route.abort());
+  await page.goto("/");
+  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+
+  await expect
+    .poll(async () => (await persistedMirrorHeads(page)) ?? [], {
+      timeout: 15_000,
+    })
+    .toContain("all-conversations");
+
+  // Age every persisted entry to yesterday — the state a user who closes the
+  // app at night and signs in the next morning actually restores. Re-applied
+  // until it sticks: the persister writes on a throttle, so a write queued
+  // before this can land after it and reset the clock.
+  const agedAt = Date.now() - 24 * 60 * 60 * 1_000;
+  await expect
+    .poll(async () => {
+      await ageQueryMirror(page, agedAt);
+      return await newestMirrorUpdatedAt(page);
+    })
+    .toBe(agedAt);
+
+  // The overnight routine's mission: written while the app was closed, so no
+  // event ever reached this client.
+  const written = await request.post(
+    `${FAKE_HOST_URL}/agents/${SEED_AGENT_ID}/activities`,
+    { data: { title: "Overnight expense report", status: "needs_you" } },
+  );
+  expect(written.ok()).toBe(true);
+
+  await page.reload();
+  await openMissionControl(page);
+
+  // Yesterday's board is still there...
+  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  // ...and the boot sweep brought in what happened while we were away.
+  await expect(page.getByText("Overnight expense report")).toBeVisible();
 });
