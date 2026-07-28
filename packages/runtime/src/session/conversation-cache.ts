@@ -339,9 +339,12 @@ export async function getConversation(
  * forward an anthropic model into pi's in-process Anthropic client (the
  * harness-spoofing request Anthropic blocks) or an openai id through the Claude
  * subprocess. So the old session is disposed and a fresh one opened via the
- * correct backend. The new backend starts WITHOUT the old in-memory history —
- * each backend owns its own session store and the Houston transcript is the UI
- * source of truth, so history is not (and cannot be) replayed across backends.
+ * correct backend (`fresh: true` — the new backend must not resume its own
+ * stale pre-switch session either, see CreateSessionOptions.fresh). The new
+ * session starts without backend-native history — each backend owns its own
+ * session store — so exec-turn carries the conversation over by prepending the
+ * canonical Houston transcript to the first prompt (HOU-951, see
+ * replay-transcript.ts).
  *
  * A same-backend change (pi sonnet→opus, or claude model→model) is left alone —
  * the caller keeps the cheap `setModel` fast path that preserves the live session.
@@ -369,6 +372,9 @@ export async function switchBackendIfNeeded(
     conversationId,
     model,
     mode,
+    // Never resume the new backend's own stale pre-switch session: the history
+    // arrives as a transcript replay on the first prompt (HOU-951).
+    fresh: true,
     // Preserve the conversation's startup context across the rebuild (HOU-711).
     ...(conv.context ? { context: conv.context } : {}),
   });

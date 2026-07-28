@@ -63,10 +63,20 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         model: opts.model as unknown as Model<Api>,
         ...(opts.thinkingLevel ? { thinkingLevel: opts.thinkingLevel } : {}),
         modelRuntime: deps.modelRuntime,
-        sessionManager: SessionManager.continueRecent(
-          deps.workspaceDir,
-          join(deps.dataDir, "sessions", opts.conversationId),
-        ),
+        // A cross-backend rebuild (opts.fresh) mints a NEW session file in the
+        // conversation's dir instead of reopening the most recent one: the
+        // history arrives as a transcript replay on the first prompt (HOU-951),
+        // and a conversation returning to pi after a Claude era must not resume
+        // its stale pre-switch session on top of that replay.
+        sessionManager: opts.fresh
+          ? SessionManager.create(
+              deps.workspaceDir,
+              join(deps.dataDir, "sessions", opts.conversationId),
+            )
+          : SessionManager.continueRecent(
+              deps.workspaceDir,
+              join(deps.dataDir, "sessions", opts.conversationId),
+            ),
         resourceLoader: loader,
         tools: toolNamesForMode(opts.mode, deps.tools),
         customTools: deps.customTools,

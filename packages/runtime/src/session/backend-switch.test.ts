@@ -52,6 +52,9 @@ const { registerBackend, setDefaultBackend } = await import(
   "../backends/registry"
 );
 const { subscribe } = await import("./bus");
+const { appendAssistantMessage, appendUserMessage } = await import(
+  "../store/conversations"
+);
 type Conversation = import("./conversation-cache").Conversation;
 
 /** A session that records every prompt/setModel/dispose so the test can assert the
@@ -89,10 +92,15 @@ class SpySession implements HarnessSession {
   }
 }
 
-function spyBackend(id: string, created: SpySession[]): HarnessBackend {
+function spyBackend(
+  id: string,
+  created: SpySession[],
+  opts?: CreateSessionOptions[],
+): HarnessBackend {
   return {
     id,
-    async createSession(_opts: CreateSessionOptions): Promise<HarnessSession> {
+    async createSession(o: CreateSessionOptions): Promise<HarnessSession> {
+      opts?.push(o);
       const s = new SpySession(id);
       created.push(s);
       return s;
@@ -187,6 +195,47 @@ test("anthropic→openai REBUILDS on the pi backend — the Claude session is di
   expect((conv as unknown as { backendId: string }).backendId).toBe("pi");
   expect(conv.provider).toBe("openai-codex");
   expect(events.some((e) => e.type === "provider_switched")).toBe(true);
+});
+
+test("cross-backend rebuild carries the conversation over: fresh session + transcript replay on the first prompt (HOU-951)", async () => {
+  const piCreated: SpySession[] = [];
+  const claudeCreated: SpySession[] = [];
+  const claudeOpts: CreateSessionOptions[] = [];
+  setDefaultBackend(spyBackend("pi", piCreated));
+  registerBackend(
+    "anthropic",
+    spyBackend("anthropic", claudeCreated, claudeOpts),
+  );
+
+  // The conversation so far (ran on pi/gemini), plus THIS turn's already-recorded
+  // user message — exactly what the store holds when execTurn runs.
+  appendUserMessage("conv-replay", "my name is Zoe", { turnId: "turn-0" });
+  appendAssistantMessage("conv-replay", "Nice to meet you, Zoe!", {
+    turnId: "turn-0",
+  });
+  appendUserMessage("conv-replay", "what is my name?", { turnId: "turn-1" });
+
+  const piSession = new SpySession("pi");
+  const conv = convWith(piSession, "google", "gemini-2.5-pro");
+  modelState.model = ANTHROPIC;
+
+  await execTurn(conv, "conv-replay", "turn-1", "what is my name?", {
+    author: undefined,
+    priorAuthors: [],
+  });
+
+  // The new backend must start FRESH (never resume its stale pre-switch store).
+  expect(claudeOpts).toHaveLength(1);
+  expect(claudeOpts[0].fresh).toBe(true);
+  // The first prompt replays the prior turns so the model keeps the context…
+  const prompt = claudeCreated[0].prompts[0];
+  expect(prompt).toContain("User: my name is Zoe");
+  expect(prompt).toContain("Assistant: Nice to meet you, Zoe!");
+  // …excludes THIS turn's message from the replay (it IS the prompt's tail)…
+  expect(prompt.endsWith("what is my name?")).toBe(true);
+  expect(prompt.match(/what is my name\?/g)).toHaveLength(1);
+  // …and the user's stored message stays the plain text (no preamble in the bubble).
+  expect(prompt).not.toBe("what is my name?");
 });
 
 test("same-backend model change (openai→google, both pi) stays on the setModel fast path — no rebuild", async () => {
