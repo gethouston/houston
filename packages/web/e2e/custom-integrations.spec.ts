@@ -212,7 +212,9 @@ test("an Installed-strip custom tile opens the detail card: metadata, actions li
   await page.getByRole("button", { name: "Acme Live API" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("Acme Live")).toBeVisible();
-  await expect(dialog.getByText("Connected")).toBeVisible();
+  // Exact: the description line ("Connected and working. ...") is a rival
+  // substring match for the status chip's bare "Connected".
+  await expect(dialog.getByText("Connected", { exact: true })).toBeVisible();
   await expect(
     dialog.getByText("https://api.acme.test/openapi.json"),
   ).toBeVisible();
