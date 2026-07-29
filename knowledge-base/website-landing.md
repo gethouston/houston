@@ -17,6 +17,14 @@ hero (black) → multiplayer (white) → parallel/multi-agent (black, full-bleed
 FAQ (white) → footer (black). `#multiplayer/#parallel/#compound/#stack` are
 one-viewport stories (`min-height: 100svh`, centered, ≥881px only).
 
+The hero fold also fills the viewport (`min-height: 100svh` on `.hero-fold`),
+whatever the browser chrome's height (Chrome's tab bar vs Arc/Zen's none):
+its natural height (496px `.win-body` floor) already ≈ fills Chrome, and any
+taller viewport's slack flows down a flex stretch chain
+(`.hero-visual → .hero-stage → .win → .win-body`, landing-hero.css) so the
+app window's bottom stays flush with the fold's dissolve — never a white gap
+before #multiplayer.
+
 `.section.is-dark` = full-bleed near-black band; content keeps the shared
 measure via `.section.is-dark > *`. Dark-ground variants exist for the
 segmented pill, `.acol`/`.share-mock` (white ring + deep black shadow), and
