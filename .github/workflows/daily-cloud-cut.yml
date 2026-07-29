@@ -33,12 +33,17 @@
 #   the write we need is the PAT's, not the job token's. (Read-only check-run
 #   queries still use GITHUB_TOKEN; those don't need to trigger anything.)
 #
-# WHY WEEKDAYS-ONLY AT 11:52 UTC (AND NOT ON A ROUND MINUTE):
+# WHY WEEKDAYS-ONLY AT 10:22 UTC (AND NOT ON A ROUND MINUTE):
 #   The team QAs in the 08:30 America/Bogota daily, which runs Mon–Fri. Bogotá is
-#   UTC-5 all year (Colombia observes no DST), so 11:52 UTC == 06:52 Bogotá. The
-#   release build takes ~30 min; GitHub's schedule queue is best-effort and
-#   routinely fires 30–120 min late, so we cut early to absorb the delay and
-#   still have the draft ready before 08:30. The :52 minute is deliberate:
+#   UTC-5 all year (Colombia observes no DST). GitHub's schedule queue is
+#   best-effort: at the previous 11:52 UTC slot the observed delivery delay was
+#   +88 to +128 min (avg ~103), so the cut ACTUALLY started 08:20–09:00 Bogotá —
+#   on top of the daily, with no draft ready (HOU-1013). The target is a cut
+#   that actually starts ~07:05 Bogotá (12:05 UTC), so the nominal slot is
+#   12:05 minus the average delay: 10:22 UTC == 05:22 Bogotá. With the observed
+#   delay range the cut starts 06:50–07:30 Bogotá, and the ~30-min build has
+#   the draft ready by ~08:00. Firing early is harmless (the draft just waits);
+#   firing after 08:30 is the failure mode. The :22 minute is deliberate:
 #   :00/:15/:30/:45 are the most congested cron slots on GitHub and get the
 #   worst delays. `cron: '1-5'` skips weekends — no daily, no cut.
 #
@@ -57,9 +62,10 @@ name: Daily cloud cut
 
 on:
   schedule:
-    # 11:52 UTC, Mon–Fri == 06:52 America/Bogota (UTC-5, no DST). Early + on an
-    # off-peak minute because GitHub's cron queue runs late — see the header.
-    - cron: "52 11 * * 1-5"
+    # 10:22 UTC, Mon–Fri == 05:22 America/Bogota (UTC-5, no DST). Nominal slot
+    # is ~103 min before the ~07:05 Bogotá target because GitHub's cron queue
+    # delivers that late — see the header.
+    - cron: "22 10 * * 1-5"
   workflow_dispatch:
     inputs:
       version:
