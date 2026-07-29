@@ -39,6 +39,12 @@
   align-items: center;
   padding: 110px 40px 0;
   overflow: hidden;
+  /* The fold always fills the viewport, whatever the browser chrome's height
+     (Chrome's tab bar vs Arc/Zen's none). The window's natural height already
+     ≈ fills Chrome; any slack flows into the app window below (see the
+     stretch chain on .hero-visual/.hero-stage), never into a white gap. */
+  min-height: 100vh;
+  min-height: 100svh;
 }
 
 /* ── The statement — centered, white on black, system-crisp ──────────────── */
@@ -99,20 +105,43 @@
   margin-top: clamp(40px, 6vh, 64px);
   display: flex;
   justify-content: center;
+  /* Absorb whatever viewport height the fold's min-height adds beyond the
+     natural composition: the whole stretch chain (visual → stage → win →
+     win-body) grows so the window's bottom stays flush with the fold's edge,
+     dissolving into the ground exactly as at its natural height. */
+  flex: 1;
 }
 .hero-stage {
   position: relative;
   width: 100%;
   max-width: 1120px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 .hero-stage .win {
   position: relative;
   z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08),
     0 2px 4px rgba(0, 0, 0, 0.4),
     0 28px 56px -22px rgba(0, 0, 0, 0.5),
     0 56px 110px -52px rgba(0, 0, 0, 0.6);
+}
+/* 496px stays the window's floor (its Chrome-fitted natural height); flex lets
+   it grow in taller viewports — the board's columns take the extra rows. */
+.hero-stage .win-body {
+  height: auto;
+  min-height: 496px;
+  flex: 1;
+}
+@media (max-width: 900px) {
+  /* Mirror the shared mock's narrow collapse: content-sized, no forced floor. */
+  .hero-stage .win-body {
+    min-height: 0;
+  }
 }
 /* Progressive dissolve across the fold's lower edge: a masked backdrop-filter
    blurs the window's bottom while a gradient in the hero's own ground color
