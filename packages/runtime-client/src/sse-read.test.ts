@@ -52,6 +52,38 @@ test("an async onEvent is awaited before the next frame is parsed (ordering)", a
   expect(order).toEqual(["start:1", "end:1", "start:2", "end:2"]);
 });
 
+test("a transport error rejects the read without leaking the reader's closed rejection", async () => {
+  // Simulates WebKit's behavior on a dropped connection: the pending read()
+  // rejects AND `reader.closed` rejects without the spec's handled flag. The
+  // read error must reach the caller exactly once — the closed rejection must
+  // never surface as an unhandled rejection.
+  const transportErr = new TypeError("Load failed");
+  let rejectClosed!: (e: unknown) => void;
+  const reader = {
+    closed: new Promise<never>((_, rej) => {
+      rejectClosed = rej;
+    }),
+    read: () => Promise.reject(transportErr),
+    releaseLock: () => {},
+    cancel: () => Promise.resolve(),
+  };
+  const body = {
+    getReader: () => reader,
+  } as unknown as ReadableStream<Uint8Array>;
+
+  const unhandled: unknown[] = [];
+  const onUnhandled = (reason: unknown) => unhandled.push(reason);
+  process.on("unhandledRejection", onUnhandled);
+  try {
+    await expect(readEventStream(body, () => {})).rejects.toBe(transportErr);
+    rejectClosed(transportErr);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(unhandled).toEqual([]);
+  } finally {
+    process.off("unhandledRejection", onUnhandled);
+  }
+});
+
 test("a malformed data line rejects — a garbled stream must surface", async () => {
   await expect(
     readEventStream(streamOf("data: {not json}\n\n"), () => {}),
