@@ -116,6 +116,36 @@ Composio-catalog concern that belongs to `app/`. Its heading copy is
 200-line law: `skill-edit-modal-labels.ts` (labels + defaults) and
 `skill-edit-modal-parts.tsx` (the body/footer states).
 
+## How skills reach the model (both backends)
+
+Skill INVOCATION is just a user message (`Use the <skill> skill.` — see the
+marker section below), so the model must already know what skills exist and
+where their files live. Each runtime backend surfaces that index in its system
+prompt:
+
+- **pi backend** (every non-Anthropic provider): `DefaultResourceLoader`
+  (`packages/runtime/src/session/resource-loader.ts`) loads
+  `<workspace>/.agents/skills` (or `HOUSTON_SKILLS_DIR`) and pi's own
+  system-prompt builder appends an `<available_skills>` XML section — each
+  skill's `name`, `description`, and the absolute SKILL.md `<location>` — plus
+  the instruction to Read the file when the task matches.
+- **Claude backend** (Anthropic provider, the Claude Agent SDK subprocess):
+  the SDK's native skill machinery is deliberately OFF (`settingSources: []`,
+  `Skill` in `disallowedTools` — nothing on disk may leak in), so
+  `buildSystemPrompt` (`packages/runtime/src/backends/claude/system-prompt.ts`)
+  appends the IDENTICAL `<available_skills>` section itself, reusing pi's
+  exported `loadSkillsFromDir` + `formatSkillsForPrompt` on the same directory.
+  Before HOU-894 this section was missing entirely: an Anthropic session had no
+  idea what skills existed, so "Use the <skill> skill." turns ran blind —
+  agents improvised the procedure, spun for minutes, and never completed
+  (the legacy Rust engine never had this gap; its claude CLI discovered the
+  `.claude/skills` mirror natively).
+
+Loader parity rule (pi's, now both backends): a SKILL.md with **no
+`description:` frontmatter is silently dropped from the index** — the model
+never learns it exists, even though the Skills UI still lists it. Keep
+`description` mandatory in anything that writes skills.
+
 ## Render pipeline
 
 1. **Engine** parses SKILL.md frontmatter via `serde_yml` (`engine/houston-skills/src/format.rs`). Unknown fields are silently ignored — old skills with `icon:` / `starter_prompt:` still parse.

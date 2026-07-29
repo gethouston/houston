@@ -1,6 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  formatSkillsForPrompt,
+  loadSkillsFromDir,
+} from "@earendil-works/pi-coding-agent";
 import type { TurnMode } from "@houston/protocol";
+import { config } from "../../config";
 import { withModeOverlay } from "../../session/mode-overlays";
 import {
   buildGroupContextSection,
@@ -43,10 +48,33 @@ export function buildSystemPrompt(
   // shared context. Null for ungrouped agents.
   const group = buildGroupContextSection(cwd);
   const withGroup = group ? `${withContext}\n\n${group}` : withContext;
-  // Mode overlay LAST — after Houston's prompt, the context file, AND both
-  // context sections — so the plan (read-only) or auto (Autopilot) mandate is the
-  // final word the model reads. Execute passes through unchanged.
-  return withModeOverlay(withGroup, mode);
+  // Skills index (HOU-894): the SAME <available_skills> section pi appends for
+  // every other provider — name + description + the SKILL.md path to Read. The
+  // SDK's own skill discovery is off (`settingSources: []`, `Skill` disallowed),
+  // so without this an Anthropic session had NO idea what skills exist or where
+  // their files live, and a "Use the <skill> skill." turn ran blind.
+  const withSkills = withGroup + buildSkillsSection(cwd);
+  // Mode overlay LAST — after Houston's prompt, the context file, both context
+  // sections, AND the skills index — so the plan (read-only) or auto (Autopilot)
+  // mandate is the final word the model reads. Execute passes through unchanged.
+  return withModeOverlay(withSkills, mode);
+}
+
+/**
+ * The `<available_skills>` index for the workspace's skills dir, or "" when
+ * there are none. Reuses pi's own loader + formatter so both backends surface
+ * the IDENTICAL section from the IDENTICAL directory (`HOUSTON_SKILLS_DIR`
+ * override, else `<cwd>/.agents/skills` — mirroring `makeAgentLoader`), with
+ * the same rules: a skill with no `description:` is dropped, and every entry
+ * carries the absolute SKILL.md `<location>` for the Read tool. Skill paths sit
+ * inside the workspace, so the Gate #1 clamp lets the model read them. Plan
+ * mode keeps the section — Read stays available there.
+ */
+function buildSkillsSection(cwd: string): string {
+  const dir = config.skillsDirOverride || join(cwd, ".agents", "skills");
+  if (!existsSync(dir)) return "";
+  const { skills } = loadSkillsFromDir({ dir, source: "path" });
+  return formatSkillsForPrompt(skills);
 }
 
 /** The first workspace-root context file's contents, or null when none exists. */
