@@ -49,7 +49,6 @@ import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
 import { AgentWarmingDialog } from "./agent-warming-dialog";
-import { ArchivedToggleButton } from "./archived-toggle-button";
 import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { HoustonLogo } from "./experience-card";
@@ -78,7 +77,6 @@ export function WorkspaceShell({
   const getById = useAgentCatalogStore((s) => s.getById);
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
-  const agentBoardMode = useUIStore((s) => s.agentBoardMode);
   const setAgentBoardMode = useUIStore((s) => s.setAgentBoardMode);
   const onStartMission = useUIStore((s) => s.onStartMission);
   const boardActions = useUIStore((s) => s.boardActions);
@@ -300,20 +298,6 @@ export function WorkspaceShell({
                                   <NotificationsBell
                                     collapsed={missionPanelOpen}
                                   />
-                                  {viewMode === "activity" && (
-                                    <ArchivedToggleButton
-                                      archived={agentBoardMode === "archived"}
-                                      collapsed={missionPanelOpen}
-                                      label={t("dashboard:archived.button")}
-                                      onToggle={() =>
-                                        setAgentBoardMode(
-                                          agentBoardMode === "archived"
-                                            ? "active"
-                                            : "archived",
-                                        )
-                                      }
-                                    />
-                                  )}
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
