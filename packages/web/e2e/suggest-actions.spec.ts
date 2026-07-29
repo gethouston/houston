@@ -55,6 +55,12 @@ test("suggested action pills stay above the composer, send visibly, and dismiss"
   await expect(
     page.locator(".is-user").filter({ hasText: "Draft the email." }),
   ).toBeVisible();
+  // Wait for the pill-click turn to fully settle BEFORE staging the next offer:
+  // staging while that turn is still open races it onto the wrong done frame,
+  // where the upcoming composer send would abandon it.
+  await expect(
+    page.getByText('Roger that. You said: "Draft the email."'),
+  ).toBeVisible();
 
   await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
     data: {

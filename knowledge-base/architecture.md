@@ -245,7 +245,9 @@ null-clears the interaction at the next turn's start — unchanged. `suggest_reu
 message, then calls `plan_ready` with a one- or two-sentence lede. The compact
 plan-ready card shares the bounded, collapsible interaction shell and offers
 Ask first, Autopilot, or Keep planning. The card never owns the complete plan,
-so long plans remain readable in the transcript.
+so long plans remain readable in the transcript. Its trailing shared free-text
+row is the only input while the card is shown; a typed instruction starts a
+visible plan-mode follow-up and retires the pending card.
 
 **Reflection step (suggest_reusable).** The prompt names the agent's
 end-of-mission evaluation the REFLECTION STEP: every time the agent finishes a

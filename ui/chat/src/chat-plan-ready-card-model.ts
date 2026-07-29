@@ -18,6 +18,8 @@ export interface ChatPlanReadyLabels {
   autopilotDescription: string;
   keepPlanningTitle: string;
   keepPlanningDescription: string;
+  declinePlaceholder: string;
+  send: string;
 }
 
 /** English fallbacks for apps that don't localize the plan-ready card yet.
@@ -32,6 +34,8 @@ export const DEFAULT_PLAN_READY_LABELS: ChatPlanReadyLabels = {
   autopilotDescription: "Finishes it on its own. No questions asked.",
   keepPlanningTitle: "Keep planning",
   keepPlanningDescription: "Stay here and adjust the plan.",
+  declinePlaceholder: "Or tell it what to do instead...",
+  send: "Send",
 };
 
 /** Shared by the card and its DOM-free tests: summaries stay a compact lede. */

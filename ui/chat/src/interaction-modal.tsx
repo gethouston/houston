@@ -99,7 +99,8 @@ export function InteractionModalTitle({
  *
  * How it composes with the composer is the caller's call (see ChatPanel's
  * `composerOverrideMode`): a full interaction stepper replaces the composer's
- * slot, while a lighter plan/offer floats above the still-mounted one.
+ * slot (the stepper and the plan-approval card both do), while the lighter
+ * suggestion offers float above the still-mounted one.
  * Weight is restrained across the whole family: ONE regular step of hierarchy,
  * never competing bolds — color tone (foreground vs muted) carries the structure.
  */
@@ -166,7 +167,7 @@ export function InteractionModal({
                 <ChevronDown
                   className={cn(
                     "size-4 transition-transform duration-200 motion-reduce:transition-none",
-                    open ? "rotate-0" : "-rotate-90",
+                    open ? "rotate-0" : "rotate-180",
                   )}
                 />
               </Button>

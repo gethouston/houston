@@ -39,7 +39,7 @@ export function makeSuggestActionsTool() {
     name: "suggest_actions",
     label: "Suggest follow-up actions",
     description:
-      "After completing a mission, offer 2 to 4 concrete, useful next steps grounded in the work you just did. Each label is short bubble text and each message is what Houston sends if the user clicks it. Use this instead of ending a completed mission with a filler ask_user question. Do not use it for blocking questions, and omit it when no genuinely useful follow-up exists. Call it at most once per turn, then finish normally.",
+      "Part of finishing every completed mission: offer 2 to 4 concrete, useful next steps grounded in the work you just did, in the same final turn as your closing message. Each label is short bubble text and each message is what Houston sends if the user clicks it. Use this instead of ending a completed mission with a filler ask_user question. Do not use it for blocking questions; skip it only when you genuinely cannot name one useful follow-up. Call it at most once per turn, then finish normally.",
     promptSnippet: "Offer concrete follow-up actions for the completed work",
     parameters: SuggestActionsParams,
     executionMode: "sequential",

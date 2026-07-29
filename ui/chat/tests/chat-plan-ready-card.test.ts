@@ -16,6 +16,8 @@ const LABELS: ChatPlanReadyLabels = {
   autopilotDescription: "Finishes it on its own. No questions asked.",
   keepPlanningTitle: "Keep planning",
   keepPlanningDescription: "Stay here and adjust the plan.",
+  declinePlaceholder: "Or tell it what to do instead...",
+  send: "Send",
 };
 
 describe("resolvePlanReadyActions", () => {
@@ -75,6 +77,11 @@ describe("DEFAULT_PLAN_READY_LABELS", () => {
       "Continue in Autopilot mode",
     );
     assert.equal(DEFAULT_PLAN_READY_LABELS.keepPlanningTitle, "Keep planning");
+    assert.equal(
+      DEFAULT_PLAN_READY_LABELS.declinePlaceholder,
+      "Or tell it what to do instead...",
+    );
+    assert.equal(DEFAULT_PLAN_READY_LABELS.send, "Send");
     for (const value of Object.values(DEFAULT_PLAN_READY_LABELS)) {
       assert.ok(!value.includes("—"), `"${value}" must not use an em dash`);
     }

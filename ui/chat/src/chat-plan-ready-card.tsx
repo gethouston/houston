@@ -9,6 +9,7 @@ import {
   type PlanReadyActionKey,
   resolvePlanReadyActions,
 } from "./chat-plan-ready-card-model";
+import { InlineTextRow } from "./interaction-decline-row";
 import { InteractionModal, InteractionModalTitle } from "./interaction-modal";
 
 export type { ChatPlanReadyLabels } from "./chat-plan-ready-card-model";
@@ -20,6 +21,7 @@ export interface ChatPlanReadyCardProps {
   onStartWorking: () => void;
   onRunAutopilot: () => void;
   onKeepPlanning: () => void;
+  onSubmit: (text: string) => void;
   labels: ChatPlanReadyLabels;
 }
 
@@ -30,14 +32,15 @@ const ACTION_ICONS: Record<PlanReadyActionKey, LucideIcon> = {
 };
 
 /** The compact next-step chooser after a plan. The complete plan stays in the
- * assistant transcript; this shared interaction shell floats above the
- * always-mounted composer and keeps only a compact lede in the card. */
+ * assistant transcript; the shared shell keeps the lede and the only text input
+ * together in the card. */
 export function ChatPlanReadyCard({
   summary,
   disabled = false,
   onStartWorking,
   onRunAutopilot,
   onKeepPlanning,
+  onSubmit,
   labels,
 }: ChatPlanReadyCardProps) {
   const handlers: Record<PlanReadyActionKey, () => void> = {
@@ -89,6 +92,14 @@ export function ChatPlanReadyCard({
       collapsedHint={summary}
       disabled={disabled}
       expandLabel={labels.expand}
+      trailing={
+        <InlineTextRow
+          disabled={disabled}
+          onSubmit={onSubmit}
+          placeholder={labels.declinePlaceholder}
+          sendLabel={labels.send}
+        />
+      }
       title={<InteractionModalTitle>{labels.title}</InteractionModalTitle>}
     />
   );
