@@ -5,7 +5,9 @@ import { readAgentJson, writeAgentJson } from "./agent-file";
 
 export interface Config {
   name?: string;
-  provider?: "anthropic" | "openai";
+  // A pi provider id (`anthropic`, `openai-codex`, `opencode`, …). Open string:
+  // the catalog is ~35 providers and drifts (see protocol `ProviderId`).
+  provider?: string;
   model?: string;
   // The active vocabulary is `low|medium|high|xhigh`; a legacy `"max"` may still
   // sit in older on-disk configs. It is tolerated on read and normalized to

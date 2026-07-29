@@ -403,6 +403,34 @@ test("opencode ModelError 'is not supported' under 401 → model_unavailable, no
     expect(err.model).toBe("minimax-m3-free");
 });
 
+// opencode.ai's gateway reports an upstream stream break as "Streaming response
+// failed" — no status, no JSON envelope in the worst case (HOU-929's verbatim
+// report). It is a transient server-side failure (retry helps), so it must read
+// as provider_internal (Retry + status page), never the report-bug `unknown`.
+test("opencode 'Streaming response failed' → provider_internal, not unknown (HOU-929)", () => {
+  const err = classifyProviderError({
+    provider: "opencode",
+    model: "qwen3-coder",
+    message: "Streaming response failed",
+  });
+  expect(err).toEqual({
+    kind: "provider_internal",
+    provider: "opencode",
+    http_status: null,
+    message: "Streaming response failed",
+  });
+});
+
+test("opencode stream failure classifies inside a JSON error envelope too", () => {
+  const err = classifyProviderError({
+    provider: "opencode-go",
+    model: null,
+    message:
+      '{"type":"error","error":{"type":"APIError","message":"Streaming response failed"}}',
+  });
+  expect(err.kind).toBe("provider_internal");
+});
+
 test("a genuine opencode 401 invalid key still reads as unauthenticated", () => {
   // The fix must not blunt real auth failures: an invalid key under 401 stays a
   // reconnect prompt.

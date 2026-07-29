@@ -709,7 +709,7 @@ export function useAgentChatPanel({
             const cfg = await tauriConfig.read(path);
             await tauriConfig.write(path, {
               ...cfg,
-              provider: prov as "anthropic" | "openai",
+              provider: prov,
               model: mod,
             });
           }
