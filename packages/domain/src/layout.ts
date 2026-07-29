@@ -36,6 +36,15 @@ export const schemaKey = (root: string, family: HoustonFamily) =>
 export const skillsDirKey = (root: string) => `${root}/.agents/skills`;
 
 /**
+ * Workspace-shared skills (ADR 0003): the ONE copy every agent in the
+ * workspace/org mirrors read-only. `sharedRoot` comes from the paths seam
+ * (cloud `ws/<org>/shared`, local `<Workspace>/.shared`); the skill folders
+ * under it use the same `<slug>/SKILL.md` layout as agent skills.
+ */
+export const sharedSkillsDirKey = (sharedRoot: string) =>
+  `${sharedRoot}/skills`;
+
+/**
  * The Agent Store publication record for this agent — the storeAgentId, share
  * slug/url, and last-published identity. It follows the
  * `.houston/<name>/<name>.json` shape of the typed families but is DELIBERATELY

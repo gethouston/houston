@@ -1,3 +1,4 @@
+import { sharedSkillsDirKey } from "@houston/domain";
 import { expect, test } from "vitest";
 import type { Agent, Workspace } from "./domain/types";
 import { CloudPaths, conversationKey, LocalPaths, settingsKey } from "./paths";
@@ -38,6 +39,21 @@ test("CloudPaths reproduces today's GCS-prefix layout", () => {
     "ws/w1/a1/data/conversations/c1.json",
   );
   expect(settingsKey(p, ws, agent)).toBe("ws/w1/a1/data/settings.json");
+});
+
+test("shared root (ADR 0003) — cloud sits beside agent prefixes, local is a dot-dir", () => {
+  // Load-bearing shapes: the cloud key is what the pod-store's shared routes
+  // scope (OrgRoot + "/shared"), and the local dot name is what keeps agent
+  // discovery (dot-filtered) from listing the store as an agent.
+  expect(new CloudPaths().sharedRoot(ws)).toBe("ws/w1/shared");
+  expect(sharedSkillsDirKey(new CloudPaths().sharedRoot(ws))).toBe(
+    "ws/w1/shared/skills",
+  );
+  const local = new LocalPaths();
+  expect(local.sharedRoot({ ...ws, id: "Work" })).toBe("Work/.shared");
+  expect(sharedSkillsDirKey(local.sharedRoot({ ...ws, id: "Work" }))).toBe(
+    "Work/.shared/skills",
+  );
 });
 
 test("CloudPaths agrees with the per-turn dispatch's own helpers (one set of keys)", () => {

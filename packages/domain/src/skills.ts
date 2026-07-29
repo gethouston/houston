@@ -10,12 +10,19 @@ import type { DocDiagnostic, FileStore } from "./store";
  * picker UI; the body is the procedure.
  */
 
+/** SKILL.md key inside ANY skills dir (agent `.agents/skills` or shared). */
+export const skillKeyInDir = (dir: string, slug: string) =>
+  `${dir}/${slug}/SKILL.md`;
+
+/** The slug dir inside any skills dir (whole-skill deletion via deletePrefix). */
+export const skillDirKeyInDir = (dir: string, slug: string) => `${dir}/${slug}`;
+
 export const skillKey = (root: string, slug: string) =>
-  `${skillsDirKey(root)}/${slug}/SKILL.md`;
+  skillKeyInDir(skillsDirKey(root), slug);
 
 /** The slug dir, for whole-skill deletion (host calls vfs.deletePrefix on it). */
 export const skillDirKey = (root: string, slug: string) =>
-  `${skillsDirKey(root)}/${slug}`;
+  skillDirKeyInDir(skillsDirKey(root), slug);
 
 const FM = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
 
@@ -79,12 +86,11 @@ export function parseSkillMd(
   return { summary, body: m[2] ?? "" };
 }
 
-/** List skills under the workspace root. Unparseable SKILL.md files surface as diagnostics. */
-export async function loadSkills(
+/** List skills in an explicit dir (agent or shared). Unparseable SKILL.md files surface as diagnostics. */
+export async function loadSkillsFromDir(
   store: FileStore,
-  root: string,
+  dir: string,
 ): Promise<{ items: SkillSummary[]; diagnostics: DocDiagnostic[] }> {
-  const dir = skillsDirKey(root);
   const keys = await store.list(dir);
   const slugs = [
     ...new Set(
@@ -98,7 +104,7 @@ export async function loadSkills(
   const items: SkillSummary[] = [];
   const diagnostics: DocDiagnostic[] = [];
   for (const slug of slugs) {
-    const key = skillKey(root, slug);
+    const key = skillKeyInDir(dir, slug);
     const content = await store.readText(key);
     if (content === null) continue; // listed dir without SKILL.md at top level
     const parsed = parseSkillMd(slug, content);
@@ -108,12 +114,16 @@ export async function loadSkills(
   return { items, diagnostics };
 }
 
-export async function loadSkillDetail(
+/** List skills under the agent root's `.agents/skills`. */
+export const loadSkills = (store: FileStore, root: string) =>
+  loadSkillsFromDir(store, skillsDirKey(root));
+
+export async function loadSkillDetailFromDir(
   store: FileStore,
-  root: string,
+  dir: string,
   slug: string,
 ): Promise<SkillDetail | null> {
-  const content = await store.readText(skillKey(root, slug));
+  const content = await store.readText(skillKeyInDir(dir, slug));
   if (content === null) return null;
   const parsed = parseSkillMd(slug, content);
   if ("error" in parsed) {
@@ -127,6 +137,9 @@ export async function loadSkillDetail(
     content,
   };
 }
+
+export const loadSkillDetail = (store: FileStore, root: string, slug: string) =>
+  loadSkillDetailFromDir(store, skillsDirKey(root), slug);
 
 /** Compose a fresh SKILL.md (create flow). Caller supplies the date (domain stays pure). */
 export function composeSkillMd(input: {
