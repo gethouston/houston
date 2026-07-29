@@ -1,6 +1,10 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { selectCurrentAgent } from "../src/lib/agent-selection.ts";
+import {
+  selectCurrentAgent,
+  selectLoadedAgent,
+  shouldApplyAgentLoad,
+} from "../src/lib/agent-selection.ts";
 import type { Agent } from "../src/lib/types.ts";
 
 function agent(id: string, name = id): Agent {
@@ -45,5 +49,36 @@ describe("agent selection", () => {
     const selected = selectCurrentAgent([], agent("missing", "Deleted"));
 
     strictEqual(selected, null);
+  });
+
+  it("uses the refreshed record for a selection made while a roster read is in flight", () => {
+    const ada = agent("ada");
+    const oldGrace = agent("grace", "Old Grace");
+    const refreshedGrace = agent("grace", "Grace");
+
+    strictEqual(
+      selectLoadedAgent([ada, refreshedGrace], oldGrace, ada.id),
+      refreshedGrace,
+    );
+  });
+
+  it("keeps a mid-flight selection missing from this stale roster", () => {
+    const ada = agent("ada");
+    const grace = agent("grace");
+
+    strictEqual(selectLoadedAgent([ada], grace, ada.id), grace);
+  });
+
+  it("falls back when the unchanged selection was removed", () => {
+    const ada = agent("ada");
+
+    strictEqual(selectLoadedAgent([ada], agent("grace"), "grace"), ada);
+  });
+
+  it("rejects an older response after a newer roster load starts", () => {
+    deepStrictEqual(
+      [shouldApplyAgentLoad(1, 2), shouldApplyAgentLoad(2, 2)],
+      [false, true],
+    );
   });
 });

@@ -17,8 +17,7 @@ import { useAgentNewMission } from "./use-agent-new-mission";
  * Builds the {@link BoardSource} for a single agent's board tab: per-agent
  * data + send, multi-select, the default-mode "New mission" flow, and the
  * cross-agent navigation handoff (a notification / command-palette / Mission
- * Control click publishes its target via `activityPanelId`, which this reused
- * tab reconciles on agent switch).
+ * Control click publishes its target via `activityPanelId`).
  */
 export function useAgentBoardSource(
   agent: Agent,
@@ -46,32 +45,13 @@ export function useAgentBoardSource(
   const [selectedId, setSelectedId] = useState<string | null>(pendingId);
   const [highlightedId, setHighlightedId] = useState<string | null>(pendingId);
 
-  // `selectedId`/`highlightedId` are per-agent, but this tab is reused across
-  // agents. On switch, adopt the published cross-agent target (if any) during
-  // render — `missionPanelOpen` still describes the agent we left, so deferring
-  // to the consume effect below would strand the nav.
-  const [trackedAgentId, setTrackedAgentId] = useState(agent.id);
-  if (trackedAgentId !== agent.id) {
-    setTrackedAgentId(agent.id);
-    const next = resolvePendingActivitySelection({
-      pendingActivityId: pendingId,
-      forceOpen: pendingForceOpen,
-      agentSwitched: true,
-      selectedId,
-      missionPanelOpen,
-    });
-    setSelectedId(next);
-    setHighlightedId(next);
-  }
-
   useEffect(() => {
     if (!pendingId) return;
-    // Same-agent nav (the switch case is handled above): honor the guard so we
-    // don't yank the user out of an open conversation or a New Mission composer.
+    // Preserve an open same-agent conversation or New Mission composer unless
+    // this is an explicit, force-open navigation.
     const next = resolvePendingActivitySelection({
       pendingActivityId: pendingId,
       forceOpen: pendingForceOpen,
-      agentSwitched: false,
       selectedId,
       missionPanelOpen,
     });
@@ -93,7 +73,7 @@ export function useAgentBoardSource(
     pendingAgentMode: newMission.pendingAgentMode,
     setPendingAgentMode: newMission.setPendingAgentMode,
   });
-  const selection = useAgentBoardSelection(path, agent.id);
+  const selection = useAgentBoardSelection(path);
 
   // Attribution + person-scope narrowing (hosted Teams only; off-multiplayer
   // identity pass-through), on the active cards BEFORE text search, as the cross

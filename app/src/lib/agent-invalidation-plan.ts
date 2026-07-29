@@ -111,7 +111,7 @@ export function planInvalidation(
     case "SessionStatus":
       if (ev.data.status === "completed" || ev.data.status === "error") {
         const agentPath = ev.data.agent_path;
-        plan.invalidate.push(["activity"]);
+        plan.invalidate.push(queryKeys.activity(agentPath));
         plan.patchAllConversations.push(agentPath);
         // Cloud has NO file watcher and no post-turn sync diff, so a running
         // agent that writes its own CLAUDE.md / skills / learnings / files

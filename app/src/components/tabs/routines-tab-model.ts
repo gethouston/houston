@@ -19,6 +19,11 @@ export type Selection =
   | { kind: "routine"; routineId: string }
   | { kind: "draft"; activityId: string | null };
 
+/** Only the visible Automations tab may control the shared shell panel. */
+export function shouldSyncRoutinesPanel(isActive: boolean): boolean {
+  return isActive;
+}
+
 /**
  * Adopt the freshly-created draft id, but only if the user is still waiting on
  * the pending null-draft (a functional setState guard): a failed start (no id)

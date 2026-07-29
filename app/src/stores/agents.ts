@@ -1,5 +1,8 @@
 import { create } from "zustand";
-import { selectCurrentAgent } from "../lib/agent-selection";
+import {
+  selectLoadedAgent,
+  shouldApplyAgentLoad,
+} from "../lib/agent-selection";
 import { analytics } from "../lib/analytics";
 import { getEngine, isEngineReady } from "../lib/engine";
 import {
@@ -15,6 +18,8 @@ import { useDraftStore } from "./drafts";
 export interface CreatedAgent {
   agent: Agent;
 }
+
+let loadAgentsGeneration = 0;
 
 function startAgentSideEffects(agent: Agent) {
   tauriPreferences.set("last_agent_id", agent.id);
@@ -92,16 +97,20 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   loadAgents: async (workspaceId, options) => {
     const silent = options?.silent ?? false;
+    const generation = ++loadAgentsGeneration;
+    const selectionBeforeLoad = get().current?.id;
     if (!silent) set({ loading: true });
     try {
       const agents = await tauriAgents.list(workspaceId);
+      if (!shouldApplyAgentLoad(generation, loadAgentsGeneration)) return;
       const current = get().current;
-      const selected = selectCurrentAgent(agents, current);
+      const selected = selectLoadedAgent(agents, current, selectionBeforeLoad);
       set({ agents, current: selected, loading: false, loaded: true });
       if (selected && selected.id !== current?.id) {
         startAgentSideEffects(selected);
       }
     } catch (e) {
+      if (!shouldApplyAgentLoad(generation, loadAgentsGeneration)) return;
       console.error("[agents] Failed to load:", e);
       // Settled (with the failure already logged + toasted upstream): the boot
       // gate must not hang on `loaded` forever; an empty-but-failed list reads
@@ -111,6 +120,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   settleEmpty: () => {
+    loadAgentsGeneration++;
     // Also tell the engine client no list is coming, so provider routing falls
     // back to the persisted selection instead of refusing every call while it
     // waits on a `listAgents` that will never run (HOU-979). Guarded because
@@ -191,6 +201,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     // the returned record instead of patching only `name`, or the stale path
     // later reaches tauriWatcher.start and the watch fails with a "neither a
     // file nor a directory" error toast (#298).
+    // Reject a roster snapshot started before the rename. It still carries the
+    // removed folder path and would restart its watcher after this mutation.
+    loadAgentsGeneration++;
     const updated = await tauriAgents.rename(workspaceId, id, newName);
     // A rename can change both id and folderPath; a warm-up probe pointed at
     // the old path would 404 and wrongly read as "ready" (HOU-693).
@@ -214,6 +227,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     }));
   },
 
-  reset: () =>
-    set({ agents: [], current: null, loading: false, loaded: false }),
+  reset: () => {
+    loadAgentsGeneration++;
+    set({ agents: [], current: null, loading: false, loaded: false });
+  },
 }));

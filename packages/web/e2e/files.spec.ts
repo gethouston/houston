@@ -1,3 +1,5 @@
+import { FAKE_HOST_URL } from "@houston/fake-host";
+import { createAgent } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
 
 /**
@@ -75,6 +77,43 @@ test("grid is the default: cards, folder navigation, breadcrumbs", async ({
   // The root crumb (the agent's name) walks back up.
   await crumbs.getByRole("button").first().click();
   await expect(page.getByText("Q3 report.pdf")).toBeVisible();
+});
+
+test("never shows the previous agent's files while the next read is in flight", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/");
+
+  // Create the target before arming the held reads, then return to the seeded
+  // agent and reload so the target's files query is cold when selected.
+  await createAgent(page, "Research Bot");
+  await page
+    .getByRole("button", { name: "Houston", exact: true })
+    .last()
+    .click();
+  await page.getByRole("button", { name: "Files", exact: true }).click();
+  await expect(page.getByText("Q3 report.pdf")).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Files", exact: true }).click();
+  await page.getByText("Docs", { exact: true }).click();
+  await expect(page.getByText("sales.csv")).toBeVisible();
+
+  await request.post(`${FAKE_HOST_URL}/__test__/hold-agent-reads`, {
+    data: { ms: 8_000 },
+  });
+  await page
+    .getByRole("button", { name: "Research Bot", exact: true })
+    .last()
+    .click();
+
+  await expect(page.getByText("Q3 report.pdf")).toHaveCount(0, {
+    timeout: 3_000,
+  });
+  await expect(page.getByText("sales.csv")).toHaveCount(0, { timeout: 3_000 });
+  await expect(
+    page.getByRole("navigation", { name: "Folder path" }).getByText("Docs"),
+  ).toHaveCount(0, { timeout: 3_000 });
 });
 
 test("list view keeps kind, size, and both date columns", async ({ page }) => {

@@ -115,28 +115,10 @@ describe("activityIdForSessionKey", () => {
 });
 
 describe("resolvePendingActivitySelection", () => {
-  // The reported bug: send on agent A, close its chat, switch to agent B,
-  // OPEN a chat on B (missionPanelOpen=true), then click A's notification.
-  // The switch to A must open A's activity even though B's panel state is
-  // still hanging around in the global store. Before the fix this returned
-  // null and the click landed on the agent with no chat open.
-  it("opens the pending target on an agent switch, ignoring the previous agent's open panel", () => {
-    strictEqual(
-      resolvePendingActivitySelection({
-        pendingActivityId: "act-A",
-        agentSwitched: true,
-        selectedId: "act-B", // belongs to the agent we left
-        missionPanelOpen: true, // stale: that agent's chat was open
-      }),
-      "act-A",
-    );
-  });
-
-  it("clears selection on a plain sidebar switch with no pending target", () => {
+  it("returns null when no same-agent navigation is pending", () => {
     strictEqual(
       resolvePendingActivitySelection({
         pendingActivityId: null,
-        agentSwitched: true,
         selectedId: "act-B",
         missionPanelOpen: true,
       }),
@@ -148,7 +130,6 @@ describe("resolvePendingActivitySelection", () => {
     strictEqual(
       resolvePendingActivitySelection({
         pendingActivityId: "act-A",
-        agentSwitched: false,
         selectedId: null,
         missionPanelOpen: false,
       }),
@@ -160,7 +141,6 @@ describe("resolvePendingActivitySelection", () => {
     strictEqual(
       resolvePendingActivitySelection({
         pendingActivityId: "act-A",
-        agentSwitched: false,
         selectedId: "act-Z",
         missionPanelOpen: true,
       }),
@@ -173,7 +153,6 @@ describe("resolvePendingActivitySelection", () => {
       resolvePendingActivitySelection({
         pendingActivityId: "act-A",
         forceOpen: true,
-        agentSwitched: false,
         selectedId: "act-Z",
         missionPanelOpen: true,
       }),
@@ -186,7 +165,6 @@ describe("resolvePendingActivitySelection", () => {
       resolvePendingActivitySelection({
         pendingActivityId: "act-A",
         forceOpen: true,
-        agentSwitched: false,
         selectedId: null,
         missionPanelOpen: true,
       }),
@@ -198,7 +176,6 @@ describe("resolvePendingActivitySelection", () => {
     strictEqual(
       resolvePendingActivitySelection({
         pendingActivityId: "act-A",
-        agentSwitched: false,
         selectedId: null, // composer open: no card selected
         missionPanelOpen: true,
       }),
@@ -210,7 +187,6 @@ describe("resolvePendingActivitySelection", () => {
     strictEqual(
       resolvePendingActivitySelection({
         pendingActivityId: null,
-        agentSwitched: false,
         selectedId: null,
         missionPanelOpen: false,
       }),

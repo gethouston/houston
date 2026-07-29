@@ -1,21 +1,15 @@
 import type { KanbanItem } from "@houston-ai/board";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { selectAllIds } from "../../lib/mission-selection";
 
 /**
  * The multi-select set half of a {@link BoardSelectionModel}, identical for
  * the per-agent board and cross-agent Mission Control. Only the bulk dispatch
  * (move / archive / delete) differs, so each selection hook layers its own
- * mutations on top of this shared state. Resets whenever `resetKey` changes
- * so a reused board can't carry a stale selection into a new scope.
+ * mutations on top of this shared state.
  */
-export function useSelectionSet(resetKey: string) {
+export function useSelectionSet() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: resetKey is a prop-derived reset trigger; the effect must re-run when it changes to clear stale selections across scope transitions
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [resetKey]);
 
   const toggle = useCallback((item: KanbanItem) => {
     setSelectedIds((prev) => {

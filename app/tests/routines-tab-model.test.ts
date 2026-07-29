@@ -5,8 +5,16 @@ import {
   adoptDraft,
   deselectIfOn,
   latestRunByRoutine,
+  shouldSyncRoutinesPanel,
   toggleRoutine,
 } from "../src/components/tabs/routines-tab-model.ts";
+
+describe("shouldSyncRoutinesPanel", () => {
+  it("prevents an inactive routines tab from closing a mission panel", () => {
+    strictEqual(shouldSyncRoutinesPanel(false), false);
+    strictEqual(shouldSyncRoutinesPanel(true), true);
+  });
+});
 
 describe("routines tab model — adoptDraft", () => {
   it("adopts the fresh id only while still waiting on the null draft", () => {

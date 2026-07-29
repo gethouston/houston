@@ -118,7 +118,6 @@ export function useMissionControlSource(
     [mc.items],
   );
   const selection = useCrossAgentSelection({
-    resetKey: filterPath || "all",
     paths,
     agentPathForId,
   });

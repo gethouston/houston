@@ -101,6 +101,8 @@ export interface Agent {
 export interface TabProps {
   agent: Agent;
   agentDef: AgentDefinition;
+  /** Whether this mounted tab owns the visible agent surface. */
+  isActive?: boolean;
 }
 
 /** Skill summary returned by list_skills */
