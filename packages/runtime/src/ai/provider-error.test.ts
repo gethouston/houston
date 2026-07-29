@@ -91,6 +91,22 @@ test("runtime 'No provider connected' → unauthenticated / no_credentials", () 
   if (err.kind === "unauthenticated") expect(err.cause).toBe("no_credentials");
 });
 
+test("pi 0.82 'Provider is not configured' → unauthenticated / no_credentials (HOU-956)", () => {
+  // pi 0.82's ModelRuntime applyAuth message when its credential store
+  // resolves nothing for the model's provider. pi catches its own raise, so
+  // this arrives as an errored AssistantMessage on a turn pinned to a
+  // disconnected provider (pins are never auth-gated). Without the pattern it
+  // classified `unknown` — the generic error card instead of the reconnect
+  // card the pin design counts on.
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-3.5-flash",
+    message: "Provider is not configured: google",
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("no_credentials");
+});
+
 test("pi prompt-time OAuth guard ('Authentication failed … Run /login') → unauthenticated / token_expired", () => {
   // pi's OAuth flavor of the same prompt-time guard.
   const err = classifyProviderError({

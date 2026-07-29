@@ -65,11 +65,22 @@ const INVALID_KEY_PATTERNS = [
  * these patterns that path degraded to `unknown` (generic error card, no
  * reconnect flow, no undelivered-prompt auto-resume) the moment the SECOND
  * message of a chat hit a disconnected local model.
+ *
+ * pi 0.82's ModelRuntime renamed the missing-credential failure: `applyAuth`
+ * now raises ModelsError("auth", "Provider is not configured: <id>") when its
+ * credential store resolves nothing for the model's provider — and pi catches
+ * that internally, so it ARRIVES as an errored AssistantMessage (the wire.ts
+ * turn_end path), unlike the older prompt-time raise. A turn pinned to a
+ * disconnected provider (pins are deliberately never auth-gated) hits exactly
+ * this; without the pattern it degraded to `unknown` — the generic error card
+ * instead of the reconnect card (HOU-956: "Provider is not configured:
+ * google" after a Gemini model was picked with no google key stored).
  */
 const NO_CREDENTIALS_PATTERNS = [
   "no api key found",
   "no provider connected",
   "no local model configured",
+  "provider is not configured",
 ];
 
 /**
