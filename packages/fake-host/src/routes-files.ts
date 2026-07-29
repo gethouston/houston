@@ -4,6 +4,7 @@
  * (upload), move, rename, folder create, delete. Backed by `state-workspace.ts`.
  */
 
+import { mimeFor } from "@houston/host/src/turn/files";
 import { type Zippable, zipSync } from "fflate";
 import { CORS, json, noContent } from "./http";
 import * as state from "./state";
@@ -28,11 +29,16 @@ export function handleWorkspaceFiles(
   }
 
   if (sub === "download" && method === "GET") {
-    const f = state.readWorkspaceFile(id, query.get("path") ?? "");
+    const path = query.get("path") ?? "";
+    const f = state.readWorkspaceFile(id, path);
     if (!f) return json({ error: "file not found" }, 404);
+    // The REAL host's `mimeFor`, imported rather than re-implemented: the
+    // Files tab decides whether a row/card gets a thumbnail by sniffing this
+    // header, so a mock that answered octet-stream for everything would have
+    // silently made image previews untestable.
     return new Response(new Uint8Array(f.bytes), {
       status: 200,
-      headers: { ...CORS, "Content-Type": "application/octet-stream" },
+      headers: { ...CORS, "Content-Type": mimeFor(path) },
     });
   }
 

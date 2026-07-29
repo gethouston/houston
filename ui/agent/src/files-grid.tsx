@@ -1,14 +1,16 @@
 /**
- * Drive-style card grid for one folder level. Folders first, then files
- * (both pre-sorted by the caller). Renders the inline new-folder card. The
- * empty-folder and empty-search states belong to FilesBody, which hoists them
- * above the view switch so the list view gets them too.
+ * Drive-style card grid for one folder level, in two groups: the folders as
+ * one-line chips (the inline new-folder affordance belongs with them), then
+ * the files as hero preview cards. No headings — the grouping is the layout.
+ * Both groups are auto-fill grids, so they fill the pane's whole width at any
+ * size. The empty-folder and empty-search states belong to FilesBody, which
+ * hoists them above the view switch so the list view gets them too.
  */
 import { FileCard } from "./file-card";
 import type { FileMenuLabels } from "./file-menu";
 import { folderChildCount } from "./filter";
-import { FolderCard } from "./folder-card";
-import { NewFolderCard } from "./new-folder-card";
+import { FolderChip } from "./folder-chip";
+import { NewFolderChip } from "./new-folder-chip";
 import type { FolderNode } from "./tree";
 import type { FileEntry, LoadFilePreview } from "./types";
 
@@ -19,12 +21,14 @@ export interface FilesGridLabels {
   menuButton?: string;
 }
 
+/** Chips are narrower than cards: a folder is one line, a file is a preview. */
+const CHIP_GRID = "grid-cols-[repeat(auto-fill,minmax(14rem,1fr))]";
+const CARD_GRID = "grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]";
+
 export function FilesGrid({
   folder,
-  selectedPath,
   loadPreview,
   onNavigate,
-  onSelect,
   onOpen,
   onReveal,
   onDownload,
@@ -40,10 +44,8 @@ export function FilesGrid({
   labels,
 }: {
   folder: FolderNode;
-  selectedPath?: string | null;
   loadPreview?: LoadFilePreview;
   onNavigate: (path: string) => void;
-  onSelect?: (file: FileEntry) => void;
   onOpen?: (file: FileEntry) => void;
   onReveal?: (file: FileEntry) => void;
   onDownload?: (file: FileEntry) => void;
@@ -58,47 +60,56 @@ export function FilesGrid({
   menuLabels?: FileMenuLabels;
   labels: FilesGridLabels;
 }) {
+  const folders = folder.children.filter((c) => c.kind === "folder");
+  const files = folder.children.filter((c) => c.kind === "file");
+  const creating = creatingFolder && onCreateFolder;
+
   return (
-    <div className="grid shrink-0 grid-cols-[repeat(auto-fill,minmax(180px,1fr))] content-start gap-3 pt-1">
-      {creatingFolder && onCreateFolder && (
-        <NewFolderCard
-          onConfirm={onCreateFolder}
-          onCancel={onCancelCreateFolder}
-          placeholder={labels.newFolderPlaceholder}
-        />
+    <div className="flex shrink-0 flex-col gap-6 pt-1">
+      {(creating || folders.length > 0) && (
+        <div className={`grid ${CHIP_GRID} content-start gap-3`}>
+          {creating && (
+            <NewFolderChip
+              onConfirm={onCreateFolder}
+              onCancel={onCancelCreateFolder}
+              placeholder={labels.newFolderPlaceholder}
+            />
+          )}
+          {folders.map((child) => (
+            <FolderChip
+              key={child.path}
+              node={child}
+              onNavigate={onNavigate}
+              onDownloadFolder={onDownloadFolder}
+              onDelete={onDelete}
+              onRename={onRename}
+              onMove={onMove}
+              onDragActive={onDragActive}
+              menuLabels={menuLabels}
+              menuButtonLabel={labels.menuButton}
+              itemsLabel={itemsLabel(child, labels)}
+            />
+          ))}
+        </div>
       )}
-      {folder.children.map((child) =>
-        child.kind === "folder" ? (
-          <FolderCard
-            key={child.path}
-            node={child}
-            onNavigate={onNavigate}
-            onDownloadFolder={onDownloadFolder}
-            onDelete={onDelete}
-            onRename={onRename}
-            onMove={onMove}
-            onDragActive={onDragActive}
-            menuLabels={menuLabels}
-            menuButtonLabel={labels.menuButton}
-            itemsLabel={itemsLabel(child, labels)}
-          />
-        ) : (
-          <FileCard
-            key={child.entry.path}
-            file={child.entry}
-            selected={selectedPath === child.entry.path}
-            loadPreview={loadPreview}
-            onSelect={onSelect}
-            onOpen={onOpen}
-            onReveal={onReveal}
-            onDownload={onDownload}
-            onDelete={onDelete}
-            onRename={onRename}
-            onMove={onMove}
-            menuLabels={menuLabels}
-            menuButtonLabel={labels.menuButton}
-          />
-        ),
+      {files.length > 0 && (
+        <div className={`grid ${CARD_GRID} content-start gap-4`}>
+          {files.map((child) => (
+            <FileCard
+              key={child.entry.path}
+              file={child.entry}
+              loadPreview={loadPreview}
+              onOpen={onOpen}
+              onReveal={onReveal}
+              onDownload={onDownload}
+              onDelete={onDelete}
+              onRename={onRename}
+              onMove={onMove}
+              menuLabels={menuLabels}
+              menuButtonLabel={labels.menuButton}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

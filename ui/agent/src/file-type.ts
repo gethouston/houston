@@ -8,6 +8,7 @@ export type FileCategory =
   | "image"
   | "code"
   | "sheet"
+  | "slide"
   | "archive"
   | "audio"
   | "video"
@@ -53,6 +54,8 @@ export const CODE_EXT = new Set([
 
 export const SHEET_EXT = new Set(["xlsx", "xls", "csv", "numbers", "ods"]);
 
+export const SLIDE_EXT = new Set(["ppt", "pptx", "key", "odp"]);
+
 export const ARCHIVE_EXT = new Set([
   "zip",
   "gz",
@@ -78,6 +81,7 @@ export function fileCategory(extension: string): FileCategory {
   if (IMAGE_EXT.has(ext)) return "image";
   if (CODE_EXT.has(ext)) return "code";
   if (SHEET_EXT.has(ext)) return "sheet";
+  if (SLIDE_EXT.has(ext)) return "slide";
   if (ARCHIVE_EXT.has(ext)) return "archive";
   if (AUDIO_EXT.has(ext)) return "audio";
   if (VIDEO_EXT.has(ext)) return "video";

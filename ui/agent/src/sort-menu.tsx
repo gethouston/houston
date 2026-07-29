@@ -1,6 +1,9 @@
 /**
- * Compact sort dropdown for the grid view (list view sorts via its column
- * headers). Reselecting the active key flips direction, like the columns.
+ * Sort dropdown for the grid view (list view sorts via its column headers).
+ * The trigger is a quiet 36px glyph in step with the toolbar's other icon
+ * controls; the active key and its direction are named in the accessible name
+ * and the tooltip, and stated in words with a check inside the open menu.
+ * Reselecting the active key flips direction, like the columns.
  */
 import { cn } from "@houston-ai/core";
 import { ArrowDown, ArrowUp, ArrowUpDown, Check } from "lucide-react";
@@ -12,12 +15,10 @@ export interface SortMenuLabels {
   sortBy: string;
   name: string;
   dateModified: string;
-  dateCreated: string;
   size: string;
-  kind: string;
 }
 
-const KEYS: SortKey[] = ["name", "dateModified", "dateCreated", "size", "kind"];
+const KEYS: SortKey[] = ["name", "dateModified", "size"];
 
 export function SortMenu({
   sortKey,
@@ -32,22 +33,21 @@ export function SortMenu({
 }) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const DirIcon = sortDir === "asc" ? ArrowUp : ArrowDown;
+  const triggerLabel = `${labels.sortBy}: ${labels[sortKey]}`;
 
   return (
     <>
       <button
         type="button"
-        aria-label={labels.sortBy}
-        title={labels.sortBy}
+        aria-label={triggerLabel}
+        title={triggerLabel}
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           setMenu({ x: Math.max(8, rect.right - 180), y: rect.bottom + 4 });
         }}
-        className="flex min-w-0 shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-xs text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="flex size-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
-        <ArrowUpDown aria-hidden className="size-3.5" />
-        <span className="hidden truncate sm:inline">{labels[sortKey]}</span>
-        <DirIcon aria-hidden className="size-3" />
+        <ArrowUpDown aria-hidden className="size-4 shrink-0" />
       </button>
       {menu &&
         createPortal(
@@ -86,8 +86,8 @@ export function SortMenu({
                   <span className="flex-1 text-left">{labels[key]}</span>
                   {key === sortKey && (
                     <>
-                      <DirIcon aria-hidden className="size-3.5" />
-                      <Check aria-hidden className="size-3.5" />
+                      <DirIcon aria-hidden className="size-4" />
+                      <Check aria-hidden className="size-4" />
                     </>
                   )}
                 </button>

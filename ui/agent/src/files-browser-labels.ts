@@ -1,16 +1,17 @@
 /**
- * Chrome labels for FilesBrowser (columns, toolbar, status bar). Consumers
- * pass translated strings; English defaults keep the component standalone.
+ * Chrome labels for FilesBrowser (columns, toolbar, selection). Consumers pass
+ * translated strings; English defaults keep the component standalone. Counted
+ * copy arrives as a FUNCTION of the count, never as a template string — the
+ * app owns pluralization, this package owns none of it.
  */
+import type { FilesSelectionLabels } from "./files-selection";
 
 export interface FilesBrowserLabels {
   columnName?: string;
   columnDateModified?: string;
-  columnDateCreated?: string;
   columnSize?: string;
-  columnKind?: string;
-  /** The Kind column's word for a folder row (list view). */
-  kindFolder?: string;
+  /** The Modified cell's word for a file changed today (list view). */
+  modifiedToday?: string;
   loading?: string;
   browseFiles?: string;
   viewGrid?: string;
@@ -28,10 +29,10 @@ export interface FilesBrowserLabels {
   menuButton?: string;
   /** Accessible name for the breadcrumb navigation. */
   breadcrumbs?: string;
+  /** The toolbar's one filled pill: everything that ADDS to the workspace. */
+  newMenu?: string;
   /** Header action labels (promoted from the old status-bar footer). */
   uploadFiles?: string;
-  /** The Upload pill when it opens the files/folder menu (HOU-889). */
-  upload?: string;
   /** Menu item / empty-state CTA for uploading a whole folder (HOU-889). */
   uploadFolder?: string;
   openInFileManager?: string;
@@ -44,6 +45,15 @@ export interface FilesBrowserLabels {
   searchPlaceholder?: string;
   searchClear?: string;
   searchNoResults?: string;
+  /** List-view multi-selection (only rendered when onDeleteMany is passed). */
+  selectRow?: string;
+  selectAll?: string;
+  /** A FUNCTION, not a string: pluralizing "3 selected" belongs to the app's
+   *  translator, so this package never has to know a language's plural rules.
+   *  Same shape as BulkActionBarLabels.selected in @houston-ai/board. */
+  selectedCount?: (count: number) => string;
+  deleteSelected?: string;
+  clearSelection?: string;
 }
 
 /** Slice the flat label bag into the shapes the subcomponents take. */
@@ -52,9 +62,7 @@ export function toSortLabels(l: Required<FilesBrowserLabels>) {
     sortBy: l.sortBy,
     name: l.columnName,
     dateModified: l.columnDateModified,
-    dateCreated: l.columnDateCreated,
     size: l.columnSize,
-    kind: l.columnKind,
   };
 }
 
@@ -62,10 +70,19 @@ export function toColumnLabels(l: Required<FilesBrowserLabels>) {
   return {
     columnName: l.columnName,
     columnDateModified: l.columnDateModified,
-    columnDateCreated: l.columnDateCreated,
     columnSize: l.columnSize,
-    columnKind: l.columnKind,
-    kindFolder: l.kindFolder,
+  };
+}
+
+export function toSelectionLabels(
+  l: Required<FilesBrowserLabels>,
+): FilesSelectionLabels {
+  return {
+    selectRow: l.selectRow,
+    selectAll: l.selectAll,
+    selectedCount: l.selectedCount,
+    deleteSelected: l.deleteSelected,
+    clearSelection: l.clearSelection,
   };
 }
 
@@ -80,11 +97,9 @@ export function toGridLabels(l: Required<FilesBrowserLabels>) {
 
 export const DEFAULT_FILES_BROWSER_LABELS: Required<FilesBrowserLabels> = {
   columnName: "Name",
-  columnDateModified: "Date Modified",
-  columnDateCreated: "Date Created",
+  columnDateModified: "Modified",
   columnSize: "Size",
-  columnKind: "Kind",
-  kindFolder: "Folder",
+  modifiedToday: "Today",
   loading: "Loading…",
   browseFiles: "Browse files",
   viewGrid: "Grid view",
@@ -99,8 +114,8 @@ export const DEFAULT_FILES_BROWSER_LABELS: Required<FilesBrowserLabels> = {
   itemPlural: "items",
   menuButton: "More actions",
   breadcrumbs: "Folder path",
+  newMenu: "New",
   uploadFiles: "Upload files",
-  upload: "Upload",
   uploadFolder: "Upload folder",
   openInFileManager: "Open in File Manager",
   downloadAll: "Download all",
@@ -109,4 +124,9 @@ export const DEFAULT_FILES_BROWSER_LABELS: Required<FilesBrowserLabels> = {
   searchPlaceholder: "Search files",
   searchClear: "Clear search",
   searchNoResults: "No files match your search",
+  selectRow: "Select",
+  selectAll: "Select all",
+  selectedCount: (count) => `${count} selected`,
+  deleteSelected: "Delete",
+  clearSelection: "Clear selection",
 };

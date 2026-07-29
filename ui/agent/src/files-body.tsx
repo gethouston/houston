@@ -1,8 +1,10 @@
 /**
- * FilesBody — the current view (grid or list) for the open folder, plus the
- * three states that replace it: the loading skeleton, the empty search result
- * and the empty folder. All three are hoisted ABOVE the view switch, so the
- * list view gets them too instead of showing bare column headers. Chrome
+ * FilesBody — the current view (the grid's open folder, or the list's whole
+ * workspace tree), plus the three states that replace it: the loading skeleton,
+ * the empty search result and the empty folder. All three are hoisted ABOVE the
+ * view switch, so the list gets the search miss too instead of showing bare
+ * column headers (the empty FOLDER is a grid state now: the list is rooted at
+ * the workspace, and an empty folder inside it says so on its own row). Chrome
  * (header, scroll container, drop tinting, background menu) stays in
  * FilesBrowser; this owns only what renders inside the content column.
  */
@@ -16,6 +18,7 @@ import { FilesEmptyFolder } from "./files-empty-folder";
 import { FilesGrid } from "./files-grid";
 import { FilesListView } from "./files-list-view";
 import { FilesSearchEmpty } from "./files-search-empty";
+import type { FilesSelection } from "./files-selection";
 import { FilesGridSkeleton, FilesListSkeleton } from "./files-skeleton";
 import type { useFilesBrowser } from "./use-files-browser";
 
@@ -23,15 +26,25 @@ export function FilesBody({
   b,
   props,
   l,
+  selection,
 }: {
   b: ReturnType<typeof useFilesBrowser>;
   props: FilesBrowserProps;
   l: Required<FilesBrowserLabels>;
+  /** Built by FilesBrowser only when the consumer passed onDeleteMany. */
+  selection?: FilesSelection;
 }) {
   if (props.loading || !b.visibleFolder) {
     return (
       <div role="status" aria-label={l.loading}>
-        {b.view === "grid" ? <FilesGridSkeleton /> : <FilesListSkeleton />}
+        {b.view === "grid" ? (
+          <FilesGridSkeleton />
+        ) : (
+          // Read from the PROP, not from `selection` (which needs a listing to
+          // exist): the gutter has to be in the skeleton too, or the columns
+          // jump sideways the moment the listing lands.
+          <FilesListSkeleton selectable={!!props.onDeleteMany} />
+        )}
       </div>
     );
   }
@@ -69,10 +82,8 @@ export function FilesBody({
   return b.view === "grid" ? (
     <FilesGrid
       folder={b.visibleFolder}
-      selectedPath={b.selectedPath}
       loadPreview={props.loadPreview}
       onNavigate={b.navigate}
-      onSelect={b.handleSelect}
       onOpen={props.onOpen}
       onReveal={props.onReveal}
       onDownload={props.onDownload}
@@ -93,8 +104,8 @@ export function FilesBody({
       sortKey={b.sortKey}
       sortDir={b.sortDir}
       onSort={b.handleSort}
-      selectedPath={b.selectedPath}
-      onSelect={b.handleSelect}
+      selection={selection}
+      loadPreview={props.loadPreview}
       onOpen={props.onOpen}
       onReveal={props.onReveal}
       onDownload={props.onDownload}
@@ -109,8 +120,13 @@ export function FilesBody({
       onCancelCreateFolder={onCancelCreateFolder}
       newFolderPlaceholder={l.newFolderPlaceholder}
       columnLabels={toColumnLabels(l)}
+      locale={props.locale}
+      modifiedTodayLabel={l.modifiedToday}
+      itemSingular={l.itemSingular}
+      itemPlural={l.itemPlural}
       menuLabels={props.menuLabels}
       menuButtonLabel={l.menuButton}
+      emptyFolderLabel={l.emptyFolder}
     />
   );
 }

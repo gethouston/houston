@@ -5,7 +5,10 @@ import { describe, expect, it } from "vitest";
 import { parseColor } from "../build/color.mjs";
 
 /**
- * WCAG guard for the two colour families Houston paints as NAME TEXT in chat.
+ * WCAG guard for every colour family Houston paints as IDENTITY, where a
+ * washed-out hue is not a style slip but unreadable information: the two
+ * families that carry a sender's NAME in chat, and the file-type tints the
+ * Files list paints its icon glyphs with.
  *
  * Chat attributes every message to its sender WhatsApp-group style: the name
  * renders inside the bubble in that sender's stable tone. Text has to clear
@@ -21,6 +24,8 @@ import { parseColor } from "../build/color.mjs";
  *                               dark:  background over base
  *   bubble surface (person)     light: chip over background
  *                               dark:  chip over background over base
+ *
+ *   icon tile (file types)      both:  --ht-input, opaque in either theme
  *
  * Values are read from the generated CSS (the same artifact the app ships), so
  * a token edit that regresses contrast fails here rather than in someone's eyes.
@@ -99,6 +104,19 @@ function bubbleSurface(theme: Theme): Rgba {
 }
 
 const PERSON_TONES = ["slate", "sage", "mauve", "taupe", "indigo"] as const;
+const FILETYPE_FAMILIES = [
+  "pdf",
+  "doc",
+  "sheet",
+  "slide",
+  "image",
+  "video",
+  "audio",
+  "archive",
+  "code",
+  "generic",
+] as const;
+
 const AGENT_TONES = [
   "charcoal",
   "forest",
@@ -130,6 +148,22 @@ describe.each([
       expect(
         ratio,
         `--ht-person-name-${tone} (${theme}) measures ${ratio.toFixed(2)}:1 on the chat bubble, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+      ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
+    });
+  }
+
+  for (const family of FILETYPE_FAMILIES) {
+    it(`file-type tint "${family}" clears ${CONTRAST_FLOOR}:1 on its tile`, () => {
+      // The Files icon tile is filled with --ht-input in both themes, and the
+      // glyph is the only thing inside it: a tint that fails here is a file
+      // type the user cannot read at a glance.
+      const ratio = contrastRatio(
+        token(theme, `ht-filetype-${family}`),
+        token(theme, "ht-input"),
+      );
+      expect(
+        ratio,
+        `--ht-filetype-${family} (${theme}) measures ${ratio.toFixed(2)}:1 on the icon tile, below the ${CONTRAST_FLOOR}:1 floor`,
       ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
     });
   }

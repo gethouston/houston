@@ -26,7 +26,7 @@ import { buildUploadIntake } from "./files-upload-intake";
 import { useFilesUploadPickers } from "./files-upload-pickers";
 
 export default function FilesTab({ agent }: TabProps) {
-  const { t } = useTranslation("agents");
+  const { t, i18n } = useTranslation("agents");
   // No OS to open/reveal with (web build, cloud pod, remote host): double-click
   // previews in-browser, the context menu offers Download, and the header's
   // secondary action becomes "Download all" instead of "Open in File Manager".
@@ -56,9 +56,14 @@ export default function FilesTab({ agent }: TabProps) {
   const createFolder = useCreateFolder(path);
   const uploadFiles = useUploadFiles(path);
   const move = useMoveWithConflict(path, files);
-  const deleteConfirm = useFilesDeleteConfirm((file) =>
-    deleteFile.mutate(file.path),
-  );
+  // One mutation call per file, deliberately: `useDeleteFile` routes through
+  // `call`, which toasts + reports every failure on its own, so a batch where
+  // the third file fails still tells the user about that third file instead of
+  // one aggregate promise swallowing it. Nothing here catches or awaits, so
+  // there is no place for a rejection to go quiet.
+  const deleteConfirm = useFilesDeleteConfirm((selected) => {
+    for (const file of selected) deleteFile.mutate(file.path);
+  });
 
   // save() surfaces its own success/failure toasts and never rejects; the
   // empty catch below only silences the fetch failure call() already toasted.
@@ -96,6 +101,8 @@ export default function FilesTab({ agent }: TabProps) {
         view={filesViewMode}
         onViewChange={setFilesViewMode}
         rootLabel={agent.name}
+        // The Modified column formats its dates in the user's language.
+        locale={i18n.language}
         loadPreview={loadPreview}
         onOpen={(file) =>
           canUseLocalFiles && osDir
@@ -110,6 +117,7 @@ export default function FilesTab({ agent }: TabProps) {
         onDownload={canUseLocalFiles ? undefined : downloadFile}
         onDownloadFolder={canUseLocalFiles ? undefined : downloadFolder}
         onDelete={deleteConfirm.requestDelete}
+        onDeleteMany={deleteConfirm.requestDeleteMany}
         onRename={(file, newName) =>
           renameFile.mutate({ relativePath: file.path, newName })
         }

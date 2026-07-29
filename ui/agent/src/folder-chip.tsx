@@ -1,32 +1,23 @@
 /**
- * Drive-style folder card: same shell as a file card, folder glyph body.
- * Click navigates into the folder; kebab/right-click offers rename,
- * download-as-zip and delete; it is also a drop target for moves and
- * uploads. NewFolderCard is the inline-create variant.
+ * Drive-style folder chip: one line, glyph + name + trailing kebab. Click
+ * navigates into the folder; kebab/right-click offers rename, download-as-zip
+ * and delete; it is also a drop target for moves and uploads. NewFolderChip is
+ * the inline-create variant.
  *
  * The kebab lives in the shell's actions slot, OUTSIDE the role="button"
  * surface: a button's children are presentational, so a nested kebab would be
  * invisible to assistive tech.
  */
 import { useEffect, useState } from "react";
-import {
-  CardActions,
-  CardMeta,
-  CardShell,
-  cardClass,
-  cardHeaderClass,
-  cardPreviewClass,
-  KebabButton,
-} from "./card-chrome";
+import { CardActions, CardShell, chipClass, KebabButton } from "./card-chrome";
 import { INTERNAL_DRAG_TYPE, useFolderDropTarget } from "./drop-zone";
 import { FileMenu, type FileMenuLabels } from "./file-menu";
 import { FolderGlyph } from "./file-type-icons";
 import { RenameInput, useInlineRename } from "./inline-rename";
 import type { FolderNode } from "./tree";
 import type { FileEntry } from "./types";
-import { formatFileManagerDate } from "./utils";
 
-export function FolderCard({
+export function FolderChip({
   node,
   onNavigate,
   onDownloadFolder,
@@ -75,7 +66,7 @@ export function FolderCard({
 
   return (
     <CardShell>
-      {/* biome-ignore lint/a11y/useSemanticElements: a native <button> cannot wrap the rename input; role=button + tabIndex keeps the card keyboard-reachable */}
+      {/* biome-ignore lint/a11y/useSemanticElements: a native <button> cannot wrap the rename input; role=button + tabIndex keeps the chip keyboard-reachable */}
       <div
         role="button"
         tabIndex={0}
@@ -99,29 +90,25 @@ export function FolderCard({
           e.preventDefault();
           setMenu({ x: e.clientX, y: e.clientY });
         }}
-        className={cardClass({ dragging, dropTarget: isOver })}
+        className={chipClass({ dragging, dropTarget: isOver })}
         {...folderHandlers}
       >
-        <div className={cardHeaderClass(!!hasMenu)}>
-          <FolderGlyph small />
-          {rename.renaming ? (
-            <RenameInput rename={rename} />
-          ) : (
+        <FolderGlyph small />
+        {rename.renaming ? (
+          <RenameInput rename={rename} />
+        ) : (
+          <>
             <span className="min-w-0 flex-1 truncate text-sm" title={node.name}>
               {node.name}
             </span>
-          )}
-        </div>
-        <div className={`${cardPreviewClass} flex items-center justify-center`}>
-          <FolderGlyph />
-        </div>
-        <CardMeta
-          left={formatFileManagerDate(node.entry?.dateModified)}
-          right={itemsLabel}
-        />
+            <span className="shrink-0 text-xs text-ink-muted tabular-nums">
+              {itemsLabel}
+            </span>
+          </>
+        )}
       </div>
       {hasMenu && (
-        <CardActions>
+        <CardActions center>
           <KebabButton label={menuButtonLabel} onOpen={setMenu} />
         </CardActions>
       )}

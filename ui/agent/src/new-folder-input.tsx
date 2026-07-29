@@ -1,28 +1,35 @@
 /**
- * Inline new-folder input, styled as a selected folder row.
+ * Inline new-folder input: a list row being named. It keeps the emphasis ring
+ * a row under active edit deserves — that ring is no longer a SELECTION state
+ * anywhere else, so it now says exactly one thing: this row is what you are
+ * typing into.
  */
 import { cn } from "@houston-ai/core";
 import { useEffect, useRef, useState } from "react";
-import { ROW_SELECTED_CLASS } from "./file-row";
 import { FolderGlyph } from "./file-type-icons";
 import {
-  BASE_INDENT,
-  COL_GRID,
-  DisclosureChevron,
-  META_CELL,
+  colGrid,
+  NAME_CELL_INNER,
+  NAME_TEXT,
+  ROW_CLASS,
+  ROW_TILE_GLYPH,
 } from "./files-list-chrome";
+import { DisclosureChevron, RowIndent } from "./files-list-indent";
+
+/** The row being named: filled and ringed, so the caret is never hunted for. */
+const NAMING_ROW = "bg-chip-subtle ring-2 ring-action";
 
 export function NewFolderInput({
   onConfirm,
   onCancel,
   placeholder = "untitled folder",
-  kindFolderLabel,
+  selectable,
 }: {
   onConfirm: (name: string) => void;
   onCancel: () => void;
   placeholder?: string;
-  /** The Kind column's word for a folder. */
-  kindFolderLabel: string;
+  /** The list has a checkbox gutter: keep this row's columns aligned with it. */
+  selectable?: boolean;
 }) {
   const [value, setValue] = useState("");
   const committed = useRef(false);
@@ -45,32 +52,41 @@ export function NewFolderInput({
 
   return (
     <div
-      className={cn("h-8 items-center rounded-lg", ROW_SELECTED_CLASS)}
-      style={{ display: "grid", gridTemplateColumns: COL_GRID }}
+      className={cn(ROW_CLASS, "hover:bg-transparent", NAMING_ROW)}
+      style={{
+        display: "grid",
+        gridTemplateColumns: colGrid(!!selectable),
+      }}
     >
-      <div
-        className="flex min-w-0 items-center gap-1.5 pr-1.5"
-        style={{ paddingLeft: BASE_INDENT }}
-      >
-        <DisclosureChevron open={false} className="invisible" />
-        <FolderGlyph small />
-        <input
-          ref={inputRef}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commit();
-            if (e.key === "Escape") onCancel();
-          }}
-          onBlur={commit}
-          placeholder={placeholder}
-          className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted/60"
-        />
+      {selectable && <span />}
+      <div className="flex h-full min-w-0 items-center">
+        <RowIndent depth={0} />
+        {/* Invisible, not absent: the row keeps the exact geometry of the
+            folder row it is about to become. */}
+        <DisclosureChevron open={false} className="invisible mr-2" />
+        <div className={NAME_CELL_INNER}>
+          <FolderGlyph small className={ROW_TILE_GLYPH} />
+          <input
+            ref={inputRef}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") onCancel();
+            }}
+            onBlur={commit}
+            placeholder={placeholder}
+            className={cn(
+              "min-w-0 flex-1 bg-transparent outline-none placeholder:text-ink-muted/60",
+              NAME_TEXT,
+            )}
+          />
+        </div>
       </div>
+      {/* Modified, Size and the actions column: a folder being named has
+          nothing true to say in any of them. */}
       <span />
       <span />
-      <span />
-      <span className={META_CELL}>{kindFolderLabel}</span>
       <span />
     </div>
   );

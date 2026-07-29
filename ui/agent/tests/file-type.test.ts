@@ -13,6 +13,8 @@ test("fileCategory classifies common extensions", () => {
   assert.equal(fileCategory("png"), "image");
   assert.equal(fileCategory("tsx"), "code");
   assert.equal(fileCategory("csv"), "sheet");
+  assert.equal(fileCategory("pptx"), "slide");
+  assert.equal(fileCategory("key"), "slide");
   assert.equal(fileCategory("zip"), "archive");
   assert.equal(fileCategory("mp3"), "audio");
   assert.equal(fileCategory("mov"), "video");

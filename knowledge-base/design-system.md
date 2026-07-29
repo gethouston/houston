@@ -554,12 +554,16 @@ nested `rounded-xl border` "file manager window" frame (bordered toolbar,
 zebra list with decorative filler stripes, bottom status bar whose 11px
 footer links held Upload / Open in File Manager) was flattened onto the
 canvas: `FilesBrowser` (`ui/agent/src/files-browser.tsx`) renders a
-shrink-0 header (`files-header.tsx`: grid-only breadcrumbs, sort, soft
-segmented view toggle in `view-toggle.tsx`, new-folder ghost icon, Upload
-as a filled `Button size="sm"` pill + reveal/download-all as a ghost pill)
-over a full-bleed scroll/drop body whose content is capped to the shared
-`FILES_CONTENT_COLUMN` (`mx-auto w-full max-w-4xl px-6`); list rows are
-`h-8 rounded-lg`, transparent at rest, `hover:bg-hover`. Breadcrumbs stay
+shrink-0 header (`files-header.tsx`: one 36px toolbar band — a `max-w-md`
+search field, the single filled `New ▾` pill that owns every way of adding
+something, then icon-only download-all/reveal, sort and the view tabs —
+plus grid-only breadcrumbs) over a full-bleed scroll/drop body using the
+pane's FULL width through `FILES_CONTENT_COLUMN` (`w-full px-6`). The LIST
+view is the purest form of the language: no rules anywhere (not under the
+column headers, not between rows), 52px `rounded-xl` rows transparent at
+rest that paint `hover:bg-hover` under the pointer and `bg-chip-subtle`
+when checked, `text-sm font-medium` names over `text-xs` `ink-muted`
+metadata right-aligned into one packed block. Breadcrumbs stay
 grid-view-only on purpose: the list view is a hierarchical tree always
 rooted at the workspace, so a path crumb there would misstate its scope.
 Apply this language when refactoring further pages instead of inventing

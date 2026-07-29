@@ -1,14 +1,28 @@
 /**
  * Flat list view: quiet sortable column headers over the recursive rows of the
- * open folder (the header's breadcrumb states which folder that is). The grid
- * view lives in files-grid.tsx.
+ * WHOLE workspace. The list has no breadcrumb (that row is the grid's), so
+ * expanding a folder row in place is how you browse here — the tree is always
+ * rooted at the workspace, whatever folder the grid happens to have open. The
+ * grid view lives in files-grid.tsx.
+ *
+ * The list draws no rules at all — not under the column headers and not between
+ * the rows. Vertical rhythm is spacing, and the only thing that ever paints is
+ * the row under the pointer. While files are checked the header slot hands
+ * itself to the selection bar, same height and same padding, so nothing below
+ * moves.
  */
+import { cn } from "@houston-ai/core";
 import {
-  COL_GRID,
+  BASE_INDENT,
+  colGrid,
+  HEADER_ROW,
   HeaderCell,
+  LIST_INSET,
   type ListRowCallbacks,
+  TRIANGLE_AREA,
 } from "./files-list-chrome";
-import { ListRows } from "./folder-section";
+import { FilesSelectionBar, SelectAllCheckbox } from "./files-selection-bar";
+import { ListRows } from "./list-rows";
 import { NewFolderInput } from "./new-folder-input";
 import type { FolderNode } from "./tree";
 import type { SortDirection, SortKey } from "./utils";
@@ -16,11 +30,7 @@ import type { SortDirection, SortKey } from "./utils";
 export interface FilesListColumnLabels {
   columnName: string;
   columnDateModified: string;
-  columnDateCreated: string;
   columnSize: string;
-  columnKind: string;
-  /** The Kind column's word for a folder row. */
-  kindFolder: string;
 }
 
 export function FilesListView({
@@ -34,7 +44,7 @@ export function FilesListView({
   newFolderPlaceholder,
   columnLabels,
   ...rows
-}: Omit<ListRowCallbacks, "kindFolderLabel"> & {
+}: ListRowCallbacks & {
   tree: FolderNode;
   sortKey: SortKey;
   sortDir: SortDirection;
@@ -45,20 +55,34 @@ export function FilesListView({
   newFolderPlaceholder: string;
   columnLabels: FilesListColumnLabels;
 }) {
+  const { selection } = rows;
+  const selectable = !!selection;
+
   return (
-    <>
-      <div className="h-8 shrink-0 select-none items-center border-b border-line">
+    <div className={cn("flex flex-col", LIST_INSET)}>
+      {selection && selection.paths.size > 0 ? (
+        <FilesSelectionBar selection={selection} />
+      ) : (
         <div
-          className="h-full min-w-0 items-center"
-          style={{ display: "grid", gridTemplateColumns: COL_GRID }}
+          className={cn("min-w-0 items-center", HEADER_ROW)}
+          style={{
+            display: "grid",
+            gridTemplateColumns: colGrid(selectable),
+          }}
         >
+          {selection && (
+            <span className="flex items-center justify-center">
+              <SelectAllCheckbox selection={selection} />
+            </span>
+          )}
           <HeaderCell
             label={columnLabels.columnName}
             col="name"
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={onSort}
-            className="pl-7"
+            // The column's word sits over the item ICONS, not over the indent.
+            style={{ paddingLeft: BASE_INDENT + TRIANGLE_AREA }}
           />
           <HeaderCell
             label={columnLabels.columnDateModified}
@@ -66,13 +90,7 @@ export function FilesListView({
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={onSort}
-          />
-          <HeaderCell
-            label={columnLabels.columnDateCreated}
-            col="dateCreated"
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={onSort}
+            className="justify-end"
           />
           <HeaderCell
             label={columnLabels.columnSize}
@@ -80,34 +98,23 @@ export function FilesListView({
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={onSort}
-          />
-          <HeaderCell
-            label={columnLabels.columnKind}
-            col="kind"
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={onSort}
+            className="justify-end"
           />
           {/* The rows' actions column: nothing to sort, nothing to label. */}
           <span />
         </div>
-      </div>
-      <div className="shrink-0 pt-1">
+      )}
+      <div className="shrink-0">
         {creatingFolder && onCreateFolder && (
           <NewFolderInput
             onConfirm={onCreateFolder}
             onCancel={onCancelCreateFolder}
             placeholder={newFolderPlaceholder}
-            kindFolderLabel={columnLabels.kindFolder}
+            selectable={selectable}
           />
         )}
-        <ListRows
-          {...rows}
-          nodes={tree.children}
-          depth={0}
-          kindFolderLabel={columnLabels.kindFolder}
-        />
+        <ListRows {...rows} nodes={tree.children} depth={0} />
       </div>
-    </>
+    </div>
   );
 }

@@ -144,6 +144,7 @@
     "viewGrid": "Visualização em grade",
     "viewList": "Visualização em lista",
     "sortBy": "Ordenar por",
+    "newMenu": "Novo",
     "newFolder": "Nova pasta",
     "newFolderPlaceholder": "pasta sem título",
     "emptyFolder": "Esta pasta está vazia",
@@ -159,7 +160,6 @@
       "cancel": "Cancelar"
     },
     "uploadFiles": "Enviar arquivos",
-    "upload": "Enviar",
     "uploadFolder": "Enviar pasta",
     "folderDropFailed": "Não conseguimos ler essa pasta. Tente o botão Enviar.",
     "downloadAll": "Baixar tudo",
@@ -168,6 +168,12 @@
     "searchPlaceholder": "Buscar arquivos",
     "searchClear": "Limpar busca",
     "searchNoResults": "Nenhum arquivo corresponde à sua busca",
+    "selectRow": "Selecionar",
+    "selectAll": "Selecionar tudo",
+    "selectedCount_one": "{{count}} selecionado",
+    "selectedCount_other": "{{count}} selecionados",
+    "deleteSelected": "Excluir",
+    "clearSelection": "Limpar seleção",
     "uploadTooLarge": {
       "title_one": "Arquivo grande demais",
       "title_other": "Arquivos grandes demais",
@@ -180,16 +186,17 @@
       "title": "Mover “{{name}}” para o Lixo?",
       "fileDescription": "Este arquivo será removido do espaço de trabalho do seu assistente.",
       "folderDescription": "Esta pasta e tudo o que está dentro dela serão removidos do espaço de trabalho do seu assistente.",
+      "batchTitle_one": "Mover {{count}} item para o Lixo?",
+      "batchTitle_other": "Mover {{count}} itens para o Lixo?",
+      "batchDescription_one": "Este item será removido do espaço de trabalho do seu assistente.",
+      "batchDescription_other": "Estes itens serão removidos do espaço de trabalho do seu assistente.",
       "confirm": "Mover para o Lixo",
       "cancel": "Cancelar"
     },
     "columns": {
       "name": "Nome",
-      "dateModified": "Data de modificação",
-      "dateCreated": "Data de criação",
-      "size": "Tamanho",
-      "kind": "Tipo",
-      "kindFolder": "Pasta"
+      "dateModified": "Modificado",
+      "size": "Tamanho"
     },
     "menu": {
       "open": "Abrir",
@@ -214,6 +221,7 @@
       "revealFailed": "Não foi possível mostrar o arquivo",
       "saveFailedTitle": "Não foi possível salvar o arquivo",
       "openFailedTitle": "Não foi possível abrir o arquivo"
-    }
+    },
+    "modifiedToday": "Hoje"
   }
 }

@@ -144,6 +144,7 @@
     "viewGrid": "Grid view",
     "viewList": "List view",
     "sortBy": "Sort by",
+    "newMenu": "New",
     "newFolder": "New folder",
     "newFolderPlaceholder": "untitled folder",
     "emptyFolder": "This folder is empty",
@@ -159,7 +160,6 @@
       "cancel": "Cancel"
     },
     "uploadFiles": "Upload files",
-    "upload": "Upload",
     "uploadFolder": "Upload folder",
     "folderDropFailed": "We could not read that folder. Try the Upload button instead.",
     "downloadAll": "Download all",
@@ -168,6 +168,12 @@
     "searchPlaceholder": "Search files",
     "searchClear": "Clear search",
     "searchNoResults": "No files match your search",
+    "selectRow": "Select",
+    "selectAll": "Select all",
+    "selectedCount_one": "{{count}} selected",
+    "selectedCount_other": "{{count}} selected",
+    "deleteSelected": "Delete",
+    "clearSelection": "Clear selection",
     "uploadTooLarge": {
       "title_one": "File too large",
       "title_other": "Files too large",
@@ -180,16 +186,17 @@
       "title": "Move “{{name}}” to Trash?",
       "fileDescription": "This file will be removed from your assistant’s workspace.",
       "folderDescription": "This folder and everything inside it will be removed from your assistant’s workspace.",
+      "batchTitle_one": "Move {{count}} item to Trash?",
+      "batchTitle_other": "Move {{count}} items to Trash?",
+      "batchDescription_one": "This item will be removed from your assistant’s workspace.",
+      "batchDescription_other": "These items will be removed from your assistant’s workspace.",
       "confirm": "Move to Trash",
       "cancel": "Cancel"
     },
     "columns": {
       "name": "Name",
-      "dateModified": "Date Modified",
-      "dateCreated": "Date Created",
-      "size": "Size",
-      "kind": "Kind",
-      "kindFolder": "Folder"
+      "dateModified": "Modified",
+      "size": "Size"
     },
     "menu": {
       "open": "Open",
@@ -214,6 +221,7 @@
       "revealFailed": "Couldn’t show the file",
       "saveFailedTitle": "Couldn’t save the file",
       "openFailedTitle": "Couldn’t open the file"
-    }
+    },
+    "modifiedToday": "Today"
   }
 }

@@ -9,15 +9,14 @@ export function buildBrowserLabels(t: TFunction<"agents">): FilesBrowserLabels {
   return {
     columnName: t("files.columns.name"),
     columnDateModified: t("files.columns.dateModified"),
-    columnDateCreated: t("files.columns.dateCreated"),
     columnSize: t("files.columns.size"),
-    columnKind: t("files.columns.kind"),
-    kindFolder: t("files.columns.kindFolder"),
+    modifiedToday: t("files.modifiedToday"),
     loading: t("files.loading"),
     browseFiles: t("files.browseFiles"),
     viewGrid: t("files.viewGrid"),
     viewList: t("files.viewList"),
     sortBy: t("files.sortBy"),
+    newMenu: t("files.newMenu"),
     newFolder: t("files.newFolder"),
     newFolderPlaceholder: t("files.newFolderPlaceholder"),
     emptyFolder: t("files.emptyFolder"),
@@ -26,7 +25,6 @@ export function buildBrowserLabels(t: TFunction<"agents">): FilesBrowserLabels {
     menuButton: t("files.menuButton"),
     breadcrumbs: t("files.breadcrumbs"),
     uploadFiles: t("files.uploadFiles"),
-    upload: t("files.upload"),
     uploadFolder: t("files.uploadFolder"),
     openInFileManager: t("files.openInFileManager"),
     downloadAll: t("files.downloadAll"),
@@ -39,6 +37,14 @@ export function buildBrowserLabels(t: TFunction<"agents">): FilesBrowserLabels {
     searchPlaceholder: t("files.searchPlaceholder"),
     searchClear: t("files.searchClear"),
     searchNoResults: t("files.searchNoResults"),
+    selectRow: t("files.selectRow"),
+    selectAll: t("files.selectAll"),
+    // A function, not a string: the count is only known inside the list view,
+    // so the library calls back for the copy and pluralization stays app-side
+    // (same contract as `BulkActionBarLabels.selected` on the board).
+    selectedCount: (count: number) => t("files.selectedCount", { count }),
+    deleteSelected: t("files.deleteSelected"),
+    clearSelection: t("files.clearSelection"),
   };
 }
 
