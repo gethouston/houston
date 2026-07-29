@@ -131,6 +131,7 @@ export function AgentIntegrationsBody({
     onRemove: onDisconnect,
     catalogCount: connectableCount({ catalog, connections, allowlist }),
     customData: custom.data,
+    customListFailed: custom.isError,
     agent,
     allowlist,
     lockedFix: permissionsFix,

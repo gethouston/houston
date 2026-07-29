@@ -26,22 +26,40 @@ export function handleCustom(
   if (tail[0] === "detect") return json({ error: "not found" }, 404);
   // GET /v1/integrations/custom/definitions
   if (tail.length === 1 && method === "GET") return json({ items });
-  // POST /v1/integrations/custom/definitions — the manual add form (HOU-980)
+  // POST /v1/integrations/custom/definitions — the manual add form (HOU-980).
+  // Mirrors the real host's parseAddInput requirements so a client that stops
+  // sending a required field fails HERE too, not only in production: openapi
+  // needs `url` OR an inline `spec`, mcp needs `endpoint`, and a provided
+  // slug must satisfy the real CUSTOM_SLUG grammar.
   if (tail.length === 1 && method === "POST") {
     const name = String(body?.name ?? "").trim();
     const kind = body?.kind;
     if (!name || (kind !== "openapi" && kind !== "mcp")) {
       return json({ error: "invalid add body" }, 400);
     }
+    const url = typeof body?.url === "string" ? body.url.trim() : "";
+    const spec = typeof body?.spec === "string" ? body.spec.trim() : "";
+    const endpoint = typeof body?.endpoint === "string" ? body.endpoint : "";
+    if (kind === "openapi" && !url && !spec) {
+      return json({ error: "missing 'url' or 'spec'" }, 400);
+    }
+    if (kind === "mcp" && !endpoint) {
+      return json({ error: "missing 'endpoint'" }, 400);
+    }
+    const slug = typeof body?.slug === "string" ? body.slug : undefined;
+    if (slug && !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(slug)) {
+      return json(
+        { error: `invalid slug '${slug}'`, code: "invalid_slug" },
+        400,
+      );
+    }
     const seed = state.addCustomIntegration({
       kind,
       name,
       auth: body?.auth === "credential" ? "credential" : "none",
-      ...(typeof body?.url === "string" ? { url: body.url } : {}),
-      ...(typeof body?.endpoint === "string"
-        ? { endpoint: body.endpoint }
-        : {}),
-      ...(typeof body?.slug === "string" ? { slug: body.slug } : {}),
+      ...(url ? { url } : {}),
+      ...(endpoint ? { endpoint } : {}),
+      ...(slug ? { slug } : {}),
     });
     return seed
       ? json(seed)

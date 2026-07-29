@@ -326,6 +326,35 @@ test("detect: POST classifies a URL on both user surfaces; empty url is 400", as
   }
 });
 
+test("malformed input is the CLIENT's error: bad JSON and bad escapes never 500", async () => {
+  const { base, stop } = await setup();
+  try {
+    const badJson = await fetch(`${base}/v1/integrations/custom/detect`, {
+      method: "POST",
+      headers: auth(),
+      body: "{bad",
+    });
+    expect(badJson.status).toBe(400);
+
+    const nullBody = await fetch(`${base}/v1/integrations/custom/definitions`, {
+      method: "POST",
+      headers: auth(),
+      body: "null",
+    });
+    expect(nullBody.status).toBe(400);
+
+    // A malformed escape in the slug is a NON-MATCH (falls through to the
+    // generic provider handler), never a URIError 500.
+    const badEscape = await fetch(
+      `${base}/v1/integrations/custom/definitions/%zz/tools`,
+      { headers: auth() },
+    );
+    expect(badEscape.status).not.toBe(500);
+  } finally {
+    stop();
+  }
+});
+
 test("tools: GET lists the compiled tools; unknown slug relays not_found", async () => {
   const { base, agent, stop } = await setup(
     fakeManager({

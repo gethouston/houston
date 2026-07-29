@@ -29,6 +29,24 @@ export function relayCustomError(res: ServerResponse, err: unknown): boolean {
   return true;
 }
 
+/** A malformed client body must never 500: parse failures (and non-object
+ *  JSON like `null`) answer 400 and report "already responded" via `null`. */
+export async function bodyOr400(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const parsed = await readJson(req);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed;
+    }
+  } catch {
+    // fall through to the 400 below
+  }
+  json(res, 400, { error: "invalid JSON body" });
+  return null;
+}
+
 /** The route grammar under `custom/`, shared by every user surface
  *  (custom-integrations-user.ts serves it on three mounts). Anything else
  *  (e.g. `custom/connections`, the generic provider family) is NOT this
@@ -48,7 +66,14 @@ export function customTargetOf(rest: string): CustomTarget | null {
   if (!m) return null;
   if (rest === "detect") return { kind: "detect" };
   if (!m[1]) return { kind: "definitions" };
-  const slug = decodeURIComponent(m[1]);
+  let slug: string;
+  try {
+    slug = decodeURIComponent(m[1]);
+  } catch {
+    // A malformed escape (`%zz`) is not a route of ours — fall through like
+    // any non-match instead of letting the URIError become a raw 500.
+    return null;
+  }
   if (m[2] === "credential") return { kind: "credential", slug };
   if (m[2] === "tools") return { kind: "tools", slug };
   return { kind: "definition", slug };

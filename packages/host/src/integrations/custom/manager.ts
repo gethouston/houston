@@ -67,6 +67,16 @@ export class CustomIntegrationManager {
         `invalid slug '${slug}'`,
       );
     }
+    // The executor's own internal toolbox lives under the reserved
+    // integration id "executor" — a user definition with that slug would
+    // collide inside the engine and leak engine-internal tools into
+    // counts/lists (the store's duplicate check cannot see it).
+    if (slug === "executor") {
+      throw new CustomIntegrationError(
+        "invalid_slug",
+        "'executor' is a reserved name; pick another",
+      );
+    }
     const defs = await this.store.list();
     if (defs.some((d) => d.slug === slug)) {
       throw new CustomIntegrationError(

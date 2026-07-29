@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useCustomIntegrationsFor,
   useRemoveCustomIntegration,
@@ -30,17 +30,22 @@ export function useCustomSelection(): CustomSelection {
   const [detailSlug, setDetailSlug] = useState<string | null>(null);
   const [keySlug, setKeySlug] = useState<string | null>(null);
   const [removeSlug, setRemoveSlug] = useState<string | null>(null);
-  return {
-    detailSlug,
-    keySlug,
-    removeSlug,
-    openDetail: setDetailSlug,
-    openKey: setKeySlug,
-    openRemove: setRemoveSlug,
-    closeDetail: () => setDetailSlug(null),
-    closeKey: () => setKeySlug(null),
-    closeRemove: () => setRemoveSlug(null),
-  };
+  // Stable identity per slug-state, so effects can depend on the selection
+  // without firing every render.
+  return useMemo(
+    () => ({
+      detailSlug,
+      keySlug,
+      removeSlug,
+      openDetail: setDetailSlug,
+      openKey: setKeySlug,
+      openRemove: setRemoveSlug,
+      closeDetail: () => setDetailSlug(null),
+      closeKey: () => setKeySlug(null),
+      closeRemove: () => setRemoveSlug(null),
+    }),
+    [detailSlug, keySlug, removeSlug],
+  );
 }
 
 /**
@@ -60,9 +65,22 @@ export function CustomIntegrationDialogs({
 }) {
   const list = useCustomIntegrationsFor(agentId);
   const remove = useRemoveCustomIntegration(agentId);
-  const items = list.data ?? [];
+  const items = useMemo(() => list.data ?? [], [list.data]);
   const bySlug = (slug: string | null) =>
     slug === null ? null : (items.find((i) => i.slug === slug) ?? null);
+
+  // A slug the RESOLVED list no longer carries is a finished selection, not a
+  // sleeper: without this, removing "acme" elsewhere (chat tool, another
+  // device) and re-adding it later would spontaneously reopen the old dialog.
+  const resolved = Array.isArray(list.data);
+  useEffect(() => {
+    if (!resolved) return;
+    const gone = (slug: string | null) =>
+      slug !== null && !items.some((i) => i.slug === slug);
+    if (gone(selection.detailSlug)) selection.closeDetail();
+    if (gone(selection.keySlug)) selection.closeKey();
+    if (gone(selection.removeSlug)) selection.closeRemove();
+  }, [resolved, items, selection]);
 
   return (
     <>

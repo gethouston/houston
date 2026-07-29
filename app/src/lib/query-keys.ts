@@ -120,9 +120,12 @@ export const queryKeys = {
   agentCustomIntegrations: (agentId: string) =>
     ["custom-integrations", agentId] as const,
   /** The compiled tools behind ONE custom integration (the detail card's
-   *  list, HOU-980). Same prefix, so `CustomIntegrationsChanged` refreshes it. */
-  customIntegrationTools: (slug: string) =>
-    ["custom-integrations", "tools", slug] as const,
+   *  list, HOU-980). Same prefix, so `CustomIntegrationsChanged` refreshes it.
+   *  Keyed by surface too: with an agentId the fetch rides the per-agent
+   *  route, without it the top-level one — different queryFn inputs must
+   *  never share a cache entry. */
+  customIntegrationTools: (slug: string, agentId?: string) =>
+    ["custom-integrations", "tools", slug, agentId ?? "user"] as const,
 
   // Multiplayer (org). The current user's org + roster is app-scoped (one org
   // per user).

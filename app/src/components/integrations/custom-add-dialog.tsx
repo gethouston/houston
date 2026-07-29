@@ -7,7 +7,7 @@ import {
 } from "@houston-ai/core";
 import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { MessageCircle, Wrench } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CustomAddForm } from "./custom-add-form";
 
@@ -68,9 +68,13 @@ export function CustomAddDialog({
   const { t } = useTranslation("integrations");
   const [step, setStep] = useState<"choose" | "form">("choose");
   // Every open starts back at the fork; the form remounts blank with it.
-  useEffect(() => {
+  // Adjust-during-render (not an effect) so a reopen can never paint one
+  // stale frame of the previous step first.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) setStep("choose");
-  }, [open]);
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -39,6 +39,7 @@ export function useCatalogTabs({
   onRemove,
   catalogCount,
   customData,
+  customListFailed = false,
   agent,
   allowlist = null,
   lockedFix,
@@ -56,8 +57,13 @@ export function useCatalogTabs({
   /** The catalog tab's count chip (undefined while loading hides it). */
   catalogCount: number | undefined;
   /** `null` = host without custom integrations (no tab), `undefined` = still
-   *  loading (no tab yet either — it appears when the list resolves). */
+   *  loading (no tab yet either — it appears when the list resolves, so the
+   *  chip never flickers in and out on a host that answers `null`). */
   customData: CustomIntegrationView[] | null | undefined;
+  /** The custom list query FAILED (a real error, not the 404 degrade): the
+   *  tab still renders so the section can show its error + retry state —
+   *  a transient 500 must never silently erase the whole custom surface. */
+  customListFailed?: boolean;
   agent?: Agent;
   allowlist?: string[] | null;
   lockedFix?: PermissionsFix;
@@ -95,7 +101,7 @@ export function useCatalogTabs({
         </CatalogPane>
       ),
     },
-    ...(customData !== null
+    ...(customData != null || customListFailed
       ? [
           {
             value: "custom",

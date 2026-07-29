@@ -2,22 +2,17 @@ import {
   Badge,
   Button,
   CatalogDetailDialog,
-  Skeleton,
   StatusBadge,
 } from "@houston-ai/core";
 import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { KeyRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useCustomIntegrationTools } from "../../hooks/queries";
 import { AppLogo } from "./app-logo";
+import { CustomDetailTools } from "./custom-detail-tools";
 import {
   customAuthMethod,
   customKindBadgeKey,
 } from "./custom-integrations-model";
-
-/** How many actions the dialog lists before collapsing behind a count line —
- *  a 200-endpoint API must not turn the modal into a scroll marathon. */
-const TOOLS_PREVIEW_CAP = 8;
 
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
@@ -34,8 +29,8 @@ function MetaRow({ label, value }: { label: string; value: string }) {
  * The custom integration's "more info" modal (HOU-980) — what a custom row or
  * Installed-strip tile opens: letter avatar + name, kind + live-status chips,
  * a situation line, the metadata the user gave it (URL, added date), and the
- * compiled actions behind it (count + names, capped). Footer: Enter/Update key
- * (when the integration can take one) beside Remove. Presentational: the
+ * compiled actions behind it ({@link CustomDetailTools}). Footer: Enter/Update
+ * key (when the integration can take one) beside Remove. Presentational: the
  * parent owns the key dialog, the delete confirm, and the selection state.
  */
 export function CustomDetailDialog({
@@ -53,13 +48,7 @@ export function CustomDetailDialog({
   onRemove: (integration: CustomIntegrationView) => void;
 }) {
   const { t, i18n } = useTranslation("integrations");
-  const activeSlug =
-    integration && integration.state.status === "active"
-      ? integration.slug
-      : null;
-  const tools = useCustomIntegrationTools(activeSlug, agentId);
   if (!integration) return null;
-  const active = activeSlug !== null;
 
   const state = integration.state;
   const body =
@@ -69,8 +58,6 @@ export function CustomDetailDialog({
         ? t("custom.details.pendingBody")
         : t("custom.details.errorBody", { message: state.message });
   const canTakeKey = customAuthMethod(integration) !== null;
-  const shownTools = (tools.data ?? []).slice(0, TOOLS_PREVIEW_CAP);
-  const hiddenCount = (tools.data?.length ?? 0) - shownTools.length;
 
   return (
     <CatalogDetailDialog
@@ -154,42 +141,8 @@ export function CustomDetailDialog({
         )}
       </dl>
 
-      {active && (
-        <div>
-          <p className="mb-1.5 text-[13px] font-medium text-ink">
-            {t("custom.details.toolsTitle")}
-          </p>
-          {tools.isLoading ? (
-            <div className="space-y-1.5">
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-4 w-2/3" />
-            </div>
-          ) : tools.data == null ? null : tools.data.length === 0 ? (
-            <p className="text-[13px] text-ink-muted">
-              {t("custom.details.toolsEmpty")}
-            </p>
-          ) : (
-            <ul className="max-h-48 space-y-1 overflow-y-auto pr-1">
-              {shownTools.map((tool) => (
-                <li key={tool.name} className="text-[13px]">
-                  <span className="text-ink">{tool.name}</span>
-                  {tool.description && (
-                    <span className="text-ink-muted">
-                      {" "}
-                      · {tool.description}
-                    </span>
-                  )}
-                </li>
-              ))}
-              {hiddenCount > 0 && (
-                <li className="text-[13px] text-ink-muted">
-                  {t("custom.details.moreTools", { count: hiddenCount })}
-                </li>
-              )}
-            </ul>
-          )}
-        </div>
+      {state.status === "active" && (
+        <CustomDetailTools slug={integration.slug} agentId={agentId} />
       )}
     </CatalogDetailDialog>
   );

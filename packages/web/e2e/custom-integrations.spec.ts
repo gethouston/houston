@@ -170,15 +170,20 @@ test("adding manually with a key lands pending and chains straight into the secu
   await page.getByRole("button", { name: "Add custom integration" }).click();
   await page.getByRole("button", { name: /Add it manually/ }).click();
 
-  await page.getByRole("radio", { name: "MCP server" }).click();
-  await page.getByLabel("MCP server URL").fill("https://mcp.acme.test");
-  await page.getByLabel("Name").fill("Acme MCP");
-  await page.getByRole("switch").click();
-  await page.getByRole("button", { name: "Add integration" }).click();
+  const addDialog = page.getByRole("dialog");
+  await addDialog.getByRole("button", { name: "MCP server" }).click();
+  await addDialog.getByLabel("MCP server URL").fill("https://mcp.acme.test");
+  await addDialog.getByLabel("Name").fill("Acme MCP");
+  await addDialog.getByRole("switch").click();
+  await addDialog.getByRole("button", { name: "Add integration" }).click();
 
   // The pending definition immediately asks for its key (the secure dialog),
-  // and saving it activates the integration.
-  await page.getByLabel("API key").fill("sk_test_42");
+  // and saving it activates the integration. Await the key dialog's title
+  // first, then scope the fill to the OPEN dialog: the add dialog's exit
+  // animation keeps it mounted briefly, and its "Needs an API key" switch
+  // label would otherwise be a rival substring match for getByLabel.
+  await expect(page.getByText("Enter the key for Acme MCP")).toBeVisible();
+  await page.getByRole("dialog").getByLabel("API key").fill("sk_test_42");
   await page.getByRole("button", { name: "Save key" }).click();
   await expect(page.getByText("3 actions")).toBeVisible();
 });

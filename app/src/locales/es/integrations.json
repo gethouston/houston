@@ -126,6 +126,8 @@
     "empty": "Aún no tienes integraciones personalizadas. Agrega una para conectar una herramienta que no esté en el catálogo.",
     "emptyTitle": "Aún no tienes integraciones personalizadas",
     "noResults": "Ninguna integración personalizada coincide con tu búsqueda.",
+    "loadError": "No pudimos cargar tus integraciones personalizadas.",
+    "retry": "Intentar de nuevo",
     "badge": {
       "api": "API",
       "mcp": "Servidor MCP"
@@ -170,7 +172,8 @@
       "toolsTitle": "Acciones disponibles",
       "toolsEmpty": "Aún no se han descubierto acciones.",
       "moreTools_one": "y {{count}} más",
-      "moreTools_other": "y {{count}} más"
+      "moreTools_other": "y {{count}} más",
+      "toolsError": "No pudimos cargar la lista de acciones en este momento."
     },
     "status": {
       "pendingKey": "Necesita una clave de API",

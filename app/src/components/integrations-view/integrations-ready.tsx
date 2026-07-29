@@ -116,6 +116,7 @@ export function IntegrationsReady({
     onRemove: (toolkit) => disconnect.mutate({ toolkit }),
     catalogCount: apps.isLoading ? undefined : connectableCount,
     customData: custom.data,
+    customListFailed: custom.isError,
   });
 
   return (

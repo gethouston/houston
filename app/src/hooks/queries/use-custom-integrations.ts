@@ -119,7 +119,10 @@ export function useDetectCustomIntegration(agentId?: string) {
 }
 
 /** Register a custom integration from the manual add form. The host compiles
- *  it first — a rejected add (bad URL, duplicate name) never persists. */
+ *  it first — a rejected add (bad URL, duplicate name) never persists. The
+ *  returned view is SEEDED into both list caches before the invalidation, so
+ *  the new row (and the key dialog a `pending` add chains into) appears
+ *  immediately instead of waiting on the refetch round-trip. */
 export function useAddCustomIntegration(agentId?: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -130,6 +133,18 @@ export function useAddCustomIntegration(agentId?: string) {
         integration_slug: view.slug,
         integration_kind: view.kind,
       });
+      const append = (old: CustomIntegrationView[] | null | undefined) =>
+        old == null ? old : [...old.filter((i) => i.slug !== view.slug), view];
+      qc.setQueryData<CustomIntegrationView[] | null>(
+        queryKeys.customIntegrations(),
+        append,
+      );
+      if (agentId) {
+        qc.setQueryData<CustomIntegrationView[] | null>(
+          queryKeys.agentCustomIntegrations(agentId),
+          append,
+        );
+      }
       invalidateCustom(qc);
     },
   });
@@ -147,7 +162,7 @@ export function useCustomIntegrationTools(
 ) {
   const { capabilities } = useCapabilities();
   return useQuery<CustomToolInfo[] | null>({
-    queryKey: queryKeys.customIntegrationTools(slug ?? ""),
+    queryKey: queryKeys.customIntegrationTools(slug ?? "", agentId),
     queryFn: () => tauriIntegrations.customTools(slug as string, agentId),
     enabled: integrationsSupported(capabilities) && slug !== null,
     staleTime: 30_000,

@@ -130,7 +130,16 @@ export function CustomIntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
         agentSlugOrId,
         `/definitions/${encodeURIComponent(slug)}/tools`,
       );
-      if (res.status === 404) return null;
+      if (res.status === 404) {
+        // A bare 404 = the route family is absent (feature hidden → null);
+        // `{code:"not_found"}` marks an UNKNOWN SLUG — a real miss (the
+        // definition was removed concurrently), surfaced as an error.
+        const body = (await res.json().catch(() => ({}))) as {
+          code?: string;
+        };
+        if (body?.code === "not_found") throw new HoustonEngineError(404, body);
+        return null;
+      }
       await this.rejectFailure(res);
       return ((await res.json()) as { items: controlPlane.CustomToolInfo[] })
         .items;

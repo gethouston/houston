@@ -40,22 +40,31 @@ export function CustomAddForm({
 }) {
   const { t } = useTranslation("integrations");
   const [form, setForm] = useState<FormState>(EMPTY_CUSTOM_ADD_FORM);
-  const [verdict, setVerdict] = useState<CustomDetectResult | null>(null);
+  // The verdict remembers WHICH URL it judged: editing the field mid-probe
+  // must not let a late result claim (or auto-fill) the wrong address.
+  const [verdict, setVerdict] = useState<{
+    url: string;
+    result: CustomDetectResult;
+  } | null>(null);
   const detect = useDetectCustomIntegration(agentId);
   const add = useAddCustomIntegration(agentId);
 
   const input = addInputFrom(form);
   const canCheck = isServiceUrl(form.url) && !detect.isPending;
+  const shownVerdict =
+    verdict && verdict.url === form.url.trim() ? verdict.result : null;
 
   const check = async () => {
     if (!canCheck) return;
+    const url = form.url.trim();
     // A transport failure is toasted by `call()`; the stale verdict clears so
     // the line never claims a check that did not run.
     setVerdict(null);
-    const result = await detect.mutateAsync(form.url.trim()).catch(() => null);
+    const result = await detect.mutateAsync(url).catch(() => null);
     if (!result) return;
-    setVerdict(result);
-    setForm((f) => applyDetect(f, result));
+    setVerdict({ url, result });
+    // Guarded per-field: only apply while the form still holds the checked URL.
+    setForm((f) => (f.url.trim() === url ? applyDetect(f, result) : f));
   };
 
   const submit = async () => {
@@ -66,17 +75,17 @@ export function CustomAddForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <div
-        role="radiogroup"
+      {/* Toggle buttons, not ARIA radios: the radio pattern demands roving
+          tabindex + arrow keys, which two tab-stop buttons cannot honor. */}
+      <fieldset
         aria-label={t("custom.add.kindLabel")}
-        className="flex gap-2"
+        className="flex gap-2 border-0 p-0"
       >
         {KINDS.map((kind) => (
           <Button
             key={kind}
             type="button"
-            role="radio"
-            aria-checked={form.kind === kind}
+            aria-pressed={form.kind === kind}
             size="sm"
             variant={form.kind === kind ? "default" : "outline"}
             onClick={() => {
@@ -87,7 +96,7 @@ export function CustomAddForm({
             {t(kind === "openapi" ? "custom.badge.api" : "custom.badge.mcp")}
           </Button>
         ))}
-      </div>
+      </fieldset>
 
       <div className="space-y-1.5">
         <label
@@ -127,12 +136,12 @@ export function CustomAddForm({
             {t("custom.add.check")}
           </AsyncButton>
         </div>
-        {verdict && (
+        {shownVerdict && (
           <p
-            className={`text-[13px] ${verdict.kind === "unknown" ? "text-ink-muted" : "text-success-text"}`}
+            className={`text-[13px] ${shownVerdict.kind === "unknown" ? "text-ink-muted" : "text-success-text"}`}
             role="status"
           >
-            {t(detectSummaryKey(verdict))}
+            {t(detectSummaryKey(shownVerdict))}
           </p>
         )}
       </div>

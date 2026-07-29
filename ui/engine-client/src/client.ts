@@ -1343,7 +1343,10 @@ export class HoustonClient {
   }
   /** The compiled tools behind one custom integration (the detail card's
    *  list), or `null` when the host does not serve the route (404 — old
-   *  build / gateway-fronted pod), mirroring `customIntegrations`. */
+   *  build / gateway-fronted pod), mirroring `customIntegrations`. The
+   *  OTHER 404 — an unknown slug, marked `{code:"not_found"}` — is a real
+   *  miss and rethrows (a card open across a concurrent remove must not
+   *  read as "feature absent"). */
   async customIntegrationTools(slug: string): Promise<CustomToolInfo[] | null> {
     try {
       return (
@@ -1353,7 +1356,12 @@ export class HoustonClient {
         )
       ).items;
     } catch (err) {
-      if (isHoustonEngineError(err) && err.status === 404) return null;
+      if (
+        isHoustonEngineError(err) &&
+        err.status === 404 &&
+        !isCustomSlugMiss(err)
+      )
+        return null;
       throw err;
     }
   }
@@ -1391,7 +1399,7 @@ export class HoustonClient {
     );
   }
   /** `customIntegrationTools` through the per-agent surface (HOU-823).
-   *  `null` on 404, mirroring the top-level form. */
+   *  `null` on a route-absent 404 only, mirroring the top-level form. */
   async agentCustomIntegrationTools(
     agentSlugOrId: string,
     slug: string,
@@ -1404,7 +1412,12 @@ export class HoustonClient {
         )
       ).items;
     } catch (err) {
-      if (isHoustonEngineError(err) && err.status === 404) return null;
+      if (
+        isHoustonEngineError(err) &&
+        err.status === 404 &&
+        !isCustomSlugMiss(err)
+      )
+        return null;
       throw err;
     }
   }
@@ -2607,6 +2620,15 @@ export class HoustonClient {
     const ws = this.baseUrl.replace(/^http/, "ws");
     return `${ws}/v1/ws?token=${encodeURIComponent(this.token)}`;
   }
+}
+
+/** The custom-integration slug-scoped 404: the host marks an UNKNOWN SLUG
+ *  with a top-level `{code:"not_found"}` body, distinct from a bare 404
+ *  meaning the whole route family is absent (old build / gateway). */
+function isCustomSlugMiss(err: HoustonEngineError): boolean {
+  return (
+    (err.body as unknown as { code?: string } | null)?.code === "not_found"
+  );
 }
 
 export class HoustonEngineError extends Error {

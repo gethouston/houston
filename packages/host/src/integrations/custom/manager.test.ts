@@ -396,6 +396,19 @@ test("tools() lists exactly the active state's toolCount, names filled", async (
   }
 });
 
+test("add() rejects the reserved 'executor' slug before touching the engine", async () => {
+  const { manager } = setup();
+  await expect(
+    manager.add({
+      kind: "mcp",
+      name: "Executor",
+      slug: "executor",
+      endpoint: "https://mcp.example.invalid",
+      auth: "none",
+    }),
+  ).rejects.toMatchObject({ code: "invalid_slug" });
+});
+
 test("tools() on an unknown slug throws not_found", async () => {
   const { manager } = setup();
   await expect(manager.tools("ghost")).rejects.toMatchObject({

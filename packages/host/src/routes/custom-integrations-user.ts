@@ -4,12 +4,13 @@ import type { UserId } from "../domain/types";
 import type { CustomIntegrationManager } from "../integrations/custom/manager";
 import type { WorkspaceStore } from "../ports";
 import {
+  bodyOr400,
   type CustomTarget,
   customTargetOf,
   parseAddInput,
   relayCustomError,
 } from "./custom-integrations";
-import { json, readJson } from "./http";
+import { json } from "./http";
 
 /**
  * Custom-integration USER routes (HOU-550): list / add / detect / remove /
@@ -78,7 +79,9 @@ async function serve(
     // The manual add form (HOU-980). Same body grammar as the agent's
     // sandbox add tool — parseAddInput is the one validator for both.
     if (target.kind === "definitions" && method === "POST") {
-      const input = parseAddInput(await readJson(req));
+      const body = await bodyOr400(req, res);
+      if (!body) return true;
+      const input = parseAddInput(body);
       if (typeof input === "string") {
         json(res, 400, { error: input });
         return true;
@@ -87,7 +90,8 @@ async function serve(
       return true;
     }
     if (target.kind === "detect" && method === "POST") {
-      const body = await readJson(req);
+      const body = await bodyOr400(req, res);
+      if (!body) return true;
       if (typeof body.url !== "string" || !body.url.trim()) {
         json(res, 400, { error: "missing 'url'" });
         return true;
@@ -105,7 +109,8 @@ async function serve(
       return true;
     }
     if (target.kind === "credential" && method === "POST") {
-      const body = await readJson(req);
+      const body = await bodyOr400(req, res);
+      if (!body) return true;
       const values = body.values;
       if (
         !values ||
@@ -155,11 +160,15 @@ export async function handleCustomIntegrations(
     return true;
   }
   if (scoped) {
-    const authz = await authorize(
-      deps.store,
-      userId,
-      decodeURIComponent(scoped[1] ?? ""),
-    );
+    let agentId: string;
+    try {
+      agentId = decodeURIComponent(scoped[1] ?? "");
+    } catch {
+      // A malformed escape in the agent segment is a client error, never a 500.
+      json(res, 400, { error: "malformed agent id" });
+      return true;
+    }
+    const authz = await authorize(deps.store, userId, agentId);
     if (!authz.ok) {
       json(res, authz.status, { error: authz.reason });
       return true;

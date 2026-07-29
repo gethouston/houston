@@ -126,6 +126,8 @@
     "empty": "No custom integrations yet. Add one to connect a tool that isn't in the catalog.",
     "emptyTitle": "No custom integrations yet",
     "noResults": "No custom integrations match your search.",
+    "loadError": "We couldn't load your custom integrations.",
+    "retry": "Try again",
     "badge": {
       "api": "API",
       "mcp": "MCP server"
@@ -170,7 +172,8 @@
       "toolsTitle": "Available actions",
       "toolsEmpty": "No actions discovered yet.",
       "moreTools_one": "and {{count}} more",
-      "moreTools_other": "and {{count}} more"
+      "moreTools_other": "and {{count}} more",
+      "toolsError": "We couldn't load the list of actions right now."
     },
     "status": {
       "pendingKey": "Needs an API key",

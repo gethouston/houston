@@ -135,7 +135,9 @@ export async function addCustomIntegration(
 }
 
 /** The compiled tools behind one custom integration (the detail card's list).
- *  404 = the host predates the route → null, mirroring `customIntegrations`. */
+ *  A bare 404 = the host predates the route → null, mirroring
+ *  `customIntegrations`; a `{code:"not_found"}` 404 is an UNKNOWN SLUG (the
+ *  definition was removed concurrently) and rethrows as a real failure. */
 export async function customIntegrationTools(
   cfg: ControlPlaneConfig,
   slug: string,
@@ -147,7 +149,12 @@ export async function customIntegrationTools(
     );
     return ((await res.json()) as { items: CustomToolInfo[] }).items;
   } catch (err) {
-    if (err instanceof HoustonEngineError && err.status === 404) return null;
+    if (
+      err instanceof HoustonEngineError &&
+      err.status === 404 &&
+      (err.body as { code?: string } | null)?.code !== "not_found"
+    )
+      return null;
     throw err;
   }
 }

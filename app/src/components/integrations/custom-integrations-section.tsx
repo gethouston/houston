@@ -8,7 +8,7 @@ import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { AgentPickerDialog } from "../agent-picker-dialog";
 import { CustomAddDialog } from "./custom-add-dialog";
-import { CustomEmptyState } from "./custom-empty-state";
+import { CustomEmptyState, CustomLoadErrorState } from "./custom-empty-state";
 import {
   CustomIntegrationDialogs,
   useCustomSelection,
@@ -61,6 +61,13 @@ export function CustomIntegrationsSection({
     setPickerOpen(false);
     void chatSetup.start(target);
   };
+
+  // A FAILED read renders loudly (error + retry): a transient 500 must never
+  // be indistinguishable from a host without the feature — that one resolves
+  // `null` and hides the section legitimately.
+  if (list.isError) {
+    return <CustomLoadErrorState onRetry={() => void list.refetch()} />;
+  }
 
   // `null` = unsupported host (hide the whole section); `undefined` = still
   // loading (nothing to show yet). Only a resolved array renders the section.
