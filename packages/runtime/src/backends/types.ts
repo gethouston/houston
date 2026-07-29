@@ -76,6 +76,15 @@ export interface CreateSessionOptions {
    * WORKSPACE.md / USER.md files instead.
    */
   context?: ProvidedContext;
+  /**
+   * Start a brand-new backend-native session, ignoring any prior session this
+   * backend persisted for the conversation. Set on a cross-BACKEND rebuild
+   * (HOU-951): the conversation's history is carried over as a transcript
+   * replay on the first prompt, so resuming the backend's own stale
+   * pre-switch session would duplicate the pre-switch era and drop everything
+   * said on the other backend in between.
+   */
+  fresh?: boolean;
 }
 
 /** A pluggable turn-execution backend for a provider. */

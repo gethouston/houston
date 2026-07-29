@@ -44,6 +44,7 @@ import {
 } from "./file-changes";
 import { newInteractionHolder, runWithInteractionCapture } from "./interaction";
 import { switchNeedsCompaction } from "./provider-switch";
+import { renderReplayPreamble, replayCharBudget } from "./replay-transcript";
 import { createStallWatchdog } from "./stall-watchdog";
 import { runWithTurnMode, type TurnModeRef } from "./turn-mode-context";
 
@@ -243,14 +244,34 @@ export async function execTurn(
     // Attach the turn's listeners to the SETTLED session (the rebuilt one when we
     // crossed a backend or flipped mode, else the session we entered with).
     subscribeSession();
+    // Set on a cross-backend rebuild: the canonical transcript rendered as a
+    // preamble, prepended to THIS turn's prompt so the fresh session continues
+    // the conversation instead of greeting the user anew (HOU-951).
+    let replayPrefix = "";
     if (rebuilt) {
-      // Cross-backend rebuild: the new session starts fresh (no in-memory history
-      // to compact — each backend owns its own store), so nothing is summarized.
-      // Still announce the boundary so the chat draws a divider + resets its
-      // window estimate; persisted on the assistant message below for reload.
+      // Cross-backend rebuild: the new backend cannot read the old backend's
+      // session store, so the fresh session carries the conversation over via a
+      // transcript replay from Houston's canonical store — clamped to the new
+      // model's window, newest turns kept (`summarized` reflects a lossy clamp,
+      // so the divider stays honest). Announce the boundary either way so the
+      // chat draws a divider + resets its window estimate; persisted on the
+      // assistant message below for reload.
+      const replay = renderReplayPreamble(
+        getHistory(id)?.messages ?? [],
+        turnId,
+        replayCharBudget(
+          effectiveModelWindow(
+            model.provider,
+            model.id,
+            model.contextWindow,
+            0,
+          ),
+        ),
+      );
+      replayPrefix = replay?.text ?? "";
       providerSwitch = {
         provider: model.provider,
-        summarized: false,
+        summarized: replay?.truncated ?? false,
         pre_tokens: rebuiltPreTokens,
       };
       publish(id, {
@@ -350,7 +371,11 @@ export async function execTurn(
     // prefix the prompt with `[From: <name>]\n` so the model can tell teammates
     // apart. Single-author (or authorless) turns pass `text` through unchanged —
     // today's prompts stay byte-identical, so no drift for existing users.
-    const promptText = framePrompt(text, author, priorAuthors);
+    // The replay prefix rides the prompt (not the transcript): the user's
+    // recorded message stays `text`, so the bubble never renders the preamble,
+    // while the backend-native session persists it — later rehydrates keep the
+    // carried context without replaying again.
+    const promptText = replayPrefix + framePrompt(text, author, priorAuthors);
     // Snapshot the workspace's user-visible files so the turn's diff can be
     // surfaced as a `file_changes` frame below. Same-workdir turns are
     // serialized by the workdir lock (chat.ts), so the diff is attributable to
