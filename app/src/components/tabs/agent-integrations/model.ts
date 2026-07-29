@@ -12,6 +12,9 @@ import { effectiveAccess } from "../../integrations/effective-access.ts";
 /** One connected app resolved for display in this agent's list. */
 export interface AgentAppRow {
   connection: IntegrationConnection;
+  /** Every ACTIVE account behind the row's toolkit (primary first); a
+   *  non-active row carries just itself. */
+  accounts: IntegrationConnection[];
   app: AppDisplay;
 }
 

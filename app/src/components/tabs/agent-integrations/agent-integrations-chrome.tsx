@@ -1,3 +1,5 @@
+import type { IntegrationConnection } from "@houston-ai/engine-client";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AppDetailDialog,
@@ -9,11 +11,12 @@ import type { AgentAppRow } from "./model";
 /**
  * The per-agent Integrations tab's non-catalog chrome: the "Manage all
  * integrations" link to the global page, the detail modal for a strip row (view
- * + reconnect + disconnect — this tab is a pure connect surface, never a
- * permission editor), and the disconnect confirmation. Split out of
- * {@link AgentIntegrationsBody} so that body stays a lean layout of the shared
- * {@link CatalogShell}. State stays in the parent (`key={agent.id}` remount) so
- * none of it crosses agents; this component only renders it.
+ * + accounts + reconnect + disconnect — this tab is a pure connect surface,
+ * never a permission editor), and the disconnect confirmation (the whole app,
+ * or ONE account of it when the app holds several — HOU-901). Row state stays
+ * in the parent (`key={agent.id}` remount) so none of it crosses agents; only
+ * the transient "which account is pending disconnect" lives here, cleared with
+ * the dialog it belongs to.
  */
 export function AgentIntegrationsChrome({
   onManageAll,
@@ -30,9 +33,16 @@ export function AgentIntegrationsChrome({
   setDetailRow: (row: AgentAppRow | null) => void;
   setDisconnectRow: (row: AgentAppRow | null) => void;
   connectFlow: ConnectFlow;
-  onDisconnect: (toolkit: string) => void;
+  onDisconnect: (toolkit: string, connectionId?: string) => void;
 }) {
   const { t } = useTranslation("integrations");
+  const [disconnectAccount, setDisconnectAccount] = useState<
+    IntegrationConnection | undefined
+  >(undefined);
+  const startConnect = (toolkit: string) => {
+    void connectFlow.connect(toolkit, `agentDetail:${toolkit}`);
+    setDetailRow(null);
+  };
   return (
     <>
       <div className="mt-8 flex justify-center">
@@ -53,14 +63,16 @@ export function AgentIntegrationsChrome({
           }}
           display={detailRow.app}
           connection={detailRow.connection}
-          onReconnect={() => {
-            void connectFlow.connect(
-              detailRow.connection.toolkit,
-              `agentDetail:${detailRow.connection.toolkit}`,
-            );
+          accounts={detailRow.accounts}
+          onReconnect={() => startConnect(detailRow.connection.toolkit)}
+          onAddAccount={() => startConnect(detailRow.connection.toolkit)}
+          onDisconnect={() => {
+            setDisconnectAccount(undefined);
+            setDisconnectRow(detailRow);
             setDetailRow(null);
           }}
-          onDisconnect={() => {
+          onDisconnectAccount={(account) => {
+            setDisconnectAccount(account);
             setDisconnectRow(detailRow);
             setDetailRow(null);
           }}
@@ -69,10 +81,15 @@ export function AgentIntegrationsChrome({
 
       <IntegrationDisconnectDialog
         app={disconnectRow?.app ?? null}
-        onClose={() => setDisconnectRow(null)}
-        onConfirm={(toolkit) => {
-          onDisconnect(toolkit);
+        account={disconnectAccount}
+        onClose={() => {
           setDisconnectRow(null);
+          setDisconnectAccount(undefined);
+        }}
+        onConfirm={(toolkit, connectionId) => {
+          onDisconnect(toolkit, connectionId);
+          setDisconnectRow(null);
+          setDisconnectAccount(undefined);
         }}
       />
     </>

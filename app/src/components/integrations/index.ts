@@ -1,3 +1,4 @@
+export { accountRowLabel } from "./account-display";
 export { AllowlistEditor } from "./allowlist-editor";
 export { AppDetailDialog } from "./app-detail-dialog";
 export {
@@ -46,6 +47,8 @@ export {
   type BrokenStatus,
   catalogHiddenToolkits,
   connKey,
+  groupAccounts,
+  type InstalledApp,
   partitionConnections,
 } from "./connected-apps-model";
 export {

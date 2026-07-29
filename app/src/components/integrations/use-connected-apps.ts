@@ -8,12 +8,14 @@ import {
   useIntegrationToolkits,
 } from "../../hooks/queries";
 import { type AppDisplay, appDisplay } from "./app-display";
-import { partitionConnections } from "./connected-apps-model";
+import { groupAccounts, partitionConnections } from "./connected-apps-model";
 import { INTEGRATION_PROVIDER } from "./model";
 
-/** An active (usable) connection with its display. */
+/** An active (usable) app with its display — ONE row per toolkit, carrying
+ *  every active account behind it (a toolkit can hold two Gmail logins). */
 export interface ActiveAppRow {
   connection: IntegrationConnection;
+  accounts: IntegrationConnection[];
   app: AppDisplay;
 }
 
@@ -49,10 +51,11 @@ export function useConnectedApps(): ConnectedApps {
 
   const activeRows = useMemo(
     () =>
-      partitionConnections(connData)
-        .installed.map((c) => ({
-          connection: c,
-          app: appDisplay(c.toolkit, bySlug.get(c.toolkit)),
+      groupAccounts(partitionConnections(connData).installed)
+        .map(({ connection, accounts }) => ({
+          connection,
+          accounts,
+          app: appDisplay(connection.toolkit, bySlug.get(connection.toolkit)),
         }))
         .sort((a, b) => a.app.name.localeCompare(b.app.name)),
     [connData, bySlug],

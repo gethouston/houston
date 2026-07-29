@@ -248,20 +248,25 @@ export function connect(toolkit: string): {
  * OAuth leaves behind and a spec cannot reach by clicking: `pending` (the user
  * walked away mid sign-in) and `error` (the provider refused). Re-statuses the
  * toolkit's existing connection when it has one, so a spec can also BREAK the
- * seeded active connection. Returns the connection.
+ * seeded active connection — UNLESS `extraAccount` is set, which always mints
+ * a NEW connection so a spec can stack several accounts on one toolkit (two
+ * Gmail logins, HOU-901). `accountLabel` stamps the account's human identity
+ * (the email/workspace a real provider derives). Returns the connection.
  */
 export function seedConnection(
   toolkit: string,
   status: IntegrationConnection["status"],
+  opts?: { accountLabel?: string; extraAccount?: boolean },
 ): IntegrationConnection {
-  const existing = [...state.connections.values()].find(
-    (c) => c.toolkit === toolkit,
-  );
+  const existing = opts?.extraAccount
+    ? undefined
+    : [...state.connections.values()].find((c) => c.toolkit === toolkit);
   const connection: IntegrationConnection = {
     toolkit,
     connectionId:
       existing?.connectionId ?? `conn-${toolkit}-${state.connSeq++}`,
     status,
+    ...(opts?.accountLabel ? { accountLabel: opts.accountLabel } : {}),
   };
   state.connections.set(connection.connectionId, connection);
   return connection;
@@ -275,10 +280,13 @@ export function activateConnection(id: string): boolean {
   return true;
 }
 
-/** Disconnect a toolkit everywhere: drop all of its connections. */
-export function disconnect(toolkit: string): void {
+/** Disconnect a toolkit everywhere — or, with `connectionId`, just that ONE
+ *  account of it (a toolkit can hold several — two Gmail logins). */
+export function disconnect(toolkit: string, connectionId?: string): void {
   for (const [id, conn] of state.connections) {
-    if (conn.toolkit === toolkit) state.connections.delete(id);
+    if (connectionId ? id === connectionId : conn.toolkit === toolkit) {
+      state.connections.delete(id);
+    }
   }
 }
 

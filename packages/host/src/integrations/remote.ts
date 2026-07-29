@@ -190,8 +190,19 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     );
   }
 
-  async disconnect(_userId: string, toolkit: string): Promise<void> {
-    await this.call("/disconnect", { method: "POST", body: { toolkit } });
+  async disconnect(
+    _userId: string,
+    toolkit: string,
+    connectionId?: string,
+  ): Promise<void> {
+    // `connectionId` narrows the removal to ONE account of the toolkit; an
+    // older upstream that predates it ignores the field and removes them all
+    // (the legacy whole-toolkit behavior — never a broader action than asked
+    // for a single-account user).
+    await this.call("/disconnect", {
+      method: "POST",
+      body: { toolkit, ...(connectionId ? { connectionId } : {}) },
+    });
   }
 
   async search(
@@ -212,10 +223,11 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     action: string,
     params: Record<string, unknown>,
     acting?: ActingContext,
+    account?: string,
   ): Promise<ActionResult> {
     const body = await this.call<ActionResult>("/execute", {
       method: "POST",
-      body: { action, params },
+      body: { action, params, ...(account ? { account } : {}) },
       acting,
     });
     return this.must(body, "POST /execute");

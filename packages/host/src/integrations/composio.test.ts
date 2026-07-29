@@ -834,3 +834,229 @@ test("a non-2xx response surfaces as an error with the status + detail", async (
   }));
   await expect(provider.listToolkits()).rejects.toThrow(/→ 500.*boom/);
 });
+
+// ── Multi-account (HOU-901): labels, targeted execute, per-account disconnect ─
+
+/** A display-only OIDC id_token: header.payload.sig with a real claims payload. */
+function fakeIdToken(claims: Record<string, unknown>): string {
+  const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  return `eyJhbGciOiJSUzI1NiJ9.${payload}.sig`;
+}
+
+test("listConnections derives the account label + createdAt from the auth payload", async () => {
+  const { provider } = harness((url) => {
+    expect(url.pathname).toBe("/api/v3/connected_accounts");
+    return {
+      body: {
+        items: [
+          {
+            id: "ca_google",
+            toolkit: { slug: "gmail" },
+            status: "ACTIVE",
+            user_id: USER,
+            created_at: "2026-07-28T10:00:00.000Z",
+            data: { id_token: fakeIdToken({ email: "dan@gmail.com" }) },
+          },
+          {
+            id: "ca_notion",
+            toolkit: { slug: "notion" },
+            status: "ACTIVE",
+            user_id: USER,
+            data: { workspace_name: "Acme HQ" },
+          },
+          {
+            id: "ca_key",
+            toolkit: { slug: "telegram" },
+            status: "ACTIVE",
+            user_id: USER,
+            // Tokens are NOT identity: no label may be derived from them.
+            data: { generic_api_key: "8777-secret" },
+          },
+        ],
+      },
+    };
+  });
+  const conns = await provider.listConnections(USER);
+  expect(conns).toEqual([
+    {
+      toolkit: "gmail",
+      connectionId: "ca_google",
+      status: "active",
+      accountLabel: "dan@gmail.com",
+      createdAt: "2026-07-28T10:00:00.000Z",
+    },
+    {
+      toolkit: "notion",
+      connectionId: "ca_notion",
+      status: "active",
+      accountLabel: "Acme HQ",
+    },
+    { toolkit: "telegram", connectionId: "ca_key", status: "active" },
+  ]);
+});
+
+test("execute targets one connected account when asked, none when not", async () => {
+  const { provider, calls } = harness(() => ({
+    body: { successful: true, data: {} },
+  }));
+  await provider.execute(USER, "GMAIL_SEND_EMAIL", { to: "x@y.z" });
+  expect(
+    (calls[0]?.body as Record<string, unknown>).connected_account_id,
+  ).toBeUndefined();
+  await provider.execute(
+    USER,
+    "GMAIL_SEND_EMAIL",
+    { to: "x@y.z" },
+    undefined,
+    "ca_2",
+  );
+  expect(calls[1]?.body).toMatchObject({
+    user_id: USER,
+    connected_account_id: "ca_2",
+  });
+});
+
+test("disconnect with a connectionId removes exactly that account, after proving ownership", async () => {
+  const deletes: string[] = [];
+  const { provider } = harness((url, method) => {
+    if (method === "DELETE") {
+      deletes.push(url.pathname);
+      return { body: {} };
+    }
+    // The ownership probe: GET the single account.
+    expect(url.pathname).toBe("/api/v3/connected_accounts/ca_mine");
+    return {
+      body: {
+        id: "ca_mine",
+        toolkit: { slug: "gmail" },
+        status: "ACTIVE",
+        user_id: USER,
+      },
+    };
+  });
+  await provider.disconnect(USER, "gmail", "ca_mine");
+  expect(deletes).toEqual(["/api/v3/connected_accounts/ca_mine"]);
+});
+
+test("disconnect with a foreign or wrong-toolkit connectionId deletes nothing", async () => {
+  const deletes: string[] = [];
+  const { provider } = harness((url, method) => {
+    if (method === "DELETE") {
+      deletes.push(url.pathname);
+      return { body: {} };
+    }
+    return {
+      body: {
+        id: "ca_theirs",
+        toolkit: { slug: "gmail" },
+        status: "ACTIVE",
+        user_id: "someone-else",
+      },
+    };
+  });
+  await provider.disconnect(USER, "gmail", "ca_theirs");
+  // Wrong toolkit for an owned account also deletes nothing.
+  const { provider: p2 } = harness((url, method) => {
+    if (method === "DELETE") {
+      deletes.push(url.pathname);
+      return { body: {} };
+    }
+    return {
+      body: {
+        id: "ca_mine",
+        toolkit: { slug: "slack" },
+        status: "ACTIVE",
+        user_id: USER,
+      },
+    };
+  });
+  await p2.disconnect(USER, "gmail", "ca_mine");
+  expect(deletes).toEqual([]);
+});
+
+// ── Identity probes: the label comes from the app itself (HOU-901) ───────────
+// Composio MASKS the auth payload (id_token arrives as the literal string
+// "REDACTED"), so a Gmail account's email is resolved by executing the
+// toolkit's read-only profile action, targeted at that account, once.
+
+function probeHarness() {
+  let profileCalls = 0;
+  const harnessResult = harness((url, method) => {
+    if (method === "POST" && url.pathname.includes("/tools/execute/")) {
+      profileCalls++;
+      const account = url.pathname.endsWith("GMAIL_GET_PROFILE")
+        ? "probed"
+        : "wrong-action";
+      return {
+        body: {
+          successful: true,
+          data: { emailAddress: `${account}-${profileCalls}@x.test` },
+        },
+      };
+    }
+    return {
+      body: {
+        items: [
+          {
+            id: "ca_1",
+            toolkit: { slug: "gmail" },
+            status: "ACTIVE",
+            user_id: USER,
+            data: { id_token: "REDACTED" },
+          },
+          {
+            id: "ca_2",
+            toolkit: { slug: "gmail" },
+            status: "ACTIVE",
+            user_id: USER,
+            data: { id_token: "REDACTED" },
+          },
+        ],
+      },
+    };
+  });
+  return { ...harnessResult, profileCalls: () => profileCalls };
+}
+
+test("masked-payload gmail accounts get their email via a targeted profile probe, cached", async () => {
+  const { provider, calls, profileCalls } = probeHarness();
+  const first = await provider.listConnections(USER);
+  expect(first.map((c) => c.accountLabel)).toEqual([
+    "probed-1@x.test",
+    "probed-2@x.test",
+  ]);
+  // Each probe targeted ITS account.
+  const executes = calls.filter((c) => c.path.includes("/tools/execute/"));
+  expect(
+    executes.map(
+      (c) => (c.body as Record<string, unknown>).connected_account_id,
+    ),
+  ).toEqual(["ca_1", "ca_2"]);
+  // A second list serves the labels from the cache — no further probes.
+  await provider.listConnections(USER);
+  expect(profileCalls()).toBe(2);
+});
+
+test("a failing probe leaves the connection listed, just unlabelled", async () => {
+  const { provider } = harness((url, method) => {
+    if (method === "POST" && url.pathname.includes("/tools/execute/")) {
+      return { status: 500, body: { error: "upstream sad" } };
+    }
+    return {
+      body: {
+        items: [
+          {
+            id: "ca_1",
+            toolkit: { slug: "gmail" },
+            status: "ACTIVE",
+            user_id: USER,
+          },
+        ],
+      },
+    };
+  });
+  const conns = await provider.listConnections(USER);
+  expect(conns).toEqual([
+    { toolkit: "gmail", connectionId: "ca_1", status: "active" },
+  ]);
+});

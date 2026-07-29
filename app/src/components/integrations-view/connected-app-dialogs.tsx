@@ -8,16 +8,18 @@ import {
 interface ConnectedAppDialogsProps {
   selection: ReturnType<typeof useConnectionSelection>;
   connectFlow: ConnectFlow;
-  onRemove: (toolkit: string) => void;
+  onRemove: (toolkit: string, connectionId?: string) => void;
 }
 
 /**
  * The connected-app dialogs for the global Integrations page: the per-app detail
- * MODAL (info + reconnect + disconnect — a personal connection surface, never a
- * permission editor) and the confirm-gated "disconnect everywhere" dialog.
+ * MODAL (info + accounts + reconnect + disconnect — a personal connection
+ * surface, never a permission editor) and the confirm-gated disconnect dialog
+ * (the whole app, or ONE account of it when the app holds several — HOU-901).
  * Extracted from the page so `integrations-ready.tsx` stays within the file-size
  * limit; the page owns the selection + connect flow and hands them in so a tile
- * click, a reconnect, and a disconnect all drive the same state.
+ * click, a reconnect, an added account, and a disconnect all drive the same
+ * state.
  */
 export function ConnectedAppDialogs({
   selection,
@@ -27,7 +29,9 @@ export function ConnectedAppDialogs({
   const {
     selectedConn,
     selectedApp,
+    selectedAccounts,
     disconnectApp,
+    disconnectAccount,
     closeConn,
     requestDisconnect,
     closeDisconnect,
@@ -43,6 +47,7 @@ export function ConnectedAppDialogs({
           }}
           display={selectedApp}
           connection={selectedConn}
+          accounts={selectedAccounts}
           onReconnect={() => {
             void connectFlow.connect(
               selectedConn.toolkit,
@@ -50,15 +55,28 @@ export function ConnectedAppDialogs({
             );
             closeConn();
           }}
+          onAddAccount={() => {
+            // Adding a second account IS a fresh connect of the same app: the
+            // provider mints a new connected account and keeps the first.
+            void connectFlow.connect(
+              selectedConn.toolkit,
+              `detail:${selectedConn.toolkit}`,
+            );
+            closeConn();
+          }}
           onDisconnect={() => requestDisconnect(selectedConn.toolkit)}
+          onDisconnectAccount={(account) =>
+            requestDisconnect(selectedConn.toolkit, account)
+          }
         />
       )}
 
       <IntegrationDisconnectDialog
         app={disconnectApp}
+        account={disconnectAccount}
         onClose={closeDisconnect}
-        onConfirm={(toolkit) => {
-          onRemove(toolkit);
+        onConfirm={(toolkit, connectionId) => {
+          onRemove(toolkit, connectionId);
           closeDisconnect();
         }}
       />

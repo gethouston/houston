@@ -74,11 +74,16 @@ function handleComposio(
     if (!toolkit) return json({ error: "missing toolkit" }, 400);
     return json(state.connect(toolkit));
   }
-  // POST /v1/integrations/composio/disconnect { toolkit }
+  // POST /v1/integrations/composio/disconnect { toolkit, connectionId? } —
+  // `connectionId` narrows the removal to ONE account of the toolkit.
   if (tail.length === 1 && tail[0] === "disconnect" && method === "POST") {
     const toolkit = String(body?.toolkit ?? "");
     if (!toolkit) return json({ error: "missing toolkit" }, 400);
-    state.disconnect(toolkit);
+    const connectionId =
+      typeof body?.connectionId === "string" && body.connectionId
+        ? body.connectionId
+        : undefined;
+    state.disconnect(toolkit, connectionId);
     return json({ ok: true });
   }
   return json({ error: "not found" }, 404);

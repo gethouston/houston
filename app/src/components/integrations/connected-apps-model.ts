@@ -71,6 +71,42 @@ export function partitionConnections(
 }
 
 /**
+ * One installed APP: its primary connection plus every active account behind
+ * it. A toolkit can hold several accounts at once (two Gmail logins, HOU-901) —
+ * the surfaces render ONE row per app and list the accounts in the detail
+ * dialog, never two identical Gmail rows.
+ */
+export interface InstalledApp {
+  /** The primary (first) active connection — single-account surfaces read it. */
+  connection: IntegrationConnection;
+  /** Every ACTIVE connection for the toolkit, primary first (length >= 1). */
+  accounts: IntegrationConnection[];
+}
+
+/**
+ * Group a list of ACTIVE connections into one entry per toolkit, preserving
+ * first-seen order. Callers feed it `partitionConnections(...).installed` (or
+ * any already-active subset); it never filters by status itself.
+ */
+export function groupAccounts(
+  connections: IntegrationConnection[],
+): InstalledApp[] {
+  const out: InstalledApp[] = [];
+  const byToolkit = new Map<string, InstalledApp>();
+  for (const connection of connections) {
+    const existing = byToolkit.get(connection.toolkit);
+    if (existing) {
+      existing.accounts.push(connection);
+      continue;
+    }
+    const app: InstalledApp = { connection, accounts: [connection] };
+    byToolkit.set(connection.toolkit, app);
+    out.push(app);
+  }
+  return out;
+}
+
+/**
  * The toolkits the browse catalog must NOT offer, because they already have a
  * home elsewhere on the surface: a WORKING connection is an Installed strip
  * row, and a connection the agent's Teams ceiling forbids is a "Not allowed"

@@ -71,12 +71,25 @@ export function InstalledStrip({
   const { t } = useTranslation("integrations");
   const [expanded, setExpanded] = useState(false);
 
+  // An app holding several accounts says so on its one line — the labels the
+  // provider knows (emails, workspaces) beat the generic app blurb there.
+  const accountsSummary = (accounts: readonly { accountLabel?: string }[]) => {
+    const labels = accounts.flatMap((a) =>
+      a.accountLabel ? [a.accountLabel] : [],
+    );
+    const count = t("accounts.count", { count: accounts.length });
+    return labels.length > 0 ? `${count} · ${labels.join(", ")}` : count;
+  };
+
   const items: InstalledItem[] = [
     ...active.map((row) => ({
       key: row.connection.connectionId,
       icon: <AppLogo display={row.app} size="lg" className="rounded-lg" />,
       title: row.app.name,
-      description: row.app.description,
+      description:
+        row.accounts && row.accounts.length > 1
+          ? accountsSummary(row.accounts)
+          : row.app.description,
       // Every catalog row here IS active — both callers keep pending and
       // errored connections in the catalog (on the app's own row, wearing its
       // status), so the dot is green by construction rather than by a status

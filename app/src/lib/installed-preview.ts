@@ -57,6 +57,10 @@ export function installedPreview<T>(
 export interface InstalledRow {
   connection: IntegrationConnection;
   app: AppDisplay;
+  /** Every active account behind the row's toolkit (primary first) — present
+   *  on rows built by `connectionRows`/`groupAccounts`; a row with more than
+   *  one renders an accounts summary instead of the app blurb. */
+  accounts?: readonly IntegrationConnection[];
 }
 
 /** The installed rows the section should render, narrowed by its own search. */

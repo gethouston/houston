@@ -85,6 +85,13 @@ export interface IntegrationConnection {
   toolkit: string;
   connectionId: string;
   status: "active" | "pending" | "error";
+  /** Human identity of the account behind this connection ("dan@gmail.com",
+   *  "Acme workspace") — what tells two logins to one app apart. Absent when
+   *  the provider exposes no usable identity. */
+  accountLabel?: string;
+  /** ISO timestamp the connection was created — the UI's fallback for telling
+   *  unlabeled accounts apart. */
+  createdAt?: string;
 }
 
 /** The `{value}` envelope the preferences routes return (null ⇒ unset). */

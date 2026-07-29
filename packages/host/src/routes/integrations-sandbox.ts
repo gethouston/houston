@@ -146,6 +146,12 @@ export async function handleSandboxIntegrations(
       body.params && typeof body.params === "object"
         ? (body.params as Record<string, unknown>)
         : {};
+    // Optional `account`: the runtime tool targets ONE of the user's connected
+    // accounts when the action's toolkit holds several (two Gmail logins).
+    const account =
+      typeof body.account === "string" && body.account
+        ? body.account
+        : undefined;
 
     // The host executes every authenticated execute directly. Integration
     // confirmations are model-driven `ask_user` questions raised BEFORE the
@@ -154,7 +160,7 @@ export async function handleSandboxIntegrations(
     json(
       res,
       200,
-      await provider.execute(ws.ownerUserId, action, params, acting),
+      await provider.execute(ws.ownerUserId, action, params, acting, account),
     );
     return true;
   } catch (err) {

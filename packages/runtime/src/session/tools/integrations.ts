@@ -35,6 +35,12 @@ const ExecuteParams = Type.Object({
         "Arguments for the action, matching its input parameters from integration_search.",
     }),
   ),
+  account: Type.Optional(
+    Type.String({
+      description:
+        "Which connected account to act on, when the app has MORE than one (the account id from integration_search results, e.g. 'ca_…'). Omit when the app has a single account.",
+    }),
+  ),
 });
 type ExecuteParams = Static<typeof ExecuteParams>;
 
@@ -149,6 +155,10 @@ interface ToolMatch {
   connected?: boolean;
   /** Host-reported app status; absent only from an older host (derive it). */
   status?: AppStatus;
+  /** Host-reported: the user's connected accounts for this app, present only
+   *  when there is MORE than one — the model targets one via execute's
+   *  `account`, or asks the user which to use. */
+  accounts?: { id: string; label?: string }[];
 }
 
 /** Prefer the explicit status; fall back to the legacy connected boolean. */
@@ -360,6 +370,24 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         ),
       ];
       const parts = [list];
+      // Apps holding several connected accounts: name each account once so the
+      // model can target one (execute's `account`) or ask the user which.
+      const multiAccount = new Map<string, { id: string; label?: string }[]>();
+      for (const m of items) {
+        if (m.accounts && m.accounts.length > 1 && !multiAccount.has(m.toolkit))
+          multiAccount.set(m.toolkit, m.accounts);
+      }
+      if (multiAccount.size > 0) {
+        const lines = [...multiAccount].map(
+          ([toolkit, accounts]) =>
+            `- ${toolkit}: ${accounts
+              .map((a) => `${a.id}${a.label ? ` (${a.label})` : ""}`)
+              .join(", ")}`,
+        );
+        parts.push(
+          `These apps have MULTIPLE accounts connected:\n${lines.join("\n")}\nWhen you run an action on one of these apps, pass integration_execute's \`account\` with the right account id. If the user has said which account to use (or the task implies it), pick it; if the choice matters and is ambiguous, ask the user first via ask_user, naming the accounts in plain words (their email or workspace name) — never show a raw account id to the user.`,
+        );
+      }
       const connectable = slugsWith("connectable");
       if (connectable.length > 0) {
         parts.push(
@@ -400,7 +428,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     name: "integration_execute",
     label: "Run an app action",
     description:
-      "Run an action on one of the user's connected apps — e.g. send an email, create a calendar event, add a task. Pass the action slug from integration_search and its parameters. The user's own account is used automatically; you never handle credentials.",
+      "Run an action on one of the user's connected apps — e.g. send an email, create a calendar event, add a task. Pass the action slug from integration_search and its parameters. The user's own account is used automatically; you never handle credentials. When the app has several connected accounts (integration_search lists them), pass `account` to pick one.",
     promptSnippet: "Run an action on one of the user's connected apps",
     parameters: ExecuteParams,
     executionMode: "sequential",
@@ -416,7 +444,11 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       try {
         result = await post<ActionResult>(
           "execute",
-          { action: params.action, params: params.params ?? {} },
+          {
+            action: params.action,
+            params: params.params ?? {},
+            ...(params.account ? { account: params.account } : {}),
+          },
           signal,
         );
       } catch (err) {

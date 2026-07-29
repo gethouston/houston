@@ -75,9 +75,16 @@ export function useIntegrationToolkits(provider: string, enabled: boolean) {
 export function useDisconnectIntegration(provider: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (toolkit: string) =>
-      tauriIntegrations.disconnect(provider, toolkit),
-    onSuccess: (_data, toolkit) => {
+    // `connectionId` narrows the removal to ONE account of the toolkit (a
+    // toolkit can hold several — two Gmail logins); omitted removes them all.
+    mutationFn: ({
+      toolkit,
+      connectionId,
+    }: {
+      toolkit: string;
+      connectionId?: string;
+    }) => tauriIntegrations.disconnect(provider, toolkit, connectionId),
+    onSuccess: (_data, { toolkit }) => {
       analytics.track("integration_disconnected", {
         integration_slug: toolkit,
       });

@@ -171,12 +171,21 @@ export async function handleIntegrations(
       return true;
     }
     if (sub === "disconnect" && method === "POST") {
-      const { toolkit } = await readJson(req);
+      const { toolkit, connectionId } = await readJson(req);
       if (!toolkit || typeof toolkit !== "string") {
         json(res, 400, { error: "missing 'toolkit'" });
         return true;
       }
-      await provider.disconnect(userId, toolkit);
+      // Optional `connectionId` narrows the removal to ONE account of the
+      // toolkit (a toolkit can hold several — two Gmail logins); absent, every
+      // account for the toolkit goes.
+      await provider.disconnect(
+        userId,
+        toolkit,
+        typeof connectionId === "string" && connectionId
+          ? connectionId
+          : undefined,
+      );
       json(res, 200, { ok: true });
       return true;
     }
@@ -199,7 +208,17 @@ export async function handleIntegrations(
         body.params && typeof body.params === "object"
           ? (body.params as Record<string, unknown>)
           : {};
-      json(res, 200, await provider.execute(userId, body.action, params));
+      // Optional `account` targets one of the user's connected accounts for
+      // the action's toolkit (see IntegrationProvider.execute).
+      const account =
+        typeof body.account === "string" && body.account
+          ? body.account
+          : undefined;
+      json(
+        res,
+        200,
+        await provider.execute(userId, body.action, params, undefined, account),
+      );
       return true;
     }
   } catch (err) {

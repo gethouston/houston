@@ -102,6 +102,18 @@
     "reconnect": "Reconnect",
     "disconnect": "Disconnect"
   },
+  "accounts": {
+    "title": "Accounts",
+    "add": "Add another account",
+    "count_one": "{{count}} account",
+    "count_other": "{{count}} accounts",
+    "addedOn": "Added {{date}}",
+    "fallback": "Account {{number}}",
+    "remove": "Disconnect {{name}}",
+    "disconnectTitle": "Disconnect {{account}}?",
+    "disconnectBody": "This removes the {{account}} account from {{name}} for all of your agents. Your other {{name}} accounts stay connected.",
+    "disconnectAction": "Disconnect account"
+  },
   "agentTab": {
     "manageAll": "Manage all integrations"
   },

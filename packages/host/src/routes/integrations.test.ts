@@ -806,3 +806,76 @@ test("merged multi-provider search is NOT filtered per agent (grants removed)", 
     stop();
   }
 });
+
+// ── Multi-account plumbing (HOU-901) ─────────────────────────────────────────
+
+test("sandbox execute forwards the target account to the provider", async () => {
+  const { base, ws, vault, fake, stop } = await setup();
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/execute`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "GMAIL_SEND_EMAIL",
+        params: { to: "a@b.com" },
+        account: "ca_2",
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(fake.lastAccount).toBe("ca_2");
+  } finally {
+    stop();
+  }
+});
+
+test("disconnect with a connectionId removes only that account of the toolkit", async () => {
+  const { base, fake, stop } = await setup();
+  try {
+    // Two Gmail accounts, both active.
+    const first = await fake.connect(USER, "gmail");
+    fake.completeConnection(USER, first.connectionId, "dan@gmail.com");
+    const second = await fake.connect(USER, "gmail");
+    fake.completeConnection(USER, second.connectionId, "work@acme.com");
+
+    const res = await fetch(`${base}/v1/integrations/composio/disconnect`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({
+        toolkit: "gmail",
+        connectionId: first.connectionId,
+      }),
+    });
+    expect(res.status).toBe(200);
+    const left = await fake.listConnections(USER);
+    expect(left.map((c) => c.connectionId)).toEqual([second.connectionId]);
+
+    // Without a connectionId the whole toolkit still goes (legacy behavior).
+    await fetch(`${base}/v1/integrations/composio/disconnect`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ toolkit: "gmail" }),
+    });
+    expect(await fake.listConnections(USER)).toEqual([]);
+  } finally {
+    stop();
+  }
+});
+
+test("connections carry the account label the provider derived", async () => {
+  const { base, fake, stop } = await setup();
+  try {
+    const started = await fake.connect(USER, "gmail");
+    fake.completeConnection(USER, started.connectionId, "dan@gmail.com");
+    const res = await fetch(`${base}/v1/integrations/composio/connections`, {
+      headers: auth,
+    });
+    const { items } = await res.json();
+    expect(items[0].accountLabel).toBe("dan@gmail.com");
+  } finally {
+    stop();
+  }
+});

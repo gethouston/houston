@@ -1220,14 +1220,17 @@ export class HoustonClient {
       `/integrations/${this.seg(provider)}/connections/${this.seg(connectionId)}`,
     );
   }
+  /** `connectionId` narrows the removal to ONE account of the toolkit (a
+   *  toolkit can hold several — two Gmail logins); omitted removes them all. */
   async disconnectIntegration(
     provider: string,
     toolkit: string,
+    connectionId?: string,
   ): Promise<void> {
     await this.request(
       "POST",
       `/integrations/${this.seg(provider)}/disconnect`,
-      { toolkit },
+      { toolkit, ...(connectionId ? { connectionId } : {}) },
     );
   }
   /**
