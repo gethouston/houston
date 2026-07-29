@@ -5,8 +5,10 @@ import { Trans, useTranslation } from "react-i18next";
 import { analytics } from "../../../lib/analytics";
 import { logger } from "../../../lib/logger";
 import { tauriTunnel } from "../../../lib/tauri";
+import { isActiveTopLevelView } from "../../../lib/top-level-views";
 import { useUIStore } from "../../../stores/ui";
 import { canResetPhoneAccess } from "./connect-phone-state";
+import { pairingUrl } from "./connect-phone-url";
 
 interface TunnelInfo {
   connected: boolean;
@@ -18,6 +20,9 @@ const STATUS_POLL_MS = 2_000;
 export function ConnectPhoneSection() {
   const { t } = useTranslation(["settings", "common"]);
   const addToast = useUIStore((s) => s.addToast);
+  const active = useUIStore((s) =>
+    isActiveTopLevelView(s.viewMode, "settings"),
+  );
 
   const [info, setInfo] = useState<TunnelInfo | null>(null);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
@@ -57,6 +62,7 @@ export function ConnectPhoneSection() {
   }, [t]);
 
   useEffect(() => {
+    if (!active) return;
     mountedRef.current = true;
     void loadStatus();
     const id = setInterval(() => {
@@ -66,7 +72,7 @@ export function ConnectPhoneSection() {
       mountedRef.current = false;
       clearInterval(id);
     };
-  }, [loadStatus]);
+  }, [active, loadStatus]);
 
   useEffect(() => {
     if (info?.connected) {
@@ -76,10 +82,7 @@ export function ConnectPhoneSection() {
     }
   }, [info?.connected, mintCode]);
 
-  const qrUrl =
-    pairingCode && info?.connected && info.publicHost
-      ? `${info.publicHost.startsWith("localhost") ? "http" : "https"}://${info.publicHost}/pair/${pairingCode}`
-      : null;
+  const qrUrl = pairingUrl(info, pairingCode);
 
   const canReset = canResetPhoneAccess(info);
 

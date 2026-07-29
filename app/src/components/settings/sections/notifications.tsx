@@ -14,6 +14,7 @@ import {
 } from "../../../lib/notification-settings";
 import { osIsTauri, osOpenNotificationSettings } from "../../../lib/os-bridge";
 import { currentPlatformOs } from "../../../lib/platform";
+import { isActiveTopLevelView } from "../../../lib/top-level-views";
 import { useUIStore } from "../../../stores/ui";
 import { SettingsControlRow } from "../settings-row";
 
@@ -40,6 +41,9 @@ const canOpenSettings =
 export function NotificationsSection() {
   const { t } = useTranslation(["settings", "common"]);
   const addToast = useUIStore((s) => s.addToast);
+  const active = useUIStore((s) =>
+    isActiveTopLevelView(s.viewMode, "settings"),
+  );
   const [inAppEnabled, setInAppEnabled] = useState(true);
   const [osGranted, setOsGranted] = useState(true);
 
@@ -52,10 +56,11 @@ export function NotificationsSection() {
   }, []);
 
   useEffect(() => {
+    if (!active) return;
     refreshOsGranted();
     window.addEventListener("focus", refreshOsGranted);
     return () => window.removeEventListener("focus", refreshOsGranted);
-  }, [refreshOsGranted]);
+  }, [active, refreshOsGranted]);
 
   const handleToggle = async (next: boolean) => {
     setInAppEnabled(next);

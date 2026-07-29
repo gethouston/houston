@@ -20,6 +20,19 @@ import { useStoreInstall } from "./use-store-install";
 /** The sentinel for "no filter", shared by the category and integration filters. */
 const ALL = "all";
 
+/** The default browse query, shared with boot prefetch so it warms this cache. */
+export function defaultStoreCatalogQueryOptions() {
+  return {
+    queryKey: ["store-catalog", "", ALL, ALL, "recent"] as const,
+    queryFn: ({ pageParam }: { pageParam: number }) =>
+      fetchStoreCatalog({ sort: "recent", page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (last: { hasMore: boolean }, all: unknown[]) =>
+      last.hasMore ? all.length + 1 : undefined,
+    staleTime: 60_000,
+  };
+}
+
 /**
  * The Agent Store's Browse tab: the public catalog in the app's catalog grammar
  * (search + category chips + integration filter over the flat row grid, a row

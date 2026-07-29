@@ -11,6 +11,7 @@ export function useLearnings(agentPath: string | undefined) {
     queryKey: queryKeys.learnings(agentPath ?? ""),
     queryFn: () => learnings.list(agentPath ?? ""),
     enabled: !!agentPath,
+    staleTime: 30_000,
   });
   // Adapt to the legacy `{ index, text }[]` shape so existing UIs keep working,
   // carrying the provenance fields through: the Memory rows show who taught a

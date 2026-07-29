@@ -17,6 +17,7 @@ export function useFiles(agentPath: string | undefined) {
       return tauriFiles.list(agentPath);
     },
     enabled: !!agentPath,
+    staleTime: 30_000,
   });
 }
 

@@ -48,6 +48,7 @@ async function resolveActivityTarget(
     const activities = await queryClient.fetchQuery({
       queryKey: queryKeys.activity(agentPath),
       queryFn: () => tauriActivity.list(agentPath),
+      staleTime: 0,
     });
     const activityId = activityIdForSessionKey(activities, sessionKey);
     if (!activityId) return null;

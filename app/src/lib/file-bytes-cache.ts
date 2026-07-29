@@ -5,7 +5,7 @@
  * file whose thumbnail had just been fetched downloaded the exact same bytes a
  * second time (HOU-970).
  *
- * Blobs live in the query cache for the default gcTime, so two rules keep it
+ * Blobs live in the query cache briefly (five minutes), so two rules keep it
  * from turning into a memory hazard:
  *
  * 1. **Keyed per file + mtime, cached only when there IS an mtime.** Bytes are
@@ -67,6 +67,7 @@ export function fetchFileBytes(
   return queryClient.fetchQuery({
     queryKey: fileBytesQueryKey(agentPath, filePath, dateModified),
     staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 5 * 60_000,
     queryFn: download,
   });
 }

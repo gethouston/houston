@@ -9,6 +9,11 @@ import {
   getConnectProviders,
   type ProviderInfo,
 } from "../lib/providers";
+import {
+  AI_HUB_VIEW_ID,
+  isActiveTopLevelView,
+  USAGE_VIEW_ID,
+} from "../lib/top-level-views";
 import { useUIStore } from "../stores/ui";
 import type {
   ProviderConnections,
@@ -40,9 +45,18 @@ export type {
  * Rendered once by the hub view; `dialogProps` feeds a single
  * `<ProviderConnectionDialogs>`.
  */
-export function useProviderConnections(): ProviderConnections {
+export function useProviderConnections(options?: {
+  /** Non-top-level flows unmount when hidden, so they own login events while mounted. */
+  alwaysActive?: boolean;
+}): ProviderConnections {
   const { t } = useTranslation("providers");
   const addToast = useUIStore((s) => s.addToast);
+  const providerSurfaceActive = useUIStore(
+    (s) =>
+      options?.alwaysActive ||
+      isActiveTopLevelView(s.viewMode, AI_HUB_VIEW_ID) ||
+      isActiveTopLevelView(s.viewMode, USAGE_VIEW_ID),
+  );
   const { capabilities } = useCapabilities();
   const newEngine = newEngineActive();
   const providerCapabilities =
@@ -80,18 +94,19 @@ export function useProviderConnections(): ProviderConnections {
     loadStatuses();
   }, [loadStatuses]);
 
-  // While a connect is pending, poll so the card flips to connected once the
-  // CLI credential file lands (the ProviderLoginComplete event is the primary
-  // signal; this is the backstop).
+  // While a connect is pending on its visible owner, poll so the card flips to
+  // connected once the credential lands (ProviderLoginComplete is primary).
+  // AI Hub and Usage stay mounted while hidden, so their local backstop must
+  // not keep issuing reads after the user leaves those provider surfaces.
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
-    if (pending) {
+    if (pending && providerSurfaceActive) {
       pollRef.current = setInterval(loadStatuses, 2000);
     }
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [pending, loadStatuses]);
+  }, [pending, providerSurfaceActive, loadStatuses]);
 
   useEffect(() => {
     if (!pending) return;
@@ -104,6 +119,7 @@ export function useProviderConnections(): ProviderConnections {
   }, [pending, statuses]);
 
   useProviderLoginEvents({
+    active: providerSurfaceActive,
     visibleProviders,
     addToast,
     t,
