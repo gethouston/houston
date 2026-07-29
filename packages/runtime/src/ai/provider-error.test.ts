@@ -269,6 +269,28 @@ test("GitHub Copilot model_not_supported → model_unavailable + gpt-4.1 fallbac
   });
 });
 
+test("Copilot 'not available for integrator' 400 → model_unavailable + gpt-4.1 fallback (HOU-977)", () => {
+  // Copilot's NEWER wording for the same plan-doesn't-serve-this-model failure:
+  // no `model_not_supported` code, just prose naming the integrator and the
+  // plan's model list. Fell through to `unknown` (generic card + auto bug
+  // report) until the pattern landed.
+  const message =
+    '400: {"message":"The requested model is not available for integrator \\"vscode-chat\\". Available models: [gpt-4.1 claude-fable-5 claude-opus-4.7 claude-opus-4.8-fast claude-opus-4.8 claude-opus-5 claude-sonnet-4.6 claude-sonnet-5]"}';
+  const err = classifyProviderError({
+    provider: "github-copilot",
+    model: "gpt-5.6-sol",
+    message,
+  });
+  expect(err).toEqual({
+    kind: "model_unavailable",
+    provider: "github-copilot",
+    model: "gpt-5.6-sol",
+    reason: "unknown",
+    suggested_fallback: "gpt-4.1",
+    message,
+  });
+});
+
 test("together.ai's gated-model body → model_unavailable, never unknown", () => {
   // The verbatim rejection together.ai answers a non-serverless model with. The
   // key authenticated fine — classifying this as `unknown` made the api-key
