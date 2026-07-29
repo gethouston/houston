@@ -973,3 +973,90 @@ test("disconnect with a foreign or wrong-toolkit connectionId deletes nothing", 
   await p2.disconnect(USER, "gmail", "ca_mine");
   expect(deletes).toEqual([]);
 });
+
+// ── Identity probes: the label comes from the app itself (HOU-901) ───────────
+// Composio MASKS the auth payload (id_token arrives as the literal string
+// "REDACTED"), so a Gmail account's email is resolved by executing the
+// toolkit's read-only profile action, targeted at that account, once.
+
+function probeHarness() {
+  let profileCalls = 0;
+  const harnessResult = harness((url, method) => {
+    if (method === "POST" && url.pathname.includes("/tools/execute/")) {
+      profileCalls++;
+      const account = url.pathname.endsWith("GMAIL_GET_PROFILE")
+        ? "probed"
+        : "wrong-action";
+      return {
+        body: {
+          successful: true,
+          data: { emailAddress: `${account}-${profileCalls}@x.test` },
+        },
+      };
+    }
+    return {
+      body: {
+        items: [
+          {
+            id: "ca_1",
+            toolkit: { slug: "gmail" },
+            status: "ACTIVE",
+            user_id: USER,
+            data: { id_token: "REDACTED" },
+          },
+          {
+            id: "ca_2",
+            toolkit: { slug: "gmail" },
+            status: "ACTIVE",
+            user_id: USER,
+            data: { id_token: "REDACTED" },
+          },
+        ],
+      },
+    };
+  });
+  return { ...harnessResult, profileCalls: () => profileCalls };
+}
+
+test("masked-payload gmail accounts get their email via a targeted profile probe, cached", async () => {
+  const { provider, calls, profileCalls } = probeHarness();
+  const first = await provider.listConnections(USER);
+  expect(first.map((c) => c.accountLabel)).toEqual([
+    "probed-1@x.test",
+    "probed-2@x.test",
+  ]);
+  // Each probe targeted ITS account.
+  const executes = calls.filter((c) => c.path.includes("/tools/execute/"));
+  expect(
+    executes.map(
+      (c) => (c.body as Record<string, unknown>).connected_account_id,
+    ),
+  ).toEqual(["ca_1", "ca_2"]);
+  // A second list serves the labels from the cache — no further probes.
+  await provider.listConnections(USER);
+  expect(profileCalls()).toBe(2);
+});
+
+test("a failing probe leaves the connection listed, just unlabelled", async () => {
+  const { provider } = harness((url, method) => {
+    if (method === "POST" && url.pathname.includes("/tools/execute/")) {
+      return { status: 500, body: { error: "upstream sad" } };
+    }
+    return {
+      body: {
+        items: [
+          {
+            id: "ca_1",
+            toolkit: { slug: "gmail" },
+            status: "ACTIVE",
+            user_id: USER,
+          },
+        ],
+      },
+    };
+  });
+  const conns = await provider.listConnections(USER);
+  expect(conns).toEqual([
+    { toolkit: "gmail", connectionId: "ca_1", status: "active" },
+  ]);
+});

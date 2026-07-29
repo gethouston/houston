@@ -1,5 +1,6 @@
 import { resolveAuthConfig } from "./composio-auth-config";
 import { ComposioHttp } from "./composio-http";
+import { extractIdentity, IDENTITY_PROBES } from "./composio-identity";
 import { searchComposio } from "./composio-search";
 import {
   mapConnection,
@@ -80,6 +81,10 @@ export class ComposioProvider implements IntegrationProvider {
   /** In-process toolkits-catalog cache for search's name resolution. */
   private catalogCache?: { at: number; toolkits: Toolkit[] };
   private catalogInflight?: Promise<Toolkit[]>;
+  /** connectionId → probed account identity (an account's identity never
+   *  changes, so successes cache for the process lifetime; failures are NOT
+   *  cached, so a transient probe error retries on the next list). */
+  private readonly accountIdentity = new Map<string, string>();
 
   constructor(opts: ComposioOptions) {
     if (!opts.apiKey) throw new Error("composio: missing platform api key");
@@ -139,7 +144,54 @@ export class ComposioProvider implements IntegrationProvider {
       "/api/v3/connected_accounts",
       { query: { user_ids: userId, limit: "100" } },
     );
-    return (body?.items ?? []).map(mapConnection);
+    return this.withAccountIdentity(
+      userId,
+      (body?.items ?? []).map(mapConnection),
+    );
+  }
+
+  /**
+   * Fill in the account identity for connections whose auth payload gave us no
+   * label (Composio masks the tokens that would carry it — see
+   * composio-identity.ts): one read-only profile call per account, targeted at
+   * THAT account, cached for the process lifetime. A probe failure just leaves
+   * the label off (the UI falls back to the connection date) — labelling is
+   * enrichment and must never break the list itself.
+   */
+  private async withAccountIdentity(
+    userId: string,
+    connections: Connection[],
+  ): Promise<Connection[]> {
+    return Promise.all(
+      connections.map(async (connection) => {
+        if (connection.accountLabel || connection.status !== "active") {
+          return connection;
+        }
+        const probe = IDENTITY_PROBES[connection.toolkit.toLowerCase()];
+        if (!probe || !connection.connectionId) return connection;
+        const cached = this.accountIdentity.get(connection.connectionId);
+        if (cached) return { ...connection, accountLabel: cached };
+        try {
+          const result = await this.execute(
+            userId,
+            probe.action,
+            probe.params ?? {},
+            undefined,
+            connection.connectionId,
+          );
+          const label = result.successful
+            ? extractIdentity(result.data, probe.fields)
+            : undefined;
+          if (!label) return connection;
+          this.accountIdentity.set(connection.connectionId, label);
+          return { ...connection, accountLabel: label };
+        } catch {
+          // Probe failure = no label this round (date fallback in the UI);
+          // deliberately uncached so the next list retries.
+          return connection;
+        }
+      }),
+    );
   }
 
   /**
@@ -177,6 +229,19 @@ export class ComposioProvider implements IntegrationProvider {
     userId: string,
     connectionId: string,
   ): Promise<Connection | null> {
+    const owned = await this.ownedConnection(userId, connectionId);
+    if (!owned) return null;
+    const [labelled] = await this.withAccountIdentity(userId, [owned]);
+    return labelled ?? null;
+  }
+
+  /** One connection by id with the fail-closed ownership check, UNLABELLED —
+   *  the shared primitive for the poll (which labels on top) and the targeted
+   *  disconnect (which must never probe an account it is about to delete). */
+  private async ownedConnection(
+    userId: string,
+    connectionId: string,
+  ): Promise<Connection | null> {
     const body = await this.http.call<RawConnection>(
       `/api/v3/connected_accounts/${encodeURIComponent(connectionId)}`,
       { nullStatuses: [404] },
@@ -196,12 +261,12 @@ export class ComposioProvider implements IntegrationProvider {
     connectionId?: string,
   ): Promise<void> {
     // One account named → remove exactly that one, after proving it belongs to
-    // this user AND this toolkit (connection() is the same fail-closed ownership
-    // guard the poll uses; a guessed or cross-user id deletes nothing). Already
-    // gone upstream → the user's intent holds, same as the 404-tolerant bulk
-    // path below.
+    // this user AND this toolkit (the same fail-closed ownership guard the
+    // poll uses; a guessed or cross-user id deletes nothing). Already gone
+    // upstream → the user's intent holds, same as the 404-tolerant bulk path
+    // below.
     if (connectionId) {
-      const owned = await this.connection(userId, connectionId);
+      const owned = await this.ownedConnection(userId, connectionId);
       if (!owned || owned.toolkit.toLowerCase() !== toolkit.toLowerCase()) {
         return;
       }
