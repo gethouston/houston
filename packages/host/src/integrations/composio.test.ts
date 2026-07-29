@@ -293,6 +293,127 @@ test("connect skips bare custom OAuth and picks a user-collectible scheme (metaa
   expect(start.connectionId).toBe("ca_3");
 });
 
+test("connect falls back to a collectible scheme when the advertised managed app is gone (shopify)", async () => {
+  // HOU-1020: Composio's toolkit metadata still advertises managed OAuth for
+  // shopify/clockify, but the managed app is expired — the managed create
+  // 400s "Missing required field Client id". The connect must fall through to
+  // the toolkit's user-collectible scheme instead of dying as an opaque 502.
+  let authConfigPosts = 0;
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [] } };
+    }
+    if (url.pathname === "/api/v3/toolkits/shopify") {
+      return {
+        body: {
+          composio_managed_auth_schemes: ["OAUTH2"],
+          auth_config_details: [{ mode: "OAUTH2" }, { mode: "API_KEY" }],
+        },
+      };
+    }
+    if (url.pathname === "/api/v3/auth_configs" && method === "POST") {
+      authConfigPosts += 1;
+      if (authConfigPosts === 1) {
+        return {
+          status: 400,
+          body: {
+            error: {
+              message:
+                'Missing required field "Client id" for auth scheme "OAUTH2" in toolkit "shopify" (Client id of the app)',
+              code: 301,
+              slug: "Auth_Config_ValidationError",
+              status: 400,
+            },
+          },
+        };
+      }
+      return { body: { auth_config: { id: "ac_shopify" } } };
+    }
+    if (url.pathname === "/api/v3.1/connected_accounts/link") {
+      return {
+        body: { redirect_url: "https://link", connected_account_id: "ca_4" },
+      };
+    }
+    return { status: 404 };
+  });
+
+  const start = await provider.connect(USER, "shopify");
+  const posts = calls.filter(
+    (c) => c.method === "POST" && c.path === "/api/v3/auth_configs",
+  );
+  expect(posts[0]?.body).toEqual({
+    toolkit: { slug: "shopify" },
+    auth_config: { type: "use_composio_managed_auth" },
+  });
+  expect(posts[1]?.body).toEqual({
+    toolkit: { slug: "shopify" },
+    auth_config: {
+      type: "use_custom_auth",
+      authScheme: "API_KEY",
+      credentials: {},
+    },
+  });
+  expect(start.connectionId).toBe("ca_4");
+});
+
+test("a gone managed app with no collectible fallback names the remedy, not the raw 400", async () => {
+  // Same lie in the metadata, but the toolkit is OAuth-only: nothing the user
+  // can self-serve, so the operator remedy surfaces instead of Composio's
+  // "Missing required field Client id" relayed as a 502.
+  const { provider } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [] } };
+    }
+    if (url.pathname === "/api/v3/toolkits/ghostmanaged") {
+      return {
+        body: {
+          composio_managed_auth_schemes: ["OAUTH2"],
+          auth_config_details: [{ mode: "OAUTH2" }],
+        },
+      };
+    }
+    if (url.pathname === "/api/v3/auth_configs" && method === "POST") {
+      return {
+        status: 400,
+        body: { error: { slug: "Auth_Config_ValidationError" } },
+      };
+    }
+    return { status: 404 };
+  });
+  await expect(provider.connect(USER, "ghostmanaged")).rejects.toThrow(
+    /only offers OAuth.*Composio dashboard/,
+  );
+});
+
+test("a managed create that fails for a non-400 reason surfaces raw, no fallback", async () => {
+  // A transient 500 on the managed create is NOT evidence the managed app is
+  // gone — falling back would silently downgrade gmail-class toolkits to
+  // API-key entry on a Composio blip.
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [] } };
+    }
+    if (url.pathname === "/api/v3/toolkits/gmail") {
+      return {
+        body: {
+          composio_managed_auth_schemes: ["OAUTH2"],
+          auth_config_details: [{ mode: "OAUTH2" }, { mode: "API_KEY" }],
+        },
+      };
+    }
+    if (url.pathname === "/api/v3/auth_configs" && method === "POST") {
+      return { status: 500, body: { error: "upstream hiccup" } };
+    }
+    return { status: 404 };
+  });
+  await expect(provider.connect(USER, "gmail")).rejects.toThrow(/→ 500/);
+  expect(
+    calls.filter(
+      (c) => c.method === "POST" && c.path === "/api/v3/auth_configs",
+    ),
+  ).toHaveLength(1);
+});
+
 test("connect refuses an OAuth-only toolkit with no managed app, naming the remedy", async () => {
   // OAuth-only + unmanaged: nothing the user can self-serve. The error names
   // the operator remedy (register a dev OAuth app in the Composio dashboard —
