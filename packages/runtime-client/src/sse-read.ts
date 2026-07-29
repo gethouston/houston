@@ -32,6 +32,13 @@ export async function readEventStream(
   options?: ReadEventStreamOptions,
 ): Promise<void> {
   const reader = body.getReader();
+  // WebKit surfaces a fetch body's transport error twice: the pending read()
+  // rejects (propagated to the caller below) AND `reader.closed` rejects
+  // without the handled flag the spec requires, so Safari/WKWebView fires a
+  // stackless "Load failed" unhandledrejection even when every caller handles
+  // the read error. Defuse the duplicate surface; the real error still reaches
+  // the caller through read().
+  reader.closed.catch(() => {});
   const decoder = new TextDecoder();
   let buf = "";
   while (true) {
