@@ -12,6 +12,22 @@ export interface CallOpts {
   nullStatuses?: number[];
 }
 
+/**
+ * A non-2xx Composio reply. Carries the upstream status so callers can react
+ * to a specific rejection (auth-config fallback keys off a 400) without
+ * parsing the message; the message keeps the established
+ * `composio <METHOD> <path> → <status>: <detail>` shape end to end.
+ */
+export class ComposioApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ComposioApiError";
+  }
+}
+
 export class ComposioHttp {
   constructor(
     private readonly apiKey: string,
@@ -40,7 +56,8 @@ export class ComposioHttp {
     if (opts.nullStatuses?.includes(res.status)) return null;
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      throw new Error(
+      throw new ComposioApiError(
+        res.status,
         `composio ${opts.method ?? "GET"} ${path} → ${res.status}${detail ? `: ${detail.slice(0, 300)}` : ""}`,
       );
     }
