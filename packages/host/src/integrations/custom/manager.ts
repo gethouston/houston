@@ -6,7 +6,12 @@ import type { CustomSecretStore } from "./secrets";
 import { secretIdFor } from "./secrets";
 import { slugify } from "./slug";
 import type { CustomIntegrationStore } from "./store";
-import type { CustomIntegrationDef, CustomIntegrationView } from "./types";
+import { toolsOf } from "./tools";
+import type {
+  CustomIntegrationDef,
+  CustomIntegrationView,
+  CustomToolInfo,
+} from "./types";
 import { CUSTOM_SLUG, CustomIntegrationError } from "./types";
 import { viewOf } from "./views";
 
@@ -44,6 +49,14 @@ export class CustomIntegrationManager {
   async detect(url: string): Promise<DetectResult> {
     const { executor } = await this.host.ensure();
     return detectSource(executor, url);
+  }
+
+  /** The compiled tools behind one integration (the detail card's list).
+   *  A pending/errored definition simply has none compiled yet. */
+  async tools(slug: string): Promise<CustomToolInfo[]> {
+    await this.defOr404(slug);
+    const { executor } = await this.host.ensure();
+    return toolsOf(executor, slug);
   }
 
   async add(input: AddCustomIntegrationInput): Promise<CustomIntegrationView> {

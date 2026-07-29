@@ -1,5 +1,8 @@
 import type {
+  AddCustomIntegrationInput,
+  CustomDetectResult,
   CustomIntegrationView,
+  CustomToolInfo,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
@@ -107,4 +110,44 @@ export async function submitCustomIntegrationCredential(
     { method: "POST", body: JSON.stringify({ values }) },
   );
   return (await res.json()) as CustomIntegrationView;
+}
+
+export async function detectCustomIntegration(
+  cfg: ControlPlaneConfig,
+  url: string,
+): Promise<CustomDetectResult> {
+  const res = await cpFetch(cfg, "/v1/integrations/custom/detect", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+  return (await res.json()) as CustomDetectResult;
+}
+
+export async function addCustomIntegration(
+  cfg: ControlPlaneConfig,
+  input: AddCustomIntegrationInput,
+): Promise<CustomIntegrationView> {
+  const res = await cpFetch(cfg, "/v1/integrations/custom/definitions", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return (await res.json()) as CustomIntegrationView;
+}
+
+/** The compiled tools behind one custom integration (the detail card's list).
+ *  404 = the host predates the route → null, mirroring `customIntegrations`. */
+export async function customIntegrationTools(
+  cfg: ControlPlaneConfig,
+  slug: string,
+): Promise<CustomToolInfo[] | null> {
+  try {
+    const res = await cpFetch(
+      cfg,
+      `/v1/integrations/custom/definitions/${encodeURIComponent(slug)}/tools`,
+    );
+    return ((await res.json()) as { items: CustomToolInfo[] }).items;
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404) return null;
+    throw err;
+  }
 }

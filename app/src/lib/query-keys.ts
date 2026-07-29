@@ -119,6 +119,10 @@ export const queryKeys = {
    *  "custom-integrations" prefix so one invalidation refreshes both. */
   agentCustomIntegrations: (agentId: string) =>
     ["custom-integrations", agentId] as const,
+  /** The compiled tools behind ONE custom integration (the detail card's
+   *  list, HOU-980). Same prefix, so `CustomIntegrationsChanged` refreshes it. */
+  customIntegrationTools: (slug: string) =>
+    ["custom-integrations", "tools", slug] as const,
 
   // Multiplayer (org). The current user's org + roster is app-scoped (one org
   // per user).

@@ -45,13 +45,19 @@ const VIEW: CustomIntegrationView = {
 
 function fakeManager(
   overrides: Partial<
-    Pick<CustomIntegrationManager, "list" | "setCredential" | "remove">
+    Pick<
+      CustomIntegrationManager,
+      "list" | "setCredential" | "remove" | "add" | "detect" | "tools"
+    >
   > = {},
 ): CustomIntegrationManager {
   return {
     list: vi.fn(async () => [VIEW]),
     setCredential: vi.fn(async () => VIEW),
     remove: vi.fn(async () => {}),
+    add: vi.fn(async () => VIEW),
+    detect: vi.fn(async () => ({ kind: "openapi" as const, name: "Acme" })),
+    tools: vi.fn(async () => [{ name: "listWidgets" }]),
     ...overrides,
   } as unknown as CustomIntegrationManager;
 }
@@ -186,6 +192,177 @@ test("top-level /v1 form still serves against the full server (regression)", asy
     });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ items: [VIEW] });
+  } finally {
+    stop();
+  }
+});
+
+test("manual add: POST definitions validates the body and returns the view (top-level + dispatch)", async () => {
+  const add = vi.fn(async () => VIEW);
+  const { base, agent, stop } = await setup(fakeManager({ add }));
+  try {
+    const bad = await fetch(`${base}/v1/integrations/custom/definitions`, {
+      method: "POST",
+      headers: auth(),
+      body: JSON.stringify({ kind: "openapi", name: "" }),
+    });
+    expect(bad.status).toBe(400);
+    expect(add).not.toHaveBeenCalled();
+
+    const top = await fetch(`${base}/v1/integrations/custom/definitions`, {
+      method: "POST",
+      headers: auth(),
+      body: JSON.stringify({
+        kind: "openapi",
+        name: "Acme",
+        url: "https://acme.example/openapi.json",
+        auth: "credential",
+      }),
+    });
+    expect(top.status).toBe(200);
+    expect(await top.json()).toEqual(VIEW);
+    expect(add).toHaveBeenCalledWith({
+      kind: "openapi",
+      name: "Acme",
+      spec: { kind: "url", url: "https://acme.example/openapi.json" },
+      auth: "credential",
+    });
+
+    const dispatch = await fetch(dispatchUrl(base, agent.id), {
+      method: "POST",
+      headers: auth(),
+      body: JSON.stringify({
+        kind: "mcp",
+        name: "Acme MCP",
+        endpoint: "https://mcp.acme.example",
+        auth: "none",
+      }),
+    });
+    expect(dispatch.status).toBe(200);
+    expect(add).toHaveBeenCalledWith({
+      kind: "mcp",
+      name: "Acme MCP",
+      endpoint: "https://mcp.acme.example",
+      auth: "none",
+    });
+  } finally {
+    stop();
+  }
+});
+
+test("add relays duplicate_slug as a stable 409 {error, code} body", async () => {
+  const { base, stop } = await setup(
+    fakeManager({
+      add: vi.fn(async () => {
+        throw new CustomIntegrationError(
+          "duplicate_slug",
+          "a custom integration named 'acme' already exists",
+        );
+      }),
+    }),
+  );
+  try {
+    const res = await fetch(`${base}/v1/integrations/custom/definitions`, {
+      method: "POST",
+      headers: auth(),
+      body: JSON.stringify({
+        kind: "openapi",
+        name: "Acme",
+        url: "https://acme.example/openapi.json",
+        auth: "none",
+      }),
+    });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "a custom integration named 'acme' already exists",
+      code: "duplicate_slug",
+    });
+  } finally {
+    stop();
+  }
+});
+
+test("detect: POST classifies a URL on both user surfaces; empty url is 400", async () => {
+  const detect = vi.fn(async () => ({
+    kind: "mcp" as const,
+    name: "Acme MCP",
+    suggestedSlug: "acme-mcp",
+    toolCount: 2,
+  }));
+  const { base, agent, stop } = await setup(fakeManager({ detect }));
+  try {
+    const bad = await fetch(`${base}/v1/integrations/custom/detect`, {
+      method: "POST",
+      headers: auth(),
+      body: JSON.stringify({ url: "  " }),
+    });
+    expect(bad.status).toBe(400);
+
+    const top = await fetch(`${base}/v1/integrations/custom/detect`, {
+      method: "POST",
+      headers: auth(),
+      body: JSON.stringify({ url: "https://mcp.acme.example" }),
+    });
+    expect(top.status).toBe(200);
+    expect(await top.json()).toEqual({
+      kind: "mcp",
+      name: "Acme MCP",
+      suggestedSlug: "acme-mcp",
+      toolCount: 2,
+    });
+
+    const dispatch = await fetch(
+      `${base}/agents/${encodeURIComponent(agent.id)}/integrations/custom/detect`,
+      {
+        method: "POST",
+        headers: auth(),
+        body: JSON.stringify({ url: "https://mcp.acme.example" }),
+      },
+    );
+    expect(dispatch.status).toBe(200);
+    expect(detect).toHaveBeenCalledTimes(2);
+  } finally {
+    stop();
+  }
+});
+
+test("tools: GET lists the compiled tools; unknown slug relays not_found", async () => {
+  const { base, agent, stop } = await setup(
+    fakeManager({
+      tools: vi.fn(async (slug: string) => {
+        if (slug !== "acme")
+          throw new CustomIntegrationError(
+            "not_found",
+            `no custom integration '${slug}'`,
+          );
+        return [{ name: "listWidgets", description: "List widgets" }];
+      }),
+    }),
+  );
+  try {
+    const top = await fetch(
+      `${base}/v1/integrations/custom/definitions/acme/tools`,
+      { headers: auth() },
+    );
+    expect(top.status).toBe(200);
+    expect(await top.json()).toEqual({
+      items: [{ name: "listWidgets", description: "List widgets" }],
+    });
+
+    const dispatch = await fetch(dispatchUrl(base, agent.id, "/acme/tools"), {
+      headers: auth(),
+    });
+    expect(dispatch.status).toBe(200);
+
+    const missing = await fetch(
+      `${base}/v1/integrations/custom/definitions/ghost/tools`,
+      { headers: auth() },
+    );
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toEqual({
+      error: "no custom integration 'ghost'",
+      code: "not_found",
+    });
   } finally {
     stop();
   }

@@ -11,6 +11,7 @@
 import { parseSidebarLayout } from "@houston/host/src/routes/sidebar-layout";
 import { SEED_WORKSPACE_ID } from "./config";
 import { json } from "./http";
+import { handleCustom } from "./routes-custom-integrations";
 import * as state from "./state";
 
 /** The personal workspace wire shape the gateway/host return (account.ts
@@ -89,37 +90,9 @@ function handleComposio(
   return json({ error: "not found" }, 404);
 }
 
-/**
- * Custom integrations (HOU-550): `/v1/integrations/custom/definitions*`. The
- * list 404s when the feature is not armed — exactly how an older real host
- * answers, which the client reads as "hide every custom surface" (null).
- */
-function handleCustom(
-  method: string,
-  tail: string[],
-  _body: Record<string, unknown> | undefined,
-): Response {
-  const items = state.listCustomIntegrations();
-  if (items === null || tail[0] !== "definitions") {
-    return json({ error: "not found" }, 404);
-  }
-  // GET /v1/integrations/custom/definitions
-  if (tail.length === 1 && method === "GET") return json({ items });
-  // DELETE /v1/integrations/custom/definitions/:slug
-  if (tail.length === 2 && method === "DELETE") {
-    return state.removeCustomIntegration(tail[1] ?? "")
-      ? json({ ok: true })
-      : json({ error: "not found", code: "not_found" }, 404);
-  }
-  // POST /v1/integrations/custom/definitions/:slug/credential
-  if (tail.length === 3 && tail[2] === "credential" && method === "POST") {
-    const view = state.setCustomCredential(tail[1] ?? "");
-    return view
-      ? json(view)
-      : json({ error: "not found", code: "not_found" }, 404);
-  }
-  return json({ error: "not found" }, 404);
-}
+// Custom integrations (HOU-550 / HOU-980) live in
+// routes-custom-integrations.ts; both the top-level and per-agent forms below
+// route into its one handler.
 
 function handleIntegrations(
   method: string,

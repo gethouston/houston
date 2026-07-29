@@ -127,3 +127,123 @@ test("ready mode lists a pending custom integration and the enter-key flow activ
   await expect(page.getByText("Needs an API key")).not.toBeVisible();
   await expect(page.getByText("3 actions")).toBeVisible();
 });
+
+test("the manual add form detects a URL, registers the integration, and it lands in the list (HOU-980)", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["composio", "custom"] });
+  await armIntegrationsMode(request, "ready");
+  await armCustomIntegrations(request, []);
+  await openIntegrationsPage(page);
+
+  // Empty custom tab collapses to the pure empty state; its CTA opens the
+  // add fork, whose second path is the manual typed form.
+  await page.getByRole("tab", { name: "Custom integrations" }).click();
+  await page.getByRole("button", { name: "Add custom integration" }).click();
+  await page.getByRole("button", { name: /Add it manually/ }).click();
+
+  // Check pre-classifies the URL and fills the name the user has not typed.
+  await page
+    .getByLabel("API documentation URL")
+    .fill("https://api.acme.test/openapi.json");
+  await page.getByRole("button", { name: "Check" }).click();
+  await expect(page.getByText("Recognized an API service.")).toBeVisible();
+  await expect(page.getByLabel("Name")).toHaveValue("Acme API");
+
+  // Register: the dialog closes and the reactivity event lands the new row.
+  await page.getByRole("button", { name: "Add integration" }).click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(page.getByText("3 actions")).toBeVisible();
+});
+
+test("adding manually with a key lands pending and chains straight into the secure key dialog", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["composio", "custom"] });
+  await armIntegrationsMode(request, "ready");
+  await armCustomIntegrations(request, []);
+  await openIntegrationsPage(page);
+
+  await page.getByRole("tab", { name: "Custom integrations" }).click();
+  await page.getByRole("button", { name: "Add custom integration" }).click();
+  await page.getByRole("button", { name: /Add it manually/ }).click();
+
+  await page.getByRole("radio", { name: "MCP server" }).click();
+  await page.getByLabel("MCP server URL").fill("https://mcp.acme.test");
+  await page.getByLabel("Name").fill("Acme MCP");
+  await page.getByRole("switch").click();
+  await page.getByRole("button", { name: "Add integration" }).click();
+
+  // The pending definition immediately asks for its key (the secure dialog),
+  // and saving it activates the integration.
+  await page.getByLabel("API key").fill("sk_test_42");
+  await page.getByRole("button", { name: "Save key" }).click();
+  await expect(page.getByText("3 actions")).toBeVisible();
+});
+
+test("an Installed-strip custom tile opens the detail card: metadata, actions list, and remove (HOU-980)", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["composio", "custom"] });
+  await armIntegrationsMode(request, "ready");
+  await armCustomIntegrations(request, [
+    {
+      ...ACME_PENDING,
+      slug: "acme_live",
+      name: "Acme Live",
+      state: { status: "active", toolCount: 2 },
+      tools: [
+        { name: "create_contact", description: "Create a contact" },
+        { name: "list_deals" },
+      ],
+    },
+  ]);
+  await openIntegrationsPage(page);
+
+  // The strip tile now opens the detail card in place (no tab jump).
+  await page.getByRole("button", { name: "Acme Live API" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Acme Live")).toBeVisible();
+  await expect(dialog.getByText("Connected")).toBeVisible();
+  await expect(
+    dialog.getByText("https://api.acme.test/openapi.json"),
+  ).toBeVisible();
+  await expect(dialog.getByText("create_contact")).toBeVisible();
+  await expect(dialog.getByText("list_deals")).toBeVisible();
+
+  // Remove chains into the named confirm, and the tile disappears.
+  await dialog.getByRole("button", { name: "Remove" }).click();
+  await expect(page.getByText("Remove Acme Live?")).toBeVisible();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Remove" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Acme Live API" }),
+  ).not.toBeVisible();
+});
+
+test("a pending integration's detail card leads with Enter key and opens the secure dialog", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["composio", "custom"] });
+  await armIntegrationsMode(request, "ready");
+  await armCustomIntegrations(request, [ACME_PENDING]);
+  await openIntegrationsPage(page);
+
+  await page.getByRole("button", { name: "Acme CRM API" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByText("Waiting for an API key", { exact: false }),
+  ).toBeVisible();
+  await dialog.getByRole("button", { name: "Enter key" }).click();
+
+  // The detail card hands off to the secure key dialog for THIS integration.
+  await expect(
+    page.getByRole("dialog").getByText("Enter the key for Acme CRM"),
+  ).toBeVisible();
+});

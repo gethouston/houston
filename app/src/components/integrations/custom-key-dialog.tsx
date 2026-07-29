@@ -15,6 +15,9 @@ import { customAuthMethod } from "./custom-integrations-model";
 interface CustomKeyDialogProps {
   /** The pending integration to credential, or null when the dialog is closed. */
   integration: CustomIntegrationView | null;
+  /** Per-agent surface (HOU-823): the save rides the agent's routes, which a
+   *  gateway-fronted deployment proxies to the pod (top-level 404s there). */
+  agentId?: string;
   onClose: () => void;
 }
 
@@ -28,11 +31,12 @@ interface CustomKeyDialogProps {
  */
 export function CustomKeyDialog({
   integration,
+  agentId,
   onClose,
 }: CustomKeyDialogProps) {
   const { t } = useTranslation("integrations");
   const addToast = useUIStore((s) => s.addToast);
-  const submit = useSubmitCustomCredential();
+  const submit = useSubmitCustomCredential(agentId);
 
   const authMethod = integration ? customAuthMethod(integration) : null;
   const name = integration?.name ?? "";

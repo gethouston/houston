@@ -126,6 +126,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
                 leaks across agents — the tab stays mounted on agent switch. */}
             <AgentIntegrationsBody
               key={agent.id}
+              agent={agent}
               view={view}
               catalog={catalog.data ?? []}
               allowlist={allowlist}

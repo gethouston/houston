@@ -23,6 +23,16 @@ export {
   useConversations,
 } from "./use-conversations";
 export {
+  useAddCustomIntegration,
+  useAgentCustomIntegrations,
+  useCustomIntegrations,
+  useCustomIntegrationsFor,
+  useCustomIntegrationTools,
+  useDetectCustomIntegration,
+  useRemoveCustomIntegration,
+  useSubmitCustomCredential,
+} from "./use-custom-integrations";
+export {
   useCreateFolder,
   useDeleteFile,
   useFiles,
@@ -32,14 +42,10 @@ export {
 } from "./use-files";
 export { useInstructions, useSaveInstructions } from "./use-instructions";
 export {
-  useAgentCustomIntegrations,
-  useCustomIntegrations,
   useDisconnectIntegration,
   useIntegrationConnections,
   useIntegrationStatus,
   useIntegrationToolkits,
-  useRemoveCustomIntegration,
-  useSubmitCustomCredential,
 } from "./use-integrations";
 export {
   useAddLearning,

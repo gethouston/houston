@@ -16,6 +16,7 @@
 // once here so importing from the adapter keeps a single import site and the v1
 // engine-client agrees.
 export type {
+  AddCustomIntegrationInput,
   AddOrgMemberResult,
   AgentAccess,
   AgentAssignment,
@@ -31,7 +32,9 @@ export type {
   BillingSummary,
   ComputeUsage,
   ComputeUsageRow,
+  CustomDetectResult,
   CustomIntegrationView,
+  CustomToolInfo,
   EditableProfile,
   EditableProfileCustom,
   EditableProfileUpdate,

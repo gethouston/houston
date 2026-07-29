@@ -101,6 +101,10 @@ export type AnalyticsEventName =
   | "integration_connected"
   | "integration_disconnected"
   | "custom_integration_started"
+  // A custom integration landed via the manual add form (carries
+  // `integration_slug` + `kind`: openapi / mcp) — distinct from
+  // `custom_integration_started`, the chat-interview kickoff.
+  | "custom_integration_added"
   | "skill_used"
   // A skill landed in the agent (carries `skill_slug` + `source`:
   // community / repo / scratch) — adoption of the skills surface itself,
@@ -171,6 +175,8 @@ type AnalyticsProperty =
   | "agent_count"
   // New properties
   | "integration_slug"
+  // Custom integration connection type: openapi / mcp (custom_integration_added)
+  | "integration_kind"
   | "skill_slug"
   | "routine_id"
   | "wake_kind"
@@ -225,6 +231,7 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "workspace_count",
   "agent_count",
   "integration_slug",
+  "integration_kind",
   "skill_slug",
   "routine_id",
   "wake_kind",

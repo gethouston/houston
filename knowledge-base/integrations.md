@@ -1000,9 +1000,17 @@ its rename-replace.
 
 **User routes** (`routes/custom-integrations-user.ts`; the sandbox detect/add
 routes stay in `routes/custom-integrations.ts`): GET/DELETE
-`definitions[/:slug]` + the credential POST, on THREE surfaces: top-level
-`/v1/integrations/custom/*` (mounted
-BEFORE the generic `/v1/integrations/:provider/*` catch-all), the `/v1/agents/
+`definitions[/:slug]`, the credential POST, and — since HOU-980 — the manual
+form's **POST `definitions`** (add; body = the SAME grammar as the agent's
+sandbox add tool, `parseAddInput` is the one validator), **POST `detect`**
+(classify a pasted URL), and **GET `definitions/:slug/tools`** (the compiled
+tool list behind one definition — `manager.tools(slug)` over
+`custom/tools.ts` `toolsOf`, backing the detail card's actions list; the
+count always agrees with the row's `toolCount`). The whole family is parsed
+by ONE grammar (`customTargetOf` in `custom-integrations.ts`) and served on
+THREE surfaces: top-level `/v1/integrations/custom/*` (mounted BEFORE the
+generic `/v1/integrations/:provider/*` catch-all; unknown subpaths like
+`custom/connections` fall through to it), the `/v1/agents/
 :id/integrations/custom/*` wrapper, and the per-agent dispatch `/agents/:id/
 integrations/custom/*`. **The dispatch form is the one the shipped clients
 call** (HOU-823): the hosted gateway proxies ONLY per-agent routes to a pod and
@@ -1015,14 +1023,37 @@ so in a Teams org only agent managers can save/remove — a member-facing
 use-scope carve-out is a gateway follow-up. Errors carry stable `code`s
 (`not_found`, `duplicate_slug`, `credential_invalid`, `compile_failed`…).
 Mutations emit `CustomIntegrationsChanged` (protocol events.ts) → query
-invalidation. The agent tab + global page still read the top-level list (hidden
-behind the 404→null degrade on managed cloud); moving those management surfaces
-to the per-agent form is a follow-up.
+invalidation. The GLOBAL page still reads/writes the top-level form (hidden
+behind the 404→null degrade on managed cloud); the PER-AGENT Integrations tab
+now rides the per-agent form end to end (HOU-980): `CustomIntegrationsSection`
+takes an optional `agent` and every read/write beneath it (list, add, detect,
+tools, credential, remove) switches to the `/agents/:id/...` routes via the
+`agentId?`-aware hooks (`use-custom-integrations.ts` —
+`useCustomIntegrationsFor`, `useAddCustomIntegration`,
+`useDetectCustomIntegration`, `useCustomIntegrationTools`,
+`useRemoveCustomIntegration`, `useSubmitCustomCredential`; engine-client +
+adapter grew the matching `...AgentCustomIntegration...` methods in
+`custom-integrations-mixin.ts`), so the tab works behind the hosted gateway.
 
-**UI**: a "Custom integrations" section on the global Integrations page (between
-Connected apps and the catalog) listing defs with kind badge/status/delete plus
-an "Add custom integration" button that opens a NEW CHAT seeded with the
-interview prompt; the in-chat credential card
+**UI (HOU-980)**: the Custom integrations tab (both surfaces — the global page
+and the per-agent tab share the whole Available section through
+`integrations-view/use-catalog-tabs.tsx`, the one builder of the catalog +
+custom tabs). "Add custom integration" opens `CustomAddDialog`, a two-way
+fork: **"Set it up with Houston"** (the guided chat — direct with the tab's
+agent, agent picker first on the global page) or **"Add it manually"**
+(`CustomAddForm` + pure `custom-add-model.ts`, node-tested): kind (API / MCP
+server), URL with an optional "Check" (the detect route pre-classifies and
+fills the name), name, and a "needs an API key" switch. An add that needs a
+key lands `pending` and chains straight into the secure key dialog. Every
+custom row's BODY and every Installed-strip custom tile opens
+`CustomDetailDialog` (letter avatar, kind + live-status chips, URL + added
+date, the compiled actions list via the tools route, capped at 8 with an
+"and N more" line; footer: Enter/Update key beside Remove). The dialog trio
+(detail / key / delete) hangs off ONE slug-keyed selection
+(`custom-integration-dialogs.tsx` — `useCustomSelection` +
+`CustomIntegrationDialogs`), re-deriving the fresh view from the live list so
+a key save flips the open card to active and a removal closes it. The
+in-chat credential card
 (`app/src/components/chat-credential-interaction-card.tsx`) is a first-class
 citizen of the `InteractionModal` shell, mirroring the connect card: a key-glyph
 + integration-name header, the reason line over the shared `CustomCredentialForm`

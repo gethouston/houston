@@ -14,6 +14,7 @@ import { planAttachmentUploadBatches } from "./attachments.ts";
 import type {
   Activity,
   ActivityUpdate,
+  AddCustomIntegrationInput,
   AddOrgMemberResult,
   Agent,
   AgentAssignment,
@@ -52,8 +53,10 @@ import type {
   CreatorAnalytics,
   CreatorProfile,
   CreatorProfilePatch,
+  CustomDetectResult,
   CustomEndpoint,
   CustomIntegrationView,
+  CustomToolInfo,
   EditableProfile,
   EditableProfileUpdate,
   ErrorBody,
@@ -1325,6 +1328,85 @@ export class HoustonClient {
       `/agents/${this.seg(agentSlugOrId)}/integrations/custom/definitions/${this.seg(slug)}/credential`,
       { values },
     );
+  }
+  /** Classify a pasted URL (OpenAPI doc / MCP endpoint / unknown) — the manual
+   *  add form's pre-check (HOU-980). `unknown` is a result, never a throw. */
+  detectCustomIntegration(url: string): Promise<CustomDetectResult> {
+    return this.request("POST", "/integrations/custom/detect", { url });
+  }
+  /** Register a custom integration from the manual add form. The host compiles
+   *  it before persisting; a compile failure rejects with the real reason. */
+  addCustomIntegration(
+    input: AddCustomIntegrationInput,
+  ): Promise<CustomIntegrationView> {
+    return this.request("POST", "/integrations/custom/definitions", input);
+  }
+  /** The compiled tools behind one custom integration (the detail card's
+   *  list), or `null` when the host does not serve the route (404 — old
+   *  build / gateway-fronted pod), mirroring `customIntegrations`. */
+  async customIntegrationTools(slug: string): Promise<CustomToolInfo[] | null> {
+    try {
+      return (
+        await this.request<{ items: CustomToolInfo[] }>(
+          "GET",
+          `/integrations/custom/definitions/${this.seg(slug)}/tools`,
+        )
+      ).items;
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
+  }
+  /** `detectCustomIntegration` through the per-agent surface (the ONE form a
+   *  gateway-fronted deployment proxies to the pod — HOU-823). */
+  detectAgentCustomIntegration(
+    agentSlugOrId: string,
+    url: string,
+  ): Promise<CustomDetectResult> {
+    return this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/integrations/custom/detect`,
+      { url },
+    );
+  }
+  /** `addCustomIntegration` through the per-agent surface (HOU-823). */
+  addAgentCustomIntegration(
+    agentSlugOrId: string,
+    input: AddCustomIntegrationInput,
+  ): Promise<CustomIntegrationView> {
+    return this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/integrations/custom/definitions`,
+      input,
+    );
+  }
+  /** `removeCustomIntegration` through the per-agent surface (HOU-823). */
+  async removeAgentCustomIntegration(
+    agentSlugOrId: string,
+    slug: string,
+  ): Promise<void> {
+    await this.request(
+      "DELETE",
+      `/agents/${this.seg(agentSlugOrId)}/integrations/custom/definitions/${this.seg(slug)}`,
+    );
+  }
+  /** `customIntegrationTools` through the per-agent surface (HOU-823).
+   *  `null` on 404, mirroring the top-level form. */
+  async agentCustomIntegrationTools(
+    agentSlugOrId: string,
+    slug: string,
+  ): Promise<CustomToolInfo[] | null> {
+    try {
+      return (
+        await this.request<{ items: CustomToolInfo[] }>(
+          "GET",
+          `/agents/${this.seg(agentSlugOrId)}/integrations/custom/definitions/${this.seg(slug)}/tools`,
+        )
+      ).items;
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
   }
 
   // ---------- triggers (C9 event-driven routines) ----------

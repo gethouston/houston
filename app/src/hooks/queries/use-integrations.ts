@@ -1,4 +1,3 @@
-import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { integrationsSupported } from "../../components/integrations/model";
 import { analytics } from "../../lib/analytics";
@@ -96,88 +95,5 @@ export function useDisconnectIntegration(provider: string) {
   });
 }
 
-/**
- * HOU-550: the user's custom (API / MCP) integrations. User-level (one list,
- * shared across agents), gated on the `integrations` capability like the status
- * query above so an integrations-off deployment never fetches.
- *
- * Data is `CustomIntegrationView[] | null`: `null` means the host answered 404 =
- * the feature is unsupported (an old build or a gateway-fronted pod), which the
- * caller renders as "hide all custom-integration UI" rather than an empty list.
- */
-export function useCustomIntegrations() {
-  const { capabilities } = useCapabilities();
-  return useQuery<CustomIntegrationView[] | null>({
-    queryKey: queryKeys.customIntegrations(),
-    queryFn: () => tauriIntegrations.customList(),
-    enabled: integrationsSupported(capabilities),
-    staleTime: 30_000,
-  });
-}
-
-/**
- * The SAME list through the per-agent surface (HOU-823) — the one form a
- * gateway-fronted deployment proxies to the agent's pod, so the in-chat
- * credential card resolves the integration's name + auth fields on managed
- * cloud too (where the top-level read 404s at the gateway → `null` → the card
- * would degrade to its generic fallback field).
- */
-export function useAgentCustomIntegrations(agentId: string) {
-  const { capabilities } = useCapabilities();
-  return useQuery<CustomIntegrationView[] | null>({
-    queryKey: queryKeys.agentCustomIntegrations(agentId),
-    queryFn: () => tauriIntegrations.customListForAgent(agentId),
-    enabled: integrationsSupported(capabilities),
-  });
-}
-
-/**
- * Remove a custom integration entirely. Carries no `onError` for the same reason
- * as the mutations above — the `call()` wrapper surfaces + reports once. On
- * success both the custom list and the merged connections view drop it.
- */
-export function useRemoveCustomIntegration() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (slug: string) => tauriIntegrations.customRemove(slug),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.customIntegrations() });
-      qc.invalidateQueries({
-        queryKey: queryKeys.integrationConnections("custom"),
-      });
-    },
-  });
-}
-
-/**
- * Provide the secret for a `pending` custom integration. Returns the refreshed
- * view so a caller can read the new `active` state. No `onError` (see above).
- *
- * With `agentId` the save rides the per-agent surface (HOU-823) — REQUIRED
- * wherever a gateway may front the host (the in-chat credential card): the
- * top-level route 404s at the gateway, which failed every managed-cloud save.
- * Without it (the global Integrations page, a direct-host-only surface) the
- * top-level route serves as before. The invalidation targets the shared
- * "custom-integrations" prefix, so both reads refresh either way.
- */
-export function useSubmitCustomCredential(agentId?: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      slug,
-      values,
-    }: {
-      slug: string;
-      values: Record<string, string>;
-    }) =>
-      agentId
-        ? tauriIntegrations.customCredentialForAgent(agentId, slug, values)
-        : tauriIntegrations.customCredential(slug, values),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.customIntegrations() });
-      qc.invalidateQueries({
-        queryKey: queryKeys.integrationConnections("custom"),
-      });
-    },
-  });
-}
+// The custom (API / MCP) integration hooks live in
+// `use-custom-integrations.ts` (HOU-550 / HOU-823 / HOU-980).

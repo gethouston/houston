@@ -191,13 +191,24 @@ describe("E7 integrations tab source", () => {
     const body = read(
       "../src/components/tabs/agent-integrations/agent-integrations-body.tsx",
     );
-    ok(body.includes("CatalogPane"), "the shared catalog pane stays");
+    // The tabs block is the SHARED useCatalogTabs hook (copy-paste twin of the
+    // global page removed, HOU-980); the ceiling + full catalog flow through it
+    // into the one CatalogPane.
+    ok(body.includes("useCatalogTabs"), "builds the tabs via the shared hook");
     ok(
-      body.includes("allowlist={allowlist}"),
-      "body hands the ceiling to the pane (locks, not pre-filter)",
+      body.includes("allowlist,"),
+      "body hands the ceiling to the shared tabs (locks, not pre-filter)",
+    );
+    const tabsSrc = read(
+      "../src/components/integrations-view/use-catalog-tabs.tsx",
+    );
+    ok(tabsSrc.includes("CatalogPane"), "the shared catalog pane stays");
+    ok(
+      tabsSrc.includes("allowlist={allowlist}"),
+      "the hook hands the ceiling to the pane",
     );
     ok(
-      body.includes("catalog={catalog}"),
+      tabsSrc.includes("catalog={catalog}"),
       "the pane receives the FULL catalog, never a pre-filtered one",
     );
   });

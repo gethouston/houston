@@ -217,6 +217,79 @@ export function setCustomCredential(
   return item;
 }
 
+/** Deterministic detect for `POST /v1/integrations/custom/detect` (HOU-980):
+ *  "mcp" in the URL → an MCP probe hit, "unknown" → unrecognizable, anything
+ *  else → an OpenAPI document. Mirrors the real host's result shape. */
+export function detectCustomIntegration(url: string): Record<string, unknown> {
+  if (url.includes("unknown")) return { kind: "unknown" };
+  if (url.includes("mcp")) {
+    return {
+      kind: "mcp",
+      name: "Acme MCP",
+      suggestedSlug: "acme-mcp",
+      requiresAuthentication: false,
+      toolCount: 2,
+    };
+  }
+  return { kind: "openapi", name: "Acme API", suggestedSlug: "acme-api" };
+}
+
+const TOKEN_METHOD = {
+  template: "api_key",
+  label: "API key",
+  fields: [{ variable: "token", label: "API key" }],
+};
+
+/** Register a definition from the manual add form (HOU-980). Returns `null`
+ *  for a duplicate slug (the route answers the real host's 409). */
+export function addCustomIntegration(input: {
+  kind: "openapi" | "mcp";
+  name: string;
+  auth: "none" | "credential";
+  url?: string;
+  endpoint?: string;
+  slug?: string;
+}): CustomIntegrationSeed | null {
+  if (!state.customIntegrations) return null;
+  const slug =
+    input.slug ??
+    input.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  if (state.customIntegrations.some((i) => i.slug === slug)) return null;
+  const displayUrl = input.kind === "mcp" ? input.endpoint : input.url;
+  const seed: CustomIntegrationSeed = {
+    slug,
+    name: input.name,
+    kind: input.kind,
+    ...(displayUrl ? { displayUrl } : {}),
+    addedAtMs: Date.now(),
+    state:
+      input.auth === "credential"
+        ? { status: "pending", authMethods: [TOKEN_METHOD] }
+        : { status: "active", toolCount: 3 },
+    ...(input.auth === "credential" ? { authMethods: [TOKEN_METHOD] } : {}),
+  };
+  state.customIntegrations.push(seed);
+  emitDomain("CustomIntegrationsChanged");
+  return seed;
+}
+
+/** The compiled tools for the detail card (HOU-980): the seed's own list, or
+ *  a generated `action_N` list sized to the active toolCount. */
+export function listCustomTools(
+  slug: string,
+): { name: string; description?: string }[] | null {
+  const item = state.customIntegrations?.find((i) => i.slug === slug);
+  if (!item) return null;
+  if (item.tools) return item.tools;
+  if (item.state.status !== "active") return [];
+  return Array.from({ length: item.state.toolCount }, (_, i) => ({
+    name: `action_${i + 1}`,
+  }));
+}
+
 export function listToolkits(): IntegrationToolkit[] {
   return SEED_TOOLKITS;
 }

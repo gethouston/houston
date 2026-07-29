@@ -1,4 +1,4 @@
-import { CatalogShell, type CatalogShellTab } from "@houston-ai/core";
+import { CatalogShell } from "@houston-ai/core";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -6,22 +6,22 @@ import {
   useDisconnectIntegration,
 } from "../../hooks/queries";
 import {
-  CustomIntegrationsSection,
+  CustomIntegrationDialogs,
   catalogHiddenToolkits,
   INTEGRATION_PROVIDER,
   ReconnectBanner,
   useConnectedApps,
   useConnectFlow,
   useConnectionSelection,
+  useCustomSelection,
 } from "../integrations";
-import { matchesQuery } from "../integrations/browse-model";
 import { PageHeader } from "../shell/page-shell";
 import { CatalogControls } from "./catalog-controls";
-import { CatalogPane } from "./catalog-pane";
 import { InstalledSkeleton } from "./catalog-skeletons";
 import { ConnectedAppDialogs } from "./connected-app-dialogs";
 import { InstalledStrip } from "./installed-strip";
 import { useCatalogSurface } from "./use-catalog-surface";
+import { useCatalogTabs } from "./use-catalog-tabs";
 
 interface IntegrationsReadyProps {
   reconnectNotice: boolean;
@@ -72,6 +72,7 @@ export function IntegrationsReady({
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const custom = useCustomIntegrations();
   const selection = useConnectionSelection(apps);
+  const customSelection = useCustomSelection();
 
   // `null` = the host doesn't serve custom integrations: no Custom tab (the
   // shell drops the tab chrome), no custom tiles in the strip.
@@ -103,46 +104,19 @@ export function IntegrationsReady({
     const hidden = catalogHiddenToolkits(apps.connData);
     return apps.catalogData.filter((tk) => !hidden.has(tk.slug)).length;
   }, [apps.catalogData, apps.connData]);
-  const tabs: CatalogShellTab[] = [
-    {
-      value: "catalog",
-      label: t("home.tabs.catalog"),
-      count: apps.isLoading ? undefined : connectableCount,
-      content: (
-        <CatalogPane
-          catalog={apps.catalogData}
-          connections={apps.connData}
-          surface="integrations"
-          query={query}
-          category={category}
-          isLoading={apps.isLoading}
-          connectFlow={connectFlow}
-          onConnected={(toolkit) =>
-            setQuery((currentQuery) => {
-              if (!currentQuery.trim()) return currentQuery;
-              const app = apps.catalogData.find(
-                (item) => item.slug === toolkit,
-              );
-              return app && matchesQuery(app, currentQuery.trim().toLowerCase())
-                ? ""
-                : currentQuery;
-            })
-          }
-          onRemove={(toolkit) => disconnect.mutate({ toolkit })}
-        />
-      ),
-    },
-    ...(custom.data !== null
-      ? [
-          {
-            value: "custom",
-            label: t("home.tabs.custom"),
-            count: custom.data?.length,
-            content: <CustomIntegrationsSection variant="tab" />,
-          },
-        ]
-      : []),
-  ];
+  const tabs = useCatalogTabs({
+    catalog: apps.catalogData,
+    connections: apps.connData,
+    surface: "integrations",
+    query,
+    setQuery,
+    category,
+    isLoading: apps.isLoading,
+    connectFlow,
+    onRemove: (toolkit) => disconnect.mutate({ toolkit }),
+    catalogCount: apps.isLoading ? undefined : connectableCount,
+    customData: custom.data,
+  });
 
   return (
     <>
@@ -185,7 +159,9 @@ export function IntegrationsReady({
               active={shown.active}
               custom={shown.custom}
               onOpen={selection.openConn}
-              onOpenCustom={() => setTab("custom")}
+              onOpenCustom={(integration) =>
+                customSelection.openDetail(integration.slug)
+              }
               searching={filtering}
             />
           ) : undefined
@@ -208,6 +184,10 @@ export function IntegrationsReady({
           disconnect.mutate({ toolkit, connectionId })
         }
       />
+
+      {/* An Installed-strip custom tile opens its detail card right here (the
+          section inside the Custom tab has its own instance for row clicks). */}
+      <CustomIntegrationDialogs selection={customSelection} />
     </>
   );
 }

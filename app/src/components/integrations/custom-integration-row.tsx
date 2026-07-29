@@ -7,31 +7,37 @@ import { customKindBadgeKey } from "./custom-integrations-model";
 
 interface CustomIntegrationRowProps {
   integration: CustomIntegrationView;
+  /** Row-body click: open the integration's detail card (HOU-980). */
+  onOpen: (integration: CustomIntegrationView) => void;
   onEnterKey: (integration: CustomIntegrationView) => void;
   onRemove: (integration: CustomIntegrationView) => void;
 }
 
 /** The status line under the name: tool count (active), a needs-key prompt
- *  (pending), or the error message (error, tinted). */
+ *  (pending), or the error message (error, tinted). Spans (not <p>) because
+ *  the line renders inside the row-body <button>, phrasing content only. */
 function StatusLine({ integration }: { integration: CustomIntegrationView }) {
   const { t } = useTranslation("integrations");
   const state = integration.state;
   if (state.status === "active")
     return (
-      <p className="text-[11px] text-ink-muted">
+      <span className="block text-[11px] text-ink-muted">
         {t("custom.toolCount", { count: state.toolCount })}
-      </p>
+      </span>
     );
   if (state.status === "pending")
     return (
-      <p className="text-[11px] text-ink-muted">
+      <span className="block text-[11px] text-ink-muted">
         {t("custom.status.pendingKey")}
-      </p>
+      </span>
     );
   return (
-    <p className="truncate text-[11px] text-danger" title={state.message}>
+    <span
+      className="block truncate text-[11px] text-danger"
+      title={state.message}
+    >
       {t("custom.status.error", { message: state.message })}
-    </p>
+    </span>
   );
 }
 
@@ -41,11 +47,14 @@ function StatusLine({ integration }: { integration: CustomIntegrationView }) {
  * rhythm, name + a connection-type badge ("API" / "MCP server") on the top line,
  * a status line under it, and always-visible trailing actions — an "Enter key"
  * button while it waits on a secret, plus a Remove button (no hover gating). The
- * row is transparent at rest with a full-row hover fill, no bordered card or
- * chip. Presentational; the parent owns the key dialog + delete confirm.
+ * row BODY is the open affordance (the same grammar as the catalog rows: click
+ * for the detail card); the trailing buttons stay separate targets. The row is
+ * transparent at rest with a full-row hover fill, no bordered card or chip.
+ * Presentational; the parent owns the dialogs.
  */
 export function CustomIntegrationRow({
   integration,
+  onOpen,
   onEnterKey,
   onRemove,
 }: CustomIntegrationRowProps) {
@@ -53,25 +62,31 @@ export function CustomIntegrationRow({
   const pending = integration.state.status === "pending";
 
   return (
-    <div className="flex items-center gap-4 rounded-2xl px-3 py-3 transition-colors hover:bg-hover">
-      <AppLogo
-        display={{
-          toolkit: integration.slug,
-          name: integration.name,
-          description: "",
-          logoUrl: "",
-        }}
-        size="lg"
-      />
-      <div className="min-w-0 flex-1">
-        <p className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-ink">
-          <span className="min-w-0 truncate">{integration.name}</span>
-          <span className="shrink-0 rounded-full bg-chip-subtle px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
-            {t(customKindBadgeKey(integration.kind))}
+    <div className="flex items-center gap-1.5 rounded-2xl px-3 py-3 transition-colors hover:bg-hover">
+      <button
+        type="button"
+        onClick={() => onOpen(integration)}
+        className="flex min-w-0 flex-1 items-center gap-4 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        <AppLogo
+          display={{
+            toolkit: integration.slug,
+            name: integration.name,
+            description: "",
+            logoUrl: "",
+          }}
+          size="lg"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-ink">
+            <span className="min-w-0 truncate">{integration.name}</span>
+            <span className="shrink-0 rounded-full bg-chip-subtle px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
+              {t(customKindBadgeKey(integration.kind))}
+            </span>
           </span>
-        </p>
-        <StatusLine integration={integration} />
-      </div>
+          <StatusLine integration={integration} />
+        </span>
+      </button>
       <div className="flex shrink-0 items-center gap-1.5">
         {pending && (
           <Button
