@@ -2,6 +2,7 @@ import { CatalogSearchField, CatalogShell, Spinner } from "@houston-ai/core";
 import { AddSkillDialog } from "@houston-ai/skills";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AgentSkillManageDialog } from "./agent-skill-manage-dialog";
 import { useInstalledSkillsStrip } from "./installed-skills-strip";
 import { useSkillDiscoveryTabs } from "./skill-discovery-tabs";
 import { SkillEditorDialogs } from "./skill-editor-dialogs";
@@ -57,20 +58,27 @@ export function SkillsContent({
   const dialogLabels = useSkillDialogLabels();
   const [tab, setTab] = useState("store");
   const [dialogOpen, setDialogOpen] = useState(false);
+  // The open skill's MANAGE dialog (HOU-792) — the same content + agents +
+  // Edit-in-chat dialog the global page opens. Writable surfaces only; the
+  // raw edit modal stays the read-only fallback.
+  const [managingSlug, setManagingSlug] = useState<string | null>(null);
   // The ONE page search: it filters the installed strip AND drives the Store.
   const [query, setQuery] = useState("");
-  // The chat layer (HOU-791): a row click opens the skill's setup chat; the
-  // modal stays the read-only fallback + the chat's Edit-manually target.
+  // The chat layer (HOU-791): the manage dialog's "Edit in chat" opens the
+  // skill's setup chat in the shell's right panel; the chat header's
+  // Edit-manually comes back to the manage dialog (read-only mode falls back
+  // to the raw modal instead).
   const chat = useSkillsChatSurface({
     agent,
     skills,
     loading,
     readOnly,
-    onEditSkill,
+    onEditSkill: readOnly ? onEditSkill : setManagingSlug,
   });
+  // A row click opens the manage dialog (read-only: the raw modal).
   const { sorted, installedCount, installed } = useInstalledSkillsStrip(
     skills,
-    chat.openRow,
+    readOnly ? onEditSkill : setManagingSlug,
     query,
   );
   const editingSkill = sorted.find((s) => s.name === editingSkillName) ?? null;
@@ -164,6 +172,17 @@ export function SkillsContent({
           onOpenChange={setDialogOpen}
           {...addDialogProps}
           labels={dialogLabels}
+        />
+      )}
+      {managingSlug !== null && !readOnly && (
+        <AgentSkillManageDialog
+          agent={agent}
+          slug={managingSlug}
+          onClose={() => setManagingSlug(null)}
+          onEditInChat={(slug) => {
+            setManagingSlug(null);
+            chat.openChatFor(slug);
+          }}
         />
       )}
       <SkillEditorDialogs

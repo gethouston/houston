@@ -1,4 +1,5 @@
 import { AsyncButton, Button, DialogFooter, Textarea } from "@houston-ai/core";
+import { MessageCircle } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
@@ -18,6 +19,7 @@ export function ManageSkillBody({
   onSave,
   onDeleteEverywhere,
   onCancel,
+  onEditInChat,
 }: {
   /** The canonical copy's full SKILL.md (frontmatter + body). */
   initialContent: string;
@@ -31,6 +33,9 @@ export function ManageSkillBody({
   }) => Promise<void>;
   onDeleteEverywhere: () => void;
   onCancel: () => void;
+  /** Open the skill's guided setup chat instead of editing raw markdown
+   *  (HOU-791's primary edit path). Omit to hide the button. */
+  onEditInChat?: () => void;
 }) {
   const { t } = useTranslation(["skills", "common"]);
   const [content, setContent] = useState(initialContent);
@@ -87,6 +92,12 @@ export function ManageSkillBody({
         >
           {t("common:actions.delete")}
         </Button>
+        {onEditInChat && (
+          <Button type="button" variant="outline" onClick={onEditInChat}>
+            <MessageCircle className="size-4" />
+            {t("skills:global.manage.editInChat")}
+          </Button>
+        )}
         <Button type="button" variant="ghost" onClick={onCancel}>
           {t("common:actions.cancel")}
         </Button>

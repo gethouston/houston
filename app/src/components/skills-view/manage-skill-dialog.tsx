@@ -33,6 +33,7 @@ export function ManageSkillDialog({
   onApply,
   onDeleteEverywhere,
   onClose,
+  onEditInChat,
 }: {
   /** The open row; null keeps the dialog closed. */
   row: WorkspaceSkillRow | null;
@@ -44,6 +45,8 @@ export function ManageSkillDialog({
   ) => Promise<void>;
   onDeleteEverywhere: (row: WorkspaceSkillRow) => Promise<void>;
   onClose: () => void;
+  /** Open the skill's guided setup chat (closes this dialog first). */
+  onEditInChat?: (row: WorkspaceSkillRow) => void;
 }) {
   const { t } = useTranslation(["skills", "common"]);
   const canonicalPath = row?.agents[0]?.folderPath;
@@ -106,6 +109,14 @@ export function ManageSkillDialog({
               onSave={save}
               onDeleteEverywhere={() => setConfirmDelete(true)}
               onCancel={onClose}
+              onEditInChat={
+                onEditInChat
+                  ? () => {
+                      onClose();
+                      onEditInChat(row);
+                    }
+                  : undefined
+              }
             />
           ) : error ? (
             <p className="text-sm text-ink-muted">

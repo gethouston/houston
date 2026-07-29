@@ -196,7 +196,8 @@
       "removeConfirmDescription": "Al guardar se quitará esta skill de {{names}}. Esto no se puede deshacer.",
       "deleteConfirmTitle": "¿Eliminar \"{{name}}\"?",
       "deleteConfirmDescription_one": "Esto quita la skill de {{count}} agente ({{names}}). No se puede deshacer.",
-      "deleteConfirmDescription_other": "Esto quita la skill de {{count}} agentes ({{names}}). No se puede deshacer."
+      "deleteConfirmDescription_other": "Esto quita la skill de {{count}} agentes ({{names}}). No se puede deshacer.",
+      "editInChat": "Editar en el chat"
     },
     "chatPick": {
       "title": "¿Quién la construye contigo?",

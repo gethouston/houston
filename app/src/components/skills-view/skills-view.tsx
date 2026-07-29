@@ -152,6 +152,7 @@ export function SkillsView() {
         onApply={actions.applySkillChanges}
         onDeleteEverywhere={actions.deleteSkillEverywhere}
         onClose={() => setManaging(null)}
+        onEditInChat={chat.openForSkill}
       />
       <NewSkillDialog
         open={creating}

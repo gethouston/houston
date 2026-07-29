@@ -196,7 +196,8 @@
       "removeConfirmDescription": "Ao salvar, esta skill será removida de {{names}}. Isso não pode ser desfeito.",
       "deleteConfirmTitle": "Excluir \"{{name}}\"?",
       "deleteConfirmDescription_one": "Isso remove a skill de {{count}} agente ({{names}}). Não pode ser desfeito.",
-      "deleteConfirmDescription_other": "Isso remove a skill de {{count}} agentes ({{names}}). Não pode ser desfeito."
+      "deleteConfirmDescription_other": "Isso remove a skill de {{count}} agentes ({{names}}). Não pode ser desfeito.",
+      "editInChat": "Editar no chat"
     },
     "chatPick": {
       "title": "Quem vai construir com você?",

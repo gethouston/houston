@@ -17,13 +17,17 @@ import { useSkillSetupView } from "../tabs/use-skill-setup-view";
 export function GlobalSkillChat({
   agent,
   skills,
+  initial,
   onClose,
   onEditSkill,
 }: {
-  /** The agent the chat runs on — the skill is created there first. */
+  /** The agent the chat runs on — a created skill lands there first. */
   agent: Agent;
   /** That agent's current skill list (drives the draft→skill claim swap). */
   skills: SkillSummary[] | undefined;
+  /** What to open: a fresh create draft, or an EXISTING skill's chat (the
+   *  manage dialog's "Edit in chat"). */
+  initial: { kind: "create" } | { kind: "skill"; slug: string };
   onClose: () => void;
   /** The chat header's "Edit manually" for a claimed skill — opens the
    *  global manage dialog. */
@@ -31,16 +35,17 @@ export function GlobalSkillChat({
 }) {
   const chatSetup = useSkillChatSetup(agent, skills);
   const view = useSkillSetupView(agent, skills, chatSetup);
-  const { selected, startCreate } = view;
+  const { selected, startCreate, openSkillChat } = view;
 
-  // Kick off exactly one fresh create draft per mount (the host keys this
-  // component per open, so "New skill" always means new).
+  // Open exactly once per mount (the host keys this component per open, so
+  // "New skill" always means new, and Edit-in-chat always lands on its skill).
   const startedRef = useRef(false);
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
-    void startCreate();
-  }, [startCreate]);
+    if (initial.kind === "create") void startCreate();
+    else openSkillChat(initial.slug);
+  }, [initial, startCreate, openSkillChat]);
 
   // The selection clearing AFTER it was seen non-null means the chat was
   // closed (pane X, Escape) or the start failed — either way this host is

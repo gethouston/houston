@@ -196,7 +196,8 @@
       "removeConfirmDescription": "Saving will remove this skill from {{names}}. This cannot be undone.",
       "deleteConfirmTitle": "Delete \"{{name}}\"?",
       "deleteConfirmDescription_one": "This removes the skill from {{count}} agent ({{names}}). This cannot be undone.",
-      "deleteConfirmDescription_other": "This removes the skill from {{count}} agents ({{names}}). This cannot be undone."
+      "deleteConfirmDescription_other": "This removes the skill from {{count}} agents ({{names}}). This cannot be undone.",
+      "editInChat": "Edit in chat"
     },
     "chatPick": {
       "title": "Who should build it with you?",

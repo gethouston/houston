@@ -210,6 +210,14 @@ BOTH the per-agent Skills tab and the global page the catalog stays visible
 on the left while the conversation runs on the right (Escape closes, same as
 routines). The old swap-the-catalog-for-the-chat behavior is gone.
 
+**The manage dialog is the skill's one detail surface on BOTH pages.** A row
+click on the per-agent Skills tab opens the SAME manage dialog the global
+page uses (`agent-skill-manage-dialog.tsx` wraps it: lazy cross-agent
+aggregation while open, current agent pinned first so its copy is canonical);
+the guided chat sits behind the dialog's **Edit in chat** button
+(`onEditInChat`), which opens the side-panel chat on the skill's holder. The
+raw `SkillEditModal` remains only as the read-only fallback.
+
 **Per-agent Custom tab also shows "From your other agents"**
 (`other-agent-skills.tsx`): the user's own skills living on OTHER agents,
 one-click copyable onto this agent (load the holder's SKILL.md verbatim →
