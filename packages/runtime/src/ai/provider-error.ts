@@ -319,7 +319,10 @@ function isServerError(lower: string, status: number | null): boolean {
     lower.includes("service unavailable") ||
     lower.includes("bad gateway") ||
     lower.includes("gateway timeout") ||
-    lower.includes("overloaded")
+    lower.includes("overloaded") ||
+    // opencode.ai's gateway body when its upstream stream breaks mid-response —
+    // often with no status at all. Transient; retry helps (HOU-929).
+    lower.includes("streaming response failed")
   );
 }
 

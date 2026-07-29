@@ -27,7 +27,7 @@ export async function finishAgentSetup(
       agentPath,
       {
         ...cfg,
-        provider: opts.provider as "anthropic" | "openai",
+        provider: opts.provider,
         model: opts.model,
       },
       // Post-create setup rides as a held request that lands when the engine

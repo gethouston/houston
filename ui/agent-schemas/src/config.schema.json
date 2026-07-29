@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "name": { "type": "string" },
-    "provider": { "type": "string", "enum": ["anthropic", "openai", "gemini"] },
+    "provider": { "type": "string" },
     "model": { "type": "string" },
     "effort": {
       "type": "string",
