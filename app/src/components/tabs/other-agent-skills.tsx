@@ -19,14 +19,17 @@ import { useAgentStore } from "../../stores/agents";
 import { SkillIcon } from "../skill-icon";
 import { useWorkspaceSkills } from "../skills-view/use-workspace-skills";
 import { AgentStack } from "../skills-view/workspace-skill-rows";
+import { OtherAgentSkillPreview } from "./other-agent-skill-preview";
 
 /**
  * "From your other agents" (HOU-792): the user's own skills that live on
  * OTHER agents in the workspace, offered on THIS agent's Custom tab so a
- * skill built for Agent A is one click away on Agent B. Skills are per-agent
- * copies, so install = read the holder's SKILL.md and write it here — the
- * same copy primitive the Houston library uses. Rows already installed here
- * show a quiet check (never filtered out mid-session — no list jumps).
+ * skill built for Agent A is one click away on Agent B. A row (and its +)
+ * opens the PREVIEW modal — the shared marketplace/library treatment, with
+ * the body loaded from the holder agent — and installing is the modal's one
+ * commit point: read the holder's SKILL.md verbatim, write it here (the
+ * Houston-library copy primitive). Rows already installed here show a quiet
+ * check (never filtered out mid-session — no list jumps).
  *
  * Mounted only inside the Custom tab's content, so the cross-agent skill
  * fan-out (one request per OTHER agent; hosted mode wakes their pods) runs
@@ -46,6 +49,7 @@ export function OtherAgentSkills({
   const others = agents.filter((a) => a.id !== agent.id);
   const { rows } = useWorkspaceSkills(others);
   const [installing, setInstalling] = useState<string | null>(null);
+  const [preview, setPreview] = useState<WorkspaceSkillRow | null>(null);
 
   const install = useCallback(
     async (row: WorkspaceSkillRow) => {
@@ -106,6 +110,7 @@ export function OtherAgentSkills({
               }
               title={title}
               description={row.summary.description || undefined}
+              onClick={() => setPreview(row)}
               trailing={
                 <div className="flex shrink-0 items-center gap-2">
                   <AgentStack agents={row.agents} />
@@ -123,8 +128,12 @@ export function OtherAgentSkills({
                     <CatalogAddButton
                       label={t("fromYourAgents.installAria", { name: title })}
                       busy={installing === row.slug}
-                      disabled={installing !== null}
-                      onClick={() => void install(row)}
+                      onClick={(e) => {
+                        // The + previews too (the library convention): the
+                        // modal's Install is the one commit point.
+                        e.stopPropagation();
+                        setPreview(row);
+                      }}
                     />
                   )}
                 </div>
@@ -133,6 +142,13 @@ export function OtherAgentSkills({
           );
         })}
       </CatalogGrid>
+      <OtherAgentSkillPreview
+        row={preview}
+        onClose={() => setPreview(null)}
+        install={(row) => void install(row)}
+        installing={installing}
+        installedSkillNames={installedSkillNames}
+      />
     </div>
   );
 }
