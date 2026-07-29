@@ -1378,11 +1378,26 @@ export const tauriProvider = {
     ),
   /**
    * Live per-account usage for every connected provider (rate-limit windows +
-   * prepaid balances) — the AI Hub's Usage tab. One engine round-trip; a
-   * failure surfaces through `call()`'s toast + Report-bug path.
+   * prepaid balances) — the meters on the AI Models hub's Connected rows. One
+   * engine round-trip.
+   *
+   * A periodic BACKGROUND read of a browse surface, not a user-initiated
+   * action, and the rows already render the failure inline. `toast: false`
+   * because a red "Report bug" toast every poll interval would bury a degraded
+   * engine's real signal in noise the user cannot act on; `capture: false` for
+   * the same reason the other meta probes here set it (`chat_history_migrated`,
+   * `watch_composio_connection`) — retries times poll interval times open tabs
+   * would report one transient outage hundreds of times, and the condition that
+   * causes it (an unreachable engine) is already captured on the paths a user
+   * actually initiated.
    */
   usage: () =>
-    call<ProviderUsage[]>("provider_usage", () => getEngine().providerUsage()),
+    call<ProviderUsage[]>(
+      "provider_usage",
+      () => getEngine().providerUsage(),
+      undefined,
+      { toast: false, capture: false },
+    ),
   setLastUsed: (provider: string, model: string) =>
     call<void>("set_last_used_provider", async () => {
       const eng = getEngine();

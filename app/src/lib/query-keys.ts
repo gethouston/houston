@@ -69,11 +69,11 @@ export const queryKeys = {
   session: () => ["session"] as const,
 
   /**
-   * Live per-account provider usage (the AI Hub's Usage tab): rate-limit
-   * windows + prepaid balances from each provider's own usage API. App-scoped
-   * (credentials are workspace-central); refreshed on an interval while the
-   * tab is mounted, and invalidated alongside provider statuses on a connect
-   * so a fresh account shows without a manual refresh.
+   * Live per-account provider usage (the meters on the AI Models hub's
+   * Connected rows): rate-limit windows + prepaid balances from each provider's
+   * own usage API. App-scoped (credentials are workspace-central); refreshed on
+   * an interval while the strip is mounted, and invalidated alongside provider
+   * statuses on a connect so a fresh account shows without a manual refresh.
    */
   providerUsage: () => ["provider-usage"] as const,
 

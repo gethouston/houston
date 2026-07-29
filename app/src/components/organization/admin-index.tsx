@@ -34,7 +34,7 @@ export function AdminIndex({
   const showBilling = visibleIds.includes("billing");
 
   return (
-    <PageContainer className="py-10">
+    <PageContainer className="pb-10">
       <PageHeader
         title={t("org.title")}
         subtitle={t("org.subtitle")}

@@ -15,54 +15,24 @@ import { useAgentStore } from "../../stores/agents";
 import { agentLabel } from "../organization/org-roster";
 import { ComputeAgentRow } from "./compute-agent-row";
 import { ComputeBarChart } from "./compute-bar-chart";
+import { dayLabel, formatDuration } from "./compute-format";
 import {
   bucketCompute,
   type ComputeRange,
-  durationParts,
   onlyKnownAgents,
   withRosterAgents,
 } from "./compute-usage-model";
 
 const RANGES: ComputeRange[] = ["week", "month", "quarter"];
 
-type Translate = ReturnType<typeof useTranslation>["t"];
-
-/** Compose a duration from locale templates ("2h 05m" / "45m" / "<1m"). */
-function formatDuration(t: Translate, ms: number): string {
-  const parts = durationParts(ms);
-  switch (parts.kind) {
-    case "zero":
-      return t("usage.compute.duration.zero");
-    case "underMinute":
-      return t("usage.compute.duration.underMinute");
-    case "minutes":
-      return t("usage.compute.duration.m", { minutes: parts.minutes });
-    case "hoursMinutes":
-      return t("usage.compute.duration.hm", {
-        hours: parts.hours,
-        minutes: parts.minutes,
-      });
-  }
-}
-
-/** Localized calendar label for a bucket's UTC start day. */
-function dayLabel(
-  language: string,
-  day: string,
-  options: Intl.DateTimeFormatOptions,
-): string {
-  return new Intl.DateTimeFormat(language, {
-    ...options,
-    timeZone: "UTC",
-  }).format(new Date(`${day}T00:00:00Z`));
-}
-
 /**
- * "Time worked": how long this user's agents actually spent executing tasks,
- * per day/week, with a per-agent breakdown. The full pod up-time (`awakeMs`)
- * is deliberately never shown. Rendered ONLY where the gateway advertises
- * `capabilities.computeUsage` (the parent gates mounting, so the query never
- * fires elsewhere). One fetch covers 90 days; range switches re-bucket locally.
+ * The Time worked screen's body: how long this user's agents actually spent
+ * executing tasks, per day/week, with a per-agent breakdown. The full pod
+ * up-time (`awakeMs`) is deliberately never shown. Rendered ONLY where the
+ * gateway advertises `capabilities.computeUsage` (the surface gate keeps the
+ * whole screen off elsewhere, so the query never fires there). One fetch covers
+ * 90 days; range switches re-bucket locally. The screen's title lives in its
+ * PageHeader, so the section leads with its range control.
  */
 export function ComputeSection() {
   const { t, i18n } = useTranslation("aiHub");
@@ -97,62 +67,54 @@ export function ComputeSection() {
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-medium text-ink">
-            {t("usage.compute.title")}
-          </h2>
-          <p className="text-sm text-ink-muted">
-            {t("usage.compute.subtitle")}
-          </p>
-        </div>
-        <Tabs value={range} onValueChange={(v) => setRange(v as ComputeRange)}>
-          <TabsList>
-            {RANGES.map((key) => (
-              <TabsTrigger key={key} value={key}>
-                {t(`usage.compute.range.${key}`)}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
+      <Tabs
+        value={range}
+        onValueChange={(v) => setRange(v as ComputeRange)}
+        className="self-start"
+      >
+        <TabsList>
+          {RANGES.map((key) => (
+            <TabsTrigger key={key} value={key}>
+              {t(`timeWorked.range.${key}`)}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
           <Spinner />
         </div>
       ) : isError ? (
-        <p className="py-6 text-sm text-ink-muted">
-          {t("usage.compute.error")}
-        </p>
+        <p className="py-6 text-sm text-ink-muted">{t("timeWorked.error")}</p>
       ) : perAgent.length === 0 ? (
         // Only a roster with no agents at all is empty — agents without data
         // still render (at zero), so a new agent is visible immediately.
         <Empty className="mt-2">
-          <EmptyTitle>{t("usage.compute.empty.title")}</EmptyTitle>
-          <EmptyDescription>{t("usage.compute.empty.body")}</EmptyDescription>
+          <EmptyTitle>{t("timeWorked.empty.title")}</EmptyTitle>
+          <EmptyDescription>{t("timeWorked.empty.body")}</EmptyDescription>
         </Empty>
       ) : (
         <>
           <p className="text-sm text-ink-muted">
-            {t("usage.compute.summary", {
+            {t("timeWorked.summary", {
               duration: formatDuration(t, model.totalWorkMs),
             })}
             <span aria-hidden> · </span>
-            {t("usage.compute.messages", { count: model.totalMessages })}
+            {t("timeWorked.messages", { count: model.totalMessages })}
           </p>
           <ComputeBarChart
             buckets={model.buckets}
             max={model.maxBucketMs}
             runningNow={onlineNow.length > 0}
             barLabel={(bucket) =>
-              t("usage.compute.barLabel", {
+              t("timeWorked.barLabel", {
                 date: dayLabel(i18n.language, bucket.startDay, {
                   month: "short",
                   day: "numeric",
                 }),
                 duration: formatDuration(t, bucket.workMs),
-                messages: t("usage.compute.messages", {
+                messages: t("timeWorked.messages", {
                   count: bucket.messages,
                 }),
               })
@@ -174,7 +136,7 @@ export function ComputeSection() {
           />
           <div>
             <h3 className="mb-1 text-sm font-medium text-ink">
-              {t("usage.compute.byAgent")}
+              {t("timeWorked.byAgent")}
             </h3>
             <ul className="flex flex-col">
               {perAgent.map((agent) => {
@@ -193,7 +155,7 @@ export function ComputeSection() {
                     color={resolveAgentColor(match?.color)}
                     max={maxAgentMs}
                     duration={formatDuration(t, agent.workMs)}
-                    messages={t("usage.compute.messages", {
+                    messages={t("timeWorked.messages", {
                       count: agent.messages,
                     })}
                   />

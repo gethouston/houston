@@ -2,7 +2,6 @@
   "sidebar": {
     "missionControl": "Centro de misiones",
     "aiModels": "Modelos de IA",
-    "usage": "Uso",
     "integrations": "Integraciones",
     "agentStore": "Tienda de agentes",
     "settings": "Configuración",
@@ -47,8 +46,7 @@
         "save": "Guardar",
         "cancel": "Cancelar"
       }
-    },
-    "permissions": "Permisos"
+    }
   },
   "tabActions": {
     "newMission": "Nueva misión",
@@ -132,17 +130,10 @@
         "title": "Modelos de IA",
         "body": "Agrega proveedores como Claude y OpenAI. Gestiona tus suscripciones y llaves de API aquí."
       },
-      "permissions": {
-        "title": "Permisos",
-        "body": "Elige quién puede usar cada agente y qué tiene permitido utilizar cada agente aquí."
-      },
-      "organization": {
-        "title": "Administración",
-        "body": "Invita a tu equipo, asigna roles y consulta la actividad, el uso y la facturación aquí."
-      },
       "settings": {
         "title": "Configuración",
-        "body": "Tu cuenta, espacio de trabajo y preferencias de la app viven aquí."
+        "body": "Tu cuenta, tu espacio de trabajo y tus preferencias de la app viven aquí.",
+        "bodyTeam": "Tu cuenta, tu espacio de trabajo, tus preferencias de la app y la administración, los permisos y el tiempo trabajado de tu equipo viven aquí."
       },
       "appTour": {
         "title": "Repite el tour",

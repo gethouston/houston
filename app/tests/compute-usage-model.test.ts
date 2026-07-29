@@ -7,7 +7,7 @@ import {
   onlyKnownAgents,
   showComputeSection,
   withRosterAgents,
-} from "../src/components/usage-view/compute-usage-model.ts";
+} from "../src/components/time-worked/compute-usage-model.ts";
 
 // The displayed metric is time worked (`activeMs`); awake time rides the wire
 // but must never leak into the model's numbers, so every row carries a larger

@@ -56,6 +56,7 @@ export function CommandPalette() {
     if (open) analytics.track("command_palette_opened");
   }, [open]);
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const openSettings = useUIStore((s) => s.openSettings);
   const setActivityPanelId = useUIStore((s) => s.setActivityPanelId);
   const setCheatsheetOpen = useUIStore((s) => s.setCheatsheetOpen);
   const agents = useAgentStore((s) => s.agents);
@@ -182,7 +183,7 @@ export function CommandPalette() {
           </CommandItem>
           <CommandItem
             onSelect={() => {
-              setViewMode("settings");
+              openSettings(null);
               close();
             }}
             value="action settings"

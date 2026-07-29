@@ -3,6 +3,111 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v49 - 2026-07-29
+
+The connected provider row stops pretending to be a row. It carries a brand
+mark, a plan chip, a whole second tier of live meters, and it opens the account:
+that is a card, and a card has to look pressable before anyone touches it. It was
+transparent at rest and only painted on hover, which is a hover-gated
+affordance — the thing our own rules forbid.
+
+`CatalogRow` gains ONE props-only knob, `surface`. The default `plane` is the
+flat catalog row every browse list still uses, unchanged. `card` paints the
+`card` surface plus a 1px `line` hairline ring at rest and answers a press with
+`scale(0.98)`; the hover wash is untouched and now enhances a surface instead of
+being the only evidence the row exists. Depth is surface + hairline, never a drop
+shadow, so dark mode needs no exception. Only the AI hub's Connected strip opts
+in.
+
+Three things follow from being a card. The trailing chevron is gone: a chevron
+says "this line drills in", which is row language, and a card that already reads
+as pressable does not need the glyph (the Integrations, Skills and permissions
+rows are still planes and keep theirs). The focus ring moves to the card: the
+focusable element is still the body button, but a ring around the body alone drew
+a box inside a box that stopped short of the plan chip and the meters, so the
+card surface hoists the ring to the whole card, keyed on that button's own
+`:focus-visible` — the indicator now matches the target it describes. And the
+`below` tier is aligned to the row's OWN padding rather than indented to the text
+column, so the meters start at the brand mark's left edge and run to the card's
+right edge; indented, they read as a paragraph hanging off a row rather than as
+the card's own content. That tier had exactly one consumer, so the indent is
+replaced, not made optional.
+
+Two extractions came out of it, both export-compatible: `CatalogAddButton` moved
+to `catalog-add-button.tsx`, and the surface vocabulary itself (what a `plane`
+and a `card` each paint, and why the focus ring has to follow the surface) to
+`catalog-row-surface.ts` — so the row component reads as structure and the
+surface module as look, with every file inside the 200-line limit.
+
+## v48 - 2026-07-28
+
+Two corrections to the connected provider row v43 shipped, both from using it.
+
+A card must end where its content ends. The usage tier reserved a fixed height
+(two window bars) in every state so the loading skeleton could not shift the row.
+That was right for the common two-window subscription and wrong for everyone
+else: an account with a single window drew one bar and then a bar's worth of
+empty card. The tier is now sized by its content in every loaded state. What
+keeps the strip still is not a reservation but the data: the skeleton is drawn
+ONCE, in the shape of the most common account, and readings are retained across
+background refetches, so a row can only ever settle once, on its first reading,
+and polls never re-enter the skeleton. The two-window row still lands at exactly
+the height it loaded at; the one-window row now ends flush after its meter.
+
+A card is one target. Only the row body was clickable, so a click on the meters
+inside the row's own hover wash did nothing, which reads as a broken card rather
+than a deliberate boundary. `CatalogRow` moves `onClick` from the body button to
+the row's outer element: the whole card opens the item, cursor included, from
+any tier. The body stays a real button and the row's ONE focusable element, so
+it still owns the accessible name and the focus ring, and its keyboard
+activation dispatches the very click the card's handler reads, which is what
+makes pointer and keyboard each fire exactly once. The right-edge `action` is
+excluded by its marker attribute: the ghost + still connects or installs without
+also opening the row. The prop is now typed as the row's open action
+(`() => void`) rather than a raw button handler, matching every call site.
+
+## v47 - 2026-07-28
+
+HOU-789 and HOU-790 collapse the Usage screen. An AI account and how much of it
+is left are one thing, so `provider-usage-card` stops being a card on a screen of
+its own and becomes `connected-provider-usage`: the plan chip rides the connected
+provider row's trailing edge in the AI models hub, and the account's meters
+(rate-limit windows, prepaid balance, or Houston's own token metering) indent to
+that row's text column. Every honest non-ok state survives the move: an account
+with no usage surface, one that needs a re-sign-in, and a probe that failed all
+say so rather than showing a blank meter, and a failed fetch says THAT rather
+than letting each row claim it is simply unmetered.
+
+Making that one row required two new slots on the shared `CatalogRow` primitive
+(`@houston-ai/core`), both props-only: `below`, a second tier under the row body
+that lives INSIDE the row's hover/focus surface — so the wash covers the meters
+too and the pair reads as one row, not a card stapled under one — and `aside`,
+quiet trailing content OUTSIDE the row button. The plan chip rides `aside`
+because a button's descendants are presentational: inside the button the plan was
+either noise in the accessible name or invisible to assistive tech. The row body
+keeps its own name (provider plus how it is connected) and its single click
+target.
+
+Two rules keep the strip still. The usage tier reserves a fixed height (two
+window bars) in every state, and the plan chip's slot is held open while the
+reading loads, so rows do not resize or reflow as readings arrive. And a row
+whose connection is only unconfirmed shows no usage tier at all: Houston makes no
+metering claim, not even "not measured yet", about an account it could not read,
+and the fetch is gated on at least one CONFIRMED account rather than on the
+strip's mount.
+
+What remains of the old screen is the per-agent running-time analytics, whose
+user-facing identity is now Time worked, a Settings section that exists only
+where the deployment meters it. No surface says "Usage" or "Compute usage" to a
+user any more.
+
+One deliberate consequence: Time worked rides `capabilities.computeUsage`, not
+the AI-models Teams gate the old Usage screen inherited, so plain members of a
+hosted-cloud team now see Settings > Time worked where they previously saw
+nothing. That is intended and safe — the server scopes `GET /v1/org/compute-usage`
+to the agents the caller can already reach, so a member sees only their own
+agents' time.
+
 ## v46 - 2026-07-29
 
 `plan-ready-card` now accepts the runtime's deterministic empty-summary

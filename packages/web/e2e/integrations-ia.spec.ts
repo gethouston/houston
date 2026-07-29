@@ -1,12 +1,14 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openSettings, settingsRow } from "./support/settings-nav";
 
 /**
  * The integrations permissioning information architecture (the IA end-state).
  * Each concept now has exactly one home:
  *  - POLICY (who can use each agent + what each agent may use — org/agent app
- *    and model ceilings) → the ONE top-level Permissions view (owner/admin).
+ *    and model ceilings) → the ONE Permissions surface, Settings > Permissions
+ *    (owner/admin).
  *    Covered by `permissions-*.spec.ts`; it is NOT the global Integrations page,
  *    which is always the personal catalog now;
  *  - CATALOG + ACCOUNTS (the caller's personal connected apps) → the global
@@ -58,10 +60,10 @@ test("Teams member: no Admin nav, but the Integrations nav opens the personal ca
   await armCapabilities(request, { ...OWNER_CAPS, role: "user" });
   await page.goto("/");
 
-  // No Admin (Organization) entry for a plain member.
-  await expect(
-    page.locator('[data-tour-target="nav-organization"]'),
-  ).toHaveCount(0);
+  // No Admin (Organization) row for a plain member. It lives in Settings since
+  // HOU-788, so the absence is asserted on the Settings index itself.
+  await openSettings(page);
+  await expect(settingsRow(page, "organization")).toHaveCount(0);
 
   // The Integrations nav IS present for a member now (unconditional), and it
   // opens the personal catalog — never the org policy question.

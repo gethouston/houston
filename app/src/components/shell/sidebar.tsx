@@ -10,19 +10,16 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
-import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
+import { useSurfaceGates } from "../../hooks/use-surface-gates";
 import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
 import { showExpectedStateToast } from "../../lib/error-toast";
-import { canSeeAiModelsPage } from "../../lib/org-roles";
 import { renameAgentWithFollowUp } from "../../lib/rename-agent-follow-up";
 import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
-import { isTeamWorkspace } from "../../lib/space-id";
 import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { canSeeOrganization } from "../organization";
 import { buildAgentSidebarLists } from "./agent-sidebar-items";
 import { GroupContextDialog } from "./group-context-dialog";
 import {
@@ -59,21 +56,13 @@ export function Sidebar({ children }: { children: ReactNode }) {
 
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const openSettings = useUIStore((s) => s.openSettings);
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const { canCreate: canCreateAgents } = useCanCreateAgents();
-  const { capabilities } = useCapabilities();
-  // Teams v2: the Organization dashboard is owner/admin-only and multiplayer-
-  // only. Hidden entirely for plain members and single-player, and on a Spaces
-  // host also whenever the active space is personal (non-invitable, no roster) —
-  // Admin + Permissions are team-space surfaces there.
-  const isTeam = currentWorkspace
-    ? isTeamWorkspace(currentWorkspace.id)
-    : false;
-  const showOrganization = canSeeOrganization(capabilities, isTeam);
   // Teams v2: in a Teams workspace the AI Models hub is owner/admin territory
   // (org-level provider credentials + admin model policy), so plain members lose
   // its nav entry too — they pick their model per agent in the composer.
-  const showAiModels = canSeeAiModelsPage(capabilities);
+  const { showAiModels } = useSurfaceGates();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);
@@ -209,8 +198,8 @@ export function Sidebar({ children }: { children: ReactNode }) {
           navItems={buildSidebarNavItems({
             t,
             showAiModels,
-            showOrganization,
             setViewMode,
+            openSettingsIndex: () => openSettings(null),
           })}
           activeNavId={isTopLevel ? viewMode : undefined}
           sectionLabel={t("shell:sidebar.yourAgents")}

@@ -201,7 +201,7 @@ effective `access`; manager-only write). The ceiling renders through the SHARED
   (`tabs/agent-integrations/agent-allowlist-section.tsx` — a thin wrapper feeding
   `AllowlistEditor` the `teams:integrations.allowlist.*` copy, the WHOLE catalog as the
   selectable universe, and a connected-apps seed). It is NO LONGER mounted in Agent
-  Settings; the Permissions view mounts it (via `AgentAdminIntegrations`,
+  Settings; Settings > Permissions mounts it (via `AgentAdminIntegrations`,
   `AgentAdminModel`) inside a per-agent drill-in. Agent Settings > **Access** now carries
   only "people with access" (`agentAdminCards`' access card is `["people"]`); the apps +
   models ceiling rows and their `agent-admin-{integrations,model}` mounts left that tab.
@@ -233,8 +233,9 @@ enforcement separately). `allowlist === null` (unrestricted) reads as pass. The
 agent-tab view model classifies every connection through it — no surface
 re-derives the rule.
 
-**Permissions live in exactly ONE place: the top-level Permissions view**
-(`app/src/components/permissions/`, `PERMISSIONS_VIEW_ID = "permissions"`). People →
+**Permissions live in exactly ONE place: Settings > Permissions**
+(`app/src/components/permissions/`, settings section id `"permissions"` — it was a
+top-level view until HOU-788). People →
 which agents each member may use; Agents → what each agent may use (the app + model
 allowlist ceilings, mounting the SAME editors — `AgentAdminIntegrations` /
 `AgentAllowlistSection` and `AgentAdminModel` / `AgentModelsSection`). Everywhere else
@@ -520,7 +521,7 @@ integrations** tab (§2, `teams.md`).
   This page is a PERSONAL-CONNECTIONS surface only: a connected app's
   `AppDetailDialog` (opened from the Installed strip row) shows info + reconnect +
   disconnect, with NO per-agent grant toggles — which agents may use an app is
-  managed in the Permissions view. The detail modal + disconnect dialog are
+  managed in Settings > Permissions. The detail modal + disconnect dialog are
   extracted into `connected-app-dialogs.tsx` (`ConnectedAppDialogs`) so
   `integrations-ready.tsx` stays within the file-size limit; the page owns the
   selection + connect flow and hands them in. The presentational pieces
@@ -556,7 +557,7 @@ The `settings:connectedAccounts.*` copy block, the `nav.connectedAccounts` /
 `index.rows.connectedAccounts` / `index.values.appsCount` row keys, and the
 `home.usedByNone`/`home.usedByAll` chip keys were all deleted. The page's
 `AppDetailDialog` no longer carries any per-agent grant surface — which agents may
-use an app is managed in the Permissions view (§2) — see the global page block above.
+use an app is managed in Settings > Permissions (§2) — see the global page block above.
 
 **Agent tab (the by-agent lens)** — `app/src/components/tabs/agent-integrations/`
 (`integrations-tab.tsx` re-exports the orchestrator). The tab body is the SAME
@@ -633,14 +634,18 @@ who can LIFT the ceiling: `CatalogLockedSection` (and the connected-app `AgentDi
 take an optional `onEnable?: PermissionsFix` resolver (`integrations/blocked-ceiling.ts`).
 When it returns a thunk for a slug, the ask-your-admin line is REPLACED by an
 `EnableInPermissionsButton` ("Enable it in Permissions", `integrations:locked.enableInPermissions`
-/ `teams:integrations.notAllowed.enableInPermissions`) that deep-links into the top-level
-**Permissions view** (`setViewMode(PERMISSIONS_VIEW_ID)` from `../permissions/id` + a
-`usePermissionsNav` request from `../permissions/permissions-nav-store`). A blocked app is
+/ `teams:integrations.notAllowed.enableInPermissions`) that deep-links into
+**Settings > Permissions** (the store's single `openSettings("permissions")` action, never
+a bare `setViewMode("settings")` — see `agent-manifest.md` — plus a `usePermissionsNav`
+request from `../permissions/permissions-nav-store`; `SettingsView` honors the pin on
+mount AND while already open). A blocked app is
 always outside the AGENT ceiling (policy is per agent only), so the fix always deep-links to
 this agent's per-agent Permissions detail via `requestAgentDetail(agentId)`. The resolver
 (`resolvePermissionsFix`) returns `undefined` — member copy, unchanged — whenever the viewer
-lacks the authority (`isAgentManager && canSeeMembers`; the `canSeeMembers` guard keeps a
-non-admin manager, who can't open the Permissions dashboard, from getting a dead link). The
+lacks the authority (`isAgentManager && showOrganization`, the latter read from
+`useSurfaceGates` so the CTA rides the DESTINATION's own gate: a non-admin manager, or an
+admin whose active Spaces space is personal, would otherwise follow a dead link and bounce
+off the Settings index). The
 leaf sections stay presentational (props only, no store imports); the resolver is BUILT at
 the per-agent tab (`agent-integrations-tab.tsx`) and threaded down through
 `CatalogPane`/`CategoryCatalog` (`lockedFix`) and `AgentCatalogSections` (`permissionsFix`).

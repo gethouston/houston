@@ -73,7 +73,6 @@
   "org": {
     "title": "Administração",
     "subtitle": "Gerencie sua equipe, atividade, uso e cobrança em um só lugar.",
-    "nav": "Administração",
     "tabs": {
       "people": "Pessoas",
       "activity": "Atividade",

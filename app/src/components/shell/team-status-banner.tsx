@@ -9,7 +9,6 @@ import { isTeamWorkspace, orgSlugFromWorkspaceId } from "../../lib/space-id.ts";
 import { teamStatusView } from "../../lib/team-status-model.ts";
 import { useUIStore } from "../../stores/ui.ts";
 import { useWorkspaceStore } from "../../stores/workspaces.ts";
-import { ORGANIZATION_VIEW_ID } from "../organization/id.ts";
 import { useOrgNav } from "../organization/org-nav-store.ts";
 
 /**
@@ -22,13 +21,14 @@ import { useOrgNav } from "../organization/org-nav-store.ts";
  * push on expiry, C8): `useBilling` (owner/admin billing detail) and `useOrgs`
  * (`OrgSummary.degraded`, the member-visible signal that carries no billing
  * detail). The decision itself is the pure {@link teamStatusView}. The trial
- * pill and the owner Upgrade action deep-link into the org dashboard Billing tab.
+ * pill and the owner Upgrade action deep-link into Settings > Admin, on the
+ * Billing section.
  */
 export function TeamStatusBanner() {
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const current = useWorkspaceStore((s) => s.current);
-  const setViewMode = useUIStore((s) => s.setViewMode);
+  const openSettings = useUIStore((s) => s.openSettings);
   const requestTab = useOrgNav((s) => s.requestTab);
 
   const spaces = hasSpaces(capabilities);
@@ -55,7 +55,7 @@ export function TeamStatusBanner() {
 
   const openBilling = () => {
     requestTab("billing");
-    setViewMode(ORGANIZATION_VIEW_ID);
+    openSettings("organization");
   };
 
   if (view.kind === "trial") {

@@ -1,12 +1,19 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import {
+  openSettings,
+  openSettingsSection,
+  settingsRow,
+} from "./support/settings-nav";
 
 /**
- * The Usage page's "Time worked" (compute) section — hosted-cloud analytics of
- * how long each agent's engine ran per day. The section exists ONLY where the
- * gateway advertises `capabilities.computeUsage` (desktop/self-host never do),
- * and its data comes from `GET /v1/org/compute-usage`, armed here via the fake
+ * Settings > Time worked — hosted-cloud analytics of how long each agent's
+ * engine actually ran per day. The whole SCREEN exists only where the gateway
+ * advertises `capabilities.computeUsage` (desktop/self-host never do), because
+ * it holds nothing else: per-AI-account usage moved onto the AI Models hub's
+ * Connected rows (HOU-789), so an ungated deployment would open an empty page.
+ * Its data comes from `GET /v1/org/compute-usage`, armed here via the fake
  * host's `/__test__/compute-usage` control. See `@houston/fake-host` README +
  * `knowledge-base/ui-testing.md`.
  */
@@ -47,30 +54,23 @@ async function armComputeUsage(
   });
 }
 
-// ── 1. Desktop/self-host guard: no capability, no section, no fetch ────────
+// ── 1. Desktop/self-host guard: no capability, no screen, no fetch ─────────
 
-test("without the computeUsage capability the Usage page shows only the account sections", async ({
+test("without the computeUsage capability Settings offers no Time worked row", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-usage"]').click();
+  await openSettings(page);
 
-  await expect(page.getByRole("heading", { name: "Usage" })).toBeVisible();
-  // The compute section is absent; the account sections (the seeded Anthropic
-  // OAuth account lands under "AI subscriptions") stand on their own, with no
-  // compute/models toggle to flip through.
-  await expect(page.getByRole("heading", { name: "Time worked" })).toHaveCount(
-    0,
-  );
-  await expect(page.getByRole("tab", { name: "Compute usage" })).toHaveCount(0);
-  await expect(
-    page.getByRole("heading", { name: "AI subscriptions" }),
-  ).toBeVisible();
+  // Not merely empty: the row is absent, so nothing leads to a screen that
+  // would have nothing to show.
+  await expect(settingsRow(page, "time-worked")).toHaveCount(0);
+  await expect(page.getByText("Time worked")).toHaveCount(0);
 });
 
 // ── 2. Armed + seeded: summary, bars, per-agent rows ────────────────────────
 
-test("with data the section shows the total, daily bars, and per-agent rows", async ({
+test("with data the screen shows the total, daily bars, and per-agent rows", async ({
   page,
   request,
 }) => {
@@ -98,11 +98,15 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
     awakeNow: ["houston-assistant"],
   });
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-usage"]').click();
+  await openSettingsSection(page, "time-worked");
 
+  // The screen names itself, and no "Usage"/"Compute" wording survives.
   await expect(
-    page.getByRole("heading", { name: "Time worked" }),
+    page.getByRole("heading", { name: "Time worked", level: 1 }),
   ).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Compute usage" })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Model usage" })).toHaveCount(0);
+
   // Only the seed agent counts: 2h05 + 1h = 3h 05m across 13 messages
   // (10 + 3). Deleted agents and ghosts contribute nothing anywhere.
   // With only one visible agent the summary equals its row, so scope the
@@ -114,16 +118,9 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
   // 7 daily bars, each self-describing ("Jul 15: worked 2h 05m, 10 messages").
   await expect(page.getByRole("img", { name: /: worked / })).toHaveCount(7);
 
-  // Per-agent rows: the seed agent resolves to its display name (3h 05m
-  // across 13 messages). Scope
-  // to the compute section — the AI-accounts cards below are also list items
-  // and their "not metered yet" copy mentions Houston by name.
-  const computeSection = page
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "Time worked" }) });
-  const houston = computeSection
-    .getByRole("listitem")
-    .filter({ hasText: "Houston" });
+  // Per-agent rows: the seed agent resolves to its display name (3h 05m across
+  // 13 messages). The screen carries only this list now, so nothing to scope.
+  const houston = page.getByRole("listitem").filter({ hasText: "Houston" });
   await expect(houston).toContainText("3h 05m");
   await expect(houston).toContainText("13 messages");
   // No liveness badge: pod up/idle state is infrastructure the user never sees.
@@ -135,22 +132,10 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
   await expect(page.getByText("40e4d673e72e86df")).toHaveCount(0);
   await expect(page.getByText("1dee000000000000")).toHaveCount(0);
 
-  // The account sections moved behind the "Model usage" half of the pane
-  // toggle: hidden while on compute, one click away, and the toggle flips back.
+  // The AI accounts are NOT here: their usage lives on the hub's rows now.
   await expect(
     page.getByRole("heading", { name: "AI subscriptions" }),
   ).toHaveCount(0);
-  await page.getByRole("tab", { name: "Model usage" }).click();
-  await expect(
-    page.getByRole("heading", { name: "AI subscriptions" }),
-  ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Time worked" })).toHaveCount(
-    0,
-  );
-  await page.getByRole("tab", { name: "Compute usage" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Time worked" }),
-  ).toBeVisible();
 });
 
 // ── 3. Range switch re-buckets locally ──────────────────────────────────────
@@ -164,7 +149,7 @@ test("switching the range changes the bar count without a new fetch", async ({
     awakeNow: [],
   });
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-usage"]').click();
+  await openSettingsSection(page, "time-worked");
 
   const bars = page.getByRole("img", { name: /: worked / });
   await expect(bars).toHaveCount(7);
@@ -185,16 +170,12 @@ test("an agent with no usage rows appears immediately at zero", async ({
   // pod to report anything.
   await armComputeUsage(request, { rows: [], awakeNow: [] });
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-usage"]').click();
+  await openSettingsSection(page, "time-worked");
 
   await expect(
-    page.getByRole("heading", { name: "Time worked" }),
+    page.getByRole("heading", { name: "Time worked", level: 1 }),
   ).toBeVisible();
-  const houston = page
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "Time worked" }) })
-    .getByRole("listitem")
-    .filter({ hasText: "Houston" });
+  const houston = page.getByRole("listitem").filter({ hasText: "Houston" });
   await expect(houston).toContainText("0m");
   await expect(houston).toContainText("0 messages");
   // The empty state is reserved for a roster with no agents at all.

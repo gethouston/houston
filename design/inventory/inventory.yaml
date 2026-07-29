@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 46
+version: 49
 
 components:
   - id: agent-avatar
@@ -753,9 +753,9 @@ components:
     states: [available, installed, installing, error, editing]
     variants: [installed-row, picker-select-row, community-catalog-row]
     behavior: >-
-      Community rows ride the shared catalog grammar (CatalogRow): the row body
-      opens the skill's info modal, a ghost round + installs (spinner while in
-      flight, a quiet check once installed). Installed skills are the same
+      Community rows ride the shared catalog grammar (CatalogRow): the row
+      opens the skill's info modal from anywhere on it, a ghost round + installs
+      (spinner while in flight, a quiet check once installed). Installed skills are the same
       CatalogRow grammar in the consolidated strip above the Store / Custom
       skills tabs (CatalogShell), capped to a preview behind a "Show all"
       expander at rest; a row opens the edit modal, whose footer carries
@@ -798,15 +798,20 @@ components:
       Connection state (connected / in-flight) comes from the shared
       provider-connections layer; the model count is derived from the hub
       catalog across the row's gateway ids. The hub-catalog-row variant is the
-      shared catalog grammar (CatalogRow): the row BODY opens the provider
-      detail modal, a ghost round + connects (a Cancel pill while that connect
+      shared catalog grammar (CatalogRow): the WHOLE row opens the provider
+      detail modal — every tier of it, including the connected row's usage
+      meters — a ghost round + connects (a Cancel pill while that connect
       is in flight), and connected providers leave the grid for the
-      consolidated Connected row strip above the tabs (CatalogShell) -- the same
-      CatalogRow grammar with a quiet trailing chevron, capped to a preview
-      behind a "Show all" expander at rest. The connect-flow-card variant
-      (onboarding / migration / workspace setup) keeps the static card with a
-      trailing Connect / Sign out action; nothing hover-only in either variant.
-    a11y: two sibling buttons, never nested (row body + labeled install); Connect/+ carries the provider name; connected shown as dot + label or a labeled row, not color alone.
+      consolidated Connected strip above the tabs (CatalogShell), capped to a
+      preview behind a "Show all" expander at rest. There the same CatalogRow
+      renders as a CARD (surface="card"): because it carries a second tier of
+      live detail and opens the account, it paints its surface and hairline ring
+      at REST -- pressability is never discovered by hovering -- answers a press
+      with a scale, and drops the trailing chevron, which is list-row language.
+      The connect-flow-card variant (onboarding / migration / workspace setup)
+      keeps the static card with a trailing Connect / Sign out action; nothing
+      hover-only in any variant.
+    a11y: two sibling buttons, never nested (row body + labeled install); the row's click target is the whole card but its ONE focusable element is the body button, so the card is reached once by keyboard and its name never picks up the extra tiers; on the card surface the focus ring is drawn around the WHOLE card (keyed on that button's focus-visible) so the indicator matches the target it describes; Connect/+ carries the provider name; connected shown as dot + label or a labeled row, not color alone.
     since: 2
 
   - id: ai-model-row
@@ -828,24 +833,52 @@ components:
     a11y: single button role; model name + lab as the accessible label; no nested buttons.
     since: 2
 
-  - id: provider-usage-card
-    title: Provider account usage card
-    purpose: One connected AI account's live limits on the top-level Usage page.
-    anatomy: [brand-mark, provider-name, plan-chip, window-meters, credits-line]
-    states: [ok, unsupported, unauthenticated, error]
-    variants: [rate-limit-windows, credit-balance]
+  - id: connected-provider-usage
+    title: Connected provider card usage
+    purpose: One connected AI account's live limits, on the account's own card.
+    anatomy: [plan-chip, window-meters, credits-line, metered-tokens-line]
+    states: [unconfirmed, loading, ok, unsupported, unauthenticated, error]
+    variants: [rate-limit-windows, credit-balance, metered-tokens]
     behavior: >-
-      One card per CONNECTED provider account, paired from the engine's
-      per-account usage rows (GET /providers/usage — each provider's own usage
-      API read with the already-linked credential). The rate-limit-windows
-      variant renders a labeled meter per rolling window (percent used +
-      localized reset note; the bar tints warning at >= 90%); the
-      credit-balance variant shows the remaining prepaid balance. Non-ok rows
-      say so honestly (no usage surface / sign in again / the probe's error)
-      instead of faking an empty meter. Rows refresh on an interval and on the
-      provider connect event.
-    a11y: plain informative content, no interactive parts; percent and reset are text next to the bar, never color alone.
-    since: 26
+      Extends the connected provider card (AI models hub) rather than living on a
+      screen of its own: the plan chip sits at the card's trailing edge and the
+      meters span the card's full width, from the brand mark's left edge to the
+      card's right edge (never indented to the text column, which reads as a
+      paragraph hanging off a row), INSIDE the card's own hover/focus surface AND
+      its click target, so an account and how much of it is left read
+      as one thing: one wash covers both, and a click on the meters opens the
+      same provider detail the card does. Paired from the engine's per-account usage rows
+      (GET /providers/usage — each provider's own usage API read with the
+      already-linked credential). The rate-limit-windows variant renders a
+      labeled meter per rolling window (percent used + localized reset note; the
+      bar tints warning at >= 90%); credit-balance shows the remaining prepaid
+      balance; metered-tokens shows Houston's own token count for providers with
+      no usage API. Non-ok rows say so honestly (no usage surface / sign in again
+      / the probe's error) instead of faking an empty meter. A row whose
+      connection is only unconfirmed shows NO usage tier at all: an account
+      Houston cannot read gets no metering claim, not even "not measured yet",
+      and the fetch itself is gated on at least one CONFIRMED account. A loaded
+      row is sized by its content: it ends one padding step after its last
+      meter, never at a reserved height, so an account with a single window
+      leaves no dead band under it. Stillness comes from ONE pre-data frame
+      drawn in the most common account's shape (two window bars) plus readings
+      that are retained across background refetches, so the only resize a row
+      can make is the single settle onto its first reading, and the plan chip's
+      slot is held open meanwhile so nothing reflows sideways. Rows refresh on a
+      slow interval (the hub is a browse surface, not a monitor), on window
+      focus, and on the provider connect event; a failed background refetch
+      keeps the last good readings rather than blanking them.
+    a11y: >-
+      Informative content outside the row BUTTON (the meters below it, the plan
+      chip beside it), so the button's accessible name stays the provider name
+      plus how it is connected, and the plan is exposed as its own content rather
+      than swallowed by a button whose descendants are presentational. Widening
+      the click target to the whole card must not widen the accessible surface:
+      the body button stays the row's ONE focusable element and its activation
+      is what the card's handler reads, so keyboard and pointer each open the
+      row exactly once. Percent and reset are text next to the bar, never color
+      alone.
+    since: 47
 
   - id: ai-model-offer-row
     title: AI model offer row

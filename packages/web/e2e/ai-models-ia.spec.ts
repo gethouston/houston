@@ -1,6 +1,11 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import {
+  openSettings,
+  openSettingsSection,
+  settingsRow,
+} from "./support/settings-nav";
 
 /**
  * The AI-models permissioning information architecture — the model-side twin of
@@ -13,6 +18,9 @@ import { expect, test } from "./support/fixtures";
  *    Providers / Models. AI provider connections are org-level (C6), so a plain
  *    member has no account or policy to act on in the hub and loses its nav.
  *  - Each member's own model pick lives in the composer, not the hub.
+ *  - USAGE (how much of each connected AI account is left) belongs to the
+ *    account, so it renders on the hub's Connected row. There is no separate
+ *    usage screen anywhere (HOU-789).
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's
  * `/__test__/capabilities` (advertise `multiplayer` + `teams` + a `role`) and
@@ -35,11 +43,11 @@ async function armCapabilities(
   await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, { data: caps });
 }
 
-/** Open the Permissions view (the agent list is the top level; per-agent
+/** Open Settings > Permissions (the agent list is the top level; per-agent
  *  ceilings live in each agent's drill-in). */
 async function openPermissions(page: Page): Promise<void> {
   await page.goto("/");
-  await page.locator('[data-tour-target="nav-permissions"]').click();
+  await openSettingsSection(page, "permissions");
 }
 
 // ── 1. The AI hub dropped the Workspace policy tab ─────────────────────────
@@ -119,4 +127,38 @@ test("Permissions: a per-agent model ceiling offers the full catalog (no org nar
   await expect(page.getByRole("heading", { name: "Add models" })).toBeVisible();
   await expect(page.getByText(/Opus/i).first()).toBeVisible();
   await expect(page.getByText(/Sonnet/i).first()).toBeVisible();
+});
+
+// ── 4. Account usage has exactly one home ──────────────────────────────────
+
+test("account usage renders on the hub's Connected row and nowhere else", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, OWNER_CAPS);
+  // An account whose usage probe has no readable credential: the row must SAY
+  // so. Falling back to a blank meter would claim a reading Houston never got.
+  await request.post(`${FAKE_HOST_URL}/__test__/provider-usage`, {
+    data: {
+      rows: [{ provider: "anthropic", status: "unauthenticated", windows: [] }],
+    },
+  });
+  await page.goto("/");
+  await page.locator('[data-tour-target="nav-ai-hub"]').click();
+
+  await expect(
+    page.getByText("Sign in again to see this account's usage."),
+  ).toBeVisible();
+
+  // And Settings offers no usage screen to compete with it. Asserted as the
+  // EXACT set of drill-in rows the index carries, so a re-added usage screen
+  // fails here whatever it gets called — the old `settings-row-usage` testid no
+  // longer exists anywhere, and an assertion on a name nothing can produce
+  // cannot fail. On this gateway that set is Admin + Permissions: Time worked
+  // rides `capabilities.computeUsage`, which the fake host does not advertise.
+  await openSettings(page);
+  await expect(page.locator('[data-testid^="settings-row-"]')).toHaveCount(2);
+  await expect(settingsRow(page, "organization")).toBeVisible();
+  await expect(settingsRow(page, "permissions")).toBeVisible();
+  await expect(settingsRow(page, "time-worked")).toHaveCount(0);
 });

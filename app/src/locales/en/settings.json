@@ -8,7 +8,10 @@
     "language": "Language",
     "shortcuts": "Keyboard shortcuts",
     "reportBug": "Report bug",
-    "danger": "Delete workspace"
+    "danger": "Delete workspace",
+    "timeWorked": "Time worked",
+    "permissions": "Permissions",
+    "organization": "Admin"
   },
   "workspaceGate": {
     "failedTitle": "We couldn't load your settings",
@@ -156,7 +159,9 @@
     "subtitle": "Manage your workspace and account.",
     "groups": {
       "context": "Context",
-      "support": "Support"
+      "support": "Support",
+      "workspace": "Workspace",
+      "team": "Team"
     },
     "rows": {
       "profile": "Your name and picture",
@@ -165,7 +170,10 @@
       "userContext": "What every agent knows about you",
       "shortcuts": "Run Houston without the mouse",
       "reportBug": "Something broke? Tell us",
-      "migration": "Pick up your move to the cloud"
+      "migration": "Pick up your move to the cloud",
+      "timeWorked": "How long your agents have been working",
+      "permissions": "Who can use each agent, and what each agent can use",
+      "organization": "Your team, its activity, usage, and billing"
     },
     "values": {
       "set": "Set"

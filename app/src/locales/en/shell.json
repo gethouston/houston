@@ -2,7 +2,6 @@
   "sidebar": {
     "missionControl": "Mission Control",
     "aiModels": "AI Models",
-    "usage": "Usage",
     "integrations": "Integrations",
     "agentStore": "Agent Store",
     "settings": "Settings",
@@ -47,8 +46,7 @@
         "save": "Save",
         "cancel": "Cancel"
       }
-    },
-    "permissions": "Permissions"
+    }
   },
   "tabActions": {
     "newMission": "New mission",
@@ -132,17 +130,10 @@
         "title": "AI Models",
         "body": "Add providers like Claude and OpenAI. Manage your subscriptions and API keys here."
       },
-      "permissions": {
-        "title": "Permissions",
-        "body": "Choose who can use each agent and what each agent is allowed to use here."
-      },
-      "organization": {
-        "title": "Admin",
-        "body": "Invite teammates, assign roles, and see activity, usage, and billing here."
-      },
       "settings": {
         "title": "Settings",
-        "body": "Your account, workspace, and app preferences live here."
+        "body": "Your account, your workspace, and your app preferences all live here.",
+        "bodyTeam": "Your account, your workspace, your app preferences, and your team's admin, permissions and time worked all live here."
       },
       "appTour": {
         "title": "Replay the tour",

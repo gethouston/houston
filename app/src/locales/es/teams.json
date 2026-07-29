@@ -73,7 +73,6 @@
   "org": {
     "title": "Administración",
     "subtitle": "Gestiona tu equipo, actividad, uso y facturación en un solo lugar.",
-    "nav": "Administración",
     "tabs": {
       "people": "Personas",
       "activity": "Actividad",

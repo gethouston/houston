@@ -345,9 +345,8 @@ Engine route: `POST /v1/store/workspaces/install-from-github`. Rust impl: `houst
 |-----------------------------|
 | > Dashboard                 |  all agents overview (Mission Control)
 | > AI models                 |  the AI Hub top-level view (viewMode "ai-hub")
-| > Usage                     |  per-account provider usage (viewMode "usage", same Teams gate as the hub)
 | > Connections               |  workspace-wide integrations
-| > Organization              |  Teams v2 dashboard (owner/admin + multiplayer only)
+| > Agent store               |  the public catalog (viewMode "agent-store")
 |-----------------------------|
 | Your AI Agents          [+] |  section label + a people (Users) icon "New group" button
 |   ▾ Work                 [2]|  a named, collapsible group (drag its title to move it)
@@ -428,10 +427,9 @@ and keyboard focus. It keeps the count chip hidden while open. The first-level
 menu shows Rename, Change color, Delete; Change color opens the color picker
 submenu.
 
-**Multiplayer (Teams v2).** The **Organization** entry
-(`ORGANIZATION_VIEW_ID = "organization"`) renders only when
-`canSeeOrganization(capabilities)` (multiplayer owner/admin); hidden for plain
-members and single-player. **New Agent** is gated on `canCreateAgents`
+**Multiplayer (Teams v2).** The sidebar has NO Admin / Permissions / Time worked entries
+since HOU-788 — they are Settings sections (`settings-sections.ts`), gated by
+`useSurfaceGates`. **New Agent** is gated on `canCreateAgents`
 (`useCanCreateAgents`) — a member with no create right gets no add action. Full
 client model: `knowledge-base/teams.md`.
 
@@ -806,20 +804,111 @@ the scroller flips to `overflow-y-hidden` (Radix only locks `<body>`) with
 - **Model detail** (`model-modal.tsx` + `model-offer-row.tsx`): one model's
   per-provider offers ("Get it through" + pricing / subscription).
 
-### Usage page (top-level view)
+Navigation is the `CatalogShell`'s controlled tab state plus two local modal
+states inside `AiHubView` (`openProvider` / `openModel`; the last value is
+retained through the exit animation). The shell itself is a ui/ component; the
+three reusable content components are in `design/inventory` (see below).
 
-**Usage** is its own top-level sidebar view (`viewMode "usage"`,
-`app/src/components/usage-view/` — `USAGE_VIEW_ID` in `id.ts`, page in
-`usage-view.tsx`), sharing the hub's Teams gate (`canSeeAiModelsPage`; also in
-`blockedTopLevelView`). One card per CONNECTED account
-(`usage-provider-card.tsx`) with its live limits; the connected set derives
-exactly like the hub's Connected strip (`getConnectProviders` +
-`useProviderConnections` + `groupProviders`), and the empty state's CTA jumps
-to the hub (`setViewMode("ai-hub")`).
+### Account usage (on the hub's Connected cards)
+
+**There is no Usage screen** (HOU-789). An AI account and how much of it is left
+are one thing, so each connected account's live limits render on that account's
+own card in the Connected strip: `ai-hub/connected-provider-row.tsx` (the
+`CatalogRow` plus a plan chip at its trailing edge) with
+`ai-hub/provider-usage-meters.tsx` spanning the card's full width. Both ride
+`CatalogRow` slots added for this (`ui/core/src/components/catalog-row.tsx`):
+**`below`** puts the meters inside the card's own hover/focus surface, so one
+wash covers card + meters (a sibling div under the row painted only the top
+half), and **`aside`** puts the plan chip OUTSIDE the row button, so the button's
+accessible name stays "provider + how it is connected" and the plan is still
+exposed as its own content (a button's descendants are presentational, so a chip
+inside it is either name noise or invisible to AT).
+
+**These are CARDS, not list rows** — `CatalogRow surface="card"`. A connected
+account carries a whole second tier of its own live detail and it opens the
+account, so it is one pressable object, not a line in a list, and it must LOOK
+that way before it is touched (no hover-only affordances): the `card` surface
+plus a 1px `line` hairline ring at rest, the hover wash kept as enhancement on
+top, and `active:scale-[0.98]` as press feedback. Two consequences follow:
+
+- **No trailing chevron.** A chevron is row language ("this line drills in"); a
+  card that already reads as pressable does not need the glyph. Only these cards
+  dropped it — the Integrations installed strip, Skills rows and the permissions
+  agent rows are still plane rows and keep theirs.
+- **The focus ring moves to the CARD.** The focusable element is still the body
+  button, but on a painted card a ring around the body alone draws a box inside a
+  box that stops short of the `aside` and the meters, so `surface="card"` hoists
+  the ring to the root via `has-[:focus-visible]:` (keyed on the button's own
+  `:focus-visible`, never plain `:focus-within`, which would flash it on every
+  mouse press).
+
+The meters tier is aligned to the card's OWN left padding, not indented to the
+text column: its bars start at the brand mark's left edge and run to the card's
+right edge (`px-3` on both, the row's padding constant). Indented to the text
+column they read as a paragraph hanging off a row rather than as the card's own
+content. `ConnectedProvidersStrip` also widens the `CatalogGrid` gap to 8px — at
+the catalog default of 4px two hairline cards read as one split card.
+
+Press motion is transitioned on `background-color` + **`scale`** (not
+`transform`): Tailwind v4's `scale-*` utilities set the standalone `scale`
+property, so naming `transform` would silently leave the press un-eased.
+
+**The strip's mount is NOT the gate.** The strip is the hub's "yours" side, so
+its membership means "the user's accounts" and by design includes rows whose
+probe could not be confirmed (`providerOwnedSide` = connected ∪ checking,
+HOU-979). `providerUsage()` deliberately throws rather than fabricate a reading,
+so `connected-providers-strip.tsx` states the real precondition instead of
+borrowing the strip's: it gates its ONE fetch on `hasConfirmedAccount(...)` (≥1
+CONFIRMED connection), and an unconfirmed ROW renders no usage tier at all — no
+meters, and specifically not "No usage yet. Houston will start measuring with
+your next message.", a metering promise about an account Houston cannot read.
+Both decisions are pure functions in `provider-usage-model.ts`
+(`hasConfirmedAccount`, `usageSlot`) and node-tested. (Note for anyone reasoning
+about the unreachable-engine case: an ALL-unknown probe never reaches these rows
+— `scanIsUnreachable` in `hooks/provider-connections/` discards such a scan and
+keeps the last-known snapshot. The gate is about the strip's contract, not about
+that one scenario.)
+
+**Sizing: content, not reservation.** A loaded row ends where its content ends —
+the tier's only trailing space is the card's `pb-2.5`. (It used to reserve two
+window bars in every state, which left an account with a single window trailing a
+bar's worth of dead card.) Stillness comes from the data instead: the skeleton is
+ONE pre-data frame drawn in the most common account's shape (two bars, matching
+`UsageWindowBar`'s metrics to the pixel, so a two-window subscription lands at the
+height it loaded at), and a failed or slow BACKGROUND refetch keeps the last good
+rows (the error note only replaces meters when there is no data at all), so a
+poll can never re-enter the skeleton. The one resize a row may make is the single
+settle from that frame onto its first reading. Sideways, the plan chip's slot is
+held open while the reading loads, so the title column never reflows. The e2e
+regression for both halves is `packages/web/e2e/ai-hub.spec.ts` (the 2-window row
+is byte-identical in height, the 1-window row ends flush).
+
+**The whole card is one click target.** `CatalogRow` carries `onClick` on its
+OUTER element, not on the row-body button, so a click anywhere — including the
+meters — opens the provider modal, with `cursor-pointer` and the press scale
+across the card. The
+body stays a real `<button>` and the row's ONE focusable element (it keeps the
+accessible name and the focus ring); its keyboard activation dispatches a click
+that bubbles to the same handler, which is why pointer and keyboard each fire
+exactly once. The right-edge `action` subtree is marked
+`data-catalog-row-action` and excluded, so a ghost `+` still only connects. The
+preview cap is a strip-local 3, not the shared
+`CATALOG_INSTALLED_PREVIEW_CAP` (6) — that constant was tuned for ~56px rows and
+these are ~130px, so 6 would push the discovery tabs off screen.
+
+The billing split the old page used ("AI subscriptions" / "AI per token") is
+gone: the strip is one flat list and each row's own cost line already names how
+the account bills.
 
 Data is the engine's `GET /providers/usage` (wire `ProviderUsage` in
 `packages/protocol`, fetched via `tauriProvider.usage()` → `useProviderUsage`,
-key `providerUsage()`, 60s interval + invalidated on `ProviderLoginComplete`).
+key `providerUsage()`). The poll is deliberately slow — **5 minutes** plus a
+refetch on window focus, invalidated on `ProviderLoginComplete` — because the hub
+is a routine browse destination and every poll fans out to each provider's own
+rate-limited usage API. `tauriProvider.usage()` is `{ toast: false, capture:
+false }` for the same reason: it is a background read whose failure the rows
+already state inline, so a degraded engine must not produce a red "Report bug"
+toast per interval and a Sentry event per attempt.
 The runtime reads each provider's OWN usage API with the already-linked
 credential (`packages/runtime/src/ai/usage/`): Anthropic's OAuth usage
 endpoint (5h/weekly/Opus windows; token resolved file → macOS Keychain →
@@ -828,15 +917,41 @@ rate-limit windows (windows classified by LENGTH, not position), Copilot quota
 snapshots (auths with the GitHub token pi stores as `refresh`; enterprise
 domains target `api.<domain>`), OpenRouter credits, and DeepSeek balance.
 Providers with no readable surface answer an honest `unsupported` row — never
-omitted. The pure pairing/format logic (display-id rename + merged-gateway
-matching, reset phrasing via `Intl.RelativeTimeFormat`) is node-tested in
+omitted, and never rendered as a blank meter; a FAILED fetch says so on every
+row rather than letting each claim it is simply unmetered. The pure
+pairing/format logic (display-id rename + merged-gateway matching, reset
+phrasing via `Intl.RelativeTimeFormat`) lives in
+`ai-hub/provider-usage-model.ts`, node-tested in
 `app/tests/ai-hub-usage-model.test.ts`; fetcher mapping in
-`packages/runtime/src/ai/usage/usage.test.ts`.
+`packages/runtime/src/ai/usage/usage.test.ts`. E2E: the fake host serves
+`/providers/usage` (default seed = the connected Claude subscription; armable
+via `POST /__test__/provider-usage`), asserted in `ai-hub.spec.ts` and
+`ai-models-ia.spec.ts`.
 
-Navigation is the `CatalogShell`'s controlled tab state plus two local modal
-states inside `AiHubView` (`openProvider` / `openModel`; the last value is
-retained through the exit animation). The shell itself is a ui/ component; the
-three reusable content components are in `design/inventory` (see below).
+### Time worked (Settings > Time worked)
+
+What remained of the old Usage screen after HOU-789 is the hosted-cloud
+running-time analytics, and its user-facing identity is **Time worked**
+(HOU-790 — no surface says "Usage" or "Compute usage" to a user any more).
+Section id `"timeWorked"` in `app/src/lib/settings-sections.ts`, screen in
+`app/src/components/time-worked/time-worked-view.tsx` (PageHeader + the range
+tabs + `compute-section.tsx`), inside the shared `BackBarScreen` with
+`backLabel`/`onBack` from `SettingsView`. Its gate is NOT the hub's Teams gate
+any more: the screen holds nothing but the compute analytics, so it rides
+`capabilities.computeUsage` (`showTimeWorked` in `useSurfaceGates`, backed by
+`showComputeSection`) — desktop/self-host get no Settings row and no screen
+instead of an empty page. Strings live under `aiHub:timeWorked.*`; data is
+`GET /v1/org/compute-usage` via `useComputeUsage`. Analytics: `SettingsView`
+emits `tab_opened` `settings:timeWorked`; the old pane-level `usage:compute` /
+`usage:models` events are gone with the panes.
+
+**Deliberate consequence of that gate swap:** the old Usage screen rode the AI
+Models Teams gate (owner/admin only, since provider credentials are org-level).
+Time worked rides `capabilities.computeUsage` instead, so a plain member of a
+hosted-cloud team NEWLY gets Settings > Time worked. That is intended and safe:
+the gateway scopes `GET /v1/org/compute-usage` to the agents the caller can
+already reach, so a member sees their own agents' running time and nothing else.
+If that scoping ever changes on the server, this gate has to change with it.
 
 ### The catalog
 
@@ -922,9 +1037,26 @@ account switch) used to send first-run onboarding logins to
   `settings/sections/provider.tsx`, `shell/provider-account-row.tsx`, and the
   settings-view provider section. All connect UI is the hub.
 - Top-level views share one set: `app/src/lib/top-level-views.ts`
-  (`TOP_LEVEL_VIEWS = {dashboard, settings, ai-hub}`, `isTopLevelView`) — both
-  `sidebar.tsx` and `workspace-shell.tsx` source from it so a new top-level view
-  can't be wired into one and forgotten in the other.
+  (`TOP_LEVEL_VIEWS = {dashboard, settings, ai-hub, integrations-home, store}`,
+  `isTopLevelView`) — both `sidebar.tsx` and `workspace-shell.tsx` source from it
+  so a new top-level view can't be wired into one and forgotten in the other.
+  Time worked / Permissions / Admin are NOT in it: they are settings sections
+  (`app/src/lib/settings-sections.ts`, HOU-788).
+- **Navigating INTO Settings goes through `useUIStore.openSettings(section)`**,
+  never a bare `setViewMode("settings")`. Settings is two pieces of state (the
+  view AND `settingsSection`, the open section, `null` = the index) and one call
+  sets both: a plain open always lands on the index (a bare `setViewMode` was a
+  dead click while a section was open, since the view was already `settings`),
+  and a deep link lands on its section even when Settings is already open (the
+  team-status banner's Billing link, the blocked-app "Enable it in Permissions"
+  CTA). `SettingsView` renders from the store and writes it on drill-in/back, and
+  it OWNS the settings analytics: one `tab_opened` per surface actually reached
+  (`settings` for the index, `settings:<id>` for a section), emitted after the
+  gates resolve, with the shell's generic viewMode effect skipping `settings` so
+  a deep link can't double-count. The one-shot deep-link pins
+  (`usePermissionsNav`, `useOrgNav`) are cleared by `settings-nav-pins.ts` when a
+  blocked section falls back to the index, so a pin never outlives its
+  navigation.
 - i18n: namespace `aiHub` (`app/src/locales/{en,es,pt}/ai-hub.json`, registered in
   `app/src/lib/i18n.ts`).
 - `design/inventory` bumped to **v2**: three new cross-surface content components

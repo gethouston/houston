@@ -15,7 +15,6 @@ import { orgSlugFromWorkspaceId } from "../../lib/space-id";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { ORGANIZATION_VIEW_ID } from "../organization/id.ts";
 import { MAX_TEAM_NAME_LENGTH, validateTeamName } from "./create-team-model";
 
 interface Props {
@@ -43,6 +42,7 @@ export function CreateTeamDialog({ open, onOpenChange }: Props) {
   const loadAgents = useAgentStore((s) => s.loadAgents);
   const addToast = useUIStore((s) => s.addToast);
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const openSettings = useUIStore((s) => s.openSettings);
   const [name, setName] = useState("");
 
   // Start every open with a clean field; reset on close so a reopen after a
@@ -95,7 +95,7 @@ export function CreateTeamDialog({ open, onOpenChange }: Props) {
           variant: "success",
           action: {
             label: t("teams:createTeam.successAction"),
-            onClick: () => setViewMode(ORGANIZATION_VIEW_ID),
+            onClick: () => openSettings("organization"),
           },
         });
         onOpenChange(false);

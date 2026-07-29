@@ -134,13 +134,8 @@
       "description": "Rode modelos no seu próprio computador com Ollama, LM Studio e afins."
     }
   },
-  "usage": {
-    "pageTitle": "Uso",
-    "pageSubtitle": "Quanto você já usou de cada conta de IA conectada e quando os limites reiniciam.",
-    "panes": {
-      "compute": "Uso de computação",
-      "models": "Uso de modelos"
-    },
+  "toast": {},
+  "providerUsage": {
     "window": {
       "session": "Limite por sessão",
       "week": "Limite semanal",
@@ -159,45 +154,31 @@
     "noData": "Esta conta não reporta limites no momento.",
     "notMeteredYet": "Ainda não há uso. A Houston vai começar a medir com a sua próxima mensagem.",
     "reconnect": "Entre novamente para ver o uso desta conta.",
-    "error": "Não foi possível carregar o uso. Tente de novo em instantes.",
-    "empty": {
-      "title": "Nenhuma conta conectada",
-      "body": "Conecte um provedor de IA para ver quanto dos limites você já usou.",
-      "connect": "Conectar um provedor"
-    },
-    "sections": {
-      "subscriptions": {
-        "title": "Assinaturas de IA"
-      },
-      "perToken": {
-        "title": "IA por token"
-      }
-    },
-    "compute": {
-      "title": "Tempo trabalhado",
-      "subtitle": "Quanto tempo seus agentes passaram trabalhando e quantas mensagens responderam.",
-      "range": {
-        "week": "7 dias",
-        "month": "30 dias",
-        "quarter": "3 meses"
-      },
-      "summary": "Seus agentes trabalharam {{duration}}",
-      "byAgent": "Por agente",
-      "duration": {
-        "hm": "{{hours}}h {{minutes}}m",
-        "m": "{{minutes}}m",
-        "underMinute": "<1m",
-        "zero": "0m"
-      },
-      "barLabel": "{{date}}: trabalharam {{duration}}, {{messages}}",
-      "empty": {
-        "title": "Ainda não há tempo trabalhado",
-        "body": "Quando seus agentes trabalharem, o tempo deles vai aparecer aqui."
-      },
-      "error": "Não foi possível carregar o tempo dos seus agentes. Tente novamente em instantes.",
-      "messages_one": "{{count}} mensagem",
-      "messages_other": "{{count}} mensagens"
-    }
+    "error": "Não foi possível carregar o uso. Tente de novo em instantes."
   },
-  "toast": {}
+  "timeWorked": {
+    "title": "Tempo trabalhado",
+    "subtitle": "Quanto tempo seus agentes passaram trabalhando e quantas mensagens responderam.",
+    "range": {
+      "week": "7 dias",
+      "month": "30 dias",
+      "quarter": "3 meses"
+    },
+    "summary": "Seus agentes trabalharam {{duration}}",
+    "byAgent": "Por agente",
+    "duration": {
+      "hm": "{{hours}}h {{minutes}}m",
+      "m": "{{minutes}}m",
+      "underMinute": "<1m",
+      "zero": "0m"
+    },
+    "barLabel": "{{date}}: trabalharam {{duration}}, {{messages}}",
+    "empty": {
+      "title": "Ainda não há tempo trabalhado",
+      "body": "Quando seus agentes trabalharem, o tempo deles vai aparecer aqui."
+    },
+    "error": "Não foi possível carregar o tempo dos seus agentes. Tente novamente em instantes.",
+    "messages_one": "{{count}} mensagem",
+    "messages_other": "{{count}} mensagens"
+  }
 }

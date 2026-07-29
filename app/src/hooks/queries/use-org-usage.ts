@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
-import { isActiveTopLevelView } from "../../lib/top-level-views";
+import {
+  isActiveTopLevelView,
+  SETTINGS_VIEW_ID,
+} from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 
 /** Default usage window (contract §5: host clamps `days` to ≤ 90). */
@@ -23,13 +26,14 @@ export function useOrgUsage(
   days: number = USAGE_DEFAULT_DAYS,
 ) {
   const active = useUIStore((s) =>
-    isActiveTopLevelView(s.viewMode, "organization"),
+    isActiveTopLevelView(s.viewMode, SETTINGS_VIEW_ID),
   );
   return useQuery({
     queryKey: queryKeys.orgUsage(days),
     queryFn: () => tauriOrg.usage(days),
-    // Organization remains mounted while hidden; avoid an unnecessary usage
-    // read when the app window regains focus off this screen.
+    // Admin is a Settings section (HOU-788) and Settings remains mounted while
+    // hidden; avoid an unnecessary usage read when the app window regains focus
+    // off that screen.
     enabled: enabled && active,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: true,

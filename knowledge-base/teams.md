@@ -100,9 +100,10 @@ that also take `Pick<Agent, "access" | "assigned">` live in `agent-access.ts`
   (The global **Integrations page** has NO role gate; it's the personal catalog
   for EVERY member in every mode, and org-blocked apps still render as locked rows.
   The old `canSeeIntegrationsPage` gate was removed with the Teams policy mode.)
-- `canSeeAiModelsPage(caps)` — the gate for the global **AI Models hub**
-  (sidebar nav, render branch, tour step): a Teams **plain member** → false, else
-  true. Unlike Composio, AI provider connections are **org-level** (one credential
+- `canSeeAiModelsPage(caps)` — the gate for the global **AI Models hub** (sidebar
+  nav, render branch, tour step), which is also where each connected account's
+  usage renders (HOU-789): a Teams **plain member** → false, else true. Unlike
+  Composio, AI provider connections are **org-level** (one credential
   per org — whoever connects, every member's agents work; `cloud/docs/contracts/C6`),
   so a member has no per-provider account to house anywhere — they pick their model
   per agent in the composer. The hub is therefore owner/admin-only in Teams; a member
@@ -110,6 +111,14 @@ that also take `Pick<Agent, "access" | "assigned">` live in `agent-access.ts`
   provider-connect POST already 403s at the gateway. (There is no org-wide model
   ceiling; model policy is per agent, in the **Permissions** view's per-agent
   detail (its AI Models tab), below.)
+- **Settings > Time worked is NOT behind that gate** (HOU-790). The old Usage
+  screen inherited `canSeeAiModelsPage` because it carried the org-level provider
+  accounts; what is left is only the per-agent running-time analytics, so it
+  rides `capabilities.computeUsage` (`showTimeWorked`). A plain member of a
+  hosted-cloud team therefore NEWLY sees that section. Deliberate and safe: the
+  gateway scopes `GET /v1/org/compute-usage` to the agents the caller can already
+  reach, so a member sees their own agents' time and nothing else. If that server
+  scoping ever narrows or widens, revisit this gate with it.
 - `GRANTABLE_ROLES = ["admin", "user"]` — owner is never handed out from the UI
   (ownership transfer is out of scope for v1).
 
@@ -117,31 +126,51 @@ that also take `Pick<Agent, "access" | "assigned">` live in `agent-access.ts`
 
 ## Admin page (the org dashboard)
 
-Top-level view labelled **"Admin"** in the UI (`teams:org.nav`/`org.title`;
-"Admin" / "Administración" / "Administração"). The internal id, dir, and gate are
-UNCHANGED: `ORGANIZATION_VIEW_ID = "organization"`
-(`app/src/components/organization/`), rendered only when
-`canSeeOrganization(caps, activeSpaceIsTeam)` (multiplayer owner/admin, AND — on
-a Spaces host — a TEAM active space). The sidebar nav entry and the
-`workspace-shell` render branch both guard on it, so it never mounts for a plain
-member, single-player, or in the personal space of a Spaces host.
+**Settings > Admin** (`org.title`; "Admin" / "Administración" / "Administração"),
+a SETTINGS SECTION since HOU-788 — it had its own sidebar entry before, and
+`ORGANIZATION_VIEW_ID` / `organization/id.ts` are gone with it. The section id is
+`"organization"` in `app/src/lib/settings-sections.ts`; the dir
+(`app/src/components/organization/`) and the gate are unchanged. Rendered only
+when `canSeeOrganization(caps, activeSpaceIsTeam)` (multiplayer owner/admin,
+AND — on a Spaces host — a TEAM active space). The Settings index row and
+`SettingsView`'s blocked-section fallback both guard on it, so it never
+mounts for a plain member, single-player, or in the personal space of a Spaces
+host. `OrganizationView` takes `backLabel`/`onBack` from `SettingsView` so there
+is exactly ONE back bar at each depth.
 
 **Personal space hides Admin + Permissions (HOU-824).** On a C8 Spaces host the
 personal space is single-player semantics: non-invitable (the gateway 403s a
 member-add with `personal_space`), no roster, no policy. So Admin and Permissions
 are TEAM-space surfaces there — `canSeeOrganization` returns false whenever the
 active space is personal (`!isTeamWorkspace(current.id)`), whatever the role. The
-two call sites (`workspace-shell.tsx`, `sidebar.tsx`) derive `activeSpaceIsTeam`
-from the active workspace id and thread the resulting `showOrganization` boolean
-everywhere it gates (the render branches, the `blockedTopLevelView` fallback that
-resets a stale personal-space `viewMode` to the dashboard, and the org/permissions
-UI tour steps). On a non-spaces multiplayer host (legacy Teams v2, exactly one
-org) `activeSpaceIsTeam` is irrelevant and behavior is unchanged.
+ONE hook, `hooks/use-surface-gates.ts` (`useSurfaceGates`), derives
+`activeSpaceIsTeam` from the active workspace id and returns
+`{ showOrganization, showAiModels, ready }`; the sidebar, the workspace shell,
+the blocked-app CTA and `SettingsView` all read it, so a gate can never be
+tightened in one place and forgotten in another. `showOrganization` gates the two
+Settings index rows, the "Enable it in Permissions" CTA (it must use the
+DESTINATION's gate, not the looser `canSeeMembers`), and the fallback that drops
+a stale section back to the Settings index. On a non-spaces multiplayer host
+(legacy Teams v2, exactly one org) `activeSpaceIsTeam` is irrelevant and behavior
+is unchanged.
+
+**`ready` — the gates mean nothing until capabilities land.** They are computed
+from `capabilities`, which is `null` while the query is in flight, so an
+unresolved gate is indistinguishable from a denied one. Anything that merely
+HIDES an affordance can act early; anything that DROPS an open surface must wait.
+`SettingsView` routes through `settingsSectionGate(section, {…, ready})`
+(`lib/settings-sections.ts`), a tri-state `loading | blocked | visible`: a gated
+section holds its place behind a back bar + spinner while `ready` is false, and
+only a RESOLVED block falls back to the index. Without it, every team-space
+switch dumped an owner out of an open Admin/Permissions section, because
+`resetCacheForSpaceChange` removes the capabilities query and the next render
+sees `null`. `blockedSettingsSection` is the inner rule and must not be called
+directly by a view.
 
 **Now membership + insights + billing ONLY.** All policy (per-agent access and
-per-agent ceilings) moved OUT to the new top-level **Permissions** view (next
-section). The Admin page is what remains: who's in the org, what they're doing,
-and the bill.
+per-agent ceilings) moved OUT to **Settings > Permissions** (next section; it was
+briefly a top-level sidebar view, and became a settings section in HOU-788). The
+Admin page is what remains: who's in the org, what they're doing, and the bill.
 
 **Index/detail grammar (settings-page style), NOT a tab strip.** The landing
 screen is `admin-index.tsx`: grouped, self-describing rows (`SettingsCard` /
@@ -151,7 +180,7 @@ icon, a title (`teams:org.tabs.<id>`), a one-line description
 (`teams:org.index.values.*`: member count). Groups: a **People** card
 (membership), an **Insights** card (Activity, Usage), and a **Billing** card
 (when in scope). The old **Permissions** group (Agents, Allowed apps, Allowed AI
-models) is GONE — it now lives in the Permissions view. Clicking a row opens its
+models) is GONE — it now lives in Settings > Permissions. Clicking a row opens its
 detail screen: a back bar (label `org.title`) + a `PageHeader` section heading +
 the section body at full width — all sections render on the generic `{ ctx }`
 path now (the Agents + member drill-in special-casing in `admin-section-detail.tsx`
@@ -171,7 +200,7 @@ shell — it loads `GET /org` once, builds the shared `OrgViewContext`
 - **People** (`members-tab.tsx` / `people-roster.tsx`) — roster + pending invites,
   **membership only**: owner mutates (add/remove/re-role, revoke invite); admin sees
   those read-only. The roster row is NO LONGER a drill-in (`onOpenMember` removed) —
-  agent access is managed per agent in the Permissions view (each agent's People tab).
+  agent access is managed per agent in Settings > Permissions (each agent's People tab).
   This is still the ONLY
   membership surface: the old Settings > Members section (and the whole `org` i18n
   namespace it used) was deleted as a duplicate; "members" is no longer a
@@ -187,7 +216,7 @@ usage; `orgTabIds` only gates billing).
 
 ---
 
-## Permissions view (the one policy home)
+## Permissions (Settings > Permissions, the one policy home)
 
 > **Org-wide ceilings REMOVED (2026-07-16, Felipe: overengineering).** Policy is
 > managed ONLY per agent. There is no org-wide app ceiling and no org-wide model
@@ -202,26 +231,24 @@ usage; `orgTabIds` only gates billing).
 > use, across three tabs. The per-PERSON lens (`member-detail*`, `permissions-people-tab`,
 > `permissions-agents-tab`, `permissions-people.spec.ts`) was DELETED.
 
-Top-level view labelled **"Permissions"** — everything policy, FULLY AGENT-CENTRIC:
-pick an agent, then manage who can use it and what it can use.
-`PERMISSIONS_VIEW_ID = "permissions"`
-(`app/src/components/permissions/id.ts`), registered in
-`app/src/lib/top-level-views.ts` (`TOP_LEVEL_VIEWS` + `blockedTopLevelView`, which
-shares the Organization gate exactly). Gated by `canSeeOrganization(caps,
-activeSpaceIsTeam)` (multiplayer owner/admin, and a TEAM active space on a Spaces
-host) — the IDENTICAL gate to the Organization view, threaded through the same
-`showOrganization` boolean. The sidebar
-nav item (`app/src/components/shell/sidebar-chrome.tsx`, `buildSidebarNavItems`) is a
-`ShieldCheck` lucide icon, label `shell:sidebar.permissions`, placed right BEFORE the
-Organization item (both inside the `showOrganization` block). Render branch + tour
-step (`nav-permissions`) live in `app/src/components/shell/workspace-shell.tsx`.
+**Settings > Permissions** — everything policy, FULLY AGENT-CENTRIC: pick an
+agent, then manage who can use it and what it can use. A SETTINGS SECTION since
+HOU-788 (`PERMISSIONS_VIEW_ID` / `permissions/id.ts` are gone): the section id is
+`"permissions"` in `app/src/lib/settings-sections.ts`. Gated by
+`canSeeOrganization(caps, activeSpaceIsTeam)` (multiplayer owner/admin, and a TEAM
+active space on a Spaces host) — the IDENTICAL gate to Admin, threaded through the
+same `showOrganization` boolean from `useSurfaceGates`. The Settings index row
+(`app/src/components/settings/settings-index.tsx`) is a `ShieldCheck` lucide icon,
+label `settings:nav.permissions`, in the "Team" group right AFTER Admin (both
+inside the `showOrganization` block, `data-testid="settings-row-permissions"` for
+the e2e specs). `settings-section-body.tsx` mounts it with `backLabel`/`onBack`.
 
 `permissions-view.tsx` is a shell: it loads `useOrg(true)` once (roster + role), owns
 the drill-in as an `{agentId, tab}` pair (id-not-snapshot so a store reload keeps the
 detail on the live row), and renders a `PageHeader` ("Permissions") + the agent list
-(`agents-list.tsx`) DIRECTLY — no top-level tab strip. The drill-in reuses
-`../organization/admin-detail-screen` (`AdminDetailScreen` back-bar, back label
-"Permissions").
+(`agents-list.tsx`) DIRECTLY — no top-level tab strip. Both levels use the shared
+`shell/back-bar-screen.tsx` (`BackBarScreen`): the list level's bar returns to the
+Settings index, the agent drill-in's returns to the list ("Permissions").
 
 **Deep-linking** — `permissions-nav-store.ts`: zustand `usePermissionsNav` with
 `{ requestedAgentId; requestedAgentTab: PermissionsAgentTab|null; requestAgentDetail(agentId, tab?); clearRequested }`.
@@ -235,7 +262,7 @@ a `PageHeader` (agent avatar + name + "Open agent") over the shared
 **`AgentPermissionsPanel`** (`permissions/agent-permissions-panel.tsx`, `{ agent, members,
 initialTab? }`): `@houston-ai/core` `Tabs variant="line"` with
 **People | Integrations | AI Models** (labels `permissions.agentTabs.{people,integrations,models}`;
-`defaultValue = initialTab`, default `"people"`). In the top-level drill-in the whole detail is
+`defaultValue = initialTab`, default `"people"`). In the Settings > Permissions drill-in the whole detail is
 gated on `isAgentManager(caps, agent)` — a visible-but-not-manager admin gets
 `org.agentDetail.managerOnly` instead of the panel.
 
@@ -306,8 +333,8 @@ Sharing a **personal** agent has no members to assign, so that path opens the
 **share-via-team** pipeline instead (see **Spaces > Share-via-team pipeline**).
 
 The **roster face** of this dialog (one agent, every org member, with a None / Can use /
-Manager control) lives in **Permissions > agent detail > People** (`agent-people-tab.tsx`)
-— see the Permissions view section above. It shares the roster math in
+Manager control) lives in **Settings > Permissions > agent detail > People** (`agent-people-tab.tsx`)
+— see the Permissions section above. It shares the roster math in
 `components/tabs/agent-access-model.ts` via `agent-people-model.ts`, so access is never
 derived two ways; it reuses `share.levels.*`/`share.ownerAccess`/`share.you`/`share.selfNote`
 and adds `permissions.agentPeople.*`. (The old INVERSE per-person lens — one person, every
@@ -462,8 +489,8 @@ per team, each `{ id: "org:" + slug, kind: "org" }` where `slug` is `[a-f0-9]{16
   **The connections layer exposes ONE reader, `connectionState`** — no boolean
   sibling, because every surface that reached for one collapsed the third state.
   `groupProviders` returns three buckets (`connected` / `checking` /
-  `available`): only `connected` may claim Connected (the hub's strip dot, the
-  Usage page's account rows), only `available` gets a Connect CTA, and
+  `available`): only `connected` may claim Connected (the hub's strip dot and
+  the usage meters on its rows), only `available` gets a Connect CTA, and
   `providerOwnedSide()` is the render order the browse surfaces use.
 - **A team space with no credential explains itself.** When statuses settle with
   nothing connected, the picker's level 1 shows an honest empty state instead of
@@ -772,9 +799,12 @@ blocked-state surfaces (the disallowed section AND the locked browse rows) accep
 agent only), so when the VIEWER can lift it, the ask-your-admin line is replaced by an
 "Enable it in Permissions" button that deep-links to that agent's Permissions detail on its
 Integrations tab (`requestAgentDetail(agentId, "integrations")`, `permissions-nav-store.ts`)
-— `PERMISSIONS_VIEW_ID` + a `usePermissionsNav` request. The gate is `canManageAgent`
-(agent-manager AND `canSeeMembers`); members and non-admin managers keep the old copy (the
-resolver returns `undefined`). Authority lives in `integrations/blocked-ceiling.ts`
+— one `openSettings("permissions")` call on the UI store (never a bare
+`setViewMode("settings")`; see `agent-manifest.md`) plus a `usePermissionsNav` request. The gate is `canManageAgent`
+(agent-manager AND `showOrganization`, the DESTINATION's own gate from
+`useSurfaceGates` — `canSeeMembers` was too loose and let an admin in a personal
+Spaces space follow the link only to bounce off the Settings index); members and
+non-admin managers keep the old copy (the resolver returns `undefined`). Authority lives in `integrations/blocked-ceiling.ts`
 (`resolvePermissionsFix`), built at the agent tab and threaded down as props so the leaf
 sections stay presentational. See `integrations.md` §3 for the full wiring.
 
@@ -1318,7 +1348,7 @@ group were deleted with the org ceilings 2026-07-16), `permissions`, `org`, `sha
 `people`, `activityTab`, `usageTab`, `agentsTab`. (The AI Models hub's own strings
 live in the separate `aiHub` namespace.)
 
-The **`permissions.*`** block backs the Permissions view: `title`, `subtitle`,
+The **`permissions.*`** block backs Settings > Permissions: `title`, `subtitle`,
 `agentTabs.{people,integrations,models}` (the three agent-detail tab labels),
 `agentPeople.{none,noneHint,changeAccess,readOnlyHint,viewerOnly,empty.{title,body}}` (the
 per-agent People tab; `readOnlyHint` + `viewerOnly` back the agent-tab read-only view). The
@@ -1335,7 +1365,10 @@ removed sections: `org.tabs.{agents,allowedIntegrations,allowedModels}`,
 `org.index.rows.{agents,allowedIntegrations,allowedModels}`, `org.index.groups.permissions`,
 `org.index.values.{agents_*,allApps,appsAllowed_*,allModels,modelsAllowed_*}`. `org.subtitle`
 (membership/insights/billing wording) and `org.agentDetail.subtitle` were updated. Outside the
-`teams` namespace: `shell:sidebar.permissions` + `shell:uiTour.steps.permissions` were added,
-and `shell:uiTour.steps.organization.body` reworded (no more policy mention).
+`teams` namespace: HOU-788 moved the labels into `settings` —
+`settings:nav.{usage,permissions,organization}` + `settings:index.rows.*` +
+`settings:index.groups.{workspace,team}`; `shell:sidebar.{usage,permissions}`,
+`shell:uiTour.steps.{permissions,organization}` and `teams:org.nav` were DELETED
+with the sidebar entries and their tour steps.
 (There is also a separate `org` namespace for pre-v2 org strings.) See
 `i18n.md`.

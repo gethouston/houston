@@ -1,7 +1,7 @@
 import type { Capabilities, ComputeUsageRow } from "@houston-ai/engine-client";
 
 /**
- * Pure aggregation for the Compute section (no DOM, no i18n): buckets the
+ * Pure aggregation for the Time worked screen (no DOM, no i18n): buckets the
  * gateway's per-(agent, UTC day) rows into the selected range and rolls up
  * per-agent totals. The user sees ONE time metric — time worked = `activeMs`
  * (time the agent actually executed turns/routine runs); `awakeMs` (the
@@ -188,7 +188,8 @@ export function durationParts(ms: number): DurationParts {
   };
 }
 
-/** The section renders only where the gateway advertises the endpoint. */
+/** The screen exists only where the gateway advertises the endpoint (read via
+ *  `useSurfaceGates().showTimeWorked`, which gates the Settings row too). */
 export function showComputeSection(
   capabilities: Capabilities | null | undefined,
 ): boolean {
