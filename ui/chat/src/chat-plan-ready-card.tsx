@@ -2,9 +2,10 @@
 
 import { cn } from "@houston-ai/core";
 import type { LucideIcon } from "lucide-react";
-import { Handshake, ListTodo, Rocket } from "lucide-react";
+import { Handshake, Rocket } from "lucide-react";
 import {
   type ChatPlanReadyLabels,
+  hasPlanReadySummary,
   PLAN_READY_LEDE_CLASS_NAME,
   type PlanReadyActionKey,
   resolvePlanReadyActions,
@@ -20,7 +21,7 @@ export interface ChatPlanReadyCardProps {
   disabled?: boolean;
   onStartWorking: () => void;
   onRunAutopilot: () => void;
-  onKeepPlanning: () => void;
+  onDismiss?: () => void;
   onSubmit: (text: string) => void;
   labels: ChatPlanReadyLabels;
 }
@@ -28,7 +29,6 @@ export interface ChatPlanReadyCardProps {
 const ACTION_ICONS: Record<PlanReadyActionKey, LucideIcon> = {
   startWorking: Handshake,
   runAutopilot: Rocket,
-  keepPlanning: ListTodo,
 };
 
 /** The compact next-step chooser after a plan. The complete plan stays in the
@@ -39,14 +39,14 @@ export function ChatPlanReadyCard({
   disabled = false,
   onStartWorking,
   onRunAutopilot,
-  onKeepPlanning,
+  onDismiss,
   onSubmit,
   labels,
 }: ChatPlanReadyCardProps) {
+  const hasSummary = hasPlanReadySummary(summary);
   const handlers: Record<PlanReadyActionKey, () => void> = {
     startWorking: onStartWorking,
     runAutopilot: onRunAutopilot,
-    keepPlanning: onKeepPlanning,
   };
   const actions = resolvePlanReadyActions(labels, disabled);
 
@@ -54,11 +54,13 @@ export function ChatPlanReadyCard({
     <InteractionModal
       body={
         <div className="flex flex-col gap-4">
-          <p
-            className={`${PLAN_READY_LEDE_CLASS_NAME} text-ink text-sm leading-relaxed`}
-          >
-            {summary}
-          </p>
+          {hasSummary ? (
+            <p
+              className={`${PLAN_READY_LEDE_CLASS_NAME} text-ink text-sm leading-relaxed`}
+            >
+              {summary}
+            </p>
+          ) : null}
           <div className="flex flex-col gap-2">
             {actions.map((action) => {
               const Icon = ACTION_ICONS[action.key];
@@ -89,14 +91,16 @@ export function ChatPlanReadyCard({
         </div>
       }
       collapseLabel={labels.collapse}
-      collapsedHint={summary}
+      collapsedHint={hasSummary ? summary : undefined}
       disabled={disabled}
+      dismissLabel={labels.dismiss}
       expandLabel={labels.expand}
+      onDismiss={onDismiss}
       trailing={
         <InlineTextRow
           disabled={disabled}
           onSubmit={onSubmit}
-          placeholder={labels.declinePlaceholder}
+          placeholder={labels.feedbackPlaceholder}
           sendLabel={labels.send}
         />
       }

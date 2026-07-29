@@ -89,8 +89,7 @@
     "askFirstDescription": "Gets things done, asks before sensitive actions.",
     "autopilotTitle": "Continue in Autopilot mode",
     "autopilotDescription": "Finishes it on its own. No questions asked.",
-    "keepPlanningTitle": "Keep planning",
-    "keepPlanningDescription": "Stay here and adjust the plan.",
+    "feedbackPlaceholder": "Give feedback on the plan...",
     "startWorkingMessage": "Go ahead with the plan.",
     "runAutopilotMessage": "Go ahead and finish it on your own."
   },

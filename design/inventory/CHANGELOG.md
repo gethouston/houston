@@ -3,6 +3,14 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v46 - 2026-07-29
+
+`plan-ready-card` now accepts the runtime's deterministic empty-summary
+backstop. The optional lede and its collapsed hint are absent when no summary is
+available; the title, two continuation choices, header dismiss X, and integrated
+feedback input remain fully actionable. The dismiss X locally returns the
+composer without sending, and the input now explicitly invites plan feedback.
+
 ## v45 - 2026-07-28
 
 The plan-ready card now belongs fully to the shared interaction-card family. Its

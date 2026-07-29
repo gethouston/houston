@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   type ChatPlanReadyLabels,
   DEFAULT_PLAN_READY_LABELS,
+  hasPlanReadySummary,
   resolvePlanReadyActions,
 } from "../src/chat-plan-ready-card-model.ts";
 
@@ -14,18 +15,17 @@ const LABELS: ChatPlanReadyLabels = {
   askFirstDescription: "Gets things done, asks before sensitive actions.",
   autopilotTitle: "Continue in Autopilot mode",
   autopilotDescription: "Finishes it on its own. No questions asked.",
-  keepPlanningTitle: "Keep planning",
-  keepPlanningDescription: "Stay here and adjust the plan.",
-  declinePlaceholder: "Or tell it what to do instead...",
+  dismiss: "Dismiss",
+  feedbackPlaceholder: "Give feedback on the plan...",
   send: "Send",
 };
 
 describe("resolvePlanReadyActions", () => {
-  it("resolves the three actions in render order", () => {
+  it("resolves the two actions in render order", () => {
     const actions = resolvePlanReadyActions(LABELS, false);
     assert.deepEqual(
       actions.map((a) => a.key),
-      ["startWorking", "runAutopilot", "keepPlanning"],
+      ["startWorking", "runAutopilot"],
     );
   });
 
@@ -42,12 +42,6 @@ describe("resolvePlanReadyActions", () => {
         key: "runAutopilot",
         title: "Continue in Autopilot mode",
         description: "Finishes it on its own. No questions asked.",
-        disabled: false,
-      },
-      {
-        key: "keepPlanning",
-        title: "Keep planning",
-        description: "Stay here and adjust the plan.",
         disabled: false,
       },
     ]);
@@ -76,10 +70,9 @@ describe("DEFAULT_PLAN_READY_LABELS", () => {
       DEFAULT_PLAN_READY_LABELS.autopilotTitle,
       "Continue in Autopilot mode",
     );
-    assert.equal(DEFAULT_PLAN_READY_LABELS.keepPlanningTitle, "Keep planning");
     assert.equal(
-      DEFAULT_PLAN_READY_LABELS.declinePlaceholder,
-      "Or tell it what to do instead...",
+      DEFAULT_PLAN_READY_LABELS.feedbackPlaceholder,
+      "Give feedback on the plan...",
     );
     assert.equal(DEFAULT_PLAN_READY_LABELS.send, "Send");
     for (const value of Object.values(DEFAULT_PLAN_READY_LABELS)) {
@@ -96,8 +89,13 @@ describe("plan-ready lede contract", () => {
       [
         { key: "startWorking", title: "Continue in Ask first mode" },
         { key: "runAutopilot", title: "Continue in Autopilot mode" },
-        { key: "keepPlanning", title: "Keep planning" },
       ],
     );
+  });
+
+  it("omits the lede and collapsed hint for an empty fallback summary", () => {
+    assert.equal(hasPlanReadySummary(""), false);
+    assert.equal(hasPlanReadySummary("  \n\t"), false);
+    assert.equal(hasPlanReadySummary("Ready to start."), true);
   });
 });

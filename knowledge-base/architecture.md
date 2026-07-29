@@ -239,14 +239,15 @@ agree (fixing the old divergence where a reloaded stopped turn re-derived as
 `done`). Type-to-abandon (sending a fresh message while a card is up) already
 null-clears the interaction at the next turn's start — unchanged. `suggest_reusable`
 "Not now" also clears the persisted interaction (no stop marker); `plan_ready`
-"Keep planning" stays local-only.
+header dismissal stays local-only.
 
 **Plan approval.** Plan mode writes the complete plan as the normal assistant
 message, then calls `plan_ready` with a one- or two-sentence lede. The compact
 plan-ready card shares the bounded, collapsible interaction shell and offers
-Ask first, Autopilot, or Keep planning. The card never owns the complete plan,
+Ask first or Autopilot. Its header dismiss X returns the composer locally. The card never owns the complete plan,
 so long plans remain readable in the transcript. Its trailing shared free-text
-row is the only input while the card is shown; a typed instruction starts a
+row is the only input while the card is shown and explicitly invites feedback;
+a typed instruction starts a
 visible plan-mode follow-up and retires the pending card.
 
 **Reflection step (suggest_reusable).** The prompt names the agent's
@@ -290,8 +291,12 @@ accidentally end up read-only.
 (`read, ls, grep, find, ask_user`, `packages/runtime/src/session/tool-selection.ts`)
 with `edit, write, bash, run_code`, and every integration tool dropped — plus a
 system-prompt overlay (`PLAN_MODE_OVERLAY`,
-`packages/runtime/src/session/plan-overlay.ts`) that tells the model to
-investigate and propose a plan rather than act.
+`packages/runtime/src/session/mode-overlays.ts`) that tells the model to
+investigate and propose a plan rather than act. Every Plan mode turn must end
+with `ask_user` when it needs an answer or `plan_ready` when approval is ready.
+`exec-turn` also backstops a clean plan turn that produced assistant text but
+recorded no interaction by attaching and persisting an empty-summary
+`plan_ready`, so the approval card is never dependent on prompt compliance.
 
 `auto` (Autopilot) is fire-and-forget: it keeps full read/write/act power but
 **removes the two blocking tools** — `ask_user` and `request_connection` — so

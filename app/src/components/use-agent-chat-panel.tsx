@@ -1176,11 +1176,11 @@ export function useAgentChatPanel({
 
   // ── Plan-ready override (plan_ready) ──────────────────────────────────
   // When the model finishes planning it calls `plan_ready`, arriving as a lone
-  // `{kind:"plan_ready", summary}` step (like ask_user). The card offers three
-  // ways forward; "Keep planning" dismisses it LOCALLY (composer returns, mode
-  // stays plan) by remembering THIS plan's summary — a later, different plan
+  // `{kind:"plan_ready", summary}` step (like ask_user). The card offers two
+  // ways forward; its dismiss X retires it LOCALLY (composer returns, mode
+  // stays plan) by remembering THIS plan's summary. A later, different plan
   // re-shows the card. The dismissal is per-conversation, so it resets when the
-  // open session changes.
+  // open session changes or a new turn starts.
   const [dismissedPlanReady, setDismissedPlanReady] = useState<string | null>(
     null,
   );
@@ -1194,19 +1194,28 @@ export function useAgentChatPanel({
     string | null
   >(null);
   // The user can abandon any pending interaction by its dismiss X, or an
-  // above-card offer by typing a fresh composer message. The plan-ready card
-  // marks itself abandoned when its integrated row submits. Remembering the
-  // interaction key suppresses its card uniformly, per conversation.
+  // above-card offer by typing a fresh composer message. Remembering the
+  // interaction key suppresses its card uniformly until the next turn starts.
   const [abandonedInteractionKey, setAbandonedInteractionKey] = useState<
     string | null
   >(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSessionKey is the intentional change-trigger that clears the dismissals and the abandoned-interaction key when the open conversation switches, so a dismissed plan/offer or abandoned interaction never suppresses a new chat's card.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSessionKey is the intentional change-trigger that clears all four suppression states when the open conversation switches, so a dismissed or abandoned card never suppresses a new chat's card. The effect body deliberately reads none of it.
   useEffect(() => {
     setDismissedPlanReady(null);
     setDismissedSuggestReusable(null);
     setDismissedSuggestActions(null);
     setAbandonedInteractionKey(null);
   }, [selectedSessionKey]);
+  // A running turn has already null-cleared the prior pending interaction in
+  // the engine. Reset local suppression at its start so a later offer belongs
+  // to this turn, not to an earlier plan or suggestion with a reused step id.
+  useEffect(() => {
+    if (!turnRunning) return;
+    setDismissedPlanReady(null);
+    setDismissedSuggestReusable(null);
+    setDismissedSuggestActions(null);
+    setAbandonedInteractionKey(null);
+  }, [turnRunning]);
 
   // Clear the PERSISTED pending interaction on the open activity so its card
   // never reappears on reload, then repaint the board + transcript. Used both by
@@ -1304,11 +1313,8 @@ export function useAgentChatPanel({
       askFirstDescription: t("chat:planReady.askFirstDescription"),
       autopilotTitle: t("chat:planReady.autopilotTitle"),
       autopilotDescription: t("chat:planReady.autopilotDescription"),
-      keepPlanningTitle: t("chat:planReady.keepPlanningTitle"),
-      keepPlanningDescription: t("chat:planReady.keepPlanningDescription"),
-      // Borrowed from the interaction-card family on purpose: the plan card's
-      // trailing row is the same shared component with the same wording.
-      declinePlaceholder: t("chat:interaction.declinePlaceholder"),
+      dismiss: t("chat:questionCard.dismiss"),
+      feedbackPlaceholder: t("chat:planReady.feedbackPlaceholder"),
       send: t("chat:questionCard.send"),
     }),
     [t],
@@ -1487,7 +1493,7 @@ export function useAgentChatPanel({
             onRunAutopilot={() =>
               startPlan("auto", t("chat:planReady.runAutopilotMessage"))
             }
-            onKeepPlanning={() => setDismissedPlanReady(summary)}
+            onDismiss={() => setDismissedPlanReady(summary)}
             // No abandon bookkeeping: the turn start null-clears the pending
             // interaction and deriveActiveInteraction hides the card while the
             // turn runs. Keying the conversation-wide abandoned key here would

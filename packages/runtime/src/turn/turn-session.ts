@@ -24,6 +24,7 @@ import {
 } from "../session/file-changes";
 import {
   newInteractionHolder,
+  planReadyFallback,
   runWithInteractionCapture,
 } from "../session/interaction";
 import { buildToolSelection } from "../session/tool-selection";
@@ -291,6 +292,16 @@ export async function runPiTurn(
     // returns no `outcome.error` — the per-turn server's trailing terminal is a
     // no-op for the already-settled client, and reporting an error here would make
     // it send a SECOND, generic error frame on top of the typed card.
+    // Mirrors exec-turn's plan-mode backstop: a clean plan turn with visible
+    // assistant output but no recorded interaction still owes the user an
+    // approval card (models occasionally write the plan and skip plan_ready).
+    const pendingInteraction =
+      !providerError &&
+      mode === "plan" &&
+      assistantText.trim() &&
+      !interaction.pending
+        ? planReadyFallback()
+        : interaction.pending;
     appendAssistantMessageAt(conversationsDir, conversationId, assistantText, {
       tools,
       usage,
@@ -300,7 +311,7 @@ export async function runPiTurn(
       // pending question only when the turn ended without a provider error, so
       // a reload of this cloud conversation settles to `needs_you`, not a false
       // `done`. Mirrors exec-turn — only the clean turn carries it.
-      pendingInteraction: providerError ? undefined : interaction.pending,
+      pendingInteraction: providerError ? undefined : pendingInteraction,
       turnId,
     });
     if (fileChanges) emit({ type: "file_changes", data: fileChanges });
@@ -309,7 +320,7 @@ export async function runPiTurn(
     if (!providerError) clearAuthFailure(provider);
     // Carry the pending question only on a clean turn — never alongside a
     // provider error (mirrors exec-turn: only the clean `done` carries it).
-    return providerError ? {} : { pendingInteraction: interaction.pending };
+    return providerError ? {} : { pendingInteraction };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     // Classify the throw before reporting a generic outcome error: pi RAISES
